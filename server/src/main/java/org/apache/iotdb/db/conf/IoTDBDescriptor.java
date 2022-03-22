@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.conf;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.compaction.CompactionPriority;
@@ -446,11 +447,11 @@ public class IoTDBDescriptor {
                   "raw_query_blocking_queue_capacity",
                   Integer.toString(conf.getRawQueryBlockingQueueCapacity()))));
 
-      conf.setmManagerCacheSize(
+      conf.setSchemaRegionCacheSize(
           Integer.parseInt(
               properties
                   .getProperty(
-                      "metadata_node_cache_size", Integer.toString(conf.getmManagerCacheSize()))
+                      "metadata_node_cache_size", Integer.toString(conf.getSchemaRegionCacheSize()))
                   .trim()));
 
       conf.setmRemoteSchemaCacheSize(
@@ -561,6 +562,8 @@ public class IoTDBDescriptor {
         maxConcurrentClientNum = 65535;
       }
 
+      conf.setRpcMaxConcurrentClientNum(maxConcurrentClientNum);
+
       conf.setEnableWatermark(
           Boolean.parseBoolean(
               properties.getProperty(
@@ -573,8 +576,6 @@ public class IoTDBDescriptor {
           properties.getProperty("watermark_method", conf.getWatermarkMethod()));
 
       loadAutoCreateSchemaProps(properties);
-
-      conf.setRpcMaxConcurrentClientNum(maxConcurrentClientNum);
 
       conf.setTsFileStorageFs(
           properties.getProperty("tsfile_storage_fs", conf.getTsFileStorageFs().toString()));

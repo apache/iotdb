@@ -18,10 +18,14 @@
  */
 package org.apache.iotdb.db.mpp.execution;
 
-import org.apache.iotdb.db.mpp.common.Analysis;
-import org.apache.iotdb.db.mpp.common.QueryContext;
-import org.apache.iotdb.db.mpp.plan.*;
-import org.apache.iotdb.db.mpp.plan.optimzation.PlanOptimizer;
+import org.apache.iotdb.db.mpp.common.MPPQueryContext;
+import org.apache.iotdb.db.mpp.execution.scheduler.ClusterScheduler;
+import org.apache.iotdb.db.mpp.execution.scheduler.IScheduler;
+import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
+import org.apache.iotdb.db.mpp.sql.optimization.PlanOptimizer;
+import org.apache.iotdb.db.mpp.sql.planner.DistributionPlanner;
+import org.apache.iotdb.db.mpp.sql.planner.LogicalPlanner;
+import org.apache.iotdb.db.mpp.sql.planner.plan.*;
 
 import java.nio.ByteBuffer;
 import java.util.List;
@@ -33,8 +37,8 @@ import java.util.List;
  * corresponding physical nodes. 3. Collect and monitor the progress/states of this query.
  */
 public class QueryExecution {
-  private QueryContext context;
-  private QueryScheduler scheduler;
+  private MPPQueryContext context;
+  private IScheduler scheduler;
   private QueryStateMachine stateMachine;
 
   private List<PlanOptimizer> planOptimizers;
@@ -45,7 +49,7 @@ public class QueryExecution {
   private List<PlanFragment> fragments;
   private List<FragmentInstance> fragmentInstances;
 
-  public QueryExecution(QueryContext context) {
+  public QueryExecution(MPPQueryContext context) {
     this.context = context;
   }
 
@@ -57,7 +61,7 @@ public class QueryExecution {
   }
 
   public void schedule() {
-    this.scheduler = new QueryScheduler(this.stateMachine, this.fragmentInstances);
+    this.scheduler = new ClusterScheduler(this.stateMachine, this.fragmentInstances);
     this.scheduler.start();
   }
 
@@ -69,8 +73,8 @@ public class QueryExecution {
 
   // Use LogicalPlanner to do the logical query plan and logical optimization
   public void doLogicalPlan() {
-    LogicalPlanner planner = new LogicalPlanner(this.analysis, this.context, this.planOptimizers);
-    this.logicalPlan = planner.plan();
+    LogicalPlanner planner = new LogicalPlanner(this.context, this.planOptimizers);
+    this.logicalPlan = planner.plan(this.analysis);
   }
 
   // Generate the distributed plan and split it into fragments

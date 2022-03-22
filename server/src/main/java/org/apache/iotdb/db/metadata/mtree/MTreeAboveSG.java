@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.metadata.mtree;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MNodeTypeMismatchException;
@@ -27,8 +27,9 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MetadataConstant;
+import org.apache.iotdb.db.metadata.SchemaEngine;
+import org.apache.iotdb.db.metadata.SchemaRegion;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
@@ -39,7 +40,6 @@ import org.apache.iotdb.db.metadata.mtree.traverser.counter.CounterTraverser;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.MNodeAboveSGLevelCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.StorageGroupCounter;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.metadata.storagegroup.SGMManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -60,7 +60,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 
 public class MTreeAboveSG {
 
@@ -77,7 +77,7 @@ public class MTreeAboveSG {
 
   public void clear() {
     for (IStorageGroupMNode storageGroupMNode : getAllStorageGroupNodes()) {
-      storageGroupMNode.getSGMManager().clear();
+      storageGroupMNode.getSchemaRegion().clear();
     }
     this.root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
   }
@@ -133,10 +133,10 @@ public class MTreeAboveSG {
             new StorageGroupMNode(
                 cur, nodeNames[i], IoTDBDescriptor.getInstance().getConfig().getDefaultTTL());
 
-        // init SGMManager
-        SGMManager sgmManager = new SGMManager();
-        storageGroupMNode.setSGMManager(sgmManager);
-        sgmManager.init(storageGroupMNode);
+        // init SchemaRegion
+        SchemaRegion schemaRegion = new SchemaRegion();
+        storageGroupMNode.setSchemaRegion(schemaRegion);
+        schemaRegion.init(storageGroupMNode);
 
         IMNode result = cur.addChild(nodeNames[i], storageGroupMNode);
 
@@ -145,7 +145,7 @@ public class MTreeAboveSG {
         }
 
         // another thread executed addChild before adding the prepared storageGroupMNode to MTree
-        sgmManager.deleteStorageGroup();
+        schemaRegion.deleteStorageGroup();
         throw new StorageGroupAlreadySetException(path.getFullPath(), true);
       }
     }
@@ -158,7 +158,7 @@ public class MTreeAboveSG {
     // Suppose current system has root.a.b.sg1, root.a.sg2, and delete root.a.b.sg1
     // delete the storage group node sg1
     cur.deleteChild(storageGroupMNode.getName());
-    storageGroupMNode.getSGMManager().deleteStorageGroup();
+    storageGroupMNode.getSchemaRegion().deleteStorageGroup();
 
     // delete node a while retain root.a.sg2
     while (cur.getParent() != null && cur.getChildren().size() == 0) {
@@ -443,7 +443,7 @@ public class MTreeAboveSG {
 
   /** Get all paths from root to the given level */
   public Pair<List<PartialPath>, Set<IStorageGroupMNode>> getNodesListInGivenLevel(
-      PartialPath pathPattern, int nodeLevel, MManager.StorageGroupFilter filter)
+      PartialPath pathPattern, int nodeLevel, SchemaEngine.StorageGroupFilter filter)
       throws MetadataException {
     MNodeAboveSGCollector<List<PartialPath>> collector =
         new MNodeAboveSGCollector<List<PartialPath>>(root, pathPattern) {
@@ -542,7 +542,7 @@ public class MTreeAboveSG {
               child.getName(),
               child
                   .getAsStorageGroupMNode()
-                  .getSGMManager()
+                  .getSchemaRegion()
                   .getMetadataInJson()
                   .get(child.getFullPath()));
         } else {

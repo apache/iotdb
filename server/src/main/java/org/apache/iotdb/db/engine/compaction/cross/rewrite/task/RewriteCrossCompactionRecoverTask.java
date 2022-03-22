@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.engine.compaction.cross.rewrite.task;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.TsFileIdentifier;
@@ -31,6 +31,7 @@ import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -221,7 +222,9 @@ public class RewriteCrossCompactionRecoverTask extends RewriteCrossSpaceCompacti
     for (TsFileIdentifier sourceFileIdentifier : sourceFileIdentifiers) {
       File sourceFile = sourceFileIdentifier.getFileFromDataDirs();
       if (sourceFile != null) {
-        remainSourceTsFileResources.add(new TsFileResource(sourceFile));
+        TsFileResource resource = new TsFileResource(sourceFile);
+        resource.setStatus(TsFileResourceStatus.CLOSED);
+        remainSourceTsFileResources.add(resource);
       } else {
         // if source file does not exist, its resource file may still exist, so delete it.
         File resourceFile =

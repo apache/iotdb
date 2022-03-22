@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.operator;
 
-import org.apache.iotdb.db.mpp.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 
 /**
  * Contains information about {@link Operator} execution.
@@ -35,5 +35,9 @@ public class OperatorContext {
     this.operatorId = operatorId;
     this.planNodeId = planNodeId;
     this.operatorType = operatorType;
+  }
+
+  public int getOperatorId() {
+    return operatorId;
   }
 }

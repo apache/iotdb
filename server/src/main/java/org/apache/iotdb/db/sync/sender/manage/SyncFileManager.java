@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.sync.sender.manage;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.service.IoTDB;
@@ -81,7 +81,7 @@ public class SyncFileManager implements ISyncFileManager {
   private Map<String, Map<Long, Map<Long, Set<File>>>> toBeSyncedFilesMap;
 
   private SyncFileManager() {
-    IoTDB.metaManager.init();
+    IoTDB.schemaEngine.init();
   }
 
   public static SyncFileManager getInstance() {

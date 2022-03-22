@@ -21,8 +21,8 @@ package org.apache.iotdb.db.metadata.upgrade;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MetadataConstant;
+import org.apache.iotdb.db.metadata.SchemaEngine;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.EntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
@@ -67,7 +67,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_ROOT;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 
 public class MetadataUpgradeTest {
 
@@ -90,18 +90,18 @@ public class MetadataUpgradeTest {
     prepareTagFile();
     prepareMLog();
 
-    MManager manager = IoTDB.metaManager;
-    manager.clear();
+    SchemaEngine schemaEngine = IoTDB.schemaEngine;
+    schemaEngine.clear();
     MetadataUpgrader.upgrade();
-    manager.init();
+    schemaEngine.init();
 
-    Assert.assertEquals(8, manager.getStorageGroupNum(new PartialPath("root.**"), false));
-    Assert.assertEquals(10, manager.getAllTimeseriesCount(new PartialPath("root.**")));
+    Assert.assertEquals(8, schemaEngine.getStorageGroupNum(new PartialPath("root.**"), false));
+    Assert.assertEquals(10, schemaEngine.getAllTimeseriesCount(new PartialPath("root.**")));
 
     ShowTimeSeriesPlan showTimeSeriesPlan =
         new ShowTimeSeriesPlan(
             new PartialPath("root.**"), false, "t-k-0", "t-k-0-v-0", 0, 0, false);
-    List<ShowTimeSeriesResult> resultList = manager.showTimeseries(showTimeSeriesPlan, null);
+    List<ShowTimeSeriesResult> resultList = schemaEngine.showTimeseries(showTimeSeriesPlan, null);
     Assert.assertEquals(1, resultList.size());
     ShowTimeSeriesResult result = resultList.get(0);
     Assert.assertEquals("root.test.sg1.d1.s1", result.getName());
@@ -109,7 +109,7 @@ public class MetadataUpgradeTest {
     showTimeSeriesPlan =
         new ShowTimeSeriesPlan(
             new PartialPath("root.**"), false, "t-k-1", "t-k-1-v-1", 0, 0, false);
-    resultList = manager.showTimeseries(showTimeSeriesPlan, null);
+    resultList = schemaEngine.showTimeseries(showTimeSeriesPlan, null);
     resultList =
         resultList.stream()
             .sorted(Comparator.comparing(ShowTimeSeriesResult::getName))
@@ -120,11 +120,11 @@ public class MetadataUpgradeTest {
     result = resultList.get(1);
     Assert.assertEquals("root.test.sg2.d1.s1", result.getName());
 
-    Assert.assertEquals(4, manager.getPathsSetTemplate("template").size());
-    Assert.assertEquals(0, manager.getPathsSetTemplate("unsetTemplate").size());
+    Assert.assertEquals(4, schemaEngine.getPathsSetTemplate("template").size());
+    Assert.assertEquals(0, schemaEngine.getPathsSetTemplate("unsetTemplate").size());
 
     Assert.assertEquals(
-        "root.test.sg3.d3", new ArrayList<>(manager.getPathsUsingTemplate("template")).get(0));
+        "root.test.sg3.d3", new ArrayList<>(schemaEngine.getPathsUsingTemplate("template")).get(0));
   }
 
   private void prepareMLog() throws Exception {
