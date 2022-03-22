@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.db.sync.sender.recover;
 
+import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
-import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.sync.conf.SyncConstant;
 import org.apache.iotdb.db.sync.conf.SyncSenderConfig;

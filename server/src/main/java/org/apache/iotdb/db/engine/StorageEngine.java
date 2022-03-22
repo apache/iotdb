@@ -18,8 +18,12 @@
  */
 package org.apache.iotdb.db.engine;
 
-import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.db.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.exception.ShutdownException;
+import org.apache.iotdb.commons.service.IService;
+import org.apache.iotdb.commons.service.ServiceType;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.ServerConfigConsistent;
@@ -35,7 +39,6 @@ import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor.Time
 import org.apache.iotdb.db.engine.storagegroup.virtualSg.StorageGroupManager;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.LoadFileException;
-import org.apache.iotdb.db.exception.ShutdownException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
@@ -55,10 +58,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.rescon.SystemInfo;
-import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.db.service.ServiceType;
-import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.ThreadUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.db.wal.exception.WALException;
@@ -225,7 +225,7 @@ public class StorageEngine implements IService {
         IoTDBThreadPoolFactory.newFixedThreadPool(
             Runtime.getRuntime().availableProcessors(), "Recovery-Thread-Pool");
 
-    List<IStorageGroupMNode> sgNodes = IoTDB.metaManager.getAllStorageGroupNodes();
+    List<IStorageGroupMNode> sgNodes = IoTDB.schemaEngine.getAllStorageGroupNodes();
     // init wal recover manager
     WALRecoverManager.getInstance()
         .setAllVsgScannedLatch(
@@ -470,7 +470,7 @@ public class StorageEngine implements IService {
       throws StorageEngineException {
     PartialPath storageGroupPath;
     try {
-      IStorageGroupMNode storageGroupMNode = IoTDB.metaManager.getStorageGroupNodeByPath(path);
+      IStorageGroupMNode storageGroupMNode = IoTDB.schemaEngine.getStorageGroupNodeByPath(path);
       storageGroupPath = storageGroupMNode.getPartialPath();
       return getStorageGroupProcessorByPath(storageGroupPath, storageGroupMNode);
     } catch (StorageGroupProcessorException | MetadataException e) {
@@ -486,7 +486,7 @@ public class StorageEngine implements IService {
    */
   public VirtualStorageGroupProcessor getProcessor(PartialPath path) throws StorageEngineException {
     try {
-      IStorageGroupMNode storageGroupMNode = IoTDB.metaManager.getStorageGroupNodeByPath(path);
+      IStorageGroupMNode storageGroupMNode = IoTDB.schemaEngine.getStorageGroupNodeByPath(path);
       return getStorageGroupProcessorByPath(path, storageGroupMNode);
     } catch (StorageGroupProcessorException | MetadataException e) {
       throw new StorageEngineException(e);
@@ -502,7 +502,7 @@ public class StorageEngine implements IService {
     try {
       List<String> lockHolderList = new ArrayList<>(pathList.size());
       for (PartialPath path : pathList) {
-        IStorageGroupMNode storageGroupMNode = IoTDB.metaManager.getStorageGroupNodeByPath(path);
+        IStorageGroupMNode storageGroupMNode = IoTDB.schemaEngine.getStorageGroupNodeByPath(path);
         VirtualStorageGroupProcessor virtualStorageGroupProcessor =
             getStorageGroupProcessorByPath(path, storageGroupMNode);
         lockHolderList.add(virtualStorageGroupProcessor.getInsertWriteLockHolder());
@@ -710,7 +710,7 @@ public class StorageEngine implements IService {
       TimePartitionFilter timePartitionFilter)
       throws StorageEngineException {
     try {
-      List<PartialPath> sgPaths = IoTDB.metaManager.getBelongedStorageGroups(path);
+      List<PartialPath> sgPaths = IoTDB.schemaEngine.getBelongedStorageGroups(path);
       for (PartialPath storageGroupPath : sgPaths) {
         // storage group has no data
         if (!processorMap.containsKey(storageGroupPath)) {
@@ -734,7 +734,7 @@ public class StorageEngine implements IService {
       PartialPath path, long planIndex, TimePartitionFilter timePartitionFilter)
       throws StorageEngineException {
     try {
-      List<PartialPath> sgPaths = IoTDB.metaManager.getBelongedStorageGroups(path);
+      List<PartialPath> sgPaths = IoTDB.schemaEngine.getBelongedStorageGroups(path);
       for (PartialPath storageGroupPath : sgPaths) {
         // storage group has no data
         if (!processorMap.containsKey(storageGroupPath)) {
@@ -840,7 +840,7 @@ public class StorageEngine implements IService {
   public synchronized boolean deleteAll() {
     logger.info("Start deleting all storage groups' timeseries");
     syncCloseAllProcessor();
-    for (PartialPath storageGroup : IoTDB.metaManager.getAllStorageGroupPaths()) {
+    for (PartialPath storageGroup : IoTDB.schemaEngine.getAllStorageGroupPaths()) {
       this.deleteAllDataFilesInOneStorageGroup(storageGroup);
     }
     return true;
@@ -864,6 +864,7 @@ public class StorageEngine implements IService {
     StorageGroupManager storageGroupManager = processorMap.remove(storageGroupPath);
     storageGroupManager.deleteStorageGroupSystemFolder(
         systemDir + File.pathSeparator + storageGroupPath);
+    storageGroupManager.stopSchedulerPool();
   }
 
   public void loadNewTsFileForSync(TsFileResource newTsFileResource)
@@ -880,7 +881,7 @@ public class StorageEngine implements IService {
     }
     String device = deviceSet.iterator().next();
     PartialPath devicePath = new PartialPath(device);
-    PartialPath storageGroupPath = IoTDB.metaManager.getBelongedStorageGroup(devicePath);
+    PartialPath storageGroupPath = IoTDB.schemaEngine.getBelongedStorageGroup(devicePath);
     getProcessorDirectly(storageGroupPath).loadNewTsFile(newTsFileResource);
   }
 
@@ -1054,7 +1055,7 @@ public class StorageEngine implements IService {
       if (config.isEnableIDTable()) {
         processor.getIdTable().getSeriesSchemas(insertPlan);
       } else {
-        IoTDB.metaManager.getSeriesSchemasAndReadLockDevice(insertPlan);
+        IoTDB.schemaEngine.getSeriesSchemasAndReadLockDevice(insertPlan);
         insertPlan.setDeviceID(
             DeviceIDFactory.getInstance().getDeviceID(insertPlan.getDevicePath()));
       }

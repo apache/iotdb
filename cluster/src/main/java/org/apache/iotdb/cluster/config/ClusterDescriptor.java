@@ -20,7 +20,7 @@
 package org.apache.iotdb.cluster.config;
 
 import org.apache.iotdb.cluster.exception.BadSeedUrlFormatException;
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 

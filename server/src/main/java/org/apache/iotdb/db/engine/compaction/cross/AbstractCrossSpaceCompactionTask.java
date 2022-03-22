@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.compaction.cross;
 
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -47,6 +48,13 @@ public abstract class AbstractCrossSpaceCompactionTask extends AbstractCompactio
     this.selectedUnsequenceFiles = null;
   }
 
+  @Override
+  public void setSourceFilesToCompactionCandidate() {
+    this.selectedSequenceFiles.forEach(x -> x.setStatus(TsFileResourceStatus.COMPACTION_CANDIDATE));
+    this.selectedUnsequenceFiles.forEach(
+        x -> x.setStatus(TsFileResourceStatus.COMPACTION_CANDIDATE));
+  }
+
   public List<TsFileResource> getSelectedSequenceFiles() {
     return selectedSequenceFiles;
   }
@@ -70,11 +78,11 @@ public abstract class AbstractCrossSpaceCompactionTask extends AbstractCompactio
     }
 
     for (TsFileResource resource : selectedSequenceFiles) {
-      resource.setCompacting(true);
+      resource.setStatus(TsFileResourceStatus.COMPACTING);
     }
 
     for (TsFileResource resource : selectedUnsequenceFiles) {
-      resource.setCompacting(true);
+      resource.setStatus(TsFileResourceStatus.COMPACTING);
     }
 
     return true;
@@ -86,16 +94,16 @@ public abstract class AbstractCrossSpaceCompactionTask extends AbstractCompactio
         .append(fullStorageGroupName)
         .append("-")
         .append(timePartition)
-        .append(" task seq file num is ")
-        .append(selectedSequenceFiles.size())
-        .append(" , unseq file num is ")
-        .append(selectedUnsequenceFiles.size())
+        .append(" task seq files are ")
+        .append(selectedSequenceFiles.toString())
+        .append(" , unseq files are ")
+        .append(selectedUnsequenceFiles.toString())
         .toString();
   }
 
   @Override
   public void resetCompactionCandidateStatusForAllSourceFiles() {
-    selectedSequenceFiles.forEach(x -> x.setCompactionCandidate(false));
-    selectedUnsequenceFiles.forEach(x -> x.setCompactionCandidate(false));
+    selectedSequenceFiles.forEach(x -> x.setStatus(TsFileResourceStatus.CLOSED));
+    selectedUnsequenceFiles.forEach(x -> x.setStatus(TsFileResourceStatus.CLOSED));
   }
 }

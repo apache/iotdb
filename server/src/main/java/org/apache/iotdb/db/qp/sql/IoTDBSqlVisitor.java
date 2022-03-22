@@ -18,12 +18,12 @@
  */
 package org.apache.iotdb.db.qp.sql;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEvent;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.runtime.SQLParserException;
+import org.apache.iotdb.db.exception.sql.SQLParserException;
 import org.apache.iotdb.db.index.common.IndexType;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.constant.FilterConstant;
@@ -84,6 +84,7 @@ import org.apache.iotdb.db.qp.logical.sys.UnloadFileOperator;
 import org.apache.iotdb.db.qp.logical.sys.UnsetTemplateOperator;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ConstantContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.CqGroupByTimeClauseContext;
+import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ExpressionContext;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.query.executor.fill.IFill;
 import org.apache.iotdb.db.query.executor.fill.LinearFill;
@@ -271,7 +272,10 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       IoTDBSqlParser.AttributeClausesContext ctx,
       CreateAlignedTimeSeriesOperator createAlignedTimeSeriesOperator) {
     if (ctx.alias() != null) {
-      throw new SQLParserException("create aligned timeseries: alias is not supported yet.");
+      createAlignedTimeSeriesOperator.addAliasList(
+          parseNodeName(ctx.alias().nodeNameCanInExpr().getText()));
+    } else {
+      createAlignedTimeSeriesOperator.addAliasList(null);
     }
 
     String dataTypeString = ctx.dataType.getText().toUpperCase();
@@ -297,11 +301,15 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     }
 
     if (ctx.tagClause() != null) {
-      throw new SQLParserException("create aligned timeseries: tag is not supported yet.");
+      parseTagClause(ctx.tagClause(), createAlignedTimeSeriesOperator);
+    } else {
+      createAlignedTimeSeriesOperator.addTagsList(null);
     }
 
     if (ctx.attributeClause() != null) {
-      throw new SQLParserException("create aligned timeseries: attribute is not supported yet.");
+      parseAttributeClause(ctx.attributeClause(), createAlignedTimeSeriesOperator);
+    } else {
+      createAlignedTimeSeriesOperator.addAttributesList(null);
     }
   }
 
@@ -579,13 +587,6 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     if (ctx.BOUNDARY() != null) {
       operator.setFirstExecutionTimeBoundary(parseDateExpression(ctx.dateExpression()));
     }
-  }
-
-  // Create Snapshot for Schema
-
-  @Override
-  public Operator visitCreateSnapshot(IoTDBSqlParser.CreateSnapshotContext ctx) {
-    return new CreateSnapshotOperator(SQLConstant.TOK_CREATE_SCHEMA_SNAPSHOT);
   }
 
   // Alter Timeseries
@@ -1283,7 +1284,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   private void parseGroupByTimeClause(IoTDBSqlParser.GroupByTimeClauseContext ctx) {
     GroupByClauseComponent groupByClauseComponent = new GroupByClauseComponent();
-    groupByClauseComponent.setLeftCRightO(ctx.timeInterval().LS_BRACKET() != null);
+    groupByClauseComponent.setLeftCRightO(ctx.timeRange().LS_BRACKET() != null);
     // parse timeUnit
     groupByClauseComponent.setUnit(
         parseTimeUnitOrSlidingStep(
@@ -1297,16 +1298,12 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       groupByClauseComponent.setSlidingStep(
           parseTimeUnitOrSlidingStep(
               ctx.DURATION_LITERAL(1).getText(), false, groupByClauseComponent));
-      if (groupByClauseComponent.getSlidingStep() < groupByClauseComponent.getUnit()) {
-        throw new SQLParserException(
-            "The third parameter sliding step shouldn't be smaller than the second parameter time interval.");
-      }
     } else {
       groupByClauseComponent.setSlidingStep(groupByClauseComponent.getUnit());
       groupByClauseComponent.setSlidingStepByMonth(groupByClauseComponent.isIntervalByMonth());
     }
 
-    parseTimeInterval(ctx.timeInterval(), groupByClauseComponent);
+    parseTimeInterval(ctx.timeRange(), groupByClauseComponent);
 
     if (ctx.LEVEL() != null && ctx.INTEGER_LITERAL() != null) {
       int[] levels = new int[ctx.INTEGER_LITERAL().size()];
@@ -1320,7 +1317,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   private void parseGroupByFillClause(IoTDBSqlParser.GroupByFillClauseContext ctx) {
     GroupByFillClauseComponent groupByFillClauseComponent = new GroupByFillClauseComponent();
-    groupByFillClauseComponent.setLeftCRightO(ctx.timeInterval().LS_BRACKET() != null);
+    groupByFillClauseComponent.setLeftCRightO(ctx.timeRange().LS_BRACKET() != null);
     // parse timeUnit
     groupByFillClauseComponent.setUnit(
         parseTimeUnitOrSlidingStep(
@@ -1340,7 +1337,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
           groupByFillClauseComponent.isIntervalByMonth());
     }
 
-    parseTimeInterval(ctx.timeInterval(), groupByFillClauseComponent);
+    parseTimeInterval(ctx.timeRange(), groupByFillClauseComponent);
 
     if (ctx.fillClause().oldTypeClause().size() > 0) {
       // old type fill logic
@@ -1417,8 +1414,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   }
 
   private void parseTimeInterval(
-      IoTDBSqlParser.TimeIntervalContext timeInterval,
-      GroupByClauseComponent groupByClauseComponent) {
+      IoTDBSqlParser.TimeRangeContext timeInterval, GroupByClauseComponent groupByClauseComponent) {
     long currentTime = DatetimeUtils.currentTime();
     long startTime = parseTimeValue(timeInterval.timeValue(0), currentTime);
     long endTime = parseTimeValue(timeInterval.timeValue(1), currentTime);
@@ -1433,6 +1429,11 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     SpecialClauseComponent specialClauseComponent = queryOp.getSpecialClauseComponent();
     if (specialClauseComponent == null) {
       specialClauseComponent = new SpecialClauseComponent();
+    }
+    // add without null columns
+    List<ExpressionContext> expressionContexts = ctx.expression();
+    for (ExpressionContext expressionContext : expressionContexts) {
+      specialClauseComponent.addWithoutNullColumn(parseExpression(expressionContext));
     }
     specialClauseComponent.setWithoutAnyNull(ctx.ANY() != null);
     specialClauseComponent.setWithoutAllNull(ctx.ALL() != null);
@@ -2605,9 +2606,16 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       queryOp = new LastQueryOperator(queryOp);
     }
 
+    // add aliasSet
+    Set<String> aliasSet = new HashSet<>();
     for (IoTDBSqlParser.ResultColumnContext resultColumnContext : ctx.resultColumn()) {
-      selectComponent.addResultColumn(parseResultColumn(resultColumnContext));
+      ResultColumn resultColumn = parseResultColumn(resultColumnContext);
+      if (resultColumn.hasAlias()) {
+        aliasSet.add(resultColumn.getAlias());
+      }
+      selectComponent.addResultColumn(resultColumn);
     }
+
     // judge query type
     if (!hasDecidedQueryType()) {
       if (selectComponent.hasUserDefinedAggregationFunction()) {
@@ -2620,7 +2628,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     } else if (selectComponent.hasUserDefinedAggregationFunction()) {
       queryOp = new UDAFQueryOperator((AggregationQueryOperator) (queryOp));
     }
-
+    queryOp.setAliasSet(aliasSet);
     queryOp.setSelectComponent(selectComponent);
   }
 
@@ -2680,6 +2688,8 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     Map<String, String> tags = extractMap(ctx.propertyClause(), ctx.propertyClause(0));
     if (operator instanceof CreateTimeSeriesOperator) {
       ((CreateTimeSeriesOperator) operator).setTags(tags);
+    } else if (operator instanceof CreateAlignedTimeSeriesOperator) {
+      ((CreateAlignedTimeSeriesOperator) operator).addTagsList(tags);
     } else if (operator instanceof AlterTimeSeriesOperator) {
       ((AlterTimeSeriesOperator) operator).setTagsMap(tags);
     }
@@ -2689,6 +2699,8 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     Map<String, String> attributes = extractMap(ctx.propertyClause(), ctx.propertyClause(0));
     if (operator instanceof CreateTimeSeriesOperator) {
       ((CreateTimeSeriesOperator) operator).setAttributes(attributes);
+    } else if (operator instanceof CreateAlignedTimeSeriesOperator) {
+      ((CreateAlignedTimeSeriesOperator) operator).addAttributesList(attributes);
     } else if (operator instanceof AlterTimeSeriesOperator) {
       ((AlterTimeSeriesOperator) operator).setAttributesMap(attributes);
     }

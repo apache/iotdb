@@ -35,7 +35,7 @@ import org.junit.Test;
 import java.io.File;
 import java.io.IOException;
 
-import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger.COMPACTION_LOG_NAME;
+import static org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX;
 import static org.junit.Assert.assertFalse;
 
 public class InnerCompactionLogTest extends InnerCompactionTest {
@@ -78,7 +78,7 @@ public class InnerCompactionLogTest extends InnerCompactionTest {
     }
     File logFile =
         FSFactoryProducer.getFSFactory()
-            .getFile(tempSGDir.getPath(), COMPACTION_TEST_SG + COMPACTION_LOG_NAME);
+            .getFile(tempSGDir.getPath(), COMPACTION_TEST_SG + INNER_COMPACTION_LOG_NAME_SUFFIX);
     assertFalse(logFile.exists());
   }
 }

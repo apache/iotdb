@@ -746,7 +746,6 @@ var config = {
 						sidebarDepth: 1,
 						children: [
 							['Process-Data/UDF-User-Defined-Function','UDF (User Defined Function)'],
-							['Process-Data/UDF-Library', 'UDF Library'],
 							['Process-Data/Select-Into','Query Write-back (SELECT INTO)'],
 							['Process-Data/Continuous-Query','CQ (Continuous Query)'],
 							['Process-Data/Triggers','Triggers'],
@@ -776,7 +775,8 @@ var config = {
 					{
 						title: 'Ecosystem Integration',
 						children: [
-							['Ecosystem Integration/Grafana Connector','Grafana Connector'],
+							['Ecosystem Integration/Grafana Plugin','Grafana Plugin'],
+							['Ecosystem Integration/Grafana Connector','Grafana Connector (Not Recommended)'],
 							['Ecosystem Integration/Zeppelin-IoTDB','Zeppelin-IoTDB'],
 							['Ecosystem Integration/DBeaver','DBeaver-IoTDB'],
 							['Ecosystem Integration/MapReduce TsFile','MapReduce TsFile'],
@@ -794,6 +794,22 @@ var config = {
 							['Cluster/Cluster-Setup','Cluster Setup'],
 							['Cluster/Cluster-Setup-Example','Cluster Setup Example']
 						]
+					},
+					{
+					    title: 'UDF Library',
+					    sidebarDepth: 1,
+					    children: [
+					        ['UDF-Library/Quick-Start', 'Quick Start'],
+					        ['UDF-Library/Data-Profiling', 'Data Profiling'],
+					        ['UDF-Library/Anomaly-Detection', 'Anomaly Detection'],
+					        ['UDF-Library/Data-Matching', 'Data Matching'],
+					        ['UDF-Library/Frequency-Domain', 'Frequency Domain Analysis'],
+					        ['UDF-Library/Data-Quality', 'Data Quality'],
+					        ['UDF-Library/Data-Repairing', 'Data Repairing'],
+					        ['UDF-Library/Series-Discovery', 'Series Discovery'],
+                            ['UDF-Library/String-Processing', 'String Processing'],
+                            ['UDF-Library/M4', 'M4']
+					    ]
 					},
 					{
 						title: 'Reference',
@@ -906,7 +922,6 @@ var config = {
 						sidebarDepth: 1,
 						children: [
 							['Process-Data/UDF-User-Defined-Function','UDF (User Defined Function)'],
-							['Process-Data/UDF-Library', 'UDF Library'],
 							['Process-Data/Select-Into','Query Write-back (SELECT INTO)'],
 							['Process-Data/Continuous-Query','CQ (Continuous Query)'],
 							['Process-Data/Triggers','Triggers'],
@@ -955,6 +970,22 @@ var config = {
 							['Cluster/Cluster-Setup','Cluster Setup'],
 							['Cluster/Cluster-Setup-Example','Cluster Setup Example']
 						]
+					},
+					{
+					    title: 'UDF Library',
+					    sidebarDepth: 1,
+					    children: [
+					        ['UDF-Library/Quick-Start', 'Quick Start'],
+					        ['UDF-Library/Data-Profiling', 'Data Profiling'],
+					        ['UDF-Library/Anomaly-Detection', 'Anomaly Detection'],
+					        ['UDF-Library/Data-Matching', 'Data Matching'],
+					        ['UDF-Library/Frequency-Domain', 'Frequency Domain Analysis'],
+					        ['UDF-Library/Data-Quality', 'Data Quality'],
+					        ['UDF-Library/Data-Repairing', 'Data Repairing'],
+					        ['UDF-Library/Series-Discovery', 'Series Discovery'],
+                            ['UDF-Library/String-Processing', 'String Processing'],
+                            ['UDF-Library/M4', 'M4']
+					    ]
 					},
 					{
 						title: 'Reference',
@@ -1632,7 +1663,6 @@ var config = {
 						sidebarDepth: 1,
 						children: [
 							['Process-Data/UDF-User-Defined-Function','用户定义函数(UDF)'],
-							['Process-Data/UDF-Library', 'UDF 函数库'],
 							['Process-Data/Select-Into','查询写回(SELECT INTO)'],
 							['Process-Data/Continuous-Query','连续查询(CQ)'],
 							['Process-Data/Triggers','触发器'],
@@ -1682,6 +1712,22 @@ var config = {
 							['Cluster/Cluster-Setup-Example','集群搭建示例']
 						]
 					},
+					{
+                        title: 'UDF 资料库',
+                        sidebarDepth: 1,
+                        children: [
+                            ['UDF-Library/Quick-Start', '快速开始'],
+                            ['UDF-Library/Data-Profiling', '数据画像'],
+                            ['UDF-Library/Anomaly-Detection', '异常检测'],
+                            ['UDF-Library/Data-Matching', '数据匹配'],
+                            ['UDF-Library/Frequency-Domain', '频域分析'],
+                            ['UDF-Library/Data-Quality', '数据质量'],
+                            ['UDF-Library/Data-Repairing', '数据修复'],
+                            ['UDF-Library/Series-Discovery', '序列发现'],
+                            ['UDF-Library/String-Processing', '字符串处理'],
+                            ['UDF-Library/M4', 'M4']
+                        ]
+                    },
 					{
 						title: '参考',
 						children: [
@@ -1794,7 +1840,6 @@ var config = {
 						sidebarDepth: 1,
 						children: [
 							['Process-Data/UDF-User-Defined-Function','用户定义函数(UDF)'],
-							['Process-Data/UDF-Library', 'UDF 函数库'],
 							['Process-Data/Select-Into','查询写回(SELECT INTO)'],
 							['Process-Data/Continuous-Query','连续查询(CQ)'],
 							['Process-Data/Triggers','触发器'],
@@ -1844,6 +1889,22 @@ var config = {
 							['Cluster/Cluster-Setup-Example','集群搭建示例']
 						]
 					},
+					{
+                        title: 'UDF 资料库',
+                        sidebarDepth: 1,
+                        children: [
+                            ['UDF-Library/Quick-Start', '快速开始'],
+                            ['UDF-Library/Data-Profiling', '数据画像'],
+                            ['UDF-Library/Anomaly-Detection', '异常检测'],
+                            ['UDF-Library/Data-Matching', '数据匹配'],
+                            ['UDF-Library/Frequency-Domain', '频域分析'],
+                            ['UDF-Library/Data-Quality', '数据质量'],
+                            ['UDF-Library/Data-Repairing', '数据修复'],
+                            ['UDF-Library/Series-Discovery', '序列发现'],
+                            ['UDF-Library/String-Processing', '字符串处理'],
+                            ['UDF-Library/M4', 'M4']
+                        ]
+                    },
 					{
 						title: '参考',
 						children: [

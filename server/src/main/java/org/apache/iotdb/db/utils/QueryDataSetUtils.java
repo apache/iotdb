@@ -68,13 +68,14 @@ public class QueryDataSetUtils {
       if (queryDataSet.hasNext()) {
         RowRecord rowRecord = queryDataSet.next();
         // filter rows whose columns are null according to the rule
-        if ((queryDataSet.isWithoutAllNull() && rowRecord.isAllNull())
-            || (queryDataSet.isWithoutAnyNull() && rowRecord.hasNullField())) {
-          // if the current RowRecord doesn't satisfy, we should also decrease AlreadyReturnedRowNum
+        if (queryDataSet.withoutNullFilter(rowRecord)) {
+          // if the current RowRecord doesn't satisfy, we should also decrease
+          // AlreadyReturnedRowNum
           queryDataSet.decreaseAlreadyReturnedRowNum();
           i--;
           continue;
         }
+
         if (watermarkEncoder != null) {
           rowRecord = watermarkEncoder.encodeRecord(rowRecord);
         }

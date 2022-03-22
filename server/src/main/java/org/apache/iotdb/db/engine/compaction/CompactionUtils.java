@@ -18,7 +18,8 @@
  */
 package org.apache.iotdb.db.engine.compaction;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.inner.utils.MultiTsFileDeviceIterator;
 import org.apache.iotdb.db.engine.compaction.writer.AbstractCompactionWriter;
 import org.apache.iotdb.db.engine.compaction.writer.CrossSpaceCompactionWriter;
@@ -31,6 +32,8 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
+import org.apache.iotdb.db.metadata.idtable.IDTableManager;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -56,10 +59,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * This tool can be used to perform inner space or cross space compaction of aligned and non aligned
@@ -83,12 +86,11 @@ public class CompactionUtils {
         .getQueryFileManager()
         .addUsedFilesForQuery(queryId, queryDataSource);
 
-    List<TsFileResource> allResources = new ArrayList<>();
-    allResources.addAll(seqFileResources);
-    allResources.addAll(unseqFileResources);
     try (AbstractCompactionWriter compactionWriter =
-            getCompactionWriter(seqFileResources, unseqFileResources, targetFileResources);
-        MultiTsFileDeviceIterator deviceIterator = new MultiTsFileDeviceIterator(allResources)) {
+        getCompactionWriter(seqFileResources, unseqFileResources, targetFileResources)) {
+      // Do not close device iterator, because tsfile reader is managed by FileReaderManager.
+      MultiTsFileDeviceIterator deviceIterator =
+          new MultiTsFileDeviceIterator(seqFileResources, unseqFileResources);
       while (deviceIterator.hasNextDevice()) {
         checkThreadInterrupted(targetFileResources);
         Pair<String, Boolean> deviceInfo = deviceIterator.nextDevice();
@@ -119,22 +121,35 @@ public class CompactionUtils {
       QueryContext queryContext,
       QueryDataSource queryDataSource)
       throws IOException, MetadataException {
-    MultiTsFileDeviceIterator.AlignedMeasurmentIterator alignedMeasurmentIterator =
+    MultiTsFileDeviceIterator.AlignedMeasurementIterator alignedMeasurementIterator =
         deviceIterator.iterateAlignedSeries(device);
-    List<String> allMeasurments = alignedMeasurmentIterator.getAllMeasurements();
+    Set<String> allMeasurements = alignedMeasurementIterator.getAllMeasurements();
     List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
-    for (String measurement : allMeasurments) {
-      // TODO: use IDTable
-      measurementSchemas.add(
-          IoTDB.metaManager.getSeriesSchema(new PartialPath(device, measurement)));
+    for (String measurement : allMeasurements) {
+      try {
+        if (IoTDBDescriptor.getInstance().getConfig().isEnableIDTable()) {
+          measurementSchemas.add(IDTableManager.getInstance().getSeriesSchema(device, measurement));
+        } else {
+          measurementSchemas.add(
+              IoTDB.schemaEngine.getSeriesSchema(new PartialPath(device, measurement)));
+        }
+      } catch (PathNotExistException e) {
+        logger.info("A deleted path is skipped: {}", e.getMessage());
+      }
     }
-
+    if (measurementSchemas.isEmpty()) {
+      return;
+    }
+    List<String> existedMeasurements =
+        measurementSchemas.stream()
+            .map(IMeasurementSchema::getMeasurementId)
+            .collect(Collectors.toList());
     IBatchReader dataBatchReader =
         constructReader(
             device,
-            allMeasurments,
+            existedMeasurements,
             measurementSchemas,
-            new HashSet<>(allMeasurments),
+            allMeasurements,
             queryContext,
             queryDataSource,
             true);
@@ -160,18 +175,26 @@ public class CompactionUtils {
     MultiTsFileDeviceIterator.MeasurementIterator measurementIterator =
         deviceIterator.iterateNotAlignedSeries(device, false);
     Set<String> allMeasurements = measurementIterator.getAllMeasurements();
-    Set<String> allMeasurementSet = new HashSet<>(allMeasurements);
     for (String measurement : allMeasurements) {
       List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
-      measurementSchemas.add(
-          IoTDB.metaManager.getSeriesSchema(new PartialPath(device, measurement)));
+      try {
+        if (IoTDBDescriptor.getInstance().getConfig().isEnableIDTable()) {
+          measurementSchemas.add(IDTableManager.getInstance().getSeriesSchema(device, measurement));
+        } else {
+          measurementSchemas.add(
+              IoTDB.schemaEngine.getSeriesSchema(new PartialPath(device, measurement)));
+        }
+      } catch (PathNotExistException e) {
+        logger.info("A deleted path is skipped: {}", e.getMessage());
+        continue;
+      }
 
       IBatchReader dataBatchReader =
           constructReader(
               device,
               Collections.singletonList(measurement),
               measurementSchemas,
-              allMeasurementSet,
+              allMeasurements,
               queryContext,
               queryDataSource,
               false);
