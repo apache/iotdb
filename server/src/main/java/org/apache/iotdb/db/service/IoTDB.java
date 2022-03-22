@@ -123,10 +123,10 @@ public class IoTDB implements IoTDBMBean {
 
     Runtime.getRuntime().addShutdownHook(new IoTDBShutdownHook());
     setUncaughtExceptionHandler();
+    initServiceProvider();
     registerManager.register(MetricsService.getInstance());
     logger.info("recover the schema...");
     initSchemaEngine();
-    initServiceProvider();
     registerManager.register(JMXService.getInstance());
     registerManager.register(FlushManager.getInstance());
     registerManager.register(MultiFileLogNodeManager.getInstance());
