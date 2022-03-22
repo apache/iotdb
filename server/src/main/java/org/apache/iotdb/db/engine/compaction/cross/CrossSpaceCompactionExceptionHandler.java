@@ -24,6 +24,7 @@ import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.tsfile.utils.TsFileUtils;
 
@@ -199,11 +200,11 @@ public class CrossSpaceCompactionExceptionHandler {
     // delete source files
     for (TsFileResource unseqFile : unseqFileList) {
       unseqFile.remove();
-      unseqFile.setDeleted(true);
+      unseqFile.setStatus(TsFileResourceStatus.DELETED);
     }
     for (TsFileResource seqFile : seqFileList) {
       seqFile.remove();
-      seqFile.setDeleted(true);
+      seqFile.setStatus(TsFileResourceStatus.DELETED);
     }
 
     // delete compaction mods files
