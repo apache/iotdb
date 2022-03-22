@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,27 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.sql.planner.plan;
 
-import org.apache.iotdb.db.mpp.common.MPPQueryContext;
-import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
-import org.apache.iotdb.db.mpp.sql.optimization.PlanOptimizer;
+package org.apache.iotdb.db.mpp.sql.parser;
 
-import java.util.List;
+import org.junit.After;
+import org.junit.Before;
 
-public class LogicalPlanner {
-  private Analysis analysis;
-  private MPPQueryContext context;
-  private List<PlanOptimizer> optimizers;
+import java.time.ZonedDateTime;
 
-  public LogicalPlanner(
-      Analysis analysis, MPPQueryContext context, List<PlanOptimizer> optimizers) {
-    this.analysis = analysis;
-    this.context = context;
-    this.optimizers = optimizers;
+public class ASTVisitorTest {
+
+  ASTVisitor astVisitor;
+
+  @Before
+  public void setUp() {
+    astVisitor = new ASTVisitor();
+    astVisitor.setZoneId(ZonedDateTime.now().getOffset());
   }
 
-  public LogicalQueryPlan plan() {
-    return null;
-  }
+  @After
+  public void tearDown() {}
+
+  // TODO: add more tests
 }
