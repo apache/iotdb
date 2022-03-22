@@ -25,8 +25,6 @@
 
 Time partition divides data according to time, and a time partition is used to save all data within a certain time range. The time partition number is represented by a natural number. Number 0 means January 1, 1970, it will increase by one every partition_interval seconds. Time partition number's calculation formula is timestamp / partition_interval. The main configuration items are as follows:
 
-Notice: Currently, it's not recommend to open this function. If open, please calculate appropriate concurrent_writing_time_partition and wal_buffer_size, you can calculate wal_buffer_size = MaxDirectMemorySizeInBytes * 0.3 / (storage_group_num * virtual_storage_group_num) / concurrent_writing_time_partition
-
 * enable\_partition
 
 |Name| enable\_partition |

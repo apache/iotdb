@@ -17,9 +17,8 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.writelog.io;
+package org.apache.iotdb.db.utils.writelog;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -58,9 +57,7 @@ public class MultiFileLogReaderTest {
       for (PhysicalPlan plan : fileLogs[i]) {
         plan.serialize(buffer);
       }
-      ILogWriter writer =
-          new LogWriter(
-              logFiles[i], IoTDBDescriptor.getInstance().getConfig().getForceWalPeriodInMs() == 0);
+      ILogWriter writer = new LogWriter(logFiles[i], false);
       writer.write(buffer);
       writer.force();
       writer.close();

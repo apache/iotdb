@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.writelog.io;
+package org.apache.iotdb.db.utils.writelog;
 
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 

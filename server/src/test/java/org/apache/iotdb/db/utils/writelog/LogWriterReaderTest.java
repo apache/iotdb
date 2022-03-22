@@ -17,9 +17,8 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.writelog.io;
+package org.apache.iotdb.db.utils.writelog;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -77,9 +76,7 @@ public class LogWriterReaderTest {
 
   @Test
   public void testWriteAndRead() throws IOException {
-    LogWriter writer =
-        new LogWriter(
-            filePath, IoTDBDescriptor.getInstance().getConfig().getForceWalPeriodInMs() == 0);
+    LogWriter writer = new LogWriter(filePath, false);
     writer.write(logsBuffer);
     try {
       writer.force();
@@ -102,9 +99,7 @@ public class LogWriterReaderTest {
   public void testReachEOF() throws IOException {
     try {
       // write normal data
-      LogWriter writer =
-          new LogWriter(
-              filePath, IoTDBDescriptor.getInstance().getConfig().getForceWalPeriodInMs() == 0);
+      LogWriter writer = new LogWriter(filePath, false);
       try {
         writer.write(logsBuffer);
         writer.force();
@@ -153,9 +148,7 @@ public class LogWriterReaderTest {
   public void testTruncateBrokenLogs() throws IOException {
     try {
       // write normal data
-      LogWriter writer =
-          new LogWriter(
-              filePath, IoTDBDescriptor.getInstance().getConfig().getForceWalPeriodInMs() == 0);
+      LogWriter writer = new LogWriter(filePath, false);
       try {
         writer.write(logsBuffer);
         writer.force();

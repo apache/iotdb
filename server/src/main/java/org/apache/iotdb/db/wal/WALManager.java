@@ -191,14 +191,7 @@ public class WALManager implements IService {
     if (walDeleteThread != null) {
       shutdownThread(walDeleteThread, ThreadName.WAL_DELETE);
     }
-    nodesLock.lock();
-    try {
-      for (WALNode walNode : walNodes) {
-        walNode.close();
-      }
-    } finally {
-      nodesLock.unlock();
-    }
+    clear();
   }
 
   private void shutdownThread(ExecutorService thread, ThreadName threadName) {
