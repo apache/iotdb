@@ -157,16 +157,7 @@ public class RatisConsensus implements IConsensus {
     Message message = new RequestMessage(IConsensusRequest);
 
     // 1. first try the local server
-    RaftClientRequest clientRequest =
-        RaftClientRequest.newBuilder()
-            .setServerId(server.getId())
-            .setClientId(localFakeId)
-            .setGroupId(Utils.toRatisGroupId(groupId))
-            .setCallId(localFakeCallId.incrementAndGet())
-            .setMessage(message)
-            .setType(RaftClientRequest.writeRequestType())
-            .build();
-
+    RaftClientRequest clientRequest = buildRawRequest(groupId, message, RaftClientRequest.writeRequestType());
     RaftClientReply localServerReply = null;
     RaftPeer suggestedLeader = null;
     try {
@@ -221,14 +212,7 @@ public class RatisConsensus implements IConsensus {
       RequestMessage message = new RequestMessage(IConsensusRequest);
 
       RaftClientRequest clientRequest =
-          RaftClientRequest.newBuilder()
-              .setServerId(server.getId())
-              .setClientId(localFakeId)
-              .setGroupId(Utils.toRatisGroupId(groupId))
-              .setCallId(localFakeCallId.incrementAndGet())
-              .setMessage(message)
-              .setType(RaftClientRequest.staleReadRequestType(0))
-              .build();
+          buildRawRequest(groupId, message, RaftClientRequest.staleReadRequestType(0));
 
       reply = server.submitClientRequest(clientRequest);
     } catch (IOException e) {
@@ -242,6 +226,7 @@ public class RatisConsensus implements IConsensus {
 
     return ConsensusReadResponse.newBuilder().setDataSet(dataSet).build();
   }
+
 
   /**
    * Add this IConsensus Peer into ConsensusGroup(groupId, peers) Caller's responsibility to call
@@ -453,6 +438,18 @@ public class RatisConsensus implements IConsensus {
 
   private ConsensusReadResponse failedRead(ConsensusException e) {
     return ConsensusReadResponse.newBuilder().setException(e).build();
+  }
+
+  private RaftClientRequest buildRawRequest(
+    ConsensusGroupId groupId, Message message, RaftClientRequest.Type type) {
+    return RaftClientRequest.newBuilder()
+      .setServerId(server.getId())
+      .setClientId(localFakeId)
+      .setCallId(localFakeCallId.incrementAndGet())
+      .setGroupId(Utils.toRatisGroupId(groupId))
+      .setType(type)
+      .setMessage(message)
+      .build();
   }
 
   private RaftGroup buildRaftGroup(ConsensusGroupId groupId, List<Peer> peers) {
