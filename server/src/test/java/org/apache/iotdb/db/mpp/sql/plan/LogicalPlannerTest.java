@@ -24,7 +24,7 @@ import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
 import org.apache.iotdb.db.mpp.sql.analyze.StatementAnalyzer;
 import org.apache.iotdb.db.mpp.sql.parser.StatementGenerator;
-import org.apache.iotdb.db.mpp.sql.planner.LogicalQueryPlanner;
+import org.apache.iotdb.db.mpp.sql.planner.LogicalPlanner;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -40,7 +40,7 @@ import java.util.HashMap;
 
 import static org.junit.Assert.fail;
 
-public class LogicalQueryPlannerTest {
+public class LogicalPlannerTest {
 
   @Test
   public void createTimeseriesPlanTest() {
@@ -85,7 +85,7 @@ public class LogicalQueryPlannerTest {
       Analysis analysis =
           analyzer.analyze(
               StatementGenerator.createStatement(sql, ZonedDateTime.now().getOffset()));
-      LogicalQueryPlanner planner = new LogicalQueryPlanner(context, new ArrayList<>());
+      LogicalPlanner planner = new LogicalPlanner(context, new ArrayList<>());
       planNode = planner.plan(analysis).getRootNode();
     } catch (Exception e) {
       e.printStackTrace();

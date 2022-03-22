@@ -32,12 +32,12 @@ import org.apache.iotdb.db.mpp.sql.tree.StatementVisitor;
 import java.util.List;
 
 /** Generate a logical plan for the statement. */
-public class LogicalQueryPlanner {
+public class LogicalPlanner {
 
   private final MPPQueryContext context;
   private final List<PlanOptimizer> optimizers;
 
-  public LogicalQueryPlanner(MPPQueryContext context, List<PlanOptimizer> optimizers) {
+  public LogicalPlanner(MPPQueryContext context, List<PlanOptimizer> optimizers) {
     this.context = context;
     this.optimizers = optimizers;
   }
