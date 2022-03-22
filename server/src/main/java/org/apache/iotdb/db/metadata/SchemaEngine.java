@@ -254,6 +254,9 @@ public class SchemaEngine {
   }
 
   public void forceMlog() {
+    if (!initialized) {
+      return;
+    }
     for (SchemaRegion schemaRegion : storageGroupSchemaManager.getAllSchemaRegions()) {
       schemaRegion.forceMlog();
     }

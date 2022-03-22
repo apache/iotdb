@@ -88,8 +88,8 @@ public class MTreeAboveSG {
     }
     if (store != null) {
       store.clear();
+      this.root = store.getRoot();
     }
-    this.root = null;
   }
 
   /**
