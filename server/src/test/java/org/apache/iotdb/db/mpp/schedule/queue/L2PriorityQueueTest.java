@@ -74,8 +74,6 @@ public class L2PriorityQueueTest {
             new QueueElement(new QueueElement.QueueElementID(0), 0));
     QueueElement e2 = new QueueElement(new QueueElement.QueueElementID(1), 1);
     queue.push(e2);
-    QueueElement e2e = new QueueElement(new QueueElement.QueueElementID(1), 10);
-    queue.push(e2e);
     QueueElement e3 = new QueueElement(new QueueElement.QueueElementID(2), 2);
     try {
       queue.push(e3);
@@ -104,9 +102,6 @@ public class L2PriorityQueueTest {
             new QueueElement(new QueueElement.QueueElementID(0), 0));
     QueueElement e1 = new QueueElement(new QueueElement.QueueElementID(1), 10);
     queue.push(e1);
-    QueueElement e1e = new QueueElement(new QueueElement.QueueElementID(1), 20);
-    queue.push(e1e);
-    // only 1 element with the same id can be put into
     Assert.assertEquals(1, queue.size());
     QueueElement e2 = new QueueElement(new QueueElement.QueueElementID(2), 5);
     queue.push(e2);
@@ -116,9 +111,33 @@ public class L2PriorityQueueTest {
     // L1: 5 -> 20 L2: 10
     QueueElement e3 = new QueueElement(new QueueElement.QueueElementID(3), 10);
     queue.push(e3);
-    Assert.assertEquals(e1e.getId().toString(), queue.poll().getId().toString());
+    Assert.assertEquals(e1.getId().toString(), queue.poll().getId().toString());
     Assert.assertEquals(1, queue.size());
     Assert.assertEquals(e3.getId().toString(), queue.poll().getId().toString());
     Assert.assertEquals(0, queue.size());
+  }
+
+  @Test
+  public void testPushSameElement() {
+    IndexedBlockingQueue<QueueElement> queue =
+        new L1PriorityQueue<>(
+            10,
+            (o1, o2) -> {
+              if (o1.equals(o2)) {
+                return 0;
+              }
+              return Integer.compare(o1.getValue(), o2.getValue());
+            },
+            new QueueElement(new QueueElement.QueueElementID(0), 0));
+    QueueElement e1 = new QueueElement(new QueueElement.QueueElementID(1), 10);
+    queue.push(e1);
+    Assert.assertEquals(1, queue.size());
+    QueueElement e1e = new QueueElement(new QueueElement.QueueElementID(1), 5);
+    try {
+      queue.push(e1e);
+      Assert.fail();
+    } catch (IllegalStateException e) {
+      Assert.assertTrue(e.getMessage().contains("has already contained"));
+    }
   }
 }

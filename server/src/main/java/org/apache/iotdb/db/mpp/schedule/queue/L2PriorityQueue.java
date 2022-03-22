@@ -75,8 +75,6 @@ public class L2PriorityQueue<E extends IDIndexedAccessible> extends IndexedBlock
 
   @Override
   protected void pushToQueue(E element) {
-    assert !contains(element)
-        : "the L2PriorityQueue has already contained the element " + element.getId();
     idleElements.put(element, element);
   }
 

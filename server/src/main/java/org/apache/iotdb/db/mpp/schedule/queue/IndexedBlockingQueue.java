@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.mpp.schedule.queue;
 
+import com.google.common.base.Preconditions;
+
 /**
  * The base class of a special kind of blocking queue, which has these characters:
  *
@@ -70,23 +72,24 @@ public abstract class IndexedBlockingQueue<E extends IDIndexedAccessible> {
 
   /**
    * Push an element to the queue. The new element position is determined by the implementation. If
-   * the queue size has been reached the maxCapacity, an {@link IllegalStateException} will be
-   * thrown. If the element is null, an {@link NullPointerException} will be thrown.
+   * the queue size has been reached the maxCapacity, or the queue has already contained an element
+   * with the same ID, an {@link IllegalStateException} will be thrown. If the element is null, an
+   * {@link NullPointerException} will be thrown.
    *
    * @param element the element to be pushed.
    * @throws NullPointerException the pushed element is null.
-   * @throws IllegalStateException the queue size has been reached the maxCapacity.
+   * @throws IllegalStateException the queue size has been reached the maxCapacity, or the queue has
+   *     already contained the same ID element .
    */
   public synchronized void push(E element) {
     if (element == null) {
       throw new NullPointerException("pushed element is null");
     }
-    int sizeDelta = contains(element) ? 0 : 1;
-    if (size + sizeDelta > MAX_CAPACITY) {
-      throw new IllegalStateException("the queue is full");
-    }
+    Preconditions.checkState(
+        !contains(element), "The queue has already contained the element: " + element.getId());
+    Preconditions.checkState(size < MAX_CAPACITY, "The queue is full");
     pushToQueue(element);
-    size += sizeDelta;
+    size++;
     this.notifyAll();
   }
 
