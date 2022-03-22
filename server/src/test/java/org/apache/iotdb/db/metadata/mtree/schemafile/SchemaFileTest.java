@@ -280,8 +280,8 @@ public class SchemaFileTest {
     }
 
     sf = SchemaFile.loadSchemaFile("sgRoot");
-    ISchemaPage page = ((SchemaFile)sf).getPageOnTest(10700);
-    ((SchemaPage)page).getSegmentTest((short)0);
+    ISchemaPage page = ((SchemaFile) sf).getPageOnTest(10700);
+    ((SchemaPage) page).getSegmentTest((short) 0);
     sf.close();
   }
 
