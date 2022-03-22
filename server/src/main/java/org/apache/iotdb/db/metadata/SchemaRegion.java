@@ -480,8 +480,10 @@ public class SchemaRegion {
           plan.setTagOffset(offset);
           logWriter.createTimeseries(plan);
         }
-        leafMNode.setOffset(offset);
-        mtree.updateMNode(leafMNode);
+        if (offset != -1) {
+          leafMNode.setOffset(offset);
+          mtree.updateMNode(leafMNode);
+        }
 
       } finally {
         mtree.unPinMNode(leafMNode);
@@ -611,8 +613,12 @@ public class SchemaRegion {
           plan.setTagOffsets(tagOffsets);
           logWriter.createAlignedTimeseries(plan);
         }
+        tagOffsets = plan.getTagOffsets();
         for (int i = 0; i < measurements.size(); i++) {
-          measurementMNodeList.get(i).setOffset(plan.getTagOffsets().get(i));
+          if (tagOffsets.get(i) != -1) {
+            measurementMNodeList.get(i).setOffset(tagOffsets.get(i));
+            mtree.updateMNode(measurementMNodeList.get(i));
+          }
         }
       } finally {
         for (IMeasurementMNode measurementMNode : measurementMNodeList) {
