@@ -25,7 +25,7 @@ public class PeerAlreadyInConsensusGroupException extends ConsensusException {
   public PeerAlreadyInConsensusGroupException(ConsensusGroupId groupId, Peer peer) {
     super(
         String.format(
-            "peer %s:%d is already in group %d",
+            "Peer %s:%d is already in group %d",
             peer.getEndpoint().getIp(), peer.getEndpoint().getPort(), groupId.getId()));
   }
 }

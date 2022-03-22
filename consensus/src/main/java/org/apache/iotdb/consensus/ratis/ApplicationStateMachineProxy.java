@@ -45,7 +45,6 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
 
   @Override
   public void close() throws IOException {
-    super.close();
     applicationStateMachine.stop();
   }
 
@@ -68,8 +67,6 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
               log.getStateMachineLogEntry().getLogData().asReadOnlyByteBuffer());
     }
 
-    assert applicationRequest != null;
-
     TSStatus result = applicationStateMachine.write(applicationRequest);
     Message ret = new ResponseMessage(result);
 
@@ -78,7 +75,11 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
 
   @Override
   public CompletableFuture<Message> query(Message request) {
-    assert request instanceof RequestMessage;
+    if (!(request instanceof RequestMessage)) {
+      // return null dataset to indicate an error
+      logger.error("An RequestMessage is required but got {}", request);
+      return CompletableFuture.completedFuture(new ResponseMessage(null));
+    }
     RequestMessage requestMessage = (RequestMessage) request;
     DataSet result = applicationStateMachine.read(requestMessage.getActualRequest());
     return CompletableFuture.completedFuture(new ResponseMessage(result));

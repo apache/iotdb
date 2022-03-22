@@ -31,15 +31,13 @@ import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.transport.TByteBuffer;
 
-import javax.crypto.Cipher;
-import javax.crypto.spec.SecretKeySpec;
-
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 
 public class Utils {
   private static final int tempBufferSize = 1024;
-  private static final String IOTDB_RATIS_KEY = "iotdb@_ratis_key";
-  private static final SecretKeySpec key = new SecretKeySpec(IOTDB_RATIS_KEY.getBytes(), "AES");
+  private static final byte PADDING_MAGIC = 0x47;
 
   public static String IP_PORT(Endpoint endpoint) {
     return String.format("%s:%d", endpoint.getIp(), endpoint.getPort());
@@ -64,34 +62,26 @@ public class Utils {
     return new Endpoint(split[0], Integer.parseInt(split[1]));
   }
 
-  /**
-   * Given ConsensusGroupId, generate a deterministic RaftGroupId current scheme:
-   * AES/ECB/PKCS5Padding of (GroupType-Id), key = iotdb@_ratis_key
-   */
+  /** Given ConsensusGroupId, generate a deterministic RaftGroupId current scheme: */
   public static RaftGroupId toRatisGroupId(ConsensusGroupId consensusGroupId) {
     String groupFullName = groupFullName(consensusGroupId);
-
-    byte[] AESEncrypted = new byte[] {};
-    try {
-      Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
-      cipher.init(Cipher.ENCRYPT_MODE, key);
-      AESEncrypted = cipher.doFinal(groupFullName.getBytes());
-    } catch (Exception ignored) {
+    byte[] bGroupName = groupFullName.getBytes(StandardCharsets.UTF_8);
+    byte[] bPaddedGroupName = Arrays.copyOf(bGroupName, 16);
+    for (int i = bGroupName.length; i < 16; i++) {
+      bPaddedGroupName[i] = PADDING_MAGIC;
     }
 
-    return RaftGroupId.valueOf(ByteString.copyFrom(AESEncrypted));
+    return RaftGroupId.valueOf(ByteString.copyFrom(bPaddedGroupName));
   }
 
   /** Given raftGroupId, decrypt ConsensusGroupId out of it */
   public static ConsensusGroupId toConsensusGroupId(RaftGroupId raftGroupId) {
-    byte[] AESDecrypted = new byte[] {};
-    try {
-      Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
-      cipher.init(Cipher.DECRYPT_MODE, key);
-      AESDecrypted = cipher.doFinal(raftGroupId.toByteString().toByteArray());
-    } catch (Exception ignored) {
+    byte[] padded = raftGroupId.toByteString().toByteArray();
+    int validOffset = padded.length - 1;
+    while (padded[validOffset] == PADDING_MAGIC) {
+      validOffset--;
     }
-    String consensusGroupString = new String(AESDecrypted);
+    String consensusGroupString = new String(padded, 0, validOffset + 1);
     String[] items = consensusGroupString.split("-");
     return new ConsensusGroupId(GroupType.valueOf(items[0]), Long.parseLong(items[1]));
   }
