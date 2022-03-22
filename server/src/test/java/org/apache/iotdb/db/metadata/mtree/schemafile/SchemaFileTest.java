@@ -26,8 +26,10 @@ import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupEntityMNode;
+import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaFile;
+import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaPage;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.RecordUtils;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaPage;
@@ -188,6 +190,99 @@ public class SchemaFileTest {
     }
     sf.close();
     System.out.println(cnt);
+  }
+
+  @Test
+  public void readSF() throws MetadataException, IOException {
+    ISchemaFile sf = SchemaFile.loadSchemaFile("sgRoot");
+    printSF(sf);
+  }
+
+  @Test
+  public void test10KDevices() throws MetadataException, IOException {
+    int i = 10000;
+    IMNode sgNode = new StorageGroupMNode(null, "sgRoot", 11111111L);
+
+    // write with empty entitiy
+    while (i >= 0) {
+      IMNode aDevice = new EntityMNode(sgNode, "dev_" + i);
+      sgNode.addChild(aDevice);
+      i--;
+    }
+
+    Iterator<IMNode> orderedTree = getTreeBFT(sgNode);
+    ISchemaFile sf = SchemaFile.initSchemaFile(sgNode.getName());
+    ICachedMNodeContainer.getCachedMNodeContainer(sgNode).setSegmentAddress(0L);
+    IMNode node = null;
+    try {
+      while (orderedTree.hasNext()) {
+        node = orderedTree.next();
+        if (!node.isMeasurement()) {
+          sf.writeMNode(node);
+        }
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      System.out.println(node.getName());
+    } finally {
+      sf.close();
+    }
+
+    // write with few measurement
+    for (IMNode etn : sgNode.getChildren().values()) {
+      int j = 10;
+      while (j >= 0) {
+        addMeasurementChild(etn, String.format("mtc_%d_%d", i, j));
+        j--;
+      }
+    }
+
+    orderedTree = getTreeBFT(sgNode);
+    sf = SchemaFile.loadSchemaFile(sgNode.getName());
+    try {
+      while (orderedTree.hasNext()) {
+        node = orderedTree.next();
+        if (!node.isMeasurement() && !node.isStorageGroup()) {
+          sf.writeMNode(node);
+          ICachedMNodeContainer.getCachedMNodeContainer(node).getNewChildBuffer().clear();
+        }
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      System.out.println(node.getName());
+    } finally {
+      sf.close();
+    }
+
+    // more measurement
+    for (IMNode etn : sgNode.getChildren().values()) {
+      int j = 100;
+      while (j >= 0) {
+        addMeasurementChild(etn, String.format("mtc2_%d_%d", i, j));
+        j--;
+      }
+    }
+
+    orderedTree = getTreeBFT(sgNode);
+    sf = SchemaFile.loadSchemaFile(sgNode.getName());
+    try {
+      while (orderedTree.hasNext()) {
+        node = orderedTree.next();
+        if (!node.isMeasurement() && !node.isStorageGroup()) {
+          sf.writeMNode(node);
+        }
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      System.out.println(node.getName());
+    } finally {
+      sf.close();
+    }
+
+    sf = SchemaFile.loadSchemaFile("sgRoot");
+    ISchemaPage page = ((SchemaFile)sf).getPageOnTest(10700);
+    ((SchemaPage)page).getSegmentTest((short)0);
+    sf.close();
   }
 
   @Test

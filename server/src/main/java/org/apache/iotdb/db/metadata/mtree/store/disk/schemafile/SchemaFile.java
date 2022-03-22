@@ -272,6 +272,7 @@ public class SchemaFile implements ISchemaFile {
         }
 
         curPage = newPage;
+        pageIndex = curPage.getPageIndex();
         curPage.write(curSegIdx, entry.getKey(), childBuffer);
       }
     }

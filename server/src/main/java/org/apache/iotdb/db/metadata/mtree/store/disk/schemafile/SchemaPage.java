@@ -558,7 +558,7 @@ public class SchemaPage implements ISchemaPage {
 
     // extend to a temporary buffer
     ByteBuffer newBuffer = ByteBuffer.allocate(newSize);
-    segment.extendsTo(newBuffer);
+    getSegment(segId).extendsTo(newBuffer);
 
     // write back the buffer content
     pageBuffer.clear();
