@@ -146,7 +146,7 @@ public class LogReplayer {
   private void replayDelete(DeletePlan deletePlan) throws IOException, MetadataException {
     List<PartialPath> paths = deletePlan.getPaths();
     for (PartialPath path : paths) {
-      for (PartialPath device : IoTDB.schemaEngine.getBelongedDevices(path)) {
+      for (PartialPath device : IoTDB.metaManager.getBelongedDevices(path)) {
         recoverMemTable.delete(
             path, device, deletePlan.getDeleteStartTime(), deletePlan.getDeleteEndTime());
       }
@@ -196,7 +196,7 @@ public class LogReplayer {
       if (IoTDBDescriptor.getInstance().getConfig().isEnableIDTable()) {
         virtualStorageGroupProcessor.getIdTable().getSeriesSchemas(plan);
       } else {
-        IoTDB.schemaEngine.getSeriesSchemasAndReadLockDevice(plan);
+        IoTDB.metaManager.getSeriesSchemasAndReadLockDevice(plan);
         plan.setDeviceID(DeviceIDFactory.getInstance().getDeviceID(plan.getDevicePath()));
       }
     } catch (IOException | MetadataException e) {

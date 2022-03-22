@@ -59,14 +59,14 @@ public class IoTDBUDFManagementIT {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
-    IoTDB.schemaEngine.setStorageGroup(new PartialPath("root.vehicle"));
-    IoTDB.schemaEngine.createTimeseries(
+    IoTDB.metaManager.setStorageGroup(new PartialPath("root.vehicle"));
+    IoTDB.metaManager.createTimeseries(
         new PartialPath("root.vehicle.d1.s1"),
         TSDataType.FLOAT,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
-    IoTDB.schemaEngine.createTimeseries(
+    IoTDB.metaManager.createTimeseries(
         new PartialPath("root.vehicle.d1.s2"),
         TSDataType.FLOAT,
         TSEncoding.PLAIN,

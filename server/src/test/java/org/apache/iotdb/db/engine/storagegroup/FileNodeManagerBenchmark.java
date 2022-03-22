@@ -66,7 +66,7 @@ public class FileNodeManagerBenchmark {
   }
 
   private static void prepare() throws MetadataException {
-    SchemaEngine schemaEngine = IoTDB.schemaEngine;
+    SchemaEngine schemaEngine = IoTDB.metaManager;
     schemaEngine.setStorageGroup(new PartialPath(prefix));
     for (String device : devices) {
       for (String measurement : measurements) {

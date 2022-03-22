@@ -123,7 +123,7 @@ public class SizeTieredCompactionRecoverTest {
 
   @Before
   public void setUp() throws Exception {
-    IoTDB.schemaEngine.init();
+    IoTDB.metaManager.init();
     originDataDirs = config.getDataDirs();
     setDataDirs(testDataDirs);
     if (!new File(SEQ_FILE_DIR).exists()) {
@@ -139,7 +139,7 @@ public class SizeTieredCompactionRecoverTest {
   public void tearDown() throws Exception {
     new CompactionConfigRestorer().restoreCompactionConfig();
     setDataDirs(originDataDirs);
-    IoTDB.schemaEngine.clear();
+    IoTDB.metaManager.clear();
     File dataDir = new File(testDataDirs[0]);
     if (dataDir.exists()) {
       FileUtils.forceDelete(dataDir);
@@ -162,11 +162,11 @@ public class SizeTieredCompactionRecoverTest {
               CompressionType.UNCOMPRESSED);
       deviceIds[i] = new PartialPath(fullPaths[i].substring(0, 27));
     }
-    IoTDB.schemaEngine.setStorageGroup(new PartialPath(COMPACTION_TEST_SG));
+    IoTDB.metaManager.setStorageGroup(new PartialPath(COMPACTION_TEST_SG));
     for (int i = 0; i < fullPaths.length; ++i) {
       MeasurementSchema schema = schemas[i];
       PartialPath deviceId = deviceIds[i];
-      IoTDB.schemaEngine.createTimeseries(
+      IoTDB.metaManager.createTimeseries(
           deviceId.concatNode(schema.getMeasurementId()),
           schema.getType(),
           schema.getEncodingType(),

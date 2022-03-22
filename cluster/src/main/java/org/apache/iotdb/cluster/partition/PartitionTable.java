@@ -124,7 +124,7 @@ public interface PartitionTable {
    */
   default PartitionGroup partitionByPathTime(PartialPath path, long timestamp)
       throws MetadataException {
-    PartialPath storageGroup = IoTDB.schemaEngine.getBelongedStorageGroup(path);
+    PartialPath storageGroup = IoTDB.metaManager.getBelongedStorageGroup(path);
     return this.route(storageGroup.getFullPath(), timestamp);
   }
 
@@ -138,7 +138,7 @@ public interface PartitionTable {
     long partitionInterval = StorageEngine.getTimePartitionInterval();
 
     MultiKeyMap<Long, PartitionGroup> timeRangeMapRaftGroup = new MultiKeyMap<>();
-    PartialPath storageGroup = IoTDB.schemaEngine.getBelongedStorageGroup(path);
+    PartialPath storageGroup = IoTDB.metaManager.getBelongedStorageGroup(path);
     startTime = StorageEngine.convertMilliWithPrecision(startTime);
     endTime = StorageEngine.convertMilliWithPrecision(endTime);
     while (startTime <= endTime) {

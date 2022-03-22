@@ -87,11 +87,11 @@ public class InnerSeqCompactionTest {
   public void setUp() throws MetadataException {
     prevMaxDegreeOfIndexNode = TSFileDescriptor.getInstance().getConfig().getMaxDegreeOfIndexNode();
     TSFileDescriptor.getInstance().getConfig().setMaxDegreeOfIndexNode(2);
-    IoTDB.schemaEngine.init();
-    IoTDB.schemaEngine.setStorageGroup(new PartialPath(COMPACTION_TEST_SG));
+    IoTDB.metaManager.init();
+    IoTDB.metaManager.setStorageGroup(new PartialPath(COMPACTION_TEST_SG));
     for (String fullPath : fullPaths) {
       PartialPath path = new PartialPath(fullPath);
-      IoTDB.schemaEngine.createTimeseries(
+      IoTDB.metaManager.createTimeseries(
           path,
           TSDataType.INT64,
           TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder()),
@@ -106,7 +106,7 @@ public class InnerSeqCompactionTest {
     CompactionClearUtils.clearAllCompactionFiles();
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
-    IoTDB.schemaEngine.clear();
+    IoTDB.metaManager.clear();
     EnvironmentUtils.cleanAllDir();
     TSFileDescriptor.getInstance().getConfig().setMaxDegreeOfIndexNode(prevMaxDegreeOfIndexNode);
   }

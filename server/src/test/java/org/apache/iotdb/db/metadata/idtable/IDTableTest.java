@@ -94,7 +94,7 @@ public class IDTableTest {
 
   @Test
   public void testCreateAlignedTimeseriesAndInsert() {
-    SchemaEngine schemaEngine = IoTDB.schemaEngine;
+    SchemaEngine schemaEngine = IoTDB.metaManager;
 
     try {
       schemaEngine.setStorageGroup(new PartialPath("root.laptop"));
@@ -175,7 +175,7 @@ public class IDTableTest {
 
   @Test
   public void testCreateAlignedTimeseriesAndInsertNotAlignedData() {
-    SchemaEngine schemaEngine = IoTDB.schemaEngine;
+    SchemaEngine schemaEngine = IoTDB.metaManager;
 
     try {
       schemaEngine.setStorageGroup(new PartialPath("root.laptop"));
@@ -240,7 +240,7 @@ public class IDTableTest {
 
   @Test
   public void testCreateTimeseriesAndInsert() {
-    SchemaEngine schemaEngine = IoTDB.schemaEngine;
+    SchemaEngine schemaEngine = IoTDB.metaManager;
     try {
       schemaEngine.setStorageGroup(new PartialPath("root.laptop"));
       schemaEngine.createTimeseries(
@@ -295,7 +295,7 @@ public class IDTableTest {
 
   @Test
   public void testCreateTimeseriesAndInsertWithAlignedData() {
-    SchemaEngine schemaEngine = IoTDB.schemaEngine;
+    SchemaEngine schemaEngine = IoTDB.metaManager;
     try {
       schemaEngine.setStorageGroup(new PartialPath("root.laptop"));
       schemaEngine.createTimeseries(
@@ -348,7 +348,7 @@ public class IDTableTest {
 
   @Test
   public void testInsertAndAutoCreate() {
-    SchemaEngine schemaEngine = IoTDB.schemaEngine;
+    SchemaEngine schemaEngine = IoTDB.metaManager;
     try {
       // construct an insertRowPlan with mismatched data type
       long time = 1L;
@@ -432,7 +432,7 @@ public class IDTableTest {
 
   @Test
   public void testAlignedInsertAndAutoCreate() {
-    SchemaEngine schemaEngine = IoTDB.schemaEngine;
+    SchemaEngine schemaEngine = IoTDB.metaManager;
     try {
       // construct an insertRowPlan with mismatched data type
       long time = 1L;
@@ -517,7 +517,7 @@ public class IDTableTest {
 
   @Test
   public void testTriggerAndInsert() {
-    SchemaEngine schemaEngine = IoTDB.schemaEngine;
+    SchemaEngine schemaEngine = IoTDB.metaManager;
     try {
       long time = 1L;
 
@@ -594,7 +594,7 @@ public class IDTableTest {
 
   @Test
   public void testFlushTimeAndLastCache() {
-    SchemaEngine schemaEngine = IoTDB.schemaEngine;
+    SchemaEngine schemaEngine = IoTDB.metaManager;
     try {
       long time = 1L;
 

@@ -320,11 +320,11 @@ public class LastQueryExecutor {
 
     public TimeValuePair read() {
       try {
-        node = IoTDB.schemaEngine.getMeasurementMNode(path);
+        node = IoTDB.metaManager.getMeasurementMNode(path);
       } catch (MetadataException e) {
         // cluster mode may not get remote node
         TimeValuePair timeValuePair;
-        timeValuePair = IoTDB.schemaEngine.getLastCache(path);
+        timeValuePair = IoTDB.metaManager.getLastCache(path);
         if (timeValuePair != null) {
           return timeValuePair;
         }
@@ -334,14 +334,14 @@ public class LastQueryExecutor {
         return null;
       }
 
-      return IoTDB.schemaEngine.getLastCache(node);
+      return IoTDB.metaManager.getLastCache(node);
     }
 
     public void write(TimeValuePair pair) {
       if (node == null) {
-        IoTDB.schemaEngine.updateLastCache(path, pair, false, Long.MIN_VALUE);
+        IoTDB.metaManager.updateLastCache(path, pair, false, Long.MIN_VALUE);
       } else {
-        IoTDB.schemaEngine.updateLastCache(node, pair, false, Long.MIN_VALUE);
+        IoTDB.metaManager.updateLastCache(node, pair, false, Long.MIN_VALUE);
       }
     }
   }

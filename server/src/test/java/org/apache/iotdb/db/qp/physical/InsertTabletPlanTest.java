@@ -294,8 +294,8 @@ public class InsertTabletPlanTest {
           QueryFilterOptimizationException, StorageEngineException, IOException {
     CreateTemplatePlan plan = getCreateTemplatePlan();
 
-    IoTDB.schemaEngine.createSchemaTemplate(plan);
-    IoTDB.schemaEngine.setSchemaTemplate(new SetTemplatePlan("template1", "root.isp.d1"));
+    IoTDB.metaManager.createSchemaTemplate(plan);
+    IoTDB.metaManager.setSchemaTemplate(new SetTemplatePlan("template1", "root.isp.d1"));
     InsertTabletPlan tabletPlan = getAlignedInsertTabletPlan();
 
     PlanExecutor executor = new PlanExecutor();
@@ -312,7 +312,7 @@ public class InsertTabletPlanTest {
 
     // test recover
     EnvironmentUtils.stopDaemon();
-    IoTDB.schemaEngine.clear();
+    IoTDB.metaManager.clear();
     // wait for close
     try {
       Thread.sleep(1000);
@@ -337,8 +337,8 @@ public class InsertTabletPlanTest {
           QueryFilterOptimizationException, StorageEngineException, IOException {
     CreateTemplatePlan plan = getCreateTemplatePlan();
 
-    IoTDB.schemaEngine.createSchemaTemplate(plan);
-    IoTDB.schemaEngine.setSchemaTemplate(new SetTemplatePlan("template1", "root.isp.d1"));
+    IoTDB.metaManager.createSchemaTemplate(plan);
+    IoTDB.metaManager.setSchemaTemplate(new SetTemplatePlan("template1", "root.isp.d1"));
 
     InsertTabletPlan tabletPlan = getAlignedInsertTabletPlan();
 

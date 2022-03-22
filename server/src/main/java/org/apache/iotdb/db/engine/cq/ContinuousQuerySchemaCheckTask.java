@@ -73,7 +73,7 @@ public class ContinuousQuerySchemaCheckTask extends ContinuousQueryTask {
             queryPlan.getAggregations().get(0), queryPlan.getDataTypes().get(0));
     for (PartialPath targetPath : targetPaths) {
       try {
-        TSDataType targetPathDataType = IoTDB.schemaEngine.getSeriesSchema(targetPath).getType();
+        TSDataType targetPathDataType = IoTDB.metaManager.getSeriesSchema(targetPath).getType();
         if (!sourceDataType.equals(targetPathDataType)) {
           throw new ContinuousQueryException(
               String.format(

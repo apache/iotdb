@@ -79,7 +79,7 @@ public abstract class InnerCompactionTest {
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException, Exception {
     EnvironmentUtils.envSetUp();
-    IoTDB.schemaEngine.init();
+    IoTDB.metaManager.init();
     prepareSeries();
     prepareFiles(seqFileNum, unseqFileNum);
   }
@@ -92,7 +92,7 @@ public abstract class InnerCompactionTest {
     unseqResources.clear();
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
-    IoTDB.schemaEngine.clear();
+    IoTDB.metaManager.clear();
     EnvironmentUtils.cleanEnv();
   }
 
@@ -107,11 +107,11 @@ public abstract class InnerCompactionTest {
     for (int i = 0; i < deviceNum; i++) {
       deviceIds[i] = COMPACTION_TEST_SG + PATH_SEPARATOR + "device" + i;
     }
-    IoTDB.schemaEngine.setStorageGroup(new PartialPath(COMPACTION_TEST_SG));
+    IoTDB.metaManager.setStorageGroup(new PartialPath(COMPACTION_TEST_SG));
     for (String device : deviceIds) {
       for (MeasurementSchema measurementSchema : measurementSchemas) {
         PartialPath devicePath = new PartialPath(device);
-        IoTDB.schemaEngine.createTimeseries(
+        IoTDB.metaManager.createTimeseries(
             devicePath.concatNode(measurementSchema.getMeasurementId()),
             measurementSchema.getType(),
             measurementSchema.getEncodingType(),

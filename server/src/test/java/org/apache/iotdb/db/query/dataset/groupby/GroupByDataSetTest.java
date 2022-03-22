@@ -83,7 +83,7 @@ public class GroupByDataSetTest {
   };
 
   static {
-    IoTDB.schemaEngine.init();
+    IoTDB.metaManager.init();
   }
 
   public GroupByDataSetTest() throws QueryProcessException {}

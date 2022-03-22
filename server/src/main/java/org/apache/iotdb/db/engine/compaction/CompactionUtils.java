@@ -131,7 +131,7 @@ public class CompactionUtils {
           measurementSchemas.add(IDTableManager.getInstance().getSeriesSchema(device, measurement));
         } else {
           measurementSchemas.add(
-              IoTDB.schemaEngine.getSeriesSchema(new PartialPath(device, measurement)));
+              IoTDB.metaManager.getSeriesSchema(new PartialPath(device, measurement)));
         }
       } catch (PathNotExistException e) {
         logger.info("A deleted path is skipped: {}", e.getMessage());
@@ -182,7 +182,7 @@ public class CompactionUtils {
           measurementSchemas.add(IDTableManager.getInstance().getSeriesSchema(device, measurement));
         } else {
           measurementSchemas.add(
-              IoTDB.schemaEngine.getSeriesSchema(new PartialPath(device, measurement)));
+              IoTDB.metaManager.getSeriesSchema(new PartialPath(device, measurement)));
         }
       } catch (PathNotExistException e) {
         logger.info("A deleted path is skipped: {}", e.getMessage());

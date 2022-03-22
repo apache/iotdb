@@ -302,7 +302,7 @@ public class SyncServiceImpl implements SyncService.Iface {
             if (plan.getOperatorType() != Operator.OperatorType.CREATE_CONTINUOUS_QUERY
                 && plan.getOperatorType() != Operator.OperatorType.DROP_CONTINUOUS_QUERY
                 && plan.getOperatorType() != Operator.OperatorType.CHANGE_TAG_OFFSET) {
-              IoTDB.schemaEngine.operation(plan);
+              IoTDB.metaManager.operation(plan);
             }
           } catch (Exception e) {
             logger.error(

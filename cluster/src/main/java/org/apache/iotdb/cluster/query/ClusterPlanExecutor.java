@@ -123,7 +123,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
   @Override
   @TestOnly
   protected List<MeasurementPath> getPathsName(PartialPath path) throws MetadataException {
-    return ((CSchemaEngine) IoTDB.schemaEngine).getMatchedPaths(path);
+    return ((CSchemaEngine) IoTDB.metaManager).getMatchedPaths(path);
   }
 
   @Override
@@ -142,7 +142,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
     } catch (CheckConsistencyException e) {
       throw new MetadataException(e);
     }
-    Map<String, List<PartialPath>> sgPathMap = IoTDB.schemaEngine.groupPathByStorageGroup(path);
+    Map<String, List<PartialPath>> sgPathMap = IoTDB.metaManager.groupPathByStorageGroup(path);
     if (sgPathMap.isEmpty()) {
       throw new PathNotExistException(path.getFullPath());
     }
@@ -235,7 +235,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   private int getLocalDeviceCount(PartialPath path) throws MetadataException {
-    return IoTDB.schemaEngine.getDevicesNum(path);
+    return IoTDB.metaManager.getDevicesNum(path);
   }
 
   private int getRemoteDeviceCount(PartitionGroup partitionGroup, List<String> pathsToCount)
@@ -331,7 +331,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
       wildcardPath = wildcardPath.concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD);
     }
     Map<String, List<PartialPath>> sgPathMap =
-        IoTDB.schemaEngine.groupPathByStorageGroup(wildcardPath);
+        IoTDB.metaManager.groupPathByStorageGroup(wildcardPath);
     if (sgPathMap.isEmpty()) {
       return 0;
     }
@@ -459,9 +459,9 @@ public class ClusterPlanExecutor extends PlanExecutor {
   private int getLocalPathCount(PartialPath path, int level) throws MetadataException {
     int localResult;
     if (level == -1) {
-      localResult = IoTDB.schemaEngine.getAllTimeseriesCount(path);
+      localResult = IoTDB.metaManager.getAllTimeseriesCount(path);
     } else {
-      localResult = IoTDB.schemaEngine.getNodesCountInGivenLevel(path, level);
+      localResult = IoTDB.metaManager.getNodesCountInGivenLevel(path, level);
     }
     return localResult;
   }
@@ -569,7 +569,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
     DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(group.getHeader());
     localDataMember.syncLeaderWithConsistencyCheck(false);
     try {
-      return IoTDB.schemaEngine.getNodesListInGivenLevel(
+      return IoTDB.metaManager.getNodesListInGivenLevel(
           schemaPattern,
           level,
           new SlotSgFilter(
@@ -678,7 +678,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
         metaGroupMember.getLocalDataMember(group.getHeader(), group.getRaftId());
     localDataMember.syncLeaderWithConsistencyCheck(false);
     try {
-      return IoTDB.schemaEngine.getChildNodeNameInNextLevel(path);
+      return IoTDB.metaManager.getChildNodeNameInNextLevel(path);
     } catch (MetadataException e) {
       logger.error("Cannot not get next children nodes of {} from {} locally", path, group);
       return Collections.emptySet();
@@ -803,7 +803,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
     DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(group.getHeader());
     localDataMember.syncLeaderWithConsistencyCheck(false);
     try {
-      return IoTDB.schemaEngine.getChildNodePathInNextLevel(path);
+      return IoTDB.metaManager.getChildNodePathInNextLevel(path);
     } catch (MetadataException e) {
       logger.error("Cannot not get next children of {} from {} locally", path, group);
       return Collections.emptySet();
@@ -868,7 +868,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
     } catch (CheckConsistencyException e) {
       logger.warn("Failed to check consistency.", e);
     }
-    return IoTDB.schemaEngine.getAllStorageGroupNodes();
+    return IoTDB.metaManager.getAllStorageGroupNodes();
   }
 
   @Override

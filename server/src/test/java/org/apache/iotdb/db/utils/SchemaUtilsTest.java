@@ -36,13 +36,13 @@ import java.util.List;
 public class SchemaUtilsTest {
   @Test
   public void registerTimeseriesTest() throws MetadataException {
-    SchemaEngine schemaEngine = IoTDB.schemaEngine;
+    SchemaEngine schemaEngine = IoTDB.metaManager;
     schemaEngine.init();
 
     String tsPath = "root.sg.d1.s1";
     TimeseriesSchema timeseriesSchema = new TimeseriesSchema(tsPath, TSDataType.INT32);
     SchemaUtils.registerTimeseries(timeseriesSchema);
-    Assert.assertTrue(IoTDB.schemaEngine.isPathExist(new PartialPath(tsPath)));
+    Assert.assertTrue(IoTDB.metaManager.isPathExist(new PartialPath(tsPath)));
   }
 
   @Test

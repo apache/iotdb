@@ -876,7 +876,7 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
       plan.getPlanFromFailed();
     }
 
-    return ((CSchemaEngine) IoTDB.schemaEngine).createTimeseries(plan);
+    return ((CSchemaEngine) IoTDB.metaManager).createTimeseries(plan);
   }
 
   /**
@@ -889,7 +889,7 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
     }
 
     Set<Integer> slotSet = new HashSet<>(slots);
-    List<PartialPath> allStorageGroupNames = IoTDB.schemaEngine.getAllStorageGroupPaths();
+    List<PartialPath> allStorageGroupNames = IoTDB.metaManager.getAllStorageGroupPaths();
     TimePartitionFilter filter =
         (storageGroupName, timePartitionId) -> {
           int slot =

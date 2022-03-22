@@ -62,7 +62,7 @@ public class GroupByFillDataSetTest {
   };
 
   static {
-    IoTDB.schemaEngine.init();
+    IoTDB.metaManager.init();
   }
 
   public GroupByFillDataSetTest() throws QueryProcessException {}

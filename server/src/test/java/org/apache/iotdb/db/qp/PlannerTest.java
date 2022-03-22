@@ -60,11 +60,11 @@ public class PlannerTest {
 
   private CompressionType compressionType =
       TSFileDescriptor.getInstance().getConfig().getCompressor();
-  private SchemaEngine schemaEngine = IoTDB.schemaEngine;
+  private SchemaEngine schemaEngine = IoTDB.metaManager;
   private Planner processor = new Planner();
 
   static {
-    IoTDB.schemaEngine.init();
+    IoTDB.metaManager.init();
   }
 
   @Before

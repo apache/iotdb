@@ -151,9 +151,9 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
             IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable());
     metaGroupMember = new MetaGroupMember(protocolFactory, thisNode, coordinator);
     IoTDB.setClusterMode();
-    IoTDB.setSchemaEngine(CSchemaEngine.getInstance());
-    ((CSchemaEngine) IoTDB.schemaEngine).setMetaGroupMember(metaGroupMember);
-    ((CSchemaEngine) IoTDB.schemaEngine).setCoordinator(coordinator);
+    IoTDB.setMetaManager(CSchemaEngine.getInstance());
+    ((CSchemaEngine) IoTDB.metaManager).setMetaGroupMember(metaGroupMember);
+    ((CSchemaEngine) IoTDB.metaManager).setCoordinator(coordinator);
     MetaPuller.getInstance().init(metaGroupMember);
     // set coordinator for serviceProvider construction
     try {

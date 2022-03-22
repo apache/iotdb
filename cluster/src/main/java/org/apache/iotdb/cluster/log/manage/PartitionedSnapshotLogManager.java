@@ -116,7 +116,7 @@ public abstract class PartitionedSnapshotLogManager<T extends Snapshot> extends 
 
   void collectTimeseriesSchemas(List<Integer> requiredSlots) {
     slotTimeseries.clear();
-    List<PartialPath> allSgPaths = IoTDB.schemaEngine.getAllStorageGroupPaths();
+    List<PartialPath> allSgPaths = IoTDB.metaManager.getAllStorageGroupPaths();
 
     Set<Integer> requiredSlotsSet = new HashSet<Integer>(requiredSlots);
     for (PartialPath sgPath : allSgPaths) {
@@ -130,7 +130,7 @@ public abstract class PartitionedSnapshotLogManager<T extends Snapshot> extends 
       }
       Collection<TimeseriesSchema> schemas =
           slotTimeseries.computeIfAbsent(slot, s -> new HashSet<>());
-      IoTDB.schemaEngine.collectTimeseriesSchema(sgPath, schemas);
+      IoTDB.metaManager.collectTimeseriesSchema(sgPath, schemas);
       logger.debug("{}: {} timeseries are snapshot in slot {}", getName(), schemas.size(), slot);
     }
   }

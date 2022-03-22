@@ -50,7 +50,7 @@ public class SchemaEngineAdvancedTest {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
-    schemaEngine = IoTDB.schemaEngine;
+    schemaEngine = IoTDB.metaManager;
 
     schemaEngine.setStorageGroup(new PartialPath("root.vehicle.d0"));
     schemaEngine.setStorageGroup(new PartialPath("root.vehicle.d1"));

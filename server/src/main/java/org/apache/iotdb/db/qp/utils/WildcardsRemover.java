@@ -71,7 +71,7 @@ public class WildcardsRemover {
       throws LogicalOptimizeException {
     try {
       Pair<List<MeasurementPath>, Integer> pair =
-          IoTDB.schemaEngine.getMeasurementPathsWithAlias(
+          IoTDB.metaManager.getMeasurementPathsWithAlias(
               path, currentLimit, currentOffset, isPrefixMatch);
       consumed += pair.right;
       currentOffset -= Math.min(currentOffset, pair.right);

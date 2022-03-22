@@ -102,15 +102,15 @@ public class TTLTest {
   }
 
   private void createSchemas() throws MetadataException, StorageGroupProcessorException {
-    IoTDB.schemaEngine.setStorageGroup(new PartialPath(sg1));
-    IoTDB.schemaEngine.setStorageGroup(new PartialPath(sg2));
+    IoTDB.metaManager.setStorageGroup(new PartialPath(sg1));
+    IoTDB.metaManager.setStorageGroup(new PartialPath(sg2));
     virtualStorageGroupProcessor =
         new VirtualStorageGroupProcessor(
             IoTDBDescriptor.getInstance().getConfig().getSystemDir(),
             sg1,
             new DirectFlushPolicy(),
             sg1);
-    IoTDB.schemaEngine.createTimeseries(
+    IoTDB.metaManager.createTimeseries(
         new PartialPath(g1s1),
         TSDataType.INT64,
         TSEncoding.PLAIN,
@@ -124,20 +124,20 @@ public class TTLTest {
     boolean caught = false;
 
     try {
-      IoTDB.schemaEngine.setTTL(new PartialPath(sg1 + ".notExist"), ttl);
+      IoTDB.metaManager.setTTL(new PartialPath(sg1 + ".notExist"), ttl);
     } catch (MetadataException e) {
       caught = true;
     }
     assertTrue(caught);
 
     // normally set ttl
-    IoTDB.schemaEngine.setTTL(new PartialPath(sg1), ttl);
+    IoTDB.metaManager.setTTL(new PartialPath(sg1), ttl);
     IStorageGroupMNode mNode =
-        IoTDB.schemaEngine.getStorageGroupNodeByStorageGroupPath(new PartialPath(sg1));
+        IoTDB.metaManager.getStorageGroupNodeByStorageGroupPath(new PartialPath(sg1));
     assertEquals(ttl, mNode.getDataTTL());
 
     // default ttl
-    mNode = IoTDB.schemaEngine.getStorageGroupNodeByStorageGroupPath(new PartialPath(sg2));
+    mNode = IoTDB.metaManager.getStorageGroupNodeByStorageGroupPath(new PartialPath(sg2));
     assertEquals(Long.MAX_VALUE, mNode.getDataTTL());
   }
 
@@ -409,7 +409,7 @@ public class TTLTest {
   public void testShowTTL()
       throws IOException, QueryProcessException, QueryFilterOptimizationException,
           StorageEngineException, MetadataException, InterruptedException {
-    IoTDB.schemaEngine.setTTL(new PartialPath(sg1), ttl);
+    IoTDB.metaManager.setTTL(new PartialPath(sg1), ttl);
 
     ShowTTLPlan plan = new ShowTTLPlan(Collections.emptyList());
     PlanExecutor executor = new PlanExecutor();

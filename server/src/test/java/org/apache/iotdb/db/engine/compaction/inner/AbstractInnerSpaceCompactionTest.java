@@ -130,7 +130,7 @@ public abstract class AbstractInnerSpaceCompactionTest {
     }
 
     EnvironmentUtils.envSetUp();
-    IoTDB.schemaEngine.init();
+    IoTDB.metaManager.init();
     prepareSeries();
     prepareFiles(seqFileNum, unseqFileNum);
     tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", tempSGDir.getAbsolutePath());
@@ -147,11 +147,11 @@ public abstract class AbstractInnerSpaceCompactionTest {
     for (int i = 0; i < deviceNum; i++) {
       deviceIds[i] = COMPACTION_TEST_SG + PATH_SEPARATOR + "device" + i;
     }
-    IoTDB.schemaEngine.setStorageGroup(new PartialPath(COMPACTION_TEST_SG));
+    IoTDB.metaManager.setStorageGroup(new PartialPath(COMPACTION_TEST_SG));
     for (String device : deviceIds) {
       for (MeasurementSchema measurementSchema : measurementSchemas) {
         PartialPath devicePath = new PartialPath(device);
-        IoTDB.schemaEngine.createTimeseries(
+        IoTDB.metaManager.createTimeseries(
             devicePath.concatNode(measurementSchema.getMeasurementId()),
             measurementSchema.getType(),
             measurementSchema.getEncodingType(),
@@ -239,7 +239,7 @@ public abstract class AbstractInnerSpaceCompactionTest {
     unseqResources.clear();
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
-    IoTDB.schemaEngine.clear();
+    IoTDB.metaManager.clear();
     EnvironmentUtils.cleanEnv();
     if (tempSGDir.exists()) {
       FileUtils.deleteDirectory(tempSGDir);
