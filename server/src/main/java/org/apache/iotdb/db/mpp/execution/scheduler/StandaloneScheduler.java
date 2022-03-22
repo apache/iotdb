@@ -33,7 +33,9 @@ public class StandaloneScheduler implements IScheduler {
   private static final SchemaEngine SCHEMA_ENGINE = SchemaEngine.getInstance();
 
   @Override
-  public void start() {}
+  public void start() {
+
+  }
 
   @Override
   public void abort() {}

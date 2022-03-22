@@ -16,28 +16,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.common;
+package org.apache.iotdb.commons.partition;
 
-/**
- * This class is used to record the context of a query including QueryId, query statement, session
- * info and so on
- */
-public class MPPQueryContext {
-  private String sql;
-  private QueryId queryId;
-  private SessionInfo session;
+import java.util.List;
+import org.apache.iotdb.service.rpc.thrift.EndPoint;
 
-  public MPPQueryContext() {
+public class SchemaRegionPlaceInfo {
+  private SchemaRegionId schemaRegionId;
+  private List<EndPoint> endPointList;
+
+  public SchemaRegionId getSchemaRegionId() {
+    return schemaRegionId;
   }
 
-  public MPPQueryContext(String sql, QueryId queryId,
-      SessionInfo session) {
-    this.sql = sql;
-    this.queryId = queryId;
-    this.session = session;
+  public void setSchemaRegionId(SchemaRegionId schemaRegionId) {
+    this.schemaRegionId = schemaRegionId;
   }
 
-  public QueryId getQueryId() {
-    return queryId;
+  public List<EndPoint> getEndPointList() {
+    return endPointList;
+  }
+
+  public void setEndPointList(List<EndPoint> endPointList) {
+    this.endPointList = endPointList;
   }
 }

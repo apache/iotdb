@@ -16,28 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.common;
+package org.apache.iotdb.db.mpp.execution;
 
-/**
- * This class is used to record the context of a query including QueryId, query statement, session
- * info and so on
- */
-public class MPPQueryContext {
-  private String sql;
-  private QueryId queryId;
-  private SessionInfo session;
+import org.apache.iotdb.db.mpp.common.QueryId;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
-  public MPPQueryContext() {
-  }
+public class ExecutionResult {
+  public QueryId queryId;
+  public TSStatus status;
 
-  public MPPQueryContext(String sql, QueryId queryId,
-      SessionInfo session) {
-    this.sql = sql;
+  public ExecutionResult(QueryId queryId, TSStatus status) {
     this.queryId = queryId;
-    this.session = session;
-  }
-
-  public QueryId getQueryId() {
-    return queryId;
+    this.status = status;
   }
 }

@@ -16,28 +16,24 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.common;
+package org.apache.iotdb.db.mpp.sql.analyze;
 
-/**
- * This class is used to record the context of a query including QueryId, query statement, session
- * info and so on
- */
-public class MPPQueryContext {
-  private String sql;
-  private QueryId queryId;
-  private SessionInfo session;
+import java.util.List;
+import java.util.Map;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 
-  public MPPQueryContext() {
+public class StandaloneSchemaFetcher implements ISchemaFetcher {
+
+  private StandaloneSchemaFetcher() {
+
   }
 
-  public MPPQueryContext(String sql, QueryId queryId,
-      SessionInfo session) {
-    this.sql = sql;
-    this.queryId = queryId;
-    this.session = session;
+  public static StandaloneSchemaFetcher getInstance() {
+    return new StandaloneSchemaFetcher();
   }
 
-  public QueryId getQueryId() {
-    return queryId;
+  @Override
+  public Map<String, PartialPath> fetchSchema(List<String> deviceIds) {
+    return null;
   }
 }

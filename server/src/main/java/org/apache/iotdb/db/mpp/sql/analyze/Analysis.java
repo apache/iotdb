@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.db.mpp.sql.analyze;
 
+import org.apache.iotdb.commons.partition.DataPartitionInfo;
+import org.apache.iotdb.commons.partition.SchemaPartitionInfo;
+import org.apache.iotdb.commons.partition.TimePartitionId;
 import org.apache.iotdb.db.metadata.SchemaRegion;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.DataRegion;
-import org.apache.iotdb.db.mpp.common.DataRegionTimeSlice;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
@@ -39,18 +41,24 @@ public class Analysis {
   // Statement
   private Statement statement;
 
-  // DataPartitionInfo
-  private Map<String, Map<DataRegionTimeSlice, List<DataRegion>>> dataPartitionInfo;
+  // indicate whether this statement is write or read
+  private QueryType queryType;
 
-  // SchemaPartitionInfo
-  private Map<String, List<SchemaRegion>> schemaPartitionInfo;
+  // DataPartitionInfo
+  // DeviceGroup -> DataRegionTimeSlice -> List<DataRegion>
+  @Deprecated
+  private Map<String, Map<TimePartitionId, List<DataRegion>>> dataPartitionInfoOld;
+
+  private DataPartitionInfo dataPartitionInfo;
+
+  private SchemaPartitionInfo schemaPartitionInfo;
 
   public Set<DataRegion> getPartitionInfo(PartialPath seriesPath, Filter timefilter) {
     if (timefilter == null) {
       // TODO: (xingtanzjr) we need to have a method to get the deviceGroup by device
       String deviceGroup = seriesPath.getDevice();
       Set<DataRegion> result = new HashSet<>();
-      this.dataPartitionInfo.get(deviceGroup).values().forEach(result::addAll);
+      this.dataPartitionInfoOld.get(deviceGroup).values().forEach(result::addAll);
       return result;
     } else {
       // TODO: (xingtanzjr) complete this branch
@@ -58,9 +66,9 @@ public class Analysis {
     }
   }
 
-  public void setDataPartitionInfo(
-      Map<String, Map<DataRegionTimeSlice, List<DataRegion>>> dataPartitionInfo) {
-    this.dataPartitionInfo = dataPartitionInfo;
+  public void setDataPartitionInfoOld(
+      Map<String, Map<TimePartitionId, List<DataRegion>>> dataPartitionInfoOld) {
+    this.dataPartitionInfoOld = dataPartitionInfoOld;
   }
 
   public Statement getStatement() {
@@ -69,5 +77,22 @@ public class Analysis {
 
   public void setStatement(Statement statement) {
     this.statement = statement;
+  }
+
+  public DataPartitionInfo getDataPartitionInfo() {
+    return dataPartitionInfo;
+  }
+
+  public void setDataPartitionInfo(DataPartitionInfo dataPartitionInfo) {
+    this.dataPartitionInfo = dataPartitionInfo;
+  }
+
+  public SchemaPartitionInfo getSchemaPartitionInfo() {
+    return schemaPartitionInfo;
+  }
+
+  public void setSchemaPartitionInfo(
+      SchemaPartitionInfo schemaPartitionInfo) {
+    this.schemaPartitionInfo = schemaPartitionInfo;
   }
 }

@@ -16,28 +16,29 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.common;
+package org.apache.iotdb.commons.partition;
 
-/**
- * This class is used to record the context of a query including QueryId, query statement, session
- * info and so on
- */
-public class MPPQueryContext {
-  private String sql;
-  private QueryId queryId;
-  private SessionInfo session;
+import java.util.List;
 
-  public MPPQueryContext() {
+public class DataPartitionQueryParam {
+
+  private String deviceId;
+  private List<TimePartitionId> timePartitionIdList;
+
+  public String getDeviceId() {
+    return deviceId;
   }
 
-  public MPPQueryContext(String sql, QueryId queryId,
-      SessionInfo session) {
-    this.sql = sql;
-    this.queryId = queryId;
-    this.session = session;
+  public void setDeviceId(String deviceId) {
+    this.deviceId = deviceId;
   }
 
-  public QueryId getQueryId() {
-    return queryId;
+  public List<TimePartitionId> getTimePartitionIdList() {
+    return timePartitionIdList;
+  }
+
+  public void setTimePartitionIdList(
+      List<TimePartitionId> timePartitionIdList) {
+    this.timePartitionIdList = timePartitionIdList;
   }
 }

@@ -20,6 +20,7 @@ package org.apache.iotdb.db.query.control;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.mpp.common.SessionInfo;
 import org.apache.iotdb.db.query.dataset.UDTFDataSet;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
@@ -58,6 +59,10 @@ public class SessionManager {
   // (sessionId -> client version number)
   private final Map<Long, IoTDBConstant.ClientVersion> sessionIdToClientVersion =
       new ConcurrentHashMap<>();
+
+
+  // TODO sessionIdToUsername and sessionIdToZoneId should be replaced with this
+  private final Map<Long, SessionInfo> sessionIdToSessionInfo = new ConcurrentHashMap<>();
 
   protected SessionManager() {
     // singleton
@@ -217,6 +222,10 @@ public class SessionManager {
 
   public static SessionManager getInstance() {
     return SessionManagerHelper.INSTANCE;
+  }
+
+  public SessionInfo getSessionInfo(long sessionId) {
+    return sessionIdToSessionInfo.get(sessionId);
   }
 
   private static class SessionManagerHelper {

@@ -18,9 +18,16 @@
  */
 package org.apache.iotdb.db.mpp.execution;
 
+import static org.apache.iotdb.rpc.RpcUtils.getStatus;
+
+import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.QueryId;
 
 import java.util.concurrent.ConcurrentHashMap;
+import org.apache.iotdb.db.mpp.common.SessionInfo;
+import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
+import org.apache.iotdb.db.mpp.sql.statement.Statement;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
 
 /**
  * The coordinator for MPP. It manages all the queries which are executed in current Node. And it
@@ -31,13 +38,26 @@ public class Coordinator {
 
   private ConcurrentHashMap<QueryId, QueryExecution> queryExecutionMap;
 
-  private QueryExecution createQueryExecution() {
-    return null;
+  public static Coordinator getInstance(){return new Coordinator();}
+
+  private QueryExecution createQueryExecution(Statement statement, MPPQueryContext queryContext) {
+    return new QueryExecution(statement, queryContext);
   }
 
   private QueryExecution getQueryExecutionById() {
     return null;
   }
+
+  public ExecutionResult execute(Statement statement, QueryId queryId, QueryType queryType, SessionInfo session, String sql) {
+
+    QueryExecution execution = createQueryExecution(statement, new MPPQueryContext(sql, queryId, session));
+    queryExecutionMap.put(queryId, execution);
+
+    execution.start();
+
+    return execution.getResult();
+  }
+
 
   //    private TQueryResponse executeQuery(TQueryRequest request) {
   //
