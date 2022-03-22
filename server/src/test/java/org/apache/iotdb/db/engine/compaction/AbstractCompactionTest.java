@@ -109,7 +109,7 @@ public class AbstractCompactionTest {
     }
 
     EnvironmentUtils.envSetUp();
-    IoTDB.schemaEngine.init();
+    IoTDB.metaManager.init();
   }
 
   /**
@@ -227,14 +227,14 @@ public class AbstractCompactionTest {
           dataTypes.add(TSDataType.INT64);
           encodings.add(TSEncoding.PLAIN);
           compressionTypes.add(CompressionType.UNCOMPRESSED);
-          IoTDB.schemaEngine.createTimeseries(
+          IoTDB.metaManager.createTimeseries(
               new PartialPath(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i, "s" + j),
               TSDataType.INT64,
               TSEncoding.PLAIN,
               CompressionType.UNCOMPRESSED,
               Collections.emptyMap());
         }
-        IoTDB.schemaEngine.createAlignedTimeSeries(
+        IoTDB.metaManager.createAlignedTimeSeries(
             new PartialPath(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + (i + 10000)),
             measurements,
             dataTypes,
@@ -242,7 +242,7 @@ public class AbstractCompactionTest {
             compressionTypes);
       } else {
         for (int j = 0; j < measurementNum; j++) {
-          IoTDB.schemaEngine.createTimeseries(
+          IoTDB.metaManager.createTimeseries(
               new PartialPath(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i, "s" + j),
               TSDataType.INT64,
               TSEncoding.PLAIN,
@@ -258,7 +258,7 @@ public class AbstractCompactionTest {
     removeFiles();
     seqResources.clear();
     unseqResources.clear();
-    IoTDB.schemaEngine.clear();
+    IoTDB.metaManager.clear();
     IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(oldTargetChunkSize);
     TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(oldChunkGroupSize);
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(oldPagePointSize);

@@ -59,7 +59,7 @@ public class DeviceStringTest {
   private String logNodePrefix = TestConstant.OUTPUT_DATA_DIR.concat("testNode/0");
   private Schema schema;
   private TsFileResource resource;
-  private SchemaEngine schemaEngine = IoTDB.schemaEngine;
+  private SchemaEngine schemaEngine = IoTDB.metaManager;
 
   @Before
   public void setup() throws IOException, WriteProcessException, MetadataException {

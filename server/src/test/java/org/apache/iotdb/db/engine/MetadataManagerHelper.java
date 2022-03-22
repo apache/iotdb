@@ -31,7 +31,7 @@ import java.util.Collections;
 public class MetadataManagerHelper {
 
   public static void initMetadata() {
-    SchemaEngine schemaEngine = IoTDB.schemaEngine;
+    SchemaEngine schemaEngine = IoTDB.metaManager;
     schemaEngine.init();
     try {
       schemaEngine.setStorageGroup(new PartialPath("root.vehicle.d0"));

@@ -342,7 +342,7 @@ public class IDTableHashmapImpl implements IDTable {
       System.arraycopy(
           plan.getMeasurementMNodes(), 0, insertPlanMNodeBackup, 0, insertPlanMNodeBackup.length);
       try {
-        IoTDB.schemaEngine.getSeriesSchemasAndReadLockDevice(plan);
+        IoTDB.metaManager.getSeriesSchemasAndReadLockDevice(plan);
       } catch (IOException e) {
         throw new MetadataException(e);
       }
@@ -375,7 +375,7 @@ public class IDTableHashmapImpl implements IDTable {
 
     // timeseries is using trigger, we should get trigger from schemaEngine
     if (schemaEntry.isUsingTrigger()) {
-      IMeasurementMNode measurementMNode = IoTDB.schemaEngine.getMeasurementMNode(seriesKey);
+      IMeasurementMNode measurementMNode = IoTDB.metaManager.getMeasurementMNode(seriesKey);
       return new InsertMeasurementMNode(
           measurementName, schemaEntry, measurementMNode.getTriggerExecutor());
     }

@@ -112,7 +112,7 @@ public class LocalQueryExecutor {
   }
 
   private CSchemaEngine getCSchemaEngine() {
-    return ((CSchemaEngine) IoTDB.schemaEngine);
+    return ((CSchemaEngine) IoTDB.metaManager);
   }
 
   /** Return the data of the reader whose id is "readerId", using timestamps in "timeBuffer". */
@@ -225,7 +225,7 @@ public class LocalQueryExecutor {
     // The request is routed to this node since this node contains the data and
     // metadata of the designated timeseries. Because of which, the following metadata access will
     // not trigger an RPC.
-    path.setMeasurementSchema(IoTDB.schemaEngine.getSeriesSchema(path));
+    path.setMeasurementSchema(IoTDB.metaManager.getSeriesSchema(path));
     TSDataType dataType = TSDataType.values()[request.getDataTypeOrdinal()];
     Filter timeFilter = null;
     Filter valueFilter = null;
@@ -313,7 +313,7 @@ public class LocalQueryExecutor {
       // The request is routed to this node since this node contains the data and
       // metadata of the designated timeseries. Because of which, the following metadata access will
       // not trigger an RPC.
-      path.setMeasurementSchema(IoTDB.schemaEngine.getSeriesSchema(path));
+      path.setMeasurementSchema(IoTDB.metaManager.getSeriesSchema(path));
       paths.add(path);
       dataTypes.add(TSDataType.values()[request.getDataTypeOrdinal().get(i)]);
     }
@@ -560,7 +560,7 @@ public class LocalQueryExecutor {
     // The request is routed to this node since this node contains the data and
     // metadata of the designated timeseries. Because of which, the following metadata access will
     // not trigger an RPC.
-    path.setMeasurementSchema(IoTDB.schemaEngine.getSeriesSchema(path));
+    path.setMeasurementSchema(IoTDB.metaManager.getSeriesSchema(path));
     TSDataType dataType = TSDataType.values()[request.dataTypeOrdinal];
     Set<String> deviceMeasurements = request.getDeviceMeasurements();
 
@@ -1039,7 +1039,7 @@ public class LocalQueryExecutor {
     for (String path : request.getPaths()) {
       PartialPath partialPath = new PartialPath(path);
       seriesPaths.add(
-          new MeasurementPath(partialPath, IoTDB.schemaEngine.getSeriesSchema(partialPath)));
+          new MeasurementPath(partialPath, IoTDB.metaManager.getSeriesSchema(partialPath)));
     }
     List<TSDataType> dataTypes = new ArrayList<>(request.dataTypeOrdinals.size());
     for (Integer dataTypeOrdinal : request.dataTypeOrdinals) {

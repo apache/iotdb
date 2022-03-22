@@ -98,11 +98,11 @@ public class InnerUnseqCompactionTest {
 
   @Before
   public void setUp() throws MetadataException {
-    IoTDB.schemaEngine.init();
-    IoTDB.schemaEngine.setStorageGroup(new PartialPath(COMPACTION_TEST_SG));
+    IoTDB.metaManager.init();
+    IoTDB.metaManager.setStorageGroup(new PartialPath(COMPACTION_TEST_SG));
     for (String fullPath : fullPaths) {
       PartialPath path = new PartialPath(fullPath);
-      IoTDB.schemaEngine.createTimeseries(
+      IoTDB.metaManager.createTimeseries(
           path,
           TSDataType.INT64,
           TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder()),
@@ -118,7 +118,7 @@ public class InnerUnseqCompactionTest {
     CompactionClearUtils.clearAllCompactionFiles();
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
-    IoTDB.schemaEngine.clear();
+    IoTDB.metaManager.clear();
     EnvironmentUtils.cleanAllDir();
     Thread.currentThread().setName(oldThreadName);
     CompactionClearUtils.deleteEmptyDir(new File("target"));

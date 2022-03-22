@@ -226,7 +226,7 @@ public class MetaSimpleSnapshot extends Snapshot {
           for (Map.Entry<PartialPath, Long> entry : snapshot.getStorageGroupTTLMap().entrySet()) {
             PartialPath sgPath = entry.getKey();
             try {
-              IoTDB.schemaEngine.setStorageGroup(sgPath);
+              IoTDB.metaManager.setStorageGroup(sgPath);
             } catch (StorageGroupAlreadySetException e) {
               // ignore
             } catch (MetadataException e) {
@@ -239,7 +239,7 @@ public class MetaSimpleSnapshot extends Snapshot {
 
             // 2. register ttl in the snapshot
             try {
-              IoTDB.schemaEngine.setTTL(sgPath, entry.getValue());
+              IoTDB.metaManager.setTTL(sgPath, entry.getValue());
               StorageEngine.getInstance().setTTL(sgPath, entry.getValue());
             } catch (MetadataException | IOException e) {
               logger.error(

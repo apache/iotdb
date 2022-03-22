@@ -113,7 +113,7 @@ public class FileSnapshotTest extends DataSnapshotTest {
     assertEquals(SlotStatus.NULL, dataGroupMember.getSlotManager().getStatus(0));
 
     for (TimeseriesSchema timeseriesSchema : timeseriesSchemas) {
-      assertTrue(IoTDB.schemaEngine.isPathExist(new PartialPath(timeseriesSchema.getFullPath())));
+      assertTrue(IoTDB.metaManager.isPathExist(new PartialPath(timeseriesSchema.getFullPath())));
     }
     VirtualStorageGroupProcessor processor =
         StorageEngine.getInstance().getProcessor(new PartialPath(TestUtils.getTestSg(0)));
@@ -156,7 +156,7 @@ public class FileSnapshotTest extends DataSnapshotTest {
       assertEquals(SlotStatus.NULL, dataGroupMember.getSlotManager().getStatus(0));
 
       for (TimeseriesSchema timeseriesSchema : timeseriesSchemas) {
-        assertTrue(IoTDB.schemaEngine.isPathExist(new PartialPath(timeseriesSchema.getFullPath())));
+        assertTrue(IoTDB.metaManager.isPathExist(new PartialPath(timeseriesSchema.getFullPath())));
       }
       VirtualStorageGroupProcessor processor =
           StorageEngine.getInstance().getProcessor(new PartialPath(TestUtils.getTestSg(0)));
@@ -205,7 +205,7 @@ public class FileSnapshotTest extends DataSnapshotTest {
     assertEquals(SlotStatus.NULL, dataGroupMember.getSlotManager().getStatus(0));
 
     for (TimeseriesSchema timeseriesSchema : timeseriesSchemas) {
-      assertTrue(IoTDB.schemaEngine.isPathExist(new PartialPath(timeseriesSchema.getFullPath())));
+      assertTrue(IoTDB.metaManager.isPathExist(new PartialPath(timeseriesSchema.getFullPath())));
     }
     VirtualStorageGroupProcessor processor =
         StorageEngine.getInstance().getProcessor(new PartialPath(TestUtils.getTestSg(0)));
@@ -290,7 +290,7 @@ public class FileSnapshotTest extends DataSnapshotTest {
     defaultInstaller.install(snapshot, 0, false);
 
     for (TimeseriesSchema timeseriesSchema : timeseriesSchemas) {
-      assertTrue(IoTDB.schemaEngine.isPathExist(new PartialPath(timeseriesSchema.getFullPath())));
+      assertTrue(IoTDB.metaManager.isPathExist(new PartialPath(timeseriesSchema.getFullPath())));
     }
     VirtualStorageGroupProcessor processor =
         StorageEngine.getInstance().getProcessor(new PartialPath(TestUtils.getTestSg(0)));

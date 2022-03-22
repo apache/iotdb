@@ -82,7 +82,7 @@ public class IDTableManager {
   public synchronized IDTable getIDTable(PartialPath devicePath) {
     try {
       IStorageGroupMNode storageGroupMNode =
-          IoTDB.schemaEngine.getStorageGroupNodeByPath(devicePath);
+          IoTDB.metaManager.getStorageGroupNodeByPath(devicePath);
       return idTableMap.computeIfAbsent(
           storageGroupMNode.getFullPath(),
           storageGroupPath ->

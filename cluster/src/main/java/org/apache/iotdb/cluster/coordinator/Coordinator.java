@@ -178,7 +178,7 @@ public class Coordinator {
         // them to full paths so the executor nodes will not need to query the metadata holders,
         // eliminating the risk that when they are querying the metadata holders, the timeseries
         // has already been deleted
-        ((CSchemaEngine) IoTDB.schemaEngine).convertToFullPaths(plan);
+        ((CSchemaEngine) IoTDB.metaManager).convertToFullPaths(plan);
       } else {
         // function convertToFullPaths has already sync leader
         metaGroupMember.syncLeaderWithConsistencyCheck(true);
@@ -209,12 +209,12 @@ public class Coordinator {
       throws MetadataException, CheckConsistencyException {
     if (plan instanceof SetTemplatePlan) {
       try {
-        IoTDB.schemaEngine.getBelongedStorageGroup(
+        IoTDB.metaManager.getBelongedStorageGroup(
             new PartialPath(((SetTemplatePlan) plan).getPrefixPath()));
       } catch (IllegalPathException e) {
         // the plan has been checked
       } catch (StorageGroupNotSetException e) {
-        ((CSchemaEngine) IoTDB.schemaEngine).createSchema(plan);
+        ((CSchemaEngine) IoTDB.metaManager).createSchema(plan);
       }
     }
   }
@@ -255,7 +255,7 @@ public class Coordinator {
 
         logger.debug("{}: No associated storage group found for {}, auto-creating", name, plan);
         try {
-          ((CSchemaEngine) IoTDB.schemaEngine).createSchema(plan);
+          ((CSchemaEngine) IoTDB.metaManager).createSchema(plan);
           return processPartitionedPlan(plan);
         } catch (MetadataException | CheckConsistencyException e) {
           logger.error(

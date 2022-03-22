@@ -111,7 +111,7 @@ public class SlotPartitionTableTest {
     prevPartitionInterval = StorageEngine.getTimePartitionInterval();
     StorageEngine.setEnablePartition(true);
 
-    IoTDB.schemaEngine.init();
+    IoTDB.metaManager.init();
     StorageEngine.setTimePartitionInterval(7 * 24 * 3600 * 1000L);
     nodes = new ArrayList<>();
     IntStream.range(0, 20).forEach(i -> nodes.add(getNode(i)));
