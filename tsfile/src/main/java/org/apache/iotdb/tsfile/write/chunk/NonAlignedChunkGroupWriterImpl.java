@@ -34,7 +34,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -90,11 +89,14 @@ public class NonAlignedChunkGroupWriterImpl implements IChunkGroupWriter {
 
   @Override
   public int write(Tablet tablet) throws WriteProcessException {
-    HashSet<Integer> writeRowsSet = new HashSet<>();
+    int maxPointCount = 0, pointCount;
+    boolean needCountPoints;
     List<MeasurementSchema> timeseries = tablet.getSchemas();
     for (int column = 0; column < timeseries.size(); column++) {
       String measurementId = timeseries.get(column).getMeasurementId();
       TSDataType tsDataType = timeseries.get(column).getType();
+      pointCount = 0;
+      needCountPoints = maxPointCount < tablet.rowSize;
       for (int row = 0; row < tablet.rowSize; row++) {
         // check isNull in tablet
         if (tablet.bitMaps != null
@@ -104,9 +106,7 @@ public class NonAlignedChunkGroupWriterImpl implements IChunkGroupWriter {
         }
         long time = tablet.timestamps[row];
         checkIsHistoryData(measurementId, time);
-        if (writeRowsSet.size() < tablet.rowSize) {
-          writeRowsSet.add(row);
-        }
+        if (needCountPoints) pointCount++;
         switch (tsDataType) {
           case INT32:
             chunkWriters.get(measurementId).write(time, ((int[]) tablet.values[column])[row]);
@@ -132,8 +132,9 @@ public class NonAlignedChunkGroupWriterImpl implements IChunkGroupWriter {
         }
         lastTimeMap.put(measurementId, time);
       }
+      if (maxPointCount < pointCount) maxPointCount = pointCount;
     }
-    return writeRowsSet.size();
+    return maxPointCount;
   }
 
   @Override
