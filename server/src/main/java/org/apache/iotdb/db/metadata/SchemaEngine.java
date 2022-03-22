@@ -1146,7 +1146,7 @@ public class SchemaEngine {
    * created thus throw PathAlreadyExistException.
    */
   protected IMeasurementMNode getMeasurementMNode(IMNode deviceMNode, String measurementName)
-      throws PathAlreadyExistException {
+      throws MetadataException {
     IMNode result = deviceMNode.getChild(measurementName);
     if (result == null) {
       return null;
@@ -1694,6 +1694,28 @@ public class SchemaEngine {
         .getBelongedSchemaRegion(node.getPartialPath())
         .setUsingSchemaTemplate(node);
   }
+  // endregion
+
+  // region Interfaces for Trigger
+
+  public IMeasurementMNode getMeasurementMNodeForTrigger(PartialPath fullPath)
+      throws MetadataException {
+    try {
+      return storageGroupSchemaManager
+          .getBelongedSchemaRegion(fullPath)
+          .getMeasurementMNodeForTrigger(fullPath);
+    } catch (StorageGroupNotSetException e) {
+      throw new PathNotExistException(fullPath.getFullPath());
+    }
+  }
+
+  public void releaseMeasurementMNodeAfterDropTrigger(IMeasurementMNode measurementMNode)
+      throws MetadataException {
+    storageGroupSchemaManager
+        .getBelongedSchemaRegion(measurementMNode.getPartialPath())
+        .releaseMeasurementMNodeAfterDropTrigger(measurementMNode);
+  }
+
   // endregion
 
   // region TestOnly Interfaces

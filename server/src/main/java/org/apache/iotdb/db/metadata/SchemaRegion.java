@@ -32,6 +32,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.metadata.template.DifferentTemplateException;
 import org.apache.iotdb.db.exception.metadata.template.NoTemplateOnMNodeException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
@@ -1168,11 +1169,6 @@ public class SchemaRegion {
     return mNodes;
   }
 
-  public IMeasurementMNode getPinnedMeasurementMNode(PartialPath fullPath)
-      throws MetadataException {
-    return mtree.getMeasurementMNode(fullPath);
-  }
-
   public IMeasurementMNode getMeasurementMNode(PartialPath fullPath) throws MetadataException {
     IMeasurementMNode measurementMNode = mtree.getMeasurementMNode(fullPath);
     mtree.unPinMNode(measurementMNode);
@@ -1212,27 +1208,36 @@ public class SchemaRegion {
    */
   private void changeOffset(PartialPath path, long offset) throws MetadataException {
     IMeasurementMNode measurementMNode = mtree.getMeasurementMNode(path);
-    measurementMNode.setOffset(offset);
-    mtree.updateMNode(measurementMNode);
-    mtree.unPinMNode(measurementMNode);
-    if (isRecovering) {
-      try {
-        tagManager.recoverIndex(offset, measurementMNode);
-      } catch (IOException e) {
-        throw new MetadataException(e);
+    try {
+      measurementMNode.setOffset(offset);
+      mtree.updateMNode(measurementMNode);
+
+      if (isRecovering) {
+        try {
+          if (tagManager.recoverIndex(offset, measurementMNode)) {
+            mtree.pinMNode(measurementMNode);
+          }
+        } catch (IOException e) {
+          throw new MetadataException(e);
+        }
       }
+    } finally {
+      mtree.unPinMNode(measurementMNode);
     }
   }
 
   public void changeAlias(PartialPath path, String alias) throws MetadataException {
     IMeasurementMNode leafMNode = mtree.getMeasurementMNode(path);
-    if (leafMNode.getAlias() != null) {
-      leafMNode.getParent().deleteAliasChild(leafMNode.getAlias());
+    try {
+      if (leafMNode.getAlias() != null) {
+        leafMNode.getParent().deleteAliasChild(leafMNode.getAlias());
+      }
+      leafMNode.getParent().addAlias(alias, leafMNode);
+      leafMNode.setAlias(alias);
+      mtree.updateMNode(leafMNode);
+    } finally {
+      mtree.unPinMNode(leafMNode);
     }
-    leafMNode.getParent().addAlias(alias, leafMNode);
-    leafMNode.setAlias(alias);
-    mtree.updateMNode(leafMNode);
-    mtree.unPinMNode(leafMNode);
 
     try {
       if (!isRecovering) {
@@ -1263,32 +1268,25 @@ public class SchemaRegion {
     try {
       // upsert alias
       upsertAlias(alias, fullPath, leafMNode);
-    } catch (MetadataException | IOException e) {
-      mtree.unPinMNode(leafMNode);
-      throw e;
-    }
 
-    if (tagsMap == null && attributesMap == null) {
-      mtree.unPinMNode(leafMNode);
-      return;
-    }
-    // no tag or attribute, we need to add a new record in log
-    if (leafMNode.getOffset() < 0) {
-      try {
+      if (tagsMap == null && attributesMap == null) {
+        return;
+      }
+
+      // no tag or attribute, we need to add a new record in log
+      if (leafMNode.getOffset() < 0) {
         long offset = tagManager.writeTagFile(tagsMap, attributesMap);
         logWriter.changeOffset(fullPath, offset);
         leafMNode.setOffset(offset);
         mtree.updateMNode(leafMNode);
         // update inverted Index map
-        tagManager.addIndex(tagsMap, leafMNode);
+        if (tagsMap != null && !tagsMap.isEmpty()) {
+          tagManager.addIndex(tagsMap, leafMNode);
+          mtree.pinMNode(leafMNode);
+        }
         return;
-      } catch (MetadataException | IOException e) {
-        mtree.unPinMNode(leafMNode);
-        throw e;
       }
-    }
 
-    try {
       tagManager.updateTagsAndAttributes(tagsMap, attributesMap, leafMNode);
     } finally {
       mtree.unPinMNode(leafMNode);
@@ -1323,21 +1321,16 @@ public class SchemaRegion {
   public void addAttributes(Map<String, String> attributesMap, PartialPath fullPath)
       throws MetadataException, IOException {
     IMeasurementMNode leafMNode = mtree.getMeasurementMNode(fullPath);
-    // no tag or attribute, we need to add a new record in log
-    if (leafMNode.getOffset() < 0) {
-      try {
+    try {
+      // no tag or attribute, we need to add a new record in log
+      if (leafMNode.getOffset() < 0) {
         long offset = tagManager.writeTagFile(Collections.emptyMap(), attributesMap);
         logWriter.changeOffset(fullPath, offset);
         leafMNode.setOffset(offset);
         mtree.updateMNode(leafMNode);
         return;
-      } catch (MetadataException | IOException e) {
-        mtree.unPinMNode(leafMNode);
-        throw e;
       }
-    }
 
-    try {
       tagManager.addAttributes(attributesMap, fullPath, leafMNode);
     } finally {
       mtree.updateMNode(leafMNode);
@@ -1353,23 +1346,19 @@ public class SchemaRegion {
   public void addTags(Map<String, String> tagsMap, PartialPath fullPath)
       throws MetadataException, IOException {
     IMeasurementMNode leafMNode = mtree.getMeasurementMNode(fullPath);
-    // no tag or attribute, we need to add a new record in log
-    if (leafMNode.getOffset() < 0) {
-      try {
+    try {
+      // no tag or attribute, we need to add a new record in log
+      if (leafMNode.getOffset() < 0) {
         long offset = tagManager.writeTagFile(tagsMap, Collections.emptyMap());
         logWriter.changeOffset(fullPath, offset);
         leafMNode.setOffset(offset);
         mtree.updateMNode(leafMNode);
         // update inverted Index map
         tagManager.addIndex(tagsMap, leafMNode);
+        mtree.pinMNode(leafMNode);
         return;
-      } catch (MetadataException | IOException e) {
-        mtree.unPinMNode(leafMNode);
-        throw e;
       }
-    }
 
-    try {
       tagManager.addTags(tagsMap, fullPath, leafMNode);
     } finally {
       mtree.unPinMNode(leafMNode);
@@ -1390,8 +1379,8 @@ public class SchemaRegion {
       // no tag or attribute, just do nothing.
       if (leafMNode.getOffset() != -1) {
         tagManager.dropTagsOrAttributes(keySet, fullPath, leafMNode);
-        mtree.unPinMNode(
-            leafMNode); // when the measurementMNode was added to tagIndex, it was pinned
+        // when the measurementMNode was added to tagIndex, it was pinned
+        mtree.unPinMNode(leafMNode);
       }
     } finally {
       mtree.unPinMNode(leafMNode);
@@ -1878,8 +1867,28 @@ public class SchemaRegion {
   }
   // endregion
 
+  // region Interfaces for Trigger
+
+  public IMeasurementMNode getMeasurementMNodeForTrigger(PartialPath fullPath)
+      throws MetadataException {
+    try {
+      return mtree.getMeasurementMNode(fullPath);
+    } catch (StorageGroupNotSetException e) {
+      throw new PathNotExistException(fullPath.getFullPath());
+    }
+  }
+
+  public void releaseMeasurementMNodeAfterDropTrigger(IMeasurementMNode measurementMNode)
+      throws MetadataException {
+    mtree.unPinMNode(measurementMNode);
+  }
+
+  // endregion
+
+  // region Interfaces for TestOnly
   @TestOnly
   public MTreeBelowSG getMtree() {
     return mtree;
   }
+  // endregion
 }
