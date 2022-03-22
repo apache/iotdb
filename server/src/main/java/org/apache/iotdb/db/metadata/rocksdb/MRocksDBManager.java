@@ -1518,6 +1518,34 @@ public class MRocksDBManager implements IMetaManager {
     return allResult;
   }
 
+  private Map<MeasurementPath, Pair<Map<String, String>, Map<String, String>>>
+      getMatchedMeasurementPathWithTags(String[] nodes) throws IllegalPathException {
+    Map<MeasurementPath, Pair<Map<String, String>, Map<String, String>>> allResult =
+        new ConcurrentHashMap<>();
+    BiFunction<byte[], byte[], Boolean> function =
+        (a, b) -> {
+          MeasurementPath measurementPath =
+              new RMeasurementMNode(RocksDBUtils.getPathByInnerName(new String(a)), b)
+                  .getMeasurementPath();
+          Object tag = RocksDBUtils.parseNodeValue(b, RMNodeValueType.TAGS);
+          if (!(tag instanceof Map)) {
+            tag = Collections.emptyMap();
+          }
+          Object attributes = RocksDBUtils.parseNodeValue(b, RMNodeValueType.ATTRIBUTES);
+          if (!(attributes instanceof Map)) {
+            attributes = Collections.emptyMap();
+          }
+          @SuppressWarnings("unchecked")
+          Pair<Map<String, String>, Map<String, String>> tagsAndAttributes =
+              new Pair<>((Map<String, String>) tag, (Map<String, String>) attributes);
+          allResult.put(measurementPath, tagsAndAttributes);
+          return true;
+        };
+    traverseOutcomeBasins(nodes, MAX_PATH_DEPTH, function, new Character[] {NODE_TYPE_MEASUREMENT});
+
+    return allResult;
+  }
+
   @Override
   public List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan, QueryContext context)
       throws MetadataException {
@@ -1536,60 +1564,28 @@ public class MRocksDBManager implements IMetaManager {
 
   private List<ShowTimeSeriesResult> showTimeseriesWithoutIndex(
       ShowTimeSeriesPlan plan, QueryContext context) throws MetadataException {
-    List<Pair<PartialPath, String[]>> ans;
-    if (plan.isOrderByHeat()) {
-      ans = Collections.emptyList();
-    } else {
-      ans = getAllMeasurementSchema(plan);
-    }
+
     List<ShowTimeSeriesResult> res = new LinkedList<>();
-    for (Pair<PartialPath, String[]> ansString : ans) {
-      Pair<Map<String, String>, Map<String, String>> tagAndAttributePair =
-          new Pair<>(Collections.emptyMap(), Collections.emptyMap());
+    Map<MeasurementPath, Pair<Map<String, String>, Map<String, String>>> measurementPathsAndTags =
+        getMatchedMeasurementPathWithTags(plan.getPath().getNodes());
+    for (Entry<MeasurementPath, Pair<Map<String, String>, Map<String, String>>> entry :
+        measurementPathsAndTags.entrySet()) {
+      MeasurementPath measurementPath = entry.getKey();
       res.add(
           new ShowTimeSeriesResult(
-              ansString.left.getFullPath(),
-              ansString.right[0],
-              ansString.right[1],
-              TSDataType.valueOf(ansString.right[2]),
-              TSEncoding.valueOf(ansString.right[3]),
-              CompressionType.valueOf(ansString.right[4]),
-              ansString.right[6] != null ? Long.parseLong(ansString.right[6]) : 0,
-              tagAndAttributePair.left,
-              tagAndAttributePair.right));
+              measurementPath.getFullPath(),
+              measurementPath.getMeasurementAlias(),
+              getBelongedToSG(measurementPath.getNodes()),
+              measurementPath.getMeasurementSchema().getType(),
+              measurementPath.getMeasurementSchema().getEncodingType(),
+              measurementPath.getMeasurementSchema().getCompressor(),
+              0,
+              entry.getValue().left,
+              entry.getValue().right));
     }
     return res;
   }
 
-  private List<Pair<PartialPath, String[]>> getAllMeasurementSchema(ShowTimeSeriesPlan plan)
-      throws MetadataException {
-    List<MeasurementPath> measurementPaths = getMatchedMeasurementPath(plan.getPath().getNodes());
-    List<Pair<PartialPath, String[]>> result = Collections.synchronizedList(new LinkedList<>());
-    measurementPaths
-        .parallelStream()
-        .forEach(
-            measurementPath -> {
-              String[] tsRow = new String[7];
-              // todo need update these properties
-              tsRow[0] = measurementPath.getMeasurementAlias();
-              // sg name
-              try {
-                tsRow[1] = getBelongedToSG(measurementPath.getNodes());
-              } catch (MetadataException e) {
-                logger.error(e.getMessage());
-                tsRow[1] = StringUtil.EMPTY_STRING;
-              }
-              tsRow[2] = measurementPath.getMeasurementSchema().getType().toString();
-              tsRow[3] = measurementPath.getMeasurementSchema().getEncodingType().toString();
-              tsRow[4] = measurementPath.getMeasurementSchema().getCompressor().toString();
-              tsRow[5] = String.valueOf(0);
-              tsRow[6] = null;
-              Pair<PartialPath, String[]> temp = new Pair<>(measurementPath, tsRow);
-              result.add(temp);
-            });
-
-    return result;
-  }
   /**
    * Get series type for given seriesPath.
    *
