@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.tools;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
@@ -60,7 +60,6 @@ public class IoTDBWatermarkTest {
 
   @Before
   public void setUp() throws Exception {
-    EnvironmentUtils.closeStatMonitor();
     IoTDBDescriptor.getInstance().getConfig().setEnableWatermark(true); // default false
     IoTDBDescriptor.getInstance().getConfig().setWatermarkSecretKey(secretKey);
     IoTDBDescriptor.getInstance().getConfig().setWatermarkBitString(watermarkBitString);

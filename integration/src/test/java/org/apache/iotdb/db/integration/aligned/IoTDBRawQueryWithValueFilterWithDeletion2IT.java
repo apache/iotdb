@@ -40,7 +40,6 @@ public class IoTDBRawQueryWithValueFilterWithDeletion2IT
 
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
 
     enableSeqSpaceCompaction =

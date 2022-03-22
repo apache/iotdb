@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.session;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -54,7 +54,6 @@ public class IoTDBSessionVectorInsertIT {
   @Before
   public void setUp() throws Exception {
     System.setProperty(IoTDBConstant.IOTDB_CONF, "src/test/resources/");
-    EnvironmentUtils.closeStatMonitor();
     TSFileDescriptor.getInstance().getConfig().setMaxDegreeOfIndexNode(3);
     EnvironmentUtils.envSetUp();
     session = new Session("127.0.0.1", 6667, "root", "root");
@@ -272,7 +271,6 @@ public class IoTDBSessionVectorInsertIT {
     schemaList.add(new MeasurementSchema("s2", TSDataType.INT32));
 
     Tablet tablet = new Tablet(ROOT_SG1_D1_VECTOR1, schemaList);
-    tablet.setAligned(true);
     long timestamp = 0;
 
     for (long row = 0; row < 100; row++) {
@@ -464,7 +462,14 @@ public class IoTDBSessionVectorInsertIT {
       compressors.add(CompressionType.SNAPPY);
     }
     session.createAlignedTimeseries(
-        "root.sg.d", multiMeasurementComponents, dataTypes, encodings, compressors, null);
+        "root.sg.d",
+        multiMeasurementComponents,
+        dataTypes,
+        encodings,
+        compressors,
+        null,
+        null,
+        null);
     List<MeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s2", TSDataType.DOUBLE));

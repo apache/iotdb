@@ -26,6 +26,7 @@ import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.utils.SerializeUtils;
@@ -63,6 +64,9 @@ public class Template {
   private int measurementsCount;
   private Map<String, IMeasurementSchema> schemaMap;
 
+  // accelerate template query and check
+  private Set<PartialPath> relatedStorageGroup;
+
   public Template() {}
 
   /**
@@ -76,6 +80,7 @@ public class Template {
     name = plan.getName();
     isDirectAligned = false;
     directNodes = new HashMap<>();
+    relatedStorageGroup = new HashSet<>();
 
     for (int i = 0; i < plan.getMeasurements().size(); i++) {
       IMeasurementSchema curSchema;
@@ -170,7 +175,7 @@ public class Template {
     for (String path : alignedPaths) {
       // check aligned whether legal, and records measurements name
       if (getPathNodeInTemplate(path) != null) {
-        throw new IllegalPathException("Path duplicated: " + prefix);
+        throw new IllegalPathException("Path duplicated: " + path);
       }
       pathNodes = MetaUtils.splitPathToDetachedPath(path);
 
@@ -248,10 +253,16 @@ public class Template {
       String[] nodeNames,
       TSDataType[] dataTypes,
       TSEncoding[] encodings,
-      CompressionType[] compressors) {
+      CompressionType[] compressors)
+      throws IllegalPathException {
     MeasurementSchema[] schemas = new MeasurementSchema[nodeNames.length];
     for (int i = 0; i < nodeNames.length; i++) {
-      schemas[i] = new MeasurementSchema(nodeNames[i], dataTypes[i], encodings[i], compressors[i]);
+      schemas[i] =
+          new MeasurementSchema(
+              new PartialPath(nodeNames[i]).getMeasurement(),
+              dataTypes[i],
+              encodings[i],
+              compressors[i]);
     }
     return schemas;
   }
@@ -398,6 +409,18 @@ public class Template {
     return directNodes.values();
   }
 
+  public Set<PartialPath> getRelatedStorageGroup() {
+    return relatedStorageGroup;
+  }
+
+  public boolean markStorageGroup(IMNode setNode) {
+    return relatedStorageGroup.addAll(getSGPaths(setNode));
+  }
+
+  public boolean unmarkStorageGroup(IMNode unsetNode) {
+    return relatedStorageGroup.removeAll(getSGPaths(unsetNode));
+  }
+
   // endregion
 
   // region inner utils
@@ -459,6 +482,29 @@ public class Template {
     }
     return builder.toString();
   }
+
+  private static Collection<PartialPath> getSGPaths(IMNode cur) {
+    // get all sg paths above or below to the cur
+    IMNode oriNode = cur;
+    while (cur != null && !cur.isStorageGroup()) {
+      cur = cur.getParent();
+    }
+    if (cur == null) {
+      Deque<IMNode> nodeQueue = new ArrayDeque<>();
+      Set<PartialPath> childSGPath = new HashSet<>();
+      nodeQueue.add(oriNode);
+      while (nodeQueue.size() != 0) {
+        IMNode node = nodeQueue.pop();
+        if (node.isStorageGroup()) {
+          childSGPath.add(node.getPartialPath());
+        } else {
+          nodeQueue.addAll(node.getChildren().values());
+        }
+      }
+      return childSGPath;
+    }
+    return Collections.singleton(cur.getPartialPath());
+  }
   // endregion
 
   // region append of template
@@ -479,7 +525,8 @@ public class Template {
     pathNode = MetaUtils.splitPathToDetachedPath(measurements[0]);
     prefix = joinBySeparator(Arrays.copyOf(pathNode, pathNode.length - 1));
     IMNode targetNode = getPathNodeInTemplate(prefix);
-    if (targetNode != null && !targetNode.getAsEntityMNode().isAligned()) {
+    if ((targetNode != null && !targetNode.getAsEntityMNode().isAligned())
+        || (prefix.equals("") && !this.isDirectAligned())) {
       throw new IllegalPathException(prefix, "path already exists but not aligned");
     }
 
@@ -512,8 +559,9 @@ public class Template {
       // If prefix exists and aligned, it will throw exception
       prefix = joinBySeparator(Arrays.copyOf(pathNode, pathNode.length - 1));
       IMNode parNode = getPathNodeInTemplate(prefix);
-      if (parNode != null && parNode.getAsEntityMNode().isAligned()) {
-        throw new IllegalPathException(prefix, "path already exists and aligned");
+      if ((parNode != null && parNode.getAsEntityMNode().isAligned())
+          || (prefix.equals("") && this.isDirectAligned())) {
+        throw new IllegalPathException(measurements[i], "path already exists and aligned");
       }
 
       IMeasurementSchema schema =

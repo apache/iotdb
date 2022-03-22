@@ -98,6 +98,11 @@ public class ShowPlan extends PhysicalPlan {
     return String.format("%s %s", getOperatorType(), showContentType);
   }
 
+  @Override
+  public String getOperatorName() {
+    return String.format("%s: %s", getOperatorType(), showContentType);
+  }
+
   public enum ShowContentType {
     FLUSH_TASK_INFO,
     TTL,
@@ -110,13 +115,17 @@ public class ShowPlan extends PhysicalPlan {
     COUNT_TIMESERIES,
     COUNT_NODE_TIMESERIES,
     COUNT_NODES,
-    MERGE_STATUS,
     FUNCTIONS,
     COUNT_DEVICES,
     COUNT_STORAGE_GROUP,
     QUERY_PROCESSLIST,
     TRIGGERS,
     LOCK_INFO,
-    CONTINUOUS_QUERY
+    CONTINUOUS_QUERY,
+    QUERY_RESOURCE,
+    SCHEMA_TEMPLATE,
+    NODES_IN_SCHEMA_TEMPLATE,
+    PATHS_SET_SCHEMA_TEMPLATE,
+    PATHS_USING_SCHEMA_TEMPLATE
   }
 }

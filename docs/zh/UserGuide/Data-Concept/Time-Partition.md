@@ -25,11 +25,13 @@
 
 时间分区按照时间分割数据，一个时间分区用于保存某个时间范围内的所有数据。时间分区编号使用自然数表示，0 表示 1970 年 1 月 1 日，每隔 partition_interval 秒后加一。数据通过计算 timestamp / partition_interval 得到自己所在的时间分区编号，主要配置项如下所示：
 
+注意：当前不建议开启此功能。 如果打开，请计算合适的 concurrent_writing_time_partition 和 wal_buffer_size, 计算公式如 wal_buffer_size = MaxDirectMemorySizeInBytes * 0.3 / (storage_group_num * virtual_storage_group_num) / concurrent_writing_time_partition
+
 * enable\_partition
 
 |名字| enable\_partition |
 |:---:|:---|
-|描述| 是否开启将数据按时间分区存储的功能，如果关闭，所有数据都属于分区 0|
+|描述| 是否开启将数据按时间分区存储的功能，如果关闭，所有数据都属于分区 0 (不建议开启此功能。 如果打开，请计算合适的 concurrent_writing_time_partition 和 wal_buffer_size)|
 |类型|Bool|
 |默认值| false |
 |改后生效方式|仅允许在第一次启动服务前修改|
@@ -55,7 +57,7 @@
 
 ## 使用建议
 
-使用时间分区功能时，建议同时打开 Memtable 的定时刷盘功能和 TsFileProcessor 的定时关闭功能，共 9 个相关配置参数（详情见 [timed_flush与timed_close配置项](../Appendix/Config-Manual.md)）。
+使用时间分区功能时，建议同时打开 Memtable 的定时刷盘功能和 TsFileProcessor 的定时关闭功能，共 9 个相关配置参数（详情见 [timed_flush与timed_close配置项](../Reference/Config-Manual.md)）。
 
 * enable_timed_flush_unseq_memtable: 是否开启乱序 Memtable 的定时刷盘，默认打开。
 

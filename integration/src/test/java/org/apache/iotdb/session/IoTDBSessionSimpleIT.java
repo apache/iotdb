@@ -18,11 +18,11 @@
  */
 package org.apache.iotdb.session;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.OperationType;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.SchemaEngine;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -82,7 +82,6 @@ public class IoTDBSessionSimpleIT {
   @Before
   public void setUp() {
     System.setProperty(IoTDBConstant.IOTDB_CONF, "src/test/resources/");
-    EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
   }
 
@@ -333,7 +332,7 @@ public class IoTDBSessionSimpleIT {
     assertTrue(session.checkTimeseriesExists("root.sg1.d1.s1"));
     assertTrue(session.checkTimeseriesExists("root.sg1.d1.s2"));
     IMeasurementMNode mNode =
-        MManager.getInstance().getMeasurementMNode(new PartialPath("root.sg1.d1.s1"));
+        SchemaEngine.getInstance().getMeasurementMNode(new PartialPath("root.sg1.d1.s1"));
     assertNull(mNode.getSchema().getProps());
 
     session.close();
@@ -396,7 +395,6 @@ public class IoTDBSessionSimpleIT {
     schemaList.add(new MeasurementSchema("s3", TSDataType.TEXT));
 
     Tablet tablet = new Tablet("root.sg1.d1", schemaList);
-    tablet.setAligned(true);
     long timestamp = System.currentTimeMillis();
 
     for (long row = 0; row < 10; row++) {
@@ -538,7 +536,7 @@ public class IoTDBSessionSimpleIT {
     try {
       session.deleteTimeseries(Arrays.asList("root.sg1.d1.t6", "root.sg1.d1.t2", "root.sg1.d1.t3"));
     } catch (BatchExecutionException e) {
-      assertEquals("Path [root.sg1.d1.t6] does not exist;", e.getMessage());
+      assertTrue(e.getMessage().contains("Path [root.sg1.d1.t6] does not exist;"));
     }
     assertTrue(session.checkTimeseriesExists("root.sg1.d1.t1"));
     assertFalse(session.checkTimeseriesExists("root.sg1.d1.t2"));
@@ -783,6 +781,78 @@ public class IoTDBSessionSimpleIT {
   }
 
   @Test
+  public void testInsertStringRecordsOfOneDeviceWithOrder()
+      throws IoTDBConnectionException, StatementExecutionException {
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+    List<Long> times = new ArrayList<>();
+    List<List<String>> measurements = new ArrayList<>();
+    List<List<String>> values = new ArrayList<>();
+
+    addStringLine(times, measurements, values, 1L, "s4", "s5", "5.0", "true");
+    addStringLine(times, measurements, values, 2L, "s2", "s3", "3", "4");
+    addStringLine(times, measurements, values, 3L, "s1", "s2", "false", "6");
+
+    session.insertStringRecordsOfOneDevice("root.sg.d1", times, measurements, values, true);
+    checkResultForInsertStringRecordsOfOneDevice(session);
+    session.close();
+  }
+
+  @Test
+  public void testInsertStringRecordsOfOneDeviceWithIncorrectOrder()
+      throws IoTDBConnectionException, StatementExecutionException {
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+    List<Long> times = new ArrayList<>();
+    List<List<String>> measurements = new ArrayList<>();
+    List<List<String>> values = new ArrayList<>();
+
+    addStringLine(times, measurements, values, 2L, "s2", "s3", "3", "4");
+    addStringLine(times, measurements, values, 1L, "s4", "s5", "5.0", "true");
+    addStringLine(times, measurements, values, 3L, "s1", "s2", "false", "6");
+
+    session.insertStringRecordsOfOneDevice("root.sg.d1", times, measurements, values);
+    checkResultForInsertStringRecordsOfOneDevice(session);
+    session.close();
+  }
+
+  @Test
+  public void testInsertAlignedStringRecordsOfOneDeviceWithOrder()
+      throws IoTDBConnectionException, StatementExecutionException {
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+    List<Long> times = new ArrayList<>();
+    List<List<String>> measurements = new ArrayList<>();
+    List<List<String>> values = new ArrayList<>();
+
+    addStringLine(times, measurements, values, 1L, "s4", "s5", "5.0", "true");
+    addStringLine(times, measurements, values, 2L, "s2", "s3", "3", "4");
+    addStringLine(times, measurements, values, 3L, "s1", "s2", "false", "6");
+
+    session.insertAlignedStringRecordsOfOneDevice("root.sg.d1", times, measurements, values, true);
+    checkResultForInsertStringRecordsOfOneDevice(session);
+    session.close();
+  }
+
+  @Test
+  public void testInsertAlignedStringRecordsOfOneDeviceWithIncorrectOrder()
+      throws IoTDBConnectionException, StatementExecutionException {
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+    List<Long> times = new ArrayList<>();
+    List<List<String>> measurements = new ArrayList<>();
+    List<List<String>> values = new ArrayList<>();
+
+    addStringLine(times, measurements, values, 2L, "s2", "s3", "3", "4");
+    addStringLine(times, measurements, values, 1L, "s4", "s5", "5.0", "true");
+    addStringLine(times, measurements, values, 3L, "s1", "s2", "false", "6");
+
+    session.insertAlignedStringRecordsOfOneDevice("root.sg.d1", times, measurements, values);
+    checkResultForInsertStringRecordsOfOneDevice(session);
+    session.close();
+  }
+
+  @Test
   public void testInsertIlligalPath() throws IoTDBConnectionException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
@@ -993,7 +1063,10 @@ public class IoTDBSessionSimpleIT {
           tsDataTypes,
           tsEncodings,
           compressionTypes,
-          Arrays.asList("alias1", "alias2", "alias3"));
+          Arrays.asList("alias1", "alias2", "alias3"),
+          null,
+          null);
+
       fail("Exception expected");
     } catch (StatementExecutionException e) {
       assertTrue(
@@ -1195,7 +1268,6 @@ public class IoTDBSessionSimpleIT {
     schemaList.add(new MeasurementSchema("x", TSDataType.FLOAT));
     schemaList.add(new MeasurementSchema("y", TSDataType.FLOAT));
     Tablet tablet = new Tablet("root.sg.loc1.sector", schemaList);
-    tablet.setAligned(true);
 
     long timestamp = System.currentTimeMillis();
 
@@ -1227,8 +1299,9 @@ public class IoTDBSessionSimpleIT {
       session.deleteTimeseries("root.sg.loc1.sector.x");
       fail();
     } catch (StatementExecutionException e) {
-      assertEquals(
-          "Cannot delete a timeseries inside a template: root.sg.loc1.sector.x;", e.getMessage());
+      assertTrue(
+          e.getMessage()
+              .contains("Cannot delete a timeseries inside a template: root.sg.loc1.sector.x;"));
     }
 
     session.close();
@@ -1285,17 +1358,18 @@ public class IoTDBSessionSimpleIT {
 
     dataSet = session.executeQueryStatement("show devices");
 
-    checkSet.add("root.sg.loc");
-    checkSet.add("root.sg.loc.GPS");
-    checkSet.add("root.sg.loc.vehicle");
-    checkSet.add("root.sg.loc.vehicle.GPS");
-    checkSet.add("root.sg.loc.area");
-    checkSet.add("root.sg.loc.area.GPS");
-    checkSet.add("root.sg.loc.area.vehicle");
-    checkSet.add("root.sg.loc.area.vehicle.GPS");
+    checkSet.add("root.sg.loc,true");
+    checkSet.add("root.sg.loc.GPS,false");
+    checkSet.add("root.sg.loc.vehicle,true");
+    checkSet.add("root.sg.loc.vehicle.GPS,false");
+    checkSet.add("root.sg.loc.area,true");
+    checkSet.add("root.sg.loc.area.GPS,false");
+    checkSet.add("root.sg.loc.area.vehicle,true");
+    checkSet.add("root.sg.loc.area.vehicle.GPS,false");
 
     while (dataSet.hasNext()) {
-      checkSet.remove(dataSet.next().getFields().get(0).toString());
+      List<Field> fields = dataSet.next().getFields();
+      checkSet.remove(fields.get(0).toString() + "," + fields.get(1).toString());
     }
 
     assertTrue(checkSet.isEmpty());
@@ -1450,6 +1524,63 @@ public class IoTDBSessionSimpleIT {
     dataSet.closeOperationHandle();
   }
 
+  private void checkResultForInsertStringRecordsOfOneDevice(Session session)
+      throws StatementExecutionException, IoTDBConnectionException {
+    SessionDataSet dataSet = session.executeQueryStatement("select * from root.sg.d1");
+    dataSet.getColumnNames();
+    Assert.assertArrayEquals(
+        dataSet.getColumnNames().toArray(new String[0]),
+        new String[] {
+          "Time",
+          "root.sg.d1.s3",
+          "root.sg.d1.s4",
+          "root.sg.d1.s5",
+          "root.sg.d1.s1",
+          "root.sg.d1.s2"
+        });
+    Assert.assertArrayEquals(
+        dataSet.getColumnTypes().toArray(new String[0]),
+        new String[] {
+          String.valueOf(TSDataType.INT64),
+          String.valueOf(TSDataType.FLOAT),
+          String.valueOf(TSDataType.FLOAT),
+          String.valueOf(TSDataType.BOOLEAN),
+          String.valueOf(TSDataType.BOOLEAN),
+          String.valueOf(TSDataType.FLOAT)
+        });
+    long time = 1L;
+
+    Assert.assertTrue(dataSet.hasNext());
+    RowRecord record = dataSet.next();
+    Assert.assertEquals(time, record.getTimestamp());
+    time++;
+
+    assertNulls(record, new int[] {0, 3, 4});
+    Assert.assertEquals(5.0f, record.getFields().get(1).getFloatV(), 0.01);
+    Assert.assertEquals(Boolean.TRUE, record.getFields().get(2).getBoolV());
+
+    Assert.assertTrue(dataSet.hasNext());
+    record = dataSet.next();
+    Assert.assertEquals(time, record.getTimestamp());
+    time++;
+
+    assertNulls(record, new int[] {1, 2, 3});
+    Assert.assertEquals(4, record.getFields().get(0).getFloatV(), 0.01);
+    Assert.assertEquals(3, record.getFields().get(4).getFloatV(), 0.01);
+
+    Assert.assertTrue(dataSet.hasNext());
+    record = dataSet.next();
+    Assert.assertEquals(time, record.getTimestamp());
+    time++;
+
+    assertNulls(record, new int[] {0, 1, 2});
+    Assert.assertEquals(false, record.getFields().get(3).getBoolV());
+    Assert.assertEquals(6, record.getFields().get(4).getFloatV(), 0.01);
+
+    Assert.assertFalse(dataSet.hasNext());
+    dataSet.closeOperationHandle();
+  }
+
   private void addLine(
       List<Long> times,
       List<List<String>> measurements,
@@ -1474,6 +1605,26 @@ public class IoTDBSessionSimpleIT {
     times.add(time);
     measurements.add(tmpMeasurements);
     datatypes.add(tmpDataTypes);
+    values.add(tmpValues);
+  }
+
+  private void addStringLine(
+      List<Long> times,
+      List<List<String>> measurements,
+      List<List<String>> values,
+      long time,
+      String s1,
+      String s2,
+      String value1,
+      String value2) {
+    List<String> tmpMeasurements = new ArrayList<>();
+    List<String> tmpValues = new ArrayList<>();
+    tmpMeasurements.add(s1);
+    tmpMeasurements.add(s2);
+    tmpValues.add(value1);
+    tmpValues.add(value2);
+    times.add(time);
+    measurements.add(tmpMeasurements);
     values.add(tmpValues);
   }
 

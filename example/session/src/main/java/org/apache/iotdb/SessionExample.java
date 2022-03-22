@@ -27,6 +27,7 @@ import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.session.SessionDataSet.DataIterator;
 import org.apache.iotdb.session.template.MeasurementNode;
 import org.apache.iotdb.session.template.Template;
+import org.apache.iotdb.session.util.Version;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -57,7 +58,13 @@ public class SessionExample {
   public static void main(String[] args)
       throws IoTDBConnectionException, StatementExecutionException {
     session =
-        new Session.Builder().host(LOCAL_HOST).port(6667).username("root").password("root").build();
+        new Session.Builder()
+            .host(LOCAL_HOST)
+            .port(6667)
+            .username("root")
+            .password("root")
+            .version(Version.V_0_13)
+            .build();
     session.open(false);
 
     // set session fetchSize
@@ -444,10 +451,7 @@ public class SessionExample {
     Tablet tablet = new Tablet(ROOT_SG1_D1, schemaList, 100);
 
     // Method 1 to add tablet data
-    tablet.bitMaps = new BitMap[schemaList.size()];
-    for (int s = 0; s < 3; s++) {
-      tablet.bitMaps[s] = new BitMap(tablet.getMaxRowNumber());
-    }
+    tablet.initBitMaps();
 
     long timestamp = System.currentTimeMillis();
     for (long row = 0; row < 100; row++) {

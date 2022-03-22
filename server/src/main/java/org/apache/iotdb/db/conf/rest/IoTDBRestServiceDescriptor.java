@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.conf.rest;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -65,6 +65,11 @@ public class IoTDBRestServiceDescriptor {
           Integer.parseInt(
               properties.getProperty(
                   "rest_service_port", Integer.toString(conf.getRestServicePort()))));
+      conf.setRestQueryDefaultRowSizeLimit(
+          Integer.parseInt(
+              properties.getProperty(
+                  "rest_query_default_row_size_limit",
+                  Integer.toString(conf.getRestQueryDefaultRowSizeLimit()))));
 
       conf.setEnableHttps(
           Boolean.parseBoolean(

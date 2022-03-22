@@ -36,12 +36,16 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.apache.iotdb.tsfile.Constant.DEVICE_1;
+import static org.apache.iotdb.tsfile.Constant.SENSOR_1;
+import static org.apache.iotdb.tsfile.Constant.SENSOR_2;
+import static org.apache.iotdb.tsfile.Constant.SENSOR_3;
+
 /**
  * An example of writing data with TSRecord to TsFile It uses the interface: public void
  * addMeasurement(MeasurementSchema measurementSchema) throws WriteProcessException
  */
 public class TsFileWriteWithTSRecord {
-  private static String deviceId = "root.sg.d1";
 
   public static void main(String[] args) {
     try {
@@ -53,19 +57,19 @@ public class TsFileWriteWithTSRecord {
 
       try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
         List<MeasurementSchema> schemas = new ArrayList<>();
-        schemas.add(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
-        schemas.add(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
-        schemas.add(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
+        schemas.add(new MeasurementSchema(SENSOR_1, TSDataType.INT64, TSEncoding.RLE));
+        schemas.add(new MeasurementSchema(SENSOR_2, TSDataType.INT64, TSEncoding.RLE));
+        schemas.add(new MeasurementSchema(SENSOR_3, TSDataType.INT64, TSEncoding.RLE));
 
         // register timeseries
-        tsFileWriter.registerTimeseries(new Path(deviceId), schemas);
+        tsFileWriter.registerTimeseries(new Path(DEVICE_1), schemas);
 
         List<IMeasurementSchema> writeMeasurementScheams = new ArrayList<>();
         // example1
         writeMeasurementScheams.add(schemas.get(0));
         writeMeasurementScheams.add(schemas.get(1));
         writeMeasurementScheams.add(schemas.get(2));
-        write(tsFileWriter, deviceId, writeMeasurementScheams, 10000, 0, 0);
+        write(tsFileWriter, DEVICE_1, writeMeasurementScheams, 10000, 0, 0);
       }
     } catch (Throwable e) {
       e.printStackTrace();

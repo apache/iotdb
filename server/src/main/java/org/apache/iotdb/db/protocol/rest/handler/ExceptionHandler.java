@@ -17,19 +17,22 @@
 
 package org.apache.iotdb.db.protocol.rest.handler;
 
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.auth.AuthException;
-import org.apache.iotdb.db.exception.IoTDBException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.protocol.rest.model.ExecutionStatus;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.core.Response.Status;
+
+import java.io.IOException;
 
 public class ExceptionHandler {
   private static final Logger LOGGER = LoggerFactory.getLogger(ExceptionHandler.class);
@@ -59,9 +62,12 @@ public class ExceptionHandler {
     } else if (e instanceof IoTDBException) {
       responseResult.setMessage(e.getMessage());
       responseResult.setCode(((IoTDBException) e).getErrorCode());
+    } else if (!(e instanceof IOException) && !(e instanceof NullPointerException)) {
+      responseResult.setMessage(e.getMessage());
+      responseResult.setCode(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
     } else {
       responseResult.setMessage(e.getMessage());
-      responseResult.setCode(Status.INTERNAL_SERVER_ERROR.getStatusCode());
+      responseResult.setCode(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
     LOGGER.warn(e.getMessage(), e);
     return responseResult;

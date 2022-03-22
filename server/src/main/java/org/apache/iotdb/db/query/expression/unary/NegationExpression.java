@@ -21,9 +21,10 @@ package org.apache.iotdb.db.query.expression.unary;
 
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.sql.rewriter.WildcardsRemover;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
-import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
 import org.apache.iotdb.db.query.udf.core.layer.IntermediateLayer;
@@ -87,6 +88,18 @@ public class NegationExpression extends Expression {
 
   @Override
   public void removeWildcards(WildcardsRemover wildcardsRemover, List<Expression> resultExpressions)
+      throws StatementAnalyzeException {
+    List<Expression> resultExpressionsForRecursion = new ArrayList<>();
+    expression.removeWildcards(wildcardsRemover, resultExpressionsForRecursion);
+    for (Expression resultExpression : resultExpressionsForRecursion) {
+      resultExpressions.add(new NegationExpression(resultExpression));
+    }
+  }
+
+  @Override
+  public void removeWildcards(
+      org.apache.iotdb.db.qp.utils.WildcardsRemover wildcardsRemover,
+      List<Expression> resultExpressions)
       throws LogicalOptimizeException {
     List<Expression> resultExpressionsForRecursion = new ArrayList<>();
     expression.removeWildcards(wildcardsRemover, resultExpressionsForRecursion);

@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.session;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -51,7 +51,6 @@ public class IoTDBSessionDisableMemControlIT {
   @Before
   public void setUp() {
     System.setProperty(IoTDBConstant.IOTDB_CONF, "src/test/resources/");
-    EnvironmentUtils.closeStatMonitor();
     IoTDBDescriptor.getInstance().getConfig().setEnableMemControl(false);
     EnvironmentUtils.envSetUp();
   }
@@ -152,7 +151,14 @@ public class IoTDBSessionDisableMemControlIT {
       compressors.add(CompressionType.SNAPPY);
     }
     session.createAlignedTimeseries(
-        "root.sg.d", multiMeasurementComponents, dataTypes, encodings, compressors, null);
+        "root.sg.d",
+        multiMeasurementComponents,
+        dataTypes,
+        encodings,
+        compressors,
+        null,
+        null,
+        null);
     List<MeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s2", TSDataType.DOUBLE));

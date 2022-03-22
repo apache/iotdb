@@ -54,7 +54,7 @@ public class ClusterInfoServiceImplTest {
 
     ClusterIoTDB.getInstance()
         .getIotdb()
-        .metaManager
+        .schemaEngine
         .setStorageGroup(new PartialPath("root", "sg"));
     // metaClusterServer.getMember()
     impl = new ClusterInfoServiceImpl();
@@ -64,7 +64,7 @@ public class ClusterInfoServiceImplTest {
   public void tearDown() throws MetadataException, IOException, StorageEngineException {
     ClusterIoTDB.getInstance()
         .getIotdb()
-        .metaManager
+        .schemaEngine
         .deleteStorageGroups(Collections.singletonList(new PartialPath("root", "sg")));
     ClusterIoTDB.getInstance().getMetaGroupMember().stop();
     EnvironmentUtils.cleanEnv();

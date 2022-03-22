@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cluster.query;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -59,7 +60,9 @@ public class ClusterUDTFQueryExecutorTest extends BaseQueryTest {
       throws QueryProcessException, StorageEngineException {
     ClusterPlanner processor = new ClusterPlanner();
     String sqlStr = "select sin(s0) from root.*";
-    PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr, ZoneId.systemDefault());
+    PhysicalPlan plan =
+        processor.parseSQLToPhysicalPlan(
+            sqlStr, ZoneId.systemDefault(), IoTDBConstant.ClientVersion.V_0_13);
     UDTFPlan udtfPlan = (UDTFPlan) plan;
     QueryContext context =
         new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
@@ -79,7 +82,9 @@ public class ClusterUDTFQueryExecutorTest extends BaseQueryTest {
       throws IOException, StorageEngineException, QueryProcessException {
     ClusterPlanner processor = new ClusterPlanner();
     String sqlStr = "select sin(s0) from root.* where time >= 5";
-    PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr, ZoneId.systemDefault());
+    PhysicalPlan plan =
+        processor.parseSQLToPhysicalPlan(
+            sqlStr, ZoneId.systemDefault(), IoTDBConstant.ClientVersion.V_0_13);
     UDTFPlan udtfPlan = (UDTFPlan) plan;
     QueryContext context =
         new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
