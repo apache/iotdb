@@ -92,7 +92,7 @@ public class ConfigManager {
     this.consensusImpl =
         new StandAloneConsensus(
             id -> {
-              if (id.getType() == GroupType.ConfigNode) {
+              if (id.getType() == GroupType.PartitionRegion) {
                 return new StandAloneStateMachine();
               } else {
                 return new EmptyStateMachine();
@@ -100,7 +100,7 @@ public class ConfigManager {
             });
     this.consensusImpl.start();
 
-    this.consensusGroupId = new ConsensusGroupId(GroupType.ConfigNode, 0);
+    this.consensusGroupId = new ConsensusGroupId(GroupType.PartitionRegion, 0);
     this.consensusImpl.addConsensusGroup(
         this.consensusGroupId,
         Collections.singletonList(

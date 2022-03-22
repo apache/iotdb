@@ -51,6 +51,8 @@ public class PartitionTable {
 
   private final ReentrantReadWriteLock dataNodeLock;
   // TODO: Serialize and Deserialize
+  private int nextDataNode = 0;
+  // TODO: Serialize and Deserialize
   private int nextSchemaRegionGroup = 0;
   // TODO: Serialize and Deserialize
   private int nextDataRegionGroup = 0;
@@ -81,57 +83,40 @@ public class PartitionTable {
 
   public TSStatus registerDataNode(RegisterDataNodePlan plan) {
     TSStatus result;
+    DataNodeInfo info = plan.getInfo();
     dataNodeLock.writeLock().lock();
-    if (dataNodesMap.containsValue(plan.getInfo())) {
-      dataNodeLock.writeLock().unlock();
+
+    if (dataNodesMap.containsValue(info)) {
       result = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       result.setMessage(
           String.format(
               "DataNode %s is already registered.", plan.getInfo().getEndPoint().toString()));
     } else {
-      dataNodesMap.put(plan.getInfo().getDataNodeID(), plan.getInfo());
-      dataNodeLock.writeLock().unlock();
+      info.setDataNodeID(nextDataNode);
+      dataNodesMap.put(info.getDataNodeID(), info);
       result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      result.setMessage(String.valueOf(nextDataNode));
+      nextDataNode += 1;
     }
+
+    dataNodeLock.writeLock().unlock();
     return result;
   }
 
   public Map<Integer, DataNodeInfo> getDataNodeInfo(QueryDataNodeInfoPlan plan) {
     Map<Integer, DataNodeInfo> result = new HashMap<>();
     dataNodeLock.readLock().lock();
-    switch (plan.getDataNodeID()) {
-      case Integer.MIN_VALUE:
-        int minKey = Integer.MAX_VALUE;
-        for (Integer key : dataNodesMap.keySet()) {
-          minKey = Math.min(key, minKey);
-        }
-        if (minKey < Integer.MAX_VALUE) {
-          result.put(minKey, dataNodesMap.get(minKey));
-        } else {
-          result = null;
-        }
-        break;
-      case Integer.MAX_VALUE:
-        int maxKey = Integer.MIN_VALUE;
-        for (Integer key : dataNodesMap.keySet()) {
-          maxKey = Math.max(key, maxKey);
-        }
-        if (maxKey > Integer.MIN_VALUE) {
-          result.put(maxKey, dataNodesMap.get(maxKey));
-        } else {
-          result = null;
-        }
-        break;
-      case -1:
-        result.putAll(dataNodesMap);
-        break;
-      default:
-        if (dataNodesMap.containsKey(plan.getDataNodeID())) {
-          result.put(plan.getDataNodeID(), dataNodesMap.get(plan.getDataNodeID()));
-        } else {
-          result = null;
-        }
+
+    if (plan.getDataNodeID() == -1) {
+      result.putAll(dataNodesMap);
+    } else {
+      if (dataNodesMap.containsKey(plan.getDataNodeID())) {
+        result.put(plan.getDataNodeID(), dataNodesMap.get(plan.getDataNodeID()));
+      } else {
+        result = null;
+      }
     }
+
     dataNodeLock.readLock().unlock();
     return result;
   }

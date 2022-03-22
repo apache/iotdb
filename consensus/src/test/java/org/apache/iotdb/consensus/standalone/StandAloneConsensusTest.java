@@ -58,7 +58,7 @@ public class StandAloneConsensusTest {
       new ByteBufferConsensusRequest(ByteBuffer.wrap(new byte[4]));
   private final ConsensusGroupId dataRegionId = new ConsensusGroupId(GroupType.DataRegion, 0);
   private final ConsensusGroupId schemaRegionId = new ConsensusGroupId(GroupType.SchemaRegion, 1);
-  private final ConsensusGroupId configId = new ConsensusGroupId(GroupType.ConfigNode, 2);
+  private final ConsensusGroupId configId = new ConsensusGroupId(GroupType.PartitionRegion, 2);
 
   private static class TestEntry implements IConsensusRequest {
 

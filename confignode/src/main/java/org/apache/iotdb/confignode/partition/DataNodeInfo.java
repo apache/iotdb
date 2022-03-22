@@ -25,7 +25,7 @@ import java.util.List;
 
 public class DataNodeInfo {
 
-  private final int dataNodeID;
+  private int dataNodeID;
   private final Endpoint endPoint;
 
   private List<Integer> schemaRegionGroupIDs;
@@ -38,6 +38,10 @@ public class DataNodeInfo {
 
   public int getDataNodeID() {
     return dataNodeID;
+  }
+
+  public void setDataNodeID(int dataNodeID) {
+    this.dataNodeID = dataNodeID;
   }
 
   public Endpoint getEndPoint() {

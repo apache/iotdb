@@ -23,11 +23,7 @@ import org.apache.iotdb.confignode.physical.PhysicalPlanType;
 
 import java.nio.ByteBuffer;
 
-/**
- * Get DataNodeInfo by the specific DataNode's id. Special parameters: 1. Integer.MAX_VALUE: get the
- * DataNodeInfo with the maximum id 2. Integer.MIN_VALUE: get the DataNodeInfo with the minimum id
- * 3. -1: return all DataSetInfo
- */
+/** Get DataNodeInfo by the specific DataNode's id. And return all when dataNodeID is set to -1. */
 public class QueryDataNodeInfoPlan extends PhysicalPlan {
 
   private int dataNodeID;

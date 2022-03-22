@@ -20,7 +20,7 @@ package org.apache.iotdb.confignode.service.thrift.server;
 
 import org.apache.iotdb.confignode.rpc.thrift.DataNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.DataNodeRegisterReq;
-import org.apache.iotdb.confignode.rpc.thrift.DataNodesInfo;
+import org.apache.iotdb.confignode.rpc.thrift.DataNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.SetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.StorageGroupSchema;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -42,29 +42,36 @@ public class ConfigNodeRPCServerProcessorTest {
   public void registerDataNodeTest() throws TException {
     ConfigNodeRPCServerProcessor processor = new ConfigNodeRPCServerProcessor();
 
-    TSStatus status;
+    DataNodeRegisterResp resp;
     DataNodeRegisterReq registerReq0 = new DataNodeRegisterReq(new EndPoint("0.0.0.0", 6667));
     DataNodeRegisterReq registerReq1 = new DataNodeRegisterReq(new EndPoint("0.0.0.0", 6668));
     DataNodeRegisterReq registerReq2 = new DataNodeRegisterReq(new EndPoint("0.0.0.0", 6669));
 
     // test success register
-    status = processor.registerDataNode(registerReq0).getRegisterResult();
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-    status = processor.registerDataNode(registerReq1).getRegisterResult();
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-    status = processor.registerDataNode(registerReq2).getRegisterResult();
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    resp = processor.registerDataNode(registerReq0);
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(), resp.getRegisterResult().getCode());
+    Assert.assertEquals(0, resp.getDataNodeID());
+    resp = processor.registerDataNode(registerReq1);
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(), resp.getRegisterResult().getCode());
+    Assert.assertEquals(1, resp.getDataNodeID());
+    resp = processor.registerDataNode(registerReq2);
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(), resp.getRegisterResult().getCode());
+    Assert.assertEquals(2, resp.getDataNodeID());
 
     // test reject register
-    status = processor.registerDataNode(registerReq0).getRegisterResult();
-    Assert.assertEquals(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode(), status.getCode());
-    Assert.assertEquals("DataNode 0.0.0.0:6667 is already registered.", status.getMessage());
+    resp = processor.registerDataNode(registerReq0);
+    Assert.assertEquals(
+        TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode(), resp.getRegisterResult().getCode());
+    Assert.assertEquals(
+        "DataNode 0.0.0.0:6667 is already registered.", resp.getRegisterResult().getMessage());
 
     // test query DataNodeInfo
-    DataNodesInfo info = processor.getDataNodesInfo(-1);
-    Assert.assertEquals(info.getDataNodesMapSize(), 3);
-    List<Map.Entry<Integer, DataNodeInfo>> infoList =
-        new ArrayList<>(info.getDataNodesMap().entrySet());
+    Map<Integer, DataNodeInfo> infoMap = processor.getDataNodesInfo(-1);
+    Assert.assertEquals(3, infoMap.size());
+    List<Map.Entry<Integer, DataNodeInfo>> infoList = new ArrayList<>(infoMap.entrySet());
     infoList.sort(Comparator.comparingInt(Map.Entry::getKey));
     for (int i = 0; i < 3; i++) {
       Assert.assertEquals(i, infoList.get(i).getValue().getDataNodeID());
@@ -72,18 +79,11 @@ public class ConfigNodeRPCServerProcessorTest {
       Assert.assertEquals(6667 + i, infoList.get(i).getValue().getEndPoint().getPort());
     }
 
-    info = processor.getDataNodesInfo(Integer.MAX_VALUE);
-    Assert.assertEquals(1, info.getDataNodesMapSize());
-    Assert.assertEquals(2, info.getDataNodesMap().get(2).getDataNodeID());
-    Assert.assertEquals("0.0.0.0", info.getDataNodesMap().get(2).getEndPoint().getIp());
-    Assert.assertEquals(6669, info.getDataNodesMap().get(2).getEndPoint().getPort());
-    info = processor.getDataNodesInfo(Integer.MIN_VALUE);
-    Assert.assertEquals(1, info.getDataNodesMapSize());
-    Assert.assertEquals(0, info.getDataNodesMap().get(0).getDataNodeID());
-    Assert.assertEquals("0.0.0.0", info.getDataNodesMap().get(0).getEndPoint().getIp());
-    Assert.assertEquals(6667, info.getDataNodesMap().get(0).getEndPoint().getPort());
-
-    processor = null;
+    infoMap = processor.getDataNodesInfo(1);
+    Assert.assertEquals(1, infoMap.size());
+    Assert.assertNotNull(infoMap.get(1));
+    Assert.assertEquals("0.0.0.0", infoMap.get(1).getEndPoint().getIp());
+    Assert.assertEquals(6668, infoMap.get(1).getEndPoint().getPort());
   }
 
   @Test
@@ -91,9 +91,10 @@ public class ConfigNodeRPCServerProcessorTest {
     ConfigNodeRPCServerProcessor processor = new ConfigNodeRPCServerProcessor();
 
     TSStatus status;
+    final String sg = "root.sg0";
 
     // failed because there are not enough DataNodes
-    SetStorageGroupReq setReq = new SetStorageGroupReq("root.sg0");
+    SetStorageGroupReq setReq = new SetStorageGroupReq(sg);
     status = processor.setStorageGroup(setReq);
     Assert.assertEquals(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode(), status.getCode());
     Assert.assertEquals("DataNode is not enough, please register more.", status.getMessage());
@@ -114,11 +115,9 @@ public class ConfigNodeRPCServerProcessorTest {
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
     // query StorageGroupSchema
-    StorageGroupSchema schema = processor.getStorageGroupSchemas().get(0);
-    Assert.assertEquals("root.sg0", schema.getStorageGroup());
-    Assert.assertEquals(0, (long) schema.getSchemaRegionGroupIDs().get(0));
-    Assert.assertEquals(0, (long) schema.getDataRegionGroupIDs().get(0));
-
-    processor = null;
+    Map<String, StorageGroupSchema> schemaMap = processor.getStorageGroupSchemas();
+    Assert.assertEquals(1, schemaMap.size());
+    Assert.assertNotNull(schemaMap.get(sg));
+    Assert.assertEquals(sg, schemaMap.get(sg).getStorageGroup());
   }
 }
