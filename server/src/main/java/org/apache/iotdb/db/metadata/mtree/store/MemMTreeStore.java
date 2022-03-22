@@ -28,16 +28,16 @@ import org.apache.iotdb.db.metadata.mnode.MemMNodeIterator;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 
-import java.io.IOException;
-
 /** This is a memory-based implementation of IMTreeStore. All MNodes are stored in memory. */
 public class MemMTreeStore implements IMTreeStore {
 
   private IMNode root;
 
-  public MemMTreeStore() {}
+  public MemMTreeStore(IMNode node) {
+    root = node;
+  }
 
-  public void init(PartialPath rootPath, boolean isStorageGroup) throws IOException {
+  public MemMTreeStore(PartialPath rootPath, boolean isStorageGroup) {
     if (isStorageGroup) {
       this.root =
           new StorageGroupMNode(

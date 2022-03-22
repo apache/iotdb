@@ -25,7 +25,6 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNodeIterator;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
-import org.apache.iotdb.db.metadata.mnode.MNodeContainers;
 import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
 import org.apache.iotdb.db.metadata.mtree.store.disk.MTreeFlushTaskManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.ICacheManager;
@@ -69,13 +68,16 @@ public class CachedMTreeStore implements IMTreeStore {
   private Lock readLock = readWriteLock.readLock();
   private Lock writeLock = readWriteLock.writeLock();
 
-  @Override
-  public void init(PartialPath rootPath, boolean isStorageGroup)
-      throws MetadataException, IOException {
-    if (!isStorageGroup) {
+  public CachedMTreeStore(IMNode node) throws MetadataException, IOException {
+    if (!node.isStorageGroup()) {
       throw new MetadataException("CachedMTreeStore only support subTree below storage group");
     }
-    MNodeContainers.IS_DISK_MODE = true;
+    file = SchemaFile.initSchemaFile(node.getFullPath());
+    this.root = node;
+    cacheManager.initRootStatus(root);
+  }
+
+  public CachedMTreeStore(PartialPath rootPath) throws MetadataException, IOException {
     file = SchemaFile.initSchemaFile(rootPath.getFullPath());
     root = file.init();
     cacheManager.initRootStatus(root);

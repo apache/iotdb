@@ -32,6 +32,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.metadata.template.DifferentTemplateException;
 import org.apache.iotdb.db.exception.metadata.template.NoTemplateOnMNodeException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
@@ -192,15 +193,32 @@ public class SchemaRegion {
                 });
   }
 
-  // Because the writer will be used later and should not be closed here.
-  @SuppressWarnings("squid:S2093")
-  public synchronized IStorageGroupMNode init(PartialPath storageGroup) throws MetadataException {
+  public synchronized void initNewSchemaRegion(IStorageGroupMNode storageGroupMNode)
+      throws MetadataException {
     if (initialized) {
-      return mtree.getStorageGroupMNode();
+      return;
     }
+    storageGroupFullPath = storageGroupMNode.getFullPath();
+    checkSchemaRegionDir();
+    try {
+      isRecovering = true;
 
-    storageGroupFullPath = storageGroup.getFullPath();
+      tagManager = new TagManager(sgSchemaDirPath);
+      mtree = new MTreeBelowSG(storageGroupMNode);
+      logWriter = new MLogWriter(sgSchemaDirPath, MetadataConstant.METADATA_LOG);
+      logWriter.setLogNum(0);
 
+      isRecovering = false;
+    } catch (IOException e) {
+      logger.error(
+          "Cannot recover all MTree from {} file, we try to recover as possible as we can",
+          storageGroupFullPath,
+          e);
+      throw new MetadataException(e);
+    }
+  }
+
+  private void checkSchemaRegionDir() throws SchemaDirCreationFailureException {
     sgSchemaDirPath = config.getSchemaDir() + File.separator + storageGroupFullPath;
     File sgSchemaFolder = SystemFileFactory.INSTANCE.getFile(sgSchemaDirPath);
     if (!sgSchemaFolder.exists()) {
@@ -212,20 +230,56 @@ public class SchemaRegion {
       }
     }
     logFilePath = sgSchemaDirPath + File.separator + MetadataConstant.METADATA_LOG;
-
     logFile = SystemFileFactory.INSTANCE.getFile(logFilePath);
+  }
+
+  // must invoke recover after invoke this method
+  // the recover of mtree need to check the path and mnode above storage group
+  public synchronized IStorageGroupMNode initForRecover(PartialPath storageGroup)
+      throws MetadataException {
+    if (initialized) {
+      return mtree.getStorageGroupMNode();
+    }
+
+    if (!isRecovering) {
+      throw new MetadataException("The SchemaRegion has already recovered.");
+    }
+
+    storageGroupFullPath = storageGroup.getFullPath();
+
+    checkSchemaRegionDir();
 
     try {
-      // do not write log when recover
       isRecovering = true;
 
       tagManager = new TagManager(sgSchemaDirPath);
       mtree = new MTreeBelowSG(storageGroup);
-
-      int lineNumber = initFromLog(logFile);
-
       logWriter = new MLogWriter(sgSchemaDirPath, MetadataConstant.METADATA_LOG);
+
+    } catch (IOException e) {
+      logger.error(
+          "Cannot recover all MTree from {} file, we try to recover as possible as we can",
+          storageGroupFullPath,
+          e);
+      throw new MetadataException(e);
+    }
+
+    IStorageGroupMNode storageGroupMNode = mtree.getStorageGroupMNode();
+    storageGroupMNode.setSchemaRegion(this);
+    return storageGroupMNode;
+  }
+
+  // must invoke initForRecover first and add the storageGroupMNode to MTree
+  public synchronized void recover() throws MetadataException {
+    if (initialized || !isRecovering) {
+      throw new MetadataException(
+          "Must invoke initForRecover first and add add the storageGroupMNode to MTree");
+    }
+    try {
+      // do not write log when recover
+      int lineNumber = initFromLog(logFile);
       logWriter.setLogNum(lineNumber);
+
       isRecovering = false;
     } catch (IOException e) {
       logger.error(
@@ -234,11 +288,8 @@ public class SchemaRegion {
           e);
       throw new MetadataException(e);
     }
-    initialized = true;
 
-    IStorageGroupMNode storageGroupMNode = mtree.getStorageGroupMNode();
-    storageGroupMNode.setSchemaRegion(this);
-    return storageGroupMNode;
+    initialized = true;
   }
 
   public void forceMlog() {
@@ -313,6 +364,7 @@ public class SchemaRegion {
       }
       tagManager.clear();
 
+      isRecovering = true;
       initialized = false;
     } catch (IOException e) {
       logger.error("Cannot close metadata log writer, because:", e);
@@ -479,8 +531,10 @@ public class SchemaRegion {
           plan.setTagOffset(offset);
           logWriter.createTimeseries(plan);
         }
-        leafMNode.setOffset(offset);
-        mtree.updateMNode(leafMNode);
+        if (offset != -1) {
+          leafMNode.setOffset(offset);
+          mtree.updateMNode(leafMNode);
+        }
 
       } finally {
         mtree.unPinMNode(leafMNode);
@@ -610,8 +664,12 @@ public class SchemaRegion {
           plan.setTagOffsets(tagOffsets);
           logWriter.createAlignedTimeseries(plan);
         }
+        tagOffsets = plan.getTagOffsets();
         for (int i = 0; i < measurements.size(); i++) {
-          measurementMNodeList.get(i).setOffset(plan.getTagOffsets().get(i));
+          if (tagOffsets.get(i) != -1) {
+            measurementMNodeList.get(i).setOffset(tagOffsets.get(i));
+            mtree.updateMNode(measurementMNodeList.get(i));
+          }
         }
       } finally {
         for (IMeasurementMNode measurementMNode : measurementMNodeList) {
@@ -1168,11 +1226,6 @@ public class SchemaRegion {
     return mNodes;
   }
 
-  public IMeasurementMNode getPinnedMeasurementMNode(PartialPath fullPath)
-      throws MetadataException {
-    return mtree.getMeasurementMNode(fullPath);
-  }
-
   public IMeasurementMNode getMeasurementMNode(PartialPath fullPath) throws MetadataException {
     IMeasurementMNode measurementMNode = mtree.getMeasurementMNode(fullPath);
     mtree.unPinMNode(measurementMNode);
@@ -1212,27 +1265,36 @@ public class SchemaRegion {
    */
   private void changeOffset(PartialPath path, long offset) throws MetadataException {
     IMeasurementMNode measurementMNode = mtree.getMeasurementMNode(path);
-    measurementMNode.setOffset(offset);
-    mtree.updateMNode(measurementMNode);
-    mtree.unPinMNode(measurementMNode);
-    if (isRecovering) {
-      try {
-        tagManager.recoverIndex(offset, measurementMNode);
-      } catch (IOException e) {
-        throw new MetadataException(e);
+    try {
+      measurementMNode.setOffset(offset);
+      mtree.updateMNode(measurementMNode);
+
+      if (isRecovering) {
+        try {
+          if (tagManager.recoverIndex(offset, measurementMNode)) {
+            mtree.pinMNode(measurementMNode);
+          }
+        } catch (IOException e) {
+          throw new MetadataException(e);
+        }
       }
+    } finally {
+      mtree.unPinMNode(measurementMNode);
     }
   }
 
   public void changeAlias(PartialPath path, String alias) throws MetadataException {
     IMeasurementMNode leafMNode = mtree.getMeasurementMNode(path);
-    if (leafMNode.getAlias() != null) {
-      leafMNode.getParent().deleteAliasChild(leafMNode.getAlias());
+    try {
+      if (leafMNode.getAlias() != null) {
+        leafMNode.getParent().deleteAliasChild(leafMNode.getAlias());
+      }
+      leafMNode.getParent().addAlias(alias, leafMNode);
+      leafMNode.setAlias(alias);
+      mtree.updateMNode(leafMNode);
+    } finally {
+      mtree.unPinMNode(leafMNode);
     }
-    leafMNode.getParent().addAlias(alias, leafMNode);
-    leafMNode.setAlias(alias);
-    mtree.updateMNode(leafMNode);
-    mtree.unPinMNode(leafMNode);
 
     try {
       if (!isRecovering) {
@@ -1263,32 +1325,25 @@ public class SchemaRegion {
     try {
       // upsert alias
       upsertAlias(alias, fullPath, leafMNode);
-    } catch (MetadataException | IOException e) {
-      mtree.unPinMNode(leafMNode);
-      throw e;
-    }
 
-    if (tagsMap == null && attributesMap == null) {
-      mtree.unPinMNode(leafMNode);
-      return;
-    }
-    // no tag or attribute, we need to add a new record in log
-    if (leafMNode.getOffset() < 0) {
-      try {
+      if (tagsMap == null && attributesMap == null) {
+        return;
+      }
+
+      // no tag or attribute, we need to add a new record in log
+      if (leafMNode.getOffset() < 0) {
         long offset = tagManager.writeTagFile(tagsMap, attributesMap);
         logWriter.changeOffset(fullPath, offset);
         leafMNode.setOffset(offset);
         mtree.updateMNode(leafMNode);
         // update inverted Index map
-        tagManager.addIndex(tagsMap, leafMNode);
+        if (tagsMap != null && !tagsMap.isEmpty()) {
+          tagManager.addIndex(tagsMap, leafMNode);
+          mtree.pinMNode(leafMNode);
+        }
         return;
-      } catch (MetadataException | IOException e) {
-        mtree.unPinMNode(leafMNode);
-        throw e;
       }
-    }
 
-    try {
       tagManager.updateTagsAndAttributes(tagsMap, attributesMap, leafMNode);
     } finally {
       mtree.unPinMNode(leafMNode);
@@ -1323,21 +1378,16 @@ public class SchemaRegion {
   public void addAttributes(Map<String, String> attributesMap, PartialPath fullPath)
       throws MetadataException, IOException {
     IMeasurementMNode leafMNode = mtree.getMeasurementMNode(fullPath);
-    // no tag or attribute, we need to add a new record in log
-    if (leafMNode.getOffset() < 0) {
-      try {
+    try {
+      // no tag or attribute, we need to add a new record in log
+      if (leafMNode.getOffset() < 0) {
         long offset = tagManager.writeTagFile(Collections.emptyMap(), attributesMap);
         logWriter.changeOffset(fullPath, offset);
         leafMNode.setOffset(offset);
         mtree.updateMNode(leafMNode);
         return;
-      } catch (MetadataException | IOException e) {
-        mtree.unPinMNode(leafMNode);
-        throw e;
       }
-    }
 
-    try {
       tagManager.addAttributes(attributesMap, fullPath, leafMNode);
     } finally {
       mtree.updateMNode(leafMNode);
@@ -1353,23 +1403,19 @@ public class SchemaRegion {
   public void addTags(Map<String, String> tagsMap, PartialPath fullPath)
       throws MetadataException, IOException {
     IMeasurementMNode leafMNode = mtree.getMeasurementMNode(fullPath);
-    // no tag or attribute, we need to add a new record in log
-    if (leafMNode.getOffset() < 0) {
-      try {
+    try {
+      // no tag or attribute, we need to add a new record in log
+      if (leafMNode.getOffset() < 0) {
         long offset = tagManager.writeTagFile(tagsMap, Collections.emptyMap());
         logWriter.changeOffset(fullPath, offset);
         leafMNode.setOffset(offset);
         mtree.updateMNode(leafMNode);
         // update inverted Index map
         tagManager.addIndex(tagsMap, leafMNode);
+        mtree.pinMNode(leafMNode);
         return;
-      } catch (MetadataException | IOException e) {
-        mtree.unPinMNode(leafMNode);
-        throw e;
       }
-    }
 
-    try {
       tagManager.addTags(tagsMap, fullPath, leafMNode);
     } finally {
       mtree.unPinMNode(leafMNode);
@@ -1390,8 +1436,8 @@ public class SchemaRegion {
       // no tag or attribute, just do nothing.
       if (leafMNode.getOffset() != -1) {
         tagManager.dropTagsOrAttributes(keySet, fullPath, leafMNode);
-        mtree.unPinMNode(
-            leafMNode); // when the measurementMNode was added to tagIndex, it was pinned
+        // when the measurementMNode was added to tagIndex, it was pinned
+        mtree.unPinMNode(leafMNode);
       }
     } finally {
       mtree.unPinMNode(leafMNode);
@@ -1878,8 +1924,28 @@ public class SchemaRegion {
   }
   // endregion
 
+  // region Interfaces for Trigger
+
+  public IMeasurementMNode getMeasurementMNodeForTrigger(PartialPath fullPath)
+      throws MetadataException {
+    try {
+      return mtree.getMeasurementMNode(fullPath);
+    } catch (StorageGroupNotSetException e) {
+      throw new PathNotExistException(fullPath.getFullPath());
+    }
+  }
+
+  public void releaseMeasurementMNodeAfterDropTrigger(IMeasurementMNode measurementMNode)
+      throws MetadataException {
+    mtree.unPinMNode(measurementMNode);
+  }
+
+  // endregion
+
+  // region Interfaces for TestOnly
   @TestOnly
   public MTreeBelowSG getMtree() {
     return mtree;
   }
+  // endregion
 }

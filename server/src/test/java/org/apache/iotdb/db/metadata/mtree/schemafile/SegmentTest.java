@@ -18,11 +18,13 @@
  */
 package org.apache.iotdb.db.metadata.mtree.schemafile;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.*;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISegment;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.RecordUtils;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.Segment;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -38,12 +40,14 @@ public class SegmentTest {
 
   @Before
   public void setUp() {
-    // EnvironmentUtils.envSetUp();
+    IoTDBDescriptor.getInstance().getConfig().setEnablePersistentSchema(true);
+    EnvironmentUtils.envSetUp();
   }
 
   @After
   public void tearDown() throws Exception {
-    // EnvironmentUtils.cleanEnv();
+    EnvironmentUtils.cleanEnv();
+    IoTDBDescriptor.getInstance().getConfig().setEnablePersistentSchema(false);
   }
 
   @Test

@@ -136,8 +136,7 @@ public class TriggerRegistrationService implements IService {
   private IMeasurementMNode tryGetMeasurementMNode(CreateTriggerPlan plan)
       throws TriggerManagementException {
     try {
-      // todo fix me
-      return IoTDB.schemaEngine.getMeasurementMNode(plan.getFullPath());
+      return IoTDB.schemaEngine.getMeasurementMNodeForTrigger(plan.getFullPath());
     } catch (MetadataException e) {
       throw new TriggerManagementException(e.getMessage(), e);
     }
@@ -215,7 +214,13 @@ public class TriggerRegistrationService implements IService {
 
   private void doDeregister(DropTriggerPlan plan) throws TriggerManagementException {
     TriggerExecutor executor = executors.remove(plan.getTriggerName());
-    executor.getMeasurementMNode().setTriggerExecutor(null);
+    IMeasurementMNode measurementMNode = executor.getMeasurementMNode();
+    try {
+      measurementMNode.setTriggerExecutor(null);
+      IoTDB.schemaEngine.releaseMeasurementMNodeAfterDropTrigger(executor.getMeasurementMNode());
+    } catch (MetadataException e) {
+      throw new TriggerManagementException(e.getMessage(), e);
+    }
 
     try {
       executor.onDrop();

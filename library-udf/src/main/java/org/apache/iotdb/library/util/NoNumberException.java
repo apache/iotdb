@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,27 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.sql.planner.plan;
+package org.apache.iotdb.library.util;
 
-import org.apache.iotdb.db.mpp.common.MPPQueryContext;
-import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
-import org.apache.iotdb.db.mpp.sql.optimization.PlanOptimizer;
+/** throw when the value got is not numeric. */
+public class NoNumberException extends Exception {
 
-import java.util.List;
-
-public class LogicalPlanner {
-  private Analysis analysis;
-  private MPPQueryContext context;
-  private List<PlanOptimizer> optimizers;
-
-  public LogicalPlanner(
-      Analysis analysis, MPPQueryContext context, List<PlanOptimizer> optimizers) {
-    this.analysis = analysis;
-    this.context = context;
-    this.optimizers = optimizers;
-  }
-
-  public LogicalQueryPlan plan() {
-    return null;
+  @Override
+  public String toString() {
+    String s = "The value of the input time series is not numeric.\n";
+    return s + super.toString();
   }
 }
