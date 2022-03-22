@@ -43,16 +43,6 @@ public abstract class AbstractCrossSpaceCompactionTask extends AbstractCompactio
     this.selectedUnsequenceFiles = selectedUnsequenceFiles;
   }
 
-  public AbstractCrossSpaceCompactionTask(
-      String fullStorageGroupName,
-      long timePartition,
-      TsFileManager tsFileManager,
-      AtomicInteger currentTaskNum) {
-    super(fullStorageGroupName, timePartition, tsFileManager, currentTaskNum);
-    this.selectedSequenceFiles = null;
-    this.selectedUnsequenceFiles = null;
-  }
-
   @Override
   public void setSourceFilesToCompactionCandidate() {
     this.selectedSequenceFiles.forEach(x -> x.setStatus(TsFileResourceStatus.COMPACTION_CANDIDATE));
