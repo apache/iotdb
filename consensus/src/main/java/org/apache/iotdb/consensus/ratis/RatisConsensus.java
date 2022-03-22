@@ -226,13 +226,9 @@ public class RatisConsensus implements IConsensus {
       return failedRead(new ConsensusGroupNotExistException(groupId));
     }
 
-    if (!(IConsensusRequest instanceof ByteBufferConsensusRequest)) {
-      return failedRead(new RatisSerializationException(IConsensusRequest));
-    }
-
     RaftClientReply reply = null;
     try {
-      ByteBufferConsensusRequest request = (ByteBufferConsensusRequest) IConsensusRequest;
+      RequestMessage message = new RequestMessage(IConsensusRequest);
 
       RaftClientRequest clientRequest =
           RaftClientRequest.newBuilder()
@@ -240,7 +236,7 @@ public class RatisConsensus implements IConsensus {
               .setClientId(localFakeId)
               .setGroupId(Utils.toRatisGroupId(groupId))
               .setCallId(localFakeCallId.incrementAndGet())
-              .setMessage(Message.valueOf(ByteString.copyFrom(request.getContent())))
+              .setMessage(message)
               .setType(RaftClientRequest.staleReadRequestType(0))
               .build();
 

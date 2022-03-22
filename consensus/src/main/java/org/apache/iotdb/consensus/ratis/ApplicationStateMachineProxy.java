@@ -76,9 +76,9 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
 
   @Override
   public CompletableFuture<Message> query(Message request) {
-    IConsensusRequest req =
-        new ByteBufferConsensusRequest(request.getContent().asReadOnlyByteBuffer());
-    DataSet result = applicationStateMachine.read(req);
+    assert request instanceof RequestMessage;
+    RequestMessage requestMessage = (RequestMessage) request;
+    DataSet result = applicationStateMachine.read(requestMessage.getActualRequest());
     return CompletableFuture.completedFuture(new ReadLocalMessage(result));
   }
 }
