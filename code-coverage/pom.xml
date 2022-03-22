@@ -24,7 +24,7 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-parent</artifactId>
-        <version>0.14.0-SNAPSHOT</version>
+        <version>0.13.1-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>iotdb-code-coverage</artifactId>
@@ -65,7 +65,7 @@
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
-                <version>0.8.7</version>
+                <version>0.8.5</version>
                 <configuration>
                     <excludes>
                         <exclude>org/apache/iotdb/service/sync/thrift/*</exclude>

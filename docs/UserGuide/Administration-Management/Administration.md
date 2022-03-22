@@ -286,7 +286,6 @@ At the same time, changes to roles are immediately reflected on all users who ow
 |privilege Name|Interpretation|
 |:---|:---|
 |SET\_STORAGE\_GROUP|set storage groups; path dependent|
-|DELETE\_STORAGE\_GROUP|delete storage groups; path dependent|
 |CREATE\_TIMESERIES|create timeseries; path dependent|
 |INSERT\_TIMESERIES|insert data; path dependent|
 |READ\_TIMESERIES|query data; path dependent|
@@ -295,7 +294,7 @@ At the same time, changes to roles are immediately reflected on all users who ow
 |CREATE\_USER|create users; path independent|
 |DELETE\_USER|delete users; path independent|
 |MODIFY\_PASSWORD|modify passwords for all users; path independent; (Those who do not have this privilege can still change their own asswords. )|
-|LIST\_USER|list all users; list a user's privileges; list a user's roles; list users of Role with four kinds of operation privileges; path independent|
+|LIST\_USER|list all users; list a user's privileges; list a user's roles; list users of role with four kinds of operation privileges; path independent|
 |GRANT\_USER\_PRIVILEGE|grant user privileges; path independent|
 |REVOKE\_USER\_PRIVILEGE|revoke user privileges; path independent|
 |GRANT\_USER\_ROLE|grant user roles; path independent|

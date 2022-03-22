@@ -23,18 +23,15 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
 import java.util.ArrayDeque;
-import java.util.Arrays;
 import java.util.Deque;
 import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.regex.Pattern;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
-import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_ROOT;
 
 /**
  * This class defines the main traversal framework and declares some methods for result process
@@ -50,9 +47,6 @@ public abstract class Traverser {
 
   protected IMNode startNode;
   protected String[] nodes;
-  protected int startIndex;
-  protected int startLevel;
-  protected boolean isPrefixStart = false;
 
   // to construct full path or find mounted node on MTree when traverse into template
   protected Deque<IMNode> traverseContext;
@@ -72,53 +66,13 @@ public abstract class Traverser {
    */
   public Traverser(IMNode startNode, PartialPath path) throws MetadataException {
     String[] nodes = path.getNodes();
-    if (nodes.length == 0 || !nodes[0].equals(PATH_ROOT)) {
+    if (nodes.length == 0 || !nodes[0].equals(startNode.getName())) {
       throw new IllegalPathException(
           path.getFullPath(), path.getFullPath() + " doesn't start with " + startNode.getName());
     }
     this.startNode = startNode;
     this.nodes = nodes;
-    initStartIndexAndLevel(path);
     this.traverseContext = new ArrayDeque<>();
-  }
-
-  /**
-   * The traverser may start traversing from a storageGroupMNode, which is an InternalMNode of the
-   * whole MTree.
-   */
-  private void initStartIndexAndLevel(PartialPath path) throws MetadataException {
-    IMNode parent = startNode.getParent();
-    Deque<IMNode> ancestors = new ArrayDeque<>();
-    ancestors.push(startNode);
-
-    startLevel = 0;
-    while (parent != null) {
-      startLevel++;
-      ancestors.push(parent);
-      parent = parent.getParent();
-    }
-
-    IMNode cur;
-    // given root.a.sg, accept path starting with prefix like root.a.sg, root.*.*, root.**,
-    // root.a.**, which means the prefix matches the startNode's fullPath
-    for (startIndex = 0; startIndex <= startLevel && startIndex < nodes.length; startIndex++) {
-      cur = ancestors.pop();
-      if (nodes[startIndex].equals(MULTI_LEVEL_PATH_WILDCARD)) {
-        return;
-      } else if (!nodes[startIndex].equals(cur.getName())
-          && !nodes[startIndex].contains(ONE_LEVEL_PATH_WILDCARD)) {
-        throw new IllegalPathException(
-            path.getFullPath(), path.getFullPath() + " doesn't start with " + cur.getFullPath());
-      }
-    }
-
-    if (startIndex <= startLevel) {
-      if (!nodes[startIndex - 1].equals(MULTI_LEVEL_PATH_WILDCARD)) {
-        isPrefixStart = true;
-      }
-    } else {
-      startIndex--;
-    }
   }
 
   /**
@@ -126,10 +80,7 @@ public abstract class Traverser {
    * overriding or implement concerned methods.
    */
   public void traverse() throws MetadataException {
-    if (isPrefixStart && !isPrefixMatch) {
-      return;
-    }
-    traverse(startNode, startIndex, startLevel);
+    traverse(startNode, 0, 0);
   }
 
   /**
@@ -320,35 +271,23 @@ public abstract class Traverser {
    * @param currentNode the node need to get the full path of
    * @return full path from traverse start node to the current node
    */
-  protected PartialPath getCurrentPartialPath(IMNode currentNode) {
-    return new PartialPath(getCurrentPathNodes(currentNode));
-  }
-
-  protected String[] getCurrentPathNodes(IMNode currentNode) {
+  protected PartialPath getCurrentPartialPath(IMNode currentNode) throws IllegalPathException {
     Iterator<IMNode> nodes = traverseContext.descendingIterator();
-    List<String> nodeNames = new LinkedList<>();
-    if (nodes.hasNext()) {
-      nodeNames.addAll(Arrays.asList(nodes.next().getPartialPath().getNodes()));
-    }
-
+    StringBuilder builder =
+        nodes.hasNext() ? new StringBuilder(nodes.next().getName()) : new StringBuilder();
     while (nodes.hasNext()) {
-      nodeNames.add(nodes.next().getName());
+      builder.append(TsFileConstant.PATH_SEPARATOR);
+      builder.append(nodes.next().getName());
     }
-
-    if (nodeNames.isEmpty()) {
-      nodeNames.addAll(Arrays.asList(currentNode.getPartialPath().getNodes()));
-    } else {
-      nodeNames.add(currentNode.getName());
+    if (builder.length() != 0) {
+      builder.append(TsFileConstant.PATH_SEPARATOR);
     }
-
-    return nodeNames.toArray(new String[0]);
+    builder.append(currentNode.getName());
+    return new PartialPath(builder.toString());
   }
 
   /** @return the storage group node in the traverse path */
-  protected IMNode getStorageGroupNodeInTraversePath(IMNode currentNode) {
-    if (currentNode.isStorageGroup()) {
-      return currentNode;
-    }
+  protected IMNode getStorageGroupNodeInTraversePath() {
     Iterator<IMNode> nodes = traverseContext.iterator();
     while (nodes.hasNext()) {
       IMNode node = nodes.next();

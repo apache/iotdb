@@ -52,6 +52,7 @@
 * [IOTDB-1986] Support select UDF as alisa clauses 
 * [IOTDB-1989] Spark-IoTDB-connector support inserting data
 * [IOTDB-2131] Support previous, linear, constant value fill funtion New fill
+* [IOTDB-2593] Support using IoTDB with JDK17
 * [ISSUE-3811] Provide a data type column for the last query dataset
 * add rabbitmq example
 
@@ -146,9 +147,68 @@
 * [IOTDB-2267] UDF: Error code 500 caused by user logic
 * [IOTDB-2282] fix tag recovery bug after tag upsert
 * [IOTDB-2290] Fix Incorrect query result in C++ client 
+* [IOTDB-2520] Fix `list user privilege root` returns empty 
+* [IOTDB-2544] Fix tag info sync error during metadata sync
+* [IOTDB-2550] Avoid show timeseries error after alter tag on sync sender
+* [IOTDB-2654] Fix Alias doesn't show when using group by level
 * Fix CPP client could not be successfully built on windows
 * Fix dead lock in setDataTTL method
 
+# Apache IoTDB 0.12.5
+
+## New Features
+* [IOTDB-2078] Split large TsFile tool
+* [IOTDB-2192] Support extreme function
+
+## Improvements
+* [IOTDB-1297] Refactor the memory control when enabling time partitions
+* [IOTDB-2195] Control the concurrent query execution thread
+* [IOTDB-2475] Remove sg not ready log in batch process
+* [IOTDB-2502] Add query sql in error log if encountering exception
+* [IOTDB-2506] Refine the lock granularity of the aggregation query
+* [IOTDB-2534] add character support while using double quote
+* [IOTDB-2562] Change default value of sync mlog period parameter
+* Avoid too many warning logs being printed, when opening too many file handlers
+
+
+## Bug Fixes
+* [IOTDB-1960] Fix count timeseries bug in cluster mode
+* [IOTDB-2174] Fix Regexp filter serializing and deserializing error
+* [IoTDB-2185] fix get an exception bug when parsing the header of CSV
+* [IOTDB-2194] Fix SHOW TIMESERIES will only display 2000 timeseries in cluster mode
+* [IOTDB-2197] Fix datatype conversion exception in Spark Connector
+* [IOTDB-2209] Fix logback CVE-2021-42550 issue
+* [IOTDB-2219] Fix query in-memory data is incorrect in cluster mode
+* [IOTDB-2222] Fix OOM and data was written in incorrectly bugs of Spark Connector
+* [IOTDB-2251] [IOTDB-2252] Fix Query deadlock
+* [IOTDB-2282] fix tag recover bug after tag update
+* [IOTDB-2320] MemoryLeak cause by wal Scheduled trim task thread
+* [IOTDB-2381] Fix deadlock caused by incorrect buffer pool size counter
+* [IOTDB-2400] Fix series reader bug
+* [IOTDB-2426] WAL deadlock caused by too many open files
+* [IOTDB-2445] Fix overlapped data should be consumed first bug
+* [IOTDB-2499] Fix division by zero error when recovering merge
+* [IOTDB-2507] Fix NPE when merge recover
+* [IOTDB-2528] Fix MLog corruption and recovery bug after killing system
+* [IOTDB-2532] Fix query with align by device can't get value after clear cache
+* [IOTDB-2533] Fix change max_deduplicated_path_num does not take effect
+* [IOTDB-2544] Fix tag info sync error during metadata sync
+* [IOTDB-2550] Avoid show timeseries error after alter tag on sync sender
+* [IOTDB-2567]  Fix thread and ByteBuffer leak after service stopped
+* [IOTDB-2568] "show query processlist" is blocked
+* [IOTDB-2580] Fix DirectByteBuffer and thread leak when deleting storage group
+* [IOTDB-2584] Fix cross space compaction selector
+* [IOTDB-2603] Fix compaction recover
+* [IOTDB-2604] Fix batch size is invalid in import-csv tool
+* [IOTDB-2620] Unrecognizable operator type (SHOW) for AuthorityChecker
+* [IOTDB-2624] Fix "overlapped data should be consumed first" occurs when executing query
+* [IOTDB-2640] Fix cross compaction recover bug
+* [IOTDB-2641] Fix time range of TsFile resource overlaps after unseq compaction
+* [IOTDB-2642] Fix the new file has a higher compact priority than the old file in unseq compaction
+* Fix a logical bug in processPlanLocally in cluster mode
+* Throw Exception while using last query with align by device
+* Add a judgement to determine raft log size can fit into buffer before log appending in cluster mode
+* Fix grafana can't be used bug
 
 # Apache IoTDB 0.12.4
 

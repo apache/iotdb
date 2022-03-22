@@ -24,7 +24,7 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-examples</artifactId>
-        <version>0.14.0-SNAPSHOT</version>
+        <version>0.13.1-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>udf-example</artifactId>
@@ -118,7 +118,7 @@
                                 <importOrder>
                                     <order>org.apache.iotdb,,javax,java,\#</order>
                                 </importOrder>
-                                <removeUnusedImports/>
+                                <removeUnusedImports />
                             </java>
                         </configuration>
                         <executions>

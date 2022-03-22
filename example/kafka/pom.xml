@@ -24,12 +24,12 @@
     <!-- you need to add the following content if you remove the parent pom.
   <groupId>org.apache.iotdb.example</groupId>
   <artifactId>kafka-example</artifactId>
-  <version>0.14.0-SNAPSHOT</version>
+  <version>0.13.0-SNAPSHOT</version>
   -->
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-examples</artifactId>
-        <version>0.14.0-SNAPSHOT</version>
+        <version>0.13.1-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>kafka-example</artifactId>
