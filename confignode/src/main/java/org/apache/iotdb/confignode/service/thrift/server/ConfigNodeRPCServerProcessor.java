@@ -20,12 +20,15 @@ package org.apache.iotdb.confignode.service.thrift.server;
 
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
+import org.apache.iotdb.confignode.rpc.thrift.DataNodeRegisterReq;
+import org.apache.iotdb.confignode.rpc.thrift.DataNodesInfo;
 import org.apache.iotdb.confignode.rpc.thrift.DataPartitionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.DeleteStorageGroupReq;
+import org.apache.iotdb.confignode.rpc.thrift.DeviceGroupHashInfo;
 import org.apache.iotdb.confignode.rpc.thrift.GetDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.GetSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.SchemaPartitionInfo;
-import org.apache.iotdb.confignode.rpc.thrift.SetStorageGroupoReq;
+import org.apache.iotdb.confignode.rpc.thrift.SetStorageGroupReq;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import org.apache.thrift.TException;
@@ -40,12 +43,17 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
   }
 
   @Override
-  public TSStatus setStorageGroup(SetStorageGroupoReq req) throws TException {
+  public TSStatus setStorageGroup(SetStorageGroupReq req) throws TException {
     return null;
   }
 
   @Override
   public TSStatus deleteStorageGroup(DeleteStorageGroupReq req) throws TException {
+    return null;
+  }
+
+  @Override
+  public DeviceGroupHashInfo getDeviceGroupHashInfo() throws TException {
     return null;
   }
 
@@ -56,6 +64,16 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
 
   @Override
   public DataPartitionInfo getDataPartition(GetDataPartitionReq req) throws TException {
+    return null;
+  }
+
+  @Override
+  public TSStatus registerDataNode(DataNodeRegisterReq req) throws TException {
+    return null;
+  }
+
+  @Override
+  public DataNodesInfo getDataNodesInfo() throws TException {
     return null;
   }
 
