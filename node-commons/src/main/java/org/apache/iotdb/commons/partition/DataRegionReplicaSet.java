@@ -18,8 +18,9 @@
  */
 package org.apache.iotdb.commons.partition;
 
-import java.util.List;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
+
+import java.util.List;
 
 public class DataRegionReplicaSet {
   private DataRegionId Id;

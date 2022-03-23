@@ -38,6 +38,7 @@ public class DeviceGroupId {
   }
 
   public boolean equals(Object obj) {
-    return obj instanceof DeviceGroupId && this.deviceGroupId == ((DeviceGroupId)obj).deviceGroupId;
+    return obj instanceof DeviceGroupId
+        && this.deviceGroupId == ((DeviceGroupId) obj).deviceGroupId;
   }
 }

@@ -26,22 +26,28 @@ import java.util.stream.Collectors;
 public class DataPartitionInfo {
 
   // Map<StorageGroup, Map<DeviceGroupID, Map<TimePartitionId, List<DataRegionPlaceInfo>>>>
-  private Map<String, Map<DeviceGroupId, Map<TimePartitionId, List<DataRegionReplicaSet>>>> dataPartitionMap;
+  private Map<String, Map<DeviceGroupId, Map<TimePartitionId, List<DataRegionReplicaSet>>>>
+      dataPartitionMap;
 
-  public Map<String, Map<DeviceGroupId, Map<TimePartitionId, List<DataRegionReplicaSet>>>> getDataPartitionMap() {
+  public Map<String, Map<DeviceGroupId, Map<TimePartitionId, List<DataRegionReplicaSet>>>>
+      getDataPartitionMap() {
     return dataPartitionMap;
   }
 
   public void setDataPartitionMap(
-      Map<String, Map<DeviceGroupId, Map<TimePartitionId, List<DataRegionReplicaSet>>>> dataPartitionMap) {
+      Map<String, Map<DeviceGroupId, Map<TimePartitionId, List<DataRegionReplicaSet>>>>
+          dataPartitionMap) {
     this.dataPartitionMap = dataPartitionMap;
   }
 
-  public List<DataRegionReplicaSet> getDataRegionReplicaSet(String deviceName, List<TimePartitionId> timePartitionIdList) {
+  public List<DataRegionReplicaSet> getDataRegionReplicaSet(
+      String deviceName, List<TimePartitionId> timePartitionIdList) {
     String storageGroup = getStorageGroupByDevice(deviceName);
     DeviceGroupId deviceGroupId = calculateDeviceGroupId(deviceName);
     // TODO: (xingtanzjr) the timePartitionIdList is ignored
-    return dataPartitionMap.get(storageGroup).get(deviceGroupId).values().stream().flatMap(Collection::stream).collect(Collectors.toList());
+    return dataPartitionMap.get(storageGroup).get(deviceGroupId).values().stream()
+        .flatMap(Collection::stream)
+        .collect(Collectors.toList());
   }
 
   private DeviceGroupId calculateDeviceGroupId(String deviceName) {
@@ -50,7 +56,7 @@ public class DataPartitionInfo {
   }
 
   private String getStorageGroupByDevice(String deviceName) {
-    for(String storageGroup : dataPartitionMap.keySet()) {
+    for (String storageGroup : dataPartitionMap.keySet()) {
       if (deviceName.startsWith(storageGroup)) {
         return storageGroup;
       }
