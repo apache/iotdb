@@ -42,6 +42,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -106,7 +107,7 @@ public class RatisConsensusTest {
   public void basicConsensus() throws Exception {
 
     // 1. construct a consensus group of 3 peers
-    ConsensusGroupId gid = new ConsensusGroupId(GroupType.DataRegion, 1L);
+    ConsensusGroupId gid = new ConsensusGroupId(GroupType.DataRegion, new Random().nextLong());
 
     List<Peer> peers = new ArrayList<>();
     Peer peer0 = new Peer(gid, new Endpoint("127.0.0.1", 6000));
@@ -178,6 +179,7 @@ public class RatisConsensusTest {
     // 11. try consensus with only peer0
     doConsensus(servers.get(0), gid, 10, 40);
 
+    Thread.sleep(5000);
     // 12. wrap up and delete temp files
     for (File file : peersStorage) {
       FileUtils.deleteFully(file);
