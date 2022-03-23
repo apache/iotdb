@@ -178,7 +178,7 @@ public class FragmentInstanceTask implements IDIndexedAccessible {
 
   private static class StubFragmentInstance implements ExecFragmentInstance {
 
-    private static final QueryId stubQueryId = new QueryId("stub-query");
+    private static final QueryId stubQueryId = new QueryId("stub_query");
     private static final FragmentInstanceId stubInstance =
         new FragmentInstanceId(new PlanFragmentId(stubQueryId, 0), "stub-instance");
 

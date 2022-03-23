@@ -22,7 +22,7 @@ import org.apache.iotdb.db.mpp.schedule.task.FragmentInstanceTask;
 import org.apache.iotdb.db.mpp.schedule.task.FragmentInstanceTaskStatus;
 
 /** the scheduler interface of {@link FragmentInstanceTask} */
-interface ITaskScheduler {
+public interface ITaskScheduler {
 
   /**
    * Switch a task from {@link FragmentInstanceTaskStatus#BLOCKED} to {@link
