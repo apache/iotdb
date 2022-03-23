@@ -16,16 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.consensus.ratis;
 
-package org.apache.iotdb.consensus.exception;
+import org.apache.iotdb.consensus.common.ConsensusGroupId;
+import org.apache.iotdb.consensus.common.GroupType;
 
-public class ConsensusException extends Exception {
+import org.apache.ratis.protocol.RaftGroupId;
+import org.junit.Assert;
+import org.junit.Test;
 
-  public ConsensusException(String message) {
-    super(message);
-  }
-
-  public ConsensusException(String message, Throwable cause) {
-    super(message, cause);
+public class UtilsTest {
+  @Test
+  public void testEncryption() {
+    ConsensusGroupId raw = new ConsensusGroupId(GroupType.DataRegion, 1L);
+    RaftGroupId id = Utils.toRatisGroupId(raw);
+    ConsensusGroupId cgid = Utils.toConsensusGroupId(id);
+    Assert.assertEquals(raw, cgid);
   }
 }

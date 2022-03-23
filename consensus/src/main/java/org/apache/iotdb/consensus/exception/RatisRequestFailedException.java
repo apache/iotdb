@@ -16,16 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.consensus.exception;
 
-public class ConsensusException extends Exception {
+public class RatisRequestFailedException extends ConsensusException {
 
-  public ConsensusException(String message) {
-    super(message);
-  }
-
-  public ConsensusException(String message, Throwable cause) {
-    super(message, cause);
+  public RatisRequestFailedException(Exception cause) {
+    super("Ratis request failed", cause);
   }
 }

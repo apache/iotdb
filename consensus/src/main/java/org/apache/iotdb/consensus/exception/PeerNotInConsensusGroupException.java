@@ -16,16 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.consensus.exception;
 
-public class ConsensusException extends Exception {
+import org.apache.iotdb.consensus.common.ConsensusGroupId;
 
-  public ConsensusException(String message) {
-    super(message);
-  }
+import org.apache.ratis.protocol.RaftPeer;
 
-  public ConsensusException(String message, Throwable cause) {
-    super(message, cause);
+public class PeerNotInConsensusGroupException extends ConsensusException {
+  public PeerNotInConsensusGroupException(ConsensusGroupId groupId, RaftPeer peer) {
+    super(String.format("Peer %s is not in group %d", peer.getAddress(), groupId.getId()));
   }
 }
