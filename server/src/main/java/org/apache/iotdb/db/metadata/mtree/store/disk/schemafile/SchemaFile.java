@@ -194,6 +194,7 @@ public class SchemaFile implements ISchemaFile {
 
     if (node.isStorageGroup()) {
       // Notice that it implies StorageGroupNode is always of 0L segmentAddress
+      curSegAddr = 0L;
       pageIndex = 0;
       curSegIdx = 0;
       isEntity = node.isEntity();
@@ -279,6 +280,7 @@ public class SchemaFile implements ISchemaFile {
       }
     }
 
+    curSegAddr = getNodeAddress(node);
     // Flush updated child
     for (Map.Entry<String, IMNode> entry :
         ICachedMNodeContainer.getCachedMNodeContainer(node).getUpdatedChildBuffer().entrySet()) {
@@ -288,6 +290,12 @@ public class SchemaFile implements ISchemaFile {
 
       // Get segment actually contains the record
       long actualSegAddr = getTargetSegmentAddress(curSegAddr, entry.getKey());
+
+      if (actualSegAddr < 0) {
+        throw new MetadataException(
+            String.format(
+                "Node[%s] has no child[%s] in schema file.", node.getName(), entry.getKey()));
+      }
 
       try {
         curPage = getPageInstance(getPageIndex(actualSegAddr));
