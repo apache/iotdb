@@ -24,10 +24,9 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
-import org.apache.iotdb.db.mpp.sql.rewriter.ConcatPathRewriter;
-import org.apache.iotdb.db.mpp.sql.rewriter.DnfFilterOptimizer;
-import org.apache.iotdb.db.mpp.sql.rewriter.MergeSingleFilterOptimizer;
-import org.apache.iotdb.db.mpp.sql.rewriter.RemoveNotOptimizer;
+import org.apache.iotdb.db.mpp.sql.metadata.IMetadataFetcher;
+import org.apache.iotdb.db.mpp.sql.metadata.MetadataResponse;
+import org.apache.iotdb.db.mpp.sql.rewriter.*;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.db.mpp.sql.statement.component.WhereCondition;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertStatement;
@@ -41,9 +40,13 @@ public class StatementAnalyzer {
   private final Analysis analysis;
   private final MPPQueryContext context;
 
-  public StatementAnalyzer(Analysis analysis, MPPQueryContext context) {
+  private final IMetadataFetcher metadataFetcher;
+
+  public StatementAnalyzer(
+      Analysis analysis, MPPQueryContext context, IMetadataFetcher metadataFetcher) {
     this.analysis = analysis;
     this.context = context;
+    this.metadataFetcher = metadataFetcher;
   }
 
   public Analysis analyze(Statement statement) {
@@ -65,9 +68,17 @@ public class StatementAnalyzer {
         // check for semantic errors
         queryStatement.selfCheck();
 
-        // concat path and remove wildcards (apply SLIMIT & SOFFSET at the same time)
+        // concat path and construct path pattern tree
         QueryStatement rewrittenStatement =
             (QueryStatement) new ConcatPathRewriter().rewrite(queryStatement, context);
+
+        // request metadata API
+        MetadataResponse response = metadataFetcher.requestMetadata(context.getPathPatternTree());
+        context.setResponse(response);
+
+        // bind metadata (remove wildcards and apply SLIMIT & SOFFSET as well)
+        rewrittenStatement =
+            (QueryStatement) new WildcardsRemover().rewrite(rewrittenStatement, context);
 
         // TODO: check access permissions here
 

@@ -25,8 +25,9 @@ import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.common.MPPQueryContext;
+import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.db.mpp.sql.statement.component.ResultColumn;
-import org.apache.iotdb.db.mpp.sql.statement.crud.QueryStatement;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -35,8 +36,14 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-/** Removes wildcards (applying memory control and slimit/soffset control) */
-public class WildcardsRemover {
+/**
+ * This rewriter:
+ *
+ * <p>1. Bind metadata to paths in SELECT, WHERE, and WITHOUT NULL clauses.
+ *
+ * <p>2. Remove wildcards and apply SLIMIT & SOFFSET.
+ */
+public class WildcardsRemover implements IStatementRewriter {
 
   private int soffset = 0;
   private int currentOffset = 0;
@@ -50,18 +57,12 @@ public class WildcardsRemover {
    * Since IoTDB v0.13, all DDL and DML use patternMatch as default. Before IoTDB v0.13, all DDL and
    * DML use prefixMatch.
    */
-  private final boolean isPrefixMatch;
+  private final boolean isPrefixMatch = false;
 
-  public WildcardsRemover(QueryStatement queryStatement) {
-    isPrefixMatch = queryStatement.isPrefixMatchPath();
-    soffset = queryStatement.getSeriesOffset();
-    currentOffset = soffset;
-    final int slimit = queryStatement.getSeriesLimit();
-    currentLimit = slimit == 0 ? currentLimit : Math.min(slimit, currentLimit);
-  }
-
-  private WildcardsRemover(boolean isPrefixMatch) {
-    this.isPrefixMatch = isPrefixMatch;
+  @Override
+  public Statement rewrite(Statement statement, MPPQueryContext context)
+      throws StatementAnalyzeException, PathNumOverLimitException {
+    return null;
   }
 
   public List<MeasurementPath> removeWildcardFrom(PartialPath path)
@@ -88,7 +89,7 @@ public class WildcardsRemover {
     List<List<Expression>> extendedExpressions = new ArrayList<>();
     for (Expression originExpression : expressions) {
       List<Expression> actualExpressions = new ArrayList<>();
-      originExpression.removeWildcards(new WildcardsRemover(isPrefixMatch), actualExpressions);
+      originExpression.removeWildcards(new WildcardsRemover(), actualExpressions);
       if (actualExpressions.isEmpty()) {
         // Let's ignore the eval of the function which has at least one non-existence series as
         // input. See IOTDB-1212: https://github.com/apache/iotdb/pull/3101

@@ -19,12 +19,63 @@
 
 package org.apache.iotdb.db.mpp.sql.metadata;
 
+import java.util.List;
+
 public class PathPatternNode {
 
   private String pathPattern;
 
-  private boolean isWhere;
-  private boolean isSelect;
+  private boolean isSelected;
+  private boolean isValueFiltered;
+  private boolean isNullFiltered;
 
-  private PathPatternNode parent;
+  private List<PathPatternNode> childs;
+
+  public PathPatternNode(String pathPattern) {
+    this.pathPattern = pathPattern;
+  }
+
+  public String getPathPattern() {
+    return pathPattern;
+  }
+
+  public void setPathPattern(String pathPattern) {
+    this.pathPattern = pathPattern;
+  }
+
+  public boolean isSelected() {
+    return isSelected;
+  }
+
+  public void setSelected(boolean selected) {
+    isSelected = selected;
+  }
+
+  public boolean isValueFiltered() {
+    return isValueFiltered;
+  }
+
+  public void setValueFiltered(boolean valueFiltered) {
+    isValueFiltered = valueFiltered;
+  }
+
+  public boolean isNullFiltered() {
+    return isNullFiltered;
+  }
+
+  public void setNullFiltered(boolean nullFiltered) {
+    isNullFiltered = nullFiltered;
+  }
+
+  public List<PathPatternNode> getChilds() {
+    return childs;
+  }
+
+  public void setChilds(List<PathPatternNode> childs) {
+    this.childs = childs;
+  }
+
+  public void addChild(PathPatternNode node) {
+    this.childs.add(node);
+  }
 }

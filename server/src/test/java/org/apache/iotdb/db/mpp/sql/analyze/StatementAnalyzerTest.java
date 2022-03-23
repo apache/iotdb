@@ -33,6 +33,13 @@ import static org.junit.Assert.fail;
 public class StatementAnalyzerTest {
 
   @Test
+  public void test() {
+    assertAnalyzeSemanticException(
+        "SELECT s1+s2 as t1,*,status from root.sg1.d1 where s3 > 0 and s1 < 1 without null all(`root.sg1.d1.s2`, s1+s2, s3)",
+        "Tag and attribute shouldn't have the same property key");
+  }
+
+  @Test
   public void samePropertyKeyTest() {
     assertAnalyzeSemanticException(
         "CREATE TIMESERIES root.sg1.d1.s1 INT32 TAGS(a=1) ATTRIBUTES(a=1)",
@@ -41,7 +48,8 @@ public class StatementAnalyzerTest {
 
   private void assertAnalyzeSemanticException(String sql, String message) {
     try {
-      StatementAnalyzer analyzer = new StatementAnalyzer(new Analysis(), new MPPQueryContext());
+      StatementAnalyzer analyzer =
+          new StatementAnalyzer(new Analysis(), new MPPQueryContext(), null);
       analyzer.analyze(StatementGenerator.createStatement(sql, ZonedDateTime.now().getOffset()));
       fail();
     } catch (SemanticException e) {

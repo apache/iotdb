@@ -24,5 +24,5 @@ package org.apache.iotdb.db.mpp.sql.metadata;
  */
 public interface IMetadataFetcher {
 
-  MetadataResponse requestMetadata(MetadataRequest request);
+  MetadataResponse requestMetadata(PathPatternTree request);
 }

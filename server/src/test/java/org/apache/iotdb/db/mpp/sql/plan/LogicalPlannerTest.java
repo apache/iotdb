@@ -81,7 +81,7 @@ public class LogicalPlannerTest {
     PlanNode planNode = null;
     try {
       MPPQueryContext context = new MPPQueryContext();
-      StatementAnalyzer analyzer = new StatementAnalyzer(new Analysis(), context);
+      StatementAnalyzer analyzer = new StatementAnalyzer(new Analysis(), context, null);
       Analysis analysis =
           analyzer.analyze(
               StatementGenerator.createStatement(sql, ZonedDateTime.now().getOffset()));
