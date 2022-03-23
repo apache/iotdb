@@ -39,6 +39,8 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.nio.BufferOverflowException;
+import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
@@ -377,8 +379,13 @@ public class SchemaFile implements ISchemaFile {
       throw new MetadataException(
           String.format("Node [%s] has no child named [%s].", parent.getFullPath(), childName));
     }
-
-    return getPageInstance(getPageIndex(actualSegAddr)).read(getSegIndex(actualSegAddr), childName);
+    try {
+      return getPageInstance(getPageIndex(actualSegAddr)).read(getSegIndex(actualSegAddr), childName);
+    } catch (BufferUnderflowException | BufferOverflowException e) {
+      e.printStackTrace();
+      logger.error(String.format("parent: %s, actualAddress:%s", parent.getName(), actualSegAddr));
+      logger.error(String.format("Page inspect: %s", getPageInstance(getPageIndex(actualSegAddr)).inspect()));
+    }
   }
 
   @Override

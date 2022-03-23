@@ -21,7 +21,6 @@ package org.apache.iotdb.db.metadata.mtree.schemafile;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.EntityMNode;
-import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
@@ -31,7 +30,6 @@ import org.apache.iotdb.db.metadata.mnode.StorageGroupEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaFile;
-import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaPage;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.RecordUtils;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaPage;
@@ -288,6 +286,12 @@ public class SchemaFileTest {
 
     sf = SchemaFile.loadSchemaFile("sgRoot");
     printSF(sf);
+
+    for (String key : resName) {
+      IMNode resNode = sf.getChildNode(arbitraryNode.get(arbitraryNode.size() - 3), key);
+      Assert.assertTrue(
+          resNode.getAsMeasurementMNode().getAlias().equals(resNode.getName() + "alias"));
+    }
 
     Iterator<IMNode> res = sf.getChildren(arbitraryNode.get(arbitraryNode.size() - 1));
     while (res.hasNext()) {
