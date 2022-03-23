@@ -113,8 +113,7 @@ public class CompactionRecoverTask {
                     targetFileIdentifiers);
           } else {
             handleSuccess =
-                handleWithAllSourceFilesExist(
-                    targetFileIdentifiers, sourceFileIdentifiers, isInnerSpace);
+                handleWithAllSourceFilesExist(targetFileIdentifiers, sourceFileIdentifiers);
           }
         } else {
           if (!isInnerSpace && logAnalyzer.isLogFromOld()) {
@@ -161,9 +160,7 @@ public class CompactionRecoverTask {
    * compaction mods files.
    */
   private boolean handleWithAllSourceFilesExist(
-      List<TsFileIdentifier> targetFileIdentifiers,
-      List<TsFileIdentifier> sourceFileIdentifiers,
-      boolean isInnerSpace) {
+      List<TsFileIdentifier> targetFileIdentifiers, List<TsFileIdentifier> sourceFileIdentifiers) {
     LOGGER.info(
         "{} [Compaction][Recover] all source files exists, delete all target files.",
         fullStorageGroupName);
@@ -299,7 +296,16 @@ public class CompactionRecoverTask {
       List<TsFileIdentifier> targetFileIdentifiers, String fullStorageGroupName)
       throws IOException {
     for (TsFileIdentifier targetFileIdentifier : targetFileIdentifiers) {
-      File targetFile = targetFileIdentifier.getFileFromDataDirs();
+      // xxx.tsfile
+      File targetFile =
+          getFileFromDataDirs(
+              targetFileIdentifier
+                  .getFilePath()
+                  .replace(
+                      isInnerSpace
+                          ? IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX
+                          : IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX,
+                      TsFileConstant.TSFILE_SUFFIX));
       if (targetFile == null
           || !TsFileUtils.isTsFileComplete(new TsFileResource(targetFile).getTsFile())) {
         LOGGER.error(
