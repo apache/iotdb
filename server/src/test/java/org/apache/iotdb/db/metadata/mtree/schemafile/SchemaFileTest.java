@@ -300,6 +300,19 @@ public class SchemaFileTest {
   }
 
   @Test
+  public void bitwiseTest() {
+    int a = 32768;
+    int b = 0x80000000;
+    print((long)a<<16);
+    print((long)(a<<16));
+    print((long)b<<16);
+    print((long)(0xffff_ffff & b) << 16);
+    print((0xffffffffL & b) << 16);
+
+    Assert.assertEquals(a * 16 * 1024, a << 14);
+  }
+
+  @Test
   public void testVerticalTree() throws MetadataException, IOException {
     ISchemaFile sf = SchemaFile.initSchemaFile("root.sgvt.vt");
     IStorageGroupMNode sgNode = new StorageGroupEntityMNode(null, "sg", 11_111L);

@@ -68,6 +68,8 @@ public class SchemaFile implements ISchemaFile {
       IoTDBDescriptor.getInstance().getConfig().getSchemaDir() + File.separator;
 
   public static int PAGE_LENGTH = 16 * 1024; // 16 kib for default
+  public static int PAGE_LENGTH_DIGIT = 14;
+  public static long PAGE_INDEX_MUSK = 0xffff_ffffL;
   public static short PAGE_HEADER_SIZE = 16;
   public static int PAGE_CACHE_SIZE =
       IoTDBDescriptor.getInstance()
@@ -745,7 +747,7 @@ public class SchemaFile implements ISchemaFile {
   // region Utilities
 
   public static long getGlobalIndex(int pageIndex, short segIndex) {
-    return ((((long) pageIndex) << SchemaFile.SEG_INDEX_DIGIT)
+    return (((PAGE_INDEX_MUSK & pageIndex) << SchemaFile.SEG_INDEX_DIGIT)
         | (segIndex & SchemaFile.SEG_INDEX_MASK));
   }
 
@@ -824,7 +826,7 @@ public class SchemaFile implements ISchemaFile {
   }
 
   private long getPageAddress(int pageIndex) {
-    return pageIndex * PAGE_LENGTH + FILE_HEADER_SIZE;
+    return (PAGE_INDEX_MUSK & pageIndex) * PAGE_LENGTH + FILE_HEADER_SIZE;
   }
 
   public static long getNodeAddress(IMNode node) {
