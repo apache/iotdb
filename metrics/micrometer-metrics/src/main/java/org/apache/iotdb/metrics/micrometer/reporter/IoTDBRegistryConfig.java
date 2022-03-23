@@ -21,8 +21,6 @@ package org.apache.iotdb.metrics.micrometer.reporter;
 
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 
-import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-
 import io.micrometer.core.instrument.step.StepRegistryConfig;
 
 import java.time.Duration;
