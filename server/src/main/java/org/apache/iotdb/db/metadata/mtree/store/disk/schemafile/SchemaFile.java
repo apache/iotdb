@@ -200,9 +200,11 @@ public class SchemaFile implements ISchemaFile {
       isEntity = node.isEntity();
       setNodeAddress(node, 0L);
     } else {
-      if (curSegAddr < 0) {
+      if ((curSegAddr & 0x80000000_00000000L) != 0) {
         throw new MetadataException(
-            "Cannot store a node without segment address except for StorageGroupNode.");
+            String.format(
+                "Cannot store a node with segment address [%s] except for StorageGroupNode.",
+                curSegAddr));
       }
       pageIndex = SchemaFile.getPageIndex(curSegAddr);
       curSegIdx = SchemaFile.getSegIndex(curSegAddr);
@@ -392,7 +394,10 @@ public class SchemaFile implements ISchemaFile {
           .read(getSegIndex(actualSegAddr), childName);
     } catch (BufferUnderflowException | BufferOverflowException e) {
       e.printStackTrace();
-      logger.error(String.format("parent: %s, actualAddress:%s", parent.getName(), actualSegAddr));
+      logger.error(
+          String.format(
+              "Get child from parent[%s] failed, actualAddress:%s",
+              parent.getName(), actualSegAddr));
       logger.error(
           String.format(
               "Page inspect: %s", getPageInstance(getPageIndex(actualSegAddr)).inspect()));
@@ -740,7 +745,8 @@ public class SchemaFile implements ISchemaFile {
   // region Utilities
 
   public static long getGlobalIndex(int pageIndex, short segIndex) {
-    return ((pageIndex << SchemaFile.SEG_INDEX_DIGIT) | (segIndex & SchemaFile.SEG_INDEX_MASK));
+    return ((((long) pageIndex) << SchemaFile.SEG_INDEX_DIGIT)
+        | (segIndex & SchemaFile.SEG_INDEX_MASK));
   }
 
   public static int getPageIndex(long globalIndex) {
