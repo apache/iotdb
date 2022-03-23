@@ -141,7 +141,10 @@ public class WALRecoverManagerTest {
     if (tsFileWithoutWALResource != null) {
       tsFileWithoutWALResource.close();
     }
+    checkpointManager.close();
+    walBuffer.close();
     EnvironmentUtils.cleanDir(new File(FILE_WITH_WAL_NAME).getParent());
+    EnvironmentUtils.cleanDir(new File(FILE_WITHOUT_WAL_NAME).getParent());
     EnvironmentUtils.cleanEnv();
   }
 
