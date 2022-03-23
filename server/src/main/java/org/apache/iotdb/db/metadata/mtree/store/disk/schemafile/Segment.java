@@ -34,6 +34,7 @@ import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Queue;
 
@@ -249,7 +250,18 @@ public class Segment implements ISegment {
     short len = RecordUtils.getRecordLength(this.buffer);
     this.buffer.limit(offset + len);
 
-    return RecordUtils.buffer2Node(keyAddressList.get(index).left, this.buffer);
+    try {
+      return RecordUtils.buffer2Node(keyAddressList.get(index).left, this.buffer);
+    } catch (BufferUnderflowException | BufferOverflowException e) {
+      this.buffer.position(offset);
+      this.buffer.limit(offset + len);
+      logger.error(
+          String.format(
+              "Get record[key:%s] failed, start offset:%d, end offset:%d",
+              key, offset, offset + len));
+      logger.error(String.format("Buffer: %s", Arrays.toString(this.buffer.slice().array())));
+      throw e;
+    }
   }
 
   @Override
@@ -521,6 +533,10 @@ public class Segment implements ISegment {
             String.format(
                 "Target alias: %s, segment size:%d, K-AL pair of crashed index:%s",
                 alias, this.length, keyAddressList.get(i)));
+        this.buffer.position(keyAddressList.get(i).right);
+        this.buffer.limit(this.buffer.position() + 20);
+        logger.error(
+            String.format("Buffer inspect: %s", Arrays.toString(this.buffer.slice().array())));
         logger.error(String.format("Segment inspect: %s", this));
         throw e;
       }

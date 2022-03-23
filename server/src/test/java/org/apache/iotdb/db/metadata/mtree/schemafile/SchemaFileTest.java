@@ -46,6 +46,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -310,7 +311,7 @@ public class SchemaFileTest {
     print((0xffffffffL & b) << 16);
 
     Assert.assertEquals(a * 16 * 1024, a << 14);
-    print(SchemaFile.getPageIndex(1761607936));
+    print(SchemaFile.getPageIndex(12451840));
     print(SchemaFile.getPageIndex(1099780063232L));
 
     long initGlbAdr = 1099780063232L;
@@ -322,6 +323,10 @@ public class SchemaFileTest {
       pageIndex = SchemaFile.getPageIndex(initGlbAdr);
       segIdx = SchemaFile.getSegIndex(initGlbAdr);
     }
+
+    byte[] bta = {0b1, 0b10, 0b100};
+    print(Arrays.toString(bta));
+    print(ByteBuffer.wrap(bta));
   }
 
   @Test
