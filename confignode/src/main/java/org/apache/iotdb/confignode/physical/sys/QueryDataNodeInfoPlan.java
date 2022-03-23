@@ -16,49 +16,39 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.confignode.physical.sys;
 
-package org.apache.iotdb.consensus.common;
+import org.apache.iotdb.confignode.physical.PhysicalPlan;
+import org.apache.iotdb.confignode.physical.PhysicalPlanType;
 
-import java.util.Objects;
+import java.nio.ByteBuffer;
 
-// TODO Use a mature IDL framework such as Protobuf to manage this structure
-public class Endpoint {
+/** Get DataNodeInfo by the specific DataNode's id. And return all when dataNodeID is set to -1. */
+public class QueryDataNodeInfoPlan extends PhysicalPlan {
 
-  private final String ip;
-  private final int port;
+  private int dataNodeID;
 
-  public Endpoint(String ip, int port) {
-    this.ip = ip;
-    this.port = port;
+  public QueryDataNodeInfoPlan() {
+    super(PhysicalPlanType.QueryDataNodeInfo);
   }
 
-  public String getIp() {
-    return ip;
+  public QueryDataNodeInfoPlan(int dataNodeID) {
+    this();
+    this.dataNodeID = dataNodeID;
   }
 
-  public int getPort() {
-    return port;
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    Endpoint endpoint = (Endpoint) o;
-    return port == endpoint.port && Objects.equals(ip, endpoint.ip);
+  public Integer getDataNodeID() {
+    return dataNodeID;
   }
 
   @Override
-  public int hashCode() {
-    return Objects.hash(ip, port);
+  protected void serializeImpl(ByteBuffer buffer) {
+    buffer.putInt(PhysicalPlanType.QueryDataNodeInfo.ordinal());
+    buffer.putInt(dataNodeID);
   }
 
   @Override
-  public String toString() {
-    return String.format("%s:%d", ip, port);
+  protected void deserializeImpl(ByteBuffer buffer) {
+    this.dataNodeID = buffer.getInt();
   }
 }

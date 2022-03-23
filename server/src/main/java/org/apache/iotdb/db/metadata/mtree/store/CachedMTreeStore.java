@@ -386,6 +386,10 @@ public class CachedMTreeStore implements IMTreeStore {
       ensureMemoryStatus();
       hasFlushTask = false;
       flushCount++;
+    } catch (Throwable e) {
+      logger.error(
+          "Error occurred during MTree flush, current SchemaRegion is {}", root.getFullPath(), e);
+      e.printStackTrace();
     } finally {
       writeLock.unlock();
     }

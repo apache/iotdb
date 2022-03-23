@@ -16,12 +16,24 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.confignode.physical.sys;
 
-package org.apache.iotdb.consensus.common;
+import org.apache.iotdb.confignode.physical.PhysicalPlan;
+import org.apache.iotdb.confignode.physical.PhysicalPlanType;
 
-// TODO Use a mature IDL framework such as Protobuf to manage this structure
-public enum GroupType {
-  PartitionRegion,
-  DataRegion,
-  SchemaRegion
+import java.nio.ByteBuffer;
+
+public class DeleteStorageGroupPlan extends PhysicalPlan {
+
+  // TODO: @YongzaoDan
+
+  public DeleteStorageGroupPlan() {
+    super(PhysicalPlanType.DeleteStorageGroup);
+  }
+
+  @Override
+  protected void serializeImpl(ByteBuffer buffer) {}
+
+  @Override
+  protected void deserializeImpl(ByteBuffer buffer) {}
 }
