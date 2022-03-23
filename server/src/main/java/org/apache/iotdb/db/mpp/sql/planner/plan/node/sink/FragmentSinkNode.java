@@ -22,9 +22,9 @@ import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ExchangeNode;
+import org.apache.iotdb.service.rpc.thrift.EndPoint;
 
 import com.google.common.collect.ImmutableList;
-import org.apache.iotdb.service.rpc.thrift.EndPoint;
 
 import java.util.List;
 
@@ -75,7 +75,16 @@ public class FragmentSinkNode extends SinkNode {
   }
 
   public String toString() {
-    return String.format("FragmentSinkNode-%s", getId());
+    return String.format("FragmentSinkNode-%s:[SendTo: (%s)]", getId(), getDownStreamAddress());
+  }
+
+  public String getDownStreamAddress() {
+    if (getDownStreamEndpoint() == null) {
+      return "Not assigned";
+    }
+    return String.format(
+        "%s/%s/%s",
+        getDownStreamEndpoint().getIp(), getDownStreamInstanceId(), getDownStreamPlanNodeId());
   }
 
   public ExchangeNode getDownStreamNode() {

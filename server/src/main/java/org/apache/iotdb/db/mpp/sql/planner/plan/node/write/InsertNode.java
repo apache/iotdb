@@ -58,7 +58,8 @@ public abstract class InsertNode extends PlanNode {
     super(id);
   }
 
-  // TODO(INSERT) split this insert node into multiple InsertNode according to the data partition info
+  // TODO(INSERT) split this insert node into multiple InsertNode according to the data partition
+  // info
   public abstract List<InsertNode> splitByPartition(Analysis analysis);
 
   public boolean needSplit() {

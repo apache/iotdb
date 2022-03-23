@@ -25,4 +25,8 @@ public class FragmentInstanceId {
   public FragmentInstanceId(String fullId) {
     this.fullId = fullId;
   }
+
+  public String toString() {
+    return fullId;
+  }
 }

@@ -47,18 +47,19 @@ public class PlanNodeUtil {
   }
 
   private static void nodeToString(PlanNode root, int level, StringBuilder result) {
-    for (int i = 0 ; i < level; i ++) {
+    for (int i = 0; i < level; i++) {
       result.append("\t");
     }
     result.append(root.toString());
     result.append(System.lineSeparator());
-    for (PlanNode child: root.getChildren()) {
+    for (PlanNode child : root.getChildren()) {
       nodeToString(child, level + 1, result);
     }
   }
 
   public static PlanNode deepCopy(PlanNode root) {
-    List<PlanNode> children = root.getChildren().stream().map(PlanNodeUtil::deepCopy).collect(Collectors.toList());
+    List<PlanNode> children =
+        root.getChildren().stream().map(PlanNodeUtil::deepCopy).collect(Collectors.toList());
     return root.cloneWithChildren(children);
   }
 }

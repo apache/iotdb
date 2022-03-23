@@ -22,11 +22,11 @@ import java.util.List;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 
 public class DataRegionReplicaSet {
-  private DataRegionId dataRegionId;
+  private DataRegionId Id;
   private List<EndPoint> endPointList;
 
-  public DataRegionReplicaSet(DataRegionId dataRegionId, List<EndPoint> endPointList) {
-    this.dataRegionId = dataRegionId;
+  public DataRegionReplicaSet(DataRegionId Id, List<EndPoint> endPointList) {
+    this.Id = Id;
     this.endPointList = endPointList;
   }
 
@@ -38,15 +38,15 @@ public class DataRegionReplicaSet {
     this.endPointList = endPointList;
   }
 
-  public DataRegionId getDataRegionId() {
-    return dataRegionId;
+  public DataRegionId getId() {
+    return Id;
   }
 
-  public void setDataRegionId(DataRegionId dataRegionId) {
-    this.dataRegionId = dataRegionId;
+  public void setId(DataRegionId id) {
+    this.Id = id;
   }
 
   public String toString() {
-    return String.format("%s:%s", dataRegionId, endPointList);
+    return String.format("%s:%s", Id, endPointList);
   }
 }

@@ -18,14 +18,14 @@
  */
 package org.apache.iotdb.db.mpp.sql.analyze;
 
-import java.util.List;
 import org.apache.iotdb.commons.partition.DataPartitionInfo;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.PartitionInfo;
 import org.apache.iotdb.commons.partition.SchemaPartitionInfo;
 
-public class ClusterPartitionFetcher implements IPartitionFetcher {
+import java.util.List;
 
+public class ClusterPartitionFetcher implements IPartitionFetcher {
 
   @Override
   public DataPartitionInfo fetchDataPartitionInfo(DataPartitionQueryParam parameter) {

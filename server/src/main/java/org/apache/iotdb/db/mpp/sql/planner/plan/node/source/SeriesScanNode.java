@@ -69,7 +69,8 @@ public class SeriesScanNode extends SourceNode {
     this.seriesPath = seriesPath;
   }
 
-  public SeriesScanNode(PlanNodeId id, PartialPath seriesPath, DataRegionReplicaSet dataRegionReplicaSet) {
+  public SeriesScanNode(
+      PlanNodeId id, PartialPath seriesPath, DataRegionReplicaSet dataRegionReplicaSet) {
     this(id, seriesPath);
     this.dataRegionReplicaSet = dataRegionReplicaSet;
   }
@@ -94,7 +95,7 @@ public class SeriesScanNode extends SourceNode {
   }
 
   public void setDataRegionReplicaSet(DataRegionReplicaSet dataRegion) {
-     this.dataRegionReplicaSet = dataRegion;
+    this.dataRegionReplicaSet = dataRegion;
   }
 
   public void setScanOrder(OrderBy scanOrder) {

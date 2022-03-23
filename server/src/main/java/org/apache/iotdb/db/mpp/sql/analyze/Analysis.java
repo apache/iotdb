@@ -71,8 +71,7 @@ public class Analysis {
     return schemaPartitionInfo;
   }
 
-  public void setSchemaPartitionInfo(
-      SchemaPartitionInfo schemaPartitionInfo) {
+  public void setSchemaPartitionInfo(SchemaPartitionInfo schemaPartitionInfo) {
     this.schemaPartitionInfo = schemaPartitionInfo;
   }
 }

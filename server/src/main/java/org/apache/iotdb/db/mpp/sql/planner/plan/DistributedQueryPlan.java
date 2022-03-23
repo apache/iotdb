@@ -29,7 +29,10 @@ public class DistributedQueryPlan {
   private List<FragmentInstance> instances;
 
   public DistributedQueryPlan(
-          MPPQueryContext context, SubPlan rootSubPlan, List<PlanFragment> fragments, List<FragmentInstance> instances) {
+      MPPQueryContext context,
+      SubPlan rootSubPlan,
+      List<PlanFragment> fragments,
+      List<FragmentInstance> instances) {
     this.context = context;
     this.rootSubPlan = rootSubPlan;
     this.fragments = fragments;
@@ -46,5 +49,9 @@ public class DistributedQueryPlan {
 
   public MPPQueryContext getContext() {
     return context;
+  }
+
+  public List<FragmentInstance> getInstances() {
+    return instances;
   }
 }

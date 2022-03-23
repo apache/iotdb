@@ -27,11 +27,9 @@ public class MPPQueryContext {
   private QueryId queryId;
   private SessionInfo session;
 
-  public MPPQueryContext() {
-  }
+  public MPPQueryContext() {}
 
-  public MPPQueryContext(String sql, QueryId queryId,
-      SessionInfo session) {
+  public MPPQueryContext(String sql, QueryId queryId, SessionInfo session) {
     this.sql = sql;
     this.queryId = queryId;
     this.session = session;

@@ -124,13 +124,13 @@ public class Analyzer {
     }
 
     @Override
-    public Analysis visitInsertTablet(InsertTabletStatement insertTabletStatement,
-        MPPQueryContext context) {
+    public Analysis visitInsertTablet(
+        InsertTabletStatement insertTabletStatement, MPPQueryContext context) {
       // TODO(INSERT) device + time range -> PartitionInfo
       DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
       dataPartitionQueryParam.setDeviceId(insertTabletStatement.getDevicePath().getFullPath());
       // TODO(INSERT) calculate the time partition id list
-//      dataPartitionQueryParam.setTimePartitionIdList();
+      //      dataPartitionQueryParam.setTimePartitionIdList();
       PartitionInfo partitionInfo = partitionFetcher.fetchPartitionInfo(dataPartitionQueryParam);
 
       Analysis analysis = new Analysis();

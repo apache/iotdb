@@ -19,9 +19,10 @@
 
 package org.apache.iotdb.db.mpp.sql.analyze;
 
+import org.apache.iotdb.db.metadata.path.PartialPath;
+
 import java.util.List;
 import java.util.Map;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 
 /**
  * This interface is used to fetch the metadata information required in execution plan generating.

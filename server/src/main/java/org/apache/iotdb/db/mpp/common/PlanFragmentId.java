@@ -58,5 +58,4 @@ public class PlanFragmentId {
   public String toString() {
     return String.format("%s.%d", queryId, id);
   }
-
 }

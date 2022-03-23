@@ -21,6 +21,9 @@ package org.apache.iotdb.db.mpp.sql.planner.plan;
 import org.apache.iotdb.commons.partition.DataRegionReplicaSet;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeUtil;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.sink.FragmentSinkNode;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 
 public class FragmentInstance {
@@ -66,5 +69,28 @@ public class FragmentInstance {
 
   public FragmentInstanceId getId() {
     return id;
+  }
+
+  public String getDownstreamInfo() {
+    PlanNode root = getFragment().getRoot();
+    if (root instanceof FragmentSinkNode) {
+      FragmentSinkNode sink = (FragmentSinkNode) root;
+      return String.format(
+          "(%s, %s, %s)",
+          sink.getDownStreamEndpoint(), sink.getDownStreamInstanceId(), sink.getDownStreamNode());
+    }
+    return "<No downstream>";
+  }
+
+  public String toString() {
+    StringBuilder ret = new StringBuilder();
+    ret.append(
+        String.format(
+            "FragmentInstance-%s:[Host: %s/%s]\n",
+            getId(), getHostEndpoint().getIp(), getDataRegionId().getId()));
+    ret.append("---- Plan Node Tree ----\n");
+    ret.append(PlanNodeUtil.nodeToString(getFragment().getRoot()));
+    ret.append("\n");
+    return ret.toString();
   }
 }

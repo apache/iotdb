@@ -20,8 +20,8 @@ package org.apache.iotdb.db.mpp.execution.scheduler;
 
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.metadata.SchemaEngine;
-import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
+import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.execution.FragmentInfo;
 
 import io.airlift.units.Duration;
@@ -33,9 +33,7 @@ public class StandaloneScheduler implements IScheduler {
   private static final SchemaEngine SCHEMA_ENGINE = SchemaEngine.getInstance();
 
   @Override
-  public void start() {
-
-  }
+  public void start() {}
 
   @Override
   public void abort() {}

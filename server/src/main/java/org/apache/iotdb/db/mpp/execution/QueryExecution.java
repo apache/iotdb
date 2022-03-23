@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.db.mpp.execution;
 
-import static org.apache.iotdb.rpc.RpcUtils.getStatus;
-
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.execution.scheduler.ClusterScheduler;
 import org.apache.iotdb.db.mpp.execution.scheduler.IScheduler;
@@ -29,11 +27,13 @@ import org.apache.iotdb.db.mpp.sql.optimization.PlanOptimizer;
 import org.apache.iotdb.db.mpp.sql.planner.DistributionPlanner;
 import org.apache.iotdb.db.mpp.sql.planner.LogicalPlanner;
 import org.apache.iotdb.db.mpp.sql.planner.plan.*;
+import org.apache.iotdb.db.mpp.sql.statement.Statement;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.nio.ByteBuffer;
 import java.util.List;
-import org.apache.iotdb.db.mpp.sql.statement.Statement;
-import org.apache.iotdb.rpc.TSStatusCode;
+
+import static org.apache.iotdb.rpc.RpcUtils.getStatus;
 
 /**
  * QueryExecution stores all the status of a query which is being prepared or running inside the MPP
@@ -70,7 +70,6 @@ public class QueryExecution {
     return new Analyzer(context).analyze(statement);
   }
 
-
   private void schedule() {
     this.scheduler = new ClusterScheduler(this.stateMachine, this.fragmentInstances);
     this.scheduler.start();
@@ -87,7 +86,6 @@ public class QueryExecution {
     DistributionPlanner planner = new DistributionPlanner(this.analysis, this.logicalPlan);
     this.distributedPlan = planner.planFragments();
   }
-
 
   /**
    * This method will be called by the request thread from client connection. This method will block

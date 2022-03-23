@@ -77,7 +77,7 @@ public class DistributionPlanner {
   }
 
   private PlanFragmentId getNextFragmentId() {
-    return new PlanFragmentId(this.logicalPlan.getContext().getQueryId(), this.planFragmentIndex ++);
+    return new PlanFragmentId(this.logicalPlan.getContext().getQueryId(), this.planFragmentIndex++);
   }
 
   private class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanContext> {
@@ -172,13 +172,15 @@ public class DistributionPlanner {
 
     public PlanNode visitSeriesScan(SeriesScanNode node, NodeGroupContext context) {
       context.putNodeDistribution(
-          node.getId(), new NodeDistribution(NodeDistributionType.NO_CHILD, node.getDataRegionReplicaSet()));
+          node.getId(),
+          new NodeDistribution(NodeDistributionType.NO_CHILD, node.getDataRegionReplicaSet()));
       return node.clone();
     }
 
     public PlanNode visitSeriesAggregate(SeriesAggregateScanNode node, NodeGroupContext context) {
       context.putNodeDistribution(
-          node.getId(), new NodeDistribution(NodeDistributionType.NO_CHILD, node.getDataRegionReplicaSet()));
+          node.getId(),
+          new NodeDistribution(NodeDistributionType.NO_CHILD, node.getDataRegionReplicaSet()));
       return node.clone();
     }
 

@@ -19,14 +19,13 @@
 
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
-import org.apache.iotdb.consensus.common.Endpoint;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.sink.FragmentSinkNode;
+import org.apache.iotdb.service.rpc.thrift.EndPoint;
 
 import com.google.common.collect.ImmutableList;
-import org.apache.iotdb.service.rpc.thrift.EndPoint;
 
 import java.util.List;
 
@@ -55,13 +54,19 @@ public class ExchangeNode extends PlanNode {
 
   @Override
   public PlanNode clone() {
-    return new ExchangeNode(getId());
+    ExchangeNode node = new ExchangeNode(getId());
+    if (remoteSourceNode != null) {
+      node.setRemoteSourceNode((FragmentSinkNode) remoteSourceNode.clone());
+    }
+    return node;
   }
 
   @Override
   public PlanNode cloneWithChildren(List<PlanNode> children) {
-    ExchangeNode node = new ExchangeNode(getId());
-    node.setChild(children.get(0));
+    ExchangeNode node = (ExchangeNode) clone();
+    if (children != null && children.size() > 0) {
+      node.setChild(children.get(0));
+    }
     return node;
   }
 
@@ -85,7 +90,18 @@ public class ExchangeNode extends PlanNode {
   }
 
   public String toString() {
-    return String.format("ExchangeNode-%s: [Source: %s]", getId(), remoteSourceNode);
+    return String.format(
+        "ExchangeNode-%s: [SourceNodeId: %s, SourceAddress:%s]",
+        getId(), remoteSourceNode.getId(), getSourceAddress());
+  }
+
+  public String getSourceAddress() {
+    if (getUpstreamEndpoint() == null) {
+      return "Not assigned";
+    }
+    return String.format(
+        "%s/%s/%s",
+        getUpstreamEndpoint().getIp(), getUpstreamInstanceId(), getUpstreamPlanNodeId());
   }
 
   public FragmentSinkNode getRemoteSourceNode() {
