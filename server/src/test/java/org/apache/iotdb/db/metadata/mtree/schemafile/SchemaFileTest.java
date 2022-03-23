@@ -21,6 +21,7 @@ package org.apache.iotdb.db.metadata.mtree.schemafile;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.EntityMNode;
+import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
@@ -47,6 +48,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -251,22 +253,30 @@ public class SchemaFileTest {
       sf.close();
     }
 
+    Set<String> resName = new HashSet<>();
     // more measurement
     for (IMNode etn : sgNode.getChildren().values()) {
       int j = 100;
       while (j >= 0) {
         addMeasurementChild(etn, String.format("mtc2_%d_%d", i, j));
+        if (resName.size() < 101) {
+          resName.add(String.format("mtc2_%d_%d", i, j));
+        }
         j--;
       }
     }
 
     orderedTree = getTreeBFT(sgNode);
     sf = SchemaFile.loadSchemaFile(sgNode.getName());
+    List<IMNode> arbitraryNode = new ArrayList<>();
     try {
       while (orderedTree.hasNext()) {
         node = orderedTree.next();
         if (!node.isMeasurement() && !node.isStorageGroup()) {
           sf.writeMNode(node);
+          if (arbitraryNode.size() < 50) {
+            arbitraryNode.add(node);
+          }
         }
       }
     } catch (Exception e) {
@@ -277,8 +287,15 @@ public class SchemaFileTest {
     }
 
     sf = SchemaFile.loadSchemaFile("sgRoot");
-    ISchemaPage page = ((SchemaFile) sf).getPageOnTest(10700);
-    ((SchemaPage) page).getSegmentTest((short) 0);
+    printSF(sf);
+
+    Iterator<IMNode> res = sf.getChildren(arbitraryNode.get(arbitraryNode.size() - 1));
+    while (res.hasNext()) {
+      resName.remove(res.next().getName());
+    }
+
+    Assert.assertTrue(resName.isEmpty());
+
     sf.close();
   }
 

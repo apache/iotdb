@@ -502,13 +502,11 @@ public class Segment implements ISegment {
 
   private int getRecordIndexByAlias(String alias) {
     for (int i = 0; i < keyAddressList.size(); i++) {
-      if (getOffsetByIndex(i) > 0) {
-        this.buffer.clear();
-        this.buffer.position(keyAddressList.get(i).right);
-        if (RecordUtils.getRecordType(this.buffer) >= 4
-            && RecordUtils.getRecordAlias(this.buffer).equals(alias)) {
-          return i;
-        }
+      this.buffer.clear();
+      this.buffer.position(keyAddressList.get(i).right);
+      if (RecordUtils.getRecordType(this.buffer) >= 4
+          && RecordUtils.getRecordAlias(this.buffer).equals(alias)) {
+        return i;
       }
     }
     return -1;
