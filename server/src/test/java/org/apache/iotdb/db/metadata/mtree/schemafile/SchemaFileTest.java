@@ -141,7 +141,6 @@ public class SchemaFileTest {
     Assert.assertEquals(
         "ALLLLLLLLLLLLLLLLLLLLfinalM191",
         nsf.getChildNode(int4, "finalM191").getAsMeasurementMNode().getAlias());
-    printSF(nsf);
     nsf.close();
   }
 
@@ -182,8 +181,6 @@ public class SchemaFileTest {
     IMNode node = new InternalMNode(null, "test");
     ICachedMNodeContainer.getCachedMNodeContainer(node).setSegmentAddress(196608L);
     ISchemaFile sf = SchemaFile.loadSchemaFile("root.test.vRoot1");
-
-    printSF(sf);
 
     Iterator<IMNode> res = sf.getChildren(node);
     int cnt = 0;
@@ -285,7 +282,6 @@ public class SchemaFileTest {
     }
 
     sf = SchemaFile.loadSchemaFile("sgRoot");
-    printSF(sf);
 
     for (String key : resName) {
       IMNode resNode = sf.getChildNode(arbitraryNode.get(arbitraryNode.size() - 3), key);
@@ -314,14 +310,12 @@ public class SchemaFileTest {
     while (ite.hasNext()) {
       sf.writeMNode(ite.next());
     }
-    printSF(sf);
 
     IMNode vt1 = getNode(root, "root.VT_0.VT_1");
     IMNode vt4 = getNode(root, "root.VT_0.VT_1.VT_2.VT_3.VT_4");
     ICachedMNodeContainer.getCachedMNodeContainer(vt1).getNewChildBuffer().clear();
     addMeasurementChild(vt1, "newM");
     sf.writeMNode(vt1);
-    printSF(sf);
 
     IMNode vt0 = getNode(root, "root.VT_0");
     Assert.assertEquals(
@@ -379,7 +373,6 @@ public class SchemaFileTest {
 
     Assert.assertEquals(11111L, nsf.init().getAsStorageGroupMNode().getDataTTL());
 
-    printSF(nsf);
     nsf.close();
   }
 
