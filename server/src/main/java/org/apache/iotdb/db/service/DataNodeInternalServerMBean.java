@@ -17,6 +17,6 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.service.thrift;
+package org.apache.iotdb.db.service;
 
 public interface DataNodeInternalServerMBean {}

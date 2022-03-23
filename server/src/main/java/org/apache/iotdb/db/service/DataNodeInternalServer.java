@@ -26,7 +26,6 @@ import org.apache.iotdb.commons.service.ThriftService;
 import org.apache.iotdb.commons.service.ThriftServiceThread;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.service.thrift.DataNodeInternalServerMBean;
 import org.apache.iotdb.db.service.thrift.handler.DataNodeInternalServiceHandler;
 import org.apache.iotdb.db.service.thrift.impl.DataNodeInternalServiceImpl;
 import org.apache.iotdb.service.rpc.thrift.ManagementIService;
