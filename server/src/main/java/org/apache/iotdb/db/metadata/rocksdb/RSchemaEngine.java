@@ -128,40 +128,12 @@ import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.*;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 /**
- * This class takes the responsibility of serialization of all the metadata info and persistent it
- * into files. This class contains all the interfaces to modify the metadata for delta system. All
- * the operations will be insert into the logs temporary in case the downtime of the delta system.
- *
- * <p>Since there are too many interfaces and methods in this class, we use code region to help
- * manage code. The code region starts with //region and ends with //endregion. When using Intellij
- * Idea to develop, it's easy to fold the code region and see code region overview by collapsing
- * all.
- *
- * <p>The codes are divided into the following code regions:
- *
- * <ol>
- *   <li>MManager Singleton
- *   <li>Interfaces and Implementation of MManager initialization、snapshot、recover and clear
- *   <li>Interfaces for CQ
- *   <li>Interfaces and Implementation for Timeseries operation
- *   <li>Interfaces and Implementation for StorageGroup and TTL operation
- *   <li>Interfaces for get and auto create device
- *   <li>Interfaces for metadata info Query
- *       <ol>
- *         <li>Interfaces for metadata count
- *         <li>Interfaces for level Node info Query
- *         <li>Interfaces for StorageGroup and TTL info Query
- *         <li>Interfaces for Entity/Device info Query
- *         <li>Interfaces for timeseries, measurement and schema info Query
- *       </ol>
- *   <li>Interfaces and methods for MNode query
- *   <li>Interfaces for alias and tag/attribute operations
- *   <li>Interfaces only for Cluster module usage
- *   <li>Interfaces for lastCache operations
- *   <li>Interfaces and Implementation for InsertPlan process
- *   <li>Interfaces and Implementation for Template operations
- *   <li>TestOnly Interfaces
- * </ol>
+ * This class is another implementation of ISchemaEngine. The default schema engine #{@link
+ * SchemaEngine} is a pure memory implementation. In some situations, metadata can't fit into
+ * memory, so we provide this alternative engine. The engine implemented base on RocksDB in which
+ * all metadata all stored in a rocksdb instance. RocksDB has been proved to be a high performance
+ * embed key-value storage. This implementation could achieve high throughput even with more than 1
+ * billion time series(the time series often occupy more than 100GB footprint in our case).
  */
 public class RSchemaEngine implements ISchemaEngine {
 

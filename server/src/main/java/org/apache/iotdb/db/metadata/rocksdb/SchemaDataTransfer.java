@@ -32,6 +32,7 @@ import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mtree.MTreeAboveSG;
+import org.apache.iotdb.db.metadata.mtree.MTreeBelowSG;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
@@ -54,6 +55,8 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -334,9 +337,10 @@ public class SchemaDataTransfer {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void doTransferFromSnapshot()
-      throws IOException, MetadataException, ExecutionException, InterruptedException {
+      throws MetadataException, ExecutionException, InterruptedException {
     logger.info("Start transfer data from snapshot");
     long start = System.currentTimeMillis();
+
     MTreeAboveSG mTree = new MTreeAboveSG();
     mTree.init();
     List<IStorageGroupMNode> storageGroupNodes = mTree.getAllStorageGroupNodes();
@@ -347,9 +351,6 @@ public class SchemaDataTransfer {
         .forEach(
             sgNode -> {
               try {
-                if (sgNode.getPartialPath().getFullPath() == "root.iotcloud") {
-                  return;
-                }
                 rocksDBManager.setStorageGroup(sgNode.getPartialPath());
                 if (sgNode.getDataTTL() > 0) {
                   rocksDBManager.setTTL(sgNode.getPartialPath(), sgNode.getDataTTL());
@@ -370,81 +371,77 @@ public class SchemaDataTransfer {
       return;
     }
 
-    List<IMeasurementMNode> measurementMNodes = new ArrayList<>();
+    Queue<IMeasurementMNode> failCreatedNodes = new ConcurrentLinkedQueue<>();
+    AtomicInteger createdNodeCnt = new AtomicInteger(0);
+    AtomicInteger lastValue = new AtomicInteger(-1);
 
-    //    IMNode root = mTree.getNodeByPath(new PartialPath(new String[] {"root"}));
-    //    PartialPath matchAllPath = new PartialPath(new String[] {"root", "**"});
-    //
-    //    MeasurementCollector collector =
-    //        new MeasurementCollector(root, matchAllPath, -1, -1) {
-    //          @Override
-    //          protected void collectMeasurement(IMeasurementMNode node) throws MetadataException {
-    //            measurementMNodes.add(node);
-    //          }
-    //        };
-    //    collector.traverse();
-    //
-    //    Queue<IMeasurementMNode> failCreatedNodes = new ConcurrentLinkedQueue<>();
-    //    AtomicInteger createdNodeCnt = new AtomicInteger(0);
-    //    AtomicInteger lastValue = new AtomicInteger(-1);
-    //    new Thread(
-    //            () -> {
-    //              while (lastValue.get() < createdNodeCnt.get()) {
-    //                try {
-    //                  lastValue.set(createdNodeCnt.get());
-    //                  Thread.sleep(10 * 1000);
-    //                  logger.info("created count: {}", createdNodeCnt.get());
-    //                } catch (InterruptedException e) {
-    //                  logger.error("timer thread error", e);
-    //                }
-    //              }
-    //            })
-    //        .start();
+    new Thread(
+            () -> {
+              while (lastValue.get() < createdNodeCnt.get()) {
+                try {
+                  lastValue.set(createdNodeCnt.get());
+                  Thread.sleep(10 * 1000);
+                  logger.info("created count: {}", createdNodeCnt.get());
+                } catch (InterruptedException e) {
+                  logger.error("timer thread error", e);
+                }
+              }
+              logger.info("exit");
+            })
+        .start();
 
-    //    forkJoinPool
-    //        .submit(
-    //            () ->
-    //                measurementMNodes.parallelStream()
-    //                    .forEach(
-    //                        mNode -> {
-    //                          try {
-    //                            rocksDBManager.createTimeSeries(
-    //                                mNode.getPartialPath(),
-    //                                mNode.getSchema(),
-    //                                mNode.getAlias(),
-    //                                null,
-    //                                null);
-    //                            createdNodeCnt.incrementAndGet();
-    //                          } catch (AcquireLockTimeoutException e) {
-    //                            failCreatedNodes.add(mNode);
-    //                          } catch (MetadataException e) {
-    //                            logger.error(
-    //                                "create timeseries {} failed",
-    //                                mNode.getPartialPath().getFullPath(),
-    //                                e);
-    //                            errorCount.incrementAndGet();
-    //                          }
-    //                        }))
-    //        .get();
-    //
-    //    if (!failCreatedNodes.isEmpty()) {
-    //      failCreatedNodes.stream()
-    //          .forEach(
-    //              mNode -> {
-    //                try {
-    //                  rocksDBManager.createTimeSeries(
-    //                      mNode.getPartialPath(), mNode.getSchema(), mNode.getAlias(), null,
-    // null);
-    //                  createdNodeCnt.incrementAndGet();
-    //                } catch (Exception e) {
-    //                  logger.error(
-    //                      "create timeseries {} failed in retry",
-    //                      mNode.getPartialPath().getFullPath(),
-    //                      e);
-    //                  errorCount.incrementAndGet();
-    //                }
-    //              });
-    //    }
+    List<IStorageGroupMNode> sgNodes = mTree.getAllStorageGroupNodes();
+    sgNodes
+        .parallelStream()
+        .forEach(
+            sgNode -> {
+              try {
+                MTreeBelowSG sg = new MTreeBelowSG(sgNode);
+                List<IMeasurementMNode> measurementMNodes = sg.getAllMeasurementMNode();
+                measurementMNodes
+                    .parallelStream()
+                    .forEach(
+                        mNode -> {
+                          try {
+                            rocksDBManager.createTimeSeries(
+                                mNode.getPartialPath(),
+                                mNode.getSchema(),
+                                mNode.getAlias(),
+                                null,
+                                null);
+                            createdNodeCnt.incrementAndGet();
+                          } catch (AcquireLockTimeoutException e) {
+                            failCreatedNodes.add(mNode);
+                          } catch (MetadataException e) {
+                            logger.error(
+                                "create timeseries {} failed",
+                                mNode.getPartialPath().getFullPath(),
+                                e);
+                            errorCount.incrementAndGet();
+                          }
+                        });
+              } catch (IOException e) {
+                logger.error("Failed to construct BelowSg instance", e);
+              }
+            });
+
+    if (!failCreatedNodes.isEmpty()) {
+      failCreatedNodes.stream()
+          .forEach(
+              mNode -> {
+                try {
+                  rocksDBManager.createTimeSeries(
+                      mNode.getPartialPath(), mNode.getSchema(), mNode.getAlias(), null, null);
+                  createdNodeCnt.incrementAndGet();
+                } catch (Exception e) {
+                  logger.error(
+                      "create timeseries {} failed in retry",
+                      mNode.getPartialPath().getFullPath(),
+                      e);
+                  errorCount.incrementAndGet();
+                }
+              });
+    }
 
     logger.info(
         "Transfer data from snapshot complete after {}ms with {} errors",

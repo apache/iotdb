@@ -20,7 +20,7 @@
 
 
 echo ---------------------
-echo Starting IoTDB
+echo Use the script the transfer metadata managed by default(pure memory) SchemaEngine to RocksDB based SchemaEngine
 echo ---------------------
 
 if [ -z "${IOTDB_HOME}" ]; then
