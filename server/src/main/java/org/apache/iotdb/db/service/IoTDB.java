@@ -36,6 +36,7 @@ import org.apache.iotdb.db.engine.cq.ContinuousQueryService;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.IMetaManager;
 import org.apache.iotdb.db.metadata.SchemaEngine;
 import org.apache.iotdb.db.protocol.influxdb.meta.InfluxDBMetaManager;
 import org.apache.iotdb.db.protocol.rest.RestService;
@@ -78,7 +79,7 @@ public class IoTDB implements IoTDBMBean {
       logger.error("meet error when doing start checking", e);
       System.exit(1);
     }
-        metaManager = schemaEngine;
+    metaManager = schemaEngine;
     IoTDB daemon = IoTDB.getInstance();
     daemon.active();
   }

@@ -34,10 +34,8 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.PruneTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
@@ -108,13 +106,6 @@ public interface IMetaManager {
   // endregion
 
   // region Interfaces for CQ
-  void createContinuousQuery(CreateContinuousQueryPlan plan) throws MetadataException;
-
-  void dropContinuousQuery(DropContinuousQueryPlan plan) throws MetadataException;
-
-  void writeCreateContinuousQueryLog(CreateContinuousQueryPlan plan) throws IOException;
-
-  void writeDropContinuousQueryLog(DropContinuousQueryPlan plan) throws IOException;
   // endregion
 
   // region Interfaces and Implementation for Timeseries operation

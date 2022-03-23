@@ -32,7 +32,6 @@ import org.apache.iotdb.db.service.thrift.impl.TSServiceImpl;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
@@ -804,6 +803,8 @@ public class IoTDBConfig {
   /** Encryption provided class parameter */
   private String encryptDecryptProviderParameter;
 
+  private MetadataManagerType metadataManagerType = MetadataManagerType.MEMORY_MANAGER;
+
   public IoTDBConfig() {
     // empty constructor
   }
@@ -959,7 +960,7 @@ public class IoTDBConfig {
     if (getMultiDirStrategyClassName() == null) {
       multiDirStrategyClassName = DEFAULT_MULTI_DIR_STRATEGY;
     }
-    if (!getMultiDirStrategyClassName().contains(TsFileConstant.PATH_SEPARATOR)) {
+    if (!getMultiDirStrategyClassName().contains(PATH_SEPARATOR)) {
       multiDirStrategyClassName = MULTI_DIR_STRATEGY_PREFIX + multiDirStrategyClassName;
     }
 
@@ -2516,5 +2517,13 @@ public class IoTDBConfig {
 
   public void setEncryptDecryptProviderParameter(String encryptDecryptProviderParameter) {
     this.encryptDecryptProviderParameter = encryptDecryptProviderParameter;
+  }
+
+  public MetadataManagerType getMetadataManagerType() {
+    return metadataManagerType;
+  }
+
+  public void setMetadataManagerType(String metadataManagerType) {
+    this.metadataManagerType = MetadataManagerType.of(metadataManagerType);
   }
 }
