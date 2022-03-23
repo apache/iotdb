@@ -51,6 +51,7 @@ public class MTreeFlushTaskManager {
   public void clear() {
     if (flushTaskExecutor != null) {
       flushTaskExecutor.shutdown();
+      while (!flushTaskExecutor.isTerminated()) ;
       flushTaskExecutor = null;
     }
   }
