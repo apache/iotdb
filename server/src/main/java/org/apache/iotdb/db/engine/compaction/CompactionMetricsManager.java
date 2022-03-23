@@ -52,9 +52,9 @@ public class CompactionMetricsManager {
             "compaction",
             Tag.NAME.toString(),
             compactionType.toString(),
-            Tag.NAME.toString(),
+            Tag.TYPE.toString(),
             aligned ? "ALIGNED" : "NOT_ALIGNED",
-            Tag.NAME.toString(),
+            Tag.TYPE.toString(),
             processChunkType.toString());
     MetricsService.getInstance()
         .getMetricManager()
@@ -64,7 +64,7 @@ public class CompactionMetricsManager {
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
             "compaction",
-            Tag.NAME.toString(),
+            Tag.TYPE.toString(),
             "total");
   }
 
