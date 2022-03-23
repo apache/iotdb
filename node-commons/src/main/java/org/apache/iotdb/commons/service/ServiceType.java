@@ -65,7 +65,8 @@ public enum ServiceType {
   CLUSTER_META_ENGINE("Cluster Meta Engine", "ClusterMetaEngine"),
   CLUSTER_DATA_ENGINE("Cluster Data Engine", "ClusterDataEngine"),
   REST_SERVICE("REST Service", "REST Service"),
-  CONFIG_NODE_SERVICE("Config Node service", "ConfigNodeRPCServer");
+  CONFIG_NODE_SERVICE("Config Node service", "ConfigNodeRPCServer"),
+  DATA_NODE_INTERNAL_SERVICE("Data Node internal service", "DataNodeInternalRPCServer");
 
   private final String name;
   private final String jmxName;
