@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.engine.compaction.inner.utils;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.cross.CrossCompactionStrategy;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.manage.CrossSpaceCompactionResource;
@@ -30,6 +30,7 @@ import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.metadata.idtable.IDTableManager;
@@ -125,7 +126,7 @@ public class InnerSpaceCompactionUtils {
           measurementSchema =
               IDTableManager.getInstance().getSeriesSchema(device, p.getMeasurement());
         } else {
-          measurementSchema = IoTDB.metaManager.getSeriesSchema(p);
+          measurementSchema = IoTDB.schemaEngine.getSeriesSchema(p);
         }
       } catch (PathNotExistException e) {
         logger.info("A deleted path is skipped: {}", e.getMessage());
@@ -241,7 +242,7 @@ public class InnerSpaceCompactionUtils {
   public static boolean deleteTsFile(TsFileResource seqFile) {
     try {
       FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getTsFilePath());
-      seqFile.setDeleted(true);
+      seqFile.setStatus(TsFileResourceStatus.DELETED);
       seqFile.delete();
     } catch (IOException e) {
       logger.error(e.getMessage(), e);

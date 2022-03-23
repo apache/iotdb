@@ -18,7 +18,8 @@
  */
 package org.apache.iotdb.confignode.conf;
 
-import org.apache.iotdb.confignode.exception.conf.RepeatConfigurationException;
+import org.apache.iotdb.commons.exception.ConfigurationException;
+import org.apache.iotdb.commons.exception.StartupException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,17 +45,19 @@ public class ConfigNodeConfCheck {
 
   private Properties specialProperties;
 
-  public void checkConfig() throws RepeatConfigurationException, IOException {
-
-    String propsDir = ConfigNodeDescriptor.getInstance().getPropsDir();
-    if (propsDir == null) {
-      // Skip configuration check when developer mode or test mode
-      return;
-    }
+  private ConfigNodeConfCheck() {
     specialProperties = new Properties();
+  }
+
+  public void checkConfig() throws ConfigurationException, IOException, StartupException {
+    // if systemDir does not exist, create systemDir
+    File systemDir = new File(conf.getSystemDir());
+    if (systemDir.isDirectory() && !systemDir.exists()) {
+      systemDir.mkdirs();
+    }
 
     File specialPropertiesFile =
-        new File(propsDir + File.separator + ConfigNodeConstant.SPECIAL_CONF_NAME);
+        new File(conf.getSystemDir() + File.separator + ConfigNodeConstant.SPECIAL_CONF_NAME);
     if (!specialPropertiesFile.exists()) {
       if (specialPropertiesFile.createNewFile()) {
         LOGGER.info(
@@ -66,14 +69,14 @@ public class ConfigNodeConfCheck {
         LOGGER.error(
             "Can't create special configuration file {} for ConfigNode. IoTDB-ConfigNode is shutdown.",
             specialPropertiesFile.getAbsolutePath());
-        System.exit(-1);
+        throw new StartupException("Can't create special configuration file");
       }
     }
 
-    FileInputStream inputStream = new FileInputStream(specialPropertiesFile);
-    specialProperties.load(inputStream);
-    checkSpecialProperties();
-    inputStream.close();
+    try (FileInputStream inputStream = new FileInputStream(specialPropertiesFile)) {
+      specialProperties.load(inputStream);
+      checkSpecialProperties();
+    }
   }
 
   /**
@@ -93,13 +96,13 @@ public class ConfigNodeConfCheck {
   }
 
   /** Ensure that special parameters are consistent with each startup except the first one */
-  private void checkSpecialProperties() throws RepeatConfigurationException {
+  private void checkSpecialProperties() throws ConfigurationException {
     int specialDeviceGroupCount =
         Integer.parseInt(
             specialProperties.getProperty(
                 "device_group_count", String.valueOf(conf.getDeviceGroupCount())));
     if (specialDeviceGroupCount != conf.getDeviceGroupCount()) {
-      throw new RepeatConfigurationException(
+      throw new ConfigurationException(
           "device_group_count",
           String.valueOf(conf.getDeviceGroupCount()),
           String.valueOf(specialDeviceGroupCount));
@@ -110,7 +113,7 @@ public class ConfigNodeConfCheck {
             "device_group_hash_executor_class", conf.getDeviceGroupHashExecutorClass());
     if (!Objects.equals(
         specialDeviceGroupHashExecutorClass, conf.getDeviceGroupHashExecutorClass())) {
-      throw new RepeatConfigurationException(
+      throw new ConfigurationException(
           "device_group_hash_executor_class",
           conf.getDeviceGroupHashExecutorClass(),
           specialDeviceGroupHashExecutorClass);
@@ -128,9 +131,5 @@ public class ConfigNodeConfCheck {
 
   public static ConfigNodeConfCheck getInstance() {
     return ConfigNodeConfCheckHolder.INSTANCE;
-  }
-
-  private ConfigNodeConfCheck() {
-    LOGGER.info("Starting IoTDB Cluster ConfigNode " + ConfigNodeConstant.VERSION);
   }
 }

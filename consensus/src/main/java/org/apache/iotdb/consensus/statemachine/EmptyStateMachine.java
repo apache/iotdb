@@ -33,7 +33,7 @@ public class EmptyStateMachine implements IStateMachine {
 
   @Override
   public TSStatus write(IConsensusRequest IConsensusRequest) {
-    return new TSStatus();
+    return new TSStatus(0);
   }
 
   @Override

@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.service;
 
-import org.apache.iotdb.db.exception.StartupException;
+import org.apache.iotdb.commons.exception.StartupException;
 
 public interface RPCServiceMBean {
 
