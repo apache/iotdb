@@ -17,27 +17,30 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.sql;
+package org.apache.iotdb.db.mpp.memory;
 
-import org.apache.iotdb.db.mpp.sql.parser.ASTVisitor;
+/**
+ * Manages memory of a data node. The memory is divided into two memory pools so that the memory for
+ * read and for write can be isolated.
+ */
+public class LocalMemoryManager {
 
-import org.junit.After;
-import org.junit.Before;
+  private final long maxBytes;
+  private final MemoryPool queryPool;
 
-import java.time.ZonedDateTime;
-
-public class ASTVisitorTest {
-
-  ASTVisitor astVisitor;
-
-  @Before
-  public void setUp() {
-    astVisitor = new ASTVisitor();
-    astVisitor.setZoneId(ZonedDateTime.now().getOffset());
+  public LocalMemoryManager() {
+    long maxMemory = Runtime.getRuntime().maxMemory();
+    // Save 20% memory for untracked allocations.
+    maxBytes = (long) (maxMemory * 0.8);
+    // Allocate 50% memory for query execution.
+    queryPool = new MemoryPool("query", (long) (maxBytes * 0.5));
   }
 
-  @After
-  public void tearDown() {}
+  public long getMaxBytes() {
+    return maxBytes;
+  }
 
-  // TODO: add more tests
+  public MemoryPool getQueryPool() {
+    return queryPool;
+  }
 }
