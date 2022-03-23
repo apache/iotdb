@@ -19,5 +19,4 @@
 
 package org.apache.iotdb.db.service.thrift;
 
-public interface DataNodeInternalServerMBean {
-}
+public interface DataNodeInternalServerMBean {}

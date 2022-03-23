@@ -19,37 +19,40 @@
 package org.apache.iotdb.db.service.thrift.handler;
 
 import org.apache.iotdb.db.service.thrift.impl.DataNodeInternalServiceImpl;
+
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.server.ServerContext;
 import org.apache.thrift.server.TServerEventHandler;
 import org.apache.thrift.transport.TTransport;
 
 public class DataNodeInternalServiceHandler implements TServerEventHandler {
-    private DataNodeInternalServiceImpl serviceImpl;
+  private DataNodeInternalServiceImpl serviceImpl;
 
-    public DataNodeInternalServiceHandler(DataNodeInternalServiceImpl serviceImpl) {
-        this.serviceImpl = serviceImpl;
-    }
+  public DataNodeInternalServiceHandler(DataNodeInternalServiceImpl serviceImpl) {
+    this.serviceImpl = serviceImpl;
+  }
 
-    @Override
-    public void preServe() {
-        // nothing
-    }
+  @Override
+  public void preServe() {
+    // nothing
+  }
 
-    @Override
-    public ServerContext createContext(TProtocol tProtocol, TProtocol tProtocol1) {
-        // nothing
-        return null;
-    }
+  @Override
+  public ServerContext createContext(TProtocol tProtocol, TProtocol tProtocol1) {
+    // nothing
+    return null;
+  }
 
-    @Override
-    public void deleteContext(ServerContext serverContext, TProtocol tProtocol, TProtocol tProtocol1) {
-        // release query resources.
-        serviceImpl.handleClientExit();
-    }
+  @Override
+  public void deleteContext(
+      ServerContext serverContext, TProtocol tProtocol, TProtocol tProtocol1) {
+    // release query resources.
+    serviceImpl.handleClientExit();
+  }
 
-    @Override
-    public void processContext(ServerContext serverContext, TTransport tTransport, TTransport tTransport1) {
-        // nothing
-    }
+  @Override
+  public void processContext(
+      ServerContext serverContext, TTransport tTransport, TTransport tTransport1) {
+    // nothing
+  }
 }
