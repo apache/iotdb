@@ -16,11 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.engine.compaction.constant;
 
-package org.apache.iotdb.db.engine.compaction;
-
-public enum CompactionPriority {
-  INNER_CROSS,
-  CROSS_INNER,
-  BALANCE
+public enum CompactionType {
+  INNER_SEQ_COMPACTION,
+  INNER_UNSEQ_COMPACTION,
+  CROSS_COMPACTION
 }
