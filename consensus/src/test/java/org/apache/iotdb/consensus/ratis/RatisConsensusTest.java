@@ -33,9 +33,10 @@ import org.apache.iotdb.consensus.statemachine.IStateMachine;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import org.apache.ratis.util.FileUtils;
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
-import org.testcontainers.shaded.org.apache.commons.lang.RandomStringUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -43,7 +44,6 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -104,32 +104,34 @@ public class RatisConsensusTest {
     }
   }
 
-  @Test
-  public void basicConsensus() throws Exception {
+  private ConsensusGroupId gid;
+  private List<Peer> peers;
+  private List<File> peersStorage;
+  private List<IConsensus> servers;
+  private ConsensusGroup group;
+  private Peer peer0;
+  private Peer peer1;
+  private Peer peer2;
 
-    // 1. construct a consensus group of 3 peers
-    ConsensusGroupId gid = new ConsensusGroupId(GroupType.DataRegion, new Random().nextLong());
-
-    List<Peer> peers = new ArrayList<>();
-    Peer peer0 = new Peer(gid, new Endpoint("127.0.0.1", 6000));
-    Peer peer1 = new Peer(gid, new Endpoint("127.0.0.1", 6001));
-    Peer peer2 = new Peer(gid, new Endpoint("127.0.0.1", 6002));
+  @Before
+  public void setUp() throws IOException {
+    gid = new ConsensusGroupId(GroupType.DataRegion, 1L);
+    peers = new ArrayList<>();
+    peer0 = new Peer(gid, new Endpoint("127.0.0.1", 6000));
+    peer1 = new Peer(gid, new Endpoint("127.0.0.1", 6001));
+    peer2 = new Peer(gid, new Endpoint("127.0.0.1", 6002));
     peers.add(peer0);
     peers.add(peer1);
     peers.add(peer2);
-
-    List<File> peersStorage = new ArrayList<>();
-    peersStorage.add(new File("./target/1/" + RandomStringUtils.random(4)));
-    peersStorage.add(new File("./target/2/" + RandomStringUtils.random(4)));
-    peersStorage.add(new File("./target/3/" + RandomStringUtils.random(4)));
+    peersStorage = new ArrayList<>();
+    peersStorage.add(new File("./target/1/"));
+    peersStorage.add(new File("./target/2/"));
+    peersStorage.add(new File("./target/3/"));
     for (File dir : peersStorage) {
       dir.mkdirs();
     }
-
-    ConsensusGroup group = new ConsensusGroup(gid, peers);
-
-    // 2. Start 3 Consensus Service of each endpoint
-    List<IConsensus> servers = new ArrayList<>();
+    group = new ConsensusGroup(gid, peers);
+    servers = new ArrayList<>();
     for (int i = 0; i < 3; i++) {
       servers.add(
           RatisConsensus.newBuilder()
@@ -138,8 +140,21 @@ public class RatisConsensusTest {
               .setStorageDir(peersStorage.get(i))
               .build());
       servers.get(i).start();
-      ;
     }
+  }
+
+  @After
+  public void tearDown() throws IOException {
+    for (int i = 0; i < 3; i++) {
+      servers.get(i).stop();
+    }
+    for (File file : peersStorage) {
+      FileUtils.deleteFully(file);
+    }
+  }
+
+  @Test
+  public void basicConsensus() throws Exception {
 
     // 4. Add a new group
     servers.get(0).addConsensusGroup(group.getGroupId(), group.getPeers());
@@ -179,16 +194,6 @@ public class RatisConsensusTest {
 
     // 11. try consensus with only peer0
     doConsensus(servers.get(0), gid, 10, 40);
-
-    Thread.sleep(5000);
-    // 12. wrap up and delete temp files
-    for (File file : peersStorage) {
-      try {
-        FileUtils.deleteFully(file);
-      } catch (IOException ignored) {
-
-      }
-    }
   }
 
   private void doConsensus(IConsensus consensus, ConsensusGroupId gid, int count, int target)
