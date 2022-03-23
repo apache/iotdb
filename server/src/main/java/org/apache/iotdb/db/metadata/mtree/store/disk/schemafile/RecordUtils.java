@@ -100,7 +100,7 @@ public class RecordUtils {
   }
 
   /**
-   * TODO: properties and tags unhandled yet
+   * TODO: properties unhandled yet
    *
    * <p>Measurement MNode Record Structure: <br>
    * (var length record, with length member)
