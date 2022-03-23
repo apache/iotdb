@@ -37,8 +37,7 @@ public class DataPartitionQueryParam {
     return timePartitionIdList;
   }
 
-  public void setTimePartitionIdList(
-      List<TimePartitionId> timePartitionIdList) {
+  public void setTimePartitionIdList(List<TimePartitionId> timePartitionIdList) {
     this.timePartitionIdList = timePartitionIdList;
   }
 }

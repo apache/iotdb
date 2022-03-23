@@ -18,12 +18,9 @@
  */
 package org.apache.iotdb.db.mpp.sql.statement.crud;
 
-import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-
-import java.util.List;
 
 public abstract class InsertBaseStatement extends Statement {
 
@@ -38,18 +35,11 @@ public abstract class InsertBaseStatement extends Statement {
   // get from client
   protected TSDataType[] dataTypes;
 
-  /**
-   * device id reference, for reuse device id in both id table and memtable <br>
-   * used in memtable
-   */
-  protected IDeviceID deviceID;
-
-  // record the failed measurements, their reasons, and positions in "measurements"
-  List<String> failedMeasurements;
-  private List<Exception> failedExceptions;
-  List<Integer> failedIndices;
-
   public PartialPath getDevicePath() {
     return devicePath;
+  }
+
+  public String[] getMeasurements() {
+    return measurements;
   }
 }

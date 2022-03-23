@@ -1594,7 +1594,7 @@ public class TSServiceImpl implements TSIService.Iface {
   public TSStatus insertTabletV2(TSInsertTabletReq req) {
     long t1 = System.currentTimeMillis();
     try {
-      // TODO (xingtanzjr) move this method to coordinator
+      // TODO (xingtanzjr) move this method to SESSION_MANAGER
       if (!serviceProvider.checkLogin(req.getSessionId())) {
         return getNotLoggedInStatus();
       }

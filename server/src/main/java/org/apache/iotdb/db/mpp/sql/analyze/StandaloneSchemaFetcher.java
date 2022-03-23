@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.mpp.sql.analyze;
 
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.util.List;
 import java.util.Map;
@@ -32,7 +33,8 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
   }
 
   @Override
-  public Map<String, PartialPath> fetchSchema(List<String> deviceIds) {
+  public Map<String, MeasurementSchema> fetchSchema(
+      PartialPath deviceId, List<String> measurementIdList) {
     return null;
   }
 }

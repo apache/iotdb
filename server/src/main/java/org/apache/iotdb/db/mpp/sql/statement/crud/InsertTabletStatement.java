@@ -18,35 +18,11 @@
  */
 package org.apache.iotdb.db.mpp.sql.statement.crud;
 
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.tsfile.utils.BitMap;
 
-import java.nio.ByteBuffer;
-import java.util.List;
-
 public class InsertTabletStatement extends InsertBaseStatement {
-  private long[] times; // times should be sorted. It is done in the session API.
 
+  private long[] times; // times should be sorted. It is done in the session API.
   private BitMap[] bitMaps;
   private Object[] columns;
-  private ByteBuffer valueBuffer;
-  private int rowCount = 0;
-  // indicate whether this plan has been set 'start' or 'end' in order to support plan transmission
-  // without data loss in cluster version
-  boolean isExecuting = false;
-  private List<PartialPath> paths;
-  private int start;
-  private int end;
-  // when this plan is sub-plan split from another InsertTabletPlan, this indicates the original
-  // positions of values in
-  // this plan. For example, if the plan contains 5 timestamps, and range = [1,4,10,12], then it
-  // means that the first 3
-  // timestamps in this plan are from range[1,4) of the parent plan, and the last 2 timestamps are
-  // from range[10,12)
-  // of the parent plan.
-  // this is usually used to back-propagate exceptions to the parent plan without losing their
-  // proper positions.
-  private List<Integer> range;
-
-  private List<Object> failedColumns;
 }
