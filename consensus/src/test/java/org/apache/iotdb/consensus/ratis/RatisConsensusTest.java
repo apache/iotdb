@@ -105,7 +105,7 @@ public class RatisConsensusTest {
   public void basicConsensus() throws Exception {
 
     // 1. construct a consensus group of 3 peers
-    ConsensusGroupId gid = new ConsensusGroupId(GroupType.Config, 1L);
+    ConsensusGroupId gid = new ConsensusGroupId(GroupType.DataRegion, 1L);
 
     List<Peer> peers = new ArrayList<>();
     Peer peer0 = new Peer(gid, new Endpoint("127.0.0.1", 6000));
