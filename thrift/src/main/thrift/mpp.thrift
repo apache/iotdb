@@ -20,14 +20,14 @@
 namespace java org.apache.iotdb.mpp.rpc.thrift
 
 
-struct FragmentInstanceId {
+struct ThriftFragmentInstanceId {
   1: required string queryId
   2: required string fragmentId
   3: required string instanceId
 }
 
 struct GetDataBlockReqest {
-  1: required FragmentInstanceId fragnemtInstanceId
+  1: required ThriftFragmentInstanceId fragnemtInstanceId
   2: required i64 blockId
 }
 
@@ -36,13 +36,13 @@ struct GetDataBlockResponse {
 }
 
 struct NewDataBlockEvent {
-  1: required FragmentInstanceId fragmentInstanceId
+  1: required ThriftFragmentInstanceId fragmentInstanceId
   2: required string operatorId
   3: required i64 blockId
 }
 
 struct EndOfDataBlockEvent {
-  1: required FragmentInstanceId fragmentInstanceId
+  1: required ThriftFragmentInstanceId fragmentInstanceId
   2: required string operatorId
 }
 
