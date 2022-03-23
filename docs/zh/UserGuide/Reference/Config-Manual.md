@@ -210,6 +210,26 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |默认值| 100 |
 |改后生效方式|触发生效|
 
+
+* freq_snr
+
+|名字| freq_snr |
+|:---:|:---|
+|描述| 有损的FREQ编码的信噪比 |
+|类型|Double|
+|默认值| 40.0 |
+|改后生效方式|触发生效|
+
+
+* freq_block_size
+
+|名字| freq_block_size |
+|:---:|:---|
+|描述| FREQ编码的块大小，即一次时频域变换的数据点个数。为了加快编码速度，建议将其设置为2的幂次。 |
+|类型|Int32|
+|默认值| 1024 |
+|改后生效方式|触发生效|
+
 ### 目录配置
 
 * system\_dir
@@ -832,7 +852,7 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |:---:|:---|
 |描述| 合并时的优先级，BALANCE 各种合并平等，INNER_CROSS 优先进行顺序文件和顺序文件或乱序文件和乱序文件的合并，CROSS_INNER 优先将乱序文件合并到顺序文件中 |
 |类型| String |
-|默认值| balance |
+|默认值| BALANCE |
 |改后生效方式|重启服务生效|
 
 * target\_compaction\_file\_size
@@ -997,7 +1017,7 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 
 |名字| metadata\_node\_cache\_size |
 |:---:|:---|
-|描述| Manager的缓存大小。所有路径检查和将具有相应路径的MManager中的TSDataType的缓存，都将被用作提高写入速度。|
+|描述| SchemaRegion的缓存大小。所有路径检查和将具有相应路径的SchemaRegion中的TSDataType的缓存，都将被用作提高写入速度。|
 |类型|Int32|
 |默认值| 300000 |
 |改后生效方式|重启服务生效|
@@ -1569,6 +1589,7 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |默认值| 1 |
 |改后生效方式|仅允许在第一次启动服务前修改|
 
+<!--
 * enable\_id\_table
 
 |名字| enable\_id\_table |
@@ -1595,6 +1616,8 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |类型| bool |
 |默认值| false |
 |改后生效方式|重启服务生效|
+
+-->
 
 * concurrent\_writing\_time\_partition
 

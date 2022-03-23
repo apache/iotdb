@@ -187,8 +187,8 @@ public class IoTDBInfluxDB implements InfluxDB {
   }
 
   @Override
-  public QueryResult query(final Query query) {
-    throw new UnsupportedOperationException(InfluxDBConstant.METHOD_NOT_SUPPORTED);
+  public QueryResult query(final Query queryReq) {
+    return influxDBService.query(queryReq);
   }
 
   @Override

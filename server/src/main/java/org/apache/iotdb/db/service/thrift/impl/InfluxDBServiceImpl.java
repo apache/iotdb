@@ -24,8 +24,12 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.protocol.influxdb.dto.IoTDBPoint;
+import org.apache.iotdb.db.protocol.influxdb.handler.QueryHandler;
 import org.apache.iotdb.db.protocol.influxdb.input.InfluxLineParser;
 import org.apache.iotdb.db.protocol.influxdb.meta.InfluxDBMetaManager;
+import org.apache.iotdb.db.protocol.influxdb.operator.InfluxQueryOperator;
+import org.apache.iotdb.db.protocol.influxdb.sql.InfluxDBLogicalGenerator;
+import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
@@ -38,6 +42,8 @@ import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSCloseSessionReq;
 import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSCreateDatabaseReq;
 import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSOpenSessionReq;
 import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSOpenSessionResp;
+import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSQueryReq;
+import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSQueryResultRsp;
 import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSStatus;
 import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSWritePointsReq;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -128,6 +134,14 @@ public class InfluxDBServiceImpl implements InfluxDBService.Iface {
       }
       throw new InfluxDBException(e.getMessage());
     }
+  }
+
+  @Override
+  public TSQueryResultRsp query(TSQueryReq req) throws TException {
+    Operator operator = InfluxDBLogicalGenerator.generate(req.command);
+    QueryHandler.checkInfluxDBQueryOperator(operator);
+    return QueryHandler.queryInfluxDB(
+        req.database, (InfluxQueryOperator) operator, req.sessionId, serviceProvider);
   }
 
   public void handleClientExit() {

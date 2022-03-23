@@ -25,7 +25,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.IMetaManager;
+import org.apache.iotdb.db.metadata.SchemaEngine;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -59,7 +59,7 @@ public class DeviceStringTest {
   private String logNodePrefix = TestConstant.OUTPUT_DATA_DIR.concat("testNode/0");
   private Schema schema;
   private TsFileResource resource;
-  private IMetaManager mManager = IoTDB.metaManager;
+  private SchemaEngine schemaEngine = IoTDB.schemaEngine;
 
   @Before
   public void setup() throws IOException, WriteProcessException, MetadataException {
@@ -71,7 +71,7 @@ public class DeviceStringTest {
     schema.registerTimeseries(
         new Path("root.sg.device99"),
         new MeasurementSchema("sensor4", TSDataType.INT64, TSEncoding.PLAIN));
-    mManager.createTimeseries(
+    schemaEngine.createTimeseries(
         new PartialPath("root.sg.device99.sensor4"),
         TSDataType.INT64,
         TSEncoding.PLAIN,
@@ -80,7 +80,7 @@ public class DeviceStringTest {
     schema.registerTimeseries(
         new Path("root.sg.device99"),
         new MeasurementSchema("sensor2", TSDataType.INT64, TSEncoding.PLAIN));
-    mManager.createTimeseries(
+    schemaEngine.createTimeseries(
         new PartialPath("root.sg.device99.sensor2"),
         TSDataType.INT64,
         TSEncoding.PLAIN,
@@ -89,7 +89,7 @@ public class DeviceStringTest {
     schema.registerTimeseries(
         new Path(("root.sg.device99")),
         new MeasurementSchema("sensor1", TSDataType.INT64, TSEncoding.PLAIN));
-    mManager.createTimeseries(
+    schemaEngine.createTimeseries(
         new PartialPath("root.sg.device99.sensor1"),
         TSDataType.INT64,
         TSEncoding.PLAIN,
@@ -126,7 +126,7 @@ public class DeviceStringTest {
     resource.deserialize();
     assertFalse(resource.getDevices().isEmpty());
     for (String device : resource.getDevices()) {
-      assertSame(device, mManager.getDeviceId(new PartialPath(device)));
+      assertSame(device, schemaEngine.getDeviceId(new PartialPath(device)));
     }
   }
 }

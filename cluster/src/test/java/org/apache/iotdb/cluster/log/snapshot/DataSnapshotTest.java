@@ -34,7 +34,7 @@ import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.utils.IOUtils;
-import org.apache.iotdb.db.exception.StartupException;
+import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
@@ -179,7 +179,7 @@ public abstract class DataSnapshotTest {
     dataGroupMember.setLogManager(new TestLogManager(0));
     EnvironmentUtils.envSetUp();
     for (int i = 0; i < 10; i++) {
-      IoTDB.metaManager.setStorageGroup(new PartialPath(TestUtils.getTestSg(i)));
+      IoTDB.schemaEngine.setStorageGroup(new PartialPath(TestUtils.getTestSg(i)));
     }
     addNetFailure = false;
   }

@@ -18,12 +18,12 @@
  */
 package org.apache.iotdb.db.protocol.influxdb.meta;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.protocol.influxdb.constant.InfluxDBConstant;
+import org.apache.iotdb.db.protocol.influxdb.constant.InfluxConstant;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
@@ -186,7 +186,7 @@ public class InfluxDBMetaManager {
           .append(
               layerOrderToTagKeysInPath.containsKey(i)
                   ? tags.get(layerOrderToTagKeysInPath.get(i))
-                  : InfluxDBConstant.PLACE_HOLDER);
+                  : InfluxConstant.PLACE_HOLDER);
     }
     return path.toString();
   }
@@ -200,6 +200,10 @@ public class InfluxDBMetaManager {
         throw new InfluxDBException(e.getMessage());
       }
     }
+  }
+
+  public static Map<String, Map<String, Map<String, Integer>>> getDatabase2Measurement2TagOrders() {
+    return database2Measurement2TagOrders;
   }
 
   private static class InfluxDBMetaManagerHolder {

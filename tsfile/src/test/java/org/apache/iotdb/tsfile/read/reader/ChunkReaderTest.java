@@ -88,20 +88,20 @@ public class ChunkReaderTest {
 
   @Test
   public void testAccelerateQueryByTimestamp() throws IOException {
-    TsFileSequenceReader tsFileSequenceReader = new TsFileSequenceReader(file.getPath());
-
-    for (int i = 0; i < deviceNum; i++) {
-      for (int j = 0; j < measurementNum; j++) {
-        List<ChunkMetadata> chunkMetadataList =
-            tsFileSequenceReader.getChunkMetadataList(
-                new Path(testStorageGroup + PATH_SEPARATOR + "d" + i, "s" + j));
-        for (ChunkMetadata chunkMetadata : chunkMetadataList) {
-          Chunk chunk = tsFileSequenceReader.readMemChunk(chunkMetadata);
-          ChunkReader chunkReader = new ChunkReader(chunk, null);
-          chunk = tsFileSequenceReader.readMemChunk(chunkMetadata);
-          ChunkReader chunkReaderByTimestamp = new ChunkReader(chunk, null, 301);
-          Assert.assertEquals(5, chunkReader.loadPageReaderList().size());
-          Assert.assertEquals(2, chunkReaderByTimestamp.loadPageReaderList().size());
+    try (TsFileSequenceReader tsFileSequenceReader = new TsFileSequenceReader(file.getPath())) {
+      for (int i = 0; i < deviceNum; i++) {
+        for (int j = 0; j < measurementNum; j++) {
+          List<ChunkMetadata> chunkMetadataList =
+              tsFileSequenceReader.getChunkMetadataList(
+                  new Path(testStorageGroup + PATH_SEPARATOR + "d" + i, "s" + j));
+          for (ChunkMetadata chunkMetadata : chunkMetadataList) {
+            Chunk chunk = tsFileSequenceReader.readMemChunk(chunkMetadata);
+            ChunkReader chunkReader = new ChunkReader(chunk, null);
+            chunk = tsFileSequenceReader.readMemChunk(chunkMetadata);
+            ChunkReader chunkReaderByTimestamp = new ChunkReader(chunk, null, 301);
+            Assert.assertEquals(5, chunkReader.loadPageReaderList().size());
+            Assert.assertEquals(2, chunkReaderByTimestamp.loadPageReaderList().size());
+          }
         }
       }
     }
