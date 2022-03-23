@@ -33,6 +33,7 @@ import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.utils.TsFileUtils;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -121,7 +122,8 @@ public class CompactionRecoverTask {
                 compactionRecoverFromOld.handleCrossCompactionWithSomeSourceFilesLostBefore013(
                     targetFileIdentifiers, sourceFileIdentifiers);
           } else {
-            handleSuccess = handleWithSomeSourceFilesLost(sourceFileIdentifiers);
+            handleSuccess =
+                handleWithSomeSourceFilesLost(targetFileIdentifiers, sourceFileIdentifiers);
           }
         }
       }
@@ -219,8 +221,14 @@ public class CompactionRecoverTask {
    * Some source files lost: delete remaining source files, including: tsfile, resource file, mods
    * file and compaction mods file.
    */
-  private boolean handleWithSomeSourceFilesLost(List<TsFileIdentifier> sourceFileIdentifiers) {
-    // some source files have been deleted, while target file must exist.
+  private boolean handleWithSomeSourceFilesLost(
+      List<TsFileIdentifier> targetFileIdentifiers, List<TsFileIdentifier> sourceFileIdentifiers)
+      throws IOException {
+    // some source files have been deleted, while target file must exist and complete.
+    if (!checkIsTargetFilesComplete(targetFileIdentifiers, fullStorageGroupName)) {
+      return false;
+    }
+
     boolean handleSuccess = true;
     for (TsFileIdentifier sourceFileIdentifier : sourceFileIdentifiers) {
       File sourceFile = sourceFileIdentifier.getFileFromDataDirs();
@@ -285,6 +293,24 @@ public class CompactionRecoverTask {
       }
     }
     return null;
+  }
+
+  private boolean checkIsTargetFilesComplete(
+      List<TsFileIdentifier> targetFileIdentifiers, String fullStorageGroupName)
+      throws IOException {
+    for (TsFileIdentifier targetFileIdentifier : targetFileIdentifiers) {
+      File targetFile = targetFileIdentifier.getFileFromDataDirs();
+      if (targetFile == null
+          || !TsFileUtils.isTsFileComplete(new TsFileResource(targetFile).getTsFile())) {
+        LOGGER.error(
+            "{} [Compaction][ExceptionHandler] target file {} is not complete, and some source files is lost, do nothing. Set allowCompaction to false",
+            fullStorageGroupName,
+            targetFileIdentifier.getFilePath());
+        IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
+        return false;
+      }
+    }
+    return true;
   }
 
   /**
