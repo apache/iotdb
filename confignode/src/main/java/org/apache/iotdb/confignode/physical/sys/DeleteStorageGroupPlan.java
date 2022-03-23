@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,27 +16,24 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.sql.planner.plan;
+package org.apache.iotdb.confignode.physical.sys;
 
-import org.apache.iotdb.db.mpp.common.MPPQueryContext;
-import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
-import org.apache.iotdb.db.mpp.sql.optimization.PlanOptimizer;
+import org.apache.iotdb.confignode.physical.PhysicalPlan;
+import org.apache.iotdb.confignode.physical.PhysicalPlanType;
 
-import java.util.List;
+import java.nio.ByteBuffer;
 
-public class LogicalPlanner {
-  private Analysis analysis;
-  private MPPQueryContext context;
-  private List<PlanOptimizer> optimizers;
+public class DeleteStorageGroupPlan extends PhysicalPlan {
 
-  public LogicalPlanner(
-      Analysis analysis, MPPQueryContext context, List<PlanOptimizer> optimizers) {
-    this.analysis = analysis;
-    this.context = context;
-    this.optimizers = optimizers;
+  // TODO: @YongzaoDan
+
+  public DeleteStorageGroupPlan() {
+    super(PhysicalPlanType.DeleteStorageGroup);
   }
 
-  public LogicalQueryPlan plan() {
-    return null;
-  }
+  @Override
+  protected void serializeImpl(ByteBuffer buffer) {}
+
+  @Override
+  protected void deserializeImpl(ByteBuffer buffer) {}
 }

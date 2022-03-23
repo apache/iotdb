@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.sql.analyze;
 import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
+import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
 import org.apache.iotdb.db.mpp.sql.rewriter.ConcatPathRewriter;
 import org.apache.iotdb.db.mpp.sql.rewriter.DnfFilterOptimizer;
@@ -38,9 +39,9 @@ import org.apache.iotdb.db.mpp.sql.tree.StatementVisitor;
 public class StatementAnalyzer {
 
   private final Analysis analysis;
-  private final AnalysisContext context;
+  private final MPPQueryContext context;
 
-  public StatementAnalyzer(Analysis analysis, AnalysisContext context) {
+  public StatementAnalyzer(Analysis analysis, MPPQueryContext context) {
     this.analysis = analysis;
     this.context = context;
   }
@@ -50,16 +51,16 @@ public class StatementAnalyzer {
   }
 
   /** This visitor is used to analyze each type of Statement and returns the {@link Analysis}. */
-  private final class AnalyzeVisitor extends StatementVisitor<Analysis, AnalysisContext> {
+  private final class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> {
 
     @Override
-    public Analysis visitStatement(Statement statement, AnalysisContext context) {
+    public Analysis visitStatement(Statement statement, MPPQueryContext context) {
       analysis.setStatement(statement);
       return analysis;
     }
 
     @Override
-    public Analysis visitQuery(QueryStatement queryStatement, AnalysisContext context) {
+    public Analysis visitQuery(QueryStatement queryStatement, MPPQueryContext context) {
       try {
         // check for semantic errors
         queryStatement.selfCheck();
@@ -87,7 +88,7 @@ public class StatementAnalyzer {
     }
 
     @Override
-    public Analysis visitInsert(InsertStatement insertStatement, AnalysisContext context) {
+    public Analysis visitInsert(InsertStatement insertStatement, MPPQueryContext context) {
       // TODO: do analyze for insert statement
       analysis.setStatement(insertStatement);
       return analysis;
@@ -95,7 +96,7 @@ public class StatementAnalyzer {
 
     @Override
     public Analysis visitCreateTimeseries(
-        CreateTimeSeriesStatement createTimeSeriesStatement, AnalysisContext context) {
+        CreateTimeSeriesStatement createTimeSeriesStatement, MPPQueryContext context) {
       if (createTimeSeriesStatement.getTags() != null
           && !createTimeSeriesStatement.getTags().isEmpty()
           && createTimeSeriesStatement.getAttributes() != null

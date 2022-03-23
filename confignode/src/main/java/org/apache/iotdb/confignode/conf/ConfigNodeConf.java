@@ -70,6 +70,10 @@ public class ConfigNodeConf {
     ConfigNodeConstant.DATA_DIR + File.separator + ConfigNodeConstant.DATA_DIR
   };
 
+  private int regionReplicaCount = 3;
+  private int schemaRegionCount = 1;
+  private int dataRegionCount = 1;
+
   public ConfigNodeConf() {
     // empty constructor
   }
@@ -184,5 +188,29 @@ public class ConfigNodeConf {
 
   public void setDataDirs(String[] dataDirs) {
     this.dataDirs = dataDirs;
+  }
+
+  public int getRegionReplicaCount() {
+    return regionReplicaCount;
+  }
+
+  public void setDataRegionCount(int dataRegionCount) {
+    this.dataRegionCount = dataRegionCount;
+  }
+
+  public int getSchemaRegionCount() {
+    return schemaRegionCount;
+  }
+
+  public void setSchemaRegionCount(int schemaRegionCount) {
+    this.schemaRegionCount = schemaRegionCount;
+  }
+
+  public int getDataRegionCount() {
+    return dataRegionCount;
+  }
+
+  public void setRegionReplicaCount(int regionReplicaCount) {
+    this.regionReplicaCount = regionReplicaCount;
   }
 }

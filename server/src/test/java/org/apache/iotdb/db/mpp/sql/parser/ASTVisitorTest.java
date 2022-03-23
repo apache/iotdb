@@ -17,9 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.sql;
-
-import org.apache.iotdb.db.mpp.sql.parser.ASTVisitor;
+package org.apache.iotdb.db.mpp.sql.parser;
 
 import org.junit.After;
 import org.junit.Before;
