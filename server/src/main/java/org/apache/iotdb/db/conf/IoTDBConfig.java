@@ -809,6 +809,9 @@ public class IoTDBConfig {
   /** the memory used for metadata cache when using persistent schema */
   private int cachedMetadataSizeInPersistentMode = 50000;
 
+  /** the max num of thread used for flushing metadata to schema file */
+  private int maxSchemaFlushThreadNum = 15;
+
   /** the minimum size (in bytes) of segment inside a schema file page */
   private short minimumSegmentInSchemaFile = 0;
 
@@ -2543,6 +2546,14 @@ public class IoTDBConfig {
 
   public void setCachedMetadataSizeInPersistentMode(int cachedMetadataSizeInPersistentMode) {
     this.cachedMetadataSizeInPersistentMode = cachedMetadataSizeInPersistentMode;
+  }
+
+  public int getMaxSchemaFlushThreadNum() {
+    return maxSchemaFlushThreadNum;
+  }
+
+  public void setMaxSchemaFlushThreadNum(int maxSchemaFlushThreadNum) {
+    this.maxSchemaFlushThreadNum = maxSchemaFlushThreadNum;
   }
 
   public short getMinimumSegmentInSchemaFile() {

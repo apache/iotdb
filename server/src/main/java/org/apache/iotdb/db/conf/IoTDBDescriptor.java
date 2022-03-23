@@ -715,6 +715,11 @@ public class IoTDBDescriptor {
                   "cached_metadata_size_in_persistent_mode",
                   String.valueOf(conf.getCachedMetadataSizeInPersistentMode()))));
 
+      conf.setMaxSchemaFlushThreadNum(
+          Integer.parseInt(
+              properties.getProperty(
+                  "max_schema_flush_thread", String.valueOf(conf.getMaxSchemaFlushThreadNum()))));
+
       conf.setMinimumSegmentInSchemaFile(
           Short.parseShort(
               properties.getProperty(

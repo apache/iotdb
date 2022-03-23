@@ -19,13 +19,13 @@
 package org.apache.iotdb.db.metadata.mtree.store.disk;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 import java.util.concurrent.ExecutorService;
 
 public class MTreeFlushTaskManager {
 
   private static final String MTREE_FLUSH_THREAD_POOL_NAME = "MTree-flush-task";
-  private static final int MAX_FLUSH_THREAD_NUM = 10;
 
   private ExecutorService flushTaskExecutor;
 
@@ -44,7 +44,8 @@ public class MTreeFlushTaskManager {
   public void init() {
     flushTaskExecutor =
         IoTDBThreadPoolFactory.newCachedThreadPool(
-            MTREE_FLUSH_THREAD_POOL_NAME, MAX_FLUSH_THREAD_NUM);
+            MTREE_FLUSH_THREAD_POOL_NAME,
+            IoTDBDescriptor.getInstance().getConfig().getMaxSchemaFlushThreadNum());
   }
 
   public void clear() {
