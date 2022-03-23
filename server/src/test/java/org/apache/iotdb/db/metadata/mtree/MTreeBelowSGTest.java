@@ -40,6 +40,7 @@ import org.junit.Test;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -181,6 +182,7 @@ public abstract class MTreeBelowSGTest {
       assertNotNull(storageGroup);
       List<MeasurementPath> result =
           storageGroup.getMeasurementPaths(new PartialPath("root.a.*.s0"));
+      result.sort(Comparator.comparing(MeasurementPath::getFullPath));
       assertEquals(2, result.size());
       assertEquals("root.a.d0.s0", result.get(0).getFullPath());
       assertEquals("root.a.d1.s0", result.get(1).getFullPath());
@@ -248,11 +250,13 @@ public abstract class MTreeBelowSGTest {
 
       List<MeasurementPath> result =
           storageGroup.getMeasurementPaths(new PartialPath("root.a.*.s0"));
+      result.sort(Comparator.comparing(MeasurementPath::getFullPath));
       assertEquals(2, result.size());
       assertEquals("root.a.d0.s0", result.get(0).getFullPath());
       assertEquals("root.a.d1.s0", result.get(1).getFullPath());
 
       result = storageGroup.getMeasurementPaths(new PartialPath("root.a.*.temperature"));
+      result.sort(Comparator.comparing(MeasurementPath::getFullPath));
       assertEquals(2, result.size());
       assertEquals("root.a.d0.s0", result.get(0).getFullPath());
       assertEquals("root.a.d1.s0", result.get(1).getFullPath());
@@ -260,6 +264,7 @@ public abstract class MTreeBelowSGTest {
       List<MeasurementPath> result2 =
           storageGroup.getMeasurementPathsWithAlias(new PartialPath("root.a.*.s0"), 0, 0, false)
               .left;
+      result2.sort(Comparator.comparing(MeasurementPath::getFullPath));
       assertEquals(2, result2.size());
       assertEquals("root.a.d0.s0", result2.get(0).getFullPath());
       assertFalse(result2.get(0).isMeasurementAliasExists());
@@ -270,6 +275,7 @@ public abstract class MTreeBelowSGTest {
           storageGroup.getMeasurementPathsWithAlias(
                   new PartialPath("root.a.*.temperature"), 0, 0, false)
               .left;
+      result2.sort(Comparator.comparing(MeasurementPath::getFullPath));
       assertEquals(2, result2.size());
       assertEquals("root.a.d0.temperature", result2.get(0).getFullPathWithAlias());
       assertEquals("root.a.d1.temperature", result2.get(1).getFullPathWithAlias());
