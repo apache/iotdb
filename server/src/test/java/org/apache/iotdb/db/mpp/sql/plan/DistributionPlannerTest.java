@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.db.mpp.sql.plan;
 
+import org.apache.iotdb.commons.partition.TimePartitionId;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.*;
-import org.apache.iotdb.db.mpp.sql.planner.plan.DistributionPlanner;
+import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
+import org.apache.iotdb.db.mpp.sql.planner.DistributionPlanner;
 import org.apache.iotdb.db.mpp.sql.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.mpp.sql.planner.plan.PlanFragment;
 import org.apache.iotdb.db.mpp.sql.planner.plan.SubPlan;
@@ -33,7 +35,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
-import org.apache.iotdb.db.sql.statement.component.OrderBy;
+import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 
 import org.junit.Test;
 
@@ -141,22 +143,22 @@ public class DistributionPlannerTest {
 
   private Analysis constructAnalysis() {
     Analysis analysis = new Analysis();
-    Map<String, Map<DataRegionTimeSlice, List<DataRegion>>> dataPartitionInfo = new HashMap<>();
+    Map<String, Map<TimePartitionId, List<DataRegion>>> dataPartitionInfo = new HashMap<>();
     List<DataRegion> d1DataRegions = new ArrayList<>();
     d1DataRegions.add(new DataRegion(1, "192.0.0.1"));
     d1DataRegions.add(new DataRegion(2, "192.0.0.1"));
-    Map<DataRegionTimeSlice, List<DataRegion>> d1DataRegionMap = new HashMap<>();
-    d1DataRegionMap.put(new DataRegionTimeSlice(), d1DataRegions);
+    Map<TimePartitionId, List<DataRegion>> d1DataRegionMap = new HashMap<>();
+    d1DataRegionMap.put(new TimePartitionId(), d1DataRegions);
 
     List<DataRegion> d2DataRegions = new ArrayList<>();
     d2DataRegions.add(new DataRegion(3, "192.0.0.1"));
-    Map<DataRegionTimeSlice, List<DataRegion>> d2DataRegionMap = new HashMap<>();
-    d2DataRegionMap.put(new DataRegionTimeSlice(), d2DataRegions);
+    Map<TimePartitionId, List<DataRegion>> d2DataRegionMap = new HashMap<>();
+    d2DataRegionMap.put(new TimePartitionId(), d2DataRegions);
 
     dataPartitionInfo.put("root.sg.d1", d1DataRegionMap);
     dataPartitionInfo.put("root.sg.d2", d2DataRegionMap);
 
-    analysis.setDataPartitionInfo(dataPartitionInfo);
+    analysis.setDataPartitionInfoOld(dataPartitionInfo);
     return analysis;
   }
 }

@@ -23,7 +23,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeIdAllocator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.sql.statement.component.OrderBy;
+import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 
 import java.util.ArrayList;
 import java.util.List;
