@@ -38,6 +38,7 @@ import org.junit.Test;
 import org.testcontainers.shaded.org.apache.commons.lang.RandomStringUtils;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -182,7 +183,11 @@ public class RatisConsensusTest {
     Thread.sleep(5000);
     // 12. wrap up and delete temp files
     for (File file : peersStorage) {
-      FileUtils.deleteFully(file);
+      try {
+        FileUtils.deleteFully(file);
+      } catch (IOException ignored) {
+
+      }
     }
   }
 
