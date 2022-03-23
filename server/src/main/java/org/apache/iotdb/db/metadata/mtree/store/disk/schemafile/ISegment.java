@@ -38,8 +38,6 @@ public interface ISegment {
    */
   int insertRecord(String key, ByteBuffer buffer) throws RecordDuplicatedException;
 
-  int insertRecords(String[] keys, ByteBuffer[] buffers);
-
   int updateRecord(String key, ByteBuffer buffer) throws SegmentOverflowException;
 
   int removeRecord(String key);

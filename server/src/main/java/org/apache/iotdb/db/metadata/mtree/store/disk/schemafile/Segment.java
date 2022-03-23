@@ -34,7 +34,8 @@ import java.util.Queue;
 
 /**
  * This class initiate a segment object with corresponding bytes. Implements add, get, remove
- * records methods. Act like a wrapper of a bytebuffer which reflects a segment.
+ * records methods. <br>
+ * Act like a wrapper of a bytebuffer which reflects a segment.
  */
 public class Segment implements ISegment {
   // control concurrency of the segment executing read and write
@@ -44,7 +45,7 @@ public class Segment implements ISegment {
   final ByteBuffer buffer;
   short length, freeAddr, recordNum, pairLength;
   boolean delFlag;
-  long parRecord, prevSegAddress, nextSegAddress;
+  long prevSegAddress, nextSegAddress;
 
   // reconstruct from key-address pair buffer
   List<Pair<String, Short>> keyAddressList;
@@ -127,7 +128,16 @@ public class Segment implements ISegment {
     return new Segment(buffer, false);
   }
 
-  // region interface impl
+  private void reconstructKeyAddress(ByteBuffer pairBuffer) {
+    keyAddressList = new ArrayList<>();
+    for (int idx = 0; idx < recordNum; idx++) {
+      String key = ReadWriteIOUtils.readString(pairBuffer);
+      Short address = ReadWriteIOUtils.readShort(pairBuffer);
+      keyAddressList.add(new Pair<>(key, address));
+    }
+  }
+
+  // region Interface Implementation
 
   /**
    * check whether enough space, notice that pairLength including 3 parts: [var length] key string
@@ -216,11 +226,6 @@ public class Segment implements ISegment {
     this.recordNum++;
 
     return recordStartAddr - pairLength - Segment.SEG_HEADER_SIZE;
-  }
-
-  @Override
-  public int insertRecords(String[] keys, ByteBuffer[] buffers) {
-    return -1;
   }
 
   @Override
@@ -415,7 +420,29 @@ public class Segment implements ISegment {
     this.buffer.clear();
   }
 
+  @Override
+  public long getPrevSegAddress() {
+    return prevSegAddress;
+  }
+
+  @Override
+  public long getNextSegAddress() {
+    return nextSegAddress;
+  }
+
+  @Override
+  public void setPrevSegAddress(long prevSegAddress) {
+    this.prevSegAddress = prevSegAddress;
+  }
+
+  @Override
+  public void setNextSegAddress(long nextSegAddress) {
+    this.nextSegAddress = nextSegAddress;
+  }
+
   // endregion
+
+  // region Segment & Record Buffer Operation
 
   public ByteBuffer getBufferCopy() {
     syncBuffer();
@@ -434,22 +461,9 @@ public class Segment implements ISegment {
     RecordUtils.updateSegAddr(this.buffer, newSegAddr);
   }
 
-  public long getPrevSegAddress() {
-    return prevSegAddress;
-  }
+  // endregion
 
-  public long getNextSegAddress() {
-    return nextSegAddress;
-  }
-
-  public void setPrevSegAddress(long prevSegAddress) {
-    this.prevSegAddress = prevSegAddress;
-  }
-
-  public void setNextSegAddress(long nextSegAddress) {
-    this.nextSegAddress = nextSegAddress;
-  }
-
+  // region Getters of Record Index or Offset
   /**
    * To decouple search implementation from other methods Rather than offset of the target key,
    * index could be used to update or remove on keyAddressList
@@ -487,12 +501,14 @@ public class Segment implements ISegment {
   }
 
   private int getRecordIndexByAlias(String alias) {
-    this.buffer.clear();
     for (int i = 0; i < keyAddressList.size(); i++) {
-      this.buffer.position(keyAddressList.get(i).right);
-      if (RecordUtils.getRecordType(this.buffer) >= 4
-          && RecordUtils.getRecordAlias(this.buffer).equals(alias)) {
-        return i;
+      if (getOffsetByIndex(i) > 0) {
+        this.buffer.clear();
+        this.buffer.position(keyAddressList.get(i).right);
+        if (RecordUtils.getRecordType(this.buffer) >= 4
+            && RecordUtils.getRecordAlias(this.buffer).equals(alias)) {
+          return i;
+        }
       }
     }
     return -1;
@@ -502,14 +518,7 @@ public class Segment implements ISegment {
     return keyAddressList.get(index).right;
   }
 
-  private void reconstructKeyAddress(ByteBuffer pairBuffer) {
-    keyAddressList = new ArrayList<>();
-    for (int idx = 0; idx < recordNum; idx++) {
-      String key = ReadWriteIOUtils.readString(pairBuffer);
-      Short address = ReadWriteIOUtils.readShort(pairBuffer);
-      keyAddressList.add(new Pair<>(key, address));
-    }
-  }
+  // endregion
 
   @Override
   public String toString() {
@@ -544,6 +553,8 @@ public class Segment implements ISegment {
     return res;
   }
 
+  // region Test Only Methods
+
   @TestOnly
   public ByteBuffer getRecord(String key) {
     short targetAddr;
@@ -568,4 +579,6 @@ public class Segment implements ISegment {
   public List<Pair<String, Short>> getKeyOffsetList() {
     return keyAddressList;
   }
+
+  // endregion
 }
