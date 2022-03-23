@@ -70,16 +70,12 @@ public class StorageGroupSchemaManager implements IStorageGroupSchemaManager {
     if (sgDirs != null) {
       for (File sgDir : sgDirs) {
         try {
-          initStorageGroup(new PartialPath(sgDir.getName()));
+          setStorageGroup(new PartialPath(sgDir.getName()));
         } catch (MetadataException e) {
           logger.error("Cannot recover storage group from dir {} because", sgDir.getName(), e);
         }
       }
     }
-  }
-
-  private void initStorageGroup(PartialPath path) throws MetadataException {
-    mtree.setStorageGroup(path, true);
   }
 
   public synchronized void clear() {

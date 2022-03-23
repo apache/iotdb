@@ -33,10 +33,6 @@ public class MemMTreeStore implements IMTreeStore {
 
   private IMNode root;
 
-  public MemMTreeStore(IMNode node) {
-    root = node;
-  }
-
   public MemMTreeStore(PartialPath rootPath, boolean isStorageGroup) {
     if (isStorageGroup) {
       this.root =
