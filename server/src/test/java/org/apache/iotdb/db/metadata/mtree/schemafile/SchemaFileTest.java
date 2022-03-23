@@ -303,13 +303,25 @@ public class SchemaFileTest {
   public void bitwiseTest() {
     int a = 32768;
     int b = 0x80000000;
-    print((long)a<<16);
-    print((long)(a<<16));
-    print((long)b<<16);
-    print((long)(0xffff_ffff & b) << 16);
+    print((long) a << 16);
+    print((long) (a << 16));
+    print((long) b << 16);
+    print((long) (0xffff_ffff & b) << 16);
     print((0xffffffffL & b) << 16);
 
     Assert.assertEquals(a * 16 * 1024, a << 14);
+    print(SchemaFile.getPageIndex(1761607936));
+    print(SchemaFile.getPageIndex(1099780063232L));
+
+    long initGlbAdr = 1099780063232L;
+    int pageIndex = SchemaFile.getPageIndex(initGlbAdr);
+    short segIdx = SchemaFile.getSegIndex(initGlbAdr);
+    while (initGlbAdr < 1099980063232L) {
+      Assert.assertEquals(initGlbAdr, SchemaFile.getGlobalIndex(pageIndex, segIdx));
+      initGlbAdr += 0x80000000L;
+      pageIndex = SchemaFile.getPageIndex(initGlbAdr);
+      segIdx = SchemaFile.getSegIndex(initGlbAdr);
+    }
   }
 
   @Test
