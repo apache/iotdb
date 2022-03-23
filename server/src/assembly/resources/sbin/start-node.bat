@@ -19,7 +19,7 @@
 
 @echo off
 echo ````````````````````````
-echo Starting IoTDB (Cluster Mode)
+echo Starting IoTDB DataNode
 echo ````````````````````````
 
 PATH %PATH%;%JAVA_HOME%\bin\
@@ -91,7 +91,7 @@ IF EXIST "%IOTDB_CONF%\iotdb-env.bat" (
 
 @setlocal ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
 set CONF_PARAMS=-s
-if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.cluster.ClusterIoTDB
+if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.db.datanode.DataNode
 if NOT DEFINED JAVA_HOME goto :err
 
 @REM -----------------------------------------------------------------------------

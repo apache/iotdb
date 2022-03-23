@@ -31,15 +31,15 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
   private static final Logger logger = LoggerFactory.getLogger(DataNodeServerCommandLine.class);
 
   // join an established cluster
-  private static final String MODE_ADD = "-a";
+  private static final String MODE_START = "-s";
   // send a request to remove a node, more arguments: ip-of-removed-node
   // metaport-of-removed-node
   private static final String MODE_REMOVE = "-r";
 
   private static final String USAGE =
-      "Usage: <-a|-r> "
+      "Usage: <-s|-r> "
           + "[-D{} <configure folder>] \n"
-          + "-a: start the node to the cluster\n"
+          + "-s: start the node to the cluster\n"
           + "-r: remove the node out of the cluster\n";
 
   @Override
@@ -72,7 +72,7 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
     }
 
     // we start IoTDB kernel first. then we start the cluster module.
-    if (MODE_ADD.equals(mode)) {
+    if (MODE_START.equals(mode)) {
       dataNode.doAddNode(args);
     } else if (MODE_REMOVE.equals(mode)) {
       dataNode.doRemoveNode(args);

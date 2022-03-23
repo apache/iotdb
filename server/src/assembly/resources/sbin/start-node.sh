@@ -20,7 +20,7 @@
 
 
 echo ---------------------
-echo "Starting IoTDB (Cluster Mode)"
+echo "Starting IoTDB DataNode"
 echo ---------------------
 
 if [ -z "${IOTDB_HOME}" ]; then
@@ -76,7 +76,7 @@ CLASSPATH=""
 for f in ${IOTDB_HOME}/lib/*.jar; do
   CLASSPATH=${CLASSPATH}":"$f
 done
-classname=org.apache.iotdb.cluster.ClusterIoTDB
+classname=org.apache.iotdb.db.datanode.DataNode
 
 launch_service()
 {

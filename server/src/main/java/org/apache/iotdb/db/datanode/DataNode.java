@@ -23,13 +23,15 @@ import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
-import org.apache.iotdb.commons.service.ThriftServiceThread;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConfigCheck;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.service.DataNodeInternalServer;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.service.basic.DataNodeServiceProvider;
+import org.apache.iotdb.db.service.thrift.impl.DataNodeInternalServiceImpl;
 
-import org.apache.thrift.protocol.TProtocolFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,12 +58,15 @@ public class DataNode implements DataNodeMBean {
     return DataNodeHolder.INSTANCE;
   }
 
+  public static void main(String[] args) {
+    new DataNodeServerCommandLine().doMain(args);
+  }
+
   protected void serverCheckAndInit() throws ConfigurationException, IOException {
     IoTDBConfigCheck.getInstance().checkConfig();
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
     config.setSyncEnable(false);
-
     // TODO: check configuration for data node
 
     // if client ip is the default address, set it same with internal ip
@@ -70,7 +75,15 @@ public class DataNode implements DataNodeMBean {
     }
   }
 
-  protected void doAddNode(String[] args) {}
+  protected void doAddNode(String[] args) {
+    try {
+      // TODO : contact with config node to join into the cluster
+      active();
+    } catch (StartupException e) {
+      logger.error("Fail to start  server", e);
+      stop();
+    }
+  }
 
   protected void doRemoveNode(String[] args) {
     // TODO: remove data node
@@ -78,64 +91,31 @@ public class DataNode implements DataNodeMBean {
 
   /** initialize the current node and its services */
   public boolean initLocalEngines() {
-    //  ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
-    //    thisNode = new Node();
-    //    // set internal rpc ip and ports
-    //    thisNode.setInternalIp(config.getInternalIp());
-    //    thisNode.setMetaPort(config.getInternalMetaPort());
-    //    thisNode.setDataPort(config.getInternalDataPort());
-    //    // set client rpc ip and ports
-    //    thisNode.setClientPort(config.getClusterRpcPort());
-    //    thisNode.setClientIp(IoTDBDescriptor.getInstance().getConfig().getRpcAddress());
-
-    // local engine
-    TProtocolFactory protocolFactory =
-        ThriftServiceThread.getProtocolFactory(
-            IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable());
     IoTDB.setClusterMode();
-    //    IoTDB.setSchemaEngine(CSchemaEngine.getInstance());
-    //    ((CSchemaEngine) IoTDB.schemaEngine).setMetaGroupMember(metaGroupMember);
-    //    ((CSchemaEngine) IoTDB.schemaEngine).setCoordinator(coordinator);
-    // MetaPuller.getInstance().init(metaGroupMember);
-
-    // try {
-    // IoTDB.setServiceProvider(new ServiceProvider(coordinator, metaGroupMember));
-    //    } catch (QueryProcessException e) {
-    //      logger.error("Failed to set clusterServiceProvider.", e);
-    //      stop();
-    //      return false;
-    //    }
-
-    // from the scope of the DataGroupEngine,it should be singleton pattern
-    // the way of setting MetaGroupMember in DataGroupEngine may need a better modification in
-    // future commit.
-    //    DataGroupEngine.setProtocolFactory(protocolFactory);
-    //    DataGroupEngine.setMetaGroupMember(metaGroupMember);
-    //    dataGroupEngine = DataGroupEngine.getInstance();
-    //    clientManager =
-    //            new ClientManager(
-    //                    ClusterDescriptor.getInstance().getConfig().isUseAsyncServer(),
-    //                    ClientManager.Type.RequestForwardClient);
-    // initTasks();
     try {
-      // we need to check config after initLocalEngines.
-      startServerCheck();
-      registerManager.register(JMXService.getInstance());
-      JMXService.registerMBean(metaGroupMember, metaGroupMember.getMBeanName());
-    } catch (StartupException e) {
-      logger.error("Failed to check cluster config.", e);
+      IoTDB.setServiceProvider(new DataNodeServiceProvider());
+    } catch (QueryProcessException e) {
+      logger.error("Failed to set clusterServiceProvider.", e);
       stop();
       return false;
     }
     return true;
   }
 
-  public void active() {
+  public void active() throws StartupException {
     // start iotdb server first
     IoTDB.getInstance().active();
 
-    // rpc service initialize
-
+    /** Register services */
+    JMXService.registerMBean(getInstance(), mbeanName);
+    // TODO: move rpc service initialization from iotdb instance here
+    DataNodeInternalServiceImpl dataNodeInternalServiceImpl = new DataNodeInternalServiceImpl();
+    DataNodeInternalServer.getInstance().initSyncedServiceImpl(dataNodeInternalServiceImpl);
+    registerManager.register(DataNodeInternalServer.getInstance());
+    // init influxDB MManager
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableInfluxDBRpcService()) {
+      IoTDB.initInfluxDBMManager();
+    }
   }
 
   public void stop() {
