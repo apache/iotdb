@@ -36,25 +36,25 @@ import java.util.regex.Pattern;
 import static org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX_FROM_OLD;
 
 /**
- * CompactionRecoverHelper searches compaction log and call {@link CompactionRecoverTask} to execute
- * the recover process for all compaction task sequentially, including InnerCompactionTask in
- * sequence/unsequence space, CrossSpaceCompaction.
+ * CompactionRecoverManager searches compaction log and call {@link CompactionRecoverTask} to
+ * execute the recover process for all compaction task sequentially, including InnerCompactionTask
+ * in sequence/unsequence space, CrossSpaceCompaction.
  */
-public class CompactionRecoverHelper {
+public class CompactionRecoverManager {
   private static final Logger logger =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
-  private TsFileManager tsFileManager;
-  private String logicalStorageGroupName;
-  private String virtualStorageGroupId;
+  private final TsFileManager tsFileManager;
+  private final String logicalStorageGroupName;
+  private final String virtualStorageGroupId;
 
-  public CompactionRecoverHelper(
+  public CompactionRecoverManager(
       TsFileManager tsFileManager, String logicalStorageGroupName, String virtualStorageGroupId) {
     this.tsFileManager = tsFileManager;
     this.logicalStorageGroupName = logicalStorageGroupName;
     this.virtualStorageGroupId = virtualStorageGroupId;
   }
 
-  public void recoverInnerSpaceCompaction(boolean isSequence) throws Exception {
+  public void recoverInnerSpaceCompaction(boolean isSequence) {
     // search compaction log for SizeTieredCompaction
     List<String> dirs;
     if (isSequence) {
@@ -91,15 +91,9 @@ public class CompactionRecoverHelper {
               .getCompactionRecoverTask(
                   tsFileManager.getStorageGroupName(),
                   tsFileManager.getVirtualStorageGroup(),
-                  Long.parseLong(
-                      timePartitionDir
-                          .getPath()
-                          .substring(timePartitionDir.getPath().lastIndexOf(File.separator) + 1)),
                   compactionLog,
-                  timePartitionDir.getPath(),
-                  isSequence,
                   tsFileManager)
-              .call();
+              .doCompaction();
         }
       }
     }
@@ -117,23 +111,20 @@ public class CompactionRecoverHelper {
           .getCompactionRecoverTask(
               tsFileManager.getStorageGroupName(),
               tsFileManager.getVirtualStorageGroup(),
-              -1,
               logFile,
-              logFile.getParent(),
-              isSequence,
               tsFileManager)
-          .call();
+          .doCompaction();
     }
   }
 
-  public void recoverCrossSpaceCompaction() throws Exception {
+  public void recoverCrossSpaceCompaction() {
     logger.info("recovering cross compaction");
-    recoverCrossCompactionFromOldVersion();
+    recoverCrossCompactionBefore013();
     recoverCrossCompaction();
     logger.info("try to synchronize CompactionScheduler");
   }
 
-  private void recoverCrossCompaction() throws Exception {
+  private void recoverCrossCompaction() {
     List<String> sequenceDirs = DirectoryManager.getInstance().getAllSequenceFileFolders();
     for (String dir : sequenceDirs) {
       File storageGroupDir =
@@ -163,19 +154,15 @@ public class CompactionRecoverHelper {
               .getConfig()
               .getCrossCompactionStrategy()
               .getCompactionRecoverTask(
-                  logicalStorageGroupName,
-                  virtualStorageGroupId,
-                  Long.parseLong(timePartitionDir.getName()),
-                  compactionLog,
-                  tsFileManager)
-              .call();
+                  logicalStorageGroupName, virtualStorageGroupId, compactionLog, tsFileManager)
+              .doCompaction();
         }
       }
     }
   }
 
-  private void recoverCrossCompactionFromOldVersion() throws Exception {
-    // check whether there is old compaction log from previous version (<0.13)
+  /** Check whether there is old compaction log from previous version (<0.13) and recover it. */
+  private void recoverCrossCompactionBefore013() {
     File mergeLogFromOldVersion =
         new File(
             tsFileManager.getStorageGroupDir()
@@ -187,12 +174,8 @@ public class CompactionRecoverHelper {
           .getConfig()
           .getCrossCompactionStrategy()
           .getCompactionRecoverTask(
-              logicalStorageGroupName,
-              virtualStorageGroupId,
-              0L,
-              mergeLogFromOldVersion,
-              tsFileManager)
-          .call();
+              logicalStorageGroupName, virtualStorageGroupId, mergeLogFromOldVersion, tsFileManager)
+          .doCompaction();
     }
   }
 }

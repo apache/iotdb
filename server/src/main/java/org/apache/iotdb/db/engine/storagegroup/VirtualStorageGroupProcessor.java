@@ -30,7 +30,7 @@ import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
-import org.apache.iotdb.db.engine.compaction.task.CompactionRecoverHelper;
+import org.apache.iotdb.db.engine.compaction.task.CompactionRecoverManager;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.CloseFileListener;
 import org.apache.iotdb.db.engine.flush.FlushListener;
@@ -588,11 +588,11 @@ public class VirtualStorageGroupProcessor {
   }
 
   private void recoverCompaction() throws Exception {
-    CompactionRecoverHelper compactionRecoverHelper =
-        new CompactionRecoverHelper(tsFileManager, logicalStorageGroupName, virtualStorageGroupId);
-    compactionRecoverHelper.recoverInnerSpaceCompaction(true);
-    compactionRecoverHelper.recoverInnerSpaceCompaction(false);
-    compactionRecoverHelper.recoverCrossSpaceCompaction();
+    CompactionRecoverManager compactionRecoverManager =
+        new CompactionRecoverManager(tsFileManager, logicalStorageGroupName, virtualStorageGroupId);
+    compactionRecoverManager.recoverInnerSpaceCompaction(true);
+    compactionRecoverManager.recoverInnerSpaceCompaction(false);
+    compactionRecoverManager.recoverCrossSpaceCompaction();
   }
 
   private void updatePartitionFileVersion(long partitionNum, long fileVersion) {

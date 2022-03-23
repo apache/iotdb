@@ -22,7 +22,6 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
-import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.compaction.task.CompactionRecoverTask;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
@@ -239,13 +238,7 @@ public class SizeTieredCompactionRecoverTest {
     InnerSpaceCompactionUtils.moveTargetFile(targetResource, COMPACTION_TEST_SG);
     CompactionRecoverTask recoverTask =
         new CompactionRecoverTask(
-            COMPACTION_TEST_SG,
-            "0",
-            0,
-            tsFileManager,
-            CompactionTaskManager.currentTaskNum,
-            new File(logFilePath),
-            true);
+            COMPACTION_TEST_SG, "0", tsFileManager, new File(logFilePath), true);
     recoverTask.doCompaction();
     // all the source file should still exist
     for (TsFileResource resource : sourceFiles) {
@@ -299,13 +292,7 @@ public class SizeTieredCompactionRecoverTest {
     channel.close();
     CompactionRecoverTask recoverTask =
         new CompactionRecoverTask(
-            COMPACTION_TEST_SG,
-            "0",
-            0,
-            tsFileManager,
-            CompactionTaskManager.currentTaskNum,
-            new File(logFilePath),
-            true);
+            COMPACTION_TEST_SG, "0", tsFileManager, new File(logFilePath), true);
     recoverTask.doCompaction();
     // all the source file should be deleted
     for (TsFileResource resource : sourceFiles) {
@@ -356,13 +343,7 @@ public class SizeTieredCompactionRecoverTest {
     InnerSpaceCompactionUtils.moveTargetFile(targetResource, COMPACTION_TEST_SG);
     CompactionRecoverTask recoverTask =
         new CompactionRecoverTask(
-            COMPACTION_TEST_SG,
-            "0",
-            0,
-            tsFileManager,
-            CompactionTaskManager.currentTaskNum,
-            new File(logFilePath),
-            true);
+            COMPACTION_TEST_SG, "0", tsFileManager, new File(logFilePath), true);
     recoverTask.doCompaction();
     // all the source file should still exist
     for (TsFileResource resource : sourceFiles) {
@@ -416,13 +397,7 @@ public class SizeTieredCompactionRecoverTest {
     channel.close();
     CompactionRecoverTask recoverTask =
         new CompactionRecoverTask(
-            COMPACTION_TEST_SG,
-            "0",
-            0,
-            tsFileManager,
-            CompactionTaskManager.currentTaskNum,
-            new File(logFilePath),
-            true);
+            COMPACTION_TEST_SG, "0", tsFileManager, new File(logFilePath), true);
     recoverTask.doCompaction();
     // all the source file should be deleted
     for (TsFileResource resource : sourceFiles) {
@@ -481,13 +456,7 @@ public class SizeTieredCompactionRecoverTest {
       setDataDirs(new String[] {TestConstant.BASE_OUTPUT_PATH + File.separator + "data1"});
       CompactionRecoverTask recoverTask =
           new CompactionRecoverTask(
-              COMPACTION_TEST_SG,
-              "0",
-              0,
-              tsFileManager,
-              CompactionTaskManager.currentTaskNum,
-              new File(logFilePath),
-              true);
+              COMPACTION_TEST_SG, "0", tsFileManager, new File(logFilePath), true);
       recoverTask.doCompaction();
       // all the source files should exist
       for (String sourceFileName : sourceFileNames) {
@@ -586,13 +555,7 @@ public class SizeTieredCompactionRecoverTest {
       setDataDirs(new String[] {TestConstant.BASE_OUTPUT_PATH + File.separator + "data1"});
       CompactionRecoverTask recoverTask =
           new CompactionRecoverTask(
-              COMPACTION_TEST_SG,
-              "0",
-              0,
-              tsFileManager,
-              CompactionTaskManager.currentTaskNum,
-              new File(logFilePath),
-              true);
+              COMPACTION_TEST_SG, "0", tsFileManager, new File(logFilePath), true);
       recoverTask.doCompaction();
       // all the source file should be deleted
       for (String sourceFileName : sourceFileNames) {
@@ -682,13 +645,7 @@ public class SizeTieredCompactionRecoverTest {
       setDataDirs(new String[] {TestConstant.BASE_OUTPUT_PATH + File.separator + "data1"});
       CompactionRecoverTask recoverTask =
           new CompactionRecoverTask(
-              COMPACTION_TEST_SG,
-              "0",
-              0,
-              tsFileManager,
-              CompactionTaskManager.currentTaskNum,
-              new File(logFilePath),
-              true);
+              COMPACTION_TEST_SG, "0", tsFileManager, new File(logFilePath), true);
       recoverTask.doCompaction();
       // all the source files should exist
       for (String sourceFileName : sourceFileNames) {
@@ -787,13 +744,7 @@ public class SizeTieredCompactionRecoverTest {
       setDataDirs(new String[] {TestConstant.BASE_OUTPUT_PATH + File.separator + "data1"});
       CompactionRecoverTask recoverTask =
           new CompactionRecoverTask(
-              COMPACTION_TEST_SG,
-              "0",
-              0,
-              tsFileManager,
-              CompactionTaskManager.currentTaskNum,
-              new File(logFilePath),
-              true);
+              COMPACTION_TEST_SG, "0", tsFileManager, new File(logFilePath), true);
       recoverTask.doCompaction();
       // all the source file should be deleted
       for (String sourceFileName : sourceFileNames) {

@@ -43,32 +43,27 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /** CompactionRecoverTask executes the recover process for all compaction tasks. */
-public class CompactionRecoverTask extends AbstractCompactionTask {
+public class CompactionRecoverTask {
   private final Logger LOGGER = LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private final File compactionLogFile;
   private final boolean isInnerSpace;
+  private final String fullStorageGroupName;
+  private final TsFileManager tsFileManager;
 
   public CompactionRecoverTask(
       String logicalStorageGroupName,
       String virtualStorageGroupName,
-      long timePartition,
       TsFileManager tsFileManager,
-      AtomicInteger currentTaskNum,
       File logFile,
       boolean isInnerSpace) {
-    super(
-        logicalStorageGroupName + "-" + virtualStorageGroupName,
-        timePartition,
-        tsFileManager,
-        currentTaskNum);
     this.compactionLogFile = logFile;
     this.isInnerSpace = isInnerSpace;
+    this.fullStorageGroupName = logicalStorageGroupName + "-" + virtualStorageGroupName;
+    this.tsFileManager = tsFileManager;
   }
 
-  @Override
   public void doCompaction() {
     boolean handleSuccess = true;
     LOGGER.info(
@@ -81,10 +76,10 @@ public class CompactionRecoverTask extends AbstractCompactionTask {
             compactionLogFile);
         CompactionLogAnalyzer logAnalyzer = new CompactionLogAnalyzer(compactionLogFile);
         CompactionRecoverFromOld compactionRecoverFromOld = new CompactionRecoverFromOld();
-        if (isInnerSpace && compactionRecoverFromOld.isOldInnerCompactionLog()) {
+        if (isInnerSpace && compactionRecoverFromOld.isInnerCompactionLogBefore013()) {
           // inner compaction log from previous version (<0.13)
           logAnalyzer.analyzeOldInnerCompactionLog();
-        } else if (!isInnerSpace && compactionRecoverFromOld.isOldCrossCompactionLog()) {
+        } else if (!isInnerSpace && compactionRecoverFromOld.isCrossCompactionLogBefore013()) {
           // cross compaction log from previous version (<0.13)
           logAnalyzer.analyzeOldCrossCompactionLog();
         } else {
@@ -113,7 +108,7 @@ public class CompactionRecoverTask extends AbstractCompactionTask {
         if (isAllSourcesFileExisted) {
           if (!isInnerSpace && logAnalyzer.isLogFromOld()) {
             handleSuccess =
-                compactionRecoverFromOld.handleCrossCompactionWithAllSourceFilesExistFromOld(
+                compactionRecoverFromOld.handleCrossCompactionWithAllSourceFilesExistBefore013(
                     targetFileIdentifiers);
           } else {
             handleSuccess =
@@ -123,7 +118,7 @@ public class CompactionRecoverTask extends AbstractCompactionTask {
         } else {
           if (!isInnerSpace && logAnalyzer.isLogFromOld()) {
             handleSuccess =
-                compactionRecoverFromOld.handleCrossCompactionWithSomeSourceFilesLostFromOld(
+                compactionRecoverFromOld.handleCrossCompactionWithSomeSourceFilesLostBefore013(
                     targetFileIdentifiers, sourceFileIdentifiers);
           } else {
             handleSuccess = handleWithSomeSourceFilesLost(sourceFileIdentifiers);
@@ -292,29 +287,6 @@ public class CompactionRecoverTask extends AbstractCompactionTask {
     return null;
   }
 
-  @Override
-  public boolean equalsOtherTask(AbstractCompactionTask otherTask) {
-    if (otherTask instanceof CompactionRecoverTask) {
-      return compactionLogFile.equals(((CompactionRecoverTask) otherTask).compactionLogFile);
-    }
-    return false;
-  }
-
-  @Override
-  public boolean checkValidAndSetMerging() {
-    return compactionLogFile.exists();
-  }
-
-  @Override
-  public void setSourceFilesToCompactionCandidate() {
-    // do nothing
-  }
-
-  @Override
-  public void resetCompactionCandidateStatusForAllSourceFiles() {
-    // do nothing
-  }
-
   /**
    * Used to check whether it is recoverd from last version (<0.13) and perform corresponding
    * process.
@@ -322,19 +294,19 @@ public class CompactionRecoverTask extends AbstractCompactionTask {
   private class CompactionRecoverFromOld {
 
     /** Return whether cross compaction log file is from previous version (<0.13). */
-    private boolean isOldCrossCompactionLog() {
+    private boolean isCrossCompactionLogBefore013() {
       return compactionLogFile
           .getName()
           .equals(CompactionLogger.CROSS_COMPACTION_LOG_NAME_FROM_OLD);
     }
 
     /** Return whether inner compaction log file is from previous version (<0.13). */
-    private boolean isOldInnerCompactionLog() {
+    private boolean isInnerCompactionLogBefore013() {
       return compactionLogFile.getName().startsWith(tsFileManager.getStorageGroupName());
     }
 
     /** Delete tmp target file and compaction mods file. */
-    private boolean handleCrossCompactionWithAllSourceFilesExistFromOld(
+    private boolean handleCrossCompactionWithAllSourceFilesExistBefore013(
         List<TsFileIdentifier> targetFileIdentifiers) {
       // delete tmp target file
       for (TsFileIdentifier targetFileIdentifier : targetFileIdentifiers) {
@@ -365,7 +337,7 @@ public class CompactionRecoverTask extends AbstractCompactionTask {
      * 3. Append merging modification to target mods file and delete merging mods file. <br>
      * 4. Delete source files and .merge file. <br>
      */
-    private boolean handleCrossCompactionWithSomeSourceFilesLostFromOld(
+    private boolean handleCrossCompactionWithSomeSourceFilesLostBefore013(
         List<TsFileIdentifier> targetFileIdentifiers,
         List<TsFileIdentifier> sourceFileIdentifiers) {
       try {
@@ -432,7 +404,7 @@ public class CompactionRecoverTask extends AbstractCompactionTask {
             if (compactionModsFileFromOld.exists()) {
               ModificationFile compactionModsFile =
                   new ModificationFile(compactionModsFileFromOld.getPath());
-              appendCompactionModificationsFromOld(targetResource, compactionModsFile);
+              appendCompactionModificationsBefore013(targetResource, compactionModsFile);
             }
 
             // delete tmp target file
@@ -483,9 +455,8 @@ public class CompactionRecoverTask extends AbstractCompactionTask {
       return true;
     }
 
-    private void appendCompactionModificationsFromOld(
+    private void appendCompactionModificationsBefore013(
         TsFileResource resource, ModificationFile compactionModsFile) throws IOException {
-
       if (compactionModsFile != null) {
         for (Modification modification : compactionModsFile.getModifications()) {
           // we have to set modification offset to MAX_VALUE, as the offset of source chunk may

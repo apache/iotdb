@@ -22,7 +22,6 @@ package org.apache.iotdb.db.engine.compaction.inner;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompactionSelector;
 import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompactionTask;
-import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.compaction.task.CompactionRecoverTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -61,25 +60,16 @@ public enum InnerCompactionStrategy {
     }
   }
 
-  public AbstractCompactionTask getCompactionRecoverTask(
+  public CompactionRecoverTask getCompactionRecoverTask(
       String logicalStorageGroupName,
       String virtualStorageGroup,
-      long timePartition,
       File compactionLogFile,
-      String dataDir,
-      boolean sequence,
       TsFileManager tsFileManager) {
     switch (this) {
       case SIZE_TIERED_COMPACTION:
       default:
         return new CompactionRecoverTask(
-            logicalStorageGroupName,
-            virtualStorageGroup,
-            timePartition,
-            tsFileManager,
-            CompactionTaskManager.currentTaskNum,
-            compactionLogFile,
-            true);
+            logicalStorageGroupName, virtualStorageGroup, tsFileManager, compactionLogFile, true);
     }
   }
 

@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.engine.compaction.recover;
 
 import org.apache.iotdb.db.engine.compaction.AbstractCompactionTest;
-import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.compaction.task.CompactionRecoverTask;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
@@ -104,15 +103,8 @@ public class SizeTieredCompactionRecoverCompatibleTest extends AbstractCompactio
         new TsFileManager("root.compactionTest", "0", targetResource.getTsFile().getParent());
     tsFileManager.addAll(seqResources, true);
     CompactionRecoverTask recoverTask =
-        new CompactionRecoverTask(
-            COMPACTION_TEST_SG,
-            "0",
-            0,
-            tsFileManager,
-            CompactionTaskManager.currentTaskNum,
-            logFile,
-            true);
-    recoverTask.call();
+        new CompactionRecoverTask(COMPACTION_TEST_SG, "0", tsFileManager, logFile, true);
+    recoverTask.doCompaction();
 
     for (TsFileResource resource : seqResources) {
       Assert.assertTrue(resource.getTsFile().exists());
@@ -168,15 +160,8 @@ public class SizeTieredCompactionRecoverCompatibleTest extends AbstractCompactio
         new TsFileManager("root.compactionTest", "0", targetResource.getTsFile().getParent());
     tsFileManager.addAll(seqResources, true);
     CompactionRecoverTask recoverTask =
-        new CompactionRecoverTask(
-            COMPACTION_TEST_SG,
-            "0",
-            0,
-            tsFileManager,
-            CompactionTaskManager.currentTaskNum,
-            logFile,
-            true);
-    recoverTask.call();
+        new CompactionRecoverTask(COMPACTION_TEST_SG, "0", tsFileManager, logFile, true);
+    recoverTask.doCompaction();
 
     for (TsFileResource resource : seqResources) {
       Assert.assertFalse(resource.getTsFile().exists());
@@ -215,15 +200,8 @@ public class SizeTieredCompactionRecoverCompatibleTest extends AbstractCompactio
         new TsFileManager("root.compactionTest", "0", targetResource.getTsFile().getParent());
     tsFileManager.addAll(seqResources, true);
     CompactionRecoverTask recoverTask =
-        new CompactionRecoverTask(
-            COMPACTION_TEST_SG,
-            "0",
-            0,
-            tsFileManager,
-            CompactionTaskManager.currentTaskNum,
-            logFile,
-            true);
-    recoverTask.call();
+        new CompactionRecoverTask(COMPACTION_TEST_SG, "0", tsFileManager, logFile, true);
+    recoverTask.doCompaction();
 
     for (TsFileResource resource : seqResources) {
       Assert.assertTrue(resource.getTsFile().exists());
@@ -267,15 +245,8 @@ public class SizeTieredCompactionRecoverCompatibleTest extends AbstractCompactio
         new TsFileManager("root.compactionTest", "0", targetResource.getTsFile().getParent());
     tsFileManager.addAll(unseqResources, false);
     CompactionRecoverTask recoverTask =
-        new CompactionRecoverTask(
-            COMPACTION_TEST_SG,
-            "0",
-            0,
-            tsFileManager,
-            CompactionTaskManager.currentTaskNum,
-            logFile,
-            true);
-    recoverTask.call();
+        new CompactionRecoverTask(COMPACTION_TEST_SG, "0", tsFileManager, logFile, true);
+    recoverTask.doCompaction();
 
     for (TsFileResource resource : unseqResources) {
       Assert.assertFalse(resource.getTsFile().exists());
