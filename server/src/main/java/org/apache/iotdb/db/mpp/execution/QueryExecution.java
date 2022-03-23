@@ -44,7 +44,6 @@ public class QueryExecution {
   private Analysis analysis;
   private LogicalQueryPlan logicalPlan;
   private DistributedQueryPlan distributedPlan;
-  private List<PlanFragment> fragments;
   private List<FragmentInstance> fragmentInstances;
 
   public QueryExecution(MPPQueryContext context) {
@@ -83,7 +82,9 @@ public class QueryExecution {
 
   // Convert fragment to detailed instance
   // And for parallel-able fragment, clone it into several instances with different params.
-  public void planFragmentInstances() {}
+  public void planFragmentInstances() {
+
+  }
 
   /**
    * This method will be called by the request thread from client connection. This method will block

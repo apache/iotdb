@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,16 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.sql.planner.plan;
 
-import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
+import java.util.List;
 
-public class FragmentInstance {
-  private FragmentInstanceId id;
-
-  // The reference of PlanFragment which this instance is generated from
-  private PlanFragment fragment;
-  
-  // We can add some more params for a specific FragmentInstance
-  // So that we can make different FragmentInstance owns different data range.
+/**
+ * A simple implementation of IFragmentParallelPlaner.
+ * This planner will transform one PlanFragment into only one FragmentInstance.
+ */
+public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner{
+    @Override
+    public List<FragmentInstance> parallelPlan(SubPlan root) {
+        return null;
+    }
 }

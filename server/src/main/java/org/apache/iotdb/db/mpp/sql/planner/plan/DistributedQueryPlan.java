@@ -33,4 +33,16 @@ public class DistributedQueryPlan {
     this.rootSubPlan = rootSubPlan;
     this.fragments = fragments;
   }
+
+  public List<PlanFragment> getFragments() {
+    return fragments;
+  }
+
+  public SubPlan getRootSubPlan() {
+    return rootSubPlan;
+  }
+
+  public MPPQueryContext getContext() {
+    return context;
+  }
 }
