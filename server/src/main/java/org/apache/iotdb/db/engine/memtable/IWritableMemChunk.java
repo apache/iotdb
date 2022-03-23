@@ -94,6 +94,8 @@ public interface IWritableMemChunk {
    *
    * <p>the mechanism is just like copy on write
    *
+   * <p>This interface should be synchronized for concurrent with sortTvListForFlush
+   *
    * @return sorted tv list
    */
   TVList getSortedTvListForQuery();
@@ -103,6 +105,8 @@ public interface IWritableMemChunk {
    *
    * <p>the mechanism is just like copy on write
    *
+   * <p>This interface should be synchronized for concurrent with sortTvListForFlush
+   *
    * @return sorted tv list
    */
   TVList getSortedTvListForQuery(List<IMeasurementSchema> schemaList);
@@ -110,6 +114,8 @@ public interface IWritableMemChunk {
   /**
    * served for flush requests. The logic is just same as getSortedTVListForQuery, but without add
    * reference count
+   *
+   * <p>This interface should be synchronized for concurrent with getSortedTvListForQuery
    */
   void sortTvListForFlush();
 
