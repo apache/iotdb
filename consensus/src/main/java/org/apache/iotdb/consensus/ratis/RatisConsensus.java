@@ -55,6 +55,8 @@ import org.apache.ratis.server.RaftServer;
 import org.apache.ratis.server.RaftServerConfigKeys;
 import org.apache.ratis.util.NetUtils;
 import org.apache.thrift.TException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -82,6 +84,8 @@ public class RatisConsensus implements IConsensus {
 
   private ClientId localFakeId;
   private AtomicLong localFakeCallId;
+
+  private Logger logger = LoggerFactory.getLogger(RatisConsensus.class);
   /**
    * This function will use the previous client for groupId to query the latest group info It will
    * update the new group info into the groupMap and rebuild its client
@@ -272,6 +276,7 @@ public class RatisConsensus implements IConsensus {
     if (reply.isSuccess()) {
       // delete Group information and its corresponding client
       raftGroupMap.remove(raftGroupId);
+      closeRaftClient(raftGroupId);
       clientMap.remove(raftGroupId);
     }
     return ConsensusGenericResponse.newBuilder().setSuccess(reply.isSuccess()).build();
@@ -452,8 +457,20 @@ public class RatisConsensus implements IConsensus {
                 new GrpcFactory(new Parameters())
                     .newRaftClientRpc(ClientId.randomId(), raftProperties));
     RaftClient client = builder.build();
+    closeRaftClient(group.getGroupId());
     clientMap.put(group.getGroupId(), client);
     return client;
+  }
+
+  private void closeRaftClient(RaftGroupId groupId) {
+    RaftClient client = clientMap.get(groupId);
+    if (client != null) {
+      try {
+        client.close();
+      } catch (IOException exception) {
+        logger.warn("client for gid {} close failure {}", groupId, exception);
+      }
+    }
   }
 
   private RatisConsensus(Endpoint endpoint, File ratisStorageDir, IStateMachine.Registry registry)

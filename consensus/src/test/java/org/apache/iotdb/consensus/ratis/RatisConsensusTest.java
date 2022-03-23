@@ -203,8 +203,9 @@ public class RatisConsensusTest {
             Assert.assertEquals(response.getStatus(), new TSStatus(200));
           });
     }
-    executorService.awaitTermination(count * 500L, TimeUnit.MILLISECONDS);
+
     executorService.shutdown();
+    executorService.awaitTermination(count * 500L, TimeUnit.MILLISECONDS);
 
     ByteBuffer get = ByteBuffer.allocate(4);
     get.putInt(2);
