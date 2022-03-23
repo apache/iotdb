@@ -31,7 +31,7 @@ import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.SchemaEngine;
+import org.apache.iotdb.db.metadata.ISchemaEngine;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
@@ -71,8 +71,8 @@ public class ClusterPlanRouter {
     this.partitionTable = partitionTable;
   }
 
-  private SchemaEngine SchemaEngine() {
-    return (SchemaEngine) IoTDB.schemaEngine;
+  private ISchemaEngine SchemaEngine() {
+    return IoTDB.schemaEngine;
   }
 
   @TestOnly
