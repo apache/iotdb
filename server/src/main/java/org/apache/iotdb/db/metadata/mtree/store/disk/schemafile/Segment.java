@@ -26,6 +26,11 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.nio.BufferOverflowException;
+import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -38,6 +43,8 @@ import java.util.Queue;
  * Act like a wrapper of a bytebuffer which reflects a segment.
  */
 public class Segment implements ISegment {
+  private static final Logger logger = LoggerFactory.getLogger(Segment.class);
+
   // control concurrency of the segment executing read and write
   // ReentrantReadWriteLock segWriteLock;
 
@@ -502,13 +509,20 @@ public class Segment implements ISegment {
 
   private int getRecordIndexByAlias(String alias) {
     for (int i = 0; i < keyAddressList.size(); i++) {
-      if (getOffsetByIndex(i) > 0) {
-        this.buffer.clear();
-        this.buffer.position(keyAddressList.get(i).right);
+      this.buffer.clear();
+      this.buffer.position(keyAddressList.get(i).right);
+      try {
         if (RecordUtils.getRecordType(this.buffer) >= 4
             && RecordUtils.getRecordAlias(this.buffer).equals(alias)) {
           return i;
         }
+      } catch (BufferUnderflowException | BufferOverflowException e) {
+        logger.error(
+            String.format(
+                "Target alias: %s, segment size:%d, K-AL pair of crashed index:%s",
+                alias, this.length, keyAddressList.get(i)));
+        logger.error(String.format("Segment inspect: %s", this));
+        throw e;
       }
     }
     return -1;

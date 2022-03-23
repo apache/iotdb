@@ -38,13 +38,19 @@ import java.nio.ByteBuffer;
  * entry of segment-level index further. Coupling with IMNode structure.
  */
 public class RecordUtils {
+  // Offsets of IMNode infos in a record buffer
+  static short INTERNAL_NODE_LENGTH = (short) 1 + 2 + 8 + 4 + 1; // always fixed length record
+  static short MEASUREMENT_BASIC_LENGTH =
+      (short) 1 + 2 + 8 + 8; // final length depends on its alias
 
-  /**
-   * Entry of the Class
-   *
-   * @param node
-   * @return
-   */
+  static short LENGTH_OFFSET = 1;
+  static short ALIAS_OFFSET = 19;
+  static short SEG_ADDRESS_OFFSET = 3;
+
+  static byte INTERNAL_TYPE = 0;
+  static byte ENTITY_TYPE = 1;
+  static byte MEASUREMENT_TYPE = 4;
+
   public static ByteBuffer node2Buffer(IMNode node) {
     if (node.isMeasurement()) {
       return measurement2Buffer(node.getAsMeasurementMNode());
@@ -76,18 +82,17 @@ public class RecordUtils {
    * @return
    */
   private static ByteBuffer internal2Buffer(IMNode node) {
-    byte nodeType = 0;
+    byte nodeType = INTERNAL_TYPE;
     boolean isAligned = false;
-    short recLen = (short) 1 + 2 + 8 + 4 + 1;
 
     if (node.isEntity()) {
-      nodeType = 1;
+      nodeType = ENTITY_TYPE;
       isAligned = node.getAsEntityMNode().isAligned();
     }
 
-    ByteBuffer buffer = ByteBuffer.allocate(recLen);
+    ByteBuffer buffer = ByteBuffer.allocate(INTERNAL_NODE_LENGTH);
     ReadWriteIOUtils.write(nodeType, buffer);
-    ReadWriteIOUtils.write(recLen, buffer);
+    ReadWriteIOUtils.write(INTERNAL_NODE_LENGTH, buffer);
     ReadWriteIOUtils.write(
         ICachedMNodeContainer.getCachedMNodeContainer(node).getSegmentAddress(), buffer);
     ReadWriteIOUtils.write(convertTemplate2Int(node.getSchemaTemplate()), buffer);
@@ -116,13 +121,13 @@ public class RecordUtils {
    * <p>It doesn't use MeasurementSchema.serializeTo for duplication of measurementId
    */
   private static ByteBuffer measurement2Buffer(IMeasurementMNode node) {
-    byte nodeType = 4;
-
-    int bufferLength = 1 + 2 + 8 + 8;
-    bufferLength += node.getAlias() == null ? 4 : (node.getAlias().getBytes().length + 4);
+    int bufferLength =
+        node.getAlias() == null
+            ? 4 + MEASUREMENT_BASIC_LENGTH
+            : (node.getAlias().getBytes().length + 4 + MEASUREMENT_BASIC_LENGTH);
     ByteBuffer buffer = ByteBuffer.allocate(bufferLength);
 
-    ReadWriteIOUtils.write(nodeType, buffer);
+    ReadWriteIOUtils.write(MEASUREMENT_TYPE, buffer);
     ReadWriteIOUtils.write((short) bufferLength, buffer);
     ReadWriteIOUtils.write(convertTags2Long(node), buffer);
     ReadWriteIOUtils.write(convertSchema2Long(node), buffer);
@@ -175,9 +180,11 @@ public class RecordUtils {
     }
   }
 
+  // region Getter and Setter to Record Buffer
+  /** These methods need a buffer whose position is ready to read. */
   public static short getRecordLength(ByteBuffer recBuf) {
     int oriPos = recBuf.position();
-    recBuf.position(oriPos + 1);
+    recBuf.position(oriPos + LENGTH_OFFSET);
     short len = ReadWriteIOUtils.readShort(recBuf);
     recBuf.position(oriPos);
     return len;
@@ -193,7 +200,7 @@ public class RecordUtils {
 
   public static long getRecordSegAddr(ByteBuffer recBuf) {
     int oriPos = recBuf.position();
-    recBuf.position(oriPos + 3);
+    recBuf.position(oriPos + SEG_ADDRESS_OFFSET);
     long addr = ReadWriteIOUtils.readLong(recBuf);
     recBuf.position(oriPos);
     return addr;
@@ -201,7 +208,7 @@ public class RecordUtils {
 
   public static String getRecordAlias(ByteBuffer recBuf) {
     int oriPos = recBuf.position();
-    recBuf.position(oriPos + 19);
+    recBuf.position(oriPos + ALIAS_OFFSET);
     String alias = ReadWriteIOUtils.readString(recBuf);
     recBuf.position(oriPos);
     return alias;
@@ -209,10 +216,12 @@ public class RecordUtils {
 
   public static void updateSegAddr(ByteBuffer recBuf, long newSegAddr) {
     int oriPos = recBuf.position();
-    recBuf.position(oriPos + 3);
+    recBuf.position(oriPos + SEG_ADDRESS_OFFSET);
     ReadWriteIOUtils.write(newSegAddr, recBuf);
     recBuf.position(oriPos);
   }
+
+  // endregion
 
   @TestOnly
   public static String buffer2String(ByteBuffer buffer) throws MetadataException {

@@ -137,7 +137,7 @@ public class SchemaPage implements ISchemaPage {
 
       // reallocate inside page, if not enough space for new size segment, throw exception
       short newSegSize = SchemaFile.reEstimateSegSize(tarSeg.size());
-      res = reAllocateSeg(tarSeg, segIdx, newSegSize).insertRecord(key, buffer);
+      res = relocateSegment(tarSeg, segIdx, newSegSize).insertRecord(key, buffer);
       if (res < 0) {
         // failed to insert buffer into new segment
         throw new MetadataException("failed to insert buffer into new segment");
@@ -197,7 +197,7 @@ public class SchemaPage implements ISchemaPage {
     try {
       seg.updateRecord(key, buffer);
     } catch (SegmentOverflowException e) {
-      seg = reAllocateSeg(seg, segIdx, SchemaFile.reEstimateSegSize(seg.size()));
+      seg = relocateSegment(seg, segIdx, SchemaFile.reEstimateSegSize(seg.size()));
       int res = seg.updateRecord(key, buffer);
       if (res < 0) {
         throw new MetadataException(
@@ -426,8 +426,11 @@ public class SchemaPage implements ISchemaPage {
   // region Space Allocation
 
   /**
-   * Allocate a new segment to extend specified segment, modify cache map and list. Mark old segment
-   * instance as deleted, modify segOffsetList, pageSpareOffset and segCacheMap
+   * Allocate a new segment to extend specified segment, modify cache map and list.<br>
+   * Mark original segment instance as deleted, modify segOffsetList, pageSpareOffset and
+   * segCacheMap.
+   *
+   * <p><b> The new segment could be allocated from spare space or rearranged space.</b>
    *
    * @param seg original segment instance
    * @param segIdx original segment index
@@ -435,7 +438,7 @@ public class SchemaPage implements ISchemaPage {
    * @return reallocated segment instance
    * @throws SchemaPageOverflowException if this page has no enough space
    */
-  private ISegment reAllocateSeg(ISegment seg, short segIdx, short newSize)
+  private ISegment relocateSegment(ISegment seg, short segIdx, short newSize)
       throws SchemaPageOverflowException, SegmentNotFoundException {
     if (newSize >= SchemaFile.SEG_MAX_SIZ || getSpareSize() + seg.size() < newSize) {
       throw new SchemaPageOverflowException(pageIndex);
@@ -445,8 +448,8 @@ public class SchemaPage implements ISchemaPage {
     try {
       newBuffer = allocSpareBufferSlice(newSize);
     } catch (SchemaPageOverflowException e) {
-      rearrangeSegments(segIdx, seg);
-      return extendSegmentInPlace(segIdx, seg, newSize);
+      rearrangeSegments(segIdx);
+      return extendSegmentInPlace(segIdx, seg.size(), newSize);
     }
 
     // allocate buffer slice successfully
@@ -488,11 +491,14 @@ public class SchemaPage implements ISchemaPage {
    * more space released. Over-write stash segments with existed segments.
    */
   private void compactSegments() {
-    this.rearrangeSegments((short) -1, null);
+    this.rearrangeSegments((short) -1);
   }
 
-  /** Compact segments and move target segment (id at idx) to the tail of segments. */
-  private synchronized void rearrangeSegments(short idx, ISegment tarSeg) {
+  /**
+   * Compact segments and move target segment (id at idx) to the tail of segments.<br>
+   * Since this method may overwrite segment buffer, original buffer instance shall be abolished.
+   */
+  private synchronized void rearrangeSegments(short idx) {
     // all segment instance shall be abolished
     syncPageBuffer();
     segCacheMap.clear();
@@ -542,17 +548,17 @@ public class SchemaPage implements ISchemaPage {
    * This method checks and extends the last segment to a designated size.
    *
    * @param segId segment id
-   * @param segment the last segment
-   * @param newSize target size
-   * @return extended segment
+   * @param oriSegSize size of the target segment
+   * @param newSize extended size
+   * @return extended segment based on page buffer
    */
-  private ISegment extendSegmentInPlace(short segId, ISegment segment, short newSize)
+  private ISegment extendSegmentInPlace(short segId, short oriSegSize, short newSize)
       throws SegmentNotFoundException {
     // extend segment, modify pageSpareOffset, segCacheMap
     short offset = getSegmentOffset(segId);
 
     // only last segment could extend in-place
-    if (offset + segment.size() != pageSpareOffset) {
+    if (offset + oriSegSize != pageSpareOffset) {
       throw new SegmentNotFoundException(segId);
     }
 

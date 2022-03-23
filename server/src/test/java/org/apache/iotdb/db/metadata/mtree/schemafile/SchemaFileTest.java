@@ -30,7 +30,6 @@ import org.apache.iotdb.db.metadata.mnode.StorageGroupEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaFile;
-import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaPage;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.RecordUtils;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaPage;
@@ -47,6 +46,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -141,7 +141,6 @@ public class SchemaFileTest {
     Assert.assertEquals(
         "ALLLLLLLLLLLLLLLLLLLLfinalM191",
         nsf.getChildNode(int4, "finalM191").getAsMeasurementMNode().getAlias());
-    printSF(nsf);
     nsf.close();
   }
 
@@ -182,8 +181,6 @@ public class SchemaFileTest {
     IMNode node = new InternalMNode(null, "test");
     ICachedMNodeContainer.getCachedMNodeContainer(node).setSegmentAddress(196608L);
     ISchemaFile sf = SchemaFile.loadSchemaFile("root.test.vRoot1");
-
-    printSF(sf);
 
     Iterator<IMNode> res = sf.getChildren(node);
     int cnt = 0;
@@ -251,22 +248,30 @@ public class SchemaFileTest {
       sf.close();
     }
 
+    Set<String> resName = new HashSet<>();
     // more measurement
     for (IMNode etn : sgNode.getChildren().values()) {
       int j = 100;
       while (j >= 0) {
         addMeasurementChild(etn, String.format("mtc2_%d_%d", i, j));
+        if (resName.size() < 101) {
+          resName.add(String.format("mtc2_%d_%d", i, j));
+        }
         j--;
       }
     }
 
     orderedTree = getTreeBFT(sgNode);
     sf = SchemaFile.loadSchemaFile(sgNode.getName());
+    List<IMNode> arbitraryNode = new ArrayList<>();
     try {
       while (orderedTree.hasNext()) {
         node = orderedTree.next();
         if (!node.isMeasurement() && !node.isStorageGroup()) {
           sf.writeMNode(node);
+          if (arbitraryNode.size() < 50) {
+            arbitraryNode.add(node);
+          }
         }
       }
     } catch (Exception e) {
@@ -277,8 +282,20 @@ public class SchemaFileTest {
     }
 
     sf = SchemaFile.loadSchemaFile("sgRoot");
-    ISchemaPage page = ((SchemaFile) sf).getPageOnTest(10700);
-    ((SchemaPage) page).getSegmentTest((short) 0);
+
+    for (String key : resName) {
+      IMNode resNode = sf.getChildNode(arbitraryNode.get(arbitraryNode.size() - 3), key);
+      Assert.assertTrue(
+          resNode.getAsMeasurementMNode().getAlias().equals(resNode.getName() + "alias"));
+    }
+
+    Iterator<IMNode> res = sf.getChildren(arbitraryNode.get(arbitraryNode.size() - 1));
+    while (res.hasNext()) {
+      resName.remove(res.next().getName());
+    }
+
+    Assert.assertTrue(resName.isEmpty());
+
     sf.close();
   }
 
@@ -293,14 +310,12 @@ public class SchemaFileTest {
     while (ite.hasNext()) {
       sf.writeMNode(ite.next());
     }
-    printSF(sf);
 
     IMNode vt1 = getNode(root, "root.VT_0.VT_1");
     IMNode vt4 = getNode(root, "root.VT_0.VT_1.VT_2.VT_3.VT_4");
     ICachedMNodeContainer.getCachedMNodeContainer(vt1).getNewChildBuffer().clear();
     addMeasurementChild(vt1, "newM");
     sf.writeMNode(vt1);
-    printSF(sf);
 
     IMNode vt0 = getNode(root, "root.VT_0");
     Assert.assertEquals(
@@ -358,7 +373,6 @@ public class SchemaFileTest {
 
     Assert.assertEquals(11111L, nsf.init().getAsStorageGroupMNode().getDataTTL());
 
-    printSF(nsf);
     nsf.close();
   }
 
