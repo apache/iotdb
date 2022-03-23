@@ -35,6 +35,7 @@ import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.ratis.util.FileUtils;
 import org.junit.Assert;
 import org.junit.Test;
+import org.testcontainers.shaded.org.apache.commons.lang.RandomStringUtils;
 
 import java.io.File;
 import java.nio.ByteBuffer;
@@ -116,9 +117,9 @@ public class RatisConsensusTest {
     peers.add(peer2);
 
     List<File> peersStorage = new ArrayList<>();
-    peersStorage.add(new File("./target/1/"));
-    peersStorage.add(new File("./target/2/"));
-    peersStorage.add(new File("./target/3/"));
+    peersStorage.add(new File("./target/1/" + RandomStringUtils.random(4)));
+    peersStorage.add(new File("./target/2/" + RandomStringUtils.random(4)));
+    peersStorage.add(new File("./target/3/" + RandomStringUtils.random(4)));
     for (File dir : peersStorage) {
       dir.mkdirs();
     }
