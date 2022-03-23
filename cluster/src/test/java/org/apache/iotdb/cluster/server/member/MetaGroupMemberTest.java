@@ -68,7 +68,6 @@ import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.StartUpStatus;
 import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
-import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.monitor.NodeStatusManager;
@@ -118,7 +117,6 @@ import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TCompactProtocol.Factory;
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -140,9 +138,16 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static org.apache.iotdb.cluster.server.NodeCharacter.*;
+import static org.apache.iotdb.cluster.server.NodeCharacter.ELECTOR;
+import static org.apache.iotdb.cluster.server.NodeCharacter.FOLLOWER;
+import static org.apache.iotdb.cluster.server.NodeCharacter.LEADER;
 import static org.awaitility.Awaitility.await;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class MetaGroupMemberTest extends BaseMember {
 
@@ -298,7 +303,7 @@ public class MetaGroupMemberTest extends BaseMember {
             null, partitionTable, group.getHeader().getNode(), TestSnapshot.Factory.INSTANCE));
     dataGroupMember.setThisNode(TestUtils.getNode(0));
     dataGroupMember.setLeader(node);
-    dataGroupMember.setCharacter(NodeCharacter.LEADER);
+    dataGroupMember.setCharacter(LEADER);
     dataGroupMember.setLocalQueryExecutor(
         new LocalQueryExecutor(dataGroupMember) {
           @Override
@@ -553,7 +558,7 @@ public class MetaGroupMemberTest extends BaseMember {
     metaGroupMember.getCoordinator().linkMetaGroupMember(metaGroupMember);
     metaGroupMember.setLeader(node);
     metaGroupMember.setAllNodes(allNodes);
-    metaGroupMember.setCharacter(NodeCharacter.LEADER);
+    metaGroupMember.setCharacter(LEADER);
     metaGroupMember.setAppendLogThreadPool(testThreadPool);
     metaGroupMember.setReady(true);
     metaGroupMember.setPartitionTable(partitionTable);
@@ -770,7 +775,7 @@ public class MetaGroupMemberTest extends BaseMember {
       userMap.put("user_3", authorizer.getUser("user_3"));
       userMap.put("user_4", authorizer.getUser("user_4"));
     } catch (AuthException e) {
-      Assert.fail(e.getMessage());
+      fail(e.getMessage());
     }
 
     // 4. prepare the template info
@@ -823,7 +828,7 @@ public class MetaGroupMemberTest extends BaseMember {
       assertEquals(localPartitionTable, partitionTable);
 
     } catch (AuthException e) {
-      Assert.fail(e.getMessage());
+      fail(e.getMessage());
     }
   }
 
