@@ -194,32 +194,14 @@ public class SchemaRegion {
                 });
   }
 
-  public synchronized void initNewSchemaRegion(IStorageGroupMNode storageGroupMNode)
-      throws MetadataException {
+  @SuppressWarnings("squid:S2093")
+  public synchronized IStorageGroupMNode init(PartialPath storageGroup) throws MetadataException {
     if (initialized) {
-      return;
+      return mtree.getStorageGroupMNode();
     }
-    storageGroupFullPath = storageGroupMNode.getFullPath();
-    checkSchemaRegionDir();
-    try {
-      isRecovering = true;
 
-      tagManager = new TagManager(sgSchemaDirPath);
-      mtree = new MTreeBelowSG(storageGroupMNode);
-      logWriter = new MLogWriter(sgSchemaDirPath, MetadataConstant.METADATA_LOG);
-      logWriter.setLogNum(0);
+    storageGroupFullPath = storageGroup.getFullPath();
 
-      isRecovering = false;
-    } catch (IOException e) {
-      logger.error(
-          "Cannot recover all MTree from {} file, we try to recover as possible as we can",
-          storageGroupFullPath,
-          e);
-      throw new MetadataException(e);
-    }
-  }
-
-  private void checkSchemaRegionDir() throws SchemaDirCreationFailureException {
     sgSchemaDirPath = config.getSchemaDir() + File.separator + storageGroupFullPath;
     File sgSchemaFolder = SystemFileFactory.INSTANCE.getFile(sgSchemaDirPath);
     if (!sgSchemaFolder.exists()) {
@@ -231,56 +213,20 @@ public class SchemaRegion {
       }
     }
     logFilePath = sgSchemaDirPath + File.separator + MetadataConstant.METADATA_LOG;
+
     logFile = SystemFileFactory.INSTANCE.getFile(logFilePath);
-  }
-
-  // must invoke recover after invoke this method
-  // the recover of mtree need to check the path and mnode above storage group
-  public synchronized IStorageGroupMNode initForRecover(PartialPath storageGroup)
-      throws MetadataException {
-    if (initialized) {
-      return mtree.getStorageGroupMNode();
-    }
-
-    if (!isRecovering) {
-      throw new MetadataException("The SchemaRegion has already recovered.");
-    }
-
-    storageGroupFullPath = storageGroup.getFullPath();
-
-    checkSchemaRegionDir();
 
     try {
+      // do not write log when recover
       isRecovering = true;
 
       tagManager = new TagManager(sgSchemaDirPath);
       mtree = new MTreeBelowSG(storageGroup);
-      logWriter = new MLogWriter(sgSchemaDirPath, MetadataConstant.METADATA_LOG);
 
-    } catch (IOException e) {
-      logger.error(
-          "Cannot recover all MTree from {} file, we try to recover as possible as we can",
-          storageGroupFullPath,
-          e);
-      throw new MetadataException(e);
-    }
-
-    IStorageGroupMNode storageGroupMNode = mtree.getStorageGroupMNode();
-    storageGroupMNode.setSchemaRegion(this);
-    return storageGroupMNode;
-  }
-
-  // must invoke initForRecover first and add the storageGroupMNode to MTree
-  public synchronized void recover() throws MetadataException {
-    if (initialized || !isRecovering) {
-      throw new MetadataException(
-          "Must invoke initForRecover first and add add the storageGroupMNode to MTree");
-    }
-    try {
-      // do not write log when recover
       int lineNumber = initFromLog(logFile);
-      logWriter.setLogNum(lineNumber);
 
+      logWriter = new MLogWriter(sgSchemaDirPath, MetadataConstant.METADATA_LOG);
+      logWriter.setLogNum(lineNumber);
       isRecovering = false;
     } catch (IOException e) {
       logger.error(
@@ -289,8 +235,11 @@ public class SchemaRegion {
           e);
       throw new MetadataException(e);
     }
-
     initialized = true;
+
+    IStorageGroupMNode storageGroupMNode = mtree.getStorageGroupMNode();
+    storageGroupMNode.setSchemaRegion(this);
+    return storageGroupMNode;
   }
 
   public void forceMlog() {
@@ -388,7 +337,7 @@ public class SchemaRegion {
       case DELETE_TIMESERIES:
         DeleteTimeSeriesPlan deleteTimeSeriesPlan = (DeleteTimeSeriesPlan) plan;
         // cause we only has one path for one DeleteTimeSeriesPlan
-        deleteTimeseries(deleteTimeSeriesPlan.getPaths().get(0));
+        deleteOneTimeseriesUpdateStatisticsAndDropTrigger(deleteTimeSeriesPlan.getPaths().get(0));
         break;
       case TTL:
         SetTTLPlan setTTLPlan = (SetTTLPlan) plan;

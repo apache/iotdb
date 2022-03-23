@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.metadata.mtree;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MNodeTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -33,7 +32,6 @@ import org.apache.iotdb.db.metadata.SchemaRegion;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
-import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.store.MemMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MNodeAboveSGCollector;
@@ -75,9 +73,9 @@ public class MTreeAboveSG {
   private IMNode root;
   private IMTreeStore store;
 
-  public MTreeAboveSG() {
-    root = new InternalMNode(null, PATH_ROOT);
-    store = new MemMTreeStore(root);
+  public MTreeAboveSG() throws MetadataException {
+    store = new MemMTreeStore(new PartialPath(PATH_ROOT), false);
+    root = store.getRoot();
   }
 
   public void clear() {
@@ -96,10 +94,6 @@ public class MTreeAboveSG {
    * @param path path
    */
   public void setStorageGroup(PartialPath path) throws MetadataException {
-    setStorageGroup(path, false);
-  }
-
-  public void setStorageGroup(PartialPath path, boolean isRecover) throws MetadataException {
     String[] nodeNames = path.getNodes();
     MetaFormatUtils.checkStorageGroup(path.getFullPath());
     if (nodeNames.length <= 1 || !nodeNames[0].equals(root.getName())) {
@@ -142,30 +136,18 @@ public class MTreeAboveSG {
               cur.getPartialPath().concatNode(nodeNames[i]).getFullPath());
         }
 
-        if (isRecover) {
-          // recover SchemaRegion
-          SchemaRegion schemaRegion = new SchemaRegion();
-          IStorageGroupMNode storageGroupMNode = schemaRegion.initForRecover(path);
-          cur.addChild(nodeNames[i], storageGroupMNode);
-          schemaRegion.recover();
-        } else {
-          IStorageGroupMNode storageGroupMNode =
-              new StorageGroupMNode(
-                  cur, nodeNames[i], IoTDBDescriptor.getInstance().getConfig().getDefaultTTL());
-          // init SchemaRegion
-          SchemaRegion schemaRegion = new SchemaRegion();
-          schemaRegion.initNewSchemaRegion(storageGroupMNode);
-          storageGroupMNode.setSchemaRegion(schemaRegion);
-          IMNode result = cur.addChild(nodeNames[i], storageGroupMNode);
+        // init SchemaRegion
+        SchemaRegion schemaRegion = new SchemaRegion();
+        IStorageGroupMNode storageGroupMNode = schemaRegion.init(path);
+        IMNode result = cur.addChild(nodeNames[i], storageGroupMNode);
 
-          if (result == storageGroupMNode) {
-            return;
-          }
-
-          // another thread executed addChild before adding the prepared storageGroupMNode to MTree
-          schemaRegion.deleteStorageGroup();
-          throw new StorageGroupAlreadySetException(path.getFullPath(), true);
+        if (result == storageGroupMNode) {
+          return;
         }
+
+        // another thread executed addChild before adding the prepared storageGroupMNode to MTree
+        schemaRegion.deleteStorageGroup();
+        throw new StorageGroupAlreadySetException(path.getFullPath(), true);
       }
     }
   }

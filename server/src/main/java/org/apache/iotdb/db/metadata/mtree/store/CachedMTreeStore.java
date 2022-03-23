@@ -68,16 +68,11 @@ public class CachedMTreeStore implements IMTreeStore {
   private Lock readLock = readWriteLock.readLock();
   private Lock writeLock = readWriteLock.writeLock();
 
-  public CachedMTreeStore(IMNode node) throws MetadataException, IOException {
-    if (!node.isStorageGroup()) {
+  public CachedMTreeStore(PartialPath rootPath, boolean isStorageGroup)
+      throws MetadataException, IOException {
+    if (!isStorageGroup) {
       throw new MetadataException("CachedMTreeStore only support subTree below storage group");
     }
-    file = SchemaFile.initSchemaFile(node.getFullPath());
-    this.root = node;
-    cacheManager.initRootStatus(root);
-  }
-
-  public CachedMTreeStore(PartialPath rootPath) throws MetadataException, IOException {
     file = SchemaFile.initSchemaFile(rootPath.getFullPath());
     root = file.init();
     cacheManager.initRootStatus(root);
