@@ -22,17 +22,11 @@ package org.apache.iotdb.db.engine.compaction.task;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
-import org.apache.iotdb.db.service.metrics.Metric;
-import org.apache.iotdb.db.service.metrics.MetricsService;
-import org.apache.iotdb.db.service.metrics.Tag;
-import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.Callable;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -48,6 +42,7 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
   protected long timePartition;
   protected final AtomicInteger currentTaskNum;
   protected final TsFileManager tsFileManager;
+  protected long timeCost = 0L;
 
   public AbstractCompactionTask(
       String fullStorageGroupName,
@@ -74,19 +69,8 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
       LOGGER.error(e.getMessage(), e);
     } finally {
       CompactionTaskManager.getInstance().removeRunningTaskFromList(this);
+      timeCost = System.currentTimeMillis() - startTime;
       this.currentTaskNum.decrementAndGet();
-    }
-
-    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
-      MetricsService.getInstance()
-          .getMetricManager()
-          .timer(
-              System.currentTimeMillis() - startTime,
-              TimeUnit.MILLISECONDS,
-              Metric.COST_TASK.toString(),
-              MetricLevel.IMPORTANT,
-              Tag.NAME.toString(),
-              "compaction");
     }
 
     return null;
@@ -119,4 +103,8 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
   }
 
   public abstract void resetCompactionCandidateStatusForAllSourceFiles();
+
+  public long getTimeCost() {
+    return timeCost;
+  }
 }
