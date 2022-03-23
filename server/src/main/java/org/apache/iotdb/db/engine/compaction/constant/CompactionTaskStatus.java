@@ -16,16 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.engine.compaction.constant;
 
-package org.apache.iotdb.consensus.exception;
-
-public class ConsensusException extends Exception {
-
-  public ConsensusException(String message) {
-    super(message);
-  }
-
-  public ConsensusException(String message, Throwable cause) {
-    super(message, cause);
-  }
+public enum CompactionTaskStatus {
+  ADD_TO_QUEUE,
+  POLL_FROM_QUEUE,
+  READY_TO_EXECUTE,
+  FINISHED
 }

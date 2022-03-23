@@ -19,8 +19,12 @@
 package org.apache.iotdb.db.engine.compaction.writer;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.compaction.CompactionMetricsManager;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
+import org.apache.iotdb.db.engine.compaction.constant.CompactionType;
+import org.apache.iotdb.db.engine.compaction.constant.ProcessChunkType;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
@@ -42,6 +46,8 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
   protected String deviceId;
   private final long targetChunkSize =
       IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
+  private final boolean enableMetrics =
+      MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric();
 
   // point count in current measurment, which is used to check size
   private int measurementPointCount;
@@ -133,6 +139,13 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
   protected void checkChunkSizeAndMayOpenANewChunk(TsFileIOWriter fileWriter) throws IOException {
     if (measurementPointCount % 10 == 0 && checkChunkSize()) {
       writeRateLimit(chunkWriter.estimateMaxSeriesMemSize());
+      CompactionMetricsManager.recordWriteInfo(
+          this instanceof CrossSpaceCompactionWriter
+              ? CompactionType.CROSS_COMPACTION
+              : CompactionType.INNER_UNSEQ_COMPACTION,
+          ProcessChunkType.DESERIALIZE_CHUNK,
+          this.isAlign,
+          chunkWriter.estimateMaxSeriesMemSize());
       chunkWriter.writeToFileWriter(fileWriter);
     }
   }

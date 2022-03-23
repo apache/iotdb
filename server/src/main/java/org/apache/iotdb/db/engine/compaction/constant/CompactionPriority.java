@@ -17,15 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.consensus.exception;
+package org.apache.iotdb.db.engine.compaction.constant;
 
-public class ConsensusException extends Exception {
-
-  public ConsensusException(String message) {
-    super(message);
-  }
-
-  public ConsensusException(String message, Throwable cause) {
-    super(message, cause);
-  }
+public enum CompactionPriority {
+  INNER_CROSS,
+  CROSS_INNER,
+  BALANCE
 }

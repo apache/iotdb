@@ -16,11 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.consensus.ratis;
 
-package org.apache.iotdb.db.engine.compaction;
+import org.apache.iotdb.consensus.common.ConsensusGroupId;
+import org.apache.iotdb.consensus.common.GroupType;
 
-public enum CompactionPriority {
-  INNER_CROSS,
-  CROSS_INNER,
-  BALANCE
+import org.apache.ratis.protocol.RaftGroupId;
+import org.junit.Assert;
+import org.junit.Test;
+
+public class UtilsTest {
+  @Test
+  public void testEncryption() {
+    ConsensusGroupId raw = new ConsensusGroupId(GroupType.DataRegion, 1L);
+    RaftGroupId id = Utils.toRatisGroupId(raw);
+    ConsensusGroupId cgid = Utils.toConsensusGroupId(id);
+    Assert.assertEquals(raw, cgid);
+  }
 }

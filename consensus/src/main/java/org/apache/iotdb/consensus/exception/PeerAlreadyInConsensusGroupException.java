@@ -16,16 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.consensus.exception;
 
-public class ConsensusException extends Exception {
+import org.apache.iotdb.consensus.common.ConsensusGroupId;
+import org.apache.iotdb.consensus.common.Peer;
 
-  public ConsensusException(String message) {
-    super(message);
-  }
-
-  public ConsensusException(String message, Throwable cause) {
-    super(message, cause);
+public class PeerAlreadyInConsensusGroupException extends ConsensusException {
+  public PeerAlreadyInConsensusGroupException(ConsensusGroupId groupId, Peer peer) {
+    super(
+        String.format(
+            "Peer %s:%d is already in group %d",
+            peer.getEndpoint().getIp(), peer.getEndpoint().getPort(), groupId.getId()));
   }
 }
