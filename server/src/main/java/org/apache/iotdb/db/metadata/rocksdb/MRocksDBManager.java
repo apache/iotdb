@@ -56,12 +56,10 @@ import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.PruneTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
@@ -75,6 +73,7 @@ import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SchemaUtils;
+import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -123,18 +122,7 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.ALL_NODE_TYPE_ARRAY;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DEFAULT_ALIGNED_ENTITY_VALUE;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DEFAULT_NODE_VALUE;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.FLAG_IS_ALIGNED;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_ENTITY;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_MEASUREMENT;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_SG;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.TABLE_NAME_TAGS;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.ZERO;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_SG;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.TABLE_NAME_TAGS;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.ZERO;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.*;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 /**
@@ -204,7 +192,6 @@ public class MRocksDBManager implements IMetaManager {
   @Override
   public void init() {}
 
-  @TestOnly
   @Override
   public void clear() {}
 
@@ -261,20 +248,6 @@ public class MRocksDBManager implements IMetaManager {
         logger.error("Unrecognizable command {}", plan.getOperatorType());
     }
   }
-  // endregion
-
-  // region Interfaces for CQ
-  @Override
-  public void createContinuousQuery(CreateContinuousQueryPlan plan) throws MetadataException {}
-
-  @Override
-  public void dropContinuousQuery(DropContinuousQueryPlan plan) throws MetadataException {}
-
-  @Override
-  public void writeCreateContinuousQueryLog(CreateContinuousQueryPlan plan) throws IOException {}
-
-  @Override
-  public void writeDropContinuousQueryLog(DropContinuousQueryPlan plan) throws IOException {}
   // endregion
 
   // region Interfaces and Implementation for Timeseries operation
@@ -2294,7 +2267,7 @@ public class MRocksDBManager implements IMetaManager {
         // check type is match
         if (plan instanceof InsertRowPlan || plan instanceof InsertTabletPlan) {
           try {
-            MetaUtils.checkDataTypeMatch(plan, i, nodeMap.get(i).getSchema().getType());
+            checkDataTypeMatch(plan, i, nodeMap.get(i).getSchema().getType());
           } catch (DataTypeMismatchException mismatchException) {
             logger.warn(
                 "DataType mismatch, Insert measurement {} type {}, metadata tree type {}",
@@ -2336,6 +2309,47 @@ public class MRocksDBManager implements IMetaManager {
       }
     }
     return deviceMNode;
+  }
+
+  private void checkDataTypeMatch(InsertPlan plan, int loc, TSDataType dataType)
+      throws MetadataException {
+    TSDataType insertDataType;
+    if (plan instanceof InsertRowPlan) {
+      if (!((InsertRowPlan) plan).isNeedInferType()) {
+        // only when InsertRowPlan's values is object[], we should check type
+        insertDataType = getTypeInLoc(plan, loc);
+      } else {
+        insertDataType = dataType;
+      }
+    } else {
+      insertDataType = getTypeInLoc(plan, loc);
+    }
+    if (dataType != insertDataType) {
+      String measurement = plan.getMeasurements()[loc];
+      logger.warn(
+          "DataType mismatch, Insert measurement {} type {}, metadata tree type {}",
+          measurement,
+          insertDataType,
+          dataType);
+      throw new DataTypeMismatchException(measurement, insertDataType, dataType);
+    }
+  }
+
+  /** get dataType of plan, in loc measurements only support InsertRowPlan and InsertTabletPlan */
+  private TSDataType getTypeInLoc(InsertPlan plan, int loc) throws MetadataException {
+    TSDataType dataType;
+    if (plan instanceof InsertRowPlan) {
+      InsertRowPlan tPlan = (InsertRowPlan) plan;
+      dataType =
+          TypeInferenceUtils.getPredictedDataType(tPlan.getValues()[loc], tPlan.isNeedInferType());
+    } else if (plan instanceof InsertTabletPlan) {
+      dataType = (plan).getDataTypes()[loc];
+    } else {
+      throw new MetadataException(
+          String.format(
+              "Only support insert and insertTablet, plan is [%s]", plan.getOperatorType()));
+    }
+    return dataType;
   }
 
   /**
