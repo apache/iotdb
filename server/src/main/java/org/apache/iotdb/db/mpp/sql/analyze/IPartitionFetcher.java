@@ -18,11 +18,12 @@
  */
 package org.apache.iotdb.db.mpp.sql.analyze;
 
-import java.util.List;
 import org.apache.iotdb.commons.partition.DataPartitionInfo;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.PartitionInfo;
 import org.apache.iotdb.commons.partition.SchemaPartitionInfo;
+
+import java.util.List;
 
 public interface IPartitionFetcher {
 
@@ -37,5 +38,4 @@ public interface IPartitionFetcher {
   PartitionInfo fetchPartitionInfo(DataPartitionQueryParam parameter);
 
   PartitionInfo fetchPartitionInfos(List<DataPartitionQueryParam> parameterList);
-
 }

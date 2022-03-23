@@ -60,7 +60,6 @@ public class SessionManager {
   private final Map<Long, IoTDBConstant.ClientVersion> sessionIdToClientVersion =
       new ConcurrentHashMap<>();
 
-
   // TODO sessionIdToUsername and sessionIdToZoneId should be replaced with this
   private final Map<Long, SessionInfo> sessionIdToSessionInfo = new ConcurrentHashMap<>();
 

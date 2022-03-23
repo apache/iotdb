@@ -18,14 +18,14 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.write;
 
-import java.nio.ByteBuffer;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
-
-import java.util.List;
 import org.apache.iotdb.tsfile.utils.BitMap;
+
+import java.nio.ByteBuffer;
+import java.util.List;
 
 public class InsertTabletNode extends InsertNode {
 

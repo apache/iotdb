@@ -18,15 +18,14 @@
  */
 package org.apache.iotdb.db.mpp.sql.analyze;
 
+import org.apache.iotdb.db.metadata.path.PartialPath;
+
 import java.util.List;
 import java.util.Map;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 
 public class StandaloneSchemaFetcher implements ISchemaFetcher {
 
-  private StandaloneSchemaFetcher() {
-
-  }
+  private StandaloneSchemaFetcher() {}
 
   public static StandaloneSchemaFetcher getInstance() {
     return new StandaloneSchemaFetcher();

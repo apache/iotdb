@@ -18,12 +18,12 @@
  */
 package org.apache.iotdb.db.mpp.sql.statement.crud;
 
-import java.util.List;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
-import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+import java.util.List;
 
 public abstract class InsertBaseStatement extends Statement {
 

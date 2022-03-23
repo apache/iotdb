@@ -36,7 +36,6 @@ import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.TemplateQueryType;
 import org.apache.iotdb.db.mpp.common.QueryId;
-import org.apache.iotdb.db.mpp.common.SessionInfo;
 import org.apache.iotdb.db.mpp.execution.Coordinator;
 import org.apache.iotdb.db.mpp.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
@@ -607,8 +606,6 @@ public class TSServiceImpl implements TSIService.Iface {
         ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute batch statements successfully")
         : RpcUtils.getStatus(result);
   }
-
-
 
   @Override
   public TSExecuteStatementResp executeStatement(TSExecuteStatementReq req) {
@@ -1604,24 +1601,32 @@ public class TSServiceImpl implements TSIService.Iface {
 
       // Step 1: TODO(INSERT) transfer from TSInsertTabletReq to Statement
       InsertTabletStatement statement = new InsertTabletStatement();
-//      InsertTabletPlan insertTabletPlan =
-//          new InsertTabletPlan(new PartialPath(req.getPrefixPath()), req.measurements);
-//      insertTabletPlan.setTimes(QueryDataSetUtils.readTimesFromBuffer(req.timestamps, req.size));
-//      insertTabletPlan.setColumns(
-//          QueryDataSetUtils.readValuesFromBuffer(
-//              req.values, req.types, req.types.size(), req.size));
-//      insertTabletPlan.setBitMaps(
-//          QueryDataSetUtils.readBitMapsFromBuffer(req.values, req.types.size(), req.size));
-//      insertTabletPlan.setRowCount(req.size);
-//      insertTabletPlan.setDataTypes(req.types);
-//      insertTabletPlan.setAligned(req.isAligned);
+      //      InsertTabletPlan insertTabletPlan =
+      //          new InsertTabletPlan(new PartialPath(req.getPrefixPath()), req.measurements);
+      //      insertTabletPlan.setTimes(QueryDataSetUtils.readTimesFromBuffer(req.timestamps,
+      // req.size));
+      //      insertTabletPlan.setColumns(
+      //          QueryDataSetUtils.readValuesFromBuffer(
+      //              req.values, req.types, req.types.size(), req.size));
+      //      insertTabletPlan.setBitMaps(
+      //          QueryDataSetUtils.readBitMapsFromBuffer(req.values, req.types.size(), req.size));
+      //      insertTabletPlan.setRowCount(req.size);
+      //      insertTabletPlan.setDataTypes(req.types);
+      //      insertTabletPlan.setAligned(req.isAligned);
 
       // Step 2: call the coordinator
       long queryId = SESSION_MANAGER.requestQueryId(false);
-      ExecutionResult result = coordinator.execute(statement, new QueryId(String.valueOf(queryId)), QueryType.WRITE, SESSION_MANAGER.getSessionInfo(req.sessionId), "");
+      ExecutionResult result =
+          coordinator.execute(
+              statement,
+              new QueryId(String.valueOf(queryId)),
+              QueryType.WRITE,
+              SESSION_MANAGER.getSessionInfo(req.sessionId),
+              "");
 
       // TODO(INSERT) do this check in analyze
-//      TSStatus status = serviceProvider.checkAuthority(insertTabletPlan, req.getSessionId());
+      //      TSStatus status = serviceProvider.checkAuthority(insertTabletPlan,
+      // req.getSessionId());
       return result.status;
     } catch (Exception e) {
       return onNPEOrUnexpectedException(

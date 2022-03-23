@@ -24,14 +24,17 @@ import java.util.Map;
 public class DataPartitionInfo {
 
   // Map<StorageGroup, Map<DeviceGroupID, Map<TimePartitionId, List<DataRegionPlaceInfo>>>>
-  private Map<String, Map<DeviceGroupId, Map<TimePartitionId, List<DataRegionPlaceInfo>>>> dataPartitionInfo;
+  private Map<String, Map<DeviceGroupId, Map<TimePartitionId, List<DataRegionPlaceInfo>>>>
+      dataPartitionInfo;
 
-  public Map<String, Map<DeviceGroupId, Map<TimePartitionId, List<DataRegionPlaceInfo>>>> getDataPartitionInfo() {
+  public Map<String, Map<DeviceGroupId, Map<TimePartitionId, List<DataRegionPlaceInfo>>>>
+      getDataPartitionInfo() {
     return dataPartitionInfo;
   }
 
   public void setDataPartitionInfo(
-      Map<String, Map<DeviceGroupId, Map<TimePartitionId, List<DataRegionPlaceInfo>>>> dataPartitionInfo) {
+      Map<String, Map<DeviceGroupId, Map<TimePartitionId, List<DataRegionPlaceInfo>>>>
+          dataPartitionInfo) {
     this.dataPartitionInfo = dataPartitionInfo;
   }
 }

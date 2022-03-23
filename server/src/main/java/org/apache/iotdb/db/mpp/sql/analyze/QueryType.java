@@ -19,5 +19,6 @@
 package org.apache.iotdb.db.mpp.sql.analyze;
 
 public enum QueryType {
-  WRITE, READ;
+  WRITE,
+  READ;
 }

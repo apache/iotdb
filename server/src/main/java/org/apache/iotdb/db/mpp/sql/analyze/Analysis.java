@@ -22,7 +22,6 @@ package org.apache.iotdb.db.mpp.sql.analyze;
 import org.apache.iotdb.commons.partition.DataPartitionInfo;
 import org.apache.iotdb.commons.partition.SchemaPartitionInfo;
 import org.apache.iotdb.commons.partition.TimePartitionId;
-import org.apache.iotdb.db.metadata.SchemaRegion;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.DataRegion;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
@@ -46,8 +45,7 @@ public class Analysis {
 
   // DataPartitionInfo
   // DeviceGroup -> DataRegionTimeSlice -> List<DataRegion>
-  @Deprecated
-  private Map<String, Map<TimePartitionId, List<DataRegion>>> dataPartitionInfoOld;
+  @Deprecated private Map<String, Map<TimePartitionId, List<DataRegion>>> dataPartitionInfoOld;
 
   private DataPartitionInfo dataPartitionInfo;
 
@@ -91,8 +89,7 @@ public class Analysis {
     return schemaPartitionInfo;
   }
 
-  public void setSchemaPartitionInfo(
-      SchemaPartitionInfo schemaPartitionInfo) {
+  public void setSchemaPartitionInfo(SchemaPartitionInfo schemaPartitionInfo) {
     this.schemaPartitionInfo = schemaPartitionInfo;
   }
 }

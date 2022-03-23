@@ -18,10 +18,11 @@
  */
 package org.apache.iotdb.db.mpp.sql.statement.crud;
 
-import java.nio.ByteBuffer;
-import java.util.List;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.tsfile.utils.BitMap;
+
+import java.nio.ByteBuffer;
+import java.util.List;
 
 public class InsertTabletStatement extends InsertBaseStatement {
   private long[] times; // times should be sorted. It is done in the session API.
@@ -48,5 +49,4 @@ public class InsertTabletStatement extends InsertBaseStatement {
   private List<Integer> range;
 
   private List<Object> failedColumns;
-
 }
