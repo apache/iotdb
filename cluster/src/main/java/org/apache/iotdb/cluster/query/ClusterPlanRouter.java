@@ -72,7 +72,7 @@ public class ClusterPlanRouter {
   }
 
   private SchemaEngine SchemaEngine() {
-    return IoTDB.schemaEngine;
+    return (SchemaEngine) IoTDB.schemaEngine;
   }
 
   @TestOnly

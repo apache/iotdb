@@ -70,7 +70,17 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 
-import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.*;
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.DATA_BLOCK_TYPE_ORIGIN_KEY;
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.DATA_BLOCK_TYPE_SCHEMA;
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.DATA_VERSION;
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.DEFAULT_FLAG;
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.NODE_TYPE_ENTITY;
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.NODE_TYPE_MEASUREMENT;
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.NODE_TYPE_ROOT;
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.PATH_SEPARATOR;
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.ROOT;
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.TABLE_NAME_TAGS;
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.ZERO;
 
 public class RSchemaReadWriteHandler {
 
@@ -138,7 +148,7 @@ public class RSchemaReadWriteHandler {
 
   private void initColumnFamilyDescriptors(Options options) throws RocksDBException {
     List<byte[]> cfs = RocksDB.listColumnFamilies(options, ROCKSDB_PATH);
-    if (cfs == null || cfs.size() <= 0) {
+    if (cfs.size() <= 0) {
       cfs = new ArrayList<>();
       cfs.add(RocksDB.DEFAULT_COLUMN_FAMILY);
     }
@@ -571,6 +581,7 @@ public class RSchemaReadWriteHandler {
   @TestOnly
   public void close() {
     rocksDB.close();
+    readWriteHandler = null;
   }
 
   public static RSchemaReadWriteHandler getInstance() throws RocksDBException {
