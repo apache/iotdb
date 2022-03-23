@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.sql.metadata;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class PathPatternNode {
@@ -29,7 +30,7 @@ public class PathPatternNode {
   private boolean isValueFiltered;
   private boolean isNullFiltered;
 
-  private List<PathPatternNode> childs;
+  private List<PathPatternNode> childs = new ArrayList<>();
 
   public PathPatternNode(String pathPattern) {
     this.pathPattern = pathPattern;
@@ -77,5 +78,9 @@ public class PathPatternNode {
 
   public void addChild(PathPatternNode node) {
     this.childs.add(node);
+  }
+
+  public boolean isLeaf() {
+    return childs.isEmpty();
   }
 }

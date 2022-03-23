@@ -26,8 +26,10 @@ import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
+import org.apache.iotdb.db.mpp.sql.metadata.MetadataResponse;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.db.mpp.sql.statement.component.ResultColumn;
+import org.apache.iotdb.db.mpp.sql.statement.crud.QueryStatement;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -59,10 +61,15 @@ public class WildcardsRemover implements IStatementRewriter {
    */
   private final boolean isPrefixMatch = false;
 
+  private MetadataResponse response;
+
   @Override
   public Statement rewrite(Statement statement, MPPQueryContext context)
       throws StatementAnalyzeException, PathNumOverLimitException {
-    return null;
+    QueryStatement queryStatement = (QueryStatement) statement;
+    response = context.getResponse();
+
+    return queryStatement;
   }
 
   public List<MeasurementPath> removeWildcardFrom(PartialPath path)

@@ -23,10 +23,7 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
 import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class PathPatternTree {
 
@@ -75,5 +72,44 @@ public class PathPatternTree {
     search(path);
   }
 
-  public void search(PartialPath path) {}
+  public void search(PartialPath path) {
+    search(rootNode, path.getNodes(), 0);
+  }
+
+  public void search(PathPatternNode curNode, String[] pathNodes, int pos) {
+    if (curNode == null || pos == pathNodes.length - 1) {
+      return;
+    }
+
+    if (Objects.equals(curNode.getPathPattern(), pathNodes[pos])) {
+      boolean isExist = false;
+      PathPatternNode nextNode = null;
+      for (PathPatternNode childNode : curNode.getChilds()) {
+        if (Objects.equals(childNode.getPathPattern(), pathNodes[pos + 1])
+            || (Objects.equals(childNode.getPathPattern(), "*")
+                && !Objects.equals(pathNodes[pos + 1], "**"))) {
+          isExist = true;
+          nextNode = childNode;
+          break;
+        }
+      }
+
+      if (isExist) {
+        search(nextNode, pathNodes, pos + 1);
+      } else {
+        construct(curNode, pathNodes, pos + 1);
+      }
+    }
+  }
+
+  private void construct(PathPatternNode curNode, String[] pathNodes, int pos) {
+    for (int i = pos; i < pathNodes.length; i++) {
+      PathPatternNode newNode = new PathPatternNode(pathNodes[i]);
+      if (Objects.equals(pathNodes[i], "*") && pos == pathNodes.length - 1) {
+        curNode.getChilds().removeIf(node -> !Objects.equals(node.getPathPattern(), "**"));
+      }
+      curNode.addChild(newNode);
+      curNode = newNode;
+    }
+  }
 }

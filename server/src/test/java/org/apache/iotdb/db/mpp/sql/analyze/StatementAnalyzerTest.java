@@ -35,7 +35,7 @@ public class StatementAnalyzerTest {
   @Test
   public void test() {
     assertAnalyzeSemanticException(
-        "SELECT s1+s2 as t1,*,status from root.sg1.d1 where s3 > 0 and s1 < 1 without null all(`root.sg1.d1.s2`, s1+s2, s3)",
+        "SELECT d1.s1+d1.s2 as t1,d1.*,d1.**,d2.status from root.sg1 where d1.s3 > 0 and d1.s1 < 1 without null all(`root.sg1.d1.s2`, d1.s1+d1.s2, d1.s3)",
         "Tag and attribute shouldn't have the same property key");
   }
 
