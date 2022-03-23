@@ -222,7 +222,7 @@ public class CompactionRecoverTask {
       List<TsFileIdentifier> targetFileIdentifiers, List<TsFileIdentifier> sourceFileIdentifiers)
       throws IOException {
     // some source files have been deleted, while target file must exist and complete.
-    if (!checkIsTargetFilesComplete(targetFileIdentifiers, fullStorageGroupName)) {
+    if (!checkIsTargetFilesComplete(targetFileIdentifiers)) {
       return false;
     }
 
@@ -292,8 +292,7 @@ public class CompactionRecoverTask {
     return null;
   }
 
-  private boolean checkIsTargetFilesComplete(
-      List<TsFileIdentifier> targetFileIdentifiers, String fullStorageGroupName)
+  private boolean checkIsTargetFilesComplete(List<TsFileIdentifier> targetFileIdentifiers)
       throws IOException {
     for (TsFileIdentifier targetFileIdentifier : targetFileIdentifiers) {
       // xxx.tsfile
