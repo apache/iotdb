@@ -44,7 +44,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 public class PartitionedSnapshotTest extends DataSnapshotTest {
 
@@ -125,8 +127,8 @@ public class PartitionedSnapshotTest extends DataSnapshotTest {
 
   @Test
   public void testInstallOmitted()
-      throws IOException, WriteProcessException, SnapshotInstallationException,
-          IllegalPathException, StorageEngineException, InterruptedException {
+      throws IOException, WriteProcessException, SnapshotInstallationException, MetadataException,
+          StorageEngineException, InterruptedException {
     List<TsFileResource> tsFileResources = TestUtils.prepareTsFileResources(0, 10, 10, 10, true);
     PartitionedSnapshot snapshot = new PartitionedSnapshot(FileSnapshot.Factory.INSTANCE);
     List<TimeseriesSchema> timeseriesSchemas = new ArrayList<>();
