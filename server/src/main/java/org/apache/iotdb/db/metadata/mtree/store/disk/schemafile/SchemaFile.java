@@ -385,6 +385,7 @@ public class SchemaFile implements ISchemaFile {
       e.printStackTrace();
       logger.error(String.format("parent: %s, actualAddress:%s", parent.getName(), actualSegAddr));
       logger.error(String.format("Page inspect: %s", getPageInstance(getPageIndex(actualSegAddr)).inspect()));
+      throw e;
     }
   }
 
