@@ -45,7 +45,7 @@ public class LogicalPlanner {
   }
 
   public LogicalQueryPlan plan(Analysis analysis) {
-    PlanNode rootNode = new LogicalPlanVisitor().process(analysis.getStatement());
+    PlanNode rootNode = new LogicalPlanVisitor(analysis).process(analysis.getStatement());
 
     // optimize the query logical plan
     if (analysis.getStatement() instanceof QueryStatement) {
@@ -63,6 +63,12 @@ public class LogicalPlanner {
    */
   private static final class LogicalPlanVisitor
       extends StatementVisitor<PlanNode, MPPQueryContext> {
+
+    private final Analysis analysis;
+
+    public LogicalPlanVisitor(Analysis analysis) {
+      this.analysis = analysis;
+    }
 
     @Override
     public PlanNode visitQuery(QueryStatement queryStatement, MPPQueryContext context) {

@@ -26,6 +26,7 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.DataRegion;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.util.*;
 
@@ -50,6 +51,8 @@ public class Analysis {
   private DataPartitionInfo dataPartitionInfo;
 
   private SchemaPartitionInfo schemaPartitionInfo;
+
+  private Map<String, MeasurementSchema> schemaMap;
 
   public Set<DataRegion> getPartitionInfo(PartialPath seriesPath, Filter timefilter) {
     if (timefilter == null) {
@@ -91,5 +94,13 @@ public class Analysis {
 
   public void setSchemaPartitionInfo(SchemaPartitionInfo schemaPartitionInfo) {
     this.schemaPartitionInfo = schemaPartitionInfo;
+  }
+
+  public Map<String, MeasurementSchema> getSchemaMap() {
+    return schemaMap;
+  }
+
+  public void setSchemaMap(Map<String, MeasurementSchema> schemaMap) {
+    this.schemaMap = schemaMap;
   }
 }

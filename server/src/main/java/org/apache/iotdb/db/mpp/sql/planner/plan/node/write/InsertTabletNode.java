@@ -18,30 +18,20 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.write;
 
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.tsfile.utils.BitMap;
 
-import java.nio.ByteBuffer;
 import java.util.List;
 
 public class InsertTabletNode extends InsertNode {
 
-  private static final String DATATYPE_UNSUPPORTED = "Data type %s is not supported.";
-
   private long[] times; // times should be sorted. It is done in the session API.
-  private ByteBuffer timeBuffer;
 
   private BitMap[] bitMaps;
   private Object[] columns;
-  private ByteBuffer valueBuffer;
-  private int rowCount = 0;
-  // indicate whether this plan has been set 'start' or 'end' in order to support plan transmission
-  // without data loss in cluster version
-  boolean isExecuting = false;
-  private List<PartialPath> paths;
+
   private int start;
   private int end;
   // when this plan is sub-plan split from another InsertTabletPlan, this indicates the original
@@ -54,8 +44,6 @@ public class InsertTabletNode extends InsertNode {
   // this is usually used to back-propagate exceptions to the parent plan without losing their
   // proper positions.
   private List<Integer> range;
-
-  private List<Object> failedColumns;
 
   public InsertTabletNode(PlanNodeId id) {
     super(id);

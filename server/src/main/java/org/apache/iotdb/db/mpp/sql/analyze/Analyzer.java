@@ -37,6 +37,10 @@ import org.apache.iotdb.db.mpp.sql.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.tree.StatementVisitor;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
+import java.util.Arrays;
+import java.util.Map;
 
 /** Analyze the statement and generate Analysis. */
 public class Analyzer {
@@ -133,8 +137,15 @@ public class Analyzer {
       //      dataPartitionQueryParam.setTimePartitionIdList();
       PartitionInfo partitionInfo = partitionFetcher.fetchPartitionInfo(dataPartitionQueryParam);
 
+      // TODO(INSERT) get each time series schema according to SchemaPartitionInfo in PartitionInfo
+      Map<String, MeasurementSchema> schemaMap =
+          schemaFetcher.fetchSchema(
+              insertTabletStatement.getDevicePath(),
+              Arrays.asList(insertTabletStatement.getMeasurements()));
+
       Analysis analysis = new Analysis();
-      // TODO(INSERT) do type check here and put the check info into InsertTabletStatement
+      analysis.setSchemaMap(schemaMap);
+      // TODO(INSERT) do type check here
       analysis.setStatement(insertTabletStatement);
       analysis.setDataPartitionInfo(partitionInfo.getDataPartitionInfo());
       analysis.setSchemaPartitionInfo(partitionInfo.getSchemaPartitionInfo());
