@@ -21,7 +21,7 @@ package org.apache.iotdb.db.mpp.common;
 import java.util.List;
 
 public class TsBlockMetadata {
-  // list of all columns in current Tablet
+  // list of all columns in current TsBlock
   // The column list not only contains the series column, but also contains other column to
   // construct the final result
   // set such as timestamp and deviceName
@@ -29,9 +29,9 @@ public class TsBlockMetadata {
 
   // Indicate whether the result set should be aligned by device. This parameter can be used for
   // downstream operators
-  // when processing data from current Tablet. The RowRecord produced by Tablet with
+  // when processing data from current TsBlock. The RowRecord produced by TsBlock with
   // `alignedByDevice = true` will contain
-  // n + 1 fields which are n series field and 1 deviceName field.
+  // n + 2 fields which are n series field, 1 deviceName field and 1 timestamp.
   // For example, when the FilterOperator execute the filter operation, it may need the deviceName
   // field when matching
   // the series with corresponding column in Tablet

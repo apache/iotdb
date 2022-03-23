@@ -35,7 +35,21 @@ public class TsBlock {
   // Describe the column info
   private TsBlockMetadata metadata;
 
+  private TimeColumn timeColumn;
+
+  private Column[] valueColumns;
+
   private int count;
+
+  public TsBlock() {
+  }
+
+  public TsBlock(int columnCount) {
+    timeColumn = new TimeColumn();
+    valueColumns = new Column[columnCount];
+  }
+
+
 
   public boolean hasNext() {
     return false;
@@ -55,6 +69,17 @@ public class TsBlock {
   }
 
   /**
+   * TODO need to be implemented after the data structure being defined
+   */
+  public long getEndTime() {
+    return -1;
+  }
+
+  public boolean isEmpty() {
+    return count == 0;
+  }
+
+  /**
    * TODO has not been implemented yet
    *
    * @param positionOffset start offset
@@ -69,5 +94,33 @@ public class TsBlock {
               positionOffset, length, count));
     }
     return this;
+  }
+
+  /**
+   * TODO need to be implemented after the data structure being defined
+   */
+  public long getTimeByIndex(int index) {
+    return -1;
+  }
+
+  public void addTime(long time) {
+
+  }
+
+  public int getValueColumnCount() {
+    return valueColumns.length;
+  }
+
+  public TimeColumn getTimeColumn() {
+    return timeColumn;
+  }
+
+  public Column getColumn(int columnIndex) {
+    return valueColumns[columnIndex];
+  }
+
+  public int addValues(int columnIndex, TimeColumn timeColumn, Column valueColumn, int rowIndex, long endTime) {
+
+    return rowIndex;
   }
 }

@@ -70,6 +70,6 @@ public class LimitOperator implements ProcessOperator {
 
   @Override
   public void close() throws Exception {
-    ProcessOperator.super.close();
+    child.close();
   }
 }
