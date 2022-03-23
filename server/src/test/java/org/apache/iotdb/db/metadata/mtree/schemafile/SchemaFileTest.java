@@ -30,6 +30,7 @@ import org.apache.iotdb.db.metadata.mnode.StorageGroupEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaFile;
+import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaPage;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.RecordUtils;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaPage;
@@ -45,6 +46,9 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -195,12 +199,12 @@ public class SchemaFileTest {
 
   @Test
   public void test10KDevices() throws MetadataException, IOException {
-    int i = 10000;
+    int i = 2000;
     IMNode sgNode = new StorageGroupMNode(null, "sgRoot", 11111111L);
 
     // write with empty entitiy
     while (i >= 0) {
-      IMNode aDevice = new EntityMNode(sgNode, "dev_" + i);
+      IMNode aDevice = new InternalMNode(sgNode, "dev_" + i);
       sgNode.addChild(aDevice);
       i--;
     }
@@ -210,6 +214,23 @@ public class SchemaFileTest {
     ICachedMNodeContainer.getCachedMNodeContainer(sgNode).setSegmentAddress(0L);
     IMNode node = null;
     try {
+      while (orderedTree.hasNext()) {
+        node = orderedTree.next();
+        if (!node.isMeasurement()) {
+          sf.writeMNode(node);
+        }
+      }
+
+      ICachedMNodeContainer.getCachedMNodeContainer(sgNode).getNewChildBuffer().clear();
+      i = 2000;
+      while (i >= 0) {
+        IMNode aDevice = new EntityMNode(sgNode, "dev_" + i);
+        sgNode.addChild(aDevice);
+        ICachedMNodeContainer.getCachedMNodeContainer(sgNode).updateMNode(aDevice.getName());
+        i--;
+      }
+
+      orderedTree = getTreeBFT(sgNode);
       while (orderedTree.hasNext()) {
         node = orderedTree.next();
         if (!node.isMeasurement()) {
@@ -252,7 +273,7 @@ public class SchemaFileTest {
     Set<String> resName = new HashSet<>();
     // more measurement
     for (IMNode etn : sgNode.getChildren().values()) {
-      int j = 100;
+      int j = 1000;
       while (j >= 0) {
         addMeasurementChild(etn, String.format("mtc2_%d_%d", i, j));
         if (resName.size() < 101) {
@@ -291,28 +312,22 @@ public class SchemaFileTest {
     }
 
     Iterator<IMNode> res = sf.getChildren(arbitraryNode.get(arbitraryNode.size() - 1));
+    int i2 = 0;
     while (res.hasNext()) {
+      print(i2++);
       resName.remove(res.next().getName());
     }
 
     Assert.assertTrue(resName.isEmpty());
-
+    printSF(sf);
+    print(((SchemaFile) sf).getPageOnTest(0).inspect());
     sf.close();
   }
 
-  @Test
   public void bitwiseTest() {
-    int a = 32768;
-    int b = 0x80000000;
-    print((long) a << 16);
-    print((long) (a << 16));
-    print((long) b << 16);
-    print((long) (0xffff_ffff & b) << 16);
-    print((0xffffffffL & b) << 16);
 
-    Assert.assertEquals(a * 16 * 1024, a << 14);
-    print(SchemaFile.getPageIndex(12451840));
-    print(SchemaFile.getPageIndex(1099780063232L));
+    print(SchemaFile.getPageIndex(95485952));
+    print(SchemaFile.getGlobalIndex(1457, (short) 0));
 
     long initGlbAdr = 1099780063232L;
     int pageIndex = SchemaFile.getPageIndex(initGlbAdr);
@@ -327,6 +342,33 @@ public class SchemaFileTest {
     byte[] bta = {0b1, 0b10, 0b100};
     print(Arrays.toString(bta));
     print(ByteBuffer.wrap(bta));
+  }
+
+  private void testDebugger() throws MetadataException, IOException {
+    String filePath = "./buffer.temp";
+
+    File pmtFile = new File(filePath);
+    BufferedReader reader = new BufferedReader(new FileReader(pmtFile));
+    byte[] bytas = new byte[16 * 1024];
+    String txt = reader.readLine();
+    txt.trim();
+    String[] tar = txt.split(",");
+
+    print(tar.length);
+    for (int i = 0; i < tar.length; i++) {
+      if (i == 0) {
+        bytas[i] = Byte.parseByte(tar[i].trim().substring(1));
+      } else if (i == tar.length - 1) {
+        bytas[i] = Byte.parseByte(tar[i].trim().substring(0, 2));
+      } else {
+        bytas[i] = Byte.parseByte(tar[i].trim());
+      }
+    }
+
+    reader.close();
+    ByteBuffer bf = ByteBuffer.wrap(bytas);
+    ISchemaPage page = SchemaPage.loadPage(bf, 999);
+    print(page.inspect());
   }
 
   @Test

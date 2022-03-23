@@ -155,6 +155,18 @@ public class Segment implements ISegment {
    */
   @Override
   public int insertRecord(String key, ByteBuffer buf) throws RecordDuplicatedException {
+    try {
+      buffer.clear();
+      bufferChecker(buffer);
+    } catch (BufferUnderflowException | BufferOverflowException e) {
+      logger.error(
+          String.format(
+              "Buffer broken when insert, key:%s, buffer:%s",
+              key, Arrays.toString(buffer.array())));
+      e.printStackTrace();
+      throw e;
+    }
+
     int recordStartAddr = freeAddr - buf.capacity();
 
     int newPairLength = pairLength + key.getBytes().length + 4 + 2;
@@ -259,7 +271,6 @@ public class Segment implements ISegment {
           String.format(
               "Get record[key:%s] failed, start offset:%d, end offset:%d",
               key, offset, offset + len));
-      logger.error(String.format("Buffer: %s", Arrays.toString(this.buffer.slice().array())));
       throw e;
     }
   }
@@ -296,6 +307,18 @@ public class Segment implements ISegment {
    */
   @Override
   public int updateRecord(String key, ByteBuffer buffer) throws SegmentOverflowException {
+    try {
+      buffer.clear();
+      bufferChecker(buffer);
+    } catch (BufferUnderflowException | BufferOverflowException e) {
+      logger.error(
+          String.format(
+              "Buffer broken when update, key:%s, buffer:%s",
+              key, Arrays.toString(buffer.array())));
+      e.printStackTrace();
+      throw e;
+    }
+
     int idx = getRecordIndexByKey(key);
     if (idx < 0) {
       return -1;
@@ -535,9 +558,6 @@ public class Segment implements ISegment {
                 alias, this.length, keyAddressList.get(i)));
         this.buffer.position(keyAddressList.get(i).right);
         this.buffer.limit(this.buffer.position() + 20);
-        logger.error(
-            String.format("Buffer inspect: %s", Arrays.toString(this.buffer.slice().array())));
-        logger.error(String.format("Segment inspect: %s", this));
         throw e;
       }
     }
@@ -560,11 +580,16 @@ public class Segment implements ISegment {
     this.buffer.clear();
     for (Pair<String, Short> pair : keyAddressList) {
       this.buffer.position(pair.right);
-      if (RecordUtils.getRecordType(buffer) < 3) {
-        builder.append(
-            String.format("(%s -> %d),", pair.left, RecordUtils.getRecordSegAddr(buffer)));
-      } else {
-        builder.append(String.format("(%s, %s),", pair.left, RecordUtils.getRecordAlias(buffer)));
+      try {
+        if (RecordUtils.getRecordType(buffer) < 3) {
+          builder.append(
+              String.format("(%s -> %d),", pair.left, RecordUtils.getRecordSegAddr(buffer)));
+        } else {
+          builder.append(String.format("(%s, %s),", pair.left, RecordUtils.getRecordAlias(buffer)));
+        }
+      } catch (BufferUnderflowException | BufferOverflowException e) {
+        logger.error(String.format("Segment broken with string: %s", builder.toString()));
+        throw e;
       }
     }
     builder.append("]");
@@ -608,6 +633,21 @@ public class Segment implements ISegment {
   @TestOnly
   public List<Pair<String, Short>> getKeyOffsetList() {
     return keyAddressList;
+  }
+
+  @TestOnly
+  private void bufferChecker(ByteBuffer buf) {
+    byte type = RecordUtils.getRecordType(buf);
+
+    if (((type != 0) && (type != 1) && (type != 4)) || RecordUtils.getRecordLength(buf) <= 0) {
+      throw new BufferOverflowException();
+    }
+
+    if ((type == 0) || (type == 1)) {
+      if (RecordUtils.getRecordLength(buf) != 16) {
+        throw new BufferOverflowException();
+      }
+    }
   }
 
   // endregion

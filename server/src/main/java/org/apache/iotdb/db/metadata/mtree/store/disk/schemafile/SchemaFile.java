@@ -400,9 +400,6 @@ public class SchemaFile implements ISchemaFile {
           String.format(
               "Get child from parent[%s] failed, actualAddress:%s",
               parent.getName(), actualSegAddr));
-      logger.error(
-          String.format(
-              "Page inspect: %s", getPageInstance(getPageIndex(actualSegAddr)).inspect()));
       throw e;
     }
   }
