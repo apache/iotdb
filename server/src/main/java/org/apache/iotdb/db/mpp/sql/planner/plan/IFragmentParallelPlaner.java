@@ -27,9 +27,9 @@ import java.util.List;
 public interface IFragmentParallelPlaner {
     /**
      *
-     * @param root The root of SubPlan tree. The relation between each PlanFragment is necessary because sometimes we
-     *             need to change the source/sink for each FragmentInstance according to its upstream/downstream
+     * The relation between each PlanFragment is necessary because sometimes we
+     * need to change the source/sink for each FragmentInstance according to its upstream/downstream
      * @return All the FragmentInstances which can run in parallel
      */
-    List<FragmentInstance> parallelPlan(SubPlan root);
+    List<FragmentInstance> parallelPlan();
 }

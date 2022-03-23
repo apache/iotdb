@@ -19,11 +19,14 @@
 
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
+import org.apache.iotdb.consensus.common.Endpoint;
+import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.sink.FragmentSinkNode;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.iotdb.service.rpc.thrift.EndPoint;
 
 import java.util.List;
 
@@ -34,8 +37,9 @@ public class ExchangeNode extends PlanNode {
   // In current version, one ExchangeNode will only have one source.
   // And the fragment which the sourceNode belongs to will only have one instance.
   // Thus, by nodeId and endpoint, the ExchangeNode can know where its source from.
-  private PlanNodeId sourceNodeId; // sourceNodeId is the same as the child's PlanNodeId
-  private String sourceEndpoint; // The endpoint where the sourceNode will be distributed
+  private EndPoint upstreamEndpoint;
+  private FragmentInstanceId upstreamInstanceId;
+  private PlanNodeId upstreamPlanNodeId;
 
   public ExchangeNode(PlanNodeId id) {
     super(id);
@@ -59,6 +63,12 @@ public class ExchangeNode extends PlanNode {
     ExchangeNode node = new ExchangeNode(getId());
     node.setChild(children.get(0));
     return node;
+  }
+
+  public void setUpstream(EndPoint endPoint, FragmentInstanceId instanceId, PlanNodeId nodeId) {
+    this.upstreamEndpoint = endPoint;
+    this.upstreamInstanceId = instanceId;
+    this.upstreamPlanNodeId = nodeId;
   }
 
   @Override
@@ -88,5 +98,17 @@ public class ExchangeNode extends PlanNode {
 
   public void cleanChildren() {
     this.child = null;
+  }
+
+  public EndPoint getUpstreamEndpoint() {
+    return upstreamEndpoint;
+  }
+
+  public FragmentInstanceId getUpstreamInstanceId() {
+    return upstreamInstanceId;
+  }
+
+  public PlanNodeId getUpstreamPlanNodeId() {
+    return upstreamPlanNodeId;
   }
 }

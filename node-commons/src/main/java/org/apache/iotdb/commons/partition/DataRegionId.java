@@ -21,11 +21,19 @@ package org.apache.iotdb.commons.partition;
 public class DataRegionId {
   private int dataRegionId;
 
+  public DataRegionId(int dataRegionId) {
+    this.dataRegionId = dataRegionId;
+  }
+
   public int getDataRegionId() {
     return dataRegionId;
   }
 
   public void setDataRegionId(int dataRegionId) {
     this.dataRegionId = dataRegionId;
+  }
+
+  public String toString() {
+    return String.format("DataRegion-%d", dataRegionId);
   }
 }

@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.execution.scheduler;
 
-import org.apache.iotdb.db.mpp.common.FragmentId;
+import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.execution.FragmentInfo;
 
@@ -36,5 +36,5 @@ public interface IScheduler {
 
   void failFragmentInstance(FragmentInstanceId instanceId, Throwable failureCause);
 
-  void cancelFragment(FragmentId fragmentId);
+  void cancelFragment(PlanFragmentId planFragmentId);
 }

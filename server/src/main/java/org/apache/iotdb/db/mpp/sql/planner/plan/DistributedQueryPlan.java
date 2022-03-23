@@ -26,12 +26,14 @@ public class DistributedQueryPlan {
   private MPPQueryContext context;
   private SubPlan rootSubPlan;
   private List<PlanFragment> fragments;
+  private List<FragmentInstance> instances;
 
   public DistributedQueryPlan(
-      MPPQueryContext context, SubPlan rootSubPlan, List<PlanFragment> fragments) {
+          MPPQueryContext context, SubPlan rootSubPlan, List<PlanFragment> fragments, List<FragmentInstance> instances) {
     this.context = context;
     this.rootSubPlan = rootSubPlan;
     this.fragments = fragments;
+    this.instances = instances;
   }
 
   public List<PlanFragment> getFragments() {

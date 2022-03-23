@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 public class PlanNodeUtil {
   public static void printPlanNode(PlanNode root) {
     printPlanNodeWithLevel(root, 0);
@@ -35,5 +38,27 @@ public class PlanNodeUtil {
     for (int i = 0; i < count; i++) {
       System.out.print("\t");
     }
+  }
+
+  public static String nodeToString(PlanNode root) {
+    StringBuilder result = new StringBuilder();
+    nodeToString(root, 0, result);
+    return result.toString();
+  }
+
+  private static void nodeToString(PlanNode root, int level, StringBuilder result) {
+    for (int i = 0 ; i < level; i ++) {
+      result.append("\t");
+    }
+    result.append(root.toString());
+    result.append(System.lineSeparator());
+    for (PlanNode child: root.getChildren()) {
+      nodeToString(child, level + 1, result);
+    }
+  }
+
+  public static PlanNode deepCopy(PlanNode root) {
+    List<PlanNode> children = root.getChildren().stream().map(PlanNodeUtil::deepCopy).collect(Collectors.toList());
+    return root.cloneWithChildren(children);
   }
 }

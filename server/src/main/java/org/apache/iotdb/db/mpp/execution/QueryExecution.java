@@ -61,7 +61,6 @@ public class QueryExecution {
   public void start() {
     doLogicalPlan();
     doDistributedPlan();
-    planFragmentInstances();
     schedule();
   }
 
@@ -87,12 +86,6 @@ public class QueryExecution {
   private void doDistributedPlan() {
     DistributionPlanner planner = new DistributionPlanner(this.analysis, this.logicalPlan);
     this.distributedPlan = planner.planFragments();
-  }
-
-  // Convert fragment to detailed instance
-  // And for parallel-able fragment, clone it into several instances with different params.
-  public void planFragmentInstances() {
-
   }
 
 

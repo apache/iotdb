@@ -18,20 +18,44 @@
  */
 package org.apache.iotdb.commons.partition;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class DataPartitionInfo {
 
   // Map<StorageGroup, Map<DeviceGroupID, Map<TimePartitionId, List<DataRegionPlaceInfo>>>>
-  private Map<String, Map<DeviceGroupId, Map<TimePartitionId, List<DataRegionPlaceInfo>>>> dataPartitionInfo;
+  private Map<String, Map<DeviceGroupId, Map<TimePartitionId, List<DataRegionReplicaSet>>>> dataPartitionMap;
 
-  public Map<String, Map<DeviceGroupId, Map<TimePartitionId, List<DataRegionPlaceInfo>>>> getDataPartitionInfo() {
-    return dataPartitionInfo;
+  public Map<String, Map<DeviceGroupId, Map<TimePartitionId, List<DataRegionReplicaSet>>>> getDataPartitionMap() {
+    return dataPartitionMap;
   }
 
-  public void setDataPartitionInfo(
-      Map<String, Map<DeviceGroupId, Map<TimePartitionId, List<DataRegionPlaceInfo>>>> dataPartitionInfo) {
-    this.dataPartitionInfo = dataPartitionInfo;
+  public void setDataPartitionMap(
+      Map<String, Map<DeviceGroupId, Map<TimePartitionId, List<DataRegionReplicaSet>>>> dataPartitionMap) {
+    this.dataPartitionMap = dataPartitionMap;
+  }
+
+  public List<DataRegionReplicaSet> getDataRegionReplicaSet(String deviceName, List<TimePartitionId> timePartitionIdList) {
+    String storageGroup = getStorageGroupByDevice(deviceName);
+    DeviceGroupId deviceGroupId = calculateDeviceGroupId(deviceName);
+    // TODO: (xingtanzjr) the timePartitionIdList is ignored
+    return dataPartitionMap.get(storageGroup).get(deviceGroupId).values().stream().flatMap(Collection::stream).collect(Collectors.toList());
+  }
+
+  private DeviceGroupId calculateDeviceGroupId(String deviceName) {
+    // TODO: (xingtanzjr) implement the real algorithm for calculation of DeviceGroupId
+    return new DeviceGroupId(deviceName.length());
+  }
+
+  private String getStorageGroupByDevice(String deviceName) {
+    for(String storageGroup : dataPartitionMap.keySet()) {
+      if (deviceName.startsWith(storageGroup)) {
+        return storageGroup;
+      }
+    }
+    // TODO: (xingtanzjr) how to handle this exception in IoTDB
+    return null;
   }
 }

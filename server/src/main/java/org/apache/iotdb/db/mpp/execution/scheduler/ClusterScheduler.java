@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.execution.scheduler;
 
-import org.apache.iotdb.db.mpp.common.FragmentId;
+import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.execution.FragmentInfo;
 import org.apache.iotdb.db.mpp.execution.QueryStateMachine;
@@ -67,7 +67,7 @@ public class ClusterScheduler implements IScheduler {
   public void failFragmentInstance(FragmentInstanceId instanceId, Throwable failureCause) {}
 
   @Override
-  public void cancelFragment(FragmentId fragmentId) {}
+  public void cancelFragment(PlanFragmentId planFragmentId) {}
 
   // Send the instances to other nodes
   private void sendFragmentInstances() {}

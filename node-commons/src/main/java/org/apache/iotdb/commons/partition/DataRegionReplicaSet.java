@@ -16,27 +16,37 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.sql.planner.plan;
+package org.apache.iotdb.commons.partition;
 
-public class PlanFragmentId {
-  private String id;
+import java.util.List;
+import org.apache.iotdb.service.rpc.thrift.EndPoint;
 
-  public PlanFragmentId(String id) {
-    this.id = id;
+public class DataRegionReplicaSet {
+  private DataRegionId dataRegionId;
+  private List<EndPoint> endPointList;
+
+  public DataRegionReplicaSet(DataRegionId dataRegionId, List<EndPoint> endPointList) {
+    this.dataRegionId = dataRegionId;
+    this.endPointList = endPointList;
   }
 
-  public static int initialId = 0;
-
-  public static synchronized PlanFragmentId generateId() {
-    initialId++;
-    return new PlanFragmentId(String.valueOf(initialId));
+  public List<EndPoint> getEndPointList() {
+    return endPointList;
   }
 
-  public String getId() {
-    return id;
+  public void setEndPointList(List<EndPoint> endPointList) {
+    this.endPointList = endPointList;
+  }
+
+  public DataRegionId getDataRegionId() {
+    return dataRegionId;
+  }
+
+  public void setDataRegionId(DataRegionId dataRegionId) {
+    this.dataRegionId = dataRegionId;
   }
 
   public String toString() {
-    return id;
+    return String.format("%s:%s", dataRegionId, endPointList);
   }
 }

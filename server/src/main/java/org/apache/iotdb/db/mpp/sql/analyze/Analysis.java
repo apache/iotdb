@@ -20,11 +20,9 @@
 package org.apache.iotdb.db.mpp.sql.analyze;
 
 import org.apache.iotdb.commons.partition.DataPartitionInfo;
+import org.apache.iotdb.commons.partition.DataRegionReplicaSet;
 import org.apache.iotdb.commons.partition.SchemaPartitionInfo;
-import org.apache.iotdb.commons.partition.TimePartitionId;
-import org.apache.iotdb.db.metadata.SchemaRegion;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.mpp.common.DataRegion;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
@@ -44,31 +42,13 @@ public class Analysis {
   // indicate whether this statement is write or read
   private QueryType queryType;
 
-  // DataPartitionInfo
-  // DeviceGroup -> DataRegionTimeSlice -> List<DataRegion>
-  @Deprecated
-  private Map<String, Map<TimePartitionId, List<DataRegion>>> dataPartitionInfoOld;
-
   private DataPartitionInfo dataPartitionInfo;
 
   private SchemaPartitionInfo schemaPartitionInfo;
 
-  public Set<DataRegion> getPartitionInfo(PartialPath seriesPath, Filter timefilter) {
-    if (timefilter == null) {
-      // TODO: (xingtanzjr) we need to have a method to get the deviceGroup by device
-      String deviceGroup = seriesPath.getDevice();
-      Set<DataRegion> result = new HashSet<>();
-      this.dataPartitionInfoOld.get(deviceGroup).values().forEach(result::addAll);
-      return result;
-    } else {
-      // TODO: (xingtanzjr) complete this branch
-      return null;
-    }
-  }
-
-  public void setDataPartitionInfoOld(
-      Map<String, Map<TimePartitionId, List<DataRegion>>> dataPartitionInfoOld) {
-    this.dataPartitionInfoOld = dataPartitionInfoOld;
+  public List<DataRegionReplicaSet> getPartitionInfo(PartialPath seriesPath, Filter timefilter) {
+    // TODO: (xingtanzjr) implement the calculation of timePartitionIdList
+    return dataPartitionInfo.getDataRegionReplicaSet(seriesPath.getDevice(), null);
   }
 
   public Statement getStatement() {
