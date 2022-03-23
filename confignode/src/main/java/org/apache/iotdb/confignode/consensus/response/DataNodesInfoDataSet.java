@@ -16,9 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.service.basic;
+package org.apache.iotdb.confignode.consensus.response;
 
-public class ConfigServiceProvider {
+import org.apache.iotdb.confignode.partition.DataNodeInfo;
+import org.apache.iotdb.consensus.common.DataSet;
 
-  public ConfigServiceProvider() {}
+import java.util.HashMap;
+import java.util.Map;
+
+public class DataNodesInfoDataSet implements DataSet {
+
+  private final Map<Integer, DataNodeInfo> infoMap;
+
+  public DataNodesInfoDataSet() {
+    this.infoMap = new HashMap<>();
+  }
+
+  public void addDataNodeInfo(int dataNodeID, DataNodeInfo info) {
+    this.infoMap.put(dataNodeID, info);
+  }
+
+  public Map<Integer, DataNodeInfo> getInfoMap() {
+    return this.infoMap;
+  }
 }

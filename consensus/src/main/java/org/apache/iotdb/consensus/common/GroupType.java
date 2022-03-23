@@ -21,7 +21,7 @@ package org.apache.iotdb.consensus.common;
 
 // TODO Use a mature IDL framework such as Protobuf to manage this structure
 public enum GroupType {
-  Config,
+  PartitionRegion,
   DataRegion,
   SchemaRegion
 }

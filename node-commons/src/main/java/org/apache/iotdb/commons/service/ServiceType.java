@@ -66,7 +66,9 @@ public enum ServiceType {
   CLUSTER_DATA_ENGINE("Cluster Data Engine", "ClusterDataEngine"),
   REST_SERVICE("REST Service", "REST Service"),
   CONFIG_NODE_SERVICE("Config Node service", "ConfigNodeRPCServer"),
-  DATA_NODE_INTERNAL_SERVICE("Data Node internal service", "DataNodeInternalRPCServer");
+  DATA_NODE_INTERNAL_SERVICE("Data Node internal service", "DataNodeInternalRPCServer"),
+  FRAGMENT_INSTANCE_MANAGER_SERVICE("Fragment instance manager", "FragmentInstanceManager"),
+  DATA_BLOCK_MANAGER_SERVICE("Data block manager", "DataBlockManager");
 
   private final String name;
   private final String jmxName;
