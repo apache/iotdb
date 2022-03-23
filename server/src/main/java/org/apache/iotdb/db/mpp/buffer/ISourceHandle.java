@@ -18,24 +18,56 @@
  */
 package org.apache.iotdb.db.mpp.buffer;
 
+import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
 import java.io.Closeable;
+import java.util.List;
 
 public interface ISourceHandle extends Closeable {
 
-  /** Get a {@link TsBlock} from the input buffer. */
+  /** Get the total amount of memory used by buffered tsblocks. */
+  long getBufferRetainedSizeInBytes();
+
+  /**
+   * Get a {@link TsBlock}. If the source handle is blocked, a null will be returned. A {@link
+   * RuntimeException} will be thrown if any error happened.
+   */
   TsBlock receive();
 
-  /** Check if there are more tsblocks. */
+  /** If there are more tsblocks. */
   boolean isFinished();
 
-  /** Get a future that will be completed when the input buffer is not empty. */
+  /**
+   * Get a future that will be completed when the input buffer is not empty. The future will not
+   * complete even when the handle is finished or closed.
+   */
   ListenableFuture<Void> isBlocked();
+
+  /** If this handle is closed. */
+  boolean isClosed();
 
   /** Close the handle. Discarding all tsblocks which may still be in memory buffer. */
   @Override
   void close();
+
+  /** For internal use. Notify the handle that no more tsblocks will be received. */
+  void setNoMoreTsBlocks();
+
+  /** For internal use. Notify the handle that new tsblocks is available. */
+  void updatePendingDataBlockInfo(int startSequenceId, List<Long> dataBlockSizes);
+
+  /** For internal use. Get the hostname of the upstream fragment instance. */
+  String getRemoteHostname();
+
+  /** For internal use. Get the ID of the upstream fragment instance. */
+  TFragmentInstanceId getRemoteFragmentInstanceId();
+
+  /** For internal use. Get the ID of the local fragment instance. */
+  TFragmentInstanceId getLocalFragmentInstanceId();
+
+  /** For internal use. Get the source operator ID of the local fragment instance. */
+  String getLocalOperatorId();
 }

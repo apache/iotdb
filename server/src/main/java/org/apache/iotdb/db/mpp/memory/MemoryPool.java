@@ -19,24 +19,60 @@
 
 package org.apache.iotdb.db.mpp.memory;
 
+import com.google.common.util.concurrent.AbstractFuture;
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.commons.lang3.Validate;
 
-import java.util.HashMap;
-import java.util.Map;
+import javax.annotation.Nullable;
 
-/** Manages certain amount of memory. */
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.Map;
+import java.util.Queue;
+
+/** A thread-safe memory pool. */
 public class MemoryPool {
+
+  private static class MemoryReservationFuture<V> extends AbstractFuture<V> {
+    private final long bytes;
+
+    private MemoryReservationFuture(long bytes) {
+      Validate.isTrue(bytes > 0L, "bytes should be greater than zero.");
+      this.bytes = bytes;
+    }
+
+    public long getBytes() {
+      return bytes;
+    }
+
+    public static <V> MemoryReservationFuture<V> create(long bytes) {
+      return new MemoryReservationFuture<>(bytes);
+    }
+
+    @Override
+    public boolean set(@Nullable V value) {
+      return super.set(value);
+    }
+  }
 
   private final String id;
   private final long maxBytes;
+  private final long maxBytesPerQuery;
 
   private long reservedBytes = 0L;
   private final Map<String, Long> queryMemoryReservations = new HashMap<>();
+  private final Queue<MemoryReservationFuture<Void>> memoryReservationFutures = new LinkedList<>();
 
-  public MemoryPool(String id, long maxBytes) {
+  public MemoryPool(String id, long maxBytes, long maxBytesPerQuery) {
     this.id = Validate.notNull(id);
-    Validate.isTrue(maxBytes > 0L);
+    Validate.isTrue(maxBytes > 0L, "max bytes should be greater than zero.");
     this.maxBytes = maxBytes;
+    Validate.isTrue(
+        maxBytesPerQuery > 0L && maxBytesPerQuery <= maxBytes,
+        "max bytes per query should be greater than zero while less than or equal to max bytes.");
+    this.maxBytesPerQuery = maxBytesPerQuery;
   }
 
   public String getId() {
@@ -47,15 +83,41 @@ public class MemoryPool {
     return maxBytes;
   }
 
+  public ListenableFuture<Void> reserve(String queryId, long bytes) {
+    Validate.notNull(queryId);
+    Validate.isTrue(
+        bytes > 0L && bytes <= maxBytesPerQuery,
+        "bytes should be greater than zero while less than or equal to max bytes per query.");
+
+    ListenableFuture<Void> result;
+    synchronized (this) {
+      if (maxBytes - reservedBytes < bytes
+          || maxBytesPerQuery - queryMemoryReservations.getOrDefault(queryId, 0L) < bytes) {
+        result = MemoryReservationFuture.create(bytes);
+        memoryReservationFutures.add((MemoryReservationFuture<Void>) result);
+      } else {
+        reservedBytes += bytes;
+        queryMemoryReservations.merge(queryId, bytes, Long::sum);
+        result = Futures.immediateFuture(null);
+      }
+    }
+
+    return result;
+  }
+
   public boolean tryReserve(String queryId, long bytes) {
     Validate.notNull(queryId);
-    Validate.isTrue(bytes > 0L);
+    Validate.isTrue(
+        bytes > 0L && bytes <= maxBytesPerQuery,
+        "bytes should be greater than zero while less than or equal to max bytes per query.");
 
-    if (maxBytes - reservedBytes < bytes) {
+    if (maxBytes - reservedBytes < bytes
+        || maxBytesPerQuery - queryMemoryReservations.getOrDefault(queryId, 0L) < bytes) {
       return false;
     }
     synchronized (this) {
-      if (maxBytes - reservedBytes < bytes) {
+      if (maxBytes - reservedBytes < bytes
+          || maxBytesPerQuery - queryMemoryReservations.getOrDefault(queryId, 0L) < bytes) {
         return false;
       }
       reservedBytes += bytes;
@@ -79,11 +141,35 @@ public class MemoryPool {
     } else {
       queryMemoryReservations.put(queryId, queryReservedBytes);
     }
-
     reservedBytes -= bytes;
+
+    if (memoryReservationFutures.isEmpty()) {
+      return;
+    }
+    Iterator<MemoryReservationFuture<Void>> iterator = memoryReservationFutures.iterator();
+    while (iterator.hasNext()) {
+      MemoryReservationFuture<Void> future = iterator.next();
+
+      if (future.isCancelled()) {
+        iterator.remove();
+        continue;
+      }
+
+      long bytesToReserve = future.getBytes();
+      if (maxBytes - reservedBytes < bytesToReserve
+          || maxBytesPerQuery - queryMemoryReservations.getOrDefault(queryId, 0L)
+              < bytesToReserve) {
+        return;
+      } else {
+        reservedBytes += bytesToReserve;
+        queryMemoryReservations.merge(queryId, bytesToReserve, Long::sum);
+        future.set(null);
+        iterator.remove();
+      }
+    }
   }
 
-  public synchronized long getQueryMemoryReservedBytes(String queryId) {
+  public long getQueryMemoryReservedBytes(String queryId) {
     return queryMemoryReservations.getOrDefault(queryId, 0L);
   }
 

@@ -19,98 +19,282 @@
 
 package org.apache.iotdb.db.mpp.buffer;
 
-import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.mpp.memory.LocalMemoryManager;
-import org.apache.iotdb.db.mpp.schedule.task.FragmentInstanceTask;
+import org.apache.iotdb.mpp.rpc.thrift.DataBlockService;
+import org.apache.iotdb.mpp.rpc.thrift.EndOfDataBlockEvent;
+import org.apache.iotdb.mpp.rpc.thrift.GetDataBlockRequest;
+import org.apache.iotdb.mpp.rpc.thrift.GetDataBlockResponse;
+import org.apache.iotdb.mpp.rpc.thrift.NewDataBlockEvent;
+import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 
 import org.apache.commons.lang3.Validate;
+import org.apache.thrift.TException;
+import org.apache.thrift.transport.TTransportException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
-import java.util.List;
+import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.Map;
-import java.util.concurrent.ScheduledExecutorService;
+import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.function.Supplier;
 
-public class DataBlockManager {
+public class DataBlockManager implements IDataBlockManager {
 
-  public static class FragmentInstanceInfo {
-    private String hostname;
-    private String queryId;
-    private String fragmentId;
-    private String instanceId;
+  private static final Logger logger = LoggerFactory.getLogger(DataBlockManager.class);
 
-    public FragmentInstanceInfo(
-        String hostname, String queryId, String fragmentId, String instanceId) {
-      this.hostname = Validate.notNull(hostname);
-      this.queryId = Validate.notNull(queryId);
-      this.fragmentId = Validate.notNull(fragmentId);
-      this.instanceId = Validate.notNull(instanceId);
+  /** Handle thrift communications. */
+  class DataBlockServiceImpl implements DataBlockService.Iface {
+
+    public GetDataBlockResponse getDataBlock(GetDataBlockRequest req) throws TException {
+      logger.debug(
+          "Get data block request received. Asking for data block [{}, {}) from {}.",
+          req.getStartSequenceId(),
+          req.getEndSequenceId(),
+          req.getSourceFragnemtInstanceId());
+      if (!sinkHandles.containsKey(req.getSourceFragnemtInstanceId())) {
+        throw new TException(
+            "Source fragment instance not found. Fragment instance ID: "
+                + req.getSourceFragnemtInstanceId()
+                + ".");
+      }
+      GetDataBlockResponse resp = new GetDataBlockResponse();
+      for (int i = req.getStartSequenceId(); i < req.getEndSequenceId(); i++) {
+        ByteBuffer serializedTsBlock =
+            sinkHandles
+                .get(req.getSourceFragnemtInstanceId())
+                .getSerializedTsBlock(req.getStartSequenceId());
+        resp.addToTsBlocks(serializedTsBlock);
+      }
+      return resp;
     }
 
-    public String getHostname() {
-      return hostname;
+    @Override
+    public void onNewDataBlockEvent(NewDataBlockEvent e) throws TException {
+      logger.debug(
+          "New data block event received, for operator {} of {} from {}.",
+          e.getTargetOperatorId(),
+          e.getTargetFragmentInstanceId(),
+          e.getSourceFragnemtInstanceId());
+      if (!sourceHandles.containsKey(e.getTargetFragmentInstanceId())
+          || !sourceHandles
+              .get(e.getTargetFragmentInstanceId())
+              .containsKey(e.getTargetOperatorId())
+          || sourceHandles
+              .get(e.getTargetFragmentInstanceId())
+              .get(e.getTargetOperatorId())
+              .isClosed()) {
+        logger.info("{} is ignored because the source handle does not exist or has been closed", e);
+        return;
+      }
+
+      ISourceHandle sourceHandle =
+          sourceHandles.get(e.getTargetFragmentInstanceId()).get(e.getTargetOperatorId());
+      sourceHandle.updatePendingDataBlockInfo(e.getStartSequenceId(), e.getBlockSizes());
     }
 
-    public String getQueryId() {
-      return queryId;
+    @Override
+    public void onEndOfDataBlockEvent(EndOfDataBlockEvent e) throws TException {
+      logger.debug(
+          "End of data block event received, for operator {} of {} from {}.",
+          e.getTargetOperatorId(),
+          e.getTargetFragmentInstanceId(),
+          e.getSourceFragnemtInstanceId());
+      if (!sourceHandles.containsKey(e.getTargetFragmentInstanceId())
+          || !sourceHandles
+              .get(e.getTargetFragmentInstanceId())
+              .containsKey(e.getTargetOperatorId())
+          || sourceHandles
+              .get(e.getTargetFragmentInstanceId())
+              .get(e.getTargetOperatorId())
+              .isClosed()) {
+        logger.info("{} is ignored because the source handle does not exist or has been closed", e);
+        return;
+      }
+      ISourceHandle sourceHandle =
+          sourceHandles
+              .getOrDefault(e.getTargetFragmentInstanceId(), Collections.emptyMap())
+              .get(e.getTargetOperatorId());
+      sourceHandle.setNoMoreTsBlocks();
+    }
+  }
+
+  /** Listen to the state changes of a source handle. */
+  class SourceHandleListenerImpl implements SourceHandleListener {
+    @Override
+    public void onFinished(ISourceHandle sourceHandle) {
+      logger.info("Release resources of finished source handle {}", sourceHandle);
+      if (!sourceHandles.containsKey(sourceHandle.getLocalFragmentInstanceId())
+          || !sourceHandles
+              .get(sourceHandle.getLocalFragmentInstanceId())
+              .containsKey(sourceHandle.getLocalOperatorId())) {
+        logger.info(
+            "Resources of finished source handle {} has already been released", sourceHandle);
+      }
+      sourceHandles
+          .get(sourceHandle.getLocalFragmentInstanceId())
+          .remove(sourceHandle.getLocalOperatorId());
+      if (sourceHandles.get(sourceHandle.getLocalFragmentInstanceId()).isEmpty()) {
+        sourceHandles.remove(sourceHandle.getLocalFragmentInstanceId());
+      }
     }
 
-    public String getFragmentId() {
-      return fragmentId;
+    @Override
+    public void onClosed(ISourceHandle sourceHandle) {
+      onFinished(sourceHandle);
+    }
+  }
+
+  /** Listen to the state changes of a sink handle. */
+  class SinkHandleListenerImpl implements SinkHandleListener {
+
+    @Override
+    public void onFinish(ISinkHandle sinkHandle) {
+      logger.info("Release resources of finished sink handle {}", sourceHandles);
+      if (!sinkHandles.containsKey(sinkHandle.getLocalFragmentInstanceId())) {
+        logger.info("Resources of finished sink handle {} has already been released", sinkHandle);
+      }
+      sinkHandles.remove(sinkHandle.getLocalFragmentInstanceId());
     }
 
-    public String getInstanceId() {
-      return instanceId;
+    @Override
+    public void onClosed(ISinkHandle sinkHandle) {}
+
+    @Override
+    public void onAborted(ISinkHandle sinkHandle) {
+      logger.info("Release resources of aborted sink handle {}", sourceHandles);
+      if (!sinkHandles.containsKey(sinkHandle.getLocalFragmentInstanceId())) {
+        logger.info("Resources of aborted sink handle {} has already been released", sinkHandle);
+      }
+      sinkHandles.remove(sinkHandle.getLocalFragmentInstanceId());
     }
+  }
+
+  private final LocalMemoryManager localMemoryManager;
+  private final Supplier<TsBlockSerde> tsBlockSerdeFactory;
+  private final ExecutorService executorService;
+  private final DataBlockServiceClientFactory clientFactory;
+  private final Map<TFragmentInstanceId, Map<String, ISourceHandle>> sourceHandles;
+  private final Map<TFragmentInstanceId, ISinkHandle> sinkHandles;
+
+  private DataBlockServiceImpl dataBlockService;
+
+  public DataBlockManager(
+      LocalMemoryManager localMemoryManager,
+      Supplier<TsBlockSerde> tsBlockSerdeFactory,
+      ExecutorService executorService,
+      DataBlockServiceClientFactory clientFactory) {
+    this.localMemoryManager = Validate.notNull(localMemoryManager);
+    this.tsBlockSerdeFactory = Validate.notNull(tsBlockSerdeFactory);
+    this.executorService = Validate.notNull(executorService);
+    this.clientFactory = Validate.notNull(clientFactory);
+    sourceHandles = new ConcurrentHashMap<>();
+    sinkHandles = new ConcurrentHashMap<>();
+  }
+
+  public DataBlockServiceImpl getOrCreateDataBlockServiceImpl() {
+    if (dataBlockService != null) {
+      dataBlockService = new DataBlockServiceImpl();
+    }
+    return dataBlockService;
+  }
+
+  @Override
+  public ISinkHandle createSinkHandle(
+      TFragmentInstanceId localFragmentInstanceId,
+      String remoteHostname,
+      TFragmentInstanceId remoteFragmentInstanceId,
+      String remoteOperatorId)
+      throws TTransportException {
+    if (sinkHandles.containsKey(localFragmentInstanceId)) {
+      throw new IllegalStateException("Sink handle for " + localFragmentInstanceId + " exists.");
+    }
+
+    logger.info(
+        "Create sink handle to operator {} of {} for {}",
+        remoteOperatorId,
+        remoteFragmentInstanceId,
+        localFragmentInstanceId);
+
+    ISinkHandle sinkHandle =
+        new SinkHandle(
+            remoteHostname,
+            remoteFragmentInstanceId,
+            remoteOperatorId,
+            localFragmentInstanceId,
+            localMemoryManager,
+            executorService,
+            clientFactory.getDataBlockServiceClient(remoteHostname, 7777),
+            tsBlockSerdeFactory.get(),
+            new SinkHandleListenerImpl());
+    sinkHandles.put(localFragmentInstanceId, sinkHandle);
+    return sinkHandle;
+  }
+
+  @Override
+  public ISourceHandle createSourceHandle(
+      TFragmentInstanceId localFragmentInstanceId,
+      String localOperatorId,
+      String remoteHostname,
+      TFragmentInstanceId remoteFragmentInstanceId)
+      throws TTransportException {
+    if (sourceHandles.containsKey(localFragmentInstanceId)
+        && sourceHandles.get(localFragmentInstanceId).containsKey(localOperatorId)) {
+      throw new IllegalStateException(
+          "Source handle for operator "
+              + localOperatorId
+              + " of "
+              + localFragmentInstanceId
+              + " exists.");
+    }
+
+    logger.info(
+        "Create source handle from {} for operator {} of {}",
+        remoteFragmentInstanceId,
+        localOperatorId,
+        localFragmentInstanceId);
+
+    ISourceHandle sourceHandle =
+        new SourceHandle(
+            remoteHostname,
+            remoteFragmentInstanceId,
+            localFragmentInstanceId,
+            localOperatorId,
+            localMemoryManager,
+            executorService,
+            // TODO: hard coded port.
+            clientFactory.getDataBlockServiceClient(remoteHostname, 7777),
+            tsBlockSerdeFactory.get(),
+            new SourceHandleListenerImpl());
+    sourceHandles
+        .computeIfAbsent(localFragmentInstanceId, key -> new ConcurrentHashMap<>())
+        .put(localOperatorId, sourceHandle);
+    return sourceHandle;
   }
 
   /**
-   * Create a sink handle.
-   *
-   * @param local The {@link FragmentInstanceInfo} of local fragment instance.
-   * @param remote The {@link FragmentInstanceInfo} of downstream instance.
-   */
-  public ISinkHandle createSinkHandle(FragmentInstanceInfo local, FragmentInstanceInfo remote) {
-    throw new UnsupportedOperationException();
-  }
-
-  public ISinkHandle createPartitionedSinkHandle(
-      FragmentInstanceInfo local, List<FragmentInstanceInfo> remotes) {
-    throw new UnsupportedOperationException();
-  }
-
-  /**
-   * Create a source handle.
-   *
-   * @param local The {@link FragmentInstanceInfo} of local fragment instance.
-   * @param remote The {@link FragmentInstanceInfo} of downstream instance.
-   */
-  public ISourceHandle createSourceHandle(FragmentInstanceInfo local, FragmentInstanceInfo remote) {
-    throw new UnsupportedOperationException();
-  }
-
-  /**
-   * Release all the related resources, including data blocks that are not yet sent to downstream
+   * Release all the related resources, including data blocks that are not yet fetched by downstream
    * fragment instances.
    *
    * <p>This method should be called when a fragment instance finished in an abnormal state.
    */
-  public void forceDeregisterFragmentInstance(FragmentInstanceTask task) {
-    throw new UnsupportedOperationException();
-  }
-
-  LocalMemoryManager localMemoryManager;
-  ScheduledExecutorService scheduledExecutorService;
-  DataBlockServiceClientFactory clientFactory;
-  Map<String, Map<String, Map<String, ISourceHandle>>> sourceHandles;
-  Map<String, Map<String, Map<String, ISinkHandle>>> sinkHandles;
-
-  public DataBlockManager(LocalMemoryManager localMemoryManager) {
-    this.localMemoryManager = Validate.notNull(localMemoryManager);
-    // TODO: configurable number of threads
-    scheduledExecutorService =
-        IoTDBThreadPoolFactory.newScheduledThreadPoolWithDaemon(5, "get-data-block");
-    clientFactory = new DataBlockServiceClientFactory();
-    sourceHandles = new HashMap<>();
-    sinkHandles = new HashMap<>();
+  public void forceDeregisterFragmentInstance(TFragmentInstanceId fragmentInstanceId) {
+    logger.info("Force deregister fragment instance {}", fragmentInstanceId);
+    if (sinkHandles.containsKey(fragmentInstanceId)) {
+      ISinkHandle sinkHandle = sinkHandles.get(fragmentInstanceId);
+      logger.info("Abort sink handle {}", sinkHandle);
+      sinkHandle.abort();
+      sinkHandles.remove(fragmentInstanceId);
+    }
+    if (sourceHandles.containsKey(fragmentInstanceId)) {
+      Map<String, ISourceHandle> operatorIdToSourceHandle = sourceHandles.get(fragmentInstanceId);
+      for (Entry<String, ISourceHandle> entry : operatorIdToSourceHandle.entrySet()) {
+        logger.info("Close source handle {}", sourceHandles);
+        entry.getValue().close();
+      }
+      sourceHandles.remove(fragmentInstanceId);
+    }
   }
 }

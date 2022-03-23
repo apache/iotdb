@@ -21,6 +21,8 @@ package org.apache.iotdb.db.mpp.buffer;
 
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 
+import org.apache.thrift.transport.TTransportException;
+
 public interface IDataBlockManager {
   /**
    * Create a sink handle who sends data blocks to a remote downstream fragment instance in async
@@ -37,7 +39,8 @@ public interface IDataBlockManager {
       TFragmentInstanceId localFragmentInstanceId,
       String remoteHostname,
       TFragmentInstanceId remoteFragmentInstanceId,
-      String remoteOperatorId);
+      String remoteOperatorId)
+      throws TTransportException;
 
   /**
    * Create a source handle who fetches data blocks from a remote upstream fragment instance for an
@@ -54,7 +57,8 @@ public interface IDataBlockManager {
       TFragmentInstanceId localFragmentInstanceId,
       String localOperatorId,
       String remoteHostname,
-      TFragmentInstanceId remoteFragmentInstanceId);
+      TFragmentInstanceId remoteFragmentInstanceId)
+      throws TTransportException;
 
   /**
    * Release all the related resources of a fragment instance, including data blocks that are not
@@ -65,4 +69,20 @@ public interface IDataBlockManager {
    * @param fragmentInstanceId ID of the fragment instance to be released.
    */
   void forceDeregisterFragmentInstance(TFragmentInstanceId fragmentInstanceId);
+
+  interface SourceHandleListener {
+
+    void onFinished(ISourceHandle sourceHandle);
+
+    void onClosed(ISourceHandle sourceHandle);
+  }
+
+  interface SinkHandleListener {
+
+    void onFinish(ISinkHandle sinkHandle);
+
+    void onClosed(ISinkHandle sinkHandle);
+
+    void onAborted(ISinkHandle sinkHandle);
+  }
 }

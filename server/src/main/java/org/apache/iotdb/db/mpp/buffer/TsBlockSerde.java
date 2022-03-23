@@ -17,30 +17,20 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.memory;
+package org.apache.iotdb.db.mpp.buffer;
 
-/**
- * Manages memory of a data node. The memory is divided into two memory pools so that the memory for
- * read and for write can be isolated.
- */
-public class LocalMemoryManager {
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
-  private final long maxBytes;
-  private final MemoryPool queryPool;
+import java.nio.ByteBuffer;
 
-  public LocalMemoryManager() {
-    long maxMemory = Runtime.getRuntime().maxMemory();
-    // Save 20% memory for untracked allocations.
-    maxBytes = (long) (maxMemory * 0.8);
-    // Allocate 50% memory for query execution. Each query can allocate up to 30% memory.
-    queryPool = new MemoryPool("query", (long) (maxBytes * 0.5), (long) (maxMemory * 0.3));
+public class TsBlockSerde {
+  ByteBuffer serialized(TsBlock tsBlock) {
+    // TODO: implement
+    return null;
   }
 
-  public long getMaxBytes() {
-    return maxBytes;
-  }
-
-  public MemoryPool getQueryPool() {
-    return queryPool;
+  TsBlock deserialize(ByteBuffer buffer) {
+    // TODO: implement
+    return null;
   }
 }
