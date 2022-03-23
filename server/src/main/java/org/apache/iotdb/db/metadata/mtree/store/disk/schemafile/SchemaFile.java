@@ -380,11 +380,14 @@ public class SchemaFile implements ISchemaFile {
           String.format("Node [%s] has no child named [%s].", parent.getFullPath(), childName));
     }
     try {
-      return getPageInstance(getPageIndex(actualSegAddr)).read(getSegIndex(actualSegAddr), childName);
+      return getPageInstance(getPageIndex(actualSegAddr))
+          .read(getSegIndex(actualSegAddr), childName);
     } catch (BufferUnderflowException | BufferOverflowException e) {
       e.printStackTrace();
       logger.error(String.format("parent: %s, actualAddress:%s", parent.getName(), actualSegAddr));
-      logger.error(String.format("Page inspect: %s", getPageInstance(getPageIndex(actualSegAddr)).inspect()));
+      logger.error(
+          String.format(
+              "Page inspect: %s", getPageInstance(getPageIndex(actualSegAddr)).inspect()));
       throw e;
     }
   }
