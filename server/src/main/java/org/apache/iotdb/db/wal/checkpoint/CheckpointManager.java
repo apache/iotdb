@@ -42,7 +42,7 @@ import java.util.concurrent.locks.ReentrantLock;
 /** This class is used to manage checkpoints of one wal node */
 public class CheckpointManager implements AutoCloseable {
   /** use size limit to control WALEdit number in each file */
-  public static final long LOG_SIZE_LIMIT = 10 * 1024 * 1024;
+  public static final long LOG_SIZE_LIMIT = 3 * 1024 * 1024;
 
   private static final Logger logger = LoggerFactory.getLogger(CheckpointManager.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();

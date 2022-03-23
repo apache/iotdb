@@ -20,6 +20,7 @@ package org.apache.iotdb.db.wal.recover;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -83,20 +84,18 @@ public class WALRecoverManager {
       }
       // recover each wal node's TsFiles
       if (!walNodeDirs.isEmpty()) {
-        try {
-          recoverThreadPool =
-              IoTDBThreadPoolFactory.newCachedThreadPool(ThreadName.WAL_RECOVER.getName());
-          CountDownLatch allNodesRecoveredLatch = new CountDownLatch(walNodeDirs.size());
-          for (File walNodeDir : walNodeDirs) {
-            recoverThreadPool.submit(new WALNodeRecoverTask(walNodeDir, allNodesRecoveredLatch));
-          }
+        recoverThreadPool =
+            IoTDBThreadPoolFactory.newCachedThreadPool(ThreadName.WAL_RECOVER.getName());
+        CountDownLatch allNodesRecoveredLatch = new CountDownLatch(walNodeDirs.size());
+        for (File walNodeDir : walNodeDirs) {
+          recoverThreadPool.submit(new WALNodeRecoverTask(walNodeDir, allNodesRecoveredLatch));
+        }
 
+        try {
           allNodesRecoveredLatch.await();
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
           throw new WALRecoverException("Fail to recover wal.", e);
-        } finally {
-          recoverThreadPool.shutdown();
         }
       }
       // deal with remaining TsFiles which don't have wal
@@ -131,6 +130,7 @@ public class WALRecoverManager {
           // continue
         }
       }
+      clear();
     }
   }
 
@@ -149,6 +149,15 @@ public class WALRecoverManager {
 
   public void setAllVsgScannedLatch(CountDownLatch allVsgScannedLatch) {
     this.allVsgScannedLatch = allVsgScannedLatch;
+  }
+
+  @TestOnly
+  public void clear() {
+    absolutePath2RecoverPerformer.clear();
+    if (recoverThreadPool != null) {
+      recoverThreadPool.shutdown();
+      recoverThreadPool = null;
+    }
   }
 
   public static WALRecoverManager getInstance() {

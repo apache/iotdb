@@ -323,6 +323,7 @@ public class EnvironmentUtils {
     IoTDB.schemaEngine.clear();
     IDTableManager.getInstance().clear();
     TsFileResourceManager.getInstance().clear();
+    WALManager.getInstance().clear();
     reactiveDaemon();
   }
 
