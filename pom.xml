@@ -516,7 +516,7 @@
             <dependency>
                 <groupId>net.java.dev.jna</groupId>
                 <artifactId>jna</artifactId>
-                <version>5.5.0</version>
+                <version>5.8.0</version>
             </dependency>
             <!-- for hadoop connector -->
             <dependency>
@@ -577,7 +577,7 @@
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>testcontainers</artifactId>
-            <version>1.15.2</version>
+            <version>1.15.3</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
