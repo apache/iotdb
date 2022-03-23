@@ -22,7 +22,7 @@ import org.apache.iotdb.service.rpc.thrift.EndPoint;
 
 import java.util.List;
 
-public class SchemaRegionPlaceInfo {
+public class SchemaRegionReplicaSet {
   private SchemaRegionId schemaRegionId;
   private List<EndPoint> endPointList;
 
