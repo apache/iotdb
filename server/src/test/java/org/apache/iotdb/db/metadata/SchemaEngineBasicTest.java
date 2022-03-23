@@ -1052,56 +1052,57 @@ public abstract class SchemaEngineBasicTest {
   }
 
   @Test
-  public void testTemplateInnerTree() {
+  public void testTemplateInnerTree() throws MetadataException {
     CreateTemplatePlan plan = getTreeTemplatePlan();
     Template template;
     SchemaEngine schemaEngine = IoTDB.schemaEngine;
 
+    schemaEngine.createSchemaTemplate(plan);
+    template = schemaEngine.getTemplate("treeTemplate");
+    assertEquals(4, template.getMeasurementsCount());
+    assertEquals("d1", template.getPathNodeInTemplate("d1").getName());
+    assertNull(template.getPathNodeInTemplate("notExists"));
+    assertEquals("[GPS]", template.getAllAlignedPrefix().toString());
+
+    String[] alignedMeasurements = {"to.be.prefix.s1", "to.be.prefix.s2"};
+    TSDataType[] dataTypes = {TSDataType.INT32, TSDataType.INT32};
+    TSEncoding[] encodings = {TSEncoding.RLE, TSEncoding.RLE};
+    CompressionType[] compressionTypes = {CompressionType.SNAPPY, CompressionType.SNAPPY};
+    template.addAlignedMeasurements(alignedMeasurements, dataTypes, encodings, compressionTypes);
+
+    assertEquals("[to.be.prefix, GPS]", template.getAllAlignedPrefix().toString());
+    assertEquals("[s1, s2]", template.getAlignedMeasurements("to.be.prefix").toString());
+
+    template.deleteAlignedPrefix("to.be.prefix");
+
+    assertEquals("[GPS]", template.getAllAlignedPrefix().toString());
+    assertEquals(null, template.getDirectNode("prefix"));
+    assertEquals("to", template.getDirectNode("to").getName());
+
+    assertFalse(template.isDirectAligned());
     try {
-      schemaEngine.createSchemaTemplate(plan);
-      template = schemaEngine.getTemplate("treeTemplate");
-      assertEquals(4, template.getMeasurementsCount());
-      assertEquals("d1", template.getPathNodeInTemplate("d1").getName());
-      assertNull(template.getPathNodeInTemplate("notExists"));
-      assertEquals("[GPS]", template.getAllAlignedPrefix().toString());
-
-      String[] alignedMeasurements = {"to.be.prefix.s1", "to.be.prefix.s2"};
-      TSDataType[] dataTypes = {TSDataType.INT32, TSDataType.INT32};
-      TSEncoding[] encodings = {TSEncoding.RLE, TSEncoding.RLE};
-      CompressionType[] compressionTypes = {CompressionType.SNAPPY, CompressionType.SNAPPY};
-      template.addAlignedMeasurements(alignedMeasurements, dataTypes, encodings, compressionTypes);
-
-      assertEquals("[to.be.prefix, GPS]", template.getAllAlignedPrefix().toString());
-      assertEquals("[s1, s2]", template.getAlignedMeasurements("to.be.prefix").toString());
-
-      template.deleteAlignedPrefix("to.be.prefix");
-
-      assertEquals("[GPS]", template.getAllAlignedPrefix().toString());
-      assertEquals(null, template.getDirectNode("prefix"));
-      assertEquals("to", template.getDirectNode("to").getName());
-
-      assertFalse(template.isDirectAligned());
       template.addAlignedMeasurements(
           new String[] {"speed", "temperature"}, dataTypes, encodings, compressionTypes);
-      assertTrue(template.isDirectAligned());
-
-      try {
-        template.deleteMeasurements("a.single");
-        fail();
-      } catch (IllegalPathException e) {
-        assertEquals("Path [a.single] does not exist", e.getMessage());
-      }
+      fail();
+    } catch (Exception e) {
       assertEquals(
-          "[d1.s1, GPS.x, to.be.prefix.s2, GPS.y, to.be.prefix.s1, s2]",
-          template.getAllMeasurementsPaths().toString());
-
-      template.deleteSeriesCascade("to");
-
-      assertEquals("[d1.s1, GPS.x, GPS.y, s2]", template.getAllMeasurementsPaths().toString());
-
-    } catch (MetadataException e) {
-      e.printStackTrace();
+          e.getMessage(), " is not a legal path, because path already exists but not aligned");
     }
+    assertFalse(template.isDirectAligned());
+
+    try {
+      template.deleteMeasurements("a.single");
+      fail();
+    } catch (PathNotExistException e) {
+      assertEquals("Path [a.single] does not exist", e.getMessage());
+    }
+    assertEquals(
+        "[d1.s1, GPS.x, to.be.prefix.s2, GPS.y, to.be.prefix.s1, s2]",
+        template.getAllMeasurementsPaths().toString());
+
+    template.deleteSeriesCascade("to");
+
+    assertEquals("[d1.s1, GPS.x, GPS.y, s2]", template.getAllMeasurementsPaths().toString());
   }
 
   @SuppressWarnings("Duplicates")
