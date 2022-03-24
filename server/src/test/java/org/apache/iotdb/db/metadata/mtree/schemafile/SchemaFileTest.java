@@ -199,7 +199,7 @@ public class SchemaFileTest {
 
   @Test
   public void test10KDevices() throws MetadataException, IOException {
-    int i = 2000;
+    int i = 1000;
     IMNode sgNode = new StorageGroupMNode(null, "sgRoot", 11111111L);
 
     // write with empty entitiy
@@ -222,7 +222,7 @@ public class SchemaFileTest {
       }
 
       ICachedMNodeContainer.getCachedMNodeContainer(sgNode).getNewChildBuffer().clear();
-      i = 2000;
+      i = 1000;
       while (i >= 0) {
         IMNode aDevice = new EntityMNode(sgNode, "dev_" + i);
         sgNode.addChild(aDevice);
@@ -314,13 +314,10 @@ public class SchemaFileTest {
     Iterator<IMNode> res = sf.getChildren(arbitraryNode.get(arbitraryNode.size() - 1));
     int i2 = 0;
     while (res.hasNext()) {
-      print(i2++);
       resName.remove(res.next().getName());
     }
 
     Assert.assertTrue(resName.isEmpty());
-    printSF(sf);
-    print(((SchemaFile) sf).getPageOnTest(0).inspect());
     sf.close();
   }
 
