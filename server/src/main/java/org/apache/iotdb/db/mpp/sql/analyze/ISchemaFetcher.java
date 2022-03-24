@@ -32,7 +32,7 @@ import java.util.Map;
  */
 public interface ISchemaFetcher {
 
-  @Deprecated
+  @Deprecated // TODO: will be replaced later
   Map<String, MeasurementSchema> fetchSchema(PartialPath deviceId, List<String> measurementIdList);
 
   SchemaTree fetchSchema(PathPatternTree patternTree);
