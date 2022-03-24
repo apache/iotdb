@@ -18,13 +18,14 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner;
 
-import org.apache.iotdb.db.mpp.common.DataRegion;
+import org.apache.iotdb.commons.partition.DataRegionReplicaSet;
+import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
-import org.apache.iotdb.db.mpp.sql.planner.plan.DistributedQueryPlan;
-import org.apache.iotdb.db.mpp.sql.planner.plan.LogicalQueryPlan;
+import org.apache.iotdb.db.mpp.sql.planner.plan.*;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.*;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.sink.FragmentSinkNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregateScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
 
@@ -36,6 +37,8 @@ import static com.google.common.collect.ImmutableList.toImmutableList;
 public class DistributionPlanner {
   private Analysis analysis;
   private LogicalQueryPlan logicalPlan;
+
+  private int planFragmentIndex = 0;
 
   public DistributionPlanner(Analysis analysis, LogicalQueryPlan logicalPlan) {
     this.analysis = analysis;
@@ -52,8 +55,29 @@ public class DistributionPlanner {
     return adder.visit(root, new NodeGroupContext());
   }
 
+  public SubPlan splitFragment(PlanNode root) {
+    FragmentBuilder fragmentBuilder = new FragmentBuilder();
+    return fragmentBuilder.splitToSubPlan(root);
+  }
+
   public DistributedQueryPlan planFragments() {
-    return null;
+    PlanNode rootAfterRewrite = rewriteSource();
+    PlanNode rootWithExchange = addExchangeNode(rootAfterRewrite);
+    SubPlan subPlan = splitFragment(rootWithExchange);
+    List<FragmentInstance> fragmentInstances = planFragmentInstances(subPlan);
+    return new DistributedQueryPlan(
+        logicalPlan.getContext(), subPlan, subPlan.getPlanFragmentList(), fragmentInstances);
+  }
+
+  // Convert fragment to detailed instance
+  // And for parallel-able fragment, clone it into several instances with different params.
+  public List<FragmentInstance> planFragmentInstances(SubPlan subPlan) {
+    IFragmentParallelPlaner parallelPlaner = new SimpleFragmentParallelPlanner(subPlan);
+    return parallelPlaner.parallelPlan();
+  }
+
+  private PlanFragmentId getNextFragmentId() {
+    return new PlanFragmentId(this.logicalPlan.getContext().getQueryId(), this.planFragmentIndex++);
   }
 
   private class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanContext> {
@@ -74,13 +98,13 @@ public class DistributionPlanner {
           // If the child is SeriesScanNode, we need to check whether this node should be seperated
           // into several splits.
           SeriesScanNode handle = (SeriesScanNode) child;
-          Set<DataRegion> dataDistribution =
+          List<DataRegionReplicaSet> dataDistribution =
               analysis.getPartitionInfo(handle.getSeriesPath(), handle.getTimeFilter());
           // If the size of dataDistribution is m, this SeriesScanNode should be seperated into m
           // SeriesScanNode.
-          for (DataRegion dataRegion : dataDistribution) {
+          for (DataRegionReplicaSet dataRegion : dataDistribution) {
             SeriesScanNode split = (SeriesScanNode) handle.clone();
-            split.setDataRegion(dataRegion);
+            split.setDataRegionReplicaSet(dataRegion);
             sources.add(split);
           }
         } else if (child instanceof SeriesAggregateScanNode) {
@@ -97,8 +121,8 @@ public class DistributionPlanner {
       }
 
       // Step 2: For the source nodes, group them by the DataRegion.
-      Map<DataRegion, List<SeriesScanNode>> sourceGroup =
-          sources.stream().collect(Collectors.groupingBy(SeriesScanNode::getDataRegion));
+      Map<DataRegionReplicaSet, List<SeriesScanNode>> sourceGroup =
+          sources.stream().collect(Collectors.groupingBy(SeriesScanNode::getDataRegionReplicaSet));
       // Step 3: For the source nodes which belong to same data region, add a TimeJoinNode for them
       // and make the
       // new TimeJoinNode as the child of current TimeJoinNode
@@ -148,13 +172,15 @@ public class DistributionPlanner {
 
     public PlanNode visitSeriesScan(SeriesScanNode node, NodeGroupContext context) {
       context.putNodeDistribution(
-          node.getId(), new NodeDistribution(NodeDistributionType.NO_CHILD, node.getDataRegion()));
+          node.getId(),
+          new NodeDistribution(NodeDistributionType.NO_CHILD, node.getDataRegionReplicaSet()));
       return node.clone();
     }
 
     public PlanNode visitSeriesAggregate(SeriesAggregateScanNode node, NodeGroupContext context) {
       context.putNodeDistribution(
-          node.getId(), new NodeDistribution(NodeDistributionType.NO_CHILD, node.getDataRegion()));
+          node.getId(),
+          new NodeDistribution(NodeDistributionType.NO_CHILD, node.getDataRegionReplicaSet()));
       return node.clone();
     }
 
@@ -167,7 +193,7 @@ public class DistributionPlanner {
                 visitedChildren.add(visit(child, context));
               });
 
-      DataRegion dataRegion = calculateDataRegionByChildren(visitedChildren, context);
+      DataRegionReplicaSet dataRegion = calculateDataRegionByChildren(visitedChildren, context);
       NodeDistributionType distributionType =
           nodeDistributionIsSame(visitedChildren, context)
               ? NodeDistributionType.SAME_WITH_ALL_CHILDREN
@@ -187,7 +213,7 @@ public class DistributionPlanner {
           child -> {
             if (!dataRegion.equals(context.getNodeDistribution(child.getId()).dataRegion)) {
               ExchangeNode exchangeNode = new ExchangeNode(PlanNodeIdAllocator.generateId());
-              exchangeNode.setSourceNode(child);
+              exchangeNode.setChild(child);
               newNode.addChild(exchangeNode);
             } else {
               newNode.addChild(child);
@@ -196,12 +222,11 @@ public class DistributionPlanner {
       return newNode;
     }
 
-    private DataRegion calculateDataRegionByChildren(
+    private DataRegionReplicaSet calculateDataRegionByChildren(
         List<PlanNode> children, NodeGroupContext context) {
       // We always make the dataRegion of TimeJoinNode to be the same as its first child.
       // TODO: (xingtanzjr) We need to implement more suitable policies here
-      DataRegion childDataRegion = context.getNodeDistribution(children.get(0).getId()).dataRegion;
-      return new DataRegion(childDataRegion.getDataRegionId(), childDataRegion.getEndpoint());
+      return context.getNodeDistribution(children.get(0).getId()).dataRegion;
     }
 
     private boolean nodeDistributionIsSame(List<PlanNode> children, NodeGroupContext context) {
@@ -246,11 +271,49 @@ public class DistributionPlanner {
 
   private class NodeDistribution {
     private NodeDistributionType type;
-    private DataRegion dataRegion;
+    private DataRegionReplicaSet dataRegion;
 
-    private NodeDistribution(NodeDistributionType type, DataRegion dataRegion) {
+    private NodeDistribution(NodeDistributionType type, DataRegionReplicaSet dataRegion) {
       this.type = type;
       this.dataRegion = dataRegion;
+    }
+  }
+
+  private class FragmentBuilder {
+    public SubPlan splitToSubPlan(PlanNode root) {
+      SubPlan rootSubPlan = createSubPlan(root);
+      splitToSubPlan(root, rootSubPlan);
+      return rootSubPlan;
+    }
+
+    private void splitToSubPlan(PlanNode root, SubPlan subPlan) {
+      if (root instanceof ExchangeNode) {
+        // We add a FragmentSinkNode for newly created PlanFragment
+        ExchangeNode exchangeNode = (ExchangeNode) root;
+        FragmentSinkNode sinkNode = new FragmentSinkNode(PlanNodeIdAllocator.generateId());
+        sinkNode.setChild(exchangeNode.getChild());
+        sinkNode.setDownStreamNode(exchangeNode);
+        // Record the source node info in the ExchangeNode so that we can keep the connection of
+        // these nodes/fragments
+        exchangeNode.setRemoteSourceNode(sinkNode);
+        // We cut off the subtree to make the ExchangeNode as the leaf node of current PlanFragment
+        exchangeNode.cleanChildren();
+
+        // Build the child SubPlan Tree
+        SubPlan childSubPlan = createSubPlan(sinkNode);
+        splitToSubPlan(sinkNode, childSubPlan);
+
+        subPlan.addChild(childSubPlan);
+        return;
+      }
+      for (PlanNode child : root.getChildren()) {
+        splitToSubPlan(child, subPlan);
+      }
+    }
+
+    private SubPlan createSubPlan(PlanNode root) {
+      PlanFragment fragment = new PlanFragment(getNextFragmentId(), root);
+      return new SubPlan(fragment);
     }
   }
 }

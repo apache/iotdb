@@ -18,11 +18,70 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan;
 
+import org.apache.iotdb.commons.partition.DataRegionReplicaSet;
+import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SourceNode;
 
-// TODO: consider whether it is necessary to make PlanFragment as a TreeNode
 /** PlanFragment contains a sub-query of distributed query. */
 public class PlanFragment {
   private PlanFragmentId id;
   private PlanNode root;
+
+  public PlanFragment(PlanFragmentId id, PlanNode root) {
+    this.id = id;
+    this.root = root;
+  }
+
+  public PlanFragmentId getId() {
+    return id;
+  }
+
+  public PlanNode getRoot() {
+    return root;
+  }
+
+  public String toString() {
+    return String.format("PlanFragment-%s", getId());
+  }
+
+  // Every Fragment should only run in DataRegion.
+  // But it can select any one of the Endpoint of the target DataRegion
+  // In current version, one PlanFragment should contain at least one SourceNode,
+  // and the DataRegions of all SourceNodes should be same in one PlanFragment.
+  // So we can use the DataRegion of one SourceNode as the PlanFragment's DataRegion.
+  public DataRegionReplicaSet getTargetDataRegion() {
+    return getNodeDataRegion(root);
+  }
+
+  private DataRegionReplicaSet getNodeDataRegion(PlanNode root) {
+    if (root instanceof SourceNode) {
+      return ((SourceNode) root).getDataRegionReplicaSet();
+    }
+    for (PlanNode child : root.getChildren()) {
+      DataRegionReplicaSet result = getNodeDataRegion(child);
+      if (result != null) {
+        return result;
+      }
+    }
+    return null;
+  }
+
+  public PlanNode getPlanNodeById(PlanNodeId nodeId) {
+    return getPlanNodeById(root, nodeId);
+  }
+
+  private PlanNode getPlanNodeById(PlanNode root, PlanNodeId nodeId) {
+    if (root.getId().equals(nodeId)) {
+      return root;
+    }
+    for (PlanNode child : root.getChildren()) {
+      PlanNode node = getPlanNodeById(child, nodeId);
+      if (node != null) {
+        return node;
+      }
+    }
+    return null;
+  }
 }
