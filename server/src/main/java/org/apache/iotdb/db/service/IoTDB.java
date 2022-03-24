@@ -205,7 +205,7 @@ public class IoTDB implements IoTDBMBean {
     try {
       schemaEngine.deactivate();
     } catch (MetadataException e) {
-      logger.error("Failed to close RSchemaEngine because:", e);
+      logger.error("Failed to close SchemaEngine because:", e);
     }
     logger.info("IoTDB is deactivated.");
   }
