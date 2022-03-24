@@ -78,6 +78,29 @@ public class ConfigNodeConf {
     // empty constructor
   }
 
+  public void updatePath() {
+    formulateFolders();
+  }
+
+  private void formulateFolders() {
+    systemDir = addHomeDir(systemDir);
+    for (int i = 0; i < dataDirs.length; i++) {
+      dataDirs[i] = addHomeDir(dataDirs[i]);
+    }
+  }
+
+  private String addHomeDir(String dir) {
+    String homeDir = System.getProperty(ConfigNodeConstant.CONFIGNODE_HOME, null);
+    if (!new File(dir).isAbsolute() && homeDir != null && homeDir.length() > 0) {
+      if (!homeDir.endsWith(File.separator)) {
+        dir = homeDir + File.separatorChar + dir;
+      } else {
+        dir = homeDir + dir;
+      }
+    }
+    return dir;
+  }
+
   public int getDeviceGroupCount() {
     return deviceGroupCount;
   }
