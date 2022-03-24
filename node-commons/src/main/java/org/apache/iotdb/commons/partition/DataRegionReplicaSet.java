@@ -16,25 +16,38 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.execution.scheduler;
+package org.apache.iotdb.commons.partition;
 
-import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
-import org.apache.iotdb.db.mpp.common.PlanFragmentId;
-import org.apache.iotdb.db.mpp.execution.FragmentInfo;
+import org.apache.iotdb.service.rpc.thrift.EndPoint;
 
-import io.airlift.units.Duration;
+import java.util.List;
 
-public interface IScheduler {
+public class DataRegionReplicaSet {
+  private DataRegionId Id;
+  private List<EndPoint> endPointList;
 
-  void start();
+  public DataRegionReplicaSet(DataRegionId Id, List<EndPoint> endPointList) {
+    this.Id = Id;
+    this.endPointList = endPointList;
+  }
 
-  void abort();
+  public List<EndPoint> getEndPointList() {
+    return endPointList;
+  }
 
-  Duration getTotalCpuTime();
+  public void setEndPointList(List<EndPoint> endPointList) {
+    this.endPointList = endPointList;
+  }
 
-  FragmentInfo getFragmentInfo();
+  public DataRegionId getId() {
+    return Id;
+  }
 
-  void failFragmentInstance(FragmentInstanceId instanceId, Throwable failureCause);
+  public void setId(DataRegionId id) {
+    this.Id = id;
+  }
 
-  void cancelFragment(PlanFragmentId planFragmentId);
+  public String toString() {
+    return String.format("%s:%s", Id, endPointList);
+  }
 }

@@ -16,25 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.execution.scheduler;
+package org.apache.iotdb.commons.partition;
 
-import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
-import org.apache.iotdb.db.mpp.common.PlanFragmentId;
-import org.apache.iotdb.db.mpp.execution.FragmentInfo;
+public class PartitionInfo {
 
-import io.airlift.units.Duration;
+  private DataPartitionInfo dataPartitionInfo;
+  private SchemaPartitionInfo schemaPartitionInfo;
 
-public interface IScheduler {
+  public DataPartitionInfo getDataPartitionInfo() {
+    return dataPartitionInfo;
+  }
 
-  void start();
+  public void setDataPartitionInfo(DataPartitionInfo dataPartitionInfo) {
+    this.dataPartitionInfo = dataPartitionInfo;
+  }
 
-  void abort();
+  public SchemaPartitionInfo getSchemaPartitionInfo() {
+    return schemaPartitionInfo;
+  }
 
-  Duration getTotalCpuTime();
-
-  FragmentInfo getFragmentInfo();
-
-  void failFragmentInstance(FragmentInstanceId instanceId, Throwable failureCause);
-
-  void cancelFragment(PlanFragmentId planFragmentId);
+  public void setSchemaPartitionInfo(SchemaPartitionInfo schemaPartitionInfo) {
+    this.schemaPartitionInfo = schemaPartitionInfo;
+  }
 }

@@ -48,4 +48,8 @@ public class FragmentInstanceId {
   public String getInstanceId() {
     return instanceId;
   }
+
+  public String toString() {
+    return fullId;
+  }
 }
