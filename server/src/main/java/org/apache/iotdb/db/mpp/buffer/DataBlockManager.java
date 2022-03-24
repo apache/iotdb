@@ -94,7 +94,7 @@ public class DataBlockManager {
    *
    * <p>This method should be called when a fragment instance finished in an abnormal state.
    */
-  void forceDeregisterFragmentInstance(FragmentInstanceTask task) {
+  public void forceDeregisterFragmentInstance(FragmentInstanceTask task) {
     throw new UnsupportedOperationException();
   }
 
