@@ -362,5 +362,7 @@ public interface ISchemaEngine {
 
   Template getTemplate(String templateName) throws MetadataException;
 
+  void deactivate() throws MetadataException;
+
   // endregion
 }
