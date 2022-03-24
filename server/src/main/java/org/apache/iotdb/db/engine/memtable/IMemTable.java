@@ -117,10 +117,10 @@ public interface IMemTable {
       throws WriteProcessException;
 
   void insertTablet(InsertTabletNode insertTabletNode, int start, int end)
-          throws WriteProcessException;
+      throws WriteProcessException;
 
   void insertAlignedTablet(InsertTabletNode insertTabletNode, int start, int end)
-          throws WriteProcessException;
+      throws WriteProcessException;
 
   ReadOnlyMemChunk query(
       PartialPath fullPath, long ttlLowerBound, List<Pair<Modification, IMemTable>> modsToMemtable)

@@ -138,7 +138,7 @@ public class MemUtils {
    * before inserting.
    */
   public static long getTabletSize(
-          InsertTabletPlan insertTabletPlan, int start, int end, boolean addingTextDataSize) {
+      InsertTabletPlan insertTabletPlan, int start, int end, boolean addingTextDataSize) {
     if (start >= end) {
       return 0L;
     }
@@ -187,7 +187,7 @@ public class MemUtils {
   }
 
   public static long getAlignedTabletSize(
-          InsertTabletNode insertTabletNode, int start, int end, boolean addingTextDataSize) {
+      InsertTabletNode insertTabletNode, int start, int end, boolean addingTextDataSize) {
     if (start >= end) {
       return 0L;
     }

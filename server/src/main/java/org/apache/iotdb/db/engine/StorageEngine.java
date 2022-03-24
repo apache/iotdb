@@ -650,8 +650,9 @@ public class StorageEngine implements IService {
   }
 
   /** insert an InsertTabletNode to a storage group */
-  public void insertTabletV2(VirtualStorageGroupProcessor virtualStorageGroupProcessor, InsertTabletNode insertTabletNode)
-          throws StorageEngineException, BatchProcessException, MetadataException {
+  public void insertTabletV2(
+      VirtualStorageGroupProcessor virtualStorageGroupProcessor, InsertTabletNode insertTabletNode)
+      throws StorageEngineException, BatchProcessException, MetadataException {
     if (enableMemControl) {
       try {
         blockInsertionIfReject(null);

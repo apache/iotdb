@@ -352,8 +352,8 @@ public class TsFileProcessor {
    * @param results result array
    */
   public void insertTablet(
-          InsertTabletNode insertTabletNode, int start, int end, TSStatus[] results)
-          throws WriteProcessException {
+      InsertTabletNode insertTabletNode, int start, int end, TSStatus[] results)
+      throws WriteProcessException {
 
     if (workMemTable == null) {
       if (enableMemControl) {
@@ -381,21 +381,21 @@ public class TsFileProcessor {
     }
 
     // TODO(WAL)
-//    try {
-//      if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
-//        insertTabletPlan.setStart(start);
-//        insertTabletPlan.setEnd(end);
-//        getLogNode().write(insertTabletPlan);
-//      }
-//    } catch (Exception e) {
-//      for (int i = start; i < end; i++) {
-//        results[i] = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
-//      }
-//      if (enableMemControl && memIncrements != null) {
-//        rollbackMemoryInfo(memIncrements);
-//      }
-//      throw new WriteProcessException(e);
-//    }
+    //    try {
+    //      if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
+    //        insertTabletPlan.setStart(start);
+    //        insertTabletPlan.setEnd(end);
+    //        getLogNode().write(insertTabletPlan);
+    //      }
+    //    } catch (Exception e) {
+    //      for (int i = start; i < end; i++) {
+    //        results[i] = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+    //      }
+    //      if (enableMemControl && memIncrements != null) {
+    //        rollbackMemoryInfo(memIncrements);
+    //      }
+    //      throw new WriteProcessException(e);
+    //    }
 
     try {
       if (insertTabletNode.isAligned()) {
@@ -414,17 +414,17 @@ public class TsFileProcessor {
       results[i] = RpcUtils.SUCCESS_STATUS;
     }
     tsFileResource.updateStartTime(
-            insertTabletNode.getDeviceID().toStringID(), insertTabletNode.getTimes()[start]);
+        insertTabletNode.getDeviceID().toStringID(), insertTabletNode.getTimes()[start]);
 
     // for sequence tsfile, we update the endTime only when the file is prepared to be closed.
     // for unsequence tsfile, we have to update the endTime for each insertion.
     if (!sequence) {
       tsFileResource.updateEndTime(
-              insertTabletNode.getDeviceID().toStringID(), insertTabletNode.getTimes()[end - 1]);
+          insertTabletNode.getDeviceID().toStringID(), insertTabletNode.getTimes()[end - 1]);
     }
     // TODO: PlanIndex
     tsFileResource.updatePlanIndexes(0);
-//    tsFileResource.updatePlanIndexes(insertTabletPlan.getIndex());
+    //    tsFileResource.updatePlanIndexes(insertTabletPlan.getIndex());
   }
 
   @SuppressWarnings("squid:S3776") // high Cognitive Complexity
@@ -559,7 +559,7 @@ public class TsFileProcessor {
   }
 
   private long[] checkMemCostAndAddToTspInfo(InsertTabletNode insertTabletNode, int start, int end)
-          throws WriteProcessException {
+      throws WriteProcessException {
     if (start >= end) {
       return new long[] {0, 0, 0};
     }
@@ -621,7 +621,7 @@ public class TsFileProcessor {
   }
 
   private long[] checkAlignedMemCostAndAddToTsp(
-          InsertTabletNode insertTabletNode, int start, int end) throws WriteProcessException {
+      InsertTabletNode insertTabletNode, int start, int end) throws WriteProcessException {
     if (start >= end) {
       return new long[] {0, 0, 0};
     }
@@ -636,13 +636,13 @@ public class TsFileProcessor {
     }
 
     updateAlignedMemCost(
-            insertTabletNode.getDataTypes(),
-            deviceID,
-            insertTabletNode.getMeasurements(),
-            start,
-            end,
-            memIncrements,
-            insertTabletNode.getColumns());
+        insertTabletNode.getDataTypes(),
+        deviceID,
+        insertTabletNode.getMeasurements(),
+        start,
+        end,
+        memIncrements,
+        insertTabletNode.getColumns());
     long memTableIncrement = memIncrements[0];
     long textDataIncrement = memIncrements[1];
     long chunkMetadataIncrement = memIncrements[2];
