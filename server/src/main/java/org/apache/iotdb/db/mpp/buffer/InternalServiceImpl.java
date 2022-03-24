@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.mpp.buffer;
 
 import org.apache.iotdb.mpp.rpc.thrift.InternalService;
-import org.apache.iotdb.mpp.rpc.thrift.PathPatternTree;
-import org.apache.iotdb.mpp.rpc.thrift.YKTree;
+import org.apache.iotdb.mpp.rpc.thrift.ShcameFetchReqest;
+import org.apache.iotdb.mpp.rpc.thrift.ShcameFetchResponse;
 
 import org.apache.thrift.TException;
 
@@ -32,7 +32,7 @@ public class InternalServiceImpl implements InternalService.Iface {
   }
 
   @Override
-  public YKTree fetchSchema(PathPatternTree tree) throws TException {
+  public ShcameFetchResponse fetchSchema(ShcameFetchReqest req) throws TException {
     throw new UnsupportedOperationException();
   }
 }

@@ -23,15 +23,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
-public class PathPatternTree {
-
-  private PathPatternNode root;
-
-  /**
-   * Since IoTDB v0.13, all DDL and DML use patternMatch as default. Before IoTDB v0.13, all DDL and
-   * DML use prefixMatch.
-   */
-  protected boolean isPrefixMatchPath;
+public class SchameTree {
 
   public void serialize(OutputStream baos) throws IOException {
     // TODO

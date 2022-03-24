@@ -46,22 +46,17 @@ struct EndOfDataBlockEvent {
   2: required string operatorId
 }
 
-struct PathPatternNode {
-  1:required string pathPattern
-  2:required list<PathPatternNode> childs
-}
-
-struct PathPatternTree {
-  1: required PathPatternNode root
+struct ShcameFetchReqest {
+  1: required binary serializedPathPatternTree
   2: required bool isPrefixMatchPath
 }
 
-struct YKTree {
-
+struct ShcameFetchResponse {
+  1: required binary serializedSchameTree
 }
 
 service InternalService {
-   YKTree fetchSchema(PathPatternTree tree)
+   ShcameFetchResponse fetchSchema(ShcameFetchReqest req)
 }
 
 service DataBlockService {

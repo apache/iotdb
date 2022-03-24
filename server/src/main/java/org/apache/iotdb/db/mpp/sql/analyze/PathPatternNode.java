@@ -23,6 +23,6 @@ import java.util.List;
 
 public class PathPatternNode {
 
-  private String pathPattern;
+  private String name;
   private List<PathPatternNode> childs;
 }
