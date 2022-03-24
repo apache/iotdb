@@ -24,6 +24,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
 
@@ -64,6 +65,9 @@ public class DeviceMergeNode extends ProcessNode {
   }
 
   @Override
+  public void addChildren(PlanNode child) {}
+
+  @Override
   public PlanNode clone() {
     return null;
   }
@@ -82,6 +86,13 @@ public class DeviceMergeNode extends ProcessNode {
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
     return visitor.visitDeviceMerge(this, context);
   }
+
+  public static DeviceMergeNode deserialize(ByteBuffer byteBuffer) {
+    return null;
+  }
+
+  @Override
+  public void serialize(ByteBuffer byteBuffer) {}
 
   public DeviceMergeNode(PlanNodeId id, Map<String, PlanNode> deviceNodeMap) {
     this(id);

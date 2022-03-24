@@ -28,6 +28,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import com.google.common.collect.ImmutableList;
 
+import java.nio.ByteBuffer;
 import java.util.List;
 
 /**
@@ -71,6 +72,9 @@ public class SeriesAggregateScanNode extends SourceNode {
   public List<PlanNode> getChildren() {
     return ImmutableList.of();
   }
+
+  @Override
+  public void addChildren(PlanNode child) {}
 
   @Override
   public PlanNode clone() {
@@ -118,6 +122,13 @@ public class SeriesAggregateScanNode extends SourceNode {
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
     return visitor.visitSeriesAggregate(this, context);
   }
+
+  public static SeriesAggregateScanNode deserialize(ByteBuffer byteBuffer) {
+    return null;
+  }
+
+  @Override
+  public void serialize(ByteBuffer byteBuffer) {}
 
   // This method is used when do the PredicatePushDown.
   // The filter is not put in the constructor because the filter is only clear in the predicate

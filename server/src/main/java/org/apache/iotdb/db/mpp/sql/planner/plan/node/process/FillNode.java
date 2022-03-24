@@ -25,6 +25,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 
 import com.google.common.collect.ImmutableList;
 
+import java.nio.ByteBuffer;
 import java.util.List;
 
 /** FillNode is used to fill the empty field in one row. */
@@ -45,6 +46,9 @@ public class FillNode extends ProcessNode {
   }
 
   @Override
+  public void addChildren(PlanNode child) {}
+
+  @Override
   public PlanNode clone() {
     return null;
   }
@@ -63,6 +67,13 @@ public class FillNode extends ProcessNode {
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
     return visitor.visitFill(this, context);
   }
+
+  public static FillNode deserialize(ByteBuffer byteBuffer) {
+    return null;
+  }
+
+  @Override
+  public void serialize(ByteBuffer byteBuffer) {}
 
   public FillNode(PlanNodeId id, FillPolicy fillPolicy) {
     this(id);
