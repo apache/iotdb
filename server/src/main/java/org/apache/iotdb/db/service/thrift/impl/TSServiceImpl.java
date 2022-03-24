@@ -72,7 +72,6 @@ import org.apache.iotdb.db.query.dataset.DirectNonAlignDataSet;
 import org.apache.iotdb.db.query.pool.QueryTaskManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.StaticResps;
-import org.apache.iotdb.db.service.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.service.metrics.Operation;
@@ -317,14 +316,13 @@ public class TSServiceImpl implements TSIService.Iface {
   }
 
   @Override
-  public TSOpenSessionResp openSession(TSOpenSessionReq req) throws TException {
+  public TSOpenSessionResp openSession(TSOpenSessionReq req) {
     IoTDBConstant.ClientVersion clientVersion = parseClientVersion(req);
-    BasicOpenSessionResp openSessionResp =
-        serviceProvider.openSession(
-            req.username, req.password, req.zoneId, req.client_protocol, clientVersion);
-    TSStatus tsStatus = RpcUtils.getStatus(openSessionResp.getCode(), openSessionResp.getMessage());
+    long sessionId = SESSION_MANAGER.requestSessionId(req.username, req.zoneId, clientVersion);
+    TSStatus tsStatus =
+        RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode(), "Login successfully");
     TSOpenSessionResp resp = new TSOpenSessionResp(tsStatus, CURRENT_RPC_VERSION);
-    return resp.setSessionId(openSessionResp.getSessionId());
+    return resp.setSessionId(sessionId);
   }
 
   private IoTDBConstant.ClientVersion parseClientVersion(TSOpenSessionReq req) {
@@ -338,7 +336,7 @@ public class TSServiceImpl implements TSIService.Iface {
   @Override
   public TSStatus closeSession(TSCloseSessionReq req) {
     return new TSStatus(
-        !serviceProvider.closeSession(req.sessionId)
+        !SESSION_MANAGER.releaseSessionResource(req.sessionId)
             ? RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR)
             : RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
   }
