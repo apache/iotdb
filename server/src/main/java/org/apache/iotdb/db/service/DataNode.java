@@ -31,8 +31,6 @@ import org.apache.iotdb.confignode.rpc.thrift.DataNodeRegisterResp;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConfigCheck;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.service.basic.DataNodeServiceProvider;
 import org.apache.iotdb.db.service.thrift.impl.DataNodeManagementServiceImpl;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcTransportFactory;
@@ -64,7 +62,7 @@ public class DataNode implements DataNodeMBean {
    */
   private static final int DEFAULT_JOIN_RETRY = 10;
 
-  private EndPoint thisNode;
+  private EndPoint thisNode = new EndPoint();
 
   private int dataNodeID;
 
@@ -120,13 +118,6 @@ public class DataNode implements DataNodeMBean {
   /** initialize the current node and its services */
   public boolean initLocalEngines() {
     IoTDB.setClusterMode();
-    try {
-      IoTDB.setServiceProvider(new DataNodeServiceProvider());
-    } catch (QueryProcessException e) {
-      logger.error("Failed to set clusterServiceProvider.", e);
-      stop();
-      return false;
-    }
     return true;
   }
 

@@ -23,5 +23,5 @@ pushd..
 set exec_dir=%cd%
 popd
 set exec_dir=%exec_dir:\=\\%
-wmic process where (commandline like "%%iotdb.ClusterIoTDB%%" and not name="wmic.exe" and  commandline  like "%%%exec_dir%%%") delete
+wmic process where (commandline like "%%iotdb.DataNode%%" and not name="wmic.exe" and  commandline  like "%%%exec_dir%%%") delete
 

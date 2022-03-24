@@ -107,8 +107,8 @@ set JAVA_OPTS=-ea^
 @REM Ensure that any user defined CLASSPATH variables are not used on startup
 set CLASSPATH="%IOTDB_HOME%\lib\*"
 
-@REM this special suffix 'iotdb.ClusterIoTDB' is mandatory as stop-node.bat uses it to filter the process id.
-set CLASSPATH=%CLASSPATH%;iotdb.ClusterIoTDB
+@REM this special suffix 'iotdb.DataNode' is mandatory as stop-node.bat uses it to filter the process id.
+set CLASSPATH=%CLASSPATH%;iotdb.DataNode
 goto okClasspath
 
 :append
