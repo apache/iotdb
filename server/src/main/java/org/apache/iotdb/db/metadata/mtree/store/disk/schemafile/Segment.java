@@ -340,11 +340,11 @@ public class Segment implements ISegment {
       }
 
       freeAddr = (short) (freeAddr - newLen);
-      keyAddressList.get(idx).right = freeAddr;
       // it will not mark old record as expired
       this.buffer.position(freeAddr);
       this.buffer.limit(freeAddr + newLen);
       bufferMonitor(buffer);
+      keyAddressList.get(idx).right = freeAddr;
       // this.buffer.put(buffer);
     }
 
