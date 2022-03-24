@@ -23,7 +23,6 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 
 import java.io.IOException;
-import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
@@ -102,7 +101,7 @@ public class PathPatternTree {
     // TODO
   }
 
-  public void serialize(OutputStream baos) throws IOException {
+  public void serialize(ByteBuffer buffer) throws IOException {
     // TODO
   }
 

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.sql.tree;
 
+import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.db.mpp.sql.statement.StatementNode;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertStatement;
@@ -63,7 +64,7 @@ public abstract class StatementVisitor<R, C> {
   /** Data Manipulation Language (DML) */
 
   // Select Statement
-  public R visitQuery(QueryStatement queryStatement, C context) {
+  public R visitQuery(QueryStatement queryStatement, C context) throws StatementAnalyzeException {
     return visitStatement(queryStatement, context);
   }
 

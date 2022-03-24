@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.partition.PartitionInfo;
 import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
@@ -39,8 +40,7 @@ import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.tree.StatementVisitor;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-import java.util.Arrays;
-import java.util.Map;
+import java.util.*;
 
 /** Analyze the statement and generate Analysis. */
 public class Analyzer {
@@ -71,7 +71,8 @@ public class Analyzer {
     }
 
     @Override
-    public Analysis visitQuery(QueryStatement queryStatement, MPPQueryContext context) {
+    public Analysis visitQuery(QueryStatement queryStatement, MPPQueryContext context)
+        throws StatementAnalyzeException {
       Analysis analysis = new Analysis();
       try {
         // check for semantic errors
@@ -85,14 +86,21 @@ public class Analyzer {
         // request schema fetch API
         SchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree);
 
-        // bind metadata (remove wildcards and apply SLIMIT & SOFFSET as well)
+        // bind metadata, remove wildcards, and apply SLIMIT & SOFFSET
+        Map<String, Set<PartialPath>> deviceIdToPathsMap = new HashMap<>();
         rewrittenStatement =
-            (QueryStatement) new WildcardsRemover().rewrite(rewrittenStatement, schemaTree);
+            (QueryStatement)
+                new WildcardsRemover().rewrite(rewrittenStatement, schemaTree, deviceIdToPathsMap);
 
         // fetch partition information
+        List<DataPartitionQueryParam> dataPartitionQueryParams = new ArrayList<>();
+        for (String deviceId : deviceIdToPathsMap.keySet()) {
+          DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
+          dataPartitionQueryParam.setDeviceId(deviceId);
+          dataPartitionQueryParams.add(dataPartitionQueryParam);
+        }
         DataPartitionInfo dataPartitionInfo =
-            partitionFetcher.fetchDataPartitionInfos(
-                schemaTree.constructDataPartitionQueryParamList());
+            partitionFetcher.fetchDataPartitionInfos(dataPartitionQueryParams);
 
         // optimize expressions in whereCondition
         WhereCondition whereCondition = rewrittenStatement.getWhereCondition();
@@ -105,9 +113,11 @@ public class Analyzer {
         }
         analysis.setStatement(rewrittenStatement);
         analysis.setSchemaTree(schemaTree);
+        analysis.setDeviceIdToPathsMap(deviceIdToPathsMap);
         analysis.setDataPartitionInfo(dataPartitionInfo);
       } catch (StatementAnalyzeException | PathNumOverLimitException e) {
-        e.printStackTrace();
+        throw new StatementAnalyzeException(
+            "error occurred when analyzing statement: " + e.getMessage());
       }
       return analysis;
     }

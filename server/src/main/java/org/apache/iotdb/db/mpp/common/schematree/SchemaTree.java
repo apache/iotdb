@@ -25,7 +25,6 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.io.IOException;
-import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -46,7 +45,7 @@ public class SchemaTree {
     return new Pair<>(new ArrayList<>(), 0);
   }
 
-  public void serialize(OutputStream baos) throws IOException {
+  public void serialize(ByteBuffer buffer) throws IOException {
     // TODO
   }
 

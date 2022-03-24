@@ -60,7 +60,8 @@ public class WildcardsRemover {
    */
   private boolean isPrefixMatchPath;
 
-  public Statement rewrite(Statement statement, SchemaTree schemaTree)
+  public Statement rewrite(
+      Statement statement, SchemaTree schemaTree, Map<String, Set<PartialPath>> deviceIdToPathsMap)
       throws StatementAnalyzeException, PathNumOverLimitException {
     QueryStatement queryStatement = (QueryStatement) statement;
     this.paginationController =
@@ -72,6 +73,7 @@ public class WildcardsRemover {
     if (queryStatement.getIndexType() == null) {
       // remove wildcards in SELECT caluse
       removeWildcardsInSelectPaths(queryStatement);
+      deviceIdToPathsMap.putAll(queryStatement.getSelectComponent().getDeviceIdToPathsMap());
 
       // remove wildcards in WITHOUT NULL caluse
       if (queryStatement.getFilterNullComponent() != null
@@ -82,7 +84,7 @@ public class WildcardsRemover {
 
     // remove wildcards in WHERE caluse
     if (queryStatement.getWhereCondition() != null) {
-      removeWildcardsInQueryFilter(queryStatement);
+      removeWildcardsInQueryFilter(queryStatement, deviceIdToPathsMap);
     }
 
     return queryStatement;
@@ -168,7 +170,8 @@ public class WildcardsRemover {
     queryStatement.getFilterNullComponent().setWithoutNullColumns(resultExpressions);
   }
 
-  private void removeWildcardsInQueryFilter(QueryStatement queryStatement)
+  private void removeWildcardsInQueryFilter(
+      QueryStatement queryStatement, Map<String, Set<PartialPath>> deviceIdToPathsMap)
       throws StatementAnalyzeException {
     WhereCondition whereCondition = queryStatement.getWhereCondition();
 
@@ -176,6 +179,10 @@ public class WildcardsRemover {
     whereCondition.setQueryFilter(
         removeWildcardsInQueryFilter(whereCondition.getQueryFilter(), resultPaths));
     whereCondition.getQueryFilter().setPathSet(resultPaths);
+
+    for (PartialPath path : resultPaths) {
+      deviceIdToPathsMap.computeIfAbsent(path.getDevice(), k -> new HashSet<>()).add(path);
+    }
   }
 
   private QueryFilter removeWildcardsInQueryFilter(QueryFilter filter, Set<PartialPath> resultPaths)
