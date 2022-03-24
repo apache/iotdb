@@ -380,22 +380,22 @@ public class TsFileProcessor {
       throw new WriteProcessException(e);
     }
 
-    // TODO(WAL)
-    //    try {
-    //      if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
-    //        insertTabletPlan.setStart(start);
-    //        insertTabletPlan.setEnd(end);
-    //        getLogNode().write(insertTabletPlan);
-    //      }
-    //    } catch (Exception e) {
-    //      for (int i = start; i < end; i++) {
-    //        results[i] = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
-    //      }
-    //      if (enableMemControl && memIncrements != null) {
-    //        rollbackMemoryInfo(memIncrements);
-    //      }
-    //      throw new WriteProcessException(e);
-    //    }
+    try {
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
+        insertTabletNode.setStart(start);
+        insertTabletNode.setEnd(end);
+        // TODO(WAL)
+        getLogNode().write(insertTabletNode);
+      }
+    } catch (Exception e) {
+      for (int i = start; i < end; i++) {
+        results[i] = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+      }
+      if (enableMemControl && memIncrements != null) {
+        rollbackMemoryInfo(memIncrements);
+      }
+      throw new WriteProcessException(e);
+    }
 
     try {
       if (insertTabletNode.isAligned()) {
