@@ -75,18 +75,19 @@ public class Analyzer {
         queryStatement.selfCheck();
 
         // concat path and construct path pattern tree
+        PathPatternTree patternTree = new PathPatternTree();
         QueryStatement rewrittenStatement =
-            (QueryStatement) new ConcatPathRewriter().rewrite(queryStatement, context);
+            (QueryStatement) new ConcatPathRewriter().rewrite(queryStatement, patternTree);
 
-        // request metadata API
-        MetadataResponse response = schemaFetcher.requestMetadata(context.getPathPatternTree());
-        context.setResponse(response);
+        // request schema fetch API
+        MetadataResponse schemaTree = schemaFetcher.requestMetadata(patternTree);
+        analysis.setSchemaTree(schemaTree);
 
         // bind metadata (remove wildcards and apply SLIMIT & SOFFSET as well)
         rewrittenStatement =
-            (QueryStatement) new WildcardsRemover().rewrite(rewrittenStatement, context);
+            (QueryStatement) new WildcardsRemover().rewrite(rewrittenStatement, schemaTree);
 
-        // TODO: check access permissions here
+        // TODO: fetch partition information
 
         // optimize expressions in whereCondition
         WhereCondition whereCondition = rewrittenStatement.getWhereCondition();

@@ -26,10 +26,9 @@ import org.apache.iotdb.db.exception.sql.SQLParserException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.filter.*;
+import org.apache.iotdb.db.mpp.sql.analyze.MetadataResponse;
 import org.apache.iotdb.db.mpp.sql.constant.FilterConstant;
-import org.apache.iotdb.db.mpp.sql.metadata.MetadataResponse;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.db.mpp.sql.statement.component.GroupByLevelController;
 import org.apache.iotdb.db.mpp.sql.statement.component.ResultColumn;
@@ -50,20 +49,19 @@ import java.util.*;
  *
  * <p>2. Remove wildcards and apply SLIMIT & SOFFSET.
  */
-public class WildcardsRemover implements IStatementRewriter {
+public class WildcardsRemover {
 
-  private MetadataResponse metadata;
+  private MetadataResponse schemaTree;
 
   ColumnPaginationController paginationController;
 
-  @Override
-  public Statement rewrite(Statement statement, MPPQueryContext context)
+  public Statement rewrite(Statement statement, MetadataResponse schemaTree)
       throws StatementAnalyzeException, PathNumOverLimitException {
     QueryStatement queryStatement = (QueryStatement) statement;
     paginationController =
         new ColumnPaginationController(
             queryStatement.getSeriesLimit(), queryStatement.getSeriesOffset());
-    metadata = context.getResponse();
+    this.schemaTree = schemaTree;
 
     if (queryStatement.getIndexType() == null) {
       // remove wildcards in SELECT caluse
@@ -254,7 +252,7 @@ public class WildcardsRemover implements IStatementRewriter {
       throws StatementAnalyzeException {
     try {
       Pair<List<MeasurementPath>, Integer> pair =
-          metadata.getMeasurementPaths(
+          schemaTree.getMeasurementPaths(
               path, paginationController.getCurLimit(), paginationController.getCurOffset());
       paginationController.consume(pair.left.size(), pair.right);
       return pair.left;
@@ -308,7 +306,7 @@ public class WildcardsRemover implements IStatementRewriter {
       throws StatementAnalyzeException {
     List<PartialPath> actualPaths = new ArrayList<>();
     try {
-      List<MeasurementPath> all = metadata.getMeasurementPaths(originalPath, 0, 0).left;
+      List<MeasurementPath> all = schemaTree.getMeasurementPaths(originalPath, 0, 0).left;
       if (all.isEmpty()) {
         throw new StatementAnalyzeException(
             String.format("Unknown time series %s in `where clause`", originalPath));

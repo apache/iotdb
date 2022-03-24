@@ -24,7 +24,6 @@ import org.apache.iotdb.db.exception.sql.SQLParserException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
-import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.filter.*;
 import org.apache.iotdb.db.mpp.sql.analyze.PathPatternTree;
 import org.apache.iotdb.db.mpp.sql.constant.FilterConstant.FilterType;
@@ -45,15 +44,14 @@ import java.util.*;
  *
  * <p>2. Construct a {@link PathPatternTree}.
  */
-public class ConcatPathRewriter implements IStatementRewriter {
+public class ConcatPathRewriter {
 
-  private final PathPatternTree patternTree = new PathPatternTree();
+  private PathPatternTree patternTree;
 
-  @Override
-  public Statement rewrite(Statement statement, MPPQueryContext context)
+  public Statement rewrite(Statement statement, PathPatternTree patternTree)
       throws StatementAnalyzeException, PathNumOverLimitException {
     QueryStatement queryStatement = (QueryStatement) statement;
-    patternTree.setPrefixMatchPath(queryStatement.isPrefixMatchPath());
+    this.patternTree = patternTree;
 
     // concat SELECT with FROM
     concatSelectWithFrom(queryStatement);
@@ -68,9 +66,6 @@ public class ConcatPathRewriter implements IStatementRewriter {
     if (queryStatement.getWhereCondition() != null) {
       concatWhereWithFrom(queryStatement);
     }
-
-    // record patternTree in the context
-    context.setPathPatternTree(patternTree);
     return queryStatement;
   }
 

@@ -31,11 +31,8 @@ import java.util.*;
 
 /** Analysis used for planning a query. TODO: This class may need to store more info for a query. */
 public class Analysis {
-  // Description for each series. Such as dataType, existence
 
   // Data distribution info for each series. Series -> [DataRegion, DataRegion]
-
-  // Map<PartialPath, List<FullPath>> Used to remove asterisk
 
   // Statement
   private Statement statement;
@@ -48,6 +45,9 @@ public class Analysis {
   private SchemaPartitionInfo schemaPartitionInfo;
 
   private Map<String, MeasurementSchema> schemaMap;
+
+  // Description for each series. Such as dataType, existence
+  private MetadataResponse schemaTree;
 
   public List<DataRegionReplicaSet> getPartitionInfo(PartialPath seriesPath, Filter timefilter) {
     // TODO: (xingtanzjr) implement the calculation of timePartitionIdList
@@ -84,5 +84,13 @@ public class Analysis {
 
   public void setSchemaMap(Map<String, MeasurementSchema> schemaMap) {
     this.schemaMap = schemaMap;
+  }
+
+  public MetadataResponse getSchemaTree() {
+    return schemaTree;
+  }
+
+  public void setSchemaTree(MetadataResponse schemaTree) {
+    this.schemaTree = schemaTree;
   }
 }
