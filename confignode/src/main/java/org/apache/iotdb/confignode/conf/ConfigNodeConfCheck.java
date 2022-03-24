@@ -43,22 +43,30 @@ public class ConfigNodeConfCheck {
 
   private static final ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();
 
-  private Properties specialProperties;
+  private final Properties specialProperties;
 
   private ConfigNodeConfCheck() {
     specialProperties = new Properties();
   }
 
   public void checkConfig() throws ConfigurationException, IOException, StartupException {
-    // if systemDir does not exist, create systemDir
+    // If systemDir does not exist, create systemDir
     File systemDir = new File(conf.getSystemDir());
-    if (systemDir.isDirectory() && !systemDir.exists()) {
-      systemDir.mkdirs();
+    if (!systemDir.exists()) {
+      if (systemDir.mkdirs()) {
+        LOGGER.error("Make system dirs: {}", systemDir);
+      } else {
+        throw new IOException(
+            String.format(
+                "Start ConfigNode failed, because couldn't make system dirs: %s.",
+                systemDir.getAbsolutePath()));
+      }
     }
 
     File specialPropertiesFile =
         new File(conf.getSystemDir() + File.separator + ConfigNodeConstant.SPECIAL_CONF_NAME);
     if (!specialPropertiesFile.exists()) {
+      // Create and write the special properties file when first start the ConfigNode
       if (specialPropertiesFile.createNewFile()) {
         LOGGER.info(
             "Special configuration file {} for ConfigNode is created.",
@@ -74,6 +82,9 @@ public class ConfigNodeConfCheck {
     }
 
     try (FileInputStream inputStream = new FileInputStream(specialPropertiesFile)) {
+      // Check consistency of the special parameters in the special properties file.
+      // Make sure these parameters are the same both in the current properties file and the special
+      // properties file.
       specialProperties.load(inputStream);
       checkSpecialProperties();
     }
