@@ -670,12 +670,14 @@ public class Segment implements ISegment {
           byte type = RecordUtils.getRecordType(this.buffer);
           if (type != 0 && type != 1 && type != 4) {
             logger.error(String.format("[Buffer Broken]Type error at: %s", pair));
+            throw new BufferUnderflowException();
           }
 
           short recLen = RecordUtils.getRecordLength(this.buffer);
           if (type == 0 || type == 1) {
             if (recLen != 16) {
               logger.error(String.format("[Buffer Broken]Length error at: %s", pair));
+              throw new BufferUnderflowException();
             }
           }
         }
