@@ -17,19 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.sql.analyze;
+package org.apache.iotdb.db.mpp.common.schematree;
 
-import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
+public class SchemaEntityNode extends SchemaInternalNode {
 
-public class SchemaTree {
-
-  public void serialize(OutputStream baos) throws IOException {
-    // TODO
-  }
-
-  public void deserialize(ByteBuffer buffer) throws IOException {
-    // TODO
-  }
+  private boolean isAligned;
 }

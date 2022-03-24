@@ -17,27 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.sql.analyze;
+package org.apache.iotdb.db.mpp.common.schematree;
 
-import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
+public abstract class SchemaNode {
 
-public class PathPatternTree {
-
-  private PathPatternNode root;
-
-  /**
-   * Since IoTDB v0.13, all DDL and DML use patternMatch as default. Before IoTDB v0.13, all DDL and
-   * DML use prefixMatch.
-   */
-  protected boolean isPrefixMatchPath;
-
-  public void serialize(OutputStream baos) throws IOException {
-    // TODO
-  }
-
-  public void deserialize(ByteBuffer buffer) throws IOException {
-    // TODO
-  }
+  private String name;
 }
