@@ -33,9 +33,6 @@ public class MetricConfig {
   /** enable publishing data. */
   private Boolean enableMetric = false;
 
-  /** The period of data pushed by the reporter to the remote monitoring system. */
-  private Integer pushPeriodInSecond = 15;
-
   /** The of monitor frame */
   private MonitorType monitorType = MonitorType.MICROMETER;
 
@@ -64,6 +61,8 @@ public class MetricConfig {
     private String password = "root";
     /** The monitor database of iotdb */
     private String database = "_metric";
+    /** The period of data pushed by the reporter to the remote monitoring system. */
+    private Integer pushPeriodInSecond = 15;
 
     public String getHost() {
       return host;
@@ -105,6 +104,14 @@ public class MetricConfig {
       this.database = database;
     }
 
+    public Integer getPushPeriodInSecond() {
+      return pushPeriodInSecond;
+    }
+
+    public void setPushPeriodInSecond(Integer pushPeriodInSecond) {
+      this.pushPeriodInSecond = pushPeriodInSecond;
+    }
+
     @Override
     public boolean equals(Object o) {
       if (this == o) {
@@ -118,12 +125,13 @@ public class MetricConfig {
           && Objects.equals(port, that.port)
           && Objects.equals(username, that.username)
           && Objects.equals(password, that.password)
-          && Objects.equals(database, that.database);
+          && Objects.equals(database, that.database)
+          && Objects.equals(pushPeriodInSecond, that.pushPeriodInSecond);
     }
 
     @Override
     public int hashCode() {
-      return Objects.hash(host, port, username, password, database);
+      return Objects.hash(host, port, username, password, database, pushPeriodInSecond);
     }
   }
 
@@ -148,14 +156,6 @@ public class MetricConfig {
 
   public void setEnableMetric(Boolean enableMetric) {
     this.enableMetric = enableMetric;
-  }
-
-  public Integer getPushPeriodInSecond() {
-    return pushPeriodInSecond;
-  }
-
-  public void setPushPeriodInSecond(Integer pushPeriodInSecond) {
-    this.pushPeriodInSecond = pushPeriodInSecond;
   }
 
   public MonitorType getMonitorType() {
@@ -229,11 +229,11 @@ public class MetricConfig {
     }
     MetricConfig anotherMetricConfig = (MetricConfig) obj;
     return enableMetric.equals(anotherMetricConfig.getEnableMetric())
-        && pushPeriodInSecond.equals(anotherMetricConfig.getPushPeriodInSecond())
         && monitorType.equals(anotherMetricConfig.getMonitorType())
         && metricReporterList.equals(anotherMetricConfig.getMetricReporterList())
         && metricLevel.equals(anotherMetricConfig.getMetricLevel())
         && predefinedMetrics.equals(anotherMetricConfig.getPredefinedMetrics())
-        && prometheusExporterPort.equals(anotherMetricConfig.getPrometheusExporterPort());
+        && prometheusExporterPort.equals(anotherMetricConfig.getPrometheusExporterPort())
+        && ioTDBReporterConfig.equals(anotherMetricConfig.getIoTDBReporterConfig());
   }
 }

@@ -36,7 +36,10 @@ public interface IoTDBRegistryConfig extends StepRegistryConfig {
         @Override
         public Duration step() {
           return Duration.ofSeconds(
-              MetricConfigDescriptor.getInstance().getMetricConfig().getPushPeriodInSecond());
+              MetricConfigDescriptor.getInstance()
+                  .getMetricConfig()
+                  .getIoTDBReporterConfig()
+                  .getPushPeriodInSecond());
         }
       };
 

@@ -49,7 +49,8 @@ public class DropwizardIoTDBReporter implements Reporter {
             .prefixedWith("dropwizard:")
             .filter(MetricFilter.ALL)
             .build();
-    ioTDBReporter.start(metricConfig.getPushPeriodInSecond(), TimeUnit.SECONDS);
+    ioTDBReporter.start(
+        metricConfig.getIoTDBReporterConfig().getPushPeriodInSecond(), TimeUnit.SECONDS);
     return true;
   }
 
