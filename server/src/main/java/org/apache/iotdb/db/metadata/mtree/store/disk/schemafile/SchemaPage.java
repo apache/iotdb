@@ -405,12 +405,12 @@ public class SchemaPage implements ISchemaPage {
     if (segCacheMap.containsKey(index)) {
       return segCacheMap.get(index);
     }
+    ByteBuffer bufferR = this.pageBuffer.duplicate();
+    bufferR.clear();
+    bufferR.position(getSegmentOffset(index));
+    bufferR.limit(bufferR.position() + Segment.getSegBufLen(bufferR));
 
-    pageBuffer.clear();
-    pageBuffer.position(getSegmentOffset(index));
-    pageBuffer.limit(pageBuffer.position() + Segment.getSegBufLen(pageBuffer));
-
-    ISegment res = Segment.loadAsSegment(pageBuffer.slice());
+    ISegment res = Segment.loadAsSegment(bufferR.slice());
     segCacheMap.put(index, res);
     return res;
   }

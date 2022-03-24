@@ -150,7 +150,6 @@ public class SchemaFileTest {
     nsf.close();
   }
 
-  @Test
   public void inspectFile() throws MetadataException, IOException {
     essentialTestSchemaFile();
     ISchemaFile sf = SchemaFile.loadSchemaFile("root.test.vRoot1");
@@ -324,11 +323,37 @@ public class SchemaFileTest {
 
   public void bitwiseTest() {
 
+    byte[] bArray = new byte[] {1, 2, 3, 4, 5, 6, 7};
+    ByteBuffer b1 = ByteBuffer.wrap(bArray);
+    ByteBuffer b2 = b1.duplicate();
+    b2.position(3);
+    ByteBuffer b3 = b2.slice();
+    b1.position(3);
+    b1.put((byte) 99);
+
+    Assert.assertEquals(99, b2.get());
+    Assert.assertEquals(99, b3.get());
+    Assert.assertEquals(1, b3.position());
+
+    b3.put((byte) 100);
+    Assert.assertEquals(100, b1.get());
+
     print(SchemaFile.getPageIndex(12451840));
     print(SchemaFile.getGlobalIndex(190, (short) 0));
 
     long initGlbAdr = 1099780063232L;
     int pageIndex = SchemaFile.getPageIndex(initGlbAdr);
+
+    int bs = 1;
+    while (bs <= 32) {
+      long highBits = 0xffffffff00000000L & ((0xffffffffL & pageIndex) << 1);
+      pageIndex <<= 1;
+      pageIndex |= highBits >>> 32;
+      bs++;
+      Assert.assertEquals(
+          pageIndex, SchemaFile.getPageIndex(SchemaFile.getGlobalIndex(pageIndex, (short) 0)));
+    }
+
     short segIdx = SchemaFile.getSegIndex(initGlbAdr);
     while (initGlbAdr < 1099980063232L) {
       Assert.assertEquals(initGlbAdr, SchemaFile.getGlobalIndex(pageIndex, segIdx));
