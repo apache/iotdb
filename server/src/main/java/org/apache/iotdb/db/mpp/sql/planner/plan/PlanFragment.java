@@ -22,10 +22,14 @@ import org.apache.iotdb.commons.partition.DataRegionReplicaSet;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SourceNode;
+
+import java.nio.ByteBuffer;
 
 /** PlanFragment contains a sub-query of distributed query. */
 public class PlanFragment {
+  // TODO once you add field for this class you need to change the serialize and deserialize methods
   private PlanFragmentId id;
   private PlanNode root;
 
@@ -83,5 +87,19 @@ public class PlanFragment {
       }
     }
     return null;
+  }
+
+  public static PlanFragment deserialize(ByteBuffer byteBuffer) {
+    return new PlanFragment(PlanFragmentId.deserialize(byteBuffer), deserializeHelper(byteBuffer));
+  }
+
+  // deserialize the plan node recursively
+  private static PlanNode deserializeHelper(ByteBuffer byteBuffer) {
+    PlanNode root = PlanNodeType.deserialize(byteBuffer);
+    int childrenCount = byteBuffer.getInt();
+    for (int i = 0; i < childrenCount; i++) {
+      root.addChildren(deserializeHelper(byteBuffer));
+    }
+    return root;
   }
 }

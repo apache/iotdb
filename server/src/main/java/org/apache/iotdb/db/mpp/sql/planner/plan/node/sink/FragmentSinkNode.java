@@ -26,6 +26,7 @@ import org.apache.iotdb.service.rpc.thrift.EndPoint;
 
 import com.google.common.collect.ImmutableList;
 
+import java.nio.ByteBuffer;
 import java.util.List;
 
 public class FragmentSinkNode extends SinkNode {
@@ -46,6 +47,9 @@ public class FragmentSinkNode extends SinkNode {
   }
 
   @Override
+  public void addChildren(PlanNode child) {}
+
+  @Override
   public PlanNode clone() {
     return null;
   }
@@ -59,6 +63,13 @@ public class FragmentSinkNode extends SinkNode {
   public List<String> getOutputColumnNames() {
     return null;
   }
+
+  public static FragmentSinkNode deserialize(ByteBuffer byteBuffer) {
+    return null;
+  }
+
+  @Override
+  public void serialize(ByteBuffer byteBuffer) {}
 
   @Override
   public void send() {}

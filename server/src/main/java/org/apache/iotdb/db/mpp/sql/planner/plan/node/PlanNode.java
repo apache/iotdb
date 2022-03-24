@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node;
 
+import java.nio.ByteBuffer;
 import java.util.List;
 
 import static java.util.Objects.requireNonNull;
@@ -39,6 +40,8 @@ public abstract class PlanNode {
 
   public abstract List<PlanNode> getChildren();
 
+  public abstract void addChildren(PlanNode child);
+
   public abstract PlanNode clone();
 
   public abstract PlanNode cloneWithChildren(List<PlanNode> children);
@@ -48,4 +51,6 @@ public abstract class PlanNode {
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
     return visitor.visitPlan(this, context);
   }
+
+  public abstract void serialize(ByteBuffer byteBuffer);
 }
