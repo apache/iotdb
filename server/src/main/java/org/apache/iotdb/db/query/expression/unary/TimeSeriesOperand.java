@@ -75,7 +75,7 @@ public class TimeSeriesOperand extends Expression {
       PathPatternTree patternTree) {
     for (PartialPath prefixPath : prefixPaths) {
       TimeSeriesOperand resultExpression = new TimeSeriesOperand(prefixPath.concatPath(path));
-      patternTree.search(resultExpression);
+      patternTree.search(resultExpression.getPath());
       resultExpressions.add(resultExpression);
     }
   }

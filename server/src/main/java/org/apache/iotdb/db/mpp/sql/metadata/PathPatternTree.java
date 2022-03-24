@@ -20,17 +20,13 @@
 package org.apache.iotdb.db.mpp.sql.metadata;
 
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
-import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
 
 import java.util.*;
 
 public class PathPatternTree {
 
-  private PathPatternNode rootNode;
-
-  private final Map<String, List<TimeSeriesOperand>> pathToTimeSeriesOperandMap = new HashMap<>();
-  private final Map<String, List<QueryFilter>> pathToQueryFiltersMap = new HashMap<>();
+  private PathPatternNode root;
 
   /**
    * Since IoTDB v0.13, all DDL and DML use patternMatch as default. Before IoTDB v0.13, all DDL and
@@ -39,15 +35,15 @@ public class PathPatternTree {
   private boolean isPrefixMatchPath;
 
   public PathPatternTree() {
-    this.rootNode = new PathPatternNode("root");
+    this.root = new PathPatternNode(SQLConstant.ROOT);
   }
 
-  public PathPatternNode getRootNode() {
-    return rootNode;
+  public PathPatternNode getRoot() {
+    return root;
   }
 
-  public void setRootNode(PathPatternNode rootNode) {
-    this.rootNode = rootNode;
+  public void setRoot(PathPatternNode root) {
+    this.root = root;
   }
 
   public boolean isPrefixMatchPath() {
@@ -58,22 +54,8 @@ public class PathPatternTree {
     isPrefixMatchPath = prefixMatchPath;
   }
 
-  public void search(TimeSeriesOperand expression) {
-    PartialPath path = expression.getPath();
-    pathToTimeSeriesOperandMap
-        .computeIfAbsent(path.getFullPath(), k -> new ArrayList<>())
-        .add(expression);
-    search(path);
-  }
-
-  public void search(QueryFilter filter) {
-    PartialPath path = filter.getSinglePath();
-    pathToQueryFiltersMap.computeIfAbsent(path.getFullPath(), k -> new ArrayList<>()).add(filter);
-    search(path);
-  }
-
   public void search(PartialPath path) {
-    search(rootNode, path.getNodes(), 0);
+    search(root, path.getNodes(), 0);
   }
 
   public void search(PathPatternNode curNode, String[] pathNodes, int pos) {
@@ -111,5 +93,9 @@ public class PathPatternTree {
       curNode.addChild(newNode);
       curNode = newNode;
     }
+  }
+
+  private void prune() {
+    // TODO
   }
 }
