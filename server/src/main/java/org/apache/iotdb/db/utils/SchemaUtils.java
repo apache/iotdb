@@ -79,6 +79,7 @@ public class SchemaUtils {
     floatSet.add(TSEncoding.TS_2DIFF);
     floatSet.add(TSEncoding.GORILLA_V1);
     floatSet.add(TSEncoding.GORILLA);
+    floatSet.add(TSEncoding.FREQ);
     schemaChecker.put(TSDataType.FLOAT, floatSet);
     schemaChecker.put(TSDataType.DOUBLE, floatSet);
 

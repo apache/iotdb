@@ -22,7 +22,7 @@ package org.apache.iotdb.db.mpp.sql.plan;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
-import org.apache.iotdb.db.mpp.sql.analyze.StatementAnalyzer;
+import org.apache.iotdb.db.mpp.sql.analyze.Analyzer;
 import org.apache.iotdb.db.mpp.sql.parser.StatementGenerator;
 import org.apache.iotdb.db.mpp.sql.planner.LogicalPlanner;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
@@ -81,7 +81,7 @@ public class LogicalPlannerTest {
     PlanNode planNode = null;
     try {
       MPPQueryContext context = new MPPQueryContext();
-      StatementAnalyzer analyzer = new StatementAnalyzer(new Analysis(), context);
+      Analyzer analyzer = new Analyzer(context);
       Analysis analysis =
           analyzer.analyze(
               StatementGenerator.createStatement(sql, ZonedDateTime.now().getOffset()));

@@ -69,8 +69,6 @@ public class ConfigNodeDescriptor {
             "Cannot find IOTDB_HOME or IOTDB_CONF environment variable when loading "
                 + "config file {}, use default configuration",
             ConfigNodeConstant.CONF_NAME);
-        // update all data seriesPath
-        // conf.updatePath();
         return null;
       }
     }
@@ -162,8 +160,25 @@ public class ConfigNodeDescriptor {
 
       conf.setDataDirs(properties.getProperty("data_dirs", conf.getDataDirs()[0]).split(","));
 
+      conf.setRegionReplicaCount(
+          Integer.parseInt(
+              properties.getProperty(
+                  "region_replica_count", String.valueOf(conf.getRegionReplicaCount()))));
+
+      conf.setSchemaRegionCount(
+          Integer.parseInt(
+              properties.getProperty(
+                  "schema_region_count", String.valueOf(conf.getSchemaRegionCount()))));
+
+      conf.setDataRegionCount(
+          Integer.parseInt(
+              properties.getProperty(
+                  "data_region_count", String.valueOf(conf.getDataRegionCount()))));
+
     } catch (IOException e) {
       LOGGER.warn("Couldn't load ConfigNode conf file, use default config", e);
+    } finally {
+      conf.updatePath();
     }
   }
 
