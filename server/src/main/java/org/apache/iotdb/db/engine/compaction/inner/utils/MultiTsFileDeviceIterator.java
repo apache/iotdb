@@ -23,10 +23,12 @@ import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.TsFileDeviceIterator;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -35,11 +37,14 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 public class MultiTsFileDeviceIterator implements AutoCloseable {
@@ -49,6 +54,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
   private Map<TsFileResource, List<Modification>> modificationCache = new HashMap<>();
   private Pair<String, Boolean> currentDevice = null;
 
+  /** Used for inner space compaction. */
   public MultiTsFileDeviceIterator(List<TsFileResource> tsFileResources) throws IOException {
     this.tsFileResources = new ArrayList<>(tsFileResources);
     Collections.sort(this.tsFileResources, TsFileResource::compareFileName);
@@ -68,10 +74,27 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     }
   }
 
+  /** Used for cross space compaction. */
+  public MultiTsFileDeviceIterator(
+      List<TsFileResource> seqResources, List<TsFileResource> unseqResources) throws IOException {
+    for (TsFileResource tsFileResource : seqResources) {
+      TsFileSequenceReader reader =
+          FileReaderManager.getInstance().get(tsFileResource.getTsFilePath(), true);
+      readerMap.put(tsFileResource, reader);
+      deviceIteratorMap.put(tsFileResource, reader.getAllDevicesIteratorWithIsAligned());
+    }
+    for (TsFileResource tsFileResource : unseqResources) {
+      TsFileSequenceReader reader =
+          FileReaderManager.getInstance().get(tsFileResource.getTsFilePath(), true);
+      readerMap.put(tsFileResource, reader);
+      deviceIteratorMap.put(tsFileResource, reader.getAllDevicesIteratorWithIsAligned());
+    }
+  }
+
   public boolean hasNextDevice() {
     boolean hasNext = false;
     for (TsFileDeviceIterator iterator : deviceIteratorMap.values()) {
-      hasNext = hasNext | iterator.hasNext();
+      hasNext = hasNext || iterator.hasNext() || !iterator.current().equals(currentDevice);
     }
     return hasNext;
   }
@@ -115,8 +138,13 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
    * @return
    * @throws IOException
    */
-  public MeasurementIterator iterateNotAlignedSeries(String device) throws IOException {
-    return new MeasurementIterator(readerMap, device);
+  public MeasurementIterator iterateNotAlignedSeries(
+      String device, boolean derserializeTimeseriesMetadata) throws IOException {
+    return new MeasurementIterator(readerMap, device, derserializeTimeseriesMetadata);
+  }
+
+  public AlignedMeasurementIterator iterateAlignedSeries(String device) {
+    return new AlignedMeasurementIterator(device, new ArrayList<>(readerMap.values()));
   }
 
   /**
@@ -202,6 +230,25 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     }
   }
 
+  public class AlignedMeasurementIterator {
+    private List<TsFileSequenceReader> sequenceReaders;
+    private String device;
+
+    private AlignedMeasurementIterator(String device, List<TsFileSequenceReader> sequenceReaders) {
+      this.device = device;
+      this.sequenceReaders = sequenceReaders;
+    }
+
+    public Set<String> getAllMeasurements() throws IOException {
+      Map<String, TimeseriesMetadata> deviceMeasurementsMap = new ConcurrentHashMap<>();
+      for (TsFileSequenceReader reader : sequenceReaders) {
+        deviceMeasurementsMap.putAll(reader.readDeviceMetadata(device));
+      }
+      deviceMeasurementsMap.remove("");
+      return deviceMeasurementsMap.keySet();
+    }
+  }
+
   public class MeasurementIterator {
     private Map<TsFileResource, TsFileSequenceReader> readerMap;
     private String device;
@@ -215,16 +262,30 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     private Map<TsFileResource, Iterator<Map<String, List<ChunkMetadata>>>>
         chunkMetadataIteratorMap = new HashMap<>();
 
-    private MeasurementIterator(Map<TsFileResource, TsFileSequenceReader> readerMap, String device)
+    private MeasurementIterator(
+        Map<TsFileResource, TsFileSequenceReader> readerMap,
+        String device,
+        boolean needDeserializeTimeseries)
         throws IOException {
       this.readerMap = readerMap;
       this.device = device;
-      for (TsFileResource resource : tsFileResources) {
-        TsFileSequenceReader reader = readerMap.get(resource);
-        chunkMetadataIteratorMap.put(
-            resource, reader.getMeasurementChunkMetadataListMapIterator(device));
-        chunkMetadataCacheMap.put(reader, new TreeMap<>());
+
+      if (needDeserializeTimeseries) {
+        for (TsFileResource resource : tsFileResources) {
+          TsFileSequenceReader reader = readerMap.get(resource);
+          chunkMetadataIteratorMap.put(
+              resource, reader.getMeasurementChunkMetadataListMapIterator(device));
+          chunkMetadataCacheMap.put(reader, new TreeMap<>());
+        }
       }
+    }
+
+    public Set<String> getAllMeasurements() throws IOException {
+      Set<String> measurementsSet = new HashSet<>();
+      for (TsFileSequenceReader reader : readerMap.values()) {
+        measurementsSet.addAll(reader.readDeviceMetadata(device).keySet());
+      }
+      return measurementsSet;
     }
 
     /**

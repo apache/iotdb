@@ -26,6 +26,7 @@ import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.jdbc.Config;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -72,53 +73,60 @@ public class IoTDBSelectIntoIT {
   }
 
   private static void createTimeSeries() throws MetadataException {
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaEngine.createTimeseries(
         new PartialPath("root.sg.d1.s1"),
         TSDataType.INT32,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaEngine.createTimeseries(
         new PartialPath("root.sg.d1.s2"),
         TSDataType.INT64,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaEngine.createTimeseries(
         new PartialPath("root.sg.d1.s3"),
         TSDataType.FLOAT,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaEngine.createTimeseries(
         new PartialPath("root.sg.d1.s4"),
         TSDataType.DOUBLE,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaEngine.createTimeseries(
         new PartialPath("root.sg.d1.s5"),
         TSDataType.BOOLEAN,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaEngine.createTimeseries(
         new PartialPath("root.sg.d1.s6"),
         TSDataType.TEXT,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
 
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaEngine.createTimeseries(
         new PartialPath("root.sg.d1.empty"),
         TSDataType.TEXT,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
 
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaEngine.createTimeseries(
         new PartialPath("root.sg.d2.s1"),
         TSDataType.INT32,
+        TSEncoding.PLAIN,
+        CompressionType.UNCOMPRESSED,
+        null);
+
+    IoTDB.schemaEngine.createTimeseries(
+        new PartialPath("root.sg.d1.datatype"),
+        TSDataType.DOUBLE,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
@@ -394,6 +402,23 @@ public class IoTDBSelectIntoIT {
       }
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
+    }
+  }
+
+  @Test
+  public void testSourceAndTargetPathDataTypeUnmatched() {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute("select s1 " + "into root.sg.d1.`datatype` " + "from root.sg.d1");
+      fail();
+    } catch (SQLException throwable) {
+      assertTrue(
+          throwable
+              .getMessage()
+              .contains(Integer.toString(TSStatusCode.MULTIPLE_ERROR.getStatusCode())));
+      assertTrue(throwable.getMessage().contains("mismatch"));
     }
   }
 

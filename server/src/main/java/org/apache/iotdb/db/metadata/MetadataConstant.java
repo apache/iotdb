@@ -39,6 +39,9 @@ public class MetadataConstant {
       MTREE_PREFIX + IoTDBConstant.FILE_NAME_SEPARATOR + MTREE_VERSION + ".snapshot.bin";
   public static final String MTREE_SNAPSHOT_TMP =
       MTREE_PREFIX + IoTDBConstant.FILE_NAME_SEPARATOR + MTREE_VERSION + ".snapshot.bin.tmp";
+  public static final String TEMPLATE_FILE = "template_log.bin";
+
+  public static final String[] ALL_RESULT_NODES = new String[] {"root", "**"};
 
   public static final byte INTERNAL_MNODE_TYPE = 0;
   public static final byte STORAGE_GROUP_MNODE_TYPE = 1;

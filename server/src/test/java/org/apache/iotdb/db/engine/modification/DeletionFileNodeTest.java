@@ -82,9 +82,9 @@ public class DeletionFileNodeTest {
   public void setup() throws MetadataException {
     EnvironmentUtils.envSetUp();
 
-    IoTDB.metaManager.setStorageGroup(new PartialPath(processorName));
+    IoTDB.schemaEngine.setStorageGroup(new PartialPath(processorName));
     for (int i = 0; i < 10; i++) {
-      IoTDB.metaManager.createTimeseries(
+      IoTDB.schemaEngine.createTimeseries(
           new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[i]),
           dataType,
           encoding,
@@ -184,7 +184,7 @@ public class DeletionFileNodeTest {
       QueryDataSource dataSource =
           QueryResourceManager.getInstance()
               .getQueryDataSource(
-                  (PartialPath) expression.getSeriesPath(), TEST_QUERY_CONTEXT, null);
+                  (PartialPath) expression.getSeriesPath(), TEST_QUERY_CONTEXT, null, true);
 
       int count = 0;
       for (TsFileResource seqResource : dataSource.getSeqResources()) {
@@ -332,7 +332,7 @@ public class DeletionFileNodeTest {
       QueryDataSource dataSource =
           QueryResourceManager.getInstance()
               .getQueryDataSource(
-                  (PartialPath) expression.getSeriesPath(), TEST_QUERY_CONTEXT, null);
+                  (PartialPath) expression.getSeriesPath(), TEST_QUERY_CONTEXT, null, true);
 
       List<ReadOnlyMemChunk> timeValuePairs =
           dataSource

@@ -10,12 +10,18 @@ on:
     branches:
       - master
       - "rel/*"
+      - "new_*"
   pull_request:
     branches:
       - master
       - "rel/*"
+      - "new_*"
   # allow manually run the action:
   workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   MAVEN_OPTS: -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.http.retryHandler.class=standard -Dmaven.wagon.http.retryHandler.count=3
@@ -62,7 +68,7 @@ jobs:
       fail-fast: false
       max-parallel: 20
       matrix:
-        os: [windows-latest]
+        os: [windows-2019]
     runs-on: ${{ matrix.os}}
 
     steps:

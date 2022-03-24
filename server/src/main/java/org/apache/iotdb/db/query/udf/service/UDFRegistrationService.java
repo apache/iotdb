@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.query.udf.service;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.StartupException;
@@ -30,7 +31,6 @@ import org.apache.iotdb.db.query.udf.api.UDF;
 import org.apache.iotdb.db.query.udf.builtin.BuiltinFunction;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
-import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 
 import org.apache.commons.io.FileUtils;

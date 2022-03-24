@@ -34,6 +34,7 @@ from .thrift.rpc.TSIService import (
     TSExecuteStatementReq,
     TSOpenSessionReq,
     TSCreateMultiTimeseriesReq,
+    TSCreateSchemaTemplateReq,
     TSCloseSessionReq,
     TSInsertTabletsReq,
     TSInsertRecordsReq,
@@ -109,6 +110,7 @@ class Session(object):
             username=self.__user,
             password=self.__password,
             zoneId=self.__zone_id,
+            configuration={"version": "V_0_13"}
         )
 
         try:
@@ -191,19 +193,24 @@ class Session(object):
 
         return Session.verify_success(status)
 
-    def create_time_series(self, ts_path, data_type, encoding, compressor):
+    def create_time_series(self, ts_path, data_type, encoding, compressor,
+                           props=None, tags=None, attributes=None, alias=None):
         """
         create single time series
         :param ts_path: String, complete time series path (starts from root)
         :param data_type: TSDataType, data type for this time series
         :param encoding: TSEncoding, encoding for this time series
         :param compressor: Compressor, compressing type for this time series
+        :param props: Dictionary, properties for time series
+        :param tags: Dictionary, tag map for time series
+        :param attributes: Dictionary, attribute map for time series
+        :param alias: String, measurement alias for time series
         """
         data_type = data_type.value
         encoding = encoding.value
         compressor = compressor.value
         request = TSCreateTimeseriesReq(
-            self.__session_id, ts_path, data_type, encoding, compressor
+            self.__session_id, ts_path, data_type, encoding, compressor, props, tags, attributes, alias
         )
         status = self.__client.createTimeseries(request)
         logger.debug(
@@ -240,7 +247,8 @@ class Session(object):
         return Session.verify_success(status)
 
     def create_multi_time_series(
-        self, ts_path_lst, data_type_lst, encoding_lst, compressor_lst
+            self, ts_path_lst, data_type_lst, encoding_lst, compressor_lst,
+            props_lst=None, tags_lst=None, attributes_lst=None, alias_lst=None
     ):
         """
         create multiple time series
@@ -248,13 +256,18 @@ class Session(object):
         :param data_type_lst: List of TSDataType, data types for time series
         :param encoding_lst: List of TSEncoding, encodings for time series
         :param compressor_lst: List of Compressor, compressing types for time series
+        :param props_lst: List of Props Dictionary, properties for time series
+        :param tags_lst: List of tag Dictionary, tag maps for time series
+        :param attributes_lst: List of attribute Dictionary, attribute maps for time series
+        :param alias_lst: List of alias, measurement alias for time series
         """
         data_type_lst = [data_type.value for data_type in data_type_lst]
         encoding_lst = [encoding.value for encoding in encoding_lst]
         compressor_lst = [compressor.value for compressor in compressor_lst]
 
         request = TSCreateMultiTimeseriesReq(
-            self.__session_id, ts_path_lst, data_type_lst, encoding_lst, compressor_lst
+            self.__session_id, ts_path_lst, data_type_lst, encoding_lst, compressor_lst, props_lst, tags_lst,
+            attributes_lst, alias_lst
         )
         status = self.__client.createMultiTimeseries(request)
         logger.debug(

@@ -19,7 +19,7 @@
 
 parser grammar IoTDBSqlParser;
 
-options { tokenVocab=IoTDBSqlLexer; }
+options { tokenVocab=SqlLexer; }
 
 
 /**
@@ -37,12 +37,14 @@ statement
 ddlStatement
     : setStorageGroup | createStorageGroup | createTimeseries
     | createSchemaTemplate | createTimeseriesOfSchemaTemplate
-    | createFunction | createTrigger | createContinuousQuery | createSnapshot
+    | createFunction | createTrigger | createContinuousQuery
     | alterTimeseries | deleteStorageGroup | deleteTimeseries | deletePartition
-    | dropFunction | dropTrigger | dropContinuousQuery | setTTL | unsetTTL
-    | setSchemaTemplate | unsetSchemaTemplate | startTrigger | stopTrigger
+    | dropFunction | dropTrigger | dropContinuousQuery | dropSchemaTemplate
+    | setTTL | unsetTTL | startTrigger | stopTrigger | setSchemaTemplate | unsetSchemaTemplate
     | showStorageGroup | showDevices | showTimeseries | showChildPaths | showChildNodes
     | showFunctions | showTriggers | showContinuousQueries | showTTL | showAllTTL
+    | showSchemaTemplates | showNodesInSchemaTemplate
+    | showPathsUsingSchemaTemplate | showPathsSetSchemaTemplate
     | countStorageGroup | countDevices | countTimeseries | countNodes
     ;
 
@@ -58,7 +60,7 @@ dclStatement
 
 utilityStatement
     : merge | fullMerge | flush | clearCache | settle
-    | setSystemStatus | showVersion | showFlushInfo | showLockInfo | showMergeInfo
+    | setSystemStatus | showVersion | showFlushInfo | showLockInfo | showQueryResource
     | showQueryProcesslist | killQuery | grantWatermarkEmbedding | revokeWatermarkEmbedding
     | loadConfiguration | loadTimeseries | loadFile | removeFile | unloadFile;
 
@@ -89,29 +91,27 @@ alignedMeasurements
 
 // Create Schema Template
 createSchemaTemplate
-    : CREATE SCHEMA TEMPLATE templateName=ID
-    LR_BRACKET templateMeasurementClause (COMMA templateMeasurementClause)* RR_BRACKET
+    : CREATE SCHEMA? TEMPLATE templateName=identifier
+    ALIGNED? LR_BRACKET templateMeasurementClause (COMMA templateMeasurementClause)* RR_BRACKET
     ;
 
 templateMeasurementClause
-    : suffixPath attributeClauses #nonAlignedTemplateMeasurement
-    | suffixPath LR_BRACKET nodeNameWithoutWildcard attributeClauses
-    (COMMA nodeNameWithoutWildcard attributeClauses)+ RR_BRACKET  #alignedTemplateMeasurement
+    : nodeNameWithoutWildcard attributeClauses
     ;
 
 // Create Timeseries Of Schema Template
 createTimeseriesOfSchemaTemplate
-    : CREATE TIMESERIES OF SCHEMA TEMPLATE ON prefixPath
+    : CREATE TIMESERIES OF SCHEMA? TEMPLATE ON prefixPath
     ;
 
 // Create Function
 createFunction
-    : CREATE FUNCTION udfName=ID AS className=STRING_LITERAL
+    : CREATE FUNCTION udfName=identifier AS className=STRING_LITERAL
     ;
 
 // Create Trigger
 createTrigger
-    : CREATE TRIGGER triggerName=ID triggerEventClause ON fullPath AS className=STRING_LITERAL triggerAttributeClause?
+    : CREATE TRIGGER triggerName=identifier triggerEventClause ON fullPath AS className=STRING_LITERAL triggerAttributeClause?
     ;
 
 triggerEventClause
@@ -128,7 +128,7 @@ triggerAttribute
 
 // Create Continuous Query
 createContinuousQuery
-    : CREATE (CONTINUOUS QUERY | CQ) continuousQueryName=ID resampleClause? cqSelectIntoClause
+    : CREATE (CONTINUOUS QUERY | CQ) continuousQueryName=identifier resampleClause? cqSelectIntoClause
     ;
 
 cqSelectIntoClause
@@ -141,11 +141,7 @@ cqGroupByTimeClause
     ;
 
 resampleClause
-    : RESAMPLE (EVERY DURATION_LITERAL)? (FOR DURATION_LITERAL)?;
-
-// Create Snapshot for Schema
-createSnapshot
-    : CREATE SNAPSHOT FOR SCHEMA
+    : RESAMPLE (EVERY DURATION_LITERAL)? (FOR DURATION_LITERAL)? (BOUNDARY dateExpression)?
     ;
 
 // Alter Timeseries
@@ -154,16 +150,16 @@ alterTimeseries
     ;
 
 alterClause
-    : RENAME beforeName=ID TO currentName=ID
+    : RENAME beforeName=identifier TO currentName=identifier
     | SET propertyClause (COMMA propertyClause)*
-    | DROP ID (COMMA ID)*
+    | DROP identifier (COMMA identifier)*
     | ADD TAGS propertyClause (COMMA propertyClause)*
     | ADD ATTRIBUTES propertyClause (COMMA propertyClause)*
     | UPSERT aliasClause? tagClause? attributeClause?
     ;
 
 aliasClause
-    : ALIAS OPERATOR_EQ ID
+    : ALIAS OPERATOR_EQ identifier
     ;
 
 // Delete Storage Group
@@ -183,17 +179,22 @@ deletePartition
 
 // Drop Function
 dropFunction
-    : DROP FUNCTION udfName=ID
+    : DROP FUNCTION udfName=identifier
     ;
 
 // Drop Trigger
 dropTrigger
-    : DROP TRIGGER triggerName=ID
+    : DROP TRIGGER triggerName=identifier
     ;
 
 // Drop Continuous Query
 dropContinuousQuery
-    : DROP (CONTINUOUS QUERY|CQ) continuousQueryName=ID
+    : DROP (CONTINUOUS QUERY|CQ) continuousQueryName=identifier
+    ;
+
+// Drop Schema Template
+dropSchemaTemplate
+    : DROP SCHEMA? TEMPLATE templateName=identifier
     ;
 
 // Set TTL
@@ -208,22 +209,22 @@ unsetTTL
 
 // Set Schema Template
 setSchemaTemplate
-    : SET SCHEMA TEMPLATE templateName=ID TO prefixPath
+    : SET SCHEMA? TEMPLATE templateName=identifier TO prefixPath
     ;
 
 // Unset Schema Template
 unsetSchemaTemplate
-    : UNSET SCHEMA TEMPLATE templateName=ID FROM prefixPath
+    : UNSET SCHEMA? TEMPLATE templateName=identifier FROM prefixPath
     ;
 
 // Start Trigger
 startTrigger
-    : START TRIGGER triggerName=ID
+    : START TRIGGER triggerName=identifier
     ;
 
 // Stop Trigger
 stopTrigger
-    : STOP TRIGGER triggerName=ID
+    : STOP TRIGGER triggerName=identifier
     ;
 
 // Show Storage Group
@@ -278,6 +279,26 @@ showTTL
 // Show All TTL
 showAllTTL
     : SHOW ALL TTL
+    ;
+
+// Show Schema Template
+showSchemaTemplates
+    : SHOW SCHEMA? TEMPLATES
+    ;
+
+// Show Measurements In Schema Template
+showNodesInSchemaTemplate
+    : SHOW NODES OPERATOR_IN SCHEMA? TEMPLATE templateName=identifier
+    ;
+
+// Show Paths Set Schema Template
+showPathsSetSchemaTemplate
+    : SHOW PATHS SET SCHEMA? TEMPLATE templateName=identifier
+    ;
+
+// Show Paths Using Schema Template
+showPathsUsingSchemaTemplate
+    : SHOW PATHS USING SCHEMA? TEMPLATE templateName=identifier
     ;
 
 // Count Storage Group
@@ -373,7 +394,7 @@ fillClause
     ;
 
 withoutNullClause
-    : WITHOUT NULL_LITERAL (ALL | ANY)
+    : WITHOUT NULL_LITERAL (ALL | ANY) (LR_BRACKET expression (COMMA expression)* RR_BRACKET)?
     ;
 
 oldTypeClause
@@ -410,7 +431,7 @@ insertStatement
     ;
 
 insertColumnsSpec
-    : LR_BRACKET (TIMESTAMP|TIME)? (COMMA? measurementName)+ RR_BRACKET
+    : LR_BRACKET (TIMESTAMP|TIME)? (COMMA? nodeNameWithoutWildcard)+ RR_BRACKET
     ;
 
 insertValuesSpec
@@ -420,10 +441,6 @@ insertValuesSpec
 insertMultiValue
     : LR_BRACKET timeValue (COMMA measurementValue)+ RR_BRACKET
     | LR_BRACKET (measurementValue COMMA?)+ RR_BRACKET
-    ;
-
-measurementName
-    : nodeNameWithoutWildcard
     ;
 
 measurementValue
@@ -603,9 +620,10 @@ showLockInfo
     : SHOW LOCK INFO prefixPath
     ;
 
-// Show Merge Info
-showMergeInfo
-    : SHOW MERGE INFO
+
+// Show Query Resource
+showQueryResource
+    : SHOW QUERY RESOURCE
     ;
 
 // Show Query Processlist
@@ -679,17 +697,44 @@ suffixPath
     ;
 
 nodeName
-    : wildcard? ID wildcard?
-    | wildcard
+    : wildcard
+    | wildcard? ID wildcard?
+    | wildcard? INTEGER_LITERAL wildcard?
+    | QUTOED_ID_IN_NODE_NAME
+    | STRING_LITERAL
     ;
 
 nodeNameWithoutWildcard
     : ID
+    | INTEGER_LITERAL
+    | QUTOED_ID_IN_NODE_NAME
+    | STRING_LITERAL
+    ;
+
+suffixPathCanInExpr
+    : nodeNameCanInExpr (DOT nodeNameCanInExpr)*
+    ;
+
+nodeNameCanInExpr
+    : wildcard
+    | wildcard? ID wildcard?
+    | QUTOED_ID
+    | QUTOED_ID_IN_NODE_NAME
     ;
 
 wildcard
     : STAR
     | DOUBLE_STAR
+    ;
+
+
+// Identifier
+
+identifier
+    : ID
+    | QUTOED_ID
+    | QUTOED_ID_IN_NODE_NAME
+    | INTEGER_LITERAL
     ;
 
 
@@ -736,12 +781,12 @@ expression
     | leftExpression=expression (STAR | DIV | MOD) rightExpression=expression
     | leftExpression=expression (PLUS | MINUS) rightExpression=expression
     | functionName LR_BRACKET expression (COMMA expression)* functionAttribute* RR_BRACKET
-    | suffixPath
+    | suffixPathCanInExpr
     | constant
     ;
 
 functionName
-    : ID
+    : identifier
     | COUNT
     ;
 
@@ -750,7 +795,7 @@ functionAttribute
     ;
 
 containsExpression
-    : name=ID OPERATOR_CONTAINS value=propertyValue
+    : name=identifier OPERATOR_CONTAINS value=propertyValue
     ;
 
 orExpression
@@ -803,7 +848,7 @@ topClause
     ;
 
 resultColumn
-    : expression (AS ID)?
+    : expression (AS identifier)?
     ;
 
 
@@ -824,7 +869,7 @@ attributeClauses
     tagClause?
     attributeClause?
     // Simplified version (supported since v0.13)
-    | alias? dataType=DATATYPE_VALUE
+    | alias? WITH? (DATATYPE OPERATOR_EQ)? dataType=DATATYPE_VALUE
     (ENCODING OPERATOR_EQ encoding=ENCODING_VALUE)?
     ((COMPRESSOR | COMPRESSION) OPERATOR_EQ compressor=COMPRESSOR_VALUE)?
     propertyClause*
@@ -833,7 +878,7 @@ attributeClauses
     ;
 
 alias
-    : LR_BRACKET ID RR_BRACKET
+    : LR_BRACKET nodeNameCanInExpr RR_BRACKET
     ;
 
 tagClause
@@ -841,13 +886,11 @@ tagClause
     ;
 
 propertyClause
-    : name=ID OPERATOR_EQ value=propertyValue
+    : name=identifier OPERATOR_EQ value=propertyValue
     ;
 
 propertyValue
-    : INTEGER_LITERAL
-    | ID
-    | STRING_LITERAL
+    : identifier
     | constant
     ;
 

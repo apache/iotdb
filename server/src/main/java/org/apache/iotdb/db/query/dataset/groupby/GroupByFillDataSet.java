@@ -48,7 +48,7 @@ import java.util.BitSet;
 import java.util.List;
 import java.util.Map;
 
-public class GroupByFillDataSet extends GroupByEngineDataSet {
+public class GroupByFillDataSet extends GroupByTimeDataSet {
 
   private static final Logger logger = LoggerFactory.getLogger(GroupByFillDataSet.class);
 
@@ -57,6 +57,7 @@ public class GroupByFillDataSet extends GroupByEngineDataSet {
   private final Map<TSDataType, IFill> fillTypes;
   private final IFill singleFill;
   private final List<String> aggregations;
+  private boolean[] unsupportedFillMethod;
 
   // the result datatype for each aggregation
   private final TSDataType[] resultDataType;
@@ -92,9 +93,11 @@ public class GroupByFillDataSet extends GroupByEngineDataSet {
     previousTimes = new long[aggregations.size()];
     previousValues = new Object[aggregations.size()];
     nextIndices = new int[aggregations.size()];
+    unsupportedFillMethod = new boolean[aggregations.size()];
     Arrays.fill(previousTimes, Long.MAX_VALUE);
     Arrays.fill(previousValues, null);
     Arrays.fill(nextIndices, 0);
+    Arrays.fill(unsupportedFillMethod, false);
 
     nextTVLists = new ArrayList<>(aggregations.size());
     for (int i = 0; i < aggregations.size(); i++) {
@@ -174,13 +177,18 @@ public class GroupByFillDataSet extends GroupByEngineDataSet {
     try {
       slideCache(record.getTimestamp());
     } catch (QueryProcessException e) {
-      logger.warn("group by fill has an exception while sliding: ", e);
+      logger.error("group by fill has an exception while sliding: ", e);
     }
 
     return record;
   }
 
   private void fillRecord(int index, RowRecord record) throws IOException {
+    if (unsupportedFillMethod[index]) {
+      record.addField(null);
+      return;
+    }
+
     IFill fill;
     if (fillTypes != null) {
       // old type fill logic
@@ -252,9 +260,11 @@ public class GroupByFillDataSet extends GroupByEngineDataSet {
                   record.getTimestamp(),
                   resultDataType[index]);
           record.addField(filledPair.getValue().getValue(), resultDataType[index]);
-        } catch (UnSupportedFillTypeException e) {
-          // Don't fill and ignore unsupported type exception
+        } catch (UnSupportedFillTypeException ignore) {
+          // Don't fill and ignore unsupported fill type exception
           record.addField(null);
+          unsupportedFillMethod[index] = true;
+          logger.info("Linear fill doesn't support the " + index + "-th column in SQL.");
         }
       } else {
         record.addField(null);
@@ -266,9 +276,11 @@ public class GroupByFillDataSet extends GroupByEngineDataSet {
           filledPair = ((ValueFill) fill).getSpecifiedFillResult(resultDataType[index]);
         }
         record.addField(filledPair.getValue().getValue(), resultDataType[index]);
-      } catch (NumberFormatException ne) {
+      } catch (NumberFormatException ignore) {
         // Don't fill and ignore type convert exception
         record.addField(null);
+        unsupportedFillMethod[index] = true;
+        logger.info("Value fill doesn't support the " + index + "-th column in SQL.");
       } catch (QueryProcessException | StorageEngineException e) {
         throw new IOException(e);
       }

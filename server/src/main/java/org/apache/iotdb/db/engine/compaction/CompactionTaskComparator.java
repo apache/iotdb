@@ -34,11 +34,13 @@ public class CompactionTaskComparator implements Comparator<AbstractCompactionTa
 
   @Override
   public int compare(AbstractCompactionTask o1, AbstractCompactionTask o2) {
-    if (((o1 instanceof AbstractInnerSpaceCompactionTask)
-            ^ (o2 instanceof AbstractInnerSpaceCompactionTask))
-        && config.getCompactionPriority() != CompactionPriority.BALANCE) {
-      // the two task is different type, and the compaction priority is not balance
-      if (config.getCompactionPriority() == CompactionPriority.INNER_CROSS) {
+    if ((((o1 instanceof AbstractInnerSpaceCompactionTask)
+            && (o2 instanceof AbstractCrossSpaceCompactionTask))
+        || ((o2 instanceof AbstractInnerSpaceCompactionTask)
+            && (o1 instanceof AbstractCrossSpaceCompactionTask)))) {
+      if (config.getCompactionPriority() == CompactionPriority.BALANCE) {
+        return 0;
+      } else if (config.getCompactionPriority() == CompactionPriority.INNER_CROSS) {
         return o1 instanceof AbstractInnerSpaceCompactionTask ? -1 : 1;
       } else {
         return o1 instanceof AbstractCrossSpaceCompactionTask ? -1 : 1;

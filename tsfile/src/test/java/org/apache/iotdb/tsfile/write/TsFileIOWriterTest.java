@@ -126,20 +126,14 @@ public class TsFileIOWriterTest {
       chunkGroupHeader = reader.readChunkGroupHeader();
       Assert.assertEquals(DEVICE_2, chunkGroupHeader.getDeviceID());
       // vector chunk header (time)
-      Assert.assertEquals(
-          MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER | TsFileConstant.TIME_COLUMN_MASK,
-          reader.readMarker());
+      Assert.assertEquals(MetaMarker.ONLY_ONE_PAGE_TIME_CHUNK_HEADER, reader.readMarker());
       header = reader.readChunkHeader(MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER);
       Assert.assertEquals("", header.getMeasurementID());
       // vector chunk header (values)
-      Assert.assertEquals(
-          MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER | TsFileConstant.VALUE_COLUMN_MASK,
-          reader.readMarker());
+      Assert.assertEquals(MetaMarker.ONLY_ONE_PAGE_VALUE_CHUNK_HEADER, reader.readMarker());
       header = reader.readChunkHeader(MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER);
       Assert.assertEquals("s1", header.getMeasurementID());
-      Assert.assertEquals(
-          MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER | TsFileConstant.VALUE_COLUMN_MASK,
-          reader.readMarker());
+      Assert.assertEquals(MetaMarker.ONLY_ONE_PAGE_VALUE_CHUNK_HEADER, reader.readMarker());
       header = reader.readChunkHeader(MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER);
       Assert.assertEquals("s2", header.getMeasurementID());
     }

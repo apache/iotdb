@@ -66,12 +66,13 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
-import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
+import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
+import org.apache.iotdb.tsfile.read.filter.operator.OrFilter;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -102,26 +103,26 @@ public class PhysicalPlanTest {
   @Before
   public void before() throws MetadataException {
     EnvironmentUtils.envSetUp();
-    IoTDB.metaManager.setStorageGroup(new PartialPath("root.vehicle"));
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaEngine.setStorageGroup(new PartialPath("root.vehicle"));
+    IoTDB.schemaEngine.createTimeseries(
         new PartialPath("root.vehicle.d1.s1"),
         TSDataType.FLOAT,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaEngine.createTimeseries(
         new PartialPath("root.vehicle.d2.s1"),
         TSDataType.FLOAT,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaEngine.createTimeseries(
         new PartialPath("root.vehicle.d3.s1"),
         TSDataType.FLOAT,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaEngine.createTimeseries(
         new PartialPath("root.vehicle.d4.s1"),
         TSDataType.FLOAT,
         TSEncoding.PLAIN,
@@ -655,11 +656,10 @@ public class PhysicalPlanTest {
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
     IExpression expect =
-        new GlobalTimeExpression(FilterFactory.and(TimeFilter.gt(50L), TimeFilter.ltEq(100L)));
-    expect =
-        BinaryExpression.or(
-            expect,
-            new SingleSeriesExpression(new Path("root.vehicle.d1", "s1"), ValueFilter.lt(10.0)));
+        new SingleSeriesExpression(
+            new Path("root.vehicle.d1", "s1"),
+            new OrFilter(
+                new AndFilter(TimeFilter.gt(50), TimeFilter.ltEq(100)), ValueFilter.lt(10.0)));
     assertEquals(expect.toString(), queryFilter.toString());
   }
 
@@ -670,9 +670,10 @@ public class PhysicalPlanTest {
     IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
 
     IExpression expect =
-        BinaryExpression.and(
-            new SingleSeriesExpression(new Path("root.vehicle.d1", "s1"), ValueFilter.lt(10.0)),
-            new GlobalTimeExpression(FilterFactory.and(TimeFilter.gt(50L), TimeFilter.ltEq(100L))));
+        new SingleSeriesExpression(
+            new Path("root.vehicle.d1", "s1"),
+            new AndFilter(
+                ValueFilter.lt(10.0), new AndFilter(TimeFilter.gt(50), TimeFilter.ltEq(100))));
 
     assertEquals(expect.toString(), queryFilter.toString());
 
@@ -1431,7 +1432,7 @@ public class PhysicalPlanTest {
 
   @Test
   public void testRegexpQuery() throws QueryProcessException, MetadataException {
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaEngine.createTimeseries(
         new PartialPath("root.vehicle.d5.s1"),
         TSDataType.TEXT,
         TSEncoding.PLAIN,

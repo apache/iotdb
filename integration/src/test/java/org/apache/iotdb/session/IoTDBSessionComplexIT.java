@@ -66,7 +66,6 @@ public class IoTDBSessionComplexIT {
   @Before
   public void setUp() {
     System.setProperty(IoTDBConstant.IOTDB_CONF, "src/test/resources/");
-    EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
   }
 
@@ -423,9 +422,9 @@ public class IoTDBSessionComplexIT {
     session.createTimeseries(
         "root.sg1.d1.1+2+4", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
 
-    Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.\"1_2\""));
-    Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.\"1+2+3\""));
-    Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.\"1+2+4\""));
+    Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.1_2"));
+    Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.`1+2+3`"));
+    Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.`1+2+4`"));
 
     session.setStorageGroup("root.1");
     session.createTimeseries(

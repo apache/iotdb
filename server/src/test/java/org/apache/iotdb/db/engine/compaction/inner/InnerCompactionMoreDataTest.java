@@ -22,6 +22,7 @@ package org.apache.iotdb.db.engine.compaction.inner;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
+import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -77,11 +78,11 @@ public class InnerCompactionMoreDataTest extends InnerCompactionTest {
     for (int i = 0; i < deviceNum; i++) {
       deviceIds[i] = COMPACTION_TEST_SG + PATH_SEPARATOR + "device" + i;
     }
-    IoTDB.metaManager.setStorageGroup(new PartialPath(COMPACTION_TEST_SG));
+    IoTDB.schemaEngine.setStorageGroup(new PartialPath(COMPACTION_TEST_SG));
     for (String device : deviceIds) {
       for (MeasurementSchema measurementSchema : measurementSchemas) {
         PartialPath devicePath = new PartialPath(device);
-        IoTDB.metaManager.createTimeseries(
+        IoTDB.schemaEngine.createTimeseries(
             devicePath.concatNode(measurementSchema.getMeasurementId()),
             measurementSchema.getType(),
             measurementSchema.getEncodingType(),
@@ -205,7 +206,13 @@ public class InnerCompactionMoreDataTest extends InnerCompactionTest {
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-    while (CompactionScheduler.isPartitionCompacting(COMPACTION_TEST_SG, 0)) {
+    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+    try {
+      Thread.sleep(500);
+    } catch (Exception e) {
+
+    }
+    while (CompactionTaskManager.getInstance().getExecutingTaskCount() > 0) {
       // wait
     }
     QueryContext context = new QueryContext();

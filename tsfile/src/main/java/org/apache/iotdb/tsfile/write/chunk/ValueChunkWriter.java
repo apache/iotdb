@@ -207,11 +207,17 @@ public class ValueChunkWriter {
 
   public long getCurrentChunkSize() {
     /**
-     * It may happen if pageBuffer stores empty bits and subsequent write operations are all out of
-     * order, then count of statistics in this chunk will be 0 and this chunk will not be flushed.
+     * It may happen if subsequent write operations are all out of order, then count of statistics
+     * in this chunk will be 0 and this chunk will not be flushed.
      */
-    if (pageBuffer.size() == 0 || statistics.getCount() == 0) {
+    if (pageBuffer.size() == 0) {
       return 0;
+    }
+
+    // Empty chunk, it may happen if pageBuffer stores empty bits and only chunk header will be
+    // flushed.
+    if (statistics.getCount() == 0) {
+      return ChunkHeader.getSerializedSize(measurementId, pageBuffer.size());
     }
 
     // return the serialized size of the chunk header + all pages
@@ -273,6 +279,23 @@ public class ValueChunkWriter {
    */
   public void writeAllPagesOfChunkToTsFile(TsFileIOWriter writer) throws IOException {
     if (statistics.getCount() == 0) {
+      if (pageBuffer.size() == 0) {
+        return;
+      }
+      // In order to ensure that different chunkgroups in a tsfile have the same chunks or if all
+      // data of this timeseries has been deleted, it is possible to have an empty valueChunk in a
+      // chunkGroup during compaction. To save the disk space, we only serialize chunkHeader for the
+      // empty valueChunk, whose dataSize is 0.
+      writer.startFlushChunk(
+          measurementId,
+          compressionType,
+          dataType,
+          encodingType,
+          statistics,
+          0,
+          0,
+          TsFileConstant.VALUE_COLUMN_MASK);
+      writer.endCurrentChunk();
       return;
     }
 
