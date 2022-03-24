@@ -78,7 +78,6 @@ public class CompositeReporter {
   }
 
   public boolean restartAll() {
-    LOGGER.info("Restart all reporter.");
     return stopAll() & startAll();
   }
 

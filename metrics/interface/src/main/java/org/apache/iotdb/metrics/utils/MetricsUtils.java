@@ -32,7 +32,7 @@ public class MetricsUtils {
     StringBuilder stringBuilder = new StringBuilder();
     stringBuilder
         .append("root.")
-        .append(metricConfig.getIoTDBDataBase())
+        .append(metricConfig.getIoTDBReporterConfig().getDatabase())
         .append(".\"")
         .append(metricConfig.getInstanceHost())
         .append(":")

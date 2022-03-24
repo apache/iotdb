@@ -82,7 +82,7 @@ public abstract class MetricService {
     compositeReporter = new CompositeReporter();
   }
 
-  private void loadManager() {
+  protected void loadManager() {
     logger.info("Load metricManager, type: {}", metricConfig.getMonitorType());
     ServiceLoader<MetricManager> metricManagers = ServiceLoader.load(MetricManager.class);
     int size = 0;
@@ -106,7 +106,7 @@ public abstract class MetricService {
     }
   }
 
-  private void loadReporter() {
+  protected void loadReporter() {
     logger.info("Load metric reporter, reporters: {}", metricConfig.getMetricReporterList());
 
     ServiceLoader<Reporter> reporters = ServiceLoader.load(Reporter.class);
