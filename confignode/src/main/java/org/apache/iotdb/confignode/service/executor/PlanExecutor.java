@@ -45,9 +45,9 @@ public class PlanExecutor {
   public DataSet executorQueryPlan(PhysicalPlan plan) throws UnknownPhysicalPlanTypeException {
     switch (plan.getType()) {
       case QueryDataNodeInfo:
-        return queryDataNodesInfo((QueryDataNodeInfoPlan) plan);
+        return partitionTable.getDataNodeInfo((QueryDataNodeInfoPlan) plan);
       case QueryStorageGroupSchema:
-        return queryStorageGroupSchema();
+        return partitionTable.getStorageGroupSchema();
       default:
         throw new UnknownPhysicalPlanTypeException(plan.getType());
     }
@@ -62,26 +62,5 @@ public class PlanExecutor {
       default:
         throw new UnknownPhysicalPlanTypeException(plan.getType());
     }
-  }
-
-  private DataNodesInfoDataSet queryDataNodesInfo(QueryDataNodeInfoPlan plan) {
-    Map<Integer, DataNodeInfo> infoMap = partitionTable.getDataNodeInfo(plan);
-    DataNodesInfoDataSet result = null;
-    if (infoMap != null) {
-      result = new DataNodesInfoDataSet();
-      for (Map.Entry<Integer, DataNodeInfo> entry : infoMap.entrySet()) {
-        result.addDataNodeInfo(entry.getKey(), entry.getValue());
-      }
-    }
-    return result;
-  }
-
-  private StorageGroupSchemaDataSet queryStorageGroupSchema() {
-    List<StorageGroupSchema> schemaList = partitionTable.getStorageGroupSchema();
-    StorageGroupSchemaDataSet result = null;
-    if (schemaList != null) {
-      result = new StorageGroupSchemaDataSet(schemaList);
-    }
-    return result;
   }
 }
