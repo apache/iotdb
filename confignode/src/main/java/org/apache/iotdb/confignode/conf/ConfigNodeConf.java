@@ -90,7 +90,7 @@ public class ConfigNodeConf {
   }
 
   private String addHomeDir(String dir) {
-    String homeDir = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
+    String homeDir = System.getProperty(ConfigNodeConstant.CONFIGNODE_HOME, null);
     if (!new File(dir).isAbsolute() && homeDir != null && homeDir.length() > 0) {
       if (!homeDir.endsWith(File.separator)) {
         dir = homeDir + File.separatorChar + dir;

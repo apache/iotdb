@@ -54,7 +54,7 @@ public class ConfigNodeConfCheck {
     File systemDir = new File(conf.getSystemDir());
     if (!systemDir.exists()) {
       if (systemDir.mkdirs()) {
-        LOGGER.error("Make system dirs: {}", systemDir);
+        LOGGER.info("Make system dirs: {}", systemDir);
       } else {
         throw new IOException(
             String.format(
