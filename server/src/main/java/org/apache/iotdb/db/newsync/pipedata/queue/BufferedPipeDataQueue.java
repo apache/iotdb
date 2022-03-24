@@ -97,7 +97,7 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
     List<Long> startNumbers = new ArrayList<>();
 
     for (File file : logDir.listFiles())
-      if (file.getName().endsWith(SyncConstant.PIPE_LOG_NAME_SUFFIX)) {
+      if (file.getName().endsWith(SyncConstant.PIPE_LOG_NAME_SUFFIX) && file.length() > 0) {
         startNumbers.add(SyncConstant.getSerialNumberFromPipeLogName(file.getName()));
       }
     if (startNumbers.size() != 0) {
@@ -329,7 +329,7 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
       try {
         PipeData commitData = pullOnePipeData(commitSerialNumber);
         if (PipeData.Type.TSFILE.equals(commitData.getType())) {
-          List<File> tsFiles = ((TsFilePipeData) commitData).getTsFiles();
+          List<File> tsFiles = ((TsFilePipeData) commitData).getTsFiles(false);
           for (File file : tsFiles) {
             Files.deleteIfExists(file.toPath());
           }

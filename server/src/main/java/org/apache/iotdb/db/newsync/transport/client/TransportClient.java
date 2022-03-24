@@ -184,7 +184,7 @@ public class TransportClient implements ITransportClient {
   public boolean senderTransport(PipeData pipeData) throws SyncConnectionException {
     if (pipeData instanceof TsFilePipeData) {
       try {
-        for (File file : ((TsFilePipeData) pipeData).getTsFiles()) {
+        for (File file : ((TsFilePipeData) pipeData).getTsFiles(true)) {
           transportSingleFile(file);
         }
       } catch (IOException e) {

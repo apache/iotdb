@@ -155,6 +155,12 @@ public class IoTDBSyncSenderIT {
   @Test
   public void testHistoryInsert() {
     try {
+      prepareSchema();
+      prepareIns1();
+      prepareIns2();
+      prepareIns3();
+
+      preparePipeAndSetMock();
     } catch (Exception e) {
       e.printStackTrace();
       Assert.fail();

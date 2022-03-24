@@ -100,7 +100,7 @@ public class TsFilePipeData extends PipeData {
     return new TsFileLoader(new File(getTsFilePath()));
   }
 
-  public List<File> getTsFiles() throws FileNotFoundException {
+  public List<File> getTsFiles(boolean shouldWaitForTsFileClose) throws FileNotFoundException {
     File tsFile = new File(getTsFilePath()).getAbsoluteFile();
     File resource = new File(tsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX);
     File mods = new File(tsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX);
@@ -113,7 +113,7 @@ public class TsFilePipeData extends PipeData {
     if (resource.exists()) {
       files.add(resource);
     } else {
-      if (!waitForTsFileClose()) {
+      if (shouldWaitForTsFileClose && !waitForTsFileClose()) {
         throw new FileNotFoundException(
             String.format(
                 "Can not find %s, maybe the tsfile is not closed yet", resource.getAbsolutePath()));
