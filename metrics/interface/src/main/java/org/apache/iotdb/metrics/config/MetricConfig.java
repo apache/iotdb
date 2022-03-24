@@ -51,9 +51,9 @@ public class MetricConfig {
   /** the http server's port for prometheus exporter to get metric data. */
   private String prometheusExporterPort = "9091";
 
-  private IoTDBConfig ioTDBConfig = new IoTDBConfig();
+  private IoTDBReporterConfig ioTDBReporterConfig = new IoTDBReporterConfig();
 
-  public static class IoTDBConfig {
+  public static class IoTDBReporterConfig {
     /** The host of iotdb */
     private String host = "127.0.0.1";
     /** The port of iotdb */
@@ -113,7 +113,7 @@ public class MetricConfig {
       if (o == null || getClass() != o.getClass()) {
         return false;
       }
-      IoTDBConfig that = (IoTDBConfig) o;
+      IoTDBReporterConfig that = (IoTDBReporterConfig) o;
       return Objects.equals(host, that.host)
           && Objects.equals(port, that.port)
           && Objects.equals(username, that.username)
@@ -139,7 +139,7 @@ public class MetricConfig {
     metricLevel = newMetricConfig.getMetricLevel();
     predefinedMetrics = newMetricConfig.getPredefinedMetrics();
     prometheusExporterPort = newMetricConfig.getPrometheusExporterPort();
-    ioTDBConfig = newMetricConfig.ioTDBConfig;
+    ioTDBReporterConfig = newMetricConfig.ioTDBReporterConfig;
   }
 
   public Boolean getEnableMetric() {
@@ -198,24 +198,12 @@ public class MetricConfig {
     this.prometheusExporterPort = prometheusExporterPort;
   }
 
-  public String getIoTDBHost() {
-    return ioTDBConfig.getHost();
+  public IoTDBReporterConfig getIoTDBReporterConfig() {
+    return ioTDBReporterConfig;
   }
 
-  public Integer getIoTDBPort() {
-    return ioTDBConfig.getPort();
-  }
-
-  public String getIoTDBUsername() {
-    return ioTDBConfig.getUsername();
-  }
-
-  public String getIoTDBPassword() {
-    return ioTDBConfig.getPassword();
-  }
-
-  public String getIoTDBDataBase() {
-    return ioTDBConfig.getDatabase();
+  public void setIoTDBReporterConfig(IoTDBReporterConfig ioTDBReporterConfig) {
+    this.ioTDBReporterConfig = ioTDBReporterConfig;
   }
 
   public String getInstanceHost() {

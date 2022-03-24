@@ -46,8 +46,8 @@ import java.util.concurrent.TimeUnit;
 
 public class IoTDBReporter extends ScheduledReporter {
   private static final Logger logger = LoggerFactory.getLogger(IoTDBReporter.class);
-  private static final MetricConfig metricConfig =
-      MetricConfigDescriptor.getInstance().getMetricConfig();
+  private static final MetricConfig.IoTDBReporterConfig ioTDBReporterConfig =
+      MetricConfigDescriptor.getInstance().getMetricConfig().getIoTDBReporterConfig();
   private static final TimeUnit DURATION_UNIT = TimeUnit.MILLISECONDS;
   private static final TimeUnit RATE_UNIT = TimeUnit.SECONDS;
   private final String prefix;
@@ -70,10 +70,10 @@ public class IoTDBReporter extends ScheduledReporter {
     this.prefix = prefix;
     this.session =
         new Session(
-            metricConfig.getIoTDBHost(),
-            metricConfig.getIoTDBPort(),
-            metricConfig.getIoTDBUsername(),
-            metricConfig.getIoTDBPassword(),
+            ioTDBReporterConfig.getHost(),
+            ioTDBReporterConfig.getPort(),
+            ioTDBReporterConfig.getUsername(),
+            ioTDBReporterConfig.getPassword(),
             true);
   }
 

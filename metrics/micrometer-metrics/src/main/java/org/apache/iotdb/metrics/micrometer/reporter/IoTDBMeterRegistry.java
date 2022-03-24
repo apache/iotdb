@@ -45,18 +45,18 @@ import java.util.concurrent.TimeUnit;
 
 public class IoTDBMeterRegistry extends StepMeterRegistry {
   private static final Logger logger = LoggerFactory.getLogger(IoTDBMeterRegistry.class);
-  private static final MetricConfig metricConfig =
-      MetricConfigDescriptor.getInstance().getMetricConfig();
+  private static final MetricConfig.IoTDBReporterConfig ioTDBReporterConfig =
+      MetricConfigDescriptor.getInstance().getMetricConfig().getIoTDBReporterConfig();
   private final Session session;
 
   public IoTDBMeterRegistry(StepRegistryConfig config, Clock clock) {
     super(config, clock);
     session =
         new Session(
-            metricConfig.getIoTDBHost(),
-            metricConfig.getIoTDBPort(),
-            metricConfig.getIoTDBUsername(),
-            metricConfig.getIoTDBPassword(),
+            ioTDBReporterConfig.getHost(),
+            ioTDBReporterConfig.getPort(),
+            ioTDBReporterConfig.getUsername(),
+            ioTDBReporterConfig.getPassword(),
             true);
   }
 

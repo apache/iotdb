@@ -41,7 +41,7 @@ pushPeriodInSecond: 15
 # The http server's port for prometheus exporter to get metric data.
 prometheusExporterPort: 9091
 
-ioTDBConfig:
+ioTDBReporterConfig:
   host: 127.0.0.1
   port: 6667
   username: root
