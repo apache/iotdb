@@ -63,20 +63,9 @@ struct TFetchFragmentInstanceStateReq {
   1: required FragmentInstanceId fragmentInstanceId
 }
 
-// TODO: Consider to use a simple string
-enum TFragmentInstanceState {
-  PLANNED,
-  RUNNING,
-  FLUSHING,
-  FINISHED,
-  CANCELED,
-  ABORTED,
-  FAILED;
-}
-
 // TODO: need to supply more fields according to implementation
 struct TFragmentInstanceStateResp {
-  1: required TFragmentInstanceState state
+  1: required string state
 }
 
 struct TCancelQueryReq {
