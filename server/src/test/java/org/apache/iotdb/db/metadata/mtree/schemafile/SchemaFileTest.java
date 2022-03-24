@@ -322,7 +322,6 @@ public class SchemaFileTest {
     sf.close();
   }
 
-  @Test
   public void bitwiseTest() {
 
     print(SchemaFile.getPageIndex(12451840));
@@ -343,10 +342,12 @@ public class SchemaFileTest {
     print(ByteBuffer.wrap(bta));
 
     ByteBuffer buf = ByteBuffer.allocate(20);
-    ReadWriteIOUtils.write((byte)1, buf);
+    ReadWriteIOUtils.write((byte) 1, buf);
     ReadWriteIOUtils.write("", buf);
-    ReadWriteIOUtils.write((byte)1, buf);
+    ReadWriteIOUtils.write((byte) 1, buf);
     print(Arrays.toString(buf.array()));
+
+    print(String.format("aaa:%s", null));
   }
 
   public void testDebugger() throws MetadataException, IOException {

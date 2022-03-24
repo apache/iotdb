@@ -566,23 +566,34 @@ public class Segment implements ISegment {
   }
 
   private int getRecordIndexByAlias(String alias) {
-    for (int i = 0; i < keyAddressList.size(); i++) {
-      this.buffer.clear();
-      this.buffer.position(keyAddressList.get(i).right);
-      try {
-        if (RecordUtils.getRecordType(this.buffer) == 4
-            && RecordUtils.getRecordAlias(this.buffer).equals(alias)) {
-          return i;
-        }
-      } catch (BufferUnderflowException | BufferOverflowException e) {
-        logger.error(
-            String.format(
-                "Target alias: %s, segment size:%d, K-AL pair of crashed index:%s",
-                alias, this.length, keyAddressList.get(i)));
+    int debuggerI = 0;
+    try {
+      for (int i = 0; i < keyAddressList.size(); i++) {
+        debuggerI = i;
+        this.buffer.clear();
         this.buffer.position(keyAddressList.get(i).right);
-        this.buffer.limit(this.buffer.position() + 20);
-        throw e;
+        if (RecordUtils.getRecordType(this.buffer) == 4) {
+          String tarAlias = RecordUtils.getRecordAlias(this.buffer);
+          if (tarAlias != null && tarAlias.equals(alias)) {
+            return i;
+          }
+        }
       }
+    } catch (BufferUnderflowException | BufferOverflowException e) {
+      logger.error(
+          String.format(
+              "Target alias: %s, segment size:%d, K-AL size: %d, pair of crashed index:%s",
+              alias, this.length, keyAddressList.size(), keyAddressList.get(debuggerI)));
+      logger.error(
+          String.format(
+              "Snippet of crashed record: %s",
+              Arrays.toString(
+                  Arrays.copyOfRange(
+                      this.buffer.array(),
+                      keyAddressList.get(debuggerI).right,
+                      keyAddressList.get(debuggerI).right + 30))));
+      e.printStackTrace();
+      throw e;
     }
     return -1;
   }

@@ -395,11 +395,18 @@ public class SchemaFile implements ISchemaFile {
       return getPageInstance(getPageIndex(actualSegAddr))
           .read(getSegIndex(actualSegAddr), childName);
     } catch (BufferUnderflowException | BufferOverflowException e) {
-      e.printStackTrace();
+      int pIdx = getPageIndex(actualSegAddr);
+      short sIdx = getSegIndex(actualSegAddr);
       logger.error(
           String.format(
-              "Get child from parent[%s] failed, actualAddress:%s",
-              parent.getName(), actualSegAddr));
+              "Get child[%s] from parent[%s] failed, actualAddress:%s(%d, %d), segOffLst: %s",
+              childName,
+              parent.getName(),
+              actualSegAddr,
+              pIdx,
+              sIdx,
+              ((SchemaPage) getPageInstance(pIdx)).segOffsetLst));
+      e.printStackTrace();
       throw e;
     }
   }
