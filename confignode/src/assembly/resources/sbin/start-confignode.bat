@@ -85,6 +85,7 @@ if NOT DEFINED JAVA_HOME goto :err
 @REM -----------------------------------------------------------------------------
 @REM JVM Opts we'll use in legacy run or installation
 set JAVA_OPTS=-ea^
+ -Dlogback.configurationFile="%CONFIGNODE_CONF%\logback.xml"^
  -DCONFIGNODE_HOME="%CONFIGNODE_HOME%"^
  -DCONFIGNODE_CONF="%CONFIGNODE_CONF%"^
  -Dsun.jnu.encoding=UTF-8^
