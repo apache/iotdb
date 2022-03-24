@@ -125,10 +125,13 @@ public class FloatRLBEDecoder extends Decoder {
 
   @Override
   public float readFloat(ByteBuffer buffer) {
+    logger.error("Decode RLBE start");
     if (readindex < writeindex) {
+      logger.error("Decode RLBE stop");
       return data[++readindex];
     } else {
       readT(buffer);
+      logger.error("Decode RLBE stop");
       return data[++readindex];
     }
   }

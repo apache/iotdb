@@ -61,7 +61,7 @@ import java.util.List;
  */
 public abstract class RleEncoder<T extends Comparable<T>> extends Encoder {
 
-  private static final Logger logger = LoggerFactory.getLogger(RleEncoder.class);
+  protected static final Logger logger = LoggerFactory.getLogger(RleEncoder.class);
 
   /** we save all value in a list and calculate its bitwidth. */
   protected List<T> values;

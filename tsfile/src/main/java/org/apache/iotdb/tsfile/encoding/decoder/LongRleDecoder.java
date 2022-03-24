@@ -57,6 +57,7 @@ public class LongRleDecoder extends RleDecoder {
    */
   @Override
   public long readLong(ByteBuffer buffer) {
+    logger.error("Decode RLE start");
     if (!isLengthAndBitWidthReaded) {
       // start to read a new rle+bit-packing pattern
       readLengthAndBitWidth(buffer);
@@ -91,6 +92,7 @@ public class LongRleDecoder extends RleDecoder {
     if (!hasNextPackage()) {
       isLengthAndBitWidthReaded = false;
     }
+    logger.error("Decode RLE stop");
     return result;
   }
 

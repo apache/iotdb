@@ -54,16 +54,19 @@ public class LongGorillaEncoder extends GorillaEncoderV2 {
 
   @Override
   public final void encode(long value, ByteArrayOutputStream out) {
+    logger.error("Encode GORILLA start");
     if (firstValueWasWritten) {
       compressValue(value, out);
     } else {
       writeFirst(value, out);
       firstValueWasWritten = true;
     }
+    logger.error("Encode GORILLA stop");
   }
 
   @Override
   public void flush(ByteArrayOutputStream out) {
+    logger.error("Flush GORILLA start");
     // ending stream
     encode(GORILLA_ENCODING_ENDING_LONG, out);
 
@@ -74,6 +77,7 @@ public class LongGorillaEncoder extends GorillaEncoderV2 {
 
     // the encoder may be reused, so let us reset it
     reset();
+    logger.error("Flush GORILLA stop");
   }
 
   @Override

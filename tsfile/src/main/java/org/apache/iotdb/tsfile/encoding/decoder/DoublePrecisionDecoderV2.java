@@ -39,7 +39,10 @@ public class DoublePrecisionDecoderV2 extends LongGorillaDecoder {
 
   @Override
   public final double readDouble(ByteBuffer in) {
-    return Double.longBitsToDouble(readLong(in));
+    logger.error("Decode GORILLA start");
+    double r = Double.longBitsToDouble(readLong(in));
+    logger.error("Decode GORILLA stop");
+    return r;
   }
 
   @Override

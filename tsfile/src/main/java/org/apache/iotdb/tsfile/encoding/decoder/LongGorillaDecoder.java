@@ -47,6 +47,7 @@ public class LongGorillaDecoder extends GorillaDecoderV2 {
 
   @Override
   public final long readLong(ByteBuffer in) {
+    logger.error("Decode GORILLA start");
     long returnValue = storedValue;
     if (!firstValueWasRead) {
       flipByte(in);
@@ -55,6 +56,7 @@ public class LongGorillaDecoder extends GorillaDecoderV2 {
       returnValue = storedValue;
     }
     cacheNext(in);
+    logger.error("Decode GORILLA stop");
     return returnValue;
   }
 

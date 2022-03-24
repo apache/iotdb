@@ -22,15 +22,12 @@ package org.apache.iotdb.tsfile.encoding.decoder;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.nio.ByteBuffer;
 
 import static java.lang.Math.pow;
 
 public abstract class RAKEDecoder extends Decoder {
-  private static final Logger logger = LoggerFactory.getLogger(RAKEDecoder.class);
+  // private static final Logger logger = LoggerFactory.getLogger(RAKEDecoder.class);
   protected boolean isReadFinish;
   // 8-bit buffer of bits to read in
   protected String rakeBuffer;
