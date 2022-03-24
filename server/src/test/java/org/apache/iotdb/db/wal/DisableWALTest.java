@@ -20,7 +20,6 @@ package org.apache.iotdb.db.wal;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.wal.node.IWALNode;
 import org.apache.iotdb.db.wal.node.WALFakeNode;
 import org.apache.iotdb.db.wal.utils.WALMode;
@@ -39,12 +38,10 @@ public class DisableWALTest {
   public void setUp() throws Exception {
     prevMode = config.getWalMode();
     config.setWalMode(WALMode.DISABLE);
-    EnvironmentUtils.envSetUp();
   }
 
   @After
   public void tearDown() throws Exception {
-    EnvironmentUtils.cleanEnv();
     config.setWalMode(prevMode);
   }
 

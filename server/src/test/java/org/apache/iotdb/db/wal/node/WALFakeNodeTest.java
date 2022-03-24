@@ -49,7 +49,7 @@ public class WALFakeNodeTest {
     walFlushListeners.add(walNode.log(1, new DeletePlan()));
     // check flush listeners
     for (WALFlushListener walFlushListener : walFlushListeners) {
-      assertEquals(WALFlushListener.Status.SUCCESS, walFlushListener.getResult());
+      assertNotEquals(WALFlushListener.Status.FAILURE, walFlushListener.getResult());
     }
   }
 

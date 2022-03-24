@@ -115,7 +115,7 @@ public class WALNodeTest {
     assertEquals(expectedInsertTabletPlans, actualInsertTabletPlans);
     // check flush listeners
     for (WALFlushListener walFlushListener : walFlushListeners) {
-      assertEquals(WALFlushListener.Status.SUCCESS, walFlushListener.getResult());
+      assertNotEquals(WALFlushListener.Status.FAILURE, walFlushListener.getResult());
     }
   }
 
@@ -247,7 +247,7 @@ public class WALNodeTest {
     assertTrue(new File(logDirectory + File.separator + WALWriter.getLogFileName(1)).exists());
     // check flush listeners
     for (WALFlushListener walFlushListener : walFlushListeners) {
-      assertEquals(WALFlushListener.Status.SUCCESS, walFlushListener.getResult());
+      assertNotEquals(WALFlushListener.Status.FAILURE, walFlushListener.getResult());
     }
   }
 }

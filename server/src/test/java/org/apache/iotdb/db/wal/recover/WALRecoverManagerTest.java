@@ -36,7 +36,6 @@ import org.apache.iotdb.db.wal.checkpoint.CheckpointManager;
 import org.apache.iotdb.db.wal.checkpoint.MemTableInfo;
 import org.apache.iotdb.db.wal.recover.file.UnsealedTsFileRecoverPerformer;
 import org.apache.iotdb.db.wal.recover.utils.TsFileUtilsForRecoverTest;
-import org.apache.iotdb.db.wal.utils.listener.IResultListener;
 import org.apache.iotdb.db.wal.utils.listener.WALRecoverListener;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -157,7 +156,7 @@ public class WALRecoverManagerTest {
     recoverManager.recover();
     // check recover listeners
     for (WALRecoverListener recoverListener : recoverListeners) {
-      assertEquals(IResultListener.Status.SUCCESS, recoverListener.getResult());
+      assertEquals(WALRecoverListener.Status.SUCCESS, recoverListener.getResult());
     }
 
     // region check file with wal
