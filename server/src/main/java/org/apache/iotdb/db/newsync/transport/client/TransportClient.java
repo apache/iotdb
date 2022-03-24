@@ -117,7 +117,7 @@ public class TransportClient implements ITransportClient {
     this.port = port;
   }
 
-  private boolean handshake() {
+  public boolean handshake() {
     int handshakeCounter = 0;
     try {
       while (!handshakeWithVersion()) {
@@ -251,17 +251,17 @@ public class TransportClient implements ITransportClient {
         if (isCheckFileDegistAgain) {
           // Check file digest as entirety.
           try {
-            if (checkFileDigest(file, messageDigest)) {
-              break;
+            if (!checkFileDigest(file, messageDigest)) {
+              continue;
             }
           } catch (IOException e) {
             logger.warn(
                 String.format(
                     "Read from disk to make digest error, skip check file %s, because %s.",
                     file.getName(), e));
-            break;
           }
         }
+        break;
       } catch (SyncConnectionException e) {
         if (!handshake()) {
           throw new SyncConnectionException(
@@ -500,8 +500,9 @@ public class TransportClient implements ITransportClient {
                       String.format(
                           "Can not connect to %s:%d, because %s, please check receiver and internet.",
                           ipAddress, port, e.getMessage()))));
+    } finally{
+      close();
     }
-    close();
   }
 
   @Override
