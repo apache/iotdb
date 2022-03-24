@@ -26,6 +26,7 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants;
+import org.apache.iotdb.db.metadata.rocksdb.RSchemaReadWriteHandler;
 import org.apache.iotdb.db.metadata.rocksdb.RSchemaUtils;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -52,12 +53,13 @@ public class RMeasurementMNode extends RMNode implements IMeasurementMNode {
    *
    * @param fullPath
    */
-  public RMeasurementMNode(String fullPath) {
-    super(fullPath);
+  public RMeasurementMNode(String fullPath, RSchemaReadWriteHandler readWriteHandler) {
+    super(fullPath, readWriteHandler);
   }
 
-  public RMeasurementMNode(String fullPath, byte[] value) {
-    super(fullPath);
+  public RMeasurementMNode(
+      String fullPath, byte[] value, RSchemaReadWriteHandler readWriteHandler) {
+    super(fullPath, readWriteHandler);
     deserialize(value);
   }
 

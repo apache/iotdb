@@ -36,20 +36,23 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 import static org.apache.iotdb.db.metadata.rocksdb.RSchemaReadWriteHandler.ROCKSDB_PATH;
 
 public class MRocksDBUnitTest {
 
   private RSchemaEngine RSchemaEngine;
+  private String rocksdbPath;
 
   @Before
   public void setUp() throws MetadataException {
-    File file = new File(ROCKSDB_PATH);
+    rocksdbPath = ROCKSDB_PATH + UUID.randomUUID();
+    File file = new File(rocksdbPath);
     if (!file.exists()) {
       file.mkdirs();
     }
-    RSchemaEngine = new RSchemaEngine();
+    RSchemaEngine = new RSchemaEngine(rocksdbPath);
   }
 
   @Test
@@ -329,7 +332,7 @@ public class MRocksDBUnitTest {
   }
 
   public void resetEnv() {
-    File rockdDbFile = new File(ROCKSDB_PATH);
+    File rockdDbFile = new File(rocksdbPath);
     if (rockdDbFile.exists() && rockdDbFile.isDirectory()) {
       FileUtils.deleteDirectory(rockdDbFile);
     }

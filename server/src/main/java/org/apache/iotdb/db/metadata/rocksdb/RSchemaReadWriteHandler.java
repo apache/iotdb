@@ -97,8 +97,6 @@ public class RSchemaReadWriteHandler {
 
   private RocksDB rocksDB;
 
-  private static volatile RSchemaReadWriteHandler readWriteHandler;
-
   ConcurrentMap<String, ColumnFamilyHandle> columnFamilyHandleMap = new ConcurrentHashMap<>();
   List<ColumnFamilyDescriptor> columnFamilyDescriptors = new ArrayList<>();
   List<ColumnFamilyHandle> columnFamilyHandles = new ArrayList<>();
@@ -107,7 +105,16 @@ public class RSchemaReadWriteHandler {
     RocksDB.loadLibrary();
   }
 
+  @TestOnly
+  public RSchemaReadWriteHandler(String path) throws RocksDBException {
+    initReadWriteHandler(path);
+  }
+
   public RSchemaReadWriteHandler() throws RocksDBException {
+    initReadWriteHandler(ROCKSDB_PATH);
+  }
+
+  private void initReadWriteHandler(String path) throws RocksDBException {
     Options options = new Options();
     org.rocksdb.Logger rocksDBLogger = new RSchemaLogger(options, logger);
     rocksDBLogger.setInfoLogLevel(InfoLogLevel.ERROR_LEVEL);
@@ -137,17 +144,17 @@ public class RSchemaReadWriteHandler {
 
     DBOptions dbOptions = new DBOptions(options);
 
-    initColumnFamilyDescriptors(options);
+    initColumnFamilyDescriptors(options, path);
 
-    rocksDB = RocksDB.open(dbOptions, ROCKSDB_PATH, columnFamilyDescriptors, columnFamilyHandles);
+    rocksDB = RocksDB.open(dbOptions, path, columnFamilyDescriptors, columnFamilyHandles);
 
     initInnerColumnFamilies();
 
     initRootKey();
   }
 
-  private void initColumnFamilyDescriptors(Options options) throws RocksDBException {
-    List<byte[]> cfs = RocksDB.listColumnFamilies(options, ROCKSDB_PATH);
+  private void initColumnFamilyDescriptors(Options options, String path) throws RocksDBException {
+    List<byte[]> cfs = RocksDB.listColumnFamilies(options, path);
     if (cfs.size() <= 0) {
       cfs = new ArrayList<>();
       cfs.add(RocksDB.DEFAULT_COLUMN_FAMILY);
@@ -581,13 +588,5 @@ public class RSchemaReadWriteHandler {
   public void close() throws RocksDBException {
     rocksDB.syncWal();
     rocksDB.closeE();
-    readWriteHandler = null;
-  }
-
-  public static RSchemaReadWriteHandler getInstance() throws RocksDBException {
-    if (readWriteHandler == null) {
-      readWriteHandler = new RSchemaReadWriteHandler();
-    }
-    return readWriteHandler;
   }
 }

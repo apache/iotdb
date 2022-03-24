@@ -163,7 +163,17 @@ public class RSchemaEngine implements ISchemaEngine {
 
   public RSchemaEngine() throws MetadataException {
     try {
-      readWriteHandler = RSchemaReadWriteHandler.getInstance();
+      readWriteHandler = new RSchemaReadWriteHandler();
+    } catch (RocksDBException e) {
+      logger.error("create RocksDBReadWriteHandler fail", e);
+      throw new MetadataException(e);
+    }
+  }
+
+  @TestOnly
+  public RSchemaEngine(String path) throws MetadataException {
+    try {
+      readWriteHandler = new RSchemaReadWriteHandler(path);
     } catch (RocksDBException e) {
       logger.error("create RocksDBReadWriteHandler fail", e);
       throw new MetadataException(e);
@@ -615,7 +625,7 @@ public class RSchemaEngine implements ISchemaEngine {
             Lock lock = locksPool.computeIfAbsent(levelPath, x -> new ReentrantLock());
             if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
               try {
-                deletedNode = new RMeasurementMNode(path, value);
+                deletedNode = new RMeasurementMNode(path, value, readWriteHandler);
                 WriteBatch batch = new WriteBatch();
                 // delete the last node of path
                 batch.delete(key);
@@ -1493,7 +1503,8 @@ public class RSchemaEngine implements ISchemaEngine {
     BiFunction<byte[], byte[], Boolean> function =
         (a, b) -> {
           allResult.add(
-              new RMeasurementMNode(RSchemaUtils.getPathByInnerName(new String(a)), b)
+              new RMeasurementMNode(
+                      RSchemaUtils.getPathByInnerName(new String(a)), b, readWriteHandler)
                   .getMeasurementPath());
           return true;
         };
@@ -1509,7 +1520,8 @@ public class RSchemaEngine implements ISchemaEngine {
     BiFunction<byte[], byte[], Boolean> function =
         (a, b) -> {
           MeasurementPath measurementPath =
-              new RMeasurementMNode(RSchemaUtils.getPathByInnerName(new String(a)), b)
+              new RMeasurementMNode(
+                      RSchemaUtils.getPathByInnerName(new String(a)), b, readWriteHandler)
                   .getMeasurementPath();
           Object tag = RSchemaUtils.parseNodeValue(b, RMNodeValueType.TAGS);
           if (!(tag instanceof Map)) {
@@ -1649,7 +1661,9 @@ public class RSchemaEngine implements ISchemaEngine {
         if (readWriteHandler.keyExistByType(levelPath, RMNodeType.STORAGE_GROUP, holder)) {
           node =
               new RStorageGroupMNode(
-                  MetaUtils.getStorageGroupPathByLevel(path, i).getFullPath(), holder.getValue());
+                  MetaUtils.getStorageGroupPathByLevel(path, i).getFullPath(),
+                  holder.getValue(),
+                  readWriteHandler);
           break;
         }
       }
@@ -1676,7 +1690,9 @@ public class RSchemaEngine implements ISchemaEngine {
       }
       result.add(
           new RStorageGroupMNode(
-              RSchemaUtils.getPathByInnerName(new String(iterator.key())), iterator.value()));
+              RSchemaUtils.getPathByInnerName(new String(iterator.key())),
+              iterator.value(),
+              readWriteHandler));
     }
     return result;
   }
@@ -1688,7 +1704,7 @@ public class RSchemaEngine implements ISchemaEngine {
     Holder<byte[]> holder = new Holder<>();
     try {
       if (readWriteHandler.keyExistByType(levelPath, RMNodeType.ENTITY, holder)) {
-        return new REntityMNode(path.getFullPath(), holder.getValue());
+        return new REntityMNode(path.getFullPath(), holder.getValue(), readWriteHandler);
       } else {
         throw new PathNotExistException(path.getFullPath());
       }
@@ -1727,14 +1743,16 @@ public class RSchemaEngine implements ISchemaEngine {
     try {
       Holder<byte[]> holder = new Holder<>();
       if (readWriteHandler.keyExistByType(key, RMNodeType.MEASUREMENT, holder)) {
-        node = new RMeasurementMNode(fullPath.getFullPath(), holder.getValue());
+        node = new RMeasurementMNode(fullPath.getFullPath(), holder.getValue(), readWriteHandler);
       } else if (readWriteHandler.keyExistByType(key, RMNodeType.ALISA, holder)) {
         byte[] aliasValue = holder.getValue();
         if (aliasValue != null) {
           ByteBuffer byteBuffer = ByteBuffer.wrap(aliasValue);
           ReadWriteIOUtils.readBytes(byteBuffer, 3);
           byte[] oriKey = RSchemaUtils.readOriginKey(byteBuffer);
-          node = new RMeasurementMNode(fullPath.getFullPath(), readWriteHandler.get(null, oriKey));
+          node =
+              new RMeasurementMNode(
+                  fullPath.getFullPath(), readWriteHandler.get(null, oriKey), readWriteHandler);
         }
       }
       return node;
@@ -1876,7 +1894,8 @@ public class RSchemaEngine implements ISchemaEngine {
           }
 
           byte[] originValue = holder.getValue();
-          RMeasurementMNode mNode = new RMeasurementMNode(path.getFullPath(), originValue);
+          RMeasurementMNode mNode =
+              new RMeasurementMNode(path.getFullPath(), originValue, readWriteHandler);
           if (mNode.getAttributes() != null) {
             for (Map.Entry<String, String> entry : attributesMap.entrySet()) {
               if (mNode.getAttributes().containsKey(entry.getKey())) {
@@ -1917,7 +1936,8 @@ public class RSchemaEngine implements ISchemaEngine {
             throw new PathNotExistException(path.getFullPath());
           }
           byte[] originValue = holder.getValue();
-          RMeasurementMNode mNode = new RMeasurementMNode(path.getFullPath(), originValue);
+          RMeasurementMNode mNode =
+              new RMeasurementMNode(path.getFullPath(), originValue, readWriteHandler);
           boolean hasTags = false;
           if (mNode.getTags() != null && mNode.getTags().size() > 0) {
             hasTags = true;
@@ -1966,7 +1986,8 @@ public class RSchemaEngine implements ISchemaEngine {
           }
 
           byte[] originValue = holder.getValue();
-          RMeasurementMNode mNode = new RMeasurementMNode(path.getFullPath(), originValue);
+          RMeasurementMNode mNode =
+              new RMeasurementMNode(path.getFullPath(), originValue, readWriteHandler);
           int tagLen = mNode.getTags() == null ? 0 : mNode.getTags().size();
 
           boolean didAnyUpdate = false;
@@ -2018,7 +2039,8 @@ public class RSchemaEngine implements ISchemaEngine {
       if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
         try {
           byte[] originValue = holder.getValue();
-          RMeasurementMNode mNode = new RMeasurementMNode(path.getFullPath(), originValue);
+          RMeasurementMNode mNode =
+              new RMeasurementMNode(path.getFullPath(), originValue, readWriteHandler);
           boolean didAnyUpdate = false;
           for (Map.Entry<String, String> entry : alterMap.entrySet()) {
             didAnyUpdate = false;
@@ -2072,7 +2094,8 @@ public class RSchemaEngine implements ISchemaEngine {
             throw new PathNotExistException(path.getFullPath());
           }
           byte[] originValue = holder.getValue();
-          RMeasurementMNode mNode = new RMeasurementMNode(path.getFullPath(), originValue);
+          RMeasurementMNode mNode =
+              new RMeasurementMNode(path.getFullPath(), originValue, readWriteHandler);
           boolean didAnyUpdate = false;
           if (mNode.getTags() != null && mNode.getTags().containsKey(oldKey)) {
             String value = mNode.getTags().get(oldKey);

@@ -49,14 +49,10 @@ public abstract class RMNode implements IMNode {
   protected static final Logger logger = LoggerFactory.getLogger(RMNode.class);
 
   /** Constructor of MNode. */
-  public RMNode(String fullPath) {
+  public RMNode(String fullPath, RSchemaReadWriteHandler readWriteHandler) {
     this.fullPath = fullPath.intern();
     this.name = fullPath.substring(fullPath.lastIndexOf(RSchemaConstants.PATH_SEPARATOR) + 1);
-    try {
-      readWriteHandler = RSchemaReadWriteHandler.getInstance();
-    } catch (RocksDBException e) {
-      logger.error("create RocksDBReadWriteHandler fail", e);
-    }
+    this.readWriteHandler = readWriteHandler;
   }
 
   @Override
@@ -95,16 +91,16 @@ public abstract class RMNode implements IMNode {
       if (value != null) {
         switch (type.getValue()) {
           case RSchemaConstants.NODE_TYPE_SG:
-            node = new RStorageGroupMNode(keyName, value);
+            node = new RStorageGroupMNode(keyName, value, readWriteHandler);
             return node;
           case RSchemaConstants.NODE_TYPE_INTERNAL:
-            node = new RInternalMNode(keyName);
+            node = new RInternalMNode(keyName, readWriteHandler);
             return node;
           case RSchemaConstants.NODE_TYPE_ENTITY:
-            node = new REntityMNode(keyName, value);
+            node = new REntityMNode(keyName, value, readWriteHandler);
             return node;
           case RSchemaConstants.NODE_TYPE_MEASUREMENT:
-            node = new RMeasurementMNode(keyName, value);
+            node = new RMeasurementMNode(keyName, value, readWriteHandler);
             return node;
         }
       }

@@ -22,6 +22,7 @@ import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants;
+import org.apache.iotdb.db.metadata.rocksdb.RSchemaReadWriteHandler;
 import org.apache.iotdb.db.metadata.rocksdb.RSchemaUtils;
 import org.apache.iotdb.db.metadata.template.Template;
 
@@ -42,8 +43,8 @@ public class RInternalMNode extends RMNode {
    *
    * @param fullPath
    */
-  public RInternalMNode(String fullPath) {
-    super(fullPath);
+  public RInternalMNode(String fullPath, RSchemaReadWriteHandler readWriteHandler) {
+    super(fullPath, readWriteHandler);
   }
 
   /** check whether the MNode has a child with the name */

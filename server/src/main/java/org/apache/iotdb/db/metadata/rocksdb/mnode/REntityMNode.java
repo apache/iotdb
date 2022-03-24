@@ -23,6 +23,7 @@ import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants;
+import org.apache.iotdb.db.metadata.rocksdb.RSchemaReadWriteHandler;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
@@ -38,12 +39,12 @@ public class REntityMNode extends RInternalMNode implements IEntityMNode {
    *
    * @param fullPath
    */
-  public REntityMNode(String fullPath) {
-    super(fullPath);
+  public REntityMNode(String fullPath, RSchemaReadWriteHandler readWriteHandler) {
+    super(fullPath, readWriteHandler);
   }
 
-  public REntityMNode(String fullPath, byte[] value) {
-    super(fullPath);
+  public REntityMNode(String fullPath, byte[] value, RSchemaReadWriteHandler readWriteHandler) {
+    super(fullPath, readWriteHandler);
     deserialize(value);
   }
 
