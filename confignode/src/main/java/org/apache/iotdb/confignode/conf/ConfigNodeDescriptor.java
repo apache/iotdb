@@ -69,8 +69,6 @@ public class ConfigNodeDescriptor {
             "Cannot find IOTDB_HOME or IOTDB_CONF environment variable when loading "
                 + "config file {}, use default configuration",
             ConfigNodeConstant.CONF_NAME);
-        // update all data seriesPath
-        // conf.updatePath();
         return null;
       }
     }
@@ -179,6 +177,8 @@ public class ConfigNodeDescriptor {
 
     } catch (IOException e) {
       LOGGER.warn("Couldn't load ConfigNode conf file, use default config", e);
+    } finally {
+      conf.updatePath();
     }
   }
 

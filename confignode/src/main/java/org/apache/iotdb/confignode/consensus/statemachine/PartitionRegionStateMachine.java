@@ -33,7 +33,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
-/** The StandAlone version StateMachine for ConfigNode, mainly used in development */
+/** Statemachine for PartitionRegion */
 public class PartitionRegionStateMachine implements IStateMachine {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PartitionRegionStateMachine.class);
