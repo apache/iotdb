@@ -39,7 +39,7 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
   }
 
   @Override
-  public SchameTree fetchSchema(PathPatternTree patternTree) {
+  public SchemaTree fetchSchema(PathPatternTree patternTree) {
     return null;
   }
 }

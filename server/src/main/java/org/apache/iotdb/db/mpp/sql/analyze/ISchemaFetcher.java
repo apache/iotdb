@@ -33,5 +33,5 @@ public interface ISchemaFetcher {
   @Deprecated
   Map<String, MeasurementSchema> fetchSchema(PartialPath deviceId, List<String> measurementIdList);
 
-  SchameTree fetchSchema(PathPatternTree patternTree);
+  SchemaTree fetchSchema(PathPatternTree patternTree);
 }
