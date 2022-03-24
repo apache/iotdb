@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,25 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.sql.analyze;
 
-import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.mpp.rpc.thrift.YKTree;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+public class PathPatternTree {
 
-import java.util.List;
-import java.util.Map;
+  private PathPatternNode root;
 
-public class ClusterSchemaFetcher implements ISchemaFetcher {
-
-  @Override
-  public Map<String, MeasurementSchema> fetchSchema(
-      PartialPath deviceId, List<String> measurementIdList) {
-    return null;
-  }
-
-  @Override
-  public YKTree fetchSchema(PathPatternTree patternTree) {
-    return null;
-  }
+  /**
+   * Since IoTDB v0.13, all DDL and DML use patternMatch as default. Before IoTDB v0.13, all DDL and
+   * DML use prefixMatch.
+   */
+  protected boolean isPrefixMatchPath;
 }

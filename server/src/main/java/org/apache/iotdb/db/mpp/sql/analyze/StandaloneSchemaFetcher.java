@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.mpp.sql.analyze;
 
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.mpp.rpc.thrift.YKTree;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.util.List;
@@ -35,6 +36,11 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
   @Override
   public Map<String, MeasurementSchema> fetchSchema(
       PartialPath deviceId, List<String> measurementIdList) {
+    return null;
+  }
+
+  @Override
+  public YKTree fetchSchema(PathPatternTree patternTree) {
     return null;
   }
 }
