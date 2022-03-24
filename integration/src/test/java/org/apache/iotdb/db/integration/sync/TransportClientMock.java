@@ -23,8 +23,6 @@ import org.apache.iotdb.db.newsync.transport.client.ITransportClient;
 import org.apache.iotdb.service.transport.thrift.SyncRequest;
 import org.apache.iotdb.service.transport.thrift.SyncResponse;
 
-import org.apache.thrift.TException;
-
 public class TransportClientMock implements ITransportClient {
   @Override
   public SyncResponse heartbeat(SyncRequest syncRequest) throws SyncConnectionException {

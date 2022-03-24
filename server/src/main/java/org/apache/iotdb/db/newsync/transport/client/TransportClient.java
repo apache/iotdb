@@ -500,7 +500,7 @@ public class TransportClient implements ITransportClient {
                       String.format(
                           "Can not connect to %s:%d, because %s, please check receiver and internet.",
                           ipAddress, port, e.getMessage()))));
-    } finally{
+    } finally {
       close();
     }
   }
