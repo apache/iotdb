@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.datanode;
+package org.apache.iotdb.db.service;
 
 import org.apache.iotdb.commons.ServerCommandLine;
 import org.apache.iotdb.commons.exception.ConfigurationException;

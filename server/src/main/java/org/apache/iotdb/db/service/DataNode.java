@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.datanode;
+package org.apache.iotdb.db.service;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.ConfigurationException;
@@ -27,8 +27,6 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConfigCheck;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.service.DataNodeInternalServer;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.basic.DataNodeServiceProvider;
 import org.apache.iotdb.db.service.thrift.impl.DataNodeInternalServiceImpl;
 
