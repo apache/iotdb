@@ -24,6 +24,9 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
@@ -49,9 +52,16 @@ public class FloatEncoder extends Encoder {
   /** flag to check whether maxPointNumber is saved in the stream. */
   private boolean isMaxPointNumberSaved;
 
+  /** same as encodingType when constructing an object. */
+  private TSEncoding encoderType;
+
+  /** logger to save start and stop. */
+  protected static final Logger logger = LoggerFactory.getLogger(FloatEncoder.class);
+
   public FloatEncoder(TSEncoding encodingType, TSDataType dataType, int maxPointNumber) {
     super(encodingType);
     this.maxPointNumber = maxPointNumber;
+    this.encoderType = encodingType;
     calculateMaxPonitNum();
     isMaxPointNumberSaved = false;
     if (encodingType == TSEncoding.RLE) {
@@ -80,16 +90,37 @@ public class FloatEncoder extends Encoder {
 
   @Override
   public void encode(float value, ByteArrayOutputStream out) {
+    if (this.encoderType == TSEncoding.RLE) {
+      logger.error("Encode RLE start");
+    } else if (this.encoderType == TSEncoding.TS_2DIFF) {
+      logger.error("Encode TS_2DIFF start");
+    }
     saveMaxPointNumber(out);
     int valueInt = convertFloatToInt(value);
     encoder.encode(valueInt, out);
+    if (this.encoderType == TSEncoding.RLE) {
+      logger.error("Encode RLE stop");
+    } else if (this.encoderType == TSEncoding.TS_2DIFF) {
+      logger.error("Encode TS_2DIFF stop");
+    }
   }
 
   @Override
   public void encode(double value, ByteArrayOutputStream out) {
+    if (this.encoderType == TSEncoding.RLE) {
+      logger.error("Encode RLE start");
+    } else if (this.encoderType == TSEncoding.TS_2DIFF) {
+      logger.error("Encode TS_2DIFF start");
+    }
+    logger.error("Encode RLE start");
     saveMaxPointNumber(out);
     long valueLong = convertDoubleToLong(value);
     encoder.encode(valueLong, out);
+    if (this.encoderType == TSEncoding.RLE) {
+      logger.error("Encode RLE stop");
+    } else if (this.encoderType == TSEncoding.TS_2DIFF) {
+      logger.error("Encode TS_2DIFF stop");
+    }
   }
 
   private void calculateMaxPonitNum() {
@@ -111,8 +142,18 @@ public class FloatEncoder extends Encoder {
 
   @Override
   public void flush(ByteArrayOutputStream out) throws IOException {
+    if (this.encoderType == TSEncoding.RLE) {
+      logger.error("Flush RLE start");
+    } else if (this.encoderType == TSEncoding.TS_2DIFF) {
+      logger.error("Flush TS_2DIFF start");
+    }
     encoder.flush(out);
     reset();
+    if (this.encoderType == TSEncoding.RLE) {
+      logger.error("Flush RLE stop");
+    } else if (this.encoderType == TSEncoding.TS_2DIFF) {
+      logger.error("Flush TS_2DIFF stop");
+    }
   }
 
   private void reset() {

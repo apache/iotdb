@@ -25,9 +25,11 @@ public class FloatRAKEEncoder extends RAKEEncoder {
 
   @Override
   public void encode(float value, ByteArrayOutputStream out) {
+    logger.error("Encode RAKE start");
     isReadFinish = false;
     String bit_value = Integer.toBinaryString(Float.floatToRawIntBits(value));
     encodeNumber(bit_value, 32, out);
+    logger.error("Encode RAKE stop");
   }
 
   @Override

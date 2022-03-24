@@ -25,18 +25,23 @@ public class LongRAKEDecoder extends RAKEDecoder {
 
   @Override
   public long readLong(ByteBuffer buffer) {
+    logger.error("Decode RAKE start");
     parseBuffer(buffer, 64);
     String subNumBuffer = numBuffer.substring(0, 64);
     this.numBuffer = "";
-    if (subNumBuffer.charAt(0) == '0') return Long.parseLong(subNumBuffer, 2);
-    else {
+    if (subNumBuffer.charAt(0) == '0') {
+      long r = Long.parseLong(subNumBuffer, 2);
+      logger.error("Decode RAKE stop");
+      return r;
+    } else {
       String tmpSubNumBuffer = "0";
       for (int i = 1; i < subNumBuffer.length(); i++) {
         if (subNumBuffer.charAt(i) == '1') tmpSubNumBuffer += "0";
         else tmpSubNumBuffer += "1";
       }
-
-      return -Long.parseLong(tmpSubNumBuffer, 2) - 1;
+      long r = -Long.parseLong(tmpSubNumBuffer, 2) - 1;
+      logger.error("Decode RAKE stop");
+      return r;
     }
   }
 }

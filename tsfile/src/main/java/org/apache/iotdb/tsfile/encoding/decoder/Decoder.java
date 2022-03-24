@@ -24,11 +24,16 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Binary;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 
 public abstract class Decoder {
+
+  protected static final Logger logger = LoggerFactory.getLogger(Decoder.class);
 
   private static final String ERROR_MSG = "Decoder not found: %s , DataType is : %s";
 

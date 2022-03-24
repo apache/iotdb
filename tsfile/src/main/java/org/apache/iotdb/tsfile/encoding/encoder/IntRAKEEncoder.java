@@ -25,9 +25,11 @@ public class IntRAKEEncoder extends RAKEEncoder {
 
   @Override
   public void encode(int value, ByteArrayOutputStream out) {
+    logger.error("Encode RAKE start");
     isReadFinish = false;
     String bit_value = Integer.toBinaryString(value);
     encodeNumber(bit_value, 32, out);
+    logger.error("Encode RAKE stop");
   }
 
   @Override

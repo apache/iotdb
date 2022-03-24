@@ -51,7 +51,10 @@ public class IntRleDecoder extends RleDecoder {
 
   @Override
   public boolean readBoolean(ByteBuffer buffer) {
-    return this.readInt(buffer) == 0 ? false : true;
+    logger.error("Decode RLE start");
+    boolean r = this.readInt(buffer) == 0 ? false : true;
+    logger.error("Decode RLE stop");
+    return r;
   }
 
   /**
@@ -62,6 +65,7 @@ public class IntRleDecoder extends RleDecoder {
    */
   @Override
   public int readInt(ByteBuffer buffer) {
+    logger.error("Decode RLE start");
     if (!isLengthAndBitWidthReaded) {
       // start to read a new rle+bit-packing pattern
       readLengthAndBitWidth(buffer);
@@ -96,6 +100,8 @@ public class IntRleDecoder extends RleDecoder {
     if (!hasNextPackage()) {
       isLengthAndBitWidthReaded = false;
     }
+
+    logger.error("Decode RLE stop");
     return result;
   }
 

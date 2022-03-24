@@ -103,7 +103,10 @@ public abstract class DeltaBinaryDecoder extends Decoder {
 
     @Override
     public int readInt(ByteBuffer buffer) {
-      return readT(buffer);
+      logger.error("Decode TS_2DIFF start");
+      int r = readT(buffer);
+      logger.error("Decode TS_2DIFF stop");
+      return r;
     }
 
     /**
@@ -218,8 +221,10 @@ public abstract class DeltaBinaryDecoder extends Decoder {
 
     @Override
     public long readLong(ByteBuffer buffer) {
-
-      return readT(buffer);
+      logger.error("Decode TS_2DIFF start");
+      long r = readT(buffer);
+      logger.error("Decode TS_2DIFF stop");
+      return r;
     }
 
     @Override

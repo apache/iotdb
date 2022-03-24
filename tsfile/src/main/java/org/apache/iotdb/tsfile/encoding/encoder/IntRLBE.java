@@ -96,16 +96,16 @@ public class IntRLBE extends RLBE {
 
   @Override
   public void encode(int value, ByteArrayOutputStream out) {
-    logger.error("RLBE start encode");
+    logger.error("Encode RLBE start");
     encodeValue(value, out);
-    logger.error("RLBE stop encode");
+    logger.error("Encode RLBE stop");
   }
 
   @Override
   public void flush(ByteArrayOutputStream out) {
-    logger.error("RLBE start flush");
+    logger.error("Flush RLBE start");
     flushBlock(out);
-    logger.error("RLBE stop flush");
+    logger.error("Flush RLBE stop");
   }
 
   /**

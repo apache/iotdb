@@ -105,12 +105,16 @@ public class FloatRLBE extends RLBE {
 
   @Override
   public void encode(float value, ByteArrayOutputStream out) {
+    logger.error("Encode RLBE start");
     encodeValue(value, out);
+    logger.error("Encode RLBE stop");
   }
 
   @Override
   public void flush(ByteArrayOutputStream out) {
+    logger.error("Flush RLBE start");
     flushBlock(out);
+    logger.error("Flush RLBE stop");
   }
 
   /**
