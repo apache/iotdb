@@ -23,17 +23,32 @@ import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
+import org.apache.iotdb.commons.utils.CommonUtils;
+import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
+import org.apache.iotdb.confignode.rpc.thrift.DataNodeRegisterReq;
+import org.apache.iotdb.confignode.rpc.thrift.DataNodeRegisterResp;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConfigCheck;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.service.basic.DataNodeServiceProvider;
 import org.apache.iotdb.db.service.thrift.impl.DataNodeInternalServiceImpl;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.RpcTransportFactory;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.EndPoint;
 
+import org.apache.thrift.TException;
+import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.protocol.TCompactProtocol;
+import org.apache.thrift.transport.TTransport;
+import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.List;
+import java.util.Random;
 
 public class DataNode implements DataNodeMBean {
   private static final Logger logger = LoggerFactory.getLogger(DataNode.class);
@@ -41,6 +56,16 @@ public class DataNode implements DataNodeMBean {
   private final String mbeanName =
       String.format(
           "%s:%s=%s", "org.apache.iotdb.datanode.service", IoTDBConstant.JMX_TYPE, "DataNode");
+
+  /**
+   * when joining a cluster this node will retry at most "DEFAULT_JOIN_RETRY" times before returning
+   * a failure to the client
+   */
+  private static final int DEFAULT_JOIN_RETRY = 10;
+
+  private EndPoint thisNode;
+
+  private int dataNodeID;
 
   private DataNode() {
     // we do not init anything here, so that we can re-initialize the instance in IT.
@@ -71,11 +96,15 @@ public class DataNode implements DataNodeMBean {
     if (config.getRpcAddress().equals("0.0.0.0")) {
       config.setRpcAddress(config.getInternalIp());
     }
+
+    thisNode.setIp(IoTDBDescriptor.getInstance().getConfig().getInternalIp());
+    thisNode.setPort(IoTDBDescriptor.getInstance().getConfig().getInternalPort());
   }
 
   protected void doAddNode(String[] args) {
     try {
       // TODO : contact with config node to join into the cluster
+      joinCluster();
       active();
     } catch (StartupException e) {
       logger.error("Fail to start  server", e);
@@ -98,6 +127,41 @@ public class DataNode implements DataNodeMBean {
       return false;
     }
     return true;
+  }
+
+  public void joinCluster() throws StartupException {
+    List<EndPoint> configNodes =
+        CommonUtils.parseNodeUrls(IoTDBDescriptor.getInstance().getConfig().getConfigNodeUrls());
+    int retry = DEFAULT_JOIN_RETRY;
+    while (retry > 0) {
+      // randomly pick up a config node to try
+      Random random = new Random();
+      EndPoint configNode = configNodes.get(random.nextInt(configNodes.size()));
+      logger.info("start joining the cluster with the help of {}", configNode);
+      try {
+        ConfigIService.Client client = createClient(configNode);
+        DataNodeRegisterResp dataNodeRegisterResp =
+            client.registerDataNode(new DataNodeRegisterReq(thisNode));
+        if (dataNodeRegisterResp.getRegisterResult().getCode()
+            == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          dataNodeID = dataNodeRegisterResp.getDataNodeID();
+          logger.info("Joined a cluster successfully");
+          return;
+        }
+        // wait 5s to start the next try
+        Thread.sleep(IoTDBDescriptor.getInstance().getConfig().getJoinClusterTimeOutMs());
+      } catch (TException | IoTDBConnectionException e) {
+        logger.warn("Cannot join the cluster from {}, because:", configNode, e);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        logger.warn("Unexpected interruption when waiting to join a cluster", e);
+      }
+      // start the next try
+      retry--;
+    }
+    // all tries failed
+    logger.error("Cannot join the cluster after {} retries", DEFAULT_JOIN_RETRY);
+    throw new StartupException("Can not connect with the config nodes, please check the network");
   }
 
   public void active() throws StartupException {
@@ -135,5 +199,26 @@ public class DataNode implements DataNodeMBean {
     private static final DataNode INSTANCE = new DataNode();
 
     private DataNodeHolder() {}
+  }
+
+  private ConfigIService.Client createClient(EndPoint endPoint) throws IoTDBConnectionException {
+    TTransport transport;
+    try {
+      transport =
+          RpcTransportFactory.INSTANCE.getTransport(
+              // as there is a try-catch already, we do not need to use TSocket.wrap
+              endPoint.getIp(), endPoint.getPort(), 2000);
+      transport.open();
+    } catch (TTransportException e) {
+      throw new IoTDBConnectionException(e);
+    }
+
+    ConfigIService.Client client;
+    if (IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable()) {
+      client = new ConfigIService.Client(new TCompactProtocol(transport));
+    } else {
+      client = new ConfigIService.Client(new TBinaryProtocol(transport));
+    }
+    return client;
   }
 }
