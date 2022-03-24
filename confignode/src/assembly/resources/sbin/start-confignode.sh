@@ -28,6 +28,7 @@ if [ -z "${CONFIGNODE_HOME}" ]; then
 fi
 
 CONFIGNODE_CONF=${CONFIGNODE_HOME}/conf
+CONFIGNODE_LOGS=${CONFIGNODE_HOME}/logs
 
 is_conf_path=false
 for arg do
@@ -65,6 +66,7 @@ classname=org.apache.iotdb.confignode.service.ConfigNode
 launch_service()
 {
 	class="$1"
+	confignode_parms="-Dlogback.configurationFile=${CONFIGNODE_CONF}/logback.xml"
 	confignode_parms="$confignode_parms -DCONFIGNODE_HOME=${CONFIGNODE_HOME}"
 	confignode_parms="$confignode_parms -DCONFIGNODE_CONF=${CONFIGNODE_CONF}"
 	exec "$JAVA" $illegal_access_params $confignode_parms $CONFIGNODE_JMX_OPTS -cp "$CLASSPATH" "$class" $CONF_PARAMS

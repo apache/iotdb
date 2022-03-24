@@ -46,6 +46,19 @@ struct EndOfDataBlockEvent {
   2: required string operatorId
 }
 
+struct ShcameFetchReqest {
+  1: required binary serializedPathPatternTree
+  2: required bool isPrefixMatchPath
+}
+
+struct ShcameFetchResponse {
+  1: required binary serializedSchameTree
+}
+
+service InternalService {
+   ShcameFetchResponse fetchSchema(ShcameFetchReqest req)
+}
+
 service DataBlockService {
   GetDataBlockResponse getDataBlock(GetDataBlockReqest req);
 
