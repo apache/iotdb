@@ -64,12 +64,14 @@ public class RawQueryInputLayer {
       List<TSDataType> dataTypes,
       TimeGenerator timeGenerator,
       List<IReaderByTimestamp> readers,
+      List<List<Integer>> readerToIndexList,
       List<Boolean> cached)
       throws QueryProcessException {
     construct(
         queryId,
         memoryBudgetInMB,
-        new RawQueryDataSetWithValueFilter(paths, dataTypes, timeGenerator, readers, cached, true));
+        new RawQueryDataSetWithValueFilter(
+            paths, dataTypes, timeGenerator, readers, readerToIndexList, cached, true));
   }
 
   public RawQueryInputLayer(long queryId, float memoryBudgetInMB, IUDFInputDataSet queryDataSet)

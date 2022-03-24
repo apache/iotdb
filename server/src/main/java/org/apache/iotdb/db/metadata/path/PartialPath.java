@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.path;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
@@ -31,7 +32,6 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.executor.fill.LastPointReader;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.query.reader.series.SeriesReader;
-import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
@@ -292,6 +292,34 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
       }
     }
     return isMatch;
+  }
+
+  /**
+   * Test if this PartialPath matches a full path's prefix. This partialPath acts as a prefix path
+   * pattern. rPath is supposed to be a full timeseries path without wildcards. e.g. "root.sg" or
+   * "root.*" both match path "root.sg.device.s1", "root.sg.device" and "root.sg.vehicle.s1"
+   *
+   * @param rPath a plain full path of a timeseries
+   * @return true if a successful match, otherwise return false
+   */
+  public boolean matchPrefixPath(PartialPath rPath) {
+    String[] rNodes = rPath.getNodes();
+    if (this.nodes.length > rNodes.length) {
+      return false;
+    }
+    for (int i = 0; i < this.nodes.length; i++) {
+      if (nodes[i].equals(MULTI_LEVEL_PATH_WILDCARD)) {
+        return true;
+      }
+      if (nodes[i].equals(ONE_LEVEL_PATH_WILDCARD)) {
+        continue;
+      }
+      if (!nodes[i].equals(rNodes[i])) {
+        return false;
+      }
+    }
+
+    return true;
   }
 
   @Override

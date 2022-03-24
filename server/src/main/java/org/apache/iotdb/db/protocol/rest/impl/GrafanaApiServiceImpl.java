@@ -33,7 +33,7 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.query.dataset.groupby.GroupByLevelDataSet;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -45,28 +45,27 @@ import org.apache.commons.lang3.StringUtils;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 
+import java.time.ZoneId;
+
 public class GrafanaApiServiceImpl extends GrafanaApiService {
 
   private final ServiceProvider serviceProvider = IoTDB.serviceProvider;
   private final AuthorizationHandler authorizationHandler;
 
-  private final float timePrecision; // the default timestamp precision is ms
+  private final long timePrecision; // the default timestamp precision is ms
 
   public GrafanaApiServiceImpl() throws QueryProcessException {
     authorizationHandler = new AuthorizationHandler(serviceProvider);
 
     switch (IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision()) {
       case "ns":
-        timePrecision = 1000000f;
+        timePrecision = 1000000;
         break;
       case "us":
-        timePrecision = 1000f;
-        break;
-      case "s":
-        timePrecision = 1f / 1000;
+        timePrecision = 1000;
         break;
       default:
-        timePrecision = 1f;
+        timePrecision = 1;
     }
   }
 
@@ -90,7 +89,7 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
         return response;
       }
 
-      final long queryId = QueryResourceManager.getInstance().assignQueryId(true);
+      final long queryId = ServiceProvider.SESSION_MANAGER.requestQueryId(true);
       try {
         QueryContext queryContext =
             serviceProvider.genQueryContext(
@@ -102,7 +101,7 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
         QueryDataSet queryDataSet =
             serviceProvider.createQueryDataSet(
                 queryContext, physicalPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
-        return QueryDataSetHandler.fillVariablesResult(queryDataSet, physicalPlan);
+        return QueryDataSetHandler.fillGrafanaVariablesResult(queryDataSet, physicalPlan);
       } finally {
         ServiceProvider.SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
       }
@@ -138,14 +137,15 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
         sql += " " + expressionRequest.getControl();
       }
 
-      PhysicalPlan physicalPlan = serviceProvider.getPlanner().parseSQLToPhysicalPlan(sql);
+      PhysicalPlan physicalPlan =
+          serviceProvider.getPlanner().parseSQLToGrafanaQueryPlan(sql, ZoneId.systemDefault());
 
       Response response = authorizationHandler.checkAuthority(securityContext, physicalPlan);
       if (response != null) {
         return response;
       }
 
-      final long queryId = QueryResourceManager.getInstance().assignQueryId(true);
+      final long queryId = ServiceProvider.SESSION_MANAGER.requestQueryId(true);
       try {
         QueryContext queryContext =
             serviceProvider.genQueryContext(
@@ -157,12 +157,28 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
         QueryDataSet queryDataSet =
             serviceProvider.createQueryDataSet(
                 queryContext, physicalPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
-        return QueryDataSetHandler.fillDateSet(queryDataSet, (QueryPlan) physicalPlan);
+
+        if (queryDataSet instanceof GroupByLevelDataSet) {
+          return QueryDataSetHandler.fillGroupByLevelDataSet(queryDataSet, 0, timePrecision);
+        } else {
+          return QueryDataSetHandler.fillDataSetWithTimestamps(
+              queryDataSet, (QueryPlan) physicalPlan, 0, timePrecision);
+        }
       } finally {
         ServiceProvider.SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
       }
     } catch (Exception e) {
       return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
     }
+  }
+
+  @Override
+  public Response login(SecurityContext securityContext) throws NotFoundException {
+    return Response.ok()
+        .entity(
+            new ExecutionStatus()
+                .code(TSStatusCode.SUCCESS_STATUS.getStatusCode())
+                .message(TSStatusCode.SUCCESS_STATUS.name()))
+        .build();
   }
 }

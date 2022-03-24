@@ -18,12 +18,14 @@
  */
 package org.apache.iotdb.db.qp.strategy.optimizer;
 
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.constant.FilterConstant.FilterType;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -39,7 +41,9 @@ import org.apache.iotdb.db.qp.logical.crud.SelectComponent;
 import org.apache.iotdb.db.qp.logical.crud.WhereComponent;
 import org.apache.iotdb.db.qp.utils.GroupByLevelController;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
+import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ResultColumn;
+import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 import org.apache.iotdb.db.service.IoTDB;
 
 import org.slf4j.Logger;
@@ -68,8 +72,11 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     if (!optimizable(queryOperator)) {
       return queryOperator;
     }
+
     concatSelect(queryOperator);
+    concatWithoutNullColumns(queryOperator);
     removeWildcardsInSelectPaths(queryOperator);
+    removeWildcardsWithoutNullColumns(queryOperator);
     concatFilterAndRemoveWildcards(queryOperator);
     return queryOperator;
   }
@@ -98,9 +105,70 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     List<PartialPath> prefixPaths = queryOperator.getFromComponent().getPrefixPaths();
     List<ResultColumn> resultColumns = new ArrayList<>();
     for (ResultColumn suffixColumn : queryOperator.getSelectComponent().getResultColumns()) {
-      suffixColumn.concat(prefixPaths, resultColumns);
+      boolean needAliasCheck = suffixColumn.hasAlias() && !queryOperator.isGroupByLevel();
+      suffixColumn.concat(prefixPaths, resultColumns, needAliasCheck);
     }
     queryOperator.getSelectComponent().setResultColumns(resultColumns);
+  }
+
+  private void concatWithoutNullColumns(QueryOperator queryOperator)
+      throws LogicalOptimizeException {
+    List<PartialPath> prefixPaths = queryOperator.getFromComponent().getPrefixPaths();
+    // has without null columns
+    if (queryOperator.getSpecialClauseComponent() != null
+        && !queryOperator.getSpecialClauseComponent().getWithoutNullColumns().isEmpty()) {
+      List<Expression> withoutNullColumns = new ArrayList<>();
+      for (Expression expression :
+          queryOperator.getSpecialClauseComponent().getWithoutNullColumns()) {
+        concatWithoutNullColumns(
+            prefixPaths, expression, withoutNullColumns, queryOperator.getAliasSet());
+      }
+      queryOperator.getSpecialClauseComponent().setWithoutNullColumns(withoutNullColumns);
+    }
+  }
+
+  private void concatWithoutNullColumns(
+      List<PartialPath> prefixPaths,
+      Expression expression,
+      List<Expression> withoutNullColumns,
+      Set<String> aliasSet)
+      throws LogicalOptimizeException {
+    if (expression instanceof TimeSeriesOperand) {
+      TimeSeriesOperand timeSeriesOperand = (TimeSeriesOperand) expression;
+      if (timeSeriesOperand
+          .getPath()
+          .getFullPath()
+          .startsWith(SQLConstant.ROOT + ".")) { // start with "root." don't concat
+        // because the full path that starts with 'root.' won't be split
+        // so we need to split it.
+        if (((TimeSeriesOperand) expression).getPath().getNodeLength() == 1) { // no split
+          try {
+            ((TimeSeriesOperand) expression)
+                .setPath(
+                    new PartialPath(
+                        MetaUtils.splitPathToDetachedPath(
+                            ((TimeSeriesOperand) expression)
+                                .getPath()
+                                .getFirstNode()))); // split path To nodes
+          } catch (IllegalPathException e) {
+            throw new LogicalOptimizeException(e.getMessage());
+          }
+        }
+        withoutNullColumns.add(expression);
+      } else {
+        if (!aliasSet.contains(expression.getExpressionString())) { // not alias, concat
+          List<Expression> resultExpressions = new ArrayList<>();
+          expression.concat(prefixPaths, resultExpressions);
+          withoutNullColumns.addAll(resultExpressions);
+        } else { // alias, don't concat
+          withoutNullColumns.add(expression);
+        }
+      }
+    } else {
+      List<Expression> resultExpressions = new ArrayList<>();
+      expression.concat(prefixPaths, resultExpressions);
+      withoutNullColumns.addAll(resultExpressions);
+    }
   }
 
   private void removeWildcardsInSelectPaths(QueryOperator queryOperator)
@@ -120,7 +188,8 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
 
     WildcardsRemover wildcardsRemover = new WildcardsRemover(queryOperator);
     for (ResultColumn resultColumn : queryOperator.getSelectComponent().getResultColumns()) {
-      resultColumn.removeWildcards(wildcardsRemover, resultColumns);
+      boolean needAliasCheck = resultColumn.hasAlias() && !queryOperator.isGroupByLevel();
+      resultColumn.removeWildcards(wildcardsRemover, resultColumns, needAliasCheck);
       if (groupByLevelController != null) {
         groupByLevelController.control(resultColumn, resultColumns);
       }
@@ -135,6 +204,59 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     }
   }
 
+  private void removeWildcardsWithoutNullColumns(QueryOperator queryOperator)
+      throws LogicalOptimizeException {
+    if (queryOperator.getIndexType() != null) {
+      return;
+    }
+
+    if (queryOperator.getSpecialClauseComponent() == null) {
+      return;
+    }
+
+    List<Expression> expressions =
+        queryOperator.getSpecialClauseComponent().getWithoutNullColumns();
+    WildcardsRemover withoutNullWildcardsRemover = new WildcardsRemover(queryOperator);
+
+    // because timeSeries path may be with "*", so need to remove it for getting some actual
+    // timeSeries paths
+    // actualExpressions store the actual timeSeries paths
+    List<Expression> actualExpressions = new ArrayList<>();
+    List<Expression> resultExpressions = new ArrayList<>();
+
+    // because expression.removeWildcards will ignore the TimeSeries path that exists in the meta
+    // so we need to recognise the alias, just simply add to the resultExpressions
+    for (Expression expression : expressions) {
+      if (queryOperator.getAliasSet().contains(expression.getExpressionString())) {
+        resultExpressions.add(expression);
+        continue;
+      }
+      expression.removeWildcards(withoutNullWildcardsRemover, actualExpressions);
+    }
+
+    // group by level, use groupedPathMap
+    GroupByLevelController groupByLevelController =
+        queryOperator.getSpecialClauseComponent().getGroupByLevelController();
+    if (groupByLevelController != null) {
+      for (Expression expression : actualExpressions) {
+        String groupedPath =
+            groupByLevelController.getGroupedPath(expression.getExpressionString());
+        if (groupedPath != null) {
+          try {
+            resultExpressions.add(new TimeSeriesOperand(new PartialPath(groupedPath)));
+          } catch (IllegalPathException e) {
+            throw new LogicalOptimizeException(e.getMessage());
+          }
+        } else {
+          resultExpressions.add(expression);
+        }
+      }
+    } else {
+      resultExpressions.addAll(actualExpressions);
+    }
+    queryOperator.getSpecialClauseComponent().setWithoutNullColumns(resultExpressions);
+  }
+
   private void concatFilterAndRemoveWildcards(QueryOperator queryOperator)
       throws LogicalOptimizeException {
     WhereComponent whereComponent = queryOperator.getWhereComponent();
@@ -147,17 +269,22 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
         concatFilterAndRemoveWildcards(
             queryOperator.getFromComponent().getPrefixPaths(),
             whereComponent.getFilterOperator(),
-            filterPaths));
+            filterPaths,
+            queryOperator.isPrefixMatchPath()));
     whereComponent.getFilterOperator().setPathSet(filterPaths);
   }
 
   private FilterOperator concatFilterAndRemoveWildcards(
-      List<PartialPath> fromPaths, FilterOperator operator, Set<PartialPath> filterPaths)
+      List<PartialPath> fromPaths,
+      FilterOperator operator,
+      Set<PartialPath> filterPaths,
+      boolean isPrefixMatch)
       throws LogicalOptimizeException {
     if (!operator.isLeaf()) {
       List<FilterOperator> newFilterList = new ArrayList<>();
       for (FilterOperator child : operator.getChildren()) {
-        newFilterList.add(concatFilterAndRemoveWildcards(fromPaths, child, filterPaths));
+        newFilterList.add(
+            concatFilterAndRemoveWildcards(fromPaths, child, filterPaths, isPrefixMatch));
       }
       operator.setChildren(newFilterList);
       return operator;
@@ -176,7 +303,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
       fromPaths.forEach(fromPath -> concatPaths.add(fromPath.concatPath(filterPath)));
     }
 
-    List<PartialPath> noStarPaths = removeWildcardsInConcatPaths(concatPaths);
+    List<PartialPath> noStarPaths = removeWildcardsInConcatPaths(concatPaths, isPrefixMatch);
     filterPaths.addAll(noStarPaths);
     if (noStarPaths.size() == 1) {
       // Transform "select s1 from root.car.* where s1 > 10" to
@@ -237,13 +364,13 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     return filterBinaryTree;
   }
 
-  private List<PartialPath> removeWildcardsInConcatPaths(List<PartialPath> originalPaths)
-      throws LogicalOptimizeException {
+  private List<PartialPath> removeWildcardsInConcatPaths(
+      List<PartialPath> originalPaths, boolean isPrefixMatch) throws LogicalOptimizeException {
     HashSet<PartialPath> actualPaths = new HashSet<>();
     try {
       for (PartialPath originalPath : originalPaths) {
         List<MeasurementPath> all =
-            IoTDB.metaManager.getMeasurementPathsWithAlias(originalPath, 0, 0).left;
+            IoTDB.schemaEngine.getMeasurementPathsWithAlias(originalPath, 0, 0, isPrefixMatch).left;
         if (all.isEmpty()) {
           throw new LogicalOptimizeException(
               String.format("Unknown time series %s in `where clause`", originalPath));
