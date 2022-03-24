@@ -186,9 +186,9 @@ public class MetricsService extends MetricService implements MetricsServiceMBean
             start();
             break;
           case RESTART_REPORTER:
-            logger.info("Restart Reporters: " + metricConfig.getMetricReporterList());
+            compositeReporter.stopAll();
             loadReporter();
-            compositeReporter.restartAll();
+            compositeReporter.startAll();
             logger.info("Finish restart metric reporters.");
             break;
           case NOTHING:

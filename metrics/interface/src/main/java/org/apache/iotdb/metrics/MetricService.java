@@ -108,7 +108,7 @@ public abstract class MetricService {
 
   protected void loadReporter() {
     logger.info("Load metric reporter, reporters: {}", metricConfig.getMetricReporterList());
-
+    compositeReporter.clearReporter();
     ServiceLoader<Reporter> reporters = ServiceLoader.load(Reporter.class);
     for (Reporter reporter : reporters) {
       if (metricConfig.getMetricReporterList() != null

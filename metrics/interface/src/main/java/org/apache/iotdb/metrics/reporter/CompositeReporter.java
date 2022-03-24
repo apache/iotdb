@@ -29,7 +29,7 @@ import java.util.List;
 
 public class CompositeReporter {
   private static final Logger LOGGER = LoggerFactory.getLogger(CompositeReporter.class);
-  private List<Reporter> reporters = new ArrayList<>();
+  private final List<Reporter> reporters = new ArrayList<>();
 
   /** Start all reporter */
   public boolean startAll() {
@@ -77,12 +77,19 @@ public class CompositeReporter {
     return true;
   }
 
-  public boolean restartAll() {
-    return stopAll() & startAll();
+  /** Clear reporter */
+  public void clearReporter() {
+    reporters.clear();
   }
 
   /** Add reporter */
   public void addReporter(Reporter reporter) {
+    for (Reporter originReporter : reporters) {
+      if (originReporter.getReporterType() == reporter.getReporterType()) {
+        LOGGER.warn("Already exist reporter, type is " + reporter.getReporterType());
+        return;
+      }
+    }
     reporters.add(reporter);
   }
 }
