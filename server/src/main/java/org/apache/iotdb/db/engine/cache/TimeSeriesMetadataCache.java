@@ -142,14 +142,13 @@ public class TimeSeriesMetadataCache {
     return TimeSeriesMetadataCache.TimeSeriesMetadataCacheHolder.INSTANCE;
   }
 
-  public TimeseriesMetadata get(TimeSeriesMetadataCacheKey key, Set<String> allSensors)
-      throws IOException {
-    return get(key, allSensors, false);
-  }
-
   @SuppressWarnings("squid:S1860") // Suppress synchronize warning
   public TimeseriesMetadata get(
-      TimeSeriesMetadataCacheKey key, Set<String> allSensors, boolean debug) throws IOException {
+      TimeSeriesMetadataCacheKey key,
+      Set<String> allSensors,
+      boolean ignoreNotExists,
+      boolean debug)
+      throws IOException {
     if (!CACHE_ENABLE) {
       // bloom filter part
       TsFileSequenceReader reader = FileReaderManager.getInstance().get(key.filePath, true);
@@ -159,7 +158,7 @@ public class TimeSeriesMetadataCache {
         return null;
       }
       TimeseriesMetadata timeseriesMetadata =
-          reader.readTimeseriesMetadata(new Path(key.device, key.measurement), false);
+          reader.readTimeseriesMetadata(new Path(key.device, key.measurement), ignoreNotExists);
       return (timeseriesMetadata == null || timeseriesMetadata.getStatistics().getCount() == 0)
           ? null
           : timeseriesMetadata;
