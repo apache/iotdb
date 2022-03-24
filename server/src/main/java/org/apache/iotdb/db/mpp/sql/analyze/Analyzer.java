@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.sql.analyze;
 
+import org.apache.iotdb.commons.partition.DataPartitionInfo;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.PartitionInfo;
 import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
@@ -81,13 +82,15 @@ public class Analyzer {
 
         // request schema fetch API
         MetadataResponse schemaTree = schemaFetcher.requestMetadata(patternTree);
-        analysis.setSchemaTree(schemaTree);
 
         // bind metadata (remove wildcards and apply SLIMIT & SOFFSET as well)
         rewrittenStatement =
             (QueryStatement) new WildcardsRemover().rewrite(rewrittenStatement, schemaTree);
 
-        // TODO: fetch partition information
+        // fetch partition information
+        DataPartitionInfo dataPartitionInfo =
+            partitionFetcher.fetchDataPartitionInfos(
+                schemaTree.constructDataPartitionQueryParamList());
 
         // optimize expressions in whereCondition
         WhereCondition whereCondition = rewrittenStatement.getWhereCondition();
@@ -99,6 +102,8 @@ public class Analyzer {
           whereCondition.setQueryFilter(filter);
         }
         analysis.setStatement(rewrittenStatement);
+        analysis.setSchemaTree(schemaTree);
+        analysis.setDataPartitionInfo(dataPartitionInfo);
       } catch (StatementAnalyzeException | PathNumOverLimitException e) {
         e.printStackTrace();
       }

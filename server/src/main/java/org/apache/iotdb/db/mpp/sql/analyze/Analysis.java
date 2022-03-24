@@ -31,8 +31,11 @@ import java.util.*;
 
 /** Analysis used for planning a query. TODO: This class may need to store more info for a query. */
 public class Analysis {
+  // Description for each series. Such as dataType, existence
 
   // Data distribution info for each series. Series -> [DataRegion, DataRegion]
+
+  // Map<PartialPath, List<FullPath>> Used to remove asterisk
 
   // Statement
   private Statement statement;
@@ -46,7 +49,6 @@ public class Analysis {
 
   private Map<String, MeasurementSchema> schemaMap;
 
-  // Description for each series. Such as dataType, existence
   private MetadataResponse schemaTree;
 
   public List<DataRegionReplicaSet> getPartitionInfo(PartialPath seriesPath, Filter timefilter) {
