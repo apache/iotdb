@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.db.mpp.common.schematree;
 
+import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -39,9 +41,9 @@ public class SchemaTree {
    * @param pathPattern can be a pattern or a full path of timeseries.
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
    */
-  public List<MeasurementPath> searchMeasurementPaths(
+  public Pair<List<MeasurementPath>, Integer> searchMeasurementPaths(
       PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch) {
-    return new ArrayList<>();
+    return new Pair<>(new ArrayList<>(), 0);
   }
 
   public void serialize(OutputStream baos) throws IOException {
@@ -50,5 +52,9 @@ public class SchemaTree {
 
   public void deserialize(ByteBuffer buffer) throws IOException {
     // TODO
+  }
+
+  public List<DataPartitionQueryParam> constructDataPartitionQueryParamList() {
+    return new ArrayList<>();
   }
 }

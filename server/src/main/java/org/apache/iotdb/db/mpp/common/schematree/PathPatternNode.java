@@ -19,10 +19,36 @@
 
 package org.apache.iotdb.db.mpp.common.schematree;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class PathPatternNode {
 
   private String name;
   private List<PathPatternNode> childs;
+
+  public PathPatternNode(String name) {
+    this.name = name;
+    this.childs = new ArrayList<>();
+  }
+
+  public String getName() {
+    return name;
+  }
+
+  public void setName(String name) {
+    this.name = name;
+  }
+
+  public List<PathPatternNode> getChilds() {
+    return childs;
+  }
+
+  public void setChilds(List<PathPatternNode> childs) {
+    this.childs = childs;
+  }
+
+  public void addChild(PathPatternNode newNode) {
+    this.childs.add(newNode);
+  }
 }

@@ -19,9 +19,13 @@
 
 package org.apache.iotdb.db.mpp.common.schematree;
 
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
+
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class PathPatternTree {
 
@@ -32,6 +36,71 @@ public class PathPatternTree {
    * DML use prefixMatch.
    */
   protected boolean isPrefixMatchPath;
+
+  public PathPatternTree() {
+    this.root = new PathPatternNode(SQLConstant.ROOT);
+  }
+
+  public PathPatternNode getRoot() {
+    return root;
+  }
+
+  public void setRoot(PathPatternNode root) {
+    this.root = root;
+  }
+
+  public boolean isPrefixMatchPath() {
+    return isPrefixMatchPath;
+  }
+
+  public void setPrefixMatchPath(boolean prefixMatchPath) {
+    isPrefixMatchPath = prefixMatchPath;
+  }
+
+  public void search(PartialPath path) {
+    search(root, path.getNodes(), 0);
+  }
+
+  public void search(PathPatternNode curNode, String[] pathNodes, int pos) {
+    if (curNode == null || pos == pathNodes.length - 1) {
+      return;
+    }
+
+    if (Objects.equals(curNode.getName(), pathNodes[pos])) {
+      boolean isExist = false;
+      PathPatternNode nextNode = null;
+      for (PathPatternNode childNode : curNode.getChilds()) {
+        if (Objects.equals(childNode.getName(), pathNodes[pos + 1])
+            || (Objects.equals(childNode.getName(), "*")
+                && !Objects.equals(pathNodes[pos + 1], "**"))) {
+          isExist = true;
+          nextNode = childNode;
+          break;
+        }
+      }
+
+      if (isExist) {
+        search(nextNode, pathNodes, pos + 1);
+      } else {
+        construct(curNode, pathNodes, pos + 1);
+      }
+    }
+  }
+
+  private void construct(PathPatternNode curNode, String[] pathNodes, int pos) {
+    for (int i = pos; i < pathNodes.length; i++) {
+      PathPatternNode newNode = new PathPatternNode(pathNodes[i]);
+      if (Objects.equals(pathNodes[i], "*") && pos == pathNodes.length - 1) {
+        curNode.getChilds().removeIf(node -> !Objects.equals(node.getName(), "**"));
+      }
+      curNode.addChild(newNode);
+      curNode = newNode;
+    }
+  }
+
+  private void prune() {
+    // TODO
+  }
 
   public void serialize(OutputStream baos) throws IOException {
     // TODO

@@ -27,6 +27,8 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
+import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
+import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.sql.rewriter.*;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.db.mpp.sql.statement.component.WhereCondition;
@@ -81,7 +83,7 @@ public class Analyzer {
             (QueryStatement) new ConcatPathRewriter().rewrite(queryStatement, patternTree);
 
         // request schema fetch API
-        MetadataResponse schemaTree = schemaFetcher.requestMetadata(patternTree);
+        SchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree);
 
         // bind metadata (remove wildcards and apply SLIMIT & SOFFSET as well)
         rewrittenStatement =

@@ -20,14 +20,13 @@
 package org.apache.iotdb.db.mpp.sql.rewriter;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
 import org.apache.iotdb.db.exception.sql.SQLParserException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.filter.*;
-import org.apache.iotdb.db.mpp.sql.analyze.MetadataResponse;
+import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.sql.constant.FilterConstant;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.db.mpp.sql.statement.component.GroupByLevelController;
@@ -51,17 +50,24 @@ import java.util.*;
  */
 public class WildcardsRemover {
 
-  private MetadataResponse schemaTree;
+  private SchemaTree schemaTree;
 
-  ColumnPaginationController paginationController;
+  private ColumnPaginationController paginationController;
 
-  public Statement rewrite(Statement statement, MetadataResponse schemaTree)
+  /**
+   * Since IoTDB v0.13, all DDL and DML use patternMatch as default. Before IoTDB v0.13, all DDL and
+   * DML use prefixMatch.
+   */
+  private boolean isPrefixMatchPath;
+
+  public Statement rewrite(Statement statement, SchemaTree schemaTree)
       throws StatementAnalyzeException, PathNumOverLimitException {
     QueryStatement queryStatement = (QueryStatement) statement;
-    paginationController =
+    this.paginationController =
         new ColumnPaginationController(
             queryStatement.getSeriesLimit(), queryStatement.getSeriesOffset());
     this.schemaTree = schemaTree;
+    this.isPrefixMatchPath = queryStatement.isPrefixMatchPath();
 
     if (queryStatement.getIndexType() == null) {
       // remove wildcards in SELECT caluse
@@ -252,11 +258,14 @@ public class WildcardsRemover {
       throws StatementAnalyzeException {
     try {
       Pair<List<MeasurementPath>, Integer> pair =
-          schemaTree.getMeasurementPaths(
-              path, paginationController.getCurLimit(), paginationController.getCurOffset());
+          schemaTree.searchMeasurementPaths(
+              path,
+              paginationController.getCurLimit(),
+              paginationController.getCurOffset(),
+              isPrefixMatchPath);
       paginationController.consume(pair.left.size(), pair.right);
       return pair.left;
-    } catch (MetadataException e) {
+    } catch (Exception e) {
       throw new StatementAnalyzeException(
           "error occurred when removing wildcard: " + e.getMessage());
     }
@@ -306,13 +315,14 @@ public class WildcardsRemover {
       throws StatementAnalyzeException {
     List<PartialPath> actualPaths = new ArrayList<>();
     try {
-      List<MeasurementPath> all = schemaTree.getMeasurementPaths(originalPath, 0, 0).left;
+      List<MeasurementPath> all =
+          schemaTree.searchMeasurementPaths(originalPath, 0, 0, isPrefixMatchPath).left;
       if (all.isEmpty()) {
         throw new StatementAnalyzeException(
             String.format("Unknown time series %s in `where clause`", originalPath));
       }
       actualPaths.addAll(all);
-    } catch (MetadataException e) {
+    } catch (Exception e) {
       throw new StatementAnalyzeException("error when remove star: " + e.getMessage());
     }
     return actualPaths;
