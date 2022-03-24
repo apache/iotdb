@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.mpp.buffer;
 
-import org.apache.iotdb.db.mpp.schedule.task.FragmentInstanceTask;
 import org.apache.iotdb.mpp.rpc.thrift.ThriftFragmentInstanceId;
 
 public interface IDataBlockManager {
@@ -63,7 +62,7 @@ public interface IDataBlockManager {
    *
    * <p>This method should be called when a fragment instance finished in an abnormal state.
    *
-   * @param task The fragment instance task.
+   * @param fragmentInstanceId ID of the fragment instance to be released.
    */
-  void forceDeregisterFragmentInstance(FragmentInstanceTask task);
+  void forceDeregisterFragmentInstance(ThriftFragmentInstanceId fragmentInstanceId);
 }
