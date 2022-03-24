@@ -38,6 +38,7 @@ import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.Segment;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -321,10 +322,11 @@ public class SchemaFileTest {
     sf.close();
   }
 
+  @Test
   public void bitwiseTest() {
 
-    print(SchemaFile.getPageIndex(95485952));
-    print(SchemaFile.getGlobalIndex(1457, (short) 0));
+    print(SchemaFile.getPageIndex(12451840));
+    print(SchemaFile.getGlobalIndex(190, (short) 0));
 
     long initGlbAdr = 1099780063232L;
     int pageIndex = SchemaFile.getPageIndex(initGlbAdr);
@@ -339,6 +341,12 @@ public class SchemaFileTest {
     byte[] bta = {0b1, 0b10, 0b100};
     print(Arrays.toString(bta));
     print(ByteBuffer.wrap(bta));
+
+    ByteBuffer buf = ByteBuffer.allocate(20);
+    ReadWriteIOUtils.write((byte)1, buf);
+    ReadWriteIOUtils.write("", buf);
+    ReadWriteIOUtils.write((byte)1, buf);
+    print(Arrays.toString(buf.array()));
   }
 
   public void testDebugger() throws MetadataException, IOException {
