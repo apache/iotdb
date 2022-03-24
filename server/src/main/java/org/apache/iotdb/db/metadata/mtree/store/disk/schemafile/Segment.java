@@ -156,8 +156,8 @@ public class Segment implements ISegment {
   @Override
   public int insertRecord(String key, ByteBuffer buf) throws RecordDuplicatedException {
     try {
-      buffer.clear();
-      bufferChecker(buffer);
+      buf.clear();
+      bufferChecker(buf);
     } catch (BufferUnderflowException | BufferOverflowException e) {
       logger.error(
           String.format(
