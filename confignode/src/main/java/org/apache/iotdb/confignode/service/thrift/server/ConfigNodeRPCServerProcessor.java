@@ -86,10 +86,10 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
       Map<Integer, DataNodeMessage> result = new HashMap<>();
       for (DataNodeInfo info : ((DataNodesInfoDataSet) resp.getDataset()).getInfoList()) {
         result.put(
-          info.getDataNodeID(),
-          new DataNodeMessage(
             info.getDataNodeID(),
-            new EndPoint(info.getEndPoint().getIp(), info.getEndPoint().getPort())));
+            new DataNodeMessage(
+                info.getDataNodeID(),
+                new EndPoint(info.getEndPoint().getIp(), info.getEndPoint().getPort())));
       }
       return result;
     }

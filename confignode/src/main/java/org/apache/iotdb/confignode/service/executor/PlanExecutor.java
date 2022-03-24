@@ -18,21 +18,14 @@
  */
 package org.apache.iotdb.confignode.service.executor;
 
-import org.apache.iotdb.confignode.consensus.response.DataNodesInfoDataSet;
-import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaDataSet;
 import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeException;
-import org.apache.iotdb.confignode.partition.DataNodeInfo;
 import org.apache.iotdb.confignode.partition.PartitionTable;
-import org.apache.iotdb.confignode.partition.StorageGroupSchema;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
 import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
 import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
-
-import java.util.List;
-import java.util.Map;
 
 public class PlanExecutor {
 

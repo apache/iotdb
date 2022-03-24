@@ -21,9 +21,7 @@ package org.apache.iotdb.confignode.consensus.response;
 import org.apache.iotdb.confignode.partition.DataNodeInfo;
 import org.apache.iotdb.consensus.common.DataSet;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 public class DataNodesInfoDataSet implements DataSet {
 
@@ -36,7 +34,6 @@ public class DataNodesInfoDataSet implements DataSet {
   public void setInfoList(List<DataNodeInfo> infoList) {
     this.infoList = infoList;
   }
-
 
   public List<DataNodeInfo> getInfoList() {
     return this.infoList;
