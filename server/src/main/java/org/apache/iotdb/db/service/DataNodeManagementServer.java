@@ -30,13 +30,14 @@ import org.apache.iotdb.db.service.thrift.handler.DataNodeManagementServiceHandl
 import org.apache.iotdb.db.service.thrift.impl.DataNodeManagementServiceImpl;
 import org.apache.iotdb.service.rpc.thrift.ManagementIService;
 
-public class DataNodeManagementServer extends ThriftService implements DataNodeManagementServerMBean {
+public class DataNodeManagementServer extends ThriftService
+    implements DataNodeManagementServerMBean {
 
   private DataNodeManagementServiceImpl impl;
 
   @Override
   public ServiceType getID() {
-    return ServiceType.DATA_NODE_INTERNAL_SERVICE;
+    return ServiceType.DATA_NODE_MANAGEMENT_SERVICE;
   }
 
   @Override
@@ -65,7 +66,7 @@ public class DataNodeManagementServer extends ThriftService implements DataNodeM
           new ThriftServiceThread(
               processor,
               getID().getName(),
-              ThreadName.DATA_NODE_INTERNAL_CLIENT.getName(),
+              ThreadName.DATA_NODE_MANAGEMENT_CLIENT.getName(),
               getBindIP(),
               getBindPort(),
               config.getRpcMaxConcurrentClientNum(),
