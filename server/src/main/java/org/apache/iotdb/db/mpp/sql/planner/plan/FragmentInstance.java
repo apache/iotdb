@@ -44,7 +44,7 @@ public class FragmentInstance {
   }
 
   public static FragmentInstanceId generateId(PlanFragmentId id, int index) {
-    return new FragmentInstanceId(String.format("%s.%d", id, index));
+    return new FragmentInstanceId(id, String.valueOf(index));
   }
 
   public DataRegionReplicaSet getDataRegionId() {

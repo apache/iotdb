@@ -23,14 +23,15 @@ public class FragmentInstanceId {
 
   private final String fullId;
   private final QueryId queryId;
-  private final FragmentId fragmentId;
+  private final PlanFragmentId fragmentId;
   private final String instanceId;
 
-  public FragmentInstanceId(QueryId queryId, FragmentId fragmentId, String instanceId) {
-    this.queryId = queryId;
+  public FragmentInstanceId(PlanFragmentId fragmentId, String instanceId) {
+    this.queryId = fragmentId.getQueryId();
     this.fragmentId = fragmentId;
     this.instanceId = instanceId;
-    this.fullId = String.format("%s.%d.%s", queryId.getId(), fragmentId.getId(), instanceId);
+    this.fullId =
+        String.format("%s.%d.%s", fragmentId.getQueryId().getId(), fragmentId.getId(), instanceId);
   }
 
   public String getFullId() {
@@ -41,7 +42,7 @@ public class FragmentInstanceId {
     return queryId;
   }
 
-  public FragmentId getFragmentId() {
+  public PlanFragmentId getFragmentId() {
     return fragmentId;
   }
 
