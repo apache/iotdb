@@ -582,6 +582,10 @@ public class RSchemaReadWriteHandler {
       iterator.next();
     }
     outputStream.close();
+    if (outputFile.exists()) {
+      boolean deleted = outputFile.delete();
+      System.out.println("clean output file: " + deleted);
+    }
     System.out.println("\n-----------------scan rocksdb end----------------------");
   }
 
