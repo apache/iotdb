@@ -341,7 +341,7 @@ public class SchemaFileTest {
     print(ByteBuffer.wrap(bta));
   }
 
-  private void testDebugger() throws MetadataException, IOException {
+  public void testDebugger() throws MetadataException, IOException {
     String filePath = "./buffer.temp";
 
     File pmtFile = new File(filePath);

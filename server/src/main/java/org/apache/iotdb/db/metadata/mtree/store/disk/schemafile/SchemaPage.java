@@ -29,10 +29,10 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * This class is aimed to manage space inside one page. A segment inside a page has 3
@@ -86,7 +86,7 @@ public class SchemaPage implements ISchemaPage {
     buffer.clear();
     this.pageBuffer = buffer;
     this.pageIndex = index;
-    this.segCacheMap = new HashMap<>();
+    this.segCacheMap = new ConcurrentHashMap<>();
 
     if (override) {
       pageSpareOffset = SchemaFile.PAGE_HEADER_SIZE;

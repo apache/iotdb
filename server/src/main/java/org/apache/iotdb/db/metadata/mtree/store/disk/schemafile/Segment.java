@@ -161,8 +161,7 @@ public class Segment implements ISegment {
     } catch (BufferUnderflowException | BufferOverflowException e) {
       logger.error(
           String.format(
-              "Buffer broken when insert, key:%s, buffer:%s",
-              key, Arrays.toString(buffer.array())));
+              "Buffer broken when insert, key:%s, buffer:%s", key, Arrays.toString(buf.array())));
       e.printStackTrace();
       throw e;
     }
@@ -240,7 +239,8 @@ public class Segment implements ISegment {
 
     buf.clear();
     this.buffer.position(recordStartAddr);
-    this.buffer.put(buf);
+    bufferMonitor(buf);
+    // this.buffer.put(buf);
 
     this.freeAddr = (short) recordStartAddr;
     this.recordNum++;
@@ -332,7 +332,8 @@ public class Segment implements ISegment {
     if (oriLen >= newLen) {
       // update in place
       this.buffer.limit(this.buffer.position() + oriLen);
-      this.buffer.put(buffer);
+      bufferMonitor(buffer);
+      // this.buffer.put(buffer);
     } else {
       // allocate new space for record, modify key-address list, freeAddr
       if (ISegment.SEG_HEADER_SIZE + pairLength + newLen > freeAddr) {
@@ -345,7 +346,8 @@ public class Segment implements ISegment {
       // it will not mark old record as expired
       this.buffer.position(freeAddr);
       this.buffer.limit(freeAddr + newLen);
-      this.buffer.put(buffer);
+      bufferMonitor(buffer);
+      // this.buffer.put(buffer);
     }
 
     return idx;
@@ -368,7 +370,7 @@ public class Segment implements ISegment {
     // TODO: compact segment further as well
     recordNum--;
     pairLength -= 2;
-    pairLength -= key.getBytes().length + 4;
+    pairLength -= (key.getBytes().length + 4);
     keyAddressList.remove(idx);
 
     return idx;
@@ -395,7 +397,8 @@ public class Segment implements ISegment {
 
     prefBuffer.clear();
     this.buffer.clear();
-    this.buffer.put(prefBuffer);
+    bufferMonitor(prefBuffer);
+    // this.buffer.put(prefBuffer);
   }
 
   @Override
@@ -498,9 +501,31 @@ public class Segment implements ISegment {
   protected void updateRecordSegAddr(String key, long newSegAddr) {
     int index = getRecordIndexByKey(key);
     short offset = getOffsetByIndex(index);
+
+    if (couldBeRootSegment()) {
+      RuntimeException re = bufferIntegrity();
+      if (re != null) {
+        logger.error(
+            String.format(
+                "Buffer broken before update record segment addr, key: %s, seg addr:%s",
+                key, newSegAddr));
+        throw re;
+      }
+    }
     this.buffer.clear();
     this.buffer.position(offset);
     RecordUtils.updateSegAddr(this.buffer, newSegAddr);
+
+    if (couldBeRootSegment()) {
+      RuntimeException re = bufferIntegrity();
+      if (re != null) {
+        logger.error(
+            String.format(
+                "Buffer broken after update record segment addr, key: %s, seg addr:%s",
+                key, newSegAddr));
+        throw re;
+      }
+    }
   }
 
   // endregion
@@ -547,7 +572,7 @@ public class Segment implements ISegment {
       this.buffer.clear();
       this.buffer.position(keyAddressList.get(i).right);
       try {
-        if (RecordUtils.getRecordType(this.buffer) >= 4
+        if (RecordUtils.getRecordType(this.buffer) == 4
             && RecordUtils.getRecordAlias(this.buffer).equals(alias)) {
           return i;
         }
@@ -581,14 +606,22 @@ public class Segment implements ISegment {
     for (Pair<String, Short> pair : keyAddressList) {
       this.buffer.position(pair.right);
       try {
-        if (RecordUtils.getRecordType(buffer) < 3) {
+        if (RecordUtils.getRecordType(buffer) == 0 || RecordUtils.getRecordType(buffer) == 1) {
           builder.append(
               String.format("(%s -> %d),", pair.left, RecordUtils.getRecordSegAddr(buffer)));
-        } else {
+        } else if (RecordUtils.getRecordType(buffer) == 4) {
           builder.append(String.format("(%s, %s),", pair.left, RecordUtils.getRecordAlias(buffer)));
+        } else {
+          logger.error(String.format("Record Broken at: %s", pair));
+          throw new BufferUnderflowException();
         }
       } catch (BufferUnderflowException | BufferOverflowException e) {
         logger.error(String.format("Segment broken with string: %s", builder.toString()));
+        logger.error(
+            String.format(
+                "Broken record bytes: %s",
+                Arrays.toString(
+                    Arrays.copyOfRange(this.buffer.array(), pair.right, pair.right + 30))));
         throw e;
       }
     }
@@ -606,6 +639,56 @@ public class Segment implements ISegment {
     short res = ReadWriteIOUtils.readShort(buffer);
     buffer.position(buffer.position() - 2);
     return res;
+  }
+
+  private synchronized void bufferMonitor(ByteBuffer buf) {
+    int pos = this.buffer.position();
+    int lmt = this.buffer.limit();
+    if (couldBeRootSegment() && bufferIntegrity() != null) {
+      logger.error(String.format("Buffer broken before put:%s", Arrays.toString(buf.array())));
+      throw new BufferUnderflowException();
+    }
+
+    this.buffer.position(pos);
+    this.buffer.limit(lmt);
+    this.buffer.put(buf);
+
+    if (couldBeRootSegment() && bufferIntegrity() != null) {
+      logger.error(String.format("Buffer broken after put:%s", Arrays.toString(buf.array())));
+      throw new BufferUnderflowException();
+    }
+  }
+
+  private RuntimeException bufferIntegrity() {
+    RuntimeException resE = null;
+    if (couldBeRootSegment()) {
+      // only check for root page
+      try {
+        this.buffer.clear();
+        for (Pair<String, Short> pair : keyAddressList) {
+          this.buffer.position(pair.right);
+
+          byte type = RecordUtils.getRecordType(this.buffer);
+          if (type != 0 && type != 1 && type != 4) {
+            logger.error(String.format("[Buffer Broken]Type error at: %s", pair));
+          }
+
+          short recLen = RecordUtils.getRecordLength(this.buffer);
+          if (type == 0 || type == 1) {
+            if (recLen != 16) {
+              logger.error(String.format("[Buffer Broken]Length error at: %s", pair));
+            }
+          }
+        }
+      } catch (BufferUnderflowException | BufferOverflowException e) {
+        resE = e;
+      }
+    }
+    return resE;
+  }
+
+  private boolean couldBeRootSegment() {
+    return ((this.length == SchemaFile.SEG_MAX_SIZ) && (this.prevSegAddress < 0));
   }
 
   // region Test Only Methods
