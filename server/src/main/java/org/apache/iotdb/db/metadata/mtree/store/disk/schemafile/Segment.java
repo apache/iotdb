@@ -254,17 +254,18 @@ public class Segment implements ISegment {
       return null;
     }
 
+    ByteBuffer roBuffer = this.buffer.asReadOnlyBuffer(); // for concurrent read
     short offset = getOffsetByIndex(index);
-    this.buffer.clear();
-    this.buffer.position(offset);
-    short len = RecordUtils.getRecordLength(this.buffer);
-    this.buffer.limit(offset + len);
+    roBuffer.clear();
+    roBuffer.position(offset);
+    short len = RecordUtils.getRecordLength(roBuffer);
+    roBuffer.limit(offset + len);
 
     try {
-      return RecordUtils.buffer2Node(keyAddressList.get(index).left, this.buffer);
+      return RecordUtils.buffer2Node(keyAddressList.get(index).left, roBuffer);
     } catch (BufferUnderflowException | BufferOverflowException e) {
-      this.buffer.position(offset);
-      this.buffer.limit(offset + len);
+      roBuffer.position(offset);
+      roBuffer.limit(offset + len);
       logger.error(
           String.format(
               "Get record[key:%s] failed, start offset:%d, end offset:%d",
@@ -286,13 +287,14 @@ public class Segment implements ISegment {
   @Override
   public Queue<IMNode> getAllRecords() throws MetadataException {
     Queue<IMNode> res = new ArrayDeque<>();
-    this.buffer.clear();
+    ByteBuffer roBuffer = this.buffer.asReadOnlyBuffer();
+    roBuffer.clear();
     for (Pair<String, Short> p : keyAddressList) {
-      this.buffer.limit(this.buffer.capacity());
-      this.buffer.position(p.right);
-      short len = RecordUtils.getRecordLength(this.buffer);
-      this.buffer.limit(p.right + len);
-      res.add(RecordUtils.buffer2Node(p.left, this.buffer));
+      roBuffer.limit(roBuffer.capacity());
+      roBuffer.position(p.right);
+      short len = RecordUtils.getRecordLength(roBuffer);
+      roBuffer.limit(p.right + len);
+      res.add(RecordUtils.buffer2Node(p.left, roBuffer));
     }
     return res;
   }
@@ -567,13 +569,14 @@ public class Segment implements ISegment {
 
   private int getRecordIndexByAlias(String alias) {
     int debuggerI = 0;
+    ByteBuffer roBuffer = this.buffer.asReadOnlyBuffer();
     try {
       for (int i = 0; i < keyAddressList.size(); i++) {
         debuggerI = i;
-        this.buffer.clear();
-        this.buffer.position(keyAddressList.get(i).right);
-        if (RecordUtils.getRecordType(this.buffer) == 4) {
-          String tarAlias = RecordUtils.getRecordAlias(this.buffer);
+        roBuffer.clear();
+        roBuffer.position(keyAddressList.get(i).right);
+        if (RecordUtils.getRecordType(roBuffer) == 4) {
+          String tarAlias = RecordUtils.getRecordAlias(roBuffer);
           if (tarAlias != null && tarAlias.equals(alias)) {
             return i;
           }
@@ -589,7 +592,7 @@ public class Segment implements ISegment {
               "Snippet of crashed record: %s",
               Arrays.toString(
                   Arrays.copyOfRange(
-                      this.buffer.array(),
+                      roBuffer.array(),
                       keyAddressList.get(debuggerI).right,
                       keyAddressList.get(debuggerI).right + 30))));
       e.printStackTrace();
@@ -606,20 +609,22 @@ public class Segment implements ISegment {
 
   @Override
   public String toString() {
+    ByteBuffer roBuffer = this.buffer.asReadOnlyBuffer();
     StringBuilder builder = new StringBuilder("");
     builder.append(
         String.format(
             "[size: %d, K-AL size: %d, spare:%d,",
             this.length, keyAddressList.size(), freeAddr - pairLength - SEG_HEADER_SIZE));
-    this.buffer.clear();
+    roBuffer.clear();
     for (Pair<String, Short> pair : keyAddressList) {
-      this.buffer.position(pair.right);
+      roBuffer.position(pair.right);
       try {
-        if (RecordUtils.getRecordType(buffer) == 0 || RecordUtils.getRecordType(buffer) == 1) {
+        if (RecordUtils.getRecordType(roBuffer) == 0 || RecordUtils.getRecordType(roBuffer) == 1) {
           builder.append(
-              String.format("(%s -> %d),", pair.left, RecordUtils.getRecordSegAddr(buffer)));
-        } else if (RecordUtils.getRecordType(buffer) == 4) {
-          builder.append(String.format("(%s, %s),", pair.left, RecordUtils.getRecordAlias(buffer)));
+              String.format("(%s -> %d),", pair.left, RecordUtils.getRecordSegAddr(roBuffer)));
+        } else if (RecordUtils.getRecordType(roBuffer) == 4) {
+          builder.append(
+              String.format("(%s, %s),", pair.left, RecordUtils.getRecordAlias(roBuffer)));
         } else {
           logger.error(String.format("Record Broken at: %s", pair));
           throw new BufferUnderflowException();
@@ -630,7 +635,7 @@ public class Segment implements ISegment {
             String.format(
                 "Broken record bytes: %s",
                 Arrays.toString(
-                    Arrays.copyOfRange(this.buffer.array(), pair.right, pair.right + 30))));
+                    Arrays.copyOfRange(roBuffer.array(), pair.right, pair.right + 30))));
         throw e;
       }
     }
