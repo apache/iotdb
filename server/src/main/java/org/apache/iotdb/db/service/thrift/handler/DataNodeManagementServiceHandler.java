@@ -18,17 +18,17 @@
  */
 package org.apache.iotdb.db.service.thrift.handler;
 
-import org.apache.iotdb.db.service.thrift.impl.DataNodeInternalServiceImpl;
+import org.apache.iotdb.db.service.thrift.impl.DataNodeManagementServiceImpl;
 
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.server.ServerContext;
 import org.apache.thrift.server.TServerEventHandler;
 import org.apache.thrift.transport.TTransport;
 
-public class DataNodeInternalServiceHandler implements TServerEventHandler {
-  private DataNodeInternalServiceImpl serviceImpl;
+public class DataNodeManagementServiceHandler implements TServerEventHandler {
+  private DataNodeManagementServiceImpl serviceImpl;
 
-  public DataNodeInternalServiceHandler(DataNodeInternalServiceImpl serviceImpl) {
+  public DataNodeManagementServiceHandler(DataNodeManagementServiceImpl serviceImpl) {
     this.serviceImpl = serviceImpl;
   }
 

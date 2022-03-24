@@ -19,4 +19,4 @@
 
 package org.apache.iotdb.db.service;
 
-public interface DataNodeInternalServerMBean {}
+public interface DataNodeManagementServerMBean {}

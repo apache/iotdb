@@ -26,13 +26,13 @@ import org.apache.iotdb.commons.service.ThriftService;
 import org.apache.iotdb.commons.service.ThriftServiceThread;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.service.thrift.handler.DataNodeInternalServiceHandler;
-import org.apache.iotdb.db.service.thrift.impl.DataNodeInternalServiceImpl;
+import org.apache.iotdb.db.service.thrift.handler.DataNodeManagementServiceHandler;
+import org.apache.iotdb.db.service.thrift.impl.DataNodeManagementServiceImpl;
 import org.apache.iotdb.service.rpc.thrift.ManagementIService;
 
-public class DataNodeInternalServer extends ThriftService implements DataNodeInternalServerMBean {
+public class DataNodeManagementServer extends ThriftService implements DataNodeManagementServerMBean {
 
-  private DataNodeInternalServiceImpl impl;
+  private DataNodeManagementServiceImpl impl;
 
   @Override
   public ServiceType getID() {
@@ -46,7 +46,7 @@ public class DataNodeInternalServer extends ThriftService implements DataNodeInt
 
   @Override
   public void initSyncedServiceImpl(Object serviceImpl) {
-    impl = (DataNodeInternalServiceImpl) serviceImpl;
+    impl = (DataNodeManagementServiceImpl) serviceImpl;
     super.initSyncedServiceImpl(serviceImpl);
   }
 
@@ -70,7 +70,7 @@ public class DataNodeInternalServer extends ThriftService implements DataNodeInt
               getBindPort(),
               config.getRpcMaxConcurrentClientNum(),
               config.getThriftServerAwaitTimeForStopService(),
-              new DataNodeInternalServiceHandler(impl),
+              new DataNodeManagementServiceHandler(impl),
               IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable());
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
@@ -88,13 +88,13 @@ public class DataNodeInternalServer extends ThriftService implements DataNodeInt
     return IoTDBDescriptor.getInstance().getConfig().getInternalPort();
   }
 
-  public static DataNodeInternalServer getInstance() {
+  public static DataNodeManagementServer getInstance() {
     return DataNodeInternalServerHolder.INSTANCE;
   }
 
   private static class DataNodeInternalServerHolder {
 
-    private static final DataNodeInternalServer INSTANCE = new DataNodeInternalServer();
+    private static final DataNodeManagementServer INSTANCE = new DataNodeManagementServer();
 
     private DataNodeInternalServerHolder() {}
   }

@@ -23,7 +23,7 @@ import org.apache.iotdb.service.rpc.thrift.*;
 
 import org.apache.thrift.TException;
 
-public class DataNodeInternalServiceImpl implements ManagementIService.Iface {
+public class DataNodeManagementServiceImpl implements ManagementIService.Iface {
   @Override
   public TSStatus createSchemaRegion(CreateSchemaRegionReq req) throws TException {
     return null;
