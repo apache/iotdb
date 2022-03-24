@@ -46,6 +46,68 @@ struct EndOfDataBlockEvent {
   2: required string operatorId
 }
 
+struct TFragmentInstance {
+  1: required binary body
+}
+
+struct TSendFragmentInstanceReq {
+  1: required TFragmentInstance fragmentInstance
+}
+
+struct TSendFragmentInstanceResp {
+  1: required bool accepted
+  2: optional string message
+}
+
+struct TFetchFragmentInstanceStateReq {
+  1: required FragmentInstanceId fragmentInstanceId
+}
+
+// TODO: Consider to use a simple string
+enum TFragmentInstanceState {
+  PLANNED,
+  RUNNING,
+  FLUSHING,
+  FINISHED,
+  CANCELED,
+  ABORTED,
+  FAILED;
+}
+
+// TODO: need to supply more fields according to implementation
+struct TFragmentInstanceStateResp {
+  1: required TFragmentInstanceState state
+}
+
+struct TCancelQueryReq {
+  1: required string queryId
+}
+
+struct TCancelPlanFragmentReq {
+  1: required string planFragmentId
+}
+
+struct TCancelFragmentInstanceReq {
+  1: required FragmentInstanceId fragmentInstanceId
+}
+
+struct TCancelResp {
+  1: required bool cancelled
+  2: optional string messsga
+}
+
+service InternalService {
+    TSendFragmentInstanceResp sendFragmentInstance(TSendFragmentInstanceReq req);
+
+    TFragmentInstanceStateResp fetchFragmentInstanceState(TFetchFragmentInstanceStateReq req);
+
+    TCancelResp cancelQuery(TCancelQueryReq req);
+
+    TCancelResp cancelPlanFragment(TCancelPlanFragmentReq req);
+
+    TCancelResp cancelFragmentInstance(TCancelFragmentInstanceReq req);
+}
+
 service DataBlockService {
   GetDataBlockResponse getDataBlock(GetDataBlockReqest req);
 
