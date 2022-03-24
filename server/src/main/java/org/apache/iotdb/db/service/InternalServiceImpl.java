@@ -17,23 +17,22 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.sql.analyze;
+package org.apache.iotdb.db.service;
 
-import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
-import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.mpp.rpc.thrift.InternalService;
+import org.apache.iotdb.mpp.rpc.thrift.ShcameFetchReqest;
+import org.apache.iotdb.mpp.rpc.thrift.ShcameFetchResponse;
 
-import java.util.List;
-import java.util.Map;
+import org.apache.thrift.TException;
 
-/**
- * This interface is used to fetch the metadata information required in execution plan generating.
- */
-public interface ISchemaFetcher {
+public class InternalServiceImpl implements InternalService.Iface {
 
-  @Deprecated // TODO: will be replaced later
-  Map<String, MeasurementSchema> fetchSchema(PartialPath deviceId, List<String> measurementIdList);
+  public InternalServiceImpl() {
+    super();
+  }
 
-  SchemaTree fetchSchema(PathPatternTree patternTree);
+  @Override
+  public ShcameFetchResponse fetchSchema(ShcameFetchReqest req) throws TException {
+    throw new UnsupportedOperationException();
+  }
 }

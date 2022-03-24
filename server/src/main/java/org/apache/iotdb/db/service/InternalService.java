@@ -17,23 +17,40 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.sql.analyze;
+package org.apache.iotdb.db.service;
 
-import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
-import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.commons.service.ServiceType;
+import org.apache.iotdb.commons.service.ThriftService;
 
-import java.util.List;
-import java.util.Map;
+public class InternalService extends ThriftService {
 
-/**
- * This interface is used to fetch the metadata information required in execution plan generating.
- */
-public interface ISchemaFetcher {
+  private InternalServiceImpl impl;
 
-  @Deprecated // TODO: will be replaced later
-  Map<String, MeasurementSchema> fetchSchema(PartialPath deviceId, List<String> measurementIdList);
+  @Override
+  public ServiceType getID() {
+    return null;
+  }
 
-  SchemaTree fetchSchema(PathPatternTree patternTree);
+  @Override
+  public ThriftService getImplementation() {
+    return null;
+  }
+
+  @Override
+  public void initTProcessor()
+      throws ClassNotFoundException, IllegalAccessException, InstantiationException {}
+
+  @Override
+  public void initThriftServiceThread()
+      throws IllegalAccessException, InstantiationException, ClassNotFoundException {}
+
+  @Override
+  public String getBindIP() {
+    return null;
+  }
+
+  @Override
+  public int getBindPort() {
+    return 0;
+  }
 }
