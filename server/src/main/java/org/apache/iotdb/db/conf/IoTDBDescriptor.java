@@ -138,6 +138,7 @@ public class IoTDBDescriptor {
 
       loadClusterProps(properties);
 
+      // TODO: Use FQDN  to identify our nodes afterwards
       try {
         replaceHostnameWithIP();
       } catch (Exception e) {

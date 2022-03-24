@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.utils;
 
+import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 
 import org.slf4j.Logger;
@@ -30,12 +31,12 @@ import java.util.List;
 public class CommonUtils {
   private static final Logger logger = LoggerFactory.getLogger(CommonUtils.class);
 
-  public static EndPoint parseNodeUrl(String nodeUrl) {
+  public static EndPoint parseNodeUrl(String nodeUrl) throws BadNodeUrlException {
     EndPoint result = new EndPoint();
     String[] split = nodeUrl.split(":");
     if (split.length != 2) {
       logger.warn("Bad node url: {}", nodeUrl);
-      return null;
+      throw new BadNodeUrlException(String.format("Bad node url: %s", nodeUrl));
     }
     String ip = split[0];
     try {
@@ -43,11 +44,12 @@ public class CommonUtils {
       result.setIp(ip).setPort(port);
     } catch (NumberFormatException e) {
       logger.warn("Bad node url: {}", nodeUrl);
+      throw new BadNodeUrlException(String.format("Bad node url: %s", nodeUrl));
     }
     return result;
   }
 
-  public static List<EndPoint> parseNodeUrls(List<String> nodeUrls) {
+  public static List<EndPoint> parseNodeUrls(List<String> nodeUrls) throws BadNodeUrlException {
     List<EndPoint> result = new ArrayList<>();
     for (String url : nodeUrls) {
       result.add(parseNodeUrl(url));

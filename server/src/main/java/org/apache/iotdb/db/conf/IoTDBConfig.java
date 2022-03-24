@@ -820,7 +820,7 @@ public class IoTDBConfig {
   private int internalPort = 9003;
 
   /** The max time of data node waiting to join into the cluster */
-  private long joinClusterTimeOutMs = TimeUnit.SECONDS.toMillis(5);
+  private long joinClusterTimeOutMs = TimeUnit.SECONDS.toMillis(60);
 
   public IoTDBConfig() {
     try {
