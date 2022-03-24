@@ -52,7 +52,8 @@ public class TransportHandler {
   private final ScheduledExecutorService heartbeatExecutorService;
   private Future heartbeatFuture;
 
-  public TransportHandler(ITransportClient transportClient, String pipeName, long createTime) {
+  public TransportHandler(ITransportClient transportClient, String pipeName, long createTime)
+      throws SyncConnectionException {
     this.pipeName = pipeName;
     this.createTime = createTime;
     this.transportClient = transportClient;
@@ -73,6 +74,12 @@ public class TransportHandler {
       localIp1 = SyncConstant.UNKNOWN_IP;
     }
     this.localIp = localIp1;
+
+    create();
+  }
+
+  private void create() throws SyncConnectionException {
+    transportClient.heartbeat(new SyncRequest(RequestType.CREATE, pipeName, localIp, createTime));
   }
 
   public void start() throws SyncConnectionException {

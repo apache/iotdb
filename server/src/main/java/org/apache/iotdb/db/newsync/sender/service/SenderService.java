@@ -22,6 +22,7 @@ package org.apache.iotdb.db.newsync.sender.service;
 import org.apache.iotdb.db.exception.PipeException;
 import org.apache.iotdb.db.exception.PipeSinkException;
 import org.apache.iotdb.db.exception.StartupException;
+import org.apache.iotdb.db.exception.SyncConnectionException;
 import org.apache.iotdb.db.newsync.conf.SyncConstant;
 import org.apache.iotdb.db.newsync.conf.SyncPathUtil;
 import org.apache.iotdb.db.newsync.sender.pipe.IoTDBPipeSink;
@@ -195,7 +196,7 @@ public class SenderService implements IService {
               pipe, ((IoTDBPipeSink) pipeSink).getIp(), ((IoTDBPipeSink) pipeSink).getPort());
       pipe.setTransportHandler(
           new TransportHandler(transportClient, pipe.getName(), pipe.getCreateTime()));
-    } catch (IOException e) {
+    } catch (IOException | SyncConnectionException e) {
       throw new PipeException(
           String.format(
               "Create transport for pipe %s error, because %s.", pipe.getName(), e.getMessage()));

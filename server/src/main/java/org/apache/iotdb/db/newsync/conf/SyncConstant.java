@@ -19,6 +19,9 @@
 package org.apache.iotdb.db.newsync.conf;
 
 public class SyncConstant {
+  /** common */
+  public static final String PIPE_LOG_DIR_NAME = "pipe-log";
+
   /** sender */
   public static final String DEFAULT_PIPE_SINK_IP = "127.0.0.1";
 
@@ -26,7 +29,6 @@ public class SyncConstant {
 
   public static final String SENDER_PIPE_DIR_NAME = "sender";
   public static final String FINISH_COLLECT_LOCK_NAME = "finishCollect.lock";
-  public static final String PIPE_LOG_DIR_NAME = "pipe-log";
   public static final String HISTORY_PIPE_LOG_DIR_NAME = "history-" + PIPE_LOG_DIR_NAME;
   public static final Long DEFAULT_HEARTBEAT_DELAY_SECONDS = 10 * 60L;
   public static final Long DEFAULT_WAITING_FOR_TSFILE_CLOSE_MILLISECONDS = 500L;

@@ -19,16 +19,50 @@
 package org.apache.iotdb.db.integration.sync;
 
 import org.apache.iotdb.db.exception.SyncConnectionException;
+import org.apache.iotdb.db.newsync.pipedata.PipeData;
+import org.apache.iotdb.db.newsync.sender.pipe.Pipe;
 import org.apache.iotdb.db.newsync.transport.client.ITransportClient;
+import org.apache.iotdb.service.transport.thrift.ResponseType;
 import org.apache.iotdb.service.transport.thrift.SyncRequest;
 import org.apache.iotdb.service.transport.thrift.SyncResponse;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class TransportClientMock implements ITransportClient {
-  @Override
-  public SyncResponse heartbeat(SyncRequest syncRequest) throws SyncConnectionException {
-    return null;
+  private final Pipe pipe;
+  private final String ipAddress;
+  private final int port;
+
+  private List<PipeData> pipeDataList;
+
+  public TransportClientMock(Pipe pipe, String ipAddress, int port) {
+    this.pipe = pipe;
+    this.ipAddress = ipAddress;
+    this.port = port;
+
+    this.pipeDataList = new ArrayList<>();
   }
 
   @Override
-  public void run() {}
+  public SyncResponse heartbeat(SyncRequest syncRequest) throws SyncConnectionException {
+    return new SyncResponse(ResponseType.INFO, "");
+  }
+
+  @Override
+  public void run() {
+    try {
+      while (Thread.currentThread().isInterrupted()) {
+        PipeData pipeData = pipe.take();
+        pipeDataList.add(pipeData);
+        pipe.commit();
+      }
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+  }
+
+  public List<PipeData> getPipeDataList() {
+    return pipeDataList;
+  }
 }
