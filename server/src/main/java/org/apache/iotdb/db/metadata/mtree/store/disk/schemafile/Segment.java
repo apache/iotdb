@@ -660,7 +660,6 @@ public class Segment implements ISegment {
   }
 
   private RuntimeException bufferIntegrity() {
-    RuntimeException resE = null;
     if (couldBeRootSegment()) {
       // only check for root page
       try {
@@ -681,10 +680,10 @@ public class Segment implements ISegment {
           }
         }
       } catch (BufferUnderflowException | BufferOverflowException e) {
-        resE = e;
+        return e;
       }
     }
-    return resE;
+    return null;
   }
 
   private boolean couldBeRootSegment() {
