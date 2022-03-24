@@ -53,7 +53,7 @@ public class MetricConfig {
 
   private IoTDBConfig ioTDBConfig = new IoTDBConfig();
 
-  private class IoTDBConfig {
+  public static class IoTDBConfig {
     /** The host of iotdb */
     private String host = "127.0.0.1";
     /** The port of iotdb */
