@@ -206,18 +206,20 @@ public class IoTDB implements IoTDBMBean {
 
   private void initSchemaEngine() {
     long time = System.currentTimeMillis();
-    try {
-      if (IoTDBDescriptor.getInstance().getConfig().getMetadataManagerType()
-          == MetadataManagerType.ROCKSDB_MANAGER) {
-        schemaEngine = new RSchemaEngine();
-        logger.info("Use MRocksDBManager to manage metadata");
-      } else {
-        schemaEngine = SchemaEngine.getInstance();
-        logger.info("Use MManager to manage metadata");
+    if (schemaEngine == null) {
+      try {
+        if (IoTDBDescriptor.getInstance().getConfig().getMetadataManagerType()
+            == MetadataManagerType.ROCKSDB_MANAGER) {
+          schemaEngine = new RSchemaEngine();
+          logger.info("Use MRocksDBManager to manage metadata");
+        } else {
+          schemaEngine = SchemaEngine.getInstance();
+          logger.info("Use MManager to manage metadata");
+        }
+      } catch (Exception e) {
+        logger.error("create meta manager fail", e);
+        System.exit(1);
       }
-    } catch (Exception e) {
-      logger.error("create meta manager fail", e);
-      System.exit(1);
     }
     IoTDB.schemaEngine.init();
     long end = System.currentTimeMillis() - time;
