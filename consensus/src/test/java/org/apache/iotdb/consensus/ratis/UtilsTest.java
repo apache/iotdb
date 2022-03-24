@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,12 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.sql.planner.plan;
+package org.apache.iotdb.consensus.ratis;
 
-public class PlanFragmentId {
-  private String id;
+import org.apache.iotdb.consensus.common.ConsensusGroupId;
+import org.apache.iotdb.consensus.common.GroupType;
 
-  public PlanFragmentId(String id) {
-    this.id = id;
+import org.apache.ratis.protocol.RaftGroupId;
+import org.junit.Assert;
+import org.junit.Test;
+
+public class UtilsTest {
+  @Test
+  public void testEncryption() {
+    ConsensusGroupId raw = new ConsensusGroupId(GroupType.DataRegion, 1L);
+    RaftGroupId id = Utils.toRatisGroupId(raw);
+    ConsensusGroupId cgid = Utils.toConsensusGroupId(id);
+    Assert.assertEquals(raw, cgid);
   }
 }

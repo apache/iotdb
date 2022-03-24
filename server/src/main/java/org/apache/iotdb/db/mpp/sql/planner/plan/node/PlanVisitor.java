@@ -73,4 +73,8 @@ public abstract class PlanVisitor<R, C> {
   public R visitTimeJoin(TimeJoinNode node, C context) {
     return visitPlan(node, context);
   }
+
+  public R visitExchange(ExchangeNode node, C context) {
+    return visitPlan(node, context);
+  }
 }

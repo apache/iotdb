@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.sql.tree;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.db.mpp.sql.statement.StatementNode;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
 
@@ -69,5 +70,9 @@ public abstract class StatementVisitor<R, C> {
   // Insert Statement
   public R visitInsert(InsertStatement insertStatement, C context) {
     return visitStatement(insertStatement, context);
+  }
+
+  public R visitInsertTablet(InsertTabletStatement insertTabletStatement, C context) {
+    return visitStatement(insertTabletStatement, context);
   }
 }

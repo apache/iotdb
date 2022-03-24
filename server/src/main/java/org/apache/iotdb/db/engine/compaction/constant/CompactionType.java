@@ -16,10 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.engine.compaction.constant;
 
-package org.apache.iotdb.db.mpp.sql.metadata;
-
-/**
- * This interface is used to fetch the metadata information required in execution plan generating.
- */
-public interface IMetadataFetcher {}
+public enum CompactionType {
+  INNER_SEQ_COMPACTION,
+  INNER_UNSEQ_COMPACTION,
+  CROSS_COMPACTION
+}

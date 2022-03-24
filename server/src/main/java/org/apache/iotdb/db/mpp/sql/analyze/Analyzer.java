@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.mpp.sql.analyze;
 
+import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
+import org.apache.iotdb.commons.partition.PartitionInfo;
 import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
@@ -31,18 +33,26 @@ import org.apache.iotdb.db.mpp.sql.rewriter.RemoveNotOptimizer;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.db.mpp.sql.statement.component.WhereCondition;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.tree.StatementVisitor;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
+import java.util.Arrays;
+import java.util.Map;
 
 /** Analyze the statement and generate Analysis. */
-public class StatementAnalyzer {
+public class Analyzer {
 
-  private final Analysis analysis;
   private final MPPQueryContext context;
 
-  public StatementAnalyzer(Analysis analysis, MPPQueryContext context) {
-    this.analysis = analysis;
+  // TODO need to use factory to decide standalone or cluster
+  private final IPartitionFetcher partitionFetcher = StandalonePartitionFetcher.getInstance();
+  // TODO need to use factory to decide standalone or cluster
+  private final ISchemaFetcher schemaFetcher = StandaloneSchemaFetcher.getInstance();
+
+  public Analyzer(MPPQueryContext context) {
     this.context = context;
   }
 
@@ -55,12 +65,14 @@ public class StatementAnalyzer {
 
     @Override
     public Analysis visitStatement(Statement statement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
       analysis.setStatement(statement);
       return analysis;
     }
 
     @Override
     public Analysis visitQuery(QueryStatement queryStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
       try {
         // check for semantic errors
         queryStatement.selfCheck();
@@ -90,6 +102,7 @@ public class StatementAnalyzer {
     @Override
     public Analysis visitInsert(InsertStatement insertStatement, MPPQueryContext context) {
       // TODO: do analyze for insert statement
+      Analysis analysis = new Analysis();
       analysis.setStatement(insertStatement);
       return analysis;
     }
@@ -109,7 +122,33 @@ public class StatementAnalyzer {
           }
         }
       }
+      Analysis analysis = new Analysis();
       analysis.setStatement(createTimeSeriesStatement);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitInsertTablet(
+        InsertTabletStatement insertTabletStatement, MPPQueryContext context) {
+      // TODO(INSERT) device + time range -> PartitionInfo
+      DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
+      dataPartitionQueryParam.setDeviceId(insertTabletStatement.getDevicePath().getFullPath());
+      // TODO(INSERT) calculate the time partition id list
+      //      dataPartitionQueryParam.setTimePartitionIdList();
+      PartitionInfo partitionInfo = partitionFetcher.fetchPartitionInfo(dataPartitionQueryParam);
+
+      // TODO(INSERT) get each time series schema according to SchemaPartitionInfo in PartitionInfo
+      Map<String, MeasurementSchema> schemaMap =
+          schemaFetcher.fetchSchema(
+              insertTabletStatement.getDevicePath(),
+              Arrays.asList(insertTabletStatement.getMeasurements()));
+
+      Analysis analysis = new Analysis();
+      analysis.setSchemaMap(schemaMap);
+      // TODO(INSERT) do type check here
+      analysis.setStatement(insertTabletStatement);
+      analysis.setDataPartitionInfo(partitionInfo.getDataPartitionInfo());
+      analysis.setSchemaPartitionInfo(partitionInfo.getSchemaPartitionInfo());
       return analysis;
     }
   }

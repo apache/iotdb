@@ -19,12 +19,12 @@
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.write;
 
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
-import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.util.List;
 
@@ -37,11 +37,10 @@ public abstract class InsertNode extends PlanNode {
   protected PartialPath devicePath;
 
   protected boolean isAligned;
-  protected String[] measurements;
-  // get from client
+  protected MeasurementSchema[] measurements;
   protected TSDataType[] dataTypes;
-  // get from SchemaEngine
-  protected IMeasurementMNode[] measurementMNodes;
+  // TODO(INSERT) need to change it to a function handle to update last time value
+  //  protected IMeasurementMNode[] measurementMNodes;
 
   /**
    * device id reference, for reuse device id in both id table and memtable <br>
@@ -49,15 +48,12 @@ public abstract class InsertNode extends PlanNode {
    */
   protected IDeviceID deviceID;
 
-  // record the failed measurements, their reasons, and positions in "measurements"
-  List<String> failedMeasurements;
-  private List<Exception> failedExceptions;
-  List<Integer> failedIndices;
-
   protected InsertNode(PlanNodeId id) {
     super(id);
   }
 
+  // TODO(INSERT) split this insert node into multiple InsertNode according to the data partition
+  // info
   public abstract List<InsertNode> splitByPartition(Analysis analysis);
 
   public boolean needSplit() {

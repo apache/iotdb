@@ -20,8 +20,8 @@ package org.apache.iotdb.db.mpp.execution.scheduler;
 
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.metadata.SchemaEngine;
-import org.apache.iotdb.db.mpp.common.FragmentId;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
+import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.execution.FragmentInfo;
 
 import io.airlift.units.Duration;
@@ -52,5 +52,5 @@ public class StandaloneScheduler implements IScheduler {
   public void failFragmentInstance(FragmentInstanceId instanceId, Throwable failureCause) {}
 
   @Override
-  public void cancelFragment(FragmentId fragmentId) {}
+  public void cancelFragment(PlanFragmentId planFragmentId) {}
 }
