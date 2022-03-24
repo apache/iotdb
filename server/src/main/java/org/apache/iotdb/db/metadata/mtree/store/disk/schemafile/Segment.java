@@ -235,13 +235,11 @@ public class Segment implements ISegment {
       }
     }
 
-    keyAddressList.add(tarIdx, new Pair<>(key, (short) recordStartAddr));
-
     buf.clear();
     this.buffer.position(recordStartAddr);
     bufferMonitor(buf);
     // this.buffer.put(buf);
-
+    keyAddressList.add(tarIdx, new Pair<>(key, (short) recordStartAddr));
     this.freeAddr = (short) recordStartAddr;
     this.recordNum++;
 
