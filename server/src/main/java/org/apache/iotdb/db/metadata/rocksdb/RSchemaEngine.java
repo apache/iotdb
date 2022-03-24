@@ -19,10 +19,6 @@
 
 package org.apache.iotdb.db.metadata.rocksdb;
 
-import com.google.common.collect.MapMaker;
-import io.netty.util.internal.StringUtil;
-import org.apache.commons.lang3.ArrayUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -89,6 +85,11 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
+
+import com.google.common.collect.MapMaker;
+import io.netty.util.internal.StringUtil;
+import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.rocksdb.Holder;
 import org.rocksdb.RocksDBException;
 import org.rocksdb.RocksIterator;
@@ -758,7 +759,8 @@ public class RSchemaEngine implements ISchemaEngine {
    */
   @Override
   public void deleteStorageGroups(List<PartialPath> storageGroups) throws MetadataException {
-    storageGroups.parallelStream()
+    storageGroups
+        .parallelStream()
         .forEach(
             path -> {
               try {
@@ -944,7 +946,8 @@ public class RSchemaEngine implements ISchemaEngine {
           RSchemaUtils.getSuffixOfLevelPath(
               ArrayUtils.subarray(nodes, firstNonWildcardIndex, nextFirstWildcardIndex), level);
 
-      scanKeys.parallelStream()
+      scanKeys
+          .parallelStream()
           .forEach(
               prefixNodes -> {
                 String levelPrefix =
@@ -1137,7 +1140,8 @@ public class RSchemaEngine implements ISchemaEngine {
               .append(upperLevel)
               .toString();
       Set<String> parentPaths = readWriteHandler.getAllByPrefix(prefix);
-      parentPaths.parallelStream()
+      parentPaths
+          .parallelStream()
           .forEach(
               x -> {
                 String targetPrefix = RSchemaUtils.getNextLevelOfPath(x, upperLevel);
