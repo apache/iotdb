@@ -16,12 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.sql.planner.plan;
+package org.apache.iotdb.commons.partition;
 
-public class PlanFragmentId {
-  private String id;
+public class TimePartitionId {
+  private long startTime;
 
-  public PlanFragmentId(String id) {
-    this.id = id;
+  public long getStartTime() {
+    return startTime;
+  }
+
+  public void setStartTime(long startTime) {
+    this.startTime = startTime;
   }
 }

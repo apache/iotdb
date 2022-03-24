@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.source;
 
+import org.apache.iotdb.commons.partition.DataRegionReplicaSet;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 
@@ -55,4 +56,14 @@ public class CsvSourceNode extends SourceNode {
 
   @Override
   public void open() throws Exception {}
+
+  @Override
+  public DataRegionReplicaSet getDataRegionReplicaSet() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void setDataRegionReplicaSet(DataRegionReplicaSet dataRegionReplicaSet) {
+    throw new UnsupportedOperationException();
+  }
 }

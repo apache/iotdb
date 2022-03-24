@@ -30,7 +30,7 @@ import java.time.ZonedDateTime;
 
 import static org.junit.Assert.fail;
 
-public class StatementAnalyzerTest {
+public class AnalyzerTest {
 
   @Test
   public void test() {
@@ -48,8 +48,7 @@ public class StatementAnalyzerTest {
 
   private void assertAnalyzeSemanticException(String sql, String message) {
     try {
-      StatementAnalyzer analyzer =
-          new StatementAnalyzer(new Analysis(), new MPPQueryContext(), null);
+      Analyzer analyzer = new Analyzer(new MPPQueryContext());
       analyzer.analyze(StatementGenerator.createStatement(sql, ZonedDateTime.now().getOffset()));
       fail();
     } catch (SemanticException e) {

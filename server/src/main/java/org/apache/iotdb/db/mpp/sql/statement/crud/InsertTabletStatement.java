@@ -16,25 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.execution.scheduler;
+package org.apache.iotdb.db.mpp.sql.statement.crud;
 
-import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
-import org.apache.iotdb.db.mpp.common.PlanFragmentId;
-import org.apache.iotdb.db.mpp.execution.FragmentInfo;
+import org.apache.iotdb.tsfile.utils.BitMap;
 
-import io.airlift.units.Duration;
+public class InsertTabletStatement extends InsertBaseStatement {
 
-public interface IScheduler {
-
-  void start();
-
-  void abort();
-
-  Duration getTotalCpuTime();
-
-  FragmentInfo getFragmentInfo();
-
-  void failFragmentInstance(FragmentInstanceId instanceId, Throwable failureCause);
-
-  void cancelFragment(PlanFragmentId planFragmentId);
+  private long[] times; // times should be sorted. It is done in the session API.
+  private BitMap[] bitMaps;
+  private Object[] columns;
 }

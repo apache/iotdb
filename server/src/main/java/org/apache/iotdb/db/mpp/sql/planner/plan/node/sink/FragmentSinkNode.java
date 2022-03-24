@@ -18,19 +18,31 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.sink;
 
+import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ExchangeNode;
+import org.apache.iotdb.service.rpc.thrift.EndPoint;
+
+import com.google.common.collect.ImmutableList;
 
 import java.util.List;
 
 public class FragmentSinkNode extends SinkNode {
+  private PlanNode child;
+  private ExchangeNode downStreamNode;
+
+  private EndPoint downStreamEndpoint;
+  private FragmentInstanceId downStreamInstanceId;
+  private PlanNodeId downStreamPlanNodeId;
+
   public FragmentSinkNode(PlanNodeId id) {
     super(id);
   }
 
   @Override
   public List<PlanNode> getChildren() {
-    return null;
+    return ImmutableList.of(child);
   }
 
   @Override
@@ -53,4 +65,51 @@ public class FragmentSinkNode extends SinkNode {
 
   @Override
   public void close() throws Exception {}
+
+  public PlanNode getChild() {
+    return child;
+  }
+
+  public void setChild(PlanNode child) {
+    this.child = child;
+  }
+
+  public String toString() {
+    return String.format("FragmentSinkNode-%s:[SendTo: (%s)]", getId(), getDownStreamAddress());
+  }
+
+  public String getDownStreamAddress() {
+    if (getDownStreamEndpoint() == null) {
+      return "Not assigned";
+    }
+    return String.format(
+        "%s/%s/%s",
+        getDownStreamEndpoint().getIp(), getDownStreamInstanceId(), getDownStreamPlanNodeId());
+  }
+
+  public ExchangeNode getDownStreamNode() {
+    return downStreamNode;
+  }
+
+  public void setDownStreamNode(ExchangeNode downStreamNode) {
+    this.downStreamNode = downStreamNode;
+  }
+
+  public void setDownStream(EndPoint endPoint, FragmentInstanceId instanceId, PlanNodeId nodeId) {
+    this.downStreamEndpoint = endPoint;
+    this.downStreamInstanceId = instanceId;
+    this.downStreamPlanNodeId = nodeId;
+  }
+
+  public EndPoint getDownStreamEndpoint() {
+    return downStreamEndpoint;
+  }
+
+  public FragmentInstanceId getDownStreamInstanceId() {
+    return downStreamInstanceId;
+  }
+
+  public PlanNodeId getDownStreamPlanNodeId() {
+    return downStreamPlanNodeId;
+  }
 }

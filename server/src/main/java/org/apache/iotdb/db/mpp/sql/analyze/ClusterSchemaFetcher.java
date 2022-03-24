@@ -16,25 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.execution.scheduler;
+package org.apache.iotdb.db.mpp.sql.analyze;
 
-import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
-import org.apache.iotdb.db.mpp.common.PlanFragmentId;
-import org.apache.iotdb.db.mpp.execution.FragmentInfo;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-import io.airlift.units.Duration;
+import java.util.List;
+import java.util.Map;
 
-public interface IScheduler {
+public class ClusterSchemaFetcher implements ISchemaFetcher {
 
-  void start();
-
-  void abort();
-
-  Duration getTotalCpuTime();
-
-  FragmentInfo getFragmentInfo();
-
-  void failFragmentInstance(FragmentInstanceId instanceId, Throwable failureCause);
-
-  void cancelFragment(PlanFragmentId planFragmentId);
+  @Override
+  public Map<String, MeasurementSchema> fetchSchema(
+      PartialPath deviceId, List<String> measurementIdList) {
+    return null;
+  }
 }

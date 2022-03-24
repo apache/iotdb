@@ -16,25 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.execution.scheduler;
+package org.apache.iotdb.db.mpp.execution;
 
-import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
-import org.apache.iotdb.db.mpp.common.PlanFragmentId;
-import org.apache.iotdb.db.mpp.execution.FragmentInfo;
+import org.apache.iotdb.db.mpp.common.QueryId;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
-import io.airlift.units.Duration;
+public class ExecutionResult {
+  public QueryId queryId;
+  public TSStatus status;
 
-public interface IScheduler {
-
-  void start();
-
-  void abort();
-
-  Duration getTotalCpuTime();
-
-  FragmentInfo getFragmentInfo();
-
-  void failFragmentInstance(FragmentInstanceId instanceId, Throwable failureCause);
-
-  void cancelFragment(PlanFragmentId planFragmentId);
+  public ExecutionResult(QueryId queryId, TSStatus status) {
+    this.queryId = queryId;
+    this.status = status;
+  }
 }

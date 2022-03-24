@@ -16,6 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.common;
+package org.apache.iotdb.commons.partition;
 
-public class QuerySession {}
+import java.util.Map;
+
+public class SchemaPartitionInfo {
+
+  // Map<StorageGroup, Map<DeviceGroupID, SchemaRegionPlaceInfo>>
+  private Map<String, Map<DeviceGroupId, SchemaRegionReplicaSet>> schemaPartitionInfo;
+
+  public Map<String, Map<DeviceGroupId, SchemaRegionReplicaSet>> getSchemaPartitionInfo() {
+    return schemaPartitionInfo;
+  }
+
+  public void setSchemaPartitionInfo(
+      Map<String, Map<DeviceGroupId, SchemaRegionReplicaSet>> schemaPartitionInfo) {
+    this.schemaPartitionInfo = schemaPartitionInfo;
+  }
+}

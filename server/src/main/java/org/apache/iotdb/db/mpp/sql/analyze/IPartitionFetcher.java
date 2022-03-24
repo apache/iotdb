@@ -16,25 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.execution.scheduler;
+package org.apache.iotdb.db.mpp.sql.analyze;
 
-import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
-import org.apache.iotdb.db.mpp.common.PlanFragmentId;
-import org.apache.iotdb.db.mpp.execution.FragmentInfo;
+import org.apache.iotdb.commons.partition.DataPartitionInfo;
+import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
+import org.apache.iotdb.commons.partition.PartitionInfo;
+import org.apache.iotdb.commons.partition.SchemaPartitionInfo;
 
-import io.airlift.units.Duration;
+import java.util.List;
 
-public interface IScheduler {
+public interface IPartitionFetcher {
 
-  void start();
+  DataPartitionInfo fetchDataPartitionInfo(DataPartitionQueryParam parameter);
 
-  void abort();
+  DataPartitionInfo fetchDataPartitionInfos(List<DataPartitionQueryParam> parameterList);
 
-  Duration getTotalCpuTime();
+  SchemaPartitionInfo fetchSchemaPartitionInfo(String deviceId);
 
-  FragmentInfo getFragmentInfo();
+  SchemaPartitionInfo fetchSchemaPartitionInfos(List<String> deviceId);
 
-  void failFragmentInstance(FragmentInstanceId instanceId, Throwable failureCause);
+  PartitionInfo fetchPartitionInfo(DataPartitionQueryParam parameter);
 
-  void cancelFragment(PlanFragmentId planFragmentId);
+  PartitionInfo fetchPartitionInfos(List<DataPartitionQueryParam> parameterList);
 }

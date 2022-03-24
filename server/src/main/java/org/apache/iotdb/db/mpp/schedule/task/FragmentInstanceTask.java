@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.mpp.schedule.task;
 
-import org.apache.iotdb.db.mpp.common.FragmentId;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
+import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.ExecFragmentInstance;
 import org.apache.iotdb.db.mpp.schedule.ExecutionContext;
@@ -180,7 +180,7 @@ public class FragmentInstanceTask implements IDIndexedAccessible {
 
     private static final QueryId stubQueryId = new QueryId("stub-query");
     private static final FragmentInstanceId stubInstance =
-        new FragmentInstanceId(stubQueryId, new FragmentId(stubQueryId, 0), "stub-instance");
+        new FragmentInstanceId(new PlanFragmentId(stubQueryId, 0), "stub-instance");
 
     @Override
     public boolean isFinished() {

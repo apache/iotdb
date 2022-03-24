@@ -18,21 +18,21 @@
  */
 package org.apache.iotdb.db.mpp.execution;
 
-import org.apache.iotdb.db.mpp.common.FragmentId;
+import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.PlanFragment;
 
 import java.util.List;
 
 public class FragmentInfo {
 
-  private final FragmentId stageId;
+  private final PlanFragmentId stageId;
   private final FragmentState state;
   private final PlanFragment plan;
 
   private final List<FragmentInfo> childrenFragments;
 
   public FragmentInfo(
-      FragmentId stageId,
+      PlanFragmentId stageId,
       FragmentState state,
       PlanFragment plan,
       List<FragmentInfo> childrenFragments) {

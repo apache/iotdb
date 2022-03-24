@@ -16,25 +16,30 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.execution.scheduler;
+package org.apache.iotdb.db.mpp.sql.statement.crud;
 
-import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
-import org.apache.iotdb.db.mpp.common.PlanFragmentId;
-import org.apache.iotdb.db.mpp.execution.FragmentInfo;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.sql.statement.Statement;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-import io.airlift.units.Duration;
+public abstract class InsertBaseStatement extends Statement {
 
-public interface IScheduler {
+  /**
+   * if use id table, this filed is id form of device path <br>
+   * if not, this filed is device path<br>
+   */
+  protected PartialPath devicePath;
 
-  void start();
+  protected boolean isAligned;
+  protected String[] measurements;
+  // get from client
+  protected TSDataType[] dataTypes;
 
-  void abort();
+  public PartialPath getDevicePath() {
+    return devicePath;
+  }
 
-  Duration getTotalCpuTime();
-
-  FragmentInfo getFragmentInfo();
-
-  void failFragmentInstance(FragmentInstanceId instanceId, Throwable failureCause);
-
-  void cancelFragment(PlanFragmentId planFragmentId);
+  public String[] getMeasurements() {
+    return measurements;
+  }
 }

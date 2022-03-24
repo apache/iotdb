@@ -16,25 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.execution.scheduler;
+package org.apache.iotdb.commons.partition;
 
-import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
-import org.apache.iotdb.db.mpp.common.PlanFragmentId;
-import org.apache.iotdb.db.mpp.execution.FragmentInfo;
+public class SchemaRegionId {
+  private int schemaRegionId;
 
-import io.airlift.units.Duration;
+  public int getSchemaRegionId() {
+    return schemaRegionId;
+  }
 
-public interface IScheduler {
-
-  void start();
-
-  void abort();
-
-  Duration getTotalCpuTime();
-
-  FragmentInfo getFragmentInfo();
-
-  void failFragmentInstance(FragmentInstanceId instanceId, Throwable failureCause);
-
-  void cancelFragment(PlanFragmentId planFragmentId);
+  public void setSchemaRegionId(int schemaRegionId) {
+    this.schemaRegionId = schemaRegionId;
+  }
 }

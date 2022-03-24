@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.mpp.schedule.task;
 
-import org.apache.iotdb.db.mpp.common.FragmentId;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
+import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.schedule.queue.ID;
 
@@ -50,7 +50,7 @@ public class FragmentInstanceTaskID implements ID, Comparable<FragmentInstanceTa
     return id.getInstanceId();
   }
 
-  public FragmentId getFragmentId() {
+  public PlanFragmentId getFragmentId() {
     return id.getFragmentId();
   }
 
