@@ -32,7 +32,7 @@ import java.util.*;
 public class Analysis {
   // Description for each series. Such as dataType, existence
 
-  // Data distribution info for each series. Series -> [VSG, VSG]
+  // Data distribution info for each series. Series -> [DataRegion, DataRegion]
 
   // Map<PartialPath, List<FullPath>> Used to remove asterisk
 

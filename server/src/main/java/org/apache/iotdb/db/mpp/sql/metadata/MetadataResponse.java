@@ -19,4 +19,17 @@
 
 package org.apache.iotdb.db.mpp.sql.metadata;
 
-public class MetadataResponse {}
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.tsfile.utils.Pair;
+
+import java.util.List;
+
+public class MetadataResponse {
+
+  public Pair<List<MeasurementPath>, Integer> getMeasurementPaths(
+      PartialPath path, int slimit, int soffset) throws MetadataException {
+    return null;
+  }
+}

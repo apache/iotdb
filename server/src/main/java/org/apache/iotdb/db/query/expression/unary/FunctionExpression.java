@@ -206,7 +206,8 @@ public class FunctionExpression extends Expression {
   @Override
   public void removeWildcards(WildcardsRemover wildcardsRemover, List<Expression> resultExpressions)
       throws StatementAnalyzeException {
-    for (List<Expression> functionExpression : wildcardsRemover.removeWildcardsFrom(expressions)) {
+    for (List<Expression> functionExpression :
+        wildcardsRemover.removeWildcardsInExpressions(expressions)) {
       resultExpressions.add(
           new FunctionExpression(functionName, functionAttributes, functionExpression));
     }

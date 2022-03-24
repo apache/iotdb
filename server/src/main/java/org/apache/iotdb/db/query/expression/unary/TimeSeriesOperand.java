@@ -90,7 +90,7 @@ public class TimeSeriesOperand extends Expression {
   @Override
   public void removeWildcards(WildcardsRemover wildcardsRemover, List<Expression> resultExpressions)
       throws StatementAnalyzeException {
-    for (PartialPath actualPath : wildcardsRemover.removeWildcardFrom(path)) {
+    for (PartialPath actualPath : wildcardsRemover.removeWildcardInPath(path)) {
       resultExpressions.add(new TimeSeriesOperand(actualPath));
     }
   }

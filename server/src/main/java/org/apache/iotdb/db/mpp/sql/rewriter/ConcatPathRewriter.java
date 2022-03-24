@@ -259,29 +259,4 @@ public class ConcatPathRewriter implements IStatementRewriter {
     }
     return filterBinaryTree;
   }
-
-  public static <T> void cartesianProduct(
-      List<List<T>> dimensionValue, List<List<T>> resultList, int layer, List<T> currentList) {
-    if (layer < dimensionValue.size() - 1) {
-      if (dimensionValue.get(layer).isEmpty()) {
-        cartesianProduct(dimensionValue, resultList, layer + 1, currentList);
-      } else {
-        for (int i = 0; i < dimensionValue.get(layer).size(); i++) {
-          List<T> list = new ArrayList<>(currentList);
-          list.add(dimensionValue.get(layer).get(i));
-          cartesianProduct(dimensionValue, resultList, layer + 1, list);
-        }
-      }
-    } else if (layer == dimensionValue.size() - 1) {
-      if (dimensionValue.get(layer).isEmpty()) {
-        resultList.add(currentList);
-      } else {
-        for (int i = 0; i < dimensionValue.get(layer).size(); i++) {
-          List<T> list = new ArrayList<>(currentList);
-          list.add(dimensionValue.get(layer).get(i));
-          resultList.add(list);
-        }
-      }
-    }
-  }
 }
