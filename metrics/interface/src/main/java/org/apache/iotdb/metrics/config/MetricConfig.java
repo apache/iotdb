@@ -27,6 +27,7 @@ import org.apache.iotdb.metrics.utils.ReporterType;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 public class MetricConfig {
   /** enable publishing data. */
@@ -103,6 +104,27 @@ public class MetricConfig {
     public void setDatabase(String database) {
       this.database = database;
     }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+      IoTDBConfig that = (IoTDBConfig) o;
+      return Objects.equals(host, that.host)
+          && Objects.equals(port, that.port)
+          && Objects.equals(username, that.username)
+          && Objects.equals(password, that.password)
+          && Objects.equals(database, that.database);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(host, port, username, password, database);
+    }
   }
 
   /** the host of Instance */
@@ -117,7 +139,7 @@ public class MetricConfig {
     metricLevel = newMetricConfig.getMetricLevel();
     predefinedMetrics = newMetricConfig.getPredefinedMetrics();
     prometheusExporterPort = newMetricConfig.getPrometheusExporterPort();
-    // TODO hot load
+    ioTDBConfig = newMetricConfig.ioTDBConfig;
   }
 
   public Boolean getEnableMetric() {
