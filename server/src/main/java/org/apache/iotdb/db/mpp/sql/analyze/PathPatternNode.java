@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.sql.metadata;
+package org.apache.iotdb.db.mpp.sql.analyze;
 
 import java.util.ArrayList;
 import java.util.List;

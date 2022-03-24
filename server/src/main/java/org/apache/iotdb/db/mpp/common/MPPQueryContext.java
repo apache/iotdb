@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.mpp.common;
 
-import org.apache.iotdb.db.mpp.sql.metadata.MetadataResponse;
-import org.apache.iotdb.db.mpp.sql.metadata.PathPatternTree;
+import org.apache.iotdb.db.mpp.sql.analyze.MetadataResponse;
+import org.apache.iotdb.db.mpp.sql.analyze.PathPatternTree;
 
 /**
  * This class is used to record the context of a query including QueryId, query statement, session
@@ -29,6 +29,10 @@ public class MPPQueryContext {
   private String sql;
   private QueryId queryId;
   private SessionInfo session;
+
+  private PathPatternTree pathPatternTree;
+
+  private MetadataResponse response;
 
   public MPPQueryContext() {}
 
@@ -41,12 +45,6 @@ public class MPPQueryContext {
   public QueryId getQueryId() {
     return queryId;
   }
-  private QuerySession session;
-
-  //
-  private PathPatternTree pathPatternTree;
-
-  private MetadataResponse response;
 
   public PathPatternTree getPathPatternTree() {
     return pathPatternTree;

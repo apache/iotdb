@@ -27,6 +27,11 @@ import java.util.Map;
 public class ClusterSchemaFetcher implements ISchemaFetcher {
 
   @Override
+  public MetadataResponse requestMetadata(PathPatternTree request) {
+    return null;
+  }
+
+  @Override
   public Map<String, MeasurementSchema> fetchSchema(
       PartialPath deviceId, List<String> measurementIdList) {
     return null;
