@@ -17,23 +17,27 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.sql.analyze;
+package org.apache.iotdb.db.mpp.common.schematree;
 
-import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
-import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
 
-import java.util.List;
-import java.util.Map;
+public class PathPatternTree {
 
-/**
- * This interface is used to fetch the metadata information required in execution plan generating.
- */
-public interface ISchemaFetcher {
+  private PathPatternNode root;
 
-  @Deprecated // TODO: will be replaced later
-  Map<String, MeasurementSchema> fetchSchema(PartialPath deviceId, List<String> measurementIdList);
+  /**
+   * Since IoTDB v0.13, all DDL and DML use patternMatch as default. Before IoTDB v0.13, all DDL and
+   * DML use prefixMatch.
+   */
+  protected boolean isPrefixMatchPath;
 
-  SchemaTree fetchSchema(PathPatternTree patternTree);
+  public void serialize(OutputStream baos) throws IOException {
+    // TODO
+  }
+
+  public void deserialize(ByteBuffer buffer) throws IOException {
+    // TODO
+  }
 }

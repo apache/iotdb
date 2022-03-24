@@ -23,6 +23,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.tsfile.utils.BitMap;
 
+import java.nio.ByteBuffer;
 import java.util.List;
 
 public class InsertTabletNode extends InsertNode {
@@ -55,6 +56,9 @@ public class InsertTabletNode extends InsertNode {
   }
 
   @Override
+  public void addChildren(PlanNode child) {}
+
+  @Override
   public PlanNode clone() {
     return null;
   }
@@ -68,6 +72,13 @@ public class InsertTabletNode extends InsertNode {
   public List<String> getOutputColumnNames() {
     return null;
   }
+
+  public static InsertTabletNode deserialize(ByteBuffer byteBuffer) {
+    return null;
+  }
+
+  @Override
+  public void serialize(ByteBuffer byteBuffer) {}
 
   @Override
   public List<InsertNode> splitByPartition(Analysis analysis) {
