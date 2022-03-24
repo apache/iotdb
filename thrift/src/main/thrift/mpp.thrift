@@ -46,6 +46,24 @@ struct EndOfDataBlockEvent {
   2: required string operatorId
 }
 
+struct PathPatternNode {
+  1:required string pathPattern
+  2:required list<PathPatternNode> childs
+}
+
+struct PathPatternTree {
+  1: required PathPatternNode root
+  2: required bool isPrefixMatchPath
+}
+
+struct YKTree {
+
+}
+
+service InternalService {
+   YKTree fetchSchema(PathPatternTree tree)
+}
+
 service DataBlockService {
   GetDataBlockResponse getDataBlock(GetDataBlockReqest req);
 
