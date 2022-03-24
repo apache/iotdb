@@ -578,9 +578,9 @@ public class RSchemaReadWriteHandler {
     System.out.println("\n-----------------scan rocksdb end----------------------");
   }
 
-  @TestOnly
-  public void close() {
-    rocksDB.close();
+  public void close() throws RocksDBException {
+    rocksDB.syncWal();
+    rocksDB.closeE();
     readWriteHandler = null;
   }
 

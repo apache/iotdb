@@ -124,7 +124,15 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
-import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.*;
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.ALL_NODE_TYPE_ARRAY;
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.DEFAULT_ALIGNED_ENTITY_VALUE;
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.DEFAULT_NODE_VALUE;
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.FLAG_IS_ALIGNED;
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.NODE_TYPE_ENTITY;
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.NODE_TYPE_MEASUREMENT;
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.NODE_TYPE_SG;
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.TABLE_NAME_TAGS;
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.ZERO;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 /**
@@ -2443,9 +2451,14 @@ public class RSchemaEngine implements ISchemaEngine {
     readWriteHandler.scanAllKeys(config.getSystemDir() + "/" + "rocksdb.key");
   }
 
-  @TestOnly
-  public void close() {
-    readWriteHandler.close();
+  public void close() throws RocksDBException, InterruptedException {
+    try {
+      readWriteHandler.close();
+    } catch (RocksDBException e) {
+      logger.error("Failed to close readWriteHandler,try again.", e);
+      Thread.sleep(5);
+      readWriteHandler.close();
+    }
   }
 
   @TestOnly

@@ -31,6 +31,7 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.rocksdb.RocksDBException;
 
 import java.io.File;
 import java.io.IOException;
@@ -323,7 +324,7 @@ public class MRocksDBUnitTest {
   }
 
   @After
-  public void clean() {
+  public void clean() throws RocksDBException, InterruptedException {
     RSchemaEngine.close();
     resetEnv();
   }

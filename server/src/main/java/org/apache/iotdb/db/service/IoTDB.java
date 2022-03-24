@@ -53,6 +53,7 @@ import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.sync.receiver.SyncServerManager;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 
+import org.rocksdb.RocksDBException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -201,7 +202,18 @@ public class IoTDB implements IoTDBMBean {
     logger.info("Deactivating IoTDB...");
     registerManager.deregisterAll();
     JMXService.deregisterMBean(mbeanName);
+    deactivateRSchemaEngine();
     logger.info("IoTDB is deactivated.");
+  }
+
+  private void deactivateRSchemaEngine() {
+    if (schemaEngine instanceof RSchemaEngine) {
+      try {
+        ((RSchemaEngine) schemaEngine).close();
+      } catch (RocksDBException | InterruptedException e) {
+        logger.error("Failed to close RSchemaEngine because:", e);
+      }
+    }
   }
 
   private void initSchemaEngine() {
