@@ -197,6 +197,7 @@ public class SenderService implements IService {
       pipe.setTransportHandler(
           new TransportHandler(transportClient, pipe.getName(), pipe.getCreateTime()));
     } catch (IOException | SyncConnectionException e) {
+      e.printStackTrace();
       throw new PipeException(
           String.format(
               "Create transport for pipe %s error, because %s.", pipe.getName(), e.getMessage()));

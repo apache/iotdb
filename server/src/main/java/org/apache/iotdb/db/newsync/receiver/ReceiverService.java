@@ -33,6 +33,7 @@ import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
+import org.apache.iotdb.service.transport.thrift.ResponseType;
 import org.apache.iotdb.service.transport.thrift.SyncRequest;
 import org.apache.iotdb.service.transport.thrift.SyncResponse;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -96,28 +97,33 @@ public class ReceiverService implements IService {
   /** heartbeat RPC handle */
   // TODO: define exception
   // TODO: this is a mock interface
-  public SyncResponse recMsg(SyncRequest request) throws IOException {
-    switch (request.getType()) {
-      case HEARTBEAT:
-        List<PipeMessage> messages =
-            receiverManager.getPipeMessages(
-                request.getPipeName(), request.getRemoteIp(), request.getCreateTime());
-        break;
-      case CREATE:
-        createPipe(request.getPipeName(), request.getRemoteIp(), request.getCreateTime());
-        break;
-      case START:
-        startPipe(request.getPipeName(), request.getRemoteIp(), request.getCreateTime());
-        break;
-      case STOP:
-        stopPipe(request.getPipeName(), request.getRemoteIp(), request.getCreateTime());
-        break;
-      case DROP:
-        dropPipe(request.getPipeName(), request.getRemoteIp(), request.getCreateTime());
-        break;
+  public SyncResponse recMsg(SyncRequest request) {
+    try {
+      switch (request.getType()) {
+        case HEARTBEAT:
+          List<PipeMessage> messages =
+              receiverManager.getPipeMessages(
+                  request.getPipeName(), request.getRemoteIp(), request.getCreateTime());
+          break;
+        case CREATE:
+          createPipe(request.getPipeName(), request.getRemoteIp(), request.getCreateTime());
+          break;
+        case START:
+          startPipe(request.getPipeName(), request.getRemoteIp(), request.getCreateTime());
+          break;
+        case STOP:
+          stopPipe(request.getPipeName(), request.getRemoteIp(), request.getCreateTime());
+          break;
+        case DROP:
+          dropPipe(request.getPipeName(), request.getRemoteIp(), request.getCreateTime());
+          break;
+      }
+      // TODO: complete implement
+    } catch (IOException e) {
+      // TODO: complete
+      logger.error("Need to complete.");
     }
-    // TODO: complete implement
-    return null;
+    return new SyncResponse(ResponseType.INFO, "");
   }
 
   /** create and start a new pipe named pipeName */

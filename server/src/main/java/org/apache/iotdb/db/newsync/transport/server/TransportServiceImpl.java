@@ -26,6 +26,7 @@ import org.apache.iotdb.db.newsync.conf.SyncPathUtil;
 import org.apache.iotdb.db.newsync.pipedata.PipeData;
 import org.apache.iotdb.db.newsync.pipedata.TsFilePipeData;
 import org.apache.iotdb.db.newsync.pipedata.queue.PipeDataQueueFactory;
+import org.apache.iotdb.db.newsync.receiver.ReceiverService;
 import org.apache.iotdb.service.transport.thrift.IdentityInfo;
 import org.apache.iotdb.service.transport.thrift.MetaInfo;
 import org.apache.iotdb.service.transport.thrift.SyncRequest;
@@ -273,9 +274,7 @@ public class TransportServiceImpl implements TransportService.Iface {
   @Override
   public SyncResponse heartbeat(IdentityInfo identityInfo, SyncRequest syncRequest)
       throws TException {
-
-    // return ReceiverService.getInstance().recMsg(syncRequest);
-    return null;
+    return ReceiverService.getInstance().recMsg(syncRequest);
   }
 
   private void writeRecordFile(File recordFile, long position) throws IOException {

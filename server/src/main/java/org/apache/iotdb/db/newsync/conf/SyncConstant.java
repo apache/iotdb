@@ -38,7 +38,6 @@ public class SyncConstant {
   public static final String MODS_OFFSET_FILE_SUFFIX = ".offset";
   public static final String PIPE_LOG_NAME_SUFFIX = "_pipe.log";
   public static final Long DEFAULT_PIPE_LOG_SIZE_IN_BYTE = 10485760L;
-  public static final String HISTORY_PIPE_LOG_NAME = PIPE_LOG_NAME_SUFFIX + ".history";
   public static final String COMMIT_LOG_NAME = "commit.log";
 
   public static final String UNKNOWN_IP = "UNKNOWN";
