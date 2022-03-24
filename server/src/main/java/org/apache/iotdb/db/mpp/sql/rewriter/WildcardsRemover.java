@@ -306,13 +306,12 @@ public class WildcardsRemover {
     for (List<Expression> actualExpression : actualExpressions) {
       if (paginationController.hasCurOffset()) {
         paginationController.decCurOffset();
-        continue;
       } else if (paginationController.hasCurLimit()) {
+        remainingExpressions.add(actualExpression);
         paginationController.decCurLimit();
       } else {
         break;
       }
-      remainingExpressions.add(actualExpression);
     }
     paginationController.incConsumed(actualExpressions.size());
     return remainingExpressions;

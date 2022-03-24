@@ -28,20 +28,18 @@ import java.util.List;
 
 public class ColumnPaginationController {
 
-  // series limit and offset for result set. The default value is 0, which means no limit
-  private int seriesLimit;
   // series offset for result set. The default value is 0
-  private int seriesOffset;
+  private final int seriesOffset;
 
   private int curLimit =
       IoTDBDescriptor.getInstance().getConfig().getMaxQueryDeduplicatedPathNum() + 1;
   private int curOffset;
 
-  /** Records the path number that the MManager totally returned. */
+  // records the path number that the SchemaTree totally returned
   private int consumed = 0;
 
   public ColumnPaginationController(int seriesLimit, int seriesOffset) {
-    this.seriesLimit = seriesLimit;
+    // for series limit, the default value is 0, which means no limit
     this.curLimit = seriesLimit == 0 ? this.curLimit : Math.min(seriesLimit, this.curLimit);
     this.seriesOffset = this.curOffset = seriesOffset;
   }
