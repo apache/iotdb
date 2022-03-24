@@ -73,4 +73,20 @@ public class InsertTabletNode extends InsertNode {
   public List<InsertNode> splitByPartition(Analysis analysis) {
     return null;
   }
+
+  public int getRowCount() {
+    return times.length;
+  }
+
+  public long[] getTimes() {
+    return times;
+  }
+
+  public Object[] getColumns() {
+    return columns;
+  }
+
+  public BitMap[] getBitMaps() {
+    return bitMaps;
+  }
 }

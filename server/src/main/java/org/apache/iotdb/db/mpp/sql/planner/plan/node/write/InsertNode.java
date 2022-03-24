@@ -24,6 +24,7 @@ import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.util.List;
@@ -37,7 +38,8 @@ public abstract class InsertNode extends PlanNode {
   protected PartialPath devicePath;
 
   protected boolean isAligned;
-  protected MeasurementSchema[] measurements;
+  protected MeasurementSchema[] measurementSchemas;
+  protected String[] measurements;
   protected TSDataType[] dataTypes;
   // TODO(INSERT) need to change it to a function handle to update last time value
   //  protected IMeasurementMNode[] measurementMNodes;
@@ -58,5 +60,33 @@ public abstract class InsertNode extends PlanNode {
 
   public boolean needSplit() {
     return true;
+  }
+
+  public PartialPath getDevicePath() {
+    return devicePath;
+  }
+
+  public boolean isAligned() {
+    return isAligned;
+  }
+
+  public IDeviceID getDeviceID() {
+    return deviceID;
+  }
+
+  public TSDataType[] getDataTypes() {
+    return dataTypes;
+  }
+
+  public String[] getMeasurements() {
+    return measurements;
+  }
+
+  public void setDeviceID(IDeviceID deviceID) {
+    this.deviceID = deviceID;
+  }
+
+  public MeasurementSchema[] getMeasurementSchemas() {
+    return measurementSchemas;
   }
 }

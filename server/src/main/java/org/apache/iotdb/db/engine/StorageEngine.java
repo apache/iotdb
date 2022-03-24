@@ -53,6 +53,7 @@ import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
@@ -646,6 +647,21 @@ public class StorageEngine implements IService {
 
     getSeriesSchemas(insertTabletPlan, virtualStorageGroupProcessor);
     virtualStorageGroupProcessor.insertTablet(insertTabletPlan);
+  }
+
+  /** insert an InsertTabletNode to a storage group */
+  public void insertTabletV2(VirtualStorageGroupProcessor virtualStorageGroupProcessor, InsertTabletNode insertTabletNode)
+          throws StorageEngineException, BatchProcessException, MetadataException {
+    if (enableMemControl) {
+      try {
+        blockInsertionIfReject(null);
+      } catch (WriteProcessRejectException e) {
+        TSStatus[] results = new TSStatus[insertTabletNode.getRowCount()];
+        Arrays.fill(results, RpcUtils.getStatus(TSStatusCode.WRITE_PROCESS_REJECT));
+        throw new BatchProcessException(results);
+      }
+    }
+    virtualStorageGroupProcessor.insertTablet(insertTabletNode);
   }
 
   /** flush command Sync asyncCloseOneProcessor all file node processors. */
