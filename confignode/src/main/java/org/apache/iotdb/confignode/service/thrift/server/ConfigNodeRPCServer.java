@@ -30,7 +30,7 @@ import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
 
 /** ConfigNodeRPCServer exposes the interface that interacts with the DataNode */
 public class ConfigNodeRPCServer extends ThriftService implements ConfigNodeRPCServerMBean {
-  private ConfigNodeConf config = ConfigNodeDescriptor.getInstance().getConf();
+  private final ConfigNodeConf config = ConfigNodeDescriptor.getInstance().getConf();
 
   private ConfigNodeRPCServerProcessor configNodeRPCServerProcessor;
 

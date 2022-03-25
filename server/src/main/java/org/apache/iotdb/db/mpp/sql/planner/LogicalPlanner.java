@@ -25,6 +25,8 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeIdAllocator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateTimeSeriesNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.mpp.sql.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.tree.StatementVisitor;
@@ -43,7 +45,7 @@ public class LogicalPlanner {
   }
 
   public LogicalQueryPlan plan(Analysis analysis) {
-    PlanNode rootNode = new LogicalPlanVisitor().process(analysis.getStatement());
+    PlanNode rootNode = new LogicalPlanVisitor(analysis).process(analysis.getStatement());
 
     // optimize the query logical plan
     if (analysis.getStatement() instanceof QueryStatement) {
@@ -61,6 +63,12 @@ public class LogicalPlanner {
    */
   private static final class LogicalPlanVisitor
       extends StatementVisitor<PlanNode, MPPQueryContext> {
+
+    private final Analysis analysis;
+
+    public LogicalPlanVisitor(Analysis analysis) {
+      this.analysis = analysis;
+    }
 
     @Override
     public PlanNode visitQuery(QueryStatement queryStatement, MPPQueryContext context) {
@@ -81,6 +89,15 @@ public class LogicalPlanner {
           createTimeSeriesStatement.getTags(),
           createTimeSeriesStatement.getAttributes(),
           createTimeSeriesStatement.getAlias());
+    }
+
+    @Override
+    public PlanNode visitInsertTablet(
+        InsertTabletStatement insertTabletStatement, MPPQueryContext context) {
+      // TODO(INSERT) change the InsertTabletStatement to InsertTabletNode
+      InsertTabletNode node = new InsertTabletNode(PlanNodeIdAllocator.generateId());
+
+      return node;
     }
   }
 }
