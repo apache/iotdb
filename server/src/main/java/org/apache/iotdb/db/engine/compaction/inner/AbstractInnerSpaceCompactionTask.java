@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.compaction.inner;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
+import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 
@@ -47,8 +48,9 @@ public abstract class AbstractInnerSpaceCompactionTask extends AbstractCompactio
       long timePartition,
       AtomicInteger currentTaskNum,
       boolean sequence,
-      List<TsFileResource> selectedTsFileResourceList) {
-    super(storageGroupName, timePartition, currentTaskNum);
+      List<TsFileResource> selectedTsFileResourceList,
+      TsFileManager tsFileManager) {
+    super(storageGroupName, timePartition, tsFileManager, currentTaskNum);
     this.selectedTsFileResourceList = selectedTsFileResourceList;
     this.sequence = sequence;
     collectSelectedFilesInfo();
