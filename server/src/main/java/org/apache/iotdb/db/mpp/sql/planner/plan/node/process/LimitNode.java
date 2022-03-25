@@ -25,6 +25,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 
 import com.google.common.collect.ImmutableList;
 
+import java.nio.ByteBuffer;
 import java.util.List;
 
 /** LimitNode is used to select top n result. It uses the default order of upstream nodes */
@@ -50,6 +51,9 @@ public class LimitNode extends ProcessNode {
   }
 
   @Override
+  public void addChildren(PlanNode child) {}
+
+  @Override
   public PlanNode clone() {
     return new LimitNode(PlanNodeIdAllocator.generateId(), this.limit);
   }
@@ -70,6 +74,13 @@ public class LimitNode extends ProcessNode {
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
     return visitor.visitLimit(this, context);
   }
+
+  public static LimitNode deserialize(ByteBuffer byteBuffer) {
+    return null;
+  }
+
+  @Override
+  public void serialize(ByteBuffer byteBuffer) {}
 
   public int getLimit() {
     return limit;

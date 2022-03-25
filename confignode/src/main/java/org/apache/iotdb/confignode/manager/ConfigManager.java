@@ -36,6 +36,7 @@ import org.apache.iotdb.consensus.standalone.StandAloneConsensus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Collections;
@@ -89,7 +90,12 @@ public class ConfigManager {
   private void setConsensusLayer(ConfigNodeConf config) {
     // TODO: Support other consensus protocol
     this.consensusImpl = new StandAloneConsensus(id -> new PartitionRegionStateMachine());
-    this.consensusImpl.start();
+    // TODO: handle the possible exception that cause the Consensus fail
+    try {
+      this.consensusImpl.start();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
 
     this.consensusGroupId = new ConsensusGroupId(GroupType.PartitionRegion, 0);
     this.consensusImpl.addConsensusGroup(

@@ -18,11 +18,39 @@
  */
 package org.apache.iotdb.db.mpp.common;
 
+/** The fragment instance ID class. */
 public class FragmentInstanceId {
 
   private final String fullId;
+  private final QueryId queryId;
+  private final PlanFragmentId fragmentId;
+  private final String instanceId;
 
-  public FragmentInstanceId(String fullId) {
-    this.fullId = fullId;
+  public FragmentInstanceId(PlanFragmentId fragmentId, String instanceId) {
+    this.queryId = fragmentId.getQueryId();
+    this.fragmentId = fragmentId;
+    this.instanceId = instanceId;
+    this.fullId =
+        String.format("%s.%d.%s", fragmentId.getQueryId().getId(), fragmentId.getId(), instanceId);
+  }
+
+  public String getFullId() {
+    return fullId;
+  }
+
+  public QueryId getQueryId() {
+    return queryId;
+  }
+
+  public PlanFragmentId getFragmentId() {
+    return fragmentId;
+  }
+
+  public String getInstanceId() {
+    return instanceId;
+  }
+
+  public String toString() {
+    return fullId;
   }
 }

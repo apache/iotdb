@@ -206,7 +206,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public TVList getSortedTvListForQuery() {
+  public synchronized TVList getSortedTvListForQuery() {
     sortTVList();
     // increase reference count
     list.increaseReferenceCount();
@@ -214,7 +214,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public TVList getSortedTvListForQuery(List<IMeasurementSchema> schemaList) {
+  public synchronized TVList getSortedTvListForQuery(List<IMeasurementSchema> schemaList) {
     sortTVList();
     // increase reference count
     list.increaseReferenceCount();
@@ -238,7 +238,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public void sortTvListForFlush() {
+  public synchronized void sortTvListForFlush() {
     sortTVList();
   }
 

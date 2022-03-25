@@ -53,12 +53,16 @@ public class ConfigNodeCommandLine extends ServerCommandLine {
 
   @Override
   protected int run(String[] args) {
+    String mode;
     if (args.length < 1) {
-      usage(null);
-      return -1;
+      mode = MODE_START;
+      LOGGER.warn(
+          "ConfigNode does not specify a startup mode. The default startup mode {} will be used",
+          MODE_START);
+    } else {
+      mode = args[0];
     }
 
-    String mode = args[0];
     LOGGER.info("Running mode {}", mode);
     if (MODE_START.equals(mode)) {
       try {

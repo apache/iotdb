@@ -18,21 +18,14 @@
  */
 package org.apache.iotdb.confignode.service.executor;
 
-import org.apache.iotdb.confignode.consensus.response.DataNodesInfoDataSet;
-import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaDataSet;
 import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeException;
-import org.apache.iotdb.confignode.partition.DataNodeInfo;
 import org.apache.iotdb.confignode.partition.PartitionTable;
-import org.apache.iotdb.confignode.partition.StorageGroupSchema;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
 import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
 import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
-
-import java.util.List;
-import java.util.Map;
 
 public class PlanExecutor {
 
@@ -45,9 +38,9 @@ public class PlanExecutor {
   public DataSet executorQueryPlan(PhysicalPlan plan) throws UnknownPhysicalPlanTypeException {
     switch (plan.getType()) {
       case QueryDataNodeInfo:
-        return queryDataNodesInfo((QueryDataNodeInfoPlan) plan);
+        return partitionTable.getDataNodeInfo((QueryDataNodeInfoPlan) plan);
       case QueryStorageGroupSchema:
-        return queryStorageGroupSchema();
+        return partitionTable.getStorageGroupSchema();
       default:
         throw new UnknownPhysicalPlanTypeException(plan.getType());
     }
@@ -62,26 +55,5 @@ public class PlanExecutor {
       default:
         throw new UnknownPhysicalPlanTypeException(plan.getType());
     }
-  }
-
-  private DataNodesInfoDataSet queryDataNodesInfo(QueryDataNodeInfoPlan plan) {
-    Map<Integer, DataNodeInfo> infoMap = partitionTable.getDataNodeInfo(plan);
-    DataNodesInfoDataSet result = null;
-    if (infoMap != null) {
-      result = new DataNodesInfoDataSet();
-      for (Map.Entry<Integer, DataNodeInfo> entry : infoMap.entrySet()) {
-        result.addDataNodeInfo(entry.getKey(), entry.getValue());
-      }
-    }
-    return result;
-  }
-
-  private StorageGroupSchemaDataSet queryStorageGroupSchema() {
-    List<StorageGroupSchema> schemaList = partitionTable.getStorageGroupSchema();
-    StorageGroupSchemaDataSet result = null;
-    if (schemaList != null) {
-      result = new StorageGroupSchemaDataSet(schemaList);
-    }
-    return result;
   }
 }

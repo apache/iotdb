@@ -16,11 +16,29 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.commons.partition;
 
-package org.apache.iotdb.db.engine.compaction;
+public class DeviceGroupId {
+  private int deviceGroupId;
 
-public enum CompactionPriority {
-  INNER_CROSS,
-  CROSS_INNER,
-  BALANCE
+  public DeviceGroupId(int deviceGroupId) {
+    this.deviceGroupId = deviceGroupId;
+  }
+
+  public int getDeviceGroupId() {
+    return deviceGroupId;
+  }
+
+  public void setDeviceGroupId(int deviceGroupId) {
+    this.deviceGroupId = deviceGroupId;
+  }
+
+  public int hashCode() {
+    return new Integer(deviceGroupId).hashCode();
+  }
+
+  public boolean equals(Object obj) {
+    return obj instanceof DeviceGroupId
+        && this.deviceGroupId == ((DeviceGroupId) obj).deviceGroupId;
+  }
 }

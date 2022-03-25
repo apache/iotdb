@@ -21,22 +21,21 @@ package org.apache.iotdb.confignode.consensus.response;
 import org.apache.iotdb.confignode.partition.DataNodeInfo;
 import org.apache.iotdb.consensus.common.DataSet;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.List;
 
 public class DataNodesInfoDataSet implements DataSet {
 
-  private final Map<Integer, DataNodeInfo> infoMap;
+  private List<DataNodeInfo> infoList;
 
   public DataNodesInfoDataSet() {
-    this.infoMap = new HashMap<>();
+    // empty constructor
   }
 
-  public void addDataNodeInfo(int dataNodeID, DataNodeInfo info) {
-    this.infoMap.put(dataNodeID, info);
+  public void setInfoList(List<DataNodeInfo> infoList) {
+    this.infoList = infoList;
   }
 
-  public Map<Integer, DataNodeInfo> getInfoMap() {
-    return this.infoMap;
+  public List<DataNodeInfo> getInfoList() {
+    return this.infoList;
   }
 }
