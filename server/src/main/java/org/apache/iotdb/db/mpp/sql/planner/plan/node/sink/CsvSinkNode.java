@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.sink;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 
+import java.nio.ByteBuffer;
 import java.util.List;
 
 public class CsvSinkNode extends SinkNode {
@@ -32,6 +33,9 @@ public class CsvSinkNode extends SinkNode {
   public List<PlanNode> getChildren() {
     return null;
   }
+
+  @Override
+  public void addChildren(PlanNode child) {}
 
   @Override
   public PlanNode clone() {
@@ -47,6 +51,13 @@ public class CsvSinkNode extends SinkNode {
   public List<String> getOutputColumnNames() {
     return null;
   }
+
+  public static CsvSinkNode deserialize(ByteBuffer byteBuffer) {
+    return null;
+  }
+
+  @Override
+  public void serialize(ByteBuffer byteBuffer) {}
 
   @Override
   public void close() throws Exception {}

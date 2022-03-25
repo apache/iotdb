@@ -26,6 +26,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import java.nio.ByteBuffer;
 import java.util.List;
 
 public abstract class InsertNode extends PlanNode {
@@ -59,4 +60,7 @@ public abstract class InsertNode extends PlanNode {
   public boolean needSplit() {
     return true;
   }
+
+  @Override
+  public void serialize(ByteBuffer byteBuffer) {}
 }

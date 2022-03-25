@@ -25,6 +25,7 @@ import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 
 import com.google.common.collect.ImmutableList;
 
+import java.nio.ByteBuffer;
 import java.util.List;
 
 /** The FilterNode is responsible to filter the RowRecord from TsBlock. */
@@ -47,6 +48,9 @@ public class FilterNode extends ProcessNode {
   }
 
   @Override
+  public void addChildren(PlanNode child) {}
+
+  @Override
   public PlanNode clone() {
     return null;
   }
@@ -65,6 +69,13 @@ public class FilterNode extends ProcessNode {
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
     return visitor.visitFilter(this, context);
   }
+
+  public static FilterNode deserialize(ByteBuffer byteBuffer) {
+    return null;
+  }
+
+  @Override
+  public void serialize(ByteBuffer byteBuffer) {}
 
   public FilterOperator getPredicate() {
     return predicate;

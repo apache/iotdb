@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.partition.DataRegionReplicaSet;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 
+import java.nio.ByteBuffer;
 import java.util.List;
 
 /** Not implemented in current version. */
@@ -37,6 +38,9 @@ public class CsvSourceNode extends SourceNode {
   }
 
   @Override
+  public void addChildren(PlanNode child) {}
+
+  @Override
   public PlanNode clone() {
     return null;
   }
@@ -50,6 +54,13 @@ public class CsvSourceNode extends SourceNode {
   public List<String> getOutputColumnNames() {
     return null;
   }
+
+  public static CsvSourceNode deserialize(ByteBuffer byteBuffer) {
+    return null;
+  }
+
+  @Override
+  public void serialize(ByteBuffer byteBuffer) {}
 
   @Override
   public void close() throws Exception {}

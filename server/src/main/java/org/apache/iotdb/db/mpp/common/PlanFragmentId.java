@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.db.mpp.common;
 
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import java.nio.ByteBuffer;
 import java.util.List;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -57,5 +60,10 @@ public class PlanFragmentId {
 
   public String toString() {
     return String.format("%s.%d", queryId, id);
+  }
+
+  public static PlanFragmentId deserialize(ByteBuffer byteBuffer) {
+    return new PlanFragmentId(
+        QueryId.deserialize(byteBuffer), ReadWriteIOUtils.readInt(byteBuffer));
   }
 }
