@@ -71,8 +71,7 @@ public class Analyzer {
     }
 
     @Override
-    public Analysis visitQuery(QueryStatement queryStatement, MPPQueryContext context)
-        throws StatementAnalyzeException {
+    public Analysis visitQuery(QueryStatement queryStatement, MPPQueryContext context) {
       Analysis analysis = new Analysis();
       try {
         // check for semantic errors
@@ -116,8 +115,7 @@ public class Analyzer {
         analysis.setDeviceIdToPathsMap(deviceIdToPathsMap);
         analysis.setDataPartitionInfo(dataPartitionInfo);
       } catch (StatementAnalyzeException | PathNumOverLimitException e) {
-        throw new StatementAnalyzeException(
-            "error occurred when analyzing statement: " + e.getMessage());
+        e.printStackTrace();
       }
       return analysis;
     }

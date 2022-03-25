@@ -56,50 +56,46 @@ public class PathPatternTree {
     isPrefixMatchPath = prefixMatchPath;
   }
 
-  public void search(PartialPath path) {
+  public void append(PartialPath path) {
     search(root, path.getNodes(), 0);
   }
 
   public void search(PathPatternNode curNode, String[] pathNodes, int pos) {
-    if (curNode == null || pos == pathNodes.length - 1) {
+    if (pos == pathNodes.length - 1) {
       return;
     }
 
-    if (Objects.equals(curNode.getName(), pathNodes[pos])) {
-      boolean isExist = false;
-      PathPatternNode nextNode = null;
-      for (PathPatternNode childNode : curNode.getChilds()) {
-        if (Objects.equals(childNode.getName(), pathNodes[pos + 1])
-            || (Objects.equals(childNode.getName(), "*")
-                && !Objects.equals(pathNodes[pos + 1], "**"))) {
-          isExist = true;
-          nextNode = childNode;
-          break;
-        }
+    boolean isExist = false;
+    PathPatternNode nextNode = null;
+    for (PathPatternNode childNode : curNode.getChilds()) {
+      if (Objects.equals(childNode.getName(), pathNodes[pos + 1])
+          || (Objects.equals(childNode.getName(), "*")
+              && !Objects.equals(pathNodes[pos + 1], "**"))) {
+        isExist = true;
+        nextNode = childNode;
+        break;
       }
+    }
 
-      if (isExist) {
-        search(nextNode, pathNodes, pos + 1);
-      } else {
-        construct(curNode, pathNodes, pos + 1);
-      }
+    if (isExist) {
+      search(nextNode, pathNodes, pos + 1);
+    } else {
+      construct(curNode, pathNodes, pos + 1);
     }
   }
 
   private void construct(PathPatternNode curNode, String[] pathNodes, int pos) {
     for (int i = pos; i < pathNodes.length; i++) {
       PathPatternNode newNode = new PathPatternNode(pathNodes[i]);
-      if (Objects.equals(pathNodes[i], "*") && pos == pathNodes.length - 1) {
-        curNode.getChilds().removeIf(node -> !Objects.equals(node.getName(), "**"));
+      if (Objects.equals(pathNodes[i], "*") || Objects.equals(pathNodes[i], "**")) {
+        prune(curNode, pathNodes, i);
       }
       curNode.addChild(newNode);
       curNode = newNode;
     }
   }
 
-  private void prune() {
-    // TODO
-  }
+  private void prune(PathPatternNode curNode, String[] pathNodes, int pos) {}
 
   public void serialize(ByteBuffer buffer) throws IOException {
     // TODO
@@ -107,5 +103,17 @@ public class PathPatternTree {
 
   public void deserialize(ByteBuffer buffer) throws IOException {
     // TODO
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    PathPatternTree that = (PathPatternTree) o;
+    return this.getRoot().equals(that.getRoot());
   }
 }

@@ -135,7 +135,7 @@ public class ConcatPathRewriter {
             throw new StatementAnalyzeException(e.getMessage());
           }
         }
-        patternTree.search(((TimeSeriesOperand) expression).getPath());
+        patternTree.append(((TimeSeriesOperand) expression).getPath());
         withoutNullColumns.add(expression);
       } else {
         if (!aliasSet.contains(expression.getExpressionString())) { // not alias, concat
@@ -200,7 +200,7 @@ public class ConcatPathRewriter {
       // Transform "select s1 from root.car.* where s1 > 10" to
       // "select s1 from root.car.* where root.car.*.s1 > 10"
       functionOperator.setSinglePath(concatPaths.get(0));
-      patternTree.search(filter.getSinglePath());
+      patternTree.append(filter.getSinglePath());
       return filter;
     } else {
       // Transform "select s1 from root.car.d1, root.car.d2 where s1 > 10" to
@@ -246,7 +246,7 @@ public class ConcatPathRewriter {
                   concatPaths.get(i),
                   ((BasicFunctionFilter) filter).getValue());
         }
-        patternTree.search(childFilter.getSinglePath());
+        patternTree.append(childFilter.getSinglePath());
         currentNode.addChildOperator(childFilter);
       } catch (SQLParserException e) {
         throw new StatementAnalyzeException(e.getMessage());

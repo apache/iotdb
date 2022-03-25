@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.common.schematree;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class PathPatternNode {
 
@@ -50,5 +51,35 @@ public class PathPatternNode {
 
   public void addChild(PathPatternNode newNode) {
     this.childs.add(newNode);
+  }
+
+  public boolean isLeaf() {
+    return childs.isEmpty();
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    PathPatternNode that = (PathPatternNode) o;
+    if (!Objects.equals(that.getName(), this.getName())) {
+      return false;
+    }
+    if (that.isLeaf() && this.isLeaf()) {
+      return true;
+    }
+    if (that.getChilds().size() != this.getChilds().size()) {
+      return false;
+    }
+    for (int i = 0; i < this.getChilds().size(); i++) {
+      if (!that.getChilds().get(i).equals(this.getChilds().get(i))) {
+        return false;
+      }
+    }
+    return true;
   }
 }
