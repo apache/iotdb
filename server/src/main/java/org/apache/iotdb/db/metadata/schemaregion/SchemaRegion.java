@@ -148,7 +148,7 @@ public class SchemaRegion {
   protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private boolean isRecovering = true;
-  private boolean initialized = false;
+  private volatile boolean initialized = false;
 
   private String schemaRegionDirPath;
   private String storageGroupFullPath;
@@ -196,19 +196,34 @@ public class SchemaRegion {
       return;
     }
 
+    String sgDirPath = config.getSchemaDir() + File.separator + storageGroupFullPath;
+    File sgSchemaFolder = SystemFileFactory.INSTANCE.getFile(sgDirPath);
+    if (!sgSchemaFolder.exists()) {
+      if (sgSchemaFolder.mkdirs()) {
+        logger.info("create storage group schema folder {}", sgDirPath);
+      } else {
+        if (!sgSchemaFolder.exists()) {
+          logger.error("create storage group schema folder {} failed.", sgDirPath);
+          throw new SchemaDirCreationFailureException(sgDirPath);
+        }
+      }
+    }
+
     schemaRegionDirPath =
         config.getSchemaDir()
             + File.separator
             + storageGroupFullPath
             + File.separator
             + schemaRegionId.getValue();
-    File sgSchemaFolder = SystemFileFactory.INSTANCE.getFile(schemaRegionDirPath);
-    if (!sgSchemaFolder.exists()) {
-      if (sgSchemaFolder.mkdirs()) {
+    File schemaRegionFolder = SystemFileFactory.INSTANCE.getFile(schemaRegionDirPath);
+    if (!schemaRegionFolder.exists()) {
+      if (schemaRegionFolder.mkdirs()) {
         logger.info("create schema region folder {}", schemaRegionDirPath);
       } else {
-        logger.error("create schema region folder {} failed.", schemaRegionDirPath);
-        throw new SchemaDirCreationFailureException(schemaRegionDirPath);
+        if (!schemaRegionFolder.exists()) {
+          logger.error("create schema region folder {} failed.", schemaRegionDirPath);
+          throw new SchemaDirCreationFailureException(schemaRegionDirPath);
+        }
       }
     }
     logFilePath = schemaRegionDirPath + File.separator + MetadataConstant.METADATA_LOG;
@@ -1633,7 +1648,7 @@ public class SchemaRegion {
 
       node.setSchemaTemplate(template);
 
-      template.markStorageGroup(node);
+      TemplateManager.getInstance().markSchemaRegion(template, schemaRegionId);
 
       // write wal
       if (!isRecovering) {
@@ -1657,8 +1672,9 @@ public class SchemaRegion {
         throw new TemplateIsInUseException(plan.getPrefixPath());
       }
       mtree.checkTemplateInUseOnLowerNode(node);
+      Template template = node.getSchemaTemplate();
       node.setSchemaTemplate(null);
-      TemplateManager.getInstance().getTemplate(plan.getTemplateName()).unmarkStorageGroup(node);
+      TemplateManager.getInstance().unmarkSchemaRegion(template, schemaRegionId);
       // write wal
       if (!isRecovering) {
         logWriter.unsetSchemaTemplate(plan);

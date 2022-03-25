@@ -22,14 +22,15 @@ package org.apache.iotdb.db.metadata.storagegroup;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.SchemaEngine;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mtree.MTreeAboveSG;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -42,9 +43,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
-import static org.apache.iotdb.db.metadata.MetadataConstant.TTL_LOG;
+import static org.apache.iotdb.db.metadata.MetadataConstant.STORAGE_GROUP_LOG;
 
 // This class implements all the interfaces for storage group management. The MTreeAboveSg is used
 // to manage all the storage groups and MNodes above storage group.
@@ -53,6 +52,8 @@ public class StorageGroupSchemaManager implements IStorageGroupSchemaManager {
   private static final Logger logger = LoggerFactory.getLogger(StorageGroupSchemaManager.class);
 
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+
+  private StorageGroupLogWriter logWriter;
 
   private MTreeAboveSG mtree;
 
@@ -69,39 +70,58 @@ public class StorageGroupSchemaManager implements IStorageGroupSchemaManager {
     return StorageGroupManagerHolder.INSTANCE;
   }
 
-  private StorageGroupSchemaManager() {
-    mtree = new MTreeAboveSG();
-  }
+  private StorageGroupSchemaManager() {}
 
-  public synchronized void init() {
+  public synchronized void init() throws IOException {
     isRecover = true;
-    mtree.init();
-    File dir = new File(config.getSchemaDir());
-    File[] sgDirs = dir.listFiles((dir1, name) -> name.startsWith(PATH_ROOT + PATH_SEPARATOR));
-    if (sgDirs != null) {
-      for (File sgDir : sgDirs) {
-        try {
-          setStorageGroup(new PartialPath(sgDir.getName()));
-          File ttlLog = new File(sgDir, TTL_LOG);
-          if (!ttlLog.exists()) {
-            continue;
-          }
-          try (TTLLogReader logReader = new TTLLogReader(sgDir.getAbsolutePath(), TTL_LOG)) {
-            SetTTLPlan plan;
-            while (logReader.hasNext()) {
-              plan = (SetTTLPlan) logReader.next();
-              setTTL(plan.getStorageGroup(), plan.getDataTTL());
-            }
-          }
-        } catch (MetadataException | IOException e) {
-          logger.error("Cannot recover storage group from dir {} because", sgDir.getName(), e);
-        }
-      }
-    }
+
+    mtree = new MTreeAboveSG();
+
+    recoverLog();
+
+    logWriter = new StorageGroupLogWriter(config.getSchemaDir(), STORAGE_GROUP_LOG);
     isRecover = false;
   }
 
-  public synchronized void clear() {
+  public void recoverLog() throws IOException {
+    File logFile = new File(config.getSchemaDir(), STORAGE_GROUP_LOG);
+    if (!logFile.exists()) {
+      return;
+    }
+    try (StorageGroupLogReader logReader =
+        new StorageGroupLogReader(config.getSchemaDir(), STORAGE_GROUP_LOG)) {
+      PhysicalPlan plan;
+      while (logReader.hasNext()) {
+        plan = logReader.next();
+        try {
+          switch (plan.getOperatorType()) {
+            case SET_STORAGE_GROUP:
+              SetStorageGroupPlan setStorageGroupPlan = (SetStorageGroupPlan) plan;
+              setStorageGroup(setStorageGroupPlan.getPath());
+              break;
+            case DELETE_STORAGE_GROUP:
+              DeleteStorageGroupPlan deleteStorageGroupPlan = (DeleteStorageGroupPlan) plan;
+              deleteStorageGroup(deleteStorageGroupPlan.getPaths().get(0));
+              break;
+            case TTL:
+              SetTTLPlan setTTLPlan = (SetTTLPlan) plan;
+              setTTL(setTTLPlan.getStorageGroup(), setTTLPlan.getDataTTL());
+              break;
+            default:
+              logger.error("Unrecognizable command {}", plan.getOperatorType());
+          }
+        } catch (MetadataException | IOException e) {
+          logger.error("Error occurred while redo storage group log", e);
+        }
+      }
+    }
+  }
+
+  public synchronized void clear() throws IOException {
+    if (logWriter != null) {
+      logWriter.close();
+      logWriter = null;
+    }
     if (mtree != null) {
       mtree.clear();
     }
@@ -110,14 +130,11 @@ public class StorageGroupSchemaManager implements IStorageGroupSchemaManager {
   @Override
   public void setStorageGroup(PartialPath path) throws MetadataException {
     mtree.setStorageGroup(path);
-    String sgDirPath = config.getSchemaDir() + File.separator + path.getFullPath();
-    File sgSchemaFolder = SystemFileFactory.INSTANCE.getFile(sgDirPath);
-    if (!sgSchemaFolder.exists()) {
-      if (sgSchemaFolder.mkdirs()) {
-        logger.info("create storage group schema folder {}", sgDirPath);
-      } else {
-        logger.error("create storage group schema folder {} failed.", sgDirPath);
-        throw new SchemaDirCreationFailureException(sgDirPath);
+    if (!isRecover) {
+      try {
+        logWriter.setStorageGroup(path);
+      } catch (IOException e) {
+        throw new MetadataException(e);
       }
     }
   }
@@ -125,13 +142,12 @@ public class StorageGroupSchemaManager implements IStorageGroupSchemaManager {
   @Override
   public synchronized void deleteStorageGroup(PartialPath storageGroup) throws MetadataException {
     mtree.deleteStorageGroup(storageGroup);
-    File sgDir = new File(config.getSchemaDir() + File.separator + storageGroup.getFullPath());
-    if (sgDir.delete()) {
-      logger.info("delete storage group folder {}", sgDir.getAbsolutePath());
-    } else {
-      logger.info("delete storage group folder {} failed.", sgDir.getAbsolutePath());
-      throw new MetadataException(
-          String.format("Failed to delete storage group folder %s", sgDir.getAbsolutePath()));
+    if (!isRecover) {
+      try {
+        logWriter.deleteStorageGroup(storageGroup);
+      } catch (IOException e) {
+        throw new MetadataException(e);
+      }
     }
   }
 
@@ -140,7 +156,7 @@ public class StorageGroupSchemaManager implements IStorageGroupSchemaManager {
     mtree.getStorageGroupNodeByStorageGroupPath(storageGroup).setDataTTL(dataTTL);
     if (!isRecover) {
       String sgDir = config.getSchemaDir() + File.separator + storageGroup.getFullPath();
-      try (TTLLogWriter logWriter = new TTLLogWriter(sgDir, TTL_LOG)) {
+      try (StorageGroupLogWriter logWriter = new StorageGroupLogWriter(sgDir, STORAGE_GROUP_LOG)) {
         logWriter.setTTL(storageGroup, dataTTL);
       }
     }

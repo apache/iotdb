@@ -27,6 +27,7 @@ import org.apache.iotdb.db.exception.metadata.UndefinedTemplateException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegionId;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -42,7 +43,10 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -54,6 +58,8 @@ public class TemplateManager {
 
   // template name -> template
   private Map<String, Template> templateMap = new ConcurrentHashMap<>();
+
+  private final Map<String, Set<Template>> templateUsageInStorageGroup = new ConcurrentHashMap<>();
 
   private TemplateLogWriter logWriter;
 
@@ -81,19 +87,26 @@ public class TemplateManager {
 
   public void init() throws IOException {
     isRecover = true;
+    recoverFromTemplateFile();
     logWriter =
         new TemplateLogWriter(
             IoTDBDescriptor.getInstance().getConfig().getSchemaDir(),
             MetadataConstant.TEMPLATE_FILE);
-    recoverFromTemplateFile();
     isRecover = false;
   }
 
   private void recoverFromTemplateFile() throws IOException {
+    File logFile =
+        new File(
+            IoTDBDescriptor.getInstance().getConfig().getSchemaDir(),
+            MetadataConstant.TEMPLATE_FILE);
+    if (!logFile.exists()) {
+      return;
+    }
     try (TemplateLogReader reader =
         new TemplateLogReader(
             IoTDBDescriptor.getInstance().getConfig().getSchemaDir(),
-            MetadataConstant.TEMPLATE_FILE); ) {
+            MetadataConstant.TEMPLATE_FILE)) {
       PhysicalPlan plan;
       int idx = 0;
       while (reader.hasNext()) {
@@ -299,8 +312,37 @@ public class TemplateManager {
     }
   }
 
+  public void markSchemaRegion(Template template, ISchemaRegionId schemaRegionId) {
+    String storageGroup = schemaRegionId.getStorageGroup();
+    synchronized (templateUsageInStorageGroup) {
+      if (templateUsageInStorageGroup.containsKey(storageGroup)) {
+        templateUsageInStorageGroup.putIfAbsent(
+            storageGroup, Collections.synchronizedSet(new HashSet<>()));
+      }
+    }
+    templateUsageInStorageGroup.get(storageGroup).add(template);
+    template.markSchemaRegion(schemaRegionId);
+  }
+
+  public void unmarkSchemaRegion(Template template, ISchemaRegionId schemaRegionId) {
+    String storageGroup = schemaRegionId.getStorageGroup();
+    Set<Template> usageInStorageGroup = templateUsageInStorageGroup.get(storageGroup);
+    usageInStorageGroup.remove(template);
+    synchronized (templateUsageInStorageGroup) {
+      if (usageInStorageGroup.isEmpty()) {
+        templateUsageInStorageGroup.remove(storageGroup);
+      }
+    }
+    template.unmarkSchemaRegion(schemaRegionId);
+  }
+
+  public Set<Template> getTemplateInStorageGroup(String storageGroup) {
+    return templateUsageInStorageGroup.get(storageGroup);
+  }
+
   public void clear() throws IOException {
     templateMap.clear();
+    templateUsageInStorageGroup.clear();
     if (logWriter != null) {
       logWriter.close();
     }

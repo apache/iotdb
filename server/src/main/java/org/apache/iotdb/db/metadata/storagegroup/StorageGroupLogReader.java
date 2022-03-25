@@ -24,11 +24,11 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
 import java.io.IOException;
 
-public class TTLLogReader implements AutoCloseable {
+public class StorageGroupLogReader implements AutoCloseable {
 
   private final MLogReader logReader;
 
-  public TTLLogReader(String schemaDir, String fileName) throws IOException {
+  public StorageGroupLogReader(String schemaDir, String fileName) throws IOException {
     logReader = new MLogReader(schemaDir, fileName);
   }
 

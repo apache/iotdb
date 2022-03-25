@@ -40,7 +40,7 @@ public class MetadataConstant {
   public static final String MTREE_SNAPSHOT_TMP =
       MTREE_PREFIX + IoTDBConstant.FILE_NAME_SEPARATOR + MTREE_VERSION + ".snapshot.bin.tmp";
   public static final String TEMPLATE_FILE = "template_log.bin";
-  public static final String TTL_LOG = "ttl_log.bin";
+  public static final String STORAGE_GROUP_LOG = "storage_group_log.bin";
 
   public static final String[] ALL_RESULT_NODES = new String[] {"root", "**"};
 

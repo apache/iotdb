@@ -24,12 +24,20 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 
 import java.io.IOException;
 
-public class TTLLogWriter implements AutoCloseable {
+public class StorageGroupLogWriter implements AutoCloseable {
 
   private final MLogWriter logWriter;
 
-  public TTLLogWriter(String schemaDir, String fileName) throws IOException {
+  public StorageGroupLogWriter(String schemaDir, String fileName) throws IOException {
     logWriter = new MLogWriter(schemaDir, fileName);
+  }
+
+  public void setStorageGroup(PartialPath storageGroup) throws IOException {
+    logWriter.setStorageGroup(storageGroup);
+  }
+
+  public void deleteStorageGroup(PartialPath storageGroup) throws IOException {
+    logWriter.deleteStorageGroup(storageGroup);
   }
 
   public void setTTL(PartialPath storageGroup, long ttl) throws IOException {

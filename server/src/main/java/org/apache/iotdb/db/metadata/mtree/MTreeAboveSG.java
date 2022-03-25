@@ -71,8 +71,6 @@ public class MTreeAboveSG {
     this.root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
   }
 
-  public void init() {}
-
   public void clear() {
     this.root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
   }
