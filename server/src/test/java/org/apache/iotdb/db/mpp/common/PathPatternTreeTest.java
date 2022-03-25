@@ -31,14 +31,14 @@ public class PathPatternTreeTest {
   @Test
   public void pathPatternTreeTest1() throws IllegalPathException {
     PathPatternTree patternTree = new PathPatternTree();
-    patternTree.append(new PartialPath("root.sg1.d1.s1"));
-    patternTree.append(new PartialPath("root.sg1.d1.s2"));
-    patternTree.append(new PartialPath("root.sg1.d1.*"));
-    patternTree.append(new PartialPath("root.sg1.d1.s3"));
+    patternTree.appendPath(new PartialPath("root.sg1.d1.s1"));
+    patternTree.appendPath(new PartialPath("root.sg1.d1.s2"));
+    patternTree.appendPath(new PartialPath("root.sg1.d1.*"));
+    patternTree.appendPath(new PartialPath("root.sg1.d1.s3"));
     patternTree.constructTree();
 
     PathPatternTree resultPatternTree = new PathPatternTree();
-    resultPatternTree.append(new PartialPath("root.sg1.d1.*"));
+    resultPatternTree.appendPath(new PartialPath("root.sg1.d1.*"));
     resultPatternTree.constructTree();
 
     Assert.assertEquals(resultPatternTree, patternTree);
@@ -47,17 +47,17 @@ public class PathPatternTreeTest {
   @Test
   public void pathPatternTreeTest2() throws IllegalPathException {
     PathPatternTree patternTree = new PathPatternTree();
-    patternTree.append(new PartialPath("root.sg1.d1.s1"));
-    patternTree.append(new PartialPath("root.sg1.d1.s2"));
-    patternTree.append(new PartialPath("root.sg1.d1.t1.s1"));
-    patternTree.append(new PartialPath("root.sg1.*.s1"));
-    patternTree.append(new PartialPath("root.sg1.d2.s1"));
+    patternTree.appendPath(new PartialPath("root.sg1.d1.s1"));
+    patternTree.appendPath(new PartialPath("root.sg1.d1.s2"));
+    patternTree.appendPath(new PartialPath("root.sg1.d1.t1.s1"));
+    patternTree.appendPath(new PartialPath("root.sg1.*.s1"));
+    patternTree.appendPath(new PartialPath("root.sg1.d2.s1"));
     patternTree.constructTree();
 
     PathPatternTree resultPatternTree = new PathPatternTree();
-    resultPatternTree.append(new PartialPath("root.sg1.d1.s2"));
-    resultPatternTree.append(new PartialPath("root.sg1.d1.t1.s1"));
-    resultPatternTree.append(new PartialPath("root.sg1.*.s1"));
+    resultPatternTree.appendPath(new PartialPath("root.sg1.d1.s2"));
+    resultPatternTree.appendPath(new PartialPath("root.sg1.d1.t1.s1"));
+    resultPatternTree.appendPath(new PartialPath("root.sg1.*.s1"));
     resultPatternTree.constructTree();
 
     Assert.assertEquals(resultPatternTree, patternTree);
@@ -66,19 +66,19 @@ public class PathPatternTreeTest {
   @Test
   public void pathPatternTreeTest3() throws IllegalPathException {
     PathPatternTree patternTree = new PathPatternTree();
-    patternTree.append(new PartialPath("root.sg1.d1.s1"));
-    patternTree.append(new PartialPath("root.sg1.d1.s2"));
-    patternTree.append(new PartialPath("root.sg1.d1.t1.s1"));
-    patternTree.append(new PartialPath("root.sg1.d2.s3"));
-    patternTree.append(new PartialPath("root.**"));
-    patternTree.append(new PartialPath("root.sg1.d1.s1"));
-    patternTree.append(new PartialPath("root.sg1.d1.s2"));
-    patternTree.append(new PartialPath("root.sg1.d1.t1.s1"));
-    patternTree.append(new PartialPath("root.sg1.d2.s3"));
+    patternTree.appendPath(new PartialPath("root.sg1.d1.s1"));
+    patternTree.appendPath(new PartialPath("root.sg1.d1.s2"));
+    patternTree.appendPath(new PartialPath("root.sg1.d1.t1.s1"));
+    patternTree.appendPath(new PartialPath("root.sg1.d2.s3"));
+    patternTree.appendPath(new PartialPath("root.**"));
+    patternTree.appendPath(new PartialPath("root.sg1.d1.s1"));
+    patternTree.appendPath(new PartialPath("root.sg1.d1.s2"));
+    patternTree.appendPath(new PartialPath("root.sg1.d1.t1.s1"));
+    patternTree.appendPath(new PartialPath("root.sg1.d2.s3"));
     patternTree.constructTree();
 
     PathPatternTree resultPatternTree = new PathPatternTree();
-    resultPatternTree.append(new PartialPath("root.**"));
+    resultPatternTree.appendPath(new PartialPath("root.**"));
     resultPatternTree.constructTree();
 
     Assert.assertEquals(resultPatternTree, patternTree);
@@ -87,16 +87,16 @@ public class PathPatternTreeTest {
   @Test
   public void pathPatternTreeTest4() throws IllegalPathException {
     PathPatternTree patternTree = new PathPatternTree();
-    patternTree.append(new PartialPath("root.sg1.d1.s1"));
-    patternTree.append(new PartialPath("root.sg1.d1.s2"));
-    patternTree.append(new PartialPath("root.sg1.d1.t1.s1"));
-    patternTree.append(new PartialPath("root.sg1.d2.s1"));
-    patternTree.append(new PartialPath("root.sg1.**.s1"));
+    patternTree.appendPath(new PartialPath("root.sg1.d1.s1"));
+    patternTree.appendPath(new PartialPath("root.sg1.d1.s2"));
+    patternTree.appendPath(new PartialPath("root.sg1.d1.t1.s1"));
+    patternTree.appendPath(new PartialPath("root.sg1.d2.s1"));
+    patternTree.appendPath(new PartialPath("root.sg1.**.s1"));
     patternTree.constructTree();
 
     PathPatternTree resultPatternTree = new PathPatternTree();
-    resultPatternTree.append(new PartialPath("root.sg1.d1.s2"));
-    resultPatternTree.append(new PartialPath("root.sg1.**.s1"));
+    resultPatternTree.appendPath(new PartialPath("root.sg1.d1.s2"));
+    resultPatternTree.appendPath(new PartialPath("root.sg1.**.s1"));
     resultPatternTree.constructTree();
 
     Assert.assertEquals(resultPatternTree, patternTree);
@@ -105,25 +105,25 @@ public class PathPatternTreeTest {
   @Test
   public void pathPatternTreeTest5() throws IllegalPathException {
     PathPatternTree patternTree = new PathPatternTree();
-    patternTree.append(new PartialPath("root.sg1.d1.s1"));
-    patternTree.append(new PartialPath("root.sg1.d1.s2"));
-    patternTree.append(new PartialPath("root.sg1.d1.t1.s1"));
-    patternTree.append(new PartialPath("root.sg1.d2.s1"));
-    patternTree.append(new PartialPath("root.sg1.d2.s2"));
-    patternTree.append(new PartialPath("root.sg1.d2.*"));
-    patternTree.append(new PartialPath("root.sg1.**.s1"));
-    patternTree.append(new PartialPath("root.sg1.*.s2"));
-    patternTree.append(new PartialPath("root.sg1.d3.s1"));
-    patternTree.append(new PartialPath("root.sg1.d3.s2"));
-    patternTree.append(new PartialPath("root.sg1.d3.t1.s1"));
-    patternTree.append(new PartialPath("root.sg1.d3.t1.s2"));
+    patternTree.appendPath(new PartialPath("root.sg1.d1.s1"));
+    patternTree.appendPath(new PartialPath("root.sg1.d1.s2"));
+    patternTree.appendPath(new PartialPath("root.sg1.d1.t1.s1"));
+    patternTree.appendPath(new PartialPath("root.sg1.d2.s1"));
+    patternTree.appendPath(new PartialPath("root.sg1.d2.s2"));
+    patternTree.appendPath(new PartialPath("root.sg1.d2.*"));
+    patternTree.appendPath(new PartialPath("root.sg1.**.s1"));
+    patternTree.appendPath(new PartialPath("root.sg1.*.s2"));
+    patternTree.appendPath(new PartialPath("root.sg1.d3.s1"));
+    patternTree.appendPath(new PartialPath("root.sg1.d3.s2"));
+    patternTree.appendPath(new PartialPath("root.sg1.d3.t1.s1"));
+    patternTree.appendPath(new PartialPath("root.sg1.d3.t1.s2"));
     patternTree.constructTree();
 
     PathPatternTree resultPatternTree = new PathPatternTree();
-    resultPatternTree.append(new PartialPath("root.sg1.d2.*"));
-    resultPatternTree.append(new PartialPath("root.sg1.**.s1"));
-    resultPatternTree.append(new PartialPath("root.sg1.*.s2"));
-    resultPatternTree.append(new PartialPath("root.sg1.d3.t1.s2"));
+    resultPatternTree.appendPath(new PartialPath("root.sg1.d2.*"));
+    resultPatternTree.appendPath(new PartialPath("root.sg1.**.s1"));
+    resultPatternTree.appendPath(new PartialPath("root.sg1.*.s2"));
+    resultPatternTree.appendPath(new PartialPath("root.sg1.d3.t1.s2"));
     resultPatternTree.constructTree();
 
     Assert.assertEquals(resultPatternTree, patternTree);

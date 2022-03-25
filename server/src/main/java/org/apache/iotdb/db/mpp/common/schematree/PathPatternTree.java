@@ -33,7 +33,7 @@ public class PathPatternTree {
 
   private PathPatternNode root;
 
-  private List<PartialPath> paths;
+  private final List<PartialPath> pathList;
 
   /**
    * Since IoTDB v0.13, all DDL and DML use patternMatch as default. Before IoTDB v0.13, all DDL and
@@ -43,7 +43,7 @@ public class PathPatternTree {
 
   public PathPatternTree() {
     this.root = new PathPatternNode(SQLConstant.ROOT);
-    this.paths = new ArrayList<>();
+    this.pathList = new ArrayList<>();
   }
 
   public PathPatternNode getRoot() {
@@ -62,21 +62,33 @@ public class PathPatternTree {
     isPrefixMatchPath = prefixMatchPath;
   }
 
-  public void append(PartialPath path) {
-    boolean isNeed = true;
-    for (PartialPath p : paths) {
-      if (p.matchFullPath(path)) {
-        isNeed = false;
+  // append path to pathList
+  public void appendPath(PartialPath newPath) {
+    boolean isExist = false;
+    for (PartialPath path : pathList) {
+      if (path.matchFullPath(newPath)) {
+        // path already exists in pathList
+        isExist = true;
         break;
       }
     }
-    if (isNeed) {
-      paths.removeAll(paths.stream().filter(path::matchFullPath).collect(Collectors.toList()));
-      paths.add(path);
+    if (!isExist) {
+      // remove duplicate path in pathList
+      pathList.removeAll(
+          pathList.stream().filter(newPath::matchFullPath).collect(Collectors.toList()));
+      pathList.add(newPath);
     }
   }
 
-  public void search(PathPatternNode curNode, String[] pathNodes, int pos) {
+  // construct tree according to pathList
+  public void constructTree() {
+    for (PartialPath path : pathList) {
+      searchAndConstruct(root, path.getNodes(), 0);
+    }
+    pathList.clear();
+  }
+
+  public void searchAndConstruct(PathPatternNode curNode, String[] pathNodes, int pos) {
     if (pos == pathNodes.length - 1) {
       return;
     }
@@ -92,13 +104,13 @@ public class PathPatternTree {
     }
 
     if (isExist) {
-      search(nextNode, pathNodes, pos + 1);
+      searchAndConstruct(nextNode, pathNodes, pos + 1);
     } else {
-      construct(curNode, pathNodes, pos + 1);
+      appendTree(curNode, pathNodes, pos + 1);
     }
   }
 
-  private void construct(PathPatternNode curNode, String[] pathNodes, int pos) {
+  private void appendTree(PathPatternNode curNode, String[] pathNodes, int pos) {
     for (int i = pos; i < pathNodes.length; i++) {
       PathPatternNode newNode = new PathPatternNode(pathNodes[i]);
       curNode.addChild(newNode);
@@ -106,13 +118,8 @@ public class PathPatternTree {
     }
   }
 
-  public void constructTree() {
-    for (PartialPath path : this.paths) {
-      search(root, path.getNodes(), 0);
-    }
-  }
-
   public void serialize(ByteBuffer buffer) throws IOException {
+    constructTree();
     // TODO
   }
 
