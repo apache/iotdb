@@ -36,6 +36,7 @@ import org.apache.iotdb.db.wal.checkpoint.CheckpointManager;
 import org.apache.iotdb.db.wal.checkpoint.MemTableInfo;
 import org.apache.iotdb.db.wal.recover.file.UnsealedTsFileRecoverPerformer;
 import org.apache.iotdb.db.wal.recover.utils.TsFileUtilsForRecoverTest;
+import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.db.wal.utils.listener.WALRecoverListener;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -94,6 +95,7 @@ public class WALRecoverManagerTest {
       config.getWalDirs()[0].concat(File.separator + WAL_NODE_IDENTIFIER);
   private static final WALRecoverManager recoverManager = WALRecoverManager.getInstance();
 
+  private WALMode prevMode;
   private IWALBuffer walBuffer;
   private CheckpointManager checkpointManager;
   private TsFileResource tsFileWithWALResource;
@@ -103,6 +105,8 @@ public class WALRecoverManagerTest {
   public void setUp() throws Exception {
     EnvironmentUtils.cleanDir(new File(FILE_WITH_WAL_NAME).getParent());
     EnvironmentUtils.envSetUp();
+    prevMode = config.getWalMode();
+    config.setWalMode(WALMode.SYNC);
     walBuffer = new WALBuffer(WAL_NODE_IDENTIFIER, WAL_NODE_FOLDER);
     checkpointManager = new CheckpointManager(WAL_NODE_IDENTIFIER, WAL_NODE_FOLDER);
     IoTDB.schemaEngine.setStorageGroup(new PartialPath(SG_NAME));
@@ -142,6 +146,7 @@ public class WALRecoverManagerTest {
     }
     checkpointManager.close();
     walBuffer.close();
+    config.setWalMode(prevMode);
     EnvironmentUtils.cleanDir(new File(FILE_WITH_WAL_NAME).getParent());
     EnvironmentUtils.cleanDir(new File(FILE_WITHOUT_WAL_NAME).getParent());
     EnvironmentUtils.cleanEnv();

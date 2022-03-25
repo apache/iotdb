@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.wal.utils.listener;
 
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.wal.utils.WALMode;
 
@@ -26,8 +27,8 @@ import org.slf4j.LoggerFactory;
 
 /** This class helps judge whether wal is flushed to the storage device. */
 public class WALFlushListener implements IResultListener {
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final Logger logger = LoggerFactory.getLogger(WALFlushListener.class);
-  private static final WALMode mode = IoTDBDescriptor.getInstance().getConfig().getWalMode();
 
   private volatile Status status;
   private volatile Exception cause;
@@ -39,7 +40,7 @@ public class WALFlushListener implements IResultListener {
 
   public synchronized WALFlushListener succeed() {
     status = Status.SUCCESS;
-    if (mode == WALMode.SYNC) {
+    if (config.getWalMode() == WALMode.SYNC) {
       this.notifyAll();
     }
     return this;
@@ -48,7 +49,7 @@ public class WALFlushListener implements IResultListener {
   public synchronized WALFlushListener fail(Exception e) {
     status = Status.FAILURE;
     cause = e;
-    if (mode == WALMode.SYNC) {
+    if (config.getWalMode() == WALMode.SYNC) {
       this.notifyAll();
     }
     return this;
@@ -56,7 +57,7 @@ public class WALFlushListener implements IResultListener {
 
   public synchronized Status getResult() {
     // block only when wal mode is sync
-    if (mode == WALMode.SYNC) {
+    if (config.getWalMode() == WALMode.SYNC) {
       while (status == Status.RUNNING) {
         try {
           this.wait();

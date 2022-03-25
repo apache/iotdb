@@ -25,6 +25,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.utils.MmapUtil;
 import org.apache.iotdb.db.wal.exception.WALNodeClosedException;
+import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.db.wal.utils.listener.WALFlushListener;
 
 import org.slf4j.Logger;
@@ -50,20 +51,23 @@ import java.util.concurrent.locks.ReentrantLock;
  * writes and avoid waiting for buffer syncing to disk.
  */
 public class WALBuffer extends AbstractWALBuffer {
-  /** Maximum number of WALEdits in one serialize task */
-  public static final int BATCH_SIZE_LIMIT = 100;
-
   private static final Logger logger = LoggerFactory.getLogger(WALBuffer.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static final long SYNC_WAL_DELAY_IN_MS = config.getSyncWalDelayInMs();
   private static final int WAL_BUFFER_SIZE = config.getWalBufferSize();
+  private static final long SYNC_WAL_DELAY_IN_MS = config.getSyncWalDelayInMs();
+  /** default delay time of each serialize task when wal mode is async */
+  public static final long ASYNC_WAL_DELAY_IN_MS = 100;
+  /** Maximum number of WALEdits in one serialize task when wal mode is sync */
+  public static final int SYNC_BATCH_SIZE_LIMIT = 100;
+  /** Maximum number of WALEdits in the blocking queue */
+  public static final int SIZE_LIMIT = 10_000;
   /** notify serializeThread to stop */
   private static final WALEdit CLOSE_SIGNAL = new WALEdit(-1, new DeletePlan());
 
   /** whether close method is called */
   private volatile boolean isClosed = false;
   /** WALEdits */
-  private final BlockingQueue<WALEdit> walEdits = new ArrayBlockingQueue<>(BATCH_SIZE_LIMIT * 10);
+  private final BlockingQueue<WALEdit> walEdits = new ArrayBlockingQueue<>(SIZE_LIMIT);
   /** two buffers switch between three statuses (there is always 1 buffer working) */
   // buffer in working status, only updated by serializeThread
   private volatile ByteBuffer workingBuffer;
@@ -138,15 +142,6 @@ public class WALBuffer extends AbstractWALBuffer {
 
     /** In order to control memory usage of blocking queue, get 1 and then serialize 1 */
     private void serialize() {
-      // for better fsync performance, sleep a while to enlarge write batch
-      if (SYNC_WAL_DELAY_IN_MS > 0) {
-        try {
-          Thread.sleep(SYNC_WAL_DELAY_IN_MS);
-        } catch (InterruptedException e) {
-          logger.warn("Interrupted when sleeping a while to enlarge wal write batch.");
-          Thread.currentThread().interrupt();
-        }
-      }
       // try to get first WALEdit with blocking interface
       int batchSize = 0;
       try {
@@ -167,8 +162,20 @@ public class WALBuffer extends AbstractWALBuffer {
             "Interrupted when waiting for taking WALEdit from blocking queue to serialize.");
         Thread.currentThread().interrupt();
       }
+      // for better fsync performance, sleep a while to enlarge write batch
+      if (SYNC_WAL_DELAY_IN_MS > 0 || config.getWalMode() == WALMode.ASYNC) {
+        long sleepTime = SYNC_WAL_DELAY_IN_MS > 0 ? SYNC_WAL_DELAY_IN_MS : ASYNC_WAL_DELAY_IN_MS;
+        try {
+          Thread.sleep(sleepTime);
+        } catch (InterruptedException e) {
+          logger.warn("Interrupted when sleeping a while to enlarge wal write batch.");
+          Thread.currentThread().interrupt();
+        }
+      }
       // try to get more WALEdits with non-blocking interface to enlarge write batch
-      while (walEdits.peek() != null && batchSize < BATCH_SIZE_LIMIT) {
+      // control batch size in sync mode to return quickly
+      int bachSizeLimit = config.getWalMode() == WALMode.SYNC ? SYNC_BATCH_SIZE_LIMIT : SIZE_LIMIT;
+      while (walEdits.peek() != null && batchSize < bachSizeLimit) {
         WALEdit edit = walEdits.poll();
         if (edit == null || edit == CLOSE_SIGNAL) {
           break;

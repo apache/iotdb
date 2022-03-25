@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.wal.node;
 
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -28,6 +30,7 @@ import org.apache.iotdb.db.wal.checkpoint.MemTableInfo;
 import org.apache.iotdb.db.wal.io.WALReader;
 import org.apache.iotdb.db.wal.io.WALWriter;
 import org.apache.iotdb.db.wal.recover.CheckpointRecoverUtils;
+import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.db.wal.utils.listener.WALFlushListener;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -52,20 +55,25 @@ import java.util.concurrent.Future;
 import static org.junit.Assert.*;
 
 public class WALNodeTest {
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final String identifier = String.valueOf(Integer.MAX_VALUE);
   private static final String logDirectory = "wal-test";
   private static final String devicePath = "root.test_sg.test_d";
+  private WALMode prevMode;
   private WALNode walNode;
 
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.cleanDir(logDirectory);
+    prevMode = config.getWalMode();
+    config.setWalMode(WALMode.SYNC);
     walNode = new WALNode(identifier, logDirectory);
   }
 
   @After
   public void tearDown() throws Exception {
     walNode.close();
+    config.setWalMode(prevMode);
     EnvironmentUtils.cleanDir(logDirectory);
   }
 
