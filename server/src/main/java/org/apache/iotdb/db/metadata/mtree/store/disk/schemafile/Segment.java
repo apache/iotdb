@@ -609,22 +609,22 @@ public class Segment implements ISegment {
 
   @Override
   public String toString() {
-    ByteBuffer roBuffer = this.buffer.asReadOnlyBuffer();
+    ByteBuffer bufferR = this.buffer.asReadOnlyBuffer();
     StringBuilder builder = new StringBuilder("");
     builder.append(
         String.format(
             "[size: %d, K-AL size: %d, spare:%d,",
             this.length, keyAddressList.size(), freeAddr - pairLength - SEG_HEADER_SIZE));
-    roBuffer.clear();
+    bufferR.clear();
     for (Pair<String, Short> pair : keyAddressList) {
-      roBuffer.position(pair.right);
+      bufferR.position(pair.right);
       try {
-        if (RecordUtils.getRecordType(roBuffer) == 0 || RecordUtils.getRecordType(roBuffer) == 1) {
+        if (RecordUtils.getRecordType(bufferR) == 0 || RecordUtils.getRecordType(bufferR) == 1) {
           builder.append(
-              String.format("(%s -> %d),", pair.left, RecordUtils.getRecordSegAddr(roBuffer)));
-        } else if (RecordUtils.getRecordType(roBuffer) == 4) {
+              String.format("(%s -> %d),", pair.left, RecordUtils.getRecordSegAddr(bufferR)));
+        } else if (RecordUtils.getRecordType(bufferR) == 4) {
           builder.append(
-              String.format("(%s, %s),", pair.left, RecordUtils.getRecordAlias(roBuffer)));
+              String.format("(%s, %s),", pair.left, RecordUtils.getRecordAlias(bufferR)));
         } else {
           logger.error(String.format("Record Broken at: %s", pair));
           throw new BufferUnderflowException();
@@ -635,7 +635,7 @@ public class Segment implements ISegment {
             String.format(
                 "Broken record bytes: %s",
                 Arrays.toString(
-                    Arrays.copyOfRange(roBuffer.array(), pair.right, pair.right + 30))));
+                    Arrays.copyOfRange(bufferR.array(), pair.right, pair.right + 30))));
         throw e;
       }
     }

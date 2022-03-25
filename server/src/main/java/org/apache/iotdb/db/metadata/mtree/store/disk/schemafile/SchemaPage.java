@@ -117,7 +117,8 @@ public class SchemaPage implements ISchemaPage {
 
   /**
    * Insert a content directly into specified segment, without considering preallocate and
-   * reallocate segment. Find the right segment instance, cache the segment and insert the record.
+   * reallocate segment. <br>
+   * Find the right segment instance which MUST exists, cache the segment and insert the record.
    * If not enough, reallocate inside page first, or return negative for new page then.
    *
    * @param segIdx
@@ -206,18 +207,6 @@ public class SchemaPage implements ISchemaPage {
     }
   }
 
-  /**
-   * This method extends specified segment inside original page to this page. If original segment
-   * occupies a full page, new segment will be linked to the origin. If original segment smaller
-   * than a full page, it will be over-write to new page.
-   *
-   * @param oriPage
-   * @param oriIdx
-   * @return index of the segment in new page
-   */
-  public short multiPageExtend(ISchemaPage oriPage, short oriIdx) {
-    return 0;
-  }
 
   /**
    * Bytes length from [tail of last segment] to [head of offset list].
@@ -405,14 +394,21 @@ public class SchemaPage implements ISchemaPage {
     if (segCacheMap.containsKey(index)) {
       return segCacheMap.get(index);
     }
-    ByteBuffer bufferR = this.pageBuffer.duplicate();
-    bufferR.clear();
-    bufferR.position(getSegmentOffset(index));
-    bufferR.limit(bufferR.position() + Segment.getSegBufLen(bufferR));
 
-    ISegment res = Segment.loadAsSegment(bufferR.slice());
-    segCacheMap.put(index, res);
-    return res;
+    synchronized (this) {
+      if (segCacheMap.containsKey(index)) {
+        return segCacheMap.get(index);
+      }
+
+      ByteBuffer bufferR = this.pageBuffer.duplicate();
+      bufferR.clear();
+      bufferR.position(getSegmentOffset(index));
+      bufferR.limit(bufferR.position() + Segment.getSegBufLen(bufferR));
+
+      ISegment res = Segment.loadAsSegment(bufferR.slice());
+      segCacheMap.put(index, res);
+      return res;
+    }
   }
 
   private short getSegmentOffset(short index) throws SegmentNotFoundException {
