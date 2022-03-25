@@ -1682,7 +1682,7 @@ public class SchemaEngine implements ISchemaEngine {
     }
   }
 
-  IMNode setUsingSchemaTemplate(IMNode node) throws MetadataException {
+  public IMNode setUsingSchemaTemplate(IMNode node) throws MetadataException {
     return storageGroupSchemaManager
         .getBelongedSchemaRegion(node.getPartialPath())
         .setUsingSchemaTemplate(node);

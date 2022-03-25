@@ -354,6 +354,8 @@ public interface ISchemaEngine {
 
   void unsetSchemaTemplate(UnsetTemplatePlan plan) throws MetadataException;
 
+  IMNode setUsingSchemaTemplate(IMNode node) throws MetadataException;
+
   void setUsingSchemaTemplate(ActivateTemplatePlan plan) throws MetadataException;
   // endregion
 

@@ -30,6 +30,18 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import com.google.common.primitives.Bytes;
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.ALL_NODE_TYPE_ARRAY;
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.DATA_BLOCK_TYPE_ORIGIN_KEY;
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.DATA_BLOCK_TYPE_SCHEMA;
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.DATA_VERSION;
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.DEFAULT_FLAG;
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.NODE_TYPE_ENTITY;
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.NODE_TYPE_MEASUREMENT;
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.NODE_TYPE_ROOT;
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.PATH_SEPARATOR;
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.ROOT;
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.TABLE_NAME_TAGS;
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.ZERO;
 import org.rocksdb.BlockBasedTableConfig;
 import org.rocksdb.BloomFilter;
 import org.rocksdb.Cache;
@@ -69,18 +81,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
-
-import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.DATA_BLOCK_TYPE_ORIGIN_KEY;
-import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.DATA_BLOCK_TYPE_SCHEMA;
-import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.DATA_VERSION;
-import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.DEFAULT_FLAG;
-import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.NODE_TYPE_ENTITY;
-import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.NODE_TYPE_MEASUREMENT;
-import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.NODE_TYPE_ROOT;
-import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.PATH_SEPARATOR;
-import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.ROOT;
-import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.TABLE_NAME_TAGS;
-import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.ZERO;
 
 public class RSchemaReadWriteHandler {
 
@@ -428,6 +428,23 @@ public class RSchemaReadWriteHandler {
     return rocksDB.newIterator(columnFamilyHandle);
   }
 
+  public boolean existAnySiblings(String siblingPrefix) {
+    for (char type : ALL_NODE_TYPE_ARRAY) {
+      byte[] key = RSchemaUtils.toRocksDBKey(siblingPrefix, type);
+      try (RocksIterator iterator = rocksDB.newIterator()) {
+        for (iterator.seek(key); iterator.isValid(); iterator.next()) {
+          String keyStr = new String(iterator.key());
+          if (!RSchemaUtils.prefixMatch(iterator.key(), key)) {
+            break;
+          } else {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
   public void getKeyByPrefix(String innerName, Function<String, Boolean> function) {
     try (RocksIterator iterator = rocksDB.newIterator()) {
       for (iterator.seek(innerName.getBytes()); iterator.isValid(); iterator.next()) {
@@ -553,10 +570,10 @@ public class RSchemaReadWriteHandler {
           iterator.next();
         }
       }
-      if (outputFile.exists()) {
-        boolean deleted = outputFile.delete();
-        System.out.println("clean output file: " + deleted);
-      }
+      //      if (outputFile.exists()) {
+      //        boolean deleted = outputFile.delete();
+      //        System.out.println("clean output file: " + deleted);
+      //      }
       System.out.println("\n-----------------scan rocksdb end----------------------");
     }
   }
