@@ -36,6 +36,7 @@ import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MNodeUtils;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.CollectorTraverser;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.EntityCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MNodeCollector;
@@ -64,7 +65,6 @@ import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.gson.JsonObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -127,7 +127,11 @@ public class MTreeBelowSG implements Serializable {
 
   // region MTree initialization, clear and serialization
   public MTreeBelowSG(IStorageGroupMNode storageGroupMNode) throws IOException {
-    this.storageGroupMNode = storageGroupMNode;
+    this.storageGroupMNode =
+        new StorageGroupMNode(
+            storageGroupMNode.getParent(),
+            storageGroupMNode.getName(),
+            storageGroupMNode.getDataTTL());
     levelOfSG = storageGroupMNode.getPartialPath().getNodeLength() - 1;
   }
 
@@ -137,36 +141,6 @@ public class MTreeBelowSG implements Serializable {
 
   public void clear() {
     storageGroupMNode = null;
-  }
-
-  public JsonObject toJson() {
-    JsonObject jsonObject = new JsonObject();
-    jsonObject.add(
-        storageGroupMNode.getFullPath(),
-        mNodeToJSON(storageGroupMNode, storageGroupMNode.getName()));
-    return jsonObject;
-  }
-
-  private JsonObject mNodeToJSON(IMNode node, String storageGroupName) {
-    JsonObject jsonObject = new JsonObject();
-    if (node.getChildren().size() > 0) {
-      if (node.isStorageGroup()) {
-        storageGroupName = node.getFullPath();
-      }
-      for (IMNode child : node.getChildren().values()) {
-        jsonObject.add(child.getName(), mNodeToJSON(child, storageGroupName));
-      }
-    } else if (node.isMeasurement()) {
-      IMeasurementMNode leafMNode = node.getAsMeasurementMNode();
-      jsonObject.add("DataType", GSON.toJsonTree(leafMNode.getSchema().getType()));
-      jsonObject.add("Encoding", GSON.toJsonTree(leafMNode.getSchema().getEncodingType()));
-      jsonObject.add("Compressor", GSON.toJsonTree(leafMNode.getSchema().getCompressor()));
-      if (leafMNode.getSchema().getProps() != null) {
-        jsonObject.addProperty("args", leafMNode.getSchema().getProps().toString());
-      }
-      jsonObject.addProperty("StorageGroup", storageGroupName);
-    }
-    return jsonObject;
   }
   // endregion
 

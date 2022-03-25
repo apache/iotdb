@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata;
+package org.apache.iotdb.db.metadata.schemaregion;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -34,6 +34,8 @@ import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
 import org.apache.iotdb.db.exception.metadata.TemplateIsInUseException;
+import org.apache.iotdb.db.metadata.MetadataConstant;
+import org.apache.iotdb.db.metadata.SchemaEngine;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.IDTableManager;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
@@ -46,6 +48,7 @@ import org.apache.iotdb.db.metadata.mtree.MTreeBelowSG;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.rescon.TimeseriesStatistics;
+import org.apache.iotdb.db.metadata.storagegroup.StorageGroupSchemaManager;
 import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
@@ -61,7 +64,6 @@ import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
@@ -82,7 +84,6 @@ import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
-import com.google.gson.JsonObject;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
@@ -108,8 +109,8 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARA
 
 /**
  * This class takes the responsibility of serialization of all the metadata info of one certain
- * storage group and persistent it into files. This class contains the interfaces to modify the
- * metadata in storage group for delta system. All the operations will be inserted into the logs
+ * schema region and persistent it into files. This class contains the interfaces to modify the
+ * metadata in schema region for delta system. All the operations will be inserted into the logs
  * temporary in case the downtime of the delta system.
  *
  * <p>Since there are too many interfaces and methods in this class, we use code region to help
@@ -144,16 +145,14 @@ public class SchemaRegion {
 
   private static final Logger logger = LoggerFactory.getLogger(StorageGroupSchemaManager.class);
 
-  /** A thread will check whether the MTree is modified lately each such interval. Unit: second */
-  private static final long MTREE_SNAPSHOT_THREAD_CHECK_TIME = 600L;
-
   protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private boolean isRecovering = true;
   private boolean initialized = false;
 
-  private String sgSchemaDirPath;
+  private String schemaRegionDirPath;
   private String storageGroupFullPath;
+  private ISchemaRegionId schemaRegionId;
 
   // the log file seriesPath
   private String logFilePath;
@@ -167,7 +166,12 @@ public class SchemaRegion {
   private TagManager tagManager;
 
   // region Interfaces and Implementation of initialization、snapshot、recover and clear
-  public SchemaRegion() {
+  public SchemaRegion(ISchemaRegionId schemaRegionId, IStorageGroupMNode storageGroupMNode)
+      throws MetadataException {
+
+    storageGroupFullPath = schemaRegionId.getStorageGroup();
+    this.schemaRegionId = schemaRegionId;
+
     int cacheSize = config.getSchemaRegionCacheSize();
     mNodeCache =
         Caffeine.newBuilder()
@@ -181,6 +185,8 @@ public class SchemaRegion {
                     return mtree.getNodeByPath(partialPath);
                   }
                 });
+
+    init(storageGroupMNode);
   }
 
   // Because the writer will be used later and should not be closed here.
@@ -190,19 +196,22 @@ public class SchemaRegion {
       return;
     }
 
-    storageGroupFullPath = storageGroupMNode.getFullPath();
-
-    sgSchemaDirPath = config.getSchemaDir() + File.separator + storageGroupFullPath;
-    File sgSchemaFolder = SystemFileFactory.INSTANCE.getFile(sgSchemaDirPath);
+    schemaRegionDirPath =
+        config.getSchemaDir()
+            + File.separator
+            + storageGroupFullPath
+            + File.separator
+            + schemaRegionId.getValue();
+    File sgSchemaFolder = SystemFileFactory.INSTANCE.getFile(schemaRegionDirPath);
     if (!sgSchemaFolder.exists()) {
       if (sgSchemaFolder.mkdirs()) {
-        logger.info("create storage group schema folder {}", sgSchemaDirPath);
+        logger.info("create schema region folder {}", schemaRegionDirPath);
       } else {
-        logger.error("create storage group schema folder {} failed.", sgSchemaDirPath);
-        throw new SchemaDirCreationFailureException(sgSchemaDirPath);
+        logger.error("create schema region folder {} failed.", schemaRegionDirPath);
+        throw new SchemaDirCreationFailureException(schemaRegionDirPath);
       }
     }
-    logFilePath = sgSchemaDirPath + File.separator + MetadataConstant.METADATA_LOG;
+    logFilePath = schemaRegionDirPath + File.separator + MetadataConstant.METADATA_LOG;
 
     logFile = SystemFileFactory.INSTANCE.getFile(logFilePath);
 
@@ -210,12 +219,12 @@ public class SchemaRegion {
       // do not write log when recover
       isRecovering = true;
 
-      tagManager = new TagManager(sgSchemaDirPath);
+      tagManager = new TagManager(schemaRegionDirPath);
       mtree = new MTreeBelowSG(storageGroupMNode);
 
       int lineNumber = initFromLog(logFile);
 
-      logWriter = new MLogWriter(sgSchemaDirPath, MetadataConstant.METADATA_LOG);
+      logWriter = new MLogWriter(schemaRegionDirPath, MetadataConstant.METADATA_LOG);
       logWriter.setLogNum(lineNumber);
       isRecovering = false;
     } catch (IOException e) {
@@ -228,6 +237,9 @@ public class SchemaRegion {
   }
 
   public void forceMlog() {
+    if (!initialized) {
+      return;
+    }
     try {
       logWriter.force();
     } catch (IOException e) {
@@ -243,7 +255,7 @@ public class SchemaRegion {
     if (logFile.exists()) {
       int idx = 0;
       try (MLogReader mLogReader =
-          new MLogReader(sgSchemaDirPath, MetadataConstant.METADATA_LOG); ) {
+          new MLogReader(schemaRegionDirPath, MetadataConstant.METADATA_LOG); ) {
         idx = applyMLog(mLogReader);
         logger.debug(
             "spend {} ms to deserialize {} mtree from mlog.bin",
@@ -282,7 +294,7 @@ public class SchemaRegion {
     return idx;
   }
 
-  /** function for clearing metadata components of one storage group */
+  /** function for clearing metadata components of one schema region */
   public synchronized void clear() {
     try {
       if (this.mtree != null) {
@@ -319,11 +331,7 @@ public class SchemaRegion {
       case DELETE_TIMESERIES:
         DeleteTimeSeriesPlan deleteTimeSeriesPlan = (DeleteTimeSeriesPlan) plan;
         // cause we only has one path for one DeleteTimeSeriesPlan
-        deleteTimeseries(deleteTimeSeriesPlan.getPaths().get(0));
-        break;
-      case TTL:
-        SetTTLPlan setTTLPlan = (SetTTLPlan) plan;
-        setTTL(setTTLPlan.getDataTTL());
+        deleteOneTimeseriesUpdateStatisticsAndDropTrigger(deleteTimeSeriesPlan.getPaths().get(0));
         break;
       case CHANGE_ALIAS:
         ChangeAliasPlan changeAliasPlan = (ChangeAliasPlan) plan;
@@ -355,17 +363,10 @@ public class SchemaRegion {
   }
   // endregion
 
-  // region Interfaces for Storage Group Info query and operation
+  // region Interfaces for schema region Info query and operation
 
-  public void setTTL(long dataTTL) throws MetadataException, IOException {
-    mtree.getStorageGroupMNode().setDataTTL(dataTTL);
-    if (!isRecovering) {
-      logWriter.setTTL(new PartialPath(storageGroupFullPath), dataTTL);
-    }
-  }
-
-  public synchronized void deleteStorageGroup() throws MetadataException {
-    // collect all the LeafMNode in this storage group
+  public synchronized void deleteSchemaRegion() throws MetadataException {
+    // collect all the LeafMNode in this schema region
     List<IMeasurementMNode> leafMNodes = mtree.getAllMeasurementMNode();
 
     timeseriesStatistics.deleteTimeseries(leafMNodes.size());
@@ -376,34 +377,31 @@ public class SchemaRegion {
     // clear all the components and release all the file handlers
     clear();
 
-    // delete all the storage group files
-    File sgSchemaFolder = SystemFileFactory.INSTANCE.getFile(sgSchemaDirPath);
-    File[] sgFiles = sgSchemaFolder.listFiles();
+    // delete all the schema region files
+    File schemaRegionDir = SystemFileFactory.INSTANCE.getFile(schemaRegionDirPath);
+    File[] sgFiles = schemaRegionDir.listFiles();
     if (sgFiles == null) {
       throw new MetadataException(
-          String.format("Can't get files in storage group schema dir %s", storageGroupFullPath));
+          String.format("Can't get files in schema region dir %s", schemaRegionDirPath));
     }
     for (File file : sgFiles) {
       if (file.delete()) {
-        logger.info("delete storage group schema folder {}", sgSchemaFolder.getAbsolutePath());
+        logger.info("delete schema region folder {}", schemaRegionDir.getAbsolutePath());
       } else {
-        logger.info(
-            "delete storage group schema folder {} failed.", sgSchemaFolder.getAbsolutePath());
+        logger.info("delete schema region folder {} failed.", schemaRegionDir.getAbsolutePath());
         throw new MetadataException(
             String.format(
-                "Failed to delete storage group schema folder %s",
-                sgSchemaFolder.getAbsolutePath()));
+                "Failed to delete schema region folder %s", schemaRegionDir.getAbsolutePath()));
       }
     }
 
-    if (sgSchemaFolder.delete()) {
-      logger.info("delete storage group schema folder {}", sgSchemaFolder.getAbsolutePath());
+    if (schemaRegionDir.delete()) {
+      logger.info("delete schema region folder {}", schemaRegionDir.getAbsolutePath());
     } else {
-      logger.info(
-          "delete storage group schema folder {} failed.", sgSchemaFolder.getAbsolutePath());
+      logger.info("delete schema region folder {} failed.", schemaRegionDir.getAbsolutePath());
       throw new MetadataException(
           String.format(
-              "Failed to delete storage group schema folder %s", sgSchemaFolder.getAbsolutePath()));
+              "Failed to delete schema region folder %s", schemaRegionDir.getAbsolutePath()));
     }
   }
 
@@ -657,7 +655,7 @@ public class SchemaRegion {
 
   /**
    * @param path full path from root to leaf node
-   * @return After delete if the storage group is empty, return its path, otherwise return null
+   * @return After delete if the schema region is empty, return its path, otherwise return null
    */
   private PartialPath deleteOneTimeseriesUpdateStatisticsAndDropTrigger(PartialPath path)
       throws MetadataException, IOException {
@@ -690,7 +688,7 @@ public class SchemaRegion {
 
   // region Interfaces for get and auto create device
   /**
-   * get device node, if the storage group is not set, create it when autoCreateSchema is true
+   * get device node, if the schema region is not set, create it when autoCreateSchema is true
    *
    * <p>(we develop this method as we need to get the node's lock after we get the lock.writeLock())
    *
@@ -745,11 +743,6 @@ public class SchemaRegion {
    */
   public boolean isPathExist(PartialPath path) {
     return mtree.isPathExist(path);
-  }
-
-  /** Get metadata in Json format */
-  public JsonObject getMetadataInJson() {
-    return mtree.toJson();
   }
 
   // region Interfaces for metadata count

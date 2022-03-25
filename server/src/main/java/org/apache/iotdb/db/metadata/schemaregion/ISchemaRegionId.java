@@ -16,12 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.mnode;
 
-/** This interface defines a StorageGroupMNode's operation interfaces. */
-public interface IStorageGroupMNode extends IMNode {
+package org.apache.iotdb.db.metadata.schemaregion;
 
-  long getDataTTL();
+public interface ISchemaRegionId {
 
-  void setDataTTL(long dataTTL);
+  String getValue();
+
+  String getStorageGroup();
+
+  static ISchemaRegionId getISchemaRegionId(String storageGroup, int value) {
+    return new SchemaRegionIdIntImpl(storageGroup, value);
+  }
+
+  static ISchemaRegionId getISchemaRegionId(String storageGroup, String value) {
+    return new SchemaRegionIdStringImpl(storageGroup, value);
+  }
 }

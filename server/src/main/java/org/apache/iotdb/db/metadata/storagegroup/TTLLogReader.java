@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,12 +16,32 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.mnode;
 
-/** This interface defines a StorageGroupMNode's operation interfaces. */
-public interface IStorageGroupMNode extends IMNode {
+package org.apache.iotdb.db.metadata.storagegroup;
 
-  long getDataTTL();
+import org.apache.iotdb.db.metadata.logfile.MLogReader;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
-  void setDataTTL(long dataTTL);
+import java.io.IOException;
+
+public class TTLLogReader implements AutoCloseable {
+
+  private final MLogReader logReader;
+
+  public TTLLogReader(String schemaDir, String fileName) throws IOException {
+    logReader = new MLogReader(schemaDir, fileName);
+  }
+
+  public boolean hasNext() {
+    return logReader.hasNext();
+  }
+
+  public PhysicalPlan next() {
+    return logReader.next();
+  }
+
+  @Override
+  public void close() {
+    logReader.close();
+  }
 }

@@ -38,6 +38,10 @@ import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.rescon.TimeseriesStatistics;
+import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegionId;
+import org.apache.iotdb.db.metadata.schemaregion.SchemaRegion;
+import org.apache.iotdb.db.metadata.storagegroup.IStorageGroupSchemaManager;
+import org.apache.iotdb.db.metadata.storagegroup.StorageGroupSchemaManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
@@ -94,11 +98,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
+import static org.apache.iotdb.db.metadata.MetadataConstant.TTL_LOG;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 /**
@@ -141,8 +148,6 @@ public class SchemaEngine {
 
   private static final Logger logger = LoggerFactory.getLogger(SchemaEngine.class);
 
-  public static final String TIME_SERIES_TREE_HEADER = "===  Timeseries Tree  ===\n\n";
-
   protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private boolean initialized;
@@ -153,6 +158,10 @@ public class SchemaEngine {
   private IStorageGroupSchemaManager storageGroupSchemaManager =
       StorageGroupSchemaManager.getInstance();
   private TemplateManager templateManager = TemplateManager.getInstance();
+
+  private final Map<ISchemaRegionId, SchemaRegion> schemaRegionMap = new ConcurrentHashMap<>();
+
+  private static final int SCHEMA_REGION_NUM_PER_SG = 3;
 
   // region SchemaEngine Singleton
   private static class SchemaEngineHolder {
@@ -205,7 +214,9 @@ public class SchemaEngine {
       templateManager.init();
       storageGroupSchemaManager.init();
 
-    } catch (IOException e) {
+      initSchemaRegions();
+
+    } catch (MetadataException | IOException e) {
       logger.error(
           "Cannot recover all MTree from file, we try to recover as possible as we can", e);
     }
@@ -213,6 +224,31 @@ public class SchemaEngine {
 
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
       startStatisticCounts();
+    }
+  }
+
+  private void initSchemaRegions() throws MetadataException {
+    File dir = new File(config.getSchemaDir());
+    File[] sgDirs =
+        dir.listFiles((dir1, name) -> name.startsWith(PATH_ROOT + IoTDBConstant.PATH_SEPARATOR));
+    if (sgDirs == null) {
+      return;
+    }
+    for (File sgDir : sgDirs) {
+      File[] schemaRegionDirs = sgDir.listFiles((dir1, name) -> !name.equals(TTL_LOG));
+      if (schemaRegionDirs == null) {
+        continue;
+      }
+      for (File schemaRegionDir : schemaRegionDirs) {
+        ISchemaRegionId schemaRegionId =
+            ISchemaRegionId.getISchemaRegionId(sgDir.getName(), schemaRegionDir.getName());
+        SchemaRegion schemaRegion =
+            new SchemaRegion(
+                schemaRegionId,
+                storageGroupSchemaManager.getStorageGroupNodeByStorageGroupPath(
+                    new PartialPath(sgDir.getName())));
+        schemaRegionMap.put(schemaRegionId, schemaRegion);
+      }
     }
   }
 
@@ -253,7 +289,7 @@ public class SchemaEngine {
   }
 
   public void forceMlog() {
-    for (SchemaRegion schemaRegion : storageGroupSchemaManager.getAllSchemaRegions()) {
+    for (SchemaRegion schemaRegion : schemaRegionMap.values()) {
       schemaRegion.forceMlog();
     }
   }
@@ -261,6 +297,11 @@ public class SchemaEngine {
   /** function for clearing all metadata components */
   public synchronized void clear() {
     try {
+      for (SchemaRegion schemaRegion : schemaRegionMap.values()) {
+        schemaRegion.clear();
+      }
+      schemaRegionMap.clear();
+
       storageGroupSchemaManager.clear();
       templateManager.clear();
       timeseriesStatistics.clear();
@@ -276,6 +317,132 @@ public class SchemaEngine {
     }
   }
   // endregion
+
+  // region Interfaces for SchemaRegion Management
+
+  public void createSchemaRegion(String storageGroup, int schemaRegionId) throws MetadataException {
+    ensureStorageGroup(new PartialPath(storageGroup));
+    createSchemaRegion(ISchemaRegionId.getISchemaRegionId(storageGroup, schemaRegionId));
+  }
+
+  public SchemaRegion getSchemaRegion(String storageGroup, int schemaRegionId)
+      throws MetadataException {
+    return schemaRegionMap.get(ISchemaRegionId.getISchemaRegionId(storageGroup, schemaRegionId));
+  }
+
+  public void deleteSchemaRegion(String storageGroup, int schemaRegionId)
+      throws MetadataException {}
+
+  // region methods in this region is only used for 0.14 code and will be removed after new cluster.
+
+  /**
+   * Get the target SchemaRegion, which the given path belongs to. The path must be a fullPath
+   * without wildcards, * or **. This method is the first step when there's a task on one certain
+   * path, e.g., root.sg1 is a storage group and path = root.sg1.d1, return SchemaRegion of
+   * root.sg1. If there's no storage group on the given path, StorageGroupNotSetException will be
+   * thrown.
+   */
+  private SchemaRegion getBelongedSchemaRegion(PartialPath path) throws MetadataException {
+    return getSchemaRegionWithAutoCreate(getSchemaRegionId(path));
+  }
+
+  /**
+   * Get the target SchemaRegion, which will be involved/covered by the given pathPattern. The path
+   * may contain wildcards, * or **. This method is the first step when there's a task on multiple
+   * paths represented by the given pathPattern. If isPrefixMatch, all storage groups under the
+   * prefixPath that matches the given pathPattern will be collected.
+   */
+  private List<SchemaRegion> getInvolvedSchemaRegions(
+      PartialPath pathPattern, boolean isPrefixMatch) throws MetadataException {
+    List<SchemaRegion> result = new ArrayList<>();
+    SchemaRegion schemaRegion;
+    for (ISchemaRegionId schemaRegionId : getInvolvedSchemaRegionIds(pathPattern, isPrefixMatch)) {
+      schemaRegion = schemaRegionMap.get(schemaRegionId);
+      if (schemaRegion != null) {
+        result.add(schemaRegion);
+      }
+    }
+    return result;
+  }
+
+  private List<SchemaRegion> getInvolvedSchemaRegionsWithAutoCreate(
+      PartialPath pathPattern, boolean isPrefixMatch) throws MetadataException {
+    List<SchemaRegion> result = new ArrayList<>();
+    for (ISchemaRegionId schemaRegionId : getInvolvedSchemaRegionIds(pathPattern, isPrefixMatch)) {
+      result.add(getSchemaRegionWithAutoCreate(schemaRegionId));
+    }
+    return result;
+  }
+
+  private List<SchemaRegion> getSchemaRegionsByStorageGroup(PartialPath storageGroup)
+      throws MetadataException {
+    List<SchemaRegion> result = new ArrayList<>();
+    SchemaRegion schemaRegion;
+    ISchemaRegionId schemaRegionId;
+    for (int i = 0; i < SCHEMA_REGION_NUM_PER_SG; i++) {
+      schemaRegionId =
+          ISchemaRegionId.getISchemaRegionId(
+              storageGroup.toString(), storageGroup.toString() + "_" + i);
+      schemaRegion = schemaRegionMap.get(schemaRegionId);
+      if (schemaRegion != null) {
+        result.add(schemaRegion);
+      }
+    }
+    return result;
+  }
+
+  private SchemaRegion getSchemaRegionWithAutoCreate(ISchemaRegionId schemaRegionId)
+      throws MetadataException {
+    if (!schemaRegionMap.containsKey(schemaRegionId)) {
+      createSchemaRegion(schemaRegionId);
+    }
+    return schemaRegionMap.get(schemaRegionId);
+  }
+
+  private void createSchemaRegion(ISchemaRegionId schemaRegionId) throws MetadataException {
+    synchronized (schemaRegionMap) {
+      if (schemaRegionMap.containsKey(schemaRegionId)) {
+        return;
+      }
+      SchemaRegion schemaRegion =
+          new SchemaRegion(
+              schemaRegionId,
+              storageGroupSchemaManager.getStorageGroupNodeByStorageGroupPath(
+                  new PartialPath(schemaRegionId.getStorageGroup())));
+      schemaRegionMap.putIfAbsent(schemaRegionId, schemaRegion);
+    }
+  }
+
+  private ISchemaRegionId getSchemaRegionId(PartialPath path) throws MetadataException {
+    return calculateSchemaRegionId(storageGroupSchemaManager.getBelongedStorageGroup(path), path);
+  }
+
+  private List<ISchemaRegionId> getInvolvedSchemaRegionIds(
+      PartialPath pathPattern, boolean isPrefixMatch) throws MetadataException {
+    List<ISchemaRegionId> result = new ArrayList<>();
+    for (PartialPath storageGroup :
+        storageGroupSchemaManager.getInvolvedStorageGroups(pathPattern, isPrefixMatch)) {
+      for (int i = 0; i < SCHEMA_REGION_NUM_PER_SG; i++) {
+        result.add(
+            ISchemaRegionId.getISchemaRegionId(
+                storageGroup.toString(), storageGroup.toString() + "_" + i));
+      }
+    }
+    return result;
+  }
+
+  private ISchemaRegionId calculateSchemaRegionId(PartialPath storageGroup, PartialPath path) {
+    int index = storageGroup.getNodeLength();
+    String[] nodes = path.getNodes();
+    String node = nodes.length > index ? nodes[index] : nodes[nodes.length - 1];
+    return ISchemaRegionId.getISchemaRegionId(
+        storageGroup.toString(),
+        storageGroup.toString() + "_" + node.hashCode() % SCHEMA_REGION_NUM_PER_SG);
+  }
+
+  // endregion
+
+  // endRegion
 
   // region Interfaces and Implementation of operating PhysicalPlans of Metadata
   // This method is mainly used for Metadata Sync and  upgrade
@@ -364,9 +531,7 @@ public class SchemaEngine {
               + "please increase MAX_HEAP_SIZE in iotdb-env.sh/bat and restart");
     }
     ensureStorageGroup(plan.getPath());
-    storageGroupSchemaManager
-        .getBelongedSchemaRegion(plan.getPath())
-        .createTimeseries(plan, offset);
+    getBelongedSchemaRegion(plan.getPath()).createTimeseries(plan, offset);
   }
 
   /**
@@ -421,9 +586,7 @@ public class SchemaEngine {
               + "please increase MAX_HEAP_SIZE in iotdb-env.sh/bat and restart");
     }
     ensureStorageGroup(plan.getPrefixPath());
-    storageGroupSchemaManager
-        .getBelongedSchemaRegion(plan.getPrefixPath())
-        .createAlignedTimeSeries(plan);
+    getBelongedSchemaRegion(plan.getPrefixPath()).createAlignedTimeSeries(plan);
   }
 
   private void ensureStorageGroup(PartialPath path) throws MetadataException {
@@ -462,8 +625,7 @@ public class SchemaEngine {
    */
   public String deleteTimeseries(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
-    List<SchemaRegion> schemaRegions =
-        storageGroupSchemaManager.getInvolvedSchemaRegions(pathPattern, isPrefixMatch);
+    List<SchemaRegion> schemaRegions = getInvolvedSchemaRegions(pathPattern, isPrefixMatch);
     if (schemaRegions.isEmpty()) {
       // In the cluster mode, the deletion of a timeseries will be forwarded to all the nodes. For
       // nodes that do not have the metadata of the timeseries, the coordinator expects a
@@ -522,6 +684,10 @@ public class SchemaEngine {
    */
   public void deleteStorageGroups(List<PartialPath> storageGroups) throws MetadataException {
     for (PartialPath storageGroup : storageGroups) {
+      for (SchemaRegion schemaRegion : getInvolvedSchemaRegions(storageGroup, true)) {
+        schemaRegion.deleteSchemaRegion();
+      }
+
       storageGroupSchemaManager.deleteStorageGroup(storageGroup);
       if (!config.isEnableMemControl()) {
         MemTableManager.getInstance().addOrDeleteStorageGroup(-1);
@@ -530,7 +696,7 @@ public class SchemaEngine {
   }
 
   public void setTTL(PartialPath storageGroup, long dataTTL) throws MetadataException, IOException {
-    storageGroupSchemaManager.getSchemaRegionByStorageGroupPath(storageGroup).setTTL(dataTTL);
+    storageGroupSchemaManager.setTTL(storageGroup, dataTTL);
   }
   // endregion
 
@@ -547,9 +713,7 @@ public class SchemaEngine {
       PartialPath path, boolean autoCreateSchema, boolean allowCreateSg, int sgLevel)
       throws IOException, MetadataException {
     try {
-      return storageGroupSchemaManager
-          .getBelongedSchemaRegion(path)
-          .getDeviceNodeWithAutoCreate(path, autoCreateSchema);
+      return getBelongedSchemaRegion(path).getDeviceNodeWithAutoCreate(path, autoCreateSchema);
     } catch (StorageGroupNotSetException e) {
       if (!autoCreateSchema) {
         throw new PathNotExistException(path.getFullPath());
@@ -572,9 +736,7 @@ public class SchemaEngine {
       }
     }
 
-    return storageGroupSchemaManager
-        .getBelongedSchemaRegion(path)
-        .getDeviceNodeWithAutoCreate(path, autoCreateSchema);
+    return getBelongedSchemaRegion(path).getDeviceNodeWithAutoCreate(path, autoCreateSchema);
   }
 
   protected IMNode getDeviceNodeWithAutoCreate(PartialPath path)
@@ -584,7 +746,7 @@ public class SchemaEngine {
   }
 
   private void autoCreateDeviceMNode(AutoCreateDeviceMNodePlan plan) throws MetadataException {
-    storageGroupSchemaManager.getBelongedSchemaRegion(plan.getPath()).autoCreateDeviceMNode(plan);
+    getBelongedSchemaRegion(plan.getPath()).autoCreateDeviceMNode(plan);
   }
   // endregion
 
@@ -601,7 +763,7 @@ public class SchemaEngine {
         return false;
       }
       try {
-        return storageGroupSchemaManager.getBelongedSchemaRegion(path).isPathExist(path);
+        return getBelongedSchemaRegion(path).isPathExist(path);
       } catch (StorageGroupNotSetException e) {
         // path exists above storage group
         return true;
@@ -613,7 +775,7 @@ public class SchemaEngine {
 
   /** Get metadata in string */
   public String getMetadataInString() {
-    return TIME_SERIES_TREE_HEADER + storageGroupSchemaManager.getMetadataInString();
+    return "Doesn't support metadata Tree toString since v0.14";
   }
 
   // region Interfaces for metadata count
@@ -630,8 +792,7 @@ public class SchemaEngine {
   public int getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
     int count = 0;
-    for (SchemaRegion schemaRegion :
-        storageGroupSchemaManager.getInvolvedSchemaRegions(pathPattern, isPrefixMatch)) {
+    for (SchemaRegion schemaRegion : getInvolvedSchemaRegions(pathPattern, isPrefixMatch)) {
       count += schemaRegion.getAllTimeseriesCount(pathPattern, isPrefixMatch);
     }
     return count;
@@ -653,8 +814,7 @@ public class SchemaEngine {
   public int getDevicesNum(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
     int num = 0;
-    for (SchemaRegion schemaRegion :
-        storageGroupSchemaManager.getInvolvedSchemaRegions(pathPattern, isPrefixMatch)) {
+    for (SchemaRegion schemaRegion : getInvolvedSchemaRegions(pathPattern, isPrefixMatch)) {
       num += schemaRegion.getDevicesNum(pathPattern, isPrefixMatch);
     }
     return num;
@@ -686,11 +846,13 @@ public class SchemaEngine {
    */
   public int getNodesCountInGivenLevel(PartialPath pathPattern, int level, boolean isPrefixMatch)
       throws MetadataException {
-    Pair<Integer, List<SchemaRegion>> pair =
+    Pair<Integer, Set<PartialPath>> pair =
         storageGroupSchemaManager.getNodesCountInGivenLevel(pathPattern, level, isPrefixMatch);
     int count = pair.left;
-    for (SchemaRegion schemaRegion : pair.right) {
-      count += schemaRegion.getNodesCountInGivenLevel(pathPattern, level, isPrefixMatch);
+    for (PartialPath storageGroup : pair.right) {
+      for (SchemaRegion schemaRegion : getInvolvedSchemaRegions(storageGroup, isPrefixMatch)) {
+        count += schemaRegion.getNodesCountInGivenLevel(pathPattern, level, isPrefixMatch);
+      }
     }
     return count;
   }
@@ -710,8 +872,7 @@ public class SchemaEngine {
       PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException {
     Map<PartialPath, Integer> result = new HashMap<>();
     Map<PartialPath, Integer> sgResult;
-    for (SchemaRegion schemaRegion :
-        storageGroupSchemaManager.getInvolvedSchemaRegions(pathPattern, isPrefixMatch)) {
+    for (SchemaRegion schemaRegion : getSchemaRegionsByStorageGroup(pathPattern)) {
       sgResult = schemaRegion.getMeasurementCountGroupByLevel(pathPattern, level, isPrefixMatch);
       for (PartialPath path : sgResult.keySet()) {
         if (result.containsKey(path)) {
@@ -744,11 +905,13 @@ public class SchemaEngine {
 
   public List<PartialPath> getNodesListInGivenLevel(
       PartialPath pathPattern, int nodeLevel, StorageGroupFilter filter) throws MetadataException {
-    Pair<List<PartialPath>, List<SchemaRegion>> pair =
+    Pair<List<PartialPath>, Set<PartialPath>> pair =
         storageGroupSchemaManager.getNodesListInGivenLevel(pathPattern, nodeLevel, filter);
     List<PartialPath> result = pair.left;
-    for (SchemaRegion schemaRegion : pair.right) {
-      result.addAll(schemaRegion.getNodesListInGivenLevel(pathPattern, nodeLevel, filter));
+    for (PartialPath storageGroup : pair.right) {
+      for (SchemaRegion schemaRegion : getSchemaRegionsByStorageGroup(storageGroup)) {
+        result.addAll(schemaRegion.getNodesListInGivenLevel(pathPattern, nodeLevel, filter));
+      }
     }
     return result;
   }
@@ -765,11 +928,13 @@ public class SchemaEngine {
    * @return All child nodes' seriesPath(s) of given seriesPath.
    */
   public Set<String> getChildNodePathInNextLevel(PartialPath pathPattern) throws MetadataException {
-    Pair<Set<String>, List<SchemaRegion>> pair =
+    Pair<Set<String>, Set<PartialPath>> pair =
         storageGroupSchemaManager.getChildNodePathInNextLevel(pathPattern);
     Set<String> result = pair.left;
-    for (SchemaRegion schemaRegion : pair.right) {
-      result.addAll(schemaRegion.getChildNodePathInNextLevel(pathPattern));
+    for (PartialPath storageGroup : pair.right) {
+      for (SchemaRegion schemaRegion : getSchemaRegionsByStorageGroup(storageGroup)) {
+        result.addAll(schemaRegion.getChildNodePathInNextLevel(pathPattern));
+      }
     }
     return result;
   }
@@ -785,11 +950,13 @@ public class SchemaEngine {
    * @return All child nodes of given seriesPath.
    */
   public Set<String> getChildNodeNameInNextLevel(PartialPath pathPattern) throws MetadataException {
-    Pair<Set<String>, List<SchemaRegion>> pair =
+    Pair<Set<String>, Set<PartialPath>> pair =
         storageGroupSchemaManager.getChildNodeNameInNextLevel(pathPattern);
     Set<String> result = pair.left;
-    for (SchemaRegion schemaRegion : pair.right) {
-      result.addAll(schemaRegion.getChildNodeNameInNextLevel(pathPattern));
+    for (PartialPath storageGroup : pair.right) {
+      for (SchemaRegion schemaRegion : getSchemaRegionsByStorageGroup(storageGroup)) {
+        result.addAll(schemaRegion.getChildNodeNameInNextLevel(pathPattern));
+      }
     }
     return result;
   }
@@ -887,9 +1054,7 @@ public class SchemaEngine {
    * @return A HashSet instance which stores devices paths.
    */
   public Set<PartialPath> getBelongedDevices(PartialPath timeseries) throws MetadataException {
-    return storageGroupSchemaManager
-        .getBelongedSchemaRegion(timeseries)
-        .getBelongedDevices(timeseries);
+    return getBelongedSchemaRegion(timeseries).getBelongedDevices(timeseries);
   }
 
   /**
@@ -903,8 +1068,7 @@ public class SchemaEngine {
   public Set<PartialPath> getMatchedDevices(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
     Set<PartialPath> result = new TreeSet<>();
-    for (SchemaRegion schemaRegion :
-        storageGroupSchemaManager.getInvolvedSchemaRegions(pathPattern, isPrefixMatch)) {
+    for (SchemaRegion schemaRegion : getInvolvedSchemaRegions(pathPattern, isPrefixMatch)) {
       result.addAll(schemaRegion.getMatchedDevices(pathPattern, isPrefixMatch));
     }
     return result;
@@ -923,7 +1087,7 @@ public class SchemaEngine {
     int offset = plan.getOffset();
 
     for (SchemaRegion schemaRegion :
-        storageGroupSchemaManager.getInvolvedSchemaRegions(plan.getPath(), plan.isPrefixMatch())) {
+        getInvolvedSchemaRegions(plan.getPath(), plan.isPrefixMatch())) {
       if (limit != 0 && plan.getLimit() == 0) {
         break;
       }
@@ -983,8 +1147,7 @@ public class SchemaEngine {
     int tmpLimit = limit;
     int tmpOffset = offset;
 
-    for (SchemaRegion schemaRegion :
-        storageGroupSchemaManager.getInvolvedSchemaRegions(pathPattern, isPrefixMatch)) {
+    for (SchemaRegion schemaRegion : getInvolvedSchemaRegions(pathPattern, isPrefixMatch)) {
       if (limit != 0 && tmpLimit == 0) {
         break;
       }
@@ -1026,7 +1189,7 @@ public class SchemaEngine {
     }
 
     for (SchemaRegion schemaRegion :
-        storageGroupSchemaManager.getInvolvedSchemaRegions(plan.getPath(), plan.isPrefixMatch())) {
+        getInvolvedSchemaRegions(plan.getPath(), plan.isPrefixMatch())) {
       if (limit != 0 && plan.getLimit() == 0) {
         break;
       }
@@ -1079,9 +1242,7 @@ public class SchemaEngine {
   public List<MeasurementPath> getAllMeasurementByDevicePath(PartialPath devicePath)
       throws PathNotExistException {
     try {
-      return storageGroupSchemaManager
-          .getBelongedSchemaRegion(devicePath)
-          .getAllMeasurementByDevicePath(devicePath);
+      return getBelongedSchemaRegion(devicePath).getAllMeasurementByDevicePath(devicePath);
     } catch (MetadataException e) {
       throw new PathNotExistException(devicePath.getFullPath());
     }
@@ -1113,21 +1274,17 @@ public class SchemaEngine {
   }
 
   public IMNode getDeviceNode(PartialPath path) throws MetadataException {
-    return storageGroupSchemaManager.getBelongedSchemaRegion(path).getDeviceNode(path);
+    return getBelongedSchemaRegion(path).getDeviceNode(path);
   }
 
   public IMeasurementMNode[] getMeasurementMNodes(PartialPath deviceId, String[] measurements)
       throws MetadataException {
-    return storageGroupSchemaManager
-        .getBelongedSchemaRegion(deviceId)
-        .getMeasurementMNodes(deviceId, measurements);
+    return getBelongedSchemaRegion(deviceId).getMeasurementMNodes(deviceId, measurements);
   }
 
   public IMeasurementMNode getMeasurementMNode(PartialPath fullPath) throws MetadataException {
     try {
-      return storageGroupSchemaManager
-          .getBelongedSchemaRegion(fullPath)
-          .getMeasurementMNode(fullPath);
+      return getBelongedSchemaRegion(fullPath).getMeasurementMNode(fullPath);
     } catch (StorageGroupNotSetException e) {
       throw new PathNotExistException(fullPath.getFullPath());
     }
@@ -1156,7 +1313,7 @@ public class SchemaEngine {
 
   // region Interfaces for alias and tag/attribute operations
   public void changeAlias(PartialPath path, String alias) throws MetadataException {
-    storageGroupSchemaManager.getBelongedSchemaRegion(path).changeAlias(path, alias);
+    getBelongedSchemaRegion(path).changeAlias(path, alias);
   }
 
   /**
@@ -1175,8 +1332,7 @@ public class SchemaEngine {
       Map<String, String> attributesMap,
       PartialPath fullPath)
       throws MetadataException, IOException {
-    storageGroupSchemaManager
-        .getBelongedSchemaRegion(fullPath)
+    getBelongedSchemaRegion(fullPath)
         .upsertTagsAndAttributes(alias, tagsMap, attributesMap, fullPath);
   }
 
@@ -1188,9 +1344,7 @@ public class SchemaEngine {
    */
   public void addAttributes(Map<String, String> attributesMap, PartialPath fullPath)
       throws MetadataException, IOException {
-    storageGroupSchemaManager
-        .getBelongedSchemaRegion(fullPath)
-        .addAttributes(attributesMap, fullPath);
+    getBelongedSchemaRegion(fullPath).addAttributes(attributesMap, fullPath);
   }
 
   /**
@@ -1201,7 +1355,7 @@ public class SchemaEngine {
    */
   public void addTags(Map<String, String> tagsMap, PartialPath fullPath)
       throws MetadataException, IOException {
-    storageGroupSchemaManager.getBelongedSchemaRegion(fullPath).addTags(tagsMap, fullPath);
+    getBelongedSchemaRegion(fullPath).addTags(tagsMap, fullPath);
   }
 
   /**
@@ -1213,9 +1367,7 @@ public class SchemaEngine {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void dropTagsOrAttributes(Set<String> keySet, PartialPath fullPath)
       throws MetadataException, IOException {
-    storageGroupSchemaManager
-        .getBelongedSchemaRegion(fullPath)
-        .dropTagsOrAttributes(keySet, fullPath);
+    getBelongedSchemaRegion(fullPath).dropTagsOrAttributes(keySet, fullPath);
   }
 
   /**
@@ -1227,9 +1379,7 @@ public class SchemaEngine {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void setTagsOrAttributesValue(Map<String, String> alterMap, PartialPath fullPath)
       throws MetadataException, IOException {
-    storageGroupSchemaManager
-        .getBelongedSchemaRegion(fullPath)
-        .setTagsOrAttributesValue(alterMap, fullPath);
+    getBelongedSchemaRegion(fullPath).setTagsOrAttributesValue(alterMap, fullPath);
   }
 
   /**
@@ -1242,9 +1392,7 @@ public class SchemaEngine {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void renameTagOrAttributeKey(String oldKey, String newKey, PartialPath fullPath)
       throws MetadataException, IOException {
-    storageGroupSchemaManager
-        .getBelongedSchemaRegion(fullPath)
-        .renameTagOrAttributeKey(oldKey, newKey, fullPath);
+    getBelongedSchemaRegion(fullPath).renameTagOrAttributeKey(oldKey, newKey, fullPath);
   }
   // endregion
 
@@ -1258,8 +1406,7 @@ public class SchemaEngine {
   public void collectMeasurementSchema(
       PartialPath prefixPath, List<IMeasurementSchema> measurementSchemas) {
     try {
-      for (SchemaRegion schemaRegion :
-          storageGroupSchemaManager.getInvolvedSchemaRegions(prefixPath, true)) {
+      for (SchemaRegion schemaRegion : getInvolvedSchemaRegions(prefixPath, true)) {
         schemaRegion.collectMeasurementSchema(prefixPath, measurementSchemas);
       }
     } catch (MetadataException ignored) {
@@ -1275,8 +1422,7 @@ public class SchemaEngine {
   public void collectTimeseriesSchema(
       PartialPath prefixPath, Collection<TimeseriesSchema> timeseriesSchemas) {
     try {
-      for (SchemaRegion schemaRegion :
-          storageGroupSchemaManager.getInvolvedSchemaRegions(prefixPath, true)) {
+      for (SchemaRegion schemaRegion : getInvolvedSchemaRegions(prefixPath, true)) {
         schemaRegion.collectTimeseriesSchema(prefixPath, timeseriesSchemas);
       }
     } catch (MetadataException ignored) {
@@ -1483,9 +1629,7 @@ public class SchemaEngine {
   public IMNode getSeriesSchemasAndReadLockDevice(InsertPlan plan)
       throws MetadataException, IOException {
     try {
-      return storageGroupSchemaManager
-          .getBelongedSchemaRegion(plan.getDevicePath())
-          .getSeriesSchemasAndReadLockDevice(plan);
+      return getBelongedSchemaRegion(plan.getDevicePath()).getSeriesSchemasAndReadLockDevice(plan);
     } catch (StorageGroupNotSetException e) {
       if (config.isAutoCreateSchemaEnabled()) {
         ensureStorageGroup(plan.getDevicePath());
@@ -1493,9 +1637,7 @@ public class SchemaEngine {
         throw e;
       }
 
-      return storageGroupSchemaManager
-          .getBelongedSchemaRegion(plan.getDevicePath())
-          .getSeriesSchemasAndReadLockDevice(plan);
+      return getBelongedSchemaRegion(plan.getDevicePath()).getSeriesSchemasAndReadLockDevice(plan);
     }
   }
 
@@ -1516,9 +1658,7 @@ public class SchemaEngine {
     Template template = templateManager.getTemplate(plan.getName());
 
     for (PartialPath path : template.getRelatedStorageGroup()) {
-      if (!storageGroupSchemaManager
-          .getBelongedSchemaRegion(path)
-          .isTemplateAppendable(template, plan.getMeasurements())) {
+      if (!getBelongedSchemaRegion(path).isTemplateAppendable(template, plan.getMeasurements())) {
         isTemplateAppendable = false;
         break;
       }
@@ -1601,15 +1741,12 @@ public class SchemaEngine {
   public Set<String> getPathsSetTemplate(String templateName) throws MetadataException {
     Set<String> result = new HashSet<>();
     if (templateName.equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
-      for (SchemaRegion schemaRegion : storageGroupSchemaManager.getAllSchemaRegions()) {
+      for (SchemaRegion schemaRegion : schemaRegionMap.values()) {
         result.addAll(schemaRegion.getPathsSetTemplate(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
       }
     } else {
       for (PartialPath path : templateManager.getTemplate(templateName).getRelatedStorageGroup()) {
-        result.addAll(
-            storageGroupSchemaManager
-                .getBelongedSchemaRegion(path)
-                .getPathsSetTemplate(templateName));
+        result.addAll(getBelongedSchemaRegion(path).getPathsSetTemplate(templateName));
       }
     }
 
@@ -1619,15 +1756,12 @@ public class SchemaEngine {
   public Set<String> getPathsUsingTemplate(String templateName) throws MetadataException {
     Set<String> result = new HashSet<>();
     if (templateName.equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
-      for (SchemaRegion schemaRegion : storageGroupSchemaManager.getAllSchemaRegions()) {
+      for (SchemaRegion schemaRegion : schemaRegionMap.values()) {
         result.addAll(schemaRegion.getPathsUsingTemplate(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
       }
     } else {
       for (PartialPath path : templateManager.getTemplate(templateName).getRelatedStorageGroup()) {
-        result.addAll(
-            storageGroupSchemaManager
-                .getBelongedSchemaRegion(path)
-                .getPathsUsingTemplate(templateName));
+        result.addAll(getBelongedSchemaRegion(path).getPathsUsingTemplate(templateName));
       }
     }
 
@@ -1654,7 +1788,9 @@ public class SchemaEngine {
     PartialPath path = new PartialPath(plan.getPrefixPath());
     try {
       ensureStorageGroup(path);
-      storageGroupSchemaManager.getBelongedSchemaRegion(path).setSchemaTemplate(plan);
+      for (SchemaRegion schemaRegion : getInvolvedSchemaRegions(path, false)) {
+        schemaRegion.setSchemaTemplate(plan);
+      }
     } catch (StorageGroupAlreadySetException e) {
       throw new MetadataException("Template should not be set above storageGroup");
     }
@@ -1662,9 +1798,10 @@ public class SchemaEngine {
 
   public synchronized void unsetSchemaTemplate(UnsetTemplatePlan plan) throws MetadataException {
     try {
-      storageGroupSchemaManager
-          .getBelongedSchemaRegion(new PartialPath(plan.getPrefixPath()))
-          .unsetSchemaTemplate(plan);
+      for (SchemaRegion schemaRegion :
+          getInvolvedSchemaRegions(new PartialPath(plan.getPrefixPath()), false)) {
+        schemaRegion.unsetSchemaTemplate(plan);
+      }
     } catch (StorageGroupNotSetException e) {
       throw new PathNotExistException(plan.getPrefixPath());
     }
@@ -1672,9 +1809,9 @@ public class SchemaEngine {
 
   public void setUsingSchemaTemplate(ActivateTemplatePlan plan) throws MetadataException {
     try {
-      storageGroupSchemaManager
-          .getBelongedSchemaRegion(plan.getPrefixPath())
-          .setUsingSchemaTemplate(plan);
+      for (SchemaRegion schemaRegion : getInvolvedSchemaRegions(plan.getPrefixPath(), false)) {
+        schemaRegion.setUsingSchemaTemplate(plan);
+      }
     } catch (StorageGroupNotSetException e) {
       throw new MetadataException(
           String.format(
@@ -1682,11 +1819,6 @@ public class SchemaEngine {
     }
   }
 
-  IMNode setUsingSchemaTemplate(IMNode node) throws MetadataException {
-    return storageGroupSchemaManager
-        .getBelongedSchemaRegion(node.getPartialPath())
-        .setUsingSchemaTemplate(node);
-  }
   // endregion
 
   // region TestOnly Interfaces
@@ -1731,6 +1863,11 @@ public class SchemaEngine {
     } catch (UndefinedTemplateException e) {
       throw new MetadataException(e);
     }
+  }
+
+  IMNode setUsingSchemaTemplate(IMNode node) throws MetadataException {
+    setUsingSchemaTemplate(new ActivateTemplatePlan(node.getPartialPath()));
+    return node;
   }
   // endregion
 }
