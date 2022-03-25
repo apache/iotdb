@@ -42,9 +42,9 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 public class PartitionTable {
 
   private static final ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();
-  private static final int regionReplicaCount = conf.getRegionReplicaCount();;
-  private static final int schemaRegionCount = conf.getSchemaRegionCount();;
-  private static final int dataRegionCount = conf.getDataRegionCount();;
+  private static final int regionReplicaCount = conf.getRegionReplicaCount();
+  private static final int schemaRegionCount = conf.getSchemaRegionCount();
+  private static final int dataRegionCount = conf.getDataRegionCount();
 
   private final ReentrantReadWriteLock lock;
   // TODO: Serialize and Deserialize
