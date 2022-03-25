@@ -855,7 +855,7 @@ public class IoTDBDescriptor {
 
       // meta manager
       loadMetadataConfig(properties);
-      
+
       // cluster
       loadClusterProps(properties);
 

@@ -2547,7 +2547,7 @@ public class IoTDBConfig {
   public MetadataManagerType getMetadataManagerType() {
     return metadataManagerType;
   }
-  
+
   public List<String> getConfigNodeUrls() {
     return configNodeUrls;
   }
@@ -2555,7 +2555,7 @@ public class IoTDBConfig {
   public void setMetadataManagerType(String metadataManagerType) {
     this.metadataManagerType = MetadataManagerType.of(metadataManagerType);
   }
-  
+
   public void setConfigNodeUrls(List<String> configNodeUrls) {
     this.configNodeUrls = configNodeUrls;
   }
