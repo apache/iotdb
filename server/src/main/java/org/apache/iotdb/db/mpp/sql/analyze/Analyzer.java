@@ -32,12 +32,12 @@ import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.sql.rewriter.*;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
+import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.component.WhereCondition;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
-import org.apache.iotdb.db.mpp.sql.tree.StatementVisitor;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.util.*;

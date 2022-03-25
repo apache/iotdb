@@ -17,18 +17,17 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.sql.tree;
+package org.apache.iotdb.db.mpp.sql.statement;
 
-import org.apache.iotdb.db.mpp.sql.statement.Statement;
-import org.apache.iotdb.db.mpp.sql.statement.StatementNode;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
 
 /**
- * This class provides a visitor of {@link StatementNode}, which can be extended to create a visitor
- * which only needs to handle a subset of the available methods.
+ * This class provides a visitor of {@link org.apache.iotdb.db.mpp.sql.statement.StatementNode},
+ * which can be extended to create a visitor which only needs to handle a subset of the available
+ * methods.
  *
  * @param <R> The return type of the visit operation.
  * @param <C> The context information during visiting.
