@@ -99,6 +99,8 @@ public class FileLoaderUtils {
     TimeseriesMetadata timeSeriesMetadata;
     // If the tsfile is closed, we need to load from tsfile
     if (resource.isClosed()) {
+      // when resource.getTimeIndexType() == 1, TsFileResource.timeIndexType is deviceTimeIndex
+      // we should not ignore the non-exist of device in TsFileMetadata
       timeSeriesMetadata =
           TimeSeriesMetadataCache.getInstance()
               .get(
@@ -107,6 +109,7 @@ public class FileLoaderUtils {
                       seriesPath.getDevice(),
                       seriesPath.getMeasurement()),
                   allSensors,
+                  resource.getTimeIndexType() != 1,
                   context.isDebug());
       if (timeSeriesMetadata != null) {
         timeSeriesMetadata.setChunkMetadataLoader(
@@ -164,8 +167,15 @@ public class FileLoaderUtils {
       boolean isDebug = context.isDebug();
       String filePath = resource.getTsFilePath();
       String deviceId = vectorPath.getDevice();
+
+      // when resource.getTimeIndexType() == 1, TsFileResource.timeIndexType is deviceTimeIndex
+      // we should not ignore the non-exist of device in TsFileMetadata
       TimeseriesMetadata timeColumn =
-          cache.get(new TimeSeriesMetadataCacheKey(filePath, deviceId, ""), allSensors, isDebug);
+          cache.get(
+              new TimeSeriesMetadataCacheKey(filePath, deviceId, ""),
+              allSensors,
+              resource.getTimeIndexType() != 1,
+              isDebug);
       if (timeColumn != null) {
         List<TimeseriesMetadata> valueTimeSeriesMetadataList =
             new ArrayList<>(valueMeasurementList.size());
@@ -176,6 +186,7 @@ public class FileLoaderUtils {
               cache.get(
                   new TimeSeriesMetadataCacheKey(filePath, deviceId, valueMeasurement),
                   allSensors,
+                  resource.getTimeIndexType() != 1,
                   isDebug);
           exist = (exist || (valueColumn != null));
           valueTimeSeriesMetadataList.add(valueColumn);
