@@ -264,12 +264,17 @@ public class Segment implements ISegment {
     try {
       return RecordUtils.buffer2Node(keyAddressList.get(index).left, roBuffer);
     } catch (BufferUnderflowException | BufferOverflowException e) {
-      roBuffer.position(offset);
-      roBuffer.limit(offset + len);
       logger.error(
           String.format(
-              "Get record[key:%s] failed, start offset:%d, end offset:%d",
-              key, offset, offset + len));
+              "Get record[key:%s] failed, start offset:%d, end offset:%d, buffer cap:%d",
+              key, offset, offset + len, roBuffer.capacity()));
+      logger.error(
+          String.format(
+              "Buffer content: %s",
+              Arrays.toString(
+                  Arrays.copyOfRange(
+                      roBuffer.array(), offset, Math.min(offset + len, roBuffer.capacity())))));
+      logger.error(e.toString());
       throw e;
     }
   }
