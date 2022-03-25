@@ -634,8 +634,7 @@ public class Segment implements ISegment {
         logger.error(
             String.format(
                 "Broken record bytes: %s",
-                Arrays.toString(
-                    Arrays.copyOfRange(bufferR.array(), pair.right, pair.right + 30))));
+                Arrays.toString(Arrays.copyOfRange(bufferR.array(), pair.right, pair.right + 30))));
         throw e;
       }
     }
