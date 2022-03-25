@@ -18,15 +18,16 @@
  */
 package org.apache.iotdb.db.mpp.operator.process;
 
-import org.apache.iotdb.db.mpp.common.TimeColumn;
-import org.apache.iotdb.db.mpp.common.TsBlock;
 import org.apache.iotdb.db.mpp.operator.Operator;
 import org.apache.iotdb.db.mpp.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 import org.apache.iotdb.db.utils.datastructure.TimeSelector;
+import org.apache.iotdb.tsfile.read.common.TimeColumn;
+import org.apache.iotdb.tsfile.read.common.TsBlock;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
+import java.io.IOException;
 import java.util.List;
 
 public class TimeJoinOperator implements ProcessOperator {
@@ -81,7 +82,7 @@ public class TimeJoinOperator implements ProcessOperator {
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws IOException {
     // end time for returned TsBlock this time, it's the min end time among all the children
     // TsBlocks
     long currentEndTime = 0;
@@ -131,7 +132,7 @@ public class TimeJoinOperator implements ProcessOperator {
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws IOException {
     for (int i = 0; i < inputCount; i++) {
       if (!empty(i)) {
         return true;

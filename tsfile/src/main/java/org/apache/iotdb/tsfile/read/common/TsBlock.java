@@ -16,9 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.common;
+package org.apache.iotdb.tsfile.read.common;
 
-import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
 
 import static java.lang.String.format;
 
@@ -52,10 +53,7 @@ public class TsBlock {
     return false;
   }
 
-  // Get next row in current tablet
-  public RowRecord getNext() {
-    return null;
-  }
+  public void next() {}
 
   public TsBlockMetadata getMetadata() {
     return metadata;
@@ -114,5 +112,64 @@ public class TsBlock {
       int columnIndex, TimeColumn timeColumn, Column valueColumn, int rowIndex, long endTime) {
 
     return rowIndex;
+  }
+
+  public TsBlockIterator getTsBlockIterator() {
+    return new TsBlockIterator();
+  }
+
+  // TODO need to be implemented when the data structure is defined
+  private class TsBlockIterator implements IPointReader, IBatchDataIterator {
+
+    @Override
+    public boolean hasNext() {
+      return TsBlock.this.hasNext();
+    }
+
+    @Override
+    public boolean hasNext(long minBound, long maxBound) {
+      return hasNext();
+    }
+
+    @Override
+    public void next() {
+      TsBlock.this.next();
+    }
+
+    @Override
+    public long currentTime() {
+      return -1;
+    }
+
+    @Override
+    public Object currentValue() {
+      return null;
+    }
+
+    @Override
+    public void reset() {}
+
+    @Override
+    public int totalLength() {
+      return TsBlock.this.getCount();
+    }
+
+    @Override
+    public boolean hasNextTimeValuePair() {
+      return hasNext();
+    }
+
+    @Override
+    public TimeValuePair nextTimeValuePair() {
+      return null;
+    }
+
+    @Override
+    public TimeValuePair currentTimeValuePair() {
+      return null;
+    }
+
+    @Override
+    public void close() {}
   }
 }

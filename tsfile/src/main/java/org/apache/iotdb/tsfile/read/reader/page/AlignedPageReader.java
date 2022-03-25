@@ -25,6 +25,7 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.BatchDataFactory;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.read.common.TsBlock;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import org.apache.iotdb.tsfile.read.reader.IAlignedPageReader;
@@ -100,6 +101,12 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
       }
     }
     return pageData.flip();
+  }
+
+  @Override
+  public TsBlock getAllSatisfiedData(boolean ascending) throws IOException {
+    // TODO need to implement for mpp
+    throw new IllegalStateException("We have not implemented this method.");
   }
 
   public void setDeleteIntervalList(List<List<TimeRange>> list) {
