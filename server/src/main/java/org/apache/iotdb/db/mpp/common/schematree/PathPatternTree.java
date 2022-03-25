@@ -24,6 +24,8 @@ import org.apache.iotdb.db.qp.constant.SQLConstant;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 public class PathPatternTree {
@@ -68,12 +70,19 @@ public class PathPatternTree {
     boolean isExist = false;
     PathPatternNode nextNode = null;
     for (PathPatternNode childNode : curNode.getChilds()) {
-      if (Objects.equals(childNode.getName(), pathNodes[pos + 1])
-          || (Objects.equals(childNode.getName(), "*")
-              && !Objects.equals(pathNodes[pos + 1], "**"))) {
-        isExist = true;
-        nextNode = childNode;
-        break;
+      if (!Objects.equals(childNode.getName(), "**")) {
+        // 树上不是**，正常匹配
+        if (nodeMatch(childNode, pathNodes[pos + 1])) {
+          isExist = true;
+          nextNode = childNode;
+          break;
+        }
+      } else {
+        if (childNode.isLeaf() || suffixMatch(childNode, pathNodes, pos + 1)) {
+          isExist = true;
+          nextNode = curNode;
+          break;
+        }
       }
     }
 
@@ -84,18 +93,93 @@ public class PathPatternTree {
     }
   }
 
+  private boolean match(PathPatternNode curNode, String[] pathNodes, int pos) {
+    if (!Objects.equals(curNode.getName(), "**")) {
+      // 树上不是**，正常匹配
+      return nodeMatch(curNode, pathNodes[pos]);
+    } else {
+      if (curNode.isLeaf()) {
+        return true;
+      }
+      // 树上是**，开始后缀匹配，从**下一个开始，如果匹配到，两边往下走，如果不匹配，路径往下走
+      return suffixMatch(curNode, pathNodes, pos);
+    }
+  }
+
+  private boolean suffixMatch(PathPatternNode curNode, String[] pathNodes, int pos) {
+    if (pos == pathNodes.length - 1 && curNode.isLeaf()) {
+      return true;
+    }
+
+    for (PathPatternNode childNode : curNode.getChilds()) {
+      if (nodeMatch(childNode, pathNodes[pos])) {
+        if (suffixMatch(childNode, pathNodes, pos + 1)) {
+          return true;
+        }
+      } else {
+        if (suffixMatch(childNode, pathNodes, pos + 1)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
   private void construct(PathPatternNode curNode, String[] pathNodes, int pos) {
     for (int i = pos; i < pathNodes.length; i++) {
       PathPatternNode newNode = new PathPatternNode(pathNodes[i]);
       if (Objects.equals(pathNodes[i], "*") || Objects.equals(pathNodes[i], "**")) {
-        prune(curNode, pathNodes, i);
+        if (i == pathNodes.length - 1) {
+          curNode.getChilds().clear();
+        } else {
+          prune(curNode, pathNodes, i);
+        }
       }
       curNode.addChild(newNode);
       curNode = newNode;
     }
   }
 
-  private void prune(PathPatternNode curNode, String[] pathNodes, int pos) {}
+  private boolean prune(PathPatternNode curNode, String[] pathNodes, int pos) {
+    if (pos == pathNodes.length) {
+      return true;
+    }
+
+    List<PathPatternNode> removedNode = new ArrayList<>();
+    for (PathPatternNode childNode : curNode.getChilds()) {
+      if (nodeMatch(pathNodes[pos], childNode)) {
+        if (prune(childNode, pathNodes, pos + 1)) {
+          removedNode.add(childNode);
+        }
+      } else if (Objects.equals(pathNodes[pos], "**")) {
+        if (nodeMatch(pathNodes[pos + 1], childNode)) {
+          if (prune(childNode, pathNodes, pos + 1)) {
+            removedNode.add(childNode);
+          }
+        } else {
+          if (prune(childNode, pathNodes, pos)) {
+            removedNode.add(childNode);
+          }
+        }
+      }
+    }
+    curNode.getChilds().removeAll(removedNode);
+    return curNode.getChilds().isEmpty();
+  }
+
+  private boolean nodeMatch(PathPatternNode node, String pathNode) {
+    if (Objects.equals(node.getName(), "*")) {
+      return true;
+    }
+    return Objects.equals(pathNode, node.getName());
+  }
+
+  private boolean nodeMatch(String pathNode, PathPatternNode node) {
+    if (Objects.equals(pathNode, "*")) {
+      return true;
+    }
+    return Objects.equals(pathNode, node.getName());
+  }
 
   public void serialize(ByteBuffer buffer) throws IOException {
     // TODO
