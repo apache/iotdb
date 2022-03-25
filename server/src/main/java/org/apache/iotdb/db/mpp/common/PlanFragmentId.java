@@ -18,31 +18,34 @@
  */
 package org.apache.iotdb.db.mpp.common;
 
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import java.nio.ByteBuffer;
 import java.util.List;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 
-public class FragmentId {
+public class PlanFragmentId {
 
   private final QueryId queryId;
   private final int id;
 
-  public static FragmentId valueOf(String stageId) {
+  public static PlanFragmentId valueOf(String stageId) {
     List<String> ids = QueryId.parseDottedId(stageId, 2, "stageId");
     return valueOf(ids);
   }
 
-  public static FragmentId valueOf(List<String> ids) {
+  public static PlanFragmentId valueOf(List<String> ids) {
     checkArgument(ids.size() == 2, "Expected two ids but got: %s", ids);
-    return new FragmentId(new QueryId(ids.get(0)), Integer.parseInt(ids.get(1)));
+    return new PlanFragmentId(new QueryId(ids.get(0)), Integer.parseInt(ids.get(1)));
   }
 
-  public FragmentId(String queryId, int id) {
+  public PlanFragmentId(String queryId, int id) {
     this(new QueryId(queryId), id);
   }
 
-  public FragmentId(QueryId queryId, int id) {
+  public PlanFragmentId(QueryId queryId, int id) {
     this.queryId = requireNonNull(queryId, "queryId is null");
     this.id = id;
   }
@@ -53,5 +56,14 @@ public class FragmentId {
 
   public int getId() {
     return id;
+  }
+
+  public String toString() {
+    return String.format("%s.%d", queryId, id);
+  }
+
+  public static PlanFragmentId deserialize(ByteBuffer byteBuffer) {
+    return new PlanFragmentId(
+        QueryId.deserialize(byteBuffer), ReadWriteIOUtils.readInt(byteBuffer));
   }
 }

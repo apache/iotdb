@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.db.mpp.common;
 
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -109,5 +112,9 @@ public class QueryId {
     checkArgument(!id.isEmpty(), "id is empty");
     checkArgument(isValidId(id), "Invalid id %s", id);
     return id;
+  }
+
+  public static QueryId deserialize(ByteBuffer byteBuffer) {
+    return new QueryId(ReadWriteIOUtils.readString(byteBuffer));
   }
 }

@@ -18,51 +18,49 @@
  */
 package org.apache.iotdb.db.mpp.schedule.task;
 
+import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
+import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.schedule.queue.ID;
 
 import org.jetbrains.annotations.NotNull;
 
-/** the class of id of the fragment instance */
-public class FragmentInstanceID implements ID, Comparable<FragmentInstanceID> {
+/** the class of id of the fragment instance task */
+public class FragmentInstanceTaskID implements ID, Comparable<FragmentInstanceTaskID> {
 
-  private final String instanceId;
-  private final String fragmentId;
-  private final QueryId queryId;
+  private final FragmentInstanceId id;
 
-  public FragmentInstanceID(QueryId queryId, String fragmentId, String instanceId) {
-    this.queryId = queryId;
-    this.fragmentId = fragmentId;
-    this.instanceId = instanceId;
+  public FragmentInstanceTaskID(FragmentInstanceId id) {
+    this.id = id;
   }
 
   @Override
   public boolean equals(Object o) {
-    return o instanceof FragmentInstanceID
-        && queryId.equals(((FragmentInstanceID) o).getQueryId())
-        && fragmentId.equals(((FragmentInstanceID) o).getFragmentId())
-        && instanceId.equals(((FragmentInstanceID) o).getInstanceId());
+    return o instanceof FragmentInstanceTaskID
+        && id.getQueryId().equals(((FragmentInstanceTaskID) o).getQueryId())
+        && id.getFragmentId().getId() == ((FragmentInstanceTaskID) o).getFragmentId().getId()
+        && id.getInstanceId().equals(((FragmentInstanceTaskID) o).getInstanceId());
   }
 
   public String toString() {
-    return String.format("%s.%s.%s", getInstanceId(), getFragmentId(), getQueryId());
+    return id.getFullId();
   }
 
   public String getInstanceId() {
-    return instanceId;
+    return id.getInstanceId();
   }
 
-  public String getFragmentId() {
-    return fragmentId;
+  public PlanFragmentId getFragmentId() {
+    return id.getFragmentId();
   }
 
   public QueryId getQueryId() {
-    return queryId;
+    return id.getQueryId();
   }
 
   // This is the default comparator of FragmentInstanceID
   @Override
-  public int compareTo(@NotNull FragmentInstanceID o) {
+  public int compareTo(@NotNull FragmentInstanceTaskID o) {
     return String.CASE_INSENSITIVE_ORDER.compare(this.toString(), o.toString());
   }
 }

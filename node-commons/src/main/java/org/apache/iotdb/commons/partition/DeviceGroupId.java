@@ -16,9 +16,29 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.common;
+package org.apache.iotdb.commons.partition;
 
-// TODO: (xingtanzjr) This class should be substituted with the class defined in Consensus level
-public class DataRegionTimeSlice {
-  long startTimestamp;
+public class DeviceGroupId {
+  private int deviceGroupId;
+
+  public DeviceGroupId(int deviceGroupId) {
+    this.deviceGroupId = deviceGroupId;
+  }
+
+  public int getDeviceGroupId() {
+    return deviceGroupId;
+  }
+
+  public void setDeviceGroupId(int deviceGroupId) {
+    this.deviceGroupId = deviceGroupId;
+  }
+
+  public int hashCode() {
+    return new Integer(deviceGroupId).hashCode();
+  }
+
+  public boolean equals(Object obj) {
+    return obj instanceof DeviceGroupId
+        && this.deviceGroupId == ((DeviceGroupId) obj).deviceGroupId;
+  }
 }
