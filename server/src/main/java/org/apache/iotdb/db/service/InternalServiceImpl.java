@@ -19,9 +19,8 @@
 
 package org.apache.iotdb.db.service;
 
+import org.apache.iotdb.mpp.rpc.thrift.*;
 import org.apache.iotdb.mpp.rpc.thrift.InternalService;
-import org.apache.iotdb.mpp.rpc.thrift.ShcameFetchReqest;
-import org.apache.iotdb.mpp.rpc.thrift.ShcameFetchResponse;
 
 import org.apache.thrift.TException;
 
@@ -29,6 +28,33 @@ public class InternalServiceImpl implements InternalService.Iface {
 
   public InternalServiceImpl() {
     super();
+  }
+
+  @Override
+  public TSendFragmentInstanceResp sendFragmentInstance(TSendFragmentInstanceReq req)
+      throws TException {
+    return null;
+  }
+
+  @Override
+  public TFragmentInstanceStateResp fetchFragmentInstanceState(TFetchFragmentInstanceStateReq req)
+      throws TException {
+    return null;
+  }
+
+  @Override
+  public TCancelResp cancelQuery(TCancelQueryReq req) throws TException {
+    return null;
+  }
+
+  @Override
+  public TCancelResp cancelPlanFragment(TCancelPlanFragmentReq req) throws TException {
+    return null;
+  }
+
+  @Override
+  public TCancelResp cancelFragmentInstance(TCancelFragmentInstanceReq req) throws TException {
+    return null;
   }
 
   @Override

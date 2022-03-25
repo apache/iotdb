@@ -20,14 +20,14 @@
 namespace java org.apache.iotdb.mpp.rpc.thrift
 
 
-struct ThriftFragmentInstanceId {
+struct TFragmentInstanceId {
   1: required string queryId
   2: required string fragmentId
   3: required string instanceId
 }
 
 struct GetDataBlockReqest {
-  1: required ThriftFragmentInstanceId fragnemtInstanceId
+  1: required TFragmentInstanceId fragnemtInstanceId
   2: required i64 blockId
 }
 
@@ -36,14 +36,53 @@ struct GetDataBlockResponse {
 }
 
 struct NewDataBlockEvent {
-  1: required ThriftFragmentInstanceId fragmentInstanceId
+  1: required TFragmentInstanceId fragmentInstanceId
   2: required string operatorId
   3: required i64 blockId
 }
 
 struct EndOfDataBlockEvent {
-  1: required ThriftFragmentInstanceId fragmentInstanceId
+  1: required TFragmentInstanceId fragmentInstanceId
   2: required string operatorId
+}
+
+struct TFragmentInstance {
+  1: required binary body
+}
+
+struct TSendFragmentInstanceReq {
+  1: required TFragmentInstance fragmentInstance
+}
+
+struct TSendFragmentInstanceResp {
+  1: required bool accepted
+  2: optional string message
+}
+
+struct TFetchFragmentInstanceStateReq {
+  1: required TFragmentInstanceId fragmentInstanceId
+}
+
+// TODO: need to supply more fields according to implementation
+struct TFragmentInstanceStateResp {
+  1: required string state
+}
+
+struct TCancelQueryReq {
+  1: required string queryId
+}
+
+struct TCancelPlanFragmentReq {
+  1: required string planFragmentId
+}
+
+struct TCancelFragmentInstanceReq {
+  1: required TFragmentInstanceId fragmentInstanceId
+}
+
+struct TCancelResp {
+  1: required bool cancelled
+  2: optional string messsga
 }
 
 struct ShcameFetchReqest {
@@ -56,7 +95,17 @@ struct ShcameFetchResponse {
 }
 
 service InternalService {
-   ShcameFetchResponse fetchSchema(ShcameFetchReqest req)
+    TSendFragmentInstanceResp sendFragmentInstance(TSendFragmentInstanceReq req);
+
+    TFragmentInstanceStateResp fetchFragmentInstanceState(TFetchFragmentInstanceStateReq req);
+
+    TCancelResp cancelQuery(TCancelQueryReq req);
+
+    TCancelResp cancelPlanFragment(TCancelPlanFragmentReq req);
+
+    TCancelResp cancelFragmentInstance(TCancelFragmentInstanceReq req);
+
+    ShcameFetchResponse fetchSchema(ShcameFetchReqest req)
 }
 
 service DataBlockService {
