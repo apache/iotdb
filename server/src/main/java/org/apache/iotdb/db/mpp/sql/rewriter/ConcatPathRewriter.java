@@ -26,8 +26,8 @@ import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
+import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.filter.*;
-import org.apache.iotdb.db.mpp.sql.analyze.AnalysisContext;
 import org.apache.iotdb.db.mpp.sql.constant.FilterConstant.FilterType;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.db.mpp.sql.statement.component.*;
@@ -50,7 +50,7 @@ import java.util.*;
 public class ConcatPathRewriter implements IStatementRewriter {
 
   @Override
-  public Statement rewrite(Statement statement, AnalysisContext context)
+  public Statement rewrite(Statement statement, MPPQueryContext context)
       throws StatementAnalyzeException, PathNumOverLimitException {
     QueryStatement queryStatement = (QueryStatement) statement;
     concatSelectWithFrom(queryStatement);

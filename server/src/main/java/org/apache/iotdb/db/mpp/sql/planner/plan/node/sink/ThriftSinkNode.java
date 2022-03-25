@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.sink;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 
+import java.nio.ByteBuffer;
 import java.util.List;
 
 /** not implemented in current IoTDB yet */
@@ -36,6 +37,9 @@ public class ThriftSinkNode extends SinkNode {
   }
 
   @Override
+  public void addChildren(PlanNode child) {}
+
+  @Override
   public PlanNode clone() {
     return null;
   }
@@ -49,6 +53,13 @@ public class ThriftSinkNode extends SinkNode {
   public List<String> getOutputColumnNames() {
     return null;
   }
+
+  public static ThriftSinkNode deserialize(ByteBuffer byteBuffer) {
+    return null;
+  }
+
+  @Override
+  public void serialize(ByteBuffer byteBuffer) {}
 
   @Override
   public void close() throws Exception {}

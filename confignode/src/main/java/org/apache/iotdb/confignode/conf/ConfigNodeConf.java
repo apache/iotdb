@@ -70,8 +70,35 @@ public class ConfigNodeConf {
     ConfigNodeConstant.DATA_DIR + File.separator + ConfigNodeConstant.DATA_DIR
   };
 
+  private int regionReplicaCount = 3;
+  private int schemaRegionCount = 1;
+  private int dataRegionCount = 1;
+
   public ConfigNodeConf() {
     // empty constructor
+  }
+
+  public void updatePath() {
+    formulateFolders();
+  }
+
+  private void formulateFolders() {
+    systemDir = addHomeDir(systemDir);
+    for (int i = 0; i < dataDirs.length; i++) {
+      dataDirs[i] = addHomeDir(dataDirs[i]);
+    }
+  }
+
+  private String addHomeDir(String dir) {
+    String homeDir = System.getProperty(ConfigNodeConstant.CONFIGNODE_HOME, null);
+    if (!new File(dir).isAbsolute() && homeDir != null && homeDir.length() > 0) {
+      if (!homeDir.endsWith(File.separator)) {
+        dir = homeDir + File.separatorChar + dir;
+      } else {
+        dir = homeDir + dir;
+      }
+    }
+    return dir;
   }
 
   public int getDeviceGroupCount() {
@@ -184,5 +211,29 @@ public class ConfigNodeConf {
 
   public void setDataDirs(String[] dataDirs) {
     this.dataDirs = dataDirs;
+  }
+
+  public int getRegionReplicaCount() {
+    return regionReplicaCount;
+  }
+
+  public void setDataRegionCount(int dataRegionCount) {
+    this.dataRegionCount = dataRegionCount;
+  }
+
+  public int getSchemaRegionCount() {
+    return schemaRegionCount;
+  }
+
+  public void setSchemaRegionCount(int schemaRegionCount) {
+    this.schemaRegionCount = schemaRegionCount;
+  }
+
+  public int getDataRegionCount() {
+    return dataRegionCount;
+  }
+
+  public void setRegionReplicaCount(int regionReplicaCount) {
+    this.regionReplicaCount = regionReplicaCount;
   }
 }

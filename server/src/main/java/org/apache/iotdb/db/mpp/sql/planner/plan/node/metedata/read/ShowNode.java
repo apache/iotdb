@@ -21,9 +21,14 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 
+import java.nio.ByteBuffer;
+
 public abstract class ShowNode extends PlanNode {
 
   protected ShowNode(PlanNodeId id) {
     super(id);
   }
+
+  @Override
+  public void serialize(ByteBuffer byteBuffer) {}
 }
