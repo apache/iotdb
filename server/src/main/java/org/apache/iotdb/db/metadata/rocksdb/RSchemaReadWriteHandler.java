@@ -63,11 +63,11 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.DATA_BLOCK_TYPE_ORIGIN_KEY;
@@ -115,42 +115,44 @@ public class RSchemaReadWriteHandler {
   }
 
   private void initReadWriteHandler(String path) throws RocksDBException {
-    Options options = new Options();
-    org.rocksdb.Logger rocksDBLogger = new RSchemaLogger(options, logger);
-    rocksDBLogger.setInfoLogLevel(InfoLogLevel.ERROR_LEVEL);
+    try (Options options = new Options()) {
+      org.rocksdb.Logger rocksDBLogger = new RSchemaLogger(options, logger);
+      rocksDBLogger.setInfoLogLevel(InfoLogLevel.ERROR_LEVEL);
 
-    options
-        .setCreateIfMissing(true)
-        .setAllowMmapReads(true)
-        .setWriteBufferSize(64 * SizeUnit.KB)
-        .setMaxWriteBufferNumber(6)
-        .setMaxBackgroundJobs(10)
-        .setStatistics(new Statistics())
-        .setLogger(rocksDBLogger);
+      options
+          .setCreateIfMissing(true)
+          .setAllowMmapReads(true)
+          .setWriteBufferSize(64 * SizeUnit.KB)
+          .setMaxWriteBufferNumber(6)
+          .setMaxBackgroundJobs(10)
+          .setStatistics(new Statistics())
+          .setLogger(rocksDBLogger);
 
-    final Filter bloomFilter = new BloomFilter(64);
+      final Filter bloomFilter = new BloomFilter(64);
 
-    final BlockBasedTableConfig table_options = new BlockBasedTableConfig();
-    Cache cache = new LRUCache(20 * 1024 * 1024 * 1024, 6);
-    table_options
-        .setBlockCache(cache)
-        .setFilterPolicy(bloomFilter)
-        .setBlockSizeDeviation(5)
-        .setBlockRestartInterval(10)
-        .setCacheIndexAndFilterBlocks(true)
-        .setBlockCacheCompressed(new LRUCache(10 * 1024 * 1024 * 1024, 6));
+      final BlockBasedTableConfig table_options = new BlockBasedTableConfig();
+      Cache cache = new LRUCache(20L * 1024 * 1024 * 1024, 6);
+      table_options
+          .setBlockCache(cache)
+          .setFilterPolicy(bloomFilter)
+          .setBlockSizeDeviation(5)
+          .setBlockRestartInterval(10)
+          .setCacheIndexAndFilterBlocks(true)
+          .setBlockCacheCompressed(new LRUCache(10L * 1024 * 1024 * 1024, 6));
 
-    options.setTableFormatConfig(table_options);
+      options.setTableFormatConfig(table_options);
 
-    DBOptions dbOptions = new DBOptions(options);
+      try (DBOptions dbOptions = new DBOptions(options)) {
 
-    initColumnFamilyDescriptors(options, path);
+        initColumnFamilyDescriptors(options, path);
 
-    rocksDB = RocksDB.open(dbOptions, path, columnFamilyDescriptors, columnFamilyHandles);
+        rocksDB = RocksDB.open(dbOptions, path, columnFamilyDescriptors, columnFamilyHandles);
 
-    initInnerColumnFamilies();
+        initInnerColumnFamilies();
 
-    initRootKey();
+        initRootKey();
+      }
+    }
   }
 
   private void initColumnFamilyDescriptors(Options options, String path) throws RocksDBException {
@@ -218,12 +220,13 @@ public class RSchemaReadWriteHandler {
   }
 
   public void convertToEntityNode(String levelPath, byte[] value) throws RocksDBException {
-    WriteBatch batch = new WriteBatch();
-    byte[] internalKey = RSchemaUtils.toInternalNodeKey(levelPath);
-    byte[] entityKey = RSchemaUtils.toEntityNodeKey(levelPath);
-    batch.delete(internalKey);
-    batch.put(entityKey, value);
-    executeBatch(batch);
+    try (WriteBatch batch = new WriteBatch()) {
+      byte[] internalKey = RSchemaUtils.toInternalNodeKey(levelPath);
+      byte[] entityKey = RSchemaUtils.toEntityNodeKey(levelPath);
+      batch.delete(internalKey);
+      batch.put(entityKey, value);
+      executeBatch(batch);
+    }
   }
 
   public IMeasurementMNode getMeasurementMNode(PartialPath fullPath) throws MetadataException {
@@ -235,21 +238,10 @@ public class RSchemaReadWriteHandler {
         logger.warn("path not exist: {}", key);
         throw new MetadataException("key not exist");
       }
-      IMeasurementMNode node = new MeasurementMNode(null, fullPath.getFullPath(), null, null);
-      return node;
+      return new MeasurementMNode(null, fullPath.getFullPath(), null, null);
     } catch (RocksDBException e) {
       throw new MetadataException(e);
     }
-  }
-
-  public long countNodesNum(String tableName) {
-    ColumnFamilyHandle columnFamilyHandle = columnFamilyHandleMap.get(tableName);
-    RocksIterator iter = rocksDB.newIterator(columnFamilyHandle);
-    long count = 0;
-    for (iter.seekToFirst(); iter.isValid(); iter.next()) {
-      count++;
-    }
-    return count;
   }
 
   public boolean keyExistByType(String levelKey, RMNodeType type) throws RocksDBException {
@@ -305,9 +297,7 @@ public class RSchemaReadWriteHandler {
 
   public boolean keyExist(byte[] key, Holder<byte[]> holder) throws RocksDBException {
     boolean exist = false;
-    if (!rocksDB.keyMayExist(key, holder)) {
-      exist = false;
-    } else {
+    if (rocksDB.keyMayExist(key, holder)) {
       if (holder.getValue() == null) {
         byte[] value = rocksDB.get(key);
         if (value != null) {
@@ -322,14 +312,6 @@ public class RSchemaReadWriteHandler {
   }
 
   public boolean keyExist(byte[] key) throws RocksDBException {
-    return keyExist(key, new Holder<>());
-  }
-
-  public boolean keyExist(String key, Holder<byte[]> holder) throws RocksDBException {
-    return keyExist(key.getBytes(), holder);
-  }
-
-  public boolean keyExist(String key) throws RocksDBException {
     return keyExist(key, new Holder<>());
   }
 
@@ -356,15 +338,16 @@ public class RSchemaReadWriteHandler {
   public Set<String> getAllByPrefix(String prefix) {
     Set<String> result = new HashSet<>();
     byte[] prefixKey = prefix.getBytes();
-    RocksIterator iterator = rocksDB.newIterator();
-    for (iterator.seek(prefixKey); iterator.isValid(); iterator.next()) {
-      String key = new String(iterator.key());
-      if (!key.startsWith(prefix)) {
-        break;
+    try (RocksIterator iterator = rocksDB.newIterator()) {
+      for (iterator.seek(prefixKey); iterator.isValid(); iterator.next()) {
+        String key = new String(iterator.key());
+        if (!key.startsWith(prefix)) {
+          break;
+        }
+        result.add(key);
       }
-      result.add(key);
+      return result;
     }
-    return result;
   }
 
   /**
@@ -372,29 +355,15 @@ public class RSchemaReadWriteHandler {
    * path, may contain wildcard.
    */
   public int getAllTimeseriesCount(PartialPath pathPattern) throws MetadataException {
-    AtomicInteger counter = new AtomicInteger(0);
-    Set<String> seeds = new HashSet<>();
-    seeds.add(ROOT + PATH_SEPARATOR + ZERO);
-    scanAllKeysRecursively(
-        seeds,
-        0,
-        s -> {
-          try {
-            byte[] value = rocksDB.get(s.getBytes());
-            if (value != null && value.length > 0 && value[0] == NODE_TYPE_MEASUREMENT) {
-              counter.incrementAndGet();
-              return false;
-            }
-          } catch (RocksDBException e) {
-            return false;
-          }
-          return true;
-        });
-    return counter.get();
+    return getCountByNodeType(pathPattern, NODE_TYPE_MEASUREMENT);
   }
 
   /** To calculate the count of devices for given path pattern. */
   public int getDevicesNum(PartialPath pathPattern) throws MetadataException {
+    return getCountByNodeType(pathPattern, NODE_TYPE_ENTITY);
+  }
+
+  private int getCountByNodeType(PartialPath pathPattern, char nodeType) {
     AtomicInteger counter = new AtomicInteger(0);
     Set<String> seeds = new HashSet<>();
     seeds.add(ROOT + PATH_SEPARATOR + ZERO);
@@ -404,7 +373,7 @@ public class RSchemaReadWriteHandler {
         s -> {
           try {
             byte[] value = rocksDB.get(s.getBytes());
-            if (value != null && value.length > 0 && value[0] == NODE_TYPE_ENTITY) {
+            if (value != null && value.length > 0 && value[0] == nodeType) {
               counter.incrementAndGet();
               return false;
             }
@@ -424,19 +393,25 @@ public class RSchemaReadWriteHandler {
    * @return total number in this column family
    */
   public long countNodesNumByType(ColumnFamilyHandle columnFamilyHandle, char nodeType) {
-    RocksIterator iter;
-    if (columnFamilyHandle == null) {
-      iter = rocksDB.newIterator();
-    } else {
-      iter = rocksDB.newIterator(columnFamilyHandle);
-    }
-    long count = 0;
-    for (iter.seek(String.valueOf(nodeType).getBytes()); iter.isValid(); iter.next()) {
-      if (iter.key()[0] == nodeType) {
-        count++;
+    RocksIterator iter = null;
+    try {
+      if (columnFamilyHandle == null) {
+        iter = rocksDB.newIterator();
+      } else {
+        iter = rocksDB.newIterator(columnFamilyHandle);
+      }
+      long count = 0;
+      for (iter.seek(String.valueOf(nodeType).getBytes()); iter.isValid(); iter.next()) {
+        if (iter.key()[0] == nodeType) {
+          count++;
+        }
+      }
+      return count;
+    } finally {
+      if (iter != null) {
+        iter.close();
       }
     }
-    return count;
   }
 
   public byte[] get(ColumnFamilyHandle columnFamilyHandle, byte[] key) throws RocksDBException {
@@ -454,34 +429,28 @@ public class RSchemaReadWriteHandler {
   }
 
   public void getKeyByPrefix(String innerName, Function<String, Boolean> function) {
-    RocksIterator iterator = rocksDB.newIterator();
-    for (iterator.seek(innerName.getBytes()); iterator.isValid(); iterator.next()) {
-      String keyStr = new String(iterator.key());
-      if (!keyStr.startsWith(innerName)) {
-        break;
+    try (RocksIterator iterator = rocksDB.newIterator()) {
+      for (iterator.seek(innerName.getBytes()); iterator.isValid(); iterator.next()) {
+        String keyStr = new String(iterator.key());
+        if (!keyStr.startsWith(innerName)) {
+          break;
+        }
+        function.apply(keyStr);
       }
-      function.apply(keyStr);
     }
   }
 
   public Map<byte[], byte[]> getKeyValueByPrefix(String innerName) {
-    RocksIterator iterator = rocksDB.newIterator();
-    Map<byte[], byte[]> result = new HashMap<>();
-    for (iterator.seek(innerName.getBytes()); iterator.isValid(); iterator.next()) {
-      String keyStr = new String(iterator.key());
-      if (!keyStr.startsWith(innerName)) {
-        break;
+    try (RocksIterator iterator = rocksDB.newIterator()) {
+      Map<byte[], byte[]> result = new HashMap<>();
+      for (iterator.seek(innerName.getBytes()); iterator.isValid(); iterator.next()) {
+        String keyStr = new String(iterator.key());
+        if (!keyStr.startsWith(innerName)) {
+          break;
+        }
+        result.put(iterator.key(), iterator.value());
       }
-      result.put(iterator.key(), iterator.value());
-    }
-    return result;
-  }
-
-  public void traverseByPrefix(byte[] prefix, BiConsumer<byte[], byte[]> consumer) {
-    RocksIterator iterator = rocksDB.newIterator();
-    for (iterator.seek(prefix); iterator.isValid(); iterator.next()) {
-      if (RSchemaUtils.startWith(iterator.key(), prefix))
-        consumer.accept(iterator.key(), iterator.value());
+      return result;
     }
   }
 
@@ -524,69 +493,72 @@ public class RSchemaReadWriteHandler {
 
   @TestOnly
   public void scanAllKeys(String filePath) throws IOException {
-    RocksIterator iterator = rocksDB.newIterator();
-    System.out.println("\n-----------------scan rocksdb start----------------------");
-    iterator.seekToFirst();
-    File outputFile = new File(filePath);
-    if (outputFile.exists()) {
-      boolean deleted = outputFile.delete();
-      System.out.println("delete output file: " + deleted);
-    }
-    BufferedOutputStream outputStream = new BufferedOutputStream(new FileOutputStream(outputFile));
-    while (iterator.isValid()) {
-      byte[] key = iterator.key();
-      key[0] = (byte) (Integer.valueOf(key[0]) + '0');
-      outputStream.write(key);
-      outputStream.write(" -> ".getBytes());
+    try (RocksIterator iterator = rocksDB.newIterator()) {
+      System.out.println("\n-----------------scan rocksdb start----------------------");
+      iterator.seekToFirst();
+      File outputFile = new File(filePath);
+      if (outputFile.exists()) {
+        boolean deleted = outputFile.delete();
+        System.out.println("delete output file: " + deleted);
+      }
+      try (BufferedOutputStream outputStream =
+          new BufferedOutputStream(new FileOutputStream(outputFile))) {
+        while (iterator.isValid()) {
+          byte[] key = iterator.key();
+          key[0] = (byte) ((int) key[0] + '0');
+          outputStream.write(key);
+          outputStream.write(" -> ".getBytes());
 
-      byte[] value = iterator.value();
-      ByteBuffer byteBuffer = ByteBuffer.wrap(value);
-      // skip the version flag and node type flag
-      ReadWriteIOUtils.readBytes(byteBuffer, 2);
-      while (byteBuffer.hasRemaining()) {
-        byte blockType = ReadWriteIOUtils.readByte(byteBuffer);
-        switch (blockType) {
-          case RSchemaConstants.DATA_BLOCK_TYPE_TTL:
-            long l = ReadWriteIOUtils.readLong(byteBuffer);
-            outputStream.write(String.valueOf(l).getBytes());
-            outputStream.write(" ".getBytes());
-            break;
-          case DATA_BLOCK_TYPE_SCHEMA:
-            MeasurementSchema schema = MeasurementSchema.deserializeFrom(byteBuffer);
-            outputStream.write(schema.toString().getBytes());
-            outputStream.write(" ".getBytes());
-            break;
-          case RSchemaConstants.DATA_BLOCK_TYPE_ALIAS:
-            String str = ReadWriteIOUtils.readString(byteBuffer);
-            outputStream.write(str.getBytes());
-            outputStream.write(" ".getBytes());
-            break;
-          case DATA_BLOCK_TYPE_ORIGIN_KEY:
-            byte[] originKey = RSchemaUtils.readOriginKey(byteBuffer);
-            outputStream.write(originKey);
-            outputStream.write(" ".getBytes());
-            break;
-          case RSchemaConstants.DATA_BLOCK_TYPE_TAGS:
-          case RSchemaConstants.DATA_BLOCK_TYPE_ATTRIBUTES:
-            Map<String, String> map = ReadWriteIOUtils.readMap(byteBuffer);
-            for (Map.Entry<String, String> entry : map.entrySet()) {
-              outputStream.write(("<" + entry.getKey() + "," + entry.getValue() + ">").getBytes());
+          byte[] value = iterator.value();
+          ByteBuffer byteBuffer = ByteBuffer.wrap(value);
+          // skip the version flag and node type flag
+          ReadWriteIOUtils.readBytes(byteBuffer, 2);
+          while (byteBuffer.hasRemaining()) {
+            byte blockType = ReadWriteIOUtils.readByte(byteBuffer);
+            switch (blockType) {
+              case RSchemaConstants.DATA_BLOCK_TYPE_TTL:
+                long l = ReadWriteIOUtils.readLong(byteBuffer);
+                outputStream.write(String.valueOf(l).getBytes());
+                outputStream.write(" ".getBytes());
+                break;
+              case DATA_BLOCK_TYPE_SCHEMA:
+                MeasurementSchema schema = MeasurementSchema.deserializeFrom(byteBuffer);
+                outputStream.write(schema.toString().getBytes());
+                outputStream.write(" ".getBytes());
+                break;
+              case RSchemaConstants.DATA_BLOCK_TYPE_ALIAS:
+                String str = ReadWriteIOUtils.readString(byteBuffer);
+                outputStream.write(Objects.requireNonNull(str).getBytes());
+                outputStream.write(" ".getBytes());
+                break;
+              case DATA_BLOCK_TYPE_ORIGIN_KEY:
+                byte[] originKey = RSchemaUtils.readOriginKey(byteBuffer);
+                outputStream.write(originKey);
+                outputStream.write(" ".getBytes());
+                break;
+              case RSchemaConstants.DATA_BLOCK_TYPE_TAGS:
+              case RSchemaConstants.DATA_BLOCK_TYPE_ATTRIBUTES:
+                Map<String, String> map = ReadWriteIOUtils.readMap(byteBuffer);
+                for (Map.Entry<String, String> entry : Objects.requireNonNull(map).entrySet()) {
+                  outputStream.write(
+                      ("<" + entry.getKey() + "," + entry.getValue() + ">").getBytes());
+                }
+                outputStream.write(" ".getBytes());
+                break;
+              default:
+                break;
             }
-            outputStream.write(" ".getBytes());
-            break;
-          default:
-            break;
+          }
+          outputStream.write("\n".getBytes());
+          iterator.next();
         }
       }
-      outputStream.write("\n".getBytes());
-      iterator.next();
+      if (outputFile.exists()) {
+        boolean deleted = outputFile.delete();
+        System.out.println("clean output file: " + deleted);
+      }
+      System.out.println("\n-----------------scan rocksdb end----------------------");
     }
-    outputStream.close();
-    if (outputFile.exists()) {
-      boolean deleted = outputFile.delete();
-      System.out.println("clean output file: " + deleted);
-    }
-    System.out.println("\n-----------------scan rocksdb end----------------------");
   }
 
   public void close() throws RocksDBException {

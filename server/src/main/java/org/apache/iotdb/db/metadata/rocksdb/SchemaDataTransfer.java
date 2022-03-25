@@ -66,25 +66,25 @@ public class SchemaDataTransfer {
 
   private static final Logger logger = LoggerFactory.getLogger(SchemaDataTransfer.class);
 
-  private static int DEFAULT_TRANSFER_THREAD_POOL_SIZE = 200;
-  private static int DEFAULT_TRANSFER_PLANS_BUFFER_SIZE = 100_000;
+  private static final int DEFAULT_TRANSFER_THREAD_POOL_SIZE = 200;
+  private static final int DEFAULT_TRANSFER_PLANS_BUFFER_SIZE = 100_000;
 
-  private ForkJoinPool forkJoinPool = new ForkJoinPool(DEFAULT_TRANSFER_THREAD_POOL_SIZE);
+  private final ForkJoinPool forkJoinPool = new ForkJoinPool(DEFAULT_TRANSFER_THREAD_POOL_SIZE);
 
   private String mtreeSnapshotPath;
   private RSchemaEngine rocksDBManager;
   private MLogWriter mLogWriter;
-  private String failedMLogPath =
+  private final String FAILED_MLOG_PATH =
       IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
           + File.separator
           + MetadataConstant.METADATA_LOG
           + ".transfer_failed";
 
-  private String idxFilePath =
+  private final String IDX_FILE_PATH =
       RSchemaReadWriteHandler.ROCKSDB_PATH + File.separator + "transfer_mlog.idx";
 
-  private AtomicInteger failedPlanCount = new AtomicInteger(0);
-  private List<PhysicalPlan> retryPlans = new ArrayList<>();
+  private final AtomicInteger failedPlanCount = new AtomicInteger(0);
+  private final List<PhysicalPlan> retryPlans = new ArrayList<>();
 
   SchemaDataTransfer() throws MetadataException {
     rocksDBManager = new RSchemaEngine();
@@ -100,12 +100,12 @@ public class SchemaDataTransfer {
   }
 
   public void doTransfer() throws IOException, ExecutionException, InterruptedException {
-    File failedFile = new File(failedMLogPath);
+    File failedFile = new File(FAILED_MLOG_PATH);
     if (failedFile.exists()) {
-      failedFile.delete();
+      logger.info("Failed file [" + FAILED_MLOG_PATH + "] delete:" + failedFile.delete());
     }
 
-    mLogWriter = new MLogWriter(failedMLogPath);
+    mLogWriter = new MLogWriter(FAILED_MLOG_PATH);
     mLogWriter.setLogNum(0);
 
     String schemaDir = IoTDBDescriptor.getInstance().getConfig().getSchemaDir();
@@ -134,7 +134,7 @@ public class SchemaDataTransfer {
     if (logFile.exists()) {
       try (MLogReader mLogReader = new MLogReader(schemaDir, MetadataConstant.METADATA_LOG)) {
         int startIdx = 0;
-        File idxFile = new File(idxFilePath);
+        File idxFile = new File(IDX_FILE_PATH);
         if (idxFile.exists()) {
           try (BufferedReader br = new BufferedReader(new FileReader(idxFile))) {
             String idxStr = br.readLine();
@@ -216,7 +216,7 @@ public class SchemaDataTransfer {
         case UNSET_TEMPLATE:
         case CREATE_CONTINUOUS_QUERY:
         case DROP_CONTINUOUS_QUERY:
-          logger.error("unsupported operations {}", plan.toString());
+          logger.error("unsupported operations {}", plan);
           break;
         default:
           logger.error("Unrecognizable command {}", plan.getOperatorType());
@@ -237,7 +237,7 @@ public class SchemaDataTransfer {
       }
     }
 
-    File idxFile = new File(idxFilePath);
+    File idxFile = new File(IDX_FILE_PATH);
     try (FileWriter writer = new FileWriter(idxFile)) {
       writer.write(String.valueOf(currentIdx));
     }
@@ -254,26 +254,23 @@ public class SchemaDataTransfer {
     }
     forkJoinPool
         .submit(
-            () -> {
-              plans
-                  .parallelStream()
-                  .forEach(
-                      x -> {
-                        try {
-                          rocksDBManager.operation(x);
-                        } catch (IOException e) {
-                          retryPlans.add(x);
-                        } catch (MetadataException e) {
-                          if (e instanceof AcquireLockTimeoutException) {
+            () ->
+                plans
+                    .parallelStream()
+                    .forEach(
+                        x -> {
+                          try {
+                            rocksDBManager.operation(x);
+                          } catch (MetadataException e) {
+                            if (e instanceof AcquireLockTimeoutException) {
+                              retryPlans.add(x);
+                            } else {
+                              logger.error("Execute plan failed: {}", x, e);
+                            }
+                          } catch (Exception e) {
                             retryPlans.add(x);
-                          } else {
-                            logger.error("Execute plan failed: {}", x.toString(), e);
                           }
-                        } catch (Exception e) {
-                          retryPlans.add(x);
-                        }
-                      });
-            })
+                        }))
         .get();
     logger.debug("parallel executed {} operations", plans.size());
     plans.clear();
@@ -336,8 +333,7 @@ public class SchemaDataTransfer {
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  private void doTransferFromSnapshot()
-      throws MetadataException, ExecutionException, InterruptedException {
+  private void doTransferFromSnapshot() throws MetadataException {
     logger.info("Start transfer data from snapshot");
     long start = System.currentTimeMillis();
 
@@ -380,7 +376,7 @@ public class SchemaDataTransfer {
               while (lastValue.get() < createdNodeCnt.get()) {
                 try {
                   lastValue.set(createdNodeCnt.get());
-                  Thread.sleep(10 * 1000);
+                  Thread.sleep(10L * 1000);
                   logger.info("created count: {}", createdNodeCnt.get());
                 } catch (InterruptedException e) {
                   logger.error("timer thread error", e);

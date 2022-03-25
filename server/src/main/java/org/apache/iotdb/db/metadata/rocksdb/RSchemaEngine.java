@@ -154,7 +154,7 @@ public class RSchemaEngine implements ISchemaEngine {
 
   private static final long MAX_LOCK_WAIT_TIME = 50;
 
-  private RSchemaReadWriteHandler readWriteHandler;
+  private final RSchemaReadWriteHandler readWriteHandler;
 
   private final Map<String, ReentrantLock> locksPool =
       new MapMaker().weakValues().initialCapacity(10000).makeMap();
@@ -234,7 +234,7 @@ public class RSchemaEngine implements ISchemaEngine {
       case UNSET_TEMPLATE:
       case CREATE_CONTINUOUS_QUERY:
       case DROP_CONTINUOUS_QUERY:
-        logger.error("unsupported operations {}", plan.toString());
+        logger.error("unsupported operations {}", plan);
         break;
       default:
         logger.error("Unrecognizable command {}", plan.getOperatorType());
@@ -334,7 +334,7 @@ public class RSchemaEngine implements ISchemaEngine {
   }
 
   private void createTimeSeriesRecursively(
-      String nodes[],
+      String[] nodes,
       int start,
       int end,
       IMeasurementSchema schema,
@@ -416,49 +416,43 @@ public class RSchemaEngine implements ISchemaEngine {
       Map<String, String> attributes)
       throws IOException, RocksDBException, MetadataException, InterruptedException {
     // create time-series node
-    WriteBatch batch = new WriteBatch();
-    byte[] value = RSchemaUtils.buildMeasurementNodeValue(schema, alias, tags, attributes);
-    byte[] measurementKey = RSchemaUtils.toMeasurementNodeKey(levelPath);
-    batch.put(measurementKey, value);
+    try (WriteBatch batch = new WriteBatch()) {
+      byte[] value = RSchemaUtils.buildMeasurementNodeValue(schema, alias, tags, attributes);
+      byte[] measurementKey = RSchemaUtils.toMeasurementNodeKey(levelPath);
+      batch.put(measurementKey, value);
 
-    // measurement with tags will save in a separate table at the same time
-    if (tags != null && !tags.isEmpty()) {
-      batch.put(readWriteHandler.getCFHByName(TABLE_NAME_TAGS), measurementKey, DEFAULT_NODE_VALUE);
-    }
+      // measurement with tags will save in a separate table at the same time
+      if (tags != null && !tags.isEmpty()) {
+        batch.put(
+            readWriteHandler.getCFHByName(TABLE_NAME_TAGS), measurementKey, DEFAULT_NODE_VALUE);
+      }
 
-    if (StringUtils.isNotEmpty(alias)) {
-      String[] aliasNodes = Arrays.copyOf(nodes, nodes.length);
-      aliasNodes[nodes.length - 1] = alias;
-      String aliasLevelPath = RSchemaUtils.getLevelPath(aliasNodes, aliasNodes.length - 1);
-      byte[] aliasNodeKey = RSchemaUtils.toAliasNodeKey(aliasLevelPath);
-      Lock lock = locksPool.computeIfAbsent(aliasLevelPath, x -> new ReentrantLock());
-      if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
-        try {
-          if (!readWriteHandler.keyExistByAllTypes(aliasLevelPath).existAnyKey()) {
-            batch.put(aliasNodeKey, RSchemaUtils.buildAliasNodeValue(measurementKey));
-            readWriteHandler.executeBatch(batch);
-          } else {
-            throw new AliasAlreadyExistException(levelPath, alias);
+      if (StringUtils.isNotEmpty(alias)) {
+        String[] aliasNodes = Arrays.copyOf(nodes, nodes.length);
+        aliasNodes[nodes.length - 1] = alias;
+        String aliasLevelPath = RSchemaUtils.getLevelPath(aliasNodes, aliasNodes.length - 1);
+        byte[] aliasNodeKey = RSchemaUtils.toAliasNodeKey(aliasLevelPath);
+        Lock lock = locksPool.computeIfAbsent(aliasLevelPath, x -> new ReentrantLock());
+        if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
+          try {
+            if (!readWriteHandler.keyExistByAllTypes(aliasLevelPath).existAnyKey()) {
+              batch.put(aliasNodeKey, RSchemaUtils.buildAliasNodeValue(measurementKey));
+              readWriteHandler.executeBatch(batch);
+            } else {
+              throw new AliasAlreadyExistException(levelPath, alias);
+            }
+          } finally {
+            lock.unlock();
           }
-        } finally {
-          lock.unlock();
+        } else {
+          throw new AcquireLockTimeoutException("acquire lock timeout: " + levelPath);
         }
       } else {
-        throw new AcquireLockTimeoutException("acquire lock timeout: " + levelPath);
+        readWriteHandler.executeBatch(batch);
       }
-    } else {
-      readWriteHandler.executeBatch(batch);
     }
   }
 
-  /**
-   * @param prefixPath
-   * @param measurements
-   * @param dataTypes
-   * @param encodings
-   * @param compressors
-   * @throws MetadataException
-   */
   @Override
   public void createAlignedTimeSeries(
       PartialPath prefixPath,
@@ -484,9 +478,10 @@ public class RSchemaEngine implements ISchemaEngine {
     List<TSEncoding> encodings = plan.getEncodings();
 
     if (prefixPath.getNodeLength() > MAX_PATH_DEPTH - 1) {
-      String.format(
-          "Prefix path is too long, provide: %d, max: %d",
-          prefixPath.getNodeLength(), RSchemaEngine.MAX_PATH_DEPTH - 1);
+      throw new IllegalPathException(
+          String.format(
+              "Prefix path is too long, provide: %d, max: %d",
+              prefixPath.getNodeLength(), RSchemaEngine.MAX_PATH_DEPTH - 1));
     }
 
     for (int i = 0; i < measurements.size(); i++) {
@@ -496,10 +491,9 @@ public class RSchemaEngine implements ISchemaEngine {
 
     int sgIndex = ensureStorageGroup(prefixPath);
 
-    try {
+    try (WriteBatch batch = new WriteBatch()) {
       createEntityRecursively(
           prefixPath.getNodes(), prefixPath.getNodeLength(), sgIndex + 1, true, new Stack<>());
-      WriteBatch batch = new WriteBatch();
       String[] locks = new String[measurements.size()];
       for (int i = 0; i < measurements.size(); i++) {
         String measurement = measurements.get(i);
@@ -538,14 +532,7 @@ public class RSchemaEngine implements ISchemaEngine {
     }
   }
 
-  /**
-   * The method assume Storage Group Node has been created
-   *
-   * @param nodes
-   * @param start
-   * @param end
-   * @param aligned
-   */
+  /** The method assume Storage Group Node has been created */
   private void createEntityRecursively(
       String[] nodes, int start, int end, boolean aligned, Stack<Lock> lockedLocks)
       throws RocksDBException, MetadataException, InterruptedException {
@@ -616,7 +603,7 @@ public class RSchemaEngine implements ISchemaEngine {
         MAX_PATH_DEPTH,
         (key, value) -> {
           String path = null;
-          RMeasurementMNode deletedNode = null;
+          RMeasurementMNode deletedNode;
           try {
             path = RSchemaUtils.getPathByInnerName(new String(key));
             String[] nodes = MetaUtils.splitPathToDetachedPath(path);
@@ -763,10 +750,6 @@ public class RSchemaEngine implements ISchemaEngine {
     }
   }
 
-  /**
-   * @param storageGroups
-   * @throws MetadataException
-   */
   @Override
   public void deleteStorageGroups(List<PartialPath> storageGroups) throws MetadataException {
     storageGroups
@@ -1202,10 +1185,7 @@ public class RSchemaEngine implements ISchemaEngine {
 
     Arrays.stream(ALL_NODE_TYPE_ARRAY)
         .parallel()
-        .forEach(
-            x -> {
-              readWriteHandler.getKeyByPrefix(x + innerNameByLevel, function);
-            });
+        .forEach(x -> readWriteHandler.getKeyByPrefix(x + innerNameByLevel, function));
     return result;
   }
 
@@ -1790,17 +1770,15 @@ public class RSchemaEngine implements ISchemaEngine {
             String oldAliasStr = mNode.getAlias();
             mNode.setAlias(alias);
             hasUpdate = true;
-            WriteBatch batch = new WriteBatch();
             String[] newAlias = Arrays.copyOf(nodes, nodes.length);
             newAlias[nodes.length - 1] = alias;
             String newAliasLevel = RSchemaUtils.getLevelPath(newAlias, newAlias.length - 1);
             byte[] newAliasKey = RSchemaUtils.toAliasNodeKey(newAliasLevel);
-
             Lock newAliasLock = locksPool.computeIfAbsent(newAliasLevel, x -> new ReentrantLock());
             Lock oldAliasLock = null;
             boolean lockedOldAlias = false;
             boolean lockedNewAlias = false;
-            try {
+            try (WriteBatch batch = new WriteBatch()) {
               if (newAliasLock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
                 lockedNewAlias = true;
                 if (readWriteHandler.keyExistByAllTypes(newAliasLevel).existAnyKey()) {
@@ -1900,7 +1878,8 @@ public class RSchemaEngine implements ISchemaEngine {
             for (Map.Entry<String, String> entry : attributesMap.entrySet()) {
               if (mNode.getAttributes().containsKey(entry.getKey())) {
                 throw new MetadataException(
-                    String.format("TimeSeries [%s] already has the attribute [%s].", path, key));
+                    String.format(
+                        "TimeSeries [%s] already has the attribute [%s].", path, new String(key)));
               }
             }
             attributesMap.putAll(mNode.getAttributes());
@@ -1944,19 +1923,21 @@ public class RSchemaEngine implements ISchemaEngine {
             for (Map.Entry<String, String> entry : tagsMap.entrySet()) {
               if (mNode.getTags().containsKey(entry.getKey())) {
                 throw new MetadataException(
-                    String.format("TimeSeries [%s] already has the tag [%s].", path, key));
+                    String.format(
+                        "TimeSeries [%s] already has the tag [%s].", path, new String(key)));
               }
               tagsMap.putAll(mNode.getTags());
             }
           }
           mNode.setTags(tagsMap);
-          WriteBatch batch = new WriteBatch();
-          if (!hasTags) {
-            batch.put(readWriteHandler.getCFHByName(TABLE_NAME_TAGS), key, DEFAULT_NODE_VALUE);
+          try (WriteBatch batch = new WriteBatch()) {
+            if (!hasTags) {
+              batch.put(readWriteHandler.getCFHByName(TABLE_NAME_TAGS), key, DEFAULT_NODE_VALUE);
+            }
+            batch.put(key, mNode.getRocksDBValue());
+            // TODO: need application lock
+            readWriteHandler.executeBatch(batch);
           }
-          batch.put(key, mNode.getRocksDBValue());
-          // TODO: need application lock
-          readWriteHandler.executeBatch(batch);
         } finally {
           lock.unlock();
         }
@@ -2006,12 +1987,13 @@ public class RSchemaEngine implements ISchemaEngine {
             }
           }
           if (didAnyUpdate) {
-            WriteBatch batch = new WriteBatch();
-            if (tagLen > 0 && mNode.getTags().size() <= 0) {
-              batch.delete(readWriteHandler.getCFHByName(TABLE_NAME_TAGS), key);
+            try (WriteBatch batch = new WriteBatch()) {
+              if (tagLen > 0 && mNode.getTags().size() <= 0) {
+                batch.delete(readWriteHandler.getCFHByName(TABLE_NAME_TAGS), key);
+              }
+              batch.put(key, mNode.getRocksDBValue());
+              readWriteHandler.executeBatch(batch);
             }
-            batch.put(key, mNode.getRocksDBValue());
-            readWriteHandler.executeBatch(batch);
           }
         } finally {
           lock.unlock();
@@ -2055,7 +2037,8 @@ public class RSchemaEngine implements ISchemaEngine {
             }
             if (!didAnyUpdate) {
               throw new MetadataException(
-                  String.format("TimeSeries [%s] does not have tag/attribute [%s].", path, key),
+                  String.format(
+                      "TimeSeries [%s] does not have tag/attribute [%s].", path, new String(key)),
                   true);
             }
           }
