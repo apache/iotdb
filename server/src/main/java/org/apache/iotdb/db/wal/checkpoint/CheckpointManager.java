@@ -52,10 +52,11 @@ public class CheckpointManager implements AutoCloseable {
   /** directory to store .checkpoint file */
   protected final String logDirectory;
   /**
-   * protect concurrent safety of memTableId2Info, cachedByteBuffer, currentLogVersion and
-   * currentLogWriter
+   * protect concurrent safety of checkpoint info, including memTableId2Info, cachedByteBuffer,
+   * currentLogVersion and currentLogWriter
    */
   private final Lock infoLock = new ReentrantLock();
+  // region these variables should be protected by infoLock
   /** memTable id -> memTable info */
   private final Map<Integer, MemTableInfo> memTableId2Info = new HashMap<>();
   /** cache the biggest byte buffer to serialize checkpoint */
@@ -64,6 +65,7 @@ public class CheckpointManager implements AutoCloseable {
   private int currentLogVersion = 0;
   /** current checkpoint file log writer, only updated by fsyncAndDeleteThread */
   private ILogWriter currentLogWriter;
+  // endregion
 
   public CheckpointManager(String identifier, String logDirectory) throws FileNotFoundException {
     this.identifier = identifier;

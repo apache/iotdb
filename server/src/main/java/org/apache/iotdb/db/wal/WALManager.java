@@ -60,14 +60,16 @@ public class WALManager implements IService {
 
   /** manage wal folders */
   private FolderManager folderManager;
-  /** protect concurrent safety of walNodes, nodeCursor and nodeIdCounter */
+  /** protect concurrent safety of wal nodes, including walNodes, nodeCursor and nodeIdCounter */
   private final Lock nodesLock = new ReentrantLock();
+  // region these variables should be protected by nodesLock
   /** wal nodes, the max number of wal nodes is MAX_WAL_NUM */
   private final List<WALNode> walNodes = new ArrayList<>(MAX_WAL_NUM);
   /** help allocate node for users */
   private int nodeCursor = -1;
   /** each wal node has a unique long value identifier */
   private long nodeIdCounter = -1;
+  // endregion
   /** single thread to fsync .checkpoint files */
   private ScheduledExecutorService checkpointThread;
   /** single thread to delete old .wal files */

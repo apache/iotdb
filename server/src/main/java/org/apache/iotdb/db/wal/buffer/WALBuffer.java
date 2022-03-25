@@ -68,6 +68,11 @@ public class WALBuffer extends AbstractWALBuffer {
   private volatile boolean isClosed = false;
   /** WALEdits */
   private final BlockingQueue<WALEdit> walEdits = new ArrayBlockingQueue<>(SIZE_LIMIT);
+  /** lock to provide synchronization for double buffers mechanism, protecting buffers status */
+  private final Lock buffersLock = new ReentrantLock();
+  /** condition to guarantee correctness of switching buffers */
+  private final Condition idleBufferReadyCondition = buffersLock.newCondition();
+  // region these variables should be protected by buffersLock
   /** two buffers switch between three statuses (there is always 1 buffer working) */
   // buffer in working status, only updated by serializeThread
   private volatile ByteBuffer workingBuffer;
@@ -75,10 +80,7 @@ public class WALBuffer extends AbstractWALBuffer {
   private volatile ByteBuffer idleBuffer;
   // buffer in syncing status, serializeThread makes sure no more writes to syncingBuffer
   private volatile ByteBuffer syncingBuffer;
-  /** lock to provide synchronization for double buffers mechanism, protecting buffers status */
-  private final Lock buffersLock = new ReentrantLock();
-  /** condition to guarantee correctness of switching buffers */
-  private final Condition idleBufferReadyCondition = buffersLock.newCondition();
+  // endregion
   /** single thread to serialize WALEdit to workingBuffer */
   private final ExecutorService serializeThread;
   /** single thread to sync syncingBuffer to disk */
