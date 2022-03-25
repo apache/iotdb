@@ -45,6 +45,7 @@ IoTDB 支持的聚合函数如下：
 | LAST_VALUE  | 求时间戳最大的值。                                           | 所有类型                 | 与输入类型一致 |
 | MAX_TIME    | 求最大时间戳。                                               | 所有类型                 | Timestamp      |
 | MIN_TIME    | 求最小时间戳。                                               | 所有类型                 | Timestamp      |
+| CURRENT     | 求系统当前时间                                               |                          | TEXT           |
 
 **示例：** 统计总点数
 
@@ -61,6 +62,24 @@ select count(status) from root.ln.wf01.wt01;
 +-------------------------------+
 Total line number = 1
 It costs 0.016s
+```
+
+**示例：** 查看当前系统时间
+
+```
+select current();
+```
+
+结果：
+
+```
++-------------------+
+|          current()|
++-------------------+
+|2022-03-17 15:11:15|
++-------------------+
+Total line number = 1
+It costs 0.003s
 ```
 
 ## 分层聚合查询

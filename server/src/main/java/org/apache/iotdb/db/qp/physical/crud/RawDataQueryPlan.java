@@ -75,7 +75,9 @@ public class RawDataQueryPlan extends QueryPlan {
       // TODO this method must have some big problem
       String columnForReader = getColumnForReaderFromPath(originalPath, originalIndex);
       if (!columnForReaderSet.contains(columnForReader)) {
-        addDeduplicatedPaths(originalPath);
+        if (originalPath != null) {
+          addDeduplicatedPaths(originalPath);
+        }
         if (this instanceof AggregationPlan) {
           ((AggregationPlan) this)
               .addDeduplicatedAggregations(getAggregations().get(originalIndex));

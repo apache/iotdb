@@ -1039,7 +1039,9 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     }
     // 3. Visit select, from, where in sequence
     parseSelectClause(ctx.selectClause());
-    parseFromClause(ctx.fromClause());
+    if (ctx.fromClause() != null) {
+      parseFromClause(ctx.fromClause());
+    }
     if (ctx.whereClause() != null) {
       WhereComponent whereComponent = parseWhereClause(ctx.whereClause());
       if (whereComponent != null) {
@@ -2381,22 +2383,24 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     FunctionExpression functionExpression =
         new FunctionExpression(parseIdentifier(functionClause.functionName().getText()));
 
-    // expressions
-    boolean hasNonPureConstantSubExpression = false;
-    for (IoTDBSqlParser.ExpressionContext expression : functionClause.expression()) {
-      Expression subexpression = parseExpression(expression);
-      if (!subexpression.isConstantOperand()) {
-        hasNonPureConstantSubExpression = true;
+    if (!functionExpression.getFunctionName().equalsIgnoreCase("current")) {
+      // expressions
+      boolean hasNonPureConstantSubExpression = false;
+      for (IoTDBSqlParser.ExpressionContext expression : functionClause.expression()) {
+        Expression subexpression = parseExpression(expression);
+        if (!subexpression.isConstantOperand()) {
+          hasNonPureConstantSubExpression = true;
+        }
+        functionExpression.addExpression(subexpression);
       }
-      functionExpression.addExpression(subexpression);
-    }
 
-    // It is not allowed to have function expressions like F(1, 1.0). There should be at least one
-    // non-pure-constant sub-expression, otherwise the timestamp of the row cannot be inferred.
-    if (!hasNonPureConstantSubExpression) {
-      throw new SQLParserException(
-          "Invalid function expression, all the arguments are constant operands: "
-              + functionClause.getText());
+      // It is not allowed to have function expressions like F(1, 1.0). There should be at least one
+      // non-pure-constant sub-expression, otherwise the timestamp of the row cannot be inferred.
+      if (!hasNonPureConstantSubExpression) {
+        throw new SQLParserException(
+            "Invalid function expression, all the arguments are constant operands: "
+                + functionClause.getText());
+      }
     }
 
     // attributes
@@ -2648,7 +2652,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   private ResultColumn parseResultColumn(IoTDBSqlParser.ResultColumnContext resultColumnContext) {
     Expression expression = parseExpression(resultColumnContext.expression());
-    if (expression.isConstantOperand()) {
+    if (expression.isConstantOperand() && expression.getExpressions().size() != 0) {
       throw new SQLParserException("Constant operand is not allowed: " + expression);
     }
     return new ResultColumn(

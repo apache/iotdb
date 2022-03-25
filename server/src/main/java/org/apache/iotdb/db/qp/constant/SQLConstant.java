@@ -71,6 +71,7 @@ public class SQLConstant {
   public static final String COUNT = "count";
   public static final String AVG = "avg";
   public static final String SUM = "sum";
+  public static final String CURRENT = "current";
 
   public static final String ALL = "all";
 
@@ -86,7 +87,8 @@ public class SQLConstant {
               LAST_VALUE,
               COUNT,
               SUM,
-              AVG));
+              AVG,
+              CURRENT));
 
   public static final int TOK_WHERE = 23;
   public static final int TOK_INSERT = 24;

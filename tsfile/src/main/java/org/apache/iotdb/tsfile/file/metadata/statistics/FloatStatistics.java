@@ -152,6 +152,12 @@ public class FloatStatistics extends Statistics<Float> {
   }
 
   @Override
+  public Float getCurrentValue() {
+    throw new StatisticsClassException(
+        String.format(STATS_UNSUPPORTED_MSG, TSDataType.FLOAT, "current"));
+  }
+
+  @Override
   protected void mergeStatisticsValue(Statistics<Float> stats) {
     FloatStatistics floatStats = (FloatStatistics) stats;
     if (isEmpty) {

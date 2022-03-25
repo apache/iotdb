@@ -35,6 +35,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.text.SimpleDateFormat;
 import java.util.Locale;
 
 import static org.apache.iotdb.db.constant.TestConstant.avg;
@@ -1026,6 +1027,16 @@ public class IoTDBAggregationIT {
       }
     } catch (Exception e) {
       e.printStackTrace();
+    }
+  }
+
+  @Test
+  public void currentValueTest() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+      boolean execute = statement.execute("SELECT current()");
+      Assert.assertEquals(execute, true);
     }
   }
 }

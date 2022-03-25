@@ -113,7 +113,8 @@ public class SelectComponent {
         if (expression instanceof TimeSeriesOperand) {
           pathsCache.add(((TimeSeriesOperand) expression).getPath());
         } else if (expression instanceof FunctionExpression
-            && expression.isPlainAggregationFunctionExpression()) {
+            && expression.isPlainAggregationFunctionExpression()
+            && !"current".equalsIgnoreCase(((FunctionExpression) expression).getFunctionName())) {
           pathsCache.add(
               ((TimeSeriesOperand) ((FunctionExpression) expression).getExpressions().get(0))
                   .getPath());

@@ -57,12 +57,14 @@ import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
+import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -814,6 +816,11 @@ public class AggregationExecutor {
       for (AggregateResult resultData : aggregateResultList) {
         TSDataType dataType = resultData.getResultDataType();
         record.addField(resultData.getResult(), dataType);
+      }
+      if (aggregations.size() != 0 && "current".equalsIgnoreCase(aggregations.get(0))) {
+        SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        record.addField(Binary.valueOf(df.format(System.currentTimeMillis())), TSDataType.TEXT);
+        dataTypes.add(TSDataType.TEXT);
       }
       dataSet = new SingleDataSet(selectedSeries, dataTypes);
     }

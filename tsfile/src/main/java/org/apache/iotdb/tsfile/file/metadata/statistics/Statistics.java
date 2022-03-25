@@ -147,6 +147,8 @@ public abstract class Statistics<T extends Serializable> {
 
   public abstract long getSumLongValue();
 
+  public abstract T getCurrentValue();
+
   /**
    * merge parameter to this statistic
    *

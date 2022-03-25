@@ -137,6 +137,12 @@ public class BooleanStatistics extends Statistics<Boolean> {
   }
 
   @Override
+  public Boolean getCurrentValue() {
+    throw new StatisticsClassException(
+        String.format(STATS_UNSUPPORTED_MSG, TSDataType.BOOLEAN, "current"));
+  }
+
+  @Override
   protected void mergeStatisticsValue(Statistics<Boolean> stats) {
     BooleanStatistics boolStats = (BooleanStatistics) stats;
     if (isEmpty) {
