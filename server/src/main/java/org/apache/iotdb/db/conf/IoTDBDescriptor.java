@@ -715,30 +715,8 @@ public class IoTDBDescriptor {
           Boolean.parseBoolean(
               properties.getProperty(
                   "enable_id_table_log_file", String.valueOf(conf.isEnableIDTableLogFile()))));
-
       // mqtt
-      if (properties.getProperty(IoTDBConstant.MQTT_HOST_NAME) != null) {
-        conf.setMqttHost(properties.getProperty(IoTDBConstant.MQTT_HOST_NAME));
-      }
-      if (properties.getProperty(IoTDBConstant.MQTT_PORT_NAME) != null) {
-        conf.setMqttPort(Integer.parseInt(properties.getProperty(IoTDBConstant.MQTT_PORT_NAME)));
-      }
-      if (properties.getProperty(IoTDBConstant.MQTT_HANDLER_POOL_SIZE_NAME) != null) {
-        conf.setMqttHandlerPoolSize(
-            Integer.parseInt(properties.getProperty(IoTDBConstant.MQTT_HANDLER_POOL_SIZE_NAME)));
-      }
-      if (properties.getProperty(IoTDBConstant.MQTT_PAYLOAD_FORMATTER_NAME) != null) {
-        conf.setMqttPayloadFormatter(
-            properties.getProperty(IoTDBConstant.MQTT_PAYLOAD_FORMATTER_NAME));
-      }
-      if (properties.getProperty(IoTDBConstant.ENABLE_MQTT) != null) {
-        conf.setEnableMQTTService(
-            Boolean.parseBoolean(properties.getProperty(IoTDBConstant.ENABLE_MQTT)));
-      }
-      if (properties.getProperty(IoTDBConstant.MQTT_MAX_MESSAGE_SIZE) != null) {
-        conf.setMqttMaxMessageSize(
-            Integer.parseInt(properties.getProperty(IoTDBConstant.MQTT_MAX_MESSAGE_SIZE)));
-      }
+      loadMqttProps(properties);
 
       conf.setAuthorizerProvider(
           properties.getProperty("authorizer_provider_class", conf.getAuthorizerProvider()));
@@ -1096,6 +1074,39 @@ public class IoTDBDescriptor {
                     "max_degree_of_index_node",
                     Integer.toString(
                         TSFileDescriptor.getInstance().getConfig().getMaxDegreeOfIndexNode()))));
+  }
+
+  // Mqtt related
+  private void loadMqttProps(Properties properties) {
+    conf.setMqttDir(properties.getProperty("mqtt_root_dir", conf.getMqttDir()));
+
+    if (properties.getProperty(IoTDBConstant.MQTT_HOST_NAME) != null) {
+      conf.setMqttHost(properties.getProperty(IoTDBConstant.MQTT_HOST_NAME));
+    }
+
+    if (properties.getProperty(IoTDBConstant.MQTT_PORT_NAME) != null) {
+      conf.setMqttPort(Integer.parseInt(properties.getProperty(IoTDBConstant.MQTT_PORT_NAME)));
+    }
+
+    if (properties.getProperty(IoTDBConstant.MQTT_HANDLER_POOL_SIZE_NAME) != null) {
+      conf.setMqttHandlerPoolSize(
+          Integer.parseInt(properties.getProperty(IoTDBConstant.MQTT_HANDLER_POOL_SIZE_NAME)));
+    }
+
+    if (properties.getProperty(IoTDBConstant.MQTT_PAYLOAD_FORMATTER_NAME) != null) {
+      conf.setMqttPayloadFormatter(
+          properties.getProperty(IoTDBConstant.MQTT_PAYLOAD_FORMATTER_NAME));
+    }
+
+    if (properties.getProperty(IoTDBConstant.ENABLE_MQTT) != null) {
+      conf.setEnableMQTTService(
+          Boolean.parseBoolean(properties.getProperty(IoTDBConstant.ENABLE_MQTT)));
+    }
+
+    if (properties.getProperty(IoTDBConstant.MQTT_MAX_MESSAGE_SIZE) != null) {
+      conf.setMqttMaxMessageSize(
+          Integer.parseInt(properties.getProperty(IoTDBConstant.MQTT_MAX_MESSAGE_SIZE)));
+    }
   }
 
   // timed flush memtable, timed close tsfile
