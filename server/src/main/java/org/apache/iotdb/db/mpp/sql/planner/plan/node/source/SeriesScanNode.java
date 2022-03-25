@@ -28,6 +28,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import com.google.common.collect.ImmutableList;
 
+import java.nio.ByteBuffer;
 import java.util.List;
 
 /**
@@ -116,6 +117,9 @@ public class SeriesScanNode extends SourceNode {
   }
 
   @Override
+  public void addChildren(PlanNode child) {}
+
+  @Override
   public PlanNode clone() {
     return new SeriesScanNode(getId(), getSeriesPath(), this.dataRegionReplicaSet);
   }
@@ -134,6 +138,13 @@ public class SeriesScanNode extends SourceNode {
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
     return visitor.visitSeriesScan(this, context);
   }
+
+  public static SeriesScanNode deserialize(ByteBuffer byteBuffer) {
+    return null;
+  }
+
+  @Override
+  public void serialize(ByteBuffer byteBuffer) {}
 
   public PartialPath getSeriesPath() {
     return seriesPath;

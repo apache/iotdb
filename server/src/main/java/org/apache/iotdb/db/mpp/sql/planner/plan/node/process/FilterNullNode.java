@@ -25,6 +25,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 
 import com.google.common.collect.ImmutableList;
 
+import java.nio.ByteBuffer;
 import java.util.List;
 
 /** WithoutNode is used to discard specific rows from upstream node. */
@@ -54,6 +55,9 @@ public class FilterNullNode extends ProcessNode {
   }
 
   @Override
+  public void addChildren(PlanNode child) {}
+
+  @Override
   public PlanNode clone() {
     return null;
   }
@@ -72,6 +76,13 @@ public class FilterNullNode extends ProcessNode {
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
     return visitor.visitFilterNull(this, context);
   }
+
+  public static FilterNullNode deserialize(ByteBuffer byteBuffer) {
+    return null;
+  }
+
+  @Override
+  public void serialize(ByteBuffer byteBuffer) {}
 
   public void setFilterNullColumnNames(List<String> filterNullColumnNames) {
     this.filterNullColumnNames = filterNullColumnNames;

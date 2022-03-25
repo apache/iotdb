@@ -79,20 +79,20 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
   public Map<Integer, DataNodeMessage> getDataNodesMessage(int dataNodeID) throws TException {
     QueryDataNodeInfoPlan plan = new QueryDataNodeInfoPlan(dataNodeID);
     ConsensusReadResponse resp = configManager.read(plan);
-    DataNodesInfoDataSet dataSet = (DataNodesInfoDataSet) resp.getDataset();
 
-    Map<Integer, DataNodeMessage> result = null;
-    if (dataSet != null) {
-      result = new HashMap<>();
-      for (DataNodeInfo info : dataSet.getInfoMap().values()) {
+    if (resp.getDataset() == null) {
+      return null;
+    } else {
+      Map<Integer, DataNodeMessage> result = new HashMap<>();
+      for (DataNodeInfo info : ((DataNodesInfoDataSet) resp.getDataset()).getInfoList()) {
         result.put(
             info.getDataNodeID(),
             new DataNodeMessage(
                 info.getDataNodeID(),
                 new EndPoint(info.getEndPoint().getIp(), info.getEndPoint().getPort())));
       }
+      return result;
     }
-    return result;
   }
 
   @Override
@@ -111,6 +111,7 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
   @Override
   public Map<String, StorageGroupMessage> getStorageGroupsMessage() throws TException {
     ConsensusReadResponse resp = configManager.read(new QueryStorageGroupSchemaPlan());
+
     if (resp.getDataset() == null) {
       return null;
     } else {
