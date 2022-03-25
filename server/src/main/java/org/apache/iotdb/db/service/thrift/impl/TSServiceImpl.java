@@ -37,7 +37,7 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.TemplateQueryType;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.Coordinator;
-import org.apache.iotdb.db.mpp.execution.ExecutionResult;
+import org.apache.iotdb.db.mpp.execution.ExecutionStatus;
 import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
@@ -1633,7 +1633,7 @@ public class TSServiceImpl implements TSIService.Iface {
 
       // Step 2: call the coordinator
       long queryId = SESSION_MANAGER.requestQueryId(false);
-      ExecutionResult result =
+      ExecutionStatus result =
           coordinator.execute(
               statement,
               new QueryId(String.valueOf(queryId)),

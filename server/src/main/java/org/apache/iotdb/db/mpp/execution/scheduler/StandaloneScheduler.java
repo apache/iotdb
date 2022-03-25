@@ -49,7 +49,7 @@ public class StandaloneScheduler implements IScheduler {
   }
 
   @Override
-  public void failFragmentInstance(FragmentInstanceId instanceId, Throwable failureCause) {}
+  public void abortFragmentInstance(FragmentInstanceId instanceId, Throwable failureCause) {}
 
   @Override
   public void cancelFragment(PlanFragmentId planFragmentId) {}

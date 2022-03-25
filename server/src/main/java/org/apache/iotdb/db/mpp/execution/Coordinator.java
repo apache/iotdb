@@ -33,21 +33,19 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class Coordinator {
 
+  private static final Coordinator INSTANCE = new Coordinator();
+
   private ConcurrentHashMap<QueryId, QueryExecution> queryExecutionMap;
 
-  public static Coordinator getInstance() {
-    return new Coordinator();
+  private Coordinator() {
+    this.queryExecutionMap = new ConcurrentHashMap<>();
   }
 
   private QueryExecution createQueryExecution(Statement statement, MPPQueryContext queryContext) {
     return new QueryExecution(statement, queryContext);
   }
 
-  private QueryExecution getQueryExecutionById() {
-    return null;
-  }
-
-  public ExecutionResult execute(
+  public ExecutionStatus execute(
       Statement statement, QueryId queryId, QueryType queryType, SessionInfo session, String sql) {
 
     QueryExecution execution =
@@ -56,7 +54,11 @@ public class Coordinator {
 
     execution.start();
 
-    return execution.getResult();
+    return execution.getStatus();
+  }
+
+  public static Coordinator getInstance() {
+    return INSTANCE;
   }
 
   //    private TQueryResponse executeQuery(TQueryRequest request) {

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.execution;
 
+import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.execution.scheduler.ClusterScheduler;
 import org.apache.iotdb.db.mpp.execution.scheduler.IScheduler;
@@ -28,10 +29,12 @@ import org.apache.iotdb.db.mpp.sql.planner.DistributionPlanner;
 import org.apache.iotdb.db.mpp.sql.planner.LogicalPlanner;
 import org.apache.iotdb.db.mpp.sql.planner.plan.*;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 
 import static org.apache.iotdb.rpc.RpcUtils.getStatus;
 
@@ -51,11 +54,15 @@ public class QueryExecution {
   private final Analysis analysis;
   private LogicalQueryPlan logicalPlan;
   private DistributedQueryPlan distributedPlan;
-  private List<FragmentInstance> fragmentInstances;
 
   public QueryExecution(Statement statement, MPPQueryContext context) {
     this.context = context;
     this.analysis = analyze(statement, context);
+    this.stateMachine = new QueryStateMachine(context.getQueryId());
+    // TODO: (xingtanzjr) initialize the query scheduler according to configuration
+    this.scheduler = new ClusterScheduler(stateMachine, distributedPlan.getInstances());
+
+    // TODO: register callbacks in QueryStateMachine when the QueryExecution is aborted/finished
   }
 
   public void start() {
@@ -71,7 +78,7 @@ public class QueryExecution {
   }
 
   private void schedule() {
-    this.scheduler = new ClusterScheduler(this.stateMachine, this.fragmentInstances);
+    this.scheduler = new ClusterScheduler(this.stateMachine, this.distributedPlan.getInstances());
     this.scheduler.start();
   }
 
@@ -90,7 +97,8 @@ public class QueryExecution {
   /**
    * This method will be called by the request thread from client connection. This method will block
    * until one of these conditions occurs: 1. There is a batch of result 2. There is no more result
-   * 3. The query has been cancelled 4. The query is timeout This method will fetch the result from
+   * 3. The query has been cancelled 4. The query is timeout This method wil
+   * l fetch the result from
    * DataStreamManager use the virtual ResultOperator's ID (This part will be designed and
    * implemented with DataStreamManager)
    */
@@ -98,8 +106,23 @@ public class QueryExecution {
     return null;
   }
 
-  public ExecutionResult getResult() {
-
-    return new ExecutionResult(context.getQueryId(), getStatus(TSStatusCode.SUCCESS_STATUS));
+  /**
+   * This method is a synchronized method.
+   * For READ, it will block until all the FragmentInstances have been submitted.
+   * For WRITE, it will block until all the FragmentInstances have finished.
+   * @return ExecutionStatus. Contains the QueryId and the TSStatus.
+   */
+  public ExecutionStatus getStatus() {
+    // Although we monitor the state to transition to FINISHED, the future will return if any Terminated state is triggered
+    ListenableFuture<QueryState> future =  stateMachine.getStateChange(QueryState.FINISHED);
+    try {
+      QueryState state = future.get();
+      // TODO: (xingtanzjr) use more TSStatusCode if the QueryState isn't FINISHED
+      TSStatusCode statusCode = state == QueryState.FINISHED ? TSStatusCode.SUCCESS_STATUS : TSStatusCode.QUERY_PROCESS_ERROR;
+      return new ExecutionStatus(context.getQueryId(), RpcUtils.getStatus(statusCode));
+    } catch (InterruptedException | ExecutionException e) {
+      // TODO: (xingtanzjr) use more accurate error handling
+      return new ExecutionStatus(context.getQueryId(), RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR));
+    }
   }
 }

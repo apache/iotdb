@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,17 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.execution;
 
-import org.apache.iotdb.db.mpp.common.QueryId;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
+package org.apache.iotdb.db.mpp.execution.scheduler;
 
-public class ExecutionResult {
-  public QueryId queryId;
-  public TSStatus status;
+public class FragInstanceDispatchResult {
+    private boolean successful;
 
-  public ExecutionResult(QueryId queryId, TSStatus status) {
-    this.queryId = queryId;
-    this.status = status;
-  }
+    public FragInstanceDispatchResult(boolean successful) {
+        this.successful = successful;
+    }
+
+    public boolean isSuccessful() {
+        return successful;
+    }
 }
