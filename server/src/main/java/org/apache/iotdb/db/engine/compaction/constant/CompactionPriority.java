@@ -17,28 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.service.metrics;
+package org.apache.iotdb.db.engine.compaction.constant;
 
-public enum Metric {
-  ENTRY,
-  COST_TASK,
-  QUEUE,
-  FILE_SIZE,
-  FILE_COUNT,
-  MEM,
-  CACHE_HIT,
-  ERROR_LOG,
-  QUANTITY,
-  DATA_WRITTEN,
-  DATA_READ,
-  COMPACTION_TASK_COUNT,
-  CLUSTER_NODE_STATUS,
-  CLUSTER_NODE_LEADER_COUNT,
-  CLUSTER_ELECT,
-  CLUSTER_UNCOMMITTED_LOG;
-
-  @Override
-  public String toString() {
-    return super.toString().toLowerCase();
-  }
+public enum CompactionPriority {
+  INNER_CROSS,
+  CROSS_INNER,
+  BALANCE
 }
