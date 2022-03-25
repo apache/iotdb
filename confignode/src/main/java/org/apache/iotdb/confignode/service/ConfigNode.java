@@ -31,6 +31,8 @@ import org.apache.iotdb.confignode.service.thrift.server.ConfigNodeRPCServerProc
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+
 public class ConfigNode implements ConfigNodeMBean {
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNode.class);
 
@@ -50,7 +52,7 @@ public class ConfigNode implements ConfigNodeMBean {
   }
 
   /** Register services */
-  private void setUp() throws StartupException {
+  private void setUp() throws StartupException, IOException {
     LOGGER.info("Setting up {}...", ConfigNodeConstant.GLOBAL_NAME);
     registerManager.register(JMXService.getInstance());
     JMXService.registerMBean(getInstance(), mbeanName);
@@ -74,7 +76,7 @@ public class ConfigNode implements ConfigNodeMBean {
 
     try {
       setUp();
-    } catch (StartupException e) {
+    } catch (StartupException | IOException e) {
       LOGGER.error("Meet error while starting up.", e);
       deactivate();
       return;

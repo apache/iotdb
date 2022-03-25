@@ -48,6 +48,7 @@ import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import org.apache.thrift.TException;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -56,7 +57,7 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
 
   private final ConfigManager configManager = new ConfigManager();
 
-  public ConfigNodeRPCServerProcessor() {
+  public ConfigNodeRPCServerProcessor() throws IOException {
     // empty constructor
   }
 
