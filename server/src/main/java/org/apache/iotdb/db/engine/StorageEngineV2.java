@@ -219,25 +219,16 @@ public class StorageEngineV2 implements IService {
   public void recover() {
     setAllSgReady(false);
     recoveryThreadPool =
-        IoTDBThreadPoolFactory.newFixedThreadPool(
-            Runtime.getRuntime().availableProcessors(), "Recovery-Thread-Pool");
+            IoTDBThreadPoolFactory.newFixedThreadPool(
+                    Runtime.getRuntime().availableProcessors(), "Recovery-Thread-Pool");
 
     // recover all logic storage group processors
     List<IStorageGroupMNode> sgNodes = IoTDB.schemaEngine.getAllStorageGroupNodes();
     List<Future<Void>> futures = new LinkedList<>();
     for (IStorageGroupMNode storageGroup : sgNodes) {
-      List<VirtualStorageGroupProcessor> dataRegionList =
-          processorMap.computeIfAbsent(
-              storageGroup.getPartialPath(),
-              id -> {
-                List<VirtualStorageGroupProcessor> dataRegions = new ArrayList<>();
-                isVsgReady = new AtomicBoolean[partitioner.getPartitionCount()];
-                boolean recoverReady = !needRecovering;
-                for (int i = 0; i < partitioner.getPartitionCount(); i++) {
-                  isVsgReady[i] = new AtomicBoolean(recoverReady);
-                }
-                return dataRegions;
-              });
+      StorageGroupManager storageGroupManager =
+              processorMap.computeIfAbsent(
+                      storageGroup.getPartialPath(), id -> new StorageGroupManager(true));
 
       // recover all virtual storage groups in one logic storage group
       storageGroupManager.asyncRecover(storageGroup, recoveryThreadPool, futures);
@@ -245,21 +236,59 @@ public class StorageEngineV2 implements IService {
 
     // operations after all virtual storage groups are recovered
     Thread recoverEndTrigger =
-        new Thread(
-            () -> {
-              for (Future<Void> future : futures) {
-                try {
-                  future.get();
-                } catch (ExecutionException e) {
-                  throw new StorageEngineFailureException("StorageEngine failed to recover.", e);
-                } catch (InterruptedException e) {
-                  Thread.currentThread().interrupt();
-                  throw new StorageEngineFailureException("StorageEngine failed to recover.", e);
-                }
-              }
-              recoveryThreadPool.shutdown();
-              setAllSgReady(true);
-            });
+            new Thread(
+                    () -> {
+                      for (Future<Void> future : futures) {
+                        try {
+                          future.get();
+                        } catch (ExecutionException e) {
+                          throw new StorageEngineFailureException("StorageEngine failed to recover.", e);
+                        } catch (InterruptedException e) {
+                          Thread.currentThread().interrupt();
+                          throw new StorageEngineFailureException("StorageEngine failed to recover.", e);
+                        }
+                      }
+                      recoveryThreadPool.shutdown();
+                      setAllSgReady(true);
+                    });
+    recoverEndTrigger.start();
+  }
+
+  public void recoverV2() {
+    setAllSgReady(false);
+    recoveryThreadPool =
+            IoTDBThreadPoolFactory.newFixedThreadPool(
+                    Runtime.getRuntime().availableProcessors(), "Recovery-Thread-Pool");
+
+    // recover all logic storage group processors
+    List<IStorageGroupMNode> sgNodes = IoTDB.schemaEngine.getAllStorageGroupNodes();
+    List<Future<Void>> futures = new LinkedList<>();
+    for (IStorageGroupMNode storageGroup : sgNodes) {
+      StorageGroupManager storageGroupManager =
+              processorMap.computeIfAbsent(
+                      storageGroup.getPartialPath(), id -> new ArrayList<>());
+
+      // recover all virtual storage groups in one logic storage group
+      storageGroupManager.asyncRecover(storageGroup, recoveryThreadPool, futures);
+    }
+
+    // operations after all virtual storage groups are recovered
+    Thread recoverEndTrigger =
+            new Thread(
+                    () -> {
+                      for (Future<Void> future : futures) {
+                        try {
+                          future.get();
+                        } catch (ExecutionException e) {
+                          throw new StorageEngineFailureException("StorageEngine failed to recover.", e);
+                        } catch (InterruptedException e) {
+                          Thread.currentThread().interrupt();
+                          throw new StorageEngineFailureException("StorageEngine failed to recover.", e);
+                        }
+                      }
+                      recoveryThreadPool.shutdown();
+                      setAllSgReady(true);
+                    });
     recoverEndTrigger.start();
   }
 
@@ -965,28 +994,39 @@ public class StorageEngineV2 implements IService {
   }
 
   public void getResourcesToBeSettled(
-      PartialPath sgPath,
+      PartialPath storageGroupPath,
       List<TsFileResource> seqResourcesToBeSettled,
       List<TsFileResource> unseqResourcesToBeSettled,
       List<String> tsFilePaths)
       throws StorageEngineException {
-    StorageGroupManager vsg = processorMap.get(sgPath);
-    if (vsg == null) {
+    if (processorMap.containsKey(storageGroupPath)) {
+      List<VirtualStorageGroupProcessor> dataRegionList = processorMap.get(storageGroupPath);
+
+      for (VirtualStorageGroupProcessor virtualStorageGroupProcessor : dataRegionList) {
+        if (virtualStorageGroupProcessor != null) {
+          if (!virtualStorageGroupProcessor.getIsSettling().compareAndSet(false, true)) {
+            throw new StorageEngineException(
+                    "Storage Group " + storageGroupPath.getFullPath() + " is already being settled now.");
+          }
+          virtualStorageGroupProcessor.addSettleFilesToList(
+                  seqResourcesToBeSettled, unseqResourcesToBeSettled, tsFilePaths);
+        }
+      }
+    } else {
       throw new StorageEngineException(
-          "The Storage Group " + sgPath.toString() + " is not existed.");
+              "The Storage Group " + storageGroupPath.toString() + " is not existed.");
     }
-    if (!vsg.getIsSettling().compareAndSet(false, true)) {
-      throw new StorageEngineException(
-          "Storage Group " + sgPath.getFullPath() + " is already being settled now.");
-    }
-    vsg.getResourcesToBeSettled(seqResourcesToBeSettled, unseqResourcesToBeSettled, tsFilePaths);
   }
 
-  public void setSettling(PartialPath sgPath, boolean isSettling) {
-    if (processorMap.get(sgPath) == null) {
-      return;
+  public void setSettling(PartialPath storageGroupPath, boolean isSettling) {
+    if (processorMap.containsKey(storageGroupPath)) {
+      List<VirtualStorageGroupProcessor> dataRegionList = processorMap.get(storageGroupPath);
+      for (VirtualStorageGroupProcessor virtualStorageGroupProcessor : dataRegionList) {
+        if (virtualStorageGroupProcessor != null) {
+          virtualStorageGroupProcessor.setSettling(isSettling);
+        }
+      }
     }
-    processorMap.get(sgPath).setSettling(isSettling);
   }
 
   /**
@@ -1052,12 +1092,14 @@ public class StorageEngineV2 implements IService {
   }
 
   public void setTTL(PartialPath storageGroup, long dataTTL) {
-    // storage group has no data
-    if (!processorMap.containsKey(storageGroup)) {
-      return;
+    if (processorMap.containsKey(storageGroup)) {
+      List<VirtualStorageGroupProcessor> dataRegionList = processorMap.get(storageGroup);
+      for (VirtualStorageGroupProcessor virtualStorageGroupProcessor : dataRegionList) {
+        if (virtualStorageGroupProcessor != null) {
+          virtualStorageGroupProcessor.setDataTTL(dataTTL);
+        }
+      }
     }
-
-    processorMap.get(storageGroup).setTTL(dataTTL);
   }
 
   public void deleteStorageGroup(PartialPath storageGroupPath) {

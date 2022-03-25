@@ -117,6 +117,7 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -199,6 +200,8 @@ public class VirtualStorageGroupProcessor {
       new CopyOnReadLinkedList<>();
 
   private AtomicInteger upgradeFileCount = new AtomicInteger();
+
+  private AtomicBoolean isSettling = new AtomicBoolean();
 
   /** virtual storage group id */
   private String virtualStorageGroupId;
@@ -453,6 +456,14 @@ public class VirtualStorageGroupProcessor {
       ret.computeIfAbsent(resource.getTimePartition(), l -> new ArrayList<>()).add(resource);
     }
     return ret;
+  }
+
+  public AtomicBoolean getIsSettling() {
+    return isSettling;
+  }
+
+  public void setSettling(boolean isSettling) {
+    this.isSettling.set(isSettling);
   }
 
   /** this class is used to store recovering context */
