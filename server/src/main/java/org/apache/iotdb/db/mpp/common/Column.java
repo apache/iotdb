@@ -18,6 +18,4 @@
  */
 package org.apache.iotdb.db.mpp.common;
 
-public interface Column {
-
-}
+public interface Column {}

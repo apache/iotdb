@@ -18,5 +18,4 @@
  */
 package org.apache.iotdb.db.mpp.common;
 
-public class TimeColumn implements Column {
-}
+public class TimeColumn implements Column {}

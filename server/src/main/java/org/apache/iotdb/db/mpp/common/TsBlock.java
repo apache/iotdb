@@ -41,15 +41,12 @@ public class TsBlock {
 
   private int count;
 
-  public TsBlock() {
-  }
+  public TsBlock() {}
 
   public TsBlock(int columnCount) {
     timeColumn = new TimeColumn();
     valueColumns = new Column[columnCount];
   }
-
-
 
   public boolean hasNext() {
     return false;
@@ -68,9 +65,7 @@ public class TsBlock {
     return count;
   }
 
-  /**
-   * TODO need to be implemented after the data structure being defined
-   */
+  /** TODO need to be implemented after the data structure being defined */
   public long getEndTime() {
     return -1;
   }
@@ -96,16 +91,12 @@ public class TsBlock {
     return this;
   }
 
-  /**
-   * TODO need to be implemented after the data structure being defined
-   */
+  /** TODO need to be implemented after the data structure being defined */
   public long getTimeByIndex(int index) {
     return -1;
   }
 
-  public void addTime(long time) {
-
-  }
+  public void addTime(long time) {}
 
   public int getValueColumnCount() {
     return valueColumns.length;
@@ -119,7 +110,8 @@ public class TsBlock {
     return valueColumns[columnIndex];
   }
 
-  public int addValues(int columnIndex, TimeColumn timeColumn, Column valueColumn, int rowIndex, long endTime) {
+  public int addValues(
+      int columnIndex, TimeColumn timeColumn, Column valueColumn, int rowIndex, long endTime) {
 
     return rowIndex;
   }

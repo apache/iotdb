@@ -22,10 +22,10 @@ import org.apache.iotdb.db.mpp.common.TimeColumn;
 import org.apache.iotdb.db.mpp.common.TsBlock;
 import org.apache.iotdb.db.mpp.operator.Operator;
 import org.apache.iotdb.db.mpp.operator.OperatorContext;
-
-import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 import org.apache.iotdb.db.utils.datastructure.TimeSelector;
+
+import com.google.common.util.concurrent.ListenableFuture;
 
 import java.util.List;
 
@@ -47,8 +47,11 @@ public class TimeJoinOperator implements ProcessOperator {
 
   private final int columnCount;
 
-
-  public TimeJoinOperator(OperatorContext operatorContext, List<Operator> children, OrderBy mergeOrder, int columnCount) {
+  public TimeJoinOperator(
+      OperatorContext operatorContext,
+      List<Operator> children,
+      OrderBy mergeOrder,
+      int columnCount) {
     this.operatorContext = operatorContext;
     this.children = children;
     this.inputCount = children.size();
@@ -79,7 +82,8 @@ public class TimeJoinOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() {
-    // end time for returned TsBlock this time, it's the min end time among all the children TsBlocks
+    // end time for returned TsBlock this time, it's the min end time among all the children
+    // TsBlocks
     long currentEndTime = 0;
     boolean init = false;
     for (int i = 0; i < inputCount; i++) {
@@ -95,7 +99,10 @@ public class TimeJoinOperator implements ProcessOperator {
       }
       // update the currentEndTime if the TsBlock is not empty
       if (!empty(i)) {
-        currentEndTime = init ? Math.min(currentEndTime, inputTsBlocks[i].getEndTime()) : inputTsBlocks[i].getEndTime();
+        currentEndTime =
+            init
+                ? Math.min(currentEndTime, inputTsBlocks[i].getEndTime())
+                : inputTsBlocks[i].getEndTime();
         init = true;
       }
     }
@@ -116,7 +123,8 @@ public class TimeJoinOperator implements ProcessOperator {
       int valueColumnCount = block.getValueColumnCount();
       int startIndex = inputIndex[i];
       for (int j = 0; j < valueColumnCount; j++) {
-        inputIndex[i] = res.addValues(column++, timeColumn, block.getColumn(j), startIndex, currentEndTime);
+        inputIndex[i] =
+            res.addValues(column++, timeColumn, block.getColumn(j), startIndex, currentEndTime);
       }
     }
     return res;
@@ -146,6 +154,7 @@ public class TimeJoinOperator implements ProcessOperator {
   }
 
   private boolean empty(int columnIndex) {
-    return inputTsBlocks[columnIndex] == null || inputTsBlocks[columnIndex].getCount() == inputIndex[columnIndex];
+    return inputTsBlocks[columnIndex] == null
+        || inputTsBlocks[columnIndex].getCount() == inputIndex[columnIndex];
   }
 }
