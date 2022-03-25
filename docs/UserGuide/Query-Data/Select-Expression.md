@@ -27,18 +27,21 @@ A selection expression (`selectExpr`) is a component of a SELECT clause, each `s
 
 ```sql
 selectClause
-    : SELECT resultColumn (',' resultColumn)*
-    ;
+: SELECT resultColumn (',' resultColumn)*
+;
 
 resultColumn
-    : selectExpr (AS alias)?
+: selectExpr (AS alias)?
     ;
 
 selectExpr
-    : '(' selectExpr ')'
+: '(' selectExpr ')'
     | '-' selectExpr
+    | '!' selectExpr
     | selectExpr ('*' | '/' | '%') selectExpr
     | selectExpr ('+' | '-') selectExpr
+    | selectExpr ('>' | '>=' | '<' | '<=' | '==' | '!=') selectExpr
+    | selectExpr (AND | OR) selectExpr
     | functionName '(' selectExpr (',' selectExpr)* functionAttribute* ')'
     | timeSeriesSuffixPath
     | number
@@ -60,6 +63,7 @@ From this syntax definition, `selectExpr` can contain:
 
 ## Arithmetic Query
 
+
 > Please note that Aligned Timeseries has not been supported in Arithmetic Query yet. An error message is expected if you use Arithmetic Query with Aligned Timeseries selected.
 
 ### Operators
@@ -76,7 +80,9 @@ Output data type: consistent with the input data type
 
 Supported operators: `+`, `-`, `*`, `/`, `%`
 
-Supported input data types: `INT32`, `INT64`, `FLOAT` and `DOUBLE`
+Supported input data types: `INT32`, `INT64`, `FLOAT`, `DOUBLE` and `BOOLEAN`
+
+For `BOOLEAN` type, `true` will be transformed to 1.0, `false` will be transformed to 0.0
 
 Output data type: `DOUBLE`
 
@@ -102,6 +108,60 @@ Result:
 +-----------------------------+-------------+--------------+-------------+-------------+-----------------------------+-----------------------------+-----------------------------+-----------------------------+-----------------------------+
 Total line number = 5
 It costs 0.014s
+```
+
+## Compare Expression
+#### Unary Logical Operators
+Supported operator `!`
+
+Supported input data types: `INT32`, `INT64`, `FLOAT`, `DOUBLE` and `BOOLEAN`
+
+Output data type: `BOOLEAN`
+
+For `BOOLEAN` type, return `para`==`false`，For other types, if the value is zero, return `true`, else return `false`.
+
+Hint: the priority of `!` is the same as `-`. Remember to use brackets to modify priority.
+
+#### Binary Compare Operators
+
+Supported operators `>`, `>=`, `<`, `<=`, `==`, `!=`
+
+Supported input data types: `INT32`, `INT64`, `FLOAT`, `DOUBLE` and `BOOLEAN`
+
+It will transform al type to `DOUBLE`then do computation. `true` is regard as 1.0, `false` is regard as 0.0.
+
+Output data type: `BOOLEAN`
+
+#### Binary Logical Operators
+
+Supported operators AND:`and`,`&`, `&&`; OR:`or`,`|`,`||`
+
+Supported input data types: `INT32`, `INT64`, `FLOAT`, `DOUBLE` and `BOOLEAN`
+
+Non-zero values are regarded as `true`, 0 is regarded a s `false`. Then do logic computation.
+
+Output data type: `BOOLEAN`
+
+Note: Only when the left operand and the right operand under a certain timestamp are not  `null`, the binary arithmetic operation will have an output value.
+
+### Example
+```sql
+select a, b, a > 10, a <= b, !(a <= b), a > 10 && a > b from root.test;
+```
+
+Output:
+```
+IoTDB> select a, b, a > 10, a <= b, !(a <= b), a > 10 && a > b from root.test;
++-----------------------------+-----------+-----------+----------------+--------------------------+---------------------------+------------------------------------------------+
+|                         Time|root.test.a|root.test.b|root.test.a > 10|root.test.a <= root.test.b|!root.test.a <= root.test.b|(root.test.a > 10) & (root.test.a > root.test.b)|
++-----------------------------+-----------+-----------+----------------+--------------------------+---------------------------+------------------------------------------------+
+|1970-01-01T08:00:00.001+08:00|         23|       10.0|            true|                     false|                       true|                                            true|
+|1970-01-01T08:00:00.002+08:00|         33|       21.0|            true|                     false|                       true|                                            true|
+|1970-01-01T08:00:00.004+08:00|         13|       15.0|            true|                      true|                      false|                                           false|
+|1970-01-01T08:00:00.005+08:00|         26|        0.0|            true|                     false|                       true|                                            true|
+|1970-01-01T08:00:00.008+08:00|          1|       22.0|           false|                      true|                      false|                                           false|
+|1970-01-01T08:00:00.010+08:00|         23|       12.0|            true|                     false|                       true|                                            true|
++-----------------------------+-----------+-----------+----------------+--------------------------+---------------------------+------------------------------------------------+
 ```
 
 ## Time Series Generating Functions

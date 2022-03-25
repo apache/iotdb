@@ -22,15 +22,15 @@ package org.apache.iotdb.db.query.udf.core.transformer;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public abstract class ArithmeticBinaryTransformer extends BinaryTransformer {
+public abstract class CompareBinaryTransformer extends BinaryTransformer {
 
-  protected ArithmeticBinaryTransformer(
+  protected CompareBinaryTransformer(
       LayerPointReader leftPointReader, LayerPointReader rightPointReader) {
     super(leftPointReader, rightPointReader);
   }
 
   @Override
   public TSDataType getDataType() {
-    return TSDataType.DOUBLE;
+    return TSDataType.BOOLEAN;
   }
 }

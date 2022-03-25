@@ -37,8 +37,11 @@ resultColumn
 selectExpr
     : '(' selectExpr ')'
     | '-' selectExpr
+    | '!' selectExpr
     | selectExpr ('*' | '/' | '%') selectExpr
     | selectExpr ('+' | '-') selectExpr
+    | selectExpr ('>' | '>=' | '<' | '<=' | '==' | '!=') selectExpr
+    | selectExpr (AND | OR) selectExpr
     | functionName '(' selectExpr (',' selectExpr)* functionAttribute* ')'
     | timeSeriesSuffixPath
     | number
@@ -54,6 +57,7 @@ selectExpr
   - 用户自定义函数，详见 [UDF](../Process-Data/UDF-User-Defined-Function.md) 。
 - 表达式
   - 算数运算表达式
+  - 逻辑运算表达式
   - 时间序列查询嵌套表达式
   - 聚合查询嵌套表达式
 - 数字常量（仅用于表达式）
@@ -68,7 +72,7 @@ selectExpr
 
 支持的运算符：`+`, `-`
 
-输入数据类型要求：`INT32`, `INT64`, `FLOAT`和 `DOUBLE`
+输入数据类型要求：`INT32`, `INT64`, `FLOAT`, `DOUBLE`
 
 输出数据类型：与输入数据类型一致
 
@@ -76,7 +80,9 @@ selectExpr
 
 支持的运算符：`+`, `-`, `*`, `/`,  `%`
 
-输入数据类型要求：`INT32`, `INT64`, `FLOAT`和 `DOUBLE`
+输入数据类型要求：`INT32`, `INT64`, `FLOAT`, `DOUBLE` 和 `BOOLEAN`
+
+对于`BOOLEAN`类型数据，`true`将被视为1， `false`将被视为0
 
 输出数据类型：`DOUBLE`
 
@@ -106,6 +112,59 @@ Total line number = 5
 It costs 0.014s
 ```
 
+## 逻辑运算查询
+#### 一元逻辑运算符
+支持运算符 `!`
+
+输入数据类型： `INT32`, `INT64`, `FLOAT`, `DOUBLE` 和 `BOOLEAN`
+
+输出数据类型：`BOOLEAN`
+
+对`BOOLEAN`类型参数会返回取反，对其他类型变量，在变量为0时返回`true`，不为零返回`false`
+
+注意：`!`的优先级很高，记得使用括号调整优先级
+
+#### 二元比较运算符
+
+支持运算符 `>`, `>=`, `<`, `<=`, `==`, `!=`
+
+输入数据类型： `INT32`, `INT64`, `FLOAT`, `DOUBLE` 和 `BOOLEAN`
+
+会将所有数据转换为`DOUBLE`类型后进行比较。对于`BOOLEAN`类型变量，`true`视为1.0，`false`视为0.0
+
+返回类型：`BOOLEAN`
+
+#### 二元逻辑运算符
+
+支持运算符 AND:`and`,`&`, `&&`; OR:`or`,`|`,`||`
+
+输入数据类型： `INT32`, `INT64`, `FLOAT`, `DOUBLE` 和 `BOOLEAN`
+
+非0数视为`true`,0视为`false`进行与或运算
+
+返回类型 `BOOLEAN`
+
+注意：当某个时间戳下左操作数和右操作数都不为空（null）时，二元逻辑操作才会有输出结果
+
+### 使用示例
+例如：
+```sql
+select a, b, a > 10, a <= b, !(a <= b), a > 10 && a > b from root.test;
+```
+输出:
+```
+IoTDB> select a, b, a > 10, a <= b, !(a <= b), a > 10 && a > b from root.test;
++-----------------------------+-----------+-----------+----------------+--------------------------+---------------------------+------------------------------------------------+
+|                         Time|root.test.a|root.test.b|root.test.a > 10|root.test.a <= root.test.b|!root.test.a <= root.test.b|(root.test.a > 10) & (root.test.a > root.test.b)|
++-----------------------------+-----------+-----------+----------------+--------------------------+---------------------------+------------------------------------------------+
+|1970-01-01T08:00:00.001+08:00|         23|       10.0|            true|                     false|                       true|                                            true|
+|1970-01-01T08:00:00.002+08:00|         33|       21.0|            true|                     false|                       true|                                            true|
+|1970-01-01T08:00:00.004+08:00|         13|       15.0|            true|                      true|                      false|                                           false|
+|1970-01-01T08:00:00.005+08:00|         26|        0.0|            true|                     false|                       true|                                            true|
+|1970-01-01T08:00:00.008+08:00|          1|       22.0|           false|                      true|                      false|                                           false|
+|1970-01-01T08:00:00.010+08:00|         23|       12.0|            true|                     false|                       true|                                            true|
++-----------------------------+-----------+-----------+----------------+--------------------------+---------------------------+------------------------------------------------+
+```
 ## 内置时间序列生成函数
 
 时间序列生成函数可接受若干原始时间序列作为输入，产生一列时间序列输出。与聚合函数不同的是，时间序列生成函数的结果集带有时间戳列。
