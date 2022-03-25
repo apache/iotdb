@@ -22,8 +22,8 @@ import org.apache.iotdb.commons.exception.ShutdownException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
-import org.apache.iotdb.commons.service.StartupChecks;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.service.thrift.server.ConfigNodeRPCServer;
 import org.apache.iotdb.confignode.service.thrift.server.ConfigNodeRPCServerProcessor;
@@ -41,8 +41,15 @@ public class ConfigNode implements ConfigNodeMBean {
           "%s:%s=%s",
           ConfigNodeConstant.CONFIGNODE_PACKAGE, ConfigNodeConstant.JMX_TYPE, "ConfigNode");
 
-  private static final RegisterManager registerManager = new RegisterManager();
+  private final RegisterManager registerManager = new RegisterManager();
 
+  /** TestOnly constructor, only used in ConfigNodeEnvironmentUtils */
+  @TestOnly
+  public ConfigNode(ConfigNodeConf conf) {
+
+  }
+
+  /** Singleton constructor, used in common environment */
   private ConfigNode() {
     // empty constructor
   }
@@ -57,23 +64,12 @@ public class ConfigNode implements ConfigNodeMBean {
     registerManager.register(JMXService.getInstance());
     JMXService.registerMBean(getInstance(), mbeanName);
 
-    ConfigNodeRPCServerProcessor configNodeRPCServerProcessor = new ConfigNodeRPCServerProcessor();
-    ConfigNodeRPCServer.getInstance().initSyncedServiceImpl(configNodeRPCServerProcessor);
+    ConfigNodeRPCServer.getInstance().initSyncedServiceImpl(ConfigNodeRPCServerProcessor.getInstance());
     registerManager.register(ConfigNodeRPCServer.getInstance());
     LOGGER.info("Init rpc server success");
   }
 
   public void active() {
-    StartupChecks checks = new StartupChecks().withDefaultTest();
-    try {
-      // Startup environment check
-      checks.verify();
-    } catch (StartupException e) {
-      LOGGER.error(
-          "{}: failed to start because some checks failed. ", ConfigNodeConstant.GLOBAL_NAME, e);
-      return;
-    }
-
     try {
       setUp();
     } catch (StartupException | IOException e) {

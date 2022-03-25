@@ -51,7 +51,7 @@ import java.util.List;
 public class ConfigManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigManager.class);
-  private static final ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();
+  private final ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();
 
   private IConsensus consensusImpl;
   private ConsensusGroupId consensusGroupId;

@@ -24,17 +24,28 @@ import org.apache.iotdb.commons.exception.runtime.RPCServiceException;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.service.ThriftService;
 import org.apache.iotdb.commons.service.ThriftServiceThread;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
 
 /** ConfigNodeRPCServer exposes the interface that interacts with the DataNode */
 public class ConfigNodeRPCServer extends ThriftService implements ConfigNodeRPCServerMBean {
-  private final ConfigNodeConf config = ConfigNodeDescriptor.getInstance().getConf();
+
+  private final ConfigNodeConf conf;
 
   private ConfigNodeRPCServerProcessor configNodeRPCServerProcessor;
 
-  private ConfigNodeRPCServer() {}
+  /** TestOnly constructor, only used in ConfigNodeEnvironmentUtils */
+  @TestOnly
+  public ConfigNodeRPCServer(ConfigNodeConf conf) {
+    this.conf = conf;
+  }
+
+  /** Singleton constructor, used in common environment */
+  private ConfigNodeRPCServer() {
+    this.conf = ConfigNodeDescriptor.getInstance().getConf();
+  }
 
   @Override
   public ThriftService getImplementation() {
@@ -72,10 +83,10 @@ public class ConfigNodeRPCServer extends ThriftService implements ConfigNodeRPCS
               ThreadName.CONFIG_NODE_RPC_CLIENT.getName(),
               getBindIP(),
               getBindPort(),
-              config.getRpcMaxConcurrentClientNum(),
-              config.getThriftServerAwaitTimeForStopService(),
+              conf.getRpcMaxConcurrentClientNum(),
+              conf.getThriftServerAwaitTimeForStopService(),
               new ConfigNodeRPCServiceHandler(configNodeRPCServerProcessor),
-              config.isRpcThriftCompressionEnabled());
+              conf.isRpcThriftCompressionEnabled());
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
     }
@@ -84,12 +95,12 @@ public class ConfigNodeRPCServer extends ThriftService implements ConfigNodeRPCS
 
   @Override
   public String getBindIP() {
-    return config.getRpcAddress();
+    return conf.getRpcAddress();
   }
 
   @Override
   public int getBindPort() {
-    return config.getRpcPort();
+    return conf.getRpcPort();
   }
 
   public static ConfigNodeRPCServer getInstance() {
@@ -100,6 +111,8 @@ public class ConfigNodeRPCServer extends ThriftService implements ConfigNodeRPCS
 
     private static final ConfigNodeRPCServer INSTANCE = new ConfigNodeRPCServer();
 
-    private ConfigNodeRPCServerHolder() {}
+    private ConfigNodeRPCServerHolder() {
+      // empty constructor
+    }
   }
 }
