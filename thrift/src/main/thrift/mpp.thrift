@@ -20,14 +20,14 @@
 namespace java org.apache.iotdb.mpp.rpc.thrift
 
 
-struct FragmentInstanceId {
+struct TFragmentInstanceId {
   1: required string queryId
   2: required string fragmentId
   3: required string instanceId
 }
 
 struct GetDataBlockReqest {
-  1: required FragmentInstanceId fragnemtInstanceId
+  1: required TFragmentInstanceId fragnemtInstanceId
   2: required i64 blockId
 }
 
@@ -36,13 +36,13 @@ struct GetDataBlockResponse {
 }
 
 struct NewDataBlockEvent {
-  1: required FragmentInstanceId fragmentInstanceId
+  1: required TFragmentInstanceId fragmentInstanceId
   2: required string operatorId
   3: required i64 blockId
 }
 
 struct EndOfDataBlockEvent {
-  1: required FragmentInstanceId fragmentInstanceId
+  1: required TFragmentInstanceId fragmentInstanceId
   2: required string operatorId
 }
 
@@ -60,7 +60,7 @@ struct TSendFragmentInstanceResp {
 }
 
 struct TFetchFragmentInstanceStateReq {
-  1: required FragmentInstanceId fragmentInstanceId
+  1: required TFragmentInstanceId fragmentInstanceId
 }
 
 // TODO: need to supply more fields according to implementation
@@ -77,12 +77,21 @@ struct TCancelPlanFragmentReq {
 }
 
 struct TCancelFragmentInstanceReq {
-  1: required FragmentInstanceId fragmentInstanceId
+  1: required TFragmentInstanceId fragmentInstanceId
 }
 
 struct TCancelResp {
   1: required bool cancelled
   2: optional string messsga
+}
+
+struct ShcameFetchReqest {
+  1: required binary serializedPathPatternTree
+  2: required bool isPrefixMatchPath
+}
+
+struct ShcameFetchResponse {
+  1: required binary serializedSchameTree
 }
 
 service InternalService {
@@ -95,6 +104,8 @@ service InternalService {
     TCancelResp cancelPlanFragment(TCancelPlanFragmentReq req);
 
     TCancelResp cancelFragmentInstance(TCancelFragmentInstanceReq req);
+
+    ShcameFetchResponse fetchSchema(ShcameFetchReqest req)
 }
 
 service DataBlockService {

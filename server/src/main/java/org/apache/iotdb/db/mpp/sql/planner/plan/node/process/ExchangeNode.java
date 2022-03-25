@@ -27,6 +27,7 @@ import org.apache.iotdb.service.rpc.thrift.EndPoint;
 
 import com.google.common.collect.ImmutableList;
 
+import java.nio.ByteBuffer;
 import java.util.List;
 
 public class ExchangeNode extends PlanNode {
@@ -51,6 +52,9 @@ public class ExchangeNode extends PlanNode {
     }
     return ImmutableList.of(child);
   }
+
+  @Override
+  public void addChildren(PlanNode child) {}
 
   @Override
   public PlanNode clone() {
@@ -80,6 +84,13 @@ public class ExchangeNode extends PlanNode {
   public List<String> getOutputColumnNames() {
     return null;
   }
+
+  public static ExchangeNode deserialize(ByteBuffer byteBuffer) {
+    return null;
+  }
+
+  @Override
+  public void serialize(ByteBuffer byteBuffer) {}
 
   public PlanNode getChild() {
     return child;

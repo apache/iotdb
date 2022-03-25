@@ -25,6 +25,7 @@ import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 
 import com.google.common.collect.ImmutableList;
 
+import java.nio.ByteBuffer;
 import java.util.List;
 
 /**
@@ -52,6 +53,9 @@ public class SortNode extends ProcessNode {
   }
 
   @Override
+  public void addChildren(PlanNode child) {}
+
+  @Override
   public PlanNode clone() {
     return null;
   }
@@ -70,4 +74,11 @@ public class SortNode extends ProcessNode {
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
     return visitor.visitSort(this, context);
   }
+
+  public static SortNode deserialize(ByteBuffer byteBuffer) {
+    return null;
+  }
+
+  @Override
+  public void serialize(ByteBuffer byteBuffer) {}
 }

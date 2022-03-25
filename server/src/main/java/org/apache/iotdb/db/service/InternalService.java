@@ -16,54 +16,41 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.sql.planner.plan.node.sink;
 
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+package org.apache.iotdb.db.service;
 
-import java.nio.ByteBuffer;
-import java.util.List;
+import org.apache.iotdb.commons.service.ServiceType;
+import org.apache.iotdb.commons.service.ThriftService;
 
-/** not implemented in current IoTDB yet */
-public class ThriftSinkNode extends SinkNode {
+public class InternalService extends ThriftService {
 
-  public ThriftSinkNode(PlanNodeId id) {
-    super(id);
-  }
+  private InternalServiceImpl impl;
 
   @Override
-  public List<PlanNode> getChildren() {
+  public ServiceType getID() {
     return null;
   }
 
   @Override
-  public void addChildren(PlanNode child) {}
-
-  @Override
-  public PlanNode clone() {
+  public ThriftService getImplementation() {
     return null;
   }
 
   @Override
-  public PlanNode cloneWithChildren(List<PlanNode> children) {
+  public void initTProcessor()
+      throws ClassNotFoundException, IllegalAccessException, InstantiationException {}
+
+  @Override
+  public void initThriftServiceThread()
+      throws IllegalAccessException, InstantiationException, ClassNotFoundException {}
+
+  @Override
+  public String getBindIP() {
     return null;
   }
 
   @Override
-  public List<String> getOutputColumnNames() {
-    return null;
+  public int getBindPort() {
+    return 0;
   }
-
-  public static ThriftSinkNode deserialize(ByteBuffer byteBuffer) {
-    return null;
-  }
-
-  @Override
-  public void serialize(ByteBuffer byteBuffer) {}
-
-  @Override
-  public void close() throws Exception {}
-
-  @Override
-  public void send() {}
 }
