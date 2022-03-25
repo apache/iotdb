@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.confignode.partition;
 
+import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.response.DataNodesInfoDataSet;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaDataSet;
@@ -40,12 +41,10 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  */
 public class PartitionTable {
 
-  private static final int regionReplicaCount =
-      ConfigNodeDescriptor.getInstance().getConf().getRegionReplicaCount();
-  private static final int schemaRegionCount =
-      ConfigNodeDescriptor.getInstance().getConf().getSchemaRegionCount();
-  private static final int dataRegionCount =
-      ConfigNodeDescriptor.getInstance().getConf().getDataRegionCount();
+  private static final ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();
+  private static final int regionReplicaCount = conf.getRegionReplicaCount();;
+  private static final int schemaRegionCount = conf.getSchemaRegionCount();;
+  private static final int dataRegionCount = conf.getDataRegionCount();;
 
   private final ReentrantReadWriteLock lock;
   // TODO: Serialize and Deserialize

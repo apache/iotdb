@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.StartupChecks;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfCheck;
 
-import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.exception.runtime.RPCServiceException;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.service.ThriftService;
 import org.apache.iotdb.commons.service.ThriftServiceThread;
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
@@ -32,19 +31,12 @@ import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
 /** ConfigNodeRPCServer exposes the interface that interacts with the DataNode */
 public class ConfigNodeRPCServer extends ThriftService implements ConfigNodeRPCServerMBean {
 
-  private final ConfigNodeConf conf;
+  private static final ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();
 
   private ConfigNodeRPCServerProcessor configNodeRPCServerProcessor;
 
-  /** TestOnly constructor, only used in ConfigNodeEnvironmentUtils */
-  @TestOnly
-  public ConfigNodeRPCServer(ConfigNodeConf conf) {
-    this.conf = conf;
-  }
-
-  /** Singleton constructor, used in common environment */
   private ConfigNodeRPCServer() {
-    this.conf = ConfigNodeDescriptor.getInstance().getConf();
+    // empty constructor
   }
 
   @Override

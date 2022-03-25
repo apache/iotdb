@@ -38,7 +38,11 @@ public class PartitionRegionStateMachine implements IStateMachine {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PartitionRegionStateMachine.class);
 
-  private final PlanExecutor executor = new PlanExecutor();
+  private final PlanExecutor executor;
+
+  public PartitionRegionStateMachine() {
+    this.executor = new PlanExecutor();
+  }
 
   @Override
   public TSStatus write(IConsensusRequest request) {

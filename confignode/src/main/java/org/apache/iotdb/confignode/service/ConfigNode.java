@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.service.thrift.server.ConfigNodeRPCServer;
 import org.apache.iotdb.confignode.service.thrift.server.ConfigNodeRPCServerProcessor;
@@ -43,13 +42,6 @@ public class ConfigNode implements ConfigNodeMBean {
 
   private final RegisterManager registerManager = new RegisterManager();
 
-  /** TestOnly constructor, only used in ConfigNodeEnvironmentUtils */
-  @TestOnly
-  public ConfigNode(ConfigNodeConf conf) {
-
-  }
-
-  /** Singleton constructor, used in common environment */
   private ConfigNode() {
     // empty constructor
   }
@@ -64,7 +56,7 @@ public class ConfigNode implements ConfigNodeMBean {
     registerManager.register(JMXService.getInstance());
     JMXService.registerMBean(getInstance(), mbeanName);
 
-    ConfigNodeRPCServer.getInstance().initSyncedServiceImpl(ConfigNodeRPCServerProcessor.getInstance());
+    ConfigNodeRPCServer.getInstance().initSyncedServiceImpl(new ConfigNodeRPCServerProcessor());
     registerManager.register(ConfigNodeRPCServer.getInstance());
     LOGGER.info("Init rpc server success");
   }

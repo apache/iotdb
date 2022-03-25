@@ -40,7 +40,7 @@ public class ConfigNodeConf {
   private ConsensusType consensusType = ConsensusType.STANDALONE;
 
   /** Used for building the ConfigNode consensus group */
-  private Endpoint[] configNodeGroupEndpointList = null;
+  private Endpoint[] configNodeGroupAddressList = null;
 
   /** Number of DeviceGroups per StorageGroup */
   private int deviceGroupCount = 10000;
@@ -207,12 +207,12 @@ public class ConfigNodeConf {
     this.consensusType = consensusType;
   }
 
-  public Endpoint[] getConfigNodeGroupEndpointList() {
-    return configNodeGroupEndpointList;
+  public Endpoint[] getConfigNodeGroupAddressList() {
+    return configNodeGroupAddressList;
   }
 
-  public void setConfigNodeGroupEndpointList(Endpoint[] configNodeGroupEndpointList) {
-    this.configNodeGroupEndpointList = configNodeGroupEndpointList;
+  public void setConfigNodeGroupAddressList(Endpoint[] configNodeGroupAddressList) {
+    this.configNodeGroupAddressList = configNodeGroupAddressList;
   }
 
   public int getThriftServerAwaitTimeForStopService() {

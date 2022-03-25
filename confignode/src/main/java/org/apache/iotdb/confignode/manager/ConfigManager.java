@@ -41,6 +41,7 @@ import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -51,7 +52,7 @@ import java.util.List;
 public class ConfigManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigManager.class);
-  private final ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();
+  private static final ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();
 
   private IConsensus consensusImpl;
   private ConsensusGroupId consensusGroupId;
@@ -109,8 +110,10 @@ public class ConfigManager {
     switch (conf.getConsensusType()) {
       case STANDALONE:
         constructStandAloneConsensus();
+        break;
       case RATIS:
         constructRatisConsensus();
+        break;
       default:
         throw new IllegalArgumentException(
             "Start ConfigNode failed, unrecognized ConsensusType: "
@@ -142,8 +145,11 @@ public class ConfigManager {
     consensusImpl.start();
 
     // Build ratis group from user properties
+    LOGGER.info(
+        "Set ConfigNode consensus group {}...",
+        Arrays.toString(conf.getConfigNodeGroupAddressList()));
     List<Peer> peerList = new ArrayList<>();
-    for (Endpoint endpoint : conf.getConfigNodeGroupEndpointList()) {
+    for (Endpoint endpoint : conf.getConfigNodeGroupAddressList()) {
       peerList.add(new Peer(consensusGroupId, endpoint));
     }
     consensusImpl.addConsensusGroup(consensusGroupId, peerList);

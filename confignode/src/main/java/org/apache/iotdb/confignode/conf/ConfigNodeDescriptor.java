@@ -190,7 +190,7 @@ public class ConfigNodeDescriptor {
           }
           endpointList[i] = new Endpoint(ipPort[0], Integer.parseInt(ipPort[1]));
         }
-        conf.setConfigNodeGroupEndpointList(endpointList);
+        conf.setConfigNodeGroupAddressList(endpointList);
       }
 
     } catch (IOException e) {

@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.confignode.service.thrift.server;
 
-import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.consensus.response.DataNodesInfoDataSet;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaDataSet;
 import org.apache.iotdb.confignode.manager.ConfigManager;
@@ -59,15 +57,8 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
 
   private final ConfigManager configManager;
 
-  /** TestOnly constructor, only used in ConfigNodeEnvironmentUtils */
-  @TestOnly
-  public ConfigNodeRPCServerProcessor(ConfigNodeConf conf) throws IOException {
-
-  }
-
-  /** Singleton constructor, used in common environment */
-  private ConfigNodeRPCServerProcessor() {
-    // empty constructor
+  public ConfigNodeRPCServerProcessor() throws IOException {
+    this.configManager = new ConfigManager();
   }
 
   @Override
@@ -150,19 +141,6 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
   }
 
   public void handleClientExit() {}
-
-  public static ConfigNodeRPCServerProcessor getInstance() {
-    return ConfigNodeRPCServerProcessorHolder.INSTANCE;
-  }
-
-  private static class ConfigNodeRPCServerProcessorHolder {
-
-    private static final ConfigNodeRPCServerProcessor INSTANCE = new ConfigNodeRPCServerProcessor();
-
-    private ConfigNodeRPCServerProcessorHolder() {
-      // empty constructor
-    }
-  }
 
   // TODO: Interfaces for data operations
 }
