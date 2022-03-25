@@ -16,44 +16,51 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
-package org.apache.iotdb.db.mpp.sql.statement.metadata;
+package org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write;
 
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.mpp.sql.constant.StatementType;
-import org.apache.iotdb.db.mpp.sql.statement.Statement;
-import org.apache.iotdb.db.mpp.sql.tree.StatementVisitor;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
-import java.util.ArrayList;
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
 
-/**
- * CREATE ALIGNED TIMESERIES statement.
- *
- * <p>Here is the syntax definition:
- *
- * <p>CREATE ALIGNED TIMESERIES deviceId (measurementId attributeClauses [, measurementId
- * attributeClauses]...)
- */
-public class CreateAlignedTimeSeriesStatement extends Statement {
-
+public class CreateAlignedTimeSeriesNode extends PlanNode {
   private PartialPath devicePath;
-  private List<String> measurements = new ArrayList<>();
-  private List<TSDataType> dataTypes = new ArrayList<>();
-  private List<TSEncoding> encodings = new ArrayList<>();
-  private List<CompressionType> compressors = new ArrayList<>();
-  private List<String> aliasList = new ArrayList<>();
-  private List<Map<String, String>> tagsList = new ArrayList<>();
-  private List<Map<String, String>> attributesList = new ArrayList<>();
-  private List<Long> tagOffsets = null;
+  private List<String> measurements;
+  private List<TSDataType> dataTypes;
+  private List<TSEncoding> encodings;
+  private List<CompressionType> compressors;
+  private List<String> aliasList;
+  private List<Map<String, String>> tagsList;
+  private List<Map<String, String>> attributesList;
+  private List<Long> tagOffsets;
 
-  public CreateAlignedTimeSeriesStatement() {
-    super();
-    statementType = StatementType.CREATE_ALIGNED_TIMESERIES;
+  public CreateAlignedTimeSeriesNode(
+      PlanNodeId id,
+      PartialPath devicePath,
+      List<String> measurements,
+      List<TSDataType> dataTypes,
+      List<TSEncoding> encodings,
+      List<CompressionType> compressors,
+      List<String> aliasList,
+      List<Map<String, String>> tagsList,
+      List<Long> tagOffsets,
+      List<Map<String, String>> attributesList) {
+    super(id);
+    this.devicePath = devicePath;
+    this.measurements = measurements;
+    this.dataTypes = dataTypes;
+    this.encodings = encodings;
+    this.compressors = compressors;
+    this.aliasList = aliasList;
+    this.tagsList = tagsList;
+    this.tagOffsets = tagOffsets;
+    this.attributesList = attributesList;
   }
 
   public PartialPath getDevicePath() {
@@ -72,20 +79,12 @@ public class CreateAlignedTimeSeriesStatement extends Statement {
     this.measurements = measurements;
   }
 
-  public void addMeasurement(String measurement) {
-    this.measurements.add(measurement);
-  }
-
   public List<TSDataType> getDataTypes() {
     return dataTypes;
   }
 
   public void setDataTypes(List<TSDataType> dataTypes) {
     this.dataTypes = dataTypes;
-  }
-
-  public void addDataType(TSDataType dataType) {
-    this.dataTypes.add(dataType);
   }
 
   public List<TSEncoding> getEncodings() {
@@ -96,20 +95,12 @@ public class CreateAlignedTimeSeriesStatement extends Statement {
     this.encodings = encodings;
   }
 
-  public void addEncoding(TSEncoding encoding) {
-    this.encodings.add(encoding);
-  }
-
   public List<CompressionType> getCompressors() {
     return compressors;
   }
 
   public void setCompressors(List<CompressionType> compressors) {
     this.compressors = compressors;
-  }
-
-  public void addCompressor(CompressionType compression) {
-    this.compressors.add(compression);
   }
 
   public List<String> getAliasList() {
@@ -120,20 +111,12 @@ public class CreateAlignedTimeSeriesStatement extends Statement {
     this.aliasList = aliasList;
   }
 
-  public void addAliasList(String alias) {
-    this.aliasList.add(alias);
-  }
-
   public List<Map<String, String>> getTagsList() {
     return tagsList;
   }
 
   public void setTagsList(List<Map<String, String>> tagsList) {
     this.tagsList = tagsList;
-  }
-
-  public void addTagsList(Map<String, String> tags) {
-    this.tagsList.add(tags);
   }
 
   public List<Map<String, String>> getAttributesList() {
@@ -144,17 +127,7 @@ public class CreateAlignedTimeSeriesStatement extends Statement {
     this.attributesList = attributesList;
   }
 
-  public void addAttributesList(Map<String, String> attributes) {
-    this.attributesList.add(attributes);
-  }
-
   public List<Long> getTagOffsets() {
-    if (tagOffsets == null) {
-      tagOffsets = new ArrayList<>();
-      for (int i = 0; i < measurements.size(); i++) {
-        tagOffsets.add(Long.parseLong("-1"));
-      }
-    }
     return tagOffsets;
   }
 
@@ -162,11 +135,29 @@ public class CreateAlignedTimeSeriesStatement extends Statement {
     this.tagOffsets = tagOffsets;
   }
 
-  public void addTagOffsets(Long tagsOffset) {
-    this.tagOffsets.add(tagsOffset);
+  @Override
+  public List<PlanNode> getChildren() {
+    return null;
   }
 
-  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitCreateAlignedTimeseries(this, context);
+  @Override
+  public void addChildren(PlanNode child) {}
+
+  @Override
+  public PlanNode clone() {
+    return null;
   }
+
+  @Override
+  public PlanNode cloneWithChildren(List<PlanNode> children) {
+    return null;
+  }
+
+  @Override
+  public List<String> getOutputColumnNames() {
+    return null;
+  }
+
+  @Override
+  public void serialize(ByteBuffer byteBuffer) {}
 }

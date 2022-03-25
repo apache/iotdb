@@ -121,7 +121,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public Statement visitCreateAlignedTimeseries(IoTDBSqlParser.CreateAlignedTimeseriesContext ctx) {
     CreateAlignedTimeSeriesStatement createAlignedTimeSeriesStatement =
         new CreateAlignedTimeSeriesStatement();
-    createAlignedTimeSeriesStatement.setDeviceId(parseFullPath(ctx.fullPath()));
+    createAlignedTimeSeriesStatement.setDevicePath(parseFullPath(ctx.fullPath()));
     parseAlignedMeasurements(ctx.alignedMeasurements(), createAlignedTimeSeriesStatement);
     return createAlignedTimeSeriesStatement;
   }

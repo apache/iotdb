@@ -24,10 +24,12 @@ import org.apache.iotdb.db.mpp.sql.optimization.PlanOptimizer;
 import org.apache.iotdb.db.mpp.sql.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeIdAllocator;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.QueryStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.tree.StatementVisitor;
 
@@ -89,6 +91,23 @@ public class LogicalPlanner {
           createTimeSeriesStatement.getTags(),
           createTimeSeriesStatement.getAttributes(),
           createTimeSeriesStatement.getAlias());
+    }
+
+    @Override
+    public PlanNode visitCreateAlignedTimeseries(
+        CreateAlignedTimeSeriesStatement createAlignedTimeSeriesStatement,
+        MPPQueryContext context) {
+      return new CreateAlignedTimeSeriesNode(
+          PlanNodeIdAllocator.generateId(),
+          createAlignedTimeSeriesStatement.getDevicePath(),
+          createAlignedTimeSeriesStatement.getMeasurements(),
+          createAlignedTimeSeriesStatement.getDataTypes(),
+          createAlignedTimeSeriesStatement.getEncodings(),
+          createAlignedTimeSeriesStatement.getCompressors(),
+          createAlignedTimeSeriesStatement.getAliasList(),
+          createAlignedTimeSeriesStatement.getTagsList(),
+          createAlignedTimeSeriesStatement.getTagOffsets(),
+          createAlignedTimeSeriesStatement.getAttributesList());
     }
 
     @Override

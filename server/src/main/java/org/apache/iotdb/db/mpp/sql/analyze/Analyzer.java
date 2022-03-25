@@ -35,6 +35,7 @@ import org.apache.iotdb.db.mpp.sql.statement.component.WhereCondition;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.QueryStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.tree.StatementVisitor;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -124,6 +125,21 @@ public class Analyzer {
       }
       Analysis analysis = new Analysis();
       analysis.setStatement(createTimeSeriesStatement);
+
+      String devicePath = createTimeSeriesStatement.getPath().getDevice();
+      analysis.setSchemaPartitionInfo(partitionFetcher.fetchSchemaPartitionInfo(devicePath));
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitCreateAlignedTimeseries(
+        CreateAlignedTimeSeriesStatement createAlignedTimeSeriesStatement,
+        MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(createAlignedTimeSeriesStatement);
+
+      String devicePath = createAlignedTimeSeriesStatement.getDevicePath().getFullPath();
+      analysis.setSchemaPartitionInfo(partitionFetcher.fetchSchemaPartitionInfo(devicePath));
       return analysis;
     }
 

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.sql.plan;
 
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
@@ -26,6 +27,7 @@ import org.apache.iotdb.db.mpp.sql.analyze.Analyzer;
 import org.apache.iotdb.db.mpp.sql.parser.StatementGenerator;
 import org.apache.iotdb.db.mpp.sql.planner.LogicalPlanner;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -74,6 +76,29 @@ public class LogicalPlannerTest {
     } catch (Exception e) {
       e.printStackTrace();
       fail();
+    }
+  }
+
+  @Test
+  public void createAlignedTimeseriesPlanTest() {
+    String sql =
+        "CREATE ALIGNED TIMESERIES root.ln.wf01.GPS(latitude(meter1) FLOAT encoding=PLAIN compressor=SNAPPY tags(tag1=t1) attributes(attr1=a1), longitude FLOAT encoding=PLAIN compressor=SNAPPY)";
+    try {
+      CreateAlignedTimeSeriesNode createAlignedTimeSeriesNode =
+          (CreateAlignedTimeSeriesNode) parseSQLToPlanNode(sql);
+      Assert.assertNotNull(createAlignedTimeSeriesNode);
+      Assert.assertEquals(
+          new PartialPath("root.ln.wf01.GPS"), createAlignedTimeSeriesNode.getDevicePath());
+      Assert.assertEquals("meter1", createAlignedTimeSeriesNode.getAliasList().get(0));
+      Assert.assertEquals(TSDataType.FLOAT, createAlignedTimeSeriesNode.getDataTypes().get(0));
+      Assert.assertEquals(TSEncoding.PLAIN, createAlignedTimeSeriesNode.getEncodings().get(0));
+      Assert.assertEquals(
+          CompressionType.SNAPPY, createAlignedTimeSeriesNode.getCompressors().get(0));
+      Assert.assertEquals(
+          "a1", createAlignedTimeSeriesNode.getAttributesList().get(0).get("attr1"));
+      Assert.assertEquals("t1", createAlignedTimeSeriesNode.getTagsList().get(0).get("tag1"));
+    } catch (IllegalPathException e) {
+      e.printStackTrace();
     }
   }
 
