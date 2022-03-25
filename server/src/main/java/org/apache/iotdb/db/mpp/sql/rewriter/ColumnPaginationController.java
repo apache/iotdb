@@ -26,6 +26,7 @@ import org.apache.iotdb.db.mpp.sql.statement.component.ResultColumn;
 
 import java.util.List;
 
+/** apply MaxQueryDeduplicatedPathNum and SLIMIT & SOFFSET */
 public class ColumnPaginationController {
 
   // series offset for result set. The default value is 0
