@@ -39,14 +39,14 @@ public class QueryContext {
    * The outer key is the path of a ModificationFile, the inner key in the name of a timeseries and
    * the value is the Modifications of a timeseries in this file.
    */
-  protected final Map<String, Map<String, List<Modification>>> filePathModCache =
+  private final Map<String, Map<String, List<Modification>>> filePathModCache =
       new ConcurrentHashMap<>();
   /**
    * The key is the path of a ModificationFile and the value is all Modifications in this file. We
    * use this field because each call of Modification.getModifications() return a copy of the
    * Modifications, and we do not want it to create multiple copies within a query.
    */
-  protected final Map<String, List<Modification>> fileModCache = new HashMap<>();
+  private final Map<String, List<Modification>> fileModCache = new HashMap<>();
 
   private long queryId;
 

@@ -18,10 +18,6 @@
  */
 package org.apache.iotdb.db.mpp.execution;
 
-import org.apache.iotdb.db.engine.modification.Modification;
-import org.apache.iotdb.db.engine.modification.ModificationFile;
-import org.apache.iotdb.db.metadata.path.AlignedPath;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
@@ -29,8 +25,6 @@ import org.apache.iotdb.db.query.context.QueryContext;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
@@ -70,46 +64,5 @@ public class FragmentInstanceContext extends QueryContext {
         new OperatorContext(operatorId, planNodeId, operatorType, this);
     operatorContexts.add(operatorContext);
     return operatorContext;
-  }
-
-  /**
-   * Find the modifications of timeseries 'path' in 'modFile'. If they are not in the cache, read
-   * them from 'modFile' and put then into the cache.
-   */
-  public List<Modification> getPathModifications(ModificationFile modFile, PartialPath path) {
-    Map<String, List<Modification>> fileModifications =
-        filePathModCache.computeIfAbsent(modFile.getFilePath(), k -> new ConcurrentHashMap<>());
-    return fileModifications.computeIfAbsent(
-        path.getFullPath(),
-        k -> {
-          List<Modification> allModifications = fileModCache.get(modFile.getFilePath());
-          if (allModifications == null) {
-            allModifications = (List<Modification>) modFile.getModifications();
-            fileModCache.put(modFile.getFilePath(), allModifications);
-          }
-          List<Modification> finalPathModifications = new ArrayList<>();
-          if (!allModifications.isEmpty()) {
-            allModifications.forEach(
-                modification -> {
-                  if (modification.getPath().matchFullPath(path)) {
-                    finalPathModifications.add(modification);
-                  }
-                });
-          }
-          return finalPathModifications;
-        });
-  }
-
-  /**
-   * Find the modifications of all aligned 'paths' in 'modFile'. If they are not in the cache, read
-   * them from 'modFile' and put then into the cache.
-   */
-  public List<List<Modification>> getPathModifications(ModificationFile modFile, AlignedPath path) {
-    int n = path.getMeasurementList().size();
-    List<List<Modification>> ans = new ArrayList<>(n);
-    for (int i = 0; i < n; i++) {
-      ans.add(getPathModifications(modFile, path.getPathWithMeasurement(i)));
-    }
-    return ans;
   }
 }
