@@ -160,7 +160,7 @@ public class SchemaEngine {
 
   private final Map<ISchemaRegionId, SchemaRegion> schemaRegionMap = new ConcurrentHashMap<>();
 
-  // only used for v0.14, remove this after new cluster
+  // used for local schema partition and SchemaRegion management
   private final LocalSchemaPartitionTable partitionTable = new LocalSchemaPartitionTable();
 
   // region SchemaEngine Singleton
@@ -305,11 +305,37 @@ public class SchemaEngine {
 
   // region Interfaces for SchemaRegion Management
 
-  public void createSchemaRegion(String storageGroup, int schemaRegionId) throws MetadataException {
-    createSchemaRegion(ISchemaRegionId.getISchemaRegionId(storageGroup, schemaRegionId));
+  public void createSchemaRegion(PartialPath storageGroup, int schemaRegionId)
+      throws MetadataException {
+    ensureStorageGroup(storageGroup);
+    localCreateSchemaRegion(
+        ISchemaRegionId.getISchemaRegionId(storageGroup.getFullPath(), schemaRegionId));
   }
 
-  public void createSchemaRegion(ISchemaRegionId schemaRegionId) throws MetadataException {
+  public SchemaRegion getSchemaRegion(PartialPath storageGroup, int schemaRegionId)
+      throws MetadataException {
+    return schemaRegionMap.get(
+        ISchemaRegionId.getISchemaRegionId(storageGroup.getFullPath(), schemaRegionId));
+  }
+
+  public void deleteSchemaRegion(PartialPath storageGroup, int schemaRegionId)
+      throws MetadataException {
+    localDeleteSchemaRegion(
+        ISchemaRegionId.getISchemaRegionId(storageGroup.getFullPath(), schemaRegionId));
+  }
+
+  public void deleteStorageGroup(PartialPath storageGroup) throws MetadataException {
+    storageGroupSchemaManager.deleteStorageGroup(storageGroup);
+    partitionTable.deleteStorageGroup(storageGroup);
+
+    if (!config.isEnableMemControl()) {
+      MemTableManager.getInstance().addOrDeleteStorageGroup(-1);
+    }
+  }
+
+  // region methods in this region is only used for local schemaRegion management.
+
+  public void localCreateSchemaRegion(ISchemaRegionId schemaRegionId) throws MetadataException {
     synchronized (schemaRegionMap) {
       if (schemaRegionMap.containsKey(schemaRegionId)) {
         return;
@@ -323,26 +349,17 @@ public class SchemaEngine {
     }
   }
 
-  public SchemaRegion getSchemaRegion(String storageGroup, int schemaRegionId)
-      throws MetadataException {
-    return schemaRegionMap.get(ISchemaRegionId.getISchemaRegionId(storageGroup, schemaRegionId));
-  }
-
-  public SchemaRegion getSchemaRegion(ISchemaRegionId schemaRegionId) {
+  public SchemaRegion localGetSchemaRegion(ISchemaRegionId schemaRegionId) {
     return schemaRegionMap.get(schemaRegionId);
   }
 
-  public void deleteSchemaRegion(String storageGroup, int schemaRegionId) throws MetadataException {
-    deleteSchemaRegion(ISchemaRegionId.getISchemaRegionId(storageGroup, schemaRegionId));
-  }
-
-  public void deleteSchemaRegion(ISchemaRegionId schemaRegionId) throws MetadataException {
+  public void localDeleteSchemaRegion(ISchemaRegionId schemaRegionId) throws MetadataException {
     SchemaRegion schemaRegion = schemaRegionMap.remove(schemaRegionId);
     schemaRegion.deleteSchemaRegion();
   }
 
-  public void deleteStorageGroup(PartialPath storageGroup, Set<ISchemaRegionId> schemaRegionIdSet)
-      throws MetadataException {
+  public void localDeleteStorageGroup(
+      PartialPath storageGroup, Set<ISchemaRegionId> schemaRegionIdSet) throws MetadataException {
     for (ISchemaRegionId schemaRegionId : schemaRegionIdSet) {
       schemaRegionMap.remove(schemaRegionId).deleteSchemaRegion();
     }
@@ -358,8 +375,6 @@ public class SchemaEngine {
       }
     }
   }
-
-  // region methods in this region is only used for 0.14 code and will be removed after new cluster.
 
   /**
    * Get the target SchemaRegion, which the given path belongs to. The path must be a fullPath
@@ -1629,7 +1644,8 @@ public class SchemaEngine {
     Template template = templateManager.getTemplate(plan.getName());
 
     for (ISchemaRegionId schemaRegionId : template.getRelatedSchemaRegion()) {
-      if (!getSchemaRegion(schemaRegionId).isTemplateAppendable(template, plan.getMeasurements())) {
+      if (!localGetSchemaRegion(schemaRegionId)
+          .isTemplateAppendable(template, plan.getMeasurements())) {
         isTemplateAppendable = false;
         break;
       }
@@ -1718,7 +1734,7 @@ public class SchemaEngine {
     } else {
       for (ISchemaRegionId schemaRegionId :
           templateManager.getTemplate(templateName).getRelatedSchemaRegion()) {
-        result.addAll(getSchemaRegion(schemaRegionId).getPathsSetTemplate(templateName));
+        result.addAll(localGetSchemaRegion(schemaRegionId).getPathsSetTemplate(templateName));
       }
     }
 
@@ -1734,7 +1750,7 @@ public class SchemaEngine {
     } else {
       for (ISchemaRegionId schemaRegionId :
           templateManager.getTemplate(templateName).getRelatedSchemaRegion()) {
-        result.addAll(getSchemaRegion(schemaRegionId).getPathsUsingTemplate(templateName));
+        result.addAll(localGetSchemaRegion(schemaRegionId).getPathsUsingTemplate(templateName));
       }
     }
 

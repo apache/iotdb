@@ -70,7 +70,7 @@ public class LocalSchemaPartitionTable {
         ISchemaRegionId schemaRegionId =
             ISchemaRegionId.getISchemaRegionId(sgDir.getName(), schemaRegionDir.getName());
         table.get(storageGroup).add(schemaRegionId);
-        schemaEngine.createSchemaRegion(schemaRegionId);
+        schemaEngine.localCreateSchemaRegion(schemaRegionId);
       }
     }
   }
@@ -111,13 +111,13 @@ public class LocalSchemaPartitionTable {
   }
 
   public void deleteStorageGroup(PartialPath storageGroup) throws MetadataException {
-    schemaEngine.deleteStorageGroup(storageGroup, table.remove(storageGroup));
+    schemaEngine.localDeleteStorageGroup(storageGroup, table.remove(storageGroup));
   }
 
   private synchronized void createSchemaRegion(
       PartialPath storageGroup, ISchemaRegionId schemaRegionId) throws MetadataException {
     synchronized (table) {
-      schemaEngine.createSchemaRegion(schemaRegionId);
+      schemaEngine.localCreateSchemaRegion(schemaRegionId);
       table.get(storageGroup).add(schemaRegionId);
     }
   }
