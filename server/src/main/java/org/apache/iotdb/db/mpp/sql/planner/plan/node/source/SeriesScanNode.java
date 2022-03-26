@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.source;
 
+import org.apache.iotdb.commons.partition.DataRegionReplicaSet;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.mpp.common.DataRegion;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
@@ -28,6 +28,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import com.google.common.collect.ImmutableList;
 
+import java.nio.ByteBuffer;
 import java.util.List;
 
 /**
@@ -62,16 +63,17 @@ public class SeriesScanNode extends SourceNode {
   private String columnName;
 
   // The id of DataRegion where the node will run
-  private DataRegion dataRegion;
+  private DataRegionReplicaSet dataRegionReplicaSet;
 
   public SeriesScanNode(PlanNodeId id, PartialPath seriesPath) {
     super(id);
     this.seriesPath = seriesPath;
   }
 
-  public SeriesScanNode(PlanNodeId id, PartialPath seriesPath, DataRegion dataRegion) {
+  public SeriesScanNode(
+      PlanNodeId id, PartialPath seriesPath, DataRegionReplicaSet dataRegionReplicaSet) {
     this(id, seriesPath);
-    this.dataRegion = dataRegion;
+    this.dataRegionReplicaSet = dataRegionReplicaSet;
   }
 
   public void setTimeFilter(Filter timeFilter) {
@@ -87,6 +89,15 @@ public class SeriesScanNode extends SourceNode {
 
   @Override
   public void open() throws Exception {}
+
+  @Override
+  public DataRegionReplicaSet getDataRegionReplicaSet() {
+    return dataRegionReplicaSet;
+  }
+
+  public void setDataRegionReplicaSet(DataRegionReplicaSet dataRegion) {
+    this.dataRegionReplicaSet = dataRegion;
+  }
 
   public void setScanOrder(OrderBy scanOrder) {
     this.scanOrder = scanOrder;
@@ -106,8 +117,11 @@ public class SeriesScanNode extends SourceNode {
   }
 
   @Override
+  public void addChildren(PlanNode child) {}
+
+  @Override
   public PlanNode clone() {
-    return new SeriesScanNode(getId(), getSeriesPath(), this.dataRegion);
+    return new SeriesScanNode(getId(), getSeriesPath(), this.dataRegionReplicaSet);
   }
 
   @Override
@@ -125,6 +139,13 @@ public class SeriesScanNode extends SourceNode {
     return visitor.visitSeriesScan(this, context);
   }
 
+  public static SeriesScanNode deserialize(ByteBuffer byteBuffer) {
+    return null;
+  }
+
+  @Override
+  public void serialize(ByteBuffer byteBuffer) {}
+
   public PartialPath getSeriesPath() {
     return seriesPath;
   }
@@ -133,17 +154,9 @@ public class SeriesScanNode extends SourceNode {
     return timeFilter;
   }
 
-  public void setDataRegion(DataRegion dataRegion) {
-    this.dataRegion = dataRegion;
-  }
-
-  public DataRegion getDataRegion() {
-    return dataRegion;
-  }
-
   public String toString() {
     return String.format(
         "SeriesScanNode-%s:[SeriesPath: %s, DataRegion: %s]",
-        this.getId(), this.getSeriesPath(), this.getDataRegion());
+        this.getId(), this.getSeriesPath(), this.getDataRegionReplicaSet());
   }
 }

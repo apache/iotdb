@@ -577,6 +577,7 @@ public abstract class PhysicalPlan implements IConsensusRequest {
    *
    * @throws QueryProcessException when the check fails
    */
+  // TODO(INSERT) move this check into analyze
   public void checkIntegrity() throws QueryProcessException {}
 
   public boolean isPrefixMatch() {

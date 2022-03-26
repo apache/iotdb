@@ -25,6 +25,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -143,6 +144,9 @@ public class CreateTimeSeriesNode extends PlanNode {
   }
 
   @Override
+  public void addChildren(PlanNode child) {}
+
+  @Override
   public PlanNode clone() {
     return null;
   }
@@ -156,4 +160,11 @@ public class CreateTimeSeriesNode extends PlanNode {
   public List<String> getOutputColumnNames() {
     return null;
   }
+
+  public static CreateTimeSeriesNode deserialize(ByteBuffer byteBuffer) {
+    return null;
+  }
+
+  @Override
+  public void serialize(ByteBuffer byteBuffer) {}
 }
