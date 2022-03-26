@@ -258,7 +258,7 @@ public class SchemaRegion {
     try {
       logWriter.force();
     } catch (IOException e) {
-      logger.error("Cannot force {} mlog to the storage device", storageGroupFullPath, e);
+      logger.error("Cannot force {} mlog to the schema region", schemaRegionId, e);
     }
   }
 

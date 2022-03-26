@@ -336,8 +336,12 @@ public class TemplateManager {
     template.unmarkSchemaRegion(schemaRegionId);
   }
 
-  public Set<Template> getTemplateInStorageGroup(String storageGroup) {
-    return templateUsageInStorageGroup.get(storageGroup);
+  public void forceLog() {
+    try {
+      logWriter.force();
+    } catch (IOException e) {
+      logger.error("Cannot force template log", e);
+    }
   }
 
   public void clear() throws IOException {

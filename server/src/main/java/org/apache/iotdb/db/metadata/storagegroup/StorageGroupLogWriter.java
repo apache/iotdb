@@ -44,6 +44,10 @@ public class StorageGroupLogWriter implements AutoCloseable {
     logWriter.setTTL(storageGroup, ttl);
   }
 
+  public void force() throws IOException {
+    logWriter.force();
+  }
+
   @Override
   public void close() throws IOException {
     logWriter.force();

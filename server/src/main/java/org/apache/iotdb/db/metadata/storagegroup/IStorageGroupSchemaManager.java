@@ -35,6 +35,8 @@ public interface IStorageGroupSchemaManager {
 
   void init() throws IOException;
 
+  void forceLog();
+
   void clear() throws IOException;
 
   /**

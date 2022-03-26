@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.tools;
 
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
@@ -51,19 +52,21 @@ import java.util.Map;
 
 public class MLogParserTest {
 
-  private String[] storageGroups = new String[] {"root.sg0", "root.sg1", "root.sgcc", "root.sg"};
+  private String[] storageGroups = new String[] {"root.sg0", "root.sg1", "root.sg"};
 
   /*
    * For root.sg0, we prepare 50 CreateTimeseriesPlan.
    * For root.sg1, we prepare 50 CreateTimeseriesPlan, 1 DeleteTimeseriesPlan, 1 ChangeTagOffsetPlan and 1 ChangeAliasPlan.
-   * For root.sgcc, we prepare 1 SetTTLPlan.
+   * For root.sgcc, we prepare 0 plans on timeseries or device or template.
    * For root.sg, we prepare 1 SetTemplatePlan, 1 AutoCreateDevicePlan and 1 ActivateTemplatePlan.
    *
    * For root.ln.cc, we create it and then delete it, thus there's no mlog of root.ln.cc.
    * There' still 1 CreateTemplatePlan in template_log.bin
    *
    * */
-  private int[] mlogLineNum = new int[] {50, 53, 1, 3};
+  private int[] mlogLineNum = new int[] {50, 53, 3};
+
+  private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   @Before
   public void setUp() {
@@ -154,23 +157,21 @@ public class MLogParserTest {
   @Test
   public void testMLogParser() throws IOException {
     prepareData();
-    testDeletedStorageGroup("root.ln.cc");
-
-    File file;
+    testNonExistingStorageGroupDir("root.ln.cc");
+    testNonExistingStorageGroupDir("root.sgcc");
 
     IoTDB.schemaEngine.forceMlog();
+
+    testParseStorageGroupLog();
+
     for (int i = 0; i < storageGroups.length; i++) {
       testParseMLog(storageGroups[i], mlogLineNum[i]);
-      file = new File("target" + File.separator + "tmp" + File.separator + "text.mlog");
-      file.delete();
     }
 
     testParseTemplateLogFile();
-    file = new File("target" + File.separator + "tmp" + File.separator + "text.mlog");
-    file.delete();
   }
 
-  private void testDeletedStorageGroup(String storageGroup) {
+  private void testNonExistingStorageGroupDir(String storageGroup) {
     File storageGroupDir =
         new File(
             IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
@@ -179,50 +180,39 @@ public class MLogParserTest {
     Assert.assertFalse(storageGroupDir.exists());
   }
 
-  private void testParseMLog(String storageGroup, int expectedLineNum) throws IOException {
-    try {
-      MLogParser.parseFromFile(
-          IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
-              + File.separator
-              + storageGroup
-              + File.separator
-              + MetadataConstant.METADATA_LOG,
-          "target" + File.separator + "tmp" + File.separator + "text.mlog");
-    } catch (IOException e) {
-      e.printStackTrace();
-    }
-
-    try (BufferedReader reader =
-        new BufferedReader(
-            new FileReader("target" + File.separator + "tmp" + File.separator + "text.mlog"))) {
-      int lineNum = 0;
-      List<String> lines = new ArrayList<>();
-      String line;
-      while ((line = reader.readLine()) != null) {
-        lineNum++;
-        lines.add(line);
-      }
-      if (lineNum != expectedLineNum) {
-        for (String content : lines) {
-          System.out.println(content);
-        }
-      }
-      Assert.assertEquals(expectedLineNum, lineNum);
-    } catch (IOException e) {
-      Assert.fail(e.getMessage());
-    }
+  private void testParseStorageGroupLog() throws IOException {
+    testParseLog(config.getSchemaDir() + File.separator + MetadataConstant.STORAGE_GROUP_LOG, 7);
   }
 
   private void testParseTemplateLogFile() throws IOException {
-    try {
-      MLogParser.parseFromFile(
-          IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
-              + File.separator
-              + MetadataConstant.TEMPLATE_FILE,
-          "target" + File.separator + "tmp" + File.separator + "text.mlog");
-    } catch (IOException e) {
-      e.printStackTrace();
-    }
+
+    testParseLog(
+        IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
+            + File.separator
+            + MetadataConstant.TEMPLATE_FILE,
+        1);
+  }
+
+  private void testParseMLog(String storageGroup, int expectedLineNum) throws IOException {
+    testParseLog(
+        IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
+            + File.separator
+            + storageGroup
+            + File.separator
+            + File.separator
+            + storageGroup
+            + "_schema_region"
+            + File.separator
+            + MetadataConstant.METADATA_LOG,
+        expectedLineNum);
+  }
+
+  private void testParseLog(String path, int expectedNum) throws IOException {
+    File file = new File("target" + File.separator + "tmp" + File.separator + "text.mlog");
+    file.delete();
+
+    MLogParser.parseFromFile(
+        path, "target" + File.separator + "tmp" + File.separator + "text.mlog");
 
     try (BufferedReader reader =
         new BufferedReader(
@@ -239,7 +229,7 @@ public class MLogParserTest {
           System.out.println(content);
         }
       }
-      Assert.assertEquals(1, lineNum);
+      Assert.assertEquals(expectedNum, lineNum);
     } catch (IOException e) {
       Assert.fail(e.getMessage());
     }

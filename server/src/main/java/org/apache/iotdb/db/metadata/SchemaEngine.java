@@ -268,6 +268,10 @@ public class SchemaEngine {
     if (!initialized) {
       return;
     }
+
+    storageGroupSchemaManager.forceLog();
+    templateManager.forceLog();
+
     for (SchemaRegion schemaRegion : schemaRegionMap.values()) {
       schemaRegion.forceMlog();
     }

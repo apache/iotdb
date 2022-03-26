@@ -117,6 +117,15 @@ public class StorageGroupSchemaManager implements IStorageGroupSchemaManager {
     }
   }
 
+  @Override
+  public void forceLog() {
+    try {
+      logWriter.force();
+    } catch (IOException e) {
+      logger.error("Cannot force storage group log", e);
+    }
+  }
+
   public synchronized void clear() throws IOException {
     if (logWriter != null) {
       logWriter.close();
@@ -155,10 +164,7 @@ public class StorageGroupSchemaManager implements IStorageGroupSchemaManager {
   public void setTTL(PartialPath storageGroup, long dataTTL) throws MetadataException, IOException {
     mtree.getStorageGroupNodeByStorageGroupPath(storageGroup).setDataTTL(dataTTL);
     if (!isRecover) {
-      String sgDir = config.getSchemaDir() + File.separator + storageGroup.getFullPath();
-      try (StorageGroupLogWriter logWriter = new StorageGroupLogWriter(sgDir, STORAGE_GROUP_LOG)) {
-        logWriter.setTTL(storageGroup, dataTTL);
-      }
+      logWriter.setTTL(storageGroup, dataTTL);
     }
   }
 
