@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.sql.analyze;
 
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.PartitionInfo;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
@@ -32,6 +33,7 @@ import org.apache.iotdb.db.mpp.sql.rewriter.MergeSingleFilterOptimizer;
 import org.apache.iotdb.db.mpp.sql.rewriter.RemoveNotOptimizer;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.db.mpp.sql.statement.component.WhereCondition;
+import org.apache.iotdb.db.mpp.sql.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.QueryStatement;
@@ -147,6 +149,28 @@ public class Analyzer {
       analysis.setSchemaMap(schemaMap);
       // TODO(INSERT) do type check here
       analysis.setStatement(insertTabletStatement);
+      analysis.setDataPartitionInfo(partitionInfo.getDataPartitionInfo());
+      analysis.setSchemaPartitionInfo(partitionInfo.getSchemaPartitionInfo());
+      return analysis;
+    }
+
+    public Analysis visitInsertRow(InsertRowStatement insertRowStatement,MPPQueryContext context) {
+      DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
+      dataPartitionQueryParam.setDeviceId(insertRowStatement.getDevicePath().getFullPath());
+      dataPartitionQueryParam.setTimePartitionIdList(Arrays.asList(StorageEngine.getTimePartitionId(insertRowStatement.getTime())));
+      PartitionInfo partitionInfo = partitionFetcher.fetchPartitionInfo(dataPartitionQueryParam);
+
+      Map<String, MeasurementSchema> schemaMap =
+              schemaFetcher.fetchSchema(
+                      insertRowStatement.getDevicePath(),
+                      Arrays.asList(insertRowStatement.getMeasurements()));
+
+      Analysis analysis = new Analysis();
+      analysis.setSchemaMap(schemaMap);
+      // TODO(INSERT) do type check here
+      insertRowStatement.checkDataType(schemaMap);
+
+      analysis.setStatement(insertRowStatement);
       analysis.setDataPartitionInfo(partitionInfo.getDataPartitionInfo());
       analysis.setSchemaPartitionInfo(partitionInfo.getSchemaPartitionInfo());
       return analysis;

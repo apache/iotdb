@@ -21,6 +21,9 @@ package org.apache.iotdb.db.mpp.sql.statement.crud;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
+import java.util.Map;
 
 public abstract class InsertBaseStatement extends Statement {
 
@@ -31,6 +34,7 @@ public abstract class InsertBaseStatement extends Statement {
   protected PartialPath devicePath;
 
   protected boolean isAligned;
+
   protected String[] measurements;
   // get from client
   protected TSDataType[] dataTypes;
@@ -39,7 +43,32 @@ public abstract class InsertBaseStatement extends Statement {
     return devicePath;
   }
 
+  public void setDevicePath(PartialPath devicePath) {
+    this.devicePath = devicePath;
+  }
+
   public String[] getMeasurements() {
     return measurements;
   }
+
+  public void setMeasurements(String[] measurements) {
+    this.measurements = measurements;
+  }
+
+  public TSDataType[] getDataTypes() {
+    return dataTypes;
+  }
+
+  public void setDataTypes(TSDataType[] dataTypes) {
+    this.dataTypes = dataTypes;
+  }
+
+  public boolean isAligned() {
+    return isAligned;
+  }
+
+  public void setAligned(boolean aligned) {
+    isAligned = aligned;
+  }
+  abstract public boolean checkDataType(Map<String, MeasurementSchema> schemaMap);
 }

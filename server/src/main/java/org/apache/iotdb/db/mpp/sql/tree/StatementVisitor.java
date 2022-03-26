@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.sql.tree;
 
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.db.mpp.sql.statement.StatementNode;
+import org.apache.iotdb.db.mpp.sql.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.QueryStatement;
@@ -74,5 +75,9 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitInsertTablet(InsertTabletStatement insertTabletStatement, C context) {
     return visitStatement(insertTabletStatement, context);
+  }
+
+  public R visitInsertRow(InsertRowStatement insertRowStatement, C context){
+    return visitStatement(insertRowStatement, context);
   }
 }
