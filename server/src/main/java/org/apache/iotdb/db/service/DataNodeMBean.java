@@ -16,24 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.operator;
+package org.apache.iotdb.db.service;
 
-import org.apache.iotdb.db.mpp.common.TsBlock;
-
-public class SeriesScanOperator implements Operator {
-
-  @Override
-  public OperatorContext getOperatorContext() {
-    return null;
-  }
-
-  @Override
-  public TsBlock next() {
-    return null;
-  }
-
-  @Override
-  public boolean hasNext() {
-    return false;
-  }
-}
+public interface DataNodeMBean {}

@@ -25,7 +25,7 @@
             <pattern>%-4relative [%thread] %-5level %logger{35} - %msg %n</pattern>　　　　　
         </encoder>　　　
     </appender>　　　
-    <root level="ERROR">　　　　　　
+    <root level="INFO">　　　　　　
         <appender-ref ref="STDOUT"/>　　　
     </root>
 </configuration>
