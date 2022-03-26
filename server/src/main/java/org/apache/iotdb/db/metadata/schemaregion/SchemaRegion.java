@@ -875,9 +875,10 @@ public class SchemaRegion {
    * Get all device paths and according storage group paths as ShowDevicesResult.
    *
    * @param plan ShowDevicesPlan which contains the path pattern and restriction params.
-   * @return ShowDevicesResult.
+   * @return ShowDevicesResult and the current offset of this region after traverse.
    */
-  public List<ShowDevicesResult> getMatchedDevices(ShowDevicesPlan plan) throws MetadataException {
+  public Pair<List<ShowDevicesResult>, Integer> getMatchedDevices(ShowDevicesPlan plan)
+      throws MetadataException {
     return mtree.getDevices(plan);
   }
   // endregion
@@ -923,8 +924,8 @@ public class SchemaRegion {
     return mtree.getMeasurementPathsWithAlias(pathPattern, limit, offset, isPrefixMatch);
   }
 
-  public List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan, QueryContext context)
-      throws MetadataException {
+  public Pair<List<ShowTimeSeriesResult>, Integer> showTimeseries(
+      ShowTimeSeriesPlan plan, QueryContext context) throws MetadataException {
     // show timeseries with index
     if (plan.getKey() != null && plan.getValue() != null) {
       return showTimeseriesWithIndex(plan, context);
@@ -934,7 +935,7 @@ public class SchemaRegion {
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  private List<ShowTimeSeriesResult> showTimeseriesWithIndex(
+  private Pair<List<ShowTimeSeriesResult>, Integer> showTimeseriesWithIndex(
       ShowTimeSeriesPlan plan, QueryContext context) throws MetadataException {
 
     List<IMeasurementMNode> allMatchedNodes = tagManager.getMatchedTimeseriesInIndex(plan, context);
@@ -984,31 +985,26 @@ public class SchemaRegion {
       }
     }
 
-    Stream<ShowTimeSeriesResult> stream = res.stream();
-
-    limit = plan.getLimit();
-    offset = plan.getOffset();
-
     if (needLast) {
+      Stream<ShowTimeSeriesResult> stream = res.stream();
+
+      limit = plan.getLimit();
+      offset = plan.getOffset();
+
       stream =
           stream.sorted(
               Comparator.comparingLong(ShowTimeSeriesResult::getLastTime)
                   .reversed()
                   .thenComparing(ShowTimeSeriesResult::getName));
 
-      // no limit
       if (limit != 0) {
         stream = stream.skip(offset).limit(limit);
       }
 
-    } else if (limit != 0) {
-      plan.setLimit(limit - res.size());
-      plan.setOffset(Math.max(offset - curOffset - 1, 0));
+      res = stream.collect(toList());
     }
 
-    res = stream.collect(toList());
-
-    return res;
+    return new Pair<>(res, curOffset + 1);
   }
 
   /**
@@ -1016,11 +1012,12 @@ public class SchemaRegion {
    *
    * @param plan show time series query plan
    */
-  private List<ShowTimeSeriesResult> showTimeseriesWithoutIndex(
+  private Pair<List<ShowTimeSeriesResult>, Integer> showTimeseriesWithoutIndex(
       ShowTimeSeriesPlan plan, QueryContext context) throws MetadataException {
-    List<Pair<PartialPath, String[]>> ans = mtree.getAllMeasurementSchema(plan, context);
+    Pair<List<Pair<PartialPath, String[]>>, Integer> ans =
+        mtree.getAllMeasurementSchema(plan, context);
     List<ShowTimeSeriesResult> res = new LinkedList<>();
-    for (Pair<PartialPath, String[]> ansString : ans) {
+    for (Pair<PartialPath, String[]> ansString : ans.left) {
       long tagFileOffset = Long.parseLong(ansString.right[5]);
       try {
         Pair<Map<String, String>, Map<String, String>> tagAndAttributePair =
@@ -1045,7 +1042,7 @@ public class SchemaRegion {
             e);
       }
     }
-    return res;
+    return new Pair<>(res, ans.right);
   }
 
   /**

@@ -475,7 +475,8 @@ public class MTreeBelowSG implements Serializable {
     return result;
   }
 
-  public List<ShowDevicesResult> getDevices(ShowDevicesPlan plan) throws MetadataException {
+  public Pair<List<ShowDevicesResult>, Integer> getDevices(ShowDevicesPlan plan)
+      throws MetadataException {
     List<ShowDevicesResult> res = new ArrayList<>();
     EntityCollector<List<ShowDevicesResult>> collector =
         new EntityCollector<List<ShowDevicesResult>>(
@@ -497,12 +498,7 @@ public class MTreeBelowSG implements Serializable {
     collector.setPrefixMatch(plan.isPrefixMatch());
     collector.traverse();
 
-    if (plan.getLimit() != 0) {
-      plan.setLimit(plan.getLimit() - res.size());
-      plan.setOffset(Math.max(plan.getOffset() - collector.getCurOffset() - 1, 0));
-    }
-
-    return res;
+    return new Pair<>(res, collector.getCurOffset() + 1);
   }
 
   public Set<PartialPath> getDevicesByTimeseries(PartialPath timeseries) throws MetadataException {
@@ -560,7 +556,7 @@ public class MTreeBelowSG implements Serializable {
     MeasurementCollector<List<PartialPath>> collector =
         new MeasurementCollector<List<PartialPath>>(storageGroupMNode, pathPattern, limit, offset) {
           @Override
-          protected void collectMeasurement(IMeasurementMNode node) throws MetadataException {
+          protected void collectMeasurement(IMeasurementMNode node) {
             MeasurementPath path = getCurrentMeasurementPathInTraverse(node);
             if (nodes[nodes.length - 1].equals(node.getAlias())) {
               // only when user query with alias, the alias in path will be set
@@ -578,9 +574,10 @@ public class MTreeBelowSG implements Serializable {
   /**
    * Get all measurement schema matching the given path pattern
    *
-   * <p>result: [name, alias, storage group, dataType, encoding, compression, offset]
+   * <p>result: [name, alias, storage group, dataType, encoding, compression, offset] and the
+   * current offset
    */
-  public List<Pair<PartialPath, String[]>> getAllMeasurementSchema(
+  public Pair<List<Pair<PartialPath, String[]>>, Integer> getAllMeasurementSchema(
       ShowTimeSeriesPlan plan, QueryContext queryContext) throws MetadataException {
     /*
      There are two conditions and 4 cases.
@@ -618,12 +615,13 @@ public class MTreeBelowSG implements Serializable {
     collector.traverse();
 
     List<Pair<PartialPath, String[]>> result = collector.getResult();
-    Stream<Pair<PartialPath, String[]>> stream = result.stream();
-
-    limit = plan.getLimit();
-    offset = plan.getOffset();
 
     if (needLast) {
+      Stream<Pair<PartialPath, String[]>> stream = result.stream();
+
+      limit = plan.getLimit();
+      offset = plan.getOffset();
+
       stream =
           stream.sorted(
               Comparator.comparingLong(
@@ -631,19 +629,14 @@ public class MTreeBelowSG implements Serializable {
                   .reversed()
                   .thenComparing((Pair<PartialPath, String[]> p) -> p.left));
 
-      // no limit
       if (limit != 0) {
         stream = stream.skip(offset).limit(limit);
       }
 
-    } else if (limit != 0) {
-      plan.setLimit(limit - result.size());
-      plan.setOffset(Math.max(offset - collector.getCurOffset() - 1, 0));
+      result = stream.collect(toList());
     }
 
-    result = stream.collect(toList());
-
-    return result;
+    return new Pair<>(result, collector.getCurOffset() + 1);
   }
 
   /**

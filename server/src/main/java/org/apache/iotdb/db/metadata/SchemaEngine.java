@@ -1043,12 +1043,19 @@ public class SchemaEngine {
     int limit = plan.getLimit();
     int offset = plan.getOffset();
 
+    Pair<List<ShowDevicesResult>, Integer> regionResult;
     for (SchemaRegion schemaRegion :
         getInvolvedSchemaRegions(plan.getPath(), plan.isPrefixMatch())) {
       if (limit != 0 && plan.getLimit() == 0) {
         break;
       }
-      result.addAll(schemaRegion.getMatchedDevices(plan));
+      regionResult = schemaRegion.getMatchedDevices(plan);
+      result.addAll(regionResult.left);
+
+      if (limit != 0) {
+        plan.setLimit(plan.getLimit() - regionResult.left.size());
+        plan.setOffset(Math.max(plan.getOffset() - regionResult.right, 0));
+      }
     }
 
     // reset limit and offset
@@ -1145,12 +1152,19 @@ public class SchemaEngine {
       plan.setLimit(offset + limit);
     }
 
+    Pair<List<ShowTimeSeriesResult>, Integer> regionResult;
     for (SchemaRegion schemaRegion :
         getInvolvedSchemaRegions(plan.getPath(), plan.isPrefixMatch())) {
       if (limit != 0 && plan.getLimit() == 0) {
         break;
       }
-      result.addAll(schemaRegion.showTimeseries(plan, context));
+      regionResult = schemaRegion.showTimeseries(plan, context);
+      result.addAll(regionResult.left);
+
+      if (limit != 0) {
+        plan.setLimit(plan.getLimit() - regionResult.left.size());
+        plan.setOffset(Math.max(plan.getOffset() - regionResult.right, 0));
+      }
     }
 
     Stream<ShowTimeSeriesResult> stream = result.stream();
