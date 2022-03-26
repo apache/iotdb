@@ -26,7 +26,6 @@ import org.apache.iotdb.db.metadata.SchemaEngine;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.storagegroup.IStorageGroupSchemaManager;
 import org.apache.iotdb.db.metadata.storagegroup.StorageGroupSchemaManager;
-import org.apache.iotdb.db.metadata.template.TemplateManager;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -37,19 +36,13 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-// The class is only used for 0.14 code and will be removed after new cluster
-public class MockSchemaPartitionTable {
+public class LocalSchemaPartitionTable {
 
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  // mock the storage group management in configNode
   private IStorageGroupSchemaManager storageGroupSchemaManager =
       StorageGroupSchemaManager.getInstance();
 
-  // mock the template management in configNode
-  private TemplateManager templateManager = TemplateManager.getInstance();
-
-  // mock the schemaRegion management in configNode, here's only one dataNode
   private SchemaEngine schemaEngine;
 
   private final Map<PartialPath, Set<ISchemaRegionId>> table = new ConcurrentHashMap<>();

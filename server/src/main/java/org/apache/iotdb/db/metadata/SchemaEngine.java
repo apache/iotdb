@@ -39,7 +39,7 @@ import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.rescon.TimeseriesStatistics;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegionId;
-import org.apache.iotdb.db.metadata.schemaregion.MockSchemaPartitionTable;
+import org.apache.iotdb.db.metadata.schemaregion.LocalSchemaPartitionTable;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaRegion;
 import org.apache.iotdb.db.metadata.storagegroup.IStorageGroupSchemaManager;
 import org.apache.iotdb.db.metadata.storagegroup.StorageGroupSchemaManager;
@@ -161,7 +161,7 @@ public class SchemaEngine {
   private final Map<ISchemaRegionId, SchemaRegion> schemaRegionMap = new ConcurrentHashMap<>();
 
   // only used for v0.14, remove this after new cluster
-  private final MockSchemaPartitionTable partitionTable = new MockSchemaPartitionTable();
+  private final LocalSchemaPartitionTable partitionTable = new LocalSchemaPartitionTable();
 
   // region SchemaEngine Singleton
   private static class SchemaEngineHolder {
