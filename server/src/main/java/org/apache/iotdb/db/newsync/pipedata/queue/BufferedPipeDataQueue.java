@@ -295,11 +295,9 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
     PipeData pipeData = null;
     try {
       synchronized (waitLock) {
-        pipeData = pullOnePipeData(commitSerialNumber);
-        if (pipeData == null) {
+        while ((pipeData = pullOnePipeData(commitSerialNumber)) == null) {
           waitLock.wait();
           waitLock.notifyAll();
-          pipeData = pullOnePipeData(commitSerialNumber);
         }
       }
     } catch (IOException e) {
