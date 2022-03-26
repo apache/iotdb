@@ -34,7 +34,7 @@ public class ResponseMessage implements Message {
    */
   private final Object contentHolder;
 
-  private ByteString serializedData;
+  private volatile ByteString serializedData;
   private final Logger logger = LoggerFactory.getLogger(ResponseMessage.class);
 
   public ResponseMessage(Object content) {
@@ -49,12 +49,16 @@ public class ResponseMessage implements Message {
   @Override
   public ByteString getContent() {
     if (serializedData == null) {
-      assert contentHolder instanceof TSStatus;
-      TSStatus status = (TSStatus) contentHolder;
-      try {
-        serializedData = ByteString.copyFrom(Utils.serializeTSStatus(status));
-      } catch (TException e) {
-        logger.warn("serialize TSStatus failed {}", status);
+      synchronized (this) {
+        if (serializedData == null) {
+          assert contentHolder instanceof TSStatus;
+          TSStatus status = (TSStatus) contentHolder;
+          try {
+            serializedData = ByteString.copyFrom(Utils.serializeTSStatus(status));
+          } catch (TException e) {
+            logger.warn("serialize TSStatus failed {}", status);
+          }
+        }
       }
     }
     return serializedData;
