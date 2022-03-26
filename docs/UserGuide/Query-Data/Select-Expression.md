@@ -158,6 +158,27 @@ IoTDB> select a, b, a > 10, a <= b, !(a <= b), a > 10 && a > b from root.test;
 +-----------------------------+-----------+-----------+----------------+--------------------------+---------------------------+------------------------------------------------+
 ```
 
+## Priority of Operators
+
+|priority|operator  |meaning            |
+|:---:|:------------|:------------------|
+|1    |`-`          |Unary operator negative  |
+|1    |`+`          |Unary operator positive  |
+|1    |`!`          |Unary operator negation  |
+|2    |`*`          |Binary operator multiply |
+|2    |`/`          |Binary operator division |
+|2    |`%`          |Binary operator remainder|
+|3    |`+`          |Binary operator add      |
+|3    |`-`          |Binary operator minus    |
+|4    |`>`          |Binary compare operator greater than|
+|4    |`>=`         |Binary compare operator greater or equal to|
+|4    |`<`          |Binary compare operator less than|
+|4    |`<=`         |Binary compare operator less or equal to|
+|4    |`==`         |Binary compare operator equal to|
+|4    |`!=`/`<>`    |Binary compare operator non-equal to|
+|5    |`and`/`&`/`&&`               |Binary logic operator and|
+|5    |`or`/ &#124; / &#124;&#124;  |Binary logic operator or|
+
 ## Time Series Generating Functions
 
 The time series generating function takes several time series as input and outputs one time series. Unlike the aggregation function, the result set of the time series generating function has a timestamp column.
