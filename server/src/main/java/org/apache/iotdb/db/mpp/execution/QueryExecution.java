@@ -27,7 +27,8 @@ import org.apache.iotdb.db.mpp.sql.analyze.Analyzer;
 import org.apache.iotdb.db.mpp.sql.optimization.PlanOptimizer;
 import org.apache.iotdb.db.mpp.sql.planner.DistributionPlanner;
 import org.apache.iotdb.db.mpp.sql.planner.LogicalPlanner;
-import org.apache.iotdb.db.mpp.sql.planner.plan.*;
+import org.apache.iotdb.db.mpp.sql.planner.plan.DistributedQueryPlan;
+import org.apache.iotdb.db.mpp.sql.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -35,8 +36,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
-
-import static org.apache.iotdb.rpc.RpcUtils.getStatus;
 
 /**
  * QueryExecution stores all the status of a query which is being prepared or running inside the MPP
