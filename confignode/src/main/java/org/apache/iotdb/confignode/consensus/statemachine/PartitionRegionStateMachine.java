@@ -72,14 +72,20 @@ public class PartitionRegionStateMachine implements IStateMachine {
       LOGGER.error(e.getMessage());
       result = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
-    LOGGER.info("write result " + result.toString());
     return result;
   }
 
   @Override
   public DataSet read(IConsensusRequest request) {
     PhysicalPlan plan;
-    if (request instanceof PhysicalPlan) {
+    if (request instanceof ByteBufferConsensusRequest) {
+      try {
+        plan = PhysicalPlan.Factory.create(((ByteBufferConsensusRequest) request).getContent());
+      } catch (IOException e) {
+        LOGGER.error("Deserialization error for write plan : {}", request);
+        return null;
+      }
+    } else if (request instanceof PhysicalPlan) {
       plan = (PhysicalPlan) request;
     } else {
       LOGGER.error("Unexpected read plan : {}", request);

@@ -157,14 +157,12 @@ public class ConfigManager {
 
   /** Transmit PhysicalPlan to confignode.consensus.statemachine */
   public ConsensusWriteResponse write(PhysicalPlan plan) {
-    ConsensusWriteResponse resp = consensusImpl.write(this.consensusGroupId, plan);
-    LOGGER.info("write resp: " + resp.toString());
-    return resp;
+    return consensusImpl.write(consensusGroupId, plan);
   }
 
   /** Transmit PhysicalPlan to confignode.consensus.statemachine */
   public ConsensusReadResponse read(PhysicalPlan plan) {
-    return this.consensusImpl.read(this.consensusGroupId, plan);
+    return consensusImpl.read(consensusGroupId, plan);
   }
 
   // TODO: Interfaces for LoadBalancer control
