@@ -39,6 +39,7 @@ import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.rescon.TimeseriesStatistics;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegionId;
+import org.apache.iotdb.db.metadata.schemaregion.LocalSchemaPartitionTable;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaRegion;
 import org.apache.iotdb.db.metadata.storagegroup.IStorageGroupSchemaManager;
 import org.apache.iotdb.db.metadata.storagegroup.StorageGroupSchemaManager;

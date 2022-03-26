@@ -17,11 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.metadata;
+package org.apache.iotdb.db.metadata.schemaregion;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegionId;
 
 import java.util.ArrayList;
 import java.util.Collections;
