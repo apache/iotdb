@@ -97,7 +97,8 @@ public class TsFilePipeLogger {
           String.format(
               "Record tsfile resource %s on disk error, make a empty to close it.",
               tsFileResource.getPath()));
-      SyncPathUtil.createFile(new File(tsFileDir, getRelativeFilePath(tsFileResource)));
+      SyncPathUtil.createFile(
+          new File(tsFileDir, getRelativeFilePath(tsFileResource))); // create an empty resource
     }
   }
 

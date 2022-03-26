@@ -259,6 +259,10 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
       }
       return outputDeque.poll();
     }
+    logger.warn(
+        String.format(
+            "Return null in pull one pipe data, inputDeque: %s, size: %d, outputDeque: %s, size: %d.",
+            inputDeque, inputDeque.size(), outputDeque, outputDeque.size()));
     return null;
   }
 

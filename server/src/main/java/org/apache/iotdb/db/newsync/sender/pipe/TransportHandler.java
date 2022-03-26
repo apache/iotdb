@@ -96,8 +96,12 @@ public class TransportHandler {
 
   public void stop() throws SyncConnectionException {
     transportClient.heartbeat(new SyncRequest(RequestType.STOP, pipeName, localIp, createTime));
-    transportFuture.cancel(true);
-    heartbeatFuture.cancel(true);
+    if (transportFuture != null) {
+      transportFuture.cancel(true);
+    }
+    if (heartbeatFuture != null) {
+      heartbeatFuture.cancel(true);
+    }
   }
 
   public boolean close() throws InterruptedException, SyncConnectionException {
