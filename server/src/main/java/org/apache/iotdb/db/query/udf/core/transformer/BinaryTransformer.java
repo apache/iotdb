@@ -33,7 +33,8 @@ public abstract class BinaryTransformer extends Transformer {
   protected enum TransformerType {
     Arithmetic,
     Comparative,
-    Logic
+    Logic,
+    EqNeq
   }
 
   protected abstract TransformerType getTransformerType();
@@ -65,6 +66,21 @@ public abstract class BinaryTransformer extends Transformer {
               evaluateDouble(
                   castCurrentValueToDoubleOperand(leftPointReader),
                   castCurrentValueToDoubleOperand(rightPointReader));
+          break;
+        case EqNeq:
+          // Although == and != belongs to compare operations,
+          // they can take two boolean as parameters
+          if (leftPointReader.getDataType() == TSDataType.BOOLEAN
+              && rightPointReader.getDataType() == TSDataType.BOOLEAN) {
+            cachedBoolean =
+                evaluateBoolean(
+                    leftPointReader.currentBoolean(), rightPointReader.currentBoolean());
+          } else {
+            cachedBoolean =
+                evaluateBoolean(
+                    castCurrentValueToDoubleOperand(leftPointReader),
+                    castCurrentValueToDoubleOperand(rightPointReader));
+          }
           break;
         case Comparative:
           cachedBoolean =

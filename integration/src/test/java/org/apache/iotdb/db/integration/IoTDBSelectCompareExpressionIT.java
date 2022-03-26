@@ -432,7 +432,8 @@ public class IoTDBSelectCompareExpressionIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet =
-          statement.executeQuery("select s1>=1 && s1<3, !(s1 < 2 || s1> 8), !s2>3 from root.sg.d1");
+          statement.executeQuery(
+              "select s1>=1 && s1<3, !(s1 < 2 || s1> 8), !(s2>3) from root.sg.d1");
       int columnCount = resultSet.getMetaData().getColumnCount();
       assertEquals(1 + 3, columnCount);
 
@@ -445,6 +446,9 @@ public class IoTDBSelectCompareExpressionIT {
 
         bool = Boolean.parseBoolean(resultSet.getString(3));
         assertEquals(!(intValue.get(i) < 2 || intValue.get(i) > 8), bool);
+
+        bool = Boolean.parseBoolean(resultSet.getString(4));
+        assertEquals(!(longValue.get(i) > 3), bool);
       }
     } catch (SQLException throwable) {
       fail(throwable.getMessage());

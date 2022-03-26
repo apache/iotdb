@@ -29,6 +29,11 @@ public class CompareNonEqualTransformer extends CompareBinaryTransformer {
   }
 
   @Override
+  protected TransformerType getTransformerType() {
+    return TransformerType.EqNeq;
+  }
+
+  @Override
   protected boolean evaluateBoolean(double leftOperand, double rightOperand) {
     return Double.compare(leftOperand, rightOperand) != 0;
   }
