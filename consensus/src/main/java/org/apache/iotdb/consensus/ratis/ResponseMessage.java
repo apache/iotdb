@@ -51,7 +51,7 @@ public class ResponseMessage implements Message {
     if (serializedData == null) {
       synchronized (this) {
         if (serializedData == null) {
-           assert contentHolder instanceof TSStatus;
+          assert contentHolder instanceof TSStatus;
           TSStatus status = (TSStatus) contentHolder;
           try {
             serializedData = ByteString.copyFrom(Utils.serializeTSStatus(status));

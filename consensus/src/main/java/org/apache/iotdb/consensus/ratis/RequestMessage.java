@@ -43,7 +43,7 @@ public class RequestMessage implements Message {
     if (serializedContent == null) {
       synchronized (this) {
         if (serializedContent == null) {
-           assert actualRequest instanceof ByteBufferConsensusRequest;
+          assert actualRequest instanceof ByteBufferConsensusRequest;
           ByteBufferConsensusRequest req = (ByteBufferConsensusRequest) actualRequest;
           serializedContent = ByteString.copyFrom(req.getContent());
           req.getContent().flip(); // so that it can be read from other sources

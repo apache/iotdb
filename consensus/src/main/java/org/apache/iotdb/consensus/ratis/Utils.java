@@ -50,9 +50,21 @@ public class Utils {
     // use abbreviations to prevent overflow
     String groupTypeAbbr = null;
     switch (consensusGroupId.getType()) {
-      case DataRegion: {groupTypeAbbr = DataRegionAbbr; break;}
-      case SchemaRegion: {groupTypeAbbr = SchemaRegionAbbr; break;}
-      case PartitionRegion: {groupTypeAbbr = PartitionRegionAbbr; break;}
+      case DataRegion:
+        {
+          groupTypeAbbr = DataRegionAbbr;
+          break;
+        }
+      case SchemaRegion:
+        {
+          groupTypeAbbr = SchemaRegionAbbr;
+          break;
+        }
+      case PartitionRegion:
+        {
+          groupTypeAbbr = PartitionRegionAbbr;
+          break;
+        }
     }
     return String.format("%s-%d", groupTypeAbbr, consensusGroupId.getId());
   }
@@ -95,9 +107,21 @@ public class Utils {
     String[] items = consensusGroupString.split("-");
     GroupType groupType = null;
     switch (items[0]) {
-      case DataRegionAbbr: {groupType = GroupType.DataRegion; break;}
-      case PartitionRegionAbbr: {groupType = GroupType.PartitionRegion; break;}
-      case SchemaRegionAbbr: {groupType = GroupType.SchemaRegion; break;}
+      case DataRegionAbbr:
+        {
+          groupType = GroupType.DataRegion;
+          break;
+        }
+      case PartitionRegionAbbr:
+        {
+          groupType = GroupType.PartitionRegion;
+          break;
+        }
+      case SchemaRegionAbbr:
+        {
+          groupType = GroupType.SchemaRegion;
+          break;
+        }
     }
     return new ConsensusGroupId(groupType, Long.parseLong(items[1]));
   }
