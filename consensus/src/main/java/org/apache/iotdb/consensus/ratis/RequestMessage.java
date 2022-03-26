@@ -27,7 +27,7 @@ import org.apache.ratis.thirdparty.com.google.protobuf.ByteString;
 public class RequestMessage implements Message {
 
   private final IConsensusRequest actualRequest;
-  private ByteString serializedContent;
+  private volatile ByteString serializedContent;
 
   public RequestMessage(IConsensusRequest request) {
     this.actualRequest = request;
@@ -41,10 +41,14 @@ public class RequestMessage implements Message {
   @Override
   public ByteString getContent() {
     if (serializedContent == null) {
-      assert actualRequest instanceof ByteBufferConsensusRequest;
-      ByteBufferConsensusRequest req = (ByteBufferConsensusRequest) actualRequest;
-      serializedContent = ByteString.copyFrom(req.getContent());
-      req.getContent().flip(); // so that it can be read from other sources
+      synchronized (this) {
+        if (serializedContent == null) {
+          assert actualRequest instanceof ByteBufferConsensusRequest;
+          ByteBufferConsensusRequest req = (ByteBufferConsensusRequest) actualRequest;
+          serializedContent = ByteString.copyFrom(req.getContent());
+          req.getContent().flip(); // so that it can be read from other sources
+        }
+      }
     }
     return serializedContent;
   }
