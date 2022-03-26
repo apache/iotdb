@@ -30,6 +30,11 @@ public abstract class CompareBinaryTransformer extends BinaryTransformer {
   }
 
   @Override
+  protected TransformerType getTransformerType() {
+    return TransformerType.Comparative;
+  }
+
+  @Override
   public TSDataType getDataType() {
     return TSDataType.BOOLEAN;
   }

@@ -47,18 +47,6 @@ public class LogicNotTransformer extends Transformer {
       currentNull = true;
     } else {
       switch (layerPointReader.getDataType()) {
-        case INT32:
-          cachedBoolean = layerPointReader.currentInt() == 0;
-          break;
-        case INT64:
-          cachedBoolean = layerPointReader.currentLong() == 0L;
-          break;
-        case FLOAT:
-          cachedBoolean = Float.compare(layerPointReader.currentFloat(), 0.0f) == 0;
-          break;
-        case DOUBLE:
-          cachedBoolean = Double.compare(layerPointReader.currentDouble(), 0.0) == 0;
-          break;
         case BOOLEAN:
           cachedBoolean = !layerPointReader.currentBoolean();
           break;

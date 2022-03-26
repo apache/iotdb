@@ -72,7 +72,7 @@ From this syntax definition, `selectExpr` can contain:
 
 Supported operators: `+`, `-`
 
-Supported input data types: `INT32`, `INT64`, `FLOAT` and `DOUBLE`
+Supported input data types: `INT32`, `INT64` and `FLOAT`
 
 Output data type: consistent with the input data type
 
@@ -80,9 +80,7 @@ Output data type: consistent with the input data type
 
 Supported operators: `+`, `-`, `*`, `/`, `%`
 
-Supported input data types: `INT32`, `INT64`, `FLOAT`, `DOUBLE` and `BOOLEAN`
-
-For `BOOLEAN` type, `true` will be transformed to 1.0, `false` will be transformed to 0.0
+Supported input data types: `INT32`, `INT64`, `FLOAT` and `DOUBLE`
 
 Output data type: `DOUBLE`
 
@@ -114,11 +112,9 @@ It costs 0.014s
 #### Unary Logical Operators
 Supported operator `!`
 
-Supported input data types: `INT32`, `INT64`, `FLOAT`, `DOUBLE` and `BOOLEAN`
+Supported input data types: `BOOLEAN`
 
 Output data type: `BOOLEAN`
-
-For `BOOLEAN` type, return `para`==`false`，For other types, if the value is zero, return `true`, else return `false`.
 
 Hint: the priority of `!` is the same as `-`. Remember to use brackets to modify priority.
 
@@ -126,9 +122,9 @@ Hint: the priority of `!` is the same as `-`. Remember to use brackets to modify
 
 Supported operators `>`, `>=`, `<`, `<=`, `==`, `!=`
 
-Supported input data types: `INT32`, `INT64`, `FLOAT`, `DOUBLE` and `BOOLEAN`
+Supported input data types: `INT32`, `INT64`, `FLOAT` and `DOUBLE` 
 
-It will transform al type to `DOUBLE`then do computation. `true` is regard as 1.0, `false` is regard as 0.0.
+It will transform all type to `DOUBLE` then do computation. 
 
 Output data type: `BOOLEAN`
 
@@ -136,13 +132,11 @@ Output data type: `BOOLEAN`
 
 Supported operators AND:`and`,`&`, `&&`; OR:`or`,`|`,`||`
 
-Supported input data types: `INT32`, `INT64`, `FLOAT`, `DOUBLE` and `BOOLEAN`
-
-Non-zero values are regarded as `true`, 0 is regarded a s `false`. Then do logic computation.
+Supported input data types: `BOOLEAN`
 
 Output data type: `BOOLEAN`
 
-Note: Only when the left operand and the right operand under a certain timestamp are not  `null`, the binary arithmetic operation will have an output value.
+Note: Only when the left operand and the right operand under a certain timestamp are both `BOOLEAN` type, the binary logic operation will have an output value.
 
 ### Example
 ```sql

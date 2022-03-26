@@ -30,6 +30,14 @@ public abstract class BinaryTransformer extends Transformer {
   private final LayerPointReader leftPointReader;
   private final LayerPointReader rightPointReader;
 
+  protected enum TransformerType {
+    Arithmetic,
+    Comparative,
+    Logic
+  }
+
+  protected abstract TransformerType getTransformerType();
+
   protected BinaryTransformer(LayerPointReader leftPointReader, LayerPointReader rightPointReader) {
     this.leftPointReader = leftPointReader;
     this.rightPointReader = rightPointReader;
@@ -51,18 +59,32 @@ public abstract class BinaryTransformer extends Transformer {
     if (leftPointReader.isCurrentNull() || rightPointReader.isCurrentNull()) {
       currentNull = true;
     } else {
-      switch (getDataType()) {
-        case DOUBLE:
+      switch (getTransformerType()) {
+        case Arithmetic:
           cachedDouble =
               evaluateDouble(
                   castCurrentValueToDoubleOperand(leftPointReader),
                   castCurrentValueToDoubleOperand(rightPointReader));
           break;
-        case BOOLEAN:
+        case Comparative:
           cachedBoolean =
               evaluateBoolean(
                   castCurrentValueToDoubleOperand(leftPointReader),
                   castCurrentValueToDoubleOperand(rightPointReader));
+          break;
+        case Logic:
+          // Check TSDataType
+          if (leftPointReader.getDataType() != TSDataType.BOOLEAN) {
+            throw new QueryProcessException(
+                "Unsupported data type: " + leftPointReader.getDataType().toString());
+          }
+          if (rightPointReader.getDataType() != TSDataType.BOOLEAN) {
+            throw new QueryProcessException(
+                "Unsupported data type: " + rightPointReader.getDataType().toString());
+          }
+          cachedBoolean =
+              evaluateBoolean(leftPointReader.currentBoolean(), rightPointReader.currentBoolean());
+          break;
       }
     }
     leftPointReader.readyForNext();
@@ -121,6 +143,10 @@ public abstract class BinaryTransformer extends Transformer {
     return false;
   }
 
+  protected boolean evaluateBoolean(boolean leftOperand, boolean rightOperand) {
+    return false;
+  }
+
   private static double castCurrentValueToDoubleOperand(LayerPointReader layerPointReader)
       throws IOException, QueryProcessException {
     switch (layerPointReader.getDataType()) {
@@ -132,16 +158,9 @@ public abstract class BinaryTransformer extends Transformer {
         return layerPointReader.currentFloat();
       case DOUBLE:
         return layerPointReader.currentDouble();
-      case BOOLEAN:
-        return layerPointReader.currentBoolean() ? 1.0 : 0.0;
       default:
         throw new QueryProcessException(
             "Unsupported data type: " + layerPointReader.getDataType().toString());
     }
-  }
-
-  @Override
-  public TSDataType getDataType() {
-    return TSDataType.DOUBLE;
   }
 }

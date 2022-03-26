@@ -21,14 +21,14 @@ package org.apache.iotdb.db.query.udf.core.transformer;
 
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 
-public class LogicOrTransformer extends CompareBinaryTransformer {
+public class LogicOrTransformer extends LogicBinaryTransformer {
 
   public LogicOrTransformer(LayerPointReader leftPointReader, LayerPointReader rightPointReader) {
     super(leftPointReader, rightPointReader);
   }
 
   @Override
-  protected boolean evaluateBoolean(double leftOperand, double rightOperand) {
-    return Double.compare(leftOperand, 1.0) == 0 || Double.compare(rightOperand, 1.0) == 0;
+  protected boolean evaluateBoolean(boolean leftOperand, boolean rightOperand) {
+    return leftOperand || rightOperand;
   }
 }
