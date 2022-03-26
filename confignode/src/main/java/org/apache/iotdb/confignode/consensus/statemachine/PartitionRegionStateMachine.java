@@ -72,6 +72,7 @@ public class PartitionRegionStateMachine implements IStateMachine {
       LOGGER.error(e.getMessage());
       result = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
+    LOGGER.info("write result " + result.toString());
     return result;
   }
 

@@ -127,7 +127,7 @@
             <level>INFO</level>
         </filter>
     </appender>
-    <root level="info">
+    <root level="debug">
         <appender-ref ref="FILEDEBUG"/>
         <appender-ref ref="FILEWARN"/>
         <appender-ref ref="FILEERROR"/>
@@ -135,6 +135,6 @@
         <appender-ref ref="FILEALL"/>
         <appender-ref ref="stdout"/>
     </root>
-    <logger level="info" name="org.apache.iotdb.confignode.service"/>
-    <logger level="info" name="org.apache.iotdb.confignode.conf"/>
+    <logger level="info" name="org.apache.iotdb.confignode"/>
+    <logger level="debug" name="org.apache.ratis"/>
 </configuration>

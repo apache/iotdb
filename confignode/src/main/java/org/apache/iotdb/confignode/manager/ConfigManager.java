@@ -157,7 +157,9 @@ public class ConfigManager {
 
   /** Transmit PhysicalPlan to confignode.consensus.statemachine */
   public ConsensusWriteResponse write(PhysicalPlan plan) {
-    return this.consensusImpl.write(this.consensusGroupId, plan);
+    ConsensusWriteResponse resp = consensusImpl.write(this.consensusGroupId, plan);
+    LOGGER.info("write resp: " + resp.toString());
+    return resp;
   }
 
   /** Transmit PhysicalPlan to confignode.consensus.statemachine */

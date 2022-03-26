@@ -1,3 +1,21 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
@@ -30,9 +48,9 @@ public class ConfigManagerTest {
    * this code, follow these steps: 1. Compile IoTDB 2. Copy at least three
    * iotdb-confignode-0.14.0-SNAPSHOT 3. Make sure these parameters: config_node_rpc_address(all
    * 0.0.0.0), config_node_rpc_port(22277, 22279, 22281), config_node_internal_port(22278, 22280,
-   * 22282), consensus_type(all ratis) and config_node_group_address_list(all
-   * 0.0.0.0:22278,0.0.0.0:22280,0.0.0.0:22282) in each iotdb-confignode.properties file are set 4.
-   * Start these ConfigNode by yourself 5. Add @Test and run
+   * 22282), consensus_type(all ratis) and config_node_group_address_list(all 0.0.0.0:22278,
+   * 0.0.0.0:22280, 0.0.0.0:22282) in each iotdb-confignode.properties file are set 4. Start these
+   * ConfigNode by yourself 5. Add @Test and run
    */
   @Test
   public void ratisConsensusTest() throws TException, InterruptedException {
