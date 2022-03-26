@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.metadata.schemaregion;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -27,7 +26,6 @@ import org.apache.iotdb.db.metadata.SchemaEngine;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.storagegroup.IStorageGroupSchemaManager;
 import org.apache.iotdb.db.metadata.storagegroup.StorageGroupSchemaManager;
-import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
 
 import java.io.File;
@@ -39,12 +37,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
-
 // The class is only used for 0.14 code and will be removed after new cluster
-public class SchemaPartitionTable {
-
-  private static final int SCHEMA_REGION_NUM_PER_SG = 3;
+public class MockSchemaPartitionTable {
 
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
@@ -65,15 +59,14 @@ public class SchemaPartitionTable {
   }
 
   public void init() throws MetadataException {
-    File dir = new File(config.getSchemaDir());
-    File[] sgDirs =
-        dir.listFiles((dir1, name) -> name.startsWith(PATH_ROOT + IoTDBConstant.PATH_SEPARATOR));
-    if (sgDirs == null) {
-      return;
-    }
-    for (File sgDir : sgDirs) {
-      PartialPath storageGroup = new PartialPath(sgDir.getName());
+    for (PartialPath storageGroup : storageGroupSchemaManager.getAllStorageGroupPaths()) {
       setStorageGroup(storageGroup);
+
+      File sgDir = new File(config.getSchemaDir(), storageGroup.getFullPath());
+
+      if (!sgDir.exists()) {
+        continue;
+      }
 
       File[] schemaRegionDirs = sgDir.listFiles();
       if (schemaRegionDirs == null) {
@@ -136,24 +129,8 @@ public class SchemaPartitionTable {
     }
   }
 
-  private void processTemplateWhileCreatingSchemaRegion(ISchemaRegionId schemaRegionId)
-      throws MetadataException {
-    String storageGroup = schemaRegionId.getStorageGroup();
-    for (Template template : templateManager.getTemplateInStorageGroup(storageGroup)) {
-      for (ISchemaRegionId relatedSchemaRegionId :
-          template.getRelatedSchemaRegionInStorageGroup(storageGroup)) {
-        SchemaRegion schemaRegion = schemaEngine.getSchemaRegion(relatedSchemaRegionId);
-        for (String path : schemaRegion.getPathsSetTemplate(template.getName())) {}
-      }
-    }
-  }
-
   private ISchemaRegionId calculateSchemaRegionId(PartialPath storageGroup, PartialPath path) {
-    int index = storageGroup.getNodeLength();
-    String[] nodes = path.getNodes();
-    String node = nodes.length > index ? nodes[index] : nodes[nodes.length - 1];
     return ISchemaRegionId.getISchemaRegionId(
-        storageGroup.toString(),
-        storageGroup.toString() + "_" + node.hashCode() % SCHEMA_REGION_NUM_PER_SG);
+        storageGroup.toString(), storageGroup.toString() + "_schema_region");
   }
 }

@@ -39,7 +39,7 @@ import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.rescon.TimeseriesStatistics;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegionId;
-import org.apache.iotdb.db.metadata.schemaregion.SchemaPartitionTable;
+import org.apache.iotdb.db.metadata.schemaregion.MockSchemaPartitionTable;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaRegion;
 import org.apache.iotdb.db.metadata.storagegroup.IStorageGroupSchemaManager;
 import org.apache.iotdb.db.metadata.storagegroup.StorageGroupSchemaManager;
@@ -161,7 +161,7 @@ public class SchemaEngine {
   private final Map<ISchemaRegionId, SchemaRegion> schemaRegionMap = new ConcurrentHashMap<>();
 
   // only used for v0.14, remove this after new cluster
-  private final SchemaPartitionTable partitionTable = new SchemaPartitionTable();
+  private final MockSchemaPartitionTable partitionTable = new MockSchemaPartitionTable();
 
   // region SchemaEngine Singleton
   private static class SchemaEngineHolder {
@@ -1743,9 +1743,7 @@ public class SchemaEngine {
     PartialPath path = new PartialPath(plan.getPrefixPath());
     try {
       ensureStorageGroup(path);
-      for (SchemaRegion schemaRegion : getInvolvedSchemaRegions(path, false)) {
-        schemaRegion.setSchemaTemplate(plan);
-      }
+      getBelongedSchemaRegion(path).setSchemaTemplate(plan);
     } catch (StorageGroupAlreadySetException e) {
       throw new MetadataException("Template should not be set above storageGroup");
     }
@@ -1753,10 +1751,7 @@ public class SchemaEngine {
 
   public synchronized void unsetSchemaTemplate(UnsetTemplatePlan plan) throws MetadataException {
     try {
-      for (SchemaRegion schemaRegion :
-          getInvolvedSchemaRegions(new PartialPath(plan.getPrefixPath()), false)) {
-        schemaRegion.unsetSchemaTemplate(plan);
-      }
+      getBelongedSchemaRegion(new PartialPath(plan.getPrefixPath())).unsetSchemaTemplate(plan);
     } catch (StorageGroupNotSetException e) {
       throw new PathNotExistException(plan.getPrefixPath());
     }
@@ -1764,9 +1759,7 @@ public class SchemaEngine {
 
   public void setUsingSchemaTemplate(ActivateTemplatePlan plan) throws MetadataException {
     try {
-      for (SchemaRegion schemaRegion : getInvolvedSchemaRegions(plan.getPrefixPath(), false)) {
-        schemaRegion.setUsingSchemaTemplate(plan);
-      }
+      getBelongedSchemaRegion(plan.getPrefixPath()).setUsingSchemaTemplate(plan);
     } catch (StorageGroupNotSetException e) {
       throw new MetadataException(
           String.format(

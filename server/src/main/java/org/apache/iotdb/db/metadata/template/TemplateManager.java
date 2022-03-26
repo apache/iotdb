@@ -315,7 +315,7 @@ public class TemplateManager {
   public void markSchemaRegion(Template template, ISchemaRegionId schemaRegionId) {
     String storageGroup = schemaRegionId.getStorageGroup();
     synchronized (templateUsageInStorageGroup) {
-      if (templateUsageInStorageGroup.containsKey(storageGroup)) {
+      if (!templateUsageInStorageGroup.containsKey(storageGroup)) {
         templateUsageInStorageGroup.putIfAbsent(
             storageGroup, Collections.synchronizedSet(new HashSet<>()));
       }
