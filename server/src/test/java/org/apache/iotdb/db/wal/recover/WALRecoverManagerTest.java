@@ -161,7 +161,7 @@ public class WALRecoverManagerTest {
     recoverManager.recover();
     // check recover listeners
     for (WALRecoverListener recoverListener : recoverListeners) {
-      assertEquals(WALRecoverListener.Status.SUCCESS, recoverListener.getResult());
+      assertEquals(WALRecoverListener.Status.SUCCESS, recoverListener.waitForResult());
     }
 
     // region check file with wal

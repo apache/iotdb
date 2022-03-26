@@ -154,10 +154,10 @@ public class IoTDBConfig {
   private String[] walDirs = {DEFAULT_BASE_DIR + File.separator + IoTDBConstant.WAL_FOLDER_NAME};
 
   /** Duration a wal flush operation will wait before calling fsync. Unit: millisecond */
-  private long syncWalDelayInMs = 0;
+  private long fsyncWalDelayInMs = 0;
 
   /** Max number of wal nodes, each node corresponds to one wal directory */
-  private int maxWalNum = 0;
+  private int maxWalNodeNum = 0;
 
   /** Buffer size of each wal node. Unit: byte */
   private int walBufferSize = 16 * 1024 * 1024;
@@ -173,7 +173,7 @@ public class IoTDBConfig {
    * this, wal can flush this memtable to disk, otherwise wal will snapshot this memtable in wal.
    * Unit: byte
    */
-  private int memtableSnapshotForWalThreshold = 128 * 1024 * 1024;
+  private int walMemTableSnapshotThreshold = 128 * 1024 * 1024;
   // endregion
 
   /** Unit: byte */
@@ -1319,20 +1319,20 @@ public class IoTDBConfig {
     this.walDirs = walDirs;
   }
 
-  public long getSyncWalDelayInMs() {
-    return syncWalDelayInMs;
+  public long getFsyncWalDelayInMs() {
+    return fsyncWalDelayInMs;
   }
 
-  void setSyncWalDelayInMs(long syncWalDelayInMs) {
-    this.syncWalDelayInMs = syncWalDelayInMs;
+  void setFsyncWalDelayInMs(long fsyncWalDelayInMs) {
+    this.fsyncWalDelayInMs = fsyncWalDelayInMs;
   }
 
-  public int getMaxWalNum() {
-    return maxWalNum;
+  public int getMaxWalNodeNum() {
+    return maxWalNodeNum;
   }
 
-  void setMaxWalNum(int maxWalNum) {
-    this.maxWalNum = maxWalNum;
+  void setMaxWalNodeNum(int maxWalNodeNum) {
+    this.maxWalNodeNum = maxWalNodeNum;
   }
 
   public int getWalBufferSize() {
@@ -1359,12 +1359,12 @@ public class IoTDBConfig {
     this.walStorageSpaceInMb = walStorageSpaceInMb;
   }
 
-  public int getMemtableSnapshotForWalThreshold() {
-    return memtableSnapshotForWalThreshold;
+  public int getWalMemTableSnapshotThreshold() {
+    return walMemTableSnapshotThreshold;
   }
 
-  void setMemtableSnapshotForWalThreshold(int memtableSnapshotForWalThreshold) {
-    this.memtableSnapshotForWalThreshold = memtableSnapshotForWalThreshold;
+  void setWalMemTableSnapshotThreshold(int walMemTableSnapshotThreshold) {
+    this.walMemTableSnapshotThreshold = walMemTableSnapshotThreshold;
   }
 
   public int getEstimatedSeriesSize() {

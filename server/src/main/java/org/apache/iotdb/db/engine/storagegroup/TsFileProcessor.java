@@ -226,7 +226,7 @@ public class TsFileProcessor implements WALSubmitter {
 
     try {
       WALFlushListener walFlushListener = walNode.log(workMemTable.getMemTableId(), insertRowPlan);
-      if (walFlushListener.getResult() == IResultListener.Status.FAILURE) {
+      if (walFlushListener.waitForResult() == IResultListener.Status.FAILURE) {
         throw walFlushListener.getCause();
       }
     } catch (Exception e) {
@@ -297,7 +297,7 @@ public class TsFileProcessor implements WALSubmitter {
       insertTabletPlan.setEnd(end);
       WALFlushListener walFlushListener =
           walNode.log(workMemTable.getMemTableId(), insertTabletPlan);
-      if (walFlushListener.getResult() == IResultListener.Status.FAILURE) {
+      if (walFlushListener.waitForResult() == IResultListener.Status.FAILURE) {
         throw walFlushListener.getCause();
       }
     } catch (Exception e) {

@@ -439,7 +439,7 @@ public class VirtualStorageGroupProcessor {
       }
       // wait until all unsealed TsFiles are recovered
       for (WALRecoverListener recoverListener : recoverListeners) {
-        if (recoverListener.getResult() == WALRecoverListener.Status.FAILURE) {
+        if (recoverListener.waitForResult() == WALRecoverListener.Status.FAILURE) {
           logger.error("Fail to recover unsealed TsFile, skip it.", recoverListener.getCause());
         }
         // update VSGRecoveryContext
@@ -1819,7 +1819,7 @@ public class VirtualStorageGroupProcessor {
           logDeleteInWAL(startTime, endTime, path, timePartitionFilter);
 
       for (WALFlushListener walFlushListener : walListeners) {
-        if (walFlushListener.getResult() == WALFlushListener.Status.FAILURE) {
+        if (walFlushListener.waitForResult() == WALFlushListener.Status.FAILURE) {
           logger.error("Fail to log delete to wal.", walFlushListener.getCause());
           throw walFlushListener.getCause();
         }

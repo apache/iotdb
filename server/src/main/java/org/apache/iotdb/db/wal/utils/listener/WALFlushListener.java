@@ -55,8 +55,11 @@ public class WALFlushListener implements IResultListener {
     return this;
   }
 
-  public synchronized Status getResult() {
-    // block only when wal mode is sync
+  /**
+   * Wait until getting the result. <br>
+   * Notice : wait only when wal mode is sync
+   */
+  public synchronized Status waitForResult() {
     if (config.getWalMode() == WALMode.SYNC) {
       while (status == Status.RUNNING) {
         try {

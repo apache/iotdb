@@ -55,8 +55,8 @@ public class WALManager implements IService {
 
   private static final Logger logger = LoggerFactory.getLogger(WALManager.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static final int MAX_WAL_NUM =
-      config.getMaxWalNum() > 0 ? config.getMaxWalNum() : config.getWalDirs().length * 2;
+  private static final int MAX_WAL_NODE_NUM =
+      config.getMaxWalNodeNum() > 0 ? config.getMaxWalNodeNum() : config.getWalDirs().length * 2;
 
   /** manage wal folders */
   private FolderManager folderManager;
@@ -64,7 +64,7 @@ public class WALManager implements IService {
   private final Lock nodesLock = new ReentrantLock();
   // region these variables should be protected by nodesLock
   /** wal nodes, the max number of wal nodes is MAX_WAL_NUM */
-  private final List<WALNode> walNodes = new ArrayList<>(MAX_WAL_NUM);
+  private final List<WALNode> walNodes = new ArrayList<>(MAX_WAL_NODE_NUM);
   /** help allocate node for users */
   private int nodeCursor = -1;
   /** each wal node has a unique long value identifier */
@@ -86,7 +86,7 @@ public class WALManager implements IService {
     WALNode selectedNode;
     nodesLock.lock();
     try {
-      if (walNodes.size() < MAX_WAL_NUM) {
+      if (walNodes.size() < MAX_WAL_NODE_NUM) {
         nodeIdCounter++;
         String identifier = String.valueOf(nodeIdCounter);
         String folder;
@@ -110,7 +110,7 @@ public class WALManager implements IService {
       } else {
         // select next wal node by sequence order
         nodeCursor++;
-        selectedNode = walNodes.get(nodeCursor % MAX_WAL_NUM);
+        selectedNode = walNodes.get(nodeCursor % MAX_WAL_NODE_NUM);
       }
     } finally {
       nodesLock.unlock();
@@ -149,37 +149,30 @@ public class WALManager implements IService {
   }
 
   private void fsyncCheckpointFile() {
-    List<WALNode> tmpWALNodes;
-    if (walNodes.size() < MAX_WAL_NUM) {
-      nodesLock.lock();
-      try {
-        tmpWALNodes = new ArrayList<>(walNodes);
-      } finally {
-        nodesLock.unlock();
-      }
-    } else {
-      tmpWALNodes = walNodes;
-    }
-    for (WALNode walNode : tmpWALNodes) {
+    for (WALNode walNode : getNodesSnapshot()) {
       walNode.fsyncCheckpointFile();
     }
   }
 
   private void deleteOutdatedFiles() {
-    List<WALNode> tmpWALNodes;
-    if (walNodes.size() < MAX_WAL_NUM) {
+    for (WALNode walNode : getNodesSnapshot()) {
+      walNode.deleteOutdatedFiles();
+    }
+  }
+
+  private List<WALNode> getNodesSnapshot() {
+    List<WALNode> snapshot;
+    if (walNodes.size() < MAX_WAL_NODE_NUM) {
       nodesLock.lock();
       try {
-        tmpWALNodes = new ArrayList<>(walNodes);
+        snapshot = new ArrayList<>(walNodes);
       } finally {
         nodesLock.unlock();
       }
     } else {
-      tmpWALNodes = walNodes;
+      snapshot = walNodes;
     }
-    for (WALNode walNode : tmpWALNodes) {
-      walNode.deleteOutdatedFiles();
-    }
+    return snapshot;
   }
 
   @Override

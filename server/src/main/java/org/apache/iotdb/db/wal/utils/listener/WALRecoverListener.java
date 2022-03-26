@@ -50,7 +50,7 @@ public class WALRecoverListener implements IResultListener {
     return this;
   }
 
-  public synchronized WALRecoverListener.Status getResult() {
+  public synchronized WALRecoverListener.Status waitForResult() {
     while (status == Status.RUNNING) {
       try {
         this.wait();

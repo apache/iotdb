@@ -877,16 +877,16 @@ public class IoTDBDescriptor {
     long syncWalDelayInMs =
         Long.parseLong(
             properties.getProperty(
-                "sync_wal_delay_in_ms", Long.toString(conf.getSyncWalDelayInMs())));
+                "fsync_wal_delay_in_ms", Long.toString(conf.getFsyncWalDelayInMs())));
     if (syncWalDelayInMs > 0) {
-      conf.setSyncWalDelayInMs(syncWalDelayInMs);
+      conf.setFsyncWalDelayInMs(syncWalDelayInMs);
     }
 
     int maxWalNum =
         Integer.parseInt(
-            properties.getProperty("max_wal_num", Integer.toString(conf.getMaxWalNum())));
+            properties.getProperty("max_wal_node_num", Integer.toString(conf.getMaxWalNodeNum())));
     if (maxWalNum > 0) {
-      conf.setMaxWalNum(maxWalNum);
+      conf.setMaxWalNodeNum(maxWalNum);
     }
 
     int walBufferSize =
@@ -916,10 +916,10 @@ public class IoTDBDescriptor {
     int memtableSnapshotForWalThreshold =
         Integer.parseInt(
             properties.getProperty(
-                "memtable_snapshot_for_wal_threshold_in_byte",
-                Integer.toString(conf.getMemtableSnapshotForWalThreshold())));
+                "wal_memtable_snapshot_threshold_in_byte",
+                Integer.toString(conf.getWalMemTableSnapshotThreshold())));
     if (memtableSnapshotForWalThreshold > 0) {
-      conf.setMemtableSnapshotForWalThreshold(walStorageSpace);
+      conf.setWalMemTableSnapshotThreshold(walStorageSpace);
     }
   }
 

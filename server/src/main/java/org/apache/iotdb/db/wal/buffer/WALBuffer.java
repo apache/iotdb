@@ -54,7 +54,7 @@ public class WALBuffer extends AbstractWALBuffer {
   private static final Logger logger = LoggerFactory.getLogger(WALBuffer.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final int WAL_BUFFER_SIZE = config.getWalBufferSize();
-  private static final long SYNC_WAL_DELAY_IN_MS = config.getSyncWalDelayInMs();
+  private static final long FSYNC_WAL_DELAY_IN_MS = config.getFsyncWalDelayInMs();
   /** default delay time of each serialize task when wal mode is async */
   public static final long ASYNC_WAL_DELAY_IN_MS = 100;
   /** Maximum number of WALEdits in one serialize task when wal mode is sync */
@@ -165,8 +165,8 @@ public class WALBuffer extends AbstractWALBuffer {
         Thread.currentThread().interrupt();
       }
       // for better fsync performance, sleep a while to enlarge write batch
-      if (SYNC_WAL_DELAY_IN_MS > 0 || config.getWalMode() == WALMode.ASYNC) {
-        long sleepTime = SYNC_WAL_DELAY_IN_MS > 0 ? SYNC_WAL_DELAY_IN_MS : ASYNC_WAL_DELAY_IN_MS;
+      if (FSYNC_WAL_DELAY_IN_MS > 0 || config.getWalMode() == WALMode.ASYNC) {
+        long sleepTime = FSYNC_WAL_DELAY_IN_MS > 0 ? FSYNC_WAL_DELAY_IN_MS : ASYNC_WAL_DELAY_IN_MS;
         try {
           Thread.sleep(sleepTime);
         } catch (InterruptedException e) {

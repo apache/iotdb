@@ -27,7 +27,7 @@ public interface IResultListener {
   IResultListener fail(Exception e);
 
   /** Wait until getting the result. */
-  Status getResult();
+  Status waitForResult();
 
   /** Get the cause exception to failure. */
   Exception getCause();
