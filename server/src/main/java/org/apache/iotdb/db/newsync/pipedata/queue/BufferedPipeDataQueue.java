@@ -236,10 +236,6 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
 
   /** output */
   private synchronized PipeData pullOnePipeData(long lastSerialNumber) throws IOException {
-    logger.info(
-        String.format(
-            "Pull lastSerialNumber %d, pipeLogStartNumber %s, inputDeque %s, outputDeque %s.",
-            lastSerialNumber, pipeLogStartNumber, inputDeque, outputDeque));
     long serialNumber = lastSerialNumber + 1;
     if (!outputDeque.isEmpty()) {
       return outputDeque.poll();
