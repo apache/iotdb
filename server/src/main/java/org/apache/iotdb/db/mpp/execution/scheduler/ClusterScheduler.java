@@ -18,19 +18,18 @@
  */
 package org.apache.iotdb.db.mpp.execution.scheduler;
 
+import io.airlift.units.Duration;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.execution.FragmentInfo;
-import org.apache.iotdb.db.mpp.execution.QueryState;
+import org.apache.iotdb.db.mpp.execution.FragmentInstanceState;
 import org.apache.iotdb.db.mpp.execution.QueryStateMachine;
+import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
-
-import io.airlift.units.Duration;
 
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
-import java.util.concurrent.FutureTask;
 
 /**
  * QueryScheduler is used to dispatch the fragment instances of a query to target nodes. And it will
@@ -42,14 +41,15 @@ import java.util.concurrent.FutureTask;
 public class ClusterScheduler implements IScheduler {
   // The stateMachine of the QueryExecution owned by this QueryScheduler
   private QueryStateMachine stateMachine;
-
+  private QueryType queryType;
   // The fragment instances which should be sent to corresponding Nodes.
   private List<FragmentInstance> instances;
   private IFragInstanceDispatcher dispatcher;
 
-  public ClusterScheduler(QueryStateMachine stateMachine, List<FragmentInstance> instances) {
+  public ClusterScheduler(QueryStateMachine stateMachine, List<FragmentInstance> instances, QueryType queryType) {
     this.stateMachine = stateMachine;
     this.instances = instances;
+    this.queryType = queryType;
     this.dispatcher = new SimpleFragInstanceDispatcher();
   }
 
@@ -58,21 +58,50 @@ public class ClusterScheduler implements IScheduler {
     // TODO: consider where the state transition should be put
     stateMachine.transitionToDispatching();
     Future<FragInstanceDispatchResult> dispatchResultFuture = dispatcher.dispatch(instances);
-    //TODO: start the FragmentInstance state fetcher
+
+    // NOTICE: the FragmentInstance may be dispatched to another Host due to consensus redirect.
+    // So we need to start the state fetcher after the dispatching stage.
+    boolean success = waitDispatchingFinished(dispatchResultFuture);
+    // If the dispatch failed, we make the QueryState as failed, and return.
+    if (!success) {
+      stateMachine.transitionToFailed();
+      return;
+    }
+
+    // For the FragmentInstance of WRITE, it will be executed directly when dispatching.
+    if (queryType == QueryType.WRITE) {
+      stateMachine.transitionToFinished();
+      return;
+    }
+
+    // The FragmentInstances has been dispatched successfully to corresponding host, we mark the QueryState to Running
+    stateMachine.transitionToRunning();
+    instances.forEach(instance -> {
+      stateMachine.initialFragInstanceState(instance.getId(), FragmentInstanceState.RUNNING);
+    });
+
+    // TODO: (xingtanzjr) start the stateFetcher/heartbeat for each fragment instance
+
+  }
+
+  private boolean waitDispatchingFinished(Future<FragInstanceDispatchResult> dispatchResultFuture) {
     try {
       FragInstanceDispatchResult result = dispatchResultFuture.get();
       if (result.isSuccessful()) {
-        stateMachine.transitionToRunning();
-      } else {
-        stateMachine.transitionToFailed();
+        return true;
       }
     } catch (InterruptedException | ExecutionException e) {
-      e.printStackTrace();
+      // TODO: (xingtanzjr) record the dispatch failure reason.
     }
+    return false;
   }
 
   @Override
-  public void abort() {}
+  public void abort() {
+    if (this.dispatcher != null) {
+      dispatcher.abort();
+    }
+  }
 
   @Override
   public Duration getTotalCpuTime() {

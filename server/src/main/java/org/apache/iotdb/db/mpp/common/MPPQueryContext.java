@@ -42,4 +42,8 @@ public class MPPQueryContext {
   public QueryId getQueryId() {
     return queryId;
   }
+
+  public QueryType getQueryType() {
+    return queryType;
+  }
 }

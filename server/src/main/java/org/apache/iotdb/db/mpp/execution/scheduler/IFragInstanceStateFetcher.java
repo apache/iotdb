@@ -19,18 +19,6 @@
 
 package org.apache.iotdb.db.mpp.execution.scheduler;
 
-import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
-
-import java.util.List;
-import java.util.concurrent.Future;
-
-public interface IFragInstanceDispatcher {
-    /**
-     * Dispatch all Fragment instances asynchronously
-     * @param instances Fragment instance list
-     * @return Boolean.
-     */
-    Future<FragInstanceDispatchResult> dispatch(List<FragmentInstance> instances);
-
-    void abort();
+public interface IFragInstanceStateFetcher {
+    void start();
 }

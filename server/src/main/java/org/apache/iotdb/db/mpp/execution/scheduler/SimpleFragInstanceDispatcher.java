@@ -47,4 +47,9 @@ public class SimpleFragInstanceDispatcher implements IFragInstanceDispatcher {
         new Thread(dispatchTask).start();
         return dispatchTask;
     }
+
+    @Override
+    public void abort() {
+
+    }
 }

@@ -59,10 +59,15 @@ public class QueryExecution {
     this.context = context;
     this.analysis = analyze(statement, context);
     this.stateMachine = new QueryStateMachine(context.getQueryId());
-    // TODO: (xingtanzjr) initialize the query scheduler according to configuration
-    this.scheduler = new ClusterScheduler(stateMachine, distributedPlan.getInstances());
 
-    // TODO: register callbacks in QueryStateMachine when the QueryExecution is aborted/finished
+    // We add the abort logic inside the QueryExecution.
+    // So that the other components can only focus on the state change.
+    stateMachine.addStateChangeListener(state -> {
+      if (!state.isDone()) {
+        return;
+      }
+      this.cleanup();
+    });
   }
 
   public void start() {
@@ -78,7 +83,9 @@ public class QueryExecution {
   }
 
   private void schedule() {
-    this.scheduler = new ClusterScheduler(this.stateMachine, this.distributedPlan.getInstances());
+    // TODO: (xingtanzjr) initialize the query scheduler according to configuration
+    this.scheduler = new ClusterScheduler(stateMachine, distributedPlan.getInstances(), context.getQueryType());
+    // TODO: (xingtanzjr) how to make the schedule running asynchronously
     this.scheduler.start();
   }
 
@@ -92,6 +99,23 @@ public class QueryExecution {
   private void doDistributedPlan() {
     DistributionPlanner planner = new DistributionPlanner(this.analysis, this.logicalPlan);
     this.distributedPlan = planner.planFragments();
+  }
+
+  /**
+   * Do cleanup work for current QueryExecution including QuerySchedule aborting and resource releasing
+   */
+  private void cleanup() {
+    if (this.scheduler != null) {
+      this.scheduler.abort();
+    }
+    releaseResource();
+  }
+
+  /**
+   * Release the resources that current QueryExecution hold.
+   */
+  private void releaseResource() {
+
   }
 
   /**
@@ -113,8 +137,8 @@ public class QueryExecution {
    * @return ExecutionStatus. Contains the QueryId and the TSStatus.
    */
   public ExecutionStatus getStatus() {
-    // Although we monitor the state to transition to FINISHED, the future will return if any Terminated state is triggered
-    ListenableFuture<QueryState> future =  stateMachine.getStateChange(QueryState.FINISHED);
+    // Although we monitor the state to transition to RUNNING, the future will return if any Terminated state is triggered
+    ListenableFuture<QueryState> future =  stateMachine.getStateChange(QueryState.RUNNING);
     try {
       QueryState state = future.get();
       // TODO: (xingtanzjr) use more TSStatusCode if the QueryState isn't FINISHED
