@@ -32,6 +32,7 @@ import org.apache.iotdb.db.mpp.sql.constant.FilterConstant;
 import org.apache.iotdb.db.mpp.sql.statement.*;
 import org.apache.iotdb.db.mpp.sql.statement.component.*;
 import org.apache.iotdb.db.mpp.sql.statement.crud.*;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowDevicesStatement;
@@ -233,11 +234,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       ((CreateTimeSeriesStatement) statement).setTags(tags);
     } else if (statement instanceof CreateAlignedTimeSeriesStatement) {
       ((CreateAlignedTimeSeriesStatement) statement).addTagsList(tags);
+    } else if (statement instanceof AlterTimeSeriesStatement) {
+      ((AlterTimeSeriesStatement) statement).setTagsMap(tags);
     }
-    // TODO: remove comments
-    //    else if (statement instanceof AlterTimeSeriesStatement) {
-    //      ((AlterTimeSeriesStatement) statement).setTagsMap(tags);
-    //    }
   }
 
   public void parseAttributeClause(IoTDBSqlParser.AttributeClauseContext ctx, Statement statement) {
@@ -246,11 +245,66 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       ((CreateTimeSeriesStatement) statement).setAttributes(attributes);
     } else if (statement instanceof CreateAlignedTimeSeriesStatement) {
       ((CreateAlignedTimeSeriesStatement) statement).addAttributesList(attributes);
+    } else if (statement instanceof AlterTimeSeriesStatement) {
+      ((AlterTimeSeriesStatement) statement).setAttributesMap(attributes);
     }
-    // TODO: remove comments
-    //    else if (operator instanceof AlterTimeSeriesOperator) {
-    //      ((AlterTimeSeriesOperator) operator).setAttributesMap(attributes);
-    //    }
+  }
+
+  @Override
+  public Statement visitAlterTimeseries(IoTDBSqlParser.AlterTimeseriesContext ctx) {
+    AlterTimeSeriesStatement alterTimeSeriesStatement = new AlterTimeSeriesStatement();
+    alterTimeSeriesStatement.setPath(parseFullPath(ctx.fullPath()));
+    parseAlterClause(ctx.alterClause(), alterTimeSeriesStatement);
+    return alterTimeSeriesStatement;
+  }
+
+  private void parseAlterClause(
+      IoTDBSqlParser.AlterClauseContext ctx, AlterTimeSeriesStatement alterTimeSeriesStatement) {
+    Map<String, String> alterMap = new HashMap<>();
+    // rename
+    if (ctx.RENAME() != null) {
+      alterTimeSeriesStatement.setAlterType(AlterTimeSeriesStatement.AlterType.RENAME);
+      alterMap.put(
+          parseIdentifier((ctx.beforeName.getText())), parseIdentifier(ctx.currentName.getText()));
+    } else if (ctx.SET() != null) {
+      // set
+      alterTimeSeriesStatement.setAlterType(AlterTimeSeriesStatement.AlterType.SET);
+      setMap(ctx, alterMap);
+    } else if (ctx.DROP() != null) {
+      // drop
+      alterTimeSeriesStatement.setAlterType(AlterTimeSeriesStatement.AlterType.DROP);
+      for (IoTDBSqlParser.IdentifierContext dropId : ctx.identifier()) {
+        alterMap.put(parseIdentifier(dropId.getText()), null);
+      }
+    } else if (ctx.TAGS() != null) {
+      // add tag
+      alterTimeSeriesStatement.setAlterType((AlterTimeSeriesStatement.AlterType.ADD_TAGS));
+      setMap(ctx, alterMap);
+    } else if (ctx.ATTRIBUTES() != null) {
+      // add attribute
+      alterTimeSeriesStatement.setAlterType(AlterTimeSeriesStatement.AlterType.ADD_ATTRIBUTES);
+      setMap(ctx, alterMap);
+    } else {
+      // upsert
+      alterTimeSeriesStatement.setAlterType(AlterTimeSeriesStatement.AlterType.UPSERT);
+      if (ctx.aliasClause() != null) {
+        parseAliasClause(ctx.aliasClause(), alterTimeSeriesStatement);
+      }
+      if (ctx.tagClause() != null) {
+        parseTagClause(ctx.tagClause(), alterTimeSeriesStatement);
+      }
+      if (ctx.attributeClause() != null) {
+        parseAttributeClause(ctx.attributeClause(), alterTimeSeriesStatement);
+      }
+    }
+    alterTimeSeriesStatement.setAlterMap(alterMap);
+  }
+
+  public void parseAliasClause(
+      IoTDBSqlParser.AliasClauseContext ctx, AlterTimeSeriesStatement alterTimeSeriesStatement) {
+    if (alterTimeSeriesStatement != null && ctx.identifier() != null) {
+      alterTimeSeriesStatement.setAlias((parseIdentifier(ctx.identifier().getText())));
+    }
   }
 
   // Show Timeseries ========================================================================

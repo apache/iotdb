@@ -36,7 +36,7 @@ import java.util.Map;
  *
  * <p>Here is the syntax definition:
  *
- * <p>CREATE ALIGNED TIMESERIES deviceId (measurementId attributeClauses [, measurementId
+ * <p>CREATE ALIGNED TIMESERIES devicePath (measurementId attributeClauses [, measurementId
  * attributeClauses]...)
  */
 public class CreateAlignedTimeSeriesStatement extends Statement {
