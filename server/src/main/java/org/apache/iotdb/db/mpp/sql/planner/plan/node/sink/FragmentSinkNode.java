@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.sink;
 
+import org.apache.commons.lang.Validate;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
@@ -51,12 +52,20 @@ public class FragmentSinkNode extends SinkNode {
 
   @Override
   public PlanNode clone() {
-    return null;
+    FragmentSinkNode sinkNode = new FragmentSinkNode(getId());
+    sinkNode.setDownStream(downStreamEndpoint, downStreamInstanceId, downStreamPlanNodeId);
+    sinkNode.setDownStreamNode(downStreamNode);
+    return sinkNode;
   }
 
   @Override
   public PlanNode cloneWithChildren(List<PlanNode> children) {
-    return null;
+    Validate.isTrue(children == null || children.size() == 1, "Children size of FragmentSinkNode should be 0 or 1");
+    FragmentSinkNode sinkNode = (FragmentSinkNode) clone();
+    if (children != null) {
+      sinkNode.setChild(children.get(0));
+    }
+    return sinkNode;
   }
 
   @Override

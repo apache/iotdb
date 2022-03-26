@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.mpp.execution;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.iotdb.db.mpp.buffer.ISourceHandle;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.execution.scheduler.ClusterScheduler;
 import org.apache.iotdb.db.mpp.execution.scheduler.IScheduler;
@@ -53,6 +54,10 @@ public class QueryExecution {
   private final Analysis analysis;
   private LogicalQueryPlan logicalPlan;
   private DistributedQueryPlan distributedPlan;
+
+  // The result of QueryExecution will be written to the DataBlockManager in current Node.
+  // We use this SourceHandle to fetch the TsBlock from it.
+  private ISourceHandle resultHandle;
 
   public QueryExecution(Statement statement, MPPQueryContext context) {
     this.context = context;

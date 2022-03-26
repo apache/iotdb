@@ -72,7 +72,7 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
     // one by one
     int instanceIdx = 0;
     PlanNode rootCopy = PlanNodeUtil.deepCopy(fragment.getRoot());
-    FragmentInstance fragmentInstance = new FragmentInstance(fragment, instanceIdx);
+    FragmentInstance fragmentInstance = new FragmentInstance(new PlanFragment(fragment.getId(), rootCopy), instanceIdx);
 
     // Get the target DataRegion for origin PlanFragment, then its instance will be distributed one
     // of them.
@@ -113,6 +113,11 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
 
   private FragmentInstance findDownStreamInstance(PlanNodeId exchangeNodeId) {
     return instanceMap.get(planNodeMap.get(exchangeNodeId));
+  }
+
+  private void addSinkNodeToRootPlanFragment() {
+    FragmentInstance rootInstance = instanceMap.get(subPlan.getPlanFragment().getId());
+
   }
 
   private void recordPlanNodeRelation(PlanNode root, PlanFragmentId planFragmentId) {
