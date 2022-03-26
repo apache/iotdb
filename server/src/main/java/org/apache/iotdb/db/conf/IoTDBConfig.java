@@ -20,7 +20,7 @@ package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
-import org.apache.iotdb.db.engine.compaction.CompactionPriority;
+import org.apache.iotdb.db.engine.compaction.constant.CompactionPriority;
 import org.apache.iotdb.db.engine.compaction.cross.CrossCompactionStrategy;
 import org.apache.iotdb.db.engine.compaction.inner.InnerCompactionStrategy;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
@@ -40,6 +40,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -241,6 +246,10 @@ public class IoTDBConfig {
   /** External lib directory for trigger, stores user-uploaded JAR files */
   private String triggerDir =
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.TRIGGER_FOLDER_NAME;
+
+  /** External lib directory for MQTT, stores user-uploaded JAR files */
+  private String mqttDir =
+      IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.MQTT_FOLDER_NAME;
 
   /** Data directory of data. It can be settled as dataDirs = {"data1", "data2", "data3"}; */
   private String[] dataDirs = {"data" + File.separator + "data"};
@@ -803,8 +812,28 @@ public class IoTDBConfig {
   /** Encryption provided class parameter */
   private String encryptDecryptProviderParameter;
 
+  /**
+   * Ip and port of config nodes. each one is a {internalIp | domain name}:{meta port} string tuple.
+   */
+  private List<String> configNodeUrls;
+
+  /** Internal ip for data node */
+  private String internalIp;
+
+  /** Internal port of data node */
+  private int internalPort = 9003;
+
+  /** The max time of data node waiting to join into the cluster */
+  private long joinClusterTimeOutMs = TimeUnit.SECONDS.toMillis(60);
+
   public IoTDBConfig() {
-    // empty constructor
+    try {
+      internalIp = InetAddress.getLocalHost().getHostAddress();
+    } catch (UnknownHostException e) {
+      logger.error(e.getMessage());
+      internalIp = "127.0.0.1";
+    }
+    configNodeUrls = new ArrayList<>();
   }
 
   public float getUdfMemoryBudgetInMB() {
@@ -912,6 +941,7 @@ public class IoTDBConfig {
     extDir = addHomeDir(extDir);
     udfDir = addHomeDir(udfDir);
     triggerDir = addHomeDir(triggerDir);
+    mqttDir = addHomeDir(mqttDir);
 
     if (TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs().equals(FSType.HDFS)) {
       String hdfsDir = getHdfsDir();
@@ -1134,6 +1164,14 @@ public class IoTDBConfig {
 
   public void setTriggerDir(String triggerDir) {
     this.triggerDir = triggerDir;
+  }
+
+  public String getMqttDir() {
+    return mqttDir;
+  }
+
+  public void setMqttDir(String mqttDir) {
+    this.mqttDir = mqttDir;
   }
 
   public String getMultiDirStrategyClassName() {
@@ -2515,5 +2553,37 @@ public class IoTDBConfig {
 
   public void setEncryptDecryptProviderParameter(String encryptDecryptProviderParameter) {
     this.encryptDecryptProviderParameter = encryptDecryptProviderParameter;
+  }
+
+  public List<String> getConfigNodeUrls() {
+    return configNodeUrls;
+  }
+
+  public void setConfigNodeUrls(List<String> configNodeUrls) {
+    this.configNodeUrls = configNodeUrls;
+  }
+
+  public String getInternalIp() {
+    return internalIp;
+  }
+
+  public void setInternalIp(String internalIp) {
+    this.internalIp = internalIp;
+  }
+
+  public int getInternalPort() {
+    return internalPort;
+  }
+
+  public void setInternalPort(int internalPort) {
+    this.internalPort = internalPort;
+  }
+
+  public long getJoinClusterTimeOutMs() {
+    return joinClusterTimeOutMs;
+  }
+
+  public void setJoinClusterTimeOutMs(long joinClusterTimeOutMs) {
+    this.joinClusterTimeOutMs = joinClusterTimeOutMs;
   }
 }

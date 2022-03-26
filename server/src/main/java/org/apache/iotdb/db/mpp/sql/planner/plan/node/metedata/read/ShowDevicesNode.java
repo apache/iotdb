@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 
+import java.nio.ByteBuffer;
 import java.util.List;
 
 public class ShowDevicesNode extends ShowNode {
@@ -33,6 +34,9 @@ public class ShowDevicesNode extends ShowNode {
   public List<PlanNode> getChildren() {
     return null;
   }
+
+  @Override
+  public void addChildren(PlanNode child) {}
 
   @Override
   public PlanNode clone() {
@@ -48,4 +52,11 @@ public class ShowDevicesNode extends ShowNode {
   public List<String> getOutputColumnNames() {
     return null;
   }
+
+  public static ShowDevicesNode deserialize(ByteBuffer byteBuffer) {
+    return null;
+  }
+
+  @Override
+  public void serialize(ByteBuffer byteBuffer) {}
 }

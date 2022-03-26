@@ -22,6 +22,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 
+import java.nio.ByteBuffer;
 import java.util.List;
 
 /**
@@ -56,6 +57,9 @@ public class GroupByLevelNode extends ProcessNode {
   }
 
   @Override
+  public void addChildren(PlanNode child) {}
+
+  @Override
   public PlanNode clone() {
     return null;
   }
@@ -74,6 +78,13 @@ public class GroupByLevelNode extends ProcessNode {
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
     return visitor.visitGroupByLevel(this, context);
   }
+
+  public static GroupByLevelNode deserialize(ByteBuffer byteBuffer) {
+    return null;
+  }
+
+  @Override
+  public void serialize(ByteBuffer byteBuffer) {}
 
   public int[] getGroupByLevels() {
     return groupByLevels;
