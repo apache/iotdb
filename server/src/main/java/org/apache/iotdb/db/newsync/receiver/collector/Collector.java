@@ -118,7 +118,7 @@ public class Collector {
       PipeDataQueue pipeDataQueue =
           PipeDataQueueFactory.getBufferedPipeDataQueue(
               SyncPathUtil.getReceiverPipeLogDir(pipeName, remoteIp, createTime));
-      while (!Thread.interrupted()) {
+      while (!Thread.currentThread().isInterrupted()) {
         PipeData pipeData = null;
         try {
           pipeData = pipeDataQueue.take();

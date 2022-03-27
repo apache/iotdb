@@ -160,12 +160,12 @@ public class IoTDBSyncReceiverIT {
       Assert.assertEquals(4, fields.size());
       Assert.assertEquals(pipeName1, fields.get(0).getStringValue());
       Assert.assertEquals(remoteIp1, fields.get(1).getStringValue());
-      Assert.assertEquals(PipeStatus.RUNNING.name(), fields.get(2).getStringValue());
+      Assert.assertEquals(PipeStatus.STOP.name(), fields.get(2).getStringValue());
       Assert.assertEquals(
           DatetimeUtils.convertLongToDate(createdTime1), fields.get(3).getStringValue());
       Assert.assertFalse(allDataSet.hasNext());
-      // stop
-      client.heartbeat(new SyncRequest(RequestType.STOP, pipeName1, remoteIp1, createdTime1));
+      // start
+      client.heartbeat(new SyncRequest(RequestType.START, pipeName1, remoteIp1, createdTime1));
       QueryDataSet pipe1DataSet =
           ReceiverService.getInstance().showPipe(new ShowPipeServerPlan(pipeName1));
       rowRecord = pipe1DataSet.next();
@@ -173,19 +173,19 @@ public class IoTDBSyncReceiverIT {
       Assert.assertEquals(4, fields.size());
       Assert.assertEquals(pipeName1, fields.get(0).getStringValue());
       Assert.assertEquals(remoteIp1, fields.get(1).getStringValue());
-      Assert.assertEquals(PipeStatus.STOP.name(), fields.get(2).getStringValue());
+      Assert.assertEquals(PipeStatus.RUNNING.name(), fields.get(2).getStringValue());
       Assert.assertEquals(
           DatetimeUtils.convertLongToDate(createdTime1), fields.get(3).getStringValue());
       Assert.assertFalse(pipe1DataSet.hasNext());
-      // start
-      client.heartbeat(new SyncRequest(RequestType.START, pipeName1, remoteIp1, createdTime1));
+      // stop
+      client.heartbeat(new SyncRequest(RequestType.STOP, pipeName1, remoteIp1, createdTime1));
       pipe1DataSet = ReceiverService.getInstance().showPipe(new ShowPipeServerPlan(pipeName1));
       rowRecord = pipe1DataSet.next();
       fields = rowRecord.getFields();
       Assert.assertEquals(4, fields.size());
       Assert.assertEquals(pipeName1, fields.get(0).getStringValue());
       Assert.assertEquals(remoteIp1, fields.get(1).getStringValue());
-      Assert.assertEquals(PipeStatus.RUNNING.name(), fields.get(2).getStringValue());
+      Assert.assertEquals(PipeStatus.STOP.name(), fields.get(2).getStringValue());
       Assert.assertEquals(
           DatetimeUtils.convertLongToDate(createdTime1), fields.get(3).getStringValue());
       Assert.assertFalse(pipe1DataSet.hasNext());
@@ -213,6 +213,7 @@ public class IoTDBSyncReceiverIT {
     try {
       // 1. create pipe
       client.heartbeat(new SyncRequest(RequestType.CREATE, pipeName1, remoteIp1, createdTime1));
+      client.heartbeat(new SyncRequest(RequestType.START, pipeName1, remoteIp1, createdTime1));
 
       // 2. send pipe data
       int serialNum = 0;
