@@ -472,7 +472,7 @@ public class TransportClient implements ITransportClient {
         throw new SyncConnectionException(
             String.format("Handshake with receiver %s:%d error.", ipAddress, port));
       }
-      while (Thread.currentThread().isInterrupted()) {
+      while (!Thread.currentThread().isInterrupted()) {
         PipeData pipeData = pipe.take();
         if (!senderTransport(pipeData)) {
           logger.warn(String.format("Can not transfer pipedata %s, skip it.", pipeData));

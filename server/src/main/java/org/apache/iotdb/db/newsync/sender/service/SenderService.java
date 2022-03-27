@@ -21,6 +21,7 @@ package org.apache.iotdb.db.newsync.sender.service;
 
 import org.apache.iotdb.db.exception.PipeException;
 import org.apache.iotdb.db.exception.PipeSinkException;
+import org.apache.iotdb.db.exception.ShutdownException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.SyncConnectionException;
 import org.apache.iotdb.db.newsync.conf.SyncConstant;
@@ -43,7 +44,6 @@ import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.service.transport.thrift.SyncResponse;
 import org.apache.iotdb.tsfile.utils.Pair;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,7 +56,7 @@ import java.util.Map;
 
 public class SenderService implements IService {
   private static final Logger logger = LoggerFactory.getLogger(SenderService.class);
-  private final SenderLogger senderLogger;
+  private SenderLogger senderLogger;
 
   private Map<String, PipeSink> pipeSinks;
   private List<Pipe> pipes;
@@ -65,10 +65,6 @@ public class SenderService implements IService {
   private String runningMsg;
 
   private SenderService() {
-    this.pipeSinks = new HashMap<>();
-    this.pipes = new ArrayList<>();
-    this.senderLogger = new SenderLogger();
-    this.runningMsg = "";
   }
 
   private static class SenderServiceHolder {
@@ -284,6 +280,11 @@ public class SenderService implements IService {
   /** IService * */
   @Override
   public void start() throws StartupException {
+    this.pipeSinks = new HashMap<>();
+    this.pipes = new ArrayList<>();
+    this.senderLogger = new SenderLogger();
+    this.runningMsg = "";
+
     File senderLog = new File(SyncPathUtil.getSysDir(), SyncConstant.SENDER_LOG_NAME);
     if (senderLog.exists()) {
       try {
@@ -296,13 +297,35 @@ public class SenderService implements IService {
 
   @Override
   public void stop() {
-    if (runningPipe != null) {
+    if (runningPipe != null && !Pipe.PipeStatus.DROP.equals(runningPipe.getStatus())) {
       try {
         runningPipe.stop();
       } catch (PipeException e) {
-        logger.warn(String.format("Running pipe %s has been dropped.", runningPipe.getName()));
+        logger.warn(
+            String.format(
+                "Stop pipe %s error when stop Sender Service, because %s.",
+                runningPipe.getName(), e));
       }
     }
+  }
+
+  @Override
+  public void shutdown(long milliseconds) throws ShutdownException {
+    if (runningPipe != null && !Pipe.PipeStatus.DROP.equals(runningPipe.getStatus())) {
+      try {
+        runningPipe.stop();
+      } catch (PipeException e) {
+        logger.warn(
+            String.format(
+                "Stop pipe %s error when shutdown Sender Service, because %s.",
+                runningPipe.getName(), e));
+        throw new ShutdownException(e);
+      }
+    }
+
+    pipeSinks = null;
+    pipes = null;
+    runningMsg = null;
     senderLogger.close();
   }
 
