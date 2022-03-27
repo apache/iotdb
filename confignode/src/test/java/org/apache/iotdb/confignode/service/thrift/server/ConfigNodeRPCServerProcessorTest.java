@@ -31,6 +31,7 @@ import org.apache.thrift.TException;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -39,7 +40,7 @@ import java.util.Map;
 public class ConfigNodeRPCServerProcessorTest {
 
   @Test
-  public void registerDataNodeTest() throws TException {
+  public void registerDataNodeTest() throws TException, IOException {
     ConfigNodeRPCServerProcessor processor = new ConfigNodeRPCServerProcessor();
 
     DataNodeRegisterResp resp;
@@ -87,7 +88,7 @@ public class ConfigNodeRPCServerProcessorTest {
   }
 
   @Test
-  public void setStorageGroupTest() throws TException {
+  public void setStorageGroupTest() throws TException, IOException {
     ConfigNodeRPCServerProcessor processor = new ConfigNodeRPCServerProcessor();
 
     TSStatus status;

@@ -34,7 +34,7 @@ import org.apache.iotdb.db.query.udf.core.layer.RawQueryInputLayer;
 import org.apache.iotdb.db.query.udf.core.layer.SingleInputColumnMultiReferenceIntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.layer.SingleInputColumnSingleReferenceIntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
-import org.apache.iotdb.db.query.udf.core.transformer.ArithmeticBinaryTransformer;
+import org.apache.iotdb.db.query.udf.core.transformer.BinaryTransformer;
 import org.apache.iotdb.db.query.udf.core.transformer.Transformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -147,6 +147,30 @@ public abstract class BinaryExpression extends Expression {
           case "%":
             resultExpressions.add(new ModuloExpression(le, re));
             break;
+          case "<":
+            resultExpressions.add(new LessThanExpression(le, re));
+            break;
+          case "<=":
+            resultExpressions.add(new LessEqualExpression(le, re));
+            break;
+          case ">":
+            resultExpressions.add(new GreaterThanExpression(le, re));
+            break;
+          case ">=":
+            resultExpressions.add(new GreaterEqualExpression(le, re));
+            break;
+          case "=":
+            resultExpressions.add(new EqualToExpression(le, re));
+            break;
+          case "!=":
+            resultExpressions.add(new NonEqualExpression(le, re));
+            break;
+          case "&":
+            resultExpressions.add(new LogicAndExpression(le, re));
+            break;
+          case "|":
+            resultExpressions.add(new LogicOrExpression(le, re));
+            break;
           default:
             throw new UnsupportedOperationException();
         }
@@ -228,7 +252,7 @@ public abstract class BinaryExpression extends Expression {
     return expressionIntermediateLayerMap.get(this);
   }
 
-  protected abstract ArithmeticBinaryTransformer constructTransformer(
+  protected abstract BinaryTransformer constructTransformer(
       LayerPointReader leftParentLayerPointReader, LayerPointReader rightParentLayerPointReader);
 
   @Override

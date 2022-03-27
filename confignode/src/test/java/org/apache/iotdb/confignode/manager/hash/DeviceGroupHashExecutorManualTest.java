@@ -20,6 +20,7 @@ package org.apache.iotdb.confignode.manager.hash;
 
 import org.apache.iotdb.confignode.manager.ConfigManager;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -29,7 +30,7 @@ import java.util.Random;
  * This is a not active test class, which can be used for general index testing when there is a new
  * DeviceGroup hash algorithm
  */
-public class DeviceGroupHashExecutorTest {
+public class DeviceGroupHashExecutorManualTest {
 
   private static final int deviceGroupCount = 10_000;
   private static final String sg = "root.SGGroup.";
@@ -58,9 +59,8 @@ public class DeviceGroupHashExecutorTest {
     return devices;
   }
 
-  public void GeneralIndexTest() {
-    ConfigManager manager =
-        new ConfigManager("org.apache.iotdb.commons.hash.BKDRHashExecutor", deviceGroupCount);
+  public void GeneralIndexTest() throws IOException {
+    ConfigManager manager = new ConfigManager();
     int[] bucket = new int[deviceGroupCount];
     Arrays.fill(bucket, 0);
 

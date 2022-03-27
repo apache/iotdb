@@ -19,7 +19,9 @@
 package org.apache.iotdb.confignode.physical;
 
 import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
+import org.apache.iotdb.confignode.physical.sys.QueryStorageGroupSchemaPlan;
 import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
+import org.apache.iotdb.confignode.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 
 import org.slf4j.Logger;
@@ -64,6 +66,7 @@ public abstract class PhysicalPlan implements IConsensusRequest {
       buffer.reset();
       throw e;
     }
+    buffer.flip();
   }
 
   protected abstract void serializeImpl(ByteBuffer buffer);
@@ -82,6 +85,12 @@ public abstract class PhysicalPlan implements IConsensusRequest {
           break;
         case QueryDataNodeInfo:
           plan = new QueryDataNodeInfoPlan();
+          break;
+        case SetStorageGroup:
+          plan = new SetStorageGroupPlan();
+          break;
+        case QueryStorageGroupSchema:
+          plan = new QueryStorageGroupSchemaPlan();
           break;
         default:
           throw new IOException("unknown PhysicalPlan type: " + typeNum);

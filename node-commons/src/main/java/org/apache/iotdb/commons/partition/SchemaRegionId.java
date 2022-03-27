@@ -28,4 +28,8 @@ public class SchemaRegionId {
   public void setSchemaRegionId(int schemaRegionId) {
     this.schemaRegionId = schemaRegionId;
   }
+
+  public String toString() {
+    return String.format("SchemaRegion-%d", schemaRegionId);
+  }
 }
