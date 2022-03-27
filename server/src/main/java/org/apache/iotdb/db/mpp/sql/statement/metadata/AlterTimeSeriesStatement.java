@@ -34,20 +34,20 @@ import java.util.Map;
  * <p>ALTER TIMESERIES path RENAME | SET | DROP | ADD TAGS | ADD ATTRIBUTES | UPSERT
  */
 public class AlterTimeSeriesStatement extends Statement {
-
   private PartialPath path;
-
   private AlterTimeSeriesStatement.AlterType alterType;
 
-  // used when the alterType is RENAME, SET, DROP, ADD_TAGS, ADD_ATTRIBUTES
-  // when the alterType is RENAME, alterMap has only one entry, key is the beforeName, value is the
-  // currentName
-  // when the alterType is DROP, only the keySet of alterMap is useful, it contains all the key
-  // names needed to be removed
+  /**
+   * used when the alterType is RENAME, SET, DROP, ADD_TAGS, ADD_ATTRIBUTES when the alterType is
+   * RENAME, alterMap has only one entry, key is the previousName, value is the currentName when the
+   * alterType is DROP, only the keySet of alterMap is useful, it contains all the key names needed
+   * to be removed
+   */
   private Map<String, String> alterMap;
 
-  // used when the alterType is UPSERT
+  /** used when the alterType is UPSERT */
   private String alias;
+
   private Map<String, String> tagsMap;
   private Map<String, String> attributesMap;
 

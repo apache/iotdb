@@ -46,7 +46,6 @@ import java.util.Map;
 import static org.junit.Assert.fail;
 
 public class LogicalPlannerTest {
-
   @Test
   public void createTimeseriesPlanTest() {
     String sql =

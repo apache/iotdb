@@ -34,9 +34,9 @@ public class AlterTimeSeriesNode extends PlanNode {
 
   /**
    * used when the alterType is RENAME, SET, DROP, ADD_TAGS, ADD_ATTRIBUTES. when the alterType is
-   * RENAME, alterMap has only one entry, key is the beforeName, value is the currentName. when the
-   * alterType is DROP, only the keySet of alterMap is useful, it contains all the key names needed
-   * to be removed
+   * RENAME, alterMap has only one entry, key is the previousName, value is the currentName. when
+   * the alterType is DROP, only the keySet of alterMap is useful, it contains all the key names
+   * needed to be removed
    */
   private Map<String, String> alterMap;
 
