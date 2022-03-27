@@ -35,7 +35,10 @@ import org.junit.Assert;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-public class ConfigManagerTest {
+public class ConfigManagerManualTest {
+
+  // TODO: Optimize this manual test to automatic test after the test environment is set up.
+  // @YongzaoDan
 
   private static final String localhost = "0.0.0.0";
   private static final int timeOutInMS = 2000;
