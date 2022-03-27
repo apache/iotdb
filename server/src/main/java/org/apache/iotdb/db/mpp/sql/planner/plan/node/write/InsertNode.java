@@ -53,6 +53,19 @@ public abstract class InsertNode extends PlanNode {
     super(id);
   }
 
+  protected InsertNode(
+      PlanNodeId id,
+      PartialPath devicePath,
+      boolean isAligned,
+      MeasurementSchema[] measurements,
+      TSDataType[] dataTypes) {
+    super(id);
+    this.devicePath = devicePath;
+    this.isAligned = isAligned;
+    this.measurements = measurements;
+    this.dataTypes = dataTypes;
+  }
+
   // TODO(INSERT) split this insert node into multiple InsertNode according to the data partition
   // info
   public abstract List<InsertNode> splitByPartition(Analysis analysis);

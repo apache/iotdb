@@ -187,6 +187,9 @@ public class Analyzer {
       Analysis analysis = new Analysis();
       analysis.setSchemaMap(schemaMap);
       // TODO(INSERT) do type check here
+      if (!insertTabletStatement.checkDataType(schemaMap)) {
+        throw new SemanticException("Data type mismatch");
+      }
       analysis.setStatement(insertTabletStatement);
       analysis.setDataPartitionInfo(partitionInfo.getDataPartitionInfo());
       analysis.setSchemaPartitionInfo(partitionInfo.getSchemaPartitionInfo());

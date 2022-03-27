@@ -27,7 +27,9 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeIdAllocator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AlterTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateTimeSeriesNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.mpp.sql.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement;
@@ -128,8 +130,25 @@ public class LogicalPlanner {
     @Override
     public PlanNode visitInsertTablet(
         InsertTabletStatement insertTabletStatement, MPPQueryContext context) {
-      // TODO(INSERT) change the InsertTabletStatement to InsertTabletNode
+      //      return new InsertTabletNode(
+      //              PlanNodeIdAllocator.generateId(),
+      //              insertTabletStatement.getDevicePath(),
+      //              insertTabletStatement.isAligned(),
+      //              insertTabletStatement.getMeasurements(),
+      //              insertTabletStatement.getDataTypes(),
+      //              insertTabletStatement.getTimes(),
+      //              insertTabletStatement.getBitMaps(),
+      //              insertTabletStatement.getColumns()
+      //      )
       InsertTabletNode node = new InsertTabletNode(PlanNodeIdAllocator.generateId());
+
+      return node;
+    }
+
+    @Override
+    public PlanNode visitInsertRow(InsertRowStatement insertRowStatement, MPPQueryContext context) {
+      // TODO(INSERT) change the InsertTabletStatement to InsertTabletNode
+      InsertRowNode node = new InsertRowNode(PlanNodeIdAllocator.generateId());
 
       return node;
     }

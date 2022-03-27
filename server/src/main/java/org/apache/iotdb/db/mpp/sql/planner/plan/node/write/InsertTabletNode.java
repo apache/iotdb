@@ -18,10 +18,13 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.write;
 
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.BitMap;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.nio.ByteBuffer;
 import java.util.List;
@@ -48,6 +51,61 @@ public class InsertTabletNode extends InsertNode {
 
   public InsertTabletNode(PlanNodeId id) {
     super(id);
+  }
+
+  public InsertTabletNode(
+      PlanNodeId id,
+      PartialPath devicePath,
+      boolean isAligned,
+      MeasurementSchema[] measurements,
+      TSDataType[] dataTypes,
+      long[] times,
+      BitMap[] bitMaps,
+      Object[] columns) {
+    super(id, devicePath, isAligned, measurements, dataTypes);
+    this.times = times;
+    this.bitMaps = bitMaps;
+    this.columns = columns;
+  }
+
+  public long[] getTimes() {
+    return times;
+  }
+
+  public void setTimes(long[] times) {
+    this.times = times;
+  }
+
+  public BitMap[] getBitMaps() {
+    return bitMaps;
+  }
+
+  public void setBitMaps(BitMap[] bitMaps) {
+    this.bitMaps = bitMaps;
+  }
+
+  public Object[] getColumns() {
+    return columns;
+  }
+
+  public void setColumns(Object[] columns) {
+    this.columns = columns;
+  }
+
+  public int getStart() {
+    return start;
+  }
+
+  public void setStart(int start) {
+    this.start = start;
+  }
+
+  public int getEnd() {
+    return end;
+  }
+
+  public void setEnd(int end) {
+    this.end = end;
   }
 
   @Override
