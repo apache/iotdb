@@ -44,6 +44,7 @@ import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.service.transport.thrift.SyncResponse;
 import org.apache.iotdb.tsfile.utils.Pair;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,8 +65,7 @@ public class SenderService implements IService {
   private Pipe runningPipe;
   private String runningMsg;
 
-  private SenderService() {
-  }
+  private SenderService() {}
 
   private static class SenderServiceHolder {
     private static final SenderService INSTANCE = new SenderService();

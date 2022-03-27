@@ -19,11 +19,9 @@
 package org.apache.iotdb.db.integration.sync;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.newsync.pipedata.PipeData;
 import org.apache.iotdb.db.newsync.pipedata.SchemaPipeData;
 import org.apache.iotdb.db.newsync.pipedata.TsFilePipeData;
-import org.apache.iotdb.db.newsync.sender.pipe.Pipe;
 import org.apache.iotdb.db.newsync.sender.pipe.TransportHandler;
 import org.apache.iotdb.db.newsync.sender.pipe.TsFilePipe;
 import org.apache.iotdb.db.newsync.sender.service.SenderService;
@@ -37,7 +35,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
-import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
@@ -210,7 +207,7 @@ public class IoTDBSyncSenderIT {
     } catch (Exception e) {
       e.printStackTrace();
       Assert.fail();
-    } finally{
+    } finally {
       try {
         dropPipe();
         Thread.sleep(1000L);
@@ -237,7 +234,7 @@ public class IoTDBSyncSenderIT {
     } catch (Exception e) {
       e.printStackTrace();
       Assert.fail();
-    } finally{
+    } finally {
       try {
         dropPipe();
         Thread.sleep(1000L);
@@ -265,7 +262,7 @@ public class IoTDBSyncSenderIT {
     } catch (Exception e) {
       e.printStackTrace();
       Assert.fail();
-    } finally{
+    } finally {
       try {
         dropPipe();
         Thread.sleep(1000L);
@@ -294,7 +291,7 @@ public class IoTDBSyncSenderIT {
     } catch (Exception e) {
       e.printStackTrace();
       Assert.fail();
-    } finally{
+    } finally {
       try {
         dropPipe();
         Thread.sleep(1000L);
