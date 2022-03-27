@@ -27,7 +27,6 @@ import org.apache.iotdb.db.newsync.receiver.load.ILoader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -63,21 +62,6 @@ public class DeletionPipeData extends PipeData {
   @Override
   public ILoader createLoader() {
     return new DeletionLoader(deletion);
-  }
-
-  @Override
-  public void sendToTransport() {
-    try (ByteArrayOutputStream bytesStream = new ByteArrayOutputStream();
-        DataOutputStream stream = new DataOutputStream(bytesStream)) {
-      serialize(stream);
-      // senderTransport(bytesStream.toArray, this);
-      // System.out.println(this);
-    } catch (IOException e) {
-      logger.warn(
-          String.format(
-              "Serialize deletion pipeData %s error, can not send to transport, because %s.",
-              this, e));
-    }
   }
 
   @Override

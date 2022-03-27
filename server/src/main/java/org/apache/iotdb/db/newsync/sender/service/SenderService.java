@@ -20,21 +20,28 @@
 package org.apache.iotdb.db.newsync.sender.service;
 
 import org.apache.iotdb.db.exception.StartupException;
+import org.apache.iotdb.db.exception.SyncConnectionException;
 import org.apache.iotdb.db.exception.sync.PipeException;
 import org.apache.iotdb.db.exception.sync.PipeSinkException;
 import org.apache.iotdb.db.newsync.conf.SyncConstant;
 import org.apache.iotdb.db.newsync.conf.SyncPathUtil;
+import org.apache.iotdb.db.newsync.sender.pipe.IoTDBPipeSink;
 import org.apache.iotdb.db.newsync.sender.pipe.Pipe;
 import org.apache.iotdb.db.newsync.sender.pipe.PipeSink;
+import org.apache.iotdb.db.newsync.sender.pipe.TransportHandler;
 import org.apache.iotdb.db.newsync.sender.pipe.TsFilePipe;
 import org.apache.iotdb.db.newsync.sender.recovery.SenderLogAnalyzer;
 import org.apache.iotdb.db.newsync.sender.recovery.SenderLogger;
+import org.apache.iotdb.db.newsync.transport.client.ITransportClient;
+import org.apache.iotdb.db.newsync.transport.client.TransportClient;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
+import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.service.transport.thrift.SyncResponse;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
@@ -55,13 +62,13 @@ public class SenderService implements IService {
   private List<Pipe> pipes;
 
   private Pipe runningPipe;
-
-  private static volatile SenderService senderService;
+  private String runningMsg;
 
   private SenderService() {
-    pipeSinks = new HashMap<>();
-    pipes = new ArrayList<>();
-    senderLogger = new SenderLogger();
+    this.pipeSinks = new HashMap<>();
+    this.pipes = new ArrayList<>();
+    this.senderLogger = new SenderLogger();
+    this.runningMsg = "";
   }
 
   private static class SenderServiceHolder {
@@ -138,7 +145,7 @@ public class SenderService implements IService {
   }
 
   /** pipe * */
-  public void addPipe(CreatePipePlan plan) throws PipeException {
+  public synchronized void addPipe(CreatePipePlan plan) throws PipeException {
     // common check
     if (runningPipe != null && runningPipe.getStatus() != Pipe.PipeStatus.DROP) {
       throw new PipeException(
@@ -175,19 +182,30 @@ public class SenderService implements IService {
       }
     }
 
-    // get TsFilePipe
-    //    PipeSink.Type pipeSinkType = pipeSink.getType();
-    //    if (!pipeSinkType.equals(PipeSink.Type.IoTDB)) {
-    //      throw new PipeException(
-    //          String.format(
-    //              "Wrong pipeSink type %s for create TsFilePipe.", pipeSinkType)); // internal
-    // error
-    //    }
-    return new TsFilePipe(
-        pipeCreateTime, plan.getPipeName(), pipeSink, plan.getDataStartTimestamp(), syncDelOp);
+    TsFilePipe pipe =
+        new TsFilePipe(
+            pipeCreateTime, plan.getPipeName(), pipeSink, plan.getDataStartTimestamp(), syncDelOp);
+    try {
+      if (!(pipeSink instanceof IoTDBPipeSink)) {
+        throw new PipeException(
+            String.format(
+                "Wrong pipeSink type %s for create pipe %s", pipeSink.getType(), pipe.getName()));
+      }
+      ITransportClient transportClient =
+          new TransportClient(
+              pipe, ((IoTDBPipeSink) pipeSink).getIp(), ((IoTDBPipeSink) pipeSink).getPort());
+      pipe.setTransportHandler(
+          new TransportHandler(transportClient, pipe.getName(), pipe.getCreateTime()));
+    } catch (IOException | SyncConnectionException e) {
+      e.printStackTrace();
+      throw new PipeException(
+          String.format(
+              "Create transport for pipe %s error, because %s.", pipe.getName(), e.getMessage()));
+    }
+    return pipe;
   }
 
-  public void stopPipe(String pipeName) throws PipeException {
+  public synchronized void stopPipe(String pipeName) throws PipeException {
     checkRunningPipeExistAndName(pipeName);
     if (runningPipe.getStatus() == Pipe.PipeStatus.RUNNING) {
       runningPipe.stop();
@@ -195,7 +213,7 @@ public class SenderService implements IService {
     senderLogger.operatePipe(pipeName, Operator.OperatorType.STOP_PIPE);
   }
 
-  public void startPipe(String pipeName) throws PipeException {
+  public synchronized void startPipe(String pipeName) throws PipeException {
     checkRunningPipeExistAndName(pipeName);
     if (runningPipe.getStatus() == Pipe.PipeStatus.STOP) {
       runningPipe.start();
@@ -203,7 +221,7 @@ public class SenderService implements IService {
     senderLogger.operatePipe(pipeName, Operator.OperatorType.START_PIPE);
   }
 
-  public void dropPipe(String pipeName) throws PipeException {
+  public synchronized void dropPipe(String pipeName) throws PipeException {
     checkRunningPipeExistAndName(pipeName);
     runningPipe.drop();
     senderLogger.operatePipe(pipeName, Operator.OperatorType.DROP_PIPE);
@@ -211,6 +229,10 @@ public class SenderService implements IService {
 
   public List<Pipe> getAllPipes() {
     return new ArrayList<>(pipes);
+  }
+
+  public synchronized String getPipeMsg(Pipe pipe) {
+    return pipe == runningPipe ? runningMsg : "";
   }
 
   private void checkRunningPipeExistAndName(String pipeName) throws PipeException {
@@ -222,6 +244,40 @@ public class SenderService implements IService {
           String.format(
               "Pipe %s is %s, please retry after drop it.",
               runningPipe.getName(), runningPipe.getStatus()));
+    }
+  }
+
+  /** transport */
+  public synchronized void recMsg(SyncResponse response) {
+    if (runningPipe == null || runningPipe.getStatus() == Pipe.PipeStatus.DROP) {
+      logger.warn(String.format("No running pipe for receiving msg %s.", response));
+      return;
+    }
+    logger.info(String.format("%s from receiver: %s", response.type.name(), response.msg));
+    switch (response.type) {
+      case INFO:
+        break;
+      case ERROR:
+        try {
+          runningPipe.stop();
+        } catch (PipeException e) {
+          logger.error(
+              String.format(
+                  "Stop pipe %s when meeting error in sender service, because %s.",
+                  runningPipe.getName(), e));
+        }
+      case WARN:
+        if (runningMsg.length() > 0) {
+          runningMsg += System.lineSeparator();
+        }
+        runningMsg += (response.type.name() + " " + response.msg);
+        senderLogger.recordMsg(
+            runningPipe.getName(),
+            runningPipe.getStatus() == Pipe.PipeStatus.RUNNING
+                ? Operator.OperatorType.START_PIPE
+                : Operator.OperatorType.STOP_PIPE,
+            response.msg);
+        break;
     }
   }
 
@@ -261,5 +317,12 @@ public class SenderService implements IService {
     this.pipeSinks = analyzer.getRecoveryAllPipeSinks();
     this.pipes = analyzer.getRecoveryAllPipes();
     this.runningPipe = analyzer.getRecoveryRunningPipe();
+    this.runningMsg = analyzer.getRecoveryRunningMsg();
+  }
+
+  /** test */
+  @TestOnly
+  public Pipe getRunningPipe() {
+    return runningPipe;
   }
 }

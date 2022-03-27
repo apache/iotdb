@@ -107,18 +107,17 @@ public class IoTDBSyncReceiverIT {
     EnvironmentUtils.envSetUp();
     try {
       ReceiverService.getInstance().startPipeServer();
-      new Socket("localhost", 5555).close();
+      new Socket("localhost", 6670).close();
     } catch (Exception e) {
       Assert.fail("Failed to start pipe server because " + e.getMessage());
     }
     Pipe pipe = new TsFilePipe(createdTime1, pipeName1, null, 0, false);
-    client = new TransportClient(pipe, "127.0.0.1", 5555);
+    client = new TransportClient(pipe, "127.0.0.1", 6670);
+    client.handshake();
   }
 
   @After
   public void tearDown() throws Exception {
-    client.close();
-    ReceiverService.getInstance().stopPipeServer();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(enableSeqSpaceCompaction);
     IoTDBDescriptor.getInstance()
         .getConfig()
@@ -127,6 +126,8 @@ public class IoTDBSyncReceiverIT {
         .getConfig()
         .setEnableCrossSpaceCompaction(enableCrossSpaceCompaction);
     FileUtils.deleteDirectory(tmpDir);
+    //    client.close();
+    //    ReceiverService.getInstance().stopPipeServer();
     EnvironmentUtils.cleanEnv();
   }
 

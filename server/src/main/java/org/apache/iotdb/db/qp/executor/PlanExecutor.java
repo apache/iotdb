@@ -221,6 +221,7 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PIPESINK_ATTRIBUTES;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PIPESINK_NAME;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PIPESINK_TYPE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PIPE_CREATE_TIME;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PIPE_MSG;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PIPE_NAME;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PIPE_STATUS;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PRIVILEGE;
@@ -1215,8 +1216,14 @@ public class PlanExecutor implements IPlanExecutor {
                 new PartialPath(COLUMN_PIPE_CREATE_TIME, false),
                 new PartialPath(COLUMN_PIPE_NAME, false),
                 new PartialPath(COLUMN_PIPE2PIPESINK_NAME, false),
-                new PartialPath(COLUMN_PIPE_STATUS, false)),
-            Arrays.asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT));
+                new PartialPath(COLUMN_PIPE_STATUS, false),
+                new PartialPath(COLUMN_PIPE_MSG, false)),
+            Arrays.asList(
+                TSDataType.TEXT,
+                TSDataType.TEXT,
+                TSDataType.TEXT,
+                TSDataType.TEXT,
+                TSDataType.TEXT));
     boolean showAll = "".equals(plan.getPipeName());
     for (Pipe pipe : SenderService.getInstance().getAllPipes())
       if (showAll || plan.getPipeName().equals(pipe.getName())) {
@@ -1226,6 +1233,8 @@ public class PlanExecutor implements IPlanExecutor {
         record.addField(Binary.valueOf(pipe.getName()), TSDataType.TEXT);
         record.addField(Binary.valueOf(pipe.getPipeSink().getName()), TSDataType.TEXT);
         record.addField(Binary.valueOf(pipe.getStatus().name()), TSDataType.TEXT);
+        record.addField(
+            Binary.valueOf(SenderService.getInstance().getPipeMsg(pipe)), TSDataType.TEXT);
         listDataSet.putRecord(record);
       }
     return listDataSet;
@@ -2357,7 +2366,7 @@ public class PlanExecutor implements IPlanExecutor {
   private void createPipe(CreatePipePlan plan) throws QueryProcessException {
     try {
       SenderService.getInstance().addPipe(plan);
-      SenderService.getInstance().startPipe(plan.getPipeName());
+      //      SenderService.getInstance().startPipe(plan.getPipeName());
     } catch (PipeException e) {
       throw new QueryProcessException("Create pipe error.", e);
     }

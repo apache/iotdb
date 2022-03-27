@@ -244,7 +244,7 @@ public class BufferedPipeDataQueueTest {
       BufferedPipeDataQueue pipeDataQueue = new BufferedPipeDataQueue(pipeLogDir.getPath());
       Assert.assertEquals(1, pipeDataQueue.getCommitSerialNumber());
       Assert.assertEquals(10, pipeDataQueue.getLastMaxSerialNumber());
-      PipeData offerPipeData = new TsFilePipeData("", 11);
+      PipeData offerPipeData = new TsFilePipeData("fake11", 11);
       pipeDataList.add(offerPipeData);
       pipeDataQueue.offer(offerPipeData);
 
