@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.template;
 
+import org.apache.iotdb.commons.partition.SchemaRegionId;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
@@ -27,7 +28,6 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegionId;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.utils.SerializeUtils;
@@ -67,7 +67,7 @@ public class Template {
   private Map<String, IMeasurementSchema> schemaMap;
 
   // accelerate template query and check
-  private Map<String, Set<ISchemaRegionId>> relatedSchemaRegion;
+  private Map<String, Set<SchemaRegionId>> relatedSchemaRegion;
 
   public Template() {}
 
@@ -411,29 +411,27 @@ public class Template {
     return directNodes.values();
   }
 
-  public Set<ISchemaRegionId> getRelatedSchemaRegion() {
-    Set<ISchemaRegionId> result = new HashSet<>();
-    for (Set<ISchemaRegionId> schemaRegionIds : relatedSchemaRegion.values()) {
+  public Set<SchemaRegionId> getRelatedSchemaRegion() {
+    Set<SchemaRegionId> result = new HashSet<>();
+    for (Set<SchemaRegionId> schemaRegionIds : relatedSchemaRegion.values()) {
       result.addAll(schemaRegionIds);
     }
     return result;
   }
 
-  public Set<ISchemaRegionId> getRelatedSchemaRegionInStorageGroup(String storageGroup) {
+  public Set<SchemaRegionId> getRelatedSchemaRegionInStorageGroup(String storageGroup) {
     return relatedSchemaRegion.get(storageGroup);
   }
 
-  public void markSchemaRegion(ISchemaRegionId schemaRegionId) {
-    String storageGroup = schemaRegionId.getStorageGroup();
+  public void markSchemaRegion(String storageGroup, SchemaRegionId schemaRegionId) {
     if (!relatedSchemaRegion.containsKey(storageGroup)) {
       relatedSchemaRegion.putIfAbsent(storageGroup, new HashSet<>());
     }
     relatedSchemaRegion.get(storageGroup).add(schemaRegionId);
   }
 
-  public void unmarkSchemaRegion(ISchemaRegionId schemaRegionId) {
-    String storageGroup = schemaRegionId.getStorageGroup();
-    Set<ISchemaRegionId> schemaRegionIds = relatedSchemaRegion.get(storageGroup);
+  public void unmarkSchemaRegion(String storageGroup, SchemaRegionId schemaRegionId) {
+    Set<SchemaRegionId> schemaRegionIds = relatedSchemaRegion.get(storageGroup);
     schemaRegionIds.remove(schemaRegionId);
     if (schemaRegionIds.isEmpty()) {
       relatedSchemaRegion.remove(storageGroup);

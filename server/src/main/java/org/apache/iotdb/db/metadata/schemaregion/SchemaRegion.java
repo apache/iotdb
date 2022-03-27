@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.schemaregion;
 
+import org.apache.iotdb.commons.partition.SchemaRegionId;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -152,7 +153,7 @@ public class SchemaRegion {
 
   private String schemaRegionDirPath;
   private String storageGroupFullPath;
-  private ISchemaRegionId schemaRegionId;
+  private SchemaRegionId schemaRegionId;
 
   // the log file seriesPath
   private String logFilePath;
@@ -166,10 +167,11 @@ public class SchemaRegion {
   private TagManager tagManager;
 
   // region Interfaces and Implementation of initialization、snapshot、recover and clear
-  public SchemaRegion(ISchemaRegionId schemaRegionId, IStorageGroupMNode storageGroupMNode)
+  public SchemaRegion(
+      PartialPath storageGroup, SchemaRegionId schemaRegionId, IStorageGroupMNode storageGroupMNode)
       throws MetadataException {
 
-    storageGroupFullPath = schemaRegionId.getStorageGroup();
+    storageGroupFullPath = storageGroup.getFullPath();
     this.schemaRegionId = schemaRegionId;
 
     int cacheSize = config.getSchemaRegionCacheSize();
@@ -214,7 +216,7 @@ public class SchemaRegion {
             + File.separator
             + storageGroupFullPath
             + File.separator
-            + schemaRegionId.getValue();
+            + schemaRegionId.getSchemaRegionId();
     File schemaRegionFolder = SystemFileFactory.INSTANCE.getFile(schemaRegionDirPath);
     if (!schemaRegionFolder.exists()) {
       if (schemaRegionFolder.mkdirs()) {
@@ -431,6 +433,12 @@ public class SchemaRegion {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void createTimeseries(CreateTimeSeriesPlan plan, long offset) throws MetadataException {
+    if (!timeseriesStatistics.isAllowToCreateNewSeries()) {
+      throw new MetadataException(
+          "IoTDB system load is too large to create timeseries, "
+              + "please increase MAX_HEAP_SIZE in iotdb-env.sh/bat and restart");
+    }
+
     try {
       PartialPath path = plan.getPath();
       SchemaUtils.checkDataTypeWithEncoding(plan.getDataType(), plan.getEncoding());
@@ -531,6 +539,12 @@ public class SchemaRegion {
    * @param plan CreateAlignedTimeSeriesPlan
    */
   public void createAlignedTimeSeries(CreateAlignedTimeSeriesPlan plan) throws MetadataException {
+    if (!timeseriesStatistics.isAllowToCreateNewSeries()) {
+      throw new MetadataException(
+          "IoTDB system load is too large to create timeseries, "
+              + "please increase MAX_HEAP_SIZE in iotdb-env.sh/bat and restart");
+    }
+
     try {
       PartialPath prefixPath = plan.getPrefixPath();
       List<String> measurements = plan.getMeasurements();
@@ -1645,7 +1659,8 @@ public class SchemaRegion {
 
       node.setSchemaTemplate(template);
 
-      TemplateManager.getInstance().markSchemaRegion(template, schemaRegionId);
+      TemplateManager.getInstance()
+          .markSchemaRegion(template, storageGroupFullPath, schemaRegionId);
 
       // write wal
       if (!isRecovering) {
@@ -1671,7 +1686,8 @@ public class SchemaRegion {
       mtree.checkTemplateInUseOnLowerNode(node);
       Template template = node.getSchemaTemplate();
       node.setSchemaTemplate(null);
-      TemplateManager.getInstance().unmarkSchemaRegion(template, schemaRegionId);
+      TemplateManager.getInstance()
+          .unmarkSchemaRegion(template, storageGroupFullPath, schemaRegionId);
       // write wal
       if (!isRecovering) {
         logWriter.unsetSchemaTemplate(plan);

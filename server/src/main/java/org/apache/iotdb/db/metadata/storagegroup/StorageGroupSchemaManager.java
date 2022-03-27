@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.metadata.storagegroup;
 
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -78,8 +77,8 @@ public class StorageGroupSchemaManager implements IStorageGroupSchemaManager {
     mtree = new MTreeAboveSG();
 
     recoverLog();
-
     logWriter = new StorageGroupLogWriter(config.getSchemaDir(), STORAGE_GROUP_LOG);
+
     isRecover = false;
   }
 
@@ -131,6 +130,7 @@ public class StorageGroupSchemaManager implements IStorageGroupSchemaManager {
       logWriter.close();
       logWriter = null;
     }
+
     if (mtree != null) {
       mtree.clear();
     }
@@ -262,10 +262,5 @@ public class StorageGroupSchemaManager implements IStorageGroupSchemaManager {
   public Pair<Set<String>, Set<PartialPath>> getChildNodeNameInNextLevel(PartialPath pathPattern)
       throws MetadataException {
     return mtree.getChildNodeNameInNextLevel(pathPattern);
-  }
-
-  @TestOnly
-  public static StorageGroupSchemaManager getNewInstanceForTest() {
-    return new StorageGroupSchemaManager();
   }
 }

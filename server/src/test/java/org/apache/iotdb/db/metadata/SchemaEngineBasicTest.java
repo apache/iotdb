@@ -935,8 +935,8 @@ public class SchemaEngineBasicTest {
 
     schemaEngine.setSchemaTemplate(setTemplatePlan);
 
+    schemaEngine.setUsingSchemaTemplate(new ActivateTemplatePlan(new PartialPath("root.sg1.d1")));
     IMNode node = schemaEngine.getDeviceNode(new PartialPath("root.sg1.d1"));
-    node = schemaEngine.setUsingSchemaTemplate(node);
 
     MeasurementSchema s11 =
         new MeasurementSchema("s11", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
@@ -1638,9 +1638,9 @@ public class SchemaEngineBasicTest {
       schemaEngine.setSchemaTemplate(setSchemaTemplatePlan);
       schemaEngine.setSchemaTemplate(setSchemaTemplatePlan1);
       schemaEngine.setUsingSchemaTemplate(
-          schemaEngine.getDeviceNode(new PartialPath("root.laptop.d1")));
+          new ActivateTemplatePlan(new PartialPath("root.laptop.d1")));
       schemaEngine.setUsingSchemaTemplate(
-          schemaEngine.getDeviceNode(new PartialPath("root.tree.d0")));
+          new ActivateTemplatePlan(new PartialPath("root.tree.d0")));
 
       // show timeseries root.tree.d0
       ShowTimeSeriesPlan showTreeTSPlan =
@@ -1720,8 +1720,7 @@ public class SchemaEngineBasicTest {
     // set device template
     SetTemplatePlan setSchemaTemplatePlan1 = new SetTemplatePlan("treeTemplate", "root.tree.d0");
     schemaEngine.setSchemaTemplate(setSchemaTemplatePlan1);
-    schemaEngine.setUsingSchemaTemplate(
-        schemaEngine.getDeviceNode(new PartialPath("root.tree.d0")));
+    schemaEngine.setUsingSchemaTemplate(new ActivateTemplatePlan(new PartialPath("root.tree.d0")));
 
     ShowTimeSeriesPlan showTimeSeriesPlan =
         new ShowTimeSeriesPlan(new PartialPath("root.tree.**.s1"), false, null, null, 0, 0, false);
@@ -1771,7 +1770,7 @@ public class SchemaEngineBasicTest {
       schemaEngine.setSchemaTemplate(setSchemaTemplatePlan);
       schemaEngine.setSchemaTemplate(new SetTemplatePlan("treeTemplate", "root.tree.d0"));
       schemaEngine.setUsingSchemaTemplate(
-          schemaEngine.getDeviceNode(new PartialPath("root.laptop.d1")));
+          new ActivateTemplatePlan(new PartialPath("root.laptop.d1")));
 
       schemaEngine.createTimeseries(
           new PartialPath("root.computer.d1.s2"),
@@ -1783,15 +1782,13 @@ public class SchemaEngineBasicTest {
       SetTemplatePlan setTemplatePlan = new SetTemplatePlan("template1", "root.computer");
       schemaEngine.setSchemaTemplate(setTemplatePlan);
       schemaEngine.setUsingSchemaTemplate(
-          schemaEngine.getDeviceNode(new PartialPath("root.computer.d1")));
+          new ActivateTemplatePlan(new PartialPath("root.computer.d1")));
       schemaEngine.setUsingSchemaTemplate(
-          schemaEngine.getDeviceNode(new PartialPath("root.tree.d0")));
-      schemaEngine.getDeviceNodeWithAutoCreate(new PartialPath("root.tree.d0.v0"));
-      schemaEngine.getDeviceNodeWithAutoCreate(new PartialPath("root.tree.d0.v1"));
+          new ActivateTemplatePlan(new PartialPath("root.tree.d0")));
       schemaEngine.setUsingSchemaTemplate(
-          schemaEngine.getDeviceNode(new PartialPath("root.tree.d0.v0")));
+          new ActivateTemplatePlan(new PartialPath("root.tree.d0.v0")));
       schemaEngine.setUsingSchemaTemplate(
-          schemaEngine.getDeviceNode(new PartialPath("root.tree.d0.v1")));
+          new ActivateTemplatePlan(new PartialPath("root.tree.d0.v1")));
 
       Assert.assertEquals(
           2, schemaEngine.getAllTimeseriesCount(new PartialPath("root.laptop.d1.**")));
@@ -1855,9 +1852,9 @@ public class SchemaEngineBasicTest {
       schemaEngine.setSchemaTemplate(setSchemaTemplatePlan);
       schemaEngine.setSchemaTemplate(new SetTemplatePlan("treeTemplate", "root.tree.d0"));
       schemaEngine.setUsingSchemaTemplate(
-          schemaEngine.getDeviceNode(new PartialPath("root.laptop.d1")));
+          new ActivateTemplatePlan(new PartialPath("root.laptop.d1")));
       schemaEngine.setUsingSchemaTemplate(
-          schemaEngine.getDeviceNode(new PartialPath("root.tree.d0")));
+          new ActivateTemplatePlan(new PartialPath("root.tree.d0")));
 
       try {
         schemaEngine.setUsingSchemaTemplate(
@@ -2522,7 +2519,7 @@ public class SchemaEngineBasicTest {
         TSEncoding.valueOf("RLE"),
         compressionType,
         Collections.emptyMap());
-    schemaEngine.setUsingSchemaTemplate(schemaEngine.getDeviceNode(new PartialPath("root.sg.d1")));
+    schemaEngine.setUsingSchemaTemplate(new ActivateTemplatePlan(new PartialPath("root.sg.d1")));
     schemaEngine.deleteTimeseries(new PartialPath("root.sg.d1.s2"));
     assertTrue(schemaEngine.isPathExist(new PartialPath("root.sg.d1")));
 

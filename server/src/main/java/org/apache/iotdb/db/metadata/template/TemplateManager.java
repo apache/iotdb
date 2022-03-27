@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.metadata.template;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.commons.partition.SchemaRegionId;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.DuplicatedTemplateException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -27,7 +27,6 @@ import org.apache.iotdb.db.exception.metadata.UndefinedTemplateException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegionId;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -76,11 +75,6 @@ public class TemplateManager {
 
   public static TemplateManager getInstance() {
     return TemplateManagerHolder.INSTANCE;
-  }
-
-  @TestOnly
-  public static TemplateManager getNewInstanceForTest() {
-    return new TemplateManager();
   }
 
   private TemplateManager() {}
@@ -312,8 +306,8 @@ public class TemplateManager {
     }
   }
 
-  public void markSchemaRegion(Template template, ISchemaRegionId schemaRegionId) {
-    String storageGroup = schemaRegionId.getStorageGroup();
+  public void markSchemaRegion(
+      Template template, String storageGroup, SchemaRegionId schemaRegionId) {
     synchronized (templateUsageInStorageGroup) {
       if (!templateUsageInStorageGroup.containsKey(storageGroup)) {
         templateUsageInStorageGroup.putIfAbsent(
@@ -321,11 +315,11 @@ public class TemplateManager {
       }
     }
     templateUsageInStorageGroup.get(storageGroup).add(template);
-    template.markSchemaRegion(schemaRegionId);
+    template.markSchemaRegion(storageGroup, schemaRegionId);
   }
 
-  public void unmarkSchemaRegion(Template template, ISchemaRegionId schemaRegionId) {
-    String storageGroup = schemaRegionId.getStorageGroup();
+  public void unmarkSchemaRegion(
+      Template template, String storageGroup, SchemaRegionId schemaRegionId) {
     Set<Template> usageInStorageGroup = templateUsageInStorageGroup.get(storageGroup);
     usageInStorageGroup.remove(template);
     synchronized (templateUsageInStorageGroup) {
@@ -333,7 +327,7 @@ public class TemplateManager {
         templateUsageInStorageGroup.remove(storageGroup);
       }
     }
-    template.unmarkSchemaRegion(schemaRegionId);
+    template.unmarkSchemaRegion(storageGroup, schemaRegionId);
   }
 
   public void forceLog() {

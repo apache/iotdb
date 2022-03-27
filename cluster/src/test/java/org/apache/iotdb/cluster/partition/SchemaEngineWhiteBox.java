@@ -35,7 +35,7 @@ public class SchemaEngineWhiteBox {
       SchemaEngine schemaEngine = constructor.newInstance();
       new File(logFilePath).getParentFile().mkdirs();
       Whitebox.setInternalState(schemaEngine, "logFilePath", logFilePath);
-      schemaEngine.initForMultiSchemaEngineTest();
+      //      schemaEngine.initForMultiSchemaEngineTest();
       return schemaEngine;
     } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
       e.printStackTrace();

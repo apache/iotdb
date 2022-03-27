@@ -32,15 +32,15 @@ public class StorageGroupLogWriter implements AutoCloseable {
     logWriter = new MLogWriter(schemaDir, fileName);
   }
 
-  public void setStorageGroup(PartialPath storageGroup) throws IOException {
+  public synchronized void setStorageGroup(PartialPath storageGroup) throws IOException {
     logWriter.setStorageGroup(storageGroup);
   }
 
-  public void deleteStorageGroup(PartialPath storageGroup) throws IOException {
+  public synchronized void deleteStorageGroup(PartialPath storageGroup) throws IOException {
     logWriter.deleteStorageGroup(storageGroup);
   }
 
-  public void setTTL(PartialPath storageGroup, long ttl) throws IOException {
+  public synchronized void setTTL(PartialPath storageGroup, long ttl) throws IOException {
     logWriter.setTTL(storageGroup, ttl);
   }
 

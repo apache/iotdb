@@ -18,8 +18,14 @@
  */
 package org.apache.iotdb.commons.partition;
 
+import java.util.Objects;
+
 public class SchemaRegionId {
   private int schemaRegionId;
+
+  public SchemaRegionId(int schemaRegionId) {
+    this.schemaRegionId = schemaRegionId;
+  }
 
   public int getSchemaRegionId() {
     return schemaRegionId;
@@ -27,5 +33,18 @@ public class SchemaRegionId {
 
   public void setSchemaRegionId(int schemaRegionId) {
     this.schemaRegionId = schemaRegionId;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    SchemaRegionId that = (SchemaRegionId) o;
+    return schemaRegionId == that.schemaRegionId;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(schemaRegionId);
   }
 }

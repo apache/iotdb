@@ -17,8 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.metadata.schemaregion;
+package org.apache.iotdb.db.metadata.localconfig;
 
+import org.apache.iotdb.commons.partition.SchemaRegionId;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 
@@ -29,12 +30,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 // This class is used for schema partition maintaining the map between storage group and
 // schemaRegionIds.
 public class LocalSchemaPartitionTable {
 
-  private Map<PartialPath, Set<ISchemaRegionId>> table;
+  private AtomicInteger schemaRegionIdGenerator;
+
+  private Map<PartialPath, Set<SchemaRegionId>> table;
 
   private static class LocalSchemaPartitionTableHolder {
     private static final LocalSchemaPartitionTable INSTANCE = new LocalSchemaPartitionTable();
@@ -50,6 +54,7 @@ public class LocalSchemaPartitionTable {
 
   public synchronized void init() throws MetadataException {
     table = new ConcurrentHashMap<>();
+    schemaRegionIdGenerator = new AtomicInteger(0);
   }
 
   public synchronized void clear() {
@@ -57,32 +62,46 @@ public class LocalSchemaPartitionTable {
       table.clear();
       table = null;
     }
+
+    if (schemaRegionIdGenerator != null) {
+      schemaRegionIdGenerator = null;
+    }
+  }
+
+  public synchronized SchemaRegionId allocateSchemaRegionId(PartialPath storageGroup) {
+    SchemaRegionId schemaRegionId = new SchemaRegionId(schemaRegionIdGenerator.getAndIncrement());
+    table.get(storageGroup).add(schemaRegionId);
+    return schemaRegionId;
   }
 
   public synchronized void putSchemaRegionId(
-      PartialPath storageGroup, ISchemaRegionId schemaRegionId) {
+      PartialPath storageGroup, SchemaRegionId schemaRegionId) {
     table.get(storageGroup).add(schemaRegionId);
+
+    if (schemaRegionId.getSchemaRegionId() >= schemaRegionIdGenerator.get()) {
+      schemaRegionIdGenerator.set(schemaRegionId.getSchemaRegionId() + 1);
+    }
   }
 
   public synchronized void removeSchemaRegionId(
-      PartialPath storageGroup, ISchemaRegionId schemaRegionId) {
+      PartialPath storageGroup, SchemaRegionId schemaRegionId) {
     table.get(storageGroup).remove(schemaRegionId);
   }
 
-  public ISchemaRegionId getSchemaRegionId(PartialPath storageGroup, PartialPath path) {
+  public SchemaRegionId getSchemaRegionId(PartialPath storageGroup, PartialPath path) {
     return calculateSchemaRegionId(storageGroup, path);
   }
 
-  public List<ISchemaRegionId> getInvolvedSchemaRegionIds(
+  public List<SchemaRegionId> getInvolvedSchemaRegionIds(
       PartialPath storageGroup, PartialPath pathPattern, boolean isPrefixMatch) {
-    List<ISchemaRegionId> result = new ArrayList<>();
+    List<SchemaRegionId> result = new ArrayList<>();
     if (table.containsKey(storageGroup)) {
       result.addAll(table.get(storageGroup));
     }
     return result;
   }
 
-  public Set<ISchemaRegionId> getSchemaRegionIdsByStorageGroup(PartialPath storageGroup) {
+  public Set<SchemaRegionId> getSchemaRegionIdsByStorageGroup(PartialPath storageGroup) {
     return table.get(storageGroup);
   }
 
@@ -90,13 +109,13 @@ public class LocalSchemaPartitionTable {
     table.put(storageGroup, Collections.synchronizedSet(new HashSet<>()));
   }
 
-  public synchronized Set<ISchemaRegionId> deleteStorageGroup(PartialPath storageGroup) {
+  public synchronized Set<SchemaRegionId> deleteStorageGroup(PartialPath storageGroup) {
     return table.remove(storageGroup);
   }
 
   // This method may be extended to implement multi schemaRegion for one storageGroup
-  private ISchemaRegionId calculateSchemaRegionId(PartialPath storageGroup, PartialPath path) {
-    return ISchemaRegionId.getISchemaRegionId(
-        storageGroup.toString(), storageGroup.toString() + "_schema_region");
+  // todo keep consistent with the partition method of config node in new cluster
+  private SchemaRegionId calculateSchemaRegionId(PartialPath storageGroup, PartialPath path) {
+    return table.get(storageGroup).iterator().next();
   }
 }

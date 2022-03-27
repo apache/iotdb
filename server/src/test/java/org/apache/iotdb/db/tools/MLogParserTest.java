@@ -53,6 +53,7 @@ import java.util.Map;
 public class MLogParserTest {
 
   private String[] storageGroups = new String[] {"root.sg0", "root.sg1", "root.sg"};
+  private int[] storageGroupIndex = new int[] {0, 1, 4};
 
   /*
    * For root.sg0, we prepare 50 CreateTimeseriesPlan.
@@ -155,7 +156,7 @@ public class MLogParserTest {
   }
 
   @Test
-  public void testMLogParser() throws IOException {
+  public void testMLogParser() throws Exception {
     prepareData();
     testNonExistingStorageGroupDir("root.ln.cc");
     testNonExistingStorageGroupDir("root.sgcc");
@@ -165,7 +166,7 @@ public class MLogParserTest {
     testParseStorageGroupLog();
 
     for (int i = 0; i < storageGroups.length; i++) {
-      testParseMLog(storageGroups[i], mlogLineNum[i]);
+      testParseMLog(storageGroups[i], storageGroupIndex[i], mlogLineNum[i]);
     }
 
     testParseTemplateLogFile();
@@ -193,15 +194,14 @@ public class MLogParserTest {
         1);
   }
 
-  private void testParseMLog(String storageGroup, int expectedLineNum) throws IOException {
+  private void testParseMLog(String storageGroup, int storageGroupId, int expectedLineNum)
+      throws IOException {
     testParseLog(
         IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
             + File.separator
             + storageGroup
             + File.separator
-            + File.separator
-            + storageGroup
-            + "_schema_region"
+            + storageGroupId
             + File.separator
             + MetadataConstant.METADATA_LOG,
         expectedLineNum);
