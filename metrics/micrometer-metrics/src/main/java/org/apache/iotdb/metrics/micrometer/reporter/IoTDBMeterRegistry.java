@@ -17,21 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.metrics.micrometer.registry;
+package org.apache.iotdb.metrics.micrometer.reporter;
 
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.metrics.metricsUtils;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
-import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.db.service.basic.ServiceProvider;
-import org.apache.iotdb.db.utils.DataTypeUtils;
+import org.apache.iotdb.metrics.config.MetricConfig;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.metrics.utils.MetricsUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.session.Session;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import io.micrometer.core.instrument.Clock;
@@ -43,29 +36,55 @@ import io.micrometer.core.instrument.step.StepRegistryConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
 public class IoTDBMeterRegistry extends StepMeterRegistry {
   private static final Logger logger = LoggerFactory.getLogger(IoTDBMeterRegistry.class);
-  private final ServiceProvider serviceProvider;
-  private final int rpcPort;
-  private final String address;
+  private static final MetricConfig.IoTDBReporterConfig ioTDBReporterConfig =
+      MetricConfigDescriptor.getInstance().getMetricConfig().getIoTDBReporterConfig();
+  private final Session session;
 
   public IoTDBMeterRegistry(StepRegistryConfig config, Clock clock) {
     super(config, clock);
-    IoTDBConfig ioTDBConfig = IoTDBDescriptor.getInstance().getConfig();
-    rpcPort = ioTDBConfig.getRpcPort();
-    address = ioTDBConfig.getRpcAddress();
-    serviceProvider = IoTDB.serviceProvider;
+    session =
+        new Session(
+            ioTDBReporterConfig.getHost(),
+            ioTDBReporterConfig.getPort(),
+            ioTDBReporterConfig.getUsername(),
+            ioTDBReporterConfig.getPassword(),
+            true);
+  }
+
+  @Override
+  public void start(ThreadFactory threadFactory) {
+    super.start(threadFactory);
+    try {
+      session.open();
+    } catch (IoTDBConnectionException e) {
+      logger.error("Failed to add session", e);
+    }
+  }
+
+  @Override
+  public void stop() {
+    super.stop();
+    try {
+      if (session != null) {
+        session.close();
+      }
+    } catch (IoTDBConnectionException e) {
+      logger.error("Failed to close session.");
+    }
   }
 
   @Override
   protected void publish() {
+    Long time = System.currentTimeMillis();
     getMeters()
         .forEach(
             meter -> {
@@ -75,28 +94,28 @@ public class IoTDBMeterRegistry extends StepMeterRegistry {
               Map<String, String> labels = tagsConvertToMap(tags);
               meter.use(
                   gauge -> {
-                    updateValue(name, labels, gauge.value());
+                    updateValue(name, labels, gauge.value(), time);
                   },
                   counter -> {
-                    updateValue(name, labels, counter.count());
+                    updateValue(name, labels, counter.count(), time);
                   },
                   timer -> {
-                    writeSnapshotAndCount(name, labels, timer.takeSnapshot());
+                    writeSnapshotAndCount(name, labels, timer.takeSnapshot(), time);
                   },
                   summary -> {
-                    writeSnapshotAndCount(name, labels, summary.takeSnapshot());
+                    writeSnapshotAndCount(name, labels, summary.takeSnapshot(), time);
                   },
                   longTaskTimer -> {
-                    updateValue(name, labels, (double) longTaskTimer.activeTasks());
+                    updateValue(name, labels, (double) longTaskTimer.activeTasks(), time);
                   },
                   timeGauge -> {
-                    updateValue(name, labels, timeGauge.value(getBaseTimeUnit()));
+                    updateValue(name, labels, timeGauge.value(getBaseTimeUnit()), time);
                   },
                   functionCounter -> {
-                    updateValue(name, labels, functionCounter.count());
+                    updateValue(name, labels, functionCounter.count(), time);
                   },
                   functionTimer -> {
-                    updateValue(name, labels, functionTimer.count());
+                    updateValue(name, labels, functionTimer.count(), time);
                   },
                   m -> {
                     logger.debug("unknown meter:" + meter);
@@ -105,11 +124,11 @@ public class IoTDBMeterRegistry extends StepMeterRegistry {
   }
 
   private void writeSnapshotAndCount(
-      String name, Map<String, String> labels, HistogramSnapshot snapshot) {
-    updateValue(name + "_max", labels, snapshot.max());
-    updateValue(name + "_mean", labels, snapshot.mean());
-    updateValue(name + "_total", labels, snapshot.total());
-    updateValue(name + "_count", labels, (double) snapshot.count());
+      String name, Map<String, String> labels, HistogramSnapshot snapshot, Long time) {
+    updateValue(name + "_max", labels, snapshot.max(), time);
+    updateValue(name + "_mean", labels, snapshot.mean(), time);
+    updateValue(name + "_total", labels, snapshot.total(), time);
+    updateValue(name + "_count", labels, (double) snapshot.count(), time);
   }
 
   private Map<String, String> tagsConvertToMap(List<Tag> tags) {
@@ -120,25 +139,16 @@ public class IoTDBMeterRegistry extends StepMeterRegistry {
     return labels;
   }
 
-  private void updateValue(String name, Map<String, String> labels, Double value) {
+  private void updateValue(String name, Map<String, String> labels, Double value, Long time) {
     if (value != null) {
+      String deviceId = MetricsUtils.generatePath(name, labels);
+      List<String> sensors = Collections.singletonList("value");
+      List<TSDataType> dataTypes = Collections.singletonList(TSDataType.DOUBLE);
+
       try {
-        InsertRowPlan insertRowPlan =
-            new InsertRowPlan(
-                new PartialPath(metricsUtils.generatePath(address, rpcPort, name, labels)),
-                System.currentTimeMillis(),
-                new String[] {"value"},
-                DataTypeUtils.getValueBuffer(
-                    new ArrayList<>(Arrays.asList(TSDataType.DOUBLE)),
-                    new ArrayList<>(Arrays.asList(value))),
-                false);
-        serviceProvider.executeNonQuery(insertRowPlan);
-      } catch (IllegalPathException
-          | IoTDBConnectionException
-          | QueryProcessException
-          | StorageGroupNotSetException
-          | StorageEngineException e) {
-        logger.error("illegal insertRowPlan,reason:" + e.getMessage());
+        session.insertRecord(deviceId, time, sensors, dataTypes, value);
+      } catch (IoTDBConnectionException | StatementExecutionException e) {
+        logger.warn("Failed to insert record");
       }
     }
   }

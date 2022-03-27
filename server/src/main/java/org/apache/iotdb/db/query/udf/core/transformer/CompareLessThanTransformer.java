@@ -16,24 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.operator;
 
-import org.apache.iotdb.db.mpp.common.TsBlock;
+package org.apache.iotdb.db.query.udf.core.transformer;
 
-public class SeriesScanOperator implements Operator {
+import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 
-  @Override
-  public OperatorContext getOperatorContext() {
-    return null;
+public class CompareLessThanTransformer extends CompareBinaryTransformer {
+
+  public CompareLessThanTransformer(
+      LayerPointReader leftPointReader, LayerPointReader rightPointReader) {
+    super(leftPointReader, rightPointReader);
   }
 
   @Override
-  public TsBlock next() {
-    return null;
-  }
-
-  @Override
-  public boolean hasNext() {
-    return false;
+  protected boolean evaluateBoolean(double leftOperand, double rightOperand) {
+    return Double.compare(leftOperand, rightOperand) < 0;
   }
 }

@@ -30,11 +30,14 @@ import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
 
 /** ConfigNodeRPCServer exposes the interface that interacts with the DataNode */
 public class ConfigNodeRPCServer extends ThriftService implements ConfigNodeRPCServerMBean {
-  private final ConfigNodeConf config = ConfigNodeDescriptor.getInstance().getConf();
+
+  private static final ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();
 
   private ConfigNodeRPCServerProcessor configNodeRPCServerProcessor;
 
-  private ConfigNodeRPCServer() {}
+  private ConfigNodeRPCServer() {
+    // empty constructor
+  }
 
   @Override
   public ThriftService getImplementation() {
@@ -72,10 +75,10 @@ public class ConfigNodeRPCServer extends ThriftService implements ConfigNodeRPCS
               ThreadName.CONFIG_NODE_RPC_CLIENT.getName(),
               getBindIP(),
               getBindPort(),
-              config.getRpcMaxConcurrentClientNum(),
-              config.getThriftServerAwaitTimeForStopService(),
+              conf.getRpcMaxConcurrentClientNum(),
+              conf.getThriftServerAwaitTimeForStopService(),
               new ConfigNodeRPCServiceHandler(configNodeRPCServerProcessor),
-              config.isRpcThriftCompressionEnabled());
+              conf.isRpcThriftCompressionEnabled());
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
     }
@@ -84,12 +87,12 @@ public class ConfigNodeRPCServer extends ThriftService implements ConfigNodeRPCS
 
   @Override
   public String getBindIP() {
-    return config.getRpcAddress();
+    return conf.getRpcAddress();
   }
 
   @Override
   public int getBindPort() {
-    return config.getRpcPort();
+    return conf.getRpcPort();
   }
 
   public static ConfigNodeRPCServer getInstance() {
@@ -100,6 +103,8 @@ public class ConfigNodeRPCServer extends ThriftService implements ConfigNodeRPCS
 
     private static final ConfigNodeRPCServer INSTANCE = new ConfigNodeRPCServer();
 
-    private ConfigNodeRPCServerHolder() {}
+    private ConfigNodeRPCServerHolder() {
+      // empty constructor
+    }
   }
 }
