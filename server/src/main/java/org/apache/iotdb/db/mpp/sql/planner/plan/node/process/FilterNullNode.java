@@ -18,10 +18,10 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
-import org.apache.iotdb.db.mpp.common.FilterNullPolicy;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullPolicy;
 
 import com.google.common.collect.ImmutableList;
 
@@ -43,9 +43,14 @@ public class FilterNullNode extends ProcessNode {
     this.child = child;
   }
 
-  public FilterNullNode(PlanNodeId id, PlanNode child, List<String> filterNullColumnNames) {
+  public FilterNullNode(
+      PlanNodeId id,
+      PlanNode child,
+      FilterNullPolicy discardPolicy,
+      List<String> filterNullColumnNames) {
     super(id);
     this.child = child;
+    this.discardPolicy = discardPolicy;
     this.filterNullColumnNames = filterNullColumnNames;
   }
 

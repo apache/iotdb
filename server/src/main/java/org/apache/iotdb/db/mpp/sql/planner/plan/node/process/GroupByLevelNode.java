@@ -24,6 +24,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.Map;
 
 /**
  * This node is responsible for the final aggregation merge operation. It will process the data from
@@ -43,12 +44,14 @@ public class GroupByLevelNode extends ProcessNode {
 
   private List<String> columnNames;
 
+  private Map<String, String> groupedPathMap;
+
   public GroupByLevelNode(
-      PlanNodeId id, PlanNode child, int[] groupByLevels, List<String> columnNames) {
+      PlanNodeId id, PlanNode child, int[] groupByLevels, Map<String, String> groupedPathMap) {
     super(id);
     this.child = child;
     this.groupByLevels = groupByLevels;
-    this.columnNames = columnNames;
+    this.groupedPathMap = groupedPathMap;
   }
 
   @Override

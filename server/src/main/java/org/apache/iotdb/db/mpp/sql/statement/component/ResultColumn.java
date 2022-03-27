@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.sql.statement.component;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.rewriter.WildcardsRemover;
+import org.apache.iotdb.db.mpp.sql.statement.StatementNode;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -67,7 +68,7 @@ import java.util.Set;
  *       udf(udf(root.sg.d.a)), udf(udf(root.sg.d.b))]
  * </ul>
  */
-public class ResultColumn {
+public class ResultColumn extends StatementNode {
 
   private final Expression expression;
   private final String alias;

@@ -77,4 +77,14 @@ public class CsvSourceNode extends SourceNode {
   public void setDataRegionReplicaSet(DataRegionReplicaSet dataRegionReplicaSet) {
     throw new UnsupportedOperationException();
   }
+
+  @Override
+  public String getDeviceName() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  protected String getExpressionString() {
+    throw new UnsupportedOperationException();
+  }
 }

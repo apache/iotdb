@@ -31,6 +31,7 @@ import org.apache.iotdb.db.mpp.common.filter.*;
 import org.apache.iotdb.db.mpp.sql.constant.FilterConstant;
 import org.apache.iotdb.db.mpp.sql.statement.*;
 import org.apache.iotdb.db.mpp.sql.statement.component.*;
+import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullPolicy;
 import org.apache.iotdb.db.mpp.sql.statement.crud.*;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
@@ -1008,11 +1009,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
     // set without null policy
     if (ctx.ANY() != null) {
-      filterNullComponent.setWithoutPolicyType(FilterNullComponent.FilterNullPolicy.CONTAINS_NULL);
+      filterNullComponent.setWithoutPolicyType(FilterNullPolicy.CONTAINS_NULL);
     } else if (ctx.ALL() != null) {
-      filterNullComponent.setWithoutPolicyType(FilterNullComponent.FilterNullPolicy.ALL_NULL);
+      filterNullComponent.setWithoutPolicyType(FilterNullPolicy.ALL_NULL);
     } else {
-      filterNullComponent.setWithoutPolicyType(FilterNullComponent.FilterNullPolicy.NULL);
+      filterNullComponent.setWithoutPolicyType(FilterNullPolicy.NO_FILTER);
     }
 
     queryStatement.setFilterNullComponent(filterNullComponent);

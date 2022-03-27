@@ -116,6 +116,16 @@ public class SeriesAggregateScanNode extends SourceNode {
   }
 
   @Override
+  public String getDeviceName() {
+    return aggregateFunc.getPaths().get(0).getDevice();
+  }
+
+  @Override
+  protected String getExpressionString() {
+    return aggregateFunc.getExpressionString();
+  }
+
+  @Override
   public void close() throws Exception {}
 
   @Override

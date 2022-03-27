@@ -18,20 +18,29 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner;
 
+import org.apache.iotdb.commons.partition.DataRegionReplicaSet;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
+import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
 import org.apache.iotdb.db.mpp.sql.optimization.PlanOptimizer;
 import org.apache.iotdb.db.mpp.sql.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeIdAllocator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateTimeSeriesNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.*;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SourceNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.mpp.sql.statement.component.*;
+import org.apache.iotdb.db.mpp.sql.statement.crud.AggregationQueryStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.FillQueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.tree.StatementVisitor;
+import org.apache.iotdb.db.query.expression.Expression;
 
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /** Generate a logical plan for the statement. */
 public class LogicalPlanner {
@@ -61,8 +70,7 @@ public class LogicalPlanner {
    * This visitor is used to generate a logical plan for the statement and returns the {@link
    * PlanNode}.
    */
-  private static final class LogicalPlanVisitor
-      extends StatementVisitor<PlanNode, MPPQueryContext> {
+  private class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryContext> {
 
     private final Analysis analysis;
 
@@ -72,8 +80,158 @@ public class LogicalPlanner {
 
     @Override
     public PlanNode visitQuery(QueryStatement queryStatement, MPPQueryContext context) {
-      // TODO: Generate logical planNode tree for query statement
-      return null;
+      PlanBuilder planBuilder = planSelectComponent(queryStatement);
+
+      if (queryStatement.getWhereCondition() != null) {
+        planBuilder =
+            planQueryFilter(planBuilder, queryStatement.getWhereCondition().getQueryFilter());
+      }
+
+      if (queryStatement.isGroupByLevel()) {
+        planBuilder =
+            planGroupByLevel(
+                planBuilder,
+                ((AggregationQueryStatement) queryStatement).getGroupByLevelComponent());
+      }
+
+      if (queryStatement instanceof FillQueryStatement) {
+        planBuilder =
+            planFill(planBuilder, ((FillQueryStatement) queryStatement).getFillComponent());
+      }
+
+      planBuilder = planFilterNull(planBuilder, queryStatement.getFilterNullComponent());
+      planBuilder = planSort(planBuilder, queryStatement.getResultOrder());
+      planBuilder = planLimit(planBuilder, queryStatement.getRowLimit());
+      planBuilder = planOffset(planBuilder, queryStatement.getRowOffset());
+      return planBuilder.getRoot();
+    }
+
+    private PlanBuilder planSelectComponent(QueryStatement queryStatement) {
+      Map<String, Set<SourceNode>> deviceNameToSourceNodesMap = new HashMap<>();
+      Map<String, DataRegionReplicaSet> deviceNameToDataRegionReplicaSetMap = new HashMap<>();
+
+      for (ResultColumn resultColumn : queryStatement.getSelectComponent().getResultColumns()) {
+        Set<SourceNode> sourceNodes = planResultColumn(resultColumn);
+        for (SourceNode sourceNode : sourceNodes) {
+          String deviceName = sourceNode.getDeviceName();
+          deviceNameToSourceNodesMap
+              .computeIfAbsent(deviceName, k -> new HashSet<>())
+              .add(sourceNode);
+          deviceNameToDataRegionReplicaSetMap.computeIfAbsent(
+              deviceName,
+              k -> analysis.getDataPartitionInfo().getDataRegionReplicaSet(k, null).get(0));
+          sourceNode.setDataRegionReplicaSet(deviceNameToDataRegionReplicaSetMap.get(deviceName));
+        }
+      }
+
+      if (queryStatement.isAlignByDevice()) {
+        DeviceMergeNode deviceMergeNode = new DeviceMergeNode(PlanNodeIdAllocator.generateId());
+        for (Map.Entry<String, Set<SourceNode>> entry : deviceNameToSourceNodesMap.entrySet()) {
+          String deviceName = entry.getKey();
+          List<PlanNode> planNodes = new ArrayList<>(entry.getValue());
+          if (planNodes.size() == 1) {
+            deviceMergeNode.addChildDeviceNode(deviceName, planNodes.get(0));
+          } else {
+            TimeJoinNode timeJoinNode =
+                new TimeJoinNode(
+                    PlanNodeIdAllocator.generateId(),
+                    queryStatement.getResultOrder(),
+                    queryStatement.getFilterNullComponent().getWithoutPolicyType(),
+                    planNodes);
+            deviceMergeNode.addChildDeviceNode(deviceName, timeJoinNode);
+          }
+        }
+        return new PlanBuilder(deviceMergeNode);
+      }
+
+      List<PlanNode> planNodes =
+          deviceNameToSourceNodesMap.entrySet().stream()
+              .flatMap(entry -> entry.getValue().stream())
+              .collect(Collectors.toList());
+      TimeJoinNode timeJoinNode =
+          new TimeJoinNode(
+              PlanNodeIdAllocator.generateId(),
+              queryStatement.getResultOrder(),
+              queryStatement.getFilterNullComponent().getWithoutPolicyType(),
+              planNodes);
+      return new PlanBuilder(timeJoinNode);
+    }
+
+    private Set<SourceNode> planResultColumn(ResultColumn resultColumn) {
+      Set<SourceNode> resultSourceNodeSet = new HashSet<>();
+      resultColumn.getExpression().collectPlanNode(resultSourceNodeSet);
+      return resultSourceNodeSet;
+    }
+
+    private PlanBuilder planQueryFilter(PlanBuilder planBuilder, QueryFilter queryFilter) {
+      if (queryFilter == null) {
+        return planBuilder;
+      }
+
+      return planBuilder.withNewRoot(
+          new FilterNode(PlanNodeIdAllocator.generateId(), planBuilder.getRoot(), queryFilter));
+    }
+
+    private PlanBuilder planGroupByLevel(
+        PlanBuilder planBuilder, GroupByLevelComponent groupByLevelComponent) {
+      if (groupByLevelComponent == null) {
+        return planBuilder;
+      }
+
+      return planBuilder.withNewRoot(
+          new GroupByLevelNode(
+              PlanNodeIdAllocator.generateId(),
+              planBuilder.getRoot(),
+              groupByLevelComponent.getLevels(),
+              groupByLevelComponent.getGroupedPathMap()));
+    }
+
+    private PlanBuilder planFill(PlanBuilder planBuilder, FillComponent fillComponent) {
+      // TODO: support Fill
+      return planBuilder;
+    }
+
+    private PlanBuilder planFilterNull(
+        PlanBuilder planBuilder, FilterNullComponent filterNullComponent) {
+      if (filterNullComponent == null) {
+        return planBuilder;
+      }
+
+      return planBuilder.withNewRoot(
+          new FilterNullNode(
+              PlanNodeIdAllocator.generateId(),
+              planBuilder.getRoot(),
+              filterNullComponent.getWithoutPolicyType(),
+              filterNullComponent.getWithoutNullColumns().stream()
+                  .map(Expression::getExpressionString)
+                  .collect(Collectors.toList())));
+    }
+
+    private PlanBuilder planSort(PlanBuilder planBuilder, OrderBy resultOrder) {
+      if (resultOrder == null) {
+        return planBuilder;
+      }
+
+      return planBuilder.withNewRoot(
+          new SortNode(PlanNodeIdAllocator.generateId(), planBuilder.getRoot(), null, resultOrder));
+    }
+
+    private PlanBuilder planLimit(PlanBuilder planBuilder, int rowLimit) {
+      if (rowLimit == -1) {
+        return planBuilder;
+      }
+
+      return planBuilder.withNewRoot(
+          new LimitNode(PlanNodeIdAllocator.generateId(), rowLimit, planBuilder.getRoot()));
+    }
+
+    private PlanBuilder planOffset(PlanBuilder planBuilder, int rowOffset) {
+      if (rowOffset == 0) {
+        return planBuilder;
+      }
+
+      return planBuilder.withNewRoot(
+          new OffsetNode(PlanNodeIdAllocator.generateId(), planBuilder.getRoot(), rowOffset));
     }
 
     @Override
@@ -98,6 +256,23 @@ public class LogicalPlanner {
       InsertTabletNode node = new InsertTabletNode(PlanNodeIdAllocator.generateId());
 
       return node;
+    }
+  }
+
+  private class PlanBuilder {
+
+    private PlanNode root;
+
+    public PlanBuilder(PlanNode root) {
+      this.root = root;
+    }
+
+    public PlanNode getRoot() {
+      return root;
+    }
+
+    public PlanBuilder withNewRoot(PlanNode newRoot) {
+      return new PlanBuilder(newRoot);
     }
   }
 }

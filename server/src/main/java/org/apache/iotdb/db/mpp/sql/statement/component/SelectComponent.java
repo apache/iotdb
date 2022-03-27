@@ -82,7 +82,7 @@ public class SelectComponent extends StatementNode {
     if (resultColumn.getExpression().isUserDefinedAggregationFunctionExpression()) {
       hasUserDefinedAggregationFunction = true;
     }
-    if (resultColumn.getExpression().isPlainAggregationFunctionExpression()) {
+    if (resultColumn.getExpression().isBuiltInAggregationFunctionExpression()) {
       hasBuiltInAggregationFunction = true;
     }
     if (resultColumn.getExpression().isTimeSeriesGeneratingFunctionExpression()) {
@@ -114,7 +114,7 @@ public class SelectComponent extends StatementNode {
         if (expression instanceof TimeSeriesOperand) {
           pathsCache.add(((TimeSeriesOperand) expression).getPath());
         } else if (expression instanceof FunctionExpression
-            && expression.isPlainAggregationFunctionExpression()) {
+            && expression.isBuiltInAggregationFunctionExpression()) {
           pathsCache.add(((TimeSeriesOperand) expression.getExpressions().get(0)).getPath());
         } else {
           pathsCache.add(null);

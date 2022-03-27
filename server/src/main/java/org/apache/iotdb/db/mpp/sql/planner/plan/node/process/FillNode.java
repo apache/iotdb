@@ -18,10 +18,10 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
-import org.apache.iotdb.db.mpp.common.FillPolicy;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.mpp.sql.statement.component.FillPolicy;
 
 import com.google.common.collect.ImmutableList;
 
@@ -75,8 +75,9 @@ public class FillNode extends ProcessNode {
   @Override
   public void serialize(ByteBuffer byteBuffer) {}
 
-  public FillNode(PlanNodeId id, FillPolicy fillPolicy) {
+  public FillNode(PlanNodeId id, PlanNode child, FillPolicy fillPolicy) {
     this(id);
+    this.child = child;
     this.fillPolicy = fillPolicy;
   }
 }

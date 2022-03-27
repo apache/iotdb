@@ -99,6 +99,16 @@ public class SeriesScanNode extends SourceNode {
     this.dataRegionReplicaSet = dataRegion;
   }
 
+  @Override
+  public String getDeviceName() {
+    return seriesPath.getDevice();
+  }
+
+  @Override
+  protected String getExpressionString() {
+    return seriesPath.toString();
+  }
+
   public void setScanOrder(OrderBy scanOrder) {
     this.scanOrder = scanOrder;
   }
