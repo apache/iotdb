@@ -52,8 +52,8 @@ import java.util.Map;
 
 public class MLogParserTest {
 
-  private String[] storageGroups = new String[] {"root.sg0", "root.sg1", "root.sg"};
-  private int[] storageGroupIndex = new int[] {0, 1, 4};
+  private String[] storageGroups = new String[] {"root.sg0", "root.sg1", "root.sgcc", "root.sg"};
+  private int[] storageGroupIndex = new int[] {0, 1, 3, 4};
 
   /*
    * For root.sg0, we prepare 50 CreateTimeseriesPlan.
@@ -65,7 +65,7 @@ public class MLogParserTest {
    * There' still 1 CreateTemplatePlan in template_log.bin
    *
    * */
-  private int[] mlogLineNum = new int[] {50, 53, 3};
+  private int[] mlogLineNum = new int[] {50, 53, 0, 3};
 
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
@@ -159,7 +159,6 @@ public class MLogParserTest {
   public void testMLogParser() throws Exception {
     prepareData();
     testNonExistingStorageGroupDir("root.ln.cc");
-    testNonExistingStorageGroupDir("root.sgcc");
 
     IoTDB.schemaEngine.forceMlog();
 
@@ -224,7 +223,7 @@ public class MLogParserTest {
         lineNum++;
         lines.add(line);
       }
-      if (lineNum != 1) {
+      if (lineNum != expectedNum) {
         for (String content : lines) {
           System.out.println(content);
         }
