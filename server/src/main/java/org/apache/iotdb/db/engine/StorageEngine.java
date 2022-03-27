@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.exception.ShutdownException;
+import org.apache.iotdb.commons.partition.DataRegionId;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -53,6 +54,7 @@ import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
@@ -86,12 +88,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
@@ -120,6 +117,10 @@ public class StorageEngine implements IService {
 
   /** storage group name -> storage group processor */
   private final ConcurrentHashMap<PartialPath, StorageGroupManager> processorMap =
+      new ConcurrentHashMap<>();
+
+  /** DataRegionId -> DataRegion */
+  private final ConcurrentHashMap<DataRegionId, VirtualStorageGroupProcessor> dataRegionMap =
       new ConcurrentHashMap<>();
 
   private AtomicBoolean isAllSgReady = new AtomicBoolean(false);
@@ -254,6 +255,73 @@ public class StorageEngine implements IService {
     recoverEndTrigger.start();
   }
 
+  public void recoverV2() {
+    setAllSgReady(false);
+    recoveryThreadPool =
+        IoTDBThreadPoolFactory.newFixedThreadPool(
+            Runtime.getRuntime().availableProcessors(), "Recovery-Thread-Pool");
+    try {
+      getLocalDataRegion();
+    } catch (Exception e) {
+      throw new StorageEngineFailureException("StorageEngine failed to recover.", e);
+    }
+    List<Future<Void>> futures = new LinkedList<>();
+    asyncRecoverV2(recoveryThreadPool, futures);
+
+    // operations after all virtual storage groups are recovered
+    Thread recoverEndTrigger =
+        new Thread(
+            () -> {
+              for (Future<Void> future : futures) {
+                try {
+                  future.get();
+                } catch (ExecutionException e) {
+                  throw new StorageEngineFailureException("StorageEngine failed to recover.", e);
+                } catch (InterruptedException e) {
+                  Thread.currentThread().interrupt();
+                  throw new StorageEngineFailureException("StorageEngine failed to recover.", e);
+                }
+              }
+              recoveryThreadPool.shutdown();
+              setAllSgReady(true);
+            });
+    recoverEndTrigger.start();
+  }
+
+  private void getLocalDataRegion() throws MetadataException, StorageGroupProcessorException {
+    File system = SystemFileFactory.INSTANCE.getFile(systemDir);
+    File[] sgDirs = system.listFiles();
+    for (File sgDir : sgDirs) {
+      if (!sgDir.isDirectory()) {
+        continue;
+      }
+      PartialPath sg = new PartialPath(sgDir.getName());
+      // TODO: need to get TTL Info from config node
+      IStorageGroupMNode storageGroupMNode =
+          IoTDB.schemaEngine.getStorageGroupNodeByStorageGroupPath(sg);
+      for (File dataRegionDir : sgDir.listFiles()) {
+        if (!dataRegionDir.isDirectory()) {
+          continue;
+        }
+        DataRegionId dataRegionId = new DataRegionId(Integer.parseInt(dataRegionDir.getName()));
+        VirtualStorageGroupProcessor dataRegion =
+            buildNewStorageGroupProcessorV2(sg, storageGroupMNode, dataRegionDir.getName());
+        dataRegionMap.putIfAbsent(dataRegionId, dataRegion);
+      }
+    }
+  }
+
+  private void asyncRecoverV2(ExecutorService pool, List<Future<Void>> futures) {
+    for (VirtualStorageGroupProcessor processor : dataRegionMap.values()) {
+      Callable<Void> recoverVsgTask =
+          () -> {
+            processor.setReady(true);
+            return null;
+          };
+      futures.add(pool.submit(recoverVsgTask));
+    }
+  }
+
   @Override
   public void start() {
     // build time Interval to divide time partition
@@ -274,6 +342,7 @@ public class StorageEngine implements IService {
     UpgradeUtils.recoverUpgrade();
 
     recover();
+    // recoverV2();
 
     ttlCheckThread = IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("TTL-Check");
     ttlCheckThread.scheduleAtFixedRate(
@@ -287,6 +356,20 @@ public class StorageEngine implements IService {
     try {
       for (StorageGroupManager processor : processorMap.values()) {
         processor.checkTTL();
+      }
+    } catch (ConcurrentModificationException e) {
+      // ignore
+    } catch (Exception e) {
+      logger.error("An error occurred when checking TTL", e);
+    }
+  }
+
+  private void checkTTLV2() {
+    try {
+      for (VirtualStorageGroupProcessor virtualStorageGroupProcessor : dataRegionMap.values()) {
+        if (virtualStorageGroupProcessor != null) {
+          virtualStorageGroupProcessor.checkFilesTTL();
+        }
       }
     } catch (ConcurrentModificationException e) {
       // ignore
@@ -344,6 +427,18 @@ public class StorageEngine implements IService {
     }
   }
 
+  private void timedFlushSeqMemTableV2() {
+    try {
+      for (VirtualStorageGroupProcessor virtualStorageGroupProcessor : dataRegionMap.values()) {
+        if (virtualStorageGroupProcessor != null) {
+          virtualStorageGroupProcessor.timedFlushSeqMemTable();
+        }
+      }
+    } catch (Exception e) {
+      logger.error("An error occurred when timed flushing sequence memtables", e);
+    }
+  }
+
   private void timedFlushUnseqMemTable() {
     try {
       for (StorageGroupManager processor : processorMap.values()) {
@@ -354,10 +449,34 @@ public class StorageEngine implements IService {
     }
   }
 
+  private void timedFlushUnseqMemTableV2() {
+    try {
+      for (VirtualStorageGroupProcessor virtualStorageGroupProcessor : dataRegionMap.values()) {
+        if (virtualStorageGroupProcessor != null) {
+          virtualStorageGroupProcessor.timedFlushUnseqMemTable();
+        }
+      }
+    } catch (Exception e) {
+      logger.error("An error occurred when timed flushing unsequence memtables", e);
+    }
+  }
+
   private void timedCloseTsFileProcessor() {
     try {
       for (StorageGroupManager processor : processorMap.values()) {
         processor.timedCloseTsFileProcessor();
+      }
+    } catch (Exception e) {
+      logger.error("An error occurred when timed closing tsfiles interval", e);
+    }
+  }
+
+  private void timedCloseTsFileProcessorV2() {
+    try {
+      for (VirtualStorageGroupProcessor virtualStorageGroupProcessor : dataRegionMap.values()) {
+        if (virtualStorageGroupProcessor != null) {
+          virtualStorageGroupProcessor.timedCloseTsFileProcessor();
+        }
       }
     } catch (Exception e) {
       logger.error("An error occurred when timed closing tsfiles interval", e);
@@ -383,11 +502,55 @@ public class StorageEngine implements IService {
     processorMap.clear();
   }
 
+  public void stopV2() {
+    for (VirtualStorageGroupProcessor vsg : dataRegionMap.values()) {
+      if (vsg != null) {
+        ThreadUtils.stopThreadPool(
+            vsg.getTimedCompactionScheduleTask(), ThreadName.COMPACTION_SCHEDULE);
+        ThreadUtils.stopThreadPool(vsg.getWALTrimScheduleTask(), ThreadName.WAL_TRIM);
+      }
+    }
+    syncCloseAllProcessor();
+    ThreadUtils.stopThreadPool(ttlCheckThread, ThreadName.TTL_CHECK_SERVICE);
+    ThreadUtils.stopThreadPool(
+        seqMemtableTimedFlushCheckThread, ThreadName.TIMED_FlUSH_SEQ_MEMTABLE);
+    ThreadUtils.stopThreadPool(
+        unseqMemtableTimedFlushCheckThread, ThreadName.TIMED_FlUSH_UNSEQ_MEMTABLE);
+    ThreadUtils.stopThreadPool(tsFileTimedCloseCheckThread, ThreadName.TIMED_CLOSE_TSFILE);
+    recoveryThreadPool.shutdownNow();
+    // TODO(new wal)
+    //    for (PartialPath storageGroup : IoTDB.schemaEngine.getAllStorageGroupPaths()) {
+    //      this.releaseWalDirectByteBufferPoolInOneStorageGroup(storageGroup);
+    //    }
+    processorMap.clear();
+  }
+
   @Override
   public void shutdown(long milliseconds) throws ShutdownException {
     try {
       for (StorageGroupManager storageGroupManager : processorMap.values()) {
         storageGroupManager.stopSchedulerPool();
+      }
+      forceCloseAllProcessor();
+    } catch (TsFileProcessorException e) {
+      throw new ShutdownException(e);
+    }
+    shutdownTimedService(ttlCheckThread, "TTlCheckThread");
+    shutdownTimedService(seqMemtableTimedFlushCheckThread, "SeqMemtableTimedFlushCheckThread");
+    shutdownTimedService(unseqMemtableTimedFlushCheckThread, "UnseqMemtableTimedFlushCheckThread");
+    shutdownTimedService(tsFileTimedCloseCheckThread, "TsFileTimedCloseCheckThread");
+    recoveryThreadPool.shutdownNow();
+    processorMap.clear();
+  }
+
+  public void shutdownV2(long milliseconds) throws ShutdownException {
+    try {
+      for (VirtualStorageGroupProcessor virtualStorageGroupProcessor : dataRegionMap.values()) {
+        ThreadUtils.stopThreadPool(
+            virtualStorageGroupProcessor.getTimedCompactionScheduleTask(),
+            ThreadName.COMPACTION_SCHEDULE);
+        ThreadUtils.stopThreadPool(
+            virtualStorageGroupProcessor.getWALTrimScheduleTask(), ThreadName.WAL_TRIM);
       }
       forceCloseAllProcessor();
     } catch (TsFileProcessorException e) {
@@ -502,6 +665,16 @@ public class StorageEngine implements IService {
     }
   }
 
+  public List<String> getLockInfoV2(List<DataRegionId> dataRegionIdList)
+      throws StorageEngineException {
+    List<String> lockHolderList = new ArrayList<>(dataRegionIdList.size());
+    for (DataRegionId dataRegionId : dataRegionIdList) {
+      VirtualStorageGroupProcessor virtualStorageGroupProcessor = dataRegionMap.get(dataRegionId);
+      lockHolderList.add(virtualStorageGroupProcessor.getInsertWriteLockHolder());
+    }
+    return lockHolderList;
+  }
+
   /**
    * get storage group processor by device path
    *
@@ -556,12 +729,38 @@ public class StorageEngine implements IService {
     return processor;
   }
 
+  public VirtualStorageGroupProcessor buildNewStorageGroupProcessorV2(
+      PartialPath logicalStorageGroupName,
+      IStorageGroupMNode storageGroupMNode,
+      String virtualStorageGroupId)
+      throws StorageGroupProcessorException {
+    VirtualStorageGroupProcessor processor;
+    logger.info(
+        "construct a processor instance, the storage group is {}, Thread is {}",
+        logicalStorageGroupName,
+        Thread.currentThread().getId());
+    processor =
+        new VirtualStorageGroupProcessor(
+            systemDir + File.separator + logicalStorageGroupName,
+            virtualStorageGroupId,
+            fileFlushPolicy,
+            storageGroupMNode.getFullPath());
+    processor.setDataTTL(storageGroupMNode.getDataTTL());
+    processor.setCustomFlushListeners(customFlushListeners);
+    processor.setCustomCloseFileListeners(customCloseFileListeners);
+    return processor;
+  }
+
   /** This function is just for unit test. */
   @TestOnly
   public synchronized void reset() {
     for (StorageGroupManager storageGroupManager : processorMap.values()) {
       storageGroupManager.reset();
     }
+  }
+
+  public synchronized void resetV2() {
+    dataRegionMap.clear();
   }
 
   /**
@@ -648,6 +847,23 @@ public class StorageEngine implements IService {
     virtualStorageGroupProcessor.insertTablet(insertTabletPlan);
   }
 
+  /** insert an InsertTabletNode to a storage group */
+  // TODO:(New insert)
+  public void insertTabletV2(DataRegionId dataRegionId, InsertTabletNode insertTabletNode)
+      throws StorageEngineException, BatchProcessException {
+    if (enableMemControl) {
+      try {
+        blockInsertionIfReject(null);
+      } catch (WriteProcessRejectException e) {
+        TSStatus[] results = new TSStatus[insertTabletNode.getRowCount()];
+        Arrays.fill(results, RpcUtils.getStatus(TSStatusCode.WRITE_PROCESS_REJECT));
+        throw new BatchProcessException(results);
+      }
+    }
+    VirtualStorageGroupProcessor dataRegion = dataRegionMap.get(dataRegionId);
+    dataRegion.insertTablet(insertTabletNode);
+  }
+
   /** flush command Sync asyncCloseOneProcessor all file node processors. */
   public void syncCloseAllProcessor() {
     logger.info("Start closing all storage group processor");
@@ -656,10 +872,28 @@ public class StorageEngine implements IService {
     }
   }
 
+  public void syncCloseAllProcessorV2() {
+    logger.info("Start closing all storage group processor");
+    for (VirtualStorageGroupProcessor virtualStorageGroupProcessor : dataRegionMap.values()) {
+      if (virtualStorageGroupProcessor != null) {
+        virtualStorageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
+      }
+    }
+  }
+
   public void forceCloseAllProcessor() throws TsFileProcessorException {
     logger.info("Start force closing all storage group processor");
     for (StorageGroupManager processor : processorMap.values()) {
       processor.forceCloseAllWorkingTsFileProcessors();
+    }
+  }
+
+  public void forceCloseAllProcessorV2() throws TsFileProcessorException {
+    logger.info("Start force closing all storage group processor");
+    for (VirtualStorageGroupProcessor virtualStorageGroupProcessor : dataRegionMap.values()) {
+      if (virtualStorageGroupProcessor != null) {
+        virtualStorageGroupProcessor.forceCloseAllWorkingTsFileProcessors();
+      }
     }
   }
 
@@ -671,6 +905,52 @@ public class StorageEngine implements IService {
 
     StorageGroupManager storageGroupManager = processorMap.get(storageGroupPath);
     storageGroupManager.closeStorageGroupProcessor(isSeq, isSync);
+  }
+
+  public void closeStorageGroupProcessorV2(
+      List<DataRegionId> dataRegionIdList, boolean isSeq, boolean isSync) {
+
+    for (DataRegionId dataRegionId : dataRegionIdList) {
+      VirtualStorageGroupProcessor processor = dataRegionMap.get(dataRegionId);
+      if (processor == null) {
+        continue;
+      }
+
+      if (logger.isInfoEnabled()) {
+        logger.info(
+            "{} closing sg processor is called for closing {}, seq = {}",
+            isSync ? "sync" : "async",
+            processor.getVirtualStorageGroupId() + "-" + processor.getLogicalStorageGroupName(),
+            isSeq);
+      }
+
+      processor.writeLock("VirtualCloseStorageGroupProcessor-204");
+      try {
+        if (isSeq) {
+          // to avoid concurrent modification problem, we need a new array list
+          for (TsFileProcessor tsfileProcessor :
+              new ArrayList<>(processor.getWorkSequenceTsFileProcessors())) {
+            if (isSync) {
+              processor.syncCloseOneTsFileProcessor(true, tsfileProcessor);
+            } else {
+              processor.asyncCloseOneTsFileProcessor(true, tsfileProcessor);
+            }
+          }
+        } else {
+          // to avoid concurrent modification problem, we need a new array list
+          for (TsFileProcessor tsfileProcessor :
+              new ArrayList<>(processor.getWorkUnsequenceTsFileProcessors())) {
+            if (isSync) {
+              processor.syncCloseOneTsFileProcessor(false, tsfileProcessor);
+            } else {
+              processor.asyncCloseOneTsFileProcessor(false, tsfileProcessor);
+            }
+          }
+        }
+      } finally {
+        processor.writeUnlock();
+      }
+    }
   }
 
   /**
@@ -689,6 +969,42 @@ public class StorageEngine implements IService {
 
     StorageGroupManager storageGroupManager = processorMap.get(storageGroupPath);
     storageGroupManager.closeStorageGroupProcessor(partitionId, isSeq, isSync);
+  }
+
+  public void closeStorageGroupProcessorV2(
+      List<DataRegionId> dataRegionIdList, long partitionId, boolean isSeq, boolean isSync) {
+
+    for (DataRegionId dataRegionId : dataRegionIdList) {
+      VirtualStorageGroupProcessor processor = dataRegionMap.get(dataRegionId);
+
+      if (processor != null) {
+        logger.info(
+            "async closing sg processor is called for closing {}, seq = {}, partitionId = {}",
+            processor.getVirtualStorageGroupId() + "-" + processor.getLogicalStorageGroupName(),
+            isSeq,
+            partitionId);
+        processor.writeLock("VirtualCloseStorageGroupProcessor-242");
+        try {
+          // to avoid concurrent modification problem, we need a new array list
+          List<TsFileProcessor> processors =
+              isSeq
+                  ? new ArrayList<>(processor.getWorkSequenceTsFileProcessors())
+                  : new ArrayList<>(processor.getWorkUnsequenceTsFileProcessors());
+          for (TsFileProcessor tsfileProcessor : processors) {
+            if (tsfileProcessor.getTimeRangeId() == partitionId) {
+              if (isSync) {
+                processor.syncCloseOneTsFileProcessor(isSeq, tsfileProcessor);
+              } else {
+                processor.asyncCloseOneTsFileProcessor(isSeq, tsfileProcessor);
+              }
+              break;
+            }
+          }
+        } finally {
+          processor.writeUnlock();
+        }
+      }
+    }
   }
 
   public void delete(
@@ -718,6 +1034,26 @@ public class StorageEngine implements IService {
     }
   }
 
+  public void deleteV2(
+      List<DataRegionId> dataRegionIdList,
+      PartialPath path,
+      long startTime,
+      long endTime,
+      long planIndex,
+      TimePartitionFilter timePartitionFilter)
+      throws StorageEngineException {
+    try {
+      for (DataRegionId dataRegionId : dataRegionIdList) {
+        VirtualStorageGroupProcessor processor = dataRegionMap.get(dataRegionId);
+        if (processor != null) {
+          processor.delete(path, startTime, endTime, planIndex, timePartitionFilter);
+        }
+      }
+    } catch (IOException e) {
+      throw new StorageEngineException(e.getMessage());
+    }
+  }
+
   /** delete data of timeseries "{deviceId}.{measurementId}" */
   public void deleteTimeseries(
       PartialPath path, long planIndex, TimePartitionFilter timePartitionFilter)
@@ -742,6 +1078,29 @@ public class StorageEngine implements IService {
     }
   }
 
+  public void deleteTimeseriesV2(
+      List<DataRegionId> dataRegionIdList,
+      PartialPath path,
+      long planIndex,
+      TimePartitionFilter timePartitionFilter)
+      throws StorageEngineException {
+    try {
+      for (DataRegionId dataRegionId : dataRegionIdList) {
+        // storage group has no data
+        if (!processorMap.containsKey(dataRegionId)) {
+          continue;
+        }
+        VirtualStorageGroupProcessor virtualStorageGroupProcessor = dataRegionMap.get(dataRegionId);
+        if (virtualStorageGroupProcessor != null) {
+          virtualStorageGroupProcessor.delete(
+              path, Long.MIN_VALUE, Long.MAX_VALUE, planIndex, timePartitionFilter);
+        }
+      }
+    } catch (IOException e) {
+      throw new StorageEngineException(e.getMessage());
+    }
+  }
+
   /**
    * count all Tsfiles which need to be upgraded
    *
@@ -751,6 +1110,16 @@ public class StorageEngine implements IService {
     int totalUpgradeFileNum = 0;
     for (StorageGroupManager storageGroupManager : processorMap.values()) {
       totalUpgradeFileNum += storageGroupManager.countUpgradeFiles();
+    }
+    return totalUpgradeFileNum;
+  }
+
+  public int countUpgradeFilesV2() {
+    int totalUpgradeFileNum = 0;
+    for (VirtualStorageGroupProcessor processor : dataRegionMap.values()) {
+      if (processor != null) {
+        totalUpgradeFileNum += processor.countUpgradeFiles();
+      }
     }
     return totalUpgradeFileNum;
   }
@@ -767,6 +1136,18 @@ public class StorageEngine implements IService {
     }
     for (StorageGroupManager storageGroupManager : processorMap.values()) {
       storageGroupManager.upgradeAll();
+    }
+  }
+
+  public void upgradeAllV2() throws StorageEngineException {
+    if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
+      throw new StorageEngineException(
+          "Current system mode is read only, does not support file upgrade");
+    }
+    for (VirtualStorageGroupProcessor virtualStorageGroupProcessor : dataRegionMap.values()) {
+      if (virtualStorageGroupProcessor != null) {
+        virtualStorageGroupProcessor.upgrade();
+      }
     }
   }
 
@@ -788,11 +1169,42 @@ public class StorageEngine implements IService {
     vsg.getResourcesToBeSettled(seqResourcesToBeSettled, unseqResourcesToBeSettled, tsFilePaths);
   }
 
+  public void getResourcesToBeSettledV2(
+      List<DataRegionId> dataRegionIdList,
+      List<TsFileResource> seqResourcesToBeSettled,
+      List<TsFileResource> unseqResourcesToBeSettled,
+      List<String> tsFilePaths)
+      throws StorageEngineException {
+
+    for (DataRegionId dataRegionId : dataRegionIdList) {
+      VirtualStorageGroupProcessor virtualStorageGroupProcessor = dataRegionMap.get(dataRegionId);
+      if (virtualStorageGroupProcessor != null) {
+        if (!virtualStorageGroupProcessor.getIsSettling().compareAndSet(false, true)) {
+          throw new StorageEngineException(
+              "Storage Group "
+                  + virtualStorageGroupProcessor.getStorageGroupPath()
+                  + " is already being settled now.");
+        }
+        virtualStorageGroupProcessor.addSettleFilesToList(
+            seqResourcesToBeSettled, unseqResourcesToBeSettled, tsFilePaths);
+      }
+    }
+  }
+
   public void setSettling(PartialPath sgPath, boolean isSettling) {
     if (processorMap.get(sgPath) == null) {
       return;
     }
     processorMap.get(sgPath).setSettling(isSettling);
+  }
+
+  public void setSettlingV2(List<DataRegionId> dataRegionIdList, boolean isSettling) {
+    for (DataRegionId dataRegionId : dataRegionIdList) {
+      VirtualStorageGroupProcessor virtualStorageGroupProcessor = dataRegionMap.get(dataRegionId);
+      if (virtualStorageGroupProcessor != null) {
+        virtualStorageGroupProcessor.setSettling(isSettling);
+      }
+    }
   }
 
   /**
@@ -810,6 +1222,17 @@ public class StorageEngine implements IService {
     }
   }
 
+  public void mergeAllV2() throws StorageEngineException {
+    if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
+      throw new StorageEngineException("Current system mode is read only, does not support merge");
+    }
+    for (VirtualStorageGroupProcessor virtualStorageGroupProcessor : dataRegionMap.values()) {
+      if (virtualStorageGroupProcessor != null) {
+        virtualStorageGroupProcessor.compact();
+      }
+    }
+  }
+
   /**
    * delete all data files (both memory data and file on disk) in a storage group. It is used when
    * there is no timeseries (which are all deleted) in this storage group)
@@ -820,9 +1243,23 @@ public class StorageEngine implements IService {
     }
   }
 
+  public void deleteAllDataFilesInOneDataRegion(DataRegionId dataRegionId) {
+    if (processorMap.containsKey(dataRegionId)) {
+      syncDeleteDataFilesV2(dataRegionId);
+    }
+  }
+
   private void syncDeleteDataFiles(PartialPath storageGroupPath) {
     logger.info("Force to delete the data in storage group processor {}", storageGroupPath);
     processorMap.get(storageGroupPath).syncDeleteDataFiles();
+  }
+
+  private void syncDeleteDataFilesV2(DataRegionId dataRegionId) {
+    logger.info("Force to delete the data in data region {}", dataRegionId);
+    VirtualStorageGroupProcessor dataRegion = dataRegionMap.get(dataRegionId);
+    if (dataRegion != null) {
+      dataRegion.syncDeleteDataFiles();
+    }
   }
 
   /** release all the allocated non-heap */
@@ -842,6 +1279,15 @@ public class StorageEngine implements IService {
     return true;
   }
 
+  public synchronized boolean deleteAllV2() {
+    logger.info("Start deleting all storage groups' timeseries");
+    syncCloseAllProcessor();
+    for (DataRegionId dataRegionId : dataRegionMap.keySet()) {
+      this.deleteAllDataFilesInOneDataRegion(dataRegionId);
+    }
+    return true;
+  }
+
   public void setTTL(PartialPath storageGroup, long dataTTL) {
     // storage group has no data
     if (!processorMap.containsKey(storageGroup)) {
@@ -849,6 +1295,15 @@ public class StorageEngine implements IService {
     }
 
     processorMap.get(storageGroup).setTTL(dataTTL);
+  }
+
+  public void setTTLV2(List<DataRegionId> dataRegionIdList, long dataTTL) {
+    for (DataRegionId dataRegionId : dataRegionIdList) {
+      VirtualStorageGroupProcessor dataRegion = dataRegionMap.get(dataRegionId);
+      if (dataRegion != null) {
+        dataRegion.setDataTTL(dataTTL);
+      }
+    }
   }
 
   public void deleteStorageGroup(PartialPath storageGroupPath) {
@@ -862,6 +1317,19 @@ public class StorageEngine implements IService {
     storageGroupManager.deleteStorageGroupSystemFolder(
         systemDir + File.pathSeparator + storageGroupPath);
     storageGroupManager.stopSchedulerPool();
+  }
+
+  public void deleteStorageGroupV2(List<DataRegionId> dataRegionIdList) {
+    // TODO:should be removed by new wal
+    // releaseWalDirectByteBufferPoolInOneStorageGroup(storageGroupPath);
+    for (DataRegionId dataRegionId : dataRegionIdList) {
+      deleteAllDataFilesInOneDataRegion(dataRegionId);
+      VirtualStorageGroupProcessor dataRegion = dataRegionMap.remove(dataRegionId);
+      dataRegion.deleteFolder(systemDir + File.pathSeparator + dataRegion.getStorageGroupPath());
+      ThreadUtils.stopThreadPool(
+          dataRegion.getTimedCompactionScheduleTask(), ThreadName.COMPACTION_SCHEDULE);
+      ThreadUtils.stopThreadPool(dataRegion.getWALTrimScheduleTask(), ThreadName.WAL_TRIM);
+    }
   }
 
   public void loadNewTsFileForSync(TsFileResource newTsFileResource)
@@ -971,9 +1439,22 @@ public class StorageEngine implements IService {
     processorMap.get(storageGroup).setPartitionVersionToMax(partitionId, newMaxVersion);
   }
 
+  public void setPartitionVersionToMaxV2(
+      List<DataRegionId> dataRegionIdList, long partitionId, long newMaxVersion) {
+    for (DataRegionId dataRegionId : dataRegionIdList) {
+      dataRegionMap.get(dataRegionId).setPartitionFileVersionToMax(partitionId, newMaxVersion);
+    }
+  }
+
   public void removePartitions(PartialPath storageGroupPath, TimePartitionFilter filter) {
     if (processorMap.get(storageGroupPath) != null) {
       processorMap.get(storageGroupPath).removePartitions(filter);
+    }
+  }
+
+  public void removePartitionsV2(List<DataRegionId> dataRegionIdList, TimePartitionFilter filter) {
+    for (DataRegionId dataRegionId : dataRegionIdList) {
+      dataRegionMap.get(dataRegionId).removePartitions(filter);
     }
   }
 
@@ -992,6 +1473,31 @@ public class StorageEngine implements IService {
     for (Entry<PartialPath, StorageGroupManager> entry : processorMap.entrySet()) {
       entry.getValue().getWorkingStorageGroupPartitions(entry.getKey().getFullPath(), res);
     }
+    return res;
+  }
+
+  public Map<String, List<Pair<Long, Boolean>>> getWorkingStorageGroupPartitionsV2() {
+    Map<String, List<Pair<Long, Boolean>>> res = new ConcurrentHashMap<>();
+    for (Entry<DataRegionId, VirtualStorageGroupProcessor> entry : dataRegionMap.entrySet()) {
+      VirtualStorageGroupProcessor virtualStorageGroupProcessor = entry.getValue();
+      if (virtualStorageGroupProcessor != null) {
+        List<Pair<Long, Boolean>> partitionIdList = new ArrayList<>();
+        for (TsFileProcessor tsFileProcessor :
+            virtualStorageGroupProcessor.getWorkSequenceTsFileProcessors()) {
+          Pair<Long, Boolean> tmpPair = new Pair<>(tsFileProcessor.getTimeRangeId(), true);
+          partitionIdList.add(tmpPair);
+        }
+
+        for (TsFileProcessor tsFileProcessor :
+            virtualStorageGroupProcessor.getWorkUnsequenceTsFileProcessors()) {
+          Pair<Long, Boolean> tmpPair = new Pair<>(tsFileProcessor.getTimeRangeId(), false);
+          partitionIdList.add(tmpPair);
+        }
+
+        res.put(virtualStorageGroupProcessor.getStorageGroupPath(), partitionIdList);
+      }
+    }
+
     return res;
   }
 
@@ -1016,6 +1522,7 @@ public class StorageEngine implements IService {
   }
 
   /** get all merge lock of the storage group processor related to the query */
+  // TODO: mergelockV2
   public Pair<
           List<VirtualStorageGroupProcessor>, Map<VirtualStorageGroupProcessor, List<PartialPath>>>
       mergeLock(List<PartialPath> pathList) throws StorageEngineException {
