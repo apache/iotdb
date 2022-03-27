@@ -136,7 +136,7 @@ public class LogicalPlanner {
                 new TimeJoinNode(
                     PlanNodeIdAllocator.generateId(),
                     queryStatement.getResultOrder(),
-                    queryStatement.getFilterNullComponent().getWithoutPolicyType(),
+                    null,
                     planNodes);
             deviceMergeNode.addChildDeviceNode(deviceName, timeJoinNode);
           }
@@ -150,10 +150,7 @@ public class LogicalPlanner {
               .collect(Collectors.toList());
       TimeJoinNode timeJoinNode =
           new TimeJoinNode(
-              PlanNodeIdAllocator.generateId(),
-              queryStatement.getResultOrder(),
-              queryStatement.getFilterNullComponent().getWithoutPolicyType(),
-              planNodes);
+              PlanNodeIdAllocator.generateId(), queryStatement.getResultOrder(), null, planNodes);
       return new PlanBuilder(timeJoinNode);
     }
 
