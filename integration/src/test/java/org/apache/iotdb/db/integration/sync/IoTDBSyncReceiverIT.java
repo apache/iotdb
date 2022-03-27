@@ -57,8 +57,11 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.net.InetAddress;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -66,6 +69,7 @@ import java.util.List;
 
 @Category({LocalStandaloneTest.class})
 public class IoTDBSyncReceiverIT {
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBSyncReceiverIT.class);
 
   /** create tsfile and move to tmpDir for sync test */
   File tmpDir = new File("target/synctest");
@@ -75,12 +79,8 @@ public class IoTDBSyncReceiverIT {
   protected static boolean enableCrossSpaceCompaction;
 
   String pipeName1 = "pipe1";
-  String remoteIp1 = "127.0.0.1";
+  String remoteIp1;
   long createdTime1 = System.currentTimeMillis();
-
-  String pipeName2 = "pipe2";
-  String remoteIp2 = "192.168.0.22";
-  long createdTime2 = System.currentTimeMillis();
 
   TransportClient client;
 
@@ -113,6 +113,7 @@ public class IoTDBSyncReceiverIT {
     }
     Pipe pipe = new TsFilePipe(createdTime1, pipeName1, null, 0, false);
     client = new TransportClient(pipe, "127.0.0.1", 6670);
+    remoteIp1 = InetAddress.getLocalHost().getHostAddress();
     client.handshake();
   }
 
@@ -134,6 +135,7 @@ public class IoTDBSyncReceiverIT {
   /** cannot stop */
   @Test
   public void testStopPipeServerCheck() {
+    logger.info("testStopPipeServerCheck");
     ReceiverService.getInstance()
         .recMsg(new SyncRequest(RequestType.CREATE, pipeName1, remoteIp1, createdTime1));
     try {
@@ -148,64 +150,57 @@ public class IoTDBSyncReceiverIT {
 
   @Test
   public void testPipeOperation() {
+    logger.info("testPipeOperation");
     try {
+      // create
       client.heartbeat(new SyncRequest(RequestType.CREATE, pipeName1, remoteIp1, createdTime1));
-      client.heartbeat(new SyncRequest(RequestType.CREATE, pipeName2, remoteIp2, createdTime2));
-      client.heartbeat(new SyncRequest(RequestType.STOP, pipeName2, remoteIp2, createdTime2));
       QueryDataSet allDataSet = ReceiverService.getInstance().showPipe(new ShowPipeServerPlan(""));
-      while (allDataSet.hasNext()) {
-        RowRecord rowRecord = allDataSet.next();
-        List<Field> fields = rowRecord.getFields();
-        Assert.assertEquals(4, fields.size());
-        if (fields.get(0).getStringValue().equals(pipeName1)) {
-          Assert.assertEquals(pipeName1, fields.get(0).getStringValue());
-          Assert.assertEquals(remoteIp1, fields.get(1).getStringValue());
-          Assert.assertEquals(PipeStatus.RUNNING.name(), fields.get(2).getStringValue());
-          Assert.assertEquals(
-              DatetimeUtils.convertLongToDate(createdTime1), fields.get(3).getStringValue());
-        } else {
-          Assert.assertEquals(pipeName2, fields.get(0).getStringValue());
-          Assert.assertEquals(remoteIp2, fields.get(1).getStringValue());
-          Assert.assertEquals(PipeStatus.STOP.name(), fields.get(2).getStringValue());
-          Assert.assertEquals(
-              DatetimeUtils.convertLongToDate(createdTime2), fields.get(3).getStringValue());
-        }
-      }
-      QueryDataSet pipe2DataSet =
-          ReceiverService.getInstance().showPipe(new ShowPipeServerPlan(pipeName2));
-      RowRecord rowRecord = pipe2DataSet.next();
+      RowRecord rowRecord = allDataSet.next();
       List<Field> fields = rowRecord.getFields();
       Assert.assertEquals(4, fields.size());
-      Assert.assertEquals(pipeName2, fields.get(0).getStringValue());
-      Assert.assertEquals(remoteIp2, fields.get(1).getStringValue());
+      Assert.assertEquals(pipeName1, fields.get(0).getStringValue());
+      Assert.assertEquals(remoteIp1, fields.get(1).getStringValue());
+      Assert.assertEquals(PipeStatus.RUNNING.name(), fields.get(2).getStringValue());
+      Assert.assertEquals(
+          DatetimeUtils.convertLongToDate(createdTime1), fields.get(3).getStringValue());
+      Assert.assertFalse(allDataSet.hasNext());
+      // stop
+      client.heartbeat(new SyncRequest(RequestType.STOP, pipeName1, remoteIp1, createdTime1));
+      QueryDataSet pipe1DataSet =
+          ReceiverService.getInstance().showPipe(new ShowPipeServerPlan(pipeName1));
+      rowRecord = pipe1DataSet.next();
+      fields = rowRecord.getFields();
+      Assert.assertEquals(4, fields.size());
+      Assert.assertEquals(pipeName1, fields.get(0).getStringValue());
+      Assert.assertEquals(remoteIp1, fields.get(1).getStringValue());
       Assert.assertEquals(PipeStatus.STOP.name(), fields.get(2).getStringValue());
       Assert.assertEquals(
-          DatetimeUtils.convertLongToDate(createdTime2), fields.get(3).getStringValue());
-      Assert.assertFalse(pipe2DataSet.hasNext());
-
+          DatetimeUtils.convertLongToDate(createdTime1), fields.get(3).getStringValue());
+      Assert.assertFalse(pipe1DataSet.hasNext());
+      // start
+      client.heartbeat(new SyncRequest(RequestType.START, pipeName1, remoteIp1, createdTime1));
+      pipe1DataSet = ReceiverService.getInstance().showPipe(new ShowPipeServerPlan(pipeName1));
+      rowRecord = pipe1DataSet.next();
+      fields = rowRecord.getFields();
+      Assert.assertEquals(4, fields.size());
+      Assert.assertEquals(pipeName1, fields.get(0).getStringValue());
+      Assert.assertEquals(remoteIp1, fields.get(1).getStringValue());
+      Assert.assertEquals(PipeStatus.RUNNING.name(), fields.get(2).getStringValue());
+      Assert.assertEquals(
+          DatetimeUtils.convertLongToDate(createdTime1), fields.get(3).getStringValue());
+      Assert.assertFalse(pipe1DataSet.hasNext());
+      // drop
       client.heartbeat(new SyncRequest(RequestType.DROP, pipeName1, remoteIp1, createdTime1));
-      client.heartbeat(new SyncRequest(RequestType.START, pipeName2, remoteIp2, createdTime2));
-      allDataSet = ReceiverService.getInstance().showPipe(new ShowPipeServerPlan(""));
-      while (allDataSet.hasNext()) {
-        rowRecord = allDataSet.next();
-        fields = rowRecord.getFields();
-        Assert.assertEquals(4, fields.size());
-        if (fields.get(0).getStringValue().equals(pipeName1)) {
-          Assert.assertEquals(pipeName1, fields.get(0).getStringValue());
-          Assert.assertEquals(remoteIp1, fields.get(1).getStringValue());
-          Assert.assertEquals(PipeStatus.DROP.name(), fields.get(2).getStringValue());
-          Assert.assertEquals(
-              DatetimeUtils.convertLongToDate(createdTime1), fields.get(3).getStringValue());
-        } else {
-          Assert.assertEquals(pipeName2, fields.get(0).getStringValue());
-          Assert.assertEquals(remoteIp2, fields.get(1).getStringValue());
-          Assert.assertEquals(PipeStatus.RUNNING.name(), fields.get(2).getStringValue());
-          Assert.assertEquals(
-              DatetimeUtils.convertLongToDate(createdTime2), fields.get(3).getStringValue());
-        }
-      }
-      // clean
-      client.heartbeat(new SyncRequest(RequestType.DROP, pipeName2, remoteIp2, createdTime2));
+      pipe1DataSet = ReceiverService.getInstance().showPipe(new ShowPipeServerPlan(pipeName1));
+      rowRecord = pipe1DataSet.next();
+      fields = rowRecord.getFields();
+      Assert.assertEquals(4, fields.size());
+      Assert.assertEquals(pipeName1, fields.get(0).getStringValue());
+      Assert.assertEquals(remoteIp1, fields.get(1).getStringValue());
+      Assert.assertEquals(PipeStatus.DROP.name(), fields.get(2).getStringValue());
+      Assert.assertEquals(
+          DatetimeUtils.convertLongToDate(createdTime1), fields.get(3).getStringValue());
+      Assert.assertFalse(pipe1DataSet.hasNext());
     } catch (Exception e) {
       e.printStackTrace();
       Assert.fail(e.getMessage());
@@ -214,6 +209,7 @@ public class IoTDBSyncReceiverIT {
 
   @Test
   public void testReceiveDataAndLoad() {
+    logger.info("testReceiveDataAndLoad");
     try {
       // 1. create pipe
       client.heartbeat(new SyncRequest(RequestType.CREATE, pipeName1, remoteIp1, createdTime1));
