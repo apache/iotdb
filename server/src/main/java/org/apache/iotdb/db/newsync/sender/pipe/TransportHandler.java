@@ -114,7 +114,7 @@ public class TransportHandler {
     isClosed &=
         heartbeatExecutorService.awaitTermination(
             SyncConstant.DEFAULT_WAITTING_FOR_STOP_MILLISECONDS, TimeUnit.MILLISECONDS);
-    if (close()) {
+    if (isClosed) {
       transportClient.heartbeat(new SyncRequest(RequestType.DROP, pipeName, localIp, createTime));
     }
     return isClosed;

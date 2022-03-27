@@ -138,6 +138,8 @@ public class IoTDBSyncReceiverIT {
     logger.info("testStopPipeServerCheck");
     ReceiverService.getInstance()
         .recMsg(new SyncRequest(RequestType.CREATE, pipeName1, remoteIp1, createdTime1));
+    ReceiverService.getInstance()
+        .recMsg(new SyncRequest(RequestType.START, pipeName1, remoteIp1, createdTime1));
     try {
       ReceiverService.getInstance().stopPipeServer();
       Assert.fail("Should not stop pipe server");
