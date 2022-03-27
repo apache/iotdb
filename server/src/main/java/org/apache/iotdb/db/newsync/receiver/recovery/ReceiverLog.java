@@ -29,8 +29,8 @@ import java.io.FileWriter;
 import java.io.IOException;
 
 public class ReceiverLog {
-  private BufferedWriter bw;
-  private BufferedWriter msg;
+  private BufferedWriter pipeServerWriter;
+  private BufferedWriter msgWriter;
 
   public void init() throws IOException {
     File logFile = new File(SyncPathUtil.getSysDir(), SyncConstant.RECEIVER_LOG_NAME);
@@ -38,26 +38,26 @@ public class ReceiverLog {
     if (!logFile.getParentFile().exists()) {
       logFile.getParentFile().mkdirs();
     }
-    bw = new BufferedWriter(new FileWriter(logFile, true));
-    msg = new BufferedWriter(new FileWriter(msgFile, true));
+    pipeServerWriter = new BufferedWriter(new FileWriter(logFile, true));
+    msgWriter = new BufferedWriter(new FileWriter(msgFile, true));
   }
 
   public void startPipeServer() throws IOException {
-    if (bw == null) {
+    if (pipeServerWriter == null) {
       init();
     }
-    bw.write("on");
-    bw.newLine();
-    bw.flush();
+    pipeServerWriter.write("on");
+    pipeServerWriter.newLine();
+    pipeServerWriter.flush();
   }
 
   public void stopPipeServer() throws IOException {
-    if (bw == null) {
+    if (pipeServerWriter == null) {
       init();
     }
-    bw.write("off");
-    bw.newLine();
-    bw.flush();
+    pipeServerWriter.write("off");
+    pipeServerWriter.newLine();
+    pipeServerWriter.flush();
   }
 
   public void createPipe(String pipeName, String remoteIp, long time) throws IOException {
@@ -77,51 +77,51 @@ public class ReceiverLog {
   }
 
   public void writePipeMsg(String pipeIdentifier, PipeMessage pipeMessage) throws IOException {
-    if (msg == null) {
+    if (msgWriter == null) {
       init();
     }
-    msg.write(
+    msgWriter.write(
         String.format("%s,%s,%s", pipeIdentifier, pipeMessage.getType(), pipeMessage.getMsg()));
-    msg.newLine();
-    msg.flush();
+    msgWriter.newLine();
+    msgWriter.flush();
   }
 
   public void readPipeMsg(String pipeIdentifier) throws IOException {
-    if (msg == null) {
+    if (msgWriter == null) {
       init();
     }
-    msg.write(String.format("%s,read", pipeIdentifier));
-    msg.newLine();
-    msg.flush();
+    msgWriter.write(String.format("%s,read", pipeIdentifier));
+    msgWriter.newLine();
+    msgWriter.flush();
   }
 
   private void writeLog(String pipeName, String remoteIp, PipeStatus status, long time)
       throws IOException {
-    if (bw == null) {
+    if (pipeServerWriter == null) {
       init();
     }
-    bw.write(String.format("%s,%s,%s,%d", pipeName, remoteIp, status, time));
-    bw.newLine();
-    bw.flush();
+    pipeServerWriter.write(String.format("%s,%s,%s,%d", pipeName, remoteIp, status, time));
+    pipeServerWriter.newLine();
+    pipeServerWriter.flush();
   }
 
   private void writeLog(String pipeName, String remoteIp, PipeStatus status) throws IOException {
-    if (bw == null) {
+    if (pipeServerWriter == null) {
       init();
     }
-    bw.write(String.format("%s,%s,%s", pipeName, remoteIp, status));
-    bw.newLine();
-    bw.flush();
+    pipeServerWriter.write(String.format("%s,%s,%s", pipeName, remoteIp, status));
+    pipeServerWriter.newLine();
+    pipeServerWriter.flush();
   }
 
   public void close() throws IOException {
-    if (bw != null) {
-      bw.close();
-      bw = null;
+    if (pipeServerWriter != null) {
+      pipeServerWriter.close();
+      pipeServerWriter = null;
     }
-    if (msg != null) {
-      msg.close();
-      msg = null;
+    if (msgWriter != null) {
+      msgWriter.close();
+      msgWriter = null;
     }
   }
 }
