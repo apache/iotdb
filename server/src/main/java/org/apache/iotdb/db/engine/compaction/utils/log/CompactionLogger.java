@@ -71,11 +71,12 @@ public class CompactionLogger implements AutoCloseable {
     logStream.flush();
   }
 
-  public static File[] findCrossSpaceCompactionLogs(String directory) {
+  public static File[] findCompactionLogs(boolean isInnerSpace, String directory) {
+    String compactionLogSuffix =
+        isInnerSpace ? INNER_COMPACTION_LOG_NAME_SUFFIX : CROSS_COMPACTION_LOG_NAME_SUFFIX;
     File timePartitionDir = new File(directory);
     if (timePartitionDir.exists()) {
-      return timePartitionDir.listFiles(
-          (dir, name) -> name.endsWith(CROSS_COMPACTION_LOG_NAME_SUFFIX));
+      return timePartitionDir.listFiles((dir, name) -> name.endsWith(compactionLogSuffix));
     } else {
       return new File[0];
     }
