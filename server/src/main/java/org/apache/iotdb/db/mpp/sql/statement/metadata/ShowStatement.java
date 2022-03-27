@@ -27,6 +27,8 @@ public class ShowStatement extends Statement {
   int limit = 0;
   int offset = 0;
 
+  protected boolean isPrefixPath = false;
+
   public ShowStatement() {
     super();
     statementType = StatementType.SHOW;
@@ -46,5 +48,13 @@ public class ShowStatement extends Statement {
 
   public void setOffset(int offset) {
     this.offset = offset;
+  }
+
+  public boolean isPrefixPath() {
+    return isPrefixPath;
+  }
+
+  public void setPrefixPath(boolean prefixPath) {
+    this.isPrefixPath = prefixPath;
   }
 }

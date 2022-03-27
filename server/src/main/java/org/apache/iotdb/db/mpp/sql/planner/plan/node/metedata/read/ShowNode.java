@@ -18,15 +18,56 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read;
 
+import java.nio.ByteBuffer;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 
-import java.nio.ByteBuffer;
-
 public abstract class ShowNode extends PlanNode {
+  protected int limit = 0;
+  protected int offset = 0;
+  protected PartialPath path;
+  private boolean hasLimit;
 
   protected ShowNode(PlanNodeId id) {
     super(id);
+  }
+
+  public int getLimit() {
+    return limit;
+  }
+
+  public void setLimit(int limit) {
+    this.limit = limit;
+    if (limit == 0) {
+      hasLimit = false;
+    } else {
+      hasLimit = true;
+    }
+  }
+
+  public int getOffset() {
+    return offset;
+  }
+
+  public void setOffset(int offset) {
+    this.offset = offset;
+  }
+
+  public PartialPath getPath() {
+    return path;
+  }
+
+  public void setPath(PartialPath path) {
+    this.path = path;
+  }
+
+  public boolean isHasLimit() {
+    return hasLimit;
+  }
+
+  public void setHasLimit(boolean hasLimit) {
+    this.hasLimit = hasLimit;
   }
 
   @Override

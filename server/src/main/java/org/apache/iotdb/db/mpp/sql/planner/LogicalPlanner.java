@@ -24,11 +24,13 @@ import org.apache.iotdb.db.mpp.sql.optimization.PlanOptimizer;
 import org.apache.iotdb.db.mpp.sql.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeIdAllocator;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.ShowTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.tree.StatementVisitor;
 
 import java.util.List;
@@ -98,6 +100,13 @@ public class LogicalPlanner {
       InsertTabletNode node = new InsertTabletNode(PlanNodeIdAllocator.generateId());
 
       return node;
+    }
+
+    @Override
+    public PlanNode visitShowTimeSeries(ShowTimeSeriesStatement showTimeSeriesStatement,
+        MPPQueryContext context) {
+      ShowTimeSeriesNode showTimeSeriesNode = new ShowTimeSeriesNode(PlanNodeIdAllocator.generateId());
+      return showTimeSeriesNode;
     }
   }
 }

@@ -19,13 +19,21 @@
 
 package org.apache.iotdb.db.mpp.sql.analyze;
 
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.PartitionInfo;
+import org.apache.iotdb.commons.partition.SchemaPartitionInfo;
 import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
+import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
+import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.sql.rewriter.ConcatPathRewriter;
 import org.apache.iotdb.db.mpp.sql.rewriter.DnfFilterOptimizer;
 import org.apache.iotdb.db.mpp.sql.rewriter.MergeSingleFilterOptimizer;
@@ -36,11 +44,9 @@ import org.apache.iotdb.db.mpp.sql.statement.crud.InsertStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.tree.StatementVisitor;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-
-import java.util.Arrays;
-import java.util.Map;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 /** Analyze the statement and generate Analysis. */
 public class Analyzer {
@@ -138,7 +144,7 @@ public class Analyzer {
       PartitionInfo partitionInfo = partitionFetcher.fetchPartitionInfo(dataPartitionQueryParam);
 
       // TODO(INSERT) get each time series schema according to SchemaPartitionInfo in PartitionInfo
-      Map<String, MeasurementSchema> schemaMap =
+      Map<String, IMeasurementSchema> schemaMap =
           schemaFetcher.fetchSchema(
               insertTabletStatement.getDevicePath(),
               Arrays.asList(insertTabletStatement.getMeasurements()));
@@ -149,6 +155,31 @@ public class Analyzer {
       analysis.setStatement(insertTabletStatement);
       analysis.setDataPartitionInfo(partitionInfo.getDataPartitionInfo());
       analysis.setSchemaPartitionInfo(partitionInfo.getSchemaPartitionInfo());
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitShowTimeSeries(
+                ShowTimeSeriesStatement showTimeSeriesStatement, MPPQueryContext context) {
+              SchemaPartitionInfo schemaPartitionInfo =
+                  partitionFetcher.fetchSchemaPartitionInfo(
+                      showTimeSeriesStatement.getPathPattern().getDevicePath().getFullPath());
+              PathPatternTree pathPatternTree = new PathPatternTree();
+              SchemaTree schemaTree = schemaFetcher.fetchSchema(pathPatternTree);
+              List<MeasurementPath> measurementPaths =
+                  schemaTree.searchMeasurementPaths(
+                      showTimeSeriesStatement.getPathPattern(), showTimeSeriesStatement.getLimit(),
+                      showTimeSeriesStatement.getOffset(), showTimeSeriesStatement.isPrefixPath());
+
+              Map<String, IMeasurementSchema> schemaMap = new HashMap<>();
+              measurementPaths.forEach(
+                  m -> {
+                    schemaMap.put(m.getMeasurement(), m.getMeasurementSchema());
+          });
+      Analysis analysis = new Analysis();
+      analysis.setStatement(showTimeSeriesStatement);
+      analysis.setSchemaPartitionInfo(schemaPartitionInfo);
+      analysis.setSchemaMap(schemaMap);
       return analysis;
     }
   }
