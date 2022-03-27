@@ -154,21 +154,24 @@ public class Analyzer {
       return analysis;
     }
 
-    public Analysis visitInsertRow(InsertRowStatement insertRowStatement,MPPQueryContext context) {
+    public Analysis visitInsertRow(InsertRowStatement insertRowStatement, MPPQueryContext context) {
       DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
       dataPartitionQueryParam.setDeviceId(insertRowStatement.getDevicePath().getFullPath());
-      dataPartitionQueryParam.setTimePartitionIdList(Arrays.asList(StorageEngine.getTimePartitionId(insertRowStatement.getTime())));
+      dataPartitionQueryParam.setTimePartitionIdList(
+          Arrays.asList(StorageEngine.getTimePartitionId(insertRowStatement.getTime())));
       PartitionInfo partitionInfo = partitionFetcher.fetchPartitionInfo(dataPartitionQueryParam);
 
       Map<String, MeasurementSchema> schemaMap =
-              schemaFetcher.fetchSchema(
-                      insertRowStatement.getDevicePath(),
-                      Arrays.asList(insertRowStatement.getMeasurements()));
+          schemaFetcher.fetchSchema(
+              insertRowStatement.getDevicePath(),
+              Arrays.asList(insertRowStatement.getMeasurements()));
 
       Analysis analysis = new Analysis();
       analysis.setSchemaMap(schemaMap);
       // TODO(INSERT) do type check here
-      insertRowStatement.checkDataType(schemaMap);
+      if (!insertRowStatement.checkDataType(schemaMap)) {
+        throw new SemanticException("Data type mismatch");
+      }
 
       analysis.setStatement(insertRowStatement);
       analysis.setDataPartitionInfo(partitionInfo.getDataPartitionInfo());

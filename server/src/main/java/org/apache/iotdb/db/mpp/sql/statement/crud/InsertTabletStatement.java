@@ -19,10 +19,52 @@
 package org.apache.iotdb.db.mpp.sql.statement.crud;
 
 import org.apache.iotdb.tsfile.utils.BitMap;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
+import java.util.Map;
 
 public class InsertTabletStatement extends InsertBaseStatement {
 
   private long[] times; // times should be sorted. It is done in the session API.
   private BitMap[] bitMaps;
   private Object[] columns;
+
+  private int rowCount = 0;
+
+  public int getRowCount() {
+    return rowCount;
+  }
+
+  public void setRowCount(int rowCount) {
+    this.rowCount = rowCount;
+  }
+
+  public Object[] getColumns() {
+    return columns;
+  }
+
+  public void setColumns(Object[] columns) {
+    this.columns = columns;
+  }
+
+  public BitMap[] getBitMaps() {
+    return bitMaps;
+  }
+
+  public void setBitMaps(BitMap[] bitMaps) {
+    this.bitMaps = bitMaps;
+  }
+
+  public long[] getTimes() {
+    return times;
+  }
+
+  public void setTimes(long[] times) {
+    this.times = times;
+  }
+
+  @Override
+  public boolean checkDataType(Map<String, MeasurementSchema> schemaMap) {
+    return false;
+  }
 }

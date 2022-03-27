@@ -70,5 +70,6 @@ public abstract class InsertBaseStatement extends Statement {
   public void setAligned(boolean aligned) {
     isAligned = aligned;
   }
-  abstract public boolean checkDataType(Map<String, MeasurementSchema> schemaMap);
+
+  public abstract boolean checkDataType(Map<String, MeasurementSchema> schemaMap);
 }

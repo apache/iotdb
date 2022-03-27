@@ -77,7 +77,7 @@ public abstract class StatementVisitor<R, C> {
     return visitStatement(insertTabletStatement, context);
   }
 
-  public R visitInsertRow(InsertRowStatement insertRowStatement, C context){
+  public R visitInsertRow(InsertRowStatement insertRowStatement, C context) {
     return visitStatement(insertRowStatement, context);
   }
 }

@@ -180,7 +180,7 @@ public class StorageEngine implements IService {
     return enablePartition ? time / timePartitionInterval : 0;
   }
 
-  public static TimePartitionId getTimePartitionId(long time){
+  public static TimePartitionId getTimePartitionId(long time) {
     TimePartitionId timePartitionId = new TimePartitionId();
     if (enablePartition) {
       timePartitionId.setStartTime(time - time % timePartitionInterval);
