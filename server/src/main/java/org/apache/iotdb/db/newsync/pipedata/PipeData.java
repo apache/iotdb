@@ -88,8 +88,6 @@ public abstract class PipeData {
 
   public abstract ILoader createLoader();
 
-  public abstract void sendToTransport();
-
   public enum Type {
     TSFILE,
     DELETION,

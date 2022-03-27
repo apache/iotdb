@@ -114,6 +114,21 @@ public class SenderLogger {
     }
   }
 
+  public void recordMsg(String pipeName, Operator.OperatorType type, String msg) {
+    getBufferedWriter();
+    try {
+      bw.write(type.name());
+      bw.write(SyncConstant.SENDER_LOG_SPLIT_CHARACTER);
+      bw.write(pipeName);
+      bw.write(SyncConstant.SENDER_LOG_SPLIT_CHARACTER);
+      bw.write(msg);
+      bw.newLine();
+      bw.flush();
+    } catch (IOException e) {
+      logger.warn(String.format("Record msg %s error, because %s.", msg, e));
+    }
+  }
+
   public void close() {
     try {
       if (bw != null) {

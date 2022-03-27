@@ -47,6 +47,7 @@ public class SenderLogAnalyzer {
 
   private Pipe runningPipe;
   private Pipe.PipeStatus runningPipeStatus;
+  private String runningMsg;
 
   public SenderLogAnalyzer() throws IOException {
     senderLog = new File(SyncPathUtil.getSysDir(), SyncConstant.SENDER_LOG_NAME);
@@ -54,8 +55,9 @@ public class SenderLogAnalyzer {
       senderLog.createNewFile();
     }
 
-    pipeSinks = new HashMap<>();
-    pipes = new ArrayList<>();
+    this.pipeSinks = new HashMap<>();
+    this.pipes = new ArrayList<>();
+    this.runningMsg = "";
   }
 
   public void recover() throws IOException {
@@ -96,12 +98,15 @@ public class SenderLogAnalyzer {
             pipes.add(runningPipe);
             runningPipeStatus = runningPipe.getStatus();
             runningPipe.stop();
+            runningMsg = "";
             break;
           case STOP_PIPE: // ignore status check
             runningPipeStatus = Pipe.PipeStatus.STOP;
+            appendMsg(parseStrings);
             break;
           case START_PIPE:
             runningPipeStatus = Pipe.PipeStatus.RUNNING;
+            appendMsg(parseStrings);
             break;
           case DROP_PIPE:
             runningPipeStatus = Pipe.PipeStatus.DROP;
@@ -141,6 +146,15 @@ public class SenderLogAnalyzer {
     br.close();
   }
 
+  private void appendMsg(String[] parseStrings) {
+    if (parseStrings.length == 3) {
+      if (runningMsg.length() > 0) {
+        runningMsg += System.lineSeparator();
+      }
+      runningMsg += parseStrings[2];
+    }
+  }
+
   public Map<String, PipeSink> getRecoveryAllPipeSinks() {
     return pipeSinks;
   }
@@ -151,5 +165,9 @@ public class SenderLogAnalyzer {
 
   public Pipe getRecoveryRunningPipe() {
     return runningPipe;
+  }
+
+  public String getRecoveryRunningMsg() {
+    return runningMsg;
   }
 }

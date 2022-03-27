@@ -19,4 +19,10 @@
  */
 package org.apache.iotdb.db.newsync.transport.client;
 
-public interface ITransportClient {}
+import org.apache.iotdb.db.exception.SyncConnectionException;
+import org.apache.iotdb.service.transport.thrift.SyncRequest;
+import org.apache.iotdb.service.transport.thrift.SyncResponse;
+
+public interface ITransportClient extends Runnable {
+  SyncResponse heartbeat(SyncRequest syncRequest) throws SyncConnectionException;
+}

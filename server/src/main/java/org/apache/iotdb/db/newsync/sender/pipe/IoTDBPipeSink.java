@@ -55,6 +55,14 @@ public class IoTDBPipeSink implements PipeSink {
     }
   }
 
+  public String getIp() {
+    return ip;
+  }
+
+  public int getPort() {
+    return port;
+  }
+
   @Override
   public String getName() {
     return name;

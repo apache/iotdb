@@ -26,6 +26,7 @@ import org.apache.iotdb.db.newsync.conf.SyncPathUtil;
 import org.apache.iotdb.db.newsync.pipedata.PipeData;
 import org.apache.iotdb.db.newsync.pipedata.TsFilePipeData;
 import org.apache.iotdb.db.newsync.pipedata.queue.PipeDataQueueFactory;
+import org.apache.iotdb.db.newsync.receiver.ReceiverService;
 import org.apache.iotdb.service.transport.thrift.IdentityInfo;
 import org.apache.iotdb.service.transport.thrift.MetaInfo;
 import org.apache.iotdb.service.transport.thrift.SyncRequest;
@@ -273,9 +274,7 @@ public class TransportServiceImpl implements TransportService.Iface {
   @Override
   public SyncResponse heartbeat(IdentityInfo identityInfo, SyncRequest syncRequest)
       throws TException {
-
-    // return ReceiverService.getInstance().recMsg(syncRequest);
-    return null;
+    return ReceiverService.getInstance().recMsg(syncRequest);
   }
 
   private void writeRecordFile(File recordFile, long position) throws IOException {
@@ -306,7 +305,6 @@ public class TransportServiceImpl implements TransportService.Iface {
     File dir = new File(fileDir);
     File[] targetFiles =
         dir.listFiles((dir1, name) -> name.startsWith(tsFileName) && name.endsWith(PATCH_SUFFIX));
-    // TODO: same name ?
     if (targetFiles != null) {
       for (File targetFile : targetFiles) {
         File newFile =
@@ -319,6 +317,13 @@ public class TransportServiceImpl implements TransportService.Iface {
       }
     }
     tsFilePipeData.setParentDirPath(dir.getAbsolutePath());
+    File recordFile = new File(fileDir, tsFileName + RECORD_SUFFIX);
+    try {
+      Files.deleteIfExists(recordFile.toPath());
+    } catch (IOException e) {
+      logger.warn(
+          String.format("Delete record file %s error, because %s.", recordFile.getPath(), e));
+    }
   }
 
   private String getFileDataDirPath(IdentityInfo identityInfo) {

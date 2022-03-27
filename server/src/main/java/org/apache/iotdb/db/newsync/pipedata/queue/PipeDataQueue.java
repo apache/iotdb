@@ -31,5 +31,7 @@ public interface PipeDataQueue {
 
   void commit();
 
+  boolean isEmpty();
+
   void clear();
 }
