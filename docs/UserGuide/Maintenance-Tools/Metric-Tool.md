@@ -231,11 +231,17 @@ metricLevel: IMPORTANT
 predefinedMetrics:
   - JVM
 
-# Period time of push, only used by IoTDB Reporter
-pushPeriodInSecond: 5
-
 # The http server's port for prometheus exporter to get metric data.
 prometheusExporterPort: 9091
+
+# The config of iotdb reporter
+ioTDBReporterConfig:
+  host: 127.0.0.1
+  port: 6667
+  username: root
+  password: root
+  database: _metric
+  pushPeriodInSecond: 15
 ```
 
 Then you can get metrics data as follows
