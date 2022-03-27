@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.metadata;
 
-import org.apache.iotdb.commons.partition.SchemaRegionId;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -29,7 +28,6 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.metadata.UndefinedTemplateException;
 import org.apache.iotdb.db.metadata.lastCache.LastCacheManager;
-import org.apache.iotdb.db.metadata.localconfig.LocalSchemaConfigManager;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
@@ -63,11 +61,6 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
-import org.apache.iotdb.db.service.metrics.Metric;
-import org.apache.iotdb.db.service.metrics.MetricsService;
-import org.apache.iotdb.db.service.metrics.Tag;
-import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -107,8 +100,6 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARA
  *
  * <ol>
  *   <li>SchemaEngine Singleton
- *   <li>Interfaces and Implementation of SchemaEngine initialization、recover and clear
- *   <li>Interfaces for SchemaRegion and StorageGroup Management in cluster
  *   <li>Interfaces and Implementation of Operating PhysicalPlans of Metadata
  *   <li>Interfaces and Implementation for Timeseries operation
  *   <li>Interfaces and Implementation for StorageGroup and TTL operation
@@ -136,9 +127,7 @@ public class SchemaEngine {
 
   protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  private volatile boolean initialized = false;
-
-  private LocalSchemaConfigManager configManager = LocalSchemaConfigManager.getInstance();
+  private LocalConfigManager configManager = LocalConfigManager.getInstance();
 
   // region SchemaEngine Singleton
   private static class SchemaEngineHolder {
@@ -154,109 +143,9 @@ public class SchemaEngine {
   public static SchemaEngine getInstance() {
     return SchemaEngineHolder.INSTANCE;
   }
-  // endregion
 
-  // region Interfaces and Implementation of SchemaEngine initialization、snapshot、recover and clear
   protected SchemaEngine() {}
-
-  @SuppressWarnings("squid:S2093")
-  public synchronized void init() {
-    if (initialized) {
-      return;
-    }
-
-    try {
-      configManager.init();
-    } catch (MetadataException | IOException e) {
-      logger.error(
-          "Cannot recover all MTree from file, we try to recover as possible as we can", e);
-    }
-    initialized = true;
-
-    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
-      startStatisticCounts();
-    }
-  }
-
-  private void startStatisticCounts() {
-    MetricsService.getInstance()
-        .getMetricManager()
-        .getOrCreateAutoGauge(
-            Metric.QUANTITY.toString(),
-            MetricLevel.IMPORTANT,
-            this,
-            schemaEngine -> {
-              try {
-                return schemaEngine.getDevicesNum(new PartialPath("root.**"));
-              } catch (MetadataException e) {
-                logger.error("get deviceNum error", e);
-              }
-              return 0;
-            },
-            Tag.NAME.toString(),
-            "device");
-
-    MetricsService.getInstance()
-        .getMetricManager()
-        .getOrCreateAutoGauge(
-            Metric.QUANTITY.toString(),
-            MetricLevel.IMPORTANT,
-            this,
-            schemaEngine -> {
-              try {
-                return schemaEngine.getStorageGroupNum(new PartialPath("root.**"), false);
-              } catch (MetadataException e) {
-                logger.error("get storageGroupNum error", e);
-              }
-              return 0;
-            },
-            Tag.NAME.toString(),
-            "storageGroup");
-  }
-
-  public void forceMlog() {
-    if (!initialized) {
-      return;
-    }
-
-    configManager.forceMlog();
-  }
-
-  /** function for clearing all metadata components */
-  public synchronized void clear() {
-    if (!initialized) {
-      return;
-    }
-    try {
-      configManager.clear();
-      initialized = false;
-    } catch (IOException e) {
-      logger.error("Error occurred when clearing SchemaEngine:", e);
-    }
-    initialized = false;
-  }
   // endregion
-
-  // region Interfaces for SchemaRegion and StorageGroup Management in cluster
-
-  public void createSchemaRegion(PartialPath storageGroup, SchemaRegionId schemaRegionId)
-      throws MetadataException {
-    configManager.createSchemaRegion(storageGroup, schemaRegionId);
-  }
-
-  public SchemaRegion getSchemaRegion(PartialPath storageGroup, SchemaRegionId schemaRegionId)
-      throws MetadataException {
-    return configManager.getSchemaRegion(storageGroup, schemaRegionId);
-  }
-
-  public void deleteSchemaRegion(PartialPath storageGroup, SchemaRegionId schemaRegionId)
-      throws MetadataException {
-    configManager.deleteSchemaRegion(storageGroup, schemaRegionId);
-  }
-
-  public void deleteStorageGroup(PartialPath storageGroup) throws MetadataException {
-    configManager.deleteStorageGroup(storageGroup);
-  }
 
   // region methods in this region is only used for local schemaRegion management.
 
@@ -294,8 +183,6 @@ public class SchemaEngine {
   }
 
   // endregion
-
-  // endRegion
 
   // region Interfaces and Implementation of operating PhysicalPlans of Metadata
   // This method is mainly used for Metadata Sync and  upgrade
@@ -1472,6 +1359,11 @@ public class SchemaEngine {
   // endregion
 
   // region TestOnly Interfaces
+
+  @TestOnly
+  public void forceMlog() {
+    configManager.forceMlog();
+  }
 
   @TestOnly
   public long getTotalSeriesNumber() {

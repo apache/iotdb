@@ -2572,8 +2572,7 @@ public class SchemaEngineBasicTest {
     resultTag = results.get(0).getTag();
     assertEquals("newValue", resultTag.get("description"));
 
-    schemaEngine.clear();
-    schemaEngine.init();
+    EnvironmentUtils.restartDaemon();
 
     showTimeSeriesPlan =
         new ShowTimeSeriesPlan(

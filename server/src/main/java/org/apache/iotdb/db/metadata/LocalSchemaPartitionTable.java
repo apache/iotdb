@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.metadata.localconfig;
+package org.apache.iotdb.db.metadata;
 
 import org.apache.iotdb.commons.partition.SchemaRegionId;
 import org.apache.iotdb.db.exception.metadata.MetadataException;

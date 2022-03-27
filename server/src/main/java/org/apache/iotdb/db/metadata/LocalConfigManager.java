@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.metadata.localconfig;
+package org.apache.iotdb.db.metadata;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -30,7 +30,6 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.metadata.UndefinedTemplateException;
-import org.apache.iotdb.db.metadata.SchemaEngine;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.rescon.TimeseriesStatistics;
@@ -67,14 +66,16 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
- * This class simulates the behaviour of configNode to manage the schema configs locally. The schema
- * configs include storage group, schema region and template.
+ * This class simulates the behaviour of configNode to manage the configs locally. The schema
+ * configs include storage group, schema region and template. The data config is dataRegion.
  */
-public class LocalSchemaConfigManager {
+public class LocalConfigManager {
 
-  private static final Logger logger = LoggerFactory.getLogger(LocalSchemaConfigManager.class);
+  private static final Logger logger = LoggerFactory.getLogger(LocalConfigManager.class);
 
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+
+  private volatile boolean initialized = false;
 
   private ScheduledExecutorService timedForceMLogThread;
 
@@ -83,12 +84,10 @@ public class LocalSchemaConfigManager {
   private IStorageGroupSchemaManager storageGroupSchemaManager =
       StorageGroupSchemaManager.getInstance();
   private TemplateManager templateManager = TemplateManager.getInstance();
-
+  private SchemaRegionManager schemaRegionManager = SchemaRegionManager.getInstance();
   private LocalSchemaPartitionTable partitionTable = LocalSchemaPartitionTable.getInstance();
 
-  private SchemaRegionManager schemaRegionManager = SchemaRegionManager.getInstance();
-
-  private LocalSchemaConfigManager() {
+  private LocalConfigManager() {
     String schemaDir = config.getSchemaDir();
     File schemaFolder = SystemFileFactory.INSTANCE.getFile(schemaDir);
     if (!schemaFolder.exists()) {
@@ -102,39 +101,49 @@ public class LocalSchemaConfigManager {
 
   // region LocalSchemaConfigManager SingleTone
   private static class LocalSchemaConfigManagerHolder {
-    private static final LocalSchemaConfigManager INSTANCE = new LocalSchemaConfigManager();
+    private static final LocalConfigManager INSTANCE = new LocalConfigManager();
 
     private LocalSchemaConfigManagerHolder() {}
   }
 
-  public static LocalSchemaConfigManager getInstance() {
+  public static LocalConfigManager getInstance() {
     return LocalSchemaConfigManagerHolder.INSTANCE;
   }
 
   // endregion
 
   // region Interfaces for LocalSchemaConfigManager init, force and clear
-  public void init() throws MetadataException, IOException {
-
-    timeseriesStatistics.init();
-
-    templateManager.init();
-    storageGroupSchemaManager.init();
-    partitionTable.init();
-    schemaRegionManager.init();
-
-    initSchemaRegion();
-
-    if (config.getSyncMlogPeriodInMs() != 0) {
-      timedForceMLogThread =
-          IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("timedForceMLogThread");
-
-      timedForceMLogThread.scheduleAtFixedRate(
-          this::forceMlog,
-          config.getSyncMlogPeriodInMs(),
-          config.getSyncMlogPeriodInMs(),
-          TimeUnit.MILLISECONDS);
+  public synchronized void init() {
+    if (initialized) {
+      return;
     }
+
+    try {
+      timeseriesStatistics.init();
+
+      templateManager.init();
+      storageGroupSchemaManager.init();
+      partitionTable.init();
+      schemaRegionManager.init();
+
+      initSchemaRegion();
+
+      if (config.getSyncMlogPeriodInMs() != 0) {
+        timedForceMLogThread =
+            IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("timedForceMLogThread");
+
+        timedForceMLogThread.scheduleAtFixedRate(
+            this::forceMlog,
+            config.getSyncMlogPeriodInMs(),
+            config.getSyncMlogPeriodInMs(),
+            TimeUnit.MILLISECONDS);
+      }
+    } catch (MetadataException | IOException e) {
+      logger.error(
+          "Cannot recover all MTree from file, we try to recover as possible as we can", e);
+    }
+
+    initialized = true;
   }
 
   private void initSchemaRegion() throws MetadataException {
@@ -161,27 +170,40 @@ public class LocalSchemaConfigManager {
     }
   }
 
-  public void clear() throws IOException {
-
-    timeseriesStatistics.clear();
-
-    partitionTable.clear();
-
-    for (SchemaRegion schemaRegion : schemaRegionManager.getAllSchemaRegions()) {
-      schemaRegion.clear();
+  public synchronized void clear() {
+    if (!initialized) {
+      return;
     }
-    schemaRegionManager.clear();
 
-    storageGroupSchemaManager.clear();
-    templateManager.clear();
+    try {
+      timeseriesStatistics.clear();
 
-    if (timedForceMLogThread != null) {
-      timedForceMLogThread.shutdownNow();
-      timedForceMLogThread = null;
+      partitionTable.clear();
+
+      for (SchemaRegion schemaRegion : schemaRegionManager.getAllSchemaRegions()) {
+        schemaRegion.clear();
+      }
+      schemaRegionManager.clear();
+
+      storageGroupSchemaManager.clear();
+      templateManager.clear();
+
+      if (timedForceMLogThread != null) {
+        timedForceMLogThread.shutdownNow();
+        timedForceMLogThread = null;
+      }
+    } catch (IOException e) {
+      logger.error("Error occurred when clearing SchemaEngine:", e);
     }
+
+    initialized = false;
   }
 
   public void forceMlog() {
+    if (!initialized) {
+      return;
+    }
+
     storageGroupSchemaManager.forceLog();
     templateManager.forceLog();
 

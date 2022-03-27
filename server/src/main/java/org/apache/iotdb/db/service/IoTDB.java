@@ -36,6 +36,7 @@ import org.apache.iotdb.db.engine.cq.ContinuousQueryService;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.LocalConfigManager;
 import org.apache.iotdb.db.metadata.SchemaEngine;
 import org.apache.iotdb.db.protocol.influxdb.meta.InfluxDBMetaManager;
 import org.apache.iotdb.db.protocol.rest.RestService;
@@ -62,6 +63,7 @@ public class IoTDB implements IoTDBMBean {
       String.format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, "IoTDB");
   private static final RegisterManager registerManager = new RegisterManager();
   public static SchemaEngine schemaEngine = SchemaEngine.getInstance();
+  public static LocalConfigManager configManager = LocalConfigManager.getInstance();
   public static ServiceProvider serviceProvider;
   private static boolean clusterMode = false;
 
@@ -126,7 +128,7 @@ public class IoTDB implements IoTDBMBean {
     initServiceProvider();
     registerManager.register(MetricsService.getInstance());
     logger.info("recover the schema...");
-    initSchemaEngine();
+    initConfigManager();
     registerManager.register(JMXService.getInstance());
     registerManager.register(FlushManager.getInstance());
     registerManager.register(MultiFileLogNodeManager.getInstance());
@@ -201,9 +203,9 @@ public class IoTDB implements IoTDBMBean {
     logger.info("IoTDB is deactivated.");
   }
 
-  private void initSchemaEngine() {
+  private void initConfigManager() {
     long time = System.currentTimeMillis();
-    IoTDB.schemaEngine.init();
+    IoTDB.configManager.init();
     long end = System.currentTimeMillis() - time;
     logger.info("spend {}ms to recover schema.", end);
     logger.info(
