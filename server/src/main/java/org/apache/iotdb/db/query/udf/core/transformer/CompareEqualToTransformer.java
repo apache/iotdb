@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -17,31 +17,24 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.metrics.micrometer.registry;
+package org.apache.iotdb.db.query.udf.core.transformer;
 
-import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 
-import io.micrometer.core.instrument.step.StepRegistryConfig;
+public class CompareEqualToTransformer extends CompareBinaryTransformer {
 
-import java.time.Duration;
-
-public interface IoTDBRegistryConfig extends StepRegistryConfig {
-  IoTDBRegistryConfig DEFAULT =
-      new IoTDBRegistryConfig() {
-        @Override
-        public String get(String key) {
-          return null;
-        }
-
-        @Override
-        public Duration step() {
-          return Duration.ofSeconds(
-              MetricConfigDescriptor.getInstance().getMetricConfig().getPushPeriodInSecond());
-        }
-      };
+  public CompareEqualToTransformer(
+      LayerPointReader leftPointReader, LayerPointReader rightPointReader) {
+    super(leftPointReader, rightPointReader);
+  }
 
   @Override
-  default String prefix() {
-    return "iotdb";
+  protected TransformerType getTransformerType() {
+    return TransformerType.EqNeq;
+  }
+
+  @Override
+  protected boolean evaluateBoolean(double leftOperand, double rightOperand) {
+    return Double.compare(leftOperand, rightOperand) == 0;
   }
 }

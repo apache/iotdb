@@ -47,4 +47,8 @@ public class SchemaRegionId {
   public int hashCode() {
     return Objects.hash(schemaRegionId);
   }
+
+  public String toString() {
+    return String.format("SchemaRegion-%d", schemaRegionId);
+  }
 }

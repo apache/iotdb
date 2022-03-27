@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -17,15 +17,19 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.micrometer.reporter;
+package org.apache.iotdb.db.query.udf.core.transformer;
 
-import io.micrometer.jmx.JmxConfig;
+import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 
-public interface IoTDBJmxConfig extends JmxConfig {
-  IoTDBJmxConfig DEFAULT = k -> null;
+public class CompareLessThanTransformer extends CompareBinaryTransformer {
+
+  public CompareLessThanTransformer(
+      LayerPointReader leftPointReader, LayerPointReader rightPointReader) {
+    super(leftPointReader, rightPointReader);
+  }
 
   @Override
-  default String domain() {
-    return "org.apache.iotdb.metrics";
+  protected boolean evaluateBoolean(double leftOperand, double rightOperand) {
+    return Double.compare(leftOperand, rightOperand) < 0;
   }
 }

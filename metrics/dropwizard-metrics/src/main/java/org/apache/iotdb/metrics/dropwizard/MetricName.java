@@ -28,12 +28,11 @@ import java.util.stream.Collectors;
 public class MetricName {
   private String name;
   private MetricLevel metricLevel;
-  private Map<String, String> tags;
+  private Map<String, String> tags = new LinkedHashMap<>();
   private static final String TAG_SEPARATOR = ".";
 
   public MetricName(String name, String... tags) {
     this.name = name;
-    this.tags = new HashMap<>();
     if (tags.length % 2 == 0) {
       for (int i = 0; i < tags.length; i += 2) {
         this.tags.put(tags[i], tags[i + 1]);
@@ -51,6 +50,30 @@ public class MetricName {
   public MetricName(String name, MetricLevel metricLevel, String... tags) {
     this(name, tags);
     this.metricLevel = metricLevel;
+  }
+
+  /** Create metric name from flatString */
+  public MetricName(String flatString) {
+    int firstIndex = flatString.indexOf("{");
+    int lastIndex = flatString.indexOf("}");
+    if (firstIndex == -1 || lastIndex == -1) {
+      String sanitizeMetricName = flatString.replaceAll("[^a-zA-Z0-9:_\\]\\[]", "_");
+      this.name = sanitizeMetricName;
+    } else {
+      String[] labelsFlat = flatString.substring(firstIndex + 1, lastIndex).split("\\.");
+      String sanitizeMetricName =
+          flatString.substring(0, firstIndex).replaceAll("[^a-zA-Z0-9:_\\]\\[]", "_");
+      if (labelsFlat.length == 0) {
+        this.name = sanitizeMetricName;
+      } else {
+        this.name = sanitizeMetricName;
+        if (labelsFlat.length % 2 == 0) {
+          for (int i = 0; i < labelsFlat.length; i += 2) {
+            this.tags.put(labelsFlat[i], labelsFlat[i + 1]);
+          }
+        }
+      }
+    }
   }
 
   /**
@@ -74,11 +97,7 @@ public class MetricName {
     return stringBuilder.toString();
   }
 
-  /**
-   * convert the metric name to string array.
-   *
-   * @return
-   */
+  /** convert the metric name to string array. */
   public String[] toStringArray() {
     List<String> allNames = new ArrayList<>();
     allNames.add(name);
