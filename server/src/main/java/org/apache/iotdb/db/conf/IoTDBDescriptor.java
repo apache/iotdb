@@ -384,7 +384,7 @@ public class IoTDBDescriptor {
       conf.setPipeServerPort(
           Integer.parseInt(
               properties
-                  .getProperty("pipe_server_port", Integer.toString(conf.getSyncServerPort()))
+                  .getProperty("pipe_server_port", Integer.toString(conf.getPipeServerPort()))
                   .trim()));
       conf.setMaxNumberOfSyncFileRetry(
           Integer.parseInt(
