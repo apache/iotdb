@@ -34,16 +34,7 @@ import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
 import org.apache.iotdb.db.mpp.common.filter.RegexpFilter;
 import org.apache.iotdb.db.mpp.sql.constant.FilterConstant;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
-import org.apache.iotdb.db.mpp.sql.statement.component.FillComponent;
-import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullComponent;
-import org.apache.iotdb.db.mpp.sql.statement.component.FromComponent;
-import org.apache.iotdb.db.mpp.sql.statement.component.GroupByLevelComponent;
-import org.apache.iotdb.db.mpp.sql.statement.component.GroupByTimeComponent;
-import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
-import org.apache.iotdb.db.mpp.sql.statement.component.ResultColumn;
-import org.apache.iotdb.db.mpp.sql.statement.component.ResultSetFormat;
-import org.apache.iotdb.db.mpp.sql.statement.component.SelectComponent;
-import org.apache.iotdb.db.mpp.sql.statement.component.WhereCondition;
+import org.apache.iotdb.db.mpp.sql.statement.component.*;
 import org.apache.iotdb.db.mpp.sql.statement.crud.AggregationQueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.FillQueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.GroupByFillQueryStatement;
@@ -276,6 +267,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       ((AlterTimeSeriesStatement) statement).setAttributesMap(attributes);
     }
   }
+
+  // Alter Timeseries ========================================================================
 
   @Override
   public Statement visitAlterTimeseries(IoTDBSqlParser.AlterTimeseriesContext ctx) {
