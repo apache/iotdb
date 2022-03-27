@@ -310,6 +310,7 @@ public class IoTDBSyncReceiverIT {
 
       // 4. stop pipe
       client.heartbeat(new SyncRequest(RequestType.STOP, pipeName1, remoteIp1, createdTime1));
+      Thread.sleep(500);
       client.senderTransport(
           new DeletionPipeData(
               new Deletion(new PartialPath("root.vehicle.**"), 0, 0, 99), serialNum++));
