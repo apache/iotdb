@@ -17,25 +17,26 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf.core.transformer;
+package org.apache.iotdb.db.query.expression.binary;
 
+import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.db.query.udf.core.transformer.LogicAndTransformer;
+import org.apache.iotdb.db.query.udf.core.transformer.LogicBinaryTransformer;
 
-public abstract class ArithmeticBinaryTransformer extends BinaryTransformer {
-
-  protected ArithmeticBinaryTransformer(
-      LayerPointReader leftPointReader, LayerPointReader rightPointReader) {
-    super(leftPointReader, rightPointReader);
+public class LogicAndExpression extends BinaryExpression {
+  public LogicAndExpression(Expression leftExpression, Expression rightExpression) {
+    super(leftExpression, rightExpression);
   }
 
   @Override
-  protected TransformerType getTransformerType() {
-    return TransformerType.Arithmetic;
+  protected LogicBinaryTransformer constructTransformer(
+      LayerPointReader leftParentLayerPointReader, LayerPointReader rightParentLayerPointReader) {
+    return new LogicAndTransformer(leftParentLayerPointReader, rightParentLayerPointReader);
   }
 
   @Override
-  public TSDataType getDataType() {
-    return TSDataType.DOUBLE;
+  protected String operator() {
+    return "&";
   }
 }
