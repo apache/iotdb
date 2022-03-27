@@ -48,16 +48,17 @@ import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import org.apache.thrift.TException;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
 /** ConfigNodeRPCServer exposes the interface that interacts with the DataNode */
 public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
 
-  private final ConfigManager configManager = new ConfigManager();
+  private final ConfigManager configManager;
 
-  public ConfigNodeRPCServerProcessor() {
-    // empty constructor
+  public ConfigNodeRPCServerProcessor() throws IOException {
+    this.configManager = new ConfigManager();
   }
 
   @Override
