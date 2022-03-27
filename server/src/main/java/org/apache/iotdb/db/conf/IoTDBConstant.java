@@ -130,6 +130,7 @@ public class IoTDBConstant {
   public static final String COLUMN_PIPE_CREATE_TIME = "create time";
   public static final String COLUMN_PIPE2PIPESINK_NAME = "pipeSink";
   public static final String COLUMN_PIPE_STATUS = "status";
+  public static final String COLUMN_PIPE_MSG = "message";
 
   // sync receiver
   public static final String COLUMN_PIPE_REMOTE_IP = "remote ip";

@@ -230,6 +230,8 @@ public class IoTDBDescriptor {
 
       conf.setWalDir(properties.getProperty("wal_dir", conf.getWalDir()));
 
+      conf.setNewSyncDir(properties.getProperty("newsync_dir", conf.getNewSyncDir()));
+
       int mlogBufferSize =
           Integer.parseInt(
               properties.getProperty(

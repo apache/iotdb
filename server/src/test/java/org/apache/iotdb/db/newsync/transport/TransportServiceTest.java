@@ -19,10 +19,13 @@
  */
 package org.apache.iotdb.db.newsync.transport;
 
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.newsync.conf.SyncConstant;
 import org.apache.iotdb.db.newsync.conf.SyncPathUtil;
 import org.apache.iotdb.db.newsync.pipedata.DeletionPipeData;
 import org.apache.iotdb.db.newsync.pipedata.PipeData;
@@ -48,6 +51,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.*;
+import java.net.InetAddress;
 import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.List;
@@ -59,15 +63,18 @@ public class TransportServiceTest {
   File tmpDir = new File("target/synctest");
 
   String pipeName1 = "pipe1";
-  String remoteIp1 = "127.0.0.1";
+  String remoteIp1;
   long createdTime1 = System.currentTimeMillis();
-  File fileDir = new File(SyncPathUtil.getReceiverFileDataDir(pipeName1, remoteIp1, createdTime1));
-  PipeDataQueue pipeDataQueue =
-      PipeDataQueueFactory.getBufferedPipeDataQueue(
-          SyncPathUtil.getReceiverPipeLogDir(pipeName1, remoteIp1, createdTime1));
+  File fileDir;
+  PipeDataQueue pipeDataQueue;
 
   @Before
   public void setUp() throws Exception {
+    remoteIp1 = InetAddress.getLocalHost().getHostAddress();
+    fileDir = new File(SyncPathUtil.getReceiverFileDataDir(pipeName1, remoteIp1, createdTime1));
+    pipeDataQueue =
+        PipeDataQueueFactory.getBufferedPipeDataQueue(
+            SyncPathUtil.getReceiverPipeLogDir(pipeName1, remoteIp1, createdTime1));
     EnvironmentUtils.envSetUp();
     if (!tmpDir.exists()) {
       tmpDir.mkdirs();
@@ -121,7 +128,9 @@ public class TransportServiceTest {
 
     // 4. start client
     Pipe pipe = new TsFilePipe(createdTime1, pipeName1, null, 0, false);
-    TransportClient client = new TransportClient(pipe, "127.0.0.1", 5555);
+    TransportClient client =
+        new TransportClient(pipe, "127.0.0.1", IoTDBDescriptor.getInstance().getConfig().getPipeServerPort());
+    client.handshake();
     for (PipeData pipeData : pipeDataList) {
       client.senderTransport(pipeData);
     }
@@ -168,6 +177,7 @@ public class TransportServiceTest {
     for (int i = 0; i < resPipeData.size(); i++) {
       Assert.assertEquals(pipeDataList.get(i), resPipeData.get(i));
     }
+    pipeDataQueue.clear();
   }
 
   private void compareFile(File firFile, File secFile) {

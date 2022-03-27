@@ -19,8 +19,10 @@
 package org.apache.iotdb.db.newsync.conf;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 
 import java.io.File;
+import java.io.IOException;
 
 /** Util for path generation in sync module */
 public class SyncPathUtil {
@@ -35,6 +37,16 @@ public class SyncPathUtil {
         + File.separator
         + SyncConstant.SENDER_PIPE_DIR_NAME
         + String.format("-%s-%d", pipeName, createTime);
+  }
+
+  public static String getSenderHistoryPipeDataDir(String pipeName, long createTime) {
+    return getSenderPipeDir(pipeName, createTime)
+        + File.separator
+        + SyncConstant.HISTORY_PIPE_LOG_DIR_NAME;
+  }
+
+  public static String getSenderRealTimePipeDataDir(String pipeName, long createTime) {
+    return getSenderPipeDir(pipeName, createTime) + File.separator + SyncConstant.PIPE_LOG_DIR_NAME;
   }
 
   /** receiver */
@@ -71,5 +83,18 @@ public class SyncPathUtil {
     return IoTDBDescriptor.getInstance().getConfig().getNewSyncDir()
         + File.separator
         + SyncConstant.SYNC_SYS_DIR;
+  }
+
+  /** common */
+  public static boolean createFile(File file) throws IOException {
+    if (!file.getParentFile().exists()) {
+      file.getParentFile().mkdirs();
+    }
+    return file.createNewFile();
+  }
+
+  public static String createMsg(String msg) {
+    return String.format(
+        "[%s] %s", DatetimeUtils.convertLongToDate(DatetimeUtils.currentTime()), msg);
   }
 }

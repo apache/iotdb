@@ -79,12 +79,6 @@ public class SchemaPipeData extends PipeData {
   }
 
   @Override
-  public void sendToTransport() {
-    // senderTransport(getBytes(), this);
-    // System.out.println(this);
-  }
-
-  @Override
   public String toString() {
     return "SchemaPipeData{" + "serialNumber=" + serialNumber + ", plan=" + plan + '}';
   }

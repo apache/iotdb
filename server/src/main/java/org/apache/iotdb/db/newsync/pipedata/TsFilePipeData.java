@@ -49,7 +49,13 @@ public class TsFilePipeData extends PipeData {
     String sep = File.separator.equals("\\") ? "\\\\" : File.separator;
     String[] paths = tsFilePath.split(sep);
     tsFileName = paths[paths.length - 1];
-    parentDirPath = tsFilePath.substring(0, tsFilePath.length() - tsFileName.length());
+    if (paths.length > 1) {
+      parentDirPath =
+          tsFilePath.substring(
+              0, tsFilePath.length() - tsFileName.length() - File.separator.length());
+    } else {
+      parentDirPath = "";
+    }
   }
 
   public TsFilePipeData(String parentDirPath, String tsFileName, long serialNumber) {
@@ -94,15 +100,7 @@ public class TsFilePipeData extends PipeData {
     return new TsFileLoader(new File(getTsFilePath()));
   }
 
-  @Override
-  public void sendToTransport() {
-    if (waitForTsFileClose()) {
-      // senderTransprot(getFiles(), this);
-      System.out.println(this);
-    }
-  }
-
-  public List<File> getTsFiles() throws FileNotFoundException {
+  public List<File> getTsFiles(boolean shouldWaitForTsFileClose) throws FileNotFoundException {
     File tsFile = new File(getTsFilePath()).getAbsoluteFile();
     File resource = new File(tsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX);
     File mods = new File(tsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX);
@@ -114,6 +112,12 @@ public class TsFilePipeData extends PipeData {
     files.add(tsFile);
     if (resource.exists()) {
       files.add(resource);
+    } else {
+      if (shouldWaitForTsFileClose && !waitForTsFileClose()) {
+        throw new FileNotFoundException(
+            String.format(
+                "Can not find %s, maybe the tsfile is not closed yet", resource.getAbsolutePath()));
+      }
     }
     if (mods.exists()) {
       files.add(mods);

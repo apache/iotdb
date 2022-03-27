@@ -474,7 +474,7 @@ public class IoTDBConfig {
   private int syncServerPort = 5555;
 
   /** If this IoTDB instance is a receiver of sync, set the server port. */
-  private int pipeServerPort = 5555;
+  private int pipeServerPort = 6670;
 
   private String ipWhiteList = "0.0.0.0/0";
 

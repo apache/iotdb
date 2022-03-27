@@ -20,6 +20,7 @@ package org.apache.iotdb.db.newsync.pipedata.queue;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.newsync.conf.SyncConstant;
+import org.apache.iotdb.db.newsync.conf.SyncPathUtil;
 import org.apache.iotdb.db.newsync.pipedata.PipeData;
 import org.apache.iotdb.db.newsync.pipedata.TsFilePipeData;
 import org.apache.iotdb.db.utils.FileUtils;
@@ -73,6 +74,7 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
     this.pipeLogStartNumber = new LinkedBlockingDeque<>();
 
     this.outputDeque = new LinkedBlockingDeque<>();
+    this.pullSerialNumber = Long.MIN_VALUE;
     this.commitSerialNumber = Long.MIN_VALUE;
 
     recover();
@@ -95,7 +97,7 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
     List<Long> startNumbers = new ArrayList<>();
 
     for (File file : logDir.listFiles())
-      if (file.getName().endsWith(SyncConstant.PIPE_LOG_NAME_SUFFIX)) {
+      if (file.getName().endsWith(SyncConstant.PIPE_LOG_NAME_SUFFIX) && file.length() > 0) {
         startNumbers.add(SyncConstant.getSerialNumberFromPipeLogName(file.getName()));
       }
     if (startNumbers.size() != 0) {
@@ -189,7 +191,7 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
       try {
         moveToNextPipeLog(pipeData.getSerialNumber());
       } catch (IOException e) {
-        logger.warn(String.format("Move to next pipe log %s error, because %s.", pipeData, e));
+        logger.error(String.format("Move to next pipe log %s error, because %s.", pipeData, e));
       }
     }
     if (!inputDeque.offer(pipeData)) {
@@ -213,7 +215,7 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
       outputStream.close();
     }
     File newPipeLog = new File(pipeLogDir, SyncConstant.getPipeLogName(startSerialNumber));
-    createFile(newPipeLog);
+    SyncPathUtil.createFile(newPipeLog);
 
     outputStream = new DataOutputStream(new FileOutputStream(newPipeLog));
     pipeLogStartNumber.offer(startSerialNumber);
@@ -238,7 +240,7 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
     if (!outputDeque.isEmpty()) {
       return outputDeque.poll();
     } else if (outputDeque != inputDeque) {
-      if (pipeLogStartNumber.isEmpty()) {
+      if (pipeLogStartNumber.isEmpty() || lastSerialNumber == Long.MIN_VALUE) {
         return null;
       }
 
@@ -293,11 +295,9 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
     PipeData pipeData = null;
     try {
       synchronized (waitLock) {
-        pipeData = pullOnePipeData(commitSerialNumber);
-        if (pipeData == null) {
+        while ((pipeData = pullOnePipeData(commitSerialNumber)) == null) {
           waitLock.wait();
           waitLock.notifyAll();
-          pipeData = pullOnePipeData(commitSerialNumber);
         }
       }
     } catch (IOException e) {
@@ -312,18 +312,22 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
 
   @Override
   public void commit() {
-    deletePipeData();
+    commit(pullSerialNumber);
+  }
+
+  public void commit(long serialNumber) {
+    deletePipeData(serialNumber);
     deletePipeLog();
     serializeCommitSerialNumber();
   }
 
-  private void deletePipeData() {
-    while (commitSerialNumber < pullSerialNumber) {
+  private void deletePipeData(long serialNumber) {
+    while (commitSerialNumber < serialNumber) {
       commitSerialNumber += 1;
       try {
         PipeData commitData = pullOnePipeData(commitSerialNumber);
         if (PipeData.Type.TSFILE.equals(commitData.getType())) {
-          List<File> tsFiles = ((TsFilePipeData) commitData).getTsFiles();
+          List<File> tsFiles = ((TsFilePipeData) commitData).getTsFiles(false);
           for (File file : tsFiles) {
             Files.deleteIfExists(file.toPath());
           }
@@ -381,6 +385,14 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
 
   /** common */
   @Override
+  public synchronized boolean isEmpty() {
+    if (outputDeque == null) {
+      return true;
+    }
+    return pipeLogStartNumber.size() == 1 && outputDeque.isEmpty();
+  }
+
+  @Override
   public void clear() {
     try {
       if (outputStream != null) {
@@ -402,13 +414,6 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
     } catch (IOException e) {
       logger.warn(String.format("Clear pipe log dir %s error, because %s.", pipeLogDir, e));
     }
-  }
-
-  private boolean createFile(File file) throws IOException {
-    if (!file.getParentFile().exists()) {
-      file.getParentFile().mkdirs();
-    }
-    return file.createNewFile();
   }
 
   public static List<PipeData> parsePipeLog(File file) throws IOException {
