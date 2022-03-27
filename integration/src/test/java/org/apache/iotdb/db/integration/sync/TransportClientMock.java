@@ -52,7 +52,7 @@ public class TransportClientMock implements ITransportClient {
   @Override
   public void run() {
     try {
-      while (Thread.currentThread().isInterrupted()) {
+      while (!Thread.currentThread().isInterrupted()) {
         PipeData pipeData = pipe.take();
         pipeDataList.add(pipeData);
         pipe.commit();

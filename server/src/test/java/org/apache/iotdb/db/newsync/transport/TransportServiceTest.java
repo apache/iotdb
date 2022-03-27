@@ -19,13 +19,11 @@
  */
 package org.apache.iotdb.db.newsync.transport;
 
-import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.newsync.conf.SyncConstant;
 import org.apache.iotdb.db.newsync.conf.SyncPathUtil;
 import org.apache.iotdb.db.newsync.pipedata.DeletionPipeData;
 import org.apache.iotdb.db.newsync.pipedata.PipeData;
@@ -129,7 +127,8 @@ public class TransportServiceTest {
     // 4. start client
     Pipe pipe = new TsFilePipe(createdTime1, pipeName1, null, 0, false);
     TransportClient client =
-        new TransportClient(pipe, "127.0.0.1", IoTDBDescriptor.getInstance().getConfig().getPipeServerPort());
+        new TransportClient(
+            pipe, "127.0.0.1", IoTDBDescriptor.getInstance().getConfig().getPipeServerPort());
     client.handshake();
     for (PipeData pipeData : pipeDataList) {
       client.senderTransport(pipeData);

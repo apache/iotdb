@@ -312,6 +312,9 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
 
   @Override
   public void commit() {
+    if (pullSerialNumber == Long.MIN_VALUE) {
+      return;
+    }
     commit(pullSerialNumber);
   }
 
@@ -386,10 +389,12 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
   /** common */
   @Override
   public synchronized boolean isEmpty() {
-    if (outputDeque == null) {
+    if (outputDeque == null || pipeLogStartNumber.isEmpty()) {
       return true;
     }
-    return pipeLogStartNumber.size() == 1 && outputDeque.isEmpty();
+    return pipeLogStartNumber.size() == 1
+        && outputDeque.isEmpty()
+        && (inputDeque == null || inputDeque.isEmpty());
   }
 
   @Override

@@ -121,7 +121,8 @@ public class TransportClient implements ITransportClient {
         if (handshakeCounter > config.getMaxNumberOfSyncFileRetry()) {
           logger.error(
               String.format(
-                  "Handshake failed %s times! Check network.", config.getMaxNumberOfSyncFileRetry()));
+                  "Handshake failed %s times! Check network.",
+                  config.getMaxNumberOfSyncFileRetry()));
           return false;
         }
         logger.info(
@@ -468,7 +469,7 @@ public class TransportClient implements ITransportClient {
         throw new SyncConnectionException(
             String.format("Handshake with receiver %s:%d error.", ipAddress, port));
       }
-      while (Thread.currentThread().isInterrupted()) {
+      while (!Thread.currentThread().isInterrupted()) {
         PipeData pipeData = pipe.take();
         if (!senderTransport(pipeData)) {
           logger.warn(String.format("Can not transfer pipedata %s, skip it.", pipeData));
