@@ -19,8 +19,17 @@
 
 package org.apache.iotdb.db.service;
 
-import org.apache.iotdb.mpp.rpc.thrift.*;
 import org.apache.iotdb.mpp.rpc.thrift.InternalService;
+import org.apache.iotdb.mpp.rpc.thrift.SchemeFetchRequest;
+import org.apache.iotdb.mpp.rpc.thrift.SchemeFetchResponse;
+import org.apache.iotdb.mpp.rpc.thrift.TCancelFragmentInstanceReq;
+import org.apache.iotdb.mpp.rpc.thrift.TCancelPlanFragmentReq;
+import org.apache.iotdb.mpp.rpc.thrift.TCancelQueryReq;
+import org.apache.iotdb.mpp.rpc.thrift.TCancelResp;
+import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStateReq;
+import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceStateResp;
+import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceReq;
+import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceResp;
 
 import org.apache.thrift.TException;
 
@@ -58,7 +67,7 @@ public class InternalServiceImpl implements InternalService.Iface {
   }
 
   @Override
-  public ShcameFetchResponse fetchSchema(ShcameFetchReqest req) throws TException {
+  public SchemeFetchResponse fetchSchema(SchemeFetchRequest req) throws TException {
     throw new UnsupportedOperationException();
   }
 }
