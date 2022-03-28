@@ -141,8 +141,8 @@ public class InsertRowPlanTest {
         new CreateTemplatePlan(
             "templateN", measurementList, dataTypesList, encodingList, compressionTypes);
 
-    IoTDB.schemaEngine.createSchemaTemplate(plan);
-    IoTDB.schemaEngine.setSchemaTemplate(new SetTemplatePlan("templateN", "root.isp.d1"));
+    IoTDB.schemaProcessor.createSchemaTemplate(plan);
+    IoTDB.schemaProcessor.setSchemaTemplate(new SetTemplatePlan("templateN", "root.isp.d1"));
 
     IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(false);
 
@@ -230,8 +230,8 @@ public class InsertRowPlanTest {
             encodingList,
             compressionTypes);
 
-    IoTDB.schemaEngine.createSchemaTemplate(plan);
-    IoTDB.schemaEngine.setSchemaTemplate(new SetTemplatePlan("template1", "root.isp.d1"));
+    IoTDB.schemaProcessor.createSchemaTemplate(plan);
+    IoTDB.schemaProcessor.setSchemaTemplate(new SetTemplatePlan("template1", "root.isp.d1"));
 
     IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(false);
 
@@ -322,8 +322,8 @@ public class InsertRowPlanTest {
         new CreateTemplatePlan(
             "template1", measurementList, dataTypesList, encodingList, compressionTypes);
 
-    IoTDB.schemaEngine.createSchemaTemplate(plan);
-    IoTDB.schemaEngine.setSchemaTemplate(new SetTemplatePlan("template1", "root.isp.d1"));
+    IoTDB.schemaProcessor.createSchemaTemplate(plan);
+    IoTDB.schemaProcessor.setSchemaTemplate(new SetTemplatePlan("template1", "root.isp.d1"));
 
     IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(false);
 

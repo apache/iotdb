@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.cluster.partition;
 
-import org.apache.iotdb.db.metadata.SchemaEngine;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 
 import org.powermock.reflect.Whitebox;
 
@@ -26,26 +26,26 @@ import java.io.File;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 
-public class SchemaEngineWhiteBox {
+public class SchemaProcessorWhiteBox {
 
-  public static SchemaEngine newSchemaEngine(String logFilePath) {
-    Constructor<SchemaEngine> constructor = getSchemaEngineConstructor();
+  public static LocalSchemaProcessor newSchemaProcessor(String logFilePath) {
+    Constructor<LocalSchemaProcessor> constructor = getSchemaProcessorConstructor();
     constructor.setAccessible(true);
     try {
-      SchemaEngine schemaEngine = constructor.newInstance();
+      LocalSchemaProcessor schemaProcessor = constructor.newInstance();
       new File(logFilePath).getParentFile().mkdirs();
-      Whitebox.setInternalState(schemaEngine, "logFilePath", logFilePath);
-      //      schemaEngine.initForMultiSchemaEngineTest();
-      return schemaEngine;
+      Whitebox.setInternalState(schemaProcessor, "logFilePath", logFilePath);
+      //      schemaProcessor.initForMultiSchemaProcessorTest();
+      return schemaProcessor;
     } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
       e.printStackTrace();
     }
     return null;
   }
 
-  private static Constructor<SchemaEngine> getSchemaEngineConstructor() {
+  private static Constructor<LocalSchemaProcessor> getSchemaProcessorConstructor() {
     try {
-      return SchemaEngine.class.getDeclaredConstructor();
+      return LocalSchemaProcessor.class.getDeclaredConstructor();
     } catch (NoSuchMethodException e) {
       e.printStackTrace();
     }

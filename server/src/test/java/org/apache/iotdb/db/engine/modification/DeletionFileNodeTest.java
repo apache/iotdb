@@ -82,9 +82,9 @@ public class DeletionFileNodeTest {
   public void setup() throws MetadataException {
     EnvironmentUtils.envSetUp();
 
-    IoTDB.schemaEngine.setStorageGroup(new PartialPath(processorName));
+    IoTDB.schemaProcessor.setStorageGroup(new PartialPath(processorName));
     for (int i = 0; i < 10; i++) {
-      IoTDB.schemaEngine.createTimeseries(
+      IoTDB.schemaProcessor.createTimeseries(
           new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[i]),
           dataType,
           encoding,
