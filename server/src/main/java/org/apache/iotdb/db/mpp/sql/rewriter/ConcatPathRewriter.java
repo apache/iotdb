@@ -20,13 +20,11 @@ package org.apache.iotdb.db.mpp.sql.rewriter;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
-import org.apache.iotdb.db.exception.sql.SQLParserException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.mpp.common.filter.*;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
-import org.apache.iotdb.db.mpp.sql.constant.FilterConstant.FilterType;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.db.mpp.sql.statement.component.*;
 import org.apache.iotdb.db.mpp.sql.statement.crud.QueryStatement;
@@ -64,14 +62,14 @@ public class ConcatPathRewriter {
 
     // concat WHERE with FROM
     if (queryStatement.getWhereCondition() != null) {
-      concatWhereWithFrom(queryStatement);
+      constructPatternTreeFromWhereWithFrom(queryStatement);
     }
     return queryStatement;
   }
 
   /**
    * Concat the prefix path in the SELECT clause and the suffix path in the FROM clause into a full
-   * path pattern.
+   * path pattern. And construct pattern tree.
    */
   private void concatSelectWithFrom(QueryStatement queryStatement)
       throws StatementAnalyzeException {
@@ -89,7 +87,7 @@ public class ConcatPathRewriter {
 
   /**
    * Concat the prefix path in the WITHOUT NULL clause and the suffix path in the FROM clause into a
-   * full path pattern.
+   * full path pattern. And construct pattern tree.
    */
   private void concatWithoutNullColumnsWithFrom(QueryStatement queryStatement)
       throws StatementAnalyzeException {
@@ -155,101 +153,35 @@ public class ConcatPathRewriter {
 
   /**
    * Concat the prefix path in the WHERE clause and the suffix path in the FROM clause into a full
-   * path pattern. And remove wildcards.
+   * path pattern. And construct pattern tree.
    */
-  private void concatWhereWithFrom(QueryStatement queryStatement) throws StatementAnalyzeException {
-    WhereCondition whereCondition = queryStatement.getWhereCondition();
-
-    // result after concat
-    Set<PartialPath> filterPaths = new HashSet<>();
-    whereCondition.setQueryFilter(
-        concatWhereWithFrom(
-            queryStatement.getFromComponent().getPrefixPaths(),
-            whereCondition.getQueryFilter(),
-            filterPaths));
-    whereCondition.getQueryFilter().setPathSet(filterPaths);
+  private void constructPatternTreeFromWhereWithFrom(QueryStatement queryStatement) {
+    constructPatternTreeFromWhereWithFrom(
+        queryStatement.getFromComponent().getPrefixPaths(),
+        queryStatement.getWhereCondition().getQueryFilter());
   }
 
-  private QueryFilter concatWhereWithFrom(
-      List<PartialPath> fromPaths, QueryFilter filter, Set<PartialPath> filterPaths)
-      throws StatementAnalyzeException {
+  private void constructPatternTreeFromWhereWithFrom(
+      List<PartialPath> fromPaths, QueryFilter filter) {
     if (!filter.isLeaf()) {
-      List<QueryFilter> newFilterList = new ArrayList<>();
       for (QueryFilter child : filter.getChildren()) {
-        newFilterList.add(concatWhereWithFrom(fromPaths, child, filterPaths));
+        constructPatternTreeFromWhereWithFrom(fromPaths, child);
       }
-      filter.setChildren(newFilterList);
-      return filter;
+      return;
     }
+
     FunctionFilter functionOperator = (FunctionFilter) filter;
     PartialPath filterPath = functionOperator.getSinglePath();
     List<PartialPath> concatPaths = new ArrayList<>();
     if (SQLConstant.isReservedPath(filterPath)) {
       // do nothing in the case of "where time > 5"
-      filterPaths.add(filterPath);
-      return filter;
+      return;
     } else if (filterPath.getFirstNode().startsWith(SQLConstant.ROOT)) {
       // do nothing in the case of "where root.d1.s1 > 5"
       concatPaths.add(filterPath);
     } else {
       fromPaths.forEach(fromPath -> concatPaths.add(fromPath.concatPath(filterPath)));
     }
-
-    filterPaths.addAll(concatPaths);
-    if (concatPaths.size() == 1) {
-      // Transform "select s1 from root.car.* where s1 > 10" to
-      // "select s1 from root.car.* where root.car.*.s1 > 10"
-      functionOperator.setSinglePath(concatPaths.get(0));
-      patternTree.appendPath(filter.getSinglePath());
-      return filter;
-    } else {
-      // Transform "select s1 from root.car.d1, root.car.d2 where s1 > 10" to
-      // "select s1 from root.car.d1, root.car.d2 where root.car.d1.s1 > 10 and root.car.d2.s1 > 10"
-      // Note that, two fork tree has to be maintained for DnfFilterOptimizer.
-      return constructBinaryFilterTreeWithAnd(concatPaths, filter);
-    }
-  }
-
-  private QueryFilter constructBinaryFilterTreeWithAnd(
-      List<PartialPath> concatPaths, QueryFilter filter) throws StatementAnalyzeException {
-    QueryFilter filterBinaryTree = new QueryFilter(FilterType.KW_AND);
-    QueryFilter currentNode = filterBinaryTree;
-    for (int i = 0; i < concatPaths.size(); i++) {
-      if (i > 0 && i < concatPaths.size() - 1) {
-        QueryFilter newInnerNode = new QueryFilter(FilterType.KW_AND);
-        currentNode.addChildOperator(newInnerNode);
-        currentNode = newInnerNode;
-      }
-      try {
-        QueryFilter childFilter;
-        if (filter instanceof InFilter) {
-          childFilter =
-              new InFilter(
-                  filter.getFilterType(),
-                  concatPaths.get(i),
-                  ((InFilter) filter).getNot(),
-                  ((InFilter) filter).getValues());
-        } else if (filter instanceof LikeFilter) {
-          childFilter =
-              new LikeFilter(
-                  filter.getFilterType(), concatPaths.get(i), ((LikeFilter) filter).getValue());
-        } else if (filter instanceof RegexpFilter) {
-          childFilter =
-              new RegexpFilter(
-                  filter.getFilterType(), concatPaths.get(i), ((RegexpFilter) filter).getValue());
-        } else {
-          childFilter =
-              new BasicFunctionFilter(
-                  filter.getFilterType(),
-                  concatPaths.get(i),
-                  ((BasicFunctionFilter) filter).getValue());
-        }
-        patternTree.appendPath(childFilter.getSinglePath());
-        currentNode.addChildOperator(childFilter);
-      } catch (SQLParserException e) {
-        throw new StatementAnalyzeException(e.getMessage());
-      }
-    }
-    return filterBinaryTree;
+    concatPaths.forEach(concatPath -> patternTree.appendPath(concatPath));
   }
 }

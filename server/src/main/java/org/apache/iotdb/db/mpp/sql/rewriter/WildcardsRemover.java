@@ -58,7 +58,7 @@ public class WildcardsRemover {
    * Since IoTDB v0.13, all DDL and DML use patternMatch as default. Before IoTDB v0.13, all DDL and
    * DML use prefixMatch.
    */
-  private boolean isPrefixMatchPath;
+  private boolean isPrefixMatch;
 
   public Statement rewrite(
       Statement statement, SchemaTree schemaTree, Map<String, Set<PartialPath>> deviceIdToPathsMap)
@@ -68,7 +68,7 @@ public class WildcardsRemover {
         new ColumnPaginationController(
             queryStatement.getSeriesLimit(), queryStatement.getSeriesOffset());
     this.schemaTree = schemaTree;
-    this.isPrefixMatchPath = queryStatement.isPrefixMatchPath();
+    this.isPrefixMatch = queryStatement.isPrefixMatchPath();
 
     if (queryStatement.getIndexType() == null) {
       // remove wildcards in SELECT caluse
@@ -174,10 +174,11 @@ public class WildcardsRemover {
       QueryStatement queryStatement, Map<String, Set<PartialPath>> deviceIdToPathsMap)
       throws StatementAnalyzeException {
     WhereCondition whereCondition = queryStatement.getWhereCondition();
+    List<PartialPath> fromPaths = queryStatement.getFromComponent().getPrefixPaths();
 
     Set<PartialPath> resultPaths = new HashSet<>();
     whereCondition.setQueryFilter(
-        removeWildcardsInQueryFilter(whereCondition.getQueryFilter(), resultPaths));
+        removeWildcardsInQueryFilter(whereCondition.getQueryFilter(), fromPaths, resultPaths));
     whereCondition.getQueryFilter().setPathSet(resultPaths);
 
     for (PartialPath path : resultPaths) {
@@ -185,12 +186,13 @@ public class WildcardsRemover {
     }
   }
 
-  private QueryFilter removeWildcardsInQueryFilter(QueryFilter filter, Set<PartialPath> resultPaths)
+  private QueryFilter removeWildcardsInQueryFilter(
+      QueryFilter filter, List<PartialPath> fromPaths, Set<PartialPath> resultPaths)
       throws StatementAnalyzeException {
     if (!filter.isLeaf()) {
       List<QueryFilter> newFilterList = new ArrayList<>();
       for (QueryFilter child : filter.getChildren()) {
-        newFilterList.add(removeWildcardsInQueryFilter(child, resultPaths));
+        newFilterList.add(removeWildcardsInQueryFilter(child, fromPaths, resultPaths));
       }
       filter.setChildren(newFilterList);
       return filter;
@@ -198,19 +200,27 @@ public class WildcardsRemover {
     FunctionFilter functionFilter = (FunctionFilter) filter;
     PartialPath filterPath = functionFilter.getSinglePath();
 
+    List<PartialPath> concatPaths = new ArrayList<>();
     if (SQLConstant.isReservedPath(filterPath)) {
       // do nothing in the case of "where time > 5"
       resultPaths.add(filterPath);
       return filter;
+    } else if (filterPath.getFirstNode().startsWith(SQLConstant.ROOT)) {
+      // do nothing in the case of "where root.d1.s1 > 5"
+      concatPaths.add(filterPath);
+    } else {
+      fromPaths.forEach(fromPath -> concatPaths.add(fromPath.concatPath(filterPath)));
     }
 
-    List<PartialPath> noStarPaths = removeWildcardsInFilterPath(filterPath);
+    List<PartialPath> noStarPaths = removeWildcardsInConcatPaths(concatPaths);
     resultPaths.addAll(noStarPaths);
     if (noStarPaths.size() == 1) {
+      // Transform "select s1 from root.car.* where s1 > 10" to
+      // "select s1 from root.car.* where root.car.*.s1 > 10"
       functionFilter.setSinglePath(noStarPaths.get(0));
       return filter;
     } else {
-      // Transform "select s1 from root.car.* where s1 > 10" to
+      // Transform "select s1 from root.car.d1, root.car.d2 where s1 > 10" to
       // "select s1 from root.car.d1, root.car.d2 where root.car.d1.s1 > 10 and root.car.d2.s1 > 10"
       // Note that, two fork tree has to be maintained for DnfFilterOptimizer.
       return constructBinaryFilterTreeWithAnd(noStarPaths, filter);
@@ -265,7 +275,7 @@ public class WildcardsRemover {
               path,
               paginationController.getCurLimit(),
               paginationController.getCurOffset(),
-              isPrefixMatchPath);
+              isPrefixMatch);
       paginationController.consume(pair.left.size(), pair.right);
       return pair.left;
     } catch (Exception e) {
@@ -313,21 +323,23 @@ public class WildcardsRemover {
     return remainingExpressions;
   }
 
-  private List<PartialPath> removeWildcardsInFilterPath(PartialPath originalPath)
+  private List<PartialPath> removeWildcardsInConcatPaths(List<PartialPath> originalPaths)
       throws StatementAnalyzeException {
-    List<PartialPath> actualPaths = new ArrayList<>();
+    HashSet<PartialPath> actualPaths = new HashSet<>();
     try {
-      List<MeasurementPath> all =
-          schemaTree.searchMeasurementPaths(originalPath, 0, 0, isPrefixMatchPath).left;
-      if (all.isEmpty()) {
-        throw new StatementAnalyzeException(
-            String.format("Unknown time series %s in `where clause`", originalPath));
+      for (PartialPath originalPath : originalPaths) {
+        List<MeasurementPath> all =
+            schemaTree.searchMeasurementPaths(originalPath, 0, 0, isPrefixMatch).left;
+        if (all.isEmpty()) {
+          throw new StatementAnalyzeException(
+              String.format("Unknown time series %s in `where clause`", originalPath));
+        }
+        actualPaths.addAll(all);
       }
-      actualPaths.addAll(all);
-    } catch (Exception e) {
+    } catch (StatementAnalyzeException e) {
       throw new StatementAnalyzeException("error when remove star: " + e.getMessage());
     }
-    return actualPaths;
+    return new ArrayList<>(actualPaths);
   }
 
   public static <T> void cartesianProduct(
