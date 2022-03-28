@@ -34,11 +34,11 @@ public class SchemaTree {
   private SchemaNode root;
 
   /**
-   * Return all measurement paths for given path if the path is abstract and filter the result by
-   * slimit and offset. Or return the path itself.
+   * Return all measurement paths for given path pattern and filter the result by slimit and offset.
    *
    * @param pathPattern can be a pattern or a full path of timeseries.
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
+   * @return Left: all measurement paths; Right: remaining offset
    */
   public Pair<List<MeasurementPath>, Integer> searchMeasurementPaths(
       PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch) {
