@@ -61,4 +61,5 @@ public class SyncConstant {
   public static final String RECEIVER_LOG_NAME = "receiverService.log";
   public static final String RECEIVER_MSG_LOG_NAME = "receiverMessage.log";
   public static final String FILE_DATA_DIR_NAME = "file-data";
+  public static final String IP_SEPARATOR = "\\.";
 }
