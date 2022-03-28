@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner;
 
-import org.apache.iotdb.commons.partition.DataRegionReplicaSet;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
@@ -112,7 +111,6 @@ public class LogicalPlanner {
 
     private PlanBuilder planSelectComponent(QueryStatement queryStatement) {
       Map<String, Set<SourceNode>> deviceNameToSourceNodesMap = new HashMap<>();
-      Map<String, DataRegionReplicaSet> deviceNameToDataRegionReplicaSetMap = new HashMap<>();
 
       for (ResultColumn resultColumn : queryStatement.getSelectComponent().getResultColumns()) {
         Set<SourceNode> sourceNodes = planResultColumn(resultColumn);
@@ -121,12 +119,6 @@ public class LogicalPlanner {
           deviceNameToSourceNodesMap
               .computeIfAbsent(deviceName, k -> new HashSet<>())
               .add(sourceNode);
-          //          deviceNameToDataRegionReplicaSetMap.computeIfAbsent(
-          //              deviceName,
-          //              k -> analysis.getDataPartitionInfo().getDataRegionReplicaSet(k,
-          // null).get(0));
-          //
-          // sourceNode.setDataRegionReplicaSet(deviceNameToDataRegionReplicaSetMap.get(deviceName));
         }
       }
 
