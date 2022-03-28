@@ -21,6 +21,7 @@ package org.apache.iotdb.tsfile.read.controller;
 import org.apache.iotdb.tsfile.exception.write.NoMeasurementException;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TsFileMetadataHash;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
@@ -37,6 +38,8 @@ public interface IMetadataQuerier {
 
   TsFileMetadata getWholeFileMetadata();
 
+  TsFileMetadataHash getWholeFileMetadataHash();
+
   /**
    * this will load all chunk metadata of given paths into cache.
    *
@@ -44,6 +47,14 @@ public interface IMetadataQuerier {
    * metadata, which will only read TsMetaData once
    */
   void loadChunkMetaDatas(List<Path> paths) throws IOException;
+
+  void loadChunkMetaDatasV2(List<Path> paths) throws IOException;
+
+  void loadChunkMetaDatasV3(List<Path> paths) throws IOException;
+
+  void loadChunkMetaDatasV4(List<Path> paths) throws IOException;
+
+  void loadChunkMetaDatasHash(List<Path> paths) throws IOException;
 
   /**
    * @return the corresponding data type.

@@ -26,4 +26,6 @@ import java.io.IOException;
 public interface QueryExecutor {
 
   QueryDataSet execute(QueryExpression queryExpression) throws IOException;
+
+  QueryDataSet execute(QueryExpression queryExpression, int treeType) throws IOException;
 }

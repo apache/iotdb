@@ -23,7 +23,8 @@ public class Constant {
 
   private Constant() {}
 
-  static final String SENSOR_1 = "sensor_1";
+  public static final String SENSOR_ = "sensor_";
+  public static final String SENSOR_1 = "sensor_1";
   static final String SENSOR_2 = "sensor_2";
   static final String SENSOR_3 = "sensor_3";
 

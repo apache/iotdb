@@ -43,8 +43,19 @@ public class TsFileReader implements AutoCloseable {
     tsFileExecutor = new TsFileExecutor(metadataQuerier, chunkLoader);
   }
 
+  public ReadOnlyTsFile(TsFileSequenceReader fileReader, int treeType) throws IOException {
+    this.fileReader = fileReader;
+    this.metadataQuerier = new MetadataQuerierByFileImpl(fileReader, treeType);
+    this.chunkLoader = new CachedChunkLoaderImpl(fileReader);
+    tsFileExecutor = new TsFileExecutor(metadataQuerier, chunkLoader);
+  }
+
   public QueryDataSet query(QueryExpression queryExpression) throws IOException {
     return tsFileExecutor.execute(queryExpression);
+  }
+
+  public QueryDataSet query(QueryExpression queryExpression, int treeType) throws IOException {
+    return tsFileExecutor.execute(queryExpression, treeType);
   }
 
   public QueryDataSet query(

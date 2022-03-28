@@ -68,6 +68,62 @@ public class TsFileExecutor implements QueryExecutor {
     }
 
     metadataQuerier.loadChunkMetaDatas(queryExpression.getSelectedSeries());
+
+    if (queryExpression.hasQueryFilter()) {
+      try {
+        IExpression expression = queryExpression.getExpression();
+        IExpression regularIExpression =
+            ExpressionOptimizer.getInstance()
+                .optimize(expression, queryExpression.getSelectedSeries());
+        queryExpression.setExpression(regularIExpression);
+
+        if (regularIExpression instanceof GlobalTimeExpression) {
+          return execute(
+              queryExpression.getSelectedSeries(), (GlobalTimeExpression) regularIExpression);
+        } else {
+          return new ExecutorWithTimeGenerator(metadataQuerier, chunkLoader)
+              .execute(queryExpression);
+        }
+      } catch (QueryFilterOptimizationException | NoMeasurementException e) {
+        throw new IOException(e);
+      }
+    } else {
+      try {
+        return execute(queryExpression.getSelectedSeries());
+      } catch (NoMeasurementException e) {
+        throw new IOException(e);
+      }
+    }
+  }
+
+  @Override
+  public QueryDataSet execute(QueryExpression queryExpression, int treeType) throws IOException {
+    // bloom filter
+
+    BloomFilter bloomFilter;
+    if (treeType != 2) {
+      bloomFilter = metadataQuerier.getWholeFileMetadata().getBloomFilter();
+    } else {
+      bloomFilter = metadataQuerier.getWholeFileMetadataHash().getBloomFilter();
+    }
+
+    List<Path> filteredSeriesPath = new ArrayList<>();
+    if (bloomFilter != null) {
+      for (Path path : queryExpression.getSelectedSeries()) {
+        if (bloomFilter.contains(path.getFullPath())) {
+          filteredSeriesPath.add(path);
+        }
+      }
+      queryExpression.setSelectSeries(filteredSeriesPath);
+    }
+
+    if (treeType == 0) {
+      metadataQuerier.loadChunkMetaDatasV3(queryExpression.getSelectedSeries());
+    } else if (treeType == 1) {
+      metadataQuerier.loadChunkMetaDatasV4(queryExpression.getSelectedSeries());
+    } else if (treeType == 2) {
+      metadataQuerier.loadChunkMetaDatasHash(queryExpression.getSelectedSeries());
+    }
     if (queryExpression.hasQueryFilter()) {
       try {
         IExpression expression = queryExpression.getExpression();

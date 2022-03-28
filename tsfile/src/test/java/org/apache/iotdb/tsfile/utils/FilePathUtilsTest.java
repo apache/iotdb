@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.tsfile.utils;
 
-import org.apache.commons.io.FileUtils;
+// import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -51,7 +51,7 @@ public class FilePathUtilsTest {
     tsFile = new File(fullPath);
     boolean success = false;
     try {
-      FileUtils.forceMkdirParent(tsFile);
+      // FileUtils.forceMkdirParent(tsFile);
       success = tsFile.createNewFile();
     } catch (IOException e) {
       Assert.fail(e.getMessage());

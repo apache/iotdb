@@ -53,7 +53,7 @@ public class TsFileSequenceRead {
     "squid:S106"
   }) // Suppress high Cognitive Complexity and Standard outputs warning
   public static void main(String[] args) throws IOException {
-    String filename = "test.tsfile";
+    String filename = "/Users/samperson1997/git/iotdb/data/data/sequence/root.SC/0/0/BHN.tsfile";
     if (args.length >= 1) {
       filename = args[0];
     }
@@ -73,6 +73,7 @@ public class TsFileSequenceRead {
       List<long[]> timeBatch = new ArrayList<>();
       int pageIndex = 0;
       byte marker;
+      int pageNum = 0;
       while ((marker = reader.readMarker()) != MetaMarker.SEPARATOR) {
         switch (marker) {
           case MetaMarker.CHUNK_HEADER:
@@ -185,6 +186,7 @@ public class TsFileSequenceRead {
             MetaMarker.handleUnexpectedMarker(marker);
         }
       }
+      System.out.println("[Page Num]: " + pageNum);
       System.out.println("[Metadata]");
       for (String device : reader.getAllDevices()) {
         Map<String, List<ChunkMetadata>> seriesMetaData = reader.readChunkMetadataInDevice(device);

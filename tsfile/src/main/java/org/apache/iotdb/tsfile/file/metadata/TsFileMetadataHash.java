@@ -31,17 +31,17 @@ import java.nio.ByteBuffer;
 import java.util.Set;
 
 /** TSFileMetaData collects all metadata info and saves in its data structure. */
-public class TsFileMetadata {
+public class TsFileMetadataHash {
 
   // bloom filter
   private BloomFilter bloomFilter;
 
   // List of <name, offset, childMetadataIndexType>
-  private MetadataIndexNode metadataIndex;
-  private MetadataIndexNodeV2 metadataIndexV2;
+  private MetadataIndexBucket[] metadataIndexBuckets;
 
-  // offset of MetaMarker.SEPARATOR
-  private long metaOffset;
+  private int bucketSize;
+
+  private int bucketNum;
 
   /**
    * deserialize data from the buffer.
@@ -49,36 +49,12 @@ public class TsFileMetadata {
    * @param buffer -buffer use to deserialize
    * @return -a instance of TsFileMetaData
    */
-  public static TsFileMetadata deserializeFrom(ByteBuffer buffer) {
-    TsFileMetadata fileMetaData = new TsFileMetadata();
+  public static TsFileMetadataHash deserializeFrom(ByteBuffer buffer) {
+    TsFileMetadataHash fileMetaData = new TsFileMetadataHash();
 
     // metadataIndex
-    fileMetaData.metadataIndex = MetadataIndexNode.deserializeFrom(buffer);
-
-    // metaOffset
-    long metaOffset = ReadWriteIOUtils.readLong(buffer);
-    fileMetaData.setMetaOffset(metaOffset);
-
-    // read bloom filter
-    if (buffer.hasRemaining()) {
-      byte[] bytes = ReadWriteIOUtils.readByteBufferWithSelfDescriptionLength(buffer);
-      int filterSize = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
-      int hashFunctionSize = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
-      fileMetaData.bloomFilter = BloomFilter.buildBloomFilter(bytes, filterSize, hashFunctionSize);
-    }
-
-    return fileMetaData;
-  }
-
-  public static TsFileMetadata deserializeFromV2(ByteBuffer buffer) {
-    TsFileMetadata fileMetaData = new TsFileMetadata();
-
-    // metadataIndex
-    fileMetaData.metadataIndexV2 = MetadataIndexNodeV2.deserializeFrom(buffer);
-
-    // metaOffset
-    long metaOffset = ReadWriteIOUtils.readLong(buffer);
-    fileMetaData.setMetaOffset(metaOffset);
+    fileMetaData.bucketNum = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
+    fileMetaData.bucketSize = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
 
     // read bloom filter
     if (buffer.hasRemaining()) {
@@ -99,6 +75,19 @@ public class TsFileMetadata {
     this.bloomFilter = bloomFilter;
   }
 
+  public int serializeBuckets(OutputStream outputStream) throws IOException {
+    int byteLen = 0;
+    if (metadataIndexBuckets.length > 0) {
+      for (MetadataIndexBucket bucket : metadataIndexBuckets) {
+        ByteBuffer buffer = ByteBuffer.allocate(bucketSize);
+        byteLen += bucket.serializeTo(buffer);
+        outputStream.write(buffer.array());
+      }
+    }
+
+    return byteLen;
+  }
+
   /**
    * use the given outputStream to serialize.
    *
@@ -106,33 +95,8 @@ public class TsFileMetadata {
    * @return -byte length
    */
   public int serializeTo(OutputStream outputStream) throws IOException {
-    int byteLen = 0;
-
-    // metadataIndex
-    if (metadataIndex != null) {
-      byteLen += metadataIndex.serializeTo(outputStream);
-    } else {
-      byteLen += ReadWriteIOUtils.write(0, outputStream);
-    }
-
-    // metaOffset
-    byteLen += ReadWriteIOUtils.write(metaOffset, outputStream);
-
-    return byteLen;
-  }
-
-  public int serializeToV2(OutputStream outputStream) throws IOException {
-    int byteLen = 0;
-
-    // metadataIndex
-    if (metadataIndexV2 != null) {
-      byteLen += metadataIndexV2.serializeTo(outputStream);
-    } else {
-      byteLen += ReadWriteIOUtils.write(0, outputStream);
-    }
-
-    // metaOffset
-    byteLen += ReadWriteIOUtils.write(metaOffset, outputStream);
+    int byteLen = ReadWriteForEncodingUtils.writeUnsignedVarInt(bucketNum, outputStream);
+    byteLen += ReadWriteForEncodingUtils.writeUnsignedVarInt(bucketSize, outputStream);
 
     return byteLen;
   }
@@ -172,27 +136,27 @@ public class TsFileMetadata {
     return filter;
   }
 
-  public long getMetaOffset() {
-    return metaOffset;
+  public MetadataIndexBucket[] getMetadataIndexBuckets() {
+    return metadataIndexBuckets;
   }
 
-  public void setMetaOffset(long metaOffset) {
-    this.metaOffset = metaOffset;
+  public void setMetadataIndexBuckets(MetadataIndexBucket[] metadataIndexBuckets) {
+    this.metadataIndexBuckets = metadataIndexBuckets;
   }
 
-  public MetadataIndexNode getMetadataIndex() {
-    return metadataIndex;
+  public int getBucketSize() {
+    return bucketSize;
   }
 
-  public MetadataIndexNodeV2 getMetadataIndexV2() {
-    return metadataIndexV2;
+  public void setBucketSize(int bucketSize) {
+    this.bucketSize = bucketSize;
   }
 
-  public void setMetadataIndex(MetadataIndexNode metadataIndex) {
-    this.metadataIndex = metadataIndex;
+  public int getBucketNum() {
+    return bucketNum;
   }
 
-  public void setMetadataIndex(MetadataIndexNodeV2 metadataIndex) {
-    this.metadataIndexV2 = metadataIndex;
+  public void setBucketNum(int bucketNum) {
+    this.bucketNum = bucketNum;
   }
 }

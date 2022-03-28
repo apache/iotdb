@@ -37,6 +37,8 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
 
   private TsFileMetadata fileMetaData;
 
+  private TsFileMetadataHash fileMetaDataHash;
+
   // TimeseriesPath -> List<IChunkMetadata>
   private LRUCache<Path, List<IChunkMetadata>> chunkMetaDataCache;
 
@@ -45,7 +47,27 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
   /** Constructor of MetadataQuerierByFileImpl. */
   public MetadataQuerierByFileImpl(TsFileSequenceReader tsFileReader) throws IOException {
     this.tsFileReader = tsFileReader;
-    this.fileMetaData = tsFileReader.readFileMetadata();
+    // FIXME
+    this.fileMetaData = tsFileReader.readFileMetadataV2();
+    chunkMetaDataCache =
+        new LRUCache<Path, List<ChunkMetadata>>(CACHED_ENTRY_NUMBER) {
+          @Override
+          public List<ChunkMetadata> loadObjectByKey(Path key) throws IOException {
+            return loadChunkMetadata(key);
+          }
+        };
+  }
+
+  public MetadataQuerierByFileImpl(TsFileSequenceReader tsFileReader, int treeType)
+      throws IOException {
+    this.tsFileReader = tsFileReader;
+    if (treeType == 0) { // Zesong Tree
+      this.fileMetaData = tsFileReader.readFileMetadataV2();
+    } else if (treeType == 1) { // B+ Tree
+      this.fileMetaData = tsFileReader.readFileMetadataV3();
+    } else if (treeType == 2) { // Hash
+      this.fileMetaDataHash = tsFileReader.readFileMetadataHash();
+    }
     chunkMetaDataCache =
         new LRUCache<Path, List<IChunkMetadata>>(CACHED_ENTRY_NUMBER) {
           @Override
@@ -75,6 +97,11 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
   @Override
   public TsFileMetadata getWholeFileMetadata() {
     return fileMetaData;
+  }
+
+  @Override
+  public TsFileMetadataHash getWholeFileMetadataHash() {
+    return fileMetaDataHash;
   }
 
   @Override
