@@ -517,7 +517,7 @@ public class InsertWithIDTableTest {
 
     // test recover
     EnvironmentUtils.stopDaemon();
-    IoTDB.schemaEngine.clear();
+    IoTDB.configManager.clear();
     // wait for close
     try {
       Thread.sleep(1000);

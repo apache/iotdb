@@ -120,7 +120,7 @@ public class SizeTieredCompactionRecoverTest {
 
   @Before
   public void setUp() throws Exception {
-    IoTDB.schemaEngine.init();
+    IoTDB.configManager.init();
     originDataDirs = config.getDataDirs();
     setDataDirs(testDataDirs);
     if (!new File(SEQ_FILE_DIR).exists()) {
@@ -136,7 +136,7 @@ public class SizeTieredCompactionRecoverTest {
   public void tearDown() throws Exception {
     new CompactionConfigRestorer().restoreCompactionConfig();
     setDataDirs(originDataDirs);
-    IoTDB.schemaEngine.clear();
+    IoTDB.configManager.clear();
     File dataDir = new File(testDataDirs[0]);
     if (dataDir.exists()) {
       FileUtils.forceDelete(dataDir);

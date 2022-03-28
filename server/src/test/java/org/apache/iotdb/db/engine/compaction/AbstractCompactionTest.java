@@ -109,7 +109,7 @@ public class AbstractCompactionTest {
     }
 
     EnvironmentUtils.envSetUp();
-    IoTDB.schemaEngine.init();
+    IoTDB.configManager.init();
   }
 
   /**
@@ -258,7 +258,7 @@ public class AbstractCompactionTest {
     removeFiles();
     seqResources.clear();
     unseqResources.clear();
-    IoTDB.schemaEngine.clear();
+    IoTDB.configManager.clear();
     IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(oldTargetChunkSize);
     TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(oldChunkGroupSize);
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(oldPagePointSize);

@@ -64,7 +64,7 @@ public class PlannerTest {
   private Planner processor = new Planner();
 
   static {
-    IoTDB.schemaEngine.init();
+    IoTDB.configManager.init();
   }
 
   @Before

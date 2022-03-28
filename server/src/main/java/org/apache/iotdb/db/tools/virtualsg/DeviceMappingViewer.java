@@ -23,6 +23,7 @@ import org.apache.iotdb.db.engine.storagegroup.virtualSg.HashVirtualPartitioner;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.SchemaEngine;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.service.IoTDB;
 
 import java.util.Set;
 
@@ -39,8 +40,8 @@ public class DeviceMappingViewer {
     }
 
     HashVirtualPartitioner partitioner = HashVirtualPartitioner.getInstance();
+    IoTDB.configManager.init();
     SchemaEngine schemaEngine = SchemaEngine.getInstance();
-    schemaEngine.init();
 
     Set<PartialPath> partialPathSet =
         schemaEngine.getMatchedDevices(new PartialPath("root.**"), false);
@@ -58,6 +59,6 @@ public class DeviceMappingViewer {
       }
     }
 
-    schemaEngine.clear();
+    IoTDB.configManager.clear();
   }
 }

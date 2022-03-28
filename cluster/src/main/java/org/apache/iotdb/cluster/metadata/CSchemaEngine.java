@@ -445,16 +445,6 @@ public class CSchemaEngine extends SchemaEngine {
     }
   }
 
-  @Override
-  protected IMNode getDeviceNodeWithAutoCreate(PartialPath path)
-      throws MetadataException, IOException {
-    return getDeviceNodeWithAutoCreate(
-        path,
-        ClusterDescriptor.getInstance().getConfig().isEnableAutoCreateSchema(),
-        false,
-        config.getDefaultStorageGroupLevel());
-  }
-
   private static class RemoteMetaCache extends LRUCache<PartialPath, IMeasurementMNode> {
 
     RemoteMetaCache(int cacheSize) {

@@ -74,7 +74,7 @@ public class SizeTieredCompactionTest {
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
     EnvironmentUtils.envSetUp();
-    IoTDB.schemaEngine.init();
+    IoTDB.configManager.init();
     prepareSeries();
     prepareFiles(seqFileNum, unseqFileNum);
   }
@@ -87,7 +87,7 @@ public class SizeTieredCompactionTest {
     unseqResources.clear();
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
-    IoTDB.schemaEngine.clear();
+    IoTDB.configManager.clear();
     EnvironmentUtils.cleanEnv();
   }
 
