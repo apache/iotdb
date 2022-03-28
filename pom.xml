@@ -506,6 +506,11 @@
                 <version>${airline.version}</version>
             </dependency>
             <dependency>
+                <groupId>org.openjdk.jol</groupId>
+                <artifactId>jol-core</artifactId>
+                <version>0.2</version>
+            </dependency>
+            <dependency>
                 <groupId>org.fusesource.mqtt-client</groupId>
                 <artifactId>mqtt-client</artifactId>
                 <version>1.12</version>

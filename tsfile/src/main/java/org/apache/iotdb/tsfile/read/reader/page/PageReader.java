@@ -26,7 +26,10 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.BatchDataFactory;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
-import org.apache.iotdb.tsfile.read.common.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
@@ -35,6 +38,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.List;
 
 public class PageReader implements IPageReader {
@@ -157,53 +161,76 @@ public class PageReader implements IPageReader {
   @Override
   public TsBlock getAllSatisfiedData(boolean ascending) throws IOException {
     // TODO we still need to consider data type, ascending and descending here
-    TsBlock tsBlock = new TsBlock();
+    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(Collections.singletonList(dataType));
+    TimeColumnBuilder timeBuilder = tsBlockBuilder.getTimeColumnBuilder();
+    ColumnBuilder valueBuilder = tsBlockBuilder.getColumnBuilder(0);
     if (filter == null || filter.satisfy(getStatistics())) {
-      while (timeDecoder.hasNext(timeBuffer)) {
-        long timestamp = timeDecoder.readLong(timeBuffer);
-        switch (dataType) {
-          case BOOLEAN:
+      switch (dataType) {
+        case BOOLEAN:
+          while (timeDecoder.hasNext(timeBuffer)) {
+            long timestamp = timeDecoder.readLong(timeBuffer);
             boolean aBoolean = valueDecoder.readBoolean(valueBuffer);
             if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aBoolean))) {
-              //              tsBlock.putBoolean(timestamp, aBoolean);
+              timeBuilder.writeLong(timestamp);
+              valueBuilder.writeBoolean(aBoolean);
             }
-            break;
-          case INT32:
+          }
+          break;
+        case INT32:
+          while (timeDecoder.hasNext(timeBuffer)) {
+            long timestamp = timeDecoder.readLong(timeBuffer);
             int anInt = valueDecoder.readInt(valueBuffer);
             if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, anInt))) {
-              //              tsBlock.putInt(timestamp, anInt);
+              timeBuilder.writeLong(timestamp);
+              valueBuilder.writeInt(anInt);
             }
-            break;
-          case INT64:
+          }
+          break;
+        case INT64:
+          while (timeDecoder.hasNext(timeBuffer)) {
+            long timestamp = timeDecoder.readLong(timeBuffer);
             long aLong = valueDecoder.readLong(valueBuffer);
             if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aLong))) {
-              //              tsBlock.putLong(timestamp, aLong);
+              timeBuilder.writeLong(timestamp);
+              valueBuilder.writeLong(aLong);
             }
-            break;
-          case FLOAT:
+          }
+          break;
+        case FLOAT:
+          while (timeDecoder.hasNext(timeBuffer)) {
+            long timestamp = timeDecoder.readLong(timeBuffer);
             float aFloat = valueDecoder.readFloat(valueBuffer);
             if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aFloat))) {
-              //              tsBlock.putFloat(timestamp, aFloat);
+              timeBuilder.writeLong(timestamp);
+              valueBuilder.writeFloat(aFloat);
             }
-            break;
-          case DOUBLE:
+          }
+          break;
+        case DOUBLE:
+          while (timeDecoder.hasNext(timeBuffer)) {
+            long timestamp = timeDecoder.readLong(timeBuffer);
             double aDouble = valueDecoder.readDouble(valueBuffer);
             if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aDouble))) {
-              //              tsBlock.putDouble(timestamp, aDouble);
+              timeBuilder.writeLong(timestamp);
+              valueBuilder.writeDouble(aDouble);
             }
-            break;
-          case TEXT:
+          }
+          break;
+        case TEXT:
+          while (timeDecoder.hasNext(timeBuffer)) {
+            long timestamp = timeDecoder.readLong(timeBuffer);
             Binary aBinary = valueDecoder.readBinary(valueBuffer);
             if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aBinary))) {
-              //              tsBlock.putBinary(timestamp, aBinary);
+              timeBuilder.writeLong(timestamp);
+              valueBuilder.writeBinary(aBinary);
             }
-            break;
-          default:
-            throw new UnSupportedDataTypeException(String.valueOf(dataType));
-        }
+          }
+          break;
+        default:
+          throw new UnSupportedDataTypeException(String.valueOf(dataType));
       }
     }
-    return tsBlock;
+    return tsBlockBuilder.build();
   }
 
   @Override

@@ -19,12 +19,14 @@
 package org.apache.iotdb.db.query.reader.chunk;
 
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.BatchDataFactory;
-import org.apache.iotdb.tsfile.read.common.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import org.apache.iotdb.tsfile.read.reader.IAlignedPageReader;
@@ -33,6 +35,7 @@ import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.io.IOException;
+import java.util.stream.Collectors;
 
 public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
 
@@ -81,8 +84,37 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
 
   @Override
   public TsBlock getAllSatisfiedData(boolean ascending) throws IOException {
-    // TODO need to implement for mpp
-    throw new IllegalStateException("We have not implemented this method.");
+    // TODO change from the row-based style to column-based style
+    TsBlockBuilder builder =
+        new TsBlockBuilder(
+            chunkMetadata.getValueChunkMetadataList().stream()
+                .map(IChunkMetadata::getDataType)
+                .collect(Collectors.toList()));
+    while (timeValuePairIterator.hasNextTimeValuePair()) {
+      TimeValuePair timeValuePair = timeValuePairIterator.nextTimeValuePair();
+      TsPrimitiveType[] values = timeValuePair.getValue().getVector();
+      // save the first not null value of each row
+      Object firstNotNullObject = null;
+      for (TsPrimitiveType value : values) {
+        if (value != null) {
+          firstNotNullObject = value.getValue();
+          break;
+        }
+      }
+      // if all the sub sensors' value are null in current time
+      // or current row is not satisfied with the filter, just discard it
+      // TODO fix value filter firstNotNullObject, currently, if it's a value filter, it will only
+      // accept AlignedPath with only one sub sensor
+      if (firstNotNullObject != null
+          && (valueFilter == null
+              || valueFilter.satisfy(timeValuePair.getTimestamp(), firstNotNullObject))) {
+        builder.getTimeColumnBuilder().writeLong(timeValuePair.getTimestamp());
+        for (int i = 0; i < values.length; i++) {
+          builder.getColumnBuilder(i).writeTsPrimitiveType(values[i]);
+        }
+      }
+    }
+    return builder.build();
   }
 
   @Override
