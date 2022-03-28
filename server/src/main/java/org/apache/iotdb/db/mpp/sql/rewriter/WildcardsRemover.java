@@ -207,16 +207,12 @@ public class WildcardsRemover {
     List<PartialPath> noStarPaths = removeWildcardsInFilterPath(filterPath);
     resultPaths.addAll(noStarPaths);
     if (noStarPaths.size() == 1) {
-      // Transform "select s1 from root.car.* where s1 > 10" to
-      // "select s1 from root.car.* where root.car.*.s1 > 10"
       functionFilter.setSinglePath(noStarPaths.get(0));
       return filter;
     } else {
-      // Transform "select s1 from root.car.d1, root.car.d2 where s1 > 10" to
+      // Transform "select s1 from root.car.* where s1 > 10" to
       // "select s1 from root.car.d1, root.car.d2 where root.car.d1.s1 > 10 and root.car.d2.s1 > 10"
-      // Note that,
-      // two fork tree has to be maintained while removing stars in paths for DnfFilterOptimizer
-      // requirement.
+      // Note that, two fork tree has to be maintained for DnfFilterOptimizer.
       return constructBinaryFilterTreeWithAnd(noStarPaths, filter);
     }
   }
