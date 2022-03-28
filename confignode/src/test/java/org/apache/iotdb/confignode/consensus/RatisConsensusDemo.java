@@ -34,7 +34,6 @@ import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.junit.Assert;
-import org.junit.Test;
 
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -106,10 +105,9 @@ public class RatisConsensusDemo {
   }
 
   private void setStorageGroups() throws TException {
-    // DataNodes can connect to any ConfigNode and send write requests
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < 10; i++) {
       SetStorageGroupReq req = new SetStorageGroupReq("root.sg" + i);
-      TSStatus status = clients[i].setStorageGroup(req);
+      TSStatus status = clients[0].setStorageGroup(req);
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     }
   }
@@ -118,46 +116,12 @@ public class RatisConsensusDemo {
     // sleep 1s to make sure all ConfigNode in ConfigNodeGroup hold the same PartitionTable
     TimeUnit.SECONDS.sleep(1);
 
-    // DataNodes can connect to any ConfigNode and send read requests
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < 2; i++) {
       Map<String, StorageGroupMessage> msgMap = clients[i].getStorageGroupsMessage();
-      Assert.assertEquals(3, msgMap.size());
-      for (int j = 0; j < 3; j++) {
+      Assert.assertEquals(10, msgMap.size());
+      for (int j = 0; j < 10; j++) {
         Assert.assertNotNull(msgMap.get("root.sg" + j));
         Assert.assertEquals("root.sg" + j, msgMap.get("root.sg" + j).getStorageGroup());
-      }
-    }
-  }
-
-  /**
-   * This code tests the high availability of the ratis-consensus protocol. Make sure that you have
-   * run according to the comments of ratisConsensusTest before executing this code. Next, kill
-   * ConfigNode that occupies ports 22281 and 22282 on the local machine. Finally, run this test.
-   */
-  public void killDemo() throws TException {
-    clients = new ConfigIService.Client[2];
-    for (int i = 0; i < 2; i++) {
-      TTransport transport =
-          RpcTransportFactory.INSTANCE.getTransport(localhost, 22277 + i * 2, timeOutInMS);
-      transport.open();
-      clients[i] = new ConfigIService.Client(new TBinaryProtocol(transport));
-    }
-
-    // DataNodes can still send read/write requests when one of the three ConfigNode is killed.
-
-    DataNodeRegisterResp resp =
-        clients[1].registerDataNode(new DataNodeRegisterReq(new EndPoint("0.0.0.0", 6670)));
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), resp.registerResult.getCode());
-    Assert.assertEquals(3, resp.getDataNodeID());
-
-    for (int i = 0; i < 2; i++) {
-      Map<Integer, DataNodeMessage> msgMap = clients[i].getDataNodesMessage(-1);
-      Assert.assertEquals(4, msgMap.size());
-      for (int j = 0; j < 4; j++) {
-        Assert.assertNotNull(msgMap.get(j));
-        Assert.assertEquals(j, msgMap.get(j).getDataNodeID());
-        Assert.assertEquals(localhost, msgMap.get(j).getEndPoint().getIp());
-        Assert.assertEquals(6667 + j, msgMap.get(j).getEndPoint().getPort());
       }
     }
   }
