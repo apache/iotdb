@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.mtree;
 
+import org.apache.iotdb.commons.partition.SchemaRegionId;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
@@ -87,7 +88,8 @@ public abstract class MTreeBelowSGTest {
   private MTreeBelowSG getStorageGroup(PartialPath path) throws MetadataException {
     try {
       root.setStorageGroup(path);
-      MTreeBelowSG mtree = new MTreeBelowSG(root.getStorageGroupNodeByStorageGroupPath(path));
+      MTreeBelowSG mtree =
+          new MTreeBelowSG(root.getStorageGroupNodeByStorageGroupPath(path), new SchemaRegionId(0));
       usedMTree.add(mtree);
       return mtree;
     } catch (IOException e) {

@@ -245,7 +245,7 @@ public class SchemaRegion {
       isRecovering = true;
 
       tagManager = new TagManager(schemaRegionDirPath);
-      mtree = new MTreeBelowSG(storageGroupMNode);
+      mtree = new MTreeBelowSG(storageGroupMNode, schemaRegionId);
 
       int lineNumber = initFromLog(logFile);
 

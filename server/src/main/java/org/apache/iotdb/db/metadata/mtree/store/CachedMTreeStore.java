@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.mtree.store;
 
+import org.apache.iotdb.commons.partition.SchemaRegionId;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.cache.MNodeNotCachedException;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
@@ -68,12 +69,9 @@ public class CachedMTreeStore implements IMTreeStore {
   private Lock readLock = readWriteLock.readLock();
   private Lock writeLock = readWriteLock.writeLock();
 
-  public CachedMTreeStore(PartialPath rootPath, boolean isStorageGroup)
+  public CachedMTreeStore(PartialPath rootPath, SchemaRegionId schemaRegionId)
       throws MetadataException, IOException {
-    if (!isStorageGroup) {
-      throw new MetadataException("CachedMTreeStore only support subTree below storage group");
-    }
-    file = SchemaFile.initSchemaFile(rootPath.getFullPath());
+    file = SchemaFile.initSchemaFile(rootPath.getFullPath(), schemaRegionId);
     root = file.init();
     cacheManager.initRootStatus(root);
   }
