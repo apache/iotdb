@@ -23,6 +23,7 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.statement.StatementNode;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
+import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 
 import java.time.ZoneId;
 import java.util.*;
@@ -108,7 +109,15 @@ public class SelectComponent extends StatementNode {
     if (pathsCache == null) {
       pathsCache = new ArrayList<>();
       for (ResultColumn resultColumn : resultColumns) {
-        pathsCache.addAll(resultColumn.collectPaths());
+        Expression expression = resultColumn.getExpression();
+        if (expression instanceof TimeSeriesOperand) {
+          pathsCache.add(((TimeSeriesOperand) expression).getPath());
+        } else if (expression instanceof FunctionExpression
+            && expression.isPlainAggregationFunctionExpression()) {
+          pathsCache.add(((TimeSeriesOperand) expression.getExpressions().get(0)).getPath());
+        } else {
+          pathsCache.add(null);
+        }
       }
     }
     return pathsCache;
