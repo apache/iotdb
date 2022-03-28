@@ -19,16 +19,19 @@
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.source;
 
 import org.apache.iotdb.commons.partition.DataRegionReplicaSet;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import com.google.common.collect.ImmutableList;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -109,6 +112,18 @@ public class SeriesScanNode extends SourceNode {
     return seriesPath.toString();
   }
 
+  public OrderBy getScanOrder() {
+    return scanOrder;
+  }
+
+  public int getLimit() {
+    return limit;
+  }
+
+  public int getOffset() {
+    return offset;
+  }
+
   public void setScanOrder(OrderBy scanOrder) {
     this.scanOrder = scanOrder;
   }
@@ -168,5 +183,14 @@ public class SeriesScanNode extends SourceNode {
     return String.format(
         "SeriesScanNode-%s:[SeriesPath: %s, DataRegion: %s]",
         this.getId(), this.getSeriesPath(), this.getDataRegionReplicaSet());
+  }
+
+  @TestOnly
+  public Pair<String, List<String>> print() {
+    String title = String.format("[SeriesScanNode (%s)]", this.getId());
+    List<String> attributes = new ArrayList<>();
+    attributes.add("SeriesPath: " + this.getSeriesPath());
+    attributes.add("scanOrder: " + this.getScanOrder().toString());
+    return new Pair<>(title, attributes);
   }
 }

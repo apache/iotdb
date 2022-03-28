@@ -18,11 +18,15 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -52,6 +56,7 @@ public class GroupByLevelNode extends ProcessNode {
     this.child = child;
     this.groupByLevels = groupByLevels;
     this.groupedPathMap = groupedPathMap;
+    this.columnNames = new ArrayList<>(groupedPathMap.values());
   }
 
   @Override
@@ -103,5 +108,14 @@ public class GroupByLevelNode extends ProcessNode {
 
   public void setColumnNames(List<String> columnNames) {
     this.columnNames = columnNames;
+  }
+
+  @TestOnly
+  public Pair<String, List<String>> print() {
+    String title = String.format("[GroupByLevelNode (%s)]", this.getId());
+    List<String> attributes = new ArrayList<>();
+    attributes.add("GroupByLevels: " + Arrays.toString(this.getGroupByLevels()));
+    attributes.add("ColumnNames: " + this.getOutputColumnNames());
+    return new Pair<>(title, attributes);
   }
 }

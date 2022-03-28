@@ -18,13 +18,16 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullPolicy;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -82,6 +85,10 @@ public class DeviceMergeNode extends ProcessNode {
     return columnNames;
   }
 
+  public OrderBy getMergeOrder() {
+    return mergeOrder;
+  }
+
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
     return visitor.visitDeviceMerge(this, context);
@@ -103,5 +110,14 @@ public class DeviceMergeNode extends ProcessNode {
   public void addChildDeviceNode(String deviceName, PlanNode childNode) {
     this.childDeviceNodeMap.put(deviceName, childNode);
     this.children.add(childNode);
+  }
+
+  @TestOnly
+  public Pair<String, List<String>> print() {
+    String title = String.format("[DeviceMergeNode (%s)]", this.getId());
+    List<String> attributes = new ArrayList<>();
+    attributes.add(
+        "MergeOrder: " + (this.getMergeOrder() == null ? "null" : this.getMergeOrder().toString()));
+    return new Pair<>(title, attributes);
   }
 }

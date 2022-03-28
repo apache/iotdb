@@ -18,14 +18,17 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import com.google.common.collect.ImmutableList;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -70,6 +73,10 @@ public class SortNode extends ProcessNode {
     return child.getOutputColumnNames();
   }
 
+  public OrderBy getSortOrder() {
+    return sortOrder;
+  }
+
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
     return visitor.visitSort(this, context);
@@ -81,4 +88,13 @@ public class SortNode extends ProcessNode {
 
   @Override
   public void serialize(ByteBuffer byteBuffer) {}
+
+  @TestOnly
+  public Pair<String, List<String>> print() {
+    String title = String.format("[SortNode (%s)]", this.getId());
+    List<String> attributes = new ArrayList<>();
+    attributes.add(
+        "SortOrder: " + (this.getSortOrder() == null ? "null" : this.getSortOrder().toString()));
+    return new Pair<>(title, attributes);
+  }
 }

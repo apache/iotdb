@@ -18,11 +18,14 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -82,5 +85,13 @@ public class OffsetNode extends ProcessNode {
 
   public int getOffset() {
     return offset;
+  }
+
+  @TestOnly
+  public Pair<String, List<String>> print() {
+    String title = String.format("[OffsetNode (%s)]", this.getId());
+    List<String> attributes = new ArrayList<>();
+    attributes.add("RowOffset: " + this.getOffset());
+    return new Pair<>(title, attributes);
   }
 }

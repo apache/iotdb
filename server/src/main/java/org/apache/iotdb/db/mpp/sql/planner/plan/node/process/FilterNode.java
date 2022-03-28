@@ -18,14 +18,17 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import com.google.common.collect.ImmutableList;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 
 /** The FilterNode is responsible to filter the RowRecord from TsBlock. */
@@ -82,5 +85,13 @@ public class FilterNode extends ProcessNode {
 
   public PlanNode getChild() {
     return child;
+  }
+
+  @TestOnly
+  public Pair<String, List<String>> print() {
+    String title = String.format("[FilterNode (%s)]", this.getId());
+    List<String> attributes = new ArrayList<>();
+    attributes.add("QueryFilter: " + this.getPredicate().toString());
+    return new Pair<>(title, attributes);
   }
 }

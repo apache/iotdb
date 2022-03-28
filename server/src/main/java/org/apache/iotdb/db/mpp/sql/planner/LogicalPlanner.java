@@ -121,10 +121,12 @@ public class LogicalPlanner {
           deviceNameToSourceNodesMap
               .computeIfAbsent(deviceName, k -> new HashSet<>())
               .add(sourceNode);
-          deviceNameToDataRegionReplicaSetMap.computeIfAbsent(
-              deviceName,
-              k -> analysis.getDataPartitionInfo().getDataRegionReplicaSet(k, null).get(0));
-          sourceNode.setDataRegionReplicaSet(deviceNameToDataRegionReplicaSetMap.get(deviceName));
+          //          deviceNameToDataRegionReplicaSetMap.computeIfAbsent(
+          //              deviceName,
+          //              k -> analysis.getDataPartitionInfo().getDataRegionReplicaSet(k,
+          // null).get(0));
+          //
+          // sourceNode.setDataRegionReplicaSet(deviceNameToDataRegionReplicaSetMap.get(deviceName));
         }
       }
 
@@ -209,7 +211,7 @@ public class LogicalPlanner {
     }
 
     private PlanBuilder planSort(PlanBuilder planBuilder, OrderBy resultOrder) {
-      if (resultOrder == null) {
+      if (resultOrder == null || resultOrder == OrderBy.TIMESTAMP_ASC) {
         return planBuilder;
       }
 
@@ -218,7 +220,7 @@ public class LogicalPlanner {
     }
 
     private PlanBuilder planLimit(PlanBuilder planBuilder, int rowLimit) {
-      if (rowLimit == -1) {
+      if (rowLimit == 0) {
         return planBuilder;
       }
 

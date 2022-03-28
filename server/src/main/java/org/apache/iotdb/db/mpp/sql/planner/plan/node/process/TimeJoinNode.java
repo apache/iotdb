@@ -18,12 +18,14 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeIdAllocator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullPolicy;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -113,6 +115,14 @@ public class TimeJoinNode extends ProcessNode {
     this.children = children;
   }
 
+  public OrderBy getMergeOrder() {
+    return mergeOrder;
+  }
+
+  public FilterNullPolicy getFilterNullPolicy() {
+    return filterNullPolicy;
+  }
+
   public void setMergeOrder(OrderBy mergeOrder) {
     this.mergeOrder = mergeOrder;
   }
@@ -123,5 +133,19 @@ public class TimeJoinNode extends ProcessNode {
 
   public String toString() {
     return "TimeJoinNode-" + this.getId();
+  }
+
+  @TestOnly
+  public Pair<String, List<String>> print() {
+    String title = String.format("[TimeJoinNode (%s)]", this.getId());
+    List<String> attributes = new ArrayList<>();
+    attributes.add(
+        "MergeOrder: " + (this.getMergeOrder() == null ? "null" : this.getMergeOrder().toString()));
+    attributes.add(
+        "FilterNullPolicy: "
+            + (this.getFilterNullPolicy() == null
+                ? "null"
+                : this.getFilterNullPolicy().toString()));
+    return new Pair<>(title, attributes);
   }
 }
