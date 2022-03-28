@@ -25,6 +25,8 @@ import org.apache.iotdb.db.mpp.common.SessionInfo;
 import org.apache.iotdb.db.mpp.execution.QueryExecution;
 import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
 import org.apache.iotdb.db.mpp.sql.parser.StatementGenerator;
+import org.apache.iotdb.db.mpp.sql.planner.plan.DistributedQueryPlan;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.junit.Test;
 
@@ -35,12 +37,21 @@ public class QueryPlannerTest {
   @Test
   public void TestSqlToDistributedPlan() {
 
-    String querySql = "SELECT d1.*, d22.s1 FROM root.sg";
+    String querySql = "SELECT d1.*, d333.s1 FROM root.sg LIMIT 10";
 
     Statement stmt = StatementGenerator.createStatement(querySql, ZoneId.systemDefault());
-    System.out.println(stmt);
 
     QueryExecution queryExecution = new QueryExecution(stmt, new MPPQueryContext(querySql, new QueryId("query1"), new SessionInfo(), QueryType.READ));
-    System.out.println(queryExecution);
+    queryExecution.doLogicalPlan();
+    System.out.printf("SQL: %s%n%n", querySql);
+    System.out.println("===== Step 1: Logical Plan =====");
+    System.out.println(PlanNodeUtil.nodeToString(queryExecution.getLogicalPlan().getRootNode()));
+
+    queryExecution.doDistributedPlan();
+    DistributedQueryPlan distributedQueryPlan = queryExecution.getDistributedPlan();
+
+    System.out.println("===== Step 4: Split Fragment Instance =====");
+    distributedQueryPlan.getInstances().forEach(System.out::println);
+
   }
 }

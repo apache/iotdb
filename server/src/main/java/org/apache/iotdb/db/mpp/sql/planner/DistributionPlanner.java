@@ -21,13 +21,7 @@ package org.apache.iotdb.db.mpp.sql.planner;
 import org.apache.iotdb.commons.partition.DataRegionReplicaSet;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
-import org.apache.iotdb.db.mpp.sql.planner.plan.DistributedQueryPlan;
-import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
-import org.apache.iotdb.db.mpp.sql.planner.plan.IFragmentParallelPlaner;
-import org.apache.iotdb.db.mpp.sql.planner.plan.LogicalQueryPlan;
-import org.apache.iotdb.db.mpp.sql.planner.plan.PlanFragment;
-import org.apache.iotdb.db.mpp.sql.planner.plan.SimpleFragmentParallelPlanner;
-import org.apache.iotdb.db.mpp.sql.planner.plan.SubPlan;
+import org.apache.iotdb.db.mpp.sql.planner.plan.*;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.*;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
@@ -71,8 +65,10 @@ public class DistributionPlanner {
 
   public DistributedQueryPlan planFragments() {
     PlanNode rootAfterRewrite = rewriteSource();
+    System.out.println("===== Step 2: Partition SourceNode =====");
     System.out.println(PlanNodeUtil.nodeToString(rootAfterRewrite));
     PlanNode rootWithExchange = addExchangeNode(rootAfterRewrite);
+    System.out.println("===== Step 3: Add ExchangeNode =====");
     System.out.println(PlanNodeUtil.nodeToString(rootWithExchange));
     SubPlan subPlan = splitFragment(rootWithExchange);
     List<FragmentInstance> fragmentInstances = planFragmentInstances(subPlan);

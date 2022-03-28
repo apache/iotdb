@@ -36,6 +36,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.mpp.sql.planner.plan.SubPlan;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeIdAllocator;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
@@ -72,7 +73,7 @@ public class DistributionPlannerTest {
         new DistributionPlanner(analysis, new LogicalQueryPlan(new MPPQueryContext(), root));
     PlanNode newRoot = planner.rewriteSource();
 
-    //        PlanNodeUtil.printPlanNode(newRoot);
+    System.out.println(PlanNodeUtil.nodeToString(newRoot));
     assertEquals(newRoot.getChildren().get(0).getChildren().size(), 3);
   }
 
