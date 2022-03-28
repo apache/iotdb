@@ -54,7 +54,6 @@ import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
@@ -794,25 +793,25 @@ public class StorageEngine implements IService {
     }
   }
 
-  // TODO:(New insert)
-  public void insertV2(DataRegionId dataRegionId, InsertRowNode insertRowNode)
-      throws StorageEngineException, MetadataException {
-    if (enableMemControl) {
-      try {
-        blockInsertionIfReject(null);
-      } catch (WriteProcessException e) {
-        throw new StorageEngineException(e);
-      }
-    }
-
-    VirtualStorageGroupProcessor dataRegion = dataRegionMap.get(dataRegionId);
-
-    try {
-      dataRegion.insert(insertRowNode);
-    } catch (WriteProcessException e) {
-      throw new StorageEngineException(e);
-    }
-  }
+  //  // TODO:(New insert)
+  //  public void insertV2(DataRegionId dataRegionId, InsertRowNode insertRowNode)
+  //      throws StorageEngineException, MetadataException {
+  //    if (enableMemControl) {
+  //      try {
+  //        blockInsertionIfReject(null);
+  //      } catch (WriteProcessException e) {
+  //        throw new StorageEngineException(e);
+  //      }
+  //    }
+  //
+  //    VirtualStorageGroupProcessor dataRegion = dataRegionMap.get(dataRegionId);
+  //
+  //    try {
+  //      dataRegion.insert(insertRowNode);
+  //    } catch (WriteProcessException e) {
+  //      throw new StorageEngineException(e);
+  //    }
+  //  }
 
   public void insert(InsertRowsOfOneDevicePlan insertRowsOfOneDevicePlan)
       throws StorageEngineException, MetadataException {
