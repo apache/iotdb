@@ -28,13 +28,10 @@ import org.apache.iotdb.tsfile.read.common.TimeRange;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Map;
 
 public interface IMetadataQuerier {
 
   List<IChunkMetadata> getChunkMetaDataList(Path path) throws IOException;
-
-  Map<Path, List<IChunkMetadata>> getChunkMetaDataMap(List<Path> paths) throws IOException;
 
   TsFileMetadata getWholeFileMetadata();
 
@@ -48,13 +45,9 @@ public interface IMetadataQuerier {
    */
   void loadChunkMetaDatas(List<Path> paths) throws IOException;
 
-  void loadChunkMetaDatasV2(List<Path> paths) throws IOException;
-
   void loadChunkMetaDatasV3(List<Path> paths) throws IOException;
 
   void loadChunkMetaDatasV4(List<Path> paths) throws IOException;
-
-  void loadChunkMetaDatasHash(List<Path> paths) throws IOException;
 
   /**
    * @return the corresponding data type.

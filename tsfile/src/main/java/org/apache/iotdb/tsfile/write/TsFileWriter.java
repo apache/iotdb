@@ -634,12 +634,6 @@ public class TsFileWriter implements AutoCloseable {
     fileWriter.endFileV2();
   }
 
-  public void closeHash() throws IOException {
-    LOG.info("start close file");
-    flushAllChunkGroups();
-    fileWriter.endFileHash();
-  }
-
   /**
    * this function is only for Test.
    *

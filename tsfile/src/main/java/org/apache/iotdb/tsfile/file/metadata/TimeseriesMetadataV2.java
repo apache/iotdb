@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.tsfile.file.metadata;
 
-import org.apache.iotdb.tsfile.common.cache.Accountable;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -35,7 +34,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-public class TimeseriesMetadataV2 implements Accountable, ITimeSeriesMetadata {
+public class TimeseriesMetadataV2 implements ITimeSeriesMetadata {
 
   /** used for old version tsfile */
   private long startOffsetOfChunkMetaDataList;
@@ -200,11 +199,6 @@ public class TimeseriesMetadataV2 implements Accountable, ITimeSeriesMetadata {
   }
 
   @Override
-  public List<IChunkMetadata> getChunkMetadataList() {
-    return chunkMetadataList;
-  }
-
-  @Override
   public Statistics getStatistics() {
     throw new UnSupportedDataTypeException("No statistics in TimeseriesMetadataV2");
   }
@@ -215,16 +209,6 @@ public class TimeseriesMetadataV2 implements Accountable, ITimeSeriesMetadata {
 
   public void setModified(boolean modified) {
     this.modified = modified;
-  }
-
-  @Override
-  public void setRamSize(long size) {
-    this.ramSize = size;
-  }
-
-  @Override
-  public long getRamSize() {
-    return ramSize;
   }
 
   @Override

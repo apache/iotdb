@@ -34,8 +34,8 @@ import org.apache.iotdb.tsfile.file.metadata.AlignedTimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.MetadataIndexBucket;
 import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
+import org.apache.iotdb.tsfile.file.metadata.MetadataIndexBucket;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexEntry;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNodeV2;
@@ -624,11 +624,9 @@ public class TsFileSequenceReader implements AutoCloseable {
    * Find the leaf node that contains this vector, return all the needed subSensor and time column
    *
    * @param path path with time column
-   * @param subSensorList value columns that needed
    * @return TimeseriesMetadata for the time column and all the needed subSensor, the order of the
    *     element in this list should be the same as subSensorList
    */
-  public List<TimeseriesMetadata> readTimeseriesMetadata(Path path, List<String> subSensorList)
   // This method is only used for TsFile
   public ITimeSeriesMetadata readITimeseriesMetadata(Path path, boolean ignoreNotExists)
       throws IOException {
@@ -2282,17 +2280,6 @@ public class TsFileSequenceReader implements AutoCloseable {
     return chunkMetadataList;
   }
 
-  public List<ChunkMetadata> getChunkMetadataListV2(Path path, boolean ignoreNotExists)
-      throws IOException {
-    TimeseriesMetadataV2 timeseriesMetaData = readTimeseriesMetadataV2(path, ignoreNotExists);
-    if (timeseriesMetaData == null) {
-      return Collections.emptyList();
-    }
-    List<ChunkMetadata> chunkMetadataList = readChunkMetaDataListV2(timeseriesMetaData);
-    chunkMetadataList.sort(Comparator.comparingLong(IChunkMetadata::getStartTime));
-    return chunkMetadataList;
-  }
-
   public List<ChunkMetadata> getChunkMetadataList(Path path) throws IOException {
     return getChunkMetadataList(path, false);
   }
@@ -2397,13 +2384,6 @@ public class TsFileSequenceReader implements AutoCloseable {
     } else {
       return new ArrayList<>(((TimeseriesMetadata) timeseriesMetaData).getChunkMetadataList());
     }
-  }
-
-  public List<ChunkMetadata> readChunkMetaDataListV2(TimeseriesMetadataV2 timeseriesMetaData)
-      throws IOException {
-    return timeseriesMetaData.getChunkMetadataList().stream()
-        .map(chunkMetadata -> (ChunkMetadata) chunkMetadata)
-        .collect(Collectors.toList());
   }
 
   /**

@@ -121,8 +121,6 @@ public class TsFileExecutor implements QueryExecutor {
       metadataQuerier.loadChunkMetaDatasV3(queryExpression.getSelectedSeries());
     } else if (treeType == 1) {
       metadataQuerier.loadChunkMetaDatasV4(queryExpression.getSelectedSeries());
-    } else if (treeType == 2) {
-      metadataQuerier.loadChunkMetaDatasHash(queryExpression.getSelectedSeries());
     }
     if (queryExpression.hasQueryFilter()) {
       try {

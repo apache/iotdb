@@ -19,7 +19,13 @@
 package org.apache.iotdb.tsfile.read.controller;
 
 import org.apache.iotdb.tsfile.common.cache.LRUCache;
-import org.apache.iotdb.tsfile.file.metadata.*;
+import org.apache.iotdb.tsfile.file.metadata.AlignedTimeSeriesMetadata;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TsFileMetadataHash;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader.LocateStatus;
@@ -27,8 +33,15 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
+import java.util.TreeMap;
 
 public class MetadataQuerierByFileImpl implements IMetadataQuerier {
 
@@ -50,9 +63,9 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
     // FIXME
     this.fileMetaData = tsFileReader.readFileMetadataV2();
     chunkMetaDataCache =
-        new LRUCache<Path, List<ChunkMetadata>>(CACHED_ENTRY_NUMBER) {
+        new LRUCache<Path, List<IChunkMetadata>>(CACHED_ENTRY_NUMBER) {
           @Override
-          public List<ChunkMetadata> loadObjectByKey(Path key) throws IOException {
+          public List<IChunkMetadata> loadObjectByKey(Path key) throws IOException {
             return loadChunkMetadata(key);
           }
         };
@@ -83,18 +96,6 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
   }
 
   @Override
-  public Map<Path, List<IChunkMetadata>> getChunkMetaDataMap(List<Path> paths) throws IOException {
-    Map<Path, List<IChunkMetadata>> chunkMetaDatas = new HashMap<>();
-    for (Path path : paths) {
-      if (!chunkMetaDatas.containsKey(path)) {
-        chunkMetaDatas.put(path, new ArrayList<>());
-      }
-      chunkMetaDatas.get(path).addAll(getChunkMetaDataList(path));
-    }
-    return chunkMetaDatas;
-  }
-
-  @Override
   public TsFileMetadata getWholeFileMetadata() {
     return fileMetaData;
   }
@@ -107,6 +108,108 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
   @Override
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void loadChunkMetaDatas(List<Path> paths) throws IOException {
+    // group measurements by device
+    TreeMap<String, Set<String>> deviceMeasurementsMap = new TreeMap<>();
+    for (Path path : paths) {
+      if (!deviceMeasurementsMap.containsKey(path.getDevice())) {
+        deviceMeasurementsMap.put(path.getDevice(), new HashSet<>());
+      }
+      deviceMeasurementsMap.get(path.getDevice()).add(path.getMeasurement());
+    }
+    int count = 0;
+    boolean enough = false;
+    for (Map.Entry<String, Set<String>> deviceMeasurements : deviceMeasurementsMap.entrySet()) {
+      if (enough) {
+        break;
+      }
+      String selectedDevice = deviceMeasurements.getKey();
+      Set<String> selectedMeasurements = deviceMeasurements.getValue();
+      List<String> devices = this.tsFileReader.getAllDevices();
+      String[] deviceNames = devices.toArray(new String[0]);
+      if (Arrays.binarySearch(deviceNames, selectedDevice) < 0) {
+        continue;
+      }
+
+      List<ITimeSeriesMetadata> timeseriesMetaDataList =
+          tsFileReader.readITimeseriesMetadata(selectedDevice, selectedMeasurements);
+      for (ITimeSeriesMetadata timeseriesMetadata : timeseriesMetaDataList) {
+        List<IChunkMetadata> chunkMetadataList =
+            tsFileReader.readIChunkMetaDataList(timeseriesMetadata);
+        String measurementId;
+        if (timeseriesMetadata instanceof AlignedTimeSeriesMetadata) {
+          measurementId =
+              ((AlignedTimeSeriesMetadata) timeseriesMetadata)
+                  .getValueTimeseriesMetadataList()
+                  .get(0)
+                  .getMeasurementId();
+        } else {
+          measurementId = ((TimeseriesMetadata) timeseriesMetadata).getMeasurementId();
+        }
+        this.chunkMetaDataCache.put(new Path(selectedDevice, measurementId), chunkMetadataList);
+        count += chunkMetadataList.size();
+        if (count == CACHED_ENTRY_NUMBER) {
+          enough = true;
+          break;
+        }
+      }
+    }
+  }
+
+  @Override
+  // FIXME
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
+  public void loadChunkMetaDatasV3(List<Path> paths) throws IOException {
+    // group measurements by device
+    TreeMap<String, Set<String>> deviceMeasurementsMap = new TreeMap<>();
+    for (Path path : paths) {
+      if (!deviceMeasurementsMap.containsKey(path.getDevice())) {
+        deviceMeasurementsMap.put(path.getDevice(), new HashSet<>());
+      }
+      deviceMeasurementsMap.get(path.getDevice()).add(path.getMeasurement());
+    }
+    int count = 0;
+    boolean enough = false;
+    for (Map.Entry<String, Set<String>> deviceMeasurements : deviceMeasurementsMap.entrySet()) {
+      if (enough) {
+        break;
+      }
+      String selectedDevice = deviceMeasurements.getKey();
+      Set<String> selectedMeasurements = deviceMeasurements.getValue();
+      List<String> devices = this.tsFileReader.getAllDevices();
+      String[] deviceNames = devices.toArray(new String[0]);
+      if (Arrays.binarySearch(deviceNames, selectedDevice) < 0) {
+        continue;
+      }
+
+      List<ITimeSeriesMetadata> timeseriesMetaDataList =
+          tsFileReader.readITimeseriesMetadata(selectedDevice, selectedMeasurements);
+      for (ITimeSeriesMetadata timeseriesMetadata : timeseriesMetaDataList) {
+        List<IChunkMetadata> chunkMetadataList =
+            tsFileReader.readIChunkMetaDataList(timeseriesMetadata);
+        String measurementId;
+        if (timeseriesMetadata instanceof AlignedTimeSeriesMetadata) {
+          measurementId =
+              ((AlignedTimeSeriesMetadata) timeseriesMetadata)
+                  .getValueTimeseriesMetadataList()
+                  .get(0)
+                  .getMeasurementId();
+        } else {
+          measurementId = ((TimeseriesMetadata) timeseriesMetadata).getMeasurementId();
+        }
+        this.chunkMetaDataCache.put(new Path(selectedDevice, measurementId), chunkMetadataList);
+        count += chunkMetadataList.size();
+        if (count == CACHED_ENTRY_NUMBER) {
+          enough = true;
+          break;
+        }
+      }
+    }
+  }
+
+  @Override
+  // FIXME
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
+  public void loadChunkMetaDatasV4(List<Path> paths) throws IOException {
     // group measurements by device
     TreeMap<String, Set<String>> deviceMeasurementsMap = new TreeMap<>();
     for (Path path : paths) {

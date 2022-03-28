@@ -31,14 +31,13 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.utils.MeasurementGroup;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import org.junit.After;
 import org.junit.Before;
@@ -330,7 +329,7 @@ public class MetadataIndexConstructorV2Test {
           for (String measurement : singleMeasurement[i]) {
             tsFileWriter.registerTimeseries(
                 new Path(device, measurement),
-                new UnaryMeasurementSchema(measurement, TSDataType.INT64, TSEncoding.RLE));
+                new MeasurementSchema(measurement, TSDataType.INT64, TSEncoding.RLE));
           }
           // the number of record rows
           int rowNum = 10;
@@ -357,25 +356,24 @@ public class MetadataIndexConstructorV2Test {
           String vectorName =
               vectorPrefix + generateIndexString(vectorIndex, vectorMeasurement.length);
           logger.info("generating vector {}...", vectorName);
-          List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
           int measurementNum = vectorMeasurement[i][vectorIndex];
-          String[] measurementNames = new String[measurementNum];
-          TSDataType[] dataTypes = new TSDataType[measurementNum];
+          List<MeasurementSchema> schemas = new ArrayList<>();
+          List<MeasurementSchema> tabletSchema = new ArrayList<>();
           for (int measurementIndex = 0; measurementIndex < measurementNum; measurementIndex++) {
             String measurementName =
                 measurementPrefix + generateIndexString(measurementIndex, measurementNum);
             logger.info("generating vector measurement {}...", measurementName);
             // add measurements into file schema (all with INT64 data type)
-            measurementNames[measurementIndex] = measurementName;
-            dataTypes[measurementIndex] = TSDataType.INT64;
+            MeasurementSchema schema1 =
+                new MeasurementSchema(measurementName, TSDataType.INT64, TSEncoding.RLE);
+            schemas.add(schema1);
+            tabletSchema.add(schema1);
           }
-          IMeasurementSchema measurementSchema =
-              new VectorMeasurementSchema(vectorName, measurementNames, dataTypes);
-          measurementSchemas.add(measurementSchema);
-          schema.registerTimeseries(new Path(device, vectorName), measurementSchema);
+          MeasurementGroup group = new MeasurementGroup(true, schemas);
+          schema.registerMeasurementGroup(new Path(device), group);
           // add measurements into TSFileWriter
           // construct the tablet
-          Tablet tablet = new Tablet(device, measurementSchemas);
+          Tablet tablet = new Tablet(device, tabletSchema);
           long[] timestamps = tablet.timestamps;
           Object[] values = tablet.values;
           long timestamp = 1;
