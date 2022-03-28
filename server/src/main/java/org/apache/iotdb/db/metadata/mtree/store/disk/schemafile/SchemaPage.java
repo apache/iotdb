@@ -119,10 +119,15 @@ public class SchemaPage implements ISchemaPage {
   /**
    * Insert a content directly into specified segment, without considering preallocate and
    * reallocate segment. <br>
-   * Find the right segment instance which MUST exists, cache the segment and insert the record. If
-   * not enough, reallocate inside page first, or return negative for new page then.
+   * Find the right segment instance which MUST exists, cache the segment and insert the record.
+   * <br>
+   * If not enough, reallocate inside page first, or throw exception for new page then.
    *
-   * @param segIdx
+   * <p>Notice that, since {@link SchemaFile#reEstimateSegSize(int)} may increase segment with very
+   * small extent, which originates from design of {@link SchemaFile#estimateSegmentSize(IMNode)}, a
+   * twice relocate will suffice any nodes smaller than 1024 KiB.<br>
+   * This reason works for {@link #update(short, String, ByteBuffer)} as well.
+   *
    * @return return 0 if write succeed, a positive for next segment address
    * @throws SchemaPageOverflowException no next segment, no spare space inside page
    */
@@ -137,14 +142,21 @@ public class SchemaPage implements ISchemaPage {
         return tarSeg.getNextSegAddress();
       }
 
-      // reallocate inside page, if not enough space for new size segment, throw exception
-      short newSegSize = SchemaFile.reEstimateSegSize(tarSeg.size());
-      res = relocateSegment(tarSeg, segIdx, newSegSize).insertRecord(key, buffer);
+      // relocate inside page, if not enough space for new size segment, throw exception
+      tarSeg = relocateSegment(tarSeg, segIdx, SchemaFile.reEstimateSegSize(tarSeg.size()));
+      res = tarSeg.insertRecord(key, buffer);
+
       if (res < 0) {
-        // failed to insert buffer into new segment
-        throw new MetadataException("failed to insert buffer into new segment");
+        res =
+            relocateSegment(tarSeg, segIdx, SchemaFile.reEstimateSegSize(tarSeg.size()))
+                .insertRecord(key, buffer);
+        if (res < 0) {
+          // failed to insert buffer into new segment
+          throw new MetadataException("failed to insert buffer into new segment");
+        }
       }
     }
+
     return 0L;
   }
 
@@ -187,17 +199,27 @@ public class SchemaPage implements ISchemaPage {
 
   /**
    * The record is definitely inside specified segment. This method compare old and new buffer to
-   * decide whether update in place. If segment not enough, it will reallocate in this page first,
-   * update segment offset list If no more space for reallocation, return a negative for new page.
+   * decide whether update in place. <br>
+   * If segment not enough, it will reallocate in this page first, and update segment offset list.
+   * <br>
+   * If no more space for reallocation, throw {@link SchemaPageOverflowException} and return a
+   * negative for new page.
    *
-   * @param segIdx
-   * @param buffer
+   * <p>See {@linkplain #write(short, String, ByteBuffer)} for the detail reason of a twice try.
+   *
    * @return spare space of the segment, negative if not enough
    */
   public void update(short segIdx, String key, ByteBuffer buffer) throws MetadataException {
     ISegment seg = getSegment(segIdx);
     try {
       seg.updateRecord(key, buffer);
+    } catch (SegmentOverflowException e) {
+      seg = relocateSegment(seg, segIdx, SchemaFile.reEstimateSegSize(seg.size()));
+    }
+
+    // relocate and try update twice ensures safety for reasonable big node
+    try {
+      int res = seg.updateRecord(key, buffer);
     } catch (SegmentOverflowException e) {
       seg = relocateSegment(seg, segIdx, SchemaFile.reEstimateSegSize(seg.size()));
       int res = seg.updateRecord(key, buffer);
@@ -209,13 +231,28 @@ public class SchemaPage implements ISchemaPage {
   }
 
   /**
-   * Bytes length from [tail of last segment] to [head of offset list].
+   * Calculated with accurate total segment size by examine segment buffers.<br>
+   * This accuracy will save much space for schema file at the cost of more frequent rearrangement.
    *
    * @return
    */
   @Override
   public short getSpareSize() {
-    return (short) (SchemaFile.PAGE_LENGTH - pageSpareOffset - segNum * SchemaFile.SEG_OFF_DIG);
+    syncPageBuffer();
+    ByteBuffer bufferR = this.pageBuffer.asReadOnlyBuffer();
+    bufferR.clear();
+    short amountSize = 0;
+    for (short ofs : segOffsetLst) {
+      if (ofs >= 0) {
+        bufferR.position(ofs);
+        amountSize += Segment.getSegBufLen(bufferR);
+      }
+    }
+    return (short)
+        (SchemaFile.PAGE_LENGTH
+            - amountSize
+            - SchemaFile.PAGE_HEADER_SIZE
+            - segNum * SchemaFile.SEG_OFF_DIG);
   }
 
   @Override
@@ -235,8 +272,8 @@ public class SchemaPage implements ISchemaPage {
   }
 
   /**
-   * <p>While segments are always synchronized with buffer {@linkplain SchemaPage#pageBuffer}, header and tail
-   * are not. This method will synchronize them with in mem attributes.
+   * While segments are always synchronized with buffer {@linkplain SchemaPage#pageBuffer}, header
+   * and tail are not. This method will synchronize them with in mem attributes.
    */
   @Override
   public void syncPageBuffer() {
@@ -423,13 +460,34 @@ public class SchemaPage implements ISchemaPage {
   // region Space Allocation
 
   /**
+   * This method will allocate DIRECTLY from spare space and return corresponding ByteBuffer. It
+   * will not update segLstLen nor segCacheMap, since no segment initiated inside this method.
+   *
+   * @param size target size of the ByteBuffer
+   * @return ByteBuffer object
+   */
+  private ByteBuffer allocSpareBufferSlice(short size) throws SchemaPageOverflowException {
+    // check whether enough space to be directly allocate
+    if (SchemaFile.PAGE_LENGTH - pageSpareOffset - segNum * SchemaFile.SEG_OFF_DIG
+        < size + SchemaFile.SEG_OFF_DIG) {
+      throw new SchemaPageOverflowException(pageIndex);
+    }
+
+    pageBuffer.clear();
+    pageBuffer.position(pageSpareOffset);
+    pageBuffer.limit(pageSpareOffset + size);
+
+    return pageBuffer.slice();
+  }
+
+  /**
    * Allocate a new segment to extend specified segment, modify cache map and list.<br>
    * Mark original segment instance as deleted, modify segOffsetList, pageSpareOffset and
    * segCacheMap.
    *
    * <p><b> The new segment could be allocated from spare space or rearranged space.</b>
    *
-   * TODO: maybe relocate in-place first
+   * <p>TODO: maybe relocate in-place first
    *
    * @param seg original segment instance
    * @param segIdx original segment index
@@ -439,7 +497,7 @@ public class SchemaPage implements ISchemaPage {
    */
   private ISegment relocateSegment(ISegment seg, short segIdx, short newSize)
       throws SchemaPageOverflowException, SegmentNotFoundException {
-    if (newSize >= SchemaFile.SEG_MAX_SIZ || getSpareSize() + seg.size() < newSize) {
+    if (seg.size() == SchemaFile.SEG_MAX_SIZ || getSpareSize() + seg.size() < newSize) {
       throw new SchemaPageOverflowException(pageIndex);
     }
     ByteBuffer newBuffer;
@@ -463,26 +521,6 @@ public class SchemaPage implements ISchemaPage {
     seg.delete();
 
     return newSeg;
-  }
-
-  /**
-   * This method will allocate DIRECTLY from spare space and return corresponding ByteBuffer. It
-   * will not update segLstLen nor segCacheMap, since no segment initiated inside this method.
-   *
-   * @param size target size of the ByteBuffer
-   * @return ByteBuffer object
-   */
-  private ByteBuffer allocSpareBufferSlice(short size) throws SchemaPageOverflowException {
-    // check whether enough space
-    if (getSpareSize() < size + SchemaFile.SEG_OFF_DIG) {
-      throw new SchemaPageOverflowException(pageIndex);
-    }
-
-    pageBuffer.clear();
-    pageBuffer.position(pageSpareOffset);
-    pageBuffer.limit(pageSpareOffset + size);
-
-    return pageBuffer.slice();
   }
 
   /**

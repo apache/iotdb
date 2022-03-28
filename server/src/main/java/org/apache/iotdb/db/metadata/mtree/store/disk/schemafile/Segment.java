@@ -595,7 +595,9 @@ public class Segment implements ISegment {
       try {
         if (RecordUtils.getRecordType(bufferR) == 0 || RecordUtils.getRecordType(bufferR) == 1) {
           builder.append(
-              String.format("(%s -> %s),", pair.left, Long.toHexString(RecordUtils.getRecordSegAddr(bufferR))));
+              String.format(
+                  "(%s -> %s),",
+                  pair.left, Long.toHexString(RecordUtils.getRecordSegAddr(bufferR))));
         } else if (RecordUtils.getRecordType(bufferR) == 4) {
           builder.append(
               String.format("(%s, %s),", pair.left, RecordUtils.getRecordAlias(bufferR)));
