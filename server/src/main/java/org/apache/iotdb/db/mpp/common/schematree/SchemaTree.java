@@ -38,7 +38,7 @@ public class SchemaTree {
    *
    * @param pathPattern can be a pattern or a full path of timeseries.
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
-   * @return Left: all measurement paths; Right: remaining offset
+   * @return Left: all measurement paths; Right: remaining series offset
    */
   public Pair<List<MeasurementPath>, Integer> searchMeasurementPaths(
       PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch) {
