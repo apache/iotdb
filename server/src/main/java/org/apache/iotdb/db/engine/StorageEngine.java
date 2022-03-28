@@ -297,8 +297,7 @@ public class StorageEngine implements IService {
       }
       PartialPath sg = new PartialPath(sgDir.getName());
       // TODO: need to get TTL Info from config node
-      IStorageGroupMNode storageGroupMNode =
-          IoTDB.schemaEngine.getStorageGroupNodeByPath(sg);
+      IStorageGroupMNode storageGroupMNode = IoTDB.schemaEngine.getStorageGroupNodeByPath(sg);
       for (File dataRegionDir : sgDir.listFiles()) {
         if (!dataRegionDir.isDirectory()) {
           continue;
