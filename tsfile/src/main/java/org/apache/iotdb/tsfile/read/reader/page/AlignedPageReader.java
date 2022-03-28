@@ -134,8 +134,13 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
       if (!isNull && (filter == null || filter.satisfy(timestamp, notNullObject))) {
         builder.getTimeColumnBuilder().writeLong(timestamp);
         for (int i = 0; i < v.length; i++) {
-          builder.getColumnBuilder(i).writeTsPrimitiveType(v[i]);
+          if (v[i] != null) {
+            builder.getColumnBuilder(i).writeTsPrimitiveType(v[i]);
+          } else {
+            builder.getColumnBuilder(i).appendNull();
+          }
         }
+        builder.declarePosition();
       }
     }
     return builder.build();

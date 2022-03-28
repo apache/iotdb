@@ -161,9 +161,9 @@ public class PageReader implements IPageReader {
   @Override
   public TsBlock getAllSatisfiedData(boolean ascending) throws IOException {
     // TODO we still need to consider data type, ascending and descending here
-    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(Collections.singletonList(dataType));
-    TimeColumnBuilder timeBuilder = tsBlockBuilder.getTimeColumnBuilder();
-    ColumnBuilder valueBuilder = tsBlockBuilder.getColumnBuilder(0);
+    TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(dataType));
+    TimeColumnBuilder timeBuilder = builder.getTimeColumnBuilder();
+    ColumnBuilder valueBuilder = builder.getColumnBuilder(0);
     if (filter == null || filter.satisfy(getStatistics())) {
       switch (dataType) {
         case BOOLEAN:
@@ -173,6 +173,7 @@ public class PageReader implements IPageReader {
             if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aBoolean))) {
               timeBuilder.writeLong(timestamp);
               valueBuilder.writeBoolean(aBoolean);
+              builder.declarePosition();
             }
           }
           break;
@@ -183,6 +184,7 @@ public class PageReader implements IPageReader {
             if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, anInt))) {
               timeBuilder.writeLong(timestamp);
               valueBuilder.writeInt(anInt);
+              builder.declarePosition();
             }
           }
           break;
@@ -193,6 +195,7 @@ public class PageReader implements IPageReader {
             if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aLong))) {
               timeBuilder.writeLong(timestamp);
               valueBuilder.writeLong(aLong);
+              builder.declarePosition();
             }
           }
           break;
@@ -203,6 +206,7 @@ public class PageReader implements IPageReader {
             if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aFloat))) {
               timeBuilder.writeLong(timestamp);
               valueBuilder.writeFloat(aFloat);
+              builder.declarePosition();
             }
           }
           break;
@@ -213,6 +217,7 @@ public class PageReader implements IPageReader {
             if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aDouble))) {
               timeBuilder.writeLong(timestamp);
               valueBuilder.writeDouble(aDouble);
+              builder.declarePosition();
             }
           }
           break;
@@ -223,6 +228,7 @@ public class PageReader implements IPageReader {
             if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aBinary))) {
               timeBuilder.writeLong(timestamp);
               valueBuilder.writeBinary(aBinary);
+              builder.declarePosition();
             }
           }
           break;
@@ -230,7 +236,7 @@ public class PageReader implements IPageReader {
           throw new UnSupportedDataTypeException(String.valueOf(dataType));
       }
     }
-    return tsBlockBuilder.build();
+    return builder.build();
   }
 
   @Override

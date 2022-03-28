@@ -25,9 +25,9 @@ import org.openjdk.jol.info.ClassLayout;
 
 import java.util.Arrays;
 
+import static io.airlift.slice.SizeOf.sizeOf;
 import static java.lang.Math.max;
 import static org.apache.iotdb.tsfile.read.common.block.column.ColumnUtil.calculateBlockResetSize;
-import static org.openjdk.jol.util.VMSupport.sizeOf;
 
 public class BinaryColumnBuilder implements ColumnBuilder {
 
@@ -82,7 +82,7 @@ public class BinaryColumnBuilder implements ColumnBuilder {
     int index = offset;
     BinaryColumn column = (BinaryColumn) valueColumn;
     for (int i = 0; i < count; i++) {
-      if (timeColumn.getLong(index) == timeBuilder.getTime(i)) {
+      if (timeColumn.getLong(index) == timeBuilder.getTime(i) && !valueColumn.isNull(index)) {
         writeBinary(column.getBinary(index++));
       } else {
         appendNull();

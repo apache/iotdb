@@ -20,8 +20,8 @@ package org.apache.iotdb.tsfile.read.common.block.column;
 
 import org.openjdk.jol.info.ClassLayout;
 
+import static io.airlift.slice.SizeOf.sizeOf;
 import static org.apache.iotdb.tsfile.read.common.block.column.ColumnUtil.checkValidRegion;
-import static org.openjdk.jol.util.VMSupport.sizeOf;
 
 public class TimeColumn implements Column {
 

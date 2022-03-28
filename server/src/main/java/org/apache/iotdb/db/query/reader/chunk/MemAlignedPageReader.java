@@ -112,6 +112,7 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
         for (int i = 0; i < values.length; i++) {
           builder.getColumnBuilder(i).writeTsPrimitiveType(values[i]);
         }
+        builder.declarePosition();
       }
     }
     return builder.build();

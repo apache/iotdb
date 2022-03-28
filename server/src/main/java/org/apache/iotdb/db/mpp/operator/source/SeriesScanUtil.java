@@ -757,7 +757,6 @@ public class SeriesScanUtil {
 
           if (valueFilter == null
               || valueFilter.satisfy(timeValuePair.getTimestamp(), valueForFilter)) {
-            builder.declarePosition();
             timeBuilder.writeLong(timeValuePair.getTimestamp());
             switch (dataType) {
               case BOOLEAN:
@@ -781,12 +780,17 @@ public class SeriesScanUtil {
               case VECTOR:
                 TsPrimitiveType[] values = timeValuePair.getValue().getVector();
                 for (int i = 0; i < values.length; i++) {
-                  builder.getColumnBuilder(i).writeTsPrimitiveType(values[i]);
+                  if (values[i] == null) {
+                    builder.getColumnBuilder(i).appendNull();
+                  } else {
+                    builder.getColumnBuilder(i).writeTsPrimitiveType(values[i]);
+                  }
                 }
                 break;
               default:
                 throw new UnSupportedDataTypeException(String.valueOf(dataType));
             }
+            builder.declarePosition();
           }
         }
         hasCachedNextOverlappedPage = builder.isEmpty();

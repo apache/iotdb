@@ -24,9 +24,9 @@ import org.openjdk.jol.info.ClassLayout;
 
 import java.util.Arrays;
 
+import static io.airlift.slice.SizeOf.sizeOf;
 import static java.lang.Math.max;
 import static org.apache.iotdb.tsfile.read.common.block.column.ColumnUtil.calculateBlockResetSize;
-import static org.openjdk.jol.util.VMSupport.sizeOf;
 
 public class DoubleColumnBuilder implements ColumnBuilder {
 
@@ -84,7 +84,7 @@ public class DoubleColumnBuilder implements ColumnBuilder {
     int index = offset;
     DoubleColumn column = (DoubleColumn) valueColumn;
     for (int i = 0; i < count; i++) {
-      if (timeColumn.getLong(index) == timeBuilder.getTime(i)) {
+      if (timeColumn.getLong(index) == timeBuilder.getTime(i) && !valueColumn.isNull(index)) {
         writeDouble(column.getDouble(index++));
       } else {
         appendNull();

@@ -70,9 +70,9 @@ public class MemPageReader implements IPageReader {
     TSDataType dataType = chunkMetadata.getDataType();
     // TODO we still need to consider data type, ascending and descending here
 
-    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(Collections.singletonList(dataType));
-    TimeColumnBuilder timeBuilder = tsBlockBuilder.getTimeColumnBuilder();
-    ColumnBuilder valueBuilder = tsBlockBuilder.getColumnBuilder(0);
+    TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(dataType));
+    TimeColumnBuilder timeBuilder = builder.getTimeColumnBuilder();
+    ColumnBuilder valueBuilder = builder.getColumnBuilder(0);
     switch (dataType) {
       case BOOLEAN:
         while (timeValuePairIterator.hasNextTimeValuePair()) {
@@ -82,6 +82,7 @@ public class MemPageReader implements IPageReader {
                   timeValuePair.getTimestamp(), timeValuePair.getValue().getValue())) {
             timeBuilder.writeLong(timeValuePair.getTimestamp());
             valueBuilder.writeBoolean(timeValuePair.getValue().getBoolean());
+            builder.declarePosition();
           }
         }
         break;
@@ -93,6 +94,7 @@ public class MemPageReader implements IPageReader {
                   timeValuePair.getTimestamp(), timeValuePair.getValue().getValue())) {
             timeBuilder.writeLong(timeValuePair.getTimestamp());
             valueBuilder.writeInt(timeValuePair.getValue().getInt());
+            builder.declarePosition();
           }
         }
         break;
@@ -104,6 +106,7 @@ public class MemPageReader implements IPageReader {
                   timeValuePair.getTimestamp(), timeValuePair.getValue().getValue())) {
             timeBuilder.writeLong(timeValuePair.getTimestamp());
             valueBuilder.writeLong(timeValuePair.getValue().getLong());
+            builder.declarePosition();
           }
         }
         break;
@@ -115,6 +118,7 @@ public class MemPageReader implements IPageReader {
                   timeValuePair.getTimestamp(), timeValuePair.getValue().getValue())) {
             timeBuilder.writeLong(timeValuePair.getTimestamp());
             valueBuilder.writeFloat(timeValuePair.getValue().getFloat());
+            builder.declarePosition();
           }
         }
         break;
@@ -126,6 +130,7 @@ public class MemPageReader implements IPageReader {
                   timeValuePair.getTimestamp(), timeValuePair.getValue().getValue())) {
             timeBuilder.writeLong(timeValuePair.getTimestamp());
             valueBuilder.writeDouble(timeValuePair.getValue().getDouble());
+            builder.declarePosition();
           }
         }
         break;
@@ -137,13 +142,14 @@ public class MemPageReader implements IPageReader {
                   timeValuePair.getTimestamp(), timeValuePair.getValue().getValue())) {
             timeBuilder.writeLong(timeValuePair.getTimestamp());
             valueBuilder.writeBinary(timeValuePair.getValue().getBinary());
+            builder.declarePosition();
           }
         }
         break;
       default:
         throw new UnSupportedDataTypeException(String.valueOf(dataType));
     }
-    return tsBlockBuilder.build();
+    return builder.build();
   }
 
   @Override

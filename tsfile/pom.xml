@@ -72,6 +72,10 @@
             <groupId>org.openjdk.jol</groupId>
             <artifactId>jol-core</artifactId>
         </dependency>
+        <dependency>
+            <groupId>io.airlift</groupId>
+            <artifactId>slice</artifactId>
+        </dependency>
     </dependencies>
     <build>
         <plugins>

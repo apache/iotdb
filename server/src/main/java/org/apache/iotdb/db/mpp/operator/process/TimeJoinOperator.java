@@ -127,6 +127,7 @@ public class TimeJoinOperator implements ProcessOperator {
     TimeColumnBuilder timeBuilder = tsBlockBuilder.getTimeColumnBuilder();
     while (!timeSelector.isEmpty() && timeSelector.first() <= currentEndTime) {
       timeBuilder.writeLong(timeSelector.pollFirst());
+      tsBlockBuilder.declarePosition();
     }
 
     tsBlockBuilder.buildValueColumnBuilders(dataTypes);
