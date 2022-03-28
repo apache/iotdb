@@ -52,8 +52,7 @@ public class SchemaPage implements ISchemaPage {
   short lastDelSeg; // offset of last deleted segment, will not be wiped out immediately
 
   // segment address array inside a page, map segmentIndex -> segmentOffset
-  // its append-only structured now, will never remove element, bringing redundant space and a bit
-  // of simplicity
+  // TODO:
   // if only one full-page segment inside, it still stores the offset
   List<Short> segOffsetLst;
 
@@ -67,6 +66,7 @@ public class SchemaPage implements ISchemaPage {
    * <p><b>Page Header Structure:</b>
    *
    * <ul>
+   *   <li>1 int (4 bytes): page index, a non-negative number
    *   <li>1 short (2 bytes): pageSpareOffset, spare offset
    *   <li>1 short (2 bytes): segNum, amount of the segment
    *   <li>1 short (2 bytes): last deleted segment offset
@@ -85,10 +85,10 @@ public class SchemaPage implements ISchemaPage {
   public SchemaPage(ByteBuffer buffer, int index, boolean override) {
     buffer.clear();
     this.pageBuffer = buffer;
-    this.pageIndex = index;
     this.segCacheMap = new ConcurrentHashMap<>();
 
     if (override) {
+      pageIndex = index;
       pageSpareOffset = SchemaFile.PAGE_HEADER_SIZE;
       segNum = 0;
       segOffsetLst = new ArrayList<>();
@@ -96,6 +96,7 @@ public class SchemaPage implements ISchemaPage {
       pageDelFlag = false;
       syncPageBuffer();
     } else {
+      pageIndex = ReadWriteIOUtils.readInt(pageBuffer);
       pageSpareOffset = ReadWriteIOUtils.readShort(pageBuffer);
       segNum = ReadWriteIOUtils.readShort(pageBuffer);
       lastDelSeg = ReadWriteIOUtils.readShort(pageBuffer);
@@ -234,12 +235,13 @@ public class SchemaPage implements ISchemaPage {
   }
 
   /**
-   * While segments are always synchronized with buffer currentPage, header and tailer of the page
+   * <p>While segments are always synchronized with buffer {@linkplain SchemaPage#pageBuffer}, header and tail
    * are not. This method will synchronize them with in mem attributes.
    */
   @Override
   public void syncPageBuffer() {
     pageBuffer.clear();
+    ReadWriteIOUtils.write(pageIndex, pageBuffer);
     ReadWriteIOUtils.write(pageSpareOffset, pageBuffer);
     ReadWriteIOUtils.write(segNum, pageBuffer);
     ReadWriteIOUtils.write(lastDelSeg, pageBuffer);
@@ -340,12 +342,12 @@ public class SchemaPage implements ISchemaPage {
         ISegment seg = getSegment((short) idx);
         builder.append(
             String.format(
-                "Sgt id:%d, offset:%d, address:%d, next:%d, pref:%d, %s\n",
+                "Sgt id:%d, offset:%d, address:%s, next:%s, pref:%s, %s\n",
                 idx,
                 offset,
-                SchemaFile.getGlobalIndex(pageIndex, (short) idx),
-                seg.getNextSegAddress(),
-                seg.getPrevSegAddress(),
+                Long.toHexString(SchemaFile.getGlobalIndex(pageIndex, (short) idx)),
+                seg.getNextSegAddress() == -1 ? -1 : Long.toHexString(seg.getNextSegAddress()),
+                seg.getPrevSegAddress() == -1 ? -1 : Long.toHexString(seg.getPrevSegAddress()),
                 seg.toString()));
       }
     }
@@ -426,6 +428,8 @@ public class SchemaPage implements ISchemaPage {
    * segCacheMap.
    *
    * <p><b> The new segment could be allocated from spare space or rearranged space.</b>
+   *
+   * TODO: maybe relocate in-place first
    *
    * @param seg original segment instance
    * @param segIdx original segment index

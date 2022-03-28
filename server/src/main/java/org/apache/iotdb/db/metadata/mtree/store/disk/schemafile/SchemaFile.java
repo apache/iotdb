@@ -19,7 +19,9 @@
 package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile;
 
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.schemafile.SchemaFileNotExists;
 import org.apache.iotdb.db.exception.metadata.schemafile.SchemaPageOverflowException;
@@ -31,6 +33,8 @@ import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
+import org.apache.iotdb.db.writelog.io.ILogWriter;
+import org.apache.iotdb.db.writelog.io.LogWriter;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
@@ -50,8 +54,6 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
- * TODO: reliability design TBD
- *
  * <p>This class is mainly aimed to manage space all over the file.
  *
  * <p>This class is meant to open a .pmt(Persistent MTree) file, and maintains the header of the
@@ -63,10 +65,6 @@ public class SchemaFile implements ISchemaFile {
   private static final Logger logger = LoggerFactory.getLogger(SchemaFile.class);
 
   public static int FILE_HEADER_SIZE = 256; // size of file header in bytes
-
-  // folder to store .pmt files
-  public static String FILE_FOLDER =
-      IoTDBDescriptor.getInstance().getConfig().getSchemaDir() + File.separator;
 
   public static int PAGE_LENGTH = 16 * 1024; // 16 kib for default
   public static int PAGE_LENGTH_DIGIT = 14;
@@ -91,6 +89,10 @@ public class SchemaFile implements ISchemaFile {
   public static int SEG_INDEX_DIGIT = 16; // for type short
   public static long SEG_INDEX_MASK = 0xffffL; // to translate address
 
+  // folder to store .pmt files
+  public static String SCHEMA_FOLDER =
+      IoTDBDescriptor.getInstance().getConfig().getSchemaDir();
+
   // attributes for this schema file
   String filePath;
   String storageGroupName;
@@ -101,7 +103,7 @@ public class SchemaFile implements ISchemaFile {
   ByteBuffer headerContent;
   int lastPageIndex; // last page index of the file, boundary to grow
 
-  // work as a naive cache for page instance
+  // work as a naive (read-only) cache for page instance
   final Map<Integer, ISchemaPage> pageInstCache;
   final ReentrantLock evictLock;
   final PageLocks pageLocks;
@@ -111,17 +113,22 @@ public class SchemaFile implements ISchemaFile {
   File pmtFile;
   FileChannel channel;
 
+  // dirty page management
+  ILogWriter schemaLog;
+  ByteBuffer logBuffer;
+  List<ISchemaPage> dirtyPages;
+
   private SchemaFile(String sgName, boolean override, long ttl, boolean isEntity)
       throws IOException, MetadataException {
     this.storageGroupName = sgName;
     filePath =
-        SchemaFile.FILE_FOLDER
+        SchemaFile.SCHEMA_FOLDER
             + File.separator
             + sgName
             + File.separator
             + MetadataConstant.SCHEMA_FILE_NAME;
 
-    pmtFile = new File(filePath);
+    pmtFile = SystemFileFactory.INSTANCE.getFile(filePath);
     if (!pmtFile.exists() && !override) {
       throw new SchemaFileNotExists(filePath);
     }
@@ -133,10 +140,20 @@ public class SchemaFile implements ISchemaFile {
     }
 
     if (!pmtFile.exists() || !pmtFile.isFile()) {
-      File folder = new File(SchemaFile.FILE_FOLDER + sgName);
+      File folder = new File(SchemaFile.SCHEMA_FOLDER + File.separator + sgName);
       folder.mkdirs();
       pmtFile.createNewFile();
     }
+
+    // TODO: recovery work, custom schema log sync period
+    schemaLog = new LogWriter(SchemaFile.SCHEMA_FOLDER
+        + File.separator
+        + sgName
+        + File.separator
+        + MetadataConstant.SCHEMA_LOG_FILE_NAME,
+        IoTDBDescriptor.getInstance().getConfig().getSyncMlogPeriodInMs() == 0);
+    logBuffer = ByteBuffer.allocate(PAGE_LENGTH);
+    dirtyPages = new ArrayList<>();
 
     channel = new RandomAccessFile(pmtFile, "rw").getChannel();
     headerContent = ByteBuffer.allocate(SchemaFile.FILE_HEADER_SIZE);
@@ -248,6 +265,11 @@ public class SchemaFile implements ISchemaFile {
       try {
         curPage = getPageInstance(pageIndex);
         long npAddress = curPage.write(curSegIdx, entry.getKey(), childBuffer);
+
+        if (npAddress == 0) {
+          dirtyPages.add(curPage);
+        }
+
         while (npAddress > 0) {
           // get next page and retry
           pageIndex = SchemaFile.getPageIndex(npAddress);
@@ -283,6 +305,9 @@ public class SchemaFile implements ISchemaFile {
           updateParentalRecord(node.getParent(), node.getName(), curSegAddr);
         }
 
+        dirtyPages.add(newPage);
+        dirtyPages.add(curPage);
+
         curPage = newPage;
         pageIndex = curPage.getPageIndex();
         curPage.write(curSegIdx, entry.getKey(), childBuffer);
@@ -313,59 +338,42 @@ public class SchemaFile implements ISchemaFile {
         // if current segment has no more space for new record, it will re-allocate segment, if
         // failed, throw exception
         curPage.update(curSegIdx, entry.getKey(), childBuffer);
+        dirtyPages.add(curPage);
 
       } catch (SchemaPageOverflowException e) {
-        short curSegSize = curPage.getSegmentSize(curSegIdx);
-        long existedSegAddr =
-            getApplicableLinkedSegments(curPage, curSegIdx, entry.getKey(), childBuffer);
-        if (existedSegAddr >= 0) {
-          // get another existed segment
-          curPage = getPageInstance(getPageIndex(existedSegAddr));
-          curSegIdx = getSegIndex(existedSegAddr);
-        } else {
-          // no next segment to write
-          short newSegSize = reEstimateSegSize(curSegSize);
+        short newSegSize = reEstimateSegSize(curPage.getSegmentSize(curSegIdx));
+        if (curPage.getSegmentSize(curSegIdx) != newSegSize) {
+          // the segment should be extended, transplanted (no enough space in curPage) and then updated
           ISchemaPage newPage = getMinApplicablePageInMem(newSegSize);
           long newSegAddr = newPage.transplantSegment(curPage, curSegIdx, newSegSize);
-          short newSegId = getSegIndex(newSegAddr);
+          newPage.update(getSegIndex(newSegAddr), entry.getKey(), childBuffer);
 
-          // and new seg to list for multi-page segment, modify parental record for single segment
-          if (curSegSize == SEG_MAX_SIZ) {
-            // allocate new page and expand max-segment-lists
+          // delete and modify original infos
+          curPage.deleteSegment(curSegIdx);
+          setNodeAddress(node, newSegAddr);
+          updateParentalRecord(node.getParent(), node.getName(), newSegAddr);
+        } else {
+          // already full page segment, write updated record to another applicable segment or a blank new one
+          long existedSegAddr = getApplicableLinkedSegments(curPage, curSegIdx, entry.getKey(), childBuffer);
+          if (existedSegAddr < 0) {
+            // get a blank new page and add it to linked segment list right behind curPage
+            ISchemaPage newPage = getMinApplicablePageInMem(newSegSize);
+            existedSegAddr = getGlobalIndex(newPage.getPageIndex(), newPage.allocNewSegment(newSegSize));
+
             long nextSegAddr = curPage.getNextSegAddress(curSegIdx);
-
-            // link new seg as the next to the cur, prev to the original next if existed
-            if (nextSegAddr >= 0) {
+            if (nextSegAddr != -1) {
               ISchemaPage nextPage = getPageInstance(getPageIndex(nextSegAddr));
-
-              newPage.setNextSegAddress(newSegId, nextSegAddr);
-              nextPage.setPrevSegAddress(getSegIndex(newSegAddr), newSegAddr);
+              nextPage.setPrevSegAddress(getSegIndex(nextSegAddr), existedSegAddr);
             }
 
-            curPage.setNextSegAddress(curSegIdx, newSegAddr);
-            newPage.setPrevSegAddress(newSegId, curSegAddr);
+            newPage.setNextSegAddress(getSegIndex(existedSegAddr), nextSegAddr);
+            newPage.setPrevSegAddress(getSegIndex(existedSegAddr), actualSegAddr);
 
-          } else {
-            // modify parental record and node
-            curPage.deleteSegment(curSegIdx);
-            setNodeAddress(node, newSegAddr);
-            updateParentalRecord(node.getParent(), node.getName(), newSegAddr);
+            curPage.setNextSegAddress(getSegIndex(actualSegAddr), existedSegAddr);
           }
 
-          curPage = newPage;
-          curSegAddr = newSegAddr;
-          curSegIdx = newSegId;
-        }
-
-        if (existedSegAddr >= 0 || curSegSize == SEG_MAX_SIZ) {
-          // remove from original segment
-          getPageInstance(getPageIndex(actualSegAddr))
-              .removeRecord(getSegIndex(actualSegAddr), entry.getKey());
-          // flush updated record into another linked segment, or a fresh full-page segment
-          curPage.write(curSegIdx, entry.getKey(), childBuffer);
-        } else {
-          // updated on an extended segment
-          curPage.update(curSegIdx, entry.getKey(), childBuffer);
+          getPageInstance(getPageIndex(existedSegAddr)).write(getSegIndex(existedSegAddr), entry.getKey(), childBuffer);
+          curPage.removeRecord(getSegIndex(actualSegAddr), entry.getKey());
         }
       }
     }
@@ -815,6 +823,7 @@ public class SchemaFile implements ISchemaFile {
     parSegAddr = getTargetSegmentAddress(parSegAddr, key);
     ISchemaPage page = getPageInstance(getPageIndex(parSegAddr));
     ((SchemaPage) page).updateRecordSegAddr(getSegIndex(parSegAddr), key, newSegAddr);
+    dirtyPages.add(page);
   }
 
   /**
