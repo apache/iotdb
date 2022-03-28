@@ -26,6 +26,7 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeIdAllocator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SourceNode;
+import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.sql.rewriter.WildcardsRemover;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.expression.Expression;
@@ -71,6 +72,18 @@ public class TimeSeriesOperand extends Expression {
   }
 
   @Override
+  public void concat(
+      List<PartialPath> prefixPaths,
+      List<Expression> resultExpressions,
+      PathPatternTree patternTree) {
+    for (PartialPath prefixPath : prefixPaths) {
+      TimeSeriesOperand resultExpression = new TimeSeriesOperand(prefixPath.concatPath(path));
+      patternTree.appendPath(resultExpression.getPath());
+      resultExpressions.add(resultExpression);
+    }
+  }
+
+  @Override
   public void concat(List<PartialPath> prefixPaths, List<Expression> resultExpressions) {
     for (PartialPath prefixPath : prefixPaths) {
       resultExpressions.add(new TimeSeriesOperand(prefixPath.concatPath(path)));
@@ -80,7 +93,7 @@ public class TimeSeriesOperand extends Expression {
   @Override
   public void removeWildcards(WildcardsRemover wildcardsRemover, List<Expression> resultExpressions)
       throws StatementAnalyzeException {
-    for (PartialPath actualPath : wildcardsRemover.removeWildcardFrom(path)) {
+    for (PartialPath actualPath : wildcardsRemover.removeWildcardInPath(path)) {
       resultExpressions.add(new TimeSeriesOperand(actualPath));
     }
   }

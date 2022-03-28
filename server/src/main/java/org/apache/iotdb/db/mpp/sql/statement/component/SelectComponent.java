@@ -26,9 +26,7 @@ import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
 import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 /** This class maintains information of {@code SELECT} clause. */
 public class SelectComponent extends StatementNode {
@@ -45,6 +43,7 @@ public class SelectComponent extends StatementNode {
 
   private List<PartialPath> pathsCache;
   private List<String> aggregationFunctionsCache;
+  private Map<String, Set<PartialPath>> deviceIdToPathsCache;
 
   public SelectComponent(ZoneId zoneId) {
     this.zoneId = zoneId;
@@ -136,5 +135,17 @@ public class SelectComponent extends StatementNode {
       }
     }
     return aggregationFunctionsCache;
+  }
+
+  public Map<String, Set<PartialPath>> getDeviceIdToPathsMap() {
+    if (deviceIdToPathsCache == null) {
+      deviceIdToPathsCache = new HashMap<>();
+      for (ResultColumn resultColumn : resultColumns) {
+        for (PartialPath path : resultColumn.collectPaths()) {
+          deviceIdToPathsCache.computeIfAbsent(path.getDevice(), k -> new HashSet<>()).add(path);
+        }
+      }
+    }
+    return deviceIdToPathsCache;
   }
 }

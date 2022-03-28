@@ -27,6 +27,7 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeIdAllocator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregateScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SourceNode;
+import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.sql.rewriter.WildcardsRemover;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
@@ -166,6 +167,28 @@ public class FunctionExpression extends Expression {
   }
 
   @Override
+  public void concat(
+      List<PartialPath> prefixPaths,
+      List<Expression> resultExpressions,
+      PathPatternTree patternTree) {
+    List<List<Expression>> resultExpressionsForRecursionList = new ArrayList<>();
+
+    for (Expression suffixExpression : expressions) {
+      List<Expression> resultExpressionsForRecursion = new ArrayList<>();
+      suffixExpression.concat(prefixPaths, resultExpressionsForRecursion, patternTree);
+      resultExpressionsForRecursionList.add(resultExpressionsForRecursion);
+    }
+
+    List<List<Expression>> functionExpressions = new ArrayList<>();
+    ConcatPathOptimizer.cartesianProduct(
+        resultExpressionsForRecursionList, functionExpressions, 0, new ArrayList<>());
+    for (List<Expression> functionExpression : functionExpressions) {
+      resultExpressions.add(
+          new FunctionExpression(functionName, functionAttributes, functionExpression));
+    }
+  }
+
+  @Override
   public void concat(List<PartialPath> prefixPaths, List<Expression> resultExpressions) {
     List<List<Expression>> resultExpressionsForRecursionList = new ArrayList<>();
 
@@ -187,7 +210,8 @@ public class FunctionExpression extends Expression {
   @Override
   public void removeWildcards(WildcardsRemover wildcardsRemover, List<Expression> resultExpressions)
       throws StatementAnalyzeException {
-    for (List<Expression> functionExpression : wildcardsRemover.removeWildcardsFrom(expressions)) {
+    for (List<Expression> functionExpression :
+        wildcardsRemover.removeWildcardsInExpressions(expressions)) {
       resultExpressions.add(
           new FunctionExpression(functionName, functionAttributes, functionExpression));
     }
