@@ -178,7 +178,7 @@ public class TsBlock {
   }
 
   /** Only used for the batch data of vector time series. */
-  public IBatchDataIterator getBatchDataIterator(int subIndex) {
+  public IBatchDataIterator getTsBlockIterator(int subIndex) {
     return new AlignedTsBlockIterator(0, subIndex);
   }
 
