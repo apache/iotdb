@@ -85,13 +85,13 @@ struct TCancelResp {
   2: optional string messsage
 }
 
-struct SchemeFetchRequest {
+struct SchemaFetchRequest {
   1: required binary serializedPathPatternTree
   2: required bool isPrefixMatchPath
 }
 
-struct SchemeFetchResponse {
-  1: required binary serializedSchemeTree
+struct SchemaFetchResponse {
+  1: required binary serializedSchemaTree
 }
 
 service InternalService {
@@ -105,7 +105,7 @@ service InternalService {
 
     TCancelResp cancelFragmentInstance(TCancelFragmentInstanceReq req);
 
-    SchemeFetchResponse fetchSchema(SchemeFetchRequest req)
+    SchemaFetchResponse fetchSchema(SchemaFetchRequest req)
 }
 
 service DataBlockService {
