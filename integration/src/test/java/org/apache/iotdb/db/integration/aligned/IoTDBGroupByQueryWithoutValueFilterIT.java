@@ -1125,18 +1125,4 @@ public class IoTDBGroupByQueryWithoutValueFilterIT {
       assertTrue(e instanceof IoTDBSQLException);
     }
   }
-
-  @Test
-  public void slidingStepLessThanTimeIntervalTest() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "select count(s1), sum(s2), avg(s1) from  root.sg1.d1 "
-                  + "where time > 5 GROUP BY ([1, 41), 5ms, 3ms)");
-      fail();
-    } catch (Exception e) {
-      assertTrue(e instanceof IoTDBSQLException);
-    }
-  }
 }

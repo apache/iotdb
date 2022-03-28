@@ -17,11 +17,18 @@
  */
 package org.apache.iotdb.db.protocol.mqtt;
 
+import org.apache.iotdb.db.utils.EnvironmentUtils;
+
+import org.junit.After;
 import org.junit.Test;
 
 import static org.junit.Assert.*;
 
 public class PayloadFormatManagerTest {
+  @After
+  public void tearDown() throws Exception {
+    EnvironmentUtils.cleanAllDir();
+  }
 
   @Test(expected = IllegalArgumentException.class)
   public void getPayloadFormat() {

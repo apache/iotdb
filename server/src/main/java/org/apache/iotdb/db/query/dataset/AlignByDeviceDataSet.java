@@ -58,6 +58,7 @@ public class AlignByDeviceDataSet extends QueryDataSet {
   private QueryContext context;
   private IExpression expression;
 
+  // contains only original measurement, alias not included
   private List<String> measurements;
   private List<PartialPath> paths;
   private List<String> aggregations;
@@ -126,12 +127,15 @@ public class AlignByDeviceDataSet extends QueryDataSet {
         // only redirect query for raw data query
         this.rawDataQueryPlan.setEnableRedirect(alignByDevicePlan.isEnableRedirect());
     }
-
     this.curDataSetInitialized = false;
   }
 
   public int getPathsNum() {
     return pathsNum;
+  }
+
+  public List<String> getMeasurements() {
+    return measurements;
   }
 
   @Override
@@ -206,8 +210,8 @@ public class AlignByDeviceDataSet extends QueryDataSet {
             break;
           case QUERY:
             // Group all the subSensors of one vector into one VectorPartialPath
-            executePaths = MetaUtils.groupAlignedPaths(executePaths);
             rawDataQueryPlan.setDeduplicatedPathsAndUpdate(executePaths);
+            rawDataQueryPlan.setDeduplicatedVectorPaths(MetaUtils.groupAlignedPaths(executePaths));
             rawDataQueryPlan.setExpression(expression);
             currentDataSet = queryRouter.rawDataQuery(rawDataQueryPlan, context);
             break;

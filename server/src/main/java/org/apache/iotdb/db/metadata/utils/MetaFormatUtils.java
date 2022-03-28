@@ -31,11 +31,11 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.LOSS;
-import static org.apache.iotdb.db.conf.IoTDBConstant.SDT;
-import static org.apache.iotdb.db.conf.IoTDBConstant.SDT_COMP_DEV;
-import static org.apache.iotdb.db.conf.IoTDBConstant.SDT_COMP_MAX_TIME;
-import static org.apache.iotdb.db.conf.IoTDBConstant.SDT_COMP_MIN_TIME;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.LOSS;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.SDT;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.SDT_COMP_DEV;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.SDT_COMP_MAX_TIME;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.SDT_COMP_MIN_TIME;
 
 public class MetaFormatUtils {
 

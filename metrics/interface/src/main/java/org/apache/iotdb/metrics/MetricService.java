@@ -23,6 +23,8 @@ import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.config.ReloadLevel;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
+import org.apache.iotdb.metrics.reporter.CompositeReporter;
+import org.apache.iotdb.metrics.reporter.Reporter;
 import org.apache.iotdb.metrics.utils.PredefinedMetric;
 import org.apache.iotdb.metrics.utils.ReporterType;
 
@@ -30,6 +32,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ServiceLoader;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * MetricService is the entry to manage all Metric system, include MetricManager and MetricReporter.
@@ -45,9 +48,11 @@ public abstract class MetricService {
 
   protected boolean isEnableMetric = metricConfig.getEnableMetric();
 
+  private AtomicBoolean firstInit = new AtomicBoolean(true);
+
   public MetricService() {}
 
-  /** Start all reporter. if is disabled, do nothing */
+  /** Start metric service without start reporter. if is disabled, do nothing */
   public void startService() {
     // load manager
     loadManager();
@@ -55,13 +60,16 @@ public abstract class MetricService {
     loadReporter();
     // do some init work
     metricManager.init();
-    // start reporter
-    compositeReporter.startAll();
+    // do start all reporter without first time
+    if (!firstInit.getAndSet(false)) {
+      startAllReporter();
+    }
 
+    logger.info("Start predefined metric:" + metricConfig.getPredefinedMetrics());
     for (PredefinedMetric predefinedMetric : metricConfig.getPredefinedMetrics()) {
       enablePredefinedMetric(predefinedMetric);
     }
-    logger.info("Start predefined metric:" + metricConfig.getPredefinedMetrics());
+    logger.info("Start metric at level: " + metricConfig.getMetricLevel().name());
 
     collectFileSystemInfo();
   }
@@ -74,7 +82,7 @@ public abstract class MetricService {
     compositeReporter = new CompositeReporter();
   }
 
-  private void loadManager() {
+  protected void loadManager() {
     logger.info("Load metricManager, type: {}", metricConfig.getMonitorType());
     ServiceLoader<MetricManager> metricManagers = ServiceLoader.load(MetricManager.class);
     int size = 0;
@@ -83,7 +91,7 @@ public abstract class MetricService {
       if (mf.getClass()
           .getName()
           .toLowerCase()
-          .contains(metricConfig.getMonitorType().getName().toLowerCase())) {
+          .contains(metricConfig.getMonitorType().name().toLowerCase())) {
         metricManager = mf;
         break;
       }
@@ -98,9 +106,9 @@ public abstract class MetricService {
     }
   }
 
-  private void loadReporter() {
+  protected void loadReporter() {
     logger.info("Load metric reporter, reporters: {}", metricConfig.getMetricReporterList());
-
+    compositeReporter.clearReporter();
     ServiceLoader<Reporter> reporters = ServiceLoader.load(Reporter.class);
     for (Reporter reporter : reporters) {
       if (metricConfig.getMetricReporterList() != null
@@ -109,11 +117,16 @@ public abstract class MetricService {
               .getClass()
               .getName()
               .toLowerCase()
-              .contains(metricConfig.getMonitorType().getName().toLowerCase())) {
+              .contains(metricConfig.getMonitorType().name().toLowerCase())) {
         reporter.setMetricManager(metricManager);
         compositeReporter.addReporter(reporter);
       }
     }
+  }
+
+  public void startAllReporter() {
+    // start reporter
+    compositeReporter.startAll();
   }
 
   /** start reporter by name, values in jmx, prometheus, internal. if is disabled, do nothing */
@@ -132,6 +145,14 @@ public abstract class MetricService {
     compositeReporter.stop(reporter);
   }
 
+  /**
+   * Enable some predefined metric, now support jvm, logback. Notice: In dropwizard mode, logback
+   * metrics are not supported
+   */
+  public void enablePredefinedMetric(PredefinedMetric metric) {
+    metricManager.enablePredefinedMetric(metric);
+  }
+
   /** collect file system info in metric way */
   protected abstract void collectFileSystemInfo();
 
@@ -141,14 +162,6 @@ public abstract class MetricService {
    * @param reloadLevel
    */
   protected abstract void reloadProperties(ReloadLevel reloadLevel);
-
-  /**
-   * Enable some predefined metric, now support jvm, logback. Notice: In dropwizard mode, logback
-   * metrics are not supported
-   */
-  public void enablePredefinedMetric(PredefinedMetric metric) {
-    metricManager.enablePredefinedMetric(metric);
-  }
 
   public MetricManager getMetricManager() {
     return metricManager;

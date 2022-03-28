@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.qp.physical;
 
+import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -43,7 +44,6 @@ import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateFunctionPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateIndexPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateSnapshotPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTriggerPlan;
@@ -87,12 +87,13 @@ import java.util.Collections;
 import java.util.List;
 
 /** This class is a abstract class for all type of PhysicalPlan. */
-public abstract class PhysicalPlan {
+public abstract class PhysicalPlan implements IConsensusRequest {
   private static final Logger logger = LoggerFactory.getLogger(PhysicalPlan.class);
 
   private static final String SERIALIZATION_UNIMPLEMENTED = "serialization unimplemented";
 
   private boolean isQuery = false;
+
   private Operator.OperatorType operatorType;
   private static final int NULL_VALUE_LEN = -1;
 
@@ -188,6 +189,11 @@ public abstract class PhysicalPlan {
    */
   public void serialize(DataOutputStream stream) throws IOException {
     throw new UnsupportedOperationException(SERIALIZATION_UNIMPLEMENTED);
+  }
+
+  @Override
+  public void serializeRequest(ByteBuffer buffer) {
+    serialize(buffer);
   }
 
   /**
@@ -469,9 +475,6 @@ public abstract class PhysicalPlan {
         case MERGE:
           plan = new MergePlan();
           break;
-        case CREATE_SNAPSHOT:
-          plan = new CreateSnapshotPlan();
-          break;
         case CLEARCACHE:
           plan = new ClearCachePlan();
           break;
@@ -548,7 +551,7 @@ public abstract class PhysicalPlan {
     DROP_CONTINUOUS_QUERY,
     SHOW_CONTINUOUS_QUERIES,
     MERGE,
-    CREATE_SNAPSHOT,
+    CREATE_SNAPSHOT, // the snapshot feature has been deprecated, this is kept for compatibility
     CLEARCACHE,
     CREATE_FUNCTION,
     DROP_FUNCTION,
@@ -574,6 +577,7 @@ public abstract class PhysicalPlan {
    *
    * @throws QueryProcessException when the check fails
    */
+  // TODO(INSERT) move this check into analyze
   public void checkIntegrity() throws QueryProcessException {}
 
   public boolean isPrefixMatch() {

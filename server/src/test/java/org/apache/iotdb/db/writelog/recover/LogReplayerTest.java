@@ -92,11 +92,11 @@ public class LogReplayerTest {
     TsFileResource tsFileResource = new TsFileResource(tsFile);
     IMemTable memTable = new PrimitiveMemTable();
 
-    IoTDB.metaManager.setStorageGroup(new PartialPath("root.sg"));
+    IoTDB.schemaProcessor.setStorageGroup(new PartialPath("root.sg"));
     try {
       for (int i = 0; i <= 5; i++) {
         for (int j = 0; j <= 5; j++) {
-          IoTDB.metaManager.createTimeseries(
+          IoTDB.schemaProcessor.createTimeseries(
               new PartialPath("root.sg.device" + i + ".sensor" + j),
               TSDataType.INT64,
               TSEncoding.PLAIN,

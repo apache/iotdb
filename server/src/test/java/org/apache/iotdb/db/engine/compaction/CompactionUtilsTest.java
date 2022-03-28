@@ -53,7 +53,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 import static org.junit.Assert.assertEquals;
 
 public class CompactionUtilsTest extends AbstractCompactionTest {
@@ -145,7 +145,8 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
   Total 6 seq files, each file has different nonAligned timeseries.
   First and Second file: d0 ~ d1 and s0 ~ s2, time range is 0 ~ 99 and 150 ~ 249, value range is  0 ~ 99 and 150 ~ 249.
   Third and Forth file: d0 ~ d2 and s0 ~ s4, time range is 250 ~ 299 and 350 ~ 399, value range is 250 ~ 299 and 350 ~ 399.
-  Fifth and Sixth file: d0 ~ d4 and s0 ~ s4, time range is 600 ~ 649 and 700 ~ 749, value range is 800 ~ 849 and 900 ~ 949.
+  Fifth and Sixth file: d0 ~ d4 and s0 ~ s5, time range is 600 ~ 649 and 700 ~ 749, value range is 800 ~ 849 and 900 ~ 949.
+  Timeseries d[0-4].s5 are deleted before compaction.
   */
   @Test
   public void testSeqInnerSpaceCompactionWithDifferentTimeseries()
@@ -154,7 +155,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
     registerTimeseriesInMManger(5, 5, false);
     createFiles(2, 2, 3, 100, 0, 0, 50, 50, false, true);
     createFiles(2, 3, 5, 50, 250, 250, 50, 50, false, true);
-    createFiles(2, 5, 5, 50, 600, 800, 50, 50, false, true);
+    createFiles(2, 5, 6, 50, 600, 800, 50, 50, false, true);
 
     for (int i = 0; i < 5; i++) {
       for (int j = 0; j < 5; j++) {
@@ -888,7 +889,8 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
   Total 6 seq files, each file has different aligned timeseries, which cause empty page.
   First and Second file: d0 ~ d1 and s0 ~ s2, time range is 0 ~ 99 and 150 ~ 249, value range is  0 ~ 99 and 150 ~ 249.
   Third and Forth file: d0 ~ d2 and s0 ~ s4, time range is 250 ~ 299 and 350 ~ 399, value range is 250 ~ 299 and 350 ~ 399.
-  Fifth and Sixth file: d0 ~ d4 and s0 ~ s6, time range is 600 ~ 649 and 700 ~ 749, value range is 800 ~ 849 and 900 ~ 949.
+  Fifth and Sixth file: d0 ~ d4 and s0 ~ s7, time range is 600 ~ 649 and 700 ~ 749, value range is 800 ~ 849 and 900 ~ 949.
+  Timeseries d[0-4].s7 are deleted before compaction.
   */
   @Test
   public void testAlignedSeqInnerSpaceCompactionWithDifferentTimeseriesAndEmptyPage()
@@ -898,7 +900,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
     registerTimeseriesInMManger(5, 7, true);
     createFiles(2, 2, 3, 100, 0, 0, 50, 50, true, true);
     createFiles(2, 3, 5, 50, 250, 250, 50, 50, true, true);
-    createFiles(2, 5, 7, 50, 600, 800, 50, 50, true, true);
+    createFiles(2, 5, 8, 50, 600, 800, 50, 50, true, true);
 
     for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();
         i < TsFileGeneratorUtils.getAlignDeviceOffset() + 5;
