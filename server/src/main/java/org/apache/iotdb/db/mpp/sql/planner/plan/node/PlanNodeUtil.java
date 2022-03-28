@@ -24,10 +24,10 @@ import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 public class PlanNodeUtil {
-  private static final String INDENT = "   ";
-  private static final String BRO = " │─";
-  private static final String CORNER = " └─";
-  private static final String LINE = " │ ";
+  private static final String INDENT = "    ";
+  private static final String BRO = "  │──";
+  private static final String CORNER = "  └──";
+  private static final String LINE = "  │ ";
 
   public static void printPlanNode(PlanNode root) {
     printPlanNodeWithLevel(root, 0);
