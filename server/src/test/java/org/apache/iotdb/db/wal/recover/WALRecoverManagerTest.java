@@ -110,26 +110,26 @@ public class WALRecoverManagerTest {
     config.setWalMode(WALMode.SYNC);
     walBuffer = new WALBuffer(WAL_NODE_IDENTIFIER, WAL_NODE_FOLDER);
     checkpointManager = new CheckpointManager(WAL_NODE_IDENTIFIER, WAL_NODE_FOLDER);
-    IoTDB.schemaEngine.setStorageGroup(new PartialPath(SG_NAME));
-    IoTDB.schemaEngine.createTimeseries(
+    IoTDB.schemaProcessor.setStorageGroup(new PartialPath(SG_NAME));
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath(DEVICE1_NAME.concat(".s1")),
         TSDataType.INT32,
         TSEncoding.RLE,
         TSFileDescriptor.getInstance().getConfig().getCompressor(),
         Collections.emptyMap());
-    IoTDB.schemaEngine.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath(DEVICE1_NAME.concat(".s2")),
         TSDataType.INT64,
         TSEncoding.RLE,
         TSFileDescriptor.getInstance().getConfig().getCompressor(),
         Collections.emptyMap());
-    IoTDB.schemaEngine.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath(DEVICE2_NAME.concat(".s1")),
         TSDataType.FLOAT,
         TSEncoding.RLE,
         TSFileDescriptor.getInstance().getConfig().getCompressor(),
         Collections.emptyMap());
-    IoTDB.schemaEngine.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath(DEVICE2_NAME.concat(".s2")),
         TSDataType.DOUBLE,
         TSEncoding.RLE,
@@ -346,7 +346,8 @@ public class WALRecoverManagerTest {
     PartialPath path = new PartialPath(devicePath);
     String[] measurements = new String[] {"s1", "s2"};
     InsertRowPlan insertRowPlan = new InsertRowPlan(path, time, measurements, dataTypes, columns);
-    insertRowPlan.setMeasurementMNodes(IoTDB.schemaEngine.getMeasurementMNodes(path, measurements));
+    insertRowPlan.setMeasurementMNodes(
+        IoTDB.schemaProcessor.getMeasurementMNodes(path, measurements));
     return insertRowPlan;
   }
 

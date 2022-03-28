@@ -69,26 +69,26 @@ public class TsFilePlanRedoerTest {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
-    IoTDB.schemaEngine.setStorageGroup(new PartialPath(SG_NAME));
-    IoTDB.schemaEngine.createTimeseries(
+    IoTDB.schemaProcessor.setStorageGroup(new PartialPath(SG_NAME));
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath(DEVICE1_NAME.concat(".s1")),
         TSDataType.INT32,
         TSEncoding.RLE,
         TSFileDescriptor.getInstance().getConfig().getCompressor(),
         Collections.emptyMap());
-    IoTDB.schemaEngine.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath(DEVICE1_NAME.concat(".s2")),
         TSDataType.INT64,
         TSEncoding.RLE,
         TSFileDescriptor.getInstance().getConfig().getCompressor(),
         Collections.emptyMap());
-    IoTDB.schemaEngine.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath(DEVICE2_NAME.concat(".s1")),
         TSDataType.FLOAT,
         TSEncoding.RLE,
         TSFileDescriptor.getInstance().getConfig().getCompressor(),
         Collections.emptyMap());
-    IoTDB.schemaEngine.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath(DEVICE2_NAME.concat(".s2")),
         TSDataType.DOUBLE,
         TSEncoding.RLE,

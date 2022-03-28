@@ -71,7 +71,7 @@ public class TsFilePlanRedoer {
   void redoDelete(DeletePlan deletePlan) throws IOException, MetadataException {
     List<PartialPath> paths = deletePlan.getPaths();
     for (PartialPath path : paths) {
-      for (PartialPath device : IoTDB.schemaEngine.getBelongedDevices(path)) {
+      for (PartialPath device : IoTDB.schemaProcessor.getBelongedDevices(path)) {
         recoveryMemTable.delete(
             path, device, deletePlan.getDeleteStartTime(), deletePlan.getDeleteEndTime());
       }
@@ -106,7 +106,7 @@ public class TsFilePlanRedoer {
       if (IoTDBDescriptor.getInstance().getConfig().isEnableIDTable()) {
         vsgProcessor.getIdTable().getSeriesSchemas(plan);
       } else {
-        IoTDB.schemaEngine.getSeriesSchemasAndReadLockDevice(plan);
+        IoTDB.schemaProcessor.getSeriesSchemasAndReadLockDevice(plan);
         plan.setDeviceID(DeviceIDFactory.getInstance().getDeviceID(plan.getDevicePath()));
       }
     } catch (IOException | MetadataException e) {

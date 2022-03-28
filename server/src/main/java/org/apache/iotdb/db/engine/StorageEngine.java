@@ -496,7 +496,7 @@ public class StorageEngine implements IService {
   public VirtualStorageGroupProcessor getProcessorByVSGId(PartialPath path, int vsgId)
       throws StorageEngineException {
     try {
-      IStorageGroupMNode storageGroupMNode = IoTDB.schemaEngine.getStorageGroupNodeByPath(path);
+      IStorageGroupMNode storageGroupMNode = IoTDB.schemaProcessor.getStorageGroupNodeByPath(path);
       return getStorageGroupManager(storageGroupMNode).getProcessor(storageGroupMNode, vsgId);
     } catch (StorageGroupProcessorException | MetadataException e) {
       throw new StorageEngineException(e);
