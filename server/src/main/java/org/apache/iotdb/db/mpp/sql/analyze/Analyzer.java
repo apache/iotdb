@@ -38,7 +38,6 @@ import org.apache.iotdb.db.mpp.sql.statement.crud.InsertStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.util.*;
 
@@ -159,13 +158,14 @@ public class Analyzer {
       PartitionInfo partitionInfo = partitionFetcher.fetchPartitionInfo(dataPartitionQueryParam);
 
       // TODO(INSERT) get each time series schema according to SchemaPartitionInfo in PartitionInfo
-      Map<String, MeasurementSchema> schemaMap =
-          schemaFetcher.fetchSchema(
-              insertTabletStatement.getDevicePath(),
-              Arrays.asList(insertTabletStatement.getMeasurements()));
+      PathPatternTree patternTree = new PathPatternTree();
+      patternTree.appendPaths(
+          insertTabletStatement.getDevicePath(),
+          Arrays.asList(insertTabletStatement.getMeasurements()));
+      SchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree);
 
       Analysis analysis = new Analysis();
-      analysis.setSchemaMap(schemaMap);
+      analysis.setSchemaTree(schemaTree);
       // TODO(INSERT) do type check here
       analysis.setStatement(insertTabletStatement);
       analysis.setDataPartitionInfo(partitionInfo.getDataPartitionInfo());
