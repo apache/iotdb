@@ -24,6 +24,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SourceNode;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 import org.apache.iotdb.db.query.expression.Expression;
@@ -70,7 +71,7 @@ public class LogicNotExpression extends Expression {
   @Override
   public boolean isUserDefinedAggregationFunctionExpression() {
     return expression.isUserDefinedAggregationFunctionExpression()
-        || expression.isPlainAggregationFunctionExpression();
+        || expression.isBuiltInAggregationFunctionExpression();
   }
 
   @Override
@@ -125,6 +126,11 @@ public class LogicNotExpression extends Expression {
   public void constructUdfExecutors(
       Map<String, UDTFExecutor> expressionName2Executor, ZoneId zoneId) {
     expression.constructUdfExecutors(expressionName2Executor, zoneId);
+  }
+
+  @Override
+  public void collectPlanNode(Set<SourceNode> planNodeSet) {
+    // TODO: support LogicNotExpression
   }
 
   @Override

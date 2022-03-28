@@ -24,6 +24,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SourceNode;
 import org.apache.iotdb.db.mpp.sql.rewriter.WildcardsRemover;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.expression.Expression;
@@ -75,7 +76,7 @@ public class NegationExpression extends Expression {
   @Override
   public boolean isUserDefinedAggregationFunctionExpression() {
     return expression.isUserDefinedAggregationFunctionExpression()
-        || expression.isPlainAggregationFunctionExpression();
+        || expression.isBuiltInAggregationFunctionExpression();
   }
 
   @Override
@@ -124,6 +125,11 @@ public class NegationExpression extends Expression {
   @Override
   public void collectPaths(Set<PartialPath> pathSet) {
     expression.collectPaths(pathSet);
+  }
+
+  @Override
+  public void collectPlanNode(Set<SourceNode> planNodeSet) {
+    // TODO: support nested expressions
   }
 
   @Override
