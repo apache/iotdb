@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.sql.analyze;
 
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.PartitionInfo;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
 import org.apache.iotdb.db.exception.sql.SQLParserException;
@@ -28,6 +29,8 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
+import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
+import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.sql.rewriter.ConcatPathRewriter;
 import org.apache.iotdb.db.mpp.sql.rewriter.DnfFilterOptimizer;
 import org.apache.iotdb.db.mpp.sql.rewriter.MergeSingleFilterOptimizer;
@@ -42,12 +45,10 @@ import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.tree.StatementVisitor;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 /** Analyze the statement and generate Analysis. */
@@ -179,15 +180,21 @@ public class Analyzer {
       PartitionInfo partitionInfo = partitionFetcher.fetchPartitionInfo(dataPartitionQueryParam);
 
       // TODO(INSERT) get each time series schema according to SchemaPartitionInfo in PartitionInfo
-      Map<String, MeasurementSchema> schemaMap =
-          schemaFetcher.fetchSchema(
-              insertTabletStatement.getDevicePath(),
-              Arrays.asList(insertTabletStatement.getMeasurements()));
+      SchemaTree schemaTree =
+          IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()
+              ? schemaFetcher.fetchSchemaWithAutoCreate(
+                  new PathPatternTree(
+                      insertTabletStatement.getDevicePath(),
+                      insertTabletStatement.getMeasurements()))
+              : schemaFetcher.fetchSchema(
+                  new PathPatternTree(
+                      insertTabletStatement.getDevicePath(),
+                      insertTabletStatement.getMeasurements()));
 
       Analysis analysis = new Analysis();
-      analysis.setSchemaMap(schemaMap);
-      // TODO(INSERT) do type check here
-      if (!insertTabletStatement.checkDataType(schemaMap)) {
+      analysis.setSchemaTree(schemaTree);
+
+      if (!insertTabletStatement.checkDataType(schemaTree)) {
         throw new SemanticException("Data type mismatch");
       }
       analysis.setStatement(insertTabletStatement);
@@ -203,15 +210,19 @@ public class Analyzer {
           Arrays.asList(StorageEngine.getTimePartitionId(insertRowStatement.getTime())));
       PartitionInfo partitionInfo = partitionFetcher.fetchPartitionInfo(dataPartitionQueryParam);
 
-      Map<String, MeasurementSchema> schemaMap =
-          schemaFetcher.fetchSchema(
-              insertRowStatement.getDevicePath(),
-              Arrays.asList(insertRowStatement.getMeasurements()));
+      SchemaTree schemaTree =
+          IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()
+              ? schemaFetcher.fetchSchemaWithAutoCreate(
+                  new PathPatternTree(
+                      insertRowStatement.getDevicePath(), insertRowStatement.getMeasurements()))
+              : schemaFetcher.fetchSchema(
+                  new PathPatternTree(
+                      insertRowStatement.getDevicePath(), insertRowStatement.getMeasurements()));
 
       Analysis analysis = new Analysis();
-      analysis.setSchemaMap(schemaMap);
-      // TODO(INSERT) do type check here
-      if (!insertRowStatement.checkDataType(schemaMap)) {
+      analysis.setSchemaTree(schemaTree);
+
+      if (!insertRowStatement.checkDataType(schemaTree)) {
         throw new SemanticException("Data type mismatch");
       }
 

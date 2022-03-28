@@ -19,18 +19,25 @@
 
 package org.apache.iotdb.db.mpp.sql.statement.crud;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.sql.constant.StatementType;
 import org.apache.iotdb.db.mpp.sql.tree.StatementVisitor;
+import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
-import java.util.Map;
+import java.util.Arrays;
+import java.util.List;
 
 public class InsertRowStatement extends InsertBaseStatement {
   private static final Logger logger = LoggerFactory.getLogger(InsertRowStatement.class);
@@ -107,8 +114,81 @@ public class InsertRowStatement extends InsertBaseStatement {
     }
   }
 
-  public boolean checkDataType(Map<String, MeasurementSchema> schemaMap) {
-    return false;
+  /**
+   * if inferType is true, transfer String[] values to specific data types (Integer, Long, Float,
+   * Double, Binary)
+   */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
+  public void transferType(SchemaTree schemaTree) throws QueryProcessException {
+    List<MeasurementPath> measurementPaths =
+        schemaTree.searchMeasurementPaths(devicePath, Arrays.asList(measurements));
+    if (isNeedInferType) {
+      for (int i = 0; i < measurementPaths.size(); i++) {
+        if (measurementPaths.get(i) == null) {
+          if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
+            markFailedMeasurementInsertion(
+                i,
+                new QueryProcessException(
+                    new PathNotExistException(
+                        devicePath.getFullPath()
+                            + IoTDBConstant.PATH_SEPARATOR
+                            + measurements[i])));
+          } else {
+            throw new QueryProcessException(
+                new PathNotExistException(
+                    devicePath.getFullPath() + IoTDBConstant.PATH_SEPARATOR + measurements[i]));
+          }
+          continue;
+        }
+
+        dataTypes[i] = measurementPaths.get(i).getSeriesType();
+        try {
+          values[i] = CommonUtils.parseValue(dataTypes[i], values[i].toString());
+        } catch (Exception e) {
+          logger.warn(
+              "{}.{} data type is not consistent, input {}, registered {}",
+              devicePath,
+              measurements[i],
+              values[i],
+              dataTypes[i]);
+          if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
+            markFailedMeasurementInsertion(i, e);
+          } else {
+            throw e;
+          }
+        }
+      }
+    }
+  }
+
+  @Override
+  public void markFailedMeasurementInsertion(int index, Exception e) {
+    if (measurements[index] == null) {
+      return;
+    }
+    super.markFailedMeasurementInsertion(index, e);
+    values[index] = null;
+    if (isNeedInferType) {
+      dataTypes[index] = null;
+    }
+  }
+
+  public boolean checkDataType(SchemaTree schemaTree) {
+    List<MeasurementPath> measurementPaths =
+        schemaTree.searchMeasurementPaths(devicePath, Arrays.asList(measurements));
+    for (int i = 0; i < measurementPaths.size(); i++) {
+      if (dataTypes[i] != measurementPaths.get(i).getSeriesType()) {
+        if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
+          return false;
+        } else {
+          markFailedMeasurementInsertion(
+              i,
+              new DataTypeMismatchException(
+                  measurements[i], measurementPaths.get(i).getSeriesType(), dataTypes[i]));
+        }
+      }
+    }
+    return true;
   }
 
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {

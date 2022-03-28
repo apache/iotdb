@@ -130,16 +130,16 @@ public class LogicalPlanner {
     @Override
     public PlanNode visitInsertTablet(
         InsertTabletStatement insertTabletStatement, MPPQueryContext context) {
-      //      return new InsertTabletNode(
-      //              PlanNodeIdAllocator.generateId(),
-      //              insertTabletStatement.getDevicePath(),
-      //              insertTabletStatement.isAligned(),
-      //              insertTabletStatement.getMeasurements(),
-      //              insertTabletStatement.getDataTypes(),
-      //              insertTabletStatement.getTimes(),
-      //              insertTabletStatement.getBitMaps(),
-      //              insertTabletStatement.getColumns()
-      //      )
+      //            return new InsertTabletNode(
+      //                    PlanNodeIdAllocator.generateId(),
+      //                    insertTabletStatement.getDevicePath(),
+      //                    insertTabletStatement.isAligned(),
+      //                    insertTabletStatement.getMeasurements(),
+      //                    insertTabletStatement.getDataTypes(),
+      //                    insertTabletStatement.getTimes(),
+      //                    insertTabletStatement.getBitMaps(),
+      //                    insertTabletStatement.getColumns()
+      //            )
       InsertTabletNode node = new InsertTabletNode(PlanNodeIdAllocator.generateId());
 
       return node;

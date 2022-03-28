@@ -70,9 +70,7 @@ public abstract class InsertNode extends PlanNode {
   // info
   public abstract List<InsertNode> splitByPartition(Analysis analysis);
 
-  public boolean needSplit() {
-    return true;
-  }
+  public abstract boolean needSplit();
 
   @Override
   public void serialize(ByteBuffer byteBuffer) {}

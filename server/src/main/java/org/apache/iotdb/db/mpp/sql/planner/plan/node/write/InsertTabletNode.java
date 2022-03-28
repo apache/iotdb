@@ -27,7 +27,7 @@ import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.nio.ByteBuffer;
-import java.util.List;
+import java.util.*;
 
 public class InsertTabletNode extends InsertNode {
 
@@ -140,6 +140,79 @@ public class InsertTabletNode extends InsertNode {
 
   @Override
   public List<InsertNode> splitByPartition(Analysis analysis) {
-    return null;
+    // PartialPath storageGroup = SchemaEngine().getBelongedStorageGroup(plan.getDevicePath());
+    List<InsertNode> result = new ArrayList<>();
+    //    if (times.length == 0) {
+    //      return Collections.emptyList();
+    //    }
+    //    long startTime =
+    //        (times[0] / StorageEngine.getTimePartitionInterval())
+    //            * StorageEngine.getTimePartitionInterval(); // included
+    //    long endTime = startTime + StorageEngine.getTimePartitionInterval(); // excluded
+    //    int startLoc = 0; // included
+    //
+    //    Map<PartitionGroup, List<Integer>> splitMap = new HashMap<>();
+    //    // for each List in split, they are range1.start, range1.end, range2.start, range2.end,
+    // ...
+    //    for (int i = 1; i < times.length; i++) { // times are sorted in session API.
+    //      if (times[i] >= endTime) {
+    //        // a new range.
+    //        PartitionGroup group = partitionTable.route(storageGroup.getFullPath(), startTime);
+    //        List<Integer> ranges = splitMap.computeIfAbsent(group, x -> new ArrayList<>());
+    //        ranges.add(startLoc); // included
+    //        ranges.add(i); // excluded
+    //        // next init
+    //        startLoc = i;
+    //        startTime = endTime;
+    //        endTime =
+    //            (times[i] / StorageEngine.getTimePartitionInterval() + 1)
+    //                * StorageEngine.getTimePartitionInterval();
+    //      }
+    //    }
+    //    // the final range
+    //    PartitionGroup group = partitionTable.route(storageGroup.getFullPath(), startTime);
+    //    List<Integer> ranges = splitMap.computeIfAbsent(group, x -> new ArrayList<>());
+    //    ranges.add(startLoc); // included
+    //    ranges.add(times.length); // excluded
+    //
+    //    List<Integer> locs;
+    //    for (Map.Entry<PartitionGroup, List<Integer>> entry : splitMap.entrySet()) {
+    //      // generate a new times and values
+    //      locs = entry.getValue();
+    //      int count = 0;
+    //      for (int i = 0; i < locs.size(); i += 2) {
+    //        int start = locs.get(i);
+    //        int end = locs.get(i + 1);
+    //        count += end - start;
+    //      }
+    //      long[] subTimes = new long[count];
+    //      int destLoc = 0;
+    //      Object[] values = initTabletValues(plan.getDataTypes().length, count,
+    // plan.getDataTypes());
+    //      BitMap[] bitMaps =
+    //          plan.getBitMaps() == null ? null : initBitmaps(plan.getDataTypes().length, count);
+    //      for (int i = 0; i < locs.size(); i += 2) {
+    //        int start = locs.get(i);
+    //        int end = locs.get(i + 1);
+    //        System.arraycopy(plan.getTimes(), start, subTimes, destLoc, end - start);
+    //        for (int k = 0; k < values.length; k++) {
+    //          System.arraycopy(plan.getColumns()[k], start, values[k], destLoc, end - start);
+    //          if (bitMaps != null && plan.getBitMaps()[k] != null) {
+    //            BitMap.copyOfRange(plan.getBitMaps()[k], start, bitMaps[k], destLoc, end - start);
+    //          }
+    //        }
+    //        destLoc += end - start;
+    //      }
+    //      InsertTabletPlan newBatch = PartitionUtils.copy(plan, subTimes, values, bitMaps);
+    //      newBatch.setRange(locs);
+    //      newBatch.setAligned(plan.isAligned());
+    //      result.put(newBatch, entry.getKey());
+    //    }
+    return result;
+  }
+
+  @Override
+  public boolean needSplit() {
+    return true;
   }
 }

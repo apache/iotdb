@@ -19,9 +19,13 @@
 
 package org.apache.iotdb.db.mpp.common.schematree;
 
+import org.apache.iotdb.db.metadata.path.PartialPath;
+
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.List;
+import java.util.Map;
 
 public class PathPatternTree {
 
@@ -32,6 +36,10 @@ public class PathPatternTree {
    * DML use prefixMatch.
    */
   protected boolean isPrefixMatchPath;
+
+  public PathPatternTree(PartialPath deivcePath, String[] measurements) {};
+
+  public PathPatternTree(Map<PartialPath, List<String>> devices) {};
 
   public void serialize(OutputStream baos) throws IOException {
     // TODO

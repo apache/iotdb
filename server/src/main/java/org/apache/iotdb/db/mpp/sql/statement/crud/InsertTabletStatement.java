@@ -18,10 +18,14 @@
  */
 package org.apache.iotdb.db.mpp.sql.statement.crud;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.tsfile.utils.BitMap;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-import java.util.Map;
+import java.util.Arrays;
+import java.util.List;
 
 public class InsertTabletStatement extends InsertBaseStatement {
 
@@ -64,7 +68,30 @@ public class InsertTabletStatement extends InsertBaseStatement {
   }
 
   @Override
-  public boolean checkDataType(Map<String, MeasurementSchema> schemaMap) {
-    return false;
+  public void markFailedMeasurementInsertion(int index, Exception e) {
+    if (measurements[index] == null) {
+      return;
+    }
+    super.markFailedMeasurementInsertion(index, e);
+    columns[index] = null;
+  }
+
+  @Override
+  public boolean checkDataType(SchemaTree schemaTree) {
+    List<MeasurementPath> measurementPaths =
+        schemaTree.searchMeasurementPaths(devicePath, Arrays.asList(measurements));
+    for (int i = 0; i < measurementPaths.size(); i++) {
+      if (dataTypes[i] != measurementPaths.get(i).getSeriesType()) {
+        if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
+          return false;
+        } else {
+          markFailedMeasurementInsertion(
+              i,
+              new DataTypeMismatchException(
+                  measurements[i], measurementPaths.get(i).getSeriesType(), dataTypes[i]));
+        }
+      }
+    }
+    return true;
   }
 }

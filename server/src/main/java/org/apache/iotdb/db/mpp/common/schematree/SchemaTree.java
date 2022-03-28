@@ -44,6 +44,11 @@ public class SchemaTree {
     return new ArrayList<>();
   }
 
+  public List<MeasurementPath> searchMeasurementPaths(
+      PartialPath devicePath, List<String> measurements) {
+    return new ArrayList<>();
+  }
+
   public void serialize(OutputStream baos) throws IOException {
     // TODO
   }

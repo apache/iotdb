@@ -36,4 +36,6 @@ public interface ISchemaFetcher {
   Map<String, MeasurementSchema> fetchSchema(PartialPath deviceId, List<String> measurementIdList);
 
   SchemaTree fetchSchema(PathPatternTree patternTree);
+
+  SchemaTree fetchSchemaWithAutoCreate(PathPatternTree patternTree);
 }
