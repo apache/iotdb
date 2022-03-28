@@ -196,6 +196,27 @@ public class CheckpointManager implements AutoCloseable {
   }
   // endregion
 
+  public MemTableInfo getOldestMemTableInfo() {
+    // find oldest memTable
+    List<MemTableInfo> memTableInfos;
+    infoLock.lock();
+    try {
+      memTableInfos = new ArrayList<>(memTableId2Info.values());
+    } finally {
+      infoLock.unlock();
+    }
+    if (memTableInfos.isEmpty()) {
+      return null;
+    }
+    MemTableInfo oldestMemTableInfo = memTableInfos.get(0);
+    for (MemTableInfo memTableInfo : memTableInfos) {
+      if (oldestMemTableInfo.getFirstFileVersionId() > memTableInfo.getFirstFileVersionId()) {
+        oldestMemTableInfo = memTableInfo;
+      }
+    }
+    return oldestMemTableInfo;
+  }
+
   /**
    * Get version id of first valid .wal file
    *

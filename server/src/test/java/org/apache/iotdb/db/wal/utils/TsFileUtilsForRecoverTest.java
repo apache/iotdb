@@ -16,25 +16,24 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.wal.utils.listener;
+package org.apache.iotdb.db.wal.utils;
 
-/** This interface aims to listen to the result of some operation. */
-public interface IResultListener {
-  /** Set status to success and notify all threads waiting for the result. */
-  IResultListener succeed();
+import org.apache.iotdb.db.constant.TestConstant;
+import org.apache.iotdb.tsfile.utils.TsFileGeneratorUtils;
 
-  /** Set status to failure and notify all threads waiting for the result. */
-  IResultListener fail(Exception e);
-
-  /** Wait until getting the result. */
-  Status waitForResult();
-
-  /** Get the cause exception to failure. */
-  Exception getCause();
-
-  enum Status {
-    SUCCESS,
-    FAILURE,
-    RUNNING,
+/** like org.apache.iotdb.tsfile.utils.TsFileGeneratorForTest */
+public class TsFileUtilsForRecoverTest {
+  public static String getTestTsFilePath(
+      String logicalStorageGroupName,
+      long VirtualStorageGroupId,
+      long TimePartitionId,
+      long tsFileVersion) {
+    String filePath =
+        String.format(
+            TestConstant.TEST_TSFILE_PATH,
+            logicalStorageGroupName,
+            VirtualStorageGroupId,
+            TimePartitionId);
+    return TsFileGeneratorUtils.getTsFilePath(filePath, tsFileVersion);
   }
 }

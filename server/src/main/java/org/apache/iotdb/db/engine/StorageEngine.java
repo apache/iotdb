@@ -493,6 +493,16 @@ public class StorageEngine implements IService {
     }
   }
 
+  public VirtualStorageGroupProcessor getProcessorByVSGId(PartialPath path, int vsgId)
+      throws StorageEngineException {
+    try {
+      IStorageGroupMNode storageGroupMNode = IoTDB.schemaEngine.getStorageGroupNodeByPath(path);
+      return getStorageGroupManager(storageGroupMNode).getProcessor(storageGroupMNode, vsgId);
+    } catch (StorageGroupProcessorException | MetadataException e) {
+      throw new StorageEngineException(e);
+    }
+  }
+
   /**
    * get lock holder for each sg
    *
@@ -521,11 +531,22 @@ public class StorageEngine implements IService {
    *     modification in mtree
    * @return found or new storage group processor
    */
-  @SuppressWarnings("java:S2445")
-  // actually storageGroupMNode is a unique object on the mtree, synchronize it is reasonable
   private VirtualStorageGroupProcessor getStorageGroupProcessorByPath(
       PartialPath devicePath, IStorageGroupMNode storageGroupMNode)
       throws StorageGroupProcessorException, StorageEngineException {
+    return getStorageGroupManager(storageGroupMNode).getProcessor(devicePath, storageGroupMNode);
+  }
+
+  /**
+   * get storage group manager by storage group mnode
+   *
+   * @param storageGroupMNode mnode of the storage group, we need synchronize this to avoid
+   *     modification in mtree
+   * @return found or new storage group manager
+   */
+  @SuppressWarnings("java:S2445")
+  // actually storageGroupMNode is a unique object on the mtree, synchronize it is reasonable
+  private StorageGroupManager getStorageGroupManager(IStorageGroupMNode storageGroupMNode) {
     StorageGroupManager storageGroupManager = processorMap.get(storageGroupMNode.getPartialPath());
     if (storageGroupManager == null) {
       synchronized (this) {
@@ -536,7 +557,7 @@ public class StorageEngine implements IService {
         }
       }
     }
-    return storageGroupManager.getProcessor(devicePath, storageGroupMNode);
+    return storageGroupManager;
   }
 
   /**

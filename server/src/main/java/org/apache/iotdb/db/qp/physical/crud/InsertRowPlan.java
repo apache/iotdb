@@ -54,8 +54,6 @@ import java.util.List;
 import java.util.Objects;
 
 public class InsertRowPlan extends InsertPlan {
-  private static final int FIXED_SERIALIZED_SIZE = Byte.BYTES + Long.BYTES;
-
   private static final Logger logger = LoggerFactory.getLogger(InsertRowPlan.class);
   private static final byte TYPE_RAW_STRING = -1;
   private static final byte TYPE_NULL = -2;
@@ -342,7 +340,7 @@ public class InsertRowPlan extends InsertPlan {
   int subSerializeSize() {
     int size = 0;
     size += Long.BYTES;
-    size += getSerializedBytesNum(devicePath.getFullPath());
+    size += ReadWriteIOUtils.sizeToWrite(devicePath.getFullPath());
     return size + serializeMeasurementsAndValuesSize();
   }
 
@@ -351,7 +349,7 @@ public class InsertRowPlan extends InsertPlan {
     size += Integer.BYTES;
     for (String m : measurements) {
       if (m != null) {
-        size += getSerializedBytesNum(m);
+        size += ReadWriteIOUtils.sizeToWrite(m);
       }
     }
     // putValues
@@ -362,7 +360,7 @@ public class InsertRowPlan extends InsertPlan {
         continue;
       }
       if (dataTypes == null || dataTypes[i] == null) {
-        size += Byte.BYTES + getSerializedBytesNum(values[i].toString());
+        size += Byte.BYTES + ReadWriteIOUtils.sizeToWrite(values[i].toString());
       } else {
         size += Byte.BYTES;
         switch (dataTypes[i]) {
@@ -382,7 +380,7 @@ public class InsertRowPlan extends InsertPlan {
             size += Double.BYTES;
             break;
           case TEXT:
-            size += Integer.BYTES + ((Binary) values[i]).getValues().length;
+            size += ReadWriteIOUtils.sizeToWrite((Binary) values[i]);
             break;
         }
       }

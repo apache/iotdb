@@ -150,7 +150,7 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan implements BatchPlan {
   public int serializedSize() {
     int size = 0;
     size += Byte.BYTES;
-    size += getSerializedBytesNum(devicePath.getFullPath());
+    size += ReadWriteIOUtils.sizeToWrite(devicePath.getFullPath());
 
     size += Integer.BYTES;
     for (InsertRowPlan plan : rowPlans) {

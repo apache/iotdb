@@ -26,9 +26,9 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.wal.buffer.WALEdit;
 import org.apache.iotdb.db.wal.buffer.WALEditType;
+import org.apache.iotdb.db.wal.utils.WALByteBufferForTest;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
@@ -79,15 +79,15 @@ public class WALFileTest {
     for (WALEdit walEdit : expectedWALEdits) {
       size += walEdit.serializedSize();
     }
-    WALByteBuffer buffer = new WALByteBuffer(ByteBuffer.allocate(size));
+    WALByteBufferForTest buffer = new WALByteBufferForTest(ByteBuffer.allocate(size));
     // test WALEdit.serialize
     for (WALEdit walEdit : expectedWALEdits) {
       walEdit.serialize(buffer);
     }
-    assertEquals(0, buffer.buffer.remaining());
+    assertEquals(0, buffer.getBuffer().remaining());
     // test WALEdit.write
     try (ILogWriter walWriter = new WALWriter(walFile)) {
-      walWriter.write(buffer.buffer);
+      walWriter.write(buffer.getBuffer());
     }
     // test WALReader.readAll
     List<WALEdit> actualWALEdits = new ArrayList<>();
@@ -127,17 +127,17 @@ public class WALFileTest {
     for (WALEdit walEdit : expectedWALEdits) {
       size += walEdit.serializedSize();
     }
-    WALByteBuffer buffer = new WALByteBuffer(ByteBuffer.allocate(size));
+    WALByteBufferForTest buffer = new WALByteBufferForTest(ByteBuffer.allocate(size));
     // test WALEdit.serialize
     for (WALEdit walEdit : expectedWALEdits) {
       walEdit.serialize(buffer);
     }
     // add broken part
     buffer.put(WALEditType.DELETE_PLAN.getCode());
-    assertEquals(0, buffer.buffer.remaining());
+    assertEquals(0, buffer.getBuffer().remaining());
     // test WALEdit.write
     try (ILogWriter walWriter = new WALWriter(walFile)) {
-      walWriter.write(buffer.buffer);
+      walWriter.write(buffer.getBuffer());
     }
     // test WALReader.readAll
     List<WALEdit> actualWALEdits = new ArrayList<>();
@@ -258,57 +258,5 @@ public class WALFileTest {
 
   public static DeletePlan getDeletePlan(String devicePath) throws IllegalPathException {
     return new DeletePlan(Long.MIN_VALUE, Long.MAX_VALUE, new PartialPath(devicePath));
-  }
-
-  public static class WALByteBuffer implements IWALByteBufferView {
-    private final ByteBuffer buffer;
-
-    public WALByteBuffer(ByteBuffer buffer) {
-      this.buffer = buffer;
-    }
-
-    @Override
-    public void put(byte b) {
-      buffer.put(b);
-    }
-
-    @Override
-    public void put(byte[] src) {
-      buffer.put(src);
-    }
-
-    @Override
-    public void putChar(char value) {
-      buffer.putChar(value);
-    }
-
-    @Override
-    public void putShort(short value) {
-      buffer.putShort(value);
-    }
-
-    @Override
-    public void putInt(int value) {
-      buffer.putInt(value);
-    }
-
-    @Override
-    public void putLong(long value) {
-      buffer.putLong(value);
-    }
-
-    @Override
-    public void putFloat(float value) {
-      buffer.putFloat(value);
-    }
-
-    @Override
-    public void putDouble(double value) {
-      buffer.putDouble(value);
-    }
-
-    public ByteBuffer getBuffer() {
-      return buffer;
-    }
   }
 }

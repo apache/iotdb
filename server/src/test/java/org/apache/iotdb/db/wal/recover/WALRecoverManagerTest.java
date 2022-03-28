@@ -24,6 +24,7 @@ import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
@@ -35,7 +36,7 @@ import org.apache.iotdb.db.wal.buffer.WALEdit;
 import org.apache.iotdb.db.wal.checkpoint.CheckpointManager;
 import org.apache.iotdb.db.wal.checkpoint.MemTableInfo;
 import org.apache.iotdb.db.wal.recover.file.UnsealedTsFileRecoverPerformer;
-import org.apache.iotdb.db.wal.recover.utils.TsFileUtilsForRecoverTest;
+import org.apache.iotdb.db.wal.utils.TsFileUtilsForRecoverTest;
 import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.db.wal.utils.listener.WALRecoverListener;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -154,7 +155,128 @@ public class WALRecoverManagerTest {
 
   @Test
   public void testNormalProcedure() throws Exception {
-    prepareCheckpointAndWALFile();
+    prepareCheckpointAndWALFileForNormal();
+    recoverAndCheck();
+  }
+
+  private void prepareCheckpointAndWALFileForNormal()
+      throws MetadataException, ExecutionException, InterruptedException {
+    // write useless .wal files, start write threads to write concurrently
+    int threadsNum = 5;
+    ExecutorService executorService = Executors.newFixedThreadPool(threadsNum);
+    List<Future<Void>> futures = new ArrayList<>();
+    int firstWALVersionId = walBuffer.getCurrentLogVersion();
+    for (int i = 0; i < threadsNum; ++i) {
+      IMemTable fakeMemTable = new PrimitiveMemTable();
+      int memTableId = fakeMemTable.getMemTableId();
+      Callable<Void> writeTask =
+          () -> {
+            checkpointManager.makeCreateMemTableCP(
+                new MemTableInfo(fakeMemTable, "fake.tsfile", 0));
+            try {
+              while (walBuffer.getCurrentLogVersion() - firstWALVersionId < 2) {
+                WALEdit walEdit =
+                    new WALEdit(
+                        memTableId, getInsertTabletPlan(SG_NAME.concat("test_d" + memTableId)));
+                walBuffer.write(walEdit);
+              }
+            } catch (IllegalPathException e) {
+              fail();
+            }
+            checkpointManager.makeFlushMemTableCP(fakeMemTable.getMemTableId());
+            return null;
+          };
+      Future<Void> future = executorService.submit(writeTask);
+      futures.add(future);
+    }
+    // wait until all write tasks are done
+    for (Future<Void> future : futures) {
+      future.get();
+    }
+    // wait a moment
+    while (!walBuffer.isAllWALEditConsumed()) {
+      Thread.sleep(1_000);
+    }
+    Thread.sleep(1_000);
+    // write normal .wal files
+    int firstValidVersionId = walBuffer.getCurrentLogVersion();
+    IMemTable targetMemTable = new PrimitiveMemTable();
+    WALEdit walEdit =
+        new WALEdit(targetMemTable.getMemTableId(), getInsertRowPlan(DEVICE2_NAME, 4L), true);
+    walBuffer.write(walEdit);
+    walEdit.getWalFlushListener().waitForResult();
+    // write .checkpoint file
+    checkpointManager.makeCreateMemTableCP(
+        new MemTableInfo(targetMemTable, FILE_WITH_WAL_NAME, firstValidVersionId));
+    checkpointManager.fsyncCheckpointFile();
+  }
+
+  @Test
+  public void testMemTableSnapshot() throws Exception {
+    prepareCheckpointAndWALFileForSnapshot();
+    recoverAndCheck();
+  }
+
+  private void prepareCheckpointAndWALFileForSnapshot()
+      throws MetadataException, ExecutionException, InterruptedException {
+    // write useless .wal files, start write threads to write concurrently
+    int threadsNum = 5;
+    ExecutorService executorService = Executors.newFixedThreadPool(threadsNum);
+    List<Future<Void>> futures = new ArrayList<>();
+    int firstWALVersionId = walBuffer.getCurrentLogVersion();
+    for (int i = 0; i < threadsNum; ++i) {
+      IMemTable fakeMemTable = new PrimitiveMemTable();
+      int memTableId = fakeMemTable.getMemTableId();
+      Callable<Void> writeTask =
+          () -> {
+            checkpointManager.makeCreateMemTableCP(
+                new MemTableInfo(fakeMemTable, "fake.tsfile", 0));
+            try {
+              while (walBuffer.getCurrentLogVersion() - firstWALVersionId < 2) {
+                WALEdit walEdit =
+                    new WALEdit(
+                        memTableId, getInsertTabletPlan(SG_NAME.concat("test_d" + memTableId)));
+                walBuffer.write(walEdit);
+              }
+            } catch (IllegalPathException e) {
+              fail();
+            }
+            checkpointManager.makeFlushMemTableCP(fakeMemTable.getMemTableId());
+            return null;
+          };
+      Future<Void> future = executorService.submit(writeTask);
+      futures.add(future);
+    }
+    // wait until all write tasks are done
+    for (Future<Void> future : futures) {
+      future.get();
+    }
+    // wait a moment
+    while (!walBuffer.isAllWALEditConsumed()) {
+      Thread.sleep(1_000);
+    }
+    Thread.sleep(1_000);
+    // write normal .wal files
+    int firstValidVersionId = walBuffer.getCurrentLogVersion();
+    IMemTable targetMemTable = new PrimitiveMemTable();
+    InsertRowPlan insertRowPlan = getInsertRowPlan(DEVICE2_NAME, 4L);
+    targetMemTable.insert(insertRowPlan);
+
+    WALEdit walEdit = new WALEdit(targetMemTable.getMemTableId(), insertRowPlan, true);
+    walBuffer.write(walEdit);
+    walEdit.getWalFlushListener().waitForResult();
+
+    walEdit = new WALEdit(targetMemTable.getMemTableId(), targetMemTable, true);
+    walBuffer.write(walEdit);
+    walEdit.getWalFlushListener().waitForResult();
+    // write .checkpoint file
+    checkpointManager.makeCreateMemTableCP(
+        new MemTableInfo(targetMemTable, FILE_WITH_WAL_NAME, firstValidVersionId));
+    checkpointManager.fsyncCheckpointFile();
+  }
+
+  private void recoverAndCheck() throws Exception {
+    // prepare tsFiles
     List<WALRecoverListener> recoverListeners = prepareCrashedTsFile();
     // recover
     recoverManager.setAllVsgScannedLatch(new CountDownLatch(0));
@@ -218,62 +340,14 @@ public class WALRecoverManagerTest {
     // endregion
   }
 
-  private void prepareCheckpointAndWALFile()
-      throws IllegalPathException, ExecutionException, InterruptedException {
-    // write useless .wal files, start write threads to write concurrently
-    int threadsNum = 5;
-    ExecutorService executorService = Executors.newFixedThreadPool(threadsNum);
-    List<Future<Void>> futures = new ArrayList<>();
-    int firstWALVersionId = walBuffer.getCurrentLogVersion();
-    for (int i = 0; i < threadsNum; ++i) {
-      IMemTable fakeMemTable = new PrimitiveMemTable();
-      int memTableId = fakeMemTable.getMemTableId();
-      Callable<Void> writeTask =
-          () -> {
-            checkpointManager.makeCreateMemTableCP(
-                new MemTableInfo(fakeMemTable.getMemTableId(), "fake.tsfile", 0));
-            try {
-              while (walBuffer.getCurrentLogVersion() - firstWALVersionId < 2) {
-                WALEdit walEdit =
-                    new WALEdit(
-                        memTableId, getInsertTabletPlan(SG_NAME.concat("test_d" + memTableId)));
-                walBuffer.write(walEdit);
-              }
-            } catch (IllegalPathException e) {
-              fail();
-            }
-            checkpointManager.makeFlushMemTableCP(fakeMemTable.getMemTableId());
-            return null;
-          };
-      Future<Void> future = executorService.submit(writeTask);
-      futures.add(future);
-    }
-    // wait until all write tasks are done
-    for (Future<Void> future : futures) {
-      future.get();
-    }
-    // wait a moment
-    while (!walBuffer.isAllWALEditConsumed()) {
-      Thread.sleep(1_000);
-    }
-    Thread.sleep(1_000);
-    // write normal .wal files
-    int firstValidVersionId = walBuffer.getCurrentLogVersion();
-    IMemTable targetMemTable = new PrimitiveMemTable();
-    WALEdit walEdit =
-        new WALEdit(targetMemTable.getMemTableId(), getInsertRowPlan(DEVICE2_NAME, 4L));
-    walBuffer.write(walEdit);
-    // write .checkpoint file
-    checkpointManager.makeCreateMemTableCP(
-        new MemTableInfo(targetMemTable.getMemTableId(), FILE_WITH_WAL_NAME, firstValidVersionId));
-    checkpointManager.fsyncCheckpointFile();
-  }
-
-  private InsertRowPlan getInsertRowPlan(String devicePath, long time) throws IllegalPathException {
+  private InsertRowPlan getInsertRowPlan(String devicePath, long time) throws MetadataException {
     TSDataType[] dataTypes = new TSDataType[] {TSDataType.FLOAT, TSDataType.DOUBLE};
     String[] columns = new String[] {1 + "", 1.0 + ""};
-    return new InsertRowPlan(
-        new PartialPath(devicePath), time, new String[] {"s1", "s2"}, dataTypes, columns);
+    PartialPath path = new PartialPath(devicePath);
+    String[] measurements = new String[] {"s1", "s2"};
+    InsertRowPlan insertRowPlan = new InsertRowPlan(path, time, measurements, dataTypes, columns);
+    insertRowPlan.setMeasurementMNodes(IoTDB.schemaEngine.getMeasurementMNodes(path, measurements));
+    return insertRowPlan;
   }
 
   private InsertTabletPlan getInsertTabletPlan(String devicePath) throws IllegalPathException {

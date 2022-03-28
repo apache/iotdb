@@ -58,8 +58,6 @@ import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.node.IWALNode;
-import org.apache.iotdb.db.wal.utils.WALSubmitter;
-import org.apache.iotdb.db.wal.utils.listener.IResultListener;
 import org.apache.iotdb.db.wal.utils.listener.WALFlushListener;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -88,7 +86,7 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 @SuppressWarnings("java:S1135") // ignore todos
-public class TsFileProcessor implements WALSubmitter {
+public class TsFileProcessor {
 
   /** logger fot this class */
   private static final Logger logger = LoggerFactory.getLogger(TsFileProcessor.class);
@@ -226,7 +224,7 @@ public class TsFileProcessor implements WALSubmitter {
 
     try {
       WALFlushListener walFlushListener = walNode.log(workMemTable.getMemTableId(), insertRowPlan);
-      if (walFlushListener.waitForResult() == IResultListener.Status.FAILURE) {
+      if (walFlushListener.waitForResult() == WALFlushListener.Status.FAILURE) {
         throw walFlushListener.getCause();
       }
     } catch (Exception e) {
@@ -297,7 +295,7 @@ public class TsFileProcessor implements WALSubmitter {
       insertTabletPlan.setEnd(end);
       WALFlushListener walFlushListener =
           walNode.log(workMemTable.getMemTableId(), insertTabletPlan);
-      if (walFlushListener.waitForResult() == IResultListener.Status.FAILURE) {
+      if (walFlushListener.waitForResult() == WALFlushListener.Status.FAILURE) {
         throw walFlushListener.getCause();
       }
     } catch (Exception e) {

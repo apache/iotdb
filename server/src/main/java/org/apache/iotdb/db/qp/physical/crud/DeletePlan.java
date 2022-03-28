@@ -146,7 +146,7 @@ public class DeletePlan extends PhysicalPlan implements WALEditValue {
   public int serializedSize() {
     int size = FIXED_SERIALIZED_SIZE;
     for (PartialPath path : paths) {
-      size += getSerializedBytesNum(path.getFullPath());
+      size += ReadWriteIOUtils.sizeToWrite(path.getFullPath());
     }
     return size;
   }

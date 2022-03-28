@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.wal.checkpoint;
 
+import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.wal.io.CheckpointReader;
 import org.apache.iotdb.db.wal.io.CheckpointWriter;
@@ -30,6 +31,7 @@ import org.junit.Test;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -76,19 +78,22 @@ public class CheckpointManagerTest {
     ExecutorService executorService = Executors.newFixedThreadPool(threadsNum);
     List<Future<Void>> futures = new ArrayList<>();
     Map<Integer, MemTableInfo> expectedMemTableId2Info = new ConcurrentHashMap<>();
+    Map<Integer, Integer> versionId2memTableId = new ConcurrentHashMap<>();
     // create 10 memTables, and flush the first 5 of them
     int memTablesNum = 10;
     for (int i = 0; i < memTablesNum; ++i) {
-      int memTableId = i;
+      int versionId = i;
       Callable<Void> writeTask =
           () -> {
-            String tsFilePath = logDirectory + File.separator + memTableId + ".tsfile";
-            MemTableInfo memTableInfo = new MemTableInfo(memTableId, tsFilePath, memTableId);
+            String tsFilePath = logDirectory + File.separator + versionId + ".tsfile";
+            MemTableInfo memTableInfo =
+                new MemTableInfo(new PrimitiveMemTable(), tsFilePath, versionId);
+            versionId2memTableId.put(versionId, memTableInfo.getMemTableId());
             checkpointManager.makeCreateMemTableCP(memTableInfo);
-            if (memTableId < memTablesNum / 2) {
-              checkpointManager.makeFlushMemTableCP(memTableId);
+            if (versionId < memTablesNum / 2) {
+              checkpointManager.makeFlushMemTableCP(versionId2memTableId.get(versionId));
             } else {
-              expectedMemTableId2Info.put(memTableId, memTableInfo);
+              expectedMemTableId2Info.put(memTableInfo.getMemTableId(), memTableInfo);
             }
             return null;
           };
@@ -113,25 +118,27 @@ public class CheckpointManagerTest {
   public void testTriggerLogRoller() {
     // create memTables until reach LOG_SIZE_LIMIT, and flush the first 5 of them
     int size = 0;
-    int memTableId = 0;
-    Map<Integer, MemTableInfo> expectedMemTableId2Info = new ConcurrentHashMap<>();
+    int versionId = 0;
+    Map<Integer, MemTableInfo> expectedMemTableId2Info = new HashMap<>();
+    Map<Integer, Integer> versionId2memTableId = new HashMap<>();
     while (size < CheckpointManager.LOG_SIZE_LIMIT) {
-      ++memTableId;
-      String tsFilePath = logDirectory + File.separator + memTableId + ".tsfile";
-      MemTableInfo memTableInfo = new MemTableInfo(memTableId, tsFilePath, memTableId);
+      ++versionId;
+      String tsFilePath = logDirectory + File.separator + versionId + ".tsfile";
+      MemTableInfo memTableInfo = new MemTableInfo(new PrimitiveMemTable(), tsFilePath, versionId);
+      versionId2memTableId.put(versionId, memTableInfo.getMemTableId());
       Checkpoint checkpoint =
           new Checkpoint(
               CheckpointType.CREATE_MEMORY_TABLE, Collections.singletonList(memTableInfo));
       size += checkpoint.serializedSize();
       checkpointManager.makeCreateMemTableCP(memTableInfo);
-      if (memTableId < 5) {
+      if (versionId < 5) {
         checkpoint =
             new Checkpoint(
                 CheckpointType.FLUSH_MEMORY_TABLE, Collections.singletonList(memTableInfo));
         size += checkpoint.serializedSize();
-        checkpointManager.makeFlushMemTableCP(memTableId);
+        checkpointManager.makeFlushMemTableCP(versionId2memTableId.get(versionId));
       } else {
-        expectedMemTableId2Info.put(memTableId, memTableInfo);
+        expectedMemTableId2Info.put(memTableInfo.getMemTableId(), memTableInfo);
       }
     }
     checkpointManager.fsyncCheckpointFile();

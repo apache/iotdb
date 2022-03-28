@@ -48,13 +48,8 @@ public class WALFakeNode implements IWALNode {
     return getResult();
   }
 
-  @Override
-  public WALFlushListener log(int memTableId, IMemTable memTable) {
-    return getResult();
-  }
-
   private WALFlushListener getResult() {
-    WALFlushListener walFlushListener = new WALFlushListener();
+    WALFlushListener walFlushListener = new WALFlushListener(false);
     switch (status) {
       case SUCCESS:
         walFlushListener.succeed();

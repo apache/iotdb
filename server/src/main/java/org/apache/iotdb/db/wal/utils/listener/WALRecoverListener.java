@@ -18,55 +18,18 @@
  */
 package org.apache.iotdb.db.wal.utils.listener;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 /** This class helps judge whether some TsFile is recovered. */
-public class WALRecoverListener implements IResultListener {
-  private static final Logger logger = LoggerFactory.getLogger(WALRecoverListener.class);
+public class WALRecoverListener extends AbstractResultListener {
 
   /** path of recovering TsFile */
   private final String filePath;
 
-  private volatile Status status;
-  private volatile Exception cause;
-
   public WALRecoverListener(String filePath) {
+    super(true);
     this.filePath = filePath;
-    status = Status.RUNNING;
-    cause = null;
-  }
-
-  public synchronized WALRecoverListener succeed() {
-    status = Status.SUCCESS;
-    this.notifyAll();
-    return this;
-  }
-
-  public synchronized WALRecoverListener fail(Exception e) {
-    status = Status.FAILURE;
-    cause = e;
-    this.notifyAll();
-    return this;
-  }
-
-  public synchronized WALRecoverListener.Status waitForResult() {
-    while (status == Status.RUNNING) {
-      try {
-        this.wait();
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        logger.warn("Waiting for current buffer being flushed interrupted");
-      }
-    }
-    return status;
   }
 
   public String getFilePath() {
     return filePath;
-  }
-
-  public Exception getCause() {
-    return cause;
   }
 }

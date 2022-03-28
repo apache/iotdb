@@ -192,7 +192,10 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
           walRedoer.redoDelete((DeletePlan) walEdit.getValue());
           break;
         case MEMORY_TABLE_SNAPSHOT:
-          // TODO
+          IMemTable memTable = (IMemTable) walEdit.getValue();
+          if (!memTable.isSignalMemTable()) {
+            walRedoer.resetRecoveryMemTable(memTable);
+          }
           break;
       }
     } catch (Exception e) {

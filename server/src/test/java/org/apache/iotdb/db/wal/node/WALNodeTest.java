@@ -210,7 +210,7 @@ public class WALNodeTest {
             } else {
               // mimic MemTableInfo
               MemTableInfo memTableInfo =
-                  new MemTableInfo(memTableId, tsFilePath, firstFileVersionId);
+                  new MemTableInfo(memTable, tsFilePath, firstFileVersionId);
               expectedMemTableId2Info.put(memTableId, memTableInfo);
             }
             return null;

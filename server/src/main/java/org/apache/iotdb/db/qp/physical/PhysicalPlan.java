@@ -95,7 +95,6 @@ public abstract class PhysicalPlan implements IConsensusRequest {
   private boolean isQuery = false;
 
   private Operator.OperatorType operatorType;
-  private static final int NULL_VALUE_LEN = -1;
 
   // for cluster mode, whether the plan may be splitted into several sub plans
   protected boolean canBeSplit = true;
@@ -222,16 +221,8 @@ public abstract class PhysicalPlan implements IConsensusRequest {
     throw new UnsupportedOperationException(SERIALIZATION_UNIMPLEMENTED);
   }
 
-  protected int getSerializedBytesNum(String value) {
-    return value == null ? Integer.BYTES : Integer.BYTES + value.getBytes().length;
-  }
-
   protected void putString(ByteBuffer buffer, String value) {
-    if (value == null) {
-      buffer.putInt(NULL_VALUE_LEN);
-    } else {
-      ReadWriteIOUtils.write(value, buffer);
-    }
+    ReadWriteIOUtils.write(value, buffer);
   }
 
   protected void putStrings(ByteBuffer buffer, List<String> values) {
@@ -241,11 +232,7 @@ public abstract class PhysicalPlan implements IConsensusRequest {
   }
 
   protected void putString(DataOutputStream stream, String value) throws IOException {
-    if (value == null) {
-      stream.writeInt(NULL_VALUE_LEN);
-    } else {
-      ReadWriteIOUtils.write(value, stream);
-    }
+    ReadWriteIOUtils.write(value, stream);
   }
 
   protected void putStrings(DataOutputStream stream, List<String> values) throws IOException {
@@ -255,11 +242,7 @@ public abstract class PhysicalPlan implements IConsensusRequest {
   }
 
   protected String readString(ByteBuffer buffer) {
-    int valueLen = buffer.getInt();
-    if (valueLen == NULL_VALUE_LEN) {
-      return null;
-    }
-    return ReadWriteIOUtils.readStringWithLength(buffer, valueLen);
+    return ReadWriteIOUtils.readString(buffer);
   }
 
   protected List<String> readStrings(ByteBuffer buffer, int totalSize) {

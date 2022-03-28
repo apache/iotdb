@@ -671,6 +671,12 @@ public class IoTDBDescriptor {
                   "recovery_log_interval_in_ms",
                   String.valueOf(conf.getRecoveryLogIntervalInMs()))));
 
+      conf.setEnableDiscardOutOfOrderData(
+          Boolean.parseBoolean(
+              properties.getProperty(
+                  "enable_discard_out_of_order_data",
+                  Boolean.toString(conf.isEnableDiscardOutOfOrderData()))));
+
       conf.setConcurrentWindowEvaluationThread(
           Integer.parseInt(
               properties.getProperty(
@@ -863,30 +869,24 @@ public class IoTDBDescriptor {
   }
 
   private void loadWALProps(Properties properties) {
-    conf.setEnableDiscardOutOfOrderData(
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "enable_discard_out_of_order_data",
-                Boolean.toString(conf.isEnableDiscardOutOfOrderData()))));
-
     conf.setWalMode(
         WALMode.valueOf((properties.getProperty("wal_mode", conf.getWalMode().toString()))));
 
     conf.setWalDirs(properties.getProperty("wal_dirs", conf.getWalDirs()[0]).split(","));
 
-    long syncWalDelayInMs =
+    long fsyncWalDelayInMs =
         Long.parseLong(
             properties.getProperty(
                 "fsync_wal_delay_in_ms", Long.toString(conf.getFsyncWalDelayInMs())));
-    if (syncWalDelayInMs > 0) {
-      conf.setFsyncWalDelayInMs(syncWalDelayInMs);
+    if (fsyncWalDelayInMs > 0) {
+      conf.setFsyncWalDelayInMs(fsyncWalDelayInMs);
     }
 
-    int maxWalNum =
+    int maxWalNodeNum =
         Integer.parseInt(
             properties.getProperty("max_wal_node_num", Integer.toString(conf.getMaxWalNodeNum())));
-    if (maxWalNum > 0) {
-      conf.setMaxWalNodeNum(maxWalNum);
+    if (maxWalNodeNum > 0) {
+      conf.setMaxWalNodeNum(maxWalNodeNum);
     }
 
     int walBufferSize =
@@ -905,21 +905,22 @@ public class IoTDBDescriptor {
       conf.setWalBufferEntrySize(walBufferEntrySize);
     }
 
-    int walStorageSpace =
-        Integer.parseInt(
+    long walNodeMaxStorageSpace =
+        Long.parseLong(
             properties.getProperty(
-                "wal_storage_space_in_mb", Integer.toString(conf.getWalStorageSpaceInMb())));
-    if (walStorageSpace > 0) {
-      conf.setWalStorageSpaceInMb(walStorageSpace);
+                "wal_node_max_storage_space_in_mb",
+                Long.toString(conf.getWalNodeMaxStorageSpaceInMb())));
+    if (walNodeMaxStorageSpace > 0) {
+      conf.setWalNodeMaxStorageSpaceInMb(walNodeMaxStorageSpace);
     }
 
-    int memtableSnapshotForWalThreshold =
-        Integer.parseInt(
+    long walMemTableSnapshotThreshold =
+        Long.parseLong(
             properties.getProperty(
                 "wal_memtable_snapshot_threshold_in_byte",
-                Integer.toString(conf.getWalMemTableSnapshotThreshold())));
-    if (memtableSnapshotForWalThreshold > 0) {
-      conf.setWalMemTableSnapshotThreshold(walStorageSpace);
+                Long.toString(conf.getWalMemTableSnapshotThreshold())));
+    if (walMemTableSnapshotThreshold > 0) {
+      conf.setWalMemTableSnapshotThreshold(walMemTableSnapshotThreshold);
     }
   }
 

@@ -165,15 +165,15 @@ public class IoTDBConfig {
   /** Buffer entry size of each wal buffer. Unit: byte */
   private int walBufferEntrySize = 16 * 1024;
 
-  /** Max storage space for wal. Unit: MB */
-  private int walStorageSpaceInMb = 0;
+  /** Max storage space for each wal node. Unit: MB */
+  private long walNodeMaxStorageSpaceInMb = 3 * 1024;
 
   /**
    * MemTable size threshold for triggering MemTable snapshot in wal. When a memTable's size exceeds
    * this, wal can flush this memtable to disk, otherwise wal will snapshot this memtable in wal.
    * Unit: byte
    */
-  private int walMemTableSnapshotThreshold = 128 * 1024 * 1024;
+  private long walMemTableSnapshotThreshold = 128 * 1024 * 1024;
   // endregion
 
   /** Unit: byte */
@@ -1351,19 +1351,19 @@ public class IoTDBConfig {
     this.walBufferEntrySize = walBufferEntrySize;
   }
 
-  public int getWalStorageSpaceInMb() {
-    return walStorageSpaceInMb;
+  public long getWalNodeMaxStorageSpaceInMb() {
+    return walNodeMaxStorageSpaceInMb;
   }
 
-  void setWalStorageSpaceInMb(int walStorageSpaceInMb) {
-    this.walStorageSpaceInMb = walStorageSpaceInMb;
+  void setWalNodeMaxStorageSpaceInMb(long walNodeMaxStorageSpaceInMb) {
+    this.walNodeMaxStorageSpaceInMb = walNodeMaxStorageSpaceInMb;
   }
 
-  public int getWalMemTableSnapshotThreshold() {
+  public long getWalMemTableSnapshotThreshold() {
     return walMemTableSnapshotThreshold;
   }
 
-  void setWalMemTableSnapshotThreshold(int walMemTableSnapshotThreshold) {
+  void setWalMemTableSnapshotThreshold(long walMemTableSnapshotThreshold) {
     this.walMemTableSnapshotThreshold = walMemTableSnapshotThreshold;
   }
 

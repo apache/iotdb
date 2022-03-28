@@ -18,12 +18,16 @@
  */
 package org.apache.iotdb.db.wal.buffer;
 
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.memtable.AbstractMemTable;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.wal.utils.SerializedSize;
+import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.db.wal.utils.listener.WALFlushListener;
 
 import java.io.DataInputStream;
@@ -35,6 +39,8 @@ import java.util.Objects;
  * value(physical plan or memTable snapshot).
  */
 public class WALEdit implements SerializedSize {
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+
   /** wal edit type 1 byte, memTable id 4 bytes */
   private static final int FIXED_SERIALIZED_SIZE = Byte.BYTES + Integer.BYTES;
 
@@ -52,6 +58,10 @@ public class WALEdit implements SerializedSize {
   private final WALFlushListener walFlushListener;
 
   public WALEdit(int memTableId, WALEditValue value) {
+    this(memTableId, value, config.getWalMode() == WALMode.SYNC);
+  }
+
+  public WALEdit(int memTableId, WALEditValue value, boolean wait) {
     this.memTableId = memTableId;
     this.value = value;
     if (value instanceof InsertPlan) {
@@ -63,7 +73,7 @@ public class WALEdit implements SerializedSize {
     } else {
       throw new RuntimeException("Unknown WALEdit type");
     }
-    walFlushListener = new WALFlushListener();
+    walFlushListener = new WALFlushListener(wait);
   }
 
   private WALEdit(WALEditType type, int memTableId, WALEditValue value) {
@@ -97,7 +107,7 @@ public class WALEdit implements SerializedSize {
         value = (DeletePlan) PhysicalPlan.Factory.create(stream);
         break;
       case MEMORY_TABLE_SNAPSHOT:
-        // TODO
+        value = AbstractMemTable.Factory.create(stream);
         break;
     }
     return new WALEdit(type, memTableId, value);

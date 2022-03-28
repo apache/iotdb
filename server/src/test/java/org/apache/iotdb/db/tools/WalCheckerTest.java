@@ -27,6 +27,7 @@ import org.apache.iotdb.db.wal.buffer.WALEdit;
 import org.apache.iotdb.db.wal.io.ILogWriter;
 import org.apache.iotdb.db.wal.io.WALFileTest;
 import org.apache.iotdb.db.wal.io.WALWriter;
+import org.apache.iotdb.db.wal.utils.WALByteBufferForTest;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.Test;
@@ -94,7 +95,7 @@ public class WalCheckerTest {
         for (WALEdit walEdit : walEdits) {
           size += walEdit.serializedSize();
         }
-        WALFileTest.WALByteBuffer buffer = new WALFileTest.WALByteBuffer(ByteBuffer.allocate(size));
+        WALByteBufferForTest buffer = new WALByteBufferForTest(ByteBuffer.allocate(size));
         for (WALEdit walEdit : walEdits) {
           walEdit.serialize(buffer);
         }
@@ -134,7 +135,7 @@ public class WalCheckerTest {
         for (WALEdit walEdit : walEdits) {
           size += walEdit.serializedSize();
         }
-        WALFileTest.WALByteBuffer buffer = new WALFileTest.WALByteBuffer(ByteBuffer.allocate(size));
+        WALByteBufferForTest buffer = new WALByteBufferForTest(ByteBuffer.allocate(size));
         for (WALEdit walEdit : walEdits) {
           walEdit.serialize(buffer);
         }

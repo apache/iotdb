@@ -32,6 +32,8 @@ public class WALWriteUtils {
   public static final int DOUBLE_LEN = ReadWriteIOUtils.DOUBLE_LEN;
   public static final int FLOAT_LEN = ReadWriteIOUtils.FLOAT_LEN;
 
+  private static final int NO_BYTE_TO_READ = -1;
+
   private WALWriteUtils() {}
 
   /** write a byte to byteBuffer according to flag. If flag is true, write 1, else write 0. */
@@ -114,7 +116,7 @@ public class WALWriteUtils {
    */
   public static int write(String s, IWALByteBufferView buffer) {
     if (s == null) {
-      return write(-1, buffer);
+      return write(NO_BYTE_TO_READ, buffer);
     }
     int len = 0;
     byte[] bytes = s.getBytes();

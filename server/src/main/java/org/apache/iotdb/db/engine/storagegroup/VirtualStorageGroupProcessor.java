@@ -1136,6 +1136,21 @@ public class VirtualStorageGroupProcessor {
     }
   }
 
+  public void submitAFlushTask(long timeRangeId, boolean sequence) {
+    writeLock("submitAFlushTaskWhenShouldFlush");
+    try {
+      TsFileProcessor tsFileProcessor;
+      if (sequence) {
+        tsFileProcessor = workSequenceTsFileProcessors.get(timeRangeId);
+      } else {
+        tsFileProcessor = workUnsequenceTsFileProcessors.get(timeRangeId);
+      }
+      fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
+    } finally {
+      writeUnlock();
+    }
+  }
+
   /**
    * mem control module use this method to flush memtable
    *

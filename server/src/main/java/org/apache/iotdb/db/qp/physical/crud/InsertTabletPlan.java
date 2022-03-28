@@ -163,12 +163,12 @@ public class InsertTabletPlan extends InsertPlan {
 
   int subSerializeSize() {
     int size = 0;
-    size += getSerializedBytesNum(devicePath.getFullPath());
+    size += ReadWriteIOUtils.sizeToWrite(devicePath.getFullPath());
     // measurements size
     size += Integer.BYTES;
     for (String m : measurements) {
       if (m != null) {
-        size += getSerializedBytesNum(m);
+        size += ReadWriteIOUtils.sizeToWrite(m);
       }
     }
     // data types size
@@ -244,7 +244,7 @@ public class InsertTabletPlan extends InsertPlan {
       case TEXT:
         Binary[] binaryValues = (Binary[]) column;
         for (int j = curStart; j < curEnd; j++) {
-          size += Integer.BYTES + binaryValues[j].getValues().length;
+          size += ReadWriteIOUtils.sizeToWrite(binaryValues[j]);
         }
         break;
     }

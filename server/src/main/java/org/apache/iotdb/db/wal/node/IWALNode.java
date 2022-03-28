@@ -32,9 +32,6 @@ public interface IWALNode extends FlushListener, AutoCloseable {
   /** Log DeletePlan */
   WALFlushListener log(int memTableId, DeletePlan deletePlan);
 
-  /** Log memTable snapshot */
-  WALFlushListener log(int memTableId, IMemTable memTable);
-
   /** Callback when memTable created */
   void onMemTableCreated(IMemTable memTable, String targetTsFile);
 

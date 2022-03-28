@@ -18,62 +18,9 @@
  */
 package org.apache.iotdb.db.wal.utils.listener;
 
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.wal.utils.WALMode;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 /** This class helps judge whether wal is flushed to the storage device. */
-public class WALFlushListener implements IResultListener {
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static final Logger logger = LoggerFactory.getLogger(WALFlushListener.class);
-
-  private volatile Status status;
-  private volatile Exception cause;
-
-  public WALFlushListener() {
-    status = Status.RUNNING;
-    cause = null;
-  }
-
-  public synchronized WALFlushListener succeed() {
-    status = Status.SUCCESS;
-    if (config.getWalMode() == WALMode.SYNC) {
-      this.notifyAll();
-    }
-    return this;
-  }
-
-  public synchronized WALFlushListener fail(Exception e) {
-    status = Status.FAILURE;
-    cause = e;
-    if (config.getWalMode() == WALMode.SYNC) {
-      this.notifyAll();
-    }
-    return this;
-  }
-
-  /**
-   * Wait until getting the result. <br>
-   * Notice : wait only when wal mode is sync
-   */
-  public synchronized Status waitForResult() {
-    if (config.getWalMode() == WALMode.SYNC) {
-      while (status == Status.RUNNING) {
-        try {
-          this.wait();
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
-          logger.warn("Waiting for current buffer being flushed interrupted");
-        }
-      }
-    }
-    return status;
-  }
-
-  public Exception getCause() {
-    return cause;
+public class WALFlushListener extends AbstractResultListener {
+  public WALFlushListener(boolean wait) {
+    super(wait);
   }
 }

@@ -20,7 +20,7 @@ package org.apache.iotdb.db.wal.recover.file;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.db.wal.recover.utils.TsFileUtilsForRecoverTest;
+import org.apache.iotdb.db.wal.utils.TsFileUtilsForRecoverTest;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;

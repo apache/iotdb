@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.wal.io;
 
+import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.wal.checkpoint.Checkpoint;
 import org.apache.iotdb.db.wal.checkpoint.CheckpointType;
 import org.apache.iotdb.db.wal.checkpoint.MemTableInfo;
@@ -55,7 +56,7 @@ public class CheckpointFileTest {
 
   @Test
   public void testReadNormalFile() throws IOException {
-    MemTableInfo fakeMemTableInfo = new MemTableInfo(0, "fake.tsfile", 0);
+    MemTableInfo fakeMemTableInfo = new MemTableInfo(new PrimitiveMemTable(), "fake.tsfile", 0);
     List<Checkpoint> expectedCheckpoints = new ArrayList<>();
     expectedCheckpoints.add(
         new Checkpoint(CheckpointType.GLOBAL_MEMORY_TABLE_INFO, Collections.emptyList()));
@@ -97,7 +98,7 @@ public class CheckpointFileTest {
 
   @Test
   public void testReadBrokenFile() throws IOException {
-    MemTableInfo fakeMemTableInfo = new MemTableInfo(0, "fake.tsfile", 0);
+    MemTableInfo fakeMemTableInfo = new MemTableInfo(new PrimitiveMemTable(), "fake.tsfile", 0);
     List<Checkpoint> expectedCheckpoints = new ArrayList<>();
     expectedCheckpoints.add(
         new Checkpoint(CheckpointType.GLOBAL_MEMORY_TABLE_INFO, Collections.emptyList()));

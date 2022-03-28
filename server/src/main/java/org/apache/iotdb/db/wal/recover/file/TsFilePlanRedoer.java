@@ -43,9 +43,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * This class helps redo wal logs into a TsFile. Notice: You should update time map in {@link
@@ -61,10 +59,7 @@ public class TsFilePlanRedoer {
   /** this TsFile's virtual storage group */
   private final VirtualStorageGroupProcessor vsgProcessor;
   /** store data when redoing logs */
-  private final IMemTable recoveryMemTable = new PrimitiveMemTable();
-
-  private final Map<String, Long> tempStartTimeMap = new HashMap<>();
-  private final Map<String, Long> tempEndTimeMap = new HashMap<>();
+  private IMemTable recoveryMemTable = new PrimitiveMemTable();
 
   public TsFilePlanRedoer(
       TsFileResource tsFileResource, boolean sequence, VirtualStorageGroupProcessor vsgProcessor) {
@@ -94,30 +89,15 @@ public class TsFilePlanRedoer {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   void redoInsert(InsertPlan plan) throws WriteProcessException, QueryProcessException {
     if (tsFileResource != null) {
-      long minTime, maxTime;
-      if (plan instanceof InsertRowPlan) {
-        minTime = ((InsertRowPlan) plan).getTime();
-        maxTime = ((InsertRowPlan) plan).getTime();
-      } else {
-        minTime = ((InsertTabletPlan) plan).getMinTime();
-        maxTime = ((InsertTabletPlan) plan).getMaxTime();
-      }
       String deviceId =
           plan.isAligned()
               ? plan.getDevicePath().getDevicePath().getFullPath()
               : plan.getDevicePath().getFullPath();
+      // orders of insert plan is guaranteed by storage engine, just check time in the file
       // the last chunk group may contain the same data with the logs, ignore such logs in seq file
       long lastEndTime = tsFileResource.getEndTime(deviceId);
-      if (lastEndTime != Long.MIN_VALUE && lastEndTime >= minTime && sequence) {
+      if (lastEndTime != Long.MIN_VALUE && lastEndTime >= plan.getMinTime() && sequence) {
         return;
-      }
-      Long startTime = tempStartTimeMap.get(deviceId);
-      if (startTime == null || startTime > minTime) {
-        tempStartTimeMap.put(deviceId, minTime);
-      }
-      Long endTime = tempEndTimeMap.get(deviceId);
-      if (endTime == null || endTime < maxTime) {
-        tempEndTimeMap.put(deviceId, maxTime);
       }
     }
 
@@ -168,6 +148,10 @@ public class TsFilePlanRedoer {
                 mNodes[i].getName(), tPlan.getDataTypes()[i], mNodes[i].getSchema().getType()));
       }
     }
+  }
+
+  void resetRecoveryMemTable(IMemTable memTable) {
+    this.recoveryMemTable = memTable;
   }
 
   IMemTable getRecoveryMemTable() {

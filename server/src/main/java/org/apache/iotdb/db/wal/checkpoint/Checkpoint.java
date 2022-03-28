@@ -67,8 +67,7 @@ public class Checkpoint implements SerializedSize {
     int cnt = stream.readInt();
     List<MemTableInfo> memTableInfos = new ArrayList<>(cnt);
     for (int i = 0; i < cnt; ++i) {
-      MemTableInfo memTableInfo = new MemTableInfo();
-      memTableInfo.deserialize(stream);
+      MemTableInfo memTableInfo = MemTableInfo.deserialize(stream);
       memTableInfos.add(memTableInfo);
     }
     return new Checkpoint(type, memTableInfos);

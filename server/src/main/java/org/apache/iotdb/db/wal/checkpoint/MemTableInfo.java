@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.wal.checkpoint;
 
+import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.wal.buffer.WALEdit;
 import org.apache.iotdb.db.wal.utils.SerializedSize;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -35,17 +36,20 @@ public class MemTableInfo implements SerializedSize {
   /** memTable id 4 bytes, tsFile path length 4 bytes, first version id 4 bytes */
   private static final int FIXED_SERIALIZED_SIZE = Integer.BYTES * 2;
 
+  /** memTable */
+  private IMemTable memTable;
   /** memTable id */
   private int memTableId;
   /** path of the tsFile which this memTable will be flushed to */
   private String tsFilePath;
   /** version id of the file where this memTable's first WALEdit is located */
-  private int firstFileVersionId;
+  private volatile int firstFileVersionId;
 
-  MemTableInfo() {}
+  private MemTableInfo() {}
 
-  public MemTableInfo(int memTableId, String tsFilePath, int firstFileVersionId) {
-    this.memTableId = memTableId;
+  public MemTableInfo(IMemTable memTable, String tsFilePath, int firstFileVersionId) {
+    this.memTable = memTable;
+    this.memTableId = memTable.getMemTableId();
     this.tsFilePath = tsFilePath;
     this.firstFileVersionId = firstFileVersionId;
   }
@@ -61,10 +65,12 @@ public class MemTableInfo implements SerializedSize {
     buffer.putInt(firstFileVersionId);
   }
 
-  public void deserialize(DataInputStream stream) throws IOException {
-    memTableId = stream.readInt();
-    tsFilePath = ReadWriteIOUtils.readString(stream);
-    firstFileVersionId = stream.readInt();
+  public static MemTableInfo deserialize(DataInputStream stream) throws IOException {
+    MemTableInfo memTableInfo = new MemTableInfo();
+    memTableInfo.memTableId = stream.readInt();
+    memTableInfo.tsFilePath = ReadWriteIOUtils.readString(stream);
+    memTableInfo.firstFileVersionId = stream.readInt();
+    return memTableInfo;
   }
 
   @Override
@@ -84,6 +90,10 @@ public class MemTableInfo implements SerializedSize {
         && this.firstFileVersionId == other.firstFileVersionId;
   }
 
+  public IMemTable getMemTable() {
+    return memTable;
+  }
+
   public int getMemTableId() {
     return memTableId;
   }
@@ -94,5 +104,10 @@ public class MemTableInfo implements SerializedSize {
 
   public int getFirstFileVersionId() {
     return firstFileVersionId;
+  }
+
+  /** */
+  public void setFirstFileVersionId(int firstFileVersionId) {
+    this.firstFileVersionId = firstFileVersionId;
   }
 }

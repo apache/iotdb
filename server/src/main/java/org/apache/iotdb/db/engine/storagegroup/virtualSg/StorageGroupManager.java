@@ -155,25 +155,31 @@ public class StorageGroupManager {
    * @param partialPath device path
    * @return virtual storage group processor
    */
-  @SuppressWarnings("java:S2445")
-  // actually storageGroupMNode is a unique object on the mtree, synchronize it is reasonable
   public VirtualStorageGroupProcessor getProcessor(
       PartialPath partialPath, IStorageGroupMNode storageGroupMNode)
       throws StorageGroupProcessorException, StorageEngineException {
-    int loc = partitioner.deviceToVirtualStorageGroupId(partialPath);
+    int vsgId = partitioner.deviceToVirtualStorageGroupId(partialPath);
+    return getProcessor(storageGroupMNode, vsgId);
+  }
 
-    VirtualStorageGroupProcessor processor = virtualStorageGroupProcessor[loc];
+  @SuppressWarnings("java:S2445")
+  // actually storageGroupMNode is a unique object on the mtree, synchronize it is reasonable
+  public VirtualStorageGroupProcessor getProcessor(IStorageGroupMNode storageGroupMNode, int vsgId)
+      throws StorageGroupProcessorException, StorageEngineException {
+    VirtualStorageGroupProcessor processor = virtualStorageGroupProcessor[vsgId];
     if (processor == null) {
       // if finish recover
-      if (isVsgReady[loc].get()) {
+      if (isVsgReady[vsgId].get()) {
         synchronized (storageGroupMNode) {
-          processor = virtualStorageGroupProcessor[loc];
+          processor = virtualStorageGroupProcessor[vsgId];
           if (processor == null) {
             processor =
                 StorageEngine.getInstance()
                     .buildNewStorageGroupProcessor(
-                        storageGroupMNode.getPartialPath(), storageGroupMNode, String.valueOf(loc));
-            virtualStorageGroupProcessor[loc] = processor;
+                        storageGroupMNode.getPartialPath(),
+                        storageGroupMNode,
+                        String.valueOf(vsgId));
+            virtualStorageGroupProcessor[vsgId] = processor;
           }
         }
       } else {
