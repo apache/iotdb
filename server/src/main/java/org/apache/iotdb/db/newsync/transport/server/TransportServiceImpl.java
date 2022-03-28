@@ -22,6 +22,7 @@ package org.apache.iotdb.db.newsync.transport.server;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.newsync.conf.SyncConstant;
 import org.apache.iotdb.db.newsync.conf.SyncPathUtil;
 import org.apache.iotdb.db.newsync.pipedata.PipeData;
 import org.apache.iotdb.db.newsync.pipedata.TsFilePipeData;
@@ -46,6 +47,7 @@ import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.text.DecimalFormat;
 import java.util.Arrays;
 
 import static org.apache.iotdb.db.newsync.transport.conf.TransportConstant.CONFLICT_CODE;
@@ -126,7 +128,12 @@ public class TransportServiceImpl implements TransportService.Iface {
   @Override
   public TransportStatus handshake(IdentityInfo identityInfo) throws TException {
     logger.debug("Invoke handshake method from client ip = {}", identityInfo.address);
-
+    // check ip address
+    if (!verifyIPSegment(config.getIpWhiteList(), identityInfo.address)) {
+      return new TransportStatus(
+          ERROR_CODE,
+          "Sender IP is not in the white list of receiver IP and synchronization tasks are not allowed.");
+    }
     // Version check
     if (!config.getIoTDBMajorVersion(identityInfo.version).equals(config.getIoTDBMajorVersion())) {
       return new TransportStatus(
@@ -140,6 +147,46 @@ public class TransportServiceImpl implements TransportService.Iface {
       new File(getFileDataDirPath(identityInfo)).mkdirs();
     }
     return new TransportStatus(SUCCESS_CODE, "");
+  }
+
+  /**
+   * Verify IP address with IP white list which contains more than one IP segment. It's used by sync
+   * sender.
+   */
+  private boolean verifyIPSegment(String ipWhiteList, String ipAddress) {
+    String[] ipSegments = ipWhiteList.split(",");
+    for (String IPsegment : ipSegments) {
+      int subnetMask = Integer.parseInt(IPsegment.substring(IPsegment.indexOf('/') + 1));
+      IPsegment = IPsegment.substring(0, IPsegment.indexOf('/'));
+      if (verifyIP(IPsegment, ipAddress, subnetMask)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /** Verify IP address with IP segment. */
+  private boolean verifyIP(String ipSegment, String ipAddress, int subnetMark) {
+    String ipSegmentBinary;
+    String ipAddressBinary;
+    String[] ipSplits = ipSegment.split(SyncConstant.IP_SEPARATOR);
+    DecimalFormat df = new DecimalFormat("00000000");
+    StringBuilder ipSegmentBuilder = new StringBuilder();
+    for (String IPsplit : ipSplits) {
+      ipSegmentBuilder.append(
+          df.format(Integer.parseInt(Integer.toBinaryString(Integer.parseInt(IPsplit)))));
+    }
+    ipSegmentBinary = ipSegmentBuilder.toString();
+    ipSegmentBinary = ipSegmentBinary.substring(0, subnetMark);
+    ipSplits = ipAddress.split(SyncConstant.IP_SEPARATOR);
+    StringBuilder ipAddressBuilder = new StringBuilder();
+    for (String IPsplit : ipSplits) {
+      ipAddressBuilder.append(
+          df.format(Integer.parseInt(Integer.toBinaryString(Integer.parseInt(IPsplit)))));
+    }
+    ipAddressBinary = ipAddressBuilder.toString();
+    ipAddressBinary = ipAddressBinary.substring(0, subnetMark);
+    return ipAddressBinary.equals(ipSegmentBinary);
   }
 
   @Override

@@ -23,7 +23,6 @@ import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
-import org.apache.iotdb.db.newsync.conf.SyncConstant;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.service.thrift.ThriftService;
 import org.apache.iotdb.db.service.thrift.ThriftServiceThread;
@@ -84,7 +83,7 @@ public class TransportServerManager extends ThriftService
             getID().getName(),
             ThreadName.SYNC_CLIENT.getName(),
             config.getRpcAddress(),
-            SyncConstant.DEFAULT_PIPE_SINK_PORT,
+            config.getPipeServerPort(),
             Integer.MAX_VALUE,
             config.getThriftServerAwaitTimeForStopService(),
             new TransportServerThriftHandler(serviceImpl),
@@ -101,7 +100,7 @@ public class TransportServerManager extends ThriftService
   @Override
   public int getBindPort() {
     // TODO: Whether to change this config here
-    return SyncConstant.DEFAULT_PIPE_SINK_PORT;
+    return IoTDBDescriptor.getInstance().getConfig().getPipeServerPort();
   }
 
   //  @Override
