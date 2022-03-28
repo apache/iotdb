@@ -76,7 +76,7 @@ public class SyncFileManagerTest {
 
     Random r = new Random(0);
     for (int i = 0; i < 3; i++) {
-      IoTDB.schemaEngine.setStorageGroup(new PartialPath(getSgName(i)));
+      IoTDB.schemaProcessor.setStorageGroup(new PartialPath(getSgName(i)));
     }
     for (int i = 0; i < 3; i++) {
       for (int j = 0; j < 5; j++) {

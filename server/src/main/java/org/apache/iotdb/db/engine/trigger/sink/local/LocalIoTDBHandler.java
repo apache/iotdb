@@ -64,15 +64,15 @@ public class LocalIoTDBHandler implements Handler<LocalIoTDBConfiguration, Local
       TSDataType dataType = dataTypes[i];
 
       PartialPath path = new PartialPath(device.getFullPath(), measurement);
-      if (!IoTDB.schemaEngine.isPathExist(path)) {
-        IoTDB.schemaEngine.createTimeseries(
+      if (!IoTDB.schemaProcessor.isPathExist(path)) {
+        IoTDB.schemaProcessor.createTimeseries(
             path,
             dataType,
             getDefaultEncoding(dataType),
             TSFileDescriptor.getInstance().getConfig().getCompressor(),
             Collections.emptyMap());
       } else {
-        if (!IoTDB.schemaEngine.getSeriesType(path).equals(dataType)) {
+        if (!IoTDB.schemaProcessor.getSeriesType(path).equals(dataType)) {
           throw new SinkException(
               String.format("The data type of %s you provided was not correct.", path));
         }

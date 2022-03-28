@@ -25,7 +25,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.SchemaEngine;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.lastCache.container.ILastCacheContainer;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -94,10 +94,10 @@ public class IDTableTest {
 
   @Test
   public void testCreateAlignedTimeseriesAndInsert() {
-    SchemaEngine schemaEngine = IoTDB.schemaEngine;
+    LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
 
     try {
-      schemaEngine.setStorageGroup(new PartialPath("root.laptop"));
+      schemaProcessor.setStorageGroup(new PartialPath("root.laptop"));
       CreateAlignedTimeSeriesPlan plan =
           new CreateAlignedTimeSeriesPlan(
               new PartialPath("root.laptop.d1.aligned_device"),
@@ -113,7 +113,7 @@ public class IDTableTest {
               null,
               null);
 
-      schemaEngine.createAlignedTimeSeries(plan);
+      schemaProcessor.createAlignedTimeSeries(plan);
 
       IDTable idTable = IDTableManager.getInstance().getIDTable(new PartialPath("root.laptop"));
 
@@ -175,10 +175,10 @@ public class IDTableTest {
 
   @Test
   public void testCreateAlignedTimeseriesAndInsertNotAlignedData() {
-    SchemaEngine schemaEngine = IoTDB.schemaEngine;
+    LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
 
     try {
-      schemaEngine.setStorageGroup(new PartialPath("root.laptop"));
+      schemaProcessor.setStorageGroup(new PartialPath("root.laptop"));
       CreateAlignedTimeSeriesPlan plan =
           new CreateAlignedTimeSeriesPlan(
               new PartialPath("root.laptop.d1.aligned_device"),
@@ -194,7 +194,7 @@ public class IDTableTest {
               null,
               null);
 
-      schemaEngine.createAlignedTimeSeries(plan);
+      schemaProcessor.createAlignedTimeSeries(plan);
 
       IDTable idTable = IDTableManager.getInstance().getIDTable(new PartialPath("root.laptop"));
 
@@ -240,10 +240,10 @@ public class IDTableTest {
 
   @Test
   public void testCreateTimeseriesAndInsert() {
-    SchemaEngine schemaEngine = IoTDB.schemaEngine;
+    LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
     try {
-      schemaEngine.setStorageGroup(new PartialPath("root.laptop"));
-      schemaEngine.createTimeseries(
+      schemaProcessor.setStorageGroup(new PartialPath("root.laptop"));
+      schemaProcessor.createTimeseries(
           new PartialPath("root.laptop.d1.s0"),
           TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"),
@@ -295,16 +295,16 @@ public class IDTableTest {
 
   @Test
   public void testCreateTimeseriesAndInsertWithAlignedData() {
-    SchemaEngine schemaEngine = IoTDB.schemaEngine;
+    LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
     try {
-      schemaEngine.setStorageGroup(new PartialPath("root.laptop"));
-      schemaEngine.createTimeseries(
+      schemaProcessor.setStorageGroup(new PartialPath("root.laptop"));
+      schemaProcessor.createTimeseries(
           new PartialPath("root.laptop.d1.non_aligned_device.s1"),
           TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"),
           compressionType,
           Collections.emptyMap());
-      schemaEngine.createTimeseries(
+      schemaProcessor.createTimeseries(
           new PartialPath("root.laptop.d1.non_aligned_device.s2"),
           TSDataType.valueOf("INT64"),
           TSEncoding.valueOf("RLE"),
@@ -348,7 +348,7 @@ public class IDTableTest {
 
   @Test
   public void testInsertAndAutoCreate() {
-    SchemaEngine schemaEngine = IoTDB.schemaEngine;
+    LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
     try {
       // construct an insertRowPlan with mismatched data type
       long time = 1L;
@@ -374,13 +374,15 @@ public class IDTableTest {
 
       idTable.getSeriesSchemas(insertRowPlan);
 
-      // check schemaEngine
+      // check SchemaProcessor
       IMeasurementMNode s1Node =
-          schemaEngine.getMeasurementMNode(new PartialPath("root.laptop.d1.non_aligned_device.s1"));
+          schemaProcessor.getMeasurementMNode(
+              new PartialPath("root.laptop.d1.non_aligned_device.s1"));
       assertEquals("s1", s1Node.getName());
       assertEquals(TSDataType.INT32, s1Node.getSchema().getType());
       IMeasurementMNode s2Node =
-          schemaEngine.getMeasurementMNode(new PartialPath("root.laptop.d1.non_aligned_device.s2"));
+          schemaProcessor.getMeasurementMNode(
+              new PartialPath("root.laptop.d1.non_aligned_device.s2"));
       assertEquals("s2", s2Node.getName());
       assertEquals(TSDataType.INT64, s2Node.getSchema().getType());
 
@@ -432,7 +434,7 @@ public class IDTableTest {
 
   @Test
   public void testAlignedInsertAndAutoCreate() {
-    SchemaEngine schemaEngine = IoTDB.schemaEngine;
+    LocalSchemaProcessor processor = IoTDB.schemaProcessor;
     try {
       // construct an insertRowPlan with mismatched data type
       long time = 1L;
@@ -458,13 +460,13 @@ public class IDTableTest {
 
       idTable.getSeriesSchemas(insertRowPlan);
 
-      // check schemaEngine
+      // check SchemaProcessor
       IMeasurementMNode s1Node =
-          schemaEngine.getMeasurementMNode(new PartialPath("root.laptop.d1.aligned_device.s1"));
+          processor.getMeasurementMNode(new PartialPath("root.laptop.d1.aligned_device.s1"));
       assertEquals("s1", s1Node.getName());
       assertEquals(TSDataType.INT32, s1Node.getSchema().getType());
       IMeasurementMNode s2Node =
-          schemaEngine.getMeasurementMNode(new PartialPath("root.laptop.d1.aligned_device.s2"));
+          processor.getMeasurementMNode(new PartialPath("root.laptop.d1.aligned_device.s2"));
       assertEquals("s2", s2Node.getName());
       assertEquals(TSDataType.INT64, s2Node.getSchema().getType());
       assertTrue(s2Node.getParent().isAligned());
@@ -517,18 +519,18 @@ public class IDTableTest {
 
   @Test
   public void testTriggerAndInsert() {
-    SchemaEngine schemaEngine = IoTDB.schemaEngine;
+    LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
     try {
       long time = 1L;
 
-      schemaEngine.setStorageGroup(new PartialPath("root.laptop"));
-      schemaEngine.createTimeseries(
+      schemaProcessor.setStorageGroup(new PartialPath("root.laptop"));
+      schemaProcessor.createTimeseries(
           new PartialPath("root.laptop.d1.non_aligned_device.s1"),
           TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"),
           compressionType,
           Collections.emptyMap());
-      schemaEngine.createTimeseries(
+      schemaProcessor.createTimeseries(
           new PartialPath("root.laptop.d1.non_aligned_device.s2"),
           TSDataType.valueOf("INT64"),
           TSEncoding.valueOf("RLE"),
@@ -565,15 +567,17 @@ public class IDTableTest {
 
       idTable.getSeriesSchemas(insertRowPlan);
 
-      // check schemaEngine
+      // check SchemaProcessor
       IMeasurementMNode s1Node =
-          schemaEngine.getMeasurementMNode(new PartialPath("root.laptop.d1.non_aligned_device.s1"));
+          schemaProcessor.getMeasurementMNode(
+              new PartialPath("root.laptop.d1.non_aligned_device.s1"));
       assertEquals("s1", s1Node.getName());
       assertEquals(TSDataType.INT32, s1Node.getSchema().getType());
       assertNotNull(s1Node.getTriggerExecutor());
 
       IMeasurementMNode s2Node =
-          schemaEngine.getMeasurementMNode(new PartialPath("root.laptop.d1.non_aligned_device.s2"));
+          schemaProcessor.getMeasurementMNode(
+              new PartialPath("root.laptop.d1.non_aligned_device.s2"));
       assertEquals("s2", s2Node.getName());
       assertEquals(TSDataType.INT64, s2Node.getSchema().getType());
       assertNull(s2Node.getTriggerExecutor());
@@ -594,18 +598,18 @@ public class IDTableTest {
 
   @Test
   public void testFlushTimeAndLastCache() {
-    SchemaEngine schemaEngine = IoTDB.schemaEngine;
+    LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
     try {
       long time = 1L;
 
-      schemaEngine.setStorageGroup(new PartialPath("root.laptop"));
-      schemaEngine.createTimeseries(
+      schemaProcessor.setStorageGroup(new PartialPath("root.laptop"));
+      schemaProcessor.createTimeseries(
           new PartialPath("root.laptop.d1.non_aligned_device.s1"),
           TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"),
           compressionType,
           Collections.emptyMap());
-      schemaEngine.createTimeseries(
+      schemaProcessor.createTimeseries(
           new PartialPath("root.laptop.d1.non_aligned_device.s2"),
           TSDataType.valueOf("INT64"),
           TSEncoding.valueOf("RLE"),
