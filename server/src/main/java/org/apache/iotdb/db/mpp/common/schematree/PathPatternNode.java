@@ -21,18 +21,16 @@ package org.apache.iotdb.db.mpp.common.schematree;
 
 import org.apache.iotdb.commons.utils.TestOnly;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 public class PathPatternNode {
 
   private String name;
-  private List<PathPatternNode> children;
+  private Map<String, PathPatternNode> children;
 
   public PathPatternNode(String name) {
     this.name = name;
-    this.children = new ArrayList<>();
+    this.children = new HashMap<>();
   }
 
   public String getName() {
@@ -43,16 +41,20 @@ public class PathPatternNode {
     this.name = name;
   }
 
-  public List<PathPatternNode> getChildren() {
+  public PathPatternNode getChildren(String nodeName) {
+    return children.getOrDefault(nodeName, null);
+  }
+
+  public Map<String, PathPatternNode> getChildren() {
     return children;
   }
 
-  public void setChildren(List<PathPatternNode> children) {
+  public void setChildren(Map<String, PathPatternNode> children) {
     this.children = children;
   }
 
-  public void addChild(PathPatternNode newNode) {
-    this.children.add(newNode);
+  public void addChild(String nodeName, PathPatternNode newNode) {
+    this.children.put(nodeName, newNode);
   }
 
   public boolean isLeaf() {
@@ -76,8 +78,10 @@ public class PathPatternNode {
     if (that.getChildren().size() != this.getChildren().size()) {
       return false;
     }
-    for (int i = 0; i < this.getChildren().size(); i++) {
-      if (!that.getChildren().get(i).equalWith(this.getChildren().get(i))) {
+    for (Map.Entry<String, PathPatternNode> entry : this.getChildren().entrySet()) {
+      String nodeName = entry.getKey();
+      if (that.getChildren(nodeName) == null
+          || !that.getChildren(nodeName).equalWith(this.getChildren(nodeName))) {
         return false;
       }
     }

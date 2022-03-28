@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.common.schematree;
 
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 
@@ -27,7 +28,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.stream.Collectors;
 
 public class PathPatternTree {
@@ -81,6 +81,16 @@ public class PathPatternTree {
     }
   }
 
+  public void appendPaths(PartialPath device, List<String> measurementNameList) {
+    try {
+      for (String measurementName : measurementNameList) {
+        appendPath(new PartialPath(device.getFullPath(), measurementName));
+      }
+    } catch (IllegalPathException e) {
+      e.printStackTrace();
+    }
+  }
+
   // construct tree according to pathList
   public void constructTree() {
     for (PartialPath path : pathList) {
@@ -94,17 +104,9 @@ public class PathPatternTree {
       return;
     }
 
-    boolean isExist = false;
-    PathPatternNode nextNode = null;
-    for (PathPatternNode childNode : curNode.getChildren()) {
-      if (!Objects.equals(childNode.getName(), pathNodes[pos + 1])) {
-        isExist = true;
-        nextNode = childNode;
-        break;
-      }
-    }
+    PathPatternNode nextNode = curNode.getChildren(pathNodes[pos + 1]);
 
-    if (isExist) {
+    if (nextNode != null) {
       searchAndConstruct(nextNode, pathNodes, pos + 1);
     } else {
       appendTree(curNode, pathNodes, pos + 1);
@@ -114,7 +116,7 @@ public class PathPatternTree {
   private void appendTree(PathPatternNode curNode, String[] pathNodes, int pos) {
     for (int i = pos; i < pathNodes.length; i++) {
       PathPatternNode newNode = new PathPatternNode(pathNodes[i]);
-      curNode.addChild(newNode);
+      curNode.addChild(newNode.getName(), newNode);
       curNode = newNode;
     }
   }
