@@ -46,6 +46,14 @@ import java.util.Map;
 import static org.junit.Assert.fail;
 
 public class LogicalPlannerTest {
+
+  LogicalPlanPrinter printer = new LogicalPlanPrinter();
+
+  @Test
+  public void rawQueryDataPlanTest() {
+    printer.print(parseSQLToPlanNode("SELECT s1,s2 from root.sg1.d1"));
+  }
+
   @Test
   public void createTimeseriesPlanTest() {
     String sql =
