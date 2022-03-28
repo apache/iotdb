@@ -89,10 +89,6 @@ jobs:
           [Environment]::SetEnvironmentVariable("Path", $env:Path + ";D:\a\cpp", "User") ; `
       - name: Download Boost
         run: choco install boost-msvc-12
-      - name: Install Boost
-        run: cd C:\local\boost_1_58_0 ; `
-          .\bootstrap.bat ; `
-          .\b2
       - name: Install OpenSSL
         run:  choco install openssl
       - name: Add Flex and Bison Path and OpenSSL
