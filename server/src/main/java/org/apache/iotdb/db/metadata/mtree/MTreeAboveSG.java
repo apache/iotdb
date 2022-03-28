@@ -27,8 +27,8 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.MetadataConstant;
-import org.apache.iotdb.db.metadata.SchemaEngine;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
@@ -437,7 +437,7 @@ public class MTreeAboveSG {
 
   /** Get all paths from root to the given level */
   public Pair<List<PartialPath>, Set<PartialPath>> getNodesListInGivenLevel(
-      PartialPath pathPattern, int nodeLevel, SchemaEngine.StorageGroupFilter filter)
+      PartialPath pathPattern, int nodeLevel, LocalSchemaProcessor.StorageGroupFilter filter)
       throws MetadataException {
     MNodeAboveSGCollector<List<PartialPath>> collector =
         new MNodeAboveSGCollector<List<PartialPath>>(root, pathPattern, store) {

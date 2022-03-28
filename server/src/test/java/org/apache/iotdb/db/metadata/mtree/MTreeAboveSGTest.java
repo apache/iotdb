@@ -20,7 +20,7 @@ package org.apache.iotdb.db.metadata.mtree;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.SchemaEngine;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -265,7 +265,8 @@ public class MTreeAboveSGTest {
     root.setStorageGroup(new PartialPath("root.sg1"));
 
     root.setStorageGroup(new PartialPath("root.sg2"));
-    SchemaEngine.StorageGroupFilter filter = storageGroup -> storageGroup.equals("root.sg1");
+    LocalSchemaProcessor.StorageGroupFilter filter =
+        storageGroup -> storageGroup.equals("root.sg1");
 
     Pair<List<PartialPath>, Set<PartialPath>> result =
         root.getNodesListInGivenLevel(new PartialPath("root.**"), 3, null);

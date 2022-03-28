@@ -81,7 +81,7 @@ public class IDTableManager {
   public synchronized IDTable getIDTable(PartialPath devicePath) {
     try {
       return idTableMap.computeIfAbsent(
-          IoTDB.schemaEngine.getStorageGroupNodeByPath(devicePath).getFullPath(),
+          IoTDB.schemaProcessor.getStorageGroupNodeByPath(devicePath).getFullPath(),
           storageGroupPath ->
               new IDTableHashmapImpl(
                   SystemFileFactory.INSTANCE.getFile(

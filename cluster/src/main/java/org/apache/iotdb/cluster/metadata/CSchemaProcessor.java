@@ -46,7 +46,7 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.metadata.SchemaEngine;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.lastCache.LastCacheManager;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
@@ -126,9 +126,9 @@ import static org.apache.iotdb.cluster.query.ClusterPlanExecutor.waitForThreadPo
 import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
 
 @SuppressWarnings("java:S1135") // ignore todos
-public class CSchemaEngine extends SchemaEngine {
+public class CSchemaProcessor extends LocalSchemaProcessor {
 
-  private static final Logger logger = LoggerFactory.getLogger(CSchemaEngine.class);
+  private static final Logger logger = LoggerFactory.getLogger(CSchemaProcessor.class);
 
   private ReentrantReadWriteLock cacheLock = new ReentrantReadWriteLock();
   // only cache the series who is writing, we need not to cache series who is reading
@@ -138,20 +138,20 @@ public class CSchemaEngine extends SchemaEngine {
   private MetaGroupMember metaGroupMember;
   private Coordinator coordinator;
 
-  private CSchemaEngine() {
+  private CSchemaProcessor() {
     super();
     metaPuller = MetaPuller.getInstance();
     int remoteCacheSize = config.getmRemoteSchemaCacheSize();
     mRemoteMetaCache = new RemoteMetaCache(remoteCacheSize);
   }
 
-  private static class CSchemaEngineHolder {
+  private static class CSchemaProcessorHolder {
 
-    private CSchemaEngineHolder() {
+    private CSchemaProcessorHolder() {
       // allowed to do nothing
     }
 
-    private static final CSchemaEngine INSTANCE = new CSchemaEngine();
+    private static final CSchemaProcessor INSTANCE = new CSchemaProcessor();
   }
 
   /**
@@ -159,8 +159,8 @@ public class CSchemaEngine extends SchemaEngine {
    *
    * @return
    */
-  public static CSchemaEngine getInstance() {
-    return CSchemaEngineHolder.INSTANCE;
+  public static CSchemaProcessor getInstance() {
+    return CSchemaProcessorHolder.INSTANCE;
   }
 
   /**
@@ -558,7 +558,7 @@ public class CSchemaEngine extends SchemaEngine {
         if (ready[i]) {
           continue;
         }
-        if (IoTDB.schemaEngine.isStorageGroup(storageGroups.get(i))) {
+        if (IoTDB.schemaProcessor.isStorageGroup(storageGroups.get(i))) {
           ready[i] = true;
         } else {
           allReady = false;

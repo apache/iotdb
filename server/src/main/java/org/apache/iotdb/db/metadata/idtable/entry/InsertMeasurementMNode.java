@@ -37,7 +37,7 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 /**
  * Generated entity implements IMeasurementMNode interface to unify insert logic through id table
- * and schemaEngine
+ * and SchemaProcessor
  */
 public class InsertMeasurementMNode implements IMeasurementMNode {
   SchemaEntry schemaEntry;

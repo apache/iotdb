@@ -22,7 +22,7 @@ import org.apache.iotdb.commons.partition.SchemaRegionId;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
-import org.apache.iotdb.db.metadata.SchemaEngine;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
@@ -634,7 +634,7 @@ public abstract class MTreeBelowSGTest {
 
   @Test
   public void testGetNodeListInLevel() throws MetadataException {
-    SchemaEngine.StorageGroupFilter filter = sg -> sg.equals("root.sg1");
+    LocalSchemaProcessor.StorageGroupFilter filter = sg -> sg.equals("root.sg1");
 
     storageGroup = getStorageGroup(new PartialPath("root.sg1"));
     storageGroup.createTimeseries(

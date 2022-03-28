@@ -1101,7 +1101,7 @@ public class VirtualStorageGroupProcessor {
       }
       // Update cached last value with high priority
       if (mNodes[i] == null) {
-        IoTDB.schemaEngine.updateLastCache(
+        IoTDB.schemaProcessor.updateLastCache(
             plan.getDevicePath().concatNode(plan.getMeasurements()[i]),
             plan.composeLastTimeValuePair(i),
             true,
@@ -1109,7 +1109,7 @@ public class VirtualStorageGroupProcessor {
       } else {
         // in stand alone version, the seriesPath is not needed, just use measurementMNodes[i] to
         // update last cache
-        IoTDB.schemaEngine.updateLastCache(
+        IoTDB.schemaProcessor.updateLastCache(
             mNodes[i], plan.composeLastTimeValuePair(i), true, latestFlushedTime);
       }
     }
@@ -1151,7 +1151,7 @@ public class VirtualStorageGroupProcessor {
       }
       // Update cached last value with high priority
       if (mNodes[i] == null) {
-        IoTDB.schemaEngine.updateLastCache(
+        IoTDB.schemaProcessor.updateLastCache(
             plan.getDevicePath().concatNode(plan.getMeasurements()[i]),
             plan.composeTimeValuePair(i),
             true,
@@ -1159,7 +1159,7 @@ public class VirtualStorageGroupProcessor {
       } else {
         // in stand alone version, the seriesPath is not needed, just use measurementMNodes[i] to
         // update last cache
-        IoTDB.schemaEngine.updateLastCache(
+        IoTDB.schemaProcessor.updateLastCache(
             mNodes[i], plan.composeTimeValuePair(i), true, latestFlushedTime);
       }
     }
@@ -1847,7 +1847,7 @@ public class VirtualStorageGroupProcessor {
     List<ModificationFile> updatedModFiles = new ArrayList<>();
 
     try {
-      Set<PartialPath> devicePaths = IoTDB.schemaEngine.getBelongedDevices(path);
+      Set<PartialPath> devicePaths = IoTDB.schemaProcessor.getBelongedDevices(path);
       for (PartialPath device : devicePaths) {
         // delete Last cache record if necessary
         tryToDeleteLastCache(device, path, startTime, endTime);
@@ -2002,7 +2002,7 @@ public class VirtualStorageGroupProcessor {
       return;
     }
     try {
-      IoTDB.schemaEngine.deleteLastCacheByDevice(deviceId, originalPath, startTime, endTime);
+      IoTDB.schemaProcessor.deleteLastCacheByDevice(deviceId, originalPath, startTime, endTime);
     } catch (MetadataException e) {
       throw new WriteProcessException(e);
     }
@@ -2286,7 +2286,7 @@ public class VirtualStorageGroupProcessor {
       return;
     }
     try {
-      IoTDB.schemaEngine.deleteLastCacheByDevice(deviceId);
+      IoTDB.schemaProcessor.deleteLastCacheByDevice(deviceId);
     } catch (MetadataException e) {
       // the path doesn't cache in cluster mode now, ignore
     }
