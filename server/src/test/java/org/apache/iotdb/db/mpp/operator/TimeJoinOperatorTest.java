@@ -27,8 +27,10 @@ import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.FragmentInstanceContext;
+import org.apache.iotdb.db.mpp.operator.process.TimeJoinOperator;
 import org.apache.iotdb.db.mpp.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderTestUtil;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -42,15 +44,12 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 import static org.junit.Assert.*;
 
-public class SeriesScanOperatorTest {
-  private static final String SERIES_SCAN_OPERATOR_TEST_SG = "root.seriesScanOperatorTest";
+public class TimeJoinOperatorTest {
+  private static final String TIME_JOIN_OPERATOR_TEST_SG = "root.TimeJoinOperatorTest";
   private final List<String> deviceIds = new ArrayList<>();
   private final List<MeasurementSchema> measurementSchemas = new ArrayList<>();
 
@@ -60,7 +59,7 @@ public class SeriesScanOperatorTest {
   @Before
   public void setUp() throws MetadataException, IOException, WriteProcessException {
     SeriesReaderTestUtil.setUp(
-        measurementSchemas, deviceIds, seqResources, unSeqResources, SERIES_SCAN_OPERATOR_TEST_SG);
+        measurementSchemas, deviceIds, seqResources, unSeqResources, TIME_JOIN_OPERATOR_TEST_SG);
   }
 
   @After
@@ -71,21 +70,26 @@ public class SeriesScanOperatorTest {
   @Test
   public void batchTest() {
     try {
-      MeasurementPath measurementPath =
-          new MeasurementPath(SERIES_SCAN_OPERATOR_TEST_SG + ".device0.sensor0", TSDataType.INT32);
+      MeasurementPath measurementPath1 =
+          new MeasurementPath(TIME_JOIN_OPERATOR_TEST_SG + ".device0.sensor0", TSDataType.INT32);
       Set<String> allSensors = new HashSet<>();
       allSensors.add("sensor0");
+      allSensors.add("sensor1");
       QueryId queryId = new QueryId("stub_query");
       FragmentInstanceContext fragmentInstanceContext =
           new FragmentInstanceContext(
               new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance"));
       fragmentInstanceContext.addOperatorContext(
           1, new PlanNodeId("1"), SeriesScanOperator.class.getSimpleName());
+      fragmentInstanceContext.addOperatorContext(
+          2, new PlanNodeId("2"), SeriesScanOperator.class.getSimpleName());
+      fragmentInstanceContext.addOperatorContext(
+          3, new PlanNodeId("3"), TimeJoinOperator.class.getSimpleName());
       QueryDataSource dataSource = new QueryDataSource(seqResources, unSeqResources);
-      QueryUtils.fillOrderIndexes(dataSource, measurementPath.getDevice(), true);
-      SeriesScanOperator seriesScanOperator =
+      QueryUtils.fillOrderIndexes(dataSource, measurementPath1.getDevice(), true);
+      SeriesScanOperator seriesScanOperator1 =
           new SeriesScanOperator(
-              measurementPath,
+              measurementPath1,
               allSensors,
               TSDataType.INT32,
               fragmentInstanceContext.getOperatorContexts().get(0),
@@ -93,23 +97,48 @@ public class SeriesScanOperatorTest {
               null,
               null,
               true);
+
+      MeasurementPath measurementPath2 =
+          new MeasurementPath(TIME_JOIN_OPERATOR_TEST_SG + ".device0.sensor1", TSDataType.INT32);
+      SeriesScanOperator seriesScanOperator2 =
+          new SeriesScanOperator(
+              measurementPath2,
+              allSensors,
+              TSDataType.INT32,
+              fragmentInstanceContext.getOperatorContexts().get(1),
+              dataSource,
+              null,
+              null,
+              true);
+
+      TimeJoinOperator timeJoinOperator =
+          new TimeJoinOperator(
+              fragmentInstanceContext.getOperatorContexts().get(2),
+              Arrays.asList(seriesScanOperator1, seriesScanOperator2),
+              OrderBy.TIMESTAMP_ASC,
+              2,
+              Arrays.asList(TSDataType.INT32, TSDataType.INT32));
       int count = 0;
-      while (seriesScanOperator.hasNext()) {
-        TsBlock tsBlock = seriesScanOperator.next();
-        assertEquals(1, tsBlock.getValueColumnCount());
+      while (timeJoinOperator.hasNext()) {
+        TsBlock tsBlock = timeJoinOperator.next();
+        assertEquals(2, tsBlock.getValueColumnCount());
         assertTrue(tsBlock.getColumn(0) instanceof IntColumn);
+        assertTrue(tsBlock.getColumn(1) instanceof IntColumn);
         assertEquals(20, tsBlock.getPositionCount());
         for (int i = 0; i < tsBlock.getPositionCount(); i++) {
           long expectedTime = i + 20L * count;
           assertEquals(expectedTime, tsBlock.getTimeByIndex(i));
           if (expectedTime < 200) {
             assertEquals(20000 + expectedTime, tsBlock.getColumn(0).getInt(i));
+            assertEquals(20000 + expectedTime, tsBlock.getColumn(1).getInt(i));
           } else if (expectedTime < 260
               || (expectedTime >= 300 && expectedTime < 380)
               || expectedTime >= 400) {
             assertEquals(10000 + expectedTime, tsBlock.getColumn(0).getInt(i));
+            assertEquals(10000 + expectedTime, tsBlock.getColumn(1).getInt(i));
           } else {
             assertEquals(expectedTime, tsBlock.getColumn(0).getInt(i));
+            assertEquals(expectedTime, tsBlock.getColumn(1).getInt(i));
           }
         }
         count++;

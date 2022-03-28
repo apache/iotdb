@@ -86,7 +86,8 @@ public class SeriesReaderTestUtil {
       List<TsFileResource> seqResources,
       List<TsFileResource> unseqResources,
       List<MeasurementSchema> measurementSchemas,
-      List<String> deviceIds, String sgName)
+      List<String> deviceIds,
+      String sgName)
       throws IOException, WriteProcessException {
     for (int i = 0; i < seqFileNum; i++) {
       File file = new File(TestConstant.getTestTsFilePath(sgName, 0, 0, i));
@@ -99,8 +100,7 @@ public class SeriesReaderTestUtil {
       prepareFile(tsFileResource, i * ptNum, ptNum, 0, measurementSchemas, deviceIds);
     }
     for (int i = 0; i < unseqFileNum; i++) {
-      File file =
-          new File(TestConstant.getTestTsFilePath(sgName, 0, 0, i + seqFileNum));
+      File file = new File(TestConstant.getTestTsFilePath(sgName, 0, 0, i + seqFileNum));
       TsFileResource tsFileResource = new TsFileResource(file);
       tsFileResource.setStatus(TsFileResourceStatus.CLOSED);
       tsFileResource.setMinPlanIndex(i + seqFileNum);
@@ -116,9 +116,7 @@ public class SeriesReaderTestUtil {
           deviceIds);
     }
 
-    File file =
-        new File(
-            TestConstant.getTestTsFilePath(sgName, 0, 0, seqFileNum + unseqFileNum));
+    File file = new File(TestConstant.getTestTsFilePath(sgName, 0, 0, seqFileNum + unseqFileNum));
     TsFileResource tsFileResource = new TsFileResource(file);
     tsFileResource.setStatus(TsFileResourceStatus.CLOSED);
     tsFileResource.setMinPlanIndex(seqFileNum + unseqFileNum);
@@ -171,7 +169,8 @@ public class SeriesReaderTestUtil {
   }
 
   private static void prepareSeries(
-      List<MeasurementSchema> measurementSchemas, List<String> deviceIds, String sgName) throws MetadataException {
+      List<MeasurementSchema> measurementSchemas, List<String> deviceIds, String sgName)
+      throws MetadataException {
     for (int i = 0; i < measurementNum; i++) {
       measurementSchemas.add(
           new MeasurementSchema(
