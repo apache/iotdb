@@ -125,14 +125,14 @@ public class MetadataUpgrader {
       logger.info("Metadata files have already been upgraded.");
       return;
     }
-    IoTDB.schemaEngine.init();
+    IoTDB.configManager.init();
     try {
       upgrader.reloadMetadataFromSnapshot();
       upgrader.redoMLog();
       upgrader.clearOldFiles();
       logger.info("Finish upgrading metadata files.");
     } finally {
-      IoTDB.schemaEngine.clear();
+      IoTDB.configManager.clear();
     }
   }
 

@@ -52,7 +52,7 @@ public class ConcatOptimizerTest {
   @Before
   public void before() throws MetadataException {
     processor = new Planner();
-    IoTDB.schemaEngine.init();
+    IoTDB.configManager.init();
     IoTDB.schemaEngine.setStorageGroup(new PartialPath("root.laptop"));
     IoTDB.schemaEngine.createTimeseries(
         new PartialPath("root.laptop.d1.s1"),
@@ -94,7 +94,7 @@ public class ConcatOptimizerTest {
 
   @After
   public void after() throws IOException {
-    IoTDB.schemaEngine.clear();
+    IoTDB.configManager.clear();
     EnvironmentUtils.cleanAllDir();
   }
 

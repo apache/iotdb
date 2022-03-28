@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.template;
 
+import org.apache.iotdb.commons.partition.SchemaRegionId;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
@@ -56,6 +57,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class Template {
   private String name;
@@ -65,7 +67,7 @@ public class Template {
   private Map<String, IMeasurementSchema> schemaMap;
 
   // accelerate template query and check
-  private Set<PartialPath> relatedStorageGroup;
+  private Map<String, Set<SchemaRegionId>> relatedSchemaRegion;
 
   // transient variable to be recorded in schema file
   // since order of CreateTemplatePlan is fixed, this code shall be fixed as well
@@ -84,7 +86,7 @@ public class Template {
     name = plan.getName();
     isDirectAligned = false;
     directNodes = new HashMap<>();
-    relatedStorageGroup = new HashSet<>();
+    relatedSchemaRegion = new ConcurrentHashMap<>();
     rehashCode = 0;
 
     for (int i = 0; i < plan.getMeasurements().size(); i++) {
@@ -421,16 +423,31 @@ public class Template {
     return directNodes.values();
   }
 
-  public Set<PartialPath> getRelatedStorageGroup() {
-    return relatedStorageGroup;
+  public Set<SchemaRegionId> getRelatedSchemaRegion() {
+    Set<SchemaRegionId> result = new HashSet<>();
+    for (Set<SchemaRegionId> schemaRegionIds : relatedSchemaRegion.values()) {
+      result.addAll(schemaRegionIds);
+    }
+    return result;
   }
 
-  public boolean markStorageGroup(PartialPath storageGroupPath) {
-    return relatedStorageGroup.add(storageGroupPath);
+  public Set<SchemaRegionId> getRelatedSchemaRegionInStorageGroup(String storageGroup) {
+    return relatedSchemaRegion.get(storageGroup);
   }
 
-  public boolean unmarkStorageGroup(PartialPath storageGroupPath) {
-    return relatedStorageGroup.remove(storageGroupPath);
+  public void markSchemaRegion(String storageGroup, SchemaRegionId schemaRegionId) {
+    if (!relatedSchemaRegion.containsKey(storageGroup)) {
+      relatedSchemaRegion.putIfAbsent(storageGroup, new HashSet<>());
+    }
+    relatedSchemaRegion.get(storageGroup).add(schemaRegionId);
+  }
+
+  public void unmarkSchemaRegion(String storageGroup, SchemaRegionId schemaRegionId) {
+    Set<SchemaRegionId> schemaRegionIds = relatedSchemaRegion.get(storageGroup);
+    schemaRegionIds.remove(schemaRegionId);
+    if (schemaRegionIds.isEmpty()) {
+      relatedSchemaRegion.remove(storageGroup);
+    }
   }
 
   // endregion

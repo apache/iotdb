@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.metadata.template;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.commons.partition.SchemaRegionId;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.template.DuplicatedTemplateException;
@@ -41,7 +41,10 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -56,6 +59,8 @@ public class TemplateManager {
 
   // hash the name of template to record it as fixed length in schema file
   private Map<Integer, String> templateHashMap = new ConcurrentHashMap<>();
+
+  private final Map<String, Set<Template>> templateUsageInStorageGroup = new ConcurrentHashMap<>();
 
   private TemplateLogWriter logWriter;
 
@@ -74,28 +79,30 @@ public class TemplateManager {
     return TemplateManagerHolder.INSTANCE;
   }
 
-  @TestOnly
-  public static TemplateManager getNewInstanceForTest() {
-    return new TemplateManager();
-  }
-
   private TemplateManager() {}
 
   public void init() throws IOException {
     isRecover = true;
+    recoverFromTemplateFile();
     logWriter =
         new TemplateLogWriter(
             IoTDBDescriptor.getInstance().getConfig().getSchemaDir(),
             MetadataConstant.TEMPLATE_FILE);
-    recoverFromTemplateFile();
     isRecover = false;
   }
 
   private void recoverFromTemplateFile() throws IOException {
+    File logFile =
+        new File(
+            IoTDBDescriptor.getInstance().getConfig().getSchemaDir(),
+            MetadataConstant.TEMPLATE_FILE);
+    if (!logFile.exists()) {
+      return;
+    }
     try (TemplateLogReader reader =
         new TemplateLogReader(
             IoTDBDescriptor.getInstance().getConfig().getSchemaDir(),
-            MetadataConstant.TEMPLATE_FILE); ) {
+            MetadataConstant.TEMPLATE_FILE)) {
       PhysicalPlan plan;
       int idx = 0;
       while (reader.hasNext()) {
@@ -328,8 +335,41 @@ public class TemplateManager {
     }
   }
 
+  public void markSchemaRegion(
+      Template template, String storageGroup, SchemaRegionId schemaRegionId) {
+    synchronized (templateUsageInStorageGroup) {
+      if (!templateUsageInStorageGroup.containsKey(storageGroup)) {
+        templateUsageInStorageGroup.putIfAbsent(
+            storageGroup, Collections.synchronizedSet(new HashSet<>()));
+      }
+    }
+    templateUsageInStorageGroup.get(storageGroup).add(template);
+    template.markSchemaRegion(storageGroup, schemaRegionId);
+  }
+
+  public void unmarkSchemaRegion(
+      Template template, String storageGroup, SchemaRegionId schemaRegionId) {
+    Set<Template> usageInStorageGroup = templateUsageInStorageGroup.get(storageGroup);
+    usageInStorageGroup.remove(template);
+    synchronized (templateUsageInStorageGroup) {
+      if (usageInStorageGroup.isEmpty()) {
+        templateUsageInStorageGroup.remove(storageGroup);
+      }
+    }
+    template.unmarkSchemaRegion(storageGroup, schemaRegionId);
+  }
+
+  public void forceLog() {
+    try {
+      logWriter.force();
+    } catch (IOException e) {
+      logger.error("Cannot force template log", e);
+    }
+  }
+
   public void clear() throws IOException {
     templateMap.clear();
+    templateUsageInStorageGroup.clear();
     if (logWriter != null) {
       logWriter.close();
     }

@@ -19,6 +19,8 @@
 package org.apache.iotdb.confignode.conf;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.confignode.consensus.ConsensusType;
+import org.apache.iotdb.consensus.common.Endpoint;
 import org.apache.iotdb.rpc.RpcUtils;
 
 import java.io.File;
@@ -34,8 +36,11 @@ public class ConfigNodeConf {
   /** used for communication between data node and data node */
   private int internalPort = 22278;
 
-  /** every node should have the same config_node_address_lists */
-  private String addressLists;
+  /** ConfigNodeGroup consensus protocol */
+  private ConsensusType consensusType = ConsensusType.STANDALONE;
+
+  /** Used for building the ConfigNode consensus group */
+  private Endpoint[] configNodeGroupAddressList = null;
 
   /** Number of DeviceGroups per StorageGroup */
   private int deviceGroupCount = 10000;
@@ -70,12 +75,40 @@ public class ConfigNodeConf {
     ConfigNodeConstant.DATA_DIR + File.separator + ConfigNodeConstant.DATA_DIR
   };
 
+  /** Consensus directory, storage consensus protocol logs */
+  private String consensusDir =
+      ConfigNodeConstant.DATA_DIR + File.separator + ConfigNodeConstant.CONSENSUS_FOLDER;
+
   private int regionReplicaCount = 3;
   private int schemaRegionCount = 1;
   private int dataRegionCount = 1;
 
   public ConfigNodeConf() {
     // empty constructor
+  }
+
+  public void updatePath() {
+    formulateFolders();
+  }
+
+  private void formulateFolders() {
+    systemDir = addHomeDir(systemDir);
+    for (int i = 0; i < dataDirs.length; i++) {
+      dataDirs[i] = addHomeDir(dataDirs[i]);
+    }
+    consensusDir = addHomeDir(consensusDir);
+  }
+
+  private String addHomeDir(String dir) {
+    String homeDir = System.getProperty(ConfigNodeConstant.CONFIGNODE_HOME, null);
+    if (!new File(dir).isAbsolute() && homeDir != null && homeDir.length() > 0) {
+      if (!homeDir.endsWith(File.separator)) {
+        dir = homeDir + File.separatorChar + dir;
+      } else {
+        dir = homeDir + dir;
+      }
+    }
+    return dir;
   }
 
   public int getDeviceGroupCount() {
@@ -158,12 +191,28 @@ public class ConfigNodeConf {
     this.internalPort = internalPort;
   }
 
-  public String getAddressLists() {
-    return addressLists;
+  public String getConsensusDir() {
+    return consensusDir;
   }
 
-  public void setAddressLists(String addressLists) {
-    this.addressLists = addressLists;
+  public void setConsensusDir(String consensusDir) {
+    this.consensusDir = consensusDir;
+  }
+
+  public ConsensusType getConsensusType() {
+    return consensusType;
+  }
+
+  public void setConsensusType(ConsensusType consensusType) {
+    this.consensusType = consensusType;
+  }
+
+  public Endpoint[] getConfigNodeGroupAddressList() {
+    return configNodeGroupAddressList;
+  }
+
+  public void setConfigNodeGroupAddressList(Endpoint[] configNodeGroupAddressList) {
+    this.configNodeGroupAddressList = configNodeGroupAddressList;
   }
 
   public int getThriftServerAwaitTimeForStopService() {

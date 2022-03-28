@@ -19,14 +19,19 @@
 package org.apache.iotdb.db.mpp.sql.planner.plan;
 
 import org.apache.iotdb.commons.partition.DataRegionReplicaSet;
+import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.sink.FragmentSinkNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 
-public class FragmentInstance {
+import java.nio.ByteBuffer;
+
+public class FragmentInstance implements IConsensusRequest {
   private FragmentInstanceId id;
 
   // The reference of PlanFragment which this instance is generated from
@@ -92,5 +97,18 @@ public class FragmentInstance {
     ret.append(PlanNodeUtil.nodeToString(getFragment().getRoot()));
     ret.append("\n");
     return ret.toString();
+  }
+
+  /** TODO need to be implemented */
+  public static FragmentInstance deserializeFrom(ByteBuffer buffer) {
+    return new FragmentInstance(
+        new PlanFragment(
+            new PlanFragmentId("null", -1), new InsertTabletNode(new PlanNodeId("-1"))),
+        -1);
+  }
+
+  @Override
+  public void serializeRequest(ByteBuffer buffer) {
+    // TODO serialize itself to a ByteBuffer
   }
 }

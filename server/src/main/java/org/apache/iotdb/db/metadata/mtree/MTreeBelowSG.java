@@ -39,6 +39,7 @@ import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MNodeUtils;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.metadata.mtree.store.CachedMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.store.MemMTreeStore;
@@ -70,7 +71,6 @@ import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.gson.JsonObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -132,14 +132,16 @@ public class MTreeBelowSG implements Serializable {
   private int levelOfSG;
 
   // region MTree initialization, clear and serialization
-  public MTreeBelowSG(PartialPath storageGroup) throws MetadataException, IOException {
-    if (IoTDBDescriptor.getInstance().getConfig().isEnablePersistentSchema()) {
+  public MTreeBelowSG(IStorageGroupMNode storageGroupMNode) throws MetadataException, IOException {
+    PartialPath storageGroup = storageGroupMNode.getPartialPath();
+      if (IoTDBDescriptor.getInstance().getConfig().isEnablePersistentSchema()) {
       store = new CachedMTreeStore(storageGroup, true);
     } else {
       store = new MemMTreeStore(storageGroup, true);
     }
 
-    storageGroupMNode = store.getRoot().getAsStorageGroupMNode();
+    this.storageGroupMNode = store.getRoot().getAsStorageGroupMNode();
+    this.storageGroupMNode.setParent(storageGroupMNode.getParent());
     levelOfSG = storageGroup.getNodeLength() - 1;
   }
 
@@ -150,51 +152,6 @@ public class MTreeBelowSG implements Serializable {
   public void clear() {
     store.clear();
     storageGroupMNode = null;
-  }
-
-  public JsonObject toJson() {
-    JsonObject jsonObject = new JsonObject();
-    jsonObject.add(
-        storageGroupMNode.getFullPath(),
-        mNodeToJSON(storageGroupMNode, storageGroupMNode.getName()));
-    return jsonObject;
-  }
-
-  private JsonObject mNodeToJSON(IMNode node, String storageGroupName) {
-    JsonObject jsonObject = new JsonObject();
-    if (node.isMeasurement()) {
-      IMeasurementMNode leafMNode = node.getAsMeasurementMNode();
-      jsonObject.add("DataType", GSON.toJsonTree(leafMNode.getSchema().getType()));
-      jsonObject.add("Encoding", GSON.toJsonTree(leafMNode.getSchema().getEncodingType()));
-      jsonObject.add("Compressor", GSON.toJsonTree(leafMNode.getSchema().getCompressor()));
-      if (leafMNode.getSchema().getProps() != null) {
-        jsonObject.addProperty("args", leafMNode.getSchema().getProps().toString());
-      }
-      jsonObject.addProperty("StorageGroup", storageGroupName);
-    } else {
-      if (node.isStorageGroup()) {
-        storageGroupName = node.getFullPath();
-      }
-      try {
-        IMNodeIterator iterator = store.getChildrenIterator(node);
-        try {
-          IMNode child;
-          while (iterator.hasNext()) {
-            child = iterator.next();
-            try {
-              jsonObject.add(child.getName(), mNodeToJSON(child, storageGroupName));
-            } finally {
-              unPinMNode(child);
-            }
-          }
-        } finally {
-          iterator.close();
-        }
-      } catch (MetadataException e) {
-        logger.error("Error occurred when parse mtree to string. {}", node.getFullPath(), e);
-      }
-    }
-    return jsonObject;
   }
   // endregion
 
@@ -636,7 +593,8 @@ public class MTreeBelowSG implements Serializable {
     return result;
   }
 
-  public List<ShowDevicesResult> getDevices(ShowDevicesPlan plan) throws MetadataException {
+  public Pair<List<ShowDevicesResult>, Integer> getDevices(ShowDevicesPlan plan)
+      throws MetadataException {
     List<ShowDevicesResult> res = new ArrayList<>();
     EntityCollector<List<ShowDevicesResult>> collector =
         new EntityCollector<List<ShowDevicesResult>>(
@@ -658,12 +616,7 @@ public class MTreeBelowSG implements Serializable {
     collector.setPrefixMatch(plan.isPrefixMatch());
     collector.traverse();
 
-    if (plan.getLimit() != 0) {
-      plan.setLimit(plan.getLimit() - res.size());
-      plan.setOffset(Math.max(plan.getOffset() - collector.getCurOffset() - 1, 0));
-    }
-
-    return res;
+    return new Pair<>(res, collector.getCurOffset() + 1);
   }
 
   public Set<PartialPath> getDevicesByTimeseries(PartialPath timeseries) throws MetadataException {
@@ -740,9 +693,10 @@ public class MTreeBelowSG implements Serializable {
   /**
    * Get all measurement schema matching the given path pattern
    *
-   * <p>result: [name, alias, storage group, dataType, encoding, compression, offset]
+   * <p>result: [name, alias, storage group, dataType, encoding, compression, offset] and the
+   * current offset
    */
-  public List<Pair<PartialPath, String[]>> getAllMeasurementSchema(
+  public Pair<List<Pair<PartialPath, String[]>>, Integer> getAllMeasurementSchema(
       ShowTimeSeriesPlan plan, QueryContext queryContext) throws MetadataException {
     /*
      There are two conditions and 4 cases.
@@ -780,12 +734,13 @@ public class MTreeBelowSG implements Serializable {
     collector.traverse();
 
     List<Pair<PartialPath, String[]>> result = collector.getResult();
-    Stream<Pair<PartialPath, String[]>> stream = result.stream();
-
-    limit = plan.getLimit();
-    offset = plan.getOffset();
 
     if (needLast) {
+      Stream<Pair<PartialPath, String[]>> stream = result.stream();
+
+      limit = plan.getLimit();
+      offset = plan.getOffset();
+
       stream =
           stream.sorted(
               Comparator.comparingLong(
@@ -793,19 +748,14 @@ public class MTreeBelowSG implements Serializable {
                   .reversed()
                   .thenComparing((Pair<PartialPath, String[]> p) -> p.left));
 
-      // no limit
       if (limit != 0) {
         stream = stream.skip(offset).limit(limit);
       }
 
-    } else if (limit != 0) {
-      plan.setLimit(limit - result.size());
-      plan.setOffset(Math.max(offset - collector.getCurOffset() - 1, 0));
+      result = stream.collect(toList());
     }
 
-    result = stream.collect(toList());
-
-    return result;
+    return new Pair<>(result, collector.getCurOffset() + 1);
   }
 
   /**

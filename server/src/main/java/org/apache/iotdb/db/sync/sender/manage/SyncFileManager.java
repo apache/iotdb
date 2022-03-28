@@ -81,7 +81,7 @@ public class SyncFileManager implements ISyncFileManager {
   private Map<String, Map<Long, Map<Long, Set<File>>>> toBeSyncedFilesMap;
 
   private SyncFileManager() {
-    IoTDB.schemaEngine.init();
+    IoTDB.configManager.init();
   }
 
   public static SyncFileManager getInstance() {

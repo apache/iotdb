@@ -28,7 +28,6 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.SchemaEngine;
-import org.apache.iotdb.db.metadata.SchemaRegion;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
@@ -46,7 +45,6 @@ import org.apache.iotdb.tsfile.utils.Pair;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.gson.JsonObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -79,9 +77,6 @@ public class MTreeAboveSG {
   }
 
   public void clear() {
-    for (IStorageGroupMNode storageGroupMNode : getAllStorageGroupNodes()) {
-      storageGroupMNode.getSchemaRegion().clear();
-    }
     if (store != null) {
       store.clear();
       this.root = store.getRoot();
@@ -135,19 +130,15 @@ public class MTreeAboveSG {
           throw new PathAlreadyExistException(
               cur.getPartialPath().concatNode(nodeNames[i]).getFullPath());
         }
+        IStorageGroupMNode storageGroupMNode =
+            new StorageGroupMNode(
+                cur, nodeNames[i], IoTDBDescriptor.getInstance().getConfig().getDefaultTTL());
 
-        // init SchemaRegion
-        SchemaRegion schemaRegion = new SchemaRegion();
-        IStorageGroupMNode storageGroupMNode = schemaRegion.init(path);
         IMNode result = cur.addChild(nodeNames[i], storageGroupMNode);
 
-        if (result == storageGroupMNode) {
-          return;
+        if (result != storageGroupMNode) {
+          throw new StorageGroupAlreadySetException(path.getFullPath(), true);
         }
-
-        // another thread executed addChild before adding the prepared storageGroupMNode to MTree
-        schemaRegion.deleteStorageGroup();
-        throw new StorageGroupAlreadySetException(path.getFullPath(), true);
       }
     }
   }
@@ -159,7 +150,6 @@ public class MTreeAboveSG {
     // Suppose current system has root.a.b.sg1, root.a.sg2, and delete root.a.b.sg1
     // delete the storage group node sg1
     cur.deleteChild(storageGroupMNode.getName());
-    storageGroupMNode.getSchemaRegion().deleteStorageGroup();
 
     // delete node a while retain root.a.sg2
     while (cur.getParent() != null && cur.getChildren().size() == 0) {
@@ -373,14 +363,14 @@ public class MTreeAboveSG {
     throw new StorageGroupNotSetException(path.getFullPath());
   }
 
-  public List<IStorageGroupMNode> getInvolvedStorageGroupNodes(
+  public List<PartialPath> getInvolvedStorageGroupNodes(
       PartialPath pathPattern, boolean isPrefixMatch) throws MetadataException {
-    List<IStorageGroupMNode> result = new ArrayList<>();
-    StorageGroupCollector<List<IStorageGroupMNode>> collector =
-        new StorageGroupCollector<List<IStorageGroupMNode>>(root, pathPattern, store) {
+    List<PartialPath> result = new ArrayList<>();
+    StorageGroupCollector<List<PartialPath>> collector =
+        new StorageGroupCollector<List<PartialPath>>(root, pathPattern, store) {
           @Override
           protected void collectStorageGroup(IStorageGroupMNode node) {
-            result.add(node);
+            result.add(node.getPartialPath());
           }
         };
     collector.setCollectInternal(true);
@@ -434,7 +424,7 @@ public class MTreeAboveSG {
    * path pattern is used to match prefix path. All timeseries start with the matched prefix path
    * will be counted.
    */
-  public Pair<Integer, Set<IStorageGroupMNode>> getNodesCountInGivenLevel(
+  public Pair<Integer, Set<PartialPath>> getNodesCountInGivenLevel(
       PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException {
     MNodeAboveSGLevelCounter counter =
         new MNodeAboveSGLevelCounter(root, pathPattern, store, level);
@@ -444,7 +434,7 @@ public class MTreeAboveSG {
   }
 
   /** Get all paths from root to the given level */
-  public Pair<List<PartialPath>, Set<IStorageGroupMNode>> getNodesListInGivenLevel(
+  public Pair<List<PartialPath>, Set<PartialPath>> getNodesListInGivenLevel(
       PartialPath pathPattern, int nodeLevel, SchemaEngine.StorageGroupFilter filter)
       throws MetadataException {
     MNodeAboveSGCollector<List<PartialPath>> collector =
@@ -475,8 +465,8 @@ public class MTreeAboveSG {
    * @param pathPattern The given path
    * @return All child nodes' seriesPath(s) of given seriesPath.
    */
-  public Pair<Set<String>, Set<IStorageGroupMNode>> getChildNodePathInNextLevel(
-      PartialPath pathPattern) throws MetadataException {
+  public Pair<Set<String>, Set<PartialPath>> getChildNodePathInNextLevel(PartialPath pathPattern)
+      throws MetadataException {
     try {
       MNodeAboveSGCollector<Set<String>> collector =
           new MNodeAboveSGCollector<Set<String>>(
@@ -508,8 +498,8 @@ public class MTreeAboveSG {
    * @param pathPattern The given path
    * @return All child nodes' seriesPath(s) of given seriesPath.
    */
-  public Pair<Set<String>, Set<IStorageGroupMNode>> getChildNodeNameInNextLevel(
-      PartialPath pathPattern) throws MetadataException {
+  public Pair<Set<String>, Set<PartialPath>> getChildNodeNameInNextLevel(PartialPath pathPattern)
+      throws MetadataException {
     try {
       MNodeAboveSGCollector<Set<String>> collector =
           new MNodeAboveSGCollector<Set<String>>(
@@ -526,36 +516,5 @@ public class MTreeAboveSG {
     } catch (IllegalPathException e) {
       throw new IllegalPathException(pathPattern.getFullPath());
     }
-  }
-
-  @Override
-  public String toString() {
-    JsonObject jsonObject = new JsonObject();
-    jsonObject.add(root.getName(), mNodeToJSON(root));
-    return jsonToString(jsonObject);
-  }
-
-  private JsonObject mNodeToJSON(IMNode node) {
-    JsonObject jsonObject = new JsonObject();
-    if (node.getChildren().size() > 0) {
-      for (IMNode child : node.getChildren().values()) {
-        if (child.isStorageGroup()) {
-          jsonObject.add(
-              child.getName(),
-              child
-                  .getAsStorageGroupMNode()
-                  .getSchemaRegion()
-                  .getMetadataInJson()
-                  .get(child.getFullPath()));
-        } else {
-          jsonObject.add(child.getName(), mNodeToJSON(child));
-        }
-      }
-    }
-    return jsonObject;
-  }
-
-  private static String jsonToString(JsonObject jsonObject) {
-    return GSON.toJson(jsonObject);
   }
 }

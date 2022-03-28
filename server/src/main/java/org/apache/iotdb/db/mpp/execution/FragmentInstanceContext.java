@@ -21,20 +21,20 @@ package org.apache.iotdb.db.mpp.execution;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.query.context.QueryContext;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-public class FragmentInstanceContext {
+public class FragmentInstanceContext extends QueryContext {
 
   private FragmentInstanceId id;
 
   // TODO if we split one fragment instance into multiple pipelines to run, we need to replace it
   // with CopyOnWriteArrayList or some other thread safe data structure
   private final List<OperatorContext> operatorContexts = new ArrayList<>();
-
   private final long createNanos = System.nanoTime();
 
   //    private final GcMonitor gcMonitor;
@@ -60,7 +60,8 @@ public class FragmentInstanceContext {
           operatorId);
     }
 
-    OperatorContext operatorContext = new OperatorContext(operatorId, planNodeId, operatorType);
+    OperatorContext operatorContext =
+        new OperatorContext(operatorId, planNodeId, operatorType, this);
     operatorContexts.add(operatorContext);
     return operatorContext;
   }

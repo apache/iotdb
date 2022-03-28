@@ -36,8 +36,8 @@ import java.util.List;
 public class SchemaUtilsTest {
   @Test
   public void registerTimeseriesTest() throws MetadataException {
+    IoTDB.configManager.init();
     SchemaEngine schemaEngine = IoTDB.schemaEngine;
-    schemaEngine.init();
 
     String tsPath = "root.sg.d1.s1";
     TimeseriesSchema timeseriesSchema = new TimeseriesSchema(tsPath, TSDataType.INT32);

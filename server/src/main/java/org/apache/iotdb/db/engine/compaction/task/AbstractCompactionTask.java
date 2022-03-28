@@ -21,8 +21,7 @@ package org.apache.iotdb.db.engine.compaction.task;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.task.RewriteCrossCompactionRecoverTask;
-import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompactionRecoverTask;
+import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,12 +41,17 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
   protected String fullStorageGroupName;
   protected long timePartition;
   protected final AtomicInteger currentTaskNum;
+  protected final TsFileManager tsFileManager;
   protected long timeCost = 0L;
 
   public AbstractCompactionTask(
-      String fullStorageGroupName, long timePartition, AtomicInteger currentTaskNum) {
+      String fullStorageGroupName,
+      long timePartition,
+      TsFileManager tsFileManager,
+      AtomicInteger currentTaskNum) {
     this.fullStorageGroupName = fullStorageGroupName;
     this.timePartition = timePartition;
+    this.tsFileManager = tsFileManager;
     this.currentTaskNum = currentTaskNum;
   }
 
@@ -64,11 +68,8 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
     } catch (Exception e) {
       LOGGER.error(e.getMessage(), e);
     } finally {
+      CompactionTaskManager.getInstance().removeRunningTaskFromList(this);
       timeCost = System.currentTimeMillis() - startTime;
-      if (!(this instanceof RewriteCrossCompactionRecoverTask)
-          && !(this instanceof SizeTieredCompactionRecoverTask)) {
-        CompactionTaskManager.getInstance().removeRunningTaskFromList(this);
-      }
       this.currentTaskNum.decrementAndGet();
     }
 
