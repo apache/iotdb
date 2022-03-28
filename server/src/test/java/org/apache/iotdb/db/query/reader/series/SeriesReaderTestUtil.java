@@ -58,17 +58,17 @@ public class SeriesReaderTestUtil {
   private static long ptNum = 100;
   private static long flushInterval = 20;
   private static TSEncoding encoding = TSEncoding.PLAIN;
-  private static final String SERIES_READER_TEST_SG = "root.seriesReaderTest";
 
   public static void setUp(
       List<MeasurementSchema> measurementSchemas,
       List<String> deviceIds,
       List<TsFileResource> seqResources,
-      List<TsFileResource> unseqResources)
+      List<TsFileResource> unseqResources,
+      String sgName)
       throws MetadataException, IOException, WriteProcessException {
     IoTDB.schemaEngine.init();
-    prepareSeries(measurementSchemas, deviceIds);
-    prepareFiles(seqResources, unseqResources, measurementSchemas, deviceIds);
+    prepareSeries(measurementSchemas, deviceIds, sgName);
+    prepareFiles(seqResources, unseqResources, measurementSchemas, deviceIds, sgName);
   }
 
   public static void tearDown(
@@ -86,10 +86,10 @@ public class SeriesReaderTestUtil {
       List<TsFileResource> seqResources,
       List<TsFileResource> unseqResources,
       List<MeasurementSchema> measurementSchemas,
-      List<String> deviceIds)
+      List<String> deviceIds, String sgName)
       throws IOException, WriteProcessException {
     for (int i = 0; i < seqFileNum; i++) {
-      File file = new File(TestConstant.getTestTsFilePath(SERIES_READER_TEST_SG, 0, 0, i));
+      File file = new File(TestConstant.getTestTsFilePath(sgName, 0, 0, i));
       TsFileResource tsFileResource = new TsFileResource(file);
       tsFileResource.setStatus(TsFileResourceStatus.CLOSED);
       tsFileResource.setMinPlanIndex(i);
@@ -100,7 +100,7 @@ public class SeriesReaderTestUtil {
     }
     for (int i = 0; i < unseqFileNum; i++) {
       File file =
-          new File(TestConstant.getTestTsFilePath(SERIES_READER_TEST_SG, 0, 0, i + seqFileNum));
+          new File(TestConstant.getTestTsFilePath(sgName, 0, 0, i + seqFileNum));
       TsFileResource tsFileResource = new TsFileResource(file);
       tsFileResource.setStatus(TsFileResourceStatus.CLOSED);
       tsFileResource.setMinPlanIndex(i + seqFileNum);
@@ -118,7 +118,7 @@ public class SeriesReaderTestUtil {
 
     File file =
         new File(
-            TestConstant.getTestTsFilePath(SERIES_READER_TEST_SG, 0, 0, seqFileNum + unseqFileNum));
+            TestConstant.getTestTsFilePath(sgName, 0, 0, seqFileNum + unseqFileNum));
     TsFileResource tsFileResource = new TsFileResource(file);
     tsFileResource.setStatus(TsFileResourceStatus.CLOSED);
     tsFileResource.setMinPlanIndex(seqFileNum + unseqFileNum);
@@ -171,16 +171,16 @@ public class SeriesReaderTestUtil {
   }
 
   private static void prepareSeries(
-      List<MeasurementSchema> measurementSchemas, List<String> deviceIds) throws MetadataException {
+      List<MeasurementSchema> measurementSchemas, List<String> deviceIds, String sgName) throws MetadataException {
     for (int i = 0; i < measurementNum; i++) {
       measurementSchemas.add(
           new MeasurementSchema(
               "sensor" + i, TSDataType.INT32, encoding, CompressionType.UNCOMPRESSED));
     }
     for (int i = 0; i < deviceNum; i++) {
-      deviceIds.add(SERIES_READER_TEST_SG + PATH_SEPARATOR + "device" + i);
+      deviceIds.add(sgName + PATH_SEPARATOR + "device" + i);
     }
-    IoTDB.schemaEngine.setStorageGroup(new PartialPath(SERIES_READER_TEST_SG));
+    IoTDB.schemaEngine.setStorageGroup(new PartialPath(sgName));
     for (String device : deviceIds) {
       for (MeasurementSchema measurementSchema : measurementSchemas) {
         IoTDB.schemaEngine.createTimeseries(
