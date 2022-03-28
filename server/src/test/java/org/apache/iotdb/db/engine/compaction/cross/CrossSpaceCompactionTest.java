@@ -97,7 +97,7 @@ public class CrossSpaceCompactionTest {
 
   @Before
   public void setUp() throws MetadataException {
-    IoTDB.schemaEngine.init();
+    IoTDB.configManager.init();
     IoTDB.schemaEngine.setStorageGroup(new PartialPath(COMPACTION_TEST_SG));
     for (String fullPath : fullPaths) {
       PartialPath path = new PartialPath(fullPath);
@@ -117,7 +117,7 @@ public class CrossSpaceCompactionTest {
     CompactionClearUtils.deleteEmptyDir(new File("target"));
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
-    IoTDB.schemaEngine.clear();
+    IoTDB.configManager.clear();
     EnvironmentUtils.cleanAllDir();
     Thread.currentThread().setName(oldThreadName);
     new CompactionConfigRestorer().restoreCompactionConfig();

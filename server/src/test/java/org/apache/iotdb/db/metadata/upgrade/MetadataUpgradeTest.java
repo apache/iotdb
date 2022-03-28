@@ -90,11 +90,11 @@ public class MetadataUpgradeTest {
     prepareTagFile();
     prepareMLog();
 
-    SchemaEngine schemaEngine = IoTDB.schemaEngine;
-    schemaEngine.clear();
+    IoTDB.configManager.clear();
     MetadataUpgrader.upgrade();
-    schemaEngine.init();
+    IoTDB.configManager.init();
 
+    SchemaEngine schemaEngine = IoTDB.schemaEngine;
     Assert.assertEquals(8, schemaEngine.getStorageGroupNum(new PartialPath("root.**"), false));
     Assert.assertEquals(10, schemaEngine.getAllTimeseriesCount(new PartialPath("root.**")));
 

@@ -16,39 +16,32 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.partition;
 
-import java.util.Objects;
+package org.apache.iotdb.db.metadata.storagegroup;
 
-public class SchemaRegionId {
-  private int schemaRegionId;
+import org.apache.iotdb.db.metadata.logfile.MLogReader;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
-  public SchemaRegionId(int schemaRegionId) {
-    this.schemaRegionId = schemaRegionId;
+import java.io.IOException;
+
+public class StorageGroupLogReader implements AutoCloseable {
+
+  private final MLogReader logReader;
+
+  public StorageGroupLogReader(String schemaDir, String fileName) throws IOException {
+    logReader = new MLogReader(schemaDir, fileName);
   }
 
-  public int getSchemaRegionId() {
-    return schemaRegionId;
+  public boolean hasNext() {
+    return logReader.hasNext();
   }
 
-  public void setSchemaRegionId(int schemaRegionId) {
-    this.schemaRegionId = schemaRegionId;
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    SchemaRegionId that = (SchemaRegionId) o;
-    return schemaRegionId == that.schemaRegionId;
+  public PhysicalPlan next() {
+    return logReader.next();
   }
 
   @Override
-  public int hashCode() {
-    return Objects.hash(schemaRegionId);
-  }
-
-  public String toString() {
-    return String.format("SchemaRegion-%d", schemaRegionId);
+  public void close() {
+    logReader.close();
   }
 }
