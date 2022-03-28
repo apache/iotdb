@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.mtree.schemafile;
 
+import org.apache.iotdb.commons.partition.SchemaRegionId;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.EntityMNode;
@@ -57,6 +58,8 @@ import java.util.Set;
 
 public class SchemaFileTest {
 
+  private static final SchemaRegionId TEST_SCHEMA_REGION_ID = new SchemaRegionId(0);
+
   @Before
   public void setUp() {
     IoTDBDescriptor.getInstance().getConfig().setEnablePersistentSchema(true);
@@ -71,7 +74,7 @@ public class SchemaFileTest {
 
   @Test
   public void essentialTestSchemaFile() throws IOException, MetadataException {
-    ISchemaFile sf = SchemaFile.initSchemaFile("root.test.vRoot1");
+    ISchemaFile sf = SchemaFile.initSchemaFile("root.test.vRoot1", TEST_SCHEMA_REGION_ID);
     IStorageGroupMNode newSGNode = new StorageGroupEntityMNode(null, "newSG", 10000L);
     sf.updateStorageGroupNode(newSGNode);
 
@@ -131,7 +134,7 @@ public class SchemaFileTest {
 
     sf.close();
 
-    ISchemaFile nsf = SchemaFile.loadSchemaFile("root.test.vRoot1");
+    ISchemaFile nsf = SchemaFile.loadSchemaFile("root.test.vRoot1", TEST_SCHEMA_REGION_ID);
     Assert.assertEquals(
         "alas99999", nsf.getChildNode(int0, "mint1").getAsMeasurementMNode().getAlias());
     Assert.assertEquals(
@@ -146,7 +149,7 @@ public class SchemaFileTest {
 
   @Test
   public void testVerticalTree() throws MetadataException, IOException {
-    ISchemaFile sf = SchemaFile.initSchemaFile("root.sgvt.vt");
+    ISchemaFile sf = SchemaFile.initSchemaFile("root.sgvt.vt", TEST_SCHEMA_REGION_ID);
     IStorageGroupMNode sgNode = new StorageGroupEntityMNode(null, "sg", 11_111L);
     sf.updateStorageGroupNode(sgNode);
 
@@ -175,7 +178,7 @@ public class SchemaFileTest {
             .size());
     sf.close();
 
-    ISchemaFile nsf = SchemaFile.loadSchemaFile("root.sgvt.vt");
+    ISchemaFile nsf = SchemaFile.loadSchemaFile("root.sgvt.vt", TEST_SCHEMA_REGION_ID);
 
     ICachedMNodeContainer.getCachedMNodeContainer(vt1).getNewChildBuffer().clear();
     ICachedMNodeContainer.getCachedMNodeContainer(vt4).getNewChildBuffer().clear();
@@ -190,7 +193,7 @@ public class SchemaFileTest {
     nsf.writeMNode(vt4);
 
     nsf.close();
-    nsf = SchemaFile.loadSchemaFile("root.sgvt.vt");
+    nsf = SchemaFile.loadSchemaFile("root.sgvt.vt", TEST_SCHEMA_REGION_ID);
 
     Iterator<IMNode> vt1Children = nsf.getChildren(vt1);
     Iterator<IMNode> vt4Children = nsf.getChildren(vt4);
@@ -223,7 +226,7 @@ public class SchemaFileTest {
 
   @Test
   public void testFaltTree() throws MetadataException, IOException {
-    ISchemaFile sf = SchemaFile.initSchemaFile("root.test.vRoot1");
+    ISchemaFile sf = SchemaFile.initSchemaFile("root.test.vRoot1", TEST_SCHEMA_REGION_ID);
 
     Iterator<IMNode> ite = getTreeBFT(getFlatTree(50000, "aa"));
     while (ite.hasNext()) {
@@ -249,7 +252,7 @@ public class SchemaFileTest {
 
     IMNode node = new InternalMNode(null, "test");
     ICachedMNodeContainer.getCachedMNodeContainer(node).setSegmentAddress(196608L);
-    ISchemaFile sf = SchemaFile.loadSchemaFile("root.test.vRoot1");
+    ISchemaFile sf = SchemaFile.loadSchemaFile("root.test.vRoot1", TEST_SCHEMA_REGION_ID);
 
     Iterator<IMNode> res = sf.getChildren(node);
     int cnt = 0;
@@ -274,7 +277,7 @@ public class SchemaFileTest {
     }
 
     Iterator<IMNode> orderedTree = getTreeBFT(sgNode);
-    ISchemaFile sf = SchemaFile.initSchemaFile(sgNode.getName());
+    ISchemaFile sf = SchemaFile.initSchemaFile(sgNode.getName(), TEST_SCHEMA_REGION_ID);
     ICachedMNodeContainer.getCachedMNodeContainer(sgNode).setSegmentAddress(0L);
     IMNode node = null;
     try {
@@ -318,7 +321,7 @@ public class SchemaFileTest {
     }
 
     orderedTree = getTreeBFT(sgNode);
-    sf = SchemaFile.loadSchemaFile(sgNode.getName());
+    sf = SchemaFile.loadSchemaFile(sgNode.getName(), TEST_SCHEMA_REGION_ID);
     try {
       while (orderedTree.hasNext()) {
         node = orderedTree.next();
@@ -348,7 +351,7 @@ public class SchemaFileTest {
     }
 
     orderedTree = getTreeBFT(sgNode);
-    sf = SchemaFile.loadSchemaFile(sgNode.getName());
+    sf = SchemaFile.loadSchemaFile(sgNode.getName(), TEST_SCHEMA_REGION_ID);
     List<IMNode> arbitraryNode = new ArrayList<>();
     try {
       while (orderedTree.hasNext()) {
@@ -367,7 +370,7 @@ public class SchemaFileTest {
       sf.close();
     }
 
-    sf = SchemaFile.loadSchemaFile("sgRoot");
+    sf = SchemaFile.loadSchemaFile("sgRoot", TEST_SCHEMA_REGION_ID);
 
     for (String key : resName) {
       IMNode resNode = sf.getChildNode(arbitraryNode.get(arbitraryNode.size() - 3), key);
@@ -387,7 +390,7 @@ public class SchemaFileTest {
 
   @Test
   public void testUpdateOnFullPageSegment() throws MetadataException, IOException {
-    ISchemaFile sf = SchemaFile.initSchemaFile("root.sg");
+    ISchemaFile sf = SchemaFile.initSchemaFile("root.sg", TEST_SCHEMA_REGION_ID);
     IMNode root = getFlatTree(783, "aa");
     Iterator<IMNode> ite = getTreeBFT(root);
     while (ite.hasNext()) {
@@ -463,7 +466,7 @@ public class SchemaFileTest {
 
   @Test
   public void testRearrangementWhenInsert() throws MetadataException, IOException {
-    ISchemaFile sf = SchemaFile.initSchemaFile("root.sg");
+    ISchemaFile sf = SchemaFile.initSchemaFile("root.sg", TEST_SCHEMA_REGION_ID);
     IMNode root = new StorageGroupEntityMNode(null, "sgRoot", 0L);
 
     root.getChildren().clear();

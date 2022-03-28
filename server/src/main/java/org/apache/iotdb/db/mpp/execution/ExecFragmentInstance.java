@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.mpp.execution;
 
+import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
+
 import com.google.common.util.concurrent.ListenableFuture;
 import io.airlift.units.Duration;
 
@@ -48,8 +50,12 @@ public interface ExecFragmentInstance extends Closeable {
    */
   ListenableFuture<Void> processFor(Duration duration);
 
-  /** @return the information about this Fragment Instance in String format */
-  String getInfo();
+  /**
+   * the id information about this Fragment Instance.
+   *
+   * @return a {@link FragmentInstanceId} instance.
+   */
+  FragmentInstanceId getInfo();
 
   /** clear resource used by this fragment instance */
   @Override

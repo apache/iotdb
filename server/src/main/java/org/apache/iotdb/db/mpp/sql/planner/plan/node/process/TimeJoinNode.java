@@ -25,6 +25,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeIdAllocator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -70,6 +71,9 @@ public class TimeJoinNode extends ProcessNode {
   }
 
   @Override
+  public void addChildren(PlanNode child) {}
+
+  @Override
   public PlanNode clone() {
     return new TimeJoinNode(
         PlanNodeIdAllocator.generateId(), this.mergeOrder, this.filterNullPolicy);
@@ -93,6 +97,13 @@ public class TimeJoinNode extends ProcessNode {
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
     return visitor.visitTimeJoin(this, context);
   }
+
+  public static TimeJoinNode deserialize(ByteBuffer byteBuffer) {
+    return null;
+  }
+
+  @Override
+  public void serialize(ByteBuffer byteBuffer) {}
 
   public void addChild(PlanNode child) {
     this.children.add(child);

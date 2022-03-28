@@ -33,7 +33,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.SchemaEngine;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
@@ -96,7 +96,7 @@ public class SlotPartitionTableTest {
   Node localNode;
   int replica_size = 5;
   int raftId = 0;
-  SchemaEngine[] schemaEngines;
+  LocalSchemaProcessor[] schemaProcessors;
 
   SlotPartitionTable[] tables; // The PartitionTable on each node.
   List<Node> nodes;
@@ -111,7 +111,7 @@ public class SlotPartitionTableTest {
     prevPartitionInterval = StorageEngine.getTimePartitionInterval();
     StorageEngine.setEnablePartition(true);
 
-    IoTDB.schemaEngine.init();
+    IoTDB.configManager.init();
     StorageEngine.setTimePartitionInterval(7 * 24 * 3600 * 1000L);
     nodes = new ArrayList<>();
     IntStream.range(0, 20).forEach(i -> nodes.add(getNode(i)));
@@ -119,7 +119,7 @@ public class SlotPartitionTableTest {
     prevReplicaNum = ClusterDescriptor.getInstance().getConfig().getReplicationNum();
     ClusterDescriptor.getInstance().getConfig().setReplicationNum(replica_size);
     tables = new SlotPartitionTable[20];
-    schemaEngines = new SchemaEngine[20];
+    schemaProcessors = new LocalSchemaProcessor[20];
 
     // suppose there are 40 storage groups and each node maintains two of them.
     String[] storageNames = new String[40];
@@ -141,23 +141,23 @@ public class SlotPartitionTableTest {
       nodeSGs[node.getNode().getMetaPort() - 30000].add(storageNames[i + 20]);
     }
     for (int i = 0; i < 20; i++) {
-      schemaEngines[i] = SchemaEngineWhiteBox.newSchemaEngine("target/schemas/mlog_" + i);
-      initMockSchemaEngine(i, schemaEngines[i], storageNames, nodeSGs[i]);
-      Whitebox.setInternalState(tables[i], "schemaEngine", schemaEngines[i]);
+      schemaProcessors[i] = SchemaProcessorWhiteBox.newSchemaProcessor("target/schemas/mlog_" + i);
+      initMockSchemaProcessor(i, schemaProcessors[i], storageNames, nodeSGs[i]);
+      Whitebox.setInternalState(tables[i], "schemaProcessor", schemaProcessors[i]);
     }
   }
 
-  private void initMockSchemaEngine(
-      int id, SchemaEngine schemaEngine, String[] storageGroups, List<String> ownedSGs)
+  private void initMockSchemaProcessor(
+      int id, LocalSchemaProcessor schemaProcessor, String[] storageGroups, List<String> ownedSGs)
       throws MetadataException {
     for (String sg : storageGroups) {
-      schemaEngine.setStorageGroup(new PartialPath(sg));
+      schemaProcessor.setStorageGroup(new PartialPath(sg));
     }
     for (String sg : ownedSGs) {
       // register 4 series;
       for (int i = 0; i < 4; i++) {
         try {
-          schemaEngine.createTimeseries(
+          schemaProcessor.createTimeseries(
               new PartialPath(String.format(sg + ".ld.l1.d%d.s%d", i / 2, i % 2)),
               TSDataType.INT32,
               TSEncoding.RLE,
@@ -173,9 +173,9 @@ public class SlotPartitionTableTest {
   @After
   public void tearDown() throws IOException, StorageEngineException {
     ClusterDescriptor.getInstance().getConfig().setReplicationNum(prevReplicaNum);
-    if (schemaEngines != null) {
-      for (SchemaEngine schemaEngine : schemaEngines) {
-        schemaEngine.clear();
+    if (schemaProcessors != null) {
+      for (LocalSchemaProcessor schemaProcessor : schemaProcessors) {
+        //        schemaProcessor.clear();
       }
     }
     EnvironmentUtils.cleanEnv();

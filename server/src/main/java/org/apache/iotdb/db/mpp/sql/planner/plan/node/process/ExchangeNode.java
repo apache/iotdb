@@ -19,17 +19,27 @@
 
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
-import org.apache.iotdb.db.mpp.common.FragmentId;
+import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.sink.FragmentSinkNode;
+import org.apache.iotdb.service.rpc.thrift.EndPoint;
 
 import com.google.common.collect.ImmutableList;
 
+import java.nio.ByteBuffer;
 import java.util.List;
 
 public class ExchangeNode extends PlanNode {
-  private PlanNode sourceNode;
-  private FragmentId sourceFragmentId;
+  private PlanNode child;
+  private FragmentSinkNode remoteSourceNode;
+
+  // In current version, one ExchangeNode will only have one source.
+  // And the fragment which the sourceNode belongs to will only have one instance.
+  // Thus, by nodeId and endpoint, the ExchangeNode can know where its source from.
+  private EndPoint upstreamEndpoint;
+  private FragmentInstanceId upstreamInstanceId;
+  private PlanNodeId upstreamPlanNodeId;
 
   public ExchangeNode(PlanNodeId id) {
     super(id);
@@ -37,19 +47,37 @@ public class ExchangeNode extends PlanNode {
 
   @Override
   public List<PlanNode> getChildren() {
-    return ImmutableList.of(sourceNode);
+    if (this.child == null) {
+      return ImmutableList.of();
+    }
+    return ImmutableList.of(child);
   }
 
   @Override
+  public void addChildren(PlanNode child) {}
+
+  @Override
   public PlanNode clone() {
-    return new ExchangeNode(getId());
+    ExchangeNode node = new ExchangeNode(getId());
+    if (remoteSourceNode != null) {
+      node.setRemoteSourceNode((FragmentSinkNode) remoteSourceNode.clone());
+    }
+    return node;
   }
 
   @Override
   public PlanNode cloneWithChildren(List<PlanNode> children) {
-    ExchangeNode node = new ExchangeNode(getId());
-    node.setSourceNode(children.get(0));
+    ExchangeNode node = (ExchangeNode) clone();
+    if (children != null && children.size() > 0) {
+      node.setChild(children.get(0));
+    }
     return node;
+  }
+
+  public void setUpstream(EndPoint endPoint, FragmentInstanceId instanceId, PlanNodeId nodeId) {
+    this.upstreamEndpoint = endPoint;
+    this.upstreamInstanceId = instanceId;
+    this.upstreamPlanNodeId = nodeId;
   }
 
   @Override
@@ -57,23 +85,57 @@ public class ExchangeNode extends PlanNode {
     return null;
   }
 
-  public void setSourceFragmentId(FragmentId sourceFragmentId) {
-    this.sourceFragmentId = sourceFragmentId;
+  public static ExchangeNode deserialize(ByteBuffer byteBuffer) {
+    return null;
   }
 
-  public FragmentId getSourceFragmentId() {
-    return sourceFragmentId;
+  @Override
+  public void serialize(ByteBuffer byteBuffer) {}
+
+  public PlanNode getChild() {
+    return child;
   }
 
-  public PlanNode getSourceNode() {
-    return sourceNode;
-  }
-
-  public void setSourceNode(PlanNode sourceNode) {
-    this.sourceNode = sourceNode;
+  public void setChild(PlanNode child) {
+    this.child = child;
   }
 
   public String toString() {
-    return String.format("ExchangeNode-%s", getId());
+    return String.format(
+        "ExchangeNode-%s: [SourceNodeId: %s, SourceAddress:%s]",
+        getId(), remoteSourceNode.getId(), getSourceAddress());
+  }
+
+  public String getSourceAddress() {
+    if (getUpstreamEndpoint() == null) {
+      return "Not assigned";
+    }
+    return String.format(
+        "%s/%s/%s",
+        getUpstreamEndpoint().getIp(), getUpstreamInstanceId(), getUpstreamPlanNodeId());
+  }
+
+  public FragmentSinkNode getRemoteSourceNode() {
+    return remoteSourceNode;
+  }
+
+  public void setRemoteSourceNode(FragmentSinkNode remoteSourceNode) {
+    this.remoteSourceNode = remoteSourceNode;
+  }
+
+  public void cleanChildren() {
+    this.child = null;
+  }
+
+  public EndPoint getUpstreamEndpoint() {
+    return upstreamEndpoint;
+  }
+
+  public FragmentInstanceId getUpstreamInstanceId() {
+    return upstreamInstanceId;
+  }
+
+  public PlanNodeId getUpstreamPlanNodeId() {
+    return upstreamPlanNodeId;
   }
 }

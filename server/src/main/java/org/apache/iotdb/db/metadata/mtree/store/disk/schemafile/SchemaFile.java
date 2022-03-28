@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile;
 
+import org.apache.iotdb.commons.partition.SchemaRegionId;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -109,13 +110,16 @@ public class SchemaFile implements ISchemaFile {
   File pmtFile;
   FileChannel channel;
 
-  private SchemaFile(String sgName, boolean override, long ttl, boolean isEntity)
+  private SchemaFile(
+      String sgName, SchemaRegionId schemaRegionId, boolean override, long ttl, boolean isEntity)
       throws IOException, MetadataException {
     this.storageGroupName = sgName;
     filePath =
         SchemaFile.SCHEMA_FOLDER
             + File.separator
             + sgName
+            + File.separator
+            + schemaRegionId.getSchemaRegionId()
             + File.separator
             + MetadataConstant.SCHEMA_FILE_NAME;
 
@@ -128,10 +132,17 @@ public class SchemaFile implements ISchemaFile {
       logger.warn(
           String.format("Schema File [%s] will be overwritten since already exists.", filePath));
       Files.delete(Paths.get(pmtFile.toURI()));
+      pmtFile.createNewFile();
     }
 
     if (!pmtFile.exists() || !pmtFile.isFile()) {
-      File folder = new File(SchemaFile.SCHEMA_FOLDER + File.separator + sgName);
+      File folder =
+          new File(
+              SchemaFile.SCHEMA_FOLDER
+                  + File.separator
+                  + sgName
+                  + File.separator
+                  + schemaRegionId.getSchemaRegionId());
       folder.mkdirs();
       pmtFile.createNewFile();
     }
@@ -148,13 +159,19 @@ public class SchemaFile implements ISchemaFile {
     initFileHeader();
   }
 
-  public static ISchemaFile initSchemaFile(String sgName) throws IOException, MetadataException {
+  public static ISchemaFile initSchemaFile(String sgName, SchemaRegionId schemaRegionId)
+      throws IOException, MetadataException {
     return new SchemaFile(
-        sgName, true, IoTDBDescriptor.getInstance().getConfig().getDefaultTTL(), false);
+        sgName,
+        schemaRegionId,
+        true,
+        IoTDBDescriptor.getInstance().getConfig().getDefaultTTL(),
+        false);
   }
 
-  public static ISchemaFile loadSchemaFile(String sgName) throws IOException, MetadataException {
-    return new SchemaFile(sgName, false, -1L, false);
+  public static ISchemaFile loadSchemaFile(String sgName, SchemaRegionId schemaRegionId)
+      throws IOException, MetadataException {
+    return new SchemaFile(sgName, schemaRegionId, false, -1L, false);
   }
 
   // region Interface Implementation

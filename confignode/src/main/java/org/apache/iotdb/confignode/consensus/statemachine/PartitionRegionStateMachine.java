@@ -33,12 +33,16 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
-/** The StandAlone version StateMachine for ConfigNode, mainly used in development */
+/** Statemachine for PartitionRegion */
 public class PartitionRegionStateMachine implements IStateMachine {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PartitionRegionStateMachine.class);
 
-  private final PlanExecutor executor = new PlanExecutor();
+  private final PlanExecutor executor;
+
+  public PartitionRegionStateMachine() {
+    this.executor = new PlanExecutor();
+  }
 
   @Override
   public TSStatus write(IConsensusRequest request) {
@@ -74,7 +78,14 @@ public class PartitionRegionStateMachine implements IStateMachine {
   @Override
   public DataSet read(IConsensusRequest request) {
     PhysicalPlan plan;
-    if (request instanceof PhysicalPlan) {
+    if (request instanceof ByteBufferConsensusRequest) {
+      try {
+        plan = PhysicalPlan.Factory.create(((ByteBufferConsensusRequest) request).getContent());
+      } catch (IOException e) {
+        LOGGER.error("Deserialization error for write plan : {}", request);
+        return null;
+      }
+    } else if (request instanceof PhysicalPlan) {
       plan = (PhysicalPlan) request;
     } else {
       LOGGER.error("Unexpected read plan : {}", request);

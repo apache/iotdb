@@ -20,7 +20,6 @@ package org.apache.iotdb.db.metadata.mtree.traverser.collector;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 
@@ -29,7 +28,7 @@ import java.util.Set;
 
 public abstract class MNodeAboveSGCollector<T> extends MNodeCollector<T> {
 
-  protected Set<IStorageGroupMNode> involvedStorageGroupMNodes = new HashSet<>();
+  protected Set<PartialPath> involvedStorageGroupMNodes = new HashSet<>();
 
   public MNodeAboveSGCollector(IMNode startNode, PartialPath path, IMTreeStore store)
       throws MetadataException {
@@ -39,7 +38,7 @@ public abstract class MNodeAboveSGCollector<T> extends MNodeCollector<T> {
   @Override
   protected boolean processInternalMatchedMNode(IMNode node, int idx, int level) {
     if (node.isStorageGroup()) {
-      involvedStorageGroupMNodes.add(node.getAsStorageGroupMNode());
+      involvedStorageGroupMNodes.add(node.getPartialPath());
       return true;
     }
     return super.processInternalMatchedMNode(node, idx, level);
@@ -48,13 +47,13 @@ public abstract class MNodeAboveSGCollector<T> extends MNodeCollector<T> {
   @Override
   protected boolean processFullMatchedMNode(IMNode node, int idx, int level) {
     if (node.isStorageGroup()) {
-      involvedStorageGroupMNodes.add(node.getAsStorageGroupMNode());
+      involvedStorageGroupMNodes.add(node.getPartialPath());
       return true;
     }
     return super.processFullMatchedMNode(node, idx, level);
   }
 
-  public Set<IStorageGroupMNode> getInvolvedStorageGroupMNodes() {
+  public Set<PartialPath> getInvolvedStorageGroupMNodes() {
     return involvedStorageGroupMNodes;
   }
 }

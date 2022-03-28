@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.consensus.statemachine;
 
 import org.apache.iotdb.consensus.common.DataSet;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
@@ -38,14 +38,14 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
   public void stop() {}
 
   @Override
-  protected TSStatus write(PhysicalPlan plan) {
-    logger.info("Execute write plan in SchemaRegionStateMachine : {}", plan);
+  protected TSStatus write(FragmentInstance fragmentInstance) {
+    logger.info("Execute write plan in SchemaRegionStateMachine : {}", fragmentInstance);
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   @Override
-  protected DataSet read(PhysicalPlan plan) {
-    logger.info("Execute read plan in SchemaRegionStateMachine: {}", plan);
+  protected DataSet read(FragmentInstance fragmentInstance) {
+    logger.info("Execute read plan in SchemaRegionStateMachine: {}", fragmentInstance);
     return null;
   }
 }

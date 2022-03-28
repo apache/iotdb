@@ -18,7 +18,10 @@
  */
 package org.apache.iotdb.confignode.partition;
 
+import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.consensus.response.DataNodesInfoDataSet;
+import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaDataSet;
 import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
 import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.physical.sys.SetStorageGroupPlan;
@@ -38,12 +41,10 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  */
 public class PartitionTable {
 
-  private static final int regionReplicaCount =
-      ConfigNodeDescriptor.getInstance().getConf().getRegionReplicaCount();
-  private static final int schemaRegionCount =
-      ConfigNodeDescriptor.getInstance().getConf().getSchemaRegionCount();
-  private static final int dataRegionCount =
-      ConfigNodeDescriptor.getInstance().getConf().getDataRegionCount();
+  private static final ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();
+  private static final int regionReplicaCount = conf.getRegionReplicaCount();
+  private static final int schemaRegionCount = conf.getSchemaRegionCount();
+  private static final int dataRegionCount = conf.getDataRegionCount();
 
   private final ReentrantReadWriteLock lock;
   // TODO: Serialize and Deserialize
@@ -94,17 +95,23 @@ public class PartitionTable {
     return result;
   }
 
-  public Map<Integer, DataNodeInfo> getDataNodeInfo(QueryDataNodeInfoPlan plan) {
-    Map<Integer, DataNodeInfo> result = new HashMap<>();
+  public DataNodesInfoDataSet getDataNodeInfo(QueryDataNodeInfoPlan plan) {
+    DataNodesInfoDataSet result;
     lock.readLock().lock();
 
-    if (plan.getDataNodeID() == -1) {
-      result.putAll(dataNodesMap);
+    if (dataNodesMap.size() == 0) {
+      result = null;
     } else {
-      if (dataNodesMap.containsKey(plan.getDataNodeID())) {
-        result.put(plan.getDataNodeID(), dataNodesMap.get(plan.getDataNodeID()));
+      result = new DataNodesInfoDataSet();
+
+      if (plan.getDataNodeID() == -1) {
+        result.setInfoList(new ArrayList<>(dataNodesMap.values()));
       } else {
-        result = null;
+        if (dataNodesMap.containsKey(plan.getDataNodeID())) {
+          result.setInfoList(Collections.singletonList(dataNodesMap.get(plan.getDataNodeID())));
+        } else {
+          result = null;
+        }
       }
     }
 
@@ -162,9 +169,16 @@ public class PartitionTable {
     }
   }
 
-  public List<StorageGroupSchema> getStorageGroupSchema() {
+  public StorageGroupSchemaDataSet getStorageGroupSchema() {
+    StorageGroupSchemaDataSet result;
     lock.readLock().lock();
-    List<StorageGroupSchema> result = new ArrayList<>(storageGroupsMap.values());
+
+    if (storageGroupsMap.size() == 0) {
+      result = null;
+    } else {
+      result = new StorageGroupSchemaDataSet(new ArrayList<>(storageGroupsMap.values()));
+    }
+
     lock.readLock().unlock();
     return result;
   }

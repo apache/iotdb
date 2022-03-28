@@ -22,6 +22,7 @@ import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 
+import java.nio.ByteBuffer;
 import java.util.List;
 
 public class InsertRowsOfOneDeviceNode extends InsertNode {
@@ -34,6 +35,9 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
   public List<PlanNode> getChildren() {
     return null;
   }
+
+  @Override
+  public void addChildren(PlanNode child) {}
 
   @Override
   public PlanNode clone() {
@@ -49,6 +53,13 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
   public List<String> getOutputColumnNames() {
     return null;
   }
+
+  public static InsertRowsOfOneDeviceNode deserialize(ByteBuffer byteBuffer) {
+    return null;
+  }
+
+  @Override
+  public void serialize(ByteBuffer byteBuffer) {}
 
   @Override
   public List<InsertNode> splitByPartition(Analysis analysis) {

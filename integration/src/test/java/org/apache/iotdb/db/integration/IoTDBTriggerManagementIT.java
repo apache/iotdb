@@ -56,25 +56,25 @@ public class IoTDBTriggerManagementIT {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
-    IoTDB.schemaEngine.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.vehicle.d1.s1"),
         TSDataType.FLOAT,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
-    IoTDB.schemaEngine.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.vehicle.d1.s2"),
         TSDataType.DOUBLE,
         TSEncoding.GORILLA,
         CompressionType.LZ4,
         null);
-    IoTDB.schemaEngine.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.vehicle.d1.s3"),
         TSDataType.INT32,
         TSEncoding.RLE,
         CompressionType.LZ4,
         null);
-    IoTDB.schemaEngine.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.vehicle.d1.s4"),
         TSDataType.INT64,
         TSEncoding.RLE,

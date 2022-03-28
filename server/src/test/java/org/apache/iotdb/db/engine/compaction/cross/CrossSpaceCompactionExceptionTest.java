@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.AbstractCompactionTest;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
+import org.apache.iotdb.db.engine.compaction.task.CompactionExceptionHandler;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger;
@@ -91,14 +92,16 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
     compactionLogger.logFiles(unseqResources, STR_SOURCE_FILES);
     CompactionUtils.compact(seqResources, unseqResources, targetResources);
     compactionLogger.close();
-    CrossSpaceCompactionExceptionHandler.handleException(
+    CompactionExceptionHandler.handleException(
         COMPACTION_TEST_SG,
         compactionLogFile,
         targetResources,
         seqResources,
         unseqResources,
         tsFileManager,
-        0L);
+        0,
+        false,
+        true);
     // all source file should still exist
     for (TsFileResource resource : seqResources) {
       Assert.assertTrue(resource.getTsFile().exists());
@@ -161,14 +164,16 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
     CompactionUtils.compact(seqResources, unseqResources, targetResources);
     compactionLogger.close();
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
-    CrossSpaceCompactionExceptionHandler.handleException(
+    CompactionExceptionHandler.handleException(
         COMPACTION_TEST_SG,
         compactionLogFile,
         targetResources,
         seqResources,
         unseqResources,
         tsFileManager,
-        0L);
+        0,
+        false,
+        true);
     // all source file should still exist
     for (TsFileResource resource : seqResources) {
       Assert.assertTrue(resource.getTsFile().exists());
@@ -241,14 +246,16 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
     }
     seqResources.get(0).getTsFile().delete();
     compactionLogger.close();
-    CrossSpaceCompactionExceptionHandler.handleException(
+    CompactionExceptionHandler.handleException(
         COMPACTION_TEST_SG,
         compactionLogFile,
         targetResources,
         seqResources,
         unseqResources,
         tsFileManager,
-        0L);
+        0,
+        false,
+        true);
     // all source file should not exist
     for (TsFileResource resource : seqResources) {
       Assert.assertFalse(resource.getTsFile().exists());
@@ -339,14 +346,16 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
     }
     seqResources.get(0).remove();
 
-    CrossSpaceCompactionExceptionHandler.handleException(
+    CompactionExceptionHandler.handleException(
         COMPACTION_TEST_SG,
         compactionLogFile,
         targetResources,
         seqResources,
         unseqResources,
         tsFileManager,
-        0L);
+        0,
+        false,
+        true);
     // All source file should not exist. All compaction mods file and old mods file of each source
     // file should not exist
     for (TsFileResource resource : seqResources) {
@@ -441,14 +450,16 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
     }
     CompactionUtils.combineModsInCompaction(seqResources, unseqResources, targetResources);
 
-    CrossSpaceCompactionExceptionHandler.handleException(
+    CompactionExceptionHandler.handleException(
         COMPACTION_TEST_SG,
         compactionLogFile,
         targetResources,
         seqResources,
         unseqResources,
         tsFileManager,
-        0L);
+        0,
+        false,
+        true);
     // all source file should still exist
     for (TsFileResource resource : seqResources) {
       Assert.assertTrue(resource.getTsFile().exists());

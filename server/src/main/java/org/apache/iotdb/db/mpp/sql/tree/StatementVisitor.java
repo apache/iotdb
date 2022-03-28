@@ -22,7 +22,10 @@ package org.apache.iotdb.db.mpp.sql.tree;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.db.mpp.sql.statement.StatementNode;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.QueryStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
 
 /**
@@ -54,9 +57,19 @@ public abstract class StatementVisitor<R, C> {
   /** Data Definition Language (DDL) */
 
   // Create Timeseries
-
   public R visitCreateTimeseries(CreateTimeSeriesStatement createTimeSeriesStatement, C context) {
     return visitStatement(createTimeSeriesStatement, context);
+  }
+
+  // Create Aligned Timeseries
+  public R visitCreateAlignedTimeseries(
+      CreateAlignedTimeSeriesStatement createAlignedTimeSeriesStatement, C context) {
+    return visitStatement(createAlignedTimeSeriesStatement, context);
+  }
+
+  // Alter Timeseries
+  public R visitAlterTimeseries(AlterTimeSeriesStatement alterTimeSeriesStatement, C context) {
+    return visitStatement(alterTimeSeriesStatement, context);
   }
 
   /** Data Manipulation Language (DML) */
@@ -69,5 +82,9 @@ public abstract class StatementVisitor<R, C> {
   // Insert Statement
   public R visitInsert(InsertStatement insertStatement, C context) {
     return visitStatement(insertStatement, context);
+  }
+
+  public R visitInsertTablet(InsertTabletStatement insertTabletStatement, C context) {
+    return visitStatement(insertTabletStatement, context);
   }
 }
