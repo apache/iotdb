@@ -78,7 +78,6 @@ public class FileLoaderTest {
 
   private void initMetadata() throws MetadataException {
     SchemaEngine schemaEngine = IoTDB.schemaEngine;
-    schemaEngine.init();
     schemaEngine.setStorageGroup(new PartialPath("root.sg0"));
     schemaEngine.setStorageGroup(new PartialPath("root.sg1"));
     schemaEngine.setStorageGroup(new PartialPath("root.sg2"));

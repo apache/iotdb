@@ -81,7 +81,7 @@ public class ResourceManagerTest {
 
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
-    IoTDB.schemaEngine.init();
+    IoTDB.configManager.init();
     prevTimeIndexMemoryProportion = CONFIG.getTimeIndexMemoryProportion();
     timeIndexLevel = CONFIG.getTimeIndexLevel();
     prepareSeries();
@@ -99,7 +99,7 @@ public class ResourceManagerTest {
     tsFileResourceManager.setTimeIndexMemoryThreshold(prevTimeIndexMemoryThreshold);
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
-    IoTDB.schemaEngine.clear();
+    IoTDB.configManager.clear();
     TsFileResourceManager.getInstance().clear();
     EnvironmentUtils.cleanAllDir();
   }

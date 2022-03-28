@@ -30,6 +30,7 @@ import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.DropTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
@@ -85,8 +86,8 @@ public class TemplateTest {
 
     schemaEngine.setSchemaTemplate(setTemplatePlan);
 
+    schemaEngine.setUsingSchemaTemplate(new ActivateTemplatePlan(new PartialPath("root.sg1.d1")));
     IMNode node = schemaEngine.getDeviceNode(new PartialPath("root.sg1.d1"));
-    node = schemaEngine.setUsingSchemaTemplate(node);
 
     MeasurementSchema s11 =
         new MeasurementSchema("s11", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
