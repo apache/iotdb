@@ -793,7 +793,7 @@ public class SeriesScanUtil {
             builder.declarePosition();
           }
         }
-        hasCachedNextOverlappedPage = builder.isEmpty();
+        hasCachedNextOverlappedPage = !builder.isEmpty();
         cachedTsBlock = builder.build();
         /*
          * if current overlapped page has valid data, return, otherwise read next overlapped page

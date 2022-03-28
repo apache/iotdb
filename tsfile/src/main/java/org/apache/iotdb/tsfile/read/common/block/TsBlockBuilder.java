@@ -231,8 +231,8 @@ public class TsBlockBuilder {
     declaredPositions++;
   }
 
-  public void declarePositions(int positions) {
-    declaredPositions += positions;
+  public void declarePositions(int deltaPositions) {
+    declaredPositions += deltaPositions;
   }
 
   public boolean isFull() {
