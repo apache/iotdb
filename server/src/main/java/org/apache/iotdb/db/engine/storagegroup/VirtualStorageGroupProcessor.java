@@ -920,6 +920,45 @@ public class VirtualStorageGroupProcessor {
     }
   }
 
+  // TODO: (New Insert)
+  //  public void insert(InsertRowNode insertRowNode)
+  //          throws WriteProcessException, TriggerExecutionException {
+  //    // reject insertions that are out of ttl
+  //    if (!isAlive(insertRowNode.getTime())) {
+  //      throw new OutOfTTLException(insertRowNode.getTime(), (System.currentTimeMillis() -
+  // dataTTL));
+  //    }
+  //    writeLock("InsertRow");
+  //    try {
+  //      // init map
+  //      long timePartitionId = StorageEngine.getTimePartition(insertRowNode.getTime());
+  //
+  //      lastFlushTimeManager.ensureFlushedTimePartition(timePartitionId);
+  //
+  //      boolean isSequence =
+  //              insertRowNode.getTime()
+  //                      > lastFlushTimeManager.getFlushedTime(
+  //                      timePartitionId, insertRowNode.getDevicePath().getFullPath());
+  //
+  //      // is unsequence and user set config to discard out of order data
+  //      if (!isSequence
+  //              && IoTDBDescriptor.getInstance().getConfig().isEnableDiscardOutOfOrderData()) {
+  //        return;
+  //      }
+  //
+  //      lastFlushTimeManager.ensureLastTimePartition(timePartitionId);
+  //
+  //      // fire trigger before insertion
+  //      TriggerEngine.fire(TriggerEvent.BEFORE_INSERT, insertRowNode);
+  //      // insert to sequence or unSequence file
+  //      insertToTsFileProcessor(insertRowNode, isSequence, timePartitionId);
+  //      // fire trigger after insertion
+  //      TriggerEngine.fire(TriggerEvent.AFTER_INSERT, insertRowNode);
+  //    } finally {
+  //      writeUnlock();
+  //    }
+  //  }
+
   /**
    * Insert a tablet (rows belonging to the same devices) into this storage group.
    *
