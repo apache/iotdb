@@ -131,7 +131,7 @@ public class RecordUtils {
     ReadWriteIOUtils.write((short) bufferLength, buffer);
     ReadWriteIOUtils.write(convertTags2Long(node), buffer);
     ReadWriteIOUtils.write(convertSchema2Long(node), buffer);
-    ReadWriteIOUtils.write(node.getAlias() == null ? "" : node.getAlias(), buffer);
+    ReadWriteIOUtils.write(node.getAlias(), buffer);
     return buffer;
   }
 

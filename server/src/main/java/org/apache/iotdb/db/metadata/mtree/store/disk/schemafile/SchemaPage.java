@@ -29,10 +29,10 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * This class is aimed to manage space inside one page. A segment inside a page has 3
@@ -86,7 +86,7 @@ public class SchemaPage implements ISchemaPage {
     buffer.clear();
     this.pageBuffer = buffer;
     this.pageIndex = index;
-    this.segCacheMap = new HashMap<>();
+    this.segCacheMap = new ConcurrentHashMap<>();
 
     if (override) {
       pageSpareOffset = SchemaFile.PAGE_HEADER_SIZE;
@@ -117,8 +117,9 @@ public class SchemaPage implements ISchemaPage {
 
   /**
    * Insert a content directly into specified segment, without considering preallocate and
-   * reallocate segment. Find the right segment instance, cache the segment and insert the record.
-   * If not enough, reallocate inside page first, or return negative for new page then.
+   * reallocate segment. <br>
+   * Find the right segment instance which MUST exists, cache the segment and insert the record. If
+   * not enough, reallocate inside page first, or return negative for new page then.
    *
    * @param segIdx
    * @return return 0 if write succeed, a positive for next segment address
@@ -204,19 +205,6 @@ public class SchemaPage implements ISchemaPage {
             String.format("Unknown reason for key [%s] not found in page [%d].", key, pageIndex));
       }
     }
-  }
-
-  /**
-   * This method extends specified segment inside original page to this page. If original segment
-   * occupies a full page, new segment will be linked to the origin. If original segment smaller
-   * than a full page, it will be over-write to new page.
-   *
-   * @param oriPage
-   * @param oriIdx
-   * @return index of the segment in new page
-   */
-  public short multiPageExtend(ISchemaPage oriPage, short oriIdx) {
-    return 0;
   }
 
   /**
@@ -406,13 +394,20 @@ public class SchemaPage implements ISchemaPage {
       return segCacheMap.get(index);
     }
 
-    pageBuffer.clear();
-    pageBuffer.position(getSegmentOffset(index));
-    pageBuffer.limit(pageBuffer.position() + Segment.getSegBufLen(pageBuffer));
+    synchronized (this) {
+      if (segCacheMap.containsKey(index)) {
+        return segCacheMap.get(index);
+      }
 
-    ISegment res = Segment.loadAsSegment(pageBuffer.slice());
-    segCacheMap.put(index, res);
-    return res;
+      ByteBuffer bufferR = this.pageBuffer.duplicate();
+      bufferR.clear();
+      bufferR.position(getSegmentOffset(index));
+      bufferR.limit(bufferR.position() + Segment.getSegBufLen(bufferR));
+
+      ISegment res = Segment.loadAsSegment(bufferR.slice());
+      segCacheMap.put(index, res);
+      return res;
+    }
   }
 
   private short getSegmentOffset(short index) throws SegmentNotFoundException {

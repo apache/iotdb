@@ -155,17 +155,7 @@ public class Segment implements ISegment {
    */
   @Override
   public int insertRecord(String key, ByteBuffer buf) throws RecordDuplicatedException {
-    try {
-      buf.clear();
-      bufferChecker(buf);
-    } catch (BufferUnderflowException | BufferOverflowException e) {
-      logger.error(
-          String.format(
-              "Buffer broken when insert, key:%s, buffer:%s",
-              key, Arrays.toString(buffer.array())));
-      e.printStackTrace();
-      throw e;
-    }
+    buf.clear();
 
     int recordStartAddr = freeAddr - buf.capacity();
 
@@ -236,12 +226,11 @@ public class Segment implements ISegment {
       }
     }
 
-    keyAddressList.add(tarIdx, new Pair<>(key, (short) recordStartAddr));
-
     buf.clear();
+    this.buffer.clear();
     this.buffer.position(recordStartAddr);
     this.buffer.put(buf);
-
+    keyAddressList.add(tarIdx, new Pair<>(key, (short) recordStartAddr));
     this.freeAddr = (short) recordStartAddr;
     this.recordNum++;
 
@@ -256,21 +245,27 @@ public class Segment implements ISegment {
       return null;
     }
 
+    ByteBuffer roBuffer = this.buffer.asReadOnlyBuffer(); // for concurrent read
     short offset = getOffsetByIndex(index);
-    this.buffer.clear();
-    this.buffer.position(offset);
-    short len = RecordUtils.getRecordLength(this.buffer);
-    this.buffer.limit(offset + len);
+    roBuffer.clear();
+    roBuffer.position(offset);
+    short len = RecordUtils.getRecordLength(roBuffer);
+    roBuffer.limit(offset + len);
 
     try {
-      return RecordUtils.buffer2Node(keyAddressList.get(index).left, this.buffer);
+      return RecordUtils.buffer2Node(keyAddressList.get(index).left, roBuffer);
     } catch (BufferUnderflowException | BufferOverflowException e) {
-      this.buffer.position(offset);
-      this.buffer.limit(offset + len);
       logger.error(
           String.format(
-              "Get record[key:%s] failed, start offset:%d, end offset:%d",
-              key, offset, offset + len));
+              "Get record[key:%s] failed, start offset:%d, end offset:%d, buffer cap:%d",
+              key, offset, offset + len, roBuffer.capacity()));
+      logger.error(
+          String.format(
+              "Buffer content: %s",
+              Arrays.toString(
+                  Arrays.copyOfRange(
+                      roBuffer.array(), offset, Math.min(offset + len, roBuffer.capacity())))));
+      logger.error(e.toString());
       throw e;
     }
   }
@@ -288,13 +283,14 @@ public class Segment implements ISegment {
   @Override
   public Queue<IMNode> getAllRecords() throws MetadataException {
     Queue<IMNode> res = new ArrayDeque<>();
-    this.buffer.clear();
+    ByteBuffer roBuffer = this.buffer.asReadOnlyBuffer();
+    roBuffer.clear();
     for (Pair<String, Short> p : keyAddressList) {
-      this.buffer.limit(this.buffer.capacity());
-      this.buffer.position(p.right);
-      short len = RecordUtils.getRecordLength(this.buffer);
-      this.buffer.limit(p.right + len);
-      res.add(RecordUtils.buffer2Node(p.left, this.buffer));
+      roBuffer.limit(roBuffer.capacity());
+      roBuffer.position(p.right);
+      short len = RecordUtils.getRecordLength(roBuffer);
+      roBuffer.limit(p.right + len);
+      res.add(RecordUtils.buffer2Node(p.left, roBuffer));
     }
     return res;
   }
@@ -341,10 +337,10 @@ public class Segment implements ISegment {
       }
 
       freeAddr = (short) (freeAddr - newLen);
-      keyAddressList.get(idx).right = freeAddr;
       // it will not mark old record as expired
       this.buffer.position(freeAddr);
       this.buffer.limit(freeAddr + newLen);
+      keyAddressList.get(idx).right = freeAddr;
       this.buffer.put(buffer);
     }
 
@@ -368,7 +364,7 @@ public class Segment implements ISegment {
     // TODO: compact segment further as well
     recordNum--;
     pairLength -= 2;
-    pairLength -= key.getBytes().length + 4;
+    pairLength -= (key.getBytes().length + 4);
     keyAddressList.remove(idx);
 
     return idx;
@@ -498,6 +494,7 @@ public class Segment implements ISegment {
   protected void updateRecordSegAddr(String key, long newSegAddr) {
     int index = getRecordIndexByKey(key);
     short offset = getOffsetByIndex(index);
+
     this.buffer.clear();
     this.buffer.position(offset);
     RecordUtils.updateSegAddr(this.buffer, newSegAddr);
@@ -543,23 +540,35 @@ public class Segment implements ISegment {
   }
 
   private int getRecordIndexByAlias(String alias) {
-    for (int i = 0; i < keyAddressList.size(); i++) {
-      this.buffer.clear();
-      this.buffer.position(keyAddressList.get(i).right);
-      try {
-        if (RecordUtils.getRecordType(this.buffer) >= 4
-            && RecordUtils.getRecordAlias(this.buffer).equals(alias)) {
-          return i;
+    int debuggerI = 0;
+    ByteBuffer roBuffer = this.buffer.asReadOnlyBuffer();
+    try {
+      for (int i = 0; i < keyAddressList.size(); i++) {
+        debuggerI = i;
+        roBuffer.clear();
+        roBuffer.position(keyAddressList.get(i).right);
+        if (RecordUtils.getRecordType(roBuffer) == 4) {
+          String tarAlias = RecordUtils.getRecordAlias(roBuffer);
+          if (tarAlias != null && tarAlias.equals(alias)) {
+            return i;
+          }
         }
-      } catch (BufferUnderflowException | BufferOverflowException e) {
-        logger.error(
-            String.format(
-                "Target alias: %s, segment size:%d, K-AL pair of crashed index:%s",
-                alias, this.length, keyAddressList.get(i)));
-        this.buffer.position(keyAddressList.get(i).right);
-        this.buffer.limit(this.buffer.position() + 20);
-        throw e;
       }
+    } catch (BufferUnderflowException | BufferOverflowException e) {
+      logger.error(
+          String.format(
+              "Target alias: %s, segment size:%d, K-AL size: %d, pair of crashed index:%s",
+              alias, this.length, keyAddressList.size(), keyAddressList.get(debuggerI)));
+      logger.error(
+          String.format(
+              "Snippet of crashed record: %s",
+              Arrays.toString(
+                  Arrays.copyOfRange(
+                      roBuffer.array(),
+                      keyAddressList.get(debuggerI).right,
+                      keyAddressList.get(debuggerI).right + 30))));
+      e.printStackTrace();
+      throw e;
     }
     return -1;
   }
@@ -572,23 +581,32 @@ public class Segment implements ISegment {
 
   @Override
   public String toString() {
+    ByteBuffer bufferR = this.buffer.asReadOnlyBuffer();
     StringBuilder builder = new StringBuilder("");
     builder.append(
         String.format(
             "[size: %d, K-AL size: %d, spare:%d,",
             this.length, keyAddressList.size(), freeAddr - pairLength - SEG_HEADER_SIZE));
-    this.buffer.clear();
+    bufferR.clear();
     for (Pair<String, Short> pair : keyAddressList) {
-      this.buffer.position(pair.right);
+      bufferR.position(pair.right);
       try {
-        if (RecordUtils.getRecordType(buffer) < 3) {
+        if (RecordUtils.getRecordType(bufferR) == 0 || RecordUtils.getRecordType(bufferR) == 1) {
           builder.append(
-              String.format("(%s -> %d),", pair.left, RecordUtils.getRecordSegAddr(buffer)));
+              String.format("(%s -> %d),", pair.left, RecordUtils.getRecordSegAddr(bufferR)));
+        } else if (RecordUtils.getRecordType(bufferR) == 4) {
+          builder.append(
+              String.format("(%s, %s),", pair.left, RecordUtils.getRecordAlias(bufferR)));
         } else {
-          builder.append(String.format("(%s, %s),", pair.left, RecordUtils.getRecordAlias(buffer)));
+          logger.error(String.format("Record Broken at: %s", pair));
+          throw new BufferUnderflowException();
         }
       } catch (BufferUnderflowException | BufferOverflowException e) {
         logger.error(String.format("Segment broken with string: %s", builder.toString()));
+        logger.error(
+            String.format(
+                "Broken record bytes: %s",
+                Arrays.toString(Arrays.copyOfRange(bufferR.array(), pair.right, pair.right + 30))));
         throw e;
       }
     }

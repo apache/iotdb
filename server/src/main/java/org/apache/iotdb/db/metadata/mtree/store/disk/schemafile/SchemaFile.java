@@ -46,6 +46,7 @@ import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
@@ -102,6 +103,8 @@ public class SchemaFile implements ISchemaFile {
 
   // work as a naive cache for page instance
   final Map<Integer, ISchemaPage> pageInstCache;
+  final ReentrantLock evictLock;
+  final PageLocks pageLocks;
   ISchemaPage rootPage;
 
   // attributes for file
@@ -138,6 +141,8 @@ public class SchemaFile implements ISchemaFile {
     channel = new RandomAccessFile(pmtFile, "rw").getChannel();
     headerContent = ByteBuffer.allocate(SchemaFile.FILE_HEADER_SIZE);
     pageInstCache = Collections.synchronizedMap(new LinkedHashMap<>(PAGE_CACHE_SIZE, 1, true));
+    evictLock = new ReentrantLock();
+    pageLocks = new PageLocks();
     // will be overwritten if to init
     this.dataTTL = ttl;
     this.isEntity = isEntity;
@@ -395,11 +400,18 @@ public class SchemaFile implements ISchemaFile {
       return getPageInstance(getPageIndex(actualSegAddr))
           .read(getSegIndex(actualSegAddr), childName);
     } catch (BufferUnderflowException | BufferOverflowException e) {
-      e.printStackTrace();
+      int pIdx = getPageIndex(actualSegAddr);
+      short sIdx = getSegIndex(actualSegAddr);
       logger.error(
           String.format(
-              "Get child from parent[%s] failed, actualAddress:%s",
-              parent.getName(), actualSegAddr));
+              "Get child[%s] from parent[%s] failed, actualAddress:%s(%d, %d), segOffLst: %s",
+              childName,
+              parent.getName(),
+              actualSegAddr,
+              pIdx,
+              sIdx,
+              ((SchemaPage) getPageInstance(pIdx)).segOffsetLst));
+      e.printStackTrace();
       throw e;
     }
   }
@@ -669,10 +681,6 @@ public class SchemaFile implements ISchemaFile {
 
   // region Schema Page Operations
 
-  private ISchemaPage getRootPage() {
-    return rootPage;
-  }
-
   /**
    * This method checks with cached page container, LOCK and return a minimum applicable page for
    * allocation.
@@ -690,7 +698,9 @@ public class SchemaFile implements ISchemaFile {
   }
 
   /**
-   * Get from cache, or load from file.
+   * Get from cache, or load from file.<br>
+   * When to operate on page cache, need to handle concurrency control with {@link
+   * SchemaFile#addPageToCache}
    *
    * @param pageIdx target page index
    * @return an existed page
@@ -702,17 +712,37 @@ public class SchemaFile implements ISchemaFile {
       throw new MetadataException(String.format("Page index %d out of range.", pageIdx));
     }
 
-    if (pageInstCache.containsKey(pageIdx)) {
+    if (pageIdx == ROOT_INDEX && rootPage != null) {
+      return rootPage;
+    }
+
+    // TODO: improve concurrent control
+    try {
+      pageLocks.readLock(pageIdx);
+
       if (pageInstCache.containsKey(pageIdx)) {
         return pageInstCache.get(pageIdx);
       }
+    } finally {
+      pageLocks.readUnlock(pageIdx);
     }
 
-    ByteBuffer newBuf = ByteBuffer.allocate(PAGE_LENGTH);
+    try {
+      pageLocks.writeLock(pageIdx);
 
-    loadFromFile(newBuf, pageIdx);
-    addPageToCache(pageIdx, SchemaPage.loadPage(newBuf, pageIdx));
-    return pageInstCache.get(pageIdx);
+      ByteBuffer newBuf = ByteBuffer.allocate(PAGE_LENGTH);
+
+      loadFromFile(newBuf, pageIdx);
+      addPageToCache(pageIdx, SchemaPage.loadPage(newBuf, pageIdx));
+      return pageInstCache.get(pageIdx);
+    } finally {
+      pageLocks.writeUnlock(pageIdx);
+    }
+  }
+
+  private int loadFromFile(ByteBuffer dst, int pageIndex) throws IOException {
+    dst.clear();
+    return channel.read(dst, getPageAddress(pageIndex));
   }
 
   private ISchemaPage allocateNewPage() throws IOException {
@@ -724,17 +754,30 @@ public class SchemaFile implements ISchemaFile {
 
   private void addPageToCache(int pageIndex, ISchemaPage page) throws IOException {
     pageInstCache.put(pageIndex, page);
-    if (pageInstCache.size() >= PAGE_CACHE_SIZE) {
-      int removeCnt =
-          (int) (0.2 * pageInstCache.size()) > 0 ? (int) (0.2 * pageInstCache.size()) : 1;
-      List<Integer> rmvIds = new ArrayList<>(pageInstCache.keySet()).subList(0, removeCnt);
+    // only one thread evicts and flushes pages
+    if (evictLock.tryLock()) {
+      try {
+        if (pageInstCache.size() >= PAGE_CACHE_SIZE) {
+          int removeCnt =
+              (int) (0.2 * pageInstCache.size()) > 0 ? (int) (0.2 * pageInstCache.size()) : 1;
+          List<Integer> rmvIds = new ArrayList<>(pageInstCache.keySet()).subList(0, removeCnt);
 
-      for (Integer id : rmvIds) {
-        // TODO: improve concurrent control
-        // for any page involved in concurrent operation, it will not be evicted
-        // this may produce an inefficient eviction
-        flushPageToFile(pageInstCache.get(id));
-        pageInstCache.remove(id);
+          for (Integer id : rmvIds) {
+            // TODO: improve concurrent control
+            //  for any page involved in concurrent operation, it will not be evicted
+            //  this may produce an inefficient eviction
+            if (pageLocks.findLock(id).writeLock().tryLock()) {
+              try {
+                flushPageToFile(pageInstCache.get(id));
+                pageInstCache.remove(id);
+              } finally {
+                pageLocks.writeUnlock(id);
+              }
+            }
+          }
+        }
+      } finally {
+        evictLock.unlock();
       }
     }
   }
@@ -835,14 +878,11 @@ public class SchemaFile implements ISchemaFile {
     return node;
   }
 
-  private int loadFromFile(ByteBuffer dst, int pageIndex) throws IOException {
-    dst.clear();
-    return channel.read(dst, getPageAddress(pageIndex));
-  }
-
   private void flushPageToFile(ISchemaPage src) throws IOException {
+    if (src == null) {
+      return;
+    }
     src.syncPageBuffer();
-
     ByteBuffer srcBuf = ByteBuffer.allocate(SchemaFile.PAGE_LENGTH);
     src.getPageBuffer(srcBuf);
     srcBuf.clear();

@@ -38,6 +38,7 @@ import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.Segment;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -149,7 +150,6 @@ public class SchemaFileTest {
     nsf.close();
   }
 
-  @Test
   public void inspectFile() throws MetadataException, IOException {
     essentialTestSchemaFile();
     ISchemaFile sf = SchemaFile.loadSchemaFile("root.test.vRoot1");
@@ -323,11 +323,37 @@ public class SchemaFileTest {
 
   public void bitwiseTest() {
 
-    print(SchemaFile.getPageIndex(95485952));
-    print(SchemaFile.getGlobalIndex(1457, (short) 0));
+    byte[] bArray = new byte[] {1, 2, 3, 4, 5, 6, 7};
+    ByteBuffer b1 = ByteBuffer.wrap(bArray);
+    ByteBuffer b2 = b1.duplicate();
+    b2.position(3);
+    ByteBuffer b3 = b2.slice();
+    b1.position(3);
+    b1.put((byte) 99);
+
+    Assert.assertEquals(99, b2.get());
+    Assert.assertEquals(99, b3.get());
+    Assert.assertEquals(1, b3.position());
+
+    b3.put((byte) 100);
+    Assert.assertEquals(100, b1.get());
+
+    print(SchemaFile.getPageIndex(12451840));
+    print(SchemaFile.getGlobalIndex(190, (short) 0));
 
     long initGlbAdr = 1099780063232L;
     int pageIndex = SchemaFile.getPageIndex(initGlbAdr);
+
+    int bs = 1;
+    while (bs <= 32) {
+      long highBits = 0xffffffff00000000L & ((0xffffffffL & pageIndex) << 1);
+      pageIndex <<= 1;
+      pageIndex |= highBits >>> 32;
+      bs++;
+      Assert.assertEquals(
+          pageIndex, SchemaFile.getPageIndex(SchemaFile.getGlobalIndex(pageIndex, (short) 0)));
+    }
+
     short segIdx = SchemaFile.getSegIndex(initGlbAdr);
     while (initGlbAdr < 1099980063232L) {
       Assert.assertEquals(initGlbAdr, SchemaFile.getGlobalIndex(pageIndex, segIdx));
@@ -339,9 +365,17 @@ public class SchemaFileTest {
     byte[] bta = {0b1, 0b10, 0b100};
     print(Arrays.toString(bta));
     print(ByteBuffer.wrap(bta));
+
+    ByteBuffer buf = ByteBuffer.allocate(20);
+    ReadWriteIOUtils.write((byte) 1, buf);
+    ReadWriteIOUtils.write("", buf);
+    ReadWriteIOUtils.write((byte) 1, buf);
+    print(Arrays.toString(buf.array()));
+
+    print(String.format("aaa:%s", null));
   }
 
-  private void testDebugger() throws MetadataException, IOException {
+  public void testDebugger() throws MetadataException, IOException {
     String filePath = "./buffer.temp";
 
     File pmtFile = new File(filePath);
