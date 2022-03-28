@@ -96,4 +96,4 @@ jobs:
         run: cd /d/a/cpp && unzip win_flex_bison.zip && mv win_flex.exe flex.exe && mv win_bison.exe bison.exe  && echo 'export PATH=/d/a/cpp:$PATH' >> ~/.bash_profile && source ~/.bash_profile
       - name: Test with Maven
         shell: bash
-        run: source ~/.bash_profile && mvn -B clean integration-test -P compile-cpp -Dboost.include.dir=/c/local/boost_1_74_0 -Dboost.library.dir=/c/local/boost_1_74_0/stage/lib -Dtsfile.test.skip=true -Djdbc.test.skip=true -Diotdb.test.skip=true -Dtest.port.closed=true -Denforcer.skip=true -pl server,client-cpp,example/client-cpp-example -am
+        run: source ~/.bash_profile && mvn -B clean integration-test -P compile-cpp -Dboost.include.dir=/c/local/boost_1_58_0 -Dboost.library.dir=/c/local/boost_1_58_0/stage/lib -Dtsfile.test.skip=true -Djdbc.test.skip=true -Diotdb.test.skip=true -Dtest.port.closed=true -Denforcer.skip=true -pl server,client-cpp,example/client-cpp-example -am
