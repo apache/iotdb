@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.common.schematree;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 
@@ -127,15 +128,14 @@ public class PathPatternTree {
     // TODO
   }
 
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) {
+  @TestOnly
+  public boolean equalWith(PathPatternTree that) {
+    if (this == that) {
       return true;
     }
-    if (o == null || getClass() != o.getClass()) {
+    if (that == null || getClass() != that.getClass()) {
       return false;
     }
-    PathPatternTree that = (PathPatternTree) o;
-    return this.getRoot().equals(that.getRoot());
+    return this.getRoot().equalWith(that.getRoot());
   }
 }

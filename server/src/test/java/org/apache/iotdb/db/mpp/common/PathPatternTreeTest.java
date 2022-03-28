@@ -41,7 +41,7 @@ public class PathPatternTreeTest {
     resultPatternTree.appendPath(new PartialPath("root.sg1.d1.*"));
     resultPatternTree.constructTree();
 
-    Assert.assertEquals(resultPatternTree, patternTree);
+    Assert.assertTrue(resultPatternTree.equalWith(patternTree));
   }
 
   @Test
@@ -60,7 +60,7 @@ public class PathPatternTreeTest {
     resultPatternTree.appendPath(new PartialPath("root.sg1.*.s1"));
     resultPatternTree.constructTree();
 
-    Assert.assertEquals(resultPatternTree, patternTree);
+    Assert.assertTrue(resultPatternTree.equalWith(patternTree));
   }
 
   @Test
@@ -81,7 +81,7 @@ public class PathPatternTreeTest {
     resultPatternTree.appendPath(new PartialPath("root.**"));
     resultPatternTree.constructTree();
 
-    Assert.assertEquals(resultPatternTree, patternTree);
+    Assert.assertTrue(resultPatternTree.equalWith(patternTree));
   }
 
   @Test
@@ -99,7 +99,7 @@ public class PathPatternTreeTest {
     resultPatternTree.appendPath(new PartialPath("root.sg1.**.s1"));
     resultPatternTree.constructTree();
 
-    Assert.assertEquals(resultPatternTree, patternTree);
+    Assert.assertTrue(resultPatternTree.equalWith(patternTree));
   }
 
   @Test
@@ -126,6 +126,6 @@ public class PathPatternTreeTest {
     resultPatternTree.appendPath(new PartialPath("root.sg1.d3.t1.s2"));
     resultPatternTree.constructTree();
 
-    Assert.assertEquals(resultPatternTree, patternTree);
+    Assert.assertTrue(resultPatternTree.equalWith(patternTree));
   }
 }

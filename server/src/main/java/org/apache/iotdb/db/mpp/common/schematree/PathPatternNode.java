@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.mpp.common.schematree;
 
+import org.apache.iotdb.commons.utils.TestOnly;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -57,15 +59,14 @@ public class PathPatternNode {
     return children.isEmpty();
   }
 
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) {
+  @TestOnly
+  public boolean equalWith(PathPatternNode that) {
+    if (this == that) {
       return true;
     }
-    if (o == null || getClass() != o.getClass()) {
+    if (that == null || getClass() != that.getClass()) {
       return false;
     }
-    PathPatternNode that = (PathPatternNode) o;
     if (!Objects.equals(that.getName(), this.getName())) {
       return false;
     }
@@ -76,7 +77,7 @@ public class PathPatternNode {
       return false;
     }
     for (int i = 0; i < this.getChildren().size(); i++) {
-      if (!that.getChildren().get(i).equals(this.getChildren().get(i))) {
+      if (!that.getChildren().get(i).equalWith(this.getChildren().get(i))) {
         return false;
       }
     }
