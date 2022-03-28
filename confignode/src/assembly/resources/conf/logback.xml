@@ -135,6 +135,6 @@
         <appender-ref ref="FILEALL"/>
         <appender-ref ref="stdout"/>
     </root>
-    <logger level="info" name="org.apache.iotdb.confignode.service"/>
-    <logger level="info" name="org.apache.iotdb.confignode.conf"/>
+    <logger level="info" name="org.apache.iotdb.confignode"/>
+    <!-- <logger level="info" name="org.apache.ratis"/> -->
 </configuration>

@@ -30,8 +30,7 @@ import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
-import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
-import org.apache.iotdb.db.engine.compaction.task.CompactionRecoverTask;
+import org.apache.iotdb.db.engine.compaction.task.CompactionRecoverManager;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.CloseFileListener;
 import org.apache.iotdb.db.engine.flush.FlushListener;
@@ -119,10 +118,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.regex.Pattern;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
-import static org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX_FROM_OLD;
 import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.TEMP_SUFFIX;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
@@ -496,9 +493,7 @@ public class VirtualStorageGroupProcessor {
   /** recover from file */
   private void recover() throws StorageGroupProcessorException {
     try {
-      recoverInnerSpaceCompaction(true);
-      recoverInnerSpaceCompaction(false);
-      recoverCrossSpaceCompaction();
+      recoverCompaction();
     } catch (Exception e) {
       throw new StorageGroupProcessorException(e);
     }
@@ -592,83 +587,12 @@ public class VirtualStorageGroupProcessor {
         TimeUnit.MILLISECONDS);
   }
 
-  /** recover crossSpaceCompaction */
-  private void recoverCrossSpaceCompaction() throws Exception {
-    CompactionRecoverTask compactionRecoverTask =
-        new CompactionRecoverTask(tsFileManager, logicalStorageGroupName, virtualStorageGroupId);
-    compactionRecoverTask.recoverCrossSpaceCompaction();
-  }
-
-  private void recoverInnerSpaceCompaction(boolean isSequence) throws Exception {
-    // search compaction log for SizeTieredCompaction
-    List<String> dirs;
-    if (isSequence) {
-      dirs = DirectoryManager.getInstance().getAllSequenceFileFolders();
-    } else {
-      dirs = DirectoryManager.getInstance().getAllUnSequenceFileFolders();
-    }
-    for (String dir : dirs) {
-      File storageGroupDir =
-          new File(
-              dir
-                  + File.separator
-                  + logicalStorageGroupName
-                  + File.separator
-                  + virtualStorageGroupId);
-      if (!storageGroupDir.exists()) {
-        return;
-      }
-      File[] timePartitionDirs = storageGroupDir.listFiles();
-      if (timePartitionDirs == null) {
-        return;
-      }
-      for (File timePartitionDir : timePartitionDirs) {
-        if (!timePartitionDir.isDirectory()
-            || !Pattern.compile("[0-9]*").matcher(timePartitionDir.getName()).matches()) {
-          continue;
-        }
-        File[] compactionLogs =
-            InnerSpaceCompactionUtils.findInnerSpaceCompactionLogs(timePartitionDir.getPath());
-        for (File compactionLog : compactionLogs) {
-          IoTDBDescriptor.getInstance()
-              .getConfig()
-              .getInnerCompactionStrategy()
-              .getCompactionRecoverTask(
-                  tsFileManager.getStorageGroupName(),
-                  tsFileManager.getVirtualStorageGroup(),
-                  Long.parseLong(
-                      timePartitionDir
-                          .getPath()
-                          .substring(timePartitionDir.getPath().lastIndexOf(File.separator) + 1)),
-                  compactionLog,
-                  timePartitionDir.getPath(),
-                  isSequence,
-                  tsFileManager)
-              .call();
-        }
-      }
-    }
-
-    // search compaction log for old LevelCompaction
-    File logFile =
-        FSFactoryProducer.getFSFactory()
-            .getFile(
-                storageGroupSysDir.getAbsolutePath(),
-                logicalStorageGroupName + INNER_COMPACTION_LOG_NAME_SUFFIX_FROM_OLD);
-    if (logFile.exists()) {
-      IoTDBDescriptor.getInstance()
-          .getConfig()
-          .getInnerCompactionStrategy()
-          .getCompactionRecoverTask(
-              tsFileManager.getStorageGroupName(),
-              tsFileManager.getVirtualStorageGroup(),
-              -1,
-              logFile,
-              logFile.getParent(),
-              isSequence,
-              tsFileManager)
-          .call();
-    }
+  private void recoverCompaction() throws Exception {
+    CompactionRecoverManager compactionRecoverManager =
+        new CompactionRecoverManager(tsFileManager, logicalStorageGroupName, virtualStorageGroupId);
+    compactionRecoverManager.recoverInnerSpaceCompaction(true);
+    compactionRecoverManager.recoverInnerSpaceCompaction(false);
+    compactionRecoverManager.recoverCrossSpaceCompaction();
   }
 
   private void updatePartitionFileVersion(long partitionNum, long fileVersion) {

@@ -29,10 +29,10 @@ import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 public class PlanExecutor {
 
-  private final PartitionTable partitionTable = new PartitionTable();
+  private final PartitionTable partitionTable;
 
   public PlanExecutor() {
-    // empty constructor
+    this.partitionTable = new PartitionTable();
   }
 
   public DataSet executorQueryPlan(PhysicalPlan plan) throws UnknownPhysicalPlanTypeException {

@@ -23,23 +23,31 @@ import org.apache.iotdb.commons.partition.DataPartitionInfo;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.PartitionInfo;
 import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
+import org.apache.iotdb.db.exception.sql.SQLParserException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
-import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
-import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
-import org.apache.iotdb.db.mpp.sql.rewriter.*;
+import org.apache.iotdb.db.mpp.sql.rewriter.ConcatPathRewriter;
+import org.apache.iotdb.db.mpp.sql.rewriter.DnfFilterOptimizer;
+import org.apache.iotdb.db.mpp.sql.rewriter.MergeSingleFilterOptimizer;
+import org.apache.iotdb.db.mpp.sql.rewriter.RemoveNotOptimizer;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.component.WhereCondition;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.QueryStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /** Analyze the statement and generate Analysis. */
 public class Analyzer {
@@ -144,6 +152,39 @@ public class Analyzer {
       }
       Analysis analysis = new Analysis();
       analysis.setStatement(createTimeSeriesStatement);
+
+      String devicePath = createTimeSeriesStatement.getPath().getDevice();
+      analysis.setSchemaPartitionInfo(partitionFetcher.fetchSchemaPartitionInfo(devicePath));
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitCreateAlignedTimeseries(
+        CreateAlignedTimeSeriesStatement createAlignedTimeSeriesStatement,
+        MPPQueryContext context) {
+      List<String> measurements = createAlignedTimeSeriesStatement.getMeasurements();
+      Set<String> measurementsSet = new HashSet<>(measurements);
+      if (measurementsSet.size() < measurements.size()) {
+        throw new SQLParserException(
+            "Measurement under an aligned device is not allowed to have the same measurement name");
+      }
+
+      Analysis analysis = new Analysis();
+      analysis.setStatement(createAlignedTimeSeriesStatement);
+
+      String devicePath = createAlignedTimeSeriesStatement.getDevicePath().getFullPath();
+      analysis.setSchemaPartitionInfo(partitionFetcher.fetchSchemaPartitionInfo(devicePath));
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitAlterTimeseries(
+        AlterTimeSeriesStatement alterTimeSeriesStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(alterTimeSeriesStatement);
+
+      String devicePath = alterTimeSeriesStatement.getPath().getDevice();
+      analysis.setSchemaPartitionInfo(partitionFetcher.fetchSchemaPartitionInfo(devicePath));
       return analysis;
     }
 

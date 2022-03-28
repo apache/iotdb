@@ -54,7 +54,7 @@ public class SerializationTest {
 
   @Before
   public void before() throws MetadataException {
-    IoTDB.schemaEngine.init();
+    IoTDB.configManager.init();
     IoTDB.schemaEngine.setStorageGroup(new PartialPath("root.vehicle"));
     IoTDB.schemaEngine.createTimeseries(
         new PartialPath("root.vehicle.d1.s1"),
@@ -84,7 +84,7 @@ public class SerializationTest {
 
   @After
   public void clean() throws IOException {
-    IoTDB.schemaEngine.clear();
+    IoTDB.configManager.clear();
     EnvironmentUtils.cleanAllDir();
   }
 

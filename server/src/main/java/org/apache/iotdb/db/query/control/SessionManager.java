@@ -19,11 +19,18 @@
 package org.apache.iotdb.db.query.control;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.auth.AuthException;
+import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
+import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.mpp.common.SessionInfo;
 import org.apache.iotdb.db.query.dataset.UDTFDataSet;
+import org.apache.iotdb.db.service.basic.BasicOpenSessionResp;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,7 +44,8 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class SessionManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(SessionManager.class);
-
+  public static final Logger AUDIT_LOGGER =
+      LoggerFactory.getLogger(IoTDBConstant.AUDIT_LOGGER_NAME);
   // When the client abnormally exits, we can still know who to disconnect
   private final ThreadLocal<Long> currSessionId = new ThreadLocal<>();
   // Record the username for every rpc connection (session).
@@ -63,6 +71,9 @@ public class SessionManager {
   // TODO sessionIdToUsername and sessionIdToZoneId should be replaced with this
   private final Map<Long, SessionInfo> sessionIdToSessionInfo = new ConcurrentHashMap<>();
 
+  public static final TSProtocolVersion CURRENT_RPC_VERSION =
+      TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3;
+
   protected SessionManager() {
     // singleton
   }
@@ -82,6 +93,73 @@ public class SessionManager {
       // only used for test
       return TimeZone.getTimeZone("+08:00");
     }
+  }
+
+  public BasicOpenSessionResp openSession(
+      String username,
+      String password,
+      String zoneId,
+      TSProtocolVersion tsProtocolVersion,
+      IoTDBConstant.ClientVersion clientVersion)
+      throws TException {
+    BasicOpenSessionResp openSessionResp = new BasicOpenSessionResp();
+
+    boolean status;
+    IAuthorizer authorizer;
+    try {
+      authorizer = BasicAuthorizer.getInstance();
+    } catch (AuthException e) {
+      throw new TException(e);
+    }
+    String loginMessage = null;
+    try {
+      status = authorizer.login(username, password);
+    } catch (AuthException e) {
+      LOGGER.info("meet error while logging in.", e);
+      status = false;
+      loginMessage = e.getMessage();
+    }
+
+    long sessionId = -1;
+    if (status) {
+      // check the version compatibility
+      boolean compatible = tsProtocolVersion.equals(CURRENT_RPC_VERSION);
+      if (!compatible) {
+        openSessionResp.setCode(TSStatusCode.INCOMPATIBLE_VERSION.getStatusCode());
+        openSessionResp.setMessage(
+            "The version is incompatible, please upgrade to " + IoTDBConstant.VERSION);
+        return openSessionResp.sessionId(sessionId);
+      }
+
+      openSessionResp.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      openSessionResp.setMessage("Login successfully");
+
+      sessionId = requestSessionId(username, zoneId, clientVersion);
+
+      LOGGER.info(
+          "{}: Login status: {}. User : {}, opens Session-{}",
+          IoTDBConstant.GLOBAL_DB_NAME,
+          openSessionResp.getMessage(),
+          username,
+          sessionId);
+    } else {
+      openSessionResp.setMessage(loginMessage != null ? loginMessage : "Authentication failed.");
+      openSessionResp.setCode(TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR.getStatusCode());
+
+      sessionId = requestSessionId(username, zoneId, clientVersion);
+      AUDIT_LOGGER.info("User {} opens Session failed with an incorrect password", username);
+    }
+
+    SessionTimeoutManager.getInstance().register(sessionId);
+    return openSessionResp.sessionId(sessionId);
+  }
+
+  public boolean closeSession(long sessionId) {
+    AUDIT_LOGGER.info("Session-{} is closing", sessionId);
+
+    removeCurrSessionId();
+
+    return SessionTimeoutManager.getInstance().unregister(sessionId);
   }
 
   public long requestSessionId(

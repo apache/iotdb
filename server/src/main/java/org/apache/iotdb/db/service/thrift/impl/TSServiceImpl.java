@@ -327,6 +327,16 @@ public class TSServiceImpl implements TSIService.Iface {
     return resp.setSessionId(openSessionResp.getSessionId());
   }
 
+  public TSOpenSessionResp openSessionV2(TSOpenSessionReq req) throws TException {
+    IoTDBConstant.ClientVersion clientVersion = parseClientVersion(req);
+    BasicOpenSessionResp openSessionResp =
+        SESSION_MANAGER.openSession(
+            req.username, req.password, req.zoneId, req.client_protocol, clientVersion);
+    TSStatus tsStatus = RpcUtils.getStatus(openSessionResp.getCode(), openSessionResp.getMessage());
+    TSOpenSessionResp resp = new TSOpenSessionResp(tsStatus, CURRENT_RPC_VERSION);
+    return resp.setSessionId(openSessionResp.getSessionId());
+  }
+
   private IoTDBConstant.ClientVersion parseClientVersion(TSOpenSessionReq req) {
     Map<String, String> configuration = req.configuration;
     if (configuration != null && configuration.containsKey("version")) {
@@ -339,6 +349,13 @@ public class TSServiceImpl implements TSIService.Iface {
   public TSStatus closeSession(TSCloseSessionReq req) {
     return new TSStatus(
         !serviceProvider.closeSession(req.sessionId)
+            ? RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR)
+            : RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+  }
+
+  public TSStatus closeSessionV2(TSCloseSessionReq req) {
+    return new TSStatus(
+        !SESSION_MANAGER.closeSession(req.sessionId)
             ? RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR)
             : RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
   }

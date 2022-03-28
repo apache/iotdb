@@ -36,7 +36,6 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -138,16 +137,12 @@ public class SchemaEngineImproveTest {
   }
 
   private void doCacheTest(String deviceId, List<String> measurementList) throws MetadataException {
-    try {
-      IMNode node = schemaEngine.getDeviceNodeWithAutoCreate(new PartialPath(deviceId));
-      for (String s : measurementList) {
-        assertTrue(node.hasChild(s));
-        IMeasurementMNode measurementNode = node.getChild(s).getAsMeasurementMNode();
-        TSDataType dataType = measurementNode.getSchema().getType();
-        assertEquals(TSDataType.TEXT, dataType);
-      }
-    } catch (IOException e) {
-      throw new MetadataException(e);
+    IMNode node = schemaEngine.getDeviceNode(new PartialPath(deviceId));
+    for (String s : measurementList) {
+      assertTrue(node.hasChild(s));
+      IMeasurementMNode measurementNode = node.getChild(s).getAsMeasurementMNode();
+      TSDataType dataType = measurementNode.getSchema().getType();
+      assertEquals(TSDataType.TEXT, dataType);
     }
   }
 

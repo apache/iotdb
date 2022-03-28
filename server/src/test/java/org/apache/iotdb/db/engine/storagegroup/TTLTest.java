@@ -132,12 +132,11 @@ public class TTLTest {
 
     // normally set ttl
     IoTDB.schemaEngine.setTTL(new PartialPath(sg1), ttl);
-    IStorageGroupMNode mNode =
-        IoTDB.schemaEngine.getStorageGroupNodeByStorageGroupPath(new PartialPath(sg1));
+    IStorageGroupMNode mNode = IoTDB.schemaEngine.getStorageGroupNodeByPath(new PartialPath(sg1));
     assertEquals(ttl, mNode.getDataTTL());
 
     // default ttl
-    mNode = IoTDB.schemaEngine.getStorageGroupNodeByStorageGroupPath(new PartialPath(sg2));
+    mNode = IoTDB.schemaEngine.getStorageGroupNodeByPath(new PartialPath(sg2));
     assertEquals(Long.MAX_VALUE, mNode.getDataTTL());
   }
 
