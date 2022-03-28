@@ -88,7 +88,7 @@ jobs:
           Invoke-WebRequest https://github.com/lexxmark/winflexbison/releases/download/v2.5.24/win_flex_bison-2.5.24.zip -OutFile D:\a\cpp\win_flex_bison.zip ; `
           [Environment]::SetEnvironmentVariable("Path", $env:Path + ";D:\a\cpp", "User") ; `
       - name: Download Boost
-        run: choco install boost-msvc-12.0
+        run: choco install boost-msvc-12
       - name: Install Boost
         run: cd C:\local\boost_1_58_0 ; `
           .\bootstrap.bat ; `
