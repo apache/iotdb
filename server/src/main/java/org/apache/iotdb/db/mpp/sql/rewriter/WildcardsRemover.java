@@ -71,18 +71,18 @@ public class WildcardsRemover {
     this.isPrefixMatch = queryStatement.isPrefixMatchPath();
 
     if (queryStatement.getIndexType() == null) {
-      // remove wildcards in SELECT caluse
+      // remove wildcards in SELECT clause
       removeWildcardsInSelectPaths(queryStatement);
       deviceIdToPathsMap.putAll(queryStatement.getSelectComponent().getDeviceIdToPathsMap());
 
-      // remove wildcards in WITHOUT NULL caluse
+      // remove wildcards in WITHOUT NULL clause
       if (queryStatement.getFilterNullComponent() != null
           && !queryStatement.getFilterNullComponent().getWithoutNullColumns().isEmpty()) {
         removeWildcardsWithoutNullColumns(queryStatement);
       }
     }
 
-    // remove wildcards in WHERE caluse
+    // remove wildcards in WHERE clause
     if (queryStatement.getWhereCondition() != null) {
       removeWildcardsInQueryFilter(queryStatement, deviceIdToPathsMap);
     }

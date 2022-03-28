@@ -41,7 +41,7 @@ public class SchemaTree {
    * @return Left: all measurement paths; Right: remaining series offset
    */
   public Pair<List<MeasurementPath>, Integer> searchMeasurementPaths(
-      PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch) {
+      PartialPath pathPattern, int slimit, int soffset, boolean isPrefixMatch) {
     return new Pair<>(new ArrayList<>(), 0);
   }
 
