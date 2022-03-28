@@ -26,11 +26,11 @@ import java.util.Objects;
 public class PathPatternNode {
 
   private String name;
-  private List<PathPatternNode> childs;
+  private List<PathPatternNode> children;
 
   public PathPatternNode(String name) {
     this.name = name;
-    this.childs = new ArrayList<>();
+    this.children = new ArrayList<>();
   }
 
   public String getName() {
@@ -41,20 +41,20 @@ public class PathPatternNode {
     this.name = name;
   }
 
-  public List<PathPatternNode> getChilds() {
-    return childs;
+  public List<PathPatternNode> getChildren() {
+    return children;
   }
 
-  public void setChilds(List<PathPatternNode> childs) {
-    this.childs = childs;
+  public void setChildren(List<PathPatternNode> children) {
+    this.children = children;
   }
 
   public void addChild(PathPatternNode newNode) {
-    this.childs.add(newNode);
+    this.children.add(newNode);
   }
 
   public boolean isLeaf() {
-    return childs.isEmpty();
+    return children.isEmpty();
   }
 
   @Override
@@ -72,11 +72,11 @@ public class PathPatternNode {
     if (that.isLeaf() && this.isLeaf()) {
       return true;
     }
-    if (that.getChilds().size() != this.getChilds().size()) {
+    if (that.getChildren().size() != this.getChildren().size()) {
       return false;
     }
-    for (int i = 0; i < this.getChilds().size(); i++) {
-      if (!that.getChilds().get(i).equals(this.getChilds().get(i))) {
+    for (int i = 0; i < this.getChildren().size(); i++) {
+      if (!that.getChildren().get(i).equals(this.getChildren().get(i))) {
         return false;
       }
     }

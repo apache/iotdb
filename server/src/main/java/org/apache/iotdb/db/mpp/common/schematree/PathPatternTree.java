@@ -95,7 +95,7 @@ public class PathPatternTree {
 
     boolean isExist = false;
     PathPatternNode nextNode = null;
-    for (PathPatternNode childNode : curNode.getChilds()) {
+    for (PathPatternNode childNode : curNode.getChildren()) {
       if (!Objects.equals(childNode.getName(), pathNodes[pos + 1])) {
         isExist = true;
         nextNode = childNode;
