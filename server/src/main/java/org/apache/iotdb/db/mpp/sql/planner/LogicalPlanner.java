@@ -110,6 +110,7 @@ public class LogicalPlanner {
     }
 
     private PlanBuilder planSelectComponent(QueryStatement queryStatement) {
+      // TODO: generate SourceNode for QueryFilter
       Map<String, Set<SourceNode>> deviceNameToSourceNodesMap = new HashMap<>();
 
       for (ResultColumn resultColumn : queryStatement.getSelectComponent().getResultColumns()) {
