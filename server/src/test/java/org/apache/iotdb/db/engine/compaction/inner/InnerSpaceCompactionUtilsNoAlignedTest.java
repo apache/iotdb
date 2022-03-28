@@ -126,7 +126,7 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
     if (new File(UNSEQ_DIRS).exists()) {
       FileUtils.forceDelete(new File(UNSEQ_DIRS));
     }
-    IoTDB.schemaEngine.clear();
+    IoTDB.configManager.clear();
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
     EnvironmentUtils.cleanEnv();

@@ -22,7 +22,7 @@ import org.apache.thrift.server.TServerEventHandler;
 import org.apache.thrift.transport.TTransport;
 
 public class ConfigNodeRPCServiceHandler implements TServerEventHandler {
-  private ConfigNodeRPCServerProcessor processor;
+  private final ConfigNodeRPCServerProcessor processor;
 
   public ConfigNodeRPCServiceHandler(ConfigNodeRPCServerProcessor processor) {
     this.processor = processor;

@@ -26,6 +26,7 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.BatchDataFactory;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.read.common.TsBlock;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
@@ -151,6 +152,58 @@ public class PageReader implements IPageReader {
       }
     }
     return pageData.flip();
+  }
+
+  @Override
+  public TsBlock getAllSatisfiedData(boolean ascending) throws IOException {
+    // TODO we still need to consider data type, ascending and descending here
+    TsBlock tsBlock = new TsBlock();
+    if (filter == null || filter.satisfy(getStatistics())) {
+      while (timeDecoder.hasNext(timeBuffer)) {
+        long timestamp = timeDecoder.readLong(timeBuffer);
+        switch (dataType) {
+          case BOOLEAN:
+            boolean aBoolean = valueDecoder.readBoolean(valueBuffer);
+            if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aBoolean))) {
+              //              tsBlock.putBoolean(timestamp, aBoolean);
+            }
+            break;
+          case INT32:
+            int anInt = valueDecoder.readInt(valueBuffer);
+            if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, anInt))) {
+              //              tsBlock.putInt(timestamp, anInt);
+            }
+            break;
+          case INT64:
+            long aLong = valueDecoder.readLong(valueBuffer);
+            if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aLong))) {
+              //              tsBlock.putLong(timestamp, aLong);
+            }
+            break;
+          case FLOAT:
+            float aFloat = valueDecoder.readFloat(valueBuffer);
+            if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aFloat))) {
+              //              tsBlock.putFloat(timestamp, aFloat);
+            }
+            break;
+          case DOUBLE:
+            double aDouble = valueDecoder.readDouble(valueBuffer);
+            if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aDouble))) {
+              //              tsBlock.putDouble(timestamp, aDouble);
+            }
+            break;
+          case TEXT:
+            Binary aBinary = valueDecoder.readBinary(valueBuffer);
+            if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aBinary))) {
+              //              tsBlock.putBinary(timestamp, aBinary);
+            }
+            break;
+          default:
+            throw new UnSupportedDataTypeException(String.valueOf(dataType));
+        }
+      }
+    }
+    return tsBlock;
   }
 
   @Override
