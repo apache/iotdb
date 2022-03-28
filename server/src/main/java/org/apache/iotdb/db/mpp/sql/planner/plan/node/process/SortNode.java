@@ -93,8 +93,7 @@ public class SortNode extends ProcessNode {
   public Pair<String, List<String>> print() {
     String title = String.format("[SortNode (%s)]", this.getId());
     List<String> attributes = new ArrayList<>();
-    attributes.add(
-        "SortOrder: " + (this.getSortOrder() == null ? "null" : this.getSortOrder().toString()));
+    attributes.add("SortOrder: " + (this.getSortOrder() == null ? "null" : this.getSortOrder()));
     return new Pair<>(title, attributes);
   }
 }

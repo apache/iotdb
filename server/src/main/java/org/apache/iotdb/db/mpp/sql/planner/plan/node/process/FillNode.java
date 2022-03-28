@@ -92,7 +92,7 @@ public class FillNode extends ProcessNode {
   public Pair<String, List<String>> print() {
     String title = String.format("[FillNode (%s)]", this.getId());
     List<String> attributes = new ArrayList<>();
-    attributes.add("FillPolicy: " + this.getFillPolicy().toString());
+    attributes.add("FillPolicy: " + this.getFillPolicy());
     return new Pair<>(title, attributes);
   }
 }

@@ -116,8 +116,7 @@ public class DeviceMergeNode extends ProcessNode {
   public Pair<String, List<String>> print() {
     String title = String.format("[DeviceMergeNode (%s)]", this.getId());
     List<String> attributes = new ArrayList<>();
-    attributes.add(
-        "MergeOrder: " + (this.getMergeOrder() == null ? "null" : this.getMergeOrder().toString()));
+    attributes.add("MergeOrder: " + (this.getMergeOrder() == null ? "null" : this.getMergeOrder()));
     return new Pair<>(title, attributes);
   }
 }

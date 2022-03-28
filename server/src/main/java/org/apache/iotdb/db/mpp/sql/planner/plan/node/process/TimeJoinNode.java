@@ -139,13 +139,10 @@ public class TimeJoinNode extends ProcessNode {
   public Pair<String, List<String>> print() {
     String title = String.format("[TimeJoinNode (%s)]", this.getId());
     List<String> attributes = new ArrayList<>();
-    attributes.add(
-        "MergeOrder: " + (this.getMergeOrder() == null ? "null" : this.getMergeOrder().toString()));
+    attributes.add("MergeOrder: " + (this.getMergeOrder() == null ? "null" : this.getMergeOrder()));
     attributes.add(
         "FilterNullPolicy: "
-            + (this.getFilterNullPolicy() == null
-                ? "null"
-                : this.getFilterNullPolicy().toString()));
+            + (this.getFilterNullPolicy() == null ? "null" : this.getFilterNullPolicy()));
     return new Pair<>(title, attributes);
   }
 }

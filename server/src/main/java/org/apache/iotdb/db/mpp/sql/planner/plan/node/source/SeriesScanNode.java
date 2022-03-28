@@ -109,7 +109,7 @@ public class SeriesScanNode extends SourceNode {
 
   @Override
   protected String getExpressionString() {
-    return seriesPath.toString();
+    return seriesPath.getFullPath();
   }
 
   public OrderBy getScanOrder() {
@@ -190,7 +190,7 @@ public class SeriesScanNode extends SourceNode {
     String title = String.format("[SeriesScanNode (%s)]", this.getId());
     List<String> attributes = new ArrayList<>();
     attributes.add("SeriesPath: " + this.getSeriesPath());
-    attributes.add("scanOrder: " + this.getScanOrder().toString());
+    attributes.add("scanOrder: " + this.getScanOrder());
     return new Pair<>(title, attributes);
   }
 }

@@ -91,7 +91,7 @@ public class FilterNode extends ProcessNode {
   public Pair<String, List<String>> print() {
     String title = String.format("[FilterNode (%s)]", this.getId());
     List<String> attributes = new ArrayList<>();
-    attributes.add("QueryFilter: " + this.getPredicate().toString());
+    attributes.add("QueryFilter: " + this.getPredicate());
     return new Pair<>(title, attributes);
   }
 }
