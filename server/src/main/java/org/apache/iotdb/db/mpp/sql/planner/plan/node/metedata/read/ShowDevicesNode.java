@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read;
 
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 
@@ -26,8 +27,22 @@ import java.util.List;
 
 public class ShowDevicesNode extends ShowNode {
 
-  protected ShowDevicesNode(PlanNodeId id) {
+  private boolean hasSgCol;
+
+  public ShowDevicesNode(PlanNodeId id, PartialPath path, int limit, int offset, boolean hasSgCol) {
     super(id);
+    super.setLimit(limit);
+    this.path = path;
+    this.offset = offset;
+    this.hasSgCol = hasSgCol;
+  }
+
+  public boolean isHasSgCol() {
+    return hasSgCol;
+  }
+
+  public void setHasSgCol(boolean hasSgCol) {
+    this.hasSgCol = hasSgCol;
   }
 
   @Override

@@ -25,6 +25,7 @@ import org.apache.iotdb.db.mpp.sql.statement.crud.InsertStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowTimeSeriesStatement;
 
 /**
@@ -79,5 +80,9 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitShowTimeSeries(ShowTimeSeriesStatement showTimeSeriesStatement, C context) {
     return visitStatement(showTimeSeriesStatement, context);
+  }
+
+  public R visitShowDevices(ShowDevicesStatement showDevicesStatement, C context) {
+    return visitStatement(showDevicesStatement, context);
   }
 }

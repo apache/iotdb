@@ -18,10 +18,11 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read;
 
-import java.nio.ByteBuffer;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+
+import java.nio.ByteBuffer;
 
 public abstract class ShowNode extends PlanNode {
   protected int limit = 0;

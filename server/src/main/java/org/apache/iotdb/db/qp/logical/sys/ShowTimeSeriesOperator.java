@@ -27,71 +27,71 @@ import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
 public class ShowTimeSeriesOperator extends ShowOperator {
 
-    private PartialPath path;
-    private boolean isContains;
-    private String key;
-    private String value;
-    private int limit = 0;
-    private int offset = 0;
-    // if is true, the result will be sorted according to the inserting frequency of the timeseries
-    private final boolean orderByHeat;
+  private PartialPath path;
+  private boolean isContains;
+  private String key;
+  private String value;
+  private int limit = 0;
+  private int offset = 0;
+  // if is true, the result will be sorted according to the inserting frequency of the timeseries
+  private final boolean orderByHeat;
 
   public ShowTimeSeriesOperator(int tokeIntType, PartialPath path, boolean orderByHeat) {
-      super(tokeIntType);
-      this.path = path;
-      this.orderByHeat = orderByHeat;
-    }
+    super(tokeIntType);
+    this.path = path;
+    this.orderByHeat = orderByHeat;
+  }
 
-    public PartialPath getPath() {
-      return path;
-    }
+  public PartialPath getPath() {
+    return path;
+  }
 
-    public boolean isContains() {
-      return isContains;
-    }
+  public boolean isContains() {
+    return isContains;
+  }
 
-    public void setContains(boolean contains) {
-      isContains = contains;
-    }
+  public void setContains(boolean contains) {
+    isContains = contains;
+  }
 
-    public String getKey() {
-      return key;
-    }
+  public String getKey() {
+    return key;
+  }
 
-    public void setKey(String key) {
-      this.key = key;
-    }
+  public void setKey(String key) {
+    this.key = key;
+  }
 
-    public String getValue() {
-      return value;
-    }
+  public String getValue() {
+    return value;
+  }
 
-    public void setValue(String value) {
-      this.value = value;
-    }
+  public void setValue(String value) {
+    this.value = value;
+  }
 
-    public int getLimit() {
-      return limit;
-    }
+  public int getLimit() {
+    return limit;
+  }
 
-    public void setLimit(int limit) {
-      this.limit = limit;
-    }
+  public void setLimit(int limit) {
+    this.limit = limit;
+  }
 
-    public int getOffset() {
-      return offset;
-    }
+  public int getOffset() {
+    return offset;
+  }
 
-    public void setOffset(int offset) {
-      this.offset = offset;
-    }
+  public void setOffset(int offset) {
+    this.offset = offset;
+  }
 
-    public boolean isOrderByHeat() {
-      return orderByHeat;
-    }
+  public boolean isOrderByHeat() {
+    return orderByHeat;
+  }
 
-    @Override
-    public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
+  @Override
+  public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
     ShowTimeSeriesPlan showTimeSeriesPlan = new ShowTimeSeriesPlan(path, limit, offset);
     showTimeSeriesPlan.setIsContains(isContains);

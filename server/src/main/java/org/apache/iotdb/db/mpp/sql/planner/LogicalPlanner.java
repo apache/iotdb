@@ -24,12 +24,14 @@ import org.apache.iotdb.db.mpp.sql.optimization.PlanOptimizer;
 import org.apache.iotdb.db.mpp.sql.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeIdAllocator;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.ShowDevicesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.ShowTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.tree.StatementVisitor;
 
@@ -103,10 +105,28 @@ public class LogicalPlanner {
     }
 
     @Override
-    public PlanNode visitShowTimeSeries(ShowTimeSeriesStatement showTimeSeriesStatement,
-        MPPQueryContext context) {
-      ShowTimeSeriesNode showTimeSeriesNode = new ShowTimeSeriesNode(PlanNodeIdAllocator.generateId());
-      return showTimeSeriesNode;
+    public PlanNode visitShowTimeSeries(
+        ShowTimeSeriesStatement showTimeSeriesStatement, MPPQueryContext context) {
+      return new ShowTimeSeriesNode(
+          PlanNodeIdAllocator.generateId(),
+          showTimeSeriesStatement.getPathPattern(),
+          showTimeSeriesStatement.getKey(),
+          showTimeSeriesStatement.getValue(),
+          showTimeSeriesStatement.getLimit(),
+          showTimeSeriesStatement.getOffset(),
+          showTimeSeriesStatement.isOrderByHeat(),
+          showTimeSeriesStatement.isContains());
+    }
+
+    @Override
+    public PlanNode visitShowDevices(
+        ShowDevicesStatement showDevicesStatement, MPPQueryContext context) {
+      return new ShowDevicesNode(
+          PlanNodeIdAllocator.generateId(),
+          showDevicesStatement.getPathPattern(),
+          showDevicesStatement.getLimit(),
+          showDevicesStatement.getOffset(),
+          showDevicesStatement.hasSgCol());
     }
   }
 }

@@ -19,15 +19,16 @@
 
 package org.apache.iotdb.db.mpp.sql.analyze;
 
-import java.util.List;
-import java.util.Map;
 import org.apache.iotdb.commons.partition.DataPartitionInfo;
 import org.apache.iotdb.commons.partition.DataRegionReplicaSet;
 import org.apache.iotdb.commons.partition.SchemaPartitionInfo;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
+import java.util.List;
+import java.util.Map;
 
 /** Analysis used for planning a query. TODO: This class may need to store more info for a query. */
 public class Analysis {
@@ -47,7 +48,7 @@ public class Analysis {
 
   private SchemaPartitionInfo schemaPartitionInfo;
 
-  private Map<String, IMeasurementSchema> schemaMap;
+  private Map<String, MeasurementSchema> schemaMap;
 
   public List<DataRegionReplicaSet> getPartitionInfo(PartialPath seriesPath, Filter timefilter) {
     // TODO: (xingtanzjr) implement the calculation of timePartitionIdList
@@ -78,11 +79,11 @@ public class Analysis {
     this.schemaPartitionInfo = schemaPartitionInfo;
   }
 
-  public Map<String, IMeasurementSchema> getSchemaMap() {
+  public Map<String, MeasurementSchema> getSchemaMap() {
     return schemaMap;
   }
 
-  public void setSchemaMap(Map<String, IMeasurementSchema> schemaMap) {
+  public void setSchemaMap(Map<String, MeasurementSchema> schemaMap) {
     this.schemaMap = schemaMap;
   }
 }

@@ -26,6 +26,8 @@ import org.apache.iotdb.db.mpp.sql.analyze.Analyzer;
 import org.apache.iotdb.db.mpp.sql.parser.StatementGenerator;
 import org.apache.iotdb.db.mpp.sql.planner.LogicalPlanner;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.ShowDevicesNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.ShowTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -71,6 +73,51 @@ public class LogicalPlannerTest {
             }
           },
           createTimeSeriesNode.getAttributes());
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+  @Test
+  public void testShowTimeSeriesNodeTests() {
+    String sql =
+        "SHOW LATEST TIMESERIES root.ln.wf01.wt01.status WHERE tagK = tagV limit 20 offset 10";
+
+    try {
+      ShowTimeSeriesNode showTimeSeriesNode = (ShowTimeSeriesNode) parseSQLToPlanNode(sql);
+      Assert.assertNotNull(showTimeSeriesNode);
+      Assert.assertEquals(
+          new PartialPath("root.ln.wf01.wt01.status"), showTimeSeriesNode.getPath());
+      Assert.assertEquals("root.ln.wf01.wt01", showTimeSeriesNode.getPath().getDevice());
+      Assert.assertTrue(showTimeSeriesNode.isOrderByHeat());
+      Assert.assertFalse(showTimeSeriesNode.isContains());
+      Assert.assertEquals("tagK", showTimeSeriesNode.getKey());
+      Assert.assertEquals("tagV", showTimeSeriesNode.getValue());
+      Assert.assertEquals(20, showTimeSeriesNode.getLimit());
+      Assert.assertEquals(10, showTimeSeriesNode.getOffset());
+      Assert.assertTrue(showTimeSeriesNode.isHasLimit());
+      sql =
+          "SHOW LATEST TIMESERIES root.ln.wf01.wt01.status WHERE tagK contains tagV limit 20 offset 10";
+      showTimeSeriesNode = (ShowTimeSeriesNode) parseSQLToPlanNode(sql);
+      Assert.assertTrue(showTimeSeriesNode.isContains());
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+  @Test
+  public void testDevicesNodeTests() {
+    String sql = "SHOW DEVICES root.ln.wf01.wt01 WITH STORAGE GROUP limit 20 offset 10";
+    try {
+      ShowDevicesNode showDevicesNode = (ShowDevicesNode) parseSQLToPlanNode(sql);
+      Assert.assertNotNull(showDevicesNode);
+      Assert.assertEquals(new PartialPath("root.ln.wf01.wt01"), showDevicesNode.getPath());
+      Assert.assertTrue(showDevicesNode.isHasSgCol());
+      Assert.assertEquals(20, showDevicesNode.getLimit());
+      Assert.assertEquals(10, showDevicesNode.getOffset());
+      Assert.assertTrue(showDevicesNode.isHasLimit());
     } catch (Exception e) {
       e.printStackTrace();
       fail();
