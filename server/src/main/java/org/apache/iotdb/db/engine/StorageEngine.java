@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.ServerConfigConsistent;
+import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.CloseFileListener;
 import org.apache.iotdb.db.engine.flush.FlushListener;
@@ -857,6 +858,7 @@ public class StorageEngine implements IService {
       return;
     }
 
+    CompactionTaskManager.getInstance().abortCompaction(storageGroupPath.getFullPath());
     deleteAllDataFilesInOneStorageGroup(storageGroupPath);
     releaseWalDirectByteBufferPoolInOneStorageGroup(storageGroupPath);
     StorageGroupManager storageGroupManager = processorMap.remove(storageGroupPath);

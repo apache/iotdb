@@ -30,18 +30,16 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionTaskStatus;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.utils.datastructure.FixedPriorityBlockingQueue;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import com.google.common.util.concurrent.RateLimiter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -65,6 +63,7 @@ public class CompactionTaskManager implements IService {
   // <logicalStorageGroupName,futureSet>, it is used to terminate all compaction tasks under the
   // logicalStorageGroup
   private Map<String, Set<Future<Void>>> storageGroupTasks = new ConcurrentHashMap<>();
+  private List<Pair<AbstractCompactionTask, Future<Void>>> futureList = new ArrayList<>();
   private List<AbstractCompactionTask> runningCompactionTaskList = new ArrayList<>();
 
   // The thread pool that periodically fetches and executes the compaction task from
@@ -241,7 +240,6 @@ public class CompactionTaskManager implements IService {
 
         if (task != null && task.checkValidAndSetMerging()) {
           submitTask(task);
-          runningCompactionTaskList.add(task);
           CompactionMetricsManager.recordTaskInfo(
               task, CompactionTaskStatus.READY_TO_EXECUTE, runningCompactionTaskList.size());
         }
@@ -280,6 +278,16 @@ public class CompactionTaskManager implements IService {
 
   public synchronized void removeRunningTaskFromList(AbstractCompactionTask task) {
     runningCompactionTaskList.remove(task);
+    int idx = -1;
+    for (int i = 0; i < futureList.size(); ++i) {
+      if (futureList.get(i).left == task) {
+        idx = i;
+        break;
+      }
+    }
+    if (idx != -1) {
+      futureList.remove(idx);
+    }
     // add metrics
     CompactionMetricsManager.recordTaskInfo(
         task, CompactionTaskStatus.FINISHED, runningCompactionTaskList.size());
@@ -290,10 +298,12 @@ public class CompactionTaskManager implements IService {
    *
    * @throws RejectedExecutionException
    */
-  public synchronized void submitTask(Callable<Void> compactionMergeTask)
+  public synchronized void submitTask(AbstractCompactionTask compactionTask)
       throws RejectedExecutionException {
     if (taskExecutionPool != null && !taskExecutionPool.isTerminated()) {
-      taskExecutionPool.submit(compactionMergeTask);
+      Future<Void> future = taskExecutionPool.submit(compactionTask);
+      runningCompactionTaskList.add(compactionTask);
+      futureList.add(new Pair<>(compactionTask, future));
       return;
     }
     logger.warn(
@@ -307,17 +317,17 @@ public class CompactionTaskManager implements IService {
    * Abort all compactions of a storage group. The caller must acquire the write lock of the
    * corresponding storage group.
    */
-  public void abortCompaction(String fullStorageGroupName) {
-    Set<Future<Void>> subTasks =
-        storageGroupTasks.getOrDefault(fullStorageGroupName, Collections.emptySet());
-    candidateCompactionTaskQueue.clear();
-    Iterator<Future<Void>> subIterator = subTasks.iterator();
-    while (subIterator.hasNext()) {
-      Future<Void> next = subIterator.next();
-      if (!next.isDone() && !next.isCancelled()) {
-        next.cancel(true);
+  public synchronized void abortCompaction(String storageGroupName) {
+    List<Pair<AbstractCompactionTask, Future<Void>>> pairToBeRemoved =
+        new ArrayList<>(futureList.size());
+    for (int i = 0; i < futureList.size(); i++) {
+      if (futureList.get(i).left.getFullStorageGroupName().contains(storageGroupName)) {
+        pairToBeRemoved.add(futureList.get(i));
       }
-      subIterator.remove();
+    }
+
+    for (Pair<AbstractCompactionTask, Future<Void>> futurePair : pairToBeRemoved) {
+      futureList.remove(futurePair);
     }
   }
 
