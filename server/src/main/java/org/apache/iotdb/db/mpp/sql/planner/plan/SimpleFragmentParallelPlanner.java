@@ -115,11 +115,6 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
     return instanceMap.get(planNodeMap.get(exchangeNodeId));
   }
 
-  private void addSinkNodeToRootPlanFragment() {
-    FragmentInstance rootInstance = instanceMap.get(subPlan.getPlanFragment().getId());
-
-  }
-
   private void recordPlanNodeRelation(PlanNode root, PlanFragmentId planFragmentId) {
     planNodeMap.put(root.getId(), planFragmentId);
     for (PlanNode child : root.getChildren()) {
