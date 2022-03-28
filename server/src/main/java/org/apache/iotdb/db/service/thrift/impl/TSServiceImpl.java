@@ -327,6 +327,16 @@ public class TSServiceImpl implements TSIService.Iface {
     return resp.setSessionId(openSessionResp.getSessionId());
   }
 
+  public TSOpenSessionResp openSessionV2(TSOpenSessionReq req) throws TException {
+    IoTDBConstant.ClientVersion clientVersion = parseClientVersion(req);
+    BasicOpenSessionResp openSessionResp =
+        SESSION_MANAGER.openSession(
+            req.username, req.password, req.zoneId, req.client_protocol, clientVersion);
+    TSStatus tsStatus = RpcUtils.getStatus(openSessionResp.getCode(), openSessionResp.getMessage());
+    TSOpenSessionResp resp = new TSOpenSessionResp(tsStatus, CURRENT_RPC_VERSION);
+    return resp.setSessionId(openSessionResp.getSessionId());
+  }
+
   private IoTDBConstant.ClientVersion parseClientVersion(TSOpenSessionReq req) {
     Map<String, String> configuration = req.configuration;
     if (configuration != null && configuration.containsKey("version")) {
@@ -339,6 +349,13 @@ public class TSServiceImpl implements TSIService.Iface {
   public TSStatus closeSession(TSCloseSessionReq req) {
     return new TSStatus(
         !serviceProvider.closeSession(req.sessionId)
+            ? RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR)
+            : RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+  }
+
+  public TSStatus closeSessionV2(TSCloseSessionReq req) {
+    return new TSStatus(
+        !SESSION_MANAGER.closeSession(req.sessionId)
             ? RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR)
             : RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
   }
@@ -367,7 +384,7 @@ public class TSServiceImpl implements TSIService.Iface {
     try {
       switch (req.getType()) {
         case "METADATA_IN_JSON":
-          resp.setMetadataInJson(IoTDB.schemaEngine.getMetadataInString());
+          resp.setMetadataInJson(IoTDB.schemaProcessor.getMetadataInString());
           status = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
           break;
         case "COLUMN":
@@ -398,11 +415,11 @@ public class TSServiceImpl implements TSIService.Iface {
   }
 
   protected List<MeasurementPath> getPaths(PartialPath path) throws MetadataException {
-    return IoTDB.schemaEngine.getMeasurementPaths(path);
+    return IoTDB.schemaProcessor.getMeasurementPaths(path);
   }
 
   protected TSDataType getSeriesTypeByPath(PartialPath path) throws MetadataException {
-    return IoTDB.schemaEngine.getSeriesType(path);
+    return IoTDB.schemaProcessor.getSeriesType(path);
   }
 
   private boolean executeInsertRowsPlan(InsertRowsPlan insertRowsPlan, List<TSStatus> result) {
@@ -2009,36 +2026,36 @@ public class TSServiceImpl implements TSIService.Iface {
       switch (TemplateQueryType.values()[req.getQueryType()]) {
         case COUNT_MEASUREMENTS:
           resp.setQueryType(TemplateQueryType.COUNT_MEASUREMENTS.ordinal());
-          resp.setCount(IoTDB.schemaEngine.countMeasurementsInTemplate(req.name));
+          resp.setCount(IoTDB.schemaProcessor.countMeasurementsInTemplate(req.name));
           break;
         case IS_MEASUREMENT:
           path = req.getMeasurement();
           resp.setQueryType(TemplateQueryType.IS_MEASUREMENT.ordinal());
-          resp.setResult(IoTDB.schemaEngine.isMeasurementInTemplate(req.name, path));
+          resp.setResult(IoTDB.schemaProcessor.isMeasurementInTemplate(req.name, path));
           break;
         case PATH_EXIST:
           path = req.getMeasurement();
           resp.setQueryType(TemplateQueryType.PATH_EXIST.ordinal());
-          resp.setResult(IoTDB.schemaEngine.isPathExistsInTemplate(req.name, path));
+          resp.setResult(IoTDB.schemaProcessor.isPathExistsInTemplate(req.name, path));
           break;
         case SHOW_MEASUREMENTS:
           path = req.getMeasurement();
           resp.setQueryType(TemplateQueryType.SHOW_MEASUREMENTS.ordinal());
-          resp.setMeasurements(IoTDB.schemaEngine.getMeasurementsInTemplate(req.name, path));
+          resp.setMeasurements(IoTDB.schemaProcessor.getMeasurementsInTemplate(req.name, path));
           break;
         case SHOW_TEMPLATES:
           resp.setQueryType(TemplateQueryType.SHOW_TEMPLATES.ordinal());
-          resp.setMeasurements(new ArrayList<>(IoTDB.schemaEngine.getAllTemplates()));
+          resp.setMeasurements(new ArrayList<>(IoTDB.schemaProcessor.getAllTemplates()));
           break;
         case SHOW_SET_TEMPLATES:
           path = req.getName();
           resp.setQueryType(TemplateQueryType.SHOW_SET_TEMPLATES.ordinal());
-          resp.setMeasurements(new ArrayList<>(IoTDB.schemaEngine.getPathsSetTemplate(path)));
+          resp.setMeasurements(new ArrayList<>(IoTDB.schemaProcessor.getPathsSetTemplate(path)));
           break;
         case SHOW_USING_TEMPLATES:
           path = req.getName();
           resp.setQueryType(TemplateQueryType.SHOW_USING_TEMPLATES.ordinal());
-          resp.setMeasurements(new ArrayList<>(IoTDB.schemaEngine.getPathsUsingTemplate(path)));
+          resp.setMeasurements(new ArrayList<>(IoTDB.schemaProcessor.getPathsUsingTemplate(path)));
           break;
       }
       resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully"));

@@ -158,7 +158,7 @@ public class EnvironmentUtils {
       BloomFilterCache.getInstance().clear();
     }
     // close metadata
-    IoTDB.schemaEngine.clear();
+    IoTDB.configManager.clear();
 
     QueryTimeManager.getInstance().clear();
 
@@ -252,6 +252,8 @@ public class EnvironmentUtils {
     cleanDir(config.getUdfDir());
     // delete tlog
     cleanDir(config.getTriggerDir());
+    // delete mqtt dir
+    cleanDir(config.getMqttDir());
     // delete wal
     for (String walDir : config.getWalDirs()) {
       cleanDir(walDir);
@@ -323,7 +325,7 @@ public class EnvironmentUtils {
   public static void restartDaemon() throws Exception {
     shutdownDaemon();
     stopDaemon();
-    IoTDB.schemaEngine.clear();
+    IoTDB.configManager.clear();
     IDTableManager.getInstance().clear();
     TsFileResourceManager.getInstance().clear();
     WALManager.getInstance().clear();

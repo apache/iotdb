@@ -46,7 +46,7 @@ public abstract class InsertPlan extends PhysicalPlan implements WALEditValue {
   protected String[] measurements;
   // get from client
   protected TSDataType[] dataTypes;
-  // get from SchemaEngine
+  // get from SchemaProcessor
   protected IMeasurementMNode[] measurementMNodes;
 
   /**

@@ -23,17 +23,19 @@ import org.apache.iotdb.commons.partition.DataPartitionInfo;
 import org.apache.iotdb.commons.partition.DataRegionReplicaSet;
 import org.apache.iotdb.commons.partition.SchemaPartitionInfo;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /** Analysis used for planning a query. TODO: This class may need to store more info for a query. */
 public class Analysis {
   // Description for each series. Such as dataType, existence
 
-  // Data distribution info for each series. Series -> [VSG, VSG]
+  // Data distribution info for each series. Series -> [DataRegion, DataRegion]
 
   // Map<PartialPath, List<FullPath>> Used to remove asterisk
 
@@ -47,7 +49,9 @@ public class Analysis {
 
   private SchemaPartitionInfo schemaPartitionInfo;
 
-  private Map<String, MeasurementSchema> schemaMap;
+  private SchemaTree schemaTree;
+
+  private Map<String, Set<PartialPath>> deviceIdToPathsMap;
 
   public List<DataRegionReplicaSet> getPartitionInfo(PartialPath seriesPath, Filter timefilter) {
     // TODO: (xingtanzjr) implement the calculation of timePartitionIdList
@@ -78,11 +82,19 @@ public class Analysis {
     this.schemaPartitionInfo = schemaPartitionInfo;
   }
 
-  public Map<String, MeasurementSchema> getSchemaMap() {
-    return schemaMap;
+  public SchemaTree getSchemaTree() {
+    return schemaTree;
   }
 
-  public void setSchemaMap(Map<String, MeasurementSchema> schemaMap) {
-    this.schemaMap = schemaMap;
+  public void setSchemaTree(SchemaTree schemaTree) {
+    this.schemaTree = schemaTree;
+  }
+
+  public Map<String, Set<PartialPath>> getDeviceIdToPathsMap() {
+    return deviceIdToPathsMap;
+  }
+
+  public void setDeviceIdToPathsMap(Map<String, Set<PartialPath>> deviceIdToPathsMap) {
+    this.deviceIdToPathsMap = deviceIdToPathsMap;
   }
 }

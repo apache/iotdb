@@ -37,7 +37,7 @@ import org.apache.iotdb.cluster.log.applier.DataLogApplier;
 import org.apache.iotdb.cluster.log.manage.PartitionedSnapshotLogManager;
 import org.apache.iotdb.cluster.log.manage.RaftLogManager;
 import org.apache.iotdb.cluster.log.snapshot.FileSnapshot;
-import org.apache.iotdb.cluster.metadata.CSchemaEngine;
+import org.apache.iotdb.cluster.metadata.CSchemaProcessor;
 import org.apache.iotdb.cluster.metadata.MetaPuller;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
@@ -148,9 +148,9 @@ public class BaseMember {
       getDataGroupMember(node);
     }
 
-    IoTDB.setSchemaEngine(CSchemaEngine.getInstance());
-    CSchemaEngine.getInstance().setMetaGroupMember(testMetaMember);
-    CSchemaEngine.getInstance().setCoordinator(coordinator);
+    IoTDB.setSchemaProcessor(CSchemaProcessor.getInstance());
+    CSchemaProcessor.getInstance().setMetaGroupMember(testMetaMember);
+    CSchemaProcessor.getInstance().setCoordinator(coordinator);
 
     EnvironmentUtils.envSetUp();
     prevUrls = ClusterDescriptor.getInstance().getConfig().getSeedNodeUrls();
@@ -163,7 +163,7 @@ public class BaseMember {
 
     for (int i = 0; i < 10; i++) {
       try {
-        IoTDB.schemaEngine.setStorageGroup(new PartialPath(TestUtils.getTestSg(i)));
+        IoTDB.schemaProcessor.setStorageGroup(new PartialPath(TestUtils.getTestSg(i)));
         for (int j = 0; j < 20; j++) {
           SchemaUtils.registerTimeseries(TestUtils.getTestTimeSeriesSchema(i, j));
         }

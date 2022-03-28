@@ -31,7 +31,6 @@ import java.util.Map;
 import java.util.TreeMap;
 
 public class CreateTimeSeriesNode extends PlanNode {
-
   private PartialPath path;
   private TSDataType dataType;
   private TSEncoding encoding;
