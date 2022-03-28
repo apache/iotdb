@@ -92,7 +92,7 @@ jobs:
       - name: Install Boost
         run: cd C:\local\boost_1_58_0 ; `
           .\bootstrap.bat ; `
-          .\b2.exe
+          .\b2
       - name: Install OpenSSL
         run:  choco install openssl
       - name: Add Flex and Bison Path and OpenSSL
