@@ -32,6 +32,8 @@ import java.util.List;
 
 public class ExchangeNode extends PlanNode {
   private PlanNode child;
+  // The remoteSourceNode is used to record the remote source info for current ExchangeNode
+  // It is not the child of current ExchangeNode
   private FragmentSinkNode remoteSourceNode;
 
   // In current version, one ExchangeNode will only have one source.
@@ -54,7 +56,9 @@ public class ExchangeNode extends PlanNode {
   }
 
   @Override
-  public void addChildren(PlanNode child) {}
+  public void addChild(PlanNode child) {
+    this.child = child;
+  }
 
   @Override
   public PlanNode clone() {
@@ -68,12 +72,8 @@ public class ExchangeNode extends PlanNode {
   }
 
   @Override
-  public PlanNode cloneWithChildren(List<PlanNode> children) {
-    ExchangeNode node = (ExchangeNode) clone();
-    if (children != null && children.size() > 0) {
-      node.setChild(children.get(0));
-    }
-    return node;
+  public int allowedChildCount() {
+    return CHILD_COUNT_NO_LIMIT;
   }
 
   public void setUpstream(EndPoint endPoint, FragmentInstanceId instanceId, PlanNodeId nodeId) {

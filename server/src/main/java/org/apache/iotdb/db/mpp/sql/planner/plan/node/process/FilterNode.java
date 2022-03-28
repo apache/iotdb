@@ -34,14 +34,18 @@ import java.util.List;
 /** The FilterNode is responsible to filter the RowRecord from TsBlock. */
 public class FilterNode extends ProcessNode {
 
-  private final PlanNode child;
+  private PlanNode child;
 
   private final QueryFilter predicate;
 
-  public FilterNode(PlanNodeId id, PlanNode child, QueryFilter predicate) {
+  public FilterNode(PlanNodeId id, QueryFilter predicate) {
     super(id);
-    this.child = child;
     this.predicate = predicate;
+  }
+
+  public FilterNode(PlanNodeId id, PlanNode child, QueryFilter predicate) {
+    this(id, predicate);
+    this.child = child;
   }
 
   @Override
@@ -50,16 +54,18 @@ public class FilterNode extends ProcessNode {
   }
 
   @Override
-  public void addChildren(PlanNode child) {}
-
-  @Override
-  public PlanNode clone() {
-    return null;
+  public void addChild(PlanNode child) {
+    this.child = child;
   }
 
   @Override
-  public PlanNode cloneWithChildren(List<PlanNode> children) {
-    return null;
+  public PlanNode clone() {
+    return new FilterNode(getId(), predicate);
+  }
+
+  @Override
+  public int allowedChildCount() {
+    return ONE_CHILD;
   }
 
   @Override

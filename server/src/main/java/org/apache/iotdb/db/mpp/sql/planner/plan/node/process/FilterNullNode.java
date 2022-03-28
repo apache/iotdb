@@ -46,14 +46,14 @@ public class FilterNullNode extends ProcessNode {
     this.child = child;
   }
 
-  public FilterNullNode(
-      PlanNodeId id,
-      PlanNode child,
-      FilterNullPolicy discardPolicy,
-      List<String> filterNullColumnNames) {
+  public FilterNullNode(PlanNodeId id, FilterNullPolicy policy) {
     super(id);
+    this.discardPolicy = policy;
+  }
+
+  public FilterNullNode(PlanNodeId id, PlanNode child, FilterNullPolicy discardPolicy, List<String> filterNullColumnNames) {
+    this(id, discardPolicy);
     this.child = child;
-    this.discardPolicy = discardPolicy;
     this.filterNullColumnNames = filterNullColumnNames;
   }
 
@@ -63,16 +63,18 @@ public class FilterNullNode extends ProcessNode {
   }
 
   @Override
-  public void addChildren(PlanNode child) {}
-
-  @Override
-  public PlanNode clone() {
-    return null;
+  public void addChild(PlanNode child) {
+    this.child = child;
   }
 
   @Override
-  public PlanNode cloneWithChildren(List<PlanNode> children) {
-    return null;
+  public PlanNode clone() {
+    return new FilterNullNode(getId(), discardPolicy);
+  }
+
+  @Override
+  public int allowedChildCount() {
+    return ONE_CHILD;
   }
 
   @Override

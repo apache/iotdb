@@ -142,7 +142,7 @@ public class SeriesScanNode extends SourceNode {
   }
 
   @Override
-  public void addChildren(PlanNode child) {}
+  public void addChild(PlanNode child) {}
 
   @Override
   public PlanNode clone() {
@@ -150,8 +150,8 @@ public class SeriesScanNode extends SourceNode {
   }
 
   @Override
-  public PlanNode cloneWithChildren(List<PlanNode> children) {
-    return this.clone();
+  public int allowedChildCount() {
+    return NO_CHILD_ALLOWED;
   }
 
   @Override

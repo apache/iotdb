@@ -54,7 +54,9 @@ public class LimitNode extends ProcessNode {
   }
 
   @Override
-  public void addChildren(PlanNode child) {}
+  public void addChild(PlanNode child) {
+    this.child = child;
+  }
 
   @Override
   public PlanNode clone() {
@@ -62,10 +64,8 @@ public class LimitNode extends ProcessNode {
   }
 
   @Override
-  public PlanNode cloneWithChildren(List<PlanNode> children) {
-    LimitNode root = (LimitNode) this.clone();
-    root.setChild(children.get(0));
-    return root;
+  public int allowedChildCount() {
+    return ONE_CHILD;
   }
 
   @Override

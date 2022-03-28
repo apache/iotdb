@@ -48,7 +48,9 @@ public class FragmentSinkNode extends SinkNode {
   }
 
   @Override
-  public void addChildren(PlanNode child) {}
+  public void addChild(PlanNode child) {
+    this.child = child;
+  }
 
   @Override
   public PlanNode clone() {
@@ -59,15 +61,8 @@ public class FragmentSinkNode extends SinkNode {
   }
 
   @Override
-  public PlanNode cloneWithChildren(List<PlanNode> children) {
-    Validate.isTrue(
-        children == null || children.size() == 1,
-        "Children size of FragmentSinkNode should be 0 or 1");
-    FragmentSinkNode sinkNode = (FragmentSinkNode) clone();
-    if (children != null) {
-      sinkNode.setChild(children.get(0));
-    }
-    return sinkNode;
+  public int allowedChildCount() {
+    return ONE_CHILD;
   }
 
   @Override
