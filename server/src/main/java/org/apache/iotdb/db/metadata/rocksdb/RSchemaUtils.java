@@ -33,6 +33,17 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.apache.commons.lang3.ArrayUtils;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
+
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
@@ -61,16 +72,6 @@ import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.ROOT;
 import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.ROOT_CHAR;
 import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.ROOT_STRING;
 import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.ZERO;
-
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.stream.Collectors;
 
 public class RSchemaUtils {
   public static RMNodeType[] NODE_TYPE_ARRAY = new RMNodeType[NODE_TYPE_ALIAS + 1];

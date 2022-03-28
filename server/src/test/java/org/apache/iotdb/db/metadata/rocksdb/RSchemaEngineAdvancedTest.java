@@ -31,13 +31,14 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import org.junit.After;
 import org.junit.Assert;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.util.Collections;
 import java.util.List;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 public class RSchemaEngineAdvancedTest {
 
