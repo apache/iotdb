@@ -29,9 +29,9 @@ import org.openjdk.jol.info.ClassLayout;
 
 import java.util.Arrays;
 
+import static io.airlift.slice.SizeOf.sizeOf;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
-import static org.openjdk.jol.util.VMSupport.sizeOf;
 
 /**
  * Intermediate result for most of ExecOperators. The Tablet contains data from one or more columns
