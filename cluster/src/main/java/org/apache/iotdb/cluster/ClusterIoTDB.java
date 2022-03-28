@@ -32,7 +32,7 @@ import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.coordinator.Coordinator;
 import org.apache.iotdb.cluster.exception.ConfigInconsistentException;
 import org.apache.iotdb.cluster.exception.StartUpCheckFailureException;
-import org.apache.iotdb.cluster.metadata.CSchemaEngine;
+import org.apache.iotdb.cluster.metadata.CSchemaProcessor;
 import org.apache.iotdb.cluster.metadata.MetaPuller;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.partition.slot.SlotStrategy;
@@ -151,9 +151,9 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
             IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable());
     metaGroupMember = new MetaGroupMember(protocolFactory, thisNode, coordinator);
     IoTDB.setClusterMode();
-    IoTDB.setSchemaEngine(CSchemaEngine.getInstance());
-    ((CSchemaEngine) IoTDB.schemaEngine).setMetaGroupMember(metaGroupMember);
-    ((CSchemaEngine) IoTDB.schemaEngine).setCoordinator(coordinator);
+    IoTDB.setSchemaProcessor(CSchemaProcessor.getInstance());
+    ((CSchemaProcessor) IoTDB.schemaProcessor).setMetaGroupMember(metaGroupMember);
+    ((CSchemaProcessor) IoTDB.schemaProcessor).setCoordinator(coordinator);
     MetaPuller.getInstance().init(metaGroupMember);
     // set coordinator for serviceProvider construction
     try {

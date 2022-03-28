@@ -24,7 +24,7 @@ import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.ReaderNotFoundException;
-import org.apache.iotdb.cluster.metadata.CSchemaEngine;
+import org.apache.iotdb.cluster.metadata.CSchemaProcessor;
 import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
 import org.apache.iotdb.cluster.rpc.thrift.GetAllPathsResult;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
@@ -287,7 +287,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
       throws TException {
     try {
       dataGroupMember.syncLeaderWithConsistencyCheck(false);
-      return ((CSchemaEngine) IoTDB.schemaEngine).getAllPaths(paths, withAlias);
+      return ((CSchemaProcessor) IoTDB.schemaProcessor).getAllPaths(paths, withAlias);
     } catch (MetadataException | CheckConsistencyException e) {
       throw new TException(e);
     }
@@ -298,7 +298,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
       throws TException {
     try {
       dataGroupMember.syncLeaderWithConsistencyCheck(false);
-      return ((CSchemaEngine) IoTDB.schemaEngine).getAllDevices(path, isPrefixMatch);
+      return ((CSchemaProcessor) IoTDB.schemaProcessor).getAllDevices(path, isPrefixMatch);
     } catch (MetadataException | CheckConsistencyException e) {
       throw new TException(e);
     }
@@ -317,7 +317,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   public List<String> getNodeList(RaftNode header, String path, int nodeLevel) throws TException {
     try {
       dataGroupMember.syncLeaderWithConsistencyCheck(false);
-      return ((CSchemaEngine) IoTDB.schemaEngine).getNodeList(path, nodeLevel);
+      return ((CSchemaProcessor) IoTDB.schemaProcessor).getNodeList(path, nodeLevel);
     } catch (CheckConsistencyException | MetadataException e) {
       throw new TException(e);
     }
@@ -327,7 +327,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   public Set<String> getChildNodeInNextLevel(RaftNode header, String path) throws TException {
     try {
       dataGroupMember.syncLeaderWithConsistencyCheck(false);
-      return ((CSchemaEngine) IoTDB.schemaEngine).getChildNodeInNextLevel(path);
+      return ((CSchemaProcessor) IoTDB.schemaProcessor).getChildNodeInNextLevel(path);
     } catch (CheckConsistencyException | MetadataException e) {
       throw new TException(e);
     }
@@ -337,7 +337,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   public Set<String> getChildNodePathInNextLevel(RaftNode header, String path) throws TException {
     try {
       dataGroupMember.syncLeaderWithConsistencyCheck(false);
-      return ((CSchemaEngine) IoTDB.schemaEngine).getChildNodePathInNextLevel(path);
+      return ((CSchemaProcessor) IoTDB.schemaProcessor).getChildNodePathInNextLevel(path);
     } catch (CheckConsistencyException | MetadataException e) {
       throw new TException(e);
     }

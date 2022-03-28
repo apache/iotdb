@@ -193,7 +193,7 @@ public class LocalConfigManager {
         timedForceMLogThread = null;
       }
     } catch (IOException e) {
-      logger.error("Error occurred when clearing SchemaEngine:", e);
+      logger.error("Error occurred when clearing LocalConfigManager:", e);
     }
 
     initialized = false;
@@ -440,7 +440,7 @@ public class LocalConfigManager {
   }
 
   public Pair<List<PartialPath>, Set<PartialPath>> getNodesListInGivenLevel(
-      PartialPath pathPattern, int nodeLevel, SchemaEngine.StorageGroupFilter filter)
+      PartialPath pathPattern, int nodeLevel, LocalSchemaProcessor.StorageGroupFilter filter)
       throws MetadataException {
     return storageGroupSchemaManager.getNodesListInGivenLevel(pathPattern, nodeLevel, filter);
   }

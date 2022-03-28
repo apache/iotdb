@@ -53,38 +53,38 @@ public class ConcatOptimizerTest {
   public void before() throws MetadataException {
     processor = new Planner();
     IoTDB.configManager.init();
-    IoTDB.schemaEngine.setStorageGroup(new PartialPath("root.laptop"));
-    IoTDB.schemaEngine.createTimeseries(
+    IoTDB.schemaProcessor.setStorageGroup(new PartialPath("root.laptop"));
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.laptop.d1.s1"),
         TSDataType.INT64,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
-    IoTDB.schemaEngine.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.laptop.d1.s2"),
         TSDataType.INT64,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
-    IoTDB.schemaEngine.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.laptop.d2.s1"),
         TSDataType.INT64,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
-    IoTDB.schemaEngine.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.laptop.d2.s2"),
         TSDataType.INT64,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
-    IoTDB.schemaEngine.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.laptop.d3.s1"),
         TSDataType.INT64,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
-    IoTDB.schemaEngine.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.laptop.d3.s2"),
         TSDataType.INT64,
         TSEncoding.PLAIN,

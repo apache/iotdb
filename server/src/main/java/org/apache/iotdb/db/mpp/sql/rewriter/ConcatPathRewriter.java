@@ -355,7 +355,8 @@ public class ConcatPathRewriter implements IStatementRewriter {
     try {
       for (PartialPath originalPath : originalPaths) {
         List<MeasurementPath> all =
-            IoTDB.schemaEngine.getMeasurementPathsWithAlias(originalPath, 0, 0, isPrefixMatch).left;
+            IoTDB.schemaProcessor.getMeasurementPathsWithAlias(originalPath, 0, 0, isPrefixMatch)
+                .left;
         if (all.isEmpty()) {
           throw new StatementAnalyzeException(
               String.format("Unknown time series %s in `where clause`", originalPath));
