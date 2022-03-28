@@ -137,7 +137,12 @@ public class SchemaFile implements ISchemaFile {
     }
 
     if (!pmtFile.exists() || !pmtFile.isFile()) {
-      File folder = new File(SchemaFile.FILE_FOLDER + sgName);
+      File folder =
+          new File(
+              SchemaFile.FILE_FOLDER
+                  + sgName
+                  + File.separator
+                  + schemaRegionId.getSchemaRegionId());
       folder.mkdirs();
       pmtFile.createNewFile();
     }

@@ -19,14 +19,11 @@
 package org.apache.iotdb.db.metadata.multimode;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.metadata.SchemaEngineBasicTest;
 
-public class SchemaEngineMemoryModeTest extends SchemaEngineBasicTest {
+public class SchemaFullMemoryTest extends SchemaDiskModeTest {
+
   @Override
-  protected void setConfig() {
-    IoTDBDescriptor.getInstance().getConfig().setEnablePersistentSchema(false);
+  protected void setMemSize() {
+    IoTDBDescriptor.getInstance().getConfig().setCachedMetadataSizeInPersistentMode(10000);
   }
-
-  @Override
-  protected void rollBackConfig() {}
 }

@@ -217,7 +217,7 @@ public class TriggerRegistrationService implements IService {
     IMeasurementMNode measurementMNode = executor.getMeasurementMNode();
     try {
       measurementMNode.setTriggerExecutor(null);
-      IoTDB.schemaEngine.releaseMeasurementMNodeAfterDropTrigger(executor.getMeasurementMNode());
+      IoTDB.schemaProcessor.releaseMeasurementMNodeAfterDropTrigger(executor.getMeasurementMNode());
     } catch (MetadataException e) {
       throw new TriggerManagementException(e.getMessage(), e);
     }

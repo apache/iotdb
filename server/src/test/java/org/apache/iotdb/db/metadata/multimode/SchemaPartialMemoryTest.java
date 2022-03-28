@@ -20,7 +20,7 @@ package org.apache.iotdb.db.metadata.multimode;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
-public class SchemaEnginePartialMemoryTest extends SchemaEngineDiskModeTest {
+public class SchemaPartialMemoryTest extends SchemaDiskModeTest {
   @Override
   protected void setMemSize() {
     IoTDBDescriptor.getInstance().getConfig().setCachedMetadataSizeInPersistentMode(5);
