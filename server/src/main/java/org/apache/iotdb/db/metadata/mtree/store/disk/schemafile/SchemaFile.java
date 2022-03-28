@@ -681,10 +681,6 @@ public class SchemaFile implements ISchemaFile {
 
   // region Schema Page Operations
 
-  private ISchemaPage getRootPage() {
-    return rootPage;
-  }
-
   /**
    * This method checks with cached page container, LOCK and return a minimum applicable page for
    * allocation.
@@ -702,7 +698,9 @@ public class SchemaFile implements ISchemaFile {
   }
 
   /**
-   * Get from cache, or load from file.
+   * Get from cache, or load from file.<br>
+   * When to operate on page cache, need to handle concurrency control with {@link
+   * SchemaFile#addPageToCache}
    *
    * @param pageIdx target page index
    * @return an existed page
@@ -718,12 +716,19 @@ public class SchemaFile implements ISchemaFile {
       return rootPage;
     }
 
+    // TODO: improve concurrent control
     try {
       pageLocks.readLock(pageIdx);
 
       if (pageInstCache.containsKey(pageIdx)) {
         return pageInstCache.get(pageIdx);
       }
+    } finally {
+      pageLocks.readUnlock(pageIdx);
+    }
+
+    try {
+      pageLocks.writeLock(pageIdx);
 
       ByteBuffer newBuf = ByteBuffer.allocate(PAGE_LENGTH);
 
@@ -731,8 +736,13 @@ public class SchemaFile implements ISchemaFile {
       addPageToCache(pageIdx, SchemaPage.loadPage(newBuf, pageIdx));
       return pageInstCache.get(pageIdx);
     } finally {
-      pageLocks.readUnlock(pageIdx);
+      pageLocks.writeUnlock(pageIdx);
     }
+  }
+
+  private int loadFromFile(ByteBuffer dst, int pageIndex) throws IOException {
+    dst.clear();
+    return channel.read(dst, getPageAddress(pageIndex));
   }
 
   private ISchemaPage allocateNewPage() throws IOException {
@@ -744,7 +754,7 @@ public class SchemaFile implements ISchemaFile {
 
   private void addPageToCache(int pageIndex, ISchemaPage page) throws IOException {
     pageInstCache.put(pageIndex, page);
-    // only one thread evict and flush pages
+    // only one thread evicts and flushes pages
     if (evictLock.tryLock()) {
       try {
         if (pageInstCache.size() >= PAGE_CACHE_SIZE) {
@@ -866,11 +876,6 @@ public class SchemaFile implements ISchemaFile {
   public static IMNode setNodeAddress(IMNode node, long addr) {
     ICachedMNodeContainer.getCachedMNodeContainer(node).setSegmentAddress(addr);
     return node;
-  }
-
-  private int loadFromFile(ByteBuffer dst, int pageIndex) throws IOException {
-    dst.clear();
-    return channel.read(dst, getPageAddress(pageIndex));
   }
 
   private void flushPageToFile(ISchemaPage src) throws IOException {
