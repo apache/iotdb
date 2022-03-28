@@ -27,14 +27,11 @@ import org.apache.iotdb.db.engine.trigger.executor.TriggerEngine;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
-import org.apache.iotdb.db.exception.metadata.DifferentTemplateException;
 import org.apache.iotdb.db.exception.metadata.MNodeTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.metadata.NoTemplateOnMNodeException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.metadata.template.DifferentTemplateException;
 import org.apache.iotdb.db.exception.metadata.template.NoTemplateOnMNodeException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
@@ -1892,11 +1889,7 @@ public class SchemaRegion {
 
   public IMeasurementMNode getMeasurementMNodeForTrigger(PartialPath fullPath)
       throws MetadataException {
-    try {
-      return mtree.getMeasurementMNode(fullPath);
-    } catch (StorageGroupNotSetException e) {
-      throw new PathNotExistException(fullPath.getFullPath());
-    }
+    return mtree.getMeasurementMNode(fullPath);
   }
 
   public void releaseMeasurementMNodeAfterDropTrigger(IMeasurementMNode measurementMNode)
@@ -1904,12 +1897,5 @@ public class SchemaRegion {
     mtree.unPinMNode(measurementMNode);
   }
 
-  // endregion
-
-  // region Interfaces for TestOnly
-  @TestOnly
-  public MTreeBelowSG getMtree() {
-    return mtree;
-  }
   // endregion
 }

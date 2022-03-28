@@ -29,10 +29,10 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.exception.metadata.UndefinedTemplateException;
+import org.apache.iotdb.db.exception.metadata.template.UndefinedTemplateException;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.metadata.rescon.TimeseriesStatistics;
+import org.apache.iotdb.db.metadata.rescon.MetadataResourceManager;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaRegionManager;
 import org.apache.iotdb.db.metadata.storagegroup.IStorageGroupSchemaManager;
@@ -79,8 +79,6 @@ public class LocalConfigManager {
 
   private ScheduledExecutorService timedForceMLogThread;
 
-  private TimeseriesStatistics timeseriesStatistics = TimeseriesStatistics.getInstance();
-
   private IStorageGroupSchemaManager storageGroupSchemaManager =
       StorageGroupSchemaManager.getInstance();
   private TemplateManager templateManager = TemplateManager.getInstance();
@@ -119,7 +117,7 @@ public class LocalConfigManager {
     }
 
     try {
-      timeseriesStatistics.init();
+      MetadataResourceManager.initMetadataResource();
 
       templateManager.init();
       storageGroupSchemaManager.init();
@@ -176,7 +174,7 @@ public class LocalConfigManager {
     }
 
     try {
-      timeseriesStatistics.clear();
+      MetadataResourceManager.clearMetadataResource();
 
       partitionTable.clear();
 

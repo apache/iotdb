@@ -71,7 +71,7 @@ public class StorageGroupSchemaManager implements IStorageGroupSchemaManager {
 
   private StorageGroupSchemaManager() {}
 
-  public synchronized void init() throws IOException {
+  public synchronized void init() throws MetadataException, IOException {
     isRecover = true;
 
     mtree = new MTreeAboveSG();

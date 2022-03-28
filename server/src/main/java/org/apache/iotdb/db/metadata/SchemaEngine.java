@@ -444,8 +444,8 @@ public class SchemaEngine {
       throws MetadataException {
     // todo this is for test assistance, refactor this to support massive timeseries
     if (pathPattern.getFullPath().equals("root.**")
-        && templateManager.getAllTemplateName().isEmpty()) {
-      return (int) timeseriesStatistics.getTotalSeriesNumber();
+        && TemplateManager.getInstance().getAllTemplateName().isEmpty()) {
+      return (int) TimeseriesStatistics.getInstance().getTotalSeriesNumber();
     }
     int count = 0;
     for (SchemaRegion schemaRegion : getInvolvedSchemaRegions(pathPattern, isPrefixMatch)) {
@@ -1369,9 +1369,7 @@ public class SchemaEngine {
   public IMeasurementMNode getMeasurementMNodeForTrigger(PartialPath fullPath)
       throws MetadataException {
     try {
-      return storageGroupSchemaManager
-          .getBelongedSchemaRegion(fullPath)
-          .getMeasurementMNodeForTrigger(fullPath);
+      return getBelongedSchemaRegion(fullPath).getMeasurementMNodeForTrigger(fullPath);
     } catch (StorageGroupNotSetException e) {
       throw new PathNotExistException(fullPath.getFullPath());
     }
@@ -1379,8 +1377,7 @@ public class SchemaEngine {
 
   public void releaseMeasurementMNodeAfterDropTrigger(IMeasurementMNode measurementMNode)
       throws MetadataException {
-    storageGroupSchemaManager
-        .getBelongedSchemaRegion(measurementMNode.getPartialPath())
+    getBelongedSchemaRegion(measurementMNode.getPartialPath())
         .releaseMeasurementMNodeAfterDropTrigger(measurementMNode);
   }
 
