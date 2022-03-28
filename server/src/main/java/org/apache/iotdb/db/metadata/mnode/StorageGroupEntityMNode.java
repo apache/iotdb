@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
-import org.apache.iotdb.db.metadata.SchemaRegion;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
+import org.apache.iotdb.db.metadata.schemaregion.SchemaRegion;
 
 import java.io.IOException;
 
@@ -48,23 +48,8 @@ public class StorageGroupEntityMNode extends EntityMNode implements IStorageGrou
   }
 
   @Override
-  public SchemaRegion getSchemaRegion() {
-    return schemaRegion;
-  }
-
-  @Override
-  public void setSchemaRegion(SchemaRegion schemaRegion) {
-    if (this.schemaRegion == null) {
-      this.schemaRegion = schemaRegion;
-    }
-  }
-
-  @Override
   public void moveDataToNewMNode(IMNode newMNode) {
     super.moveDataToNewMNode(newMNode);
-    if (newMNode.isStorageGroup()) {
-      newMNode.getAsStorageGroupMNode().setSchemaRegion(this.schemaRegion);
-    }
   }
 
   @Override

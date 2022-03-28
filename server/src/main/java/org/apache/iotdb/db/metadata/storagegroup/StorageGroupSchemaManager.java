@@ -17,29 +17,32 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.metadata;
+package org.apache.iotdb.db.metadata.storagegroup;
 
-import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mtree.MTreeAboveSG;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.LinkedList;
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
+import static org.apache.iotdb.db.metadata.MetadataConstant.STORAGE_GROUP_LOG;
 
 // This class implements all the interfaces for storage group management. The MTreeAboveSg is used
 // to manage all the storage groups and MNodes above storage group.
@@ -47,7 +50,13 @@ public class StorageGroupSchemaManager implements IStorageGroupSchemaManager {
 
   private static final Logger logger = LoggerFactory.getLogger(StorageGroupSchemaManager.class);
 
+  private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+
+  private StorageGroupLogWriter logWriter;
+
   private MTreeAboveSG mtree;
+
+  private boolean isRecover = true;
 
   private static class StorageGroupManagerHolder {
 
@@ -60,26 +69,68 @@ public class StorageGroupSchemaManager implements IStorageGroupSchemaManager {
     return StorageGroupManagerHolder.INSTANCE;
   }
 
-  private StorageGroupSchemaManager() {
+  private StorageGroupSchemaManager() {}
+
+  public synchronized void init() throws IOException {
+    isRecover = true;
+
     mtree = new MTreeAboveSG();
+
+    recoverLog();
+    logWriter = new StorageGroupLogWriter(config.getSchemaDir(), STORAGE_GROUP_LOG);
+
+    isRecover = false;
   }
 
-  public synchronized void init() {
-    mtree.init();
-    File dir = new File(IoTDBDescriptor.getInstance().getConfig().getSchemaDir());
-    File[] sgDirs = dir.listFiles((dir1, name) -> name.startsWith(PATH_ROOT + PATH_SEPARATOR));
-    if (sgDirs != null) {
-      for (File sgDir : sgDirs) {
+  public void recoverLog() throws IOException {
+    File logFile = new File(config.getSchemaDir(), STORAGE_GROUP_LOG);
+    if (!logFile.exists()) {
+      return;
+    }
+    try (StorageGroupLogReader logReader =
+        new StorageGroupLogReader(config.getSchemaDir(), STORAGE_GROUP_LOG)) {
+      PhysicalPlan plan;
+      while (logReader.hasNext()) {
+        plan = logReader.next();
         try {
-          setStorageGroup(new PartialPath(sgDir.getName()));
-        } catch (MetadataException e) {
-          logger.error("Cannot recover storage group from dir {} because", sgDir.getName(), e);
+          switch (plan.getOperatorType()) {
+            case SET_STORAGE_GROUP:
+              SetStorageGroupPlan setStorageGroupPlan = (SetStorageGroupPlan) plan;
+              setStorageGroup(setStorageGroupPlan.getPath());
+              break;
+            case DELETE_STORAGE_GROUP:
+              DeleteStorageGroupPlan deleteStorageGroupPlan = (DeleteStorageGroupPlan) plan;
+              deleteStorageGroup(deleteStorageGroupPlan.getPaths().get(0));
+              break;
+            case TTL:
+              SetTTLPlan setTTLPlan = (SetTTLPlan) plan;
+              setTTL(setTTLPlan.getStorageGroup(), setTTLPlan.getDataTTL());
+              break;
+            default:
+              logger.error("Unrecognizable command {}", plan.getOperatorType());
+          }
+        } catch (MetadataException | IOException e) {
+          logger.error("Error occurred while redo storage group log", e);
         }
       }
     }
   }
 
-  public synchronized void clear() {
+  @Override
+  public void forceLog() {
+    try {
+      logWriter.force();
+    } catch (IOException e) {
+      logger.error("Cannot force storage group log", e);
+    }
+  }
+
+  public synchronized void clear() throws IOException {
+    if (logWriter != null) {
+      logWriter.close();
+      logWriter = null;
+    }
+
     if (mtree != null) {
       mtree.clear();
     }
@@ -88,41 +139,33 @@ public class StorageGroupSchemaManager implements IStorageGroupSchemaManager {
   @Override
   public void setStorageGroup(PartialPath path) throws MetadataException {
     mtree.setStorageGroup(path);
-  }
-
-  @Override
-  public SchemaRegion getBelongedSchemaRegion(PartialPath path) throws MetadataException {
-    return mtree.getStorageGroupNodeByPath(path).getSchemaRegion();
-  }
-
-  @Override
-  public SchemaRegion getSchemaRegionByStorageGroupPath(PartialPath path) throws MetadataException {
-    return getStorageGroupNodeByStorageGroupPath(path).getSchemaRegion();
-  }
-
-  @Override
-  public List<SchemaRegion> getInvolvedSchemaRegions(PartialPath pathPattern, boolean isPrefixMatch)
-      throws MetadataException {
-    List<SchemaRegion> result = new ArrayList<>();
-    for (IStorageGroupMNode storageGroupMNode :
-        mtree.getInvolvedStorageGroupNodes(pathPattern, isPrefixMatch)) {
-      result.add(storageGroupMNode.getSchemaRegion());
+    if (!isRecover) {
+      try {
+        logWriter.setStorageGroup(path);
+      } catch (IOException e) {
+        throw new MetadataException(e);
+      }
     }
-    return result;
-  }
-
-  @Override
-  public List<SchemaRegion> getAllSchemaRegions() {
-    List<SchemaRegion> result = new ArrayList<>();
-    for (IStorageGroupMNode storageGroupMNode : mtree.getAllStorageGroupNodes()) {
-      result.add(storageGroupMNode.getSchemaRegion());
-    }
-    return result;
   }
 
   @Override
   public synchronized void deleteStorageGroup(PartialPath storageGroup) throws MetadataException {
     mtree.deleteStorageGroup(storageGroup);
+    if (!isRecover) {
+      try {
+        logWriter.deleteStorageGroup(storageGroup);
+      } catch (IOException e) {
+        throw new MetadataException(e);
+      }
+    }
+  }
+
+  @Override
+  public void setTTL(PartialPath storageGroup, long dataTTL) throws MetadataException, IOException {
+    mtree.getStorageGroupNodeByStorageGroupPath(storageGroup).setDataTTL(dataTTL);
+    if (!isRecover) {
+      logWriter.setTTL(storageGroup, dataTTL);
+    }
   }
 
   @Override
@@ -144,6 +187,12 @@ public class StorageGroupSchemaManager implements IStorageGroupSchemaManager {
   public List<PartialPath> getBelongedStorageGroups(PartialPath pathPattern)
       throws MetadataException {
     return mtree.getBelongedStorageGroups(pathPattern);
+  }
+
+  @Override
+  public List<PartialPath> getInvolvedStorageGroups(PartialPath pathPattern, boolean isPrefixMatch)
+      throws MetadataException {
+    return mtree.getInvolvedStorageGroupNodes(pathPattern, isPrefixMatch);
   }
 
   @Override
@@ -191,61 +240,27 @@ public class StorageGroupSchemaManager implements IStorageGroupSchemaManager {
   }
 
   @Override
-  public Pair<Integer, List<SchemaRegion>> getNodesCountInGivenLevel(
+  public Pair<Integer, Set<PartialPath>> getNodesCountInGivenLevel(
       PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException {
-    Pair<Integer, Set<IStorageGroupMNode>> resultAboveSG =
-        mtree.getNodesCountInGivenLevel(pathPattern, level, isPrefixMatch);
-    List<SchemaRegion> schemaRegions = new LinkedList<>();
-    for (IStorageGroupMNode storageGroupMNode : resultAboveSG.right) {
-      schemaRegions.add(storageGroupMNode.getSchemaRegion());
-    }
-    return new Pair<>(resultAboveSG.left, schemaRegions);
+    return mtree.getNodesCountInGivenLevel(pathPattern, level, isPrefixMatch);
   }
 
   @Override
-  public Pair<List<PartialPath>, List<SchemaRegion>> getNodesListInGivenLevel(
-      PartialPath pathPattern, int nodeLevel, SchemaEngine.StorageGroupFilter filter)
+  public Pair<List<PartialPath>, Set<PartialPath>> getNodesListInGivenLevel(
+      PartialPath pathPattern, int nodeLevel, LocalSchemaProcessor.StorageGroupFilter filter)
       throws MetadataException {
-    Pair<List<PartialPath>, Set<IStorageGroupMNode>> resultAboveSG =
-        mtree.getNodesListInGivenLevel(pathPattern, nodeLevel, filter);
-    List<SchemaRegion> schemaRegions = new LinkedList<>();
-    for (IStorageGroupMNode storageGroupMNode : resultAboveSG.right) {
-      schemaRegions.add(storageGroupMNode.getSchemaRegion());
-    }
-    return new Pair<>(resultAboveSG.left, schemaRegions);
+    return mtree.getNodesListInGivenLevel(pathPattern, nodeLevel, filter);
   }
 
   @Override
-  public Pair<Set<String>, List<SchemaRegion>> getChildNodePathInNextLevel(PartialPath pathPattern)
+  public Pair<Set<String>, Set<PartialPath>> getChildNodePathInNextLevel(PartialPath pathPattern)
       throws MetadataException {
-    Pair<Set<String>, Set<IStorageGroupMNode>> resultAboveSG =
-        mtree.getChildNodePathInNextLevel(pathPattern);
-    List<SchemaRegion> schemaRegions = new LinkedList<>();
-    for (IStorageGroupMNode storageGroupMNode : resultAboveSG.right) {
-      schemaRegions.add(storageGroupMNode.getSchemaRegion());
-    }
-    return new Pair<>(resultAboveSG.left, schemaRegions);
+    return mtree.getChildNodePathInNextLevel(pathPattern);
   }
 
   @Override
-  public Pair<Set<String>, List<SchemaRegion>> getChildNodeNameInNextLevel(PartialPath pathPattern)
+  public Pair<Set<String>, Set<PartialPath>> getChildNodeNameInNextLevel(PartialPath pathPattern)
       throws MetadataException {
-    Pair<Set<String>, Set<IStorageGroupMNode>> resultAboveSG =
-        mtree.getChildNodeNameInNextLevel(pathPattern);
-    List<SchemaRegion> schemaRegions = new LinkedList<>();
-    for (IStorageGroupMNode storageGroupMNode : resultAboveSG.right) {
-      schemaRegions.add(storageGroupMNode.getSchemaRegion());
-    }
-    return new Pair<>(resultAboveSG.left, schemaRegions);
-  }
-
-  @Override
-  public String getMetadataInString() {
-    return mtree.toString();
-  }
-
-  @TestOnly
-  public static StorageGroupSchemaManager getNewInstanceForTest() {
-    return new StorageGroupSchemaManager();
+    return mtree.getChildNodeNameInNextLevel(pathPattern);
   }
 }

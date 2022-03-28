@@ -113,7 +113,7 @@ public class MetaLogApplierTest extends IoTDBTest {
     physicalPlanLog.setPlan(setStorageGroupPlan);
 
     applier.apply(physicalPlanLog);
-    assertTrue(IoTDB.schemaEngine.isPathExist(new PartialPath("root.applyMeta")));
+    assertTrue(IoTDB.schemaProcessor.isPathExist(new PartialPath("root.applyMeta")));
 
     CreateTimeSeriesPlan createTimeSeriesPlan =
         new CreateTimeSeriesPlan(
@@ -127,9 +127,9 @@ public class MetaLogApplierTest extends IoTDBTest {
             null);
     physicalPlanLog.setPlan(createTimeSeriesPlan);
     applier.apply(physicalPlanLog);
-    assertTrue(IoTDB.schemaEngine.isPathExist(new PartialPath("root.applyMeta.s1")));
+    assertTrue(IoTDB.schemaProcessor.isPathExist(new PartialPath("root.applyMeta.s1")));
     assertEquals(
         TSDataType.DOUBLE,
-        IoTDB.schemaEngine.getSeriesType(new PartialPath("root" + ".applyMeta.s1")));
+        IoTDB.schemaProcessor.getSeriesType(new PartialPath("root" + ".applyMeta.s1")));
   }
 }
