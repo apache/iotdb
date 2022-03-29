@@ -130,7 +130,7 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
     ConsensusReadResponse resp = configManager.read(new QueryStorageGroupSchemaPlan());
 
     if (resp.getDataset() == null) {
-      return null;
+      return new HashMap<>();
     } else {
       Map<String, StorageGroupMessage> result = new HashMap<>();
       for (StorageGroupSchema schema :
