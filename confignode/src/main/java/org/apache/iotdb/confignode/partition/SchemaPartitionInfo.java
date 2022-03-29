@@ -28,6 +28,10 @@ public class SchemaPartitionInfo {
   // Map<StorageGroup, Map<DeviceGroupID, SchemaRegionPlaceInfo>>
   private Map<String, Map<Integer, SchemaRegionReplicaSet>> schemaPartitionInfo;
 
+  public SchemaPartitionInfo() {
+    schemaPartitionInfo = new HashMap<>();
+  }
+
   public Map<String, Map<Integer, SchemaRegionReplicaSet>> getSchemaPartitionInfo() {
     return schemaPartitionInfo;
   }
@@ -43,7 +47,8 @@ public class SchemaPartitionInfo {
     Map<Integer, SchemaRegionReplicaSet> deviceGroupMap = new HashMap<>();
     deviceGroupIDs.forEach(
         deviceGroupID -> {
-          if (schemaPartitionInfo.get(storageGroup).containsKey(deviceGroupID)) {
+          if (schemaPartitionInfo.get(storageGroup) != null
+              && schemaPartitionInfo.get(storageGroup).containsKey(deviceGroupID)) {
             deviceGroupMap.put(
                 deviceGroupID, schemaPartitionInfo.get(storageGroup).get(deviceGroupID));
           }

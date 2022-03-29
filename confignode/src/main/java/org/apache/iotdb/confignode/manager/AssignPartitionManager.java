@@ -27,8 +27,8 @@ import org.apache.iotdb.confignode.physical.sys.DataPartitionPlan;
 import org.apache.iotdb.confignode.physical.sys.SchemaPartitionPlan;
 import org.apache.iotdb.consensus.common.DataSet;
 
-import java.util.Collections;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /** manage data partition and schema partition */
@@ -117,9 +117,10 @@ public class AssignPartitionManager {
   private void allocateSchemaPartition(String storageGroup, List<Integer> deviceGroupIDs) {
     List<SchemaRegionReplicaSet> schemaRegionEndPoints =
         getAssignRegionManager().getSchemaRegionEndPoint();
-    Collections.shuffle(schemaRegionEndPoints);
+    Random random = new Random();
     for (int i = 0; i < deviceGroupIDs.size(); i++) {
-      SchemaRegionReplicaSet schemaRegionReplicaSet = schemaRegionEndPoints.get(i);
+      SchemaRegionReplicaSet schemaRegionReplicaSet =
+          schemaRegionEndPoints.get(random.nextInt(schemaRegionEndPoints.size()));
       schemaPartition.setSchemaRegionReplicaSet(
           storageGroup, deviceGroupIDs.get(i), schemaRegionReplicaSet);
     }

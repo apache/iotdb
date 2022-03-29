@@ -146,7 +146,8 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
     ConsensusReadResponse resp = consensusManager.read(applySchemaPartitionPlan);
     ((SchemaPartitionDataSet) resp.getDataset()).getSchemaPartitionInfo();
 
-    return null;
+    return SchemaPartitionDataSet.convertRpcSchemaPartition(
+        ((SchemaPartitionDataSet) resp.getDataset()).getSchemaPartitionInfo());
   }
 
   @Override
