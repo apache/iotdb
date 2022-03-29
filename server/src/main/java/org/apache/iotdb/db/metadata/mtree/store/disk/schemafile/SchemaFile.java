@@ -137,7 +137,7 @@ public class SchemaFile implements ISchemaFile {
 
     if (!pmtFile.exists() || !pmtFile.isFile()) {
       File folder =
-          new File(
+          SystemFileFactory.INSTANCE.getFile(
               SchemaFile.SCHEMA_FOLDER
                   + File.separator
                   + sgName
