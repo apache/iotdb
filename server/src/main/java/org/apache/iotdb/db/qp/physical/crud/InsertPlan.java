@@ -45,7 +45,7 @@ public abstract class InsertPlan extends PhysicalPlan {
   protected String[] measurements;
   // get from client
   protected TSDataType[] dataTypes;
-  // get from MManager
+  // get from SchemaProcessor
   protected IMeasurementMNode[] measurementMNodes;
 
   /**

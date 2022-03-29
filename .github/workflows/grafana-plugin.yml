@@ -9,6 +9,11 @@ on:
     branches:
       - master
       - "new_*"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -18,7 +23,7 @@ jobs:
       - name: Setup Node.js environment
         uses: actions/setup-node@v2.1.5
         with:
-          node-version: "12.x"
+          node-version: "14.x"
 
       - name: Get yarn cache directory path
         id: yarn-cache-dir-path

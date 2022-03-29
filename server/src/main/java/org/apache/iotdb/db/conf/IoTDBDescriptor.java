@@ -18,11 +18,13 @@
  */
 package org.apache.iotdb.db.conf;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.compaction.CompactionPriority;
+import org.apache.iotdb.db.engine.compaction.constant.CompactionPriority;
 import org.apache.iotdb.db.engine.compaction.cross.CrossCompactionStrategy;
 import org.apache.iotdb.db.engine.compaction.inner.InnerCompactionStrategy;
+import org.apache.iotdb.db.exception.BadNodeUrlFormatException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.service.metrics.MetricsService;
@@ -47,6 +49,9 @@ import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Properties;
 
 public class IoTDBDescriptor {
@@ -130,7 +135,15 @@ public class IoTDBDescriptor {
       properties.load(inputStream);
 
       conf.setRpcAddress(properties.getProperty("rpc_address", conf.getRpcAddress()));
-      replaceHostnameWithIP();
+
+      loadClusterProps(properties);
+
+      // TODO: Use FQDN  to identify our nodes afterwards
+      try {
+        replaceHostnameWithIP();
+      } catch (Exception e) {
+        logger.info(String.format("replace hostname with ip failed, %s", e.getMessage()));
+      }
 
       conf.setRpcThriftCompressionEnable(
           Boolean.parseBoolean(
@@ -446,11 +459,11 @@ public class IoTDBDescriptor {
                   "raw_query_blocking_queue_capacity",
                   Integer.toString(conf.getRawQueryBlockingQueueCapacity()))));
 
-      conf.setmManagerCacheSize(
+      conf.setSchemaRegionCacheSize(
           Integer.parseInt(
               properties
                   .getProperty(
-                      "metadata_node_cache_size", Integer.toString(conf.getmManagerCacheSize()))
+                      "metadata_node_cache_size", Integer.toString(conf.getSchemaRegionCacheSize()))
                   .trim()));
 
       conf.setmRemoteSchemaCacheSize(
@@ -545,20 +558,6 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "enable_partial_insert", String.valueOf(conf.isEnablePartialInsert()))));
 
-      conf.setEnableMTreeSnapshot(
-          Boolean.parseBoolean(
-              properties.getProperty(
-                  "enable_mtree_snapshot", Boolean.toString(conf.isEnableMTreeSnapshot()))));
-      conf.setMtreeSnapshotInterval(
-          Integer.parseInt(
-              properties.getProperty(
-                  "mtree_snapshot_interval", Integer.toString(conf.getMtreeSnapshotInterval()))));
-      conf.setMtreeSnapshotThresholdTime(
-          Integer.parseInt(
-              properties.getProperty(
-                  "mtree_snapshot_threshold_time",
-                  Integer.toString(conf.getMtreeSnapshotThresholdTime()))));
-
       conf.setEnablePerformanceStat(
           Boolean.parseBoolean(
               properties
@@ -575,6 +574,8 @@ public class IoTDBDescriptor {
         maxConcurrentClientNum = 65535;
       }
 
+      conf.setRpcMaxConcurrentClientNum(maxConcurrentClientNum);
+
       conf.setEnableWatermark(
           Boolean.parseBoolean(
               properties.getProperty(
@@ -587,8 +588,6 @@ public class IoTDBDescriptor {
           properties.getProperty("watermark_method", conf.getWatermarkMethod()));
 
       loadAutoCreateSchemaProps(properties);
-
-      conf.setRpcMaxConcurrentClientNum(maxConcurrentClientNum);
 
       conf.setTsFileStorageFs(
           properties.getProperty("tsfile_storage_fs", conf.getTsFileStorageFs().toString()));
@@ -716,30 +715,8 @@ public class IoTDBDescriptor {
           Boolean.parseBoolean(
               properties.getProperty(
                   "enable_id_table_log_file", String.valueOf(conf.isEnableIDTableLogFile()))));
-
       // mqtt
-      if (properties.getProperty(IoTDBConstant.MQTT_HOST_NAME) != null) {
-        conf.setMqttHost(properties.getProperty(IoTDBConstant.MQTT_HOST_NAME));
-      }
-      if (properties.getProperty(IoTDBConstant.MQTT_PORT_NAME) != null) {
-        conf.setMqttPort(Integer.parseInt(properties.getProperty(IoTDBConstant.MQTT_PORT_NAME)));
-      }
-      if (properties.getProperty(IoTDBConstant.MQTT_HANDLER_POOL_SIZE_NAME) != null) {
-        conf.setMqttHandlerPoolSize(
-            Integer.parseInt(properties.getProperty(IoTDBConstant.MQTT_HANDLER_POOL_SIZE_NAME)));
-      }
-      if (properties.getProperty(IoTDBConstant.MQTT_PAYLOAD_FORMATTER_NAME) != null) {
-        conf.setMqttPayloadFormatter(
-            properties.getProperty(IoTDBConstant.MQTT_PAYLOAD_FORMATTER_NAME));
-      }
-      if (properties.getProperty(IoTDBConstant.ENABLE_MQTT) != null) {
-        conf.setEnableMQTTService(
-            Boolean.parseBoolean(properties.getProperty(IoTDBConstant.ENABLE_MQTT)));
-      }
-      if (properties.getProperty(IoTDBConstant.MQTT_MAX_MESSAGE_SIZE) != null) {
-        conf.setMqttMaxMessageSize(
-            Integer.parseInt(properties.getProperty(IoTDBConstant.MQTT_MAX_MESSAGE_SIZE)));
-      }
+      loadMqttProps(properties);
 
       conf.setAuthorizerProvider(
           properties.getProperty("authorizer_provider_class", conf.getAuthorizerProvider()));
@@ -854,6 +831,8 @@ public class IoTDBDescriptor {
       // CQ
       loadCQProps(properties);
 
+      // cluster
+      loadClusterProps(properties);
     } catch (FileNotFoundException e) {
       logger.warn("Fail to find config file {}", url, e);
     } catch (IOException e) {
@@ -867,13 +846,38 @@ public class IoTDBDescriptor {
   }
 
   // to keep consistent with the cluster module.
-  private void replaceHostnameWithIP() throws UnknownHostException {
+  private void replaceHostnameWithIP() throws UnknownHostException, BadNodeUrlFormatException {
     boolean isInvalidRpcIp = InetAddresses.isInetAddress(conf.getRpcAddress());
     if (!isInvalidRpcIp) {
-      InetAddress address = InetAddress.getByName(getConfig().getRpcAddress());
-      getConfig().setRpcAddress(address.getHostAddress());
+      conf.setRpcAddress(InetAddress.getByName(conf.getRpcAddress()).getHostAddress());
     }
-    logger.debug("after replace, the rpc_address={},", conf.getRpcAddress());
+
+    boolean isInvalidInternalIp = InetAddresses.isInetAddress(conf.getInternalIp());
+    if (!isInvalidInternalIp) {
+      conf.setInternalIp(InetAddress.getByName(conf.getInternalIp()).getHostAddress());
+    }
+
+    List<String> newConfigNodeUrls = new ArrayList<>();
+    for (String nodeUrl : conf.getConfigNodeUrls()) {
+      String[] splits = nodeUrl.split(":");
+      if (splits.length != 2) {
+        throw new BadNodeUrlFormatException(nodeUrl);
+      }
+      String nodeIP = splits[0];
+      boolean isInvalidNodeIp = InetAddresses.isInetAddress(nodeIP);
+      if (!isInvalidNodeIp) {
+        String newNodeIP = InetAddress.getByName(nodeIP).getHostAddress();
+        newConfigNodeUrls.add(newNodeIP + ":" + splits[1]);
+      } else {
+        newConfigNodeUrls.add(nodeUrl);
+      }
+    }
+    conf.setConfigNodeUrls(newConfigNodeUrls);
+    logger.debug(
+        "after replace, the rpcIP={}, internalIP={}, configNodeUrls={}",
+        conf.getRpcAddress(),
+        conf.getInternalIp(),
+        conf.getConfigNodeUrls());
   }
 
   private void loadWALProps(Properties properties) {
@@ -1070,6 +1074,39 @@ public class IoTDBDescriptor {
                     "max_degree_of_index_node",
                     Integer.toString(
                         TSFileDescriptor.getInstance().getConfig().getMaxDegreeOfIndexNode()))));
+  }
+
+  // Mqtt related
+  private void loadMqttProps(Properties properties) {
+    conf.setMqttDir(properties.getProperty("mqtt_root_dir", conf.getMqttDir()));
+
+    if (properties.getProperty(IoTDBConstant.MQTT_HOST_NAME) != null) {
+      conf.setMqttHost(properties.getProperty(IoTDBConstant.MQTT_HOST_NAME));
+    }
+
+    if (properties.getProperty(IoTDBConstant.MQTT_PORT_NAME) != null) {
+      conf.setMqttPort(Integer.parseInt(properties.getProperty(IoTDBConstant.MQTT_PORT_NAME)));
+    }
+
+    if (properties.getProperty(IoTDBConstant.MQTT_HANDLER_POOL_SIZE_NAME) != null) {
+      conf.setMqttHandlerPoolSize(
+          Integer.parseInt(properties.getProperty(IoTDBConstant.MQTT_HANDLER_POOL_SIZE_NAME)));
+    }
+
+    if (properties.getProperty(IoTDBConstant.MQTT_PAYLOAD_FORMATTER_NAME) != null) {
+      conf.setMqttPayloadFormatter(
+          properties.getProperty(IoTDBConstant.MQTT_PAYLOAD_FORMATTER_NAME));
+    }
+
+    if (properties.getProperty(IoTDBConstant.ENABLE_MQTT) != null) {
+      conf.setEnableMQTTService(
+          Boolean.parseBoolean(properties.getProperty(IoTDBConstant.ENABLE_MQTT)));
+    }
+
+    if (properties.getProperty(IoTDBConstant.MQTT_MAX_MESSAGE_SIZE) != null) {
+      conf.setMqttMaxMessageSize(
+          Integer.parseInt(properties.getProperty(IoTDBConstant.MQTT_MAX_MESSAGE_SIZE)));
+    }
   }
 
   // timed flush memtable, timed close tsfile
@@ -1423,6 +1460,20 @@ public class IoTDBDescriptor {
                 "cqlog_buffer_size", Integer.toString(conf.getCqlogBufferSize()))));
   }
 
+  public void loadClusterProps(Properties properties) {
+    String configNodeUrls = properties.getProperty("config_nodes");
+    if (configNodeUrls != null) {
+      List<String> urlList = getNodeUrlList(configNodeUrls);
+      conf.setConfigNodeUrls(urlList);
+    }
+
+    conf.setInternalIp(properties.getProperty("internal_ip", conf.getInternalIp()));
+
+    conf.setInternalPort(
+        Integer.parseInt(
+            properties.getProperty("internal_port", Integer.toString(conf.getInternalPort()))));
+  }
+
   /** Get default encode algorithm by data type */
   public TSEncoding getDefaultEncodingByType(TSDataType dataType) {
     switch (dataType) {
@@ -1439,6 +1490,28 @@ public class IoTDBDescriptor {
       default:
         return conf.getDefaultTextEncoding();
     }
+  }
+
+  /**
+   * Split the node urls as one list.
+   *
+   * @param nodeUrls the config node urls.
+   * @return the node urls as a list.
+   */
+  public static List<String> getNodeUrlList(String nodeUrls) {
+    if (nodeUrls == null) {
+      return Collections.emptyList();
+    }
+    List<String> urlList = new ArrayList<>();
+    String[] split = nodeUrls.split(",");
+    for (String nodeUrl : split) {
+      nodeUrl = nodeUrl.trim();
+      if ("".equals(nodeUrl)) {
+        continue;
+      }
+      urlList.add(nodeUrl);
+    }
+    return urlList;
   }
 
   private static class IoTDBDescriptorHolder {

@@ -73,58 +73,58 @@ public class IoTDBSelectIntoIT {
   }
 
   private static void createTimeSeries() throws MetadataException {
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.sg.d1.s1"),
         TSDataType.INT32,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.sg.d1.s2"),
         TSDataType.INT64,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.sg.d1.s3"),
         TSDataType.FLOAT,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.sg.d1.s4"),
         TSDataType.DOUBLE,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.sg.d1.s5"),
         TSDataType.BOOLEAN,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.sg.d1.s6"),
         TSDataType.TEXT,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
 
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.sg.d1.empty"),
         TSDataType.TEXT,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
 
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.sg.d2.s1"),
         TSDataType.INT32,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
 
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.sg.d1.datatype"),
         TSDataType.DOUBLE,
         TSEncoding.PLAIN,

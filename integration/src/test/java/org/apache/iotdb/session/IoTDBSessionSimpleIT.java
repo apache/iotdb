@@ -18,11 +18,11 @@
  */
 package org.apache.iotdb.session;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.OperationType;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -332,7 +332,7 @@ public class IoTDBSessionSimpleIT {
     assertTrue(session.checkTimeseriesExists("root.sg1.d1.s1"));
     assertTrue(session.checkTimeseriesExists("root.sg1.d1.s2"));
     IMeasurementMNode mNode =
-        MManager.getInstance().getMeasurementMNode(new PartialPath("root.sg1.d1.s1"));
+        LocalSchemaProcessor.getInstance().getMeasurementMNode(new PartialPath("root.sg1.d1.s1"));
     assertNull(mNode.getSchema().getProps());
 
     session.close();
@@ -1063,7 +1063,10 @@ public class IoTDBSessionSimpleIT {
           tsDataTypes,
           tsEncodings,
           compressionTypes,
-          Arrays.asList("alias1", "alias2", "alias3"));
+          Arrays.asList("alias1", "alias2", "alias3"),
+          null,
+          null);
+
       fail("Exception expected");
     } catch (StatementExecutionException e) {
       assertTrue(

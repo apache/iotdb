@@ -18,13 +18,14 @@
  */
 package org.apache.iotdb.db.conf;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
-import org.apache.iotdb.db.engine.compaction.CompactionPriority;
+import org.apache.iotdb.db.engine.compaction.constant.CompactionPriority;
 import org.apache.iotdb.db.engine.compaction.cross.CrossCompactionStrategy;
 import org.apache.iotdb.db.engine.compaction.inner.InnerCompactionStrategy;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
-import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.service.thrift.impl.InfluxDBServiceImpl;
 import org.apache.iotdb.db.service.thrift.impl.TSServiceImpl;
 import org.apache.iotdb.rpc.RpcTransportFactory;
@@ -39,6 +40,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -184,7 +190,7 @@ public class IoTDBConfig {
 
   /**
    * Size of log buffer for every MetaData operation. If the size of a MetaData operation plan is
-   * larger than this parameter, then the MetaData operation plan will be rejected by MManager.
+   * larger than this parameter, then the MetaData operation plan will be rejected by SchemaRegion.
    * Unit: byte
    */
   private int mlogBufferSize = 1024 * 1024;
@@ -240,6 +246,10 @@ public class IoTDBConfig {
   /** External lib directory for trigger, stores user-uploaded JAR files */
   private String triggerDir =
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.TRIGGER_FOLDER_NAME;
+
+  /** External lib directory for MQTT, stores user-uploaded JAR files */
+  private String mqttDir =
+      IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.MQTT_FOLDER_NAME;
 
   /** Data directory of data. It can be settled as dataDirs = {"data1", "data2", "data3"}; */
   private String[] dataDirs = {"data" + File.separator + "data"};
@@ -447,10 +457,10 @@ public class IoTDBConfig {
   /** Set true to enable writing monitor time series. */
   private boolean enableMonitorSeriesWrite = false;
 
-  /** Cache size of {@code checkAndGetDataTypeCache} in {@link MManager}. */
-  private int mManagerCacheSize = 300000;
+  /** Cache size of {@code checkAndGetDataTypeCache} in {@link LocalSchemaProcessor}. */
+  private int schemaRegionCacheSize = 10000;
 
-  /** Cache size of {@code checkAndGetDataTypeCache} in {@link MManager}. */
+  /** Cache size of {@code checkAndGetDataTypeCache} in {@link LocalSchemaProcessor}. */
   private int mRemoteSchemaCacheSize = 100000;
 
   /** Is external sort enable. */
@@ -686,18 +696,6 @@ public class IoTDBConfig {
   /** whether enable data partition. If disabled, all data belongs to partition 0 */
   private boolean enablePartition = false;
 
-  /** whether enable MTree snapshot */
-  private boolean enableMTreeSnapshot = false;
-
-  /** Interval line number of mlog.txt when creating a checkpoint and saving snapshot of mtree */
-  private int mtreeSnapshotInterval = 100000;
-
-  /**
-   * Threshold interval time of MTree modification. If the last modification time is less than this
-   * threshold, MTree snapshot will not be created. Default: 1 hour(3600 seconds) Unit: second
-   */
-  private int mtreeSnapshotThresholdTime = 3600;
-
   /**
    * Time range for partitioning data inside each storage group, the unit is second. Default time is
    * a week.
@@ -814,8 +812,28 @@ public class IoTDBConfig {
   /** Encryption provided class parameter */
   private String encryptDecryptProviderParameter;
 
+  /**
+   * Ip and port of config nodes. each one is a {internalIp | domain name}:{meta port} string tuple.
+   */
+  private List<String> configNodeUrls;
+
+  /** Internal ip for data node */
+  private String internalIp;
+
+  /** Internal port of data node */
+  private int internalPort = 9003;
+
+  /** The max time of data node waiting to join into the cluster */
+  private long joinClusterTimeOutMs = TimeUnit.SECONDS.toMillis(60);
+
   public IoTDBConfig() {
-    // empty constructor
+    try {
+      internalIp = InetAddress.getLocalHost().getHostAddress();
+    } catch (UnknownHostException e) {
+      logger.error(e.getMessage());
+      internalIp = "127.0.0.1";
+    }
+    configNodeUrls = new ArrayList<>();
   }
 
   public float getUdfMemoryBudgetInMB() {
@@ -891,30 +909,6 @@ public class IoTDBConfig {
     this.enablePartition = enablePartition;
   }
 
-  public boolean isEnableMTreeSnapshot() {
-    return enableMTreeSnapshot;
-  }
-
-  public void setEnableMTreeSnapshot(boolean enableMTreeSnapshot) {
-    this.enableMTreeSnapshot = enableMTreeSnapshot;
-  }
-
-  public int getMtreeSnapshotInterval() {
-    return mtreeSnapshotInterval;
-  }
-
-  public void setMtreeSnapshotInterval(int mtreeSnapshotInterval) {
-    this.mtreeSnapshotInterval = mtreeSnapshotInterval;
-  }
-
-  public int getMtreeSnapshotThresholdTime() {
-    return mtreeSnapshotThresholdTime;
-  }
-
-  public void setMtreeSnapshotThresholdTime(int mtreeSnapshotThresholdTime) {
-    this.mtreeSnapshotThresholdTime = mtreeSnapshotThresholdTime;
-  }
-
   public long getPartitionInterval() {
     return partitionInterval;
   }
@@ -947,6 +941,7 @@ public class IoTDBConfig {
     extDir = addHomeDir(extDir);
     udfDir = addHomeDir(udfDir);
     triggerDir = addHomeDir(triggerDir);
+    mqttDir = addHomeDir(mqttDir);
 
     if (TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs().equals(FSType.HDFS)) {
       String hdfsDir = getHdfsDir();
@@ -1171,6 +1166,14 @@ public class IoTDBConfig {
     this.triggerDir = triggerDir;
   }
 
+  public String getMqttDir() {
+    return mqttDir;
+  }
+
+  public void setMqttDir(String mqttDir) {
+    this.mqttDir = mqttDir;
+  }
+
   public String getMultiDirStrategyClassName() {
     return multiDirStrategyClassName;
   }
@@ -1267,12 +1270,12 @@ public class IoTDBConfig {
     this.rpcMaxConcurrentClientNum = rpcMaxConcurrentClientNum;
   }
 
-  public int getmManagerCacheSize() {
-    return mManagerCacheSize;
+  public int getSchemaRegionCacheSize() {
+    return schemaRegionCacheSize;
   }
 
-  void setmManagerCacheSize(int mManagerCacheSize) {
-    this.mManagerCacheSize = mManagerCacheSize;
+  void setSchemaRegionCacheSize(int schemaRegionCacheSize) {
+    this.schemaRegionCacheSize = schemaRegionCacheSize;
   }
 
   public int getmRemoteSchemaCacheSize() {
@@ -2550,5 +2553,37 @@ public class IoTDBConfig {
 
   public void setEncryptDecryptProviderParameter(String encryptDecryptProviderParameter) {
     this.encryptDecryptProviderParameter = encryptDecryptProviderParameter;
+  }
+
+  public List<String> getConfigNodeUrls() {
+    return configNodeUrls;
+  }
+
+  public void setConfigNodeUrls(List<String> configNodeUrls) {
+    this.configNodeUrls = configNodeUrls;
+  }
+
+  public String getInternalIp() {
+    return internalIp;
+  }
+
+  public void setInternalIp(String internalIp) {
+    this.internalIp = internalIp;
+  }
+
+  public int getInternalPort() {
+    return internalPort;
+  }
+
+  public void setInternalPort(int internalPort) {
+    this.internalPort = internalPort;
+  }
+
+  public long getJoinClusterTimeOutMs() {
+    return joinClusterTimeOutMs;
+  }
+
+  public void setJoinClusterTimeOutMs(long joinClusterTimeOutMs) {
+    this.joinClusterTimeOutMs = joinClusterTimeOutMs;
   }
 }

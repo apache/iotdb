@@ -26,6 +26,7 @@ import org.apache.iotdb.cluster.exception.SnapshotInstallationException;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.utils.CreateTemplatePlanUtil;
+import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.db.auth.entity.Role;
@@ -66,8 +67,8 @@ public class MetaSimpleSnapshotTest extends IoTDBTest {
   @Override
   @Before
   public void setUp()
-      throws org.apache.iotdb.db.exception.StartupException,
-          org.apache.iotdb.db.exception.query.QueryProcessException, IllegalPathException {
+      throws StartupException, org.apache.iotdb.db.exception.query.QueryProcessException,
+          IllegalPathException {
     super.setUp();
     subServerInitialized = false;
     metaGroupMember =
@@ -198,7 +199,7 @@ public class MetaSimpleSnapshotTest extends IoTDBTest {
     SnapshotInstaller defaultInstaller = metaSimpleSnapshot.getDefaultInstaller(metaGroupMember);
     defaultInstaller.install(metaSimpleSnapshot, -1, false);
 
-    Map<PartialPath, Long> storageGroupsTTL = IoTDB.metaManager.getStorageGroupsTTL();
+    Map<PartialPath, Long> storageGroupsTTL = IoTDB.schemaProcessor.getStorageGroupsTTL();
     for (int i = 0; i < 10; i++) {
       PartialPath partialPath = new PartialPath("root.ln.sg" + i);
       assertEquals(i, (long) storageGroupsTTL.get(partialPath));
@@ -306,7 +307,7 @@ public class MetaSimpleSnapshotTest extends IoTDBTest {
       SnapshotInstaller defaultInstaller = metaSimpleSnapshot.getDefaultInstaller(metaGroupMember);
       defaultInstaller.install(metaSimpleSnapshot, -1, false);
 
-      Map<PartialPath, Long> storageGroupsTTL = IoTDB.metaManager.getStorageGroupsTTL();
+      Map<PartialPath, Long> storageGroupsTTL = IoTDB.schemaProcessor.getStorageGroupsTTL();
       for (int i = 0; i < 10; i++) {
         PartialPath partialPath = new PartialPath("root.ln.sg" + i);
         assertNull(storageGroupsTTL.get(partialPath));

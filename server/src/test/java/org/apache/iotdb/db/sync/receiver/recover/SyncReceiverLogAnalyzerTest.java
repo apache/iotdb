@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.sync.receiver.recover;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -28,7 +28,7 @@ import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.sync.conf.SyncConstant;
@@ -80,11 +80,10 @@ public class SyncReceiverLogAnalyzerTest {
   }
 
   private void initMetadata() throws MetadataException {
-    MManager mmanager = IoTDB.metaManager;
-    mmanager.init();
-    mmanager.setStorageGroup(new PartialPath("root.sg0"));
-    mmanager.setStorageGroup(new PartialPath("root.sg1"));
-    mmanager.setStorageGroup(new PartialPath("root.sg2"));
+    LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
+    schemaProcessor.setStorageGroup(new PartialPath("root.sg0"));
+    schemaProcessor.setStorageGroup(new PartialPath("root.sg1"));
+    schemaProcessor.setStorageGroup(new PartialPath("root.sg2"));
   }
 
   @After

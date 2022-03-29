@@ -28,7 +28,7 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>iotdb-thrift-confignode</artifactId>
-    <name>ConfigNode RPC thrift</name>
+    <name>rpc-thrift-confignode</name>
     <description>RPC (Thrift) framework among ConfigNodes.</description>
     <dependencies>
         <dependency>

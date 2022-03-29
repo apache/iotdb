@@ -63,9 +63,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_DATATYPE;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_DATATYPE;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_VALUE;
 
 public class LastQueryExecutor {
 
@@ -168,7 +168,7 @@ public class LastQueryExecutor {
         if (ID_TABLE_ENABLED) {
           cacheAccessors.add(new IDTableLastCacheAccessor(path));
         } else {
-          cacheAccessors.add(new MManagerLastCacheAccessor(path));
+          cacheAccessors.add(new SchemaProcessorLastCacheAccessor(path));
         }
       }
 
@@ -309,22 +309,22 @@ public class LastQueryExecutor {
     void write(TimeValuePair pair);
   }
 
-  private static class MManagerLastCacheAccessor implements LastCacheAccessor {
+  private static class SchemaProcessorLastCacheAccessor implements LastCacheAccessor {
 
     private final MeasurementPath path;
     private IMeasurementMNode node;
 
-    MManagerLastCacheAccessor(PartialPath seriesPath) {
+    SchemaProcessorLastCacheAccessor(PartialPath seriesPath) {
       this.path = (MeasurementPath) seriesPath;
     }
 
     public TimeValuePair read() {
       try {
-        node = IoTDB.metaManager.getMeasurementMNode(path);
+        node = IoTDB.schemaProcessor.getMeasurementMNode(path);
       } catch (MetadataException e) {
         // cluster mode may not get remote node
         TimeValuePair timeValuePair;
-        timeValuePair = IoTDB.metaManager.getLastCache(path);
+        timeValuePair = IoTDB.schemaProcessor.getLastCache(path);
         if (timeValuePair != null) {
           return timeValuePair;
         }
@@ -334,14 +334,14 @@ public class LastQueryExecutor {
         return null;
       }
 
-      return IoTDB.metaManager.getLastCache(node);
+      return IoTDB.schemaProcessor.getLastCache(node);
     }
 
     public void write(TimeValuePair pair) {
       if (node == null) {
-        IoTDB.metaManager.updateLastCache(path, pair, false, Long.MIN_VALUE);
+        IoTDB.schemaProcessor.updateLastCache(path, pair, false, Long.MIN_VALUE);
       } else {
-        IoTDB.metaManager.updateLastCache(node, pair, false, Long.MIN_VALUE);
+        IoTDB.schemaProcessor.updateLastCache(node, pair, false, Long.MIN_VALUE);
       }
     }
   }

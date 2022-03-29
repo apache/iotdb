@@ -44,7 +44,6 @@ import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateFunctionPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateIndexPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateSnapshotPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTriggerPlan;
@@ -195,15 +194,6 @@ public abstract class PhysicalPlan implements IConsensusRequest {
   @Override
   public void serializeRequest(ByteBuffer buffer) {
     serialize(buffer);
-  }
-
-  @Override
-  public void deserializeRequest(ByteBuffer buffer) throws Exception {
-    try {
-      deserialize(buffer);
-    } catch (IllegalPathException | IOException e) {
-      throw new Exception(e);
-    }
   }
 
   /**
@@ -485,9 +475,6 @@ public abstract class PhysicalPlan implements IConsensusRequest {
         case MERGE:
           plan = new MergePlan();
           break;
-        case CREATE_SNAPSHOT:
-          plan = new CreateSnapshotPlan();
-          break;
         case CLEARCACHE:
           plan = new ClearCachePlan();
           break;
@@ -564,7 +551,7 @@ public abstract class PhysicalPlan implements IConsensusRequest {
     DROP_CONTINUOUS_QUERY,
     SHOW_CONTINUOUS_QUERIES,
     MERGE,
-    CREATE_SNAPSHOT,
+    CREATE_SNAPSHOT, // the snapshot feature has been deprecated, this is kept for compatibility
     CLEARCACHE,
     CREATE_FUNCTION,
     DROP_FUNCTION,
@@ -590,6 +577,7 @@ public abstract class PhysicalPlan implements IConsensusRequest {
    *
    * @throws QueryProcessException when the check fails
    */
+  // TODO(INSERT) move this check into analyze
   public void checkIntegrity() throws QueryProcessException {}
 
   public boolean isPrefixMatch() {

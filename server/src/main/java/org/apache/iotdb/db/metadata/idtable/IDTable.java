@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.metadata.idtable;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -34,8 +35,8 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
-import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -129,6 +130,15 @@ public interface IDTable {
    * @return device entry of the timeseries
    */
   public DeviceEntry getDeviceEntry(String deviceName);
+
+  /**
+   * get schema from device and measurements
+   *
+   * @param deviceName device name of the time series
+   * @param measurementName measurement name of the time series
+   * @return schema entry of the timeseries
+   */
+  public IMeasurementSchema getSeriesSchema(String deviceName, String measurementName);
 
   /**
    * get all device entries

@@ -134,6 +134,10 @@ public class AlignByDeviceDataSet extends QueryDataSet {
     return pathsNum;
   }
 
+  public List<String> getMeasurements() {
+    return measurements;
+  }
+
   @Override
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public boolean hasNextWithoutConstraint() throws IOException {
