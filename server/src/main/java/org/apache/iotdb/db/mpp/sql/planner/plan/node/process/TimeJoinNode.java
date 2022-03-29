@@ -141,4 +141,10 @@ public class TimeJoinNode extends ProcessNode {
             + (this.getFilterNullPolicy() == null ? "null" : this.getFilterNullPolicy()));
     return new Pair<>(title, attributes);
   }
+
+  public List<String> getBoxString() {
+    List<String> ret = new ArrayList<>();
+    ret.add(String.format("TimeJoinNode-%s", getId().getId()));
+    return ret;
+  }
 }

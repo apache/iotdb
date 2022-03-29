@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node;
 
+import com.google.common.collect.ImmutableList;
 import org.apache.commons.lang.Validate;
 
 import java.nio.ByteBuffer;
@@ -77,4 +78,8 @@ public abstract class PlanNode {
   }
 
   public abstract void serialize(ByteBuffer byteBuffer);
+
+  public List<String> getBoxString() {
+    return ImmutableList.of("PlanNode");
+  }
 }

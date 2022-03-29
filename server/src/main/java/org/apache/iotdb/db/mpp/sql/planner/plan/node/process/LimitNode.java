@@ -108,4 +108,11 @@ public class LimitNode extends ProcessNode {
     attributes.add("RowLimit: " + this.getLimit());
     return new Pair<>(title, attributes);
   }
+
+  public List<String> getBoxString() {
+    List<String> ret = new ArrayList<>();
+    ret.add(String.format("LimitNode-%s", getId().getId()));
+    ret.add(String.format("Count: %d", limit));
+    return ret;
+  }
 }

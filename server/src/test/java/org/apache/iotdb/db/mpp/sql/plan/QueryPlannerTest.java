@@ -27,6 +27,7 @@ import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
 import org.apache.iotdb.db.mpp.sql.parser.StatementGenerator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeUtil;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeVisualizer;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 
 import org.junit.Test;
@@ -51,6 +52,7 @@ public class QueryPlannerTest {
     System.out.printf("SQL: %s%n%n", querySql);
     System.out.println("===== Step 1: Logical Plan =====");
     System.out.println(PlanNodeUtil.nodeToString(queryExecution.getLogicalPlan().getRootNode()));
+    PlanNodeVisualizer.printAsBox(queryExecution.getLogicalPlan().getRootNode());
 
     queryExecution.doDistributedPlan();
     DistributedQueryPlan distributedQueryPlan = queryExecution.getDistributedPlan();

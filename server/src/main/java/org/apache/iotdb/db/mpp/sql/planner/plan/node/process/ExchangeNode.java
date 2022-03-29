@@ -28,6 +28,7 @@ import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import com.google.common.collect.ImmutableList;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 
 public class ExchangeNode extends PlanNode {
@@ -137,5 +138,11 @@ public class ExchangeNode extends PlanNode {
 
   public PlanNodeId getUpstreamPlanNodeId() {
     return upstreamPlanNodeId;
+  }
+
+  public List<String> getBoxString() {
+    List<String> ret = new ArrayList<>();
+    ret.add(String.format("ExchangeNode-%s", getId().getId()));
+    return ret;
   }
 }

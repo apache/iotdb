@@ -27,6 +27,7 @@ import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import com.google.common.collect.ImmutableList;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 
 public class FragmentSinkNode extends SinkNode {
@@ -127,5 +128,11 @@ public class FragmentSinkNode extends SinkNode {
 
   public PlanNodeId getDownStreamPlanNodeId() {
     return downStreamPlanNodeId;
+  }
+
+  public List<String> getBoxString() {
+    List<String> ret = new ArrayList<>();
+    ret.add(String.format("FragmentSinkNode-%s", getId().getId()));
+    return ret;
   }
 }

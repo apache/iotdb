@@ -205,4 +205,16 @@ public class SeriesScanNode extends SourceNode {
     attributes.add("scanOrder: " + this.getScanOrder());
     return new Pair<>(title, attributes);
   }
+
+  public List<String> getBoxString() {
+    List<String> ret = new ArrayList<>();
+    ret.add(String.format("SeriesScan-%s", getId().getId()));
+    ret.add(String.format("Path:%s", getSeriesPath()));
+    ret.add(String.format("Partition:%s", getPartitionId()));
+    return ret;
+  }
+
+  private String getPartitionId() {
+    return getDataRegionReplicaSet() == null ? "Not Assigned" : getDataRegionReplicaSet().getId().toString();
+  }
 }
