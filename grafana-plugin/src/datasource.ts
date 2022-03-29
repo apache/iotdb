@@ -69,7 +69,11 @@ export class DataSource extends DataSourceWithBackend<IoTDBQuery, IoTDBOptions> 
         if (response.data instanceof Array) {
           return response.data;
         } else {
-          throw 'the result is not array';
+          if ((response.data.code = 400)) {
+            throw response.data.message;
+          } else {
+            throw 'the result is not array';
+          }
         }
       })
       .then((data) => data.map(toMetricFindValue));
