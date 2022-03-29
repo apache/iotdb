@@ -77,7 +77,7 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
     if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       result.setDataNodeID(Integer.parseInt(resp.getStatus().getMessage()));
       LOGGER.info(
-          "Register DataNode successfully. DataNodeID: {}, {}",
+          "Register DataNode successful. DataNodeID: {}, {}",
           resp.getStatus().getMessage(),
           req.getEndPoint().toString());
     } else {
@@ -113,7 +113,7 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
             new org.apache.iotdb.confignode.partition.StorageGroupSchema(req.getStorageGroup()));
     TSStatus resp = configManager.write(plan).getStatus();
     if (resp.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.info("Set StorageGroup {} successfully.", req.getStorageGroup());
+      LOGGER.info("Set StorageGroup {} successful.", req.getStorageGroup());
     } else {
       LOGGER.error("Set StorageGroup {} failed. {}", req.getStorageGroup(), resp.getMessage());
     }
