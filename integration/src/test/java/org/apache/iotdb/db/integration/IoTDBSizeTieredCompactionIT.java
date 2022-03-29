@@ -19,8 +19,8 @@
 package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.CompactionPriority;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
+import org.apache.iotdb.db.engine.compaction.constant.CompactionPriority;
 import org.apache.iotdb.integration.env.EnvFactory;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 
@@ -1016,8 +1016,8 @@ public class IoTDBSizeTieredCompactionIT {
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(2);
     IoTDBDescriptor.getInstance().getConfig().setTargetCompactionFileSize(600);
     int originCandidateNum =
-        IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
-    IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(2);
+        IoTDBDescriptor.getInstance().getConfig().getMaxInnerCompactionCandidateFileNum();
+    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(2);
     CompactionPriority compactionPriority =
         IoTDBDescriptor.getInstance().getConfig().getCompactionPriority();
     IoTDBDescriptor.getInstance().getConfig().setCompactionPriority(CompactionPriority.INNER_CROSS);
@@ -1093,7 +1093,7 @@ public class IoTDBSizeTieredCompactionIT {
       IoTDBDescriptor.getInstance().getConfig().setCompactionPriority(compactionPriority);
       IoTDBDescriptor.getInstance()
           .getConfig()
-          .setMaxCompactionCandidateFileNum(originCandidateNum);
+          .setMaxInnerCompactionCandidateFileNum(originCandidateNum);
     }
   }
 
@@ -1199,23 +1199,7 @@ public class IoTDBSizeTieredCompactionIT {
       }
       long totalWaitingTime = 0;
       statement.execute("MERGE");
-      while (CompactionTaskManager.getInstance().getFinishTaskNum() - originFinishCount < 2) {
-        try {
-          Thread.sleep(100);
-        } catch (InterruptedException e) {
-
-        }
-        totalWaitingTime += 100;
-        if (totalWaitingTime % 1000 == 0) {
-          LOGGER.warn("Has waiting for {} seconds", totalWaitingTime / 1000);
-        }
-        if (totalWaitingTime > 120_000) {
-          Assert.fail();
-          break;
-        }
-      }
-      statement.execute("MERGE");
-      while (CompactionTaskManager.getInstance().getFinishTaskNum() - originFinishCount < 3) {
+      while (CompactionTaskManager.getInstance().getFinishTaskNum() - originFinishCount < 1) {
         try {
           Thread.sleep(100);
         } catch (InterruptedException e) {
@@ -1283,7 +1267,7 @@ public class IoTDBSizeTieredCompactionIT {
         statement.execute("FLUSH");
       }
       int totalWaitingTime = 0;
-      while (CompactionTaskManager.getInstance().getFinishTaskNum() - originCompactionNum < 2) {
+      while (CompactionTaskManager.getInstance().getFinishTaskNum() - originCompactionNum < 1) {
         try {
           Thread.sleep(100);
         } catch (InterruptedException e) {

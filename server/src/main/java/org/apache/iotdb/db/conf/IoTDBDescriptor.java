@@ -18,11 +18,13 @@
  */
 package org.apache.iotdb.db.conf;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.compaction.CompactionPriority;
+import org.apache.iotdb.db.engine.compaction.constant.CompactionPriority;
 import org.apache.iotdb.db.engine.compaction.cross.CrossCompactionStrategy;
 import org.apache.iotdb.db.engine.compaction.inner.InnerCompactionStrategy;
+import org.apache.iotdb.db.exception.BadNodeUrlFormatException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.service.metrics.MetricsService;
@@ -47,6 +49,9 @@ import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Properties;
 
 public class IoTDBDescriptor {
@@ -130,7 +135,15 @@ public class IoTDBDescriptor {
       properties.load(inputStream);
 
       conf.setRpcAddress(properties.getProperty("rpc_address", conf.getRpcAddress()));
-      replaceHostnameWithIP();
+
+      loadClusterProps(properties);
+
+      // TODO: Use FQDN  to identify our nodes afterwards
+      try {
+        replaceHostnameWithIP();
+      } catch (Exception e) {
+        logger.info(String.format("replace hostname with ip failed, %s", e.getMessage()));
+      }
 
       conf.setRpcThriftCompressionEnable(
           Boolean.parseBoolean(
@@ -238,6 +251,14 @@ public class IoTDBDescriptor {
                   "mlog_buffer_size", Integer.toString(conf.getMlogBufferSize())));
       if (mlogBufferSize > 0) {
         conf.setMlogBufferSize(mlogBufferSize);
+      }
+
+      long forceMlogPeriodInMs =
+          Long.parseLong(
+              properties.getProperty(
+                  "sync_mlog_period_in_ms", Long.toString(conf.getSyncMlogPeriodInMs())));
+      if (forceMlogPeriodInMs > 0) {
+        conf.setSyncMlogPeriodInMs(forceMlogPeriodInMs);
       }
 
       conf.setMultiDirStrategyClassName(
@@ -355,12 +376,6 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "compaction_priority", conf.getCompactionPriority().toString())));
 
-      conf.setMaxOpenFileNumInCrossSpaceCompaction(
-          Integer.parseInt(
-              properties.getProperty(
-                  "max_open_file_num_in_cross_space_compaction",
-                  Integer.toString(conf.getMaxOpenFileNumInCrossSpaceCompaction()))));
-
       conf.setQueryTimeoutThreshold(
           Integer.parseInt(
               properties.getProperty(
@@ -458,11 +473,11 @@ public class IoTDBDescriptor {
                   "raw_query_blocking_queue_capacity",
                   Integer.toString(conf.getRawQueryBlockingQueueCapacity()))));
 
-      conf.setmManagerCacheSize(
+      conf.setSchemaRegionCacheSize(
           Integer.parseInt(
               properties
                   .getProperty(
-                      "metadata_node_cache_size", Integer.toString(conf.getmManagerCacheSize()))
+                      "metadata_node_cache_size", Integer.toString(conf.getSchemaRegionCacheSize()))
                   .trim()));
 
       conf.setmRemoteSchemaCacheSize(
@@ -535,11 +550,16 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "chunk_size_lower_bound_in_compaction",
                   Long.toString(conf.getChunkSizeLowerBoundInCompaction()))));
-      conf.setMaxCompactionCandidateFileNum(
+      conf.setMaxInnerCompactionCandidateFileNum(
           Integer.parseInt(
               properties.getProperty(
-                  "max_compaction_candidate_file_num",
-                  Integer.toString(conf.getMaxCompactionCandidateFileNum()))));
+                  "max_inner_compaction_candidate_file_num",
+                  Integer.toString(conf.getMaxInnerCompactionCandidateFileNum()))));
+      conf.setMaxCrossCompactionCandidateFileNum(
+          Integer.parseInt(
+              properties.getProperty(
+                  "max_cross_compaction_candidate_file_num",
+                  Integer.toString(conf.getMaxCrossCompactionCandidateFileNum()))));
 
       conf.setCompactionWriteThroughputMbPerSec(
           Integer.parseInt(
@@ -551,20 +571,6 @@ public class IoTDBDescriptor {
           Boolean.parseBoolean(
               properties.getProperty(
                   "enable_partial_insert", String.valueOf(conf.isEnablePartialInsert()))));
-
-      conf.setEnableMTreeSnapshot(
-          Boolean.parseBoolean(
-              properties.getProperty(
-                  "enable_mtree_snapshot", Boolean.toString(conf.isEnableMTreeSnapshot()))));
-      conf.setMtreeSnapshotInterval(
-          Integer.parseInt(
-              properties.getProperty(
-                  "mtree_snapshot_interval", Integer.toString(conf.getMtreeSnapshotInterval()))));
-      conf.setMtreeSnapshotThresholdTime(
-          Integer.parseInt(
-              properties.getProperty(
-                  "mtree_snapshot_threshold_time",
-                  Integer.toString(conf.getMtreeSnapshotThresholdTime()))));
 
       conf.setEnablePerformanceStat(
           Boolean.parseBoolean(
@@ -582,6 +588,8 @@ public class IoTDBDescriptor {
         maxConcurrentClientNum = 65535;
       }
 
+      conf.setRpcMaxConcurrentClientNum(maxConcurrentClientNum);
+
       conf.setEnableWatermark(
           Boolean.parseBoolean(
               properties.getProperty(
@@ -594,8 +602,6 @@ public class IoTDBDescriptor {
           properties.getProperty("watermark_method", conf.getWatermarkMethod()));
 
       loadAutoCreateSchemaProps(properties);
-
-      conf.setRpcMaxConcurrentClientNum(maxConcurrentClientNum);
 
       conf.setTsFileStorageFs(
           properties.getProperty("tsfile_storage_fs", conf.getTsFileStorageFs().toString()));
@@ -686,6 +692,12 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "virtual_storage_group_num", String.valueOf(conf.getVirtualStorageGroupNum()))));
 
+      conf.setRecoveryLogIntervalInMs(
+          Long.parseLong(
+              properties.getProperty(
+                  "recovery_log_interval_in_ms",
+                  String.valueOf(conf.getRecoveryLogIntervalInMs()))));
+
       conf.setConcurrentWindowEvaluationThread(
           Integer.parseInt(
               properties.getProperty(
@@ -717,30 +729,8 @@ public class IoTDBDescriptor {
           Boolean.parseBoolean(
               properties.getProperty(
                   "enable_id_table_log_file", String.valueOf(conf.isEnableIDTableLogFile()))));
-
       // mqtt
-      if (properties.getProperty(IoTDBConstant.MQTT_HOST_NAME) != null) {
-        conf.setMqttHost(properties.getProperty(IoTDBConstant.MQTT_HOST_NAME));
-      }
-      if (properties.getProperty(IoTDBConstant.MQTT_PORT_NAME) != null) {
-        conf.setMqttPort(Integer.parseInt(properties.getProperty(IoTDBConstant.MQTT_PORT_NAME)));
-      }
-      if (properties.getProperty(IoTDBConstant.MQTT_HANDLER_POOL_SIZE_NAME) != null) {
-        conf.setMqttHandlerPoolSize(
-            Integer.parseInt(properties.getProperty(IoTDBConstant.MQTT_HANDLER_POOL_SIZE_NAME)));
-      }
-      if (properties.getProperty(IoTDBConstant.MQTT_PAYLOAD_FORMATTER_NAME) != null) {
-        conf.setMqttPayloadFormatter(
-            properties.getProperty(IoTDBConstant.MQTT_PAYLOAD_FORMATTER_NAME));
-      }
-      if (properties.getProperty(IoTDBConstant.ENABLE_MQTT) != null) {
-        conf.setEnableMQTTService(
-            Boolean.parseBoolean(properties.getProperty(IoTDBConstant.ENABLE_MQTT)));
-      }
-      if (properties.getProperty(IoTDBConstant.MQTT_MAX_MESSAGE_SIZE) != null) {
-        conf.setMqttMaxMessageSize(
-            Integer.parseInt(properties.getProperty(IoTDBConstant.MQTT_MAX_MESSAGE_SIZE)));
-      }
+      loadMqttProps(properties);
 
       conf.setAuthorizerProvider(
           properties.getProperty("authorizer_provider_class", conf.getAuthorizerProvider()));
@@ -772,6 +762,15 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "insert_multi_tablet_enable_multithreading_column_threshold",
                   String.valueOf(conf.getInsertMultiTabletEnableMultithreadingColumnThreshold()))));
+
+      conf.setEncryptDecryptProvider(
+          properties.getProperty(
+              "iotdb_server_encrypt_decrypt_provider", conf.getEncryptDecryptProvider()));
+
+      conf.setEncryptDecryptProviderParameter(
+          properties.getProperty(
+              "iotdb_server_encrypt_decrypt_provider_parameter",
+              conf.getEncryptDecryptProviderParameter()));
 
       // At the same time, set TSFileConfig
       TSFileDescriptor.getInstance()
@@ -846,6 +845,8 @@ public class IoTDBDescriptor {
       // CQ
       loadCQProps(properties);
 
+      // cluster
+      loadClusterProps(properties);
     } catch (FileNotFoundException e) {
       logger.warn("Fail to find config file {}", url, e);
     } catch (IOException e) {
@@ -859,13 +860,38 @@ public class IoTDBDescriptor {
   }
 
   // to keep consistent with the cluster module.
-  private void replaceHostnameWithIP() throws UnknownHostException {
+  private void replaceHostnameWithIP() throws UnknownHostException, BadNodeUrlFormatException {
     boolean isInvalidRpcIp = InetAddresses.isInetAddress(conf.getRpcAddress());
     if (!isInvalidRpcIp) {
-      InetAddress address = InetAddress.getByName(getConfig().getRpcAddress());
-      getConfig().setRpcAddress(address.getHostAddress());
+      conf.setRpcAddress(InetAddress.getByName(conf.getRpcAddress()).getHostAddress());
     }
-    logger.debug("after replace, the rpc_address={},", conf.getRpcAddress());
+
+    boolean isInvalidInternalIp = InetAddresses.isInetAddress(conf.getInternalIp());
+    if (!isInvalidInternalIp) {
+      conf.setInternalIp(InetAddress.getByName(conf.getInternalIp()).getHostAddress());
+    }
+
+    List<String> newConfigNodeUrls = new ArrayList<>();
+    for (String nodeUrl : conf.getConfigNodeUrls()) {
+      String[] splits = nodeUrl.split(":");
+      if (splits.length != 2) {
+        throw new BadNodeUrlFormatException(nodeUrl);
+      }
+      String nodeIP = splits[0];
+      boolean isInvalidNodeIp = InetAddresses.isInetAddress(nodeIP);
+      if (!isInvalidNodeIp) {
+        String newNodeIP = InetAddress.getByName(nodeIP).getHostAddress();
+        newConfigNodeUrls.add(newNodeIP + ":" + splits[1]);
+      } else {
+        newConfigNodeUrls.add(nodeUrl);
+      }
+    }
+    conf.setConfigNodeUrls(newConfigNodeUrls);
+    logger.debug(
+        "after replace, the rpcIP={}, internalIP={}, configNodeUrls={}",
+        conf.getRpcAddress(),
+        conf.getInternalIp(),
+        conf.getConfigNodeUrls());
   }
 
   private void loadWALProps(Properties properties) {
@@ -1062,6 +1088,39 @@ public class IoTDBDescriptor {
                     "max_degree_of_index_node",
                     Integer.toString(
                         TSFileDescriptor.getInstance().getConfig().getMaxDegreeOfIndexNode()))));
+  }
+
+  // Mqtt related
+  private void loadMqttProps(Properties properties) {
+    conf.setMqttDir(properties.getProperty("mqtt_root_dir", conf.getMqttDir()));
+
+    if (properties.getProperty(IoTDBConstant.MQTT_HOST_NAME) != null) {
+      conf.setMqttHost(properties.getProperty(IoTDBConstant.MQTT_HOST_NAME));
+    }
+
+    if (properties.getProperty(IoTDBConstant.MQTT_PORT_NAME) != null) {
+      conf.setMqttPort(Integer.parseInt(properties.getProperty(IoTDBConstant.MQTT_PORT_NAME)));
+    }
+
+    if (properties.getProperty(IoTDBConstant.MQTT_HANDLER_POOL_SIZE_NAME) != null) {
+      conf.setMqttHandlerPoolSize(
+          Integer.parseInt(properties.getProperty(IoTDBConstant.MQTT_HANDLER_POOL_SIZE_NAME)));
+    }
+
+    if (properties.getProperty(IoTDBConstant.MQTT_PAYLOAD_FORMATTER_NAME) != null) {
+      conf.setMqttPayloadFormatter(
+          properties.getProperty(IoTDBConstant.MQTT_PAYLOAD_FORMATTER_NAME));
+    }
+
+    if (properties.getProperty(IoTDBConstant.ENABLE_MQTT) != null) {
+      conf.setEnableMQTTService(
+          Boolean.parseBoolean(properties.getProperty(IoTDBConstant.ENABLE_MQTT)));
+    }
+
+    if (properties.getProperty(IoTDBConstant.MQTT_MAX_MESSAGE_SIZE) != null) {
+      conf.setMqttMaxMessageSize(
+          Integer.parseInt(properties.getProperty(IoTDBConstant.MQTT_MAX_MESSAGE_SIZE)));
+    }
   }
 
   // timed flush memtable, timed close tsfile
@@ -1301,6 +1360,12 @@ public class IoTDBDescriptor {
     logger.info("allocateMemoryForWrite = {}", conf.getAllocateMemoryForWrite());
     logger.info("allocateMemoryForSchema = {}", conf.getAllocateMemoryForSchema());
 
+    conf.setMaxQueryDeduplicatedPathNum(
+        Integer.parseInt(
+            properties.getProperty(
+                "max_deduplicated_path_num",
+                Integer.toString(conf.getMaxQueryDeduplicatedPathNum()))));
+
     if (!conf.isMetaDataCacheEnable()) {
       return;
     }
@@ -1332,12 +1397,6 @@ public class IoTDBDescriptor {
         }
       }
     }
-
-    conf.setMaxQueryDeduplicatedPathNum(
-        Integer.parseInt(
-            properties.getProperty(
-                "max_deduplicated_path_num",
-                Integer.toString(conf.getMaxQueryDeduplicatedPathNum()))));
   }
 
   @SuppressWarnings("squid:S3518") // "proportionSum" can't be zero
@@ -1422,6 +1481,25 @@ public class IoTDBDescriptor {
         DatetimeUtils.convertDurationStrToLong(
             properties.getProperty("continuous_query_minimum_every_interval", "1s"),
             conf.getTimestampPrecision()));
+
+    conf.setCqlogBufferSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "cqlog_buffer_size", Integer.toString(conf.getCqlogBufferSize()))));
+  }
+
+  public void loadClusterProps(Properties properties) {
+    String configNodeUrls = properties.getProperty("config_nodes");
+    if (configNodeUrls != null) {
+      List<String> urlList = getNodeUrlList(configNodeUrls);
+      conf.setConfigNodeUrls(urlList);
+    }
+
+    conf.setInternalIp(properties.getProperty("internal_ip", conf.getInternalIp()));
+
+    conf.setInternalPort(
+        Integer.parseInt(
+            properties.getProperty("internal_port", Integer.toString(conf.getInternalPort()))));
   }
 
   /** Get default encode algorithm by data type */
@@ -1440,6 +1518,28 @@ public class IoTDBDescriptor {
       default:
         return conf.getDefaultTextEncoding();
     }
+  }
+
+  /**
+   * Split the node urls as one list.
+   *
+   * @param nodeUrls the config node urls.
+   * @return the node urls as a list.
+   */
+  public static List<String> getNodeUrlList(String nodeUrls) {
+    if (nodeUrls == null) {
+      return Collections.emptyList();
+    }
+    List<String> urlList = new ArrayList<>();
+    String[] split = nodeUrls.split(",");
+    for (String nodeUrl : split) {
+      nodeUrl = nodeUrl.trim();
+      if ("".equals(nodeUrl)) {
+        continue;
+      }
+      urlList.add(nodeUrl);
+    }
+    return urlList;
   }
 
   private static class IoTDBDescriptorHolder {

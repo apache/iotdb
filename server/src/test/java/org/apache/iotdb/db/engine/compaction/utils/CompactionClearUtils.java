@@ -19,13 +19,12 @@
 
 package org.apache.iotdb.db.engine.compaction.utils;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.cache.BloomFilterCache;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogger;
-import org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger;
+import org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.control.FileReaderManager;
@@ -47,8 +46,8 @@ public class CompactionClearUtils {
     deleteAllFilesInOneDirBySuffix("target", ModificationFile.FILE_SUFFIX);
     deleteAllFilesInOneDirBySuffix("target", IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX);
     deleteAllFilesInOneDirBySuffix("target", IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX);
-    deleteAllFilesInOneDirBySuffix("target", SizeTieredCompactionLogger.COMPACTION_LOG_NAME);
-    deleteAllFilesInOneDirBySuffix("target", RewriteCrossSpaceCompactionLogger.COMPACTION_LOG_NAME);
+    deleteAllFilesInOneDirBySuffix("target", CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX);
+    deleteAllFilesInOneDirBySuffix("target", CompactionLogger.CROSS_COMPACTION_LOG_NAME_SUFFIX);
     // clean cache
     if (IoTDBDescriptor.getInstance().getConfig().isMetaDataCacheEnable()) {
       ChunkCache.getInstance().clear();

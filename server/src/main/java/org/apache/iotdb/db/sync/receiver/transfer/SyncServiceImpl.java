@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.sync.receiver.transfer;
 
-import org.apache.iotdb.db.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
@@ -300,8 +300,9 @@ public class SyncServiceImpl implements SyncService.Iface {
               continue;
             }
             if (plan.getOperatorType() != Operator.OperatorType.CREATE_CONTINUOUS_QUERY
-                && plan.getOperatorType() != Operator.OperatorType.DROP_CONTINUOUS_QUERY) {
-              IoTDB.metaManager.operation(plan);
+                && plan.getOperatorType() != Operator.OperatorType.DROP_CONTINUOUS_QUERY
+                && plan.getOperatorType() != Operator.OperatorType.CHANGE_TAG_OFFSET) {
+              IoTDB.schemaProcessor.operation(plan);
             }
           } catch (Exception e) {
             logger.error(

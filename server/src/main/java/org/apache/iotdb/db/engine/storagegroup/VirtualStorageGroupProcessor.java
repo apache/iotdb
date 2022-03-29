@@ -18,10 +18,11 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
-import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.db.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -29,8 +30,7 @@ import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
-import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
-import org.apache.iotdb.db.engine.compaction.task.CompactionRecoverTask;
+import org.apache.iotdb.db.engine.compaction.task.CompactionRecoverManager;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.CloseFileListener;
 import org.apache.iotdb.db.engine.flush.FlushListener;
@@ -38,7 +38,6 @@ import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.engine.storagegroup.timeindex.DeviceTimeIndex;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEngine;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEvent;
 import org.apache.iotdb.db.engine.upgrade.UpgradeCheckStatus;
@@ -78,10 +77,10 @@ import org.apache.iotdb.db.service.metrics.Tag;
 import org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
 import org.apache.iotdb.db.utils.MmapUtil;
-import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
@@ -120,10 +119,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.regex.Pattern;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
-import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger.COMPACTION_LOG_NAME;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.TEMP_SUFFIX;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
@@ -159,8 +156,7 @@ public class VirtualStorageGroupProcessor {
   private static final int MERGE_MOD_START_VERSION_NUM = 1;
 
   private static final Logger logger = LoggerFactory.getLogger(VirtualStorageGroupProcessor.class);
-  /** indicating the file to be loaded already exists locally. */
-  private static final int POS_ALREADY_EXIST = -2;
+
   /** indicating the file to be loaded overlap with some files. */
   private static final int POS_OVERLAP = -3;
 
@@ -237,12 +233,6 @@ public class VirtualStorageGroupProcessor {
   private Map<Long, Long> partitionMaxFileVersions = new HashMap<>();
   /** storage group info for mem control */
   private StorageGroupInfo storageGroupInfo = new StorageGroupInfo(this);
-  /**
-   * Record the device number of the last TsFile in each storage group, which is applied to
-   * initialize the array size of DeviceTimeIndex. It is reasonable to assume that the adjacent
-   * files should have similar numbers of devices. Default value: INIT_ARRAY_SIZE = 64
-   */
-  private int deviceNumInLastClosedTsFile = DeviceTimeIndex.INIT_ARRAY_SIZE;
   /** whether it's ready from recovery */
   private boolean isReady = false;
   /** close file listeners */
@@ -271,6 +261,7 @@ public class VirtualStorageGroupProcessor {
   private String insertWriteLockHolder = "";
 
   private ScheduledExecutorService timedCompactionScheduleTask;
+  private ScheduledExecutorService walTrimScheduleTask;
 
   public static final long COMPACTION_TASK_SUBMIT_DELAY = 20L * 1000L;
 
@@ -421,21 +412,22 @@ public class VirtualStorageGroupProcessor {
           .getMetricManager()
           .getOrCreateAutoGauge(
               Metric.MEM.toString(),
-              storageGroupInfo.getMemCost(),
-              Long::longValue,
+              MetricLevel.IMPORTANT,
+              storageGroupInfo,
+              StorageGroupInfo::getMemCost,
               Tag.NAME.toString(),
-              "storageGroup");
+              "storageGroup_" + getLogicalStorageGroupName());
     }
 
     // start trim task at last
-    ScheduledExecutorService executorService =
+    walTrimScheduleTask =
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
             ThreadName.WAL_TRIM.getName()
                 + "-"
                 + logicalStorageGroupName
                 + "-"
                 + virtualStorageGroupId);
-    executorService.scheduleWithFixedDelay(
+    walTrimScheduleTask.scheduleWithFixedDelay(
         this::trimTask,
         config.getWalPoolTrimIntervalInMS(),
         config.getWalPoolTrimIntervalInMS(),
@@ -463,17 +455,49 @@ public class VirtualStorageGroupProcessor {
     return ret;
   }
 
+  /** this class is used to store recovering context */
+  private class RecoveryContext {
+    /** number of files to be recovered */
+    private final long filesToRecoverNum;
+    /** when the change of recoveredFilesNum exceeds this, log check will be triggered */
+    private final long filesNumLogCheckTrigger;
+    /** number of already recovered files */
+    private long recoveredFilesNum;
+    /** last recovery log time */
+    private long lastLogTime;
+    /** last recovery log files num */
+    private long lastLogCheckFilesNum;
+
+    public RecoveryContext(long filesToRecoverNum, long recoveredFilesNum) {
+      this.filesToRecoverNum = filesToRecoverNum;
+      this.recoveredFilesNum = recoveredFilesNum;
+      this.filesNumLogCheckTrigger = this.filesToRecoverNum / 100;
+      this.lastLogTime = System.currentTimeMillis();
+      this.lastLogCheckFilesNum = 0;
+    }
+
+    public void incrementRecoveredFilesNum() {
+      recoveredFilesNum++;
+      // check log only when 1% more files have been recovered
+      if (lastLogCheckFilesNum + filesNumLogCheckTrigger < recoveredFilesNum) {
+        lastLogCheckFilesNum = recoveredFilesNum;
+        // log only when log interval exceeds recovery log interval
+        if (lastLogTime + config.getRecoveryLogIntervalInMs() < System.currentTimeMillis()) {
+          logger.info(
+              "The virtual storage group {}[{}] has recovered {}%, please wait a moment.",
+              logicalStorageGroupName,
+              virtualStorageGroupId,
+              recoveredFilesNum * 1.0 / filesToRecoverNum);
+          lastLogTime = System.currentTimeMillis();
+        }
+      }
+    }
+  }
+
   /** recover from file */
   private void recover() throws StorageGroupProcessorException {
-    logger.info(
-        String.format(
-            "start recovering virtual storage group %s[%s]",
-            logicalStorageGroupName, virtualStorageGroupId));
-
     try {
-      recoverInnerSpaceCompaction(true);
-      recoverInnerSpaceCompaction(false);
-      recoverCrossSpaceCompaction();
+      recoverCompaction();
     } catch (Exception e) {
       throw new StorageGroupProcessorException(e);
     }
@@ -497,15 +521,17 @@ public class VirtualStorageGroupProcessor {
 
       // split by partition so that we can find the last file of each partition and decide to
       // close it or not
+      RecoveryContext recoveryContext =
+          new RecoveryContext(tmpSeqTsFiles.size() + tmpUnseqTsFiles.size(), 0);
       Map<Long, List<TsFileResource>> partitionTmpSeqTsFiles =
           splitResourcesByPartition(tmpSeqTsFiles);
       Map<Long, List<TsFileResource>> partitionTmpUnseqTsFiles =
           splitResourcesByPartition(tmpUnseqTsFiles);
       for (List<TsFileResource> value : partitionTmpSeqTsFiles.values()) {
-        recoverTsFiles(value, true);
+        recoverTsFiles(value, recoveryContext, true);
       }
       for (List<TsFileResource> value : partitionTmpUnseqTsFiles.values()) {
-        recoverTsFiles(value, false);
+        recoverTsFiles(value, recoveryContext, false);
       }
       for (TsFileResource resource : tsFileManager.getTsFileList(true)) {
         long partitionNum = resource.getTimePartition();
@@ -534,7 +560,7 @@ public class VirtualStorageGroupProcessor {
       Map<String, Long> endTimeMap = new HashMap<>();
       for (String deviceId : resource.getDevices()) {
         long endTime = resource.getEndTime(deviceId);
-        endTimeMap.put(deviceId, endTime);
+        endTimeMap.put(deviceId.intern(), endTime);
       }
       lastFlushTimeManager.setMultiDeviceLastTime(timePartitionId, endTimeMap);
       lastFlushTimeManager.setMultiDeviceFlushedTime(timePartitionId, endTimeMap);
@@ -545,9 +571,9 @@ public class VirtualStorageGroupProcessor {
     initCompaction();
 
     logger.info(
-        String.format(
-            "the virtual storage group %s[%s] is recovered successfully",
-            logicalStorageGroupName, virtualStorageGroupId));
+        "The virtual storage group {}[{}] is recovered successfully",
+        logicalStorageGroupName,
+        virtualStorageGroupId);
   }
 
   private void initCompaction() {
@@ -565,83 +591,12 @@ public class VirtualStorageGroupProcessor {
         TimeUnit.MILLISECONDS);
   }
 
-  /** recover crossSpaceCompaction */
-  private void recoverCrossSpaceCompaction() throws Exception {
-    CompactionRecoverTask compactionRecoverTask =
-        new CompactionRecoverTask(tsFileManager, logicalStorageGroupName, virtualStorageGroupId);
-    compactionRecoverTask.recoverCrossSpaceCompaction();
-  }
-
-  private void recoverInnerSpaceCompaction(boolean isSequence) throws Exception {
-    // search compaction log for SizeTieredCompaction
-    List<String> dirs;
-    if (isSequence) {
-      dirs = DirectoryManager.getInstance().getAllSequenceFileFolders();
-    } else {
-      dirs = DirectoryManager.getInstance().getAllUnSequenceFileFolders();
-    }
-    for (String dir : dirs) {
-      File storageGroupDir =
-          new File(
-              dir
-                  + File.separator
-                  + logicalStorageGroupName
-                  + File.separator
-                  + virtualStorageGroupId);
-      if (!storageGroupDir.exists()) {
-        return;
-      }
-      File[] timePartitionDirs = storageGroupDir.listFiles();
-      if (timePartitionDirs == null) {
-        return;
-      }
-      for (File timePartitionDir : timePartitionDirs) {
-        if (!timePartitionDir.isDirectory()
-            || !Pattern.compile("[0-9]*").matcher(timePartitionDir.getName()).matches()) {
-          continue;
-        }
-        File[] compactionLogs =
-            InnerSpaceCompactionUtils.findInnerSpaceCompactionLogs(timePartitionDir.getPath());
-        for (File compactionLog : compactionLogs) {
-          IoTDBDescriptor.getInstance()
-              .getConfig()
-              .getInnerCompactionStrategy()
-              .getCompactionRecoverTask(
-                  tsFileManager.getStorageGroupName(),
-                  tsFileManager.getVirtualStorageGroup(),
-                  Long.parseLong(
-                      timePartitionDir
-                          .getPath()
-                          .substring(timePartitionDir.getPath().lastIndexOf(File.separator) + 1)),
-                  compactionLog,
-                  timePartitionDir.getPath(),
-                  isSequence,
-                  tsFileManager)
-              .call();
-        }
-      }
-    }
-
-    // search compaction log for old LevelCompaction
-    File logFile =
-        FSFactoryProducer.getFSFactory()
-            .getFile(
-                storageGroupSysDir.getAbsolutePath(),
-                logicalStorageGroupName + COMPACTION_LOG_NAME);
-    if (logFile.exists()) {
-      IoTDBDescriptor.getInstance()
-          .getConfig()
-          .getInnerCompactionStrategy()
-          .getCompactionRecoverTask(
-              tsFileManager.getStorageGroupName(),
-              tsFileManager.getVirtualStorageGroup(),
-              -1,
-              logFile,
-              logFile.getParent(),
-              isSequence,
-              tsFileManager)
-          .call();
-    }
+  private void recoverCompaction() throws Exception {
+    CompactionRecoverManager compactionRecoverManager =
+        new CompactionRecoverManager(tsFileManager, logicalStorageGroupName, virtualStorageGroupId);
+    compactionRecoverManager.recoverInnerSpaceCompaction(true);
+    compactionRecoverManager.recoverInnerSpaceCompaction(false);
+    compactionRecoverManager.recoverCrossSpaceCompaction();
   }
 
   private void updatePartitionFileVersion(long partitionNum, long fileVersion) {
@@ -750,7 +705,8 @@ public class VirtualStorageGroupProcessor {
     List<TsFileResource> upgradeRet = new ArrayList<>();
     for (File f : upgradeFiles) {
       TsFileResource fileResource = new TsFileResource(f);
-      fileResource.setClosed(true);
+      fileResource.setStatus(TsFileResourceStatus.CLOSED);
+      ;
       // make sure the flush command is called before IoTDB is down.
       fileResource.deserializeFromOldFile();
       upgradeRet.add(fileResource);
@@ -790,8 +746,12 @@ public class VirtualStorageGroupProcessor {
     }
   }
 
-  private void recoverTsFiles(List<TsFileResource> tsFiles, boolean isSeq) throws IOException {
+  private void recoverTsFiles(List<TsFileResource> tsFiles, RecoveryContext context, boolean isSeq)
+      throws IOException {
     for (int i = 0; i < tsFiles.size(); i++) {
+      // update recovery context
+      context.incrementRecoveredFilesNum();
+
       TsFileResource tsFileResource = tsFiles.get(i);
       long timePartitionId = tsFileResource.getTimePartition();
 
@@ -815,7 +775,7 @@ public class VirtualStorageGroupProcessor {
           if (writer != null && writer.hasCrashed()) {
             tsFileManager.addForRecover(tsFileResource, isSeq);
           } else {
-            tsFileResource.setClosed(true);
+            tsFileResource.setStatus(TsFileResourceStatus.CLOSED);
             tsFileManager.add(tsFileResource, isSeq);
             tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
           }
@@ -1149,7 +1109,7 @@ public class VirtualStorageGroupProcessor {
       }
       // Update cached last value with high priority
       if (mNodes[i] == null) {
-        IoTDB.metaManager.updateLastCache(
+        IoTDB.schemaProcessor.updateLastCache(
             plan.getDevicePath().concatNode(plan.getMeasurements()[i]),
             plan.composeLastTimeValuePair(i),
             true,
@@ -1157,7 +1117,7 @@ public class VirtualStorageGroupProcessor {
       } else {
         // in stand alone version, the seriesPath is not needed, just use measurementMNodes[i] to
         // update last cache
-        IoTDB.metaManager.updateLastCache(
+        IoTDB.schemaProcessor.updateLastCache(
             mNodes[i], plan.composeLastTimeValuePair(i), true, latestFlushedTime);
       }
     }
@@ -1199,7 +1159,7 @@ public class VirtualStorageGroupProcessor {
       }
       // Update cached last value with high priority
       if (mNodes[i] == null) {
-        IoTDB.metaManager.updateLastCache(
+        IoTDB.schemaProcessor.updateLastCache(
             plan.getDevicePath().concatNode(plan.getMeasurements()[i]),
             plan.composeTimeValuePair(i),
             true,
@@ -1207,7 +1167,7 @@ public class VirtualStorageGroupProcessor {
       } else {
         // in stand alone version, the seriesPath is not needed, just use measurementMNodes[i] to
         // update last cache
-        IoTDB.metaManager.updateLastCache(
+        IoTDB.schemaProcessor.updateLastCache(
             mNodes[i], plan.composeTimeValuePair(i), true, latestFlushedTime);
       }
     }
@@ -1545,7 +1505,7 @@ public class VirtualStorageGroupProcessor {
     }
 
     // prevent new merges and queries from choosing this file
-    resource.setDeleted(true);
+    resource.setStatus(TsFileResourceStatus.DELETED);
 
     // ensure that the file is not used by any queries
     if (resource.tryWriteLock()) {
@@ -1739,7 +1699,6 @@ public class VirtualStorageGroupProcessor {
       Filter timeFilter)
       throws QueryProcessException {
     readLock();
-
     try {
       List<TsFileResource> seqResources =
           getFileResourceListForQuery(
@@ -1899,7 +1858,7 @@ public class VirtualStorageGroupProcessor {
     List<ModificationFile> updatedModFiles = new ArrayList<>();
 
     try {
-      Set<PartialPath> devicePaths = IoTDB.metaManager.getBelongedDevices(path);
+      Set<PartialPath> devicePaths = IoTDB.schemaProcessor.getBelongedDevices(path);
       for (PartialPath device : devicePaths) {
         // delete Last cache record if necessary
         tryToDeleteLastCache(device, path, startTime, endTime);
@@ -2009,7 +1968,7 @@ public class VirtualStorageGroupProcessor {
         continue;
       }
 
-      if (tsFileResource.isMerging) {
+      if (tsFileResource.isCompacting()) {
         // we have to set modification offset to MAX_VALUE, as the offset of source chunk may
         // change after compaction
         deletion.setFileOffset(Long.MAX_VALUE);
@@ -2056,7 +2015,7 @@ public class VirtualStorageGroupProcessor {
       return;
     }
     try {
-      IoTDB.metaManager.deleteLastCacheByDevice(deviceId, originalPath, startTime, endTime);
+      IoTDB.schemaProcessor.deleteLastCacheByDevice(deviceId, originalPath, startTime, endTime);
     } catch (MetadataException e) {
       throw new WriteProcessException(e);
     }
@@ -2340,7 +2299,7 @@ public class VirtualStorageGroupProcessor {
       return;
     }
     try {
-      IoTDB.metaManager.deleteLastCacheByDevice(deviceId);
+      IoTDB.schemaProcessor.deleteLastCacheByDevice(deviceId);
     } catch (MetadataException e) {
       // the path doesn't cache in cluster mode now, ignore
     }
@@ -3024,8 +2983,10 @@ public class VirtualStorageGroupProcessor {
     // this requires blocking all other activities
     writeLock("removePartitions");
     try {
+      tsFileManager.setAllowCompaction(false);
       // abort ongoing comapctions and merges
-      CompactionTaskManager.getInstance().abortCompaction(logicalStorageGroupName);
+      CompactionTaskManager.getInstance()
+          .abortCompaction(logicalStorageGroupName + "-" + virtualStorageGroupId);
       // close all working files that should be removed
       removePartitions(filter, workSequenceTsFileProcessors.entrySet(), true);
       removePartitions(filter, workUnsequenceTsFileProcessors.entrySet(), false);
@@ -3311,6 +3272,10 @@ public class VirtualStorageGroupProcessor {
 
   public ScheduledExecutorService getTimedCompactionScheduleTask() {
     return timedCompactionScheduleTask;
+  }
+
+  public ScheduledExecutorService getWALTrimScheduleTask() {
+    return walTrimScheduleTask;
   }
 
   public IDTable getIdTable() {

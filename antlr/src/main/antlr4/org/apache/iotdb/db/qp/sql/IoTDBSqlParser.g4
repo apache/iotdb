@@ -19,7 +19,7 @@
 
 parser grammar IoTDBSqlParser;
 
-options { tokenVocab=IoTDBSqlLexer; }
+options { tokenVocab=SqlLexer; }
 
 
 /**
@@ -37,12 +37,14 @@ statement
 ddlStatement
     : setStorageGroup | createStorageGroup | createTimeseries
     | createSchemaTemplate | createTimeseriesOfSchemaTemplate
-    | createFunction | createTrigger | createContinuousQuery | createSnapshot
+    | createFunction | createTrigger | createContinuousQuery
     | alterTimeseries | deleteStorageGroup | deleteTimeseries | deletePartition
-    | dropFunction | dropTrigger | dropContinuousQuery | setTTL | unsetTTL
-    | setSchemaTemplate | unsetSchemaTemplate | startTrigger | stopTrigger
+    | dropFunction | dropTrigger | dropContinuousQuery | dropSchemaTemplate
+    | setTTL | unsetTTL | startTrigger | stopTrigger | setSchemaTemplate | unsetSchemaTemplate
     | showStorageGroup | showDevices | showTimeseries | showChildPaths | showChildNodes
     | showFunctions | showTriggers | showContinuousQueries | showTTL | showAllTTL
+    | showSchemaTemplates | showNodesInSchemaTemplate
+    | showPathsUsingSchemaTemplate | showPathsSetSchemaTemplate
     | countStorageGroup | countDevices | countTimeseries | countNodes
     ;
 
@@ -93,19 +95,17 @@ alignedMeasurements
 
 // Create Schema Template
 createSchemaTemplate
-    : CREATE SCHEMA TEMPLATE templateName=identifier
-    LR_BRACKET templateMeasurementClause (COMMA templateMeasurementClause)* RR_BRACKET
+    : CREATE SCHEMA? TEMPLATE templateName=identifier
+    ALIGNED? LR_BRACKET templateMeasurementClause (COMMA templateMeasurementClause)* RR_BRACKET
     ;
 
 templateMeasurementClause
-    : suffixPath attributeClauses #nonAlignedTemplateMeasurement
-    | suffixPath LR_BRACKET nodeNameWithoutWildcard attributeClauses
-    (COMMA nodeNameWithoutWildcard attributeClauses)+ RR_BRACKET  #alignedTemplateMeasurement
+    : nodeNameWithoutWildcard attributeClauses
     ;
 
 // Create Timeseries Of Schema Template
 createTimeseriesOfSchemaTemplate
-    : CREATE TIMESERIES OF SCHEMA TEMPLATE ON prefixPath
+    : CREATE TIMESERIES OF SCHEMA? TEMPLATE ON prefixPath
     ;
 
 // Create Function
@@ -127,7 +127,7 @@ triggerAttributeClause
     ;
 
 triggerAttribute
-    : key=STRING_LITERAL OPERATOR_EQ value=STRING_LITERAL
+    : key=STRING_LITERAL operator_eq value=STRING_LITERAL
     ;
 
 // Create Continuous Query
@@ -141,15 +141,11 @@ cqSelectIntoClause
 
 cqGroupByTimeClause
     : GROUP BY TIME LR_BRACKET DURATION_LITERAL RR_BRACKET
-      (COMMA LEVEL OPERATOR_EQ INTEGER_LITERAL (COMMA INTEGER_LITERAL)*)?
+      (COMMA LEVEL operator_eq INTEGER_LITERAL (COMMA INTEGER_LITERAL)*)?
     ;
 
 resampleClause
-    : RESAMPLE (EVERY DURATION_LITERAL)? (FOR DURATION_LITERAL)? (BOUNDARY dateExpression)?;
-
-// Create Snapshot for Schema
-createSnapshot
-    : CREATE SNAPSHOT FOR SCHEMA
+    : RESAMPLE (EVERY DURATION_LITERAL)? (FOR DURATION_LITERAL)? (BOUNDARY dateExpression)?
     ;
 
 // Alter Timeseries
@@ -167,7 +163,7 @@ alterClause
     ;
 
 aliasClause
-    : ALIAS OPERATOR_EQ identifier
+    : ALIAS operator_eq identifier
     ;
 
 // Delete Storage Group
@@ -200,6 +196,11 @@ dropContinuousQuery
     : DROP (CONTINUOUS QUERY|CQ) continuousQueryName=identifier
     ;
 
+// Drop Schema Template
+dropSchemaTemplate
+    : DROP SCHEMA? TEMPLATE templateName=identifier
+    ;
+
 // Set TTL
 setTTL
     : SET TTL TO path=prefixPath time=INTEGER_LITERAL
@@ -212,12 +213,12 @@ unsetTTL
 
 // Set Schema Template
 setSchemaTemplate
-    : SET SCHEMA TEMPLATE templateName=identifier TO prefixPath
+    : SET SCHEMA? TEMPLATE templateName=identifier TO prefixPath
     ;
 
 // Unset Schema Template
 unsetSchemaTemplate
-    : UNSET SCHEMA TEMPLATE templateName=identifier FROM prefixPath
+    : UNSET SCHEMA? TEMPLATE templateName=identifier FROM prefixPath
     ;
 
 // Start Trigger
@@ -284,6 +285,26 @@ showAllTTL
     : SHOW ALL TTL
     ;
 
+// Show Schema Template
+showSchemaTemplates
+    : SHOW SCHEMA? TEMPLATES
+    ;
+
+// Show Measurements In Schema Template
+showNodesInSchemaTemplate
+    : SHOW NODES OPERATOR_IN SCHEMA? TEMPLATE templateName=identifier
+    ;
+
+// Show Paths Set Schema Template
+showPathsSetSchemaTemplate
+    : SHOW PATHS SET SCHEMA? TEMPLATE templateName=identifier
+    ;
+
+// Show Paths Using Schema Template
+showPathsUsingSchemaTemplate
+    : SHOW PATHS USING SCHEMA? TEMPLATE templateName=identifier
+    ;
+
 // Count Storage Group
 countStorageGroup
     : COUNT STORAGE GROUP prefixPath?
@@ -296,12 +317,12 @@ countDevices
 
 // Count Timeseries
 countTimeseries
-    : COUNT TIMESERIES prefixPath? (GROUP BY LEVEL OPERATOR_EQ INTEGER_LITERAL)?
+    : COUNT TIMESERIES prefixPath? (GROUP BY LEVEL operator_eq INTEGER_LITERAL)?
     ;
 
 // Count Nodes
 countNodes
-    : COUNT NODES prefixPath LEVEL OPERATOR_EQ INTEGER_LITERAL
+    : COUNT NODES prefixPath LEVEL operator_eq INTEGER_LITERAL
     ;
 
 
@@ -358,18 +379,18 @@ orderByTimeClause
     ;
 
 groupByTimeClause
-    : GROUP BY LR_BRACKET timeInterval COMMA DURATION_LITERAL (COMMA DURATION_LITERAL)? RR_BRACKET
-    | GROUP BY LR_BRACKET timeInterval COMMA DURATION_LITERAL (COMMA DURATION_LITERAL)? RR_BRACKET
-    COMMA LEVEL OPERATOR_EQ INTEGER_LITERAL (COMMA INTEGER_LITERAL)*
+    : GROUP BY LR_BRACKET timeRange COMMA DURATION_LITERAL (COMMA DURATION_LITERAL)? RR_BRACKET
+    | GROUP BY LR_BRACKET timeRange COMMA DURATION_LITERAL (COMMA DURATION_LITERAL)? RR_BRACKET
+    COMMA LEVEL operator_eq INTEGER_LITERAL (COMMA INTEGER_LITERAL)*
     ;
 
 groupByFillClause
-    : GROUP BY LR_BRACKET timeInterval COMMA DURATION_LITERAL (COMMA DURATION_LITERAL)? RR_BRACKET
+    : GROUP BY LR_BRACKET timeRange COMMA DURATION_LITERAL (COMMA DURATION_LITERAL)? RR_BRACKET
     fillClause
     ;
 
 groupByLevelClause
-    : GROUP BY LEVEL OPERATOR_EQ INTEGER_LITERAL (COMMA INTEGER_LITERAL)*
+    : GROUP BY LEVEL operator_eq INTEGER_LITERAL (COMMA INTEGER_LITERAL)*
     ;
 
 fillClause
@@ -377,7 +398,7 @@ fillClause
     ;
 
 withoutNullClause
-    : WITHOUT NULL_LITERAL (ALL | ANY)
+    : WITHOUT NULL_LITERAL (ALL | ANY) (LR_BRACKET expression (COMMA expression)* RR_BRACKET)?
     ;
 
 oldTypeClause
@@ -403,7 +424,7 @@ previousUntilLastClause
     : PREVIOUSUNTILLAST (COMMA DURATION_LITERAL)?
     ;
 
-timeInterval
+timeRange
     : LS_BRACKET startTime=timeValue COMMA endTime=timeValue RR_BRACKET
     | LR_BRACKET startTime=timeValue COMMA endTime=timeValue RS_BRACKET
     ;
@@ -645,9 +666,9 @@ loadFile
     ;
 
 loadFilesClause
-    : AUTOREGISTER OPERATOR_EQ BOOLEAN_LITERAL (COMMA loadFilesClause)?
-    | SGLEVEL OPERATOR_EQ INTEGER_LITERAL (COMMA loadFilesClause)?
-    | VERIFY OPERATOR_EQ BOOLEAN_LITERAL (COMMA loadFilesClause)?
+    : AUTOREGISTER operator_eq BOOLEAN_LITERAL (COMMA loadFilesClause)?
+    | SGLEVEL operator_eq INTEGER_LITERAL (COMMA loadFilesClause)?
+    | VERIFY operator_eq BOOLEAN_LITERAL (COMMA loadFilesClause)?
     ;
 
 // Remove TsFile
@@ -742,14 +763,14 @@ nodeName
     : wildcard
     | wildcard? ID wildcard?
     | wildcard? INTEGER_LITERAL wildcard?
-    | QUTOED_ID_WITHOUT_DOT
+    | QUTOED_ID_IN_NODE_NAME
     | STRING_LITERAL
     ;
 
 nodeNameWithoutWildcard
     : ID
     | INTEGER_LITERAL
-    | QUTOED_ID_WITHOUT_DOT
+    | QUTOED_ID_IN_NODE_NAME
     | STRING_LITERAL
     ;
 
@@ -761,7 +782,7 @@ nodeNameCanInExpr
     : wildcard
     | wildcard? ID wildcard?
     | QUTOED_ID
-    | QUTOED_ID_WITHOUT_DOT
+    | QUTOED_ID_IN_NODE_NAME
     ;
 
 wildcard
@@ -775,7 +796,7 @@ wildcard
 identifier
     : ID
     | QUTOED_ID
-    | QUTOED_ID_WITHOUT_DOT
+    | QUTOED_ID_IN_NODE_NAME
     | INTEGER_LITERAL
     ;
 
@@ -820,8 +841,11 @@ dateExpression
 expression
     : LR_BRACKET unaryInBracket=expression RR_BRACKET
     | (PLUS | MINUS) unaryAfterSign=expression
+    | OPERATOR_NOT unaryAfterNot=expression
     | leftExpression=expression (STAR | DIV | MOD) rightExpression=expression
     | leftExpression=expression (PLUS | MINUS) rightExpression=expression
+    | leftExpression=expression (OPERATOR_GT | OPERATOR_GTE | OPERATOR_LT | OPERATOR_LTE | OPERATOR_DEQ | OPERATOR_NEQ) rightExpression=expression
+    | leftExpression=expression (OPERATOR_AND | OPERATOR_OR) rightExpression=expression
     | functionName LR_BRACKET expression (COMMA expression)* functionAttribute* RR_BRACKET
     | suffixPathCanInExpr
     | constant
@@ -833,7 +857,7 @@ functionName
     ;
 
 functionAttribute
-    : COMMA functionAttributeKey=STRING_LITERAL OPERATOR_EQ functionAttributeValue=STRING_LITERAL
+    : COMMA functionAttributeKey=STRING_LITERAL OPERATOR_SEQ functionAttributeValue=STRING_LITERAL
     ;
 
 containsExpression
@@ -855,12 +879,18 @@ predicate
     | (suffixPath | fullPath) (REGEXP | LIKE) STRING_LITERAL
     ;
 
+operator_eq
+    : OPERATOR_SEQ
+    | OPERATOR_DEQ
+    ;
+
 comparisonOperator
     : type = OPERATOR_GT
     | type = OPERATOR_GTE
     | type = OPERATOR_LT
     | type = OPERATOR_LTE
-    | type = OPERATOR_EQ
+    | type = OPERATOR_DEQ
+    | type = OPERATOR_SEQ
     | type = OPERATOR_NEQ
     ;
 
@@ -904,16 +934,16 @@ fromClause
 // Attribute Clause
 
 attributeClauses
-    : alias? WITH DATATYPE OPERATOR_EQ dataType=DATATYPE_VALUE
-    (COMMA ENCODING OPERATOR_EQ encoding=ENCODING_VALUE)?
-    (COMMA (COMPRESSOR | COMPRESSION) OPERATOR_EQ compressor=COMPRESSOR_VALUE)?
+    : alias? WITH DATATYPE operator_eq dataType=DATATYPE_VALUE
+    (COMMA ENCODING operator_eq encoding=ENCODING_VALUE)?
+    (COMMA (COMPRESSOR | COMPRESSION) operator_eq compressor=COMPRESSOR_VALUE)?
     (COMMA propertyClause)*
     tagClause?
     attributeClause?
     // Simplified version (supported since v0.13)
-    | alias? WITH? (DATATYPE OPERATOR_EQ)? dataType=DATATYPE_VALUE
-    (ENCODING OPERATOR_EQ encoding=ENCODING_VALUE)?
-    ((COMPRESSOR | COMPRESSION) OPERATOR_EQ compressor=COMPRESSOR_VALUE)?
+    | alias? WITH? (DATATYPE operator_eq)? dataType=DATATYPE_VALUE
+    (ENCODING operator_eq encoding=ENCODING_VALUE)?
+    ((COMPRESSOR | COMPRESSION) operator_eq compressor=COMPRESSOR_VALUE)?
     propertyClause*
     tagClause?
     attributeClause?
@@ -928,7 +958,7 @@ tagClause
     ;
 
 propertyClause
-    : name=identifier OPERATOR_EQ value=propertyValue
+    : name=identifier (OPERATOR_SEQ | OPERATOR_DEQ) value=propertyValue
     ;
 
 propertyValue

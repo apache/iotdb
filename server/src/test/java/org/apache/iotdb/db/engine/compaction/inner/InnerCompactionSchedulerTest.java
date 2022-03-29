@@ -25,6 +25,7 @@ import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.task.FakedInnerSpaceCompactionTaskFactory;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -47,7 +48,7 @@ public class InnerCompactionSchedulerTest extends AbstractCompactionTest {
   int oldConcurrentCompactionThread =
       IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
   int oldMaxCompactionCandidateFileNum =
-      IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
+      IoTDBDescriptor.getInstance().getConfig().getMaxInnerCompactionCandidateFileNum();
 
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
@@ -72,7 +73,7 @@ public class InnerCompactionSchedulerTest extends AbstractCompactionTest {
         .setConcurrentCompactionThread(oldConcurrentCompactionThread);
     IoTDBDescriptor.getInstance()
         .getConfig()
-        .setMaxCompactionCandidateFileNum(oldMaxCompactionCandidateFileNum);
+        .setMaxInnerCompactionCandidateFileNum(oldMaxCompactionCandidateFileNum);
     super.tearDown();
   }
 
@@ -81,11 +82,14 @@ public class InnerCompactionSchedulerTest extends AbstractCompactionTest {
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
     IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(true);
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(50);
-    IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(4);
+    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(4);
     IoTDBDescriptor.getInstance().getConfig().setTargetCompactionFileSize(1000000);
     createFiles(2, 2, 3, 100, 0, 0, 50, 50, false, true);
+    registerTimeseriesInMManger(2, 3, false);
     createFiles(2, 3, 5, 50, 250, 250, 50, 50, false, true);
+    registerTimeseriesInMManger(3, 5, false);
     createFiles(2, 5, 5, 50, 600, 800, 50, 50, false, true);
+    registerTimeseriesInMManger(5, 5, false);
     TsFileManager tsFileManager = new TsFileManager("testSG", "0", "tmp");
     tsFileManager.addAll(seqResources, true);
 
@@ -103,11 +107,12 @@ public class InnerCompactionSchedulerTest extends AbstractCompactionTest {
   @Test
   public void testFileSelector2() throws IOException, MetadataException, WriteProcessException {
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(50);
-    IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(50);
+    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(50);
     TsFileResourceList tsFileResources = new TsFileResourceList();
     createFiles(2, 2, 3, 100, 0, 0, 50, 50, false, true);
     createFiles(2, 3, 5, 50, 250, 250, 50, 50, false, true);
-    seqResources.get(0).setMerging(true);
+    seqResources.get(0).setStatus(TsFileResourceStatus.COMPACTION_CANDIDATE);
+    seqResources.get(0).setStatus(TsFileResourceStatus.COMPACTING);
     TsFileManager tsFileManager = new TsFileManager("testSG", "0", "tmp");
     tsFileManager.addAll(seqResources, true);
     CompactionScheduler.tryToSubmitInnerSpaceCompactionTask(

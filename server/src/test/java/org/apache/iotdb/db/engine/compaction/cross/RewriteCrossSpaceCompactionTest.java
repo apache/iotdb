@@ -61,8 +61,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX;
-import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 import static org.junit.Assert.assertEquals;
 
 public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
@@ -224,7 +224,6 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
             COMPACTION_TEST_SG,
             "0",
             0,
-            STORAGE_GROUP_DIR.getPath(),
             tsFileManager,
             seqResources,
             unseqResources,
@@ -462,7 +461,6 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
             COMPACTION_TEST_SG,
             "0",
             0,
-            STORAGE_GROUP_DIR.getPath(),
             tsFileManager,
             seqResources,
             unseqResources,
@@ -610,11 +608,11 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
             COMPACTION_TEST_SG,
             "0",
             0,
-            STORAGE_GROUP_DIR.getPath(),
             vsgp.getTsFileResourceManager(),
             seqResources,
             unseqResources,
             new AtomicInteger(0));
+    rewriteCrossSpaceCompactionTask.setSourceFilesToCompactionCandidate();
     rewriteCrossSpaceCompactionTask.checkValidAndSetMerging();
     // delete data in source file during compaction
     vsgp.delete(
@@ -720,11 +718,11 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
             COMPACTION_TEST_SG,
             "0",
             0,
-            STORAGE_GROUP_DIR.getPath(),
             vsgp.getTsFileResourceManager(),
             seqResources,
             unseqResources,
             new AtomicInteger(0));
+    rewriteCrossSpaceCompactionTask.setSourceFilesToCompactionCandidate();
     rewriteCrossSpaceCompactionTask.checkValidAndSetMerging();
     // delete data in source file during compaction
     vsgp.delete(

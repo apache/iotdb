@@ -20,7 +20,9 @@
 package org.apache.iotdb.db.engine.compaction.cross;
 
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
+import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -34,17 +36,18 @@ public abstract class AbstractCrossSpaceCompactionTask extends AbstractCompactio
       long timePartition,
       AtomicInteger currentTaskNum,
       List<TsFileResource> selectedSequenceFiles,
-      List<TsFileResource> selectedUnsequenceFiles) {
-    super(fullStorageGroupName, timePartition, currentTaskNum);
+      List<TsFileResource> selectedUnsequenceFiles,
+      TsFileManager tsFileManager) {
+    super(fullStorageGroupName, timePartition, tsFileManager, currentTaskNum);
     this.selectedSequenceFiles = selectedSequenceFiles;
     this.selectedUnsequenceFiles = selectedUnsequenceFiles;
   }
 
-  public AbstractCrossSpaceCompactionTask(
-      String fullStorageGroupName, long timePartition, AtomicInteger currentTaskNum) {
-    super(fullStorageGroupName, timePartition, currentTaskNum);
-    this.selectedSequenceFiles = null;
-    this.selectedUnsequenceFiles = null;
+  @Override
+  public void setSourceFilesToCompactionCandidate() {
+    this.selectedSequenceFiles.forEach(x -> x.setStatus(TsFileResourceStatus.COMPACTION_CANDIDATE));
+    this.selectedUnsequenceFiles.forEach(
+        x -> x.setStatus(TsFileResourceStatus.COMPACTION_CANDIDATE));
   }
 
   public List<TsFileResource> getSelectedSequenceFiles() {
@@ -58,23 +61,23 @@ public abstract class AbstractCrossSpaceCompactionTask extends AbstractCompactio
   @Override
   public boolean checkValidAndSetMerging() {
     for (TsFileResource resource : selectedSequenceFiles) {
-      if (resource.isMerging() || !resource.isClosed() || !resource.getTsFile().exists()) {
+      if (resource.isCompacting() || !resource.isClosed() || !resource.getTsFile().exists()) {
         return false;
       }
     }
 
     for (TsFileResource resource : selectedUnsequenceFiles) {
-      if (resource.isMerging() || !resource.isClosed() || !resource.getTsFile().exists()) {
+      if (resource.isCompacting() || !resource.isClosed() || !resource.getTsFile().exists()) {
         return false;
       }
     }
 
     for (TsFileResource resource : selectedSequenceFiles) {
-      resource.setMerging(true);
+      resource.setStatus(TsFileResourceStatus.COMPACTING);
     }
 
     for (TsFileResource resource : selectedUnsequenceFiles) {
-      resource.setMerging(true);
+      resource.setStatus(TsFileResourceStatus.COMPACTING);
     }
 
     return true;
@@ -86,10 +89,16 @@ public abstract class AbstractCrossSpaceCompactionTask extends AbstractCompactio
         .append(fullStorageGroupName)
         .append("-")
         .append(timePartition)
-        .append(" task seq file num is ")
-        .append(selectedSequenceFiles.size())
-        .append(" , unseq file num is ")
-        .append(selectedUnsequenceFiles.size())
+        .append(" task seq files are ")
+        .append(selectedSequenceFiles.toString())
+        .append(" , unseq files are ")
+        .append(selectedUnsequenceFiles.toString())
         .toString();
+  }
+
+  @Override
+  public void resetCompactionCandidateStatusForAllSourceFiles() {
+    selectedSequenceFiles.forEach(x -> x.setStatus(TsFileResourceStatus.CLOSED));
+    selectedUnsequenceFiles.forEach(x -> x.setStatus(TsFileResourceStatus.CLOSED));
   }
 }

@@ -191,6 +191,10 @@ Description:
   - whether to use the aligned interface? The option `false` is default.
   - example: `-aligned true`
 
+* `-batch`:
+  - specifying the point's number of a batch. If the program throw the exception `org.apache.thrift.transport.TTransportException: Frame size larger than protect max size`, you can lower this parameter as appropriate.
+  - example: `-batch 100000`, `100000` is the default value.
+
 ### Example
 
 ```sh
@@ -210,5 +214,4 @@ Note that the following special characters in fields need to be checked before i
 
 1. `,` : fields containing `,` should be escaped by `\`.
 2. you can input time format like `yyyy-MM-dd'T'HH:mm:ss`, `yyy-MM-dd HH:mm:ss`, or `yyyy-MM-dd'T'HH:mm:ss.SSSZ`.
-3. a single CSV or TXT file should not exceed 2GB. If the size is larger than 2GB, you can divide the file into small files and import them in batches using parameter `-f` to specify the folder of small files.
-4. the `Time` column must be the first one.
+3. the `Time` column must be the first one.

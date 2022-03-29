@@ -157,6 +157,16 @@ public class ClusterNode {
     this.instance.destroy();
   }
 
+  public void waitingToShutDown() {
+    while (this.instance.isAlive()) {
+      try {
+        Thread.sleep(100);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+    }
+  }
+
   public String getIp() {
     return ip;
   }

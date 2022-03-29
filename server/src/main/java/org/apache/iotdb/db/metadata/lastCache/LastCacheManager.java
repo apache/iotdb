@@ -50,7 +50,7 @@ public class LastCacheManager {
    * get the last cache value of time series of given seriesPath
    *
    * @param node the measurementMNode holding the lastCache When invoker only has the target
-   *     seriesPath, the node could be null and MManager will search the node
+   *     seriesPath, the node could be null and SchemaProcessor will search the node
    * @return the last cache value
    */
   public static TimeValuePair getLastCache(IMeasurementMNode node) {
@@ -68,7 +68,7 @@ public class LastCacheManager {
    * update the last cache value of time series of given seriesPath
    *
    * @param node the measurementMNode holding the lastCache When invoker only has the target
-   *     seriesPath, the node could be null and MManager will search the node
+   *     seriesPath, the node could be null and SchemaProcessor will search the node
    * @param timeValuePair the latest point value
    * @param highPriorityUpdate the last value from insertPlan is high priority
    * @param latestFlushedTime latest flushed time
@@ -92,7 +92,7 @@ public class LastCacheManager {
    * reset the last cache value of time series of given seriesPath
    *
    * @param node the measurementMNode holding the lastCache When invoker only has the target
-   *     seriesPath, the node could be null and MManager will search the node
+   *     seriesPath, the node could be null and SchemaProcessor will search the node
    */
   public static void resetLastCache(IMeasurementMNode node) {
     if (node == null) {

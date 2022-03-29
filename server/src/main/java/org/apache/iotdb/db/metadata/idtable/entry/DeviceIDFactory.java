@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.metadata.idtable.entry;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.utils.TestOnly;
 
 import java.util.function.Function;
 
@@ -89,9 +89,9 @@ public class DeviceIDFactory {
             .getConfig()
             .getDeviceIDTransformationMethod()
             .equals("SHA256")) {
-      getDeviceIDFunction = partialPath -> new SHA256DeviceID(partialPath.toString());
+      getDeviceIDFunction = SHA256DeviceID::new;
     } else {
-      getDeviceIDFunction = partialPath -> new PlainDeviceID(partialPath.toString());
+      getDeviceIDFunction = PlainDeviceID::new;
     }
   }
 }

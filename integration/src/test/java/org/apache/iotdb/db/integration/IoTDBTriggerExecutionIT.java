@@ -101,37 +101,37 @@ public class IoTDBTriggerExecutionIT {
   }
 
   private void createTimeseries() throws MetadataException {
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.vehicle.d1.s1"),
         TSDataType.INT32,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.vehicle.d1.s2"),
         TSDataType.INT64,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.vehicle.d1.s3"),
         TSDataType.FLOAT,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.vehicle.d1.s4"),
         TSDataType.DOUBLE,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.vehicle.d1.s5"),
         TSDataType.BOOLEAN,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.vehicle.d1.s6"),
         TSDataType.TEXT,
         TSEncoding.PLAIN,
@@ -487,12 +487,12 @@ public class IoTDBTriggerExecutionIT {
 
       stopDataGenerator();
 
-      IoTDB.metaManager.deleteTimeseries(new PartialPath("root.vehicle.d1.s1"));
-      IoTDB.metaManager.deleteTimeseries(new PartialPath("root.vehicle.d1.s2"));
-      IoTDB.metaManager.deleteTimeseries(new PartialPath("root.vehicle.d1.s3"));
-      IoTDB.metaManager.deleteTimeseries(new PartialPath("root.vehicle.d1.s4"));
-      IoTDB.metaManager.deleteTimeseries(new PartialPath("root.vehicle.d1.s5"));
-      IoTDB.metaManager.deleteTimeseries(new PartialPath("root.vehicle.d1.s6"));
+      IoTDB.schemaProcessor.deleteTimeseries(new PartialPath("root.vehicle.d1.s1"));
+      IoTDB.schemaProcessor.deleteTimeseries(new PartialPath("root.vehicle.d1.s2"));
+      IoTDB.schemaProcessor.deleteTimeseries(new PartialPath("root.vehicle.d1.s3"));
+      IoTDB.schemaProcessor.deleteTimeseries(new PartialPath("root.vehicle.d1.s4"));
+      IoTDB.schemaProcessor.deleteTimeseries(new PartialPath("root.vehicle.d1.s5"));
+      IoTDB.schemaProcessor.deleteTimeseries(new PartialPath("root.vehicle.d1.s6"));
 
       for (int i = 0; i < 6; ++i) {
         try {
@@ -566,7 +566,7 @@ public class IoTDBTriggerExecutionIT {
 
       stopDataGenerator();
 
-      IoTDB.metaManager.deleteStorageGroups(
+      IoTDB.schemaProcessor.deleteStorageGroups(
           Collections.singletonList(new PartialPath("root.vehicle")));
 
       for (int i = 0; i < 6; ++i) {

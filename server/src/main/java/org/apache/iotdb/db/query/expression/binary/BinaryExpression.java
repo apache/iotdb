@@ -21,9 +21,10 @@ package org.apache.iotdb.db.query.expression.binary;
 
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.sql.rewriter.WildcardsRemover;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
-import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
 import org.apache.iotdb.db.query.udf.core.layer.IntermediateLayer;
@@ -32,7 +33,7 @@ import org.apache.iotdb.db.query.udf.core.layer.RawQueryInputLayer;
 import org.apache.iotdb.db.query.udf.core.layer.SingleInputColumnMultiReferenceIntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.layer.SingleInputColumnSingleReferenceIntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
-import org.apache.iotdb.db.query.udf.core.transformer.ArithmeticBinaryTransformer;
+import org.apache.iotdb.db.query.udf.core.transformer.BinaryTransformer;
 import org.apache.iotdb.db.query.udf.core.transformer.Transformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -99,6 +100,20 @@ public abstract class BinaryExpression extends Expression {
   @Override
   public final void removeWildcards(
       WildcardsRemover wildcardsRemover, List<Expression> resultExpressions)
+      throws StatementAnalyzeException {
+    List<Expression> leftExpressions = new ArrayList<>();
+    leftExpression.removeWildcards(wildcardsRemover, leftExpressions);
+
+    List<Expression> rightExpressions = new ArrayList<>();
+    rightExpression.removeWildcards(wildcardsRemover, rightExpressions);
+
+    reconstruct(leftExpressions, rightExpressions, resultExpressions);
+  }
+
+  @Override
+  public final void removeWildcards(
+      org.apache.iotdb.db.qp.utils.WildcardsRemover wildcardsRemover,
+      List<Expression> resultExpressions)
       throws LogicalOptimizeException {
     List<Expression> leftExpressions = new ArrayList<>();
     leftExpression.removeWildcards(wildcardsRemover, leftExpressions);
@@ -130,6 +145,30 @@ public abstract class BinaryExpression extends Expression {
             break;
           case "%":
             resultExpressions.add(new ModuloExpression(le, re));
+            break;
+          case "<":
+            resultExpressions.add(new LessThanExpression(le, re));
+            break;
+          case "<=":
+            resultExpressions.add(new LessEqualExpression(le, re));
+            break;
+          case ">":
+            resultExpressions.add(new GreaterThanExpression(le, re));
+            break;
+          case ">=":
+            resultExpressions.add(new GreaterEqualExpression(le, re));
+            break;
+          case "=":
+            resultExpressions.add(new EqualToExpression(le, re));
+            break;
+          case "!=":
+            resultExpressions.add(new NonEqualExpression(le, re));
+            break;
+          case "&":
+            resultExpressions.add(new LogicAndExpression(le, re));
+            break;
+          case "|":
+            resultExpressions.add(new LogicOrExpression(le, re));
             break;
           default:
             throw new UnsupportedOperationException();
@@ -207,7 +246,7 @@ public abstract class BinaryExpression extends Expression {
     return expressionIntermediateLayerMap.get(this);
   }
 
-  protected abstract ArithmeticBinaryTransformer constructTransformer(
+  protected abstract BinaryTransformer constructTransformer(
       LayerPointReader leftParentLayerPointReader, LayerPointReader rightParentLayerPointReader);
 
   @Override

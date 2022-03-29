@@ -93,10 +93,27 @@ public class SessionPool {
   // whether the queue is closed.
   private boolean closed;
 
+  // Redirect-able SessionPool
+  private final List<String> nodeUrls;
+
   public SessionPool(String host, int port, String user, String password, int maxSize) {
     this(
         host,
         port,
+        user,
+        password,
+        maxSize,
+        Config.DEFAULT_FETCH_SIZE,
+        60_000,
+        false,
+        null,
+        Config.DEFAULT_CACHE_LEADER_MODE,
+        Config.DEFAULT_CONNECTION_TIMEOUT_MS);
+  }
+
+  public SessionPool(List<String> nodeUrls, String user, String password, int maxSize) {
+    this(
+        nodeUrls,
         user,
         password,
         maxSize,
@@ -113,6 +130,21 @@ public class SessionPool {
     this(
         host,
         port,
+        user,
+        password,
+        maxSize,
+        Config.DEFAULT_FETCH_SIZE,
+        60_000,
+        enableCompression,
+        null,
+        Config.DEFAULT_CACHE_LEADER_MODE,
+        Config.DEFAULT_CONNECTION_TIMEOUT_MS);
+  }
+
+  public SessionPool(
+      List<String> nodeUrls, String user, String password, int maxSize, boolean enableCompression) {
+    this(
+        nodeUrls,
         user,
         password,
         maxSize,
@@ -147,10 +179,45 @@ public class SessionPool {
   }
 
   public SessionPool(
+      List<String> nodeUrls,
+      String user,
+      String password,
+      int maxSize,
+      boolean enableCompression,
+      boolean enableCacheLeader) {
+    this(
+        nodeUrls,
+        user,
+        password,
+        maxSize,
+        Config.DEFAULT_FETCH_SIZE,
+        60_000,
+        enableCompression,
+        null,
+        enableCacheLeader,
+        Config.DEFAULT_CONNECTION_TIMEOUT_MS);
+  }
+
+  public SessionPool(
       String host, int port, String user, String password, int maxSize, ZoneId zoneId) {
     this(
         host,
         port,
+        user,
+        password,
+        maxSize,
+        Config.DEFAULT_FETCH_SIZE,
+        60_000,
+        false,
+        zoneId,
+        Config.DEFAULT_CACHE_LEADER_MODE,
+        Config.DEFAULT_CONNECTION_TIMEOUT_MS);
+  }
+
+  public SessionPool(
+      List<String> nodeUrls, String user, String password, int maxSize, ZoneId zoneId) {
+    this(
+        nodeUrls,
         user,
         password,
         maxSize,
@@ -178,6 +245,7 @@ public class SessionPool {
     this.maxSize = maxSize;
     this.host = host;
     this.port = port;
+    this.nodeUrls = null;
     this.user = user;
     this.password = password;
     this.fetchSize = fetchSize;
@@ -186,6 +254,60 @@ public class SessionPool {
     this.zoneId = zoneId;
     this.enableCacheLeader = enableCacheLeader;
     this.connectionTimeoutInMs = connectionTimeoutInMs;
+  }
+
+  public SessionPool(
+      List<String> nodeUrls,
+      String user,
+      String password,
+      int maxSize,
+      int fetchSize,
+      long waitToGetSessionTimeoutInMs,
+      boolean enableCompression,
+      ZoneId zoneId,
+      boolean enableCacheLeader,
+      int connectionTimeoutInMs) {
+    this.maxSize = maxSize;
+    this.host = null;
+    this.port = -1;
+    this.nodeUrls = nodeUrls;
+    this.user = user;
+    this.password = password;
+    this.fetchSize = fetchSize;
+    this.waitToGetSessionTimeoutInMs = waitToGetSessionTimeoutInMs;
+    this.enableCompression = enableCompression;
+    this.zoneId = zoneId;
+    this.enableCacheLeader = enableCacheLeader;
+    this.connectionTimeoutInMs = connectionTimeoutInMs;
+  }
+
+  private Session constructNewSession() {
+    Session session;
+    if (nodeUrls == null) {
+      // Construct custom Session
+      session =
+          new Session.Builder()
+              .host(host)
+              .port(port)
+              .username(user)
+              .password(password)
+              .fetchSize(fetchSize)
+              .zoneId(zoneId)
+              .enableCacheLeader(enableCacheLeader)
+              .build();
+    } else {
+      // Construct redirect-able Session
+      session =
+          new Session.Builder()
+              .nodeUrls(nodeUrls)
+              .username(user)
+              .password(password)
+              .fetchSize(fetchSize)
+              .zoneId(zoneId)
+              .enableCacheLeader(enableCacheLeader)
+              .build();
+    }
+    return session;
   }
 
   // if this method throws an exception, either the server is broken, or the ip/port/user/password
@@ -254,9 +376,15 @@ public class SessionPool {
     if (shouldCreate) {
       // create a new one.
       if (logger.isDebugEnabled()) {
-        logger.debug("Create a new Session {}, {}, {}, {}", host, port, user, password);
+        if (nodeUrls == null) {
+          logger.debug("Create a new Session {}, {}, {}, {}", host, port, user, password);
+        } else {
+          logger.debug("Create a new redirect Session {}, {}, {}", nodeUrls, user, password);
+        }
       }
-      session = new Session(host, port, user, password, fetchSize, zoneId, enableCacheLeader);
+
+      session = constructNewSession();
+
       try {
         session.open(enableCompression, connectionTimeoutInMs);
         // avoid someone has called close() the session pool
@@ -352,7 +480,7 @@ public class SessionPool {
 
   @SuppressWarnings({"squid:S2446"})
   private void tryConstructNewSession() {
-    Session session = new Session(host, port, user, password, fetchSize, zoneId, enableCacheLeader);
+    Session session = constructNewSession();
     try {
       session.open(enableCompression, connectionTimeoutInMs);
       // avoid someone has called close() the session pool
@@ -466,8 +594,7 @@ public class SessionPool {
    */
   public void insertAlignedTablet(Tablet tablet)
       throws IoTDBConnectionException, StatementExecutionException {
-    tablet.setAligned(true);
-    insertTablet(tablet, false);
+    insertAlignedTablet(tablet, false);
   }
 
   /**
@@ -480,8 +607,21 @@ public class SessionPool {
    */
   public void insertAlignedTablet(Tablet tablet, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
-    tablet.setAligned(true);
-    insertTablet(tablet, sorted);
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.insertAlignedTablet(tablet, sorted);
+        putBack(session);
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn("insertAlignedTablet failed", e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      }
+    }
   }
 
   /**
@@ -501,10 +641,7 @@ public class SessionPool {
    */
   public void insertAlignedTablets(Map<String, Tablet> tablets)
       throws IoTDBConnectionException, StatementExecutionException {
-    for (Tablet tablet : tablets.values()) {
-      tablet.setAligned(true);
-    }
-    insertTablets(tablets, false);
+    insertAlignedTablets(tablets, false);
   }
 
   /**
@@ -538,10 +675,21 @@ public class SessionPool {
    */
   public void insertAlignedTablets(Map<String, Tablet> tablets, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
-    for (Tablet tablet : tablets.values()) {
-      tablet.setAligned(true);
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.insertAlignedTablets(tablets, sorted);
+        putBack(session);
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn("insertAlignedTablets failed", e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      }
     }
-    insertTablets(tablets, sorted);
   }
 
   /**
@@ -614,7 +762,7 @@ public class SessionPool {
    *
    * @see Session#insertTablet(Tablet)
    */
-  public void insertOneDeviceRecords(
+  public void insertRecordsOfOneDevice(
       String deviceId,
       List<Long> times,
       List<List<String>> measurementsList,
@@ -644,9 +792,109 @@ public class SessionPool {
    * network. This method is just like jdbc batch insert, we pack some insert request in batch and
    * send them to server If you want improve your performance, please see insertTablet method
    *
+   * @see Session#insertTablet(Tablet)
+   */
+  @Deprecated
+  public void insertOneDeviceRecords(
+      String deviceId,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<TSDataType>> typesList,
+      List<List<Object>> valuesList)
+      throws IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.insertRecordsOfOneDevice(
+            deviceId, times, measurementsList, typesList, valuesList, false);
+        putBack(session);
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn("insertRecordsOfOneDevice failed", e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+  }
+
+  /**
+   * Insert String format data that belong to the same device in batch format, which can reduce the
+   * overhead of network. This method is just like jdbc batch insert, we pack some insert request in
+   * batch and send them to server If you want improve your performance, please see insertTablet
+   * method
+   *
+   * @see Session#insertTablet(Tablet)
+   */
+  public void insertStringRecordsOfOneDevice(
+      String deviceId,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<String>> valuesList)
+      throws IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.insertStringRecordsOfOneDevice(
+            deviceId, times, measurementsList, valuesList, false);
+        putBack(session);
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn("insertStringRecordsOfOneDevice failed", e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+  }
+
+  /**
+   * Insert data that belong to the same device in batch format, which can reduce the overhead of
+   * network. This method is just like jdbc batch insert, we pack some insert request in batch and
+   * send them to server If you want improve your performance, please see insertTablet method
+   *
    * @param haveSorted whether the times list has been ordered.
    * @see Session#insertTablet(Tablet)
    */
+  public void insertRecordsOfOneDevice(
+      String deviceId,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<TSDataType>> typesList,
+      List<List<Object>> valuesList,
+      boolean haveSorted)
+      throws IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.insertRecordsOfOneDevice(
+            deviceId, times, measurementsList, typesList, valuesList, haveSorted);
+        putBack(session);
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn("insertRecordsOfOneDevice failed", e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+  }
+
+  /**
+   * Insert data that belong to the same device in batch format, which can reduce the overhead of
+   * network. This method is just like jdbc batch insert, we pack some insert request in batch and
+   * send them to server If you want improve your performance, please see insertTablet method
+   *
+   * @param haveSorted whether the times list has been ordered.
+   * @see Session#insertTablet(Tablet)
+   */
+  @Deprecated
   public void insertOneDeviceRecords(
       String deviceId,
       List<Long> times,
@@ -674,6 +922,40 @@ public class SessionPool {
   }
 
   /**
+   * Insert String format data that belong to the same device in batch format, which can reduce the
+   * overhead of network. This method is just like jdbc batch insert, we pack some insert request in
+   * batch and send them to server If you want improve your performance, please see insertTablet
+   * method
+   *
+   * @param haveSorted whether the times list has been ordered.
+   * @see Session#insertTablet(Tablet)
+   */
+  public void insertStringRecordsOfOneDevice(
+      String deviceId,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<String>> valuesList,
+      boolean haveSorted)
+      throws IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.insertStringRecordsOfOneDevice(
+            deviceId, times, measurementsList, valuesList, haveSorted);
+        putBack(session);
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn("insertStringRecordsOfOneDevice failed", e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+  }
+
+  /**
    * Insert aligned data that belong to the same device in batch format, which can reduce the
    * overhead of network. This method is just like jdbc batch insert, we pack some insert request in
    * batch and send them to server If you want improve your performance, please see insertTablet
@@ -681,7 +963,7 @@ public class SessionPool {
    *
    * @see Session#insertTablet(Tablet)
    */
-  public void insertOneDeviceAlignedRecords(
+  public void insertAlignedRecordsOfOneDevice(
       String deviceId,
       List<Long> times,
       List<List<String>> measurementsList,
@@ -707,6 +989,38 @@ public class SessionPool {
   }
 
   /**
+   * Insert aligned data as String format that belong to the same device in batch format, which can
+   * reduce the overhead of network. This method is just like jdbc batch insert, we pack some insert
+   * request in batch and send them to server If you want improve your performance, please see
+   * insertTablet method.
+   *
+   * @see Session#insertTablet(Tablet)
+   */
+  public void insertAlignedStringRecordsOfOneDevice(
+      String deviceId,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<String>> valuesList)
+      throws IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.insertAlignedStringRecordsOfOneDevice(
+            deviceId, times, measurementsList, valuesList);
+        putBack(session);
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn("insertAlignedStringRecordsOfOneDevice failed", e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+  }
+
+  /**
    * Insert aligned data that belong to the same device in batch format, which can reduce the
    * overhead of network. This method is just like jdbc batch insert, we pack some insert request in
    * batch and send them to server If you want improve your performance, please see insertTablet
@@ -715,7 +1029,7 @@ public class SessionPool {
    * @param haveSorted whether the times list has been ordered.
    * @see Session#insertTablet(Tablet)
    */
-  public void insertOneDeviceAlignedRecords(
+  public void insertAlignedRecordsOfOneDevice(
       String deviceId,
       List<Long> times,
       List<List<String>> measurementsList,
@@ -733,6 +1047,40 @@ public class SessionPool {
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
         logger.warn("insertAlignedRecordsOfOneDevice failed", e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+  }
+
+  /**
+   * Insert aligned data as String format that belong to the same device in batch format, which can
+   * reduce the overhead of network. This method is just like jdbc batch insert, we pack some insert
+   * request in batch and send them to server If you want improve your performance, please see
+   * insertTablet method.
+   *
+   * @param haveSorted whether the times list has been ordered.
+   * @see Session#insertTablet(Tablet)
+   */
+  public void insertAlignedStringRecordsOfOneDevice(
+      String deviceId,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<String>> valuesList,
+      boolean haveSorted)
+      throws IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.insertAlignedStringRecordsOfOneDevice(
+            deviceId, times, measurementsList, valuesList, haveSorted);
+        putBack(session);
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn("insertAlignedStringRecordsOfOneDevice failed", e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
@@ -1741,6 +2089,25 @@ public class SessionPool {
     return null;
   }
 
+  public void setSchemaTemplate(String templateName, String prefixPath)
+      throws StatementExecutionException, IoTDBConnectionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.setSchemaTemplate(templateName, prefixPath);
+        putBack(session);
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn(
+            String.format("setSchemaTemplate [%s] on [%s] failed", templateName, prefixPath), e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+  }
+
   public void unsetSchemaTemplate(String prefixPath, String templateName)
       throws StatementExecutionException, IoTDBConnectionException {
     for (int i = 0; i < RETRY; i++) {
@@ -1938,6 +2305,7 @@ public class SessionPool {
 
     private String host = Config.DEFAULT_HOST;
     private int port = Config.DEFAULT_PORT;
+    private List<String> nodeUrls = null;
     private int maxSize = Config.DEFAULT_SESSION_POOL_MAX_SIZE;
     private String user = Config.DEFAULT_USER;
     private String password = Config.DEFAULT_PASSWORD;
@@ -1955,6 +2323,11 @@ public class SessionPool {
 
     public Builder port(int port) {
       this.port = port;
+      return this;
+    }
+
+    public Builder nodeUrls(List<String> nodeUrls) {
+      this.nodeUrls = nodeUrls;
       return this;
     }
 
@@ -2004,18 +2377,32 @@ public class SessionPool {
     }
 
     public SessionPool build() {
-      return new SessionPool(
-          host,
-          port,
-          user,
-          password,
-          maxSize,
-          fetchSize,
-          waitToGetSessionTimeoutInMs,
-          enableCompression,
-          zoneId,
-          enableCacheLeader,
-          connectionTimeoutInMs);
+      if (nodeUrls == null) {
+        return new SessionPool(
+            host,
+            port,
+            user,
+            password,
+            maxSize,
+            fetchSize,
+            waitToGetSessionTimeoutInMs,
+            enableCompression,
+            zoneId,
+            enableCacheLeader,
+            connectionTimeoutInMs);
+      } else {
+        return new SessionPool(
+            nodeUrls,
+            user,
+            password,
+            maxSize,
+            fetchSize,
+            waitToGetSessionTimeoutInMs,
+            enableCompression,
+            zoneId,
+            enableCacheLeader,
+            connectionTimeoutInMs);
+      }
     }
   }
 }

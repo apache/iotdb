@@ -34,11 +34,21 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
-public abstract class AggregateResult {
+public abstract class AggregateResult implements Cloneable {
 
   public static final int TIME_LENGTH_FOR_FIRST_VALUE = 100;
   private final AggregationType aggregationType;
   protected TSDataType resultDataType;
+
+  /**
+   * For [COUNT, AVG, SUM], it is the start time of the aggregation window.
+   *
+   * <p>For [MAX_VALUE, MIN_VALUE, EXTREME, FIRST_VALUE, LAST_VALUE], it is the timestamp of the
+   * current value.
+   *
+   * <p>For [MAX_TIME, MIN_TIME], it is always null.
+   */
+  protected long timestamp;
 
   private boolean booleanValue;
   private int intValue;
@@ -257,8 +267,12 @@ public abstract class AggregateResult {
     this.booleanValue = booleanValue;
   }
 
-  protected int getIntValue() {
+  public int getIntValue() {
     return intValue;
+  }
+
+  public int getIntAbsValue() {
+    return Math.abs(intValue);
   }
 
   public void setIntValue(int intValue) {
@@ -266,8 +280,12 @@ public abstract class AggregateResult {
     this.intValue = intValue;
   }
 
-  protected long getLongValue() {
+  public long getLongValue() {
     return longValue;
+  }
+
+  public long getLongAbsValue() {
+    return Math.abs(longValue);
   }
 
   public void setLongValue(long longValue) {
@@ -275,8 +293,12 @@ public abstract class AggregateResult {
     this.longValue = longValue;
   }
 
-  protected float getFloatValue() {
+  public float getFloatValue() {
     return floatValue;
+  }
+
+  public float getFloatAbsValue() {
+    return Math.abs(floatValue);
   }
 
   public void setFloatValue(float floatValue) {
@@ -284,8 +306,12 @@ public abstract class AggregateResult {
     this.floatValue = floatValue;
   }
 
-  protected double getDoubleValue() {
+  public double getDoubleValue() {
     return doubleValue;
+  }
+
+  public double getDoubleAbsValue() {
+    return Math.abs(doubleValue);
   }
 
   public void setDoubleValue(double doubleValue) {
@@ -300,6 +326,14 @@ public abstract class AggregateResult {
   public void setBinaryValue(Binary binaryValue) {
     this.hasCandidateResult = true;
     this.binaryValue = binaryValue;
+  }
+
+  public void setTime(long timestamp) {
+    this.timestamp = timestamp;
+  }
+
+  public long getTime() {
+    return timestamp;
   }
 
   protected boolean hasCandidateResult() {
@@ -321,5 +355,14 @@ public abstract class AggregateResult {
    */
   public boolean isAscending() {
     return true;
+  }
+
+  @Override
+  public AggregateResult clone() {
+    try {
+      return (AggregateResult) super.clone();
+    } catch (CloneNotSupportedException e) {
+      throw new AssertionError();
+    }
   }
 }

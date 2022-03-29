@@ -19,58 +19,85 @@
 
 package org.apache.iotdb.metrics.dropwizard;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import org.apache.iotdb.metrics.utils.MetricLevel;
+
+import java.util.*;
+import java.util.stream.Collectors;
 
 /** the unique identifier of a metric, include a name and some tags. */
 public class MetricName {
-  public static final String SEPARATOR = ":";
-  public static final Map<String, String> EMPTY_TAGS = Collections.emptyMap();
-
   private String name;
-  private Map<String, String> tags;
+  private MetricLevel metricLevel;
+  private Map<String, String> tags = new LinkedHashMap<>();
+  private static final String TAG_SEPARATOR = ".";
 
+  public MetricName(String name, String... tags) {
+    this.name = name;
+    if (tags.length % 2 == 0) {
+      for (int i = 0; i < tags.length; i += 2) {
+        this.tags.put(tags[i], tags[i + 1]);
+      }
+    }
+  }
   /**
    * the unique identifier of a metric, include a name and some tags.
    *
    * @param name metric name
+   * @param metricLevel metric level
    * @param tags string appear in pairs, like sg="ln",user="user1" will be "sg", "ln", "user",
    *     "user1"
    */
-  public MetricName(String name, String... tags) {
-    this.name = name;
-    this.tags = new HashMap<>();
-    for (int i = 0; i < tags.length; i += 2) {
-      this.tags.put(tags[i], tags[i + 1]);
+  public MetricName(String name, MetricLevel metricLevel, String... tags) {
+    this(name, tags);
+    this.metricLevel = metricLevel;
+  }
+
+  /** Create metric name from flatString */
+  public MetricName(String flatString) {
+    int firstIndex = flatString.indexOf("{");
+    int lastIndex = flatString.indexOf("}");
+    if (firstIndex == -1 || lastIndex == -1) {
+      String sanitizeMetricName = flatString.replaceAll("[^a-zA-Z0-9:_\\]\\[]", "_");
+      this.name = sanitizeMetricName;
+    } else {
+      String[] labelsFlat = flatString.substring(firstIndex + 1, lastIndex).split("\\.");
+      String sanitizeMetricName =
+          flatString.substring(0, firstIndex).replaceAll("[^a-zA-Z0-9:_\\]\\[]", "_");
+      if (labelsFlat.length == 0) {
+        this.name = sanitizeMetricName;
+      } else {
+        this.name = sanitizeMetricName;
+        if (labelsFlat.length % 2 == 0) {
+          for (int i = 0; i < labelsFlat.length; i += 2) {
+            this.tags.put(labelsFlat[i], labelsFlat[i + 1]);
+          }
+        }
+      }
     }
   }
 
-  public MetricName(String name, Map<String, String> tags) {
-    this.name = name;
-    this.tags = tags;
-  }
-
   /**
-   * convert the metric name to flat string, like name_tag_key1:tag_value1_tag_key2:tag_value2....
+   * convert the metric name to flat string
    *
    * @return the flat string
    */
   public String toFlatString() {
-    StringBuilder stringBuilder = new StringBuilder(name).append("_");
-    tags.forEach((k, v) -> stringBuilder.append(k).append(SEPARATOR).append(v).append("_"));
-    stringBuilder.deleteCharAt(stringBuilder.length() - 1);
+    StringBuilder stringBuilder = new StringBuilder(name.replaceAll("\\{|\\}", ""));
+    stringBuilder.append("{");
+    stringBuilder.append(
+        tags.entrySet().stream()
+            .map(
+                t ->
+                    t.getKey().replace(TAG_SEPARATOR, "")
+                        + TAG_SEPARATOR
+                        + t.getValue().replace(TAG_SEPARATOR, ""))
+            .collect(Collectors.joining(TAG_SEPARATOR))
+            .replaceAll("\\{|\\}", ""));
+    stringBuilder.append("}");
     return stringBuilder.toString();
   }
 
-  /**
-   * convert the metric name to string array.
-   *
-   * @return
-   */
+  /** convert the metric name to string array. */
   public String[] toStringArray() {
     List<String> allNames = new ArrayList<>();
     allNames.add(name);
@@ -84,7 +111,7 @@ public class MetricName {
 
   @Override
   public String toString() {
-    return "MetricName{" + "name='" + name + '\'' + ", tags=" + tags + '}';
+    return "MetricName{" + "name='" + name + "'" + ", tags=" + tags + '}';
   }
 
   public String getName() {
@@ -93,6 +120,14 @@ public class MetricName {
 
   public void setName(String name) {
     this.name = name;
+  }
+
+  public MetricLevel getMetricLevel() {
+    return metricLevel;
+  }
+
+  public void setMetricLevel(MetricLevel metricLevel) {
+    this.metricLevel = metricLevel;
   }
 
   public Map<String, String> getTags() {
@@ -105,6 +140,7 @@ public class MetricName {
 
   @Override
   public boolean equals(Object obj) {
+    // do not compare metricLevel
     if (!(obj instanceof MetricName)) {
       return false;
     }

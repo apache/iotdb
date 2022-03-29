@@ -19,9 +19,9 @@
 
 -->
 
-## 时间序列管理
+# 时间序列管理
 
-### 创建时间序列
+## 创建时间序列
 
 根据建立的数据模型，我们可以分别在两个存储组中创建相应的时间序列。创建时间序列的 SQL 语句如下所示：
 
@@ -53,7 +53,7 @@ error: encoding TS_2DIFF does not support BOOLEAN
 
 详细的数据类型与编码方式的对应列表请参见 [编码方式](../Data-Concept/Encoding.md)。
 
-### 创建对齐时间序列 (v0.13 起支持)
+## 创建对齐时间序列
 
 创建一组对齐时间序列的SQL语句如下所示：
 
@@ -63,9 +63,9 @@ IoTDB> CREATE ALIGNED TIMESERIES root.ln.wf01.GPS(latitude FLOAT encoding=PLAIN 
 
 一组对齐序列中的序列可以有不同的数据类型、编码方式以及压缩方式。
 
-对齐的时间序列暂不支持设置别名、标签、属性。
+对齐的时间序列也支持设置别名、标签、属性。
 
-### 删除时间序列
+## 删除时间序列
 
 我们可以使用`DELETE TimeSeries <PathPattern>`语句来删除我们之前创建的时间序列。SQL 语句如下所示：
 
@@ -75,7 +75,7 @@ IoTDB> delete timeseries root.ln.wf01.wt01.temperature, root.ln.wf02.wt02.hardwa
 IoTDB> delete timeseries root.ln.wf02.*
 ```
 
-### 查看时间序列
+## 查看时间序列
 
 * SHOW LATEST? TIMESERIES pathPattern? whereClause? limitClause?
 
@@ -127,39 +127,6 @@ Total line number = 4
 It costs 0.004s
 ```
 
-* SHOW TIMESERIES (<`PathPattern`>)? WhereClause 
-  
-  返回给定路径的下的所有满足条件的时间序列信息，SQL 语句如下所示：
-
-```
-ALTER timeseries root.ln.wf02.wt02.hardware ADD TAGS unit=c
-ALTER timeseries root.ln.wf02.wt02.status ADD TAGS description=test1
-show timeseries root.ln.** where unit=c
-show timeseries root.ln.** where description contains 'test1'
-```
-
-执行结果分别为：
-
-```
-+--------------------------+-----+-------------+--------+--------+-----------+------------+----------+
-|                timeseries|alias|storage group|dataType|encoding|compression|        tags|attributes|
-+--------------------------+-----+-------------+--------+--------+-----------+------------+----------+
-|root.ln.wf02.wt02.hardware| null|      root.ln|    TEXT|   PLAIN|     SNAPPY|{"unit":"c"}|      null|
-+--------------------------+-----+-------------+--------+--------+-----------+------------+----------+
-Total line number = 1
-It costs 0.005s
-
-+------------------------+-----+-------------+--------+--------+-----------+-----------------------+----------+
-|              timeseries|alias|storage group|dataType|encoding|compression|                   tags|attributes|
-+------------------------+-----+-------------+--------+--------+-----------+-----------------------+----------+
-|root.ln.wf02.wt02.status| null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|{"description":"test1"}|      null|
-+------------------------+-----+-------------+--------+--------+-----------+-----------------------+----------+
-Total line number = 1
-It costs 0.004s
-```
-
-> 注意，现在我们只支持一个查询条件，要么是等值条件查询，要么是包含条件查询。当然 where 子句中涉及的必须是标签值，而不能是属性值。
-
 * SHOW TIMESERIES LIMIT INT OFFSET INT
 
   只返回从指定下标开始的结果，最大返回条数被 LIMIT 限制，用于分页查询。例如：
@@ -172,9 +139,10 @@ show timeseries root.ln.** limit 10 offset 10
 
   表示查询出的时间序列需要按照最近插入时间戳降序排列
   
+
 需要注意的是，当查询路径不存在时，系统会返回 0 条时间序列。
 
-### 统计时间序列总数
+## 统计时间序列总数
 
 IoTDB 支持使用`COUNT TIMESERIES<Path>`来统计一条路径中的时间序列个数。SQL 语句如下所示：
 ```
@@ -252,9 +220,15 @@ It costs 0.002s
 
 > 注意：时间序列的路径只是过滤条件，与 level 的定义无关。
 
-### 标签点管理
+## 标签点管理
 
 我们可以在创建时间序列的时候，为它添加别名和额外的标签和属性信息。
+
+标签和属性的区别在于：
+
+* 标签可以用来查询时间序列路径，会在内存中维护标点到时间序列路径的倒排索引：标签 -> 时间序列路径
+* 属性只能用时间序列路径来查询：时间序列路径 -> 属性
+
 所用到的扩展的创建时间序列的 SQL 语句如下所示：
 ```
 create timeseries root.turbine.d1.s1(temprature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)
@@ -265,13 +239,10 @@ create timeseries root.turbine.d1.s1(temprature) with datatype=FLOAT, encoding=R
 
 > IoTDB 同时支持在查询语句中 [使用 AS 函数](../Reference/DML-Data-Manipulation%20Language.md) 设置别名。二者的区别在于：AS 函数设置的别名用于替代整条时间序列名，且是临时的，不与时间序列绑定；而上文中的别名只作为传感器的别名，与其绑定且可与原传感器名等价使用。
 
-标签和属性的唯一差别在于，我们为标签信息在内存中维护了一个倒排索引，所以可以在`show timeseries`的条件语句中使用标签作为查询条件，你将会在下一节看到具体查询内容。
-
 > 注意：额外的标签和属性信息总的大小不能超过`tag_attribute_total_size`.
 
  * 标签点属性更新
 创建时间序列后，我们也可以对其原有的标签点属性进行更新，主要有以下六种更新方式：
-
 * 重命名标签或属性
 ```
 ALTER timeseries root.turbine.d1.s1 RENAME tag1 TO newTag1
@@ -297,3 +268,71 @@ ALTER timeseries root.turbine.d1.s1 ADD ATTRIBUTES attr3=v3, attr4=v4
 ```
 ALTER timeseries root.turbine.d1.s1 UPSERT ALIAS=newAlias TAGS(tag2=newV2, tag3=v3) ATTRIBUTES(attr3=v3, attr4=v4)
 ```
+
+* 使用标签作为过滤条件查询时间序列
+```
+* SHOW TIMESERIES (<`PathPattern`>)? WhereClause
+```
+
+  返回给定路径的下的所有满足条件的时间序列信息，SQL 语句如下所示：
+
+```
+ALTER timeseries root.ln.wf02.wt02.hardware ADD TAGS unit=c
+ALTER timeseries root.ln.wf02.wt02.status ADD TAGS description=test1
+show timeseries root.ln.** where unit=c
+show timeseries root.ln.** where description contains 'test1'
+```
+
+执行结果分别为：
+
+```
++--------------------------+-----+-------------+--------+--------+-----------+------------+----------+
+|                timeseries|alias|storage group|dataType|encoding|compression|        tags|attributes|
++--------------------------+-----+-------------+--------+--------+-----------+------------+----------+
+|root.ln.wf02.wt02.hardware| null|      root.ln|    TEXT|   PLAIN|     SNAPPY|{"unit":"c"}|      null|
++--------------------------+-----+-------------+--------+--------+-----------+------------+----------+
+Total line number = 1
+It costs 0.005s
+
++------------------------+-----+-------------+--------+--------+-----------+-----------------------+----------+
+|              timeseries|alias|storage group|dataType|encoding|compression|                   tags|attributes|
++------------------------+-----+-------------+--------+--------+-----------+-----------------------+----------+
+|root.ln.wf02.wt02.status| null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|{"description":"test1"}|      null|
++------------------------+-----+-------------+--------+--------+-----------+-----------------------+----------+
+Total line number = 1
+It costs 0.004s
+```
+
+> 注意，现在我们只支持一个查询条件，要么是等值条件查询，要么是包含条件查询。当然 where 子句中涉及的必须是标签值，而不能是属性值。
+
+创建对齐时间序列
+
+```
+create aligned timeseries root.sg1.d1(s1 INT32 tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2), s2 DOUBLE tags(tag3=v3, tag4=v4) attributes(attr3=v3, attr4=v4))
+```
+
+执行结果如下：
+
+```
++--------------+-----+-------------+--------+--------+-----------+-------------------------+---------------------------+
+|    timeseries|alias|storage group|dataType|encoding|compression|                     tags|                 attributes|
++--------------+-----+-------------+--------+--------+-----------+-------------------------+---------------------------+
+|root.sg1.d1.s1| null|     root.sg1|   INT32|     RLE|     SNAPPY|{"tag1":"v1","tag2":"v2"}|{"attr2":"v2","attr1":"v1"}|
+|root.sg1.d1.s2| null|     root.sg1|  DOUBLE| GORILLA|     SNAPPY|{"tag4":"v4","tag3":"v3"}|{"attr4":"v4","attr3":"v3"}|
++--------------+-----+-------------+--------+--------+-----------+-------------------------+---------------------------+
+```
+
+支持查询：
+
+```
+IoTDB> show storage group where tag1='v1'
+Msg: 401: Error occurred while parsing SQL to physical plan: line 1:19 mismatched input 'where' expecting {<EOF>, ';'}
+IoTDB> show timeseries where tag1='v1'
++--------------+-----+-------------+--------+--------+-----------+-------------------------+---------------------------+
+|    timeseries|alias|storage group|dataType|encoding|compression|                     tags|                 attributes|
++--------------+-----+-------------+--------+--------+-----------+-------------------------+---------------------------+
+|root.sg1.d1.s1| null|     root.sg1|   INT32|     RLE|     SNAPPY|{"tag1":"v1","tag2":"v2"}|{"attr2":"v2","attr1":"v1"}|
++--------------+-----+-------------+--------+--------+-----------+-------------------------+---------------------------+
+```
+
+上述对时间序列标签、属性的更新等操作都支持。
