@@ -23,12 +23,14 @@ import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.buffer.IDataBlockManager;
+import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.ExecFragmentInstance;
 import org.apache.iotdb.db.mpp.schedule.queue.IndexedBlockingQueue;
 import org.apache.iotdb.db.mpp.schedule.queue.L1PriorityQueue;
 import org.apache.iotdb.db.mpp.schedule.queue.L2PriorityQueue;
 import org.apache.iotdb.db.mpp.schedule.task.FragmentInstanceTask;
+import org.apache.iotdb.db.mpp.schedule.task.FragmentInstanceTaskID;
 import org.apache.iotdb.db.mpp.schedule.task.FragmentInstanceTaskStatus;
 import org.apache.iotdb.mpp.rpc.thrift.InternalService;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelQueryReq;
@@ -164,6 +166,16 @@ public class FragmentInstanceManager implements IFragmentInstanceManager, IServi
 
   @Override
   public void fetchFragmentInstance(ExecFragmentInstance instance) {}
+
+  @Override
+  public double getSchedulePriority(FragmentInstanceId instanceId) {
+    FragmentInstanceTask task = timeoutQueue.get(new FragmentInstanceTaskID(instanceId));
+    if (task == null) {
+      throw new IllegalStateException(
+          "the fragmentInstance " + instanceId.getFullId() + " has been cleared");
+    }
+    return task.getSchedulePriority();
+  }
 
   private void clearFragmentInstanceTask(FragmentInstanceTask task) {
     if (task.getStatus() != FragmentInstanceTaskStatus.FINISHED) {
