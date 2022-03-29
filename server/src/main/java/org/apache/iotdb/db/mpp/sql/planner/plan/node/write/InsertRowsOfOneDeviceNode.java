@@ -65,9 +65,4 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
   public List<InsertNode> splitByPartition(Analysis analysis) {
     return null;
   }
-
-  @Override
-  public boolean needSplit() {
-    return false;
-  }
 }

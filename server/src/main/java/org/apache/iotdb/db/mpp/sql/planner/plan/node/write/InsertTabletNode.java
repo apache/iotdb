@@ -18,18 +18,15 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.write;
 
-import org.apache.iotdb.commons.partition.DataPartitionInfo;
 import org.apache.iotdb.commons.partition.DataRegionReplicaSet;
-import org.apache.iotdb.commons.partition.DeviceGroupId;
 import org.apache.iotdb.commons.partition.TimePartitionId;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
-import org.apache.iotdb.db.metadata.schemaregion.SchemaRegion;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -43,8 +40,8 @@ public class InsertTabletNode extends InsertNode {
   private BitMap[] bitMaps;
   private Object[] columns;
 
-  private int start;
-  private int end;
+  private int rowCount = 0;
+
   // when this plan is sub-plan split from another InsertTabletPlan, this indicates the original
   // positions of values in
   // this plan. For example, if the plan contains 5 timestamps, and range = [1,4,10,12], then it
@@ -56,8 +53,8 @@ public class InsertTabletNode extends InsertNode {
   // proper positions.
   private List<Integer> range;
 
-  public InsertTabletNode(PlanNodeId id) {
-    super(id);
+  public void setRange(List<Integer> range) {
+    this.range = range;
   }
 
   public InsertTabletNode(
@@ -68,11 +65,13 @@ public class InsertTabletNode extends InsertNode {
       TSDataType[] dataTypes,
       long[] times,
       BitMap[] bitMaps,
-      Object[] columns) {
+      Object[] columns,
+      int rowCount) {
     super(id, devicePath, isAligned, measurements, dataTypes);
     this.times = times;
     this.bitMaps = bitMaps;
     this.columns = columns;
+    this.rowCount = rowCount;
   }
 
   public long[] getTimes() {
@@ -99,20 +98,20 @@ public class InsertTabletNode extends InsertNode {
     this.columns = columns;
   }
 
-  public int getStart() {
-    return start;
+  public InsertTabletNode(PlanNodeId id) {
+    super(id);
   }
 
-  public void setStart(int start) {
-    this.start = start;
+  public int getRowCount() {
+    return rowCount;
   }
 
-  public int getEnd() {
-    return end;
+  public void setRowCount(int rowCount) {
+    this.rowCount = rowCount;
   }
 
-  public void setEnd(int end) {
-    this.end = end;
+  public List<Integer> getRange() {
+    return range;
   }
 
   @Override
@@ -147,84 +146,132 @@ public class InsertTabletNode extends InsertNode {
 
   @Override
   public List<InsertNode> splitByPartition(Analysis analysis) {
-    String storageGroup = "root.sg";
-    //PartialPath storageGroup = SchemaEngine().getBelongedStorageGroup(plan.getDevicePath());
-    DataPartitionInfo dataPartitionInfo = analysis.getDataPartitionInfo();
-    //only single device in single storage group
-    Map<DeviceGroupId, Map<TimePartitionId, List<DataRegionReplicaSet>>> dataPartitionMap = dataPartitionInfo.getDataPartitionMap().values().iterator().next();
-    Map<TimePartitionId, List<DataRegionReplicaSet>> timePartitionMap = dataPartitionMap.values().iterator().next();
+    // only single device in single storage group
     List<InsertNode> result = new ArrayList<>();
     if (times.length == 0) {
       return Collections.emptyList();
     }
-    long startTime = (times[0] / StorageEngine.getTimePartitionInterval())
-                * StorageEngine.getTimePartitionInterval(); // included
+    long startTime =
+        (times[0] / StorageEngine.getTimePartitionInterval())
+            * StorageEngine.getTimePartitionInterval(); // included
     long endTime = startTime + StorageEngine.getTimePartitionInterval(); // excluded
     TimePartitionId timePartitionId = StorageEngine.getTimePartitionId(times[0]);
     int startLoc = 0; // included
 
-        Map<PartitionGroup, List<Integer>> splitMap = new HashMap<>();
-        // for each List in split, they are range1.start, range1.end, range2.start, range2.end, ...
+    List<TimePartitionId> timePartitionIdList = new ArrayList<>();
+    // for each List in split, they are range1.start, range1.end, range2.start, range2.end, ...
+    List<Integer> ranges = new ArrayList<>();
     for (int i = 1; i < times.length; i++) { // times are sorted in session API.
       if (times[i] >= endTime) {
         // a new range.
-            PartitionGroup group = partitionTable.route(storageGroup.getFullPath(), startTime);
-
-            List<Integer> ranges = splitMap.computeIfAbsent(group, x -> new ArrayList<>());
-            ranges.add(startLoc); // included
-            ranges.add(i); // excluded
-            // next init
-            startLoc = i;
-            startTime = endTime;
-            endTime =
-                (times[i] / StorageEngine.getTimePartitionInterval() + 1)
-                    * StorageEngine.getTimePartitionInterval();
-          }
-        }
-        // the final range
-        PartitionGroup group = partitionTable.route(storageGroup.getFullPath(), startTime);
-        List<Integer> ranges = splitMap.computeIfAbsent(group, x -> new ArrayList<>());
         ranges.add(startLoc); // included
-        ranges.add(times.length); // excluded
+        ranges.add(i); // excluded
+        timePartitionIdList.add(timePartitionId);
+        // next init
+        startLoc = i;
+        startTime = endTime;
+        endTime =
+            (times[i] / StorageEngine.getTimePartitionInterval() + 1)
+                * StorageEngine.getTimePartitionInterval();
+        timePartitionId = StorageEngine.getTimePartitionId(times[i]);
+      }
+    }
 
-        List<Integer> locs;
-        for (Map.Entry<PartitionGroup, List<Integer>> entry : splitMap.entrySet()) {
-          // generate a new times and values
-          locs = entry.getValue();
-          int count = 0;
-          for (int i = 0; i < locs.size(); i += 2) {
-            int start = locs.get(i);
-            int end = locs.get(i + 1);
-            count += end - start;
+    // the final range
+    ranges.add(startLoc); // included
+    ranges.add(times.length); // excluded
+    timePartitionIdList.add(timePartitionId);
+
+    // data region for each time partition
+    List<DataRegionReplicaSet> dataRegionReplicaSets =
+        analysis
+            .getDataPartitionInfo()
+            .getDataRegionReplicaSetForWriting(devicePath.getFullPath(), timePartitionIdList);
+
+    Map<DataRegionReplicaSet, List<Integer>> splitMap = new HashMap<>();
+    for (int i = 0; i < dataRegionReplicaSets.size(); i++) {
+      List<Integer> sub_ranges =
+          splitMap.computeIfAbsent(dataRegionReplicaSets.get(i), x -> new ArrayList<>());
+      sub_ranges.add(ranges.get(i));
+      sub_ranges.add(ranges.get(i + 1));
+    }
+
+    List<Integer> locs;
+    for (Map.Entry<DataRegionReplicaSet, List<Integer>> entry : splitMap.entrySet()) {
+      // generate a new times and values
+      locs = entry.getValue();
+      int count = 0;
+      for (int i = 0; i < locs.size(); i += 2) {
+        int start = locs.get(i);
+        int end = locs.get(i + 1);
+        count += end - start;
+      }
+      long[] subTimes = new long[count];
+      int destLoc = 0;
+      Object[] values = initTabletValues(dataTypes.length, count, dataTypes);
+      BitMap[] bitMaps = this.bitMaps == null ? null : initBitmaps(dataTypes.length, count);
+      for (int i = 0; i < locs.size(); i += 2) {
+        int start = locs.get(i);
+        int end = locs.get(i + 1);
+        System.arraycopy(times, start, subTimes, destLoc, end - start);
+        for (int k = 0; k < values.length; k++) {
+          System.arraycopy(columns[k], start, values[k], destLoc, end - start);
+          if (bitMaps != null && this.bitMaps[k] != null) {
+            BitMap.copyOfRange(this.bitMaps[k], start, bitMaps[k], destLoc, end - start);
           }
-          long[] subTimes = new long[count];
-          int destLoc = 0;
-          Object[] values = initTabletValues(plan.getDataTypes().length, count,
-     plan.getDataTypes());
-          BitMap[] bitMaps =
-              plan.getBitMaps() == null ? null : initBitmaps(plan.getDataTypes().length, count);
-          for (int i = 0; i < locs.size(); i += 2) {
-            int start = locs.get(i);
-            int end = locs.get(i + 1);
-            System.arraycopy(plan.getTimes(), start, subTimes, destLoc, end - start);
-            for (int k = 0; k < values.length; k++) {
-              System.arraycopy(plan.getColumns()[k], start, values[k], destLoc, end - start);
-              if (bitMaps != null && plan.getBitMaps()[k] != null) {
-                BitMap.copyOfRange(plan.getBitMaps()[k], start, bitMaps[k], destLoc, end - start);
-              }
-            }
-            destLoc += end - start;
-          }
-          InsertTabletPlan newBatch = PartitionUtils.copy(plan, subTimes, values, bitMaps);
-          newBatch.setRange(locs);
-          newBatch.setAligned(plan.isAligned());
-          result.put(newBatch, entry.getKey());
         }
+        destLoc += end - start;
+      }
+      InsertTabletNode subNode =
+          new InsertTabletNode(
+              getId(),
+              devicePath,
+              isAligned,
+              measurements,
+              dataTypes,
+              subTimes,
+              bitMaps,
+              values,
+              subTimes.length);
+      subNode.setRange(locs);
+      subNode.setDataRegionReplicaSet(entry.getKey());
+      result.add(subNode);
+    }
     return result;
   }
 
-  @Override
-  public boolean needSplit() {
-    return true;
+  private Object[] initTabletValues(int columnSize, int rowSize, TSDataType[] dataTypes) {
+    Object[] values = new Object[columnSize];
+    for (int i = 0; i < values.length; i++) {
+      switch (dataTypes[i]) {
+        case TEXT:
+          values[i] = new Binary[rowSize];
+          break;
+        case FLOAT:
+          values[i] = new float[rowSize];
+          break;
+        case INT32:
+          values[i] = new int[rowSize];
+          break;
+        case INT64:
+          values[i] = new long[rowSize];
+          break;
+        case DOUBLE:
+          values[i] = new double[rowSize];
+          break;
+        case BOOLEAN:
+          values[i] = new boolean[rowSize];
+          break;
+      }
+    }
+    return values;
+  }
+
+  private BitMap[] initBitmaps(int columnSize, int rowSize) {
+    BitMap[] bitMaps = new BitMap[columnSize];
+    for (int i = 0; i < columnSize; i++) {
+      bitMaps[i] = new BitMap(rowSize);
+    }
+    return bitMaps;
   }
 }

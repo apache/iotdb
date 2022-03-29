@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.write;
 
+import org.apache.iotdb.commons.partition.TimePartitionId;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
@@ -26,6 +28,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.List;
 
 public class InsertRowNode extends InsertNode {
@@ -55,7 +58,12 @@ public class InsertRowNode extends InsertNode {
 
   @Override
   public List<InsertNode> splitByPartition(Analysis analysis) {
-    return null;
+    TimePartitionId timePartitionId = StorageEngine.getTimePartitionId(time);
+    this.dataRegionReplicaSet =
+        analysis
+            .getDataPartitionInfo()
+            .getDataRegionReplicaSetForWriting(devicePath.getFullPath(), timePartitionId);
+    return Collections.singletonList(this);
   }
 
   @Override
@@ -87,11 +95,6 @@ public class InsertRowNode extends InsertNode {
 
   @Override
   public void serialize(ByteBuffer byteBuffer) {}
-
-  @Override
-  public boolean needSplit() {
-    return false;
-  }
 
   public boolean isNeedInferType() {
     return isNeedInferType;

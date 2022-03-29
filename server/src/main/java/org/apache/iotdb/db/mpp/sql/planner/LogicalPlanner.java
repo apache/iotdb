@@ -299,7 +299,6 @@ public class LogicalPlanner {
     public PlanNode visitInsertRow(InsertRowStatement insertRowStatement, MPPQueryContext context) {
       // TODO(INSERT) change the InsertTabletStatement to InsertTabletNode
       InsertRowNode node = new InsertRowNode(PlanNodeIdAllocator.generateId());
-
       return node;
     }
   }
