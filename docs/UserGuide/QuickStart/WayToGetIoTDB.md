@@ -51,7 +51,13 @@ You can download the source code from:
 git clone https://github.com/apache/iotdb.git
 ```
 
-Under the root path of iotdb:
+After that, go to the root path of IoTDB. If you want to build the version that we have released, you need to create and check out a new branch by command `git checkout -b my_{project.version} v{project.version}`. E.g., you want to build the version `0.12.4`, you can execute this command to make it:
+
+```shell
+> git checkout -b my_0.12.4 v0.12.4
+```
+
+Then you can execute this command to build the version that you want:
 
 ```
 > mvn clean package -DskipTests
@@ -68,6 +74,15 @@ If you would like to build the IoTDB server, you can run the following command u
 ```
 
 After build, the IoTDB server will be at the folder "server/target/iotdb-server-{project.version}". 
+
+If you would like to build a module, you can execute command `mvn clean package -pl {module.name} -am -DskipTests` under the root path of IoTDB.
+If you need the jar with dependencies, you can add parameter `-P get-jar-with-dependencies` after the command. E.g., If you need the jar of jdbc with dependencies, you can execute this command:
+
+```shell
+> mvn clean package -pl jdbc -am -DskipTests -P get-jar-with-dependencies
+```
+
+Then you can find it under the path `{module.name}/target`.
 
 ### Installation by Docker (Dockerfile)
 

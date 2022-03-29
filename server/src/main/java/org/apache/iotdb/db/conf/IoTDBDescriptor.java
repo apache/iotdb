@@ -20,7 +20,7 @@ package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.compaction.CompactionPriority;
+import org.apache.iotdb.db.engine.compaction.constant.CompactionPriority;
 import org.apache.iotdb.db.engine.compaction.cross.CrossCompactionStrategy;
 import org.apache.iotdb.db.engine.compaction.inner.InnerCompactionStrategy;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -704,18 +704,20 @@ public class IoTDBDescriptor {
       }
 
       // id table related configuration
-      conf.setDeviceIDTransformationMethod(
-          properties.getProperty(
-              "device_id_transformation_method", conf.getDeviceIDTransformationMethod()));
+      //      conf.setDeviceIDTransformationMethod(
+      //          properties.getProperty(
+      //              "device_id_transformation_method", conf.getDeviceIDTransformationMethod()));
 
-      conf.setEnableIDTable(
-          Boolean.parseBoolean(
-              properties.getProperty("enable_id_table", String.valueOf(conf.isEnableIDTable()))));
+      //      conf.setEnableIDTable(
+      //          Boolean.parseBoolean(
+      //              properties.getProperty("enable_id_table",
+      // String.valueOf(conf.isEnableIDTable()))));
 
-      conf.setEnableIDTableLogFile(
-          Boolean.parseBoolean(
-              properties.getProperty(
-                  "enable_id_table_log_file", String.valueOf(conf.isEnableIDTableLogFile()))));
+      //      conf.setEnableIDTableLogFile(
+      //          Boolean.parseBoolean(
+      //              properties.getProperty(
+      //                  "enable_id_table_log_file",
+      // String.valueOf(conf.isEnableIDTableLogFile()))));
 
       // mqtt
       if (properties.getProperty(IoTDBConstant.MQTT_HOST_NAME) != null) {

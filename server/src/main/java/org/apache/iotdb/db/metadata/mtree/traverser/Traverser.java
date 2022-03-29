@@ -273,7 +273,8 @@ public abstract class Traverser {
    */
   protected PartialPath getCurrentPartialPath(IMNode currentNode) throws IllegalPathException {
     Iterator<IMNode> nodes = traverseContext.descendingIterator();
-    StringBuilder builder = new StringBuilder(nodes.next().getName());
+    StringBuilder builder =
+        nodes.hasNext() ? new StringBuilder(nodes.next().getName()) : new StringBuilder();
     while (nodes.hasNext()) {
       builder.append(TsFileConstant.PATH_SEPARATOR);
       builder.append(nodes.next().getName());

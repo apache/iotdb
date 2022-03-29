@@ -22,7 +22,7 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>client-cpp-tools</artifactId>
-        <version>0.13.0-SNAPSHOT</version>
+        <version>0.13.1-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>client-cpp-tools-thrift</artifactId>
@@ -65,7 +65,7 @@
                                     <goal>wget</goal>
                                 </goals>
                                 <configuration>
-                                    <url>https://archive.apache.org/dist/thrift/${thrift.version}/thrift-${thrift.version}.tar.gz</url>
+                                    <url>http://archive.apache.org/dist/thrift/${thrift.version}/thrift-${thrift.version}.tar.gz</url>
                                     <unpack>true</unpack>
                                     <outputDirectory>${project.build.directory}</outputDirectory>
                                 </configuration>
