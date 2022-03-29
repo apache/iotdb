@@ -152,10 +152,18 @@ public class Timer {
         TIME_SCALE,
         true,
         RAFT_SENDER_SEND_LOG_TO_FOLLOWERS),
-    RAFT_SENDER_RELAY_OFFER_LOG(
-        RAFT_MEMBER_SENDER, "relay offer log", TIME_SCALE, true, RAFT_SENDER_SEND_LOG_TO_FOLLOWERS),
-    RAFT_SENDER_RELAY_LOG(
-        RAFT_MEMBER_SENDER, "relay log", TIME_SCALE, true, RAFT_SENDER_SEND_LOG_TO_FOLLOWERS),
+    RAFT_RECEIVER_RELAY_OFFER_LOG(
+        RAFT_MEMBER_RECEIVER,
+        "relay offer log",
+        TIME_SCALE,
+        true,
+        RAFT_SENDER_SEND_LOG_TO_FOLLOWERS),
+    RAFT_RECEIVER_RELAY_LOG(
+        RAFT_MEMBER_RECEIVER,
+        "relay entry to a follower",
+        TIME_SCALE,
+        true,
+        RAFT_SENDER_SEND_LOG_TO_FOLLOWERS),
     RAFT_SENDER_VOTE_COUNTER(
         RAFT_MEMBER_SENDER,
         "wait for votes",
@@ -324,7 +332,7 @@ public class Timer {
         true,
         META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
     RAFT_WINDOW_LENGTH(RAFT_MEMBER_RECEIVER, "window length", 1, true, ROOT),
-    RAFT_SEND_RELAY(RAFT_MEMBER_RECEIVER, "send relay entries", 1, true, ROOT),
+    RAFT_RELAYED_ENTRY(RAFT_MEMBER_RECEIVER, "number of relayed entries", 1, true, ROOT),
     RAFT_SEND_RELAY_ACK(RAFT_MEMBER_RECEIVER, "send relay ack", 1, true, ROOT),
     RAFT_RECEIVE_RELAY_ACK(RAFT_MEMBER_SENDER, "receive relay ack", 1, true, ROOT),
     RAFT_WAIT_AFTER_ACCEPTED(RAFT_MEMBER_SENDER, "wait after accepted", TIME_SCALE, true, ROOT),

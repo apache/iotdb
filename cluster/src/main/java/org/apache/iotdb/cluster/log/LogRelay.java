@@ -66,7 +66,7 @@ public class LogRelay {
   }
 
   private void offer(RelayEntry entry) {
-    long operationStartTime = Statistic.RAFT_SENDER_RELAY_OFFER_LOG.getOperationStartTime();
+    long operationStartTime = Statistic.RAFT_RECEIVER_RELAY_OFFER_LOG.getOperationStartTime();
     synchronized (entryHeap) {
       while (entryHeap.size()
           > ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem()) {
@@ -79,7 +79,7 @@ public class LogRelay {
       entryHeap.add(entry);
       entryHeap.notifyAll();
     }
-    Statistic.RAFT_SENDER_RELAY_OFFER_LOG.calOperationCostTimeFromStart(operationStartTime);
+    Statistic.RAFT_RECEIVER_RELAY_OFFER_LOG.calOperationCostTimeFromStart(operationStartTime);
   }
 
   public void offer(AppendEntriesRequest request, List<Node> receivers) {
@@ -128,7 +128,7 @@ public class LogRelay {
           raftMember.sendLogsToSubFollowers(relayEntry.batchRequest, relayEntry.receivers);
         }
 
-        Statistic.RAFT_SEND_RELAY.add(1);
+        Statistic.RAFT_RELAYED_ENTRY.add(1);
       }
     }
   }

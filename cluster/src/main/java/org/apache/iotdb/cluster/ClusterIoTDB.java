@@ -298,7 +298,7 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     public void run() {
       logger.info(
           "Total request fanout: {}",
-          Statistic.RAFT_SENDER_RELAY_LOG.getCnt() + Statistic.RAFT_SENDER_SEND_LOG.getCnt());
+          Statistic.RAFT_RECEIVER_RELAY_LOG.getCnt() + Statistic.RAFT_SENDER_SEND_LOG.getCnt());
       for (Entry<Node, NodeStatus> nodeNodeStatusEntry :
           NodeStatusManager.getINSTANCE().getNodeStatusMap().entrySet()) {
         logger.info("{}: {}", nodeNodeStatusEntry.getKey(), nodeNodeStatusEntry.getValue());

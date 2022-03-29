@@ -163,7 +163,7 @@ public class MetaSyncService extends BaseSyncService implements TSMetaService.If
   public TNodeStatus queryNodeStatus() {
     return new TNodeStatus()
         .setFanoutRequestNum(
-            Statistic.RAFT_SENDER_SEND_LOG.getCnt() + Statistic.RAFT_SEND_RELAY.getCnt());
+            Statistic.RAFT_SENDER_SEND_LOG.getCnt() + Statistic.RAFT_RECEIVER_RELAY_LOG.getCnt());
   }
 
   @Override

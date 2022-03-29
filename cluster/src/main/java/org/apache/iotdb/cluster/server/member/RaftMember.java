@@ -641,7 +641,7 @@ public abstract class RaftMember implements RaftMemberMBean {
           getAsyncClient(subFollower)
               .appendEntry(request, new IndirectAppendHandler(subFollower, request));
         } else {
-          long operationStartTime = Statistic.RAFT_SENDER_RELAY_LOG.getOperationStartTime();
+          long operationStartTime = Statistic.RAFT_RECEIVER_RELAY_LOG.getOperationStartTime();
           syncClient = getSyncClient(subFollower);
 
           int concurrentSender = concurrentSenderNum.incrementAndGet();
@@ -650,7 +650,7 @@ public abstract class RaftMember implements RaftMemberMBean {
           concurrentSenderNum.decrementAndGet();
 
           long sendLogTime =
-              Statistic.RAFT_SENDER_RELAY_LOG.calOperationCostTimeFromStart(operationStartTime);
+              Statistic.RAFT_RECEIVER_RELAY_LOG.calOperationCostTimeFromStart(operationStartTime);
           NodeStatus nodeStatus = NodeStatusManager.getINSTANCE().getNodeStatus(subFollower, false);
           nodeStatus.getSendEntryLatencySum().addAndGet(sendLogTime);
           nodeStatus.getSendEntryNum().incrementAndGet();

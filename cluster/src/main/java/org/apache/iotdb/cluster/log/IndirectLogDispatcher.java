@@ -100,7 +100,7 @@ public class IndirectLogDispatcher extends LogDispatcher {
       QueryCoordinator instance = QueryCoordinator.getINSTANCE();
       orderedNodes = instance.reorderNodes(allNodes);
       long thisLoad =
-          Statistic.RAFT_SENDER_SEND_LOG.getCnt() + Statistic.RAFT_SEND_RELAY.getCnt() + 1;
+          Statistic.RAFT_SENDER_SEND_LOG.getCnt() + Statistic.RAFT_RECEIVER_RELAY_LOG.getCnt() + 1;
       long minLoad =
           NodeStatusManager.getINSTANCE()
                   .getNodeStatus(orderedNodes.get(0), false)

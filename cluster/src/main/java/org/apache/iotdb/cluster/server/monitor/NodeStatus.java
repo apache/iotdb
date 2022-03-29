@@ -21,6 +21,7 @@ package org.apache.iotdb.cluster.server.monitor;
 
 import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
 
+import java.util.Date;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -134,7 +135,7 @@ public class NodeStatus implements Comparable<NodeStatus> {
         + "status="
         + status
         + ", lastUpdateTime="
-        + lastUpdateTime
+        + new Date(lastUpdateTime)
         + ", lastResponseLatency="
         + lastResponseLatency
         + ", isActivated="
