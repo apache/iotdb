@@ -126,8 +126,11 @@ public class RatisConsensusDemo {
     for (int i = 0; i < 3; i++) {
       Map<String, StorageGroupMessage> msgMap = clients[i].getStorageGroupsMessage();
       System.out.printf(
-          "\nQuery StorageGroup message from ConfigNode 0.0.0.0:%d. Result: %s\n",
-          22277 + i * 2, msgMap);
+          "\nQuery StorageGroup message from ConfigNode 0.0.0.0:%d. Result: {\n", 22277 + i * 2);
+      for (Map.Entry<String, StorageGroupMessage> entry : msgMap.entrySet()) {
+        System.out.printf("  Key(%s)=%s\n", entry.getKey(), entry.getValue().toString());
+      }
+      System.out.println("}");
     }
   }
 }
