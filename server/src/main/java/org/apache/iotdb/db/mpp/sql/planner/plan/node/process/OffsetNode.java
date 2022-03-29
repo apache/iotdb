@@ -35,13 +35,17 @@ import java.util.List;
 public class OffsetNode extends ProcessNode {
 
   // The limit count
-  private final PlanNode child;
+  private PlanNode child;
   private final int offset;
 
-  public OffsetNode(PlanNodeId id, PlanNode child, int offset) {
+  public OffsetNode(PlanNodeId id, int offset) {
     super(id);
-    this.child = child;
     this.offset = offset;
+  }
+
+  public OffsetNode(PlanNodeId id, PlanNode child, int offset) {
+    this(id, offset);
+    this.child = child;
   }
 
   @Override
@@ -50,16 +54,18 @@ public class OffsetNode extends ProcessNode {
   }
 
   @Override
-  public void addChildren(PlanNode child) {}
-
-  @Override
-  public PlanNode clone() {
-    return null;
+  public void addChild(PlanNode child) {
+    this.child = child;
   }
 
   @Override
-  public PlanNode cloneWithChildren(List<PlanNode> children) {
-    return null;
+  public PlanNode clone() {
+    return new OffsetNode(getId(), offset);
+  }
+
+  @Override
+  public int allowedChildCount() {
+    return ONE_CHILD;
   }
 
   @Override

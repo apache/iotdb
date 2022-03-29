@@ -27,6 +27,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -120,16 +121,16 @@ public class InsertTabletNode extends InsertNode {
   }
 
   @Override
-  public void addChildren(PlanNode child) {}
+  public void addChild(PlanNode child) {}
 
   @Override
   public PlanNode clone() {
-    return null;
+    throw new NotImplementedException("clone of Insert is not implemented");
   }
 
   @Override
-  public PlanNode cloneWithChildren(List<PlanNode> children) {
-    return null;
+  public int allowedChildCount() {
+    return NO_CHILD_ALLOWED;
   }
 
   @Override
