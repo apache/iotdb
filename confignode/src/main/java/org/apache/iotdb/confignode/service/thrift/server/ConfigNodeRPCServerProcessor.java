@@ -92,7 +92,7 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
     ConsensusReadResponse resp = configManager.read(plan);
 
     if (resp.getDataset() == null) {
-      return null;
+      return new HashMap<>();
     } else {
       Map<Integer, DataNodeMessage> result = new HashMap<>();
       for (DataNodeInfo info : ((DataNodesInfoDataSet) resp.getDataset()).getInfoList()) {
