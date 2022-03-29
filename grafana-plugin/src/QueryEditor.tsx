@@ -20,7 +20,7 @@ import { QueryEditorProps } from '@grafana/data';
 import { DataSource } from './datasource';
 import { IoTDBOptions, IoTDBQuery } from './types';
 import { QueryInlineField } from './componments/Form';
-import { SelectValue } from 'componments/SelectValue';
+import { SelectValue } from './componments/SelectValue';
 import { FromValue } from 'componments/FromValue';
 import { WhereValue } from 'componments/WhereValue';
 import { ControlValue } from 'componments/ControlValue';
