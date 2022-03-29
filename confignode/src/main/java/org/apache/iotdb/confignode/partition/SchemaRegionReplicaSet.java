@@ -18,26 +18,27 @@
  */
 package org.apache.iotdb.confignode.partition;
 
-import org.apache.iotdb.commons.partition.DataRegionReplicaSet;
-import org.apache.iotdb.commons.partition.TimePartitionId;
+import org.apache.iotdb.consensus.common.Endpoint;
 
 import java.util.List;
-import java.util.Map;
 
-public class DataPartitionInfo {
+public class SchemaRegionReplicaSet {
+  private int schemaRegionId;
+  private List<Endpoint> endPointList;
 
-  // Map<StorageGroup, Map<DeviceGroupID, Map<TimePartitionId, List<DataRegionPlaceInfo>>>>
-  private Map<String, Map<Integer, Map<TimePartitionId, List<DataRegionReplicaSet>>>>
-      dataPartitionMap;
-
-  public Map<String, Map<Integer, Map<TimePartitionId, List<DataRegionReplicaSet>>>>
-      getDataPartitionMap() {
-    return dataPartitionMap;
+  public int getSchemaRegionId() {
+    return schemaRegionId;
   }
 
-  public void setDataPartitionMap(
-      Map<String, Map<Integer, Map<TimePartitionId, List<DataRegionReplicaSet>>>>
-          dataPartitionMap) {
-    this.dataPartitionMap = dataPartitionMap;
+  public void setSchemaRegionId(int schemaRegionId) {
+    this.schemaRegionId = schemaRegionId;
+  }
+
+  public List<Endpoint> getEndPointList() {
+    return endPointList;
+  }
+
+  public void setEndPointList(List<Endpoint> endPointList) {
+    this.endPointList = endPointList;
   }
 }

@@ -23,6 +23,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.statemachine.PartitionRegionStateMachine;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
+import org.apache.iotdb.confignode.rpc.thrift.DeviceGroupHashInfo;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.ConsensusGroupId;
 import org.apache.iotdb.consensus.common.Endpoint;
@@ -46,12 +47,11 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * ConfigManager maintains consistency between PartitionTables in the ConfigNodeGroup. Expose the
+ * ConsensusManager maintains consistency between PartitionTables in the ConfigNodeGroup. Expose the
  * query interface for the PartitionTable
  */
-public class ConfigManager {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(ConfigManager.class);
+public class ConsensusManager {
+  private static final Logger LOGGER = LoggerFactory.getLogger(ConsensusManager.class);
   private static final ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();
 
   private IConsensus consensusImpl;
@@ -59,7 +59,7 @@ public class ConfigManager {
 
   private DeviceGroupHashExecutor hashExecutor;
 
-  public ConfigManager() throws IOException {
+  public ConsensusManager() throws IOException {
     setHashExecutor();
     setConsensusLayer();
   }
@@ -92,19 +92,6 @@ public class ConfigManager {
   private void setConsensusLayer() throws IOException {
     // There is only one ConfigNodeGroup
     consensusGroupId = new ConsensusGroupId(GroupType.PartitionRegion, 0);
-
-    // If consensusDir does not exist, create consensusDir
-    File consensusDir = new File(conf.getConsensusDir());
-    if (!consensusDir.exists()) {
-      if (consensusDir.mkdirs()) {
-        LOGGER.info("Make consensus dirs: {}", consensusDir);
-      } else {
-        throw new IOException(
-            String.format(
-                "Start ConfigNode failed, because couldn't make system dirs: %s.",
-                consensusDir.getAbsolutePath()));
-      }
-    }
 
     // Implement specific consensus
     switch (conf.getConsensusType()) {
@@ -163,6 +150,11 @@ public class ConfigManager {
   /** Transmit PhysicalPlan to confignode.consensus.statemachine */
   public ConsensusReadResponse read(PhysicalPlan plan) {
     return consensusImpl.read(consensusGroupId, plan);
+  }
+
+  public DeviceGroupHashInfo getDeviceGroupHashInfo() {
+    return new DeviceGroupHashInfo(
+        conf.getDeviceGroupCount(), conf.getDeviceGroupHashExecutorClass());
   }
 
   // TODO: Interfaces for LoadBalancer control

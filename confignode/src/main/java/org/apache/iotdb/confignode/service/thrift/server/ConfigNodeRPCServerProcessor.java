@@ -19,13 +19,16 @@
 package org.apache.iotdb.confignode.service.thrift.server;
 
 import org.apache.iotdb.confignode.consensus.response.DataNodesInfoDataSet;
+import org.apache.iotdb.confignode.consensus.response.SchemaPartitionDataSet;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaDataSet;
-import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.manager.ConsensusManager;
 import org.apache.iotdb.confignode.partition.DataNodeInfo;
 import org.apache.iotdb.confignode.partition.StorageGroupSchema;
+import org.apache.iotdb.confignode.physical.PhysicalPlanType;
 import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
 import org.apache.iotdb.confignode.physical.sys.QueryStorageGroupSchemaPlan;
 import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
+import org.apache.iotdb.confignode.physical.sys.SchemaPartitionPlan;
 import org.apache.iotdb.confignode.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
 import org.apache.iotdb.confignode.rpc.thrift.DataNodeMessage;
@@ -55,10 +58,10 @@ import java.util.Map;
 /** ConfigNodeRPCServer exposes the interface that interacts with the DataNode */
 public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
 
-  private final ConfigManager configManager;
+  private final ConsensusManager consensusManager;
 
   public ConfigNodeRPCServerProcessor() throws IOException {
-    this.configManager = new ConfigManager();
+    this.consensusManager = new ConsensusManager();
   }
 
   @Override
@@ -67,7 +70,7 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
     RegisterDataNodePlan plan =
         new RegisterDataNodePlan(
             -1, new Endpoint(req.getEndPoint().getIp(), req.getEndPoint().getPort()));
-    ConsensusWriteResponse resp = configManager.write(plan);
+    ConsensusWriteResponse resp = consensusManager.write(plan);
     DataNodeRegisterResp result = new DataNodeRegisterResp();
     result.setRegisterResult(resp.getStatus());
     if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -79,7 +82,7 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
   @Override
   public Map<Integer, DataNodeMessage> getDataNodesMessage(int dataNodeID) throws TException {
     QueryDataNodeInfoPlan plan = new QueryDataNodeInfoPlan(dataNodeID);
-    ConsensusReadResponse resp = configManager.read(plan);
+    ConsensusReadResponse resp = consensusManager.read(plan);
 
     if (resp.getDataset() == null) {
       return null;
@@ -101,7 +104,7 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
     SetStorageGroupPlan plan =
         new SetStorageGroupPlan(
             new org.apache.iotdb.confignode.partition.StorageGroupSchema(req.getStorageGroup()));
-    return configManager.write(plan).getStatus();
+    return consensusManager.write(plan).getStatus();
   }
 
   @Override
@@ -111,7 +114,7 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
 
   @Override
   public Map<String, StorageGroupMessage> getStorageGroupsMessage() throws TException {
-    ConsensusReadResponse resp = configManager.read(new QueryStorageGroupSchemaPlan());
+    ConsensusReadResponse resp = consensusManager.read(new QueryStorageGroupSchemaPlan());
 
     if (resp.getDataset() == null) {
       return null;
@@ -127,16 +130,38 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
 
   @Override
   public DeviceGroupHashInfo getDeviceGroupHashInfo() throws TException {
+    return consensusManager.getDeviceGroupHashInfo();
+  }
+
+  @Override
+  public DataPartitionInfo applyDataPartition(GetDataPartitionReq req) throws TException {
+    return null;
+  }
+
+  @Override
+  public SchemaPartitionInfo applySchemaPartition(GetSchemaPartitionReq req) throws TException {
+    SchemaPartitionPlan applySchemaPartitionPlan =
+        new SchemaPartitionPlan(
+            PhysicalPlanType.ApplySchemaPartition, req.getStorageGroup(), req.getDeviceGroupIDs());
+    ConsensusReadResponse resp = consensusManager.read(applySchemaPartitionPlan);
+    ((SchemaPartitionDataSet) resp.getDataset()).getSchemaPartitionInfo();
+
     return null;
   }
 
   @Override
   public SchemaPartitionInfo getSchemaPartition(GetSchemaPartitionReq req) throws TException {
-    return null;
+    SchemaPartitionPlan querySchemaPartitionPlan =
+        new SchemaPartitionPlan(
+            PhysicalPlanType.QuerySchemaPartition, req.getStorageGroup(), req.getDeviceGroupIDs());
+    ConsensusReadResponse resp = consensusManager.read(querySchemaPartitionPlan);
+    return SchemaPartitionDataSet.convertRpcSchemaPartition(
+        ((SchemaPartitionDataSet) resp.getDataset()).getSchemaPartitionInfo());
   }
 
   @Override
   public DataPartitionInfo getDataPartition(GetDataPartitionReq req) throws TException {
+
     return null;
   }
 

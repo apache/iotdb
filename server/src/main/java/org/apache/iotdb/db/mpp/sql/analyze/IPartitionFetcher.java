@@ -31,9 +31,9 @@ public interface IPartitionFetcher {
 
   DataPartitionInfo fetchDataPartitionInfos(List<DataPartitionQueryParam> parameterList);
 
-  SchemaPartitionInfo fetchSchemaPartitionInfo(String deviceId);
+  SchemaPartitionInfo fetchSchemaPartitionInfo(String devicePath);
 
-  SchemaPartitionInfo fetchSchemaPartitionInfos(List<String> deviceId);
+  SchemaPartitionInfo fetchSchemaPartitionInfos(List<String> devicePaths);
 
   PartitionInfo fetchPartitionInfo(DataPartitionQueryParam parameter);
 

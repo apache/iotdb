@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -18,26 +18,31 @@
  */
 package org.apache.iotdb.confignode.partition;
 
-import org.apache.iotdb.commons.partition.DataRegionReplicaSet;
-import org.apache.iotdb.commons.partition.TimePartitionId;
-
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class DataPartitionInfo {
+public class SchemaRegionInfo {
 
-  // Map<StorageGroup, Map<DeviceGroupID, Map<TimePartitionId, List<DataRegionPlaceInfo>>>>
-  private Map<String, Map<Integer, Map<TimePartitionId, List<DataRegionReplicaSet>>>>
-      dataPartitionMap;
+  // TODO: Serialize and Deserialize
+  // Map<SchemaRegionID, List<DataNodeID>>
+  private final Map<Integer, List<Integer>> schemaRegionDataNodesMap;
 
-  public Map<String, Map<Integer, Map<TimePartitionId, List<DataRegionReplicaSet>>>>
-      getDataPartitionMap() {
-    return dataPartitionMap;
+  public SchemaRegionInfo() {
+    this.schemaRegionDataNodesMap = new HashMap<>();
   }
 
-  public void setDataPartitionMap(
-      Map<String, Map<Integer, Map<TimePartitionId, List<DataRegionReplicaSet>>>>
-          dataPartitionMap) {
-    this.dataPartitionMap = dataPartitionMap;
+  public void createSchemaRegion(int schemaRegion, List<Integer> dataNode) {
+    if (!schemaRegionDataNodesMap.containsKey(schemaRegion)) {
+      schemaRegionDataNodesMap.put(schemaRegion, dataNode);
+    }
+  }
+
+  public List<Integer> getSchemaRegionLocation(int schemaRegionGroup) {
+    return schemaRegionDataNodesMap.get(schemaRegionGroup);
+  }
+
+  public Map<Integer, List<Integer>> getSchemaRegionDataNodesMap() {
+    return schemaRegionDataNodesMap;
   }
 }

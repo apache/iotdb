@@ -19,28 +19,33 @@
 package org.apache.iotdb.confignode.service.executor;
 
 import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeException;
-import org.apache.iotdb.confignode.partition.PartitionTable;
+import org.apache.iotdb.confignode.manager.ConfigNodeManager;
+import org.apache.iotdb.confignode.manager.Manager;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
-import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
-import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
-import org.apache.iotdb.confignode.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 public class PlanExecutor {
-
-  private final PartitionTable partitionTable;
+  private final Manager configNodeManager;
 
   public PlanExecutor() {
-    this.partitionTable = new PartitionTable();
+    this.configNodeManager = new ConfigNodeManager();
   }
 
   public DataSet executorQueryPlan(PhysicalPlan plan) throws UnknownPhysicalPlanTypeException {
     switch (plan.getType()) {
       case QueryDataNodeInfo:
-        return partitionTable.getDataNodeInfo((QueryDataNodeInfoPlan) plan);
+        return configNodeManager.getDataNodeInfo(plan);
       case QueryStorageGroupSchema:
-        return partitionTable.getStorageGroupSchema();
+        return configNodeManager.getStorageGroupSchema();
+      case QueryDataPartition:
+        return configNodeManager.getDataPartition(plan);
+      case QuerySchemaPartition:
+        return configNodeManager.getSchemaPartition(plan);
+      case ApplySchemaPartition:
+        return configNodeManager.applySchemaPartition(plan);
+      case ApplyDataPartition:
+        return configNodeManager.applyDataPartition(plan);
       default:
         throw new UnknownPhysicalPlanTypeException(plan.getType());
     }
@@ -49,9 +54,9 @@ public class PlanExecutor {
   public TSStatus executorNonQueryPlan(PhysicalPlan plan) throws UnknownPhysicalPlanTypeException {
     switch (plan.getType()) {
       case RegisterDataNode:
-        return partitionTable.registerDataNode((RegisterDataNodePlan) plan);
+        return configNodeManager.registerDataNode(plan);
       case SetStorageGroup:
-        return partitionTable.setStorageGroup((SetStorageGroupPlan) plan);
+        return configNodeManager.setStorageGroup(plan);
       default:
         throw new UnknownPhysicalPlanTypeException(plan.getType());
     }
