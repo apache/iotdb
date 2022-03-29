@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.rocksdb;
+package org.apache.iotdb.db.metadata.schemaregion.rocksdb;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -34,9 +34,9 @@ import java.util.Set;
 
 public class MRocksDBBenchmark {
   protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private RSchemaEngine rocksDBManager;
+  private RSchemaRegion rocksDBManager;
 
-  public MRocksDBBenchmark(RSchemaEngine rocksDBManager) {
+  public MRocksDBBenchmark(RSchemaRegion rocksDBManager) {
     this.rocksDBManager = rocksDBManager;
   }
 

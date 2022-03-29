@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.rocksdb;
+package org.apache.iotdb.db.metadata.schemaregion.rocksdb;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
@@ -38,11 +38,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-import static org.apache.iotdb.db.metadata.rocksdb.RSchemaReadWriteHandler.ROCKSDB_PATH;
+import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaReadWriteHandler.ROCKSDB_PATH;
 
 public class MRocksDBUnitTest {
 
-  private RSchemaEngine RSchemaEngine;
+  private RSchemaRegion RSchemaRegion;
   private String rocksdbPath;
 
   @Before
@@ -52,7 +52,7 @@ public class MRocksDBUnitTest {
     if (!file.exists()) {
       file.mkdirs();
     }
-    RSchemaEngine = new RSchemaEngine(rocksdbPath);
+    RSchemaRegion = new RSchemaRegion(rocksdbPath);
   }
 
   @Test
@@ -65,20 +65,20 @@ public class MRocksDBUnitTest {
     storageGroups.add(new PartialPath("root.inner1.inner2.sg"));
 
     for (PartialPath sg : storageGroups) {
-      RSchemaEngine.setStorageGroup(sg);
+      RSchemaRegion.setStorageGroup(sg);
     }
 
     for (PartialPath sg : storageGroups) {
-      RSchemaEngine.setTTL(sg, 200 * 10000);
+      RSchemaRegion.setTTL(sg, 200 * 10000);
     }
 
-    RSchemaEngine.printScanAllKeys();
+    RSchemaRegion.printScanAllKeys();
 
-    Assert.assertTrue(RSchemaEngine.isPathExist(new PartialPath("root.sg1")));
-    Assert.assertTrue(RSchemaEngine.isPathExist(new PartialPath("root.inner1.inner2.inner3")));
-    Assert.assertFalse(RSchemaEngine.isPathExist(new PartialPath("root.inner1.inner5")));
+    Assert.assertTrue(RSchemaRegion.isPathExist(new PartialPath("root.sg1")));
+    Assert.assertTrue(RSchemaRegion.isPathExist(new PartialPath("root.inner1.inner2.inner3")));
+    Assert.assertFalse(RSchemaRegion.isPathExist(new PartialPath("root.inner1.inner5")));
     try {
-      Assert.assertFalse(RSchemaEngine.isPathExist(new PartialPath("root.inner1...")));
+      Assert.assertFalse(RSchemaRegion.isPathExist(new PartialPath("root.inner1...")));
     } catch (MetadataException e) {
       assert true;
     }
@@ -89,7 +89,7 @@ public class MRocksDBUnitTest {
               try {
                 List<PartialPath> toDelete = new ArrayList<>();
                 toDelete.add(new PartialPath("root.sg1"));
-                RSchemaEngine.deleteStorageGroups(toDelete);
+                RSchemaRegion.deleteStorageGroups(toDelete);
               } catch (Exception e) {
                 Assert.fail(e.getMessage());
               }
@@ -100,7 +100,7 @@ public class MRocksDBUnitTest {
             () -> {
               try {
                 PartialPath path = new PartialPath("root.sg1.dd.m1");
-                RSchemaEngine.createTimeseries(
+                RSchemaRegion.createTimeseries(
                     path,
                     TSDataType.TEXT,
                     TSEncoding.PLAIN,
@@ -121,23 +121,23 @@ public class MRocksDBUnitTest {
     Assert.assertThrows(
         MetadataException.class,
         () -> {
-          RSchemaEngine.createTimeseries(
+          RSchemaRegion.createTimeseries(
               path, TSDataType.TEXT, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED, null, null);
         });
 
     t1.join();
     t2.join();
 
-    RSchemaEngine.printScanAllKeys();
+    RSchemaRegion.printScanAllKeys();
   }
 
   @Test
   public void testCreateTimeSeries() throws MetadataException, IOException {
     PartialPath path = new PartialPath("root.tt.sg.dd.m1");
-    RSchemaEngine.createTimeseries(
+    RSchemaRegion.createTimeseries(
         path, TSDataType.TEXT, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED, null, null);
 
-    IMeasurementMNode m1 = RSchemaEngine.getMeasurementMNode(path);
+    IMeasurementMNode m1 = RSchemaRegion.getMeasurementMNode(path);
     Assert.assertNull(m1.getAlias());
     Assert.assertEquals(m1.getSchema().getCompressor(), CompressionType.UNCOMPRESSED);
     Assert.assertEquals(m1.getSchema().getEncodingType(), TSEncoding.PLAIN);
@@ -145,9 +145,9 @@ public class MRocksDBUnitTest {
     Assert.assertNull(m1.getSchema().getProps());
 
     PartialPath path2 = new PartialPath("root.tt.sg.dd.m2");
-    RSchemaEngine.createTimeseries(
+    RSchemaRegion.createTimeseries(
         path2, TSDataType.DOUBLE, TSEncoding.PLAIN, CompressionType.GZIP, null, "ma");
-    IMeasurementMNode m2 = RSchemaEngine.getMeasurementMNode(path2);
+    IMeasurementMNode m2 = RSchemaRegion.getMeasurementMNode(path2);
     Assert.assertEquals(m2.getAlias(), "ma");
     Assert.assertEquals(m2.getSchema().getCompressor(), CompressionType.GZIP);
     Assert.assertEquals(m2.getSchema().getEncodingType(), TSEncoding.PLAIN);
@@ -169,18 +169,18 @@ public class MRocksDBUnitTest {
       encodings.add(TSEncoding.PLAIN);
       compressions.add(CompressionType.UNCOMPRESSED);
     }
-    RSchemaEngine.createAlignedTimeSeries(
+    RSchemaRegion.createAlignedTimeSeries(
         prefixPath, measurements, dataTypes, encodings, compressions);
 
     try {
       PartialPath path = new PartialPath("root.tt.sg.dd.mn");
-      RSchemaEngine.createTimeseries(
+      RSchemaRegion.createTimeseries(
           path, TSDataType.TEXT, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED, null, null);
       assert false;
     } catch (MetadataException e) {
       assert true;
     }
-    RSchemaEngine.printScanAllKeys();
+    RSchemaRegion.printScanAllKeys();
   }
 
   @Test
@@ -193,46 +193,46 @@ public class MRocksDBUnitTest {
     storageGroups.add(new PartialPath("root.inner1.inner2.sg"));
 
     for (PartialPath sg : storageGroups) {
-      RSchemaEngine.setStorageGroup(sg);
+      RSchemaRegion.setStorageGroup(sg);
     }
 
     PartialPath path = new PartialPath("root.tt.sg.dd.m1");
-    RSchemaEngine.createTimeseries(
+    RSchemaRegion.createTimeseries(
         path, TSDataType.TEXT, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED, null, null);
 
     PartialPath path2 = new PartialPath("root.tt.sg.ddd.m2");
-    RSchemaEngine.createTimeseries(
+    RSchemaRegion.createTimeseries(
         path2, TSDataType.TEXT, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED, null, "ma");
-    RSchemaEngine.printScanAllKeys();
+    RSchemaRegion.printScanAllKeys();
 
     // test total series number
-    Assert.assertEquals(2, RSchemaEngine.getTotalSeriesNumber());
+    Assert.assertEquals(2, RSchemaRegion.getTotalSeriesNumber());
 
     // test storage group number
     Assert.assertEquals(
         1,
-        RSchemaEngine.getStorageGroupNum(new PartialPath("root.inner1.inner2.inner3.sg"), false));
+        RSchemaRegion.getStorageGroupNum(new PartialPath("root.inner1.inner2.inner3.sg"), false));
     Assert.assertEquals(
-        2, RSchemaEngine.getStorageGroupNum(new PartialPath("root.inner.**"), false));
-    Assert.assertEquals(6, RSchemaEngine.getStorageGroupNum(new PartialPath("root.**"), false));
+        2, RSchemaRegion.getStorageGroupNum(new PartialPath("root.inner.**"), false));
+    Assert.assertEquals(6, RSchemaRegion.getStorageGroupNum(new PartialPath("root.**"), false));
 
     // test all timeseries number
     Assert.assertEquals(
-        1, RSchemaEngine.getAllTimeseriesCount(new PartialPath("root.tt.sg.dd.m1")));
-    Assert.assertEquals(2, RSchemaEngine.getAllTimeseriesCount(new PartialPath("root.**"), false));
+        1, RSchemaRegion.getAllTimeseriesCount(new PartialPath("root.tt.sg.dd.m1")));
+    Assert.assertEquals(2, RSchemaRegion.getAllTimeseriesCount(new PartialPath("root.**"), false));
 
     // test device number
-    Assert.assertEquals(0, RSchemaEngine.getDevicesNum(new PartialPath("root.inner1.inner2")));
+    Assert.assertEquals(0, RSchemaRegion.getDevicesNum(new PartialPath("root.inner1.inner2")));
     Assert.assertEquals(
-        0, RSchemaEngine.getDevicesNum(new PartialPath("root.inner1.inner2.**"), false));
-    Assert.assertEquals(2, RSchemaEngine.getDevicesNum(new PartialPath("root.tt.sg.**"), false));
-    Assert.assertEquals(1, RSchemaEngine.getDevicesNum(new PartialPath("root.tt.sg.dd"), false));
+        0, RSchemaRegion.getDevicesNum(new PartialPath("root.inner1.inner2.**"), false));
+    Assert.assertEquals(2, RSchemaRegion.getDevicesNum(new PartialPath("root.tt.sg.**"), false));
+    Assert.assertEquals(1, RSchemaRegion.getDevicesNum(new PartialPath("root.tt.sg.dd"), false));
 
     // todo wildcard
 
     // test nodes count in given level
     Assert.assertEquals(
-        2, RSchemaEngine.getNodesCountInGivenLevel(new PartialPath("root.tt.sg"), 3, false));
+        2, RSchemaRegion.getNodesCountInGivenLevel(new PartialPath("root.tt.sg"), 3, false));
   }
 
   @Test
@@ -248,7 +248,7 @@ public class MRocksDBUnitTest {
     timeseries.add(new PartialPath("root.sg1.d2.m2"));
 
     for (PartialPath path : timeseries) {
-      RSchemaEngine.createTimeseries(
+      RSchemaRegion.createTimeseries(
           path, TSDataType.TEXT, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED, null, null);
     }
 
@@ -270,55 +270,55 @@ public class MRocksDBUnitTest {
     timeseries.add(new PartialPath("root.sg1.d2.m2"));
 
     for (PartialPath path : timeseries) {
-      RSchemaEngine.createTimeseries(
+      RSchemaRegion.createTimeseries(
           path, TSDataType.TEXT, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED, null, null);
     }
 
     Assert.assertEquals(
-        RSchemaEngine.getAllTimeseriesCount(new PartialPath("root.**")), timeseries.size());
+        RSchemaRegion.getAllTimeseriesCount(new PartialPath("root.**")), timeseries.size());
 
     int count = timeseries.size();
-    RSchemaEngine.deleteTimeseries(new PartialPath("root.sg.d1.*"));
-    Assert.assertEquals(RSchemaEngine.getAllTimeseriesCount(new PartialPath("root.**")), count - 2);
+    RSchemaRegion.deleteTimeseries(new PartialPath("root.sg.d1.*"));
+    Assert.assertEquals(RSchemaRegion.getAllTimeseriesCount(new PartialPath("root.**")), count - 2);
 
     count = count - 2;
-    RSchemaEngine.deleteTimeseries(new PartialPath("root.sg1.**"));
-    Assert.assertEquals(RSchemaEngine.getAllTimeseriesCount(new PartialPath("root.**")), count - 4);
+    RSchemaRegion.deleteTimeseries(new PartialPath("root.sg1.**"));
+    Assert.assertEquals(RSchemaRegion.getAllTimeseriesCount(new PartialPath("root.**")), count - 4);
 
     count = count - 4;
-    RSchemaEngine.deleteTimeseries(new PartialPath("root.sg.*.m1"));
-    Assert.assertEquals(RSchemaEngine.getAllTimeseriesCount(new PartialPath("root.**")), count - 2);
+    RSchemaRegion.deleteTimeseries(new PartialPath("root.sg.*.m1"));
+    Assert.assertEquals(RSchemaRegion.getAllTimeseriesCount(new PartialPath("root.**")), count - 2);
 
-    RSchemaEngine.printScanAllKeys();
+    RSchemaRegion.printScanAllKeys();
   }
 
   @Test
   public void testUpsert() throws MetadataException, IOException {
     PartialPath path2 = new PartialPath("root.tt.sg.dd.m2");
-    RSchemaEngine.createTimeseries(
+    RSchemaRegion.createTimeseries(
         path2, TSDataType.TEXT, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED, null, "ma");
 
-    IMeasurementMNode m1 = RSchemaEngine.getMeasurementMNode(new PartialPath("root.tt.sg.dd.m2"));
+    IMeasurementMNode m1 = RSchemaRegion.getMeasurementMNode(new PartialPath("root.tt.sg.dd.m2"));
     Assert.assertEquals(m1.getAlias(), "ma");
 
-    RSchemaEngine.changeAlias(new PartialPath("root.tt.sg.dd.m2"), "test");
+    RSchemaRegion.changeAlias(new PartialPath("root.tt.sg.dd.m2"), "test");
 
-    IMeasurementMNode m2 = RSchemaEngine.getMeasurementMNode(new PartialPath("root.tt.sg.dd.m2"));
+    IMeasurementMNode m2 = RSchemaRegion.getMeasurementMNode(new PartialPath("root.tt.sg.dd.m2"));
     Assert.assertEquals(m2.getAlias(), "test");
 
-    RSchemaEngine.printScanAllKeys();
+    RSchemaRegion.printScanAllKeys();
 
-    IMeasurementMNode m3 = RSchemaEngine.getMeasurementMNode(new PartialPath("root.tt.sg.dd.test"));
+    IMeasurementMNode m3 = RSchemaRegion.getMeasurementMNode(new PartialPath("root.tt.sg.dd.test"));
     Assert.assertEquals(m3.getAlias(), "test");
   }
 
   @Test
   public void testGetSeriesSchema() throws MetadataException {
     PartialPath path2 = new PartialPath("root.tt.sg.dd.m2");
-    RSchemaEngine.createTimeseries(
+    RSchemaRegion.createTimeseries(
         path2, TSDataType.TEXT, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED, null, "ma");
 
-    IMeasurementSchema schema = RSchemaEngine.getSeriesSchema(path2);
+    IMeasurementSchema schema = RSchemaRegion.getSeriesSchema(path2);
 
     Assert.assertEquals(schema.getEncodingType(), TSEncoding.PLAIN);
     Assert.assertEquals(schema.getType(), TSDataType.TEXT);
@@ -327,7 +327,7 @@ public class MRocksDBUnitTest {
 
   @After
   public void clean() throws MetadataException {
-    RSchemaEngine.deactivate();
+    RSchemaRegion.deactivate();
     resetEnv();
   }
 

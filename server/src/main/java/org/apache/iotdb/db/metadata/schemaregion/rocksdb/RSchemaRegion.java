@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,8 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
-package org.apache.iotdb.db.metadata.rocksdb;
+package org.apache.iotdb.db.metadata.schemaregion.rocksdb;
 
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -31,20 +30,18 @@ import org.apache.iotdb.db.exception.metadata.MNodeTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.metadata.ISchemaEngine;
-import org.apache.iotdb.db.metadata.SchemaEngine;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor.StorageGroupFilter;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.metadata.rocksdb.mnode.REntityMNode;
-import org.apache.iotdb.db.metadata.rocksdb.mnode.RMNodeType;
-import org.apache.iotdb.db.metadata.rocksdb.mnode.RMNodeValueType;
-import org.apache.iotdb.db.metadata.rocksdb.mnode.RMeasurementMNode;
-import org.apache.iotdb.db.metadata.rocksdb.mnode.RStorageGroupMNode;
+import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
+import org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode.REntityMNode;
+import org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode.RMNodeType;
+import org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode.RMNodeValueType;
+import org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode.RMeasurementMNode;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
@@ -54,18 +51,11 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.DropTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.PruneTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
@@ -75,11 +65,9 @@ import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SchemaUtils;
-import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -87,7 +75,6 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
 import com.google.common.collect.MapMaker;
-import io.netty.util.internal.StringUtil;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.rocksdb.Holder;
@@ -120,34 +107,23 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiFunction;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
-import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.ALL_NODE_TYPE_ARRAY;
-import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.DEFAULT_ALIGNED_ENTITY_VALUE;
-import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.DEFAULT_NODE_VALUE;
-import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.FLAG_IS_ALIGNED;
-import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.NODE_TYPE_ENTITY;
-import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.NODE_TYPE_MEASUREMENT;
-import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.NODE_TYPE_SG;
-import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.TABLE_NAME_TAGS;
-import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.ZERO;
+import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants.ALL_NODE_TYPE_ARRAY;
+import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants.DEFAULT_ALIGNED_ENTITY_VALUE;
+import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants.DEFAULT_NODE_VALUE;
+import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants.FLAG_IS_ALIGNED;
+import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants.NODE_TYPE_ENTITY;
+import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants.NODE_TYPE_MEASUREMENT;
+import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants.TABLE_NAME_TAGS;
+import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants.ZERO;
 import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
-/**
- * This class is another implementation of ISchemaEngine. The default schema engine #{@link
- * SchemaEngine} is a pure memory implementation. In some situations, metadata can't fit into
- * memory, so we provide this alternative engine. The engine implemented base on RocksDB in which
- * all metadata all stored in a rocksdb instance. RocksDB has been proved to be a high performance
- * embed key-value storage. This implementation could achieve high throughput even with more than 1
- * billion time series(the time series often occupy more than 100GB footprint in our case).
- */
-public class RSchemaEngine implements ISchemaEngine {
-
-  private static final Logger logger = LoggerFactory.getLogger(RSchemaEngine.class);
+public class RSchemaRegion implements ISchemaRegion {
+  private static final Logger logger = LoggerFactory.getLogger(RSchemaRegion.class);
 
   protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
@@ -163,7 +139,7 @@ public class RSchemaEngine implements ISchemaEngine {
 
   private final Map<String, Boolean> storageGroupDeletingFlagMap = new ConcurrentHashMap<>();
 
-  public RSchemaEngine() throws MetadataException {
+  public RSchemaRegion() throws MetadataException {
     try {
       readWriteHandler = new RSchemaReadWriteHandler();
     } catch (RocksDBException e) {
@@ -173,7 +149,7 @@ public class RSchemaEngine implements ISchemaEngine {
   }
 
   @TestOnly
-  public RSchemaEngine(String path) throws MetadataException {
+  public RSchemaRegion(String path) throws MetadataException {
     try {
       readWriteHandler = new RSchemaReadWriteHandler(path);
     } catch (RocksDBException e) {
@@ -182,9 +158,8 @@ public class RSchemaEngine implements ISchemaEngine {
     }
   }
 
-  // region Interfaces and Implementation of MManager initialization、snapshot、recover and clear
   @Override
-  public void init() {}
+  public void init(IStorageGroupMNode storageGroupMNode) throws MetadataException {}
 
   @Override
   public void clear() {}
@@ -206,18 +181,6 @@ public class RSchemaEngine implements ISchemaEngine {
         // cause we only has one path for one DeleteTimeSeriesPlan
         deleteTimeseries(deleteTimeSeriesPlan.getPaths().get(0));
         break;
-      case SET_STORAGE_GROUP:
-        SetStorageGroupPlan setStorageGroupPlan = (SetStorageGroupPlan) plan;
-        setStorageGroup(setStorageGroupPlan.getPath());
-        break;
-      case DELETE_STORAGE_GROUP:
-        DeleteStorageGroupPlan deleteStorageGroupPlan = (DeleteStorageGroupPlan) plan;
-        deleteStorageGroups(deleteStorageGroupPlan.getPaths());
-        break;
-      case TTL:
-        SetTTLPlan setTTLPlan = (SetTTLPlan) plan;
-        setTTL(setTTLPlan.getStorageGroup(), setTTLPlan.getDataTTL());
-        break;
       case CHANGE_ALIAS:
         ChangeAliasPlan changeAliasPlan = (ChangeAliasPlan) plan;
         changeAlias(changeAliasPlan.getPath(), changeAliasPlan.getAlias());
@@ -227,25 +190,19 @@ public class RSchemaEngine implements ISchemaEngine {
         autoCreateDeviceMNode(autoCreateDeviceMNodePlan);
         break;
       case CHANGE_TAG_OFFSET:
-      case CREATE_TEMPLATE:
-      case DROP_TEMPLATE:
-      case APPEND_TEMPLATE:
-      case PRUNE_TEMPLATE:
       case SET_TEMPLATE:
       case ACTIVATE_TEMPLATE:
       case UNSET_TEMPLATE:
-      case CREATE_CONTINUOUS_QUERY:
-      case DROP_CONTINUOUS_QUERY:
         logger.error("unsupported operations {}", plan);
         break;
       default:
         logger.error("Unrecognizable command {}", plan.getOperatorType());
     }
   }
-  // endregion
 
-  // region Interfaces and Implementation for Timeseries operation
-  // including create and delete
+  @Override
+  public void deleteSchemaRegion() throws MetadataException {}
+
   @Override
   public void createTimeseries(CreateTimeSeriesPlan plan) throws MetadataException {
     createTimeSeries(
@@ -261,14 +218,11 @@ public class RSchemaEngine implements ISchemaEngine {
         plan.getAttributes());
   }
 
-  /**
-   * Add one timeseries to metadata tree, if the timeseries already exists, throw exception
-   *
-   * @param path the timeseries path
-   * @param dataType the dateType {@code DataType} of the timeseries
-   * @param encoding the encoding function {@code Encoding} of the timeseries
-   * @param compressor the compressor function {@code Compressor} of the time series
-   */
+  @Override
+  public void createTimeseries(CreateTimeSeriesPlan plan, long offset) throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
   @Override
   public void createTimeseries(
       PartialPath path,
@@ -280,14 +234,6 @@ public class RSchemaEngine implements ISchemaEngine {
     createTimeseries(path, dataType, encoding, compressor, props, null);
   }
 
-  /**
-   * Add one timeseries to metadata, if the timeseries already exists, throw exception
-   *
-   * @param path the timeseries path
-   * @param dataType the dateType {@code DataType} of the timeseries
-   * @param encoding the encoding function {@code Encoding} of the timeseries
-   * @param compressor the compressor function {@code Compressor} of the time series
-   */
   public void createTimeseries(
       PartialPath path,
       TSDataType dataType,
@@ -312,11 +258,11 @@ public class RSchemaEngine implements ISchemaEngine {
       Map<String, String> attributes)
       throws MetadataException {
     // regular check
-    if (path.getNodes().length > RSchemaEngine.MAX_PATH_DEPTH) {
+    if (path.getNodes().length > RSchemaRegion.MAX_PATH_DEPTH) {
       throw new IllegalPathException(
           String.format(
               "path is too long, provide: %d, max: %d",
-              path.getNodeLength(), RSchemaEngine.MAX_PATH_DEPTH));
+              path.getNodeLength(), RSchemaRegion.MAX_PATH_DEPTH));
     }
     MetaFormatUtils.checkTimeseries(path);
     MetaFormatUtils.checkTimeseriesProps(path.getFullPath(), schema.getProps());
@@ -468,11 +414,7 @@ public class RSchemaEngine implements ISchemaEngine {
             prefixPath, measurements, dataTypes, encodings, compressors, null, null, null));
   }
 
-  /**
-   * create aligned timeseries
-   *
-   * @param plan CreateAlignedTimeSeriesPlan
-   */
+  @Override
   public void createAlignedTimeSeries(CreateAlignedTimeSeriesPlan plan) throws MetadataException {
     PartialPath prefixPath = plan.getPrefixPath();
     List<String> measurements = plan.getMeasurements();
@@ -483,7 +425,7 @@ public class RSchemaEngine implements ISchemaEngine {
       throw new IllegalPathException(
           String.format(
               "Prefix path is too long, provide: %d, max: %d",
-              prefixPath.getNodeLength(), RSchemaEngine.MAX_PATH_DEPTH - 1));
+              prefixPath.getNodeLength(), RSchemaRegion.MAX_PATH_DEPTH - 1));
     }
 
     MetaFormatUtils.checkTimeseries(prefixPath);
@@ -535,7 +477,6 @@ public class RSchemaEngine implements ISchemaEngine {
       throw new MetadataException(e);
     }
   }
-
   /** The method assume Storage Group Node has been created */
   private void createEntityRecursively(
       String[] nodes, int start, int end, boolean aligned, Stack<Lock> lockedLocks)
@@ -603,16 +544,8 @@ public class RSchemaEngine implements ISchemaEngine {
     }
   }
 
-  /**
-   * delete timeseries which match with pathPattern.
-   *
-   * @param pathPattern
-   * @param isPrefixMatch
-   * @return
-   * @throws MetadataException
-   */
   @Override
-  public String deleteTimeseries(PartialPath pathPattern, boolean isPrefixMatch)
+  public Pair<Integer, Set<String>> deleteTimeseries(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
     Set<String> failedNames = ConcurrentHashMap.newKeySet();
     Map<IStorageGroupMNode, Set<IMNode>> mapToDeletedPath = new ConcurrentHashMap<>();
@@ -727,274 +660,7 @@ public class RSchemaEngine implements ISchemaEngine {
     return failedNames.isEmpty() ? null : String.join(",", failedNames);
   }
 
-  @Override
-  public String deleteTimeseries(PartialPath pathPattern) throws MetadataException {
-    return deleteTimeseries(pathPattern, false);
-  }
-  // endregion
-
-  // region Interfaces and Implementation for StorageGroup and TTL operation
-  // including sg set and delete, and ttl set
-  private int ensureStorageGroup(PartialPath path) throws MetadataException {
-    int sgIndex = -1;
-    String[] nodes = path.getNodes();
-    try {
-      sgIndex = indexOfSgNode(nodes);
-      if (sgIndex < 0) {
-        if (!config.isAutoCreateSchemaEnabled()) {
-          throw new StorageGroupNotSetException(path.getFullPath());
-        }
-        PartialPath sgPath =
-            MetaUtils.getStorageGroupPathByLevel(path, config.getDefaultStorageGroupLevel());
-        setStorageGroup(sgPath);
-        sgIndex = sgPath.getNodeLength() - 1;
-      }
-      String sgPath =
-          String.join(PATH_SEPARATOR, ArrayUtils.subarray(path.getNodes(), 0, sgIndex + 1));
-      if (storageGroupDeletingFlagMap.getOrDefault(sgPath, false)) {
-        throw new MetadataException("Storage Group is deleting: " + sgPath);
-      }
-    } catch (RocksDBException e) {
-      throw new MetadataException(e);
-    }
-    return sgIndex;
-  }
-
-  private int indexOfSgNode(String[] nodes) throws RocksDBException {
-    int result = -1;
-    // ignore the first element: "root"
-    for (int i = 1; i < nodes.length; i++) {
-      String levelPath = RSchemaUtils.getLevelPath(nodes, i);
-      if (readWriteHandler.keyExistByType(levelPath, RMNodeType.STORAGE_GROUP)) {
-        result = i;
-        break;
-      }
-    }
-    return result;
-  }
-
-  /**
-   * Set storage group of the given path to MTree.
-   *
-   * @param storageGroup root.node.(node)*
-   */
-  @Override
-  public void setStorageGroup(PartialPath storageGroup) throws MetadataException {
-    if (storageGroup.getNodes().length > RSchemaEngine.MAX_PATH_DEPTH) {
-      throw new IllegalPathException(
-          String.format(
-              "Storage group path is too long, provide: %d, max: %d",
-              storageGroup.getNodeLength(), RSchemaEngine.MAX_PATH_DEPTH - 2));
-    }
-    MetaFormatUtils.checkStorageGroup(storageGroup.getFullPath());
-    String[] nodes = storageGroup.getNodes();
-    try {
-      int len = nodes.length;
-      for (int i = 1; i < nodes.length; i++) {
-        String levelKey = RSchemaUtils.getLevelPath(nodes, i);
-        Lock lock = locksPool.computeIfAbsent(levelKey, x -> new ReentrantLock());
-        if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
-          try {
-            CheckKeyResult keyCheckResult = readWriteHandler.keyExistByAllTypes(levelKey);
-            if (!keyCheckResult.existAnyKey()) {
-              if (i < len - 1) {
-                readWriteHandler.createNode(levelKey, RMNodeType.INTERNAL, DEFAULT_NODE_VALUE);
-              } else {
-                readWriteHandler.createNode(levelKey, RMNodeType.STORAGE_GROUP, DEFAULT_NODE_VALUE);
-              }
-            } else {
-              if (i >= len - 1) {
-                if (keyCheckResult.getExistType() == RMNodeType.STORAGE_GROUP) {
-                  throw new StorageGroupAlreadySetException(storageGroup.getFullPath());
-                } else {
-                  throw new MNodeTypeMismatchException(
-                      storageGroup.getFullPath(), (byte) (RMNodeType.STORAGE_GROUP.getValue() - 1));
-                }
-              } else {
-                if (keyCheckResult.getExistType() != RMNodeType.INTERNAL) {
-                  throw new StorageGroupAlreadySetException(
-                      RSchemaUtils.concatNodesName(nodes, 0, i), true);
-                }
-              }
-            }
-          } finally {
-            lock.unlock();
-          }
-        } else {
-          throw new AcquireLockTimeoutException("acquire lock timeout: " + levelKey);
-        }
-      }
-    } catch (RocksDBException | InterruptedException e) {
-      throw new MetadataException(e);
-    }
-  }
-
-  @Override
-  public void deleteStorageGroups(List<PartialPath> storageGroups) throws MetadataException {
-    storageGroups
-        .parallelStream()
-        .forEach(
-            path -> {
-              try {
-                storageGroupDeletingFlagMap.put(path.getFullPath(), true);
-                // wait for all executing createTimeseries operations are complete
-                Thread.sleep(MAX_LOCK_WAIT_TIME * MAX_PATH_DEPTH);
-                String[] nodes = path.getNodes();
-                Arrays.stream(ALL_NODE_TYPE_ARRAY)
-                    .parallel()
-                    .forEach(
-                        type -> {
-                          try {
-                            for (int i = nodes.length; i <= MAX_PATH_DEPTH; i++) {
-                              String startPath =
-                                  RSchemaUtils.getLevelPathPrefix(nodes, nodes.length - 1, i);
-                              byte[] startKey = RSchemaUtils.toRocksDBKey(startPath, type);
-                              byte[] endKey = new byte[startKey.length];
-                              System.arraycopy(startKey, 0, endKey, 0, startKey.length - 1);
-                              endKey[endKey.length - 1] = Byte.MAX_VALUE;
-                              if (type == NODE_TYPE_MEASUREMENT) {
-                                readWriteHandler.deleteNodeByPrefix(
-                                    readWriteHandler.getCFHByName(TABLE_NAME_TAGS),
-                                    startKey,
-                                    endKey);
-                              }
-                              readWriteHandler.deleteNodeByPrefix(startKey, endKey);
-                            }
-                          } catch (RocksDBException e) {
-                            logger.error("delete storage error {}", path.getFullPath(), e);
-                          }
-                        });
-                if (getAllTimeseriesCount(path.concatNode(MULTI_LEVEL_PATH_WILDCARD)) <= 0) {
-                  readWriteHandler.deleteNode(path.getNodes(), RMNodeType.STORAGE_GROUP);
-                } else {
-                  throw new MetadataException(
-                      String.format(
-                          "New timeseries created after sg deleted, won't delete storage node: %s",
-                          path.getFullPath()));
-                }
-              } catch (RocksDBException | MetadataException | InterruptedException e) {
-                throw new RuntimeException(e);
-              } finally {
-                storageGroupDeletingFlagMap.remove(path.getFullPath());
-              }
-            });
-  }
-
-  @Override
-  public void setTTL(PartialPath storageGroup, long dataTTL) throws MetadataException, IOException {
-    String levelPath =
-        RSchemaUtils.getLevelPath(storageGroup.getNodes(), storageGroup.getNodeLength() - 1);
-    byte[] pathKey = RSchemaUtils.toStorageNodeKey(levelPath);
-    Holder<byte[]> holder = new Holder<>();
-    try {
-      Lock lock = locksPool.computeIfAbsent(levelPath, x -> new ReentrantLock());
-      if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
-        try {
-          if (readWriteHandler.keyExist(pathKey, holder)) {
-            byte[] value = RSchemaUtils.updateTTL(holder.getValue(), dataTTL);
-            readWriteHandler.updateNode(pathKey, value);
-          } else {
-            throw new PathNotExistException(
-                "Storage group node of path doesn't exist: " + levelPath);
-          }
-        } finally {
-          lock.unlock();
-        }
-      } else {
-        throw new AcquireLockTimeoutException("acquire lock timeout: " + levelPath);
-      }
-    } catch (InterruptedException | RocksDBException e) {
-      throw new MetadataException(e);
-    }
-  }
-  // endregion
-
-  // region Interfaces for get and auto create device
-  /**
-   * get device node, if the storage group is not set, create it when autoCreateSchema is true
-   *
-   * <p>(we develop this method as we need to get the node's lock after we get the lock.writeLock())
-   *
-   * @param devicePath path
-   */
-  private IMNode getDeviceNodeWithAutoCreate(PartialPath devicePath, boolean aligned)
-      throws MetadataException {
-    IMNode node;
-    try {
-      node = getDeviceNode(devicePath);
-      return node;
-    } catch (PathNotExistException e) {
-      int sgIndex = ensureStorageGroup(devicePath);
-      if (!config.isAutoCreateSchemaEnabled()) {
-        throw new PathNotExistException(devicePath.getFullPath());
-      }
-      try {
-        createEntityRecursively(
-            devicePath.getNodes(), devicePath.getNodeLength(), sgIndex, aligned, new Stack<>());
-        node = getDeviceNode(devicePath);
-      } catch (RocksDBException | InterruptedException ex) {
-        throw new MetadataException(ex);
-      }
-    }
-    return node;
-  }
-
-  public void autoCreateDeviceMNode(AutoCreateDeviceMNodePlan plan) {
-    throw new UnsupportedOperationException();
-  }
-
-  // endregion
-
-  // region Interfaces for metadata info Query
-
-  /**
-   * Check whether the path exists.
-   *
-   * @param path a full path or a prefix path
-   */
-  @Override
-  public boolean isPathExist(PartialPath path) throws MetadataException {
-    if (PATH_ROOT.equals(path.getFullPath())) {
-      return true;
-    }
-
-    String innerPathName = RSchemaUtils.getLevelPath(path.getNodes(), path.getNodeLength() - 1);
-    try {
-      CheckKeyResult checkKeyResult =
-          readWriteHandler.keyExistByTypes(innerPathName, RMNodeType.values());
-      if (checkKeyResult.existAnyKey()) {
-        return true;
-      }
-    } catch (RocksDBException e) {
-      throw new MetadataException(e);
-    }
-    return false;
-  }
-
-  /** Get metadata in string */
-  @Override
-  public String getMetadataInString() {
-    throw new UnsupportedOperationException("This operation is not supported.");
-  }
-
-  // todo mem count
-  @Override
-  public long getTotalSeriesNumber() {
-    return readWriteHandler.countNodesNumByType(null, RSchemaConstants.NODE_TYPE_MEASUREMENT);
-  }
-
-  /**
-   * To calculate the count of timeseries matching given path. The path could be a pattern of a full
-   * path, may contain wildcard. If using prefix match, the path pattern is used to match prefix
-   * path. All timeseries start with the matched prefix path will be counted.
-   */
-  @Override
-  public int getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch)
-      throws MetadataException {
-    return getCountByNodeType(new Character[] {NODE_TYPE_MEASUREMENT}, pathPattern.getNodes());
-  }
-
-  public void traverseOutcomeBasins(
+  private void traverseOutcomeBasins(
       String[] nodes,
       int maxLevel,
       BiFunction<byte[], byte[], Boolean> function,
@@ -1004,7 +670,7 @@ public class RSchemaEngine implements ISchemaEngine {
     allNodesArray.parallelStream().forEach(x -> traverseByPatternPath(x, function, nodeTypeArray));
   }
 
-  public void traverseByPatternPath(
+  private void traverseByPatternPath(
       String[] nodes, BiFunction<byte[], byte[], Boolean> function, Character[] nodeTypeArray) {
     //    String[] nodes = pathPattern.getNodes();
 
@@ -1089,17 +755,6 @@ public class RSchemaEngine implements ISchemaEngine {
     }
   }
 
-  private int indexOfFirstNonWildcard(String[] nodes, int start) {
-    int index = start;
-    for (; index < nodes.length; index++) {
-      if (!ONE_LEVEL_PATH_WILDCARD.equals(nodes[index])
-          && !MULTI_LEVEL_PATH_WILDCARD.equals(nodes[index])) {
-        break;
-      }
-    }
-    return index;
-  }
-
   private int indexOfFirstWildcard(String[] nodes, int start) {
     int index = start;
     for (; index < nodes.length; index++) {
@@ -1111,16 +766,120 @@ public class RSchemaEngine implements ISchemaEngine {
     return index;
   }
 
-  @Override
-  public int getAllTimeseriesCount(PartialPath pathPattern) throws MetadataException {
-    return getAllTimeseriesCount(pathPattern, false);
+  private int indexOfFirstNonWildcard(String[] nodes, int start) {
+    int index = start;
+    for (; index < nodes.length; index++) {
+      if (!ONE_LEVEL_PATH_WILDCARD.equals(nodes[index])
+          && !MULTI_LEVEL_PATH_WILDCARD.equals(nodes[index])) {
+        break;
+      }
+    }
+    return index;
   }
 
-  /**
-   * To calculate the count of devices for given path pattern. If using prefix match, the path
-   * pattern is used to match prefix path. All timeseries start with the matched prefix path will be
-   * counted.
-   */
+  @Override
+  public Pair<Integer, Set<String>> deleteTimeseries(PartialPath pathPattern)
+      throws MetadataException {
+    return deleteTimeseries(pathPattern, false);
+  }
+
+  private int ensureStorageGroup(PartialPath path) throws MetadataException {
+    int sgIndex = -1;
+    String[] nodes = path.getNodes();
+    try {
+      sgIndex = indexOfSgNode(nodes);
+      if (sgIndex < 0) {
+        if (!config.isAutoCreateSchemaEnabled()) {
+          throw new StorageGroupNotSetException(path.getFullPath());
+        }
+        PartialPath sgPath =
+            MetaUtils.getStorageGroupPathByLevel(path, config.getDefaultStorageGroupLevel());
+        setStorageGroup(sgPath);
+        sgIndex = sgPath.getNodeLength() - 1;
+      }
+      String sgPath =
+          String.join(PATH_SEPARATOR, ArrayUtils.subarray(path.getNodes(), 0, sgIndex + 1));
+      if (storageGroupDeletingFlagMap.getOrDefault(sgPath, false)) {
+        throw new MetadataException("Storage Group is deleting: " + sgPath);
+      }
+    } catch (RocksDBException e) {
+      throw new MetadataException(e);
+    }
+    return sgIndex;
+  }
+
+  private int indexOfSgNode(String[] nodes) throws RocksDBException {
+    int result = -1;
+    // ignore the first element: "root"
+    for (int i = 1; i < nodes.length; i++) {
+      String levelPath = RSchemaUtils.getLevelPath(nodes, i);
+      if (readWriteHandler.keyExistByType(levelPath, RMNodeType.STORAGE_GROUP)) {
+        result = i;
+        break;
+      }
+    }
+    return result;
+  }
+
+  @Override
+  public IMNode getDeviceNodeWithAutoCreate(PartialPath path, boolean autoCreateSchema)
+      throws IOException, MetadataException {
+    return null;
+  }
+
+  @Override
+  public IMNode getDeviceNodeWithAutoCreate(PartialPath devicePath)
+      throws MetadataException, IOException {
+    IMNode node;
+    try {
+      node = getDeviceNode(devicePath);
+      return node;
+    } catch (PathNotExistException e) {
+      int sgIndex = ensureStorageGroup(devicePath);
+      if (!config.isAutoCreateSchemaEnabled()) {
+        throw new PathNotExistException(devicePath.getFullPath());
+      }
+      try {
+        createEntityRecursively(
+            devicePath.getNodes(), devicePath.getNodeLength(), sgIndex, aligned, new Stack<>());
+        node = getDeviceNode(devicePath);
+      } catch (RocksDBException | InterruptedException ex) {
+        throw new MetadataException(ex);
+      }
+    }
+    return node;
+  }
+
+  @Override
+  public void autoCreateDeviceMNode(AutoCreateDeviceMNodePlan plan) throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public boolean isPathExist(PartialPath path) throws MetadataException {
+    if (PATH_ROOT.equals(path.getFullPath())) {
+      return true;
+    }
+
+    String innerPathName = RSchemaUtils.getLevelPath(path.getNodes(), path.getNodeLength() - 1);
+    try {
+      CheckKeyResult checkKeyResult =
+          readWriteHandler.keyExistByTypes(innerPathName, RMNodeType.values());
+      if (checkKeyResult.existAnyKey()) {
+        return true;
+      }
+    } catch (RocksDBException e) {
+      throw new MetadataException(e);
+    }
+    return false;
+  }
+
+  @Override
+  public int getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch)
+      throws MetadataException {
+    return getCountByNodeType(new Character[] {NODE_TYPE_MEASUREMENT}, pathPattern.getNodes());
+  }
+
   @Override
   public int getDevicesNum(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
@@ -1143,26 +902,6 @@ public class RSchemaEngine implements ISchemaEngine {
     return getDevicesNum(pathPattern, false);
   }
 
-  /**
-   * To calculate the count of storage group for given path pattern. If using prefix match, the path
-   * pattern is used to match prefix path. All timeseries start with the matched prefix path will be
-   * counted.
-   */
-  @Override
-  public int getStorageGroupNum(PartialPath pathPattern, boolean isPrefixMatch)
-      throws MetadataException {
-    return getCountByNodeType(new Character[] {NODE_TYPE_SG}, pathPattern.getNodes());
-  }
-
-  /**
-   * To calculate the count of nodes in the given level for given path pattern. If using prefix
-   * match, the path pattern is used to match prefix path. All timeseries start with the matched
-   * prefix path will be counted.
-   *
-   * @param pathPattern a path pattern or a full path
-   * @param level the level should match the level of the path
-   * @param isPrefixMatch if true, the path pattern is used to match prefix path
-   */
   @Override
   public int getNodesCountInGivenLevel(PartialPath pathPattern, int level, boolean isPrefixMatch)
       throws MetadataException {
@@ -1191,38 +930,18 @@ public class RSchemaEngine implements ISchemaEngine {
     return atomicInteger.get();
   }
 
-  /**
-   * To calculate the count of nodes in the given level for given path pattern.
-   *
-   * @param pathPattern a path pattern or a full path
-   * @param level the level should match the level of the path
-   */
-  @Override
-  public int getNodesCountInGivenLevel(PartialPath pathPattern, int level)
-      throws MetadataException {
-    return getNodesCountInGivenLevel(pathPattern, level, false);
-  }
-
   @Override
   public Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
       PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException {
-    return null;
+    throw new UnsupportedOperationException();
   }
-  // endregion
 
-  // region Interfaces for level Node info Query
-
-  /**
-   * Get all nodes matching the given path pattern in the given level. The level of the path should
-   * match the nodeLevel. 1. The given level equals the path level with out **, e.g. give path
-   * root.*.d.* and the level should be 4. 2. The given level is greater than path level with **,
-   * e.g. give path root.** and the level could be 2 or 3.
-   *
-   * @param pathPattern can be a pattern of a full path.
-   * @param nodeLevel the level should match the level of the path
-   * @return A List instance which stores all node at given level
-   */
   @Override
+  public List<PartialPath> getNodesListInGivenLevel(
+      PartialPath pathPattern, int nodeLevel, StorageGroupFilter filter) throws MetadataException {
+    return getNodesListInGivenLevel(pathPattern, nodeLevel);
+  }
+
   public List<PartialPath> getNodesListInGivenLevel(PartialPath pathPattern, int nodeLevel)
       throws MetadataException {
     // TODO: ignore pathPattern with *, all nodeLevel are start from "root.*"
@@ -1261,24 +980,6 @@ public class RSchemaEngine implements ISchemaEngine {
   }
 
   @Override
-  public List<PartialPath> getNodesListInGivenLevel(
-      PartialPath pathPattern, int nodeLevel, SchemaEngine.StorageGroupFilter filter)
-      throws MetadataException {
-    return getNodesListInGivenLevel(pathPattern, nodeLevel);
-  }
-
-  /**
-   * Get child node path in the next level of the given path pattern.
-   *
-   * <p>give pathPattern and the child nodes is those matching pathPattern.*
-   *
-   * <p>e.g., MTree has [root.sg1.d1.s1, root.sg1.d1.s2, root.sg1.d2.s1] given path = root.sg1,
-   * return [root.sg1.d1, root.sg1.d2]
-   *
-   * @param pathPattern The given path
-   * @return All child nodes' seriesPath(s) of given seriesPath.
-   */
-  @Override
   public Set<String> getChildNodePathInNextLevel(PartialPath pathPattern) throws MetadataException {
     // todo support wildcard
     if (pathPattern.getFullPath().contains(ONE_LEVEL_PATH_WILDCARD)) {
@@ -1305,16 +1006,6 @@ public class RSchemaEngine implements ISchemaEngine {
     return result;
   }
 
-  /**
-   * Get child node in the next level of the given path pattern.
-   *
-   * <p>give pathPattern and the child nodes is those matching pathPattern.*
-   *
-   * <p>e.g., MTree has [root.sg1.d1.s1, root.sg1.d1.s2, root.sg1.d2.s1] given path = root.sg1,
-   * return [d1, d2] given path = root.sg.d1 return [s1,s2]
-   *
-   * @return All child nodes of given seriesPath.
-   */
   @Override
   public Set<String> getChildNodeNameInNextLevel(PartialPath pathPattern) throws MetadataException {
     Set<String> childPath = getChildNodePathInNextLevel(pathPattern);
@@ -1324,92 +1015,23 @@ public class RSchemaEngine implements ISchemaEngine {
     }
     return childName;
   }
-  // endregion
 
-  // region Interfaces for StorageGroup and TTL info Query
   @Override
-  public boolean isStorageGroup(PartialPath path) throws MetadataException {
-    int level = RSchemaUtils.getLevelByPartialPath(path.getFullPath());
-    String innerPathName =
-        RSchemaUtils.convertPartialPathToInner(
-            path.getFullPath(), level, RSchemaConstants.NODE_TYPE_SG);
-    try {
-      return readWriteHandler.keyExist(innerPathName.getBytes());
-    } catch (RocksDBException e) {
-      throw new MetadataException(e);
-    }
-  }
-
-  /** Check whether the given path contains a storage group */
-  @Override
-  public boolean checkStorageGroupByPath(PartialPath path) throws MetadataException {
-    String[] nodes = path.getNodes();
-    try {
-      if (indexOfSgNode(nodes) > 0) {
-        return true;
-      }
-    } catch (RocksDBException e) {
-      throw new MetadataException(e);
-    }
-    return false;
-  }
-
-  /**
-   * Get storage group name by path
-   *
-   * <p>e.g., root.sg1 is a storage group and path = root.sg1.d1, return root.sg1
-   *
-   * @param path only full path, cannot be path pattern
-   * @return storage group in the given path
-   */
-  @Override
-  public PartialPath getBelongedStorageGroup(PartialPath path)
-      throws StorageGroupNotSetException, IllegalPathException {
-    String innerPathName =
-        readWriteHandler.findBelongToSpecifiedNodeType(
-            path.getNodes(), RSchemaConstants.NODE_TYPE_SG);
-    if (innerPathName == null) {
-      throw new StorageGroupNotSetException(
-          String.format("Cannot find [%s] belong to which storage group.", path.getFullPath()));
-    }
-    return new PartialPath(RSchemaUtils.getPathByInnerName(innerPathName));
-  }
-
-  /**
-   * Get the storage group that given path pattern matches or belongs to.
-   *
-   * <p>Suppose we have (root.sg1.d1.s1, root.sg2.d2.s2), refer the following cases: 1. given path
-   * "root.sg1", ("root.sg1") will be returned. 2. given path "root.*", ("root.sg1", "root.sg2")
-   * will be returned. 3. given path "root.*.d1.s1", ("root.sg1", "root.sg2") will be returned.
-   *
-   * @param pathPattern a path pattern or a full path
-   * @return a list contains all storage groups related to given path pattern
-   */
-  @Override
-  public List<PartialPath> getBelongedStorageGroups(PartialPath pathPattern)
-      throws MetadataException {
+  public Set<PartialPath> getBelongedDevices(PartialPath timeseries) throws MetadataException {
     GetBelongedToSpecifiedType type;
     try {
-      type = new GetBelongedToSpecifiedType(pathPattern, readWriteHandler, NODE_TYPE_SG);
-      return new ArrayList<>(type.getAllResult());
+      type = new GetBelongedToSpecifiedType(timeseries, readWriteHandler, NODE_TYPE_ENTITY);
+      return type.getAllResult();
     } catch (RocksDBException e) {
       throw new MetadataException(e);
     }
   }
 
-  /**
-   * Get all storage group matching given path pattern. If using prefix match, the path pattern is
-   * used to match prefix path. All timeseries start with the matched prefix path will be collected.
-   *
-   * @param pathPattern a pattern of a full path
-   * @param isPrefixMatch if true, the path pattern is used to match prefix path
-   * @return A ArrayList instance which stores storage group paths matching given path pattern.
-   */
   @Override
-  public List<PartialPath> getMatchedStorageGroups(PartialPath pathPattern, boolean isPrefixMatch)
+  public Set<PartialPath> getMatchedDevices(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
-    List<PartialPath> allPath = new ArrayList<>();
-    getMatchedPathByNodeType(pathPattern.getNodes(), new Character[] {NODE_TYPE_SG}, allPath);
+    Set<PartialPath> allPath = new HashSet<>();
+    getMatchedPathByNodeType(pathPattern.getNodes(), new Character[] {NODE_TYPE_ENTITY}, allPath);
     return allPath;
   }
 
@@ -1429,83 +1051,9 @@ public class RSchemaEngine implements ISchemaEngine {
     }
   }
 
-  /** Get all storage group paths */
   @Override
-  public List<PartialPath> getAllStorageGroupPaths() {
-    List<PartialPath> allStorageGroupPath = Collections.synchronizedList(new ArrayList<>());
-    Function<String, Boolean> function =
-        s -> {
-          try {
-            allStorageGroupPath.add(new PartialPath(RSchemaUtils.getPathByInnerName(s)));
-          } catch (IllegalPathException e) {
-            logger.error(e.getMessage());
-            return false;
-          }
-          return true;
-        };
-    readWriteHandler.getKeyByPrefix(String.valueOf(NODE_TYPE_SG), function);
-    return allStorageGroupPath;
-  }
-
-  /**
-   * get all storageGroups ttl
-   *
-   * @return key-> storageGroupPath, value->ttl
-   */
-  @Override
-  public Map<PartialPath, Long> getStorageGroupsTTL() {
-    List<IStorageGroupMNode> sgNodes = getAllStorageGroupNodes();
-    return sgNodes.stream()
-        .collect(
-            Collectors.toMap(IStorageGroupMNode::getPartialPath, IStorageGroupMNode::getDataTTL));
-  }
-  // endregion
-
-  // region Interfaces for Entity/Device info Query
-
-  /**
-   * Get all devices that one of the timeseries, matching the given timeseries path pattern, belongs
-   * to.
-   *
-   * @param timeseries a path pattern of the target timeseries
-   * @return A HashSet instance which stores devices paths.
-   */
-  @Override
-  public Set<PartialPath> getBelongedDevices(PartialPath timeseries) throws MetadataException {
-    GetBelongedToSpecifiedType type;
-    try {
-      type = new GetBelongedToSpecifiedType(timeseries, readWriteHandler, NODE_TYPE_ENTITY);
-      return type.getAllResult();
-    } catch (RocksDBException e) {
-      throw new MetadataException(e);
-    }
-  }
-
-  /**
-   * Get all device paths matching the path pattern. If using prefix match, the path pattern is used
-   * to match prefix path. All timeseries start with the matched prefix path will be collected.
-   *
-   * @param pathPattern the pattern of the target devices.
-   * @param isPrefixMatch if true, the path pattern is used to match prefix path.
-   * @return A HashSet instance which stores devices paths matching the given path pattern.
-   */
-  @Override
-  public Set<PartialPath> getMatchedDevices(PartialPath pathPattern, boolean isPrefixMatch)
+  public Pair<List<ShowDevicesResult>, Integer> getMatchedDevices(ShowDevicesPlan plan)
       throws MetadataException {
-
-    Set<PartialPath> allPath = new HashSet<>();
-    getMatchedPathByNodeType(pathPattern.getNodes(), new Character[] {NODE_TYPE_ENTITY}, allPath);
-    return allPath;
-  }
-
-  /**
-   * Get all device paths and according storage group paths as ShowDevicesResult.
-   *
-   * @param plan ShowDevicesPlan which contains the path pattern and restriction params.
-   * @return ShowDevicesResult.
-   */
-  @Override
-  public List<ShowDevicesResult> getMatchedDevices(ShowDevicesPlan plan) throws MetadataException {
     List<ShowDevicesResult> res = Collections.synchronizedList(new ArrayList<>());
     BiFunction<byte[], byte[], Boolean> function =
         (a, b) -> {
@@ -1527,69 +1075,22 @@ public class RSchemaEngine implements ISchemaEngine {
     return res;
   }
 
-  private String getBelongedToSG(String[] nodes) throws MetadataException {
-    List<String> contextNodeName = new ArrayList<>();
-    for (int idx = 1; idx < nodes.length; idx++) {
-      contextNodeName.add(nodes[idx]);
-      String innerName =
-          RSchemaUtils.convertPartialPathToInnerByNodes(
-              contextNodeName.toArray(new String[0]), contextNodeName.size(), NODE_TYPE_SG);
-      byte[] queryResult;
-      try {
-        queryResult = readWriteHandler.get(null, innerName.getBytes());
-      } catch (RocksDBException e) {
-        throw new MetadataException(e);
-      }
-      if (queryResult != null) {
-        return RSchemaUtils.concatNodesName(nodes, 0, idx);
-      }
-    }
-    return StringUtil.EMPTY_STRING;
-  }
-  // endregion
-
-  // region Interfaces for timeseries, measurement and schema info Query
-
-  /**
-   * Return all measurement paths for given path if the path is abstract. Or return the path itself.
-   * Regular expression in this method is formed by the amalgamation of seriesPath and the character
-   * '*'. If using prefix match, the path pattern is used to match prefix path. All timeseries start
-   * with the matched prefix path will be collected.
-   *
-   * @param pathPattern can be a pattern or a full path of timeseries.
-   * @param isPrefixMatch if true, the path pattern is used to match prefix path
-   */
   @Override
   public List<MeasurementPath> getMeasurementPaths(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
     return getMatchedMeasurementPath(pathPattern.getNodes());
   }
 
-  /**
-   * Return all measurement paths for given path if the path is abstract. Or return the path itself.
-   * Regular expression in this method is formed by the amalgamation of seriesPath and the character
-   * '*'.
-   *
-   * @param pathPattern can be a pattern or a full path of timeseries.
-   */
   @Override
   public List<MeasurementPath> getMeasurementPaths(PartialPath pathPattern)
       throws MetadataException {
     return getMeasurementPaths(pathPattern, false);
   }
 
-  /**
-   * Similar to method getMeasurementPaths(), but return Path with alias and filter the result by
-   * limit and offset. If using prefix match, the path pattern is used to match prefix path. All
-   * timeseries start with the matched prefix path will be collected.
-   *
-   * @param isPrefixMatch if true, the path pattern is used to match prefix path
-   */
   @Override
   public Pair<List<MeasurementPath>, Integer> getMeasurementPathsWithAlias(
       PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch)
       throws MetadataException {
-    // todo update offset
     return new Pair<>(getMatchedMeasurementPath(pathPattern.getNodes()), offset + limit);
   }
 
@@ -1609,38 +1110,9 @@ public class RSchemaEngine implements ISchemaEngine {
     return allResult;
   }
 
-  private Map<MeasurementPath, Pair<Map<String, String>, Map<String, String>>>
-      getMatchedMeasurementPathWithTags(String[] nodes) throws IllegalPathException {
-    Map<MeasurementPath, Pair<Map<String, String>, Map<String, String>>> allResult =
-        new ConcurrentHashMap<>();
-    BiFunction<byte[], byte[], Boolean> function =
-        (a, b) -> {
-          MeasurementPath measurementPath =
-              new RMeasurementMNode(
-                      RSchemaUtils.getPathByInnerName(new String(a)), b, readWriteHandler)
-                  .getMeasurementPath();
-          Object tag = RSchemaUtils.parseNodeValue(b, RMNodeValueType.TAGS);
-          if (!(tag instanceof Map)) {
-            tag = Collections.emptyMap();
-          }
-          Object attributes = RSchemaUtils.parseNodeValue(b, RMNodeValueType.ATTRIBUTES);
-          if (!(attributes instanceof Map)) {
-            attributes = Collections.emptyMap();
-          }
-          @SuppressWarnings("unchecked")
-          Pair<Map<String, String>, Map<String, String>> tagsAndAttributes =
-              new Pair<>((Map<String, String>) tag, (Map<String, String>) attributes);
-          allResult.put(measurementPath, tagsAndAttributes);
-          return true;
-        };
-    traverseOutcomeBasins(nodes, MAX_PATH_DEPTH, function, new Character[] {NODE_TYPE_MEASUREMENT});
-
-    return allResult;
-  }
-
   @Override
-  public List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan, QueryContext context)
-      throws MetadataException {
+  public Pair<List<ShowTimeSeriesResult>, Integer> showTimeseries(
+      ShowTimeSeriesPlan plan, QueryContext context) throws MetadataException {
     if (plan.getKey() != null && plan.getValue() != null) {
       return showTimeseriesWithIndex(plan, context);
     } else {
@@ -1678,11 +1150,35 @@ public class RSchemaEngine implements ISchemaEngine {
     return res;
   }
 
-  /**
-   * Get series type for given seriesPath.
-   *
-   * @param fullPath full path
-   */
+  private Map<MeasurementPath, Pair<Map<String, String>, Map<String, String>>>
+      getMatchedMeasurementPathWithTags(String[] nodes) throws IllegalPathException {
+    Map<MeasurementPath, Pair<Map<String, String>, Map<String, String>>> allResult =
+        new ConcurrentHashMap<>();
+    BiFunction<byte[], byte[], Boolean> function =
+        (a, b) -> {
+          MeasurementPath measurementPath =
+              new RMeasurementMNode(
+                      RSchemaUtils.getPathByInnerName(new String(a)), b, readWriteHandler)
+                  .getMeasurementPath();
+          Object tag = RSchemaUtils.parseNodeValue(b, RMNodeValueType.TAGS);
+          if (!(tag instanceof Map)) {
+            tag = Collections.emptyMap();
+          }
+          Object attributes = RSchemaUtils.parseNodeValue(b, RMNodeValueType.ATTRIBUTES);
+          if (!(attributes instanceof Map)) {
+            attributes = Collections.emptyMap();
+          }
+          @SuppressWarnings("unchecked")
+          Pair<Map<String, String>, Map<String, String>> tagsAndAttributes =
+              new Pair<>((Map<String, String>) tag, (Map<String, String>) attributes);
+          allResult.put(measurementPath, tagsAndAttributes);
+          return true;
+        };
+    traverseOutcomeBasins(nodes, MAX_PATH_DEPTH, function, new Character[] {NODE_TYPE_MEASUREMENT});
+
+    return allResult;
+  }
+
   @Override
   public TSDataType getSeriesType(PartialPath fullPath) throws MetadataException {
     if (fullPath.equals(SQLConstant.TIME_PATH)) {
@@ -1733,66 +1229,6 @@ public class RSchemaEngine implements ISchemaEngine {
     return result;
   }
 
-  /**
-   * E.g., root.sg is storage group given [root, sg], return the MNode of root.sg given [root, sg,
-   * device], return the MNode of root.sg Get storage group node by path. If storage group is not
-   * set, StorageGroupNotSetException will be thrown
-   */
-  @Override
-  public IStorageGroupMNode getStorageGroupNodeByStorageGroupPath(PartialPath path)
-      throws MetadataException {
-    return getStorageGroupNodeByPath(path);
-  }
-
-  /** Get storage group node by path. the give path don't need to be storage group path. */
-  @Override
-  public IStorageGroupMNode getStorageGroupNodeByPath(PartialPath path) throws MetadataException {
-    ensureStorageGroup(path);
-    IStorageGroupMNode node = null;
-    try {
-      String[] nodes = path.getNodes();
-      for (int i = 1; i < nodes.length; i++) {
-        String levelPath = RSchemaUtils.getLevelPath(nodes, i);
-        Holder<byte[]> holder = new Holder<>();
-        if (readWriteHandler.keyExistByType(levelPath, RMNodeType.STORAGE_GROUP, holder)) {
-          node =
-              new RStorageGroupMNode(
-                  MetaUtils.getStorageGroupPathByLevel(path, i).getFullPath(),
-                  holder.getValue(),
-                  readWriteHandler);
-          break;
-        }
-      }
-    } catch (RocksDBException e) {
-      throw new MetadataException(e);
-    }
-
-    if (node == null) {
-      throw new StorageGroupNotSetException(path.getFullPath());
-    }
-
-    return node;
-  }
-
-  /** Get all storage group MNodes */
-  @Override
-  public List<IStorageGroupMNode> getAllStorageGroupNodes() {
-    List<IStorageGroupMNode> result = new ArrayList<>();
-    RocksIterator iterator = readWriteHandler.iterator(null);
-    // get all storage group path
-    for (iterator.seek(new byte[] {NODE_TYPE_SG}); iterator.isValid(); iterator.next()) {
-      if (iterator.key()[0] != NODE_TYPE_SG) {
-        break;
-      }
-      result.add(
-          new RStorageGroupMNode(
-              RSchemaUtils.getPathByInnerName(new String(iterator.key())),
-              iterator.value(),
-              readWriteHandler));
-    }
-    return result;
-  }
-
   @Override
   public IMNode getDeviceNode(PartialPath path) throws MetadataException {
     String[] nodes = path.getNodes();
@@ -1809,11 +1245,6 @@ public class RSchemaEngine implements ISchemaEngine {
     }
   }
 
-  /**
-   * Invoked during insertPlan process. Get target MeasurementMNode from given EntityMNode. If the
-   * result is not null and is not MeasurementMNode, it means a timeseries with same path cannot be
-   * created thus throw PathAlreadyExistException.
-   */
   @Override
   public IMeasurementMNode[] getMeasurementMNodes(PartialPath deviceId, String[] measurements)
       throws MetadataException {
@@ -1856,12 +1287,10 @@ public class RSchemaEngine implements ISchemaEngine {
       throw new MetadataException(e);
     }
   }
-  // endregion
 
-  // region Interfaces for alias and tag/attribute operations
   @Override
-  public void changeAlias(PartialPath path, String newAlias) throws MetadataException, IOException {
-    upsertTagsAndAttributes(newAlias, null, null, path);
+  public void changeAlias(PartialPath path, String alias) throws MetadataException, IOException {
+    upsertTagsAndAttributes(alias, null, null, path);
   }
 
   @Override
@@ -2227,68 +1656,19 @@ public class RSchemaEngine implements ISchemaEngine {
       throw new MetadataException(e);
     }
   }
-  // endregion
 
-  // region Interfaces only for Cluster module usage
   @Override
   public void collectMeasurementSchema(
-      PartialPath prefixPath, List<IMeasurementSchema> measurementSchemas) {}
+      PartialPath prefixPath, List<IMeasurementSchema> measurementSchemas) {
+    throw new UnsupportedOperationException();
+  }
 
   @Override
   public void collectTimeseriesSchema(
-      PartialPath prefixPath, Collection<TimeseriesSchema> timeseriesSchemas) {}
-
-  @Override
-  public Map<String, List<PartialPath>> groupPathByStorageGroup(PartialPath path)
-      throws MetadataException {
-    return null;
-  }
-  // end region
-
-  @Override
-  public void cacheMeta(
-      PartialPath path, IMeasurementMNode measurementMNode, boolean needSetFullPath) {
-    // do noting
+      PartialPath prefixPath, Collection<TimeseriesSchema> timeseriesSchemas) {
+    throw new UnsupportedOperationException();
   }
 
-  // region Interfaces for lastCache operations
-  @Override
-  public void updateLastCache(
-      PartialPath seriesPath,
-      TimeValuePair timeValuePair,
-      boolean highPriorityUpdate,
-      Long latestFlushedTime) {}
-
-  @Override
-  public void updateLastCache(
-      IMeasurementMNode node,
-      TimeValuePair timeValuePair,
-      boolean highPriorityUpdate,
-      Long latestFlushedTime) {}
-
-  @Override
-  public TimeValuePair getLastCache(PartialPath seriesPath) {
-    return null;
-  }
-
-  @Override
-  public TimeValuePair getLastCache(IMeasurementMNode node) {
-    return null;
-  }
-
-  @Override
-  public void resetLastCache(PartialPath seriesPath) {}
-
-  @Override
-  public void deleteLastCacheByDevice(PartialPath deviceId) throws MetadataException {}
-
-  @Override
-  public void deleteLastCacheByDevice(
-      PartialPath deviceId, PartialPath originalPath, long startTime, long endTime)
-      throws MetadataException {}
-  // endregion
-
-  // region Interfaces and Implementation for InsertPlan process
   @Override
   public IMNode getSeriesSchemasAndReadLockDevice(InsertPlan plan)
       throws MetadataException, IOException {
@@ -2416,139 +1796,6 @@ public class RSchemaEngine implements ISchemaEngine {
     return deviceMNode;
   }
 
-  private void checkDataTypeMatch(InsertPlan plan, int loc, TSDataType dataType)
-      throws MetadataException {
-    TSDataType insertDataType;
-    if (plan instanceof InsertRowPlan) {
-      if (!((InsertRowPlan) plan).isNeedInferType()) {
-        // only when InsertRowPlan's values is object[], we should check type
-        insertDataType = getTypeInLoc(plan, loc);
-      } else {
-        insertDataType = dataType;
-      }
-    } else {
-      insertDataType = getTypeInLoc(plan, loc);
-    }
-    if (dataType != insertDataType) {
-      String measurement = plan.getMeasurements()[loc];
-      logger.warn(
-          "DataType mismatch, Insert measurement {} type {}, metadata tree type {}",
-          measurement,
-          insertDataType,
-          dataType);
-      throw new DataTypeMismatchException(measurement, insertDataType, dataType);
-    }
-  }
-
-  /** get dataType of plan, in loc measurements only support InsertRowPlan and InsertTabletPlan */
-  private TSDataType getTypeInLoc(InsertPlan plan, int loc) throws MetadataException {
-    TSDataType dataType;
-    if (plan instanceof InsertRowPlan) {
-      InsertRowPlan tPlan = (InsertRowPlan) plan;
-      dataType =
-          TypeInferenceUtils.getPredictedDataType(tPlan.getValues()[loc], tPlan.isNeedInferType());
-    } else if (plan instanceof InsertTabletPlan) {
-      dataType = (plan).getDataTypes()[loc];
-    } else {
-      throw new MetadataException(
-          String.format(
-              "Only support insert and insertTablet, plan is [%s]", plan.getOperatorType()));
-    }
-    return dataType;
-  }
-
-  // endregion
-
-  // region Interfaces and Implementation for Template operations
-  @Override
-  public void createSchemaTemplate(CreateTemplatePlan plan) throws MetadataException {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public void appendSchemaTemplate(AppendTemplatePlan plan) throws MetadataException {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public void pruneSchemaTemplate(PruneTemplatePlan plan) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public int countMeasurementsInTemplate(String templateName) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public boolean isMeasurementInTemplate(String templateName, String path)
-      throws MetadataException {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public boolean isPathExistsInTemplate(String templateName, String path) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public List<String> getMeasurementsInTemplate(String templateName, String path) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public List<Pair<String, IMeasurementSchema>> getSchemasInTemplate(
-      String templateName, String path) throws MetadataException {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public Set<String> getAllTemplates() {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public Set<String> getPathsSetTemplate(String templateName) throws MetadataException {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public Set<String> getPathsUsingTemplate(String templateName) throws MetadataException {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public void dropSchemaTemplate(DropTemplatePlan plan) throws MetadataException {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public void setSchemaTemplate(SetTemplatePlan plan) throws MetadataException {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public void unsetSchemaTemplate(UnsetTemplatePlan plan) throws MetadataException {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public IMNode setUsingSchemaTemplate(IMNode plan) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public void setUsingSchemaTemplate(ActivateTemplatePlan plan) {
-    throw new UnsupportedOperationException();
-  }
-  // endregion
-
-  // start test only region
-  @TestOnly
-  public void printScanAllKeys() throws IOException {
-    readWriteHandler.scanAllKeys(config.getSystemDir() + "/" + "rocksdb.key");
-  }
-
   @Override
   public void deactivate() throws MetadataException {
     try {
@@ -2564,22 +1811,39 @@ public class RSchemaEngine implements ISchemaEngine {
     }
   }
 
-  @TestOnly
-  public String getDeviceId(PartialPath devicePath) {
-    String device = null;
-    try {
-      IMNode deviceNode = getDeviceNode(devicePath);
-      device = deviceNode.getFullPath();
-    } catch (MetadataException | NullPointerException e) {
-      // Cannot get deviceId from MManager, return the input deviceId
-    }
-    return device;
-  }
-
-  @TestOnly
-  public Template getTemplate(String templateName) {
+  @Override
+  public Set<String> getPathsSetTemplate(String templateName) throws MetadataException {
     throw new UnsupportedOperationException();
   }
 
-  // end region
+  @Override
+  public Set<String> getPathsUsingTemplate(String templateName) throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public boolean isTemplateAppendable(Template template, List<String> measurements)
+      throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void setSchemaTemplate(SetTemplatePlan plan) throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void unsetSchemaTemplate(UnsetTemplatePlan plan) throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void setUsingSchemaTemplate(ActivateTemplatePlan plan) throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public IMNode setUsingSchemaTemplate(IMNode node) throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
 }

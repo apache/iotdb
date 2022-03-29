@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.rocksdb;
+package org.apache.iotdb.db.metadata.schemaregion.rocksdb;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -44,7 +44,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import static org.apache.iotdb.db.metadata.rocksdb.RSchemaReadWriteHandler.ROCKSDB_PATH;
+import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaReadWriteHandler.ROCKSDB_PATH;
 
 public class RocksDBBenchmarkEngine {
   private static final Logger logger = LoggerFactory.getLogger(RocksDBBenchmarkEngine.class);
@@ -78,7 +78,7 @@ public class RocksDBBenchmarkEngine {
       RocksDBTestUtils.printBenchmarkBaseline(
           storageGroups, timeSeriesSet, measurementPathSet, innerPathSet);
       /** rocksdb benchmark * */
-      RSchemaEngine rocksDBManager = new RSchemaEngine();
+      RSchemaRegion rocksDBManager = new RSchemaRegion();
       MRocksDBBenchmark mRocksDBBenchmark = new MRocksDBBenchmark(rocksDBManager);
       mRocksDBBenchmark.testStorageGroupCreation(storageGroups);
       mRocksDBBenchmark.testTimeSeriesCreation(timeSeriesSet);

@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.rocksdb;
+package org.apache.iotdb.db.metadata.schemaregion.rocksdb;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.SchemaEngine;
@@ -40,7 +40,7 @@ import java.util.List;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-public class RSchemaEngineAdvancedTest {
+public class RSchemaRegionAdvancedTest {
 
   private static SchemaEngine schemaEngine = null;
 

@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.rocksdb;
+package org.apache.iotdb.db.metadata.schemaregion.rocksdb;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -64,17 +64,17 @@ import java.util.TreeSet;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.db.metadata.rocksdb.RSchemaReadWriteHandler.ROCKSDB_PATH;
+import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaReadWriteHandler.ROCKSDB_PATH;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-public class RSchemaEngineBasicTest {
+public class RSchemaRegionBasicTest {
 
   private CompressionType compressionType;
-  RSchemaEngine schemaEngine;
+  RSchemaRegion schemaEngine;
   private String rocksdbPath;
 
   @Before
@@ -85,7 +85,7 @@ public class RSchemaEngineBasicTest {
     if (!file.exists()) {
       file.mkdirs();
     }
-    schemaEngine = new RSchemaEngine(rocksdbPath);
+    schemaEngine = new RSchemaRegion(rocksdbPath);
   }
 
   @After
@@ -507,7 +507,7 @@ public class RSchemaEngineBasicTest {
               .collect(Collectors.toSet()));
 
       schemaEngine.deactivate();
-      schemaEngine = new RSchemaEngine(rocksdbPath);
+      schemaEngine = new RSchemaRegion(rocksdbPath);
 
       assertTrue(schemaEngine.isStorageGroup(new PartialPath("root.laptop.s1")));
       assertFalse(schemaEngine.isStorageGroup(new PartialPath("root.laptop.s2")));
@@ -987,7 +987,7 @@ public class RSchemaEngineBasicTest {
 
       assertEquals(5, schemaEngine.getTotalSeriesNumber());
       schemaEngine.deactivate();
-      schemaEngine = new RSchemaEngine(rocksdbPath);
+      schemaEngine = new RSchemaRegion(rocksdbPath);
       assertEquals(5, schemaEngine.getTotalSeriesNumber());
       schemaEngine.deleteTimeseries(new PartialPath("root.laptop.d2.s1"));
       assertEquals(4, schemaEngine.getTotalSeriesNumber());

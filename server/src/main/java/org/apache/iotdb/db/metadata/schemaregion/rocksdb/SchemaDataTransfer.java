@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.metadata.rocksdb;
+package org.apache.iotdb.db.metadata.schemaregion.rocksdb;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -72,7 +72,7 @@ public class SchemaDataTransfer {
   private final ForkJoinPool forkJoinPool = new ForkJoinPool(DEFAULT_TRANSFER_THREAD_POOL_SIZE);
 
   private String mtreeSnapshotPath;
-  private RSchemaEngine rocksDBManager;
+  private RSchemaRegion rocksDBManager;
   private MLogWriter mLogWriter;
   private final String FAILED_MLOG_PATH =
       IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
@@ -87,7 +87,7 @@ public class SchemaDataTransfer {
   private final List<PhysicalPlan> retryPlans = new ArrayList<>();
 
   SchemaDataTransfer() throws MetadataException {
-    rocksDBManager = new RSchemaEngine();
+    rocksDBManager = new RSchemaRegion();
   }
 
   public static void main(String[] args) {

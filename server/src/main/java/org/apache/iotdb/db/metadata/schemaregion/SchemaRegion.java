@@ -142,7 +142,7 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARA
  * </ol>
  */
 @SuppressWarnings("java:S1135") // ignore todos
-public class SchemaRegion {
+public class SchemaRegion implements ISchemaRegion {
 
   private static final Logger logger = LoggerFactory.getLogger(StorageGroupSchemaManager.class);
 
@@ -1502,6 +1502,11 @@ public class SchemaRegion {
     }
 
     return deviceMNode;
+  }
+
+  @Override
+  public void deactivate() throws MetadataException {
+    // do nothing
   }
 
   private Pair<IMNode, IMeasurementMNode> getMeasurementMNodeForInsertPlan(

@@ -16,10 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.rocksdb.mnode;
+package org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode;
 
-import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.*;
-import static org.apache.iotdb.db.metadata.rocksdb.RSchemaUtils.NODE_TYPE_ARRAY;
+import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants.NODE_TYPE_ALIAS;
+import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants.NODE_TYPE_ENTITY;
+import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants.NODE_TYPE_INTERNAL;
+import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants.NODE_TYPE_MEASUREMENT;
+import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants.NODE_TYPE_SG;
+import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaUtils.NODE_TYPE_ARRAY;
 
 public enum RMNodeType {
   INTERNAL(NODE_TYPE_INTERNAL),

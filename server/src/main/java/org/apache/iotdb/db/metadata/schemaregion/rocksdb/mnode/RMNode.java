@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.rocksdb.mnode;
+package org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -25,9 +25,9 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants;
-import org.apache.iotdb.db.metadata.rocksdb.RSchemaReadWriteHandler;
-import org.apache.iotdb.db.metadata.rocksdb.RSchemaUtils;
+import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants;
+import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaReadWriteHandler;
+import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaUtils;
 
 import org.rocksdb.RocksDBException;
 import org.slf4j.Logger;

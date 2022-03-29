@@ -16,9 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.rocksdb.mnode;
+package org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode;
 
-import org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants;
+import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants;
 
 public enum RMNodeValueType {
   TTL(RSchemaConstants.FLAG_SET_TTL, RSchemaConstants.DATA_BLOCK_TYPE_TTL),

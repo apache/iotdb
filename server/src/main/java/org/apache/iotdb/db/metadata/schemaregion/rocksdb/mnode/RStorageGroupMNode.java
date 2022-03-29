@@ -16,14 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.rocksdb.mnode;
+package org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.metadata.SchemaRegion;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
-import org.apache.iotdb.db.metadata.rocksdb.RSchemaReadWriteHandler;
-import org.apache.iotdb.db.metadata.rocksdb.RSchemaUtils;
+import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaReadWriteHandler;
+import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaUtils;
 
 import java.io.IOException;
 
@@ -80,15 +79,5 @@ public class RStorageGroupMNode extends RInternalMNode implements IStorageGroupM
   @Override
   public void setDataTTL(long dataTTL) {
     this.dataTTL = dataTTL;
-  }
-
-  @Override
-  public SchemaRegion getSchemaRegion() {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public void setSchemaRegion(SchemaRegion schemaRegion) {
-    throw new UnsupportedOperationException();
   }
 }

@@ -17,11 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.metadata.rocksdb;
+package org.apache.iotdb.db.metadata.schemaregion.rocksdb;
 
-import org.apache.iotdb.db.metadata.rocksdb.mnode.RMNodeType;
+import org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode.RMNodeType;
 
-import static org.apache.iotdb.db.metadata.rocksdb.RSchemaUtils.NODE_TYPE_ARRAY;
+import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaUtils.NODE_TYPE_ARRAY;
 
 public class CheckKeyResult {
 

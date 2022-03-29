@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.rocksdb;
+package org.apache.iotdb.db.metadata.schemaregion.rocksdb;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -43,9 +43,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-public class RSchemaEngineImproveTest {
+public class RSchemaRegionImproveTest {
 
-  private static Logger logger = LoggerFactory.getLogger(RSchemaEngineImproveTest.class);
+  private static Logger logger = LoggerFactory.getLogger(RSchemaRegionImproveTest.class);
 
   private static final int TIMESERIES_NUM = 1000;
   private static final int DEVICE_NUM = 10;
