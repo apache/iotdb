@@ -47,6 +47,8 @@ import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import org.apache.thrift.TException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -54,6 +56,8 @@ import java.util.Map;
 
 /** ConfigNodeRPCServer exposes the interface that interacts with the DataNode */
 public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNodeRPCServerProcessor.class);
 
   private final ConfigManager configManager;
 
@@ -72,6 +76,12 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
     result.setRegisterResult(resp.getStatus());
     if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       result.setDataNodeID(Integer.parseInt(resp.getStatus().getMessage()));
+      LOGGER.info(
+          "Register DataNode successful. DataNodeID: {}, {}",
+          resp.getStatus().getMessage(),
+          req.getEndPoint().toString());
+    } else {
+      LOGGER.error("Register DataNode failed. {}", resp.getStatus().getMessage());
     }
     return result;
   }
@@ -82,7 +92,7 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
     ConsensusReadResponse resp = configManager.read(plan);
 
     if (resp.getDataset() == null) {
-      return null;
+      return new HashMap<>();
     } else {
       Map<Integer, DataNodeMessage> result = new HashMap<>();
       for (DataNodeInfo info : ((DataNodesInfoDataSet) resp.getDataset()).getInfoList()) {
@@ -101,7 +111,13 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
     SetStorageGroupPlan plan =
         new SetStorageGroupPlan(
             new org.apache.iotdb.confignode.partition.StorageGroupSchema(req.getStorageGroup()));
-    return configManager.write(plan).getStatus();
+    TSStatus resp = configManager.write(plan).getStatus();
+    if (resp.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      LOGGER.info("Set StorageGroup {} successful.", req.getStorageGroup());
+    } else {
+      LOGGER.error("Set StorageGroup {} failed. {}", req.getStorageGroup(), resp.getMessage());
+    }
+    return resp;
   }
 
   @Override
@@ -114,7 +130,7 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
     ConsensusReadResponse resp = configManager.read(new QueryStorageGroupSchemaPlan());
 
     if (resp.getDataset() == null) {
-      return null;
+      return new HashMap<>();
     } else {
       Map<String, StorageGroupMessage> result = new HashMap<>();
       for (StorageGroupSchema schema :
