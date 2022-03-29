@@ -61,6 +61,7 @@ public class SinkHandle implements ISinkHandle {
   private final List<TsBlock> bufferedTsBlocks = new LinkedList<>();
 
   private volatile ListenableFuture<Void> blocked = immediateFuture(null);
+  private NewDataBlockEvent savedNewDataBlockEvent;
   private int numOfBufferedTsBlocks = 0;
   private long bufferRetainedSizeInBytes;
   private boolean closed;
@@ -279,16 +280,17 @@ public class SinkHandle implements ISinkHandle {
           localFragmentInstanceId,
           remoteOperatorId,
           remoteFragmentInstanceId);
+      NewDataBlockEvent newDataBlockEvent =
+          new NewDataBlockEvent(
+              remoteFragmentInstanceId,
+              remoteOperatorId,
+              localFragmentInstanceId,
+              startSequenceId,
+              blockSizes);
       try {
-        NewDataBlockEvent newDataBlockEvent =
-            new NewDataBlockEvent(
-                remoteFragmentInstanceId,
-                remoteOperatorId,
-                localFragmentInstanceId,
-                startSequenceId,
-                blockSizes);
         client.onNewDataBlockEvent(newDataBlockEvent);
       } catch (TException e) {
+        // TODO: retry
         throwable = e;
       }
     }
@@ -306,7 +308,10 @@ public class SinkHandle implements ISinkHandle {
       try {
         EndOfDataBlockEvent endOfDataBlockEvent =
             new EndOfDataBlockEvent(
-                remoteFragmentInstanceId, remoteOperatorId, localFragmentInstanceId);
+                remoteFragmentInstanceId,
+                remoteOperatorId,
+                localFragmentInstanceId,
+                bufferedTsBlocks.size() - 1);
         client.onEndOfDataBlockEvent(endOfDataBlockEvent);
       } catch (TException e) {
         throwable = e;

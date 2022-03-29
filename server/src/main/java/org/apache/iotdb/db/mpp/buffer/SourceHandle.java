@@ -68,6 +68,7 @@ public class SourceHandle implements ISourceHandle {
   private volatile Future<?> getDataBlocksTaskFuture = null;
   private long bufferRetainedSizeInBytes;
   private int nextSequenceId;
+  private int lastSequenceId = Integer.MAX_VALUE;
   private boolean noMoreTsBlocks;
   private boolean closed;
   private Throwable throwable;
@@ -166,7 +167,8 @@ public class SourceHandle implements ISourceHandle {
     return nonCancellationPropagating(blocked);
   }
 
-  synchronized void setNoMoreTsBlocks() {
+  synchronized void setNoMoreTsBlocks(int lastSequenceId) {
+    this.lastSequenceId = lastSequenceId;
     noMoreTsBlocks = true;
   }
 
@@ -196,6 +198,7 @@ public class SourceHandle implements ISourceHandle {
     return throwable == null
         && noMoreTsBlocks
         && (getDataBlocksTaskFuture == null || getDataBlocksTaskFuture.isDone())
+        && nextSequenceId - 1 == lastSequenceId
         && bufferedTsBlocks.isEmpty();
   }
 

@@ -48,6 +48,7 @@ struct EndOfDataBlockEvent {
   1: required TFragmentInstanceId targetFragmentInstanceId
   2: required string targetOperatorId
   3: required TFragmentInstanceId sourceFragnemtInstanceId
+  4: required i32 lastSequenceId
 }
 
 struct TFragmentInstance {

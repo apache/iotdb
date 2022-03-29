@@ -127,14 +127,13 @@ public class SourceHandleTest {
     }
 
     // Receive EndOfDataBlock event from upstream fragment instance.
-    sourceHandle.setNoMoreTsBlocks();
+    sourceHandle.setNoMoreTsBlocks(numOfMockTsBlock - 1);
     Assert.assertFalse(sourceHandle.isBlocked().isDone());
     Assert.assertFalse(sourceHandle.isClosed());
     Assert.assertTrue(sourceHandle.isFinished());
     Assert.assertEquals(0L, sourceHandle.getBufferRetainedSizeInBytes());
 
     sourceHandle.close();
-    sourceHandle.setNoMoreTsBlocks();
     Assert.assertTrue(sourceHandle.isClosed());
     Assert.assertTrue(sourceHandle.isFinished());
     Assert.assertEquals(0L, sourceHandle.getBufferRetainedSizeInBytes());
@@ -238,14 +237,13 @@ public class SourceHandleTest {
     }
 
     // Receive EndOfDataBlock event from upstream fragment instance.
-    sourceHandle.setNoMoreTsBlocks();
+    sourceHandle.setNoMoreTsBlocks(numOfMockTsBlock - 1);
     Assert.assertFalse(sourceHandle.isBlocked().isDone());
     Assert.assertFalse(sourceHandle.isClosed());
     Assert.assertTrue(sourceHandle.isFinished());
     Assert.assertEquals(0L, sourceHandle.getBufferRetainedSizeInBytes());
 
     sourceHandle.close();
-    sourceHandle.setNoMoreTsBlocks();
     Assert.assertTrue(sourceHandle.isFinished());
     Assert.assertEquals(0L, sourceHandle.getBufferRetainedSizeInBytes());
   }
@@ -384,7 +382,7 @@ public class SourceHandleTest {
     }
 
     // Receive EndOfDataBlock event from upstream fragment instance.
-    sourceHandle.setNoMoreTsBlocks();
+    sourceHandle.setNoMoreTsBlocks(3 * numOfMockTsBlock - 1);
     Assert.assertFalse(sourceHandle.isBlocked().isDone());
     Assert.assertFalse(sourceHandle.isClosed());
     Assert.assertTrue(sourceHandle.isFinished());
@@ -474,7 +472,7 @@ public class SourceHandleTest {
     }
 
     // Receive EndOfDataBlock event from upstream fragment instance.
-    sourceHandle.setNoMoreTsBlocks();
+    sourceHandle.setNoMoreTsBlocks(numOfMockTsBlock - 1);
     Assert.assertFalse(sourceHandle.isClosed());
     Assert.assertFalse(sourceHandle.isFinished());
     Assert.assertEquals(0L, sourceHandle.getBufferRetainedSizeInBytes());

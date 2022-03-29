@@ -131,7 +131,7 @@ public class DataBlockManager implements IDataBlockManager {
           sourceHandles
               .getOrDefault(e.getTargetFragmentInstanceId(), Collections.emptyMap())
               .get(e.getTargetOperatorId());
-      sourceHandle.setNoMoreTsBlocks();
+      sourceHandle.setNoMoreTsBlocks(e.getLastSequenceId());
     }
   }
 
