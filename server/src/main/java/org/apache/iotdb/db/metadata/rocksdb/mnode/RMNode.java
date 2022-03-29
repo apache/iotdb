@@ -24,7 +24,6 @@ import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
-import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants;
 import org.apache.iotdb.db.metadata.rocksdb.RSchemaReadWriteHandler;
@@ -203,7 +202,7 @@ public abstract class RMNode implements IMNode {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    MNode mNode = (MNode) o;
+    RMNode mNode = (RMNode) o;
     return Objects.equals(fullPath, mNode.getFullPath());
   }
 

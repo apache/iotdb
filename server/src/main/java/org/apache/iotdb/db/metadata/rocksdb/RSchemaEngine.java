@@ -124,6 +124,7 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.ALL_NODE_TYPE_ARRAY;
 import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.DEFAULT_ALIGNED_ENTITY_VALUE;
 import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.DEFAULT_NODE_VALUE;
@@ -133,6 +134,7 @@ import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.NODE_TYPE_ME
 import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.NODE_TYPE_SG;
 import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.TABLE_NAME_TAGS;
 import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.ZERO;
+import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 /**
@@ -381,7 +383,7 @@ public class RSchemaEngine implements ISchemaEngine {
               if ((checkResult.getValue()[1] & FLAG_IS_ALIGNED) != 0) {
                 throw new AlignedTimeseriesException(
                     "Timeseries under this entity is aligned, please use createAlignedTimeseries or change entity.",
-                    levelPath);
+                    RSchemaUtils.getPathByLevelPath(levelPath));
               }
             } else {
               throw new MetadataException(
@@ -484,6 +486,8 @@ public class RSchemaEngine implements ISchemaEngine {
               prefixPath.getNodeLength(), RSchemaEngine.MAX_PATH_DEPTH - 1));
     }
 
+    MetaFormatUtils.checkTimeseries(prefixPath);
+
     for (int i = 0; i < measurements.size(); i++) {
       SchemaUtils.checkDataTypeWithEncoding(dataTypes.get(i), encodings.get(i));
       MetaFormatUtils.checkNodeName(measurements.get(i));
@@ -564,11 +568,17 @@ public class RSchemaEngine implements ISchemaEngine {
             }
 
             if (!checkResult.getResult(RMNodeType.ENTITY)) {
-              throw new MetadataException("Node already exists but not entity");
+              throw new MetadataException(
+                  "Node already exists but not entity. (Path: "
+                      + RSchemaUtils.getPathByLevelPath(levelPath)
+                      + ")");
             }
 
-            if ((checkResult.getValue()[1] & FLAG_IS_ALIGNED) != 0) {
-              throw new MetadataException("Entity node exists but not aligned");
+            if ((checkResult.getValue()[1] & FLAG_IS_ALIGNED) == 0) {
+              throw new MetadataException(
+                  "Timeseries under this entity is not aligned, please use createTimeseries or change entity. (Path: "
+                      + RSchemaUtils.getPathByLevelPath(levelPath)
+                      + ")");
             }
           } else if (checkResult.getResult(RMNodeType.MEASUREMENT)
               || checkResult.getResult(RMNodeType.ALISA)) {
@@ -593,11 +603,19 @@ public class RSchemaEngine implements ISchemaEngine {
     }
   }
 
+  /**
+   * delete timeseries which match with pathPattern.
+   *
+   * @param pathPattern
+   * @param isPrefixMatch
+   * @return
+   * @throws MetadataException
+   */
   @Override
   public String deleteTimeseries(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
     Set<String> failedNames = ConcurrentHashMap.newKeySet();
-    //    Set<String> parentToCheck = ConcurrentHashMap.newKeySet();
+    Map<IStorageGroupMNode, Set<IMNode>> mapToDeletedPath = new ConcurrentHashMap<>();
     traverseOutcomeBasins(
         pathPattern.getNodes(),
         MAX_PATH_DEPTH,
@@ -628,6 +646,12 @@ public class RSchemaEngine implements ISchemaEngine {
                   // TODO: tags invert index update
                 }
                 readWriteHandler.executeBatch(batch);
+                IStorageGroupMNode mNode =
+                    getStorageGroupNodeByPath(
+                        new PartialPath(RSchemaUtils.getPathByLevelPath(levelPath)));
+                mapToDeletedPath
+                    .computeIfAbsent(mNode, s -> ConcurrentHashMap.newKeySet())
+                    .add(deletedNode.getParent());
               } finally {
                 lock.unlock();
               }
@@ -645,6 +669,60 @@ public class RSchemaEngine implements ISchemaEngine {
         new Character[] {NODE_TYPE_MEASUREMENT});
 
     // TODO: do we need to delete parent??
+    while (true) {
+      if (mapToDeletedPath.isEmpty()) {
+        break;
+      }
+      Map<IStorageGroupMNode, Set<IMNode>> tempMap = new ConcurrentHashMap<>();
+      mapToDeletedPath
+          .keySet()
+          .parallelStream()
+          .forEach(
+              sgNode -> {
+                if (storageGroupDeletingFlagMap.getOrDefault(sgNode.getFullPath(), false)) {
+                  // deleting the storage group, ignore parent delete
+                  return;
+                }
+                try {
+                  // lock the responding storage group
+                  storageGroupDeletingFlagMap.put(sgNode.getFullPath(), true);
+                  // wait for all executing createTimeseries operations are complete
+                  Thread.sleep(MAX_LOCK_WAIT_TIME * MAX_PATH_DEPTH);
+                  mapToDeletedPath
+                      .get(sgNode)
+                      .parallelStream()
+                      .forEach(
+                          parentNode -> {
+                            if (!parentNode.isStorageGroup()) {
+                              PartialPath parentPath = parentNode.getPartialPath();
+                              int level = parentPath.getNodeLength();
+                              int end = parentPath.getNodeLength() - 1;
+                              if (!readWriteHandler.existAnySiblings(
+                                  RSchemaUtils.getLevelPathPrefix(
+                                      parentPath.getNodes(), end, level))) {
+                                try {
+                                  readWriteHandler.deleteNode(
+                                      parentPath.getNodes(), RSchemaUtils.typeOfMNode(parentNode));
+                                  tempMap
+                                      .computeIfAbsent(sgNode, k -> ConcurrentHashMap.newKeySet())
+                                      .add(parentNode.getParent());
+                                } catch (Exception e) {
+                                  logger.error("delete {} fail.", parentPath.getFullPath(), e);
+                                  failedNames.add(parentPath.getFullPath());
+                                }
+                              }
+                            }
+                          });
+
+                } catch (Exception e) {
+
+                } finally {
+                  storageGroupDeletingFlagMap.remove(sgNode.getFullPath());
+                }
+              });
+      mapToDeletedPath.clear();
+      mapToDeletedPath.putAll(tempMap);
+    }
 
     return failedNames.isEmpty() ? null : String.join(",", failedNames);
   }
@@ -729,7 +807,8 @@ public class RSchemaEngine implements ISchemaEngine {
                 if (keyCheckResult.getExistType() == RMNodeType.STORAGE_GROUP) {
                   throw new StorageGroupAlreadySetException(storageGroup.getFullPath());
                 } else {
-                  throw new PathAlreadyExistException(storageGroup.getFullPath());
+                  throw new MNodeTypeMismatchException(
+                      storageGroup.getFullPath(), (byte) (RMNodeType.STORAGE_GROUP.getValue() - 1));
                 }
               } else {
                 if (keyCheckResult.getExistType() != RMNodeType.INTERNAL) {
@@ -831,6 +910,39 @@ public class RSchemaEngine implements ISchemaEngine {
   // endregion
 
   // region Interfaces for get and auto create device
+  /**
+   * get device node, if the storage group is not set, create it when autoCreateSchema is true
+   *
+   * <p>(we develop this method as we need to get the node's lock after we get the lock.writeLock())
+   *
+   * @param devicePath path
+   */
+  private IMNode getDeviceNodeWithAutoCreate(PartialPath devicePath, boolean aligned)
+      throws MetadataException {
+    IMNode node;
+    try {
+      node = getDeviceNode(devicePath);
+      return node;
+    } catch (PathNotExistException e) {
+      int sgIndex = ensureStorageGroup(devicePath);
+      if (!config.isAutoCreateSchemaEnabled()) {
+        throw new PathNotExistException(devicePath.getFullPath());
+      }
+      try {
+        createEntityRecursively(
+            devicePath.getNodes(), devicePath.getNodeLength(), sgIndex, aligned, new Stack<>());
+        node = getDeviceNode(devicePath);
+      } catch (RocksDBException | InterruptedException ex) {
+        throw new MetadataException(ex);
+      }
+    }
+    return node;
+  }
+
+  public void autoCreateDeviceMNode(AutoCreateDeviceMNodePlan plan) {
+    throw new UnsupportedOperationException();
+  }
+
   // endregion
 
   // region Interfaces for metadata info Query
@@ -842,6 +954,10 @@ public class RSchemaEngine implements ISchemaEngine {
    */
   @Override
   public boolean isPathExist(PartialPath path) throws MetadataException {
+    if (PATH_ROOT.equals(path.getFullPath())) {
+      return true;
+    }
+
     String innerPathName = RSchemaUtils.getLevelPath(path.getNodes(), path.getNodeLength() - 1);
     try {
       CheckKeyResult checkKeyResult =
@@ -2227,11 +2343,14 @@ public class RSchemaEngine implements ISchemaEngine {
       if (plan.isAligned()) {
         List<String> measurements = new ArrayList<>();
         List<TSDataType> dataTypes = new ArrayList<>();
+        List<TSEncoding> encodings = new ArrayList<>();
         for (Integer index : missingNodeIndex.keySet()) {
           measurements.add(measurementList[index]);
-          dataTypes.add(plan.getDataTypes()[index]);
+          TSDataType type = plan.getDataTypes()[index];
+          dataTypes.add(type);
+          encodings.add(getDefaultEncoding(type));
         }
-        createAlignedTimeSeries(devicePath, measurements, dataTypes, null, null);
+        createAlignedTimeSeries(devicePath, measurements, dataTypes, encodings, null);
       } else {
         for (Map.Entry<Integer, PartialPath> entry : missingNodeIndex.entrySet()) {
           IMeasurementSchema schema =
@@ -2338,38 +2457,6 @@ public class RSchemaEngine implements ISchemaEngine {
     return dataType;
   }
 
-  /**
-   * get device node, if the storage group is not set, create it when autoCreateSchema is true
-   *
-   * <p>(we develop this method as we need to get the node's lock after we get the lock.writeLock())
-   *
-   * @param devicePath path
-   */
-  protected IMNode getDeviceNodeWithAutoCreate(PartialPath devicePath, boolean aligned)
-      throws MetadataException {
-    IMNode node;
-    try {
-      node = getDeviceNode(devicePath);
-      return node;
-    } catch (PathNotExistException e) {
-      int sgIndex = ensureStorageGroup(devicePath);
-      if (!config.isAutoCreateSchemaEnabled()) {
-        throw new PathNotExistException(devicePath.getFullPath());
-      }
-      try {
-        createEntityRecursively(
-            devicePath.getNodes(), devicePath.getNodeLength(), sgIndex, aligned, new Stack<>());
-        node = getDeviceNode(devicePath);
-      } catch (RocksDBException | InterruptedException ex) {
-        throw new MetadataException(ex);
-      }
-    }
-    return node;
-  }
-
-  private void autoCreateDeviceMNode(AutoCreateDeviceMNodePlan plan) {
-    throw new UnsupportedOperationException();
-  }
   // endregion
 
   // region Interfaces and Implementation for Template operations
@@ -2442,6 +2529,11 @@ public class RSchemaEngine implements ISchemaEngine {
 
   @Override
   public void unsetSchemaTemplate(UnsetTemplatePlan plan) throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public IMNode setUsingSchemaTemplate(IMNode plan) {
     throw new UnsupportedOperationException();
   }
 

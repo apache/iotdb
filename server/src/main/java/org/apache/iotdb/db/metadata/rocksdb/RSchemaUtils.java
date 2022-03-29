@@ -19,9 +19,13 @@
 package org.apache.iotdb.db.metadata.rocksdb;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.rocksdb.mnode.REntityMNode;
 import org.apache.iotdb.db.metadata.rocksdb.mnode.RMNodeType;
 import org.apache.iotdb.db.metadata.rocksdb.mnode.RMNodeValueType;
+import org.apache.iotdb.db.metadata.rocksdb.mnode.RMeasurementMNode;
+import org.apache.iotdb.db.metadata.rocksdb.mnode.RStorageGroupMNode;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -40,9 +44,34 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.commons.conf.IoTDBConstant.*;
-import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.*;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.DATA_BLOCK_TYPE_ALIAS;
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.DATA_BLOCK_TYPE_ATTRIBUTES;
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.DATA_BLOCK_TYPE_ORIGIN_KEY;
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.DATA_BLOCK_TYPE_SCHEMA;
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.DATA_BLOCK_TYPE_TAGS;
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.DATA_BLOCK_TYPE_TTL;
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.DATA_VERSION;
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.DEFAULT_FLAG;
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.ESCAPE_PATH_SEPARATOR;
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.FLAG_HAS_ALIAS;
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.FLAG_HAS_ATTRIBUTES;
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.FLAG_HAS_SCHEMA;
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.FLAG_HAS_TAGS;
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.FLAG_IS_ALIGNED;
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.FLAG_SET_TTL;
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.NODE_TYPE_ALIAS;
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.NODE_TYPE_ENTITY;
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.NODE_TYPE_INTERNAL;
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.NODE_TYPE_MEASUREMENT;
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.NODE_TYPE_SG;
 import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.PATH_SEPARATOR;
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.ROOT;
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.ROOT_CHAR;
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.ROOT_STRING;
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.ZERO;
 
 public class RSchemaUtils {
   public static RMNodeType[] NODE_TYPE_ARRAY = new RMNodeType[NODE_TYPE_ALIAS + 1];
@@ -138,6 +167,23 @@ public class RSchemaUtils {
     String[] nodes = pathWithoutLevel.split(ESCAPE_PATH_SEPARATOR);
     nodes[0] = PATH_ROOT;
     return new PartialPath(nodes);
+  }
+
+  public static RMNodeType typeOfMNode(IMNode mNode) {
+    // order sensitive
+    if (mNode instanceof REntityMNode) {
+      return RMNodeType.ENTITY;
+    }
+
+    if (mNode instanceof RStorageGroupMNode) {
+      return RMNodeType.STORAGE_GROUP;
+    }
+
+    if (mNode instanceof RMeasurementMNode) {
+      return RMNodeType.MEASUREMENT;
+    }
+
+    return RMNodeType.INTERNAL;
   }
 
   public static byte[] buildMeasurementNodeValue(
@@ -328,7 +374,7 @@ public class RSchemaUtils {
    */
   public static String convertPartialPathToInner(String partialPath, int level, char nodeType) {
     StringBuilder stringBuilder = new StringBuilder(nodeType + ROOT);
-    for (int i = partialPath.indexOf(PATH_SEPARATOR); i < partialPath.length(); i++) {
+    for (int i = partialPath.indexOf(PATH_SEPARATOR); i < partialPath.length() && i >= 0; i++) {
       char currentChar = partialPath.charAt(i);
       stringBuilder.append(currentChar);
       if (currentChar == SPLIT_FLAG) {
@@ -417,6 +463,28 @@ public class RSchemaUtils {
     boolean replaceFlag = true;
     for (char c : keyConvertToCharArray) {
       if (SPLIT_FLAG == lastChar || START_FLAG == lastChar) {
+        lastChar = c;
+        continue;
+      }
+      if (ROOT_CHAR == c && replaceFlag) {
+        lastChar = c;
+        stringBuilder.append(ROOT_STRING);
+        replaceFlag = false;
+        continue;
+      }
+      stringBuilder.append(c);
+      lastChar = c;
+    }
+    return stringBuilder.toString();
+  }
+
+  public static String getPathByLevelPath(String innerName) {
+    char[] keyConvertToCharArray = innerName.toCharArray();
+    StringBuilder stringBuilder = new StringBuilder();
+    char lastChar = START_FLAG;
+    boolean replaceFlag = true;
+    for (char c : keyConvertToCharArray) {
+      if (SPLIT_FLAG == lastChar) {
         lastChar = c;
         continue;
       }

@@ -70,6 +70,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.ALL_NODE_TYPE_ARRAY;
 import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.DATA_BLOCK_TYPE_ORIGIN_KEY;
 import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.DATA_BLOCK_TYPE_SCHEMA;
 import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.DATA_VERSION;
@@ -428,6 +429,23 @@ public class RSchemaReadWriteHandler {
     return rocksDB.newIterator(columnFamilyHandle);
   }
 
+  public boolean existAnySiblings(String siblingPrefix) {
+    for (char type : ALL_NODE_TYPE_ARRAY) {
+      byte[] key = RSchemaUtils.toRocksDBKey(siblingPrefix, type);
+      try (RocksIterator iterator = rocksDB.newIterator()) {
+        for (iterator.seek(key); iterator.isValid(); iterator.next()) {
+          String keyStr = new String(iterator.key());
+          if (!RSchemaUtils.prefixMatch(iterator.key(), key)) {
+            break;
+          } else {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
   public void getKeyByPrefix(String innerName, Function<String, Boolean> function) {
     try (RocksIterator iterator = rocksDB.newIterator()) {
       for (iterator.seek(innerName.getBytes()); iterator.isValid(); iterator.next()) {
@@ -553,10 +571,10 @@ public class RSchemaReadWriteHandler {
           iterator.next();
         }
       }
-      if (outputFile.exists()) {
-        boolean deleted = outputFile.delete();
-        System.out.println("clean output file: " + deleted);
-      }
+      //      if (outputFile.exists()) {
+      //        boolean deleted = outputFile.delete();
+      //        System.out.println("clean output file: " + deleted);
+      //      }
       System.out.println("\n-----------------scan rocksdb end----------------------");
     }
   }
