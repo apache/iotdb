@@ -26,6 +26,7 @@ import org.apache.iotdb.db.mpp.execution.QueryExecution;
 import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
 import org.apache.iotdb.db.mpp.sql.parser.StatementGenerator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.DistributedQueryPlan;
+import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeVisualizer;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
@@ -39,7 +40,7 @@ public class QueryPlannerTest {
   @Test
   public void TestSqlToDistributedPlan() {
 
-    String querySql = "SELECT d1.*, d333.s1 FROM root.sg order by time desc LIMIT 10";
+    String querySql = "SELECT d1.* FROM root.sg order by time desc LIMIT 10";
 
     Statement stmt = StatementGenerator.createStatement(querySql, ZoneId.systemDefault());
 
@@ -58,6 +59,12 @@ public class QueryPlannerTest {
     DistributedQueryPlan distributedQueryPlan = queryExecution.getDistributedPlan();
 
     System.out.println("\n===== Step 4: Split Fragment Instance =====");
-    distributedQueryPlan.getInstances().forEach(System.out::println);
+    for (int i = 0 ; i < distributedQueryPlan.getInstances().size(); i ++) {
+      System.out.println(String.format("--- Fragment Instance %d -----", i));
+      FragmentInstance instance = distributedQueryPlan.getInstances().get(i);
+      System.out.println(instance);
+//      PlanNodeVisualizer.printAsBox(instance.getFragment().getRoot());
+      System.out.println();
+    }
   }
 }

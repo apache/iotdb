@@ -39,20 +39,20 @@ public class PlanNodeVisualizer {
   private static class Box {
     private PlanNode node;
     private List<Box> children;
-    private int width;
-    private int maxWidth;
+    private int boxWidth;
+    private int lineWidth;
     private List<String> lines;
     private int leftIndent;
     private int lastCharPosition;
 
     public Box(PlanNode node) {
       this.node = node;
-      this.width = getSelfWidth();
+      this.boxWidth = getBoxWidth();
       this.children = new ArrayList<>();
       this.lines = new ArrayList<>();
     }
 
-    public int getSelfWidth() {
+    public int getBoxWidth() {
       List<String> boxLines = node.getBoxString();
       int width = 0;
       for (String line : boxLines) {
@@ -65,7 +65,7 @@ public class PlanNodeVisualizer {
       if (idx < lines.size()) {
         return lines.get(idx);
       }
-      return printIndent(maxWidth);
+      return printIndent(lineWidth);
     }
 
     public int getChildrenLineCount() {
@@ -110,12 +110,12 @@ public class PlanNodeVisualizer {
     int childrenWidth = 0;
     for (Box child : box.children) {
       calculateBoxMaxWidth(child);
-      childrenWidth += child.maxWidth;
+      childrenWidth += child.lineWidth;
     }
     childrenWidth += box.children.size() > 1 ? box.children.size() - 1 : 0;
-    box.maxWidth = Math.max(box.width, childrenWidth);
-    box.leftIndent = (box.maxWidth - box.width) / 2;
-    box.lastCharPosition = box.leftIndent + box.width - 1;
+    box.lineWidth = Math.max(box.boxWidth, childrenWidth);
+    box.leftIndent = (box.lineWidth - box.boxWidth) / 2;
+    box.lastCharPosition = box.leftIndent + box.boxWidth - 1;
   }
 
   private static void buildBoxLines(Box box) {
@@ -123,7 +123,7 @@ public class PlanNodeVisualizer {
     // Print value
     for (String valueLine : box.node.getBoxString()) {
       StringBuilder line = new StringBuilder();
-      for (int i = 0; i < box.maxWidth; i++) {
+      for (int i = 0; i < box.lineWidth; i++) {
         if (i < box.leftIndent) {
           line.append(INDENT);
           continue;
@@ -152,11 +152,11 @@ public class PlanNodeVisualizer {
     }
 
     // Print Connection Line
-    int shangPosition = box.maxWidth / 2 - 1;
+    int shangPosition = box.lineWidth / 2 - 1;
     if (box.children.size() == 1) {
       for (int i = 0; i < 2; i++) {
         StringBuilder sb = new StringBuilder();
-        for (int j = 0; j < box.maxWidth ; j ++) {
+        for (int j = 0; j < box.lineWidth; j ++) {
           if (j == shangPosition) {
             sb.append(SHU);
           } else {
@@ -172,7 +172,7 @@ public class PlanNodeVisualizer {
         symbolMap.put(getChildMidPosition(box, i), i == 0 ? LEFT_TOP : i == box.children.size() - 1 ? RIGHT_TOP : XIA);
       }
       StringBuilder line1 = new StringBuilder();
-      for (int i = 0; i < box.maxWidth; i++) {
+      for (int i = 0; i < box.lineWidth; i++) {
         if (i < getChildMidPosition(box, 0)) {
           line1.append(INDENT);
           continue;
@@ -187,7 +187,7 @@ public class PlanNodeVisualizer {
       box.lines.add(line1.toString());
 
       StringBuilder line2 = new StringBuilder();
-      for (int i = 0; i < box.maxWidth; i++) {
+      for (int i = 0; i < box.lineWidth; i++) {
         if (i < getChildMidPosition(box, 0)) {
           line2.append(INDENT);
           continue;
@@ -222,10 +222,10 @@ public class PlanNodeVisualizer {
   private static int getChildMidPosition(Box box, int idx) {
     int left = 0;
     for (int i = 0; i < idx; i++) {
-      left += box.children.get(i).maxWidth;
+      left += box.children.get(i).lineWidth;
       left += 1;
     }
-    left += box.children.get(idx).maxWidth / 2;
+    left += box.children.get(idx).lineWidth / 2;
     return left;
   }
 
@@ -238,11 +238,11 @@ public class PlanNodeVisualizer {
   }
 
   private static String printBoxEdge(Box box, boolean top) {
-    int leftIndent = (box.maxWidth - box.width) / 2;
+    int leftIndent = (box.lineWidth - box.boxWidth) / 2;
     StringBuilder sb = new StringBuilder();
 
 
-    for (int i = 0; i < box.maxWidth; i++) {
+    for (int i = 0; i < box.lineWidth; i++) {
       if (i < leftIndent) {
         sb.append(INDENT);
         continue;
