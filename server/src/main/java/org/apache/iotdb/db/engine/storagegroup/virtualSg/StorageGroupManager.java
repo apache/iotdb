@@ -417,7 +417,7 @@ public class StorageGroupManager {
     for (VirtualStorageGroupProcessor virtualStorageGroupProcessor :
         this.virtualStorageGroupProcessor) {
       if (virtualStorageGroupProcessor != null) {
-        List<TsFileResource> allResources = virtualStorageGroupProcessor.getSequenceFileTreeSet();
+        List<TsFileResource> allResources = virtualStorageGroupProcessor.getSequenceFileList();
         allResources.addAll(virtualStorageGroupProcessor.getUnSequenceFileList());
         for (TsFileResource tsfile : allResources) {
           if (!tsfile.isClosed()) {

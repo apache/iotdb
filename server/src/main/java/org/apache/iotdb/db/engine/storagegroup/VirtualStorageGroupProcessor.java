@@ -2887,7 +2887,7 @@ public class VirtualStorageGroupProcessor {
     this.dataTTL = dataTTL;
   }
 
-  public List<TsFileResource> getSequenceFileTreeSet() {
+  public List<TsFileResource> getSequenceFileList() {
     return tsFileManager.getTsFileList(true);
   }
 
@@ -2922,7 +2922,7 @@ public class VirtualStorageGroupProcessor {
             tsFileResource, partitionNum, getWorkSequenceTsFileProcessors())
         || isFileAlreadyExistInWorking(
             tsFileResource, partitionNum, getWorkUnsequenceTsFileProcessors())
-        || isFileAlreadyExistInClosed(tsFileResource, partitionNum, getSequenceFileTreeSet())
+        || isFileAlreadyExistInClosed(tsFileResource, partitionNum, getSequenceFileList())
         || isFileAlreadyExistInClosed(tsFileResource, partitionNum, getUnSequenceFileList());
   }
 
@@ -3206,5 +3206,10 @@ public class VirtualStorageGroupProcessor {
   @TestOnly
   public ILastFlushTimeManager getLastFlushTimeManager() {
     return lastFlushTimeManager;
+  }
+
+  @TestOnly
+  public TsFileManager getTsFileManager() {
+    return tsFileManager;
   }
 }

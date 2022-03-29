@@ -277,17 +277,9 @@ public class CompactionTaskManager implements IService {
   }
 
   public synchronized void removeRunningTaskFromList(AbstractCompactionTask task) {
-    runningCompactionTaskList.remove(task);
-    int idx = -1;
-    for (int i = 0; i < futureList.size(); ++i) {
-      if (futureList.get(i).left == task) {
-        idx = i;
-        break;
-      }
-    }
-    if (idx != -1) {
-      futureList.remove(idx);
-    }
+    int idx = runningCompactionTaskList.indexOf(task);
+    runningCompactionTaskList.remove(idx);
+    futureList.remove(idx);
     // add metrics
     CompactionMetricsManager.recordTaskInfo(
         task, CompactionTaskStatus.FINISHED, runningCompactionTaskList.size());
@@ -298,19 +290,20 @@ public class CompactionTaskManager implements IService {
    *
    * @throws RejectedExecutionException
    */
-  public synchronized void submitTask(AbstractCompactionTask compactionTask)
+  public synchronized Future<Void> submitTask(AbstractCompactionTask compactionTask)
       throws RejectedExecutionException {
     if (taskExecutionPool != null && !taskExecutionPool.isTerminated()) {
       Future<Void> future = taskExecutionPool.submit(compactionTask);
       runningCompactionTaskList.add(compactionTask);
       futureList.add(new Pair<>(compactionTask, future));
-      return;
+      return future;
     }
     logger.warn(
         "A CompactionTask failed to be submitted to CompactionTaskManager because {}",
         taskExecutionPool == null
             ? "taskExecutionPool is null"
             : "taskExecutionPool is terminated");
+    return null;
   }
 
   /**
@@ -318,17 +311,13 @@ public class CompactionTaskManager implements IService {
    * corresponding storage group.
    */
   public synchronized void abortCompaction(String storageGroupName) {
-    List<Pair<AbstractCompactionTask, Future<Void>>> pairToBeRemoved =
-        new ArrayList<>(futureList.size());
-    for (int i = 0; i < futureList.size(); i++) {
-      if (futureList.get(i).left.getFullStorageGroupName().contains(storageGroupName)) {
-        pairToBeRemoved.add(futureList.get(i));
+    for (Pair<AbstractCompactionTask, Future<Void>> futurePair : futureList) {
+      if (futurePair.left.getFullStorageGroupName().contains(storageGroupName)) {
+        futurePair.right.cancel(true);
       }
     }
 
-    for (Pair<AbstractCompactionTask, Future<Void>> futurePair : pairToBeRemoved) {
-      futureList.remove(futurePair);
-    }
+    candidateCompactionTaskQueue.clear();
   }
 
   public int getExecutingTaskCount() {
