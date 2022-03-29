@@ -51,7 +51,7 @@ public class Coordinator {
       Statement statement, QueryId queryId, QueryType queryType, SessionInfo session, String sql) {
 
     QueryExecution execution =
-        createQueryExecution(statement, new MPPQueryContext(sql, queryId, session));
+        createQueryExecution(statement, new MPPQueryContext(sql, queryId, session, queryType));
     queryExecutionMap.put(queryId, execution);
 
     execution.start();

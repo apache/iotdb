@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.mpp.buffer;
 
-import org.apache.iotdb.mpp.rpc.thrift.ThriftFragmentInstanceId;
+import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 
 public interface IDataBlockManager {
   /**
@@ -34,9 +34,9 @@ public interface IDataBlockManager {
    * @param remoteOperatorId The sink operator ID of the remote fragment instance.
    */
   ISinkHandle createSinkHandle(
-      ThriftFragmentInstanceId localFragmentInstanceId,
+      TFragmentInstanceId localFragmentInstanceId,
       String remoteHostname,
-      ThriftFragmentInstanceId remoteFragmentInstanceId,
+      TFragmentInstanceId remoteFragmentInstanceId,
       String remoteOperatorId);
 
   /**
@@ -51,10 +51,10 @@ public interface IDataBlockManager {
    * @param remoteFragmentInstanceId ID of the remote fragment instance.
    */
   ISourceHandle createSourceHandle(
-      ThriftFragmentInstanceId localFragmentInstanceId,
+      TFragmentInstanceId localFragmentInstanceId,
       String localOperatorId,
       String remoteHostname,
-      ThriftFragmentInstanceId remoteFragmentInstanceId);
+      TFragmentInstanceId remoteFragmentInstanceId);
 
   /**
    * Release all the related resources of a fragment instance, including data blocks that are not
@@ -64,5 +64,5 @@ public interface IDataBlockManager {
    *
    * @param fragmentInstanceId ID of the fragment instance to be released.
    */
-  void forceDeregisterFragmentInstance(ThriftFragmentInstanceId fragmentInstanceId);
+  void forceDeregisterFragmentInstance(TFragmentInstanceId fragmentInstanceId);
 }

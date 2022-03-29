@@ -27,11 +27,13 @@ import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.metadata.MetadataManagerType;
 import org.apache.iotdb.db.metadata.SchemaEngine;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.service.thrift.impl.InfluxDBServiceImpl;
 import org.apache.iotdb.db.service.thrift.impl.TSServiceImpl;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
@@ -247,6 +249,10 @@ public class IoTDBConfig {
   private String triggerDir =
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.TRIGGER_FOLDER_NAME;
 
+  /** External lib directory for MQTT, stores user-uploaded JAR files */
+  private String mqttDir =
+      IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.MQTT_FOLDER_NAME;
+
   /** Data directory of data. It can be settled as dataDirs = {"data1", "data2", "data3"}; */
   private String[] dataDirs = {"data" + File.separator + "data"};
 
@@ -453,10 +459,10 @@ public class IoTDBConfig {
   /** Set true to enable writing monitor time series. */
   private boolean enableMonitorSeriesWrite = false;
 
-  /** Cache size of {@code checkAndGetDataTypeCache} in {@link SchemaEngine}. */
+  /** Cache size of {@code checkAndGetDataTypeCache} in {@link LocalSchemaProcessor}. */
   private int schemaRegionCacheSize = 10000;
 
-  /** Cache size of {@code checkAndGetDataTypeCache} in {@link SchemaEngine}. */
+  /** Cache size of {@code checkAndGetDataTypeCache} in {@link LocalSchemaProcessor}. */
   private int mRemoteSchemaCacheSize = 100000;
 
   /** Is external sort enable. */
@@ -939,6 +945,7 @@ public class IoTDBConfig {
     extDir = addHomeDir(extDir);
     udfDir = addHomeDir(udfDir);
     triggerDir = addHomeDir(triggerDir);
+    mqttDir = addHomeDir(mqttDir);
 
     if (TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs().equals(FSType.HDFS)) {
       String hdfsDir = getHdfsDir();
@@ -985,7 +992,7 @@ public class IoTDBConfig {
     if (getMultiDirStrategyClassName() == null) {
       multiDirStrategyClassName = DEFAULT_MULTI_DIR_STRATEGY;
     }
-    if (!getMultiDirStrategyClassName().contains(PATH_SEPARATOR)) {
+    if (!getMultiDirStrategyClassName().contains(TsFileConstant.PATH_SEPARATOR)) {
       multiDirStrategyClassName = MULTI_DIR_STRATEGY_PREFIX + multiDirStrategyClassName;
     }
 
@@ -1161,6 +1168,14 @@ public class IoTDBConfig {
 
   public void setTriggerDir(String triggerDir) {
     this.triggerDir = triggerDir;
+  }
+
+  public String getMqttDir() {
+    return mqttDir;
+  }
+
+  public void setMqttDir(String mqttDir) {
+    this.mqttDir = mqttDir;
   }
 
   public String getMultiDirStrategyClassName() {

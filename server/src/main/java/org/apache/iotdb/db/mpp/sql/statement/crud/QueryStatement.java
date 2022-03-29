@@ -24,13 +24,13 @@ import org.apache.iotdb.db.index.common.IndexType;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.constant.StatementType;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
+import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullComponent;
 import org.apache.iotdb.db.mpp.sql.statement.component.FromComponent;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 import org.apache.iotdb.db.mpp.sql.statement.component.ResultSetFormat;
 import org.apache.iotdb.db.mpp.sql.statement.component.SelectComponent;
 import org.apache.iotdb.db.mpp.sql.statement.component.WhereCondition;
-import org.apache.iotdb.db.mpp.sql.tree.StatementVisitor;
 
 import java.util.HashMap;
 import java.util.Map;

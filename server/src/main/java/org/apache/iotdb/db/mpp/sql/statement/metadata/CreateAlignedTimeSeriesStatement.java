@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.sql.statement.metadata;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.constant.StatementType;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
+import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -35,12 +36,12 @@ import java.util.Map;
  *
  * <p>Here is the syntax definition:
  *
- * <p>CREATE ALIGNED TIMESERIES deviceId (measurementId attributeClauses [, measurementId
+ * <p>CREATE ALIGNED TIMESERIES devicePath (measurementId attributeClauses [, measurementId
  * attributeClauses]...)
  */
 public class CreateAlignedTimeSeriesStatement extends Statement {
 
-  private PartialPath deviceId;
+  private PartialPath devicePath;
   private List<String> measurements = new ArrayList<>();
   private List<TSDataType> dataTypes = new ArrayList<>();
   private List<TSEncoding> encodings = new ArrayList<>();
@@ -55,12 +56,12 @@ public class CreateAlignedTimeSeriesStatement extends Statement {
     statementType = StatementType.CREATE_ALIGNED_TIMESERIES;
   }
 
-  public PartialPath getDeviceId() {
-    return deviceId;
+  public PartialPath getDevicePath() {
+    return devicePath;
   }
 
-  public void setDeviceId(PartialPath deviceId) {
-    this.deviceId = deviceId;
+  public void setDevicePath(PartialPath devicePath) {
+    this.devicePath = devicePath;
   }
 
   public List<String> getMeasurements() {
@@ -163,5 +164,9 @@ public class CreateAlignedTimeSeriesStatement extends Statement {
 
   public void addTagOffsets(Long tagsOffset) {
     this.tagOffsets.add(tagsOffset);
+  }
+
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitCreateAlignedTimeseries(this, context);
   }
 }

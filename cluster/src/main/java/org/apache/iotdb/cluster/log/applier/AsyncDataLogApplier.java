@@ -155,16 +155,16 @@ public class AsyncDataLogApplier implements LogApplier {
     PartialPath sgPath = null;
     if (plan instanceof InsertMultiTabletPlan) {
       PartialPath deviceId = ((InsertMultiTabletPlan) plan).getFirstDeviceId();
-      sgPath = IoTDB.schemaEngine.getBelongedStorageGroup(deviceId);
+      sgPath = IoTDB.schemaProcessor.getBelongedStorageGroup(deviceId);
     } else if (plan instanceof InsertRowsPlan) {
       PartialPath path = ((InsertRowsPlan) plan).getFirstDeviceId();
-      sgPath = IoTDB.schemaEngine.getBelongedStorageGroup(path);
+      sgPath = IoTDB.schemaProcessor.getBelongedStorageGroup(path);
     } else if (plan instanceof InsertPlan) {
       PartialPath deviceId = ((InsertPlan) plan).getDevicePath();
-      sgPath = IoTDB.schemaEngine.getBelongedStorageGroup(deviceId);
+      sgPath = IoTDB.schemaProcessor.getBelongedStorageGroup(deviceId);
     } else if (plan instanceof CreateTimeSeriesPlan) {
       PartialPath path = ((CreateTimeSeriesPlan) plan).getPath();
-      sgPath = IoTDB.schemaEngine.getBelongedStorageGroup(path);
+      sgPath = IoTDB.schemaProcessor.getBelongedStorageGroup(path);
     }
     return sgPath;
   }

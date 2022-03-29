@@ -31,6 +31,7 @@ import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.apache.iotdb.rpc.RpcUtils.getStatus;
@@ -55,6 +56,7 @@ public class QueryExecution {
 
   public QueryExecution(Statement statement, MPPQueryContext context) {
     this.context = context;
+    this.planOptimizers = new ArrayList<>();
     this.analysis = analyze(statement, context);
   }
 
@@ -76,13 +78,13 @@ public class QueryExecution {
   }
 
   // Use LogicalPlanner to do the logical query plan and logical optimization
-  private void doLogicalPlan() {
+  public void doLogicalPlan() {
     LogicalPlanner planner = new LogicalPlanner(this.context, this.planOptimizers);
     this.logicalPlan = planner.plan(this.analysis);
   }
 
   // Generate the distributed plan and split it into fragments
-  private void doDistributedPlan() {
+  public void doDistributedPlan() {
     DistributionPlanner planner = new DistributionPlanner(this.analysis, this.logicalPlan);
     this.distributedPlan = planner.planFragments();
   }
@@ -101,5 +103,17 @@ public class QueryExecution {
   public ExecutionResult getResult() {
 
     return new ExecutionResult(context.getQueryId(), getStatus(TSStatusCode.SUCCESS_STATUS));
+  }
+
+  public DistributedQueryPlan getDistributedPlan() {
+    return distributedPlan;
+  }
+
+  public LogicalQueryPlan getLogicalPlan() {
+    return logicalPlan;
+  }
+
+  public List<FragmentInstance> getFragmentInstances() {
+    return fragmentInstances;
   }
 }

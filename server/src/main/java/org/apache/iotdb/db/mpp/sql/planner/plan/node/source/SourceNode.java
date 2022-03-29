@@ -33,4 +33,26 @@ public abstract class SourceNode extends PlanNode implements AutoCloseable {
   public abstract DataRegionReplicaSet getDataRegionReplicaSet();
 
   public abstract void setDataRegionReplicaSet(DataRegionReplicaSet dataRegionReplicaSet);
+
+  public abstract String getDeviceName();
+
+  protected abstract String getExpressionString();
+
+  @Override
+  public final int hashCode() {
+    return getExpressionString().hashCode();
+  }
+
+  @Override
+  public final boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+
+    if (!(o instanceof SourceNode)) {
+      return false;
+    }
+
+    return getExpressionString().equals(o.toString());
+  }
 }

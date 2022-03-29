@@ -29,7 +29,6 @@ import org.apache.iotdb.cluster.exception.LogExecutionException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogParser;
 import org.apache.iotdb.cluster.log.logtypes.EmptyContentLog;
-import org.apache.iotdb.cluster.metadata.CSchemaEngine;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
@@ -186,8 +185,7 @@ public class CatchUpTaskTest {
 
   @Before
   public void setUp() {
-    IoTDB.setSchemaEngine(CSchemaEngine.getInstance());
-    IoTDB.schemaEngine.init();
+    IoTDB.configManager.init();
     prevUseAsyncServer = ClusterDescriptor.getInstance().getConfig().isUseAsyncServer();
     ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(true);
     receivedLogs = new ArrayList<>();
@@ -199,7 +197,7 @@ public class CatchUpTaskTest {
 
   @After
   public void tearDown() throws Exception {
-    IoTDB.schemaEngine.clear();
+    IoTDB.configManager.clear();
     sender.stop();
     sender.closeLogManager();
     EnvironmentUtils.cleanAllDir();
