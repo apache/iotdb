@@ -21,11 +21,14 @@ package org.apache.iotdb.influxdb.protocol.impl;
 
 import org.apache.iotdb.influxdb.session.InfluxDBSession;
 import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSCreateDatabaseReq;
+import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSQueryReq;
 import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSWritePointsReq;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 
 import org.influxdb.InfluxDBException;
+import org.influxdb.dto.Query;
+import org.influxdb.dto.QueryResult;
 
 public class IoTDBInfluxDBService {
 
@@ -54,10 +57,11 @@ public class IoTDBInfluxDBService {
     } else {
       tsWritePointsReq.setDatabase(database);
     }
-    tsWritePointsReq.setRetentionPolicy(retentionPolicy);
-    tsWritePointsReq.setPrecision(precision);
-    tsWritePointsReq.setConsistency(consistency);
-    tsWritePointsReq.setLineProtocol(lineProtocol);
+    tsWritePointsReq
+        .setRetentionPolicy(retentionPolicy)
+        .setPrecision(precision)
+        .setConsistency(consistency)
+        .setLineProtocol(lineProtocol);
     try {
       influxDBSession.writePoints(tsWritePointsReq);
     } catch (StatementExecutionException | IoTDBConnectionException e) {
@@ -74,6 +78,16 @@ public class IoTDBInfluxDBService {
     tsCreateDatabaseReq.setDatabase(database);
     try {
       influxDBSession.createDatabase(tsCreateDatabaseReq);
+    } catch (StatementExecutionException | IoTDBConnectionException e) {
+      throw new InfluxDBException(e.getMessage());
+    }
+  }
+
+  public QueryResult query(Query queryReq) {
+    TSQueryReq tsQueryReq = new TSQueryReq();
+    tsQueryReq.setDatabase(queryReq.getDatabase()).setCommand(queryReq.getCommand());
+    try {
+      return influxDBSession.query(tsQueryReq);
     } catch (StatementExecutionException | IoTDBConnectionException e) {
       throw new InfluxDBException(e.getMessage());
     }

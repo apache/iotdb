@@ -18,46 +18,93 @@
  */
 package org.apache.iotdb.confignode.service.thrift.server;
 
-import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.runtime.RPCServiceException;
+import org.apache.iotdb.commons.service.ServiceType;
+import org.apache.iotdb.commons.service.ThriftService;
+import org.apache.iotdb.commons.service.ThriftServiceThread;
+import org.apache.iotdb.confignode.conf.ConfigNodeConf;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
-import org.apache.iotdb.confignode.rpc.thrift.DataPartitionInfo;
-import org.apache.iotdb.confignode.rpc.thrift.DeleteStorageGroupReq;
-import org.apache.iotdb.confignode.rpc.thrift.GetDataPartitionReq;
-import org.apache.iotdb.confignode.rpc.thrift.GetSchemaPartitionReq;
-import org.apache.iotdb.confignode.rpc.thrift.SchemaPartitionInfo;
-import org.apache.iotdb.confignode.rpc.thrift.SetStorageGroupoReq;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
-
-import org.apache.thrift.TException;
 
 /** ConfigNodeRPCServer exposes the interface that interacts with the DataNode */
-public class ConfigNodeRPCServer implements ConfigIService.Iface {
+public class ConfigNodeRPCServer extends ThriftService implements ConfigNodeRPCServerMBean {
 
-  private ConfigManager configManager;
+  private static final ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();
 
-  public ConfigNodeRPCServer() {
-    this.configManager = new ConfigManager();
+  private ConfigNodeRPCServerProcessor configNodeRPCServerProcessor;
+
+  private ConfigNodeRPCServer() {
+    // empty constructor
   }
 
   @Override
-  public TSStatus setStorageGroup(SetStorageGroupoReq req) throws TException {
-    return null;
+  public ThriftService getImplementation() {
+    return ConfigNodeRPCServer.getInstance();
   }
 
   @Override
-  public TSStatus deleteStorageGroup(DeleteStorageGroupReq req) throws TException {
-    return null;
+  public ServiceType getID() {
+    return ServiceType.CONFIG_NODE_SERVICE;
   }
 
   @Override
-  public SchemaPartitionInfo getSchemaPartition(GetSchemaPartitionReq req) throws TException {
-    return null;
+  public void initSyncedServiceImpl(Object configNodeRPCServerProcessor) {
+    this.configNodeRPCServerProcessor = (ConfigNodeRPCServerProcessor) configNodeRPCServerProcessor;
+
+    super.mbeanName =
+        String.format(
+            "%s:%s=%s", this.getClass().getPackage(), IoTDBConstant.JMX_TYPE, getID().getJmxName());
+    super.initSyncedServiceImpl(this.configNodeRPCServerProcessor);
   }
 
   @Override
-  public DataPartitionInfo getDataPartition(GetDataPartitionReq req) throws TException {
-    return null;
+  public void initTProcessor() throws InstantiationException {
+    processor = new ConfigIService.Processor<>(configNodeRPCServerProcessor);
   }
 
-  // TODO: Interfaces for data operations
+  @Override
+  public void initThriftServiceThread() throws IllegalAccessException {
+
+    try {
+      thriftServiceThread =
+          new ThriftServiceThread(
+              processor,
+              getID().getName(),
+              ThreadName.CONFIG_NODE_RPC_CLIENT.getName(),
+              getBindIP(),
+              getBindPort(),
+              conf.getRpcMaxConcurrentClientNum(),
+              conf.getThriftServerAwaitTimeForStopService(),
+              new ConfigNodeRPCServiceHandler(configNodeRPCServerProcessor),
+              conf.isRpcThriftCompressionEnabled());
+    } catch (RPCServiceException e) {
+      throw new IllegalAccessException(e.getMessage());
+    }
+    thriftServiceThread.setName(ThreadName.CONFIG_NODE_RPC_SERVER.getName());
+  }
+
+  @Override
+  public String getBindIP() {
+    return conf.getRpcAddress();
+  }
+
+  @Override
+  public int getBindPort() {
+    return conf.getRpcPort();
+  }
+
+  public static ConfigNodeRPCServer getInstance() {
+    return ConfigNodeRPCServerHolder.INSTANCE;
+  }
+
+  private static class ConfigNodeRPCServerHolder {
+
+    private static final ConfigNodeRPCServer INSTANCE = new ConfigNodeRPCServer();
+
+    private ConfigNodeRPCServerHolder() {
+      // empty constructor
+    }
+  }
 }

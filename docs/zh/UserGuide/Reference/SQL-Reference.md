@@ -354,12 +354,6 @@ Eg: IoTDB > SHOW CHILD PATHS root.ln.wf*
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
-* 为 schema 创建快照
-
-```
-CREATE SNAPSHOT FOR SCHEMA
-```
-
 ## 数据管理语句
 
 * 插入记录语句

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.metadata.idtable;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
@@ -37,7 +38,6 @@ import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -323,7 +323,7 @@ public class IDTableHashmapImpl implements IDTable {
 
   /**
    * check whether a time series is exist if exist, check the type consistency if not exist, call
-   * MManager to create it
+   * SchemaProcessor to create it
    *
    * @return measurement MNode of the time series or null if type is not match
    */
@@ -342,12 +342,13 @@ public class IDTableHashmapImpl implements IDTable {
       System.arraycopy(
           plan.getMeasurementMNodes(), 0, insertPlanMNodeBackup, 0, insertPlanMNodeBackup.length);
       try {
-        IoTDB.metaManager.getSeriesSchemasAndReadLockDevice(plan);
+        IoTDB.schemaProcessor.getSeriesSchemasAndReadLockDevice(plan);
       } catch (IOException e) {
         throw new MetadataException(e);
       }
 
-      // if the timeseries is in template, mmanager will not create timeseries. so we have to put it
+      // if the timeseries is in template, SchemaProcessor will not create timeseries. so we have to
+      // put it
       // in id table here
       for (IMeasurementMNode measurementMNode : plan.getMeasurementMNodes()) {
         if (measurementMNode != null && !deviceEntry.contains(measurementMNode.getName())) {
@@ -372,9 +373,9 @@ public class IDTableHashmapImpl implements IDTable {
       schemaEntry = deviceEntry.getSchemaEntry(measurementName);
     }
 
-    // timeseries is using trigger, we should get trigger from mmanager
+    // timeseries is using trigger, we should get trigger from SchemaProcessor
     if (schemaEntry.isUsingTrigger()) {
-      IMeasurementMNode measurementMNode = IoTDB.metaManager.getMeasurementMNode(seriesKey);
+      IMeasurementMNode measurementMNode = IoTDB.schemaProcessor.getMeasurementMNode(seriesKey);
       return new InsertMeasurementMNode(
           measurementName, schemaEntry, measurementMNode.getTriggerExecutor());
     }

@@ -21,11 +21,29 @@ include "rpc.thrift"
 namespace java org.apache.iotdb.confignode.rpc.thrift
 namespace py iotdb.thrift.confignode
 
-struct SetStorageGroupoReq {
+struct DataNodeRegisterReq {
+    1: required rpc.EndPoint endPoint
+}
+
+struct DataNodeRegisterResp {
+    1: required rpc.TSStatus registerResult
+    2: optional i32 dataNodeID
+}
+
+struct DataNodeMessage {
+  1: required i32 dataNodeID
+  2: required rpc.EndPoint endPoint
+}
+
+struct SetStorageGroupReq {
     1: required string storageGroup
 }
 
 struct DeleteStorageGroupReq {
+    1: required string storageGroup
+}
+
+struct StorageGroupMessage {
     1: required string storageGroup
 }
 
@@ -39,8 +57,8 @@ struct GetSchemaPartitionReq {
 }
 
 struct SchemaPartitionInfo {
-    1: required list<list<i32>> dataNodeIDs
-    2: required list<i32> schemaRegionIDs
+    1: required map<i32, i32> deviceGroupSchemaRegionGroupMap
+    2: required map<i32, list<i32>> SchemaRegionGroupDataNodeMap
 }
 
 struct GetDataPartitionReq {
@@ -49,16 +67,33 @@ struct GetDataPartitionReq {
 }
 
 struct DataPartitionInfo {
-    1: required map<i32, list<list<i32>>> dataNodeIDsMap
-    2: required map<i32, list<i32>> dataRegionIDsMap
+    1: required map<i32, map<i64, list<i32>>> deviceGroupStartTimeDataRegionGroupMap
+    2: required map<i32, list<i32>> dataRegionGroupDataNodeMap
+}
+
+struct DeviceGroupHashInfo {
+    1: required i32 deviceGroupCount
+    2: required string hashClass
 }
 
 service ConfigIService {
-  rpc.TSStatus setStorageGroup(SetStorageGroupoReq req)
+  // Return TSStatusCode.SUCCESS_STATUS and the register DataNode id when successful registered.
+  // Otherwise, return TSStatusCode.INTERNAL_SERVER_ERROR
+  DataNodeRegisterResp registerDataNode(DataNodeRegisterReq req)
+
+  map<i32, DataNodeMessage> getDataNodesMessage(i32 dataNodeID)
+
+  rpc.TSStatus setStorageGroup(SetStorageGroupReq req)
 
   rpc.TSStatus deleteStorageGroup(DeleteStorageGroupReq req)
 
+  map<string, StorageGroupMessage> getStorageGroupsMessage()
+
+  // Gets SchemaRegions for DeviceGroups in a StorageGroup
   SchemaPartitionInfo getSchemaPartition(GetSchemaPartitionReq req)
 
+  // Gets DataRegions for DeviceGroups in a StorageGroup at different starttime
   DataPartitionInfo getDataPartition(GetDataPartitionReq req)
+
+  DeviceGroupHashInfo getDeviceGroupHashInfo()
 }

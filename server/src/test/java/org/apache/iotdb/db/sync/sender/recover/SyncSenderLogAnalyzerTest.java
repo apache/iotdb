@@ -18,11 +18,11 @@
  */
 package org.apache.iotdb.db.sync.sender.recover;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
-import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -84,7 +84,7 @@ public class SyncSenderLogAnalyzerTest {
     Map<String, Map<Long, Map<Long, Set<File>>>> allFileList = new HashMap<>();
 
     for (int i = 0; i < 3; i++) {
-      IoTDB.metaManager.setStorageGroup(new PartialPath(getSgName(i)));
+      IoTDB.schemaProcessor.setStorageGroup(new PartialPath(getSgName(i)));
     }
     Random r = new Random(0);
     for (int i = 0; i < 3; i++) {

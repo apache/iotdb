@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.confignode.conf;
 
+import org.apache.iotdb.consensus.common.ConsensusType;
+import org.apache.iotdb.consensus.common.Endpoint;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,7 +32,6 @@ import java.net.URL;
 import java.util.Properties;
 
 public class ConfigNodeDescriptor {
-
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNodeDescriptor.class);
 
   private final ConfigNodeConf conf = new ConfigNodeConf();
@@ -42,42 +44,44 @@ public class ConfigNodeDescriptor {
     return conf;
   }
 
-  public String getPropsDir() {
-    // Check if CONFIG_NODE_CONF is set
-    String propsDir = System.getProperty(ConfigNodeConstant.CONFIGNODE_CONF, null);
-    if (propsDir == null) {
-      // Check if CONFIG_NODE_HOME is set
-      propsDir = System.getProperty(ConfigNodeConstant.CONFIGNODE_HOME, null);
-      if (propsDir == null) {
-        // When start ConfigNode with script, CONFIG_NODE_CONF and CONFIG_NODE_HOME must be set.
-        // Therefore, this case is TestOnly
-        // TODO: Specify a test dir
-      }
-      propsDir = propsDir + File.separator + ConfigNodeConstant.CONF_DIR;
-    }
-
-    return propsDir;
-  }
-
+  /**
+   * get props url location
+   *
+   * @return url object if location exit, otherwise null.
+   */
   public URL getPropsUrl() {
-    String url = getPropsDir();
-
-    if (url == null) {
-      return null;
+    // Check if a config-directory was specified first.
+    String urlString = System.getProperty(ConfigNodeConstant.CONFIGNODE_CONF, null);
+    // If it wasn't, check if a home directory was provided
+    if (urlString == null) {
+      urlString = System.getProperty(ConfigNodeConstant.CONFIGNODE_HOME, null);
+      if (urlString != null) {
+        urlString =
+            urlString
+                + File.separatorChar
+                + "conf"
+                + File.separatorChar
+                + ConfigNodeConstant.CONF_NAME;
+      } else {
+        // When start ConfigNode with the script, the environment variables CONFIGNODE_CONF
+        // and CONFIGNODE_HOME will be set. But we didn't set these two in developer mode.
+        // Thus, just return null and use default Configuration in developer mode.
+        return null;
+      }
+    }
+    // If a config location was provided, but it doesn't end with a properties file,
+    // append the default location.
+    else if (!urlString.endsWith(".properties")) {
+      urlString += (File.separatorChar + ConfigNodeConstant.CONF_NAME);
     }
 
-    // Add props prefix
-    if (!url.startsWith("file:") && !url.startsWith("classpath:")) {
-      url = "file:" + url;
+    // If the url doesn't start with "file:" or "classpath:", it's provided as a no path.
+    // So we need to add it to make it a real URL.
+    if (!urlString.startsWith("file:") && !urlString.startsWith("classpath:")) {
+      urlString = "file:" + urlString;
     }
-
-    // Add props suffix
-    if (!url.endsWith(".properties")) {
-      url += File.separator + ConfigNodeConstant.CONF_NAME;
-    }
-
     try {
-      return new URL(url);
+      return new URL(urlString);
     } catch (MalformedURLException e) {
       return null;
     }
@@ -107,8 +111,92 @@ public class ConfigNodeDescriptor {
           properties.getProperty(
               "device_group_hash_executor_class", conf.getDeviceGroupHashExecutorClass()));
 
+      conf.setRpcAddress(properties.getProperty("config_node_rpc_address", conf.getRpcAddress()));
+
+      conf.setRpcPort(
+          Integer.parseInt(
+              properties.getProperty("config_node_rpc_port", String.valueOf(conf.getRpcPort()))));
+
+      conf.setInternalPort(
+          Integer.parseInt(
+              properties.getProperty(
+                  "config_node_internal_port", String.valueOf(conf.getInternalPort()))));
+
+      conf.setConsensusType(
+          ConsensusType.getConsensusType(
+              properties.getProperty("consensus_type", String.valueOf(conf.getConsensusType()))));
+
+      conf.setRpcAdvancedCompressionEnable(
+          Boolean.parseBoolean(
+              properties.getProperty(
+                  "rpc_advanced_compression_enable",
+                  String.valueOf(conf.isRpcAdvancedCompressionEnable()))));
+
+      conf.setRpcThriftCompressionEnabled(
+          Boolean.parseBoolean(
+              properties.getProperty(
+                  "rpc_thrift_compression_enable",
+                  String.valueOf(conf.isRpcThriftCompressionEnabled()))));
+
+      conf.setRpcMaxConcurrentClientNum(
+          Integer.parseInt(
+              properties.getProperty(
+                  "rpc_max_concurrent_client_num",
+                  String.valueOf(conf.getRpcMaxConcurrentClientNum()))));
+
+      conf.setThriftDefaultBufferSize(
+          Integer.parseInt(
+              properties.getProperty(
+                  "thrift_init_buffer_size", String.valueOf(conf.getThriftDefaultBufferSize()))));
+
+      conf.setThriftMaxFrameSize(
+          Integer.parseInt(
+              properties.getProperty(
+                  "thrift_max_frame_size", String.valueOf(conf.getThriftMaxFrameSize()))));
+
+      conf.setSystemDir(properties.getProperty("system_dir", conf.getSystemDir()));
+
+      conf.setDataDirs(properties.getProperty("data_dirs", conf.getDataDirs()[0]).split(","));
+
+      conf.setConsensusDir(properties.getProperty("consensus_dir", conf.getConsensusDir()));
+
+      conf.setRegionReplicaCount(
+          Integer.parseInt(
+              properties.getProperty(
+                  "region_replica_count", String.valueOf(conf.getRegionReplicaCount()))));
+
+      conf.setSchemaRegionCount(
+          Integer.parseInt(
+              properties.getProperty(
+                  "schema_region_count", String.valueOf(conf.getSchemaRegionCount()))));
+
+      conf.setDataRegionCount(
+          Integer.parseInt(
+              properties.getProperty(
+                  "data_region_count", String.valueOf(conf.getDataRegionCount()))));
+
+      String addresses = properties.getProperty("config_node_group_address_list", null);
+      if (addresses != null) {
+        String[] addressList = addresses.split(",");
+        Endpoint[] endpointList = new Endpoint[addressList.length];
+        for (int i = 0; i < addressList.length; i++) {
+          String[] ipPort = addressList[i].split(":");
+          if (ipPort.length != 2) {
+            throw new IOException(
+                String.format(
+                    "Parsing parameter config_node_group_address_list error. "
+                        + "The %d-th address must format to ip:port, but currently is %s",
+                    i, addressList[i]));
+          }
+          endpointList[i] = new Endpoint(ipPort[0], Integer.parseInt(ipPort[1]));
+        }
+        conf.setConfigNodeGroupAddressList(endpointList);
+      }
+
     } catch (IOException e) {
       LOGGER.warn("Couldn't load ConfigNode conf file, use default config", e);
+    } finally {
+      conf.updatePath();
     }
   }
 

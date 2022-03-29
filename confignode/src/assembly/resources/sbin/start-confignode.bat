@@ -59,6 +59,7 @@ if NOT DEFINED CONFIGNODE_HOME set CONFIGNODE_HOME=%cd%
 popd
 
 set CONFIGNODE_CONF=%CONFIGNODE_HOME%\conf
+set CONFIGNODE_LOGS=%CONFIGNODE_HOME%\logs
 
 @setlocal ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
 set is_conf_path=false
@@ -68,8 +69,6 @@ for %%i in (%*) do (
 	) ELSE IF "!is_conf_path!" == "true" (
 		set is_conf_path=false
 		set CONFIGNODE_CONF=%%i
-	) ELSE (
-		set CONF_PARAMS=!CONF_PARAMS! %%i
 	)
 )
 
@@ -79,12 +78,14 @@ IF EXIST "%CONFIGNODE_CONF%\confignode-env.bat" (
     echo "can't find %CONFIGNODE_CONF%\confignode-env.bat"
     )
 
+set CONF_PARAMS=-s
 if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.confignode.service.ConfigNode
 if NOT DEFINED JAVA_HOME goto :err
 
 @REM -----------------------------------------------------------------------------
 @REM JVM Opts we'll use in legacy run or installation
 set JAVA_OPTS=-ea^
+ -Dlogback.configurationFile="%CONFIGNODE_CONF%\logback.xml"^
  -DCONFIGNODE_HOME="%CONFIGNODE_HOME%"^
  -DCONFIGNODE_CONF="%CONFIGNODE_CONF%"^
  -Dsun.jnu.encoding=UTF-8^

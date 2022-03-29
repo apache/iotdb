@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.engine.cq;
 
-import org.apache.iotdb.db.concurrent.WrappedRunnable;
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.concurrent.WrappedRunnable;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.selectinto.InsertTabletPlansIterator;
 import org.apache.iotdb.db.exception.ContinuousQueryException;
 import org.apache.iotdb.db.exception.StorageEngineException;

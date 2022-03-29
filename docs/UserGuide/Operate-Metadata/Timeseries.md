@@ -64,7 +64,7 @@ IoTDB> CREATE ALIGNED TIMESERIES root.ln.wf01.GPS(latitude FLOAT encoding=PLAIN 
 
 You can set different datatype, encoding, and compression for the timeseries in a group of aligned timeseries
 
-It is not currently supported to set an alias, tag, and attribute for aligned timeseries.
+It is also supported to set an alias, tag, and attribute for aligned timeseries.
 
 ## Delete Timeseries
 

@@ -126,7 +126,7 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
     if (new File(UNSEQ_DIRS).exists()) {
       FileUtils.forceDelete(new File(UNSEQ_DIRS));
     }
-    IoTDB.metaManager.clear();
+    IoTDB.configManager.clear();
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
     EnvironmentUtils.cleanEnv();
@@ -141,10 +141,10 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
     for (int i = 0; i < devices.length; ++i) {
       devicePath[i] = new PartialPath(storageGroup + "." + devices[i]);
     }
-    IoTDB.metaManager.setStorageGroup(new PartialPath(storageGroup));
+    IoTDB.schemaProcessor.setStorageGroup(new PartialPath(storageGroup));
     for (PartialPath device : devicePath) {
       for (MeasurementSchema schema : schemas) {
-        IoTDB.metaManager.createTimeseries(
+        IoTDB.schemaProcessor.createTimeseries(
             device.concatNode(schema.getMeasurementId()),
             schema.getType(),
             schema.getEncodingType(),

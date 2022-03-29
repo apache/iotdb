@@ -25,13 +25,15 @@ import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 
+import java.io.IOException;
 import java.util.List;
 
 /** Consensus module base class. Each method should be thread-safe */
 public interface IConsensus {
-  void start();
 
-  void stop();
+  void start() throws IOException;
+
+  void stop() throws IOException;
 
   // write API
   ConsensusWriteResponse write(ConsensusGroupId groupId, IConsensusRequest IConsensusRequest);
