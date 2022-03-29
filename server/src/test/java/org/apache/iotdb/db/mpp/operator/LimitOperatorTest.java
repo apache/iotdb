@@ -133,7 +133,6 @@ public class LimitOperatorTest {
           new LimitOperator(
               fragmentInstanceContext.getOperatorContexts().get(3), 250, timeJoinOperator);
       int count = 0;
-      System.out.println("Time\tsensor0\tsensor1");
       while (limitOperator.hasNext()) {
         TsBlock tsBlock = limitOperator.next();
         assertEquals(2, tsBlock.getValueColumnCount());
@@ -146,12 +145,6 @@ public class LimitOperatorTest {
         }
         for (int i = 0; i < tsBlock.getPositionCount(); i++) {
           long expectedTime = i + 20L * count;
-          System.out.println(
-              expectedTime
-                  + " \t "
-                  + tsBlock.getColumn(0).getInt(i)
-                  + " \t "
-                  + tsBlock.getColumn(1).getInt(i));
           assertEquals(expectedTime, tsBlock.getTimeByIndex(i));
           if (expectedTime < 200) {
             assertEquals(20000 + expectedTime, tsBlock.getColumn(0).getInt(i));
