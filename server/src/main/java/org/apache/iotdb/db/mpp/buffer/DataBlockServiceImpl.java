@@ -21,7 +21,7 @@ package org.apache.iotdb.db.mpp.buffer;
 
 import org.apache.iotdb.mpp.rpc.thrift.DataBlockService;
 import org.apache.iotdb.mpp.rpc.thrift.EndOfDataBlockEvent;
-import org.apache.iotdb.mpp.rpc.thrift.GetDataBlockReqest;
+import org.apache.iotdb.mpp.rpc.thrift.GetDataBlockRequest;
 import org.apache.iotdb.mpp.rpc.thrift.GetDataBlockResponse;
 import org.apache.iotdb.mpp.rpc.thrift.NewDataBlockEvent;
 
@@ -34,7 +34,7 @@ public class DataBlockServiceImpl implements DataBlockService.Iface {
   }
 
   @Override
-  public GetDataBlockResponse getDataBlock(GetDataBlockReqest req) throws TException {
+  public GetDataBlockResponse getDataBlock(GetDataBlockRequest req) throws TException {
     throw new UnsupportedOperationException();
   }
 

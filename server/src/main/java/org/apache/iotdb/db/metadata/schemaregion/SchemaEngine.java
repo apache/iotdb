@@ -29,20 +29,20 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 // manage all the schemaRegion in this dataNode
-public class SchemaRegionManager {
+public class SchemaEngine {
 
   private Map<SchemaRegionId, SchemaRegion> schemaRegionMap;
 
-  private static class SchemaRegionManagerHolder {
-    private static final SchemaRegionManager INSTANCE = new SchemaRegionManager();
+  private static class SchemaEngineManagerHolder {
+    private static final SchemaEngine INSTANCE = new SchemaEngine();
 
-    private SchemaRegionManagerHolder() {}
+    private SchemaEngineManagerHolder() {}
   }
 
-  private SchemaRegionManager() {}
+  private SchemaEngine() {}
 
-  public static SchemaRegionManager getInstance() {
-    return SchemaRegionManagerHolder.INSTANCE;
+  public static SchemaEngine getInstance() {
+    return SchemaEngineManagerHolder.INSTANCE;
   }
 
   public void init() {

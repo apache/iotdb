@@ -43,87 +43,87 @@ import java.util.List;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-public class SchemaEngineAdvancedTest {
+public class SchemaAdvancedTest {
 
-  private static SchemaEngine schemaEngine = null;
+  private static LocalSchemaProcessor schemaProcessor = null;
 
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
-    schemaEngine = IoTDB.schemaEngine;
+    schemaProcessor = IoTDB.schemaProcessor;
 
-    schemaEngine.setStorageGroup(new PartialPath("root.vehicle.d0"));
-    schemaEngine.setStorageGroup(new PartialPath("root.vehicle.d1"));
-    schemaEngine.setStorageGroup(new PartialPath("root.vehicle.d2"));
+    schemaProcessor.setStorageGroup(new PartialPath("root.vehicle.d0"));
+    schemaProcessor.setStorageGroup(new PartialPath("root.vehicle.d1"));
+    schemaProcessor.setStorageGroup(new PartialPath("root.vehicle.d2"));
 
-    schemaEngine.createTimeseries(
+    schemaProcessor.createTimeseries(
         new PartialPath("root.vehicle.d0.s0"),
         TSDataType.INT32,
         TSEncoding.RLE,
         TSFileDescriptor.getInstance().getConfig().getCompressor(),
         Collections.emptyMap());
-    schemaEngine.createTimeseries(
+    schemaProcessor.createTimeseries(
         new PartialPath("root.vehicle.d0.s1"),
         TSDataType.INT64,
         TSEncoding.RLE,
         TSFileDescriptor.getInstance().getConfig().getCompressor(),
         Collections.emptyMap());
-    schemaEngine.createTimeseries(
+    schemaProcessor.createTimeseries(
         new PartialPath("root.vehicle.d0.s2"),
         TSDataType.FLOAT,
         TSEncoding.RLE,
         TSFileDescriptor.getInstance().getConfig().getCompressor(),
         Collections.emptyMap());
-    schemaEngine.createTimeseries(
+    schemaProcessor.createTimeseries(
         new PartialPath("root.vehicle.d0.s3"),
         TSDataType.DOUBLE,
         TSEncoding.RLE,
         TSFileDescriptor.getInstance().getConfig().getCompressor(),
         Collections.emptyMap());
-    schemaEngine.createTimeseries(
+    schemaProcessor.createTimeseries(
         new PartialPath("root.vehicle.d0.s4"),
         TSDataType.BOOLEAN,
         TSEncoding.PLAIN,
         TSFileDescriptor.getInstance().getConfig().getCompressor(),
         Collections.emptyMap());
-    schemaEngine.createTimeseries(
+    schemaProcessor.createTimeseries(
         new PartialPath("root.vehicle.d0.s5"),
         TSDataType.TEXT,
         TSEncoding.PLAIN,
         TSFileDescriptor.getInstance().getConfig().getCompressor(),
         Collections.emptyMap());
 
-    schemaEngine.createTimeseries(
+    schemaProcessor.createTimeseries(
         new PartialPath("root.vehicle.d1.s0"),
         TSDataType.INT32,
         TSEncoding.RLE,
         TSFileDescriptor.getInstance().getConfig().getCompressor(),
         Collections.emptyMap());
-    schemaEngine.createTimeseries(
+    schemaProcessor.createTimeseries(
         new PartialPath("root.vehicle.d1.s1"),
         TSDataType.INT64,
         TSEncoding.RLE,
         TSFileDescriptor.getInstance().getConfig().getCompressor(),
         Collections.emptyMap());
-    schemaEngine.createTimeseries(
+    schemaProcessor.createTimeseries(
         new PartialPath("root.vehicle.d1.s2"),
         TSDataType.FLOAT,
         TSEncoding.RLE,
         TSFileDescriptor.getInstance().getConfig().getCompressor(),
         Collections.emptyMap());
-    schemaEngine.createTimeseries(
+    schemaProcessor.createTimeseries(
         new PartialPath("root.vehicle.d1.s3"),
         TSDataType.DOUBLE,
         TSEncoding.RLE,
         TSFileDescriptor.getInstance().getConfig().getCompressor(),
         Collections.emptyMap());
-    schemaEngine.createTimeseries(
+    schemaProcessor.createTimeseries(
         new PartialPath("root.vehicle.d1.s4"),
         TSDataType.BOOLEAN,
         TSEncoding.PLAIN,
         TSFileDescriptor.getInstance().getConfig().getCompressor(),
         Collections.emptyMap());
-    schemaEngine.createTimeseries(
+    schemaProcessor.createTimeseries(
         new PartialPath("root.vehicle.d1.s5"),
         TSDataType.TEXT,
         TSEncoding.PLAIN,
@@ -141,7 +141,7 @@ public class SchemaEngineAdvancedTest {
 
     try {
       // test file name
-      List<PartialPath> fileNames = schemaEngine.getAllStorageGroupPaths();
+      List<PartialPath> fileNames = schemaProcessor.getAllStorageGroupPaths();
       assertEquals(3, fileNames.size());
       if (fileNames.get(0).equals(new PartialPath("root.vehicle.d0"))) {
         assertEquals(new PartialPath("root.vehicle.d1"), fileNames.get(1));
@@ -151,19 +151,19 @@ public class SchemaEngineAdvancedTest {
       // test filename by seriesPath
       assertEquals(
           new PartialPath("root.vehicle.d0"),
-          schemaEngine.getBelongedStorageGroup(new PartialPath("root.vehicle.d0.s1")));
+          schemaProcessor.getBelongedStorageGroup(new PartialPath("root.vehicle.d0.s1")));
       List<MeasurementPath> pathList =
-          schemaEngine.getMeasurementPaths(new PartialPath("root.vehicle.d1.**"));
+          schemaProcessor.getMeasurementPaths(new PartialPath("root.vehicle.d1.**"));
       assertEquals(6, pathList.size());
-      pathList = schemaEngine.getMeasurementPaths(new PartialPath("root.vehicle.d0.**"));
+      pathList = schemaProcessor.getMeasurementPaths(new PartialPath("root.vehicle.d0.**"));
       assertEquals(6, pathList.size());
-      pathList = schemaEngine.getMeasurementPaths(new PartialPath("root.vehicle.d*.**"));
+      pathList = schemaProcessor.getMeasurementPaths(new PartialPath("root.vehicle.d*.**"));
       assertEquals(12, pathList.size());
-      pathList = schemaEngine.getMeasurementPaths(new PartialPath("root.ve*.**"));
+      pathList = schemaProcessor.getMeasurementPaths(new PartialPath("root.ve*.**"));
       assertEquals(12, pathList.size());
-      pathList = schemaEngine.getMeasurementPaths(new PartialPath("root.vehicle*.d*.s1"));
+      pathList = schemaProcessor.getMeasurementPaths(new PartialPath("root.vehicle*.d*.s1"));
       assertEquals(2, pathList.size());
-      pathList = schemaEngine.getMeasurementPaths(new PartialPath("root.vehicle.d2.**"));
+      pathList = schemaProcessor.getMeasurementPaths(new PartialPath("root.vehicle.d2.**"));
       assertEquals(0, pathList.size());
     } catch (MetadataException e) {
       e.printStackTrace();
@@ -173,41 +173,41 @@ public class SchemaEngineAdvancedTest {
 
   @Test
   public void testCache() throws MetadataException {
-    schemaEngine.createTimeseries(
+    schemaProcessor.createTimeseries(
         new PartialPath("root.vehicle.d2.s0"),
         TSDataType.DOUBLE,
         TSEncoding.RLE,
         TSFileDescriptor.getInstance().getConfig().getCompressor(),
         Collections.emptyMap());
-    schemaEngine.createTimeseries(
+    schemaProcessor.createTimeseries(
         new PartialPath("root.vehicle.d2.s1"),
         TSDataType.BOOLEAN,
         TSEncoding.PLAIN,
         TSFileDescriptor.getInstance().getConfig().getCompressor(),
         Collections.emptyMap());
-    schemaEngine.createTimeseries(
+    schemaProcessor.createTimeseries(
         new PartialPath("root.vehicle.d2.s2.g0"),
         TSDataType.TEXT,
         TSEncoding.PLAIN,
         TSFileDescriptor.getInstance().getConfig().getCompressor(),
         Collections.emptyMap());
-    schemaEngine.createTimeseries(
+    schemaProcessor.createTimeseries(
         new PartialPath("root.vehicle.d2.s3"),
         TSDataType.TEXT,
         TSEncoding.PLAIN,
         TSFileDescriptor.getInstance().getConfig().getCompressor(),
         Collections.emptyMap());
 
-    IMNode node = schemaEngine.getDeviceNode(new PartialPath("root.vehicle.d0"));
+    IMNode node = schemaProcessor.getDeviceNode(new PartialPath("root.vehicle.d0"));
     Assert.assertEquals(
         TSDataType.INT32, node.getChild("s0").getAsMeasurementMNode().getSchema().getType());
 
-    Assert.assertFalse(schemaEngine.isPathExist(new PartialPath("root.vehicle.d100")));
+    Assert.assertFalse(schemaProcessor.isPathExist(new PartialPath("root.vehicle.d100")));
   }
 
   @Test
   public void testCachedLastTimeValue() throws MetadataException {
-    schemaEngine.createTimeseries(
+    schemaProcessor.createTimeseries(
         new PartialPath("root.vehicle.d2.s0"),
         TSDataType.DOUBLE,
         TSEncoding.RLE,
@@ -218,11 +218,11 @@ public class SchemaEngineAdvancedTest {
     TimeValuePair tv2 = new TimeValuePair(2000, TsPrimitiveType.getByType(TSDataType.DOUBLE, 3.0));
     TimeValuePair tv3 = new TimeValuePair(1500, TsPrimitiveType.getByType(TSDataType.DOUBLE, 2.5));
     PartialPath path = new PartialPath("root.vehicle.d2.s0");
-    IMeasurementMNode node = schemaEngine.getMeasurementMNode(path);
+    IMeasurementMNode node = schemaProcessor.getMeasurementMNode(path);
     LastCacheManager.updateLastCache(node, tv1, true, Long.MIN_VALUE);
     LastCacheManager.updateLastCache(node, tv2, true, Long.MIN_VALUE);
-    Assert.assertEquals(tv2.getTimestamp(), schemaEngine.getLastCache(node).getTimestamp());
+    Assert.assertEquals(tv2.getTimestamp(), schemaProcessor.getLastCache(node).getTimestamp());
     LastCacheManager.updateLastCache(node, tv3, true, Long.MIN_VALUE);
-    Assert.assertEquals(tv2.getTimestamp(), schemaEngine.getLastCache(node).getTimestamp());
+    Assert.assertEquals(tv2.getTimestamp(), schemaProcessor.getLastCache(node).getTimestamp());
   }
 }

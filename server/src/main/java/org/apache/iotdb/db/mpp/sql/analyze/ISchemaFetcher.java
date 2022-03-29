@@ -19,21 +19,13 @@
 
 package org.apache.iotdb.db.mpp.sql.analyze;
 
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-
-import java.util.List;
-import java.util.Map;
 
 /**
  * This interface is used to fetch the metadata information required in execution plan generating.
  */
 public interface ISchemaFetcher {
-
-  @Deprecated // TODO: will be replaced later
-  Map<String, MeasurementSchema> fetchSchema(PartialPath deviceId, List<String> measurementIdList);
 
   SchemaTree fetchSchema(PathPatternTree patternTree);
 

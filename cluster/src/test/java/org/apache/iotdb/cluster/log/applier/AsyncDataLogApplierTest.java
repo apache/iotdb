@@ -54,7 +54,7 @@ public class AsyncDataLogApplierTest {
     appliedLogs = new ConcurrentSkipListSet<>();
     IoTDB.configManager.init();
     for (int i = 0; i < 10; i++) {
-      IoTDB.schemaEngine.setStorageGroup(new PartialPath(TestUtils.getTestSg(i)));
+      IoTDB.schemaProcessor.setStorageGroup(new PartialPath(TestUtils.getTestSg(i)));
     }
   }
 

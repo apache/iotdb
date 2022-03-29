@@ -99,7 +99,7 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARA
  * <p>The codes are divided into the following code regions:
  *
  * <ol>
- *   <li>SchemaEngine Singleton
+ *   <li>SchemaProcessor Singleton
  *   <li>Interfaces and Implementation of Operating PhysicalPlans of Metadata
  *   <li>Interfaces and Implementation for Timeseries operation
  *   <li>Interfaces and Implementation for StorageGroup and TTL operation
@@ -121,30 +121,30 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARA
  * </ol>
  */
 @SuppressWarnings("java:S1135") // ignore todos
-public class SchemaEngine {
+public class LocalSchemaProcessor {
 
-  private static final Logger logger = LoggerFactory.getLogger(SchemaEngine.class);
+  private static final Logger logger = LoggerFactory.getLogger(LocalSchemaProcessor.class);
 
   protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private LocalConfigManager configManager = LocalConfigManager.getInstance();
 
-  // region SchemaEngine Singleton
-  private static class SchemaEngineHolder {
+  // region SchemaProcessor Singleton
+  private static class LocalSchemaProcessorHolder {
 
-    private SchemaEngineHolder() {
+    private LocalSchemaProcessorHolder() {
       // allowed to do nothing
     }
 
-    private static final SchemaEngine INSTANCE = new SchemaEngine();
+    private static final LocalSchemaProcessor INSTANCE = new LocalSchemaProcessor();
   }
 
   /** we should not use this function in other place, but only in IoTDB class */
-  public static SchemaEngine getInstance() {
-    return SchemaEngineHolder.INSTANCE;
+  public static LocalSchemaProcessor getInstance() {
+    return LocalSchemaProcessorHolder.INSTANCE;
   }
 
-  protected SchemaEngine() {}
+  protected LocalSchemaProcessor() {}
   // endregion
 
   // region methods in this region is only used for local schemaRegion management.
@@ -1128,8 +1128,8 @@ public class SchemaEngine {
   /**
    * Update the last cache value of time series of given seriesPath.
    *
-   * <p>SchemaEngine will use the seriesPath to search the node first and then process the lastCache
-   * in the MeasurementMNode
+   * <p>SchemaProcessor will use the seriesPath to search the node first and then process the
+   * lastCache in the MeasurementMNode
    *
    * <p>Invoking scenario: (1) after executing insertPlan (2) after reading last value from file
    * during last Query
@@ -1175,7 +1175,7 @@ public class SchemaEngine {
   }
 
   /**
-   * Get the last cache value of time series of given seriesPath. SchemaEngine will use the
+   * Get the last cache value of time series of given seriesPath. SchemaProcessor will use the
    * seriesPath to search the node.
    *
    * <p>Invoking scenario: last cache read during last Query
@@ -1208,7 +1208,7 @@ public class SchemaEngine {
   }
 
   /**
-   * Reset the last cache value of time series of given seriesPath. SchemaEngine will use the
+   * Reset the last cache value of time series of given seriesPath. SchemaProcessor will use the
    * seriesPath to search the node.
    *
    * @param seriesPath the PartialPath of full path from root to Measurement
@@ -1371,7 +1371,7 @@ public class SchemaEngine {
   }
 
   /**
-   * To reduce the String number in memory, use the deviceId from SchemaEngine instead of the
+   * To reduce the String number in memory, use the deviceId from SchemaProcessor instead of the
    * deviceId read from disk
    *
    * @param devicePath read from disk
@@ -1384,7 +1384,7 @@ public class SchemaEngine {
       IMNode deviceNode = getDeviceNode(devicePath);
       device = deviceNode.getFullPath();
     } catch (MetadataException | NullPointerException e) {
-      // Cannot get deviceId from SchemaEngine, return the input deviceId
+      // Cannot get deviceId from SchemaProcessor, return the input deviceId
     }
     return device;
   }
