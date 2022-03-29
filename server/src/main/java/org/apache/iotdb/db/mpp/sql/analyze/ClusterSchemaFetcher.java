@@ -27,4 +27,9 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
   public SchemaTree fetchSchema(PathPatternTree patternTree) {
     return null;
   }
+
+  @Override
+  public SchemaTree fetchSchemaWithAutoCreate(PathPatternTree patternTree) {
+    return null;
+  }
 }

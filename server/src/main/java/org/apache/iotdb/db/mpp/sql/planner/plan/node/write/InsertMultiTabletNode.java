@@ -37,6 +37,11 @@ public class InsertMultiTabletNode extends InsertNode {
   }
 
   @Override
+  public boolean needSplit() {
+    return false;
+  }
+
+  @Override
   public List<PlanNode> getChildren() {
     return null;
   }

@@ -44,7 +44,7 @@ import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesSta
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.query.expression.Expression;
 
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /** Generate a logical plan for the statement. */
