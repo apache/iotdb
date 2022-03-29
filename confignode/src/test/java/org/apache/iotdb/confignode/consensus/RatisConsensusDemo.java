@@ -27,7 +27,6 @@ import org.apache.iotdb.confignode.rpc.thrift.StorageGroupMessage;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -55,15 +54,18 @@ public class RatisConsensusDemo {
    * ConfigNode by yourself 5. Add @Test 6. run ratisConsensusRegisterDemo 7. run
    * ratisConsensusQueryDemo
    */
-  public void ratisConsensusRegisterDemo() throws TException, InterruptedException {
+  public void ratisConsensusSetStorageGroupsDemo() throws TException, InterruptedException {
     createClients();
-    registerDataNodes();
     setStorageGroups();
   }
 
-  public void ratisConsensusQueryDemo() throws TException, InterruptedException {
+  public void ratisConsensusQueryDataNodesDemo() throws TException, InterruptedException {
     createClients();
     queryDataNodes();
+  }
+
+  public void ratisConsensusQueryStorageGroupsDemo() throws TException, InterruptedException {
+    createClients();
     queryStorageGroups();
   }
 
@@ -102,13 +104,6 @@ public class RatisConsensusDemo {
     // DataNodes can connect to any ConfigNode and send read requests
     for (int i = 0; i < 3; i++) {
       Map<Integer, DataNodeMessage> msgMap = clients[i].getDataNodesMessage(-1);
-      Assert.assertEquals(10, msgMap.size());
-      for (int j = 0; j < 10; j++) {
-        Assert.assertNotNull(msgMap.get(j));
-        Assert.assertEquals(j, msgMap.get(j).getDataNodeID());
-        Assert.assertEquals(localhost, msgMap.get(j).getEndPoint().getIp());
-        Assert.assertEquals(6667 + j, msgMap.get(j).getEndPoint().getPort());
-      }
       System.out.printf(
           "\nQuery DataNode message from ConfigNode 0.0.0.0:%d. Result: %s\n",
           22277 + i * 2, msgMap);
@@ -118,10 +113,8 @@ public class RatisConsensusDemo {
   private void setStorageGroups() throws TException, InterruptedException {
     for (int i = 0; i < 10; i++) {
       SetStorageGroupReq req = new SetStorageGroupReq("root.sg" + i);
-      TSStatus status = clients[0].setStorageGroup(req);
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      clients[0].setStorageGroup(req);
       System.out.printf("\nSet StorageGroup successful. StorageGroup: %s\n", "root.sg" + i);
-
       TimeUnit.SECONDS.sleep(1);
     }
   }
@@ -132,11 +125,6 @@ public class RatisConsensusDemo {
 
     for (int i = 0; i < 3; i++) {
       Map<String, StorageGroupMessage> msgMap = clients[i].getStorageGroupsMessage();
-      Assert.assertEquals(10, msgMap.size());
-      for (int j = 0; j < 10; j++) {
-        Assert.assertNotNull(msgMap.get("root.sg" + j));
-        Assert.assertEquals("root.sg" + j, msgMap.get("root.sg" + j).getStorageGroup());
-      }
       System.out.printf(
           "\nQuery StorageGroup message from ConfigNode 0.0.0.0:%d. Result: %s\n",
           22277 + i * 2, msgMap);
