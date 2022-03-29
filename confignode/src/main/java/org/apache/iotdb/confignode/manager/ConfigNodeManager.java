@@ -30,14 +30,18 @@ import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
+/** Entry of all management classes */
 public class ConfigNodeManager implements Manager {
   private static final TSStatus ERROR_TSSTATUS =
       new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
 
+  /** manage data node */
   private final DataNodeInfoManager dataNodeInfoManager;
 
+  /** manage assign data partition and schema partition */
   private final AssignPartitionManager assignPartitionManager;
 
+  /** manager assign schema region and data region */
   private final AssignRegionManager assignRegionManager;
 
   public ConfigNodeManager() {

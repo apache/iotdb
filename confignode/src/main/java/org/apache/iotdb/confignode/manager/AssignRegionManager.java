@@ -45,7 +45,9 @@ public class AssignRegionManager {
   private static final int schemaRegionCount = conf.getSchemaRegionCount();
   private static final int dataRegionCount = conf.getDataRegionCount();
 
+  /** partition read write lock */
   private final ReentrantReadWriteLock partitionReadWriteLock;
+
   // TODO: Serialize and Deserialize
   private final Map<String, StorageGroupSchema> storageGroupsMap;
 

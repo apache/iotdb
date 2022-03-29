@@ -41,4 +41,16 @@ public class SchemaRegionReplicaSet {
   public void setEndPointList(List<Endpoint> endPointList) {
     this.endPointList = endPointList;
   }
+
+  @Override
+  public String toString() {
+    final StringBuilder sb = new StringBuilder("SchemaRegionReplicaSet {");
+    sb.append("schemaRegionId = ").append(schemaRegionId);
+    endPointList.forEach(
+        endpoint -> {
+          sb.append(", EndPoint = ").append(endpoint);
+        });
+    sb.append("}");
+    return sb.toString();
+  }
 }

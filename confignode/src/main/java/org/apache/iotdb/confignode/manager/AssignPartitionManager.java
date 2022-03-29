@@ -27,12 +27,17 @@ import org.apache.iotdb.confignode.physical.sys.DataPartitionPlan;
 import org.apache.iotdb.confignode.physical.sys.SchemaPartitionPlan;
 import org.apache.iotdb.consensus.common.DataSet;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /** manage data partition and schema partition */
 public class AssignPartitionManager {
+  private static final Logger LOGGER = LoggerFactory.getLogger(AssignPartitionManager.class);
+
   /** schema partition read write lock */
   private final ReentrantReadWriteLock schemaPartitionReadWriteLock;
 
@@ -53,10 +58,6 @@ public class AssignPartitionManager {
     this.configNodeManager = configNodeManager;
     this.schemaPartition = new SchemaPartitionInfo();
     this.dataPartition = new DataPartitionInfo();
-  }
-
-  public DataSet getDataPartition(DataPartitionPlan physicalPlan) {
-    return null;
   }
 
   /**
@@ -111,8 +112,8 @@ public class AssignPartitionManager {
   /**
    * TODO: allocate schema partition by balancer
    *
-   * @param storageGroup
-   * @param deviceGroupIDs
+   * @param storageGroup storage group
+   * @param deviceGroupIDs device group id list
    */
   private void allocateSchemaPartition(String storageGroup, List<Integer> deviceGroupIDs) {
     List<SchemaRegionReplicaSet> schemaRegionEndPoints =
@@ -123,16 +124,21 @@ public class AssignPartitionManager {
           schemaRegionEndPoints.get(random.nextInt(schemaRegionEndPoints.size()));
       schemaPartition.setSchemaRegionReplicaSet(
           storageGroup, deviceGroupIDs.get(i), schemaRegionReplicaSet);
+      LOGGER.info("Allocate schema partition to {}.", schemaRegionReplicaSet);
     }
   }
 
   /**
    * TODO:allocate schema partition by balancer
    *
-   * @param physicalPlan
-   * @return
+   * @param physicalPlan physical plan
+   * @return data set
    */
   public DataSet applyDataPartition(DataPartitionPlan physicalPlan) {
+    return null;
+  }
+
+  public DataSet getDataPartition(DataPartitionPlan physicalPlan) {
     return null;
   }
 }

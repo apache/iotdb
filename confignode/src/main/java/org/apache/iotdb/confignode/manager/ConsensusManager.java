@@ -46,15 +46,13 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-/**
- * ConsensusManager maintains consistency between PartitionTables in the ConfigNodeGroup. Expose the
- * query interface for the PartitionTable
- */
+/** ConsensusManager maintains consensus class, request will redirect to consensus layer */
 public class ConsensusManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(ConsensusManager.class);
   private static final ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();
 
   private IConsensus consensusImpl;
+
   private ConsensusGroupId consensusGroupId;
 
   private DeviceGroupHashExecutor hashExecutor;

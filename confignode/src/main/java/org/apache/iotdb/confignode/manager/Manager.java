@@ -35,23 +35,80 @@ public interface Manager {
    */
   public boolean isStopped();
 
+  /**
+   * register data node
+   *
+   * @param physicalPlan physical plan
+   * @return status
+   */
   public TSStatus registerDataNode(PhysicalPlan physicalPlan);
 
+  /**
+   * get data node info
+   *
+   * @param physicalPlan physical plan
+   * @return data set
+   */
   DataSet getDataNodeInfo(PhysicalPlan physicalPlan);
 
+  /**
+   * get storage group schema
+   *
+   * @return data set
+   */
   DataSet getStorageGroupSchema();
 
+  /**
+   * set storage group
+   *
+   * @param physicalPlan physical plan
+   * @return status
+   */
   TSStatus setStorageGroup(PhysicalPlan physicalPlan);
 
+  /**
+   * get data node info manager
+   *
+   * @return DataNodeInfoManager instance
+   */
   DataNodeInfoManager getDataNodeInfoManager();
 
+  /**
+   * get data partition
+   *
+   * @param physicalPlan physical plan
+   * @return data set
+   */
   DataSet getDataPartition(PhysicalPlan physicalPlan);
 
+  /**
+   * get schema partition
+   *
+   * @param physicalPlan physical plan
+   * @return data set
+   */
   DataSet getSchemaPartition(PhysicalPlan physicalPlan);
 
+  /**
+   * get assign region manager
+   *
+   * @return AssignRegionManager instance
+   */
   AssignRegionManager getAssignRegionManager();
 
+  /**
+   * apply schema partition
+   *
+   * @param physicalPlan physical plan
+   * @return data set
+   */
   DataSet applySchemaPartition(PhysicalPlan physicalPlan);
 
-  DataSet applyDataPartition(PhysicalPlan plan);
+  /**
+   * apply data partition
+   *
+   * @param physicalPlan physical plan
+   * @return data set
+   */
+  DataSet applyDataPartition(PhysicalPlan physicalPlan);
 }
