@@ -24,12 +24,12 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import java.nio.ByteBuffer;
 
 public class TsBlockSerde {
-  ByteBuffer serialized(TsBlock tsBlock) {
+  public ByteBuffer serialized(TsBlock tsBlock) {
     // TODO: implement
     return null;
   }
 
-  TsBlock deserialize(ByteBuffer buffer) {
+  public TsBlock deserialize(ByteBuffer buffer) {
     // TODO: implement
     return null;
   }
