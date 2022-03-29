@@ -60,6 +60,12 @@ public class DeviceMergeNode extends ProcessNode {
 
   public DeviceMergeNode(PlanNodeId id) {
     super(id);
+    this.children = new ArrayList<>();
+  }
+
+  public DeviceMergeNode(PlanNodeId id, OrderBy mergeOrder) {
+    this(id);
+    this.mergeOrder = mergeOrder;
   }
 
   @Override
@@ -68,16 +74,18 @@ public class DeviceMergeNode extends ProcessNode {
   }
 
   @Override
-  public void addChildren(PlanNode child) {}
-
-  @Override
-  public PlanNode clone() {
-    return null;
+  public void addChild(PlanNode child) {
+    this.children.add(child);
   }
 
   @Override
-  public PlanNode cloneWithChildren(List<PlanNode> children) {
-    return null;
+  public PlanNode clone() {
+    return new DeviceMergeNode(getId(), mergeOrder);
+  }
+
+  @Override
+  public int allowedChildCount() {
+    return CHILD_COUNT_NO_LIMIT;
   }
 
   @Override
@@ -118,5 +126,9 @@ public class DeviceMergeNode extends ProcessNode {
     List<String> attributes = new ArrayList<>();
     attributes.add("MergeOrder: " + (this.getMergeOrder() == null ? "null" : this.getMergeOrder()));
     return new Pair<>(title, attributes);
+  }
+
+  public void setChildren(List<PlanNode> children) {
+    this.children = children;
   }
 }

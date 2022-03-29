@@ -43,22 +43,29 @@ public class FillNode extends ProcessNode {
     super(id);
   }
 
+  public FillNode(PlanNodeId id, FillPolicy policy) {
+    this(id);
+    this.fillPolicy = policy;
+  }
+
   @Override
   public List<PlanNode> getChildren() {
     return ImmutableList.of(child);
   }
 
   @Override
-  public void addChildren(PlanNode child) {}
-
-  @Override
-  public PlanNode clone() {
-    return null;
+  public void addChild(PlanNode child) {
+    this.child = child;
   }
 
   @Override
-  public PlanNode cloneWithChildren(List<PlanNode> children) {
-    return null;
+  public PlanNode clone() {
+    return new FillNode(getId(), fillPolicy);
+  }
+
+  @Override
+  public int allowedChildCount() {
+    return ONE_CHILD;
   }
 
   @Override
