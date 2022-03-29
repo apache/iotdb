@@ -42,8 +42,9 @@ public class PlanNodeVisualizer {
     private int boxWidth;
     private int lineWidth;
     private List<String> lines;
-    private int leftIndent;
-    private int lastCharPosition;
+    private int startPosition;
+    private int endPosition;
+    private int midPosition;
 
     public Box(PlanNode node) {
       this.node = node;
@@ -114,8 +115,9 @@ public class PlanNodeVisualizer {
     }
     childrenWidth += box.children.size() > 1 ? box.children.size() - 1 : 0;
     box.lineWidth = Math.max(box.boxWidth, childrenWidth);
-    box.leftIndent = (box.lineWidth - box.boxWidth) / 2;
-    box.lastCharPosition = box.leftIndent + box.boxWidth - 1;
+    box.startPosition = (box.lineWidth - box.boxWidth) / 2;
+    box.endPosition = box.startPosition + box.boxWidth - 1;
+    box.midPosition = box.lineWidth / 2 - 1;
   }
 
   private static void buildBoxLines(Box box) {
@@ -124,20 +126,20 @@ public class PlanNodeVisualizer {
     for (String valueLine : box.node.getBoxString()) {
       StringBuilder line = new StringBuilder();
       for (int i = 0; i < box.lineWidth; i++) {
-        if (i < box.leftIndent) {
+        if (i < box.startPosition) {
           line.append(INDENT);
           continue;
         }
-        if (i > box.lastCharPosition) {
+        if (i > box.endPosition) {
           line.append(INDENT);
           continue;
         }
-        if (i == box.leftIndent || i == box.lastCharPosition) {
+        if (i == box.startPosition || i == box.endPosition) {
           line.append(SHU);
           continue;
         }
-        if (i - box.leftIndent - 1 < valueLine.length()) {
-          line.append(valueLine.charAt(i - box.leftIndent - 1));
+        if (i - box.startPosition - 1 < valueLine.length()) {
+          line.append(valueLine.charAt(i - box.startPosition - 1));
         } else {
           line.append(INDENT);
         }
@@ -152,12 +154,11 @@ public class PlanNodeVisualizer {
     }
 
     // Print Connection Line
-    int shangPosition = box.lineWidth / 2 - 1;
     if (box.children.size() == 1) {
       for (int i = 0; i < 2; i++) {
         StringBuilder sb = new StringBuilder();
         for (int j = 0; j < box.lineWidth; j ++) {
-          if (j == shangPosition) {
+          if (j == box.midPosition) {
             sb.append(SHU);
           } else {
             sb.append(INDENT);
@@ -167,7 +168,7 @@ public class PlanNodeVisualizer {
       }
     } else {
       Map<Integer, String> symbolMap = new HashMap<>();
-      symbolMap.put(shangPosition, SHANG);
+      symbolMap.put(box.midPosition, SHANG);
       for (int i = 0; i < box.children.size(); i++) {
         symbolMap.put(getChildMidPosition(box, i), i == 0 ? LEFT_TOP : i == box.children.size() - 1 ? RIGHT_TOP : XIA);
       }
@@ -196,7 +197,7 @@ public class PlanNodeVisualizer {
           line2.append(INDENT);
           continue;
         }
-        if (symbolMap.containsKey(i) && i != shangPosition) {
+        if (symbolMap.containsKey(i) && i != box.midPosition) {
           line2.append(SHU);
         } else {
           line2.append(INDENT);
@@ -213,7 +214,9 @@ public class PlanNodeVisualizer {
       StringBuilder line = new StringBuilder();
       for (int j = 0; j < box.childCount(); j++) {
         line.append(box.getChild(j).getLine(i));
-        line.append(INDENT);
+        if (j != box.childCount() - 1) {
+          line.append(INDENT);
+        }
       }
       box.lines.add(line.toString());
     }
@@ -238,24 +241,21 @@ public class PlanNodeVisualizer {
   }
 
   private static String printBoxEdge(Box box, boolean top) {
-    int leftIndent = (box.lineWidth - box.boxWidth) / 2;
     StringBuilder sb = new StringBuilder();
-
-
     for (int i = 0; i < box.lineWidth; i++) {
-      if (i < leftIndent) {
+      if (i < box.startPosition) {
         sb.append(INDENT);
         continue;
       }
-      if (i > box.lastCharPosition) {
+      if (i > box.endPosition) {
         sb.append(INDENT);
         continue;
       }
-      if (i == leftIndent) {
+      if (i == box.startPosition) {
         sb.append(top ? LEFT_TOP : LEFT_BOTTOM);
         continue;
       }
-      if (i == box.lastCharPosition) {
+      if (i == box.endPosition) {
         sb.append(top ? RIGHT_TOP : RIGHT_BOTTOM);
         continue;
       }

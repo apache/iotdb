@@ -145,7 +145,7 @@ public class TimeJoinNode extends ProcessNode {
   public List<String> getBoxString() {
     List<String> ret = new ArrayList<>();
     ret.add(String.format("TimeJoinNode-%s", getId().getId()));
-//    ret.add(String.format("Order: %s", mergeOrder));
+    ret.add(String.format("Order: %s", mergeOrder));
     return ret;
   }
 }

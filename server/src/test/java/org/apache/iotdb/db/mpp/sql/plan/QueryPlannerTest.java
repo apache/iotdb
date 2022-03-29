@@ -40,7 +40,7 @@ public class QueryPlannerTest {
   @Test
   public void TestSqlToDistributedPlan() {
 
-    String querySql = "SELECT d1.* FROM root.sg order by time desc LIMIT 10";
+    String querySql = "SELECT * FROM root.sg order by time desc LIMIT 10";
 
     Statement stmt = StatementGenerator.createStatement(querySql, ZoneId.systemDefault());
 
