@@ -50,14 +50,14 @@ public class QueryPlannerTest {
                 querySql, new QueryId("query1"), new SessionInfo(), QueryType.READ));
     queryExecution.doLogicalPlan();
     System.out.printf("SQL: %s%n%n", querySql);
-    System.out.println("===== Step 1: Logical Plan =====");
+    System.out.println("\n===== Step 1: Logical Plan =====");
     System.out.println(PlanNodeUtil.nodeToString(queryExecution.getLogicalPlan().getRootNode()));
     PlanNodeVisualizer.printAsBox(queryExecution.getLogicalPlan().getRootNode());
 
     queryExecution.doDistributedPlan();
     DistributedQueryPlan distributedQueryPlan = queryExecution.getDistributedPlan();
 
-    System.out.println("===== Step 4: Split Fragment Instance =====");
+    System.out.println("\n===== Step 4: Split Fragment Instance =====");
     distributedQueryPlan.getInstances().forEach(System.out::println);
   }
 }

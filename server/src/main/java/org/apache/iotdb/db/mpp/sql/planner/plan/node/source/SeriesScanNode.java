@@ -208,7 +208,7 @@ public class SeriesScanNode extends SourceNode {
 
   public List<String> getBoxString() {
     List<String> ret = new ArrayList<>();
-    ret.add(String.format("SeriesScan-%s", getId().getId()));
+    ret.add(String.format("SeriesScanNode-%s", getId().getId()));
     ret.add(String.format("Path:%s", getSeriesPath()));
     ret.add(String.format("Partition:%s", getPartitionId()));
     return ret;

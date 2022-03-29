@@ -65,11 +65,11 @@ public class DistributionPlanner {
 
   public DistributedQueryPlan planFragments() {
     PlanNode rootAfterRewrite = rewriteSource();
-    System.out.println("===== Step 2: Partition SourceNode =====");
+    System.out.println("\n===== Step 2: Partition SourceNode =====");
     System.out.println(PlanNodeUtil.nodeToString(rootAfterRewrite));
     PlanNodeVisualizer.printAsBox(rootAfterRewrite);
     PlanNode rootWithExchange = addExchangeNode(rootAfterRewrite);
-    System.out.println("===== Step 3: Add ExchangeNode =====");
+    System.out.println("\n===== Step 3: Add ExchangeNode =====");
     System.out.println(PlanNodeUtil.nodeToString(rootWithExchange));
     PlanNodeVisualizer.printAsBox(rootWithExchange);
     SubPlan subPlan = splitFragment(rootWithExchange);
