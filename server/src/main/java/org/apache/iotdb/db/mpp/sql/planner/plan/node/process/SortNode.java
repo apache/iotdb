@@ -102,4 +102,15 @@ public class SortNode extends ProcessNode {
     attributes.add("SortOrder: " + (this.getSortOrder() == null ? "null" : this.getSortOrder()));
     return new Pair<>(title, attributes);
   }
+
+  public List<String> getBoxString() {
+    List<String> ret = new ArrayList<>();
+    ret.add(String.format("SortNode-%s", getId().getId()));
+    ret.add(String.format("Order: %s", sortOrder));
+    return ret;
+  }
+
+  public String toString() {
+    return String.format("SortNode-%s", getId().getId());
+  }
 }

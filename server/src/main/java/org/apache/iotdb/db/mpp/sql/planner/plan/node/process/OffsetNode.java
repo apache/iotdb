@@ -100,4 +100,11 @@ public class OffsetNode extends ProcessNode {
     attributes.add("RowOffset: " + this.getOffset());
     return new Pair<>(title, attributes);
   }
+
+  public List<String> getBoxString() {
+    List<String> ret = new ArrayList<>();
+    ret.add(String.format("OffsetNode-%s", getId().getId()));
+    ret.add(String.format("Count: %d", offset));
+    return ret;
+  }
 }
