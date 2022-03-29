@@ -18,12 +18,10 @@
  */
 package org.apache.iotdb.db.mpp.buffer;
 
-import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
-import java.nio.ByteBuffer;
 import java.util.List;
 
 public interface ISinkHandle extends AutoCloseable {
@@ -76,22 +74,4 @@ public interface ISinkHandle extends AutoCloseable {
 
   /** Abort the sink handle, discarding all tsblocks which may still be in memory buffer. */
   void abort();
-
-  /** For internal use. Get a serialized tsblock from the buffer and free the memory. */
-  ByteBuffer getSerializedTsBlock(int partition, int sequenceId);
-
-  /** For internal use. Get a serialized tsblock from the buffer and free the memory. */
-  ByteBuffer getSerializedTsBlock(int sequenceId);
-
-  /** For internal use. Get the hostname of the downstream fragment instance. */
-  String getRemoteHostname();
-
-  /** For internal use. Get the ID of the downstream fragment instance. */
-  TFragmentInstanceId getRemoteFragmentInstanceId();
-
-  /** For internal use. Get the source operator ID of the downstream fragment instance. */
-  String getRemoteOperatorId();
-
-  /** For internal use. Get the local fragment instance ID. */
-  TFragmentInstanceId getLocalFragmentInstanceId();
 }

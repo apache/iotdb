@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.mpp.buffer;
 
-import org.apache.iotdb.db.mpp.buffer.IDataBlockManager.SinkHandleListener;
+import org.apache.iotdb.db.mpp.buffer.DataBlockManager.SinkHandleListener;
 import org.apache.iotdb.db.mpp.memory.LocalMemoryManager;
 import org.apache.iotdb.mpp.rpc.thrift.DataBlockService;
 import org.apache.iotdb.mpp.rpc.thrift.EndOfDataBlockEvent;
@@ -144,13 +144,69 @@ public class SinkHandle implements ISinkHandle {
     throw new UnsupportedOperationException();
   }
 
-  @Override
-  public ByteBuffer getSerializedTsBlock(int partition, int sequenceId) {
-    throw new UnsupportedOperationException();
+  private void submitSendEndOfDataBlockEventTask() {
+    executorService.submit(new SendEndOfDataBlockEventTask());
   }
 
   @Override
-  public ByteBuffer getSerializedTsBlock(int sequenceId) {
+  public synchronized void close() {
+    logger.info("Sink handle {} is closed.", this);
+    if (throwable != null) {
+      throw new RuntimeException(throwable);
+    }
+    if (closed) {
+      return;
+    }
+    bufferedTsBlocks.clear();
+    numOfBufferedTsBlocks = 0;
+    bufferRetainedSizeInBytes = 0;
+    closed = true;
+    noMoreTsBlocks = true;
+    submitSendEndOfDataBlockEventTask();
+    sinkHandleListener.onClosed(this);
+  }
+
+  @Override
+  public synchronized void abort() {
+    logger.info("Sink handle {} is aborted.", this);
+    bufferedTsBlocks.clear();
+    numOfBufferedTsBlocks = 0;
+    closed = true;
+    bufferRetainedSizeInBytes = 0;
+    submitSendEndOfDataBlockEventTask();
+    sinkHandleListener.onAborted(this);
+  }
+
+  @Override
+  public synchronized void setNoMoreTsBlocks() {
+    noMoreTsBlocks = true;
+  }
+
+  @Override
+  public boolean isClosed() {
+    return closed;
+  }
+
+  @Override
+  public boolean isFinished() {
+    return throwable == null && noMoreTsBlocks && numOfBufferedTsBlocks == 0;
+  }
+
+  @Override
+  public long getBufferRetainedSizeInBytes() {
+    return bufferRetainedSizeInBytes;
+  }
+
+  @Override
+  public int getNumOfBufferedTsBlocks() {
+    return numOfBufferedTsBlocks;
+  }
+
+  ByteBuffer getSerializedTsBlock(int partition, int sequenceId) {
+    throw new UnsupportedOperationException();
+  }
+
+  ByteBuffer getSerializedTsBlock(int sequenceId) {
     TsBlock tsBlock;
     synchronized (this) {
       tsBlock = bufferedTsBlocks.get(sequenceId);
@@ -170,74 +226,20 @@ public class SinkHandle implements ISinkHandle {
     return serde.serialized(tsBlock);
   }
 
-  @Override
-  public void setNoMoreTsBlocks() {
-    noMoreTsBlocks = true;
-  }
-
-  @Override
-  public boolean isClosed() {
-    return closed;
-  }
-
-  @Override
-  public boolean isFinished() {
-    return throwable == null && noMoreTsBlocks && numOfBufferedTsBlocks == 0;
-  }
-
-  private void submitSendEndOfDataBlockEventTask() {
-    executorService.submit(new SendEndOfDataBlockEventTask());
-  }
-
-  @Override
-  public synchronized void close() {
-    if (throwable != null) {
-      throw new RuntimeException(throwable);
-    }
-    if (closed) {
-      return;
-    }
-    bufferedTsBlocks.clear();
-    numOfBufferedTsBlocks = 0;
-    bufferRetainedSizeInBytes = 0;
-    closed = true;
-    noMoreTsBlocks = true;
-    submitSendEndOfDataBlockEventTask();
-    sinkHandleListener.onClosed(this);
-  }
-
-  @Override
-  public synchronized void abort() {
-    bufferedTsBlocks.clear();
-    numOfBufferedTsBlocks = 0;
-    closed = true;
-    bufferRetainedSizeInBytes = 0;
-    submitSendEndOfDataBlockEventTask();
-    sinkHandleListener.onAborted(this);
-  }
-
-  public String getRemoteHostname() {
+  String getRemoteHostname() {
     return remoteHostname;
   }
 
-  public TFragmentInstanceId getRemoteFragmentInstanceId() {
+  TFragmentInstanceId getRemoteFragmentInstanceId() {
     return remoteFragmentInstanceId;
   }
 
-  public String getRemoteOperatorId() {
+  String getRemoteOperatorId() {
     return remoteOperatorId;
   }
 
-  public TFragmentInstanceId getLocalFragmentInstanceId() {
+  TFragmentInstanceId getLocalFragmentInstanceId() {
     return localFragmentInstanceId;
-  }
-
-  public long getBufferRetainedSizeInBytes() {
-    return bufferRetainedSizeInBytes;
-  }
-
-  public int getNumOfBufferedTsBlocks() {
-    return numOfBufferedTsBlocks;
   }
 
   @Override

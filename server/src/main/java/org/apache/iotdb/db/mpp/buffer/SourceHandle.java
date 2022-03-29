@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.mpp.buffer;
 
-import org.apache.iotdb.db.mpp.buffer.IDataBlockManager.SourceHandleListener;
+import org.apache.iotdb.db.mpp.buffer.DataBlockManager.SourceHandleListener;
 import org.apache.iotdb.db.mpp.memory.LocalMemoryManager;
 import org.apache.iotdb.mpp.rpc.thrift.DataBlockService;
 import org.apache.iotdb.mpp.rpc.thrift.GetDataBlockRequest;
@@ -166,14 +166,11 @@ public class SourceHandle implements ISourceHandle {
     return nonCancellationPropagating(blocked);
   }
 
-  @Override
-  public synchronized void setNoMoreTsBlocks() {
+  synchronized void setNoMoreTsBlocks() {
     noMoreTsBlocks = true;
   }
 
-  @Override
-  public synchronized void updatePendingDataBlockInfo(
-      int startSequenceId, List<Long> dataBlockSizes) {
+  synchronized void updatePendingDataBlockInfo(int startSequenceId, List<Long> dataBlockSizes) {
     for (int i = 0; i < dataBlockSizes.size(); i++) {
       sequenceIdToDataBlockSize.put(i + startSequenceId, dataBlockSizes.get(i));
     }
@@ -202,23 +199,19 @@ public class SourceHandle implements ISourceHandle {
         && bufferedTsBlocks.isEmpty();
   }
 
-  @Override
-  public String getRemoteHostname() {
+  String getRemoteHostname() {
     return remoteHostname;
   }
 
-  @Override
-  public TFragmentInstanceId getRemoteFragmentInstanceId() {
+  TFragmentInstanceId getRemoteFragmentInstanceId() {
     return remoteFragmentInstanceId.deepCopy();
   }
 
-  @Override
-  public TFragmentInstanceId getLocalFragmentInstanceId() {
+  TFragmentInstanceId getLocalFragmentInstanceId() {
     return localFragmentInstanceId;
   }
 
-  @Override
-  public String getLocalOperatorId() {
+  String getLocalOperatorId() {
     return localOperatorId;
   }
 

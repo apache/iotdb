@@ -29,10 +29,10 @@ import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 
 import org.apache.commons.lang3.Validate;
 import org.apache.thrift.TException;
-import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.Map;
@@ -44,6 +44,20 @@ import java.util.function.Supplier;
 public class DataBlockManager implements IDataBlockManager {
 
   private static final Logger logger = LoggerFactory.getLogger(DataBlockManager.class);
+
+  interface SourceHandleListener {
+    void onFinished(SourceHandle sourceHandle);
+
+    void onClosed(SourceHandle sourceHandle);
+  }
+
+  interface SinkHandleListener {
+    void onFinish(SinkHandle sinkHandle);
+
+    void onClosed(SinkHandle sinkHandle);
+
+    void onAborted(SinkHandle sinkHandle);
+  }
 
   /** Handle thrift communications. */
   class DataBlockServiceImpl implements DataBlockService.Iface {
@@ -90,7 +104,7 @@ public class DataBlockManager implements IDataBlockManager {
         return;
       }
 
-      ISourceHandle sourceHandle =
+      SourceHandle sourceHandle =
           sourceHandles.get(e.getTargetFragmentInstanceId()).get(e.getTargetOperatorId());
       sourceHandle.updatePendingDataBlockInfo(e.getStartSequenceId(), e.getBlockSizes());
     }
@@ -113,7 +127,7 @@ public class DataBlockManager implements IDataBlockManager {
         logger.info("{} is ignored because the source handle does not exist or has been closed", e);
         return;
       }
-      ISourceHandle sourceHandle =
+      SourceHandle sourceHandle =
           sourceHandles
               .getOrDefault(e.getTargetFragmentInstanceId(), Collections.emptyMap())
               .get(e.getTargetOperatorId());
@@ -124,7 +138,7 @@ public class DataBlockManager implements IDataBlockManager {
   /** Listen to the state changes of a source handle. */
   class SourceHandleListenerImpl implements SourceHandleListener {
     @Override
-    public void onFinished(ISourceHandle sourceHandle) {
+    public void onFinished(SourceHandle sourceHandle) {
       logger.info("Release resources of finished source handle {}", sourceHandle);
       if (!sourceHandles.containsKey(sourceHandle.getLocalFragmentInstanceId())
           || !sourceHandles
@@ -142,7 +156,7 @@ public class DataBlockManager implements IDataBlockManager {
     }
 
     @Override
-    public void onClosed(ISourceHandle sourceHandle) {
+    public void onClosed(SourceHandle sourceHandle) {
       onFinished(sourceHandle);
     }
   }
@@ -151,7 +165,7 @@ public class DataBlockManager implements IDataBlockManager {
   class SinkHandleListenerImpl implements SinkHandleListener {
 
     @Override
-    public void onFinish(ISinkHandle sinkHandle) {
+    public void onFinish(SinkHandle sinkHandle) {
       logger.info("Release resources of finished sink handle {}", sourceHandles);
       if (!sinkHandles.containsKey(sinkHandle.getLocalFragmentInstanceId())) {
         logger.info("Resources of finished sink handle {} has already been released", sinkHandle);
@@ -160,10 +174,10 @@ public class DataBlockManager implements IDataBlockManager {
     }
 
     @Override
-    public void onClosed(ISinkHandle sinkHandle) {}
+    public void onClosed(SinkHandle sinkHandle) {}
 
     @Override
-    public void onAborted(ISinkHandle sinkHandle) {
+    public void onAborted(SinkHandle sinkHandle) {
       logger.info("Release resources of aborted sink handle {}", sourceHandles);
       if (!sinkHandles.containsKey(sinkHandle.getLocalFragmentInstanceId())) {
         logger.info("Resources of aborted sink handle {} has already been released", sinkHandle);
@@ -176,8 +190,8 @@ public class DataBlockManager implements IDataBlockManager {
   private final Supplier<TsBlockSerde> tsBlockSerdeFactory;
   private final ExecutorService executorService;
   private final DataBlockServiceClientFactory clientFactory;
-  private final Map<TFragmentInstanceId, Map<String, ISourceHandle>> sourceHandles;
-  private final Map<TFragmentInstanceId, ISinkHandle> sinkHandles;
+  private final Map<TFragmentInstanceId, Map<String, SourceHandle>> sourceHandles;
+  private final Map<TFragmentInstanceId, SinkHandle> sinkHandles;
 
   private DataBlockServiceImpl dataBlockService;
 
@@ -207,7 +221,7 @@ public class DataBlockManager implements IDataBlockManager {
       String remoteHostname,
       TFragmentInstanceId remoteFragmentInstanceId,
       String remoteOperatorId)
-      throws TTransportException {
+      throws IOException {
     if (sinkHandles.containsKey(localFragmentInstanceId)) {
       throw new IllegalStateException("Sink handle for " + localFragmentInstanceId + " exists.");
     }
@@ -218,7 +232,7 @@ public class DataBlockManager implements IDataBlockManager {
         remoteFragmentInstanceId,
         localFragmentInstanceId);
 
-    ISinkHandle sinkHandle =
+    SinkHandle sinkHandle =
         new SinkHandle(
             remoteHostname,
             remoteFragmentInstanceId,
@@ -239,7 +253,7 @@ public class DataBlockManager implements IDataBlockManager {
       String localOperatorId,
       String remoteHostname,
       TFragmentInstanceId remoteFragmentInstanceId)
-      throws TTransportException {
+      throws IOException {
     if (sourceHandles.containsKey(localFragmentInstanceId)
         && sourceHandles.get(localFragmentInstanceId).containsKey(localOperatorId)) {
       throw new IllegalStateException(
@@ -256,7 +270,7 @@ public class DataBlockManager implements IDataBlockManager {
         localOperatorId,
         localFragmentInstanceId);
 
-    ISourceHandle sourceHandle =
+    SourceHandle sourceHandle =
         new SourceHandle(
             remoteHostname,
             remoteFragmentInstanceId,
@@ -289,8 +303,8 @@ public class DataBlockManager implements IDataBlockManager {
       sinkHandles.remove(fragmentInstanceId);
     }
     if (sourceHandles.containsKey(fragmentInstanceId)) {
-      Map<String, ISourceHandle> operatorIdToSourceHandle = sourceHandles.get(fragmentInstanceId);
-      for (Entry<String, ISourceHandle> entry : operatorIdToSourceHandle.entrySet()) {
+      Map<String, SourceHandle> operatorIdToSourceHandle = sourceHandles.get(fragmentInstanceId);
+      for (Entry<String, SourceHandle> entry : operatorIdToSourceHandle.entrySet()) {
         logger.info("Close source handle {}", sourceHandles);
         entry.getValue().close();
       }
