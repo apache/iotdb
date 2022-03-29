@@ -128,9 +128,9 @@ public class SinkHandle implements ISinkHandle {
           localMemoryManager
               .getQueryPool()
               .reserve(localFragmentInstanceId.getQueryId(), retainedSizeInBytes);
+      bufferRetainedSizeInBytes += retainedSizeInBytes;
       bufferedTsBlocks.addAll(tsBlocks);
       numOfBufferedTsBlocks += tsBlocks.size();
-      bufferRetainedSizeInBytes += retainedSizeInBytes;
       for (int i = currentEndSequenceId; i < currentEndSequenceId + tsBlocks.size(); i++) {
         tsBlockSizes.add(bufferedTsBlocks.get(i).getRetainedSizeInBytes());
       }
@@ -150,31 +150,33 @@ public class SinkHandle implements ISinkHandle {
 
   @Override
   public synchronized void close() {
-    logger.info("Sink handle {} is closed.", this);
+    logger.info("Sink handle {} is being closed.", this);
     if (throwable != null) {
       throw new RuntimeException(throwable);
     }
     if (closed) {
       return;
     }
-    bufferedTsBlocks.clear();
-    numOfBufferedTsBlocks = 0;
-    bufferRetainedSizeInBytes = 0;
     closed = true;
     noMoreTsBlocks = true;
     submitSendEndOfDataBlockEventTask();
     sinkHandleListener.onClosed(this);
+    logger.info("Sink handle {} is closed.", this);
   }
 
   @Override
   public synchronized void abort() {
-    logger.info("Sink handle {} is aborted.", this);
+    logger.info("Sink handle {} is being aborted.", this);
     bufferedTsBlocks.clear();
     numOfBufferedTsBlocks = 0;
     closed = true;
+    localMemoryManager
+        .getQueryPool()
+        .free(localFragmentInstanceId.getQueryId(), bufferRetainedSizeInBytes);
     bufferRetainedSizeInBytes = 0;
     submitSendEndOfDataBlockEventTask();
     sinkHandleListener.onAborted(this);
+    logger.info("Sink handle {} is aborted", this);
   }
 
   @Override
@@ -215,11 +217,11 @@ public class SinkHandle implements ISinkHandle {
       }
       bufferedTsBlocks.set(sequenceId, null);
       numOfBufferedTsBlocks -= 1;
+      localMemoryManager
+          .getQueryPool()
+          .free(localFragmentInstanceId.getQueryId(), tsBlock.getRetainedSizeInBytes());
       bufferRetainedSizeInBytes -= tsBlock.getRetainedSizeInBytes();
     }
-    localMemoryManager
-        .getQueryPool()
-        .free(localFragmentInstanceId.getQueryId(), tsBlock.getRetainedSizeInBytes());
     if (isFinished()) {
       sinkHandleListener.onFinish(this);
     }

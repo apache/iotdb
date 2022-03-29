@@ -258,32 +258,31 @@ public class SinkHandleTest {
       Assert.fail();
     }
 
-    // Get tsblocks.
+    // Close the SinkHandle.
+    sinkHandle.setNoMoreTsBlocks();
+    Assert.assertFalse(sinkHandle.isFinished());
+    sinkHandle.close();
+    Assert.assertTrue(sinkHandle.isClosed());
+    Mockito.verify(mockSinkHandleListener, Mockito.times(1)).onClosed(sinkHandle);
+    Mockito.verify(mockMemoryPool, Mockito.times(numOfMockTsBlock)).free(queryId, mockTsBlockSize);
+
+    // Get tsblocks after the SinkHandle is closed.
     for (int i = numOfMockTsBlock; i < numOfMockTsBlock * 2; i++) {
       sinkHandle.getSerializedTsBlock(i);
       if (i < numOfMockTsBlock * 2 - 1) {
-        Assert.assertFalse(sinkHandle.isFull().isDone());
+        Assert.assertFalse(sinkHandle.isFinished());
       } else {
-        Assert.assertTrue(sinkHandle.isFull().isDone());
+        Assert.assertTrue(sinkHandle.isFinished());
       }
-      Assert.assertFalse(sinkHandle.isFinished());
-      Assert.assertFalse(sinkHandle.isClosed());
+      Assert.assertTrue(sinkHandle.isClosed());
       Assert.assertEquals(
           mockTsBlockSize * (numOfMockTsBlock * 2 - 1 - i),
           sinkHandle.getBufferRetainedSizeInBytes());
     }
     Mockito.verify(mockMemoryPool, Mockito.times(numOfMockTsBlock * 2))
         .free(queryId, mockTsBlockSize);
-    Assert.assertTrue(sinkHandle.isFull().isDone());
-    Assert.assertFalse(sinkHandle.isFinished());
-
-    sinkHandle.setNoMoreTsBlocks();
     Assert.assertTrue(sinkHandle.isFinished());
-
-    // Close the SinkHandle.
-    sinkHandle.close();
-    Assert.assertTrue(sinkHandle.isClosed());
-    Mockito.verify(mockSinkHandleListener, Mockito.times(1)).onClosed(sinkHandle);
+    Mockito.verify(mockSinkHandleListener, Mockito.times(1)).onFinish(sinkHandle);
   }
 
   @Test
@@ -367,8 +366,10 @@ public class SinkHandleTest {
     Assert.assertFalse(sinkHandle.isClosed());
     Mockito.verify(mockSinkHandleListener, Mockito.times(0)).onClosed(sinkHandle);
 
+    // Abort the SinkHandle.
     sinkHandle.abort();
     Assert.assertTrue(sinkHandle.isClosed());
     Mockito.verify(mockSinkHandleListener, Mockito.times(1)).onAborted(sinkHandle);
+    Mockito.verify(mockSinkHandleListener, Mockito.times(0)).onFinish(sinkHandle);
   }
 }
