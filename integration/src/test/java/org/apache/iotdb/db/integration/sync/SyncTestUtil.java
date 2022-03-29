@@ -21,11 +21,9 @@ package org.apache.iotdb.db.integration.sync;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 
-import org.apache.commons.io.FileUtils;
 import org.junit.Assert;
 
 import java.io.File;
-import java.io.IOException;
 import java.sql.*;
 import java.util.*;
 
@@ -152,11 +150,6 @@ public class SyncTestUtil {
       } else if (fs.getName().endsWith(".resource")) {
         // only add tsfile that has been flushed
         tsFiles.add(new File(fs.getAbsolutePath().substring(0, fs.getAbsolutePath().length() - 9)));
-        try {
-          FileUtils.delete(fs);
-        } catch (IOException e) {
-          e.printStackTrace();
-        }
       }
     }
   }

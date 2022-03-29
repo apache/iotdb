@@ -17,8 +17,9 @@
  * under the License.
  *
  */
-package org.apache.iotdb.db.exception;
+package org.apache.iotdb.db.exception.sync;
 
+import org.apache.iotdb.db.exception.IoTDBException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 public class PipeSinkException extends IoTDBException {

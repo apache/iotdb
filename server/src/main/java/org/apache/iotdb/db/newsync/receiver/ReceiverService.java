@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.newsync.receiver;
 
 import org.apache.iotdb.db.exception.StartupException;
+import org.apache.iotdb.db.exception.sync.PipeServerException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.newsync.conf.SyncPathUtil;
 import org.apache.iotdb.db.newsync.pipedata.queue.PipeDataQueueFactory;
@@ -60,8 +61,9 @@ public class ReceiverService implements IService {
   private Collector collector;
 
   /** start receiver service */
-  public boolean startPipeServer() {
+  public void startPipeServer() throws PipeServerException {
     try {
+      TransportServerManager.getInstance().startService();
       receiverManager.startServer();
       collector.startCollect();
       // recover started pipe
@@ -72,38 +74,59 @@ public class ReceiverService implements IService {
               pipeInfo.getPipeName(), pipeInfo.getRemoteIp(), pipeInfo.getCreateTime());
         }
       }
-      TransportServerManager.getInstance().startService();
     } catch (IOException | StartupException e) {
-      logger.error(e.getMessage());
-      return false;
+      throw new PipeServerException("Failed to start pipe server because " + e.getMessage());
     }
-    return true;
   }
 
   /** stop receiver service */
-  public boolean stopPipeServer() {
+  public void stopPipeServer() throws PipeServerException {
     try {
+      List<PipeInfo> pipeInfos = receiverManager.getAllPipeInfos();
+      for (PipeInfo pipeInfo : pipeInfos) {
+        if (pipeInfo.getStatus().equals(PipeStatus.RUNNING)) {
+          throw new PipeServerException(
+              "Failed to stop pipe server because there is pipe still running.");
+        }
+      }
+      TransportServerManager.getInstance().stopService();
       receiverManager.stopServer();
       collector.stopCollect();
-      // todo: how to stop?
-      TransportServerManager.getInstance().stopService();
     } catch (IOException e) {
-      logger.error(e.getMessage());
-      return false;
+      throw new PipeServerException("Failed to start pipe server because " + e.getMessage());
     }
-    return true;
   }
 
   /** heartbeat RPC handle */
-  // TODO: define exception
-  // TODO: this is a mock interface
   public SyncResponse recMsg(SyncRequest request) {
+    SyncResponse response = new SyncResponse(ResponseType.INFO, "");
+    ;
     try {
       switch (request.getType()) {
         case HEARTBEAT:
-          List<PipeMessage> messages =
+          List<PipeMessage> messageList =
               receiverManager.getPipeMessages(
                   request.getPipeName(), request.getRemoteIp(), request.getCreateTime());
+          PipeMessage message = new PipeMessage(PipeMessage.MsgType.INFO, "");
+          if (!messageList.isEmpty()) {
+            for (PipeMessage pipeMessage : messageList) {
+              if (pipeMessage.getType().getValue() > message.getType().getValue()) {
+                message = pipeMessage;
+              }
+            }
+          }
+          switch (message.getType()) {
+            case INFO:
+              break;
+            case WARN:
+              response = new SyncResponse(ResponseType.WARN, "");
+              break;
+            case ERROR:
+              response = new SyncResponse(ResponseType.ERROR, "");
+              break;
+            default:
+              throw new UnsupportedOperationException("Wrong message type " + message.getType());
+          }
           break;
         case CREATE:
           createPipe(request.getPipeName(), request.getRemoteIp(), request.getCreateTime());
@@ -118,41 +141,42 @@ public class ReceiverService implements IService {
           dropPipe(request.getPipeName(), request.getRemoteIp(), request.getCreateTime());
           break;
       }
-      // TODO: complete implement
     } catch (IOException e) {
-      // TODO: complete
-      logger.error("Need to complete.");
+      logger.warn("Cannot handle message because {}", e.getMessage());
     }
-    return new SyncResponse(ResponseType.INFO, "");
+    return response;
   }
 
   /** create and start a new pipe named pipeName */
-  public void createPipe(String pipeName, String remoteIp, long createTime) throws IOException {
+  private void createPipe(String pipeName, String remoteIp, long createTime) throws IOException {
+    logger.info("create Pipe name={}, remoteIp={}, createTime={}", pipeName, remoteIp, createTime);
     createDir(pipeName, remoteIp, createTime);
     receiverManager.createPipe(pipeName, remoteIp, createTime);
-    collector.startPipe(pipeName, remoteIp, createTime);
   }
 
   /** start an existed pipe named pipeName */
-  public void startPipe(String pipeName, String remoteIp, long createTime) throws IOException {
+  private void startPipe(String pipeName, String remoteIp, long createTime) throws IOException {
+    logger.info("start Pipe name={}, remoteIp={}, createTime={}", pipeName, remoteIp, createTime);
     receiverManager.startPipe(pipeName, remoteIp);
     collector.startPipe(pipeName, remoteIp, createTime);
   }
 
   /** stop an existed pipe named pipeName */
-  public void stopPipe(String pipeName, String remoteIp, long createTime) throws IOException {
+  private void stopPipe(String pipeName, String remoteIp, long createTime) throws IOException {
+    logger.info("stop Pipe name={}, remoteIp={}, createTime={}", pipeName, remoteIp, createTime);
     receiverManager.stopPipe(pipeName, remoteIp);
     collector.stopPipe(pipeName, remoteIp, createTime);
   }
 
   /** drop an existed pipe named pipeName */
-  public void dropPipe(String pipeName, String remoteIp, long createTime) throws IOException {
+  private void dropPipe(String pipeName, String remoteIp, long createTime) throws IOException {
+    logger.info("drop Pipe name={}, remoteIp={}, createTime={}", pipeName, remoteIp, createTime);
     receiverManager.dropPipe(pipeName, remoteIp);
     collector.stopPipe(pipeName, remoteIp, createTime);
-    File dir = new File(SyncPathUtil.getReceiverPipeDir(pipeName, remoteIp, createTime));
-    FileUtils.deleteDirectory(dir);
     PipeDataQueueFactory.removeBufferedPipeDataQueue(
         SyncPathUtil.getReceiverPipeLogDir(pipeName, remoteIp, createTime));
+    File dir = new File(SyncPathUtil.getReceiverPipeDir(pipeName, remoteIp, createTime));
+    FileUtils.deleteDirectory(dir);
   }
 
   private void createDir(String pipeName, String remoteIp, long createTime) {
@@ -171,7 +195,10 @@ public class ReceiverService implements IService {
    *
    * @return QueryDataSet contained three columns: pipe name, status and start time
    */
-  public QueryDataSet showPipe(ShowPipeServerPlan plan) {
+  public QueryDataSet showPipe(ShowPipeServerPlan plan) throws PipeServerException {
+    if (!receiverManager.isPipeServerEnable()) {
+      throw new PipeServerException("Pipe server is not started.");
+    }
     ListDataSet dataSet =
         new ListDataSet(
             Arrays.asList(
@@ -223,7 +250,11 @@ public class ReceiverService implements IService {
   public void start() throws StartupException {
     receiverManager.init();
     if (receiverManager.isPipeServerEnable()) {
-      startPipeServer();
+      try {
+        startPipeServer();
+      } catch (PipeServerException e) {
+        throw new StartupException(e.getMessage());
+      }
     }
   }
 

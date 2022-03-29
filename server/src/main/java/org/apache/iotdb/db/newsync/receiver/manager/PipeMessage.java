@@ -59,8 +59,18 @@ public class PipeMessage {
   }
 
   public enum MsgType {
-    INFO,
-    WARN,
-    ERROR
+    INFO(1),
+    WARN(2),
+    ERROR(3);
+
+    private int value;
+
+    MsgType(int value) {
+      this.value = value;
+    }
+
+    public int getValue() {
+      return value;
+    }
   }
 }

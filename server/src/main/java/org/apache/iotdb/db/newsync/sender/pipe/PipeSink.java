@@ -19,7 +19,7 @@
  */
 package org.apache.iotdb.db.newsync.sender.pipe;
 
-import org.apache.iotdb.db.exception.PipeSinkException;
+import org.apache.iotdb.db.exception.sync.PipeSinkException;
 
 public interface PipeSink {
   void setAttribute(String attr, String value) throws PipeSinkException;

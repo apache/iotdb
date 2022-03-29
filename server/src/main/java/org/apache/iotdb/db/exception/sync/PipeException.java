@@ -15,11 +15,22 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
+ *
  */
-package org.apache.iotdb.db.newsync.receiver.manager;
+package org.apache.iotdb.db.exception.sync;
 
-public enum PipeStatus {
-  RUNNING,
-  STOP,
-  DROP
+import org.apache.iotdb.db.exception.IoTDBException;
+import org.apache.iotdb.rpc.TSStatusCode;
+
+public class PipeException extends IoTDBException {
+
+  private static final long serialVersionUID = -7312720445194413492L;
+
+  public PipeException(String message, int errorCode) {
+    super(message, errorCode);
+  }
+
+  public PipeException(String message) {
+    super(message, TSStatusCode.PIPE_ERROR.getStatusCode());
+  }
 }
