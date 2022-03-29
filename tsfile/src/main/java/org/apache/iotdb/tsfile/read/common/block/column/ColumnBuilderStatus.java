@@ -24,6 +24,7 @@ import org.openjdk.jol.info.ClassLayout;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.util.Arrays;
 
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
@@ -59,6 +60,8 @@ public class ColumnBuilderStatus {
    * Computes the size of an instance of this class assuming that all reference fields are non-null
    */
   private static int deepInstanceSize(Class<?> clazz) {
+    System.out.println("class name: " + clazz.getSimpleName());
+    System.out.println("class fields: " + Arrays.toString(clazz.getDeclaredFields()));
     if (clazz.isArray()) {
       throw new IllegalArgumentException(
           format(
