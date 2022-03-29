@@ -67,7 +67,7 @@ public class LimitOperator implements ProcessOperator {
 
   @Override
   public boolean hasNext() throws IOException {
-    return child.hasNext();
+    return remainingLimit > 0 && child.hasNext();
   }
 
   @Override
