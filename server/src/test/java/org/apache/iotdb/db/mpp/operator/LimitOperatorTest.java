@@ -55,7 +55,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-
 public class LimitOperatorTest {
 
   private static final String TIME_JOIN_OPERATOR_TEST_SG = "root.LimitOperatorTest";
