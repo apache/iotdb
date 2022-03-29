@@ -113,6 +113,8 @@ public class DistributionPlanner {
           // SeriesScanNode.
           for (DataRegionReplicaSet dataRegion : dataDistribution) {
             SeriesScanNode split = (SeriesScanNode) handle.clone();
+            // TODO: (Use a local PlanNodeIdAllocator for a query)
+            split.setId(PlanNodeIdAllocator.generateId());
             split.setDataRegionReplicaSet(dataRegion);
             sources.add(split);
           }
