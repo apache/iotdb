@@ -45,13 +45,13 @@ public class DataBlockManager implements IDataBlockManager {
 
   private static final Logger logger = LoggerFactory.getLogger(DataBlockManager.class);
 
-  interface SourceHandleListener {
+  public interface SourceHandleListener {
     void onFinished(SourceHandle sourceHandle);
 
     void onClosed(SourceHandle sourceHandle);
   }
 
-  interface SinkHandleListener {
+  public interface SinkHandleListener {
     void onFinish(SinkHandle sinkHandle);
 
     void onClosed(SinkHandle sinkHandle);
