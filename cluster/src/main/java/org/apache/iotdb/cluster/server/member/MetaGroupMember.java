@@ -1800,7 +1800,8 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
         readOnly,
         lastHeartbeatReceivedTime,
         prevLastLogIndex,
-        logManager.getMaxHaveAppliedCommitIndex());
+        logManager.getMaxHaveAppliedCommitIndex(),
+        logRelay != null ? logRelay.first() : null);
   }
 
   /**

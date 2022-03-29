@@ -1006,7 +1006,8 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
         NodeStatusManager.getINSTANCE().getLastResponseLatency(getHeader().getNode()),
         lastHeartbeatReceivedTime,
         prevLastLogIndex,
-        logManager.getMaxHaveAppliedCommitIndex());
+        logManager.getMaxHaveAppliedCommitIndex(),
+        logRelay != null ? logRelay.first() : null);
   }
 
   @TestOnly

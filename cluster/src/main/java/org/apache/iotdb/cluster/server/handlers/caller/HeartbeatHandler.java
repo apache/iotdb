@@ -53,8 +53,8 @@ public class HeartbeatHandler implements AsyncMethodCallback<HeartBeatResponse> 
   @Override
   public void onComplete(HeartBeatResponse resp) {
     long followerTerm = resp.getTerm();
-    if (logger.isDebugEnabled()) {
-      logger.debug(
+    if (logger.isTraceEnabled()) {
+      logger.trace(
           "{}: Received a heartbeat response {} for last log index {}",
           memberName,
           followerTerm,
@@ -89,8 +89,8 @@ public class HeartbeatHandler implements AsyncMethodCallback<HeartBeatResponse> 
     long lastLogTerm = resp.getLastLogTerm();
     long localLastLogIdx = localMember.getLogManager().getLastLogIndex();
     long localLastLogTerm = localMember.getLogManager().getLastLogTerm();
-    if (logger.isDebugEnabled()) {
-      logger.debug(
+    if (logger.isTraceEnabled()) {
+      logger.trace(
           "{}: Node {} is still alive, log index: {}/{}, log term: {}/{}",
           memberName,
           follower,
@@ -100,11 +100,7 @@ public class HeartbeatHandler implements AsyncMethodCallback<HeartBeatResponse> 
           localLastLogTerm);
     }
 
-    Peer peer =
-        localMember
-            .getPeerMap()
-            .computeIfAbsent(
-                follower, k -> new Peer(localMember.getLogManager().getLastLogIndex()));
+    Peer peer = localMember.getPeer(follower);
     if (!localMember.getLogManager().isLogUpToDate(lastLogTerm, lastLogIdx)
         || !localMember.getLogManager().matchTerm(lastLogTerm, lastLogIdx)) {
       // the follower is not up-to-date
@@ -119,7 +115,7 @@ public class HeartbeatHandler implements AsyncMethodCallback<HeartBeatResponse> 
       if (lastLogIdx == peer.getLastHeartBeatIndex()) {
         // the follower's lastLogIndex is unchanged, increase inconsistent counter
         int inconsistentNum = peer.incInconsistentHeartbeatNum();
-        if (inconsistentNum >= 10) {
+        if (inconsistentNum >= 1000) {
           logger.info(
               "{}: catching up node {}, index-term: {}-{}/{}-{}, peer match index {}",
               memberName,

@@ -25,17 +25,21 @@ import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
+import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 /** LogRelay is used by followers to forward entries from the leader to other followers. */
 public class LogRelay {
+
+  private static final Logger logger = LoggerFactory.getLogger(LogRelay.class);
 
   private ConcurrentSkipListSet<RelayEntry> entryHeap = new ConcurrentSkipListSet<>();
   private static final int RELAY_NUMBER =
@@ -46,11 +50,8 @@ public class LogRelay {
   public LogRelay(RaftMember raftMember) {
     this.raftMember = raftMember;
     relaySenders =
-        Executors.newFixedThreadPool(
-            RELAY_NUMBER,
-            new ThreadFactoryBuilder()
-                .setNameFormat(raftMember.getName() + "-RelaySender-%d")
-                .build());
+        IoTDBThreadPoolFactory.newFixedThreadPool(
+            RELAY_NUMBER, raftMember.getName() + "-RelaySender");
     for (int i = 0; i < RELAY_NUMBER; i++) {
       relaySenders.submit(new RelayThread());
     }
@@ -65,6 +66,7 @@ public class LogRelay {
   }
 
   private void offer(RelayEntry entry) {
+    long operationStartTime = Statistic.RAFT_SENDER_RELAY_OFFER_LOG.getOperationStartTime();
     synchronized (entryHeap) {
       while (entryHeap.size()
           > ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem()) {
@@ -77,6 +79,7 @@ public class LogRelay {
       entryHeap.add(entry);
       entryHeap.notifyAll();
     }
+    Statistic.RAFT_SENDER_RELAY_OFFER_LOG.calOperationCostTimeFromStart(operationStartTime);
   }
 
   public void offer(AppendEntriesRequest request, List<Node> receivers) {
@@ -87,6 +90,7 @@ public class LogRelay {
 
     @Override
     public void run() {
+      String baseName = Thread.currentThread().getName();
       while (!Thread.interrupted()) {
         RelayEntry relayEntry;
         synchronized (entryHeap) {
@@ -102,9 +106,25 @@ public class LogRelay {
           }
         }
 
+        logger.debug("Relaying {}", relayEntry);
+
         if (relayEntry.singleRequest != null) {
+          Thread.currentThread()
+              .setName(
+                  baseName
+                      + "-"
+                      + (relayEntry.singleRequest.prevLogIndex + 1)
+                      + "-"
+                      + relayEntry.receivers);
           raftMember.sendLogToSubFollowers(relayEntry.singleRequest, relayEntry.receivers);
         } else if (relayEntry.batchRequest != null) {
+          Thread.currentThread()
+              .setName(
+                  baseName
+                      + "-"
+                      + (relayEntry.batchRequest.prevLogIndex + 1)
+                      + "-"
+                      + relayEntry.receivers);
           raftMember.sendLogsToSubFollowers(relayEntry.batchRequest, relayEntry.receivers);
         }
 
@@ -139,6 +159,13 @@ public class LogRelay {
     }
 
     @Override
+    public String toString() {
+      long index = singleRequest != null ? singleRequest.prevLogIndex : batchRequest.prevLogIndex;
+      index++;
+      return "RelayEntry{" + index + "," + receivers + "}";
+    }
+
+    @Override
     public boolean equals(Object o) {
       if (this == o) {
         return true;
@@ -153,12 +180,20 @@ public class LogRelay {
 
     @Override
     public int hashCode() {
-      return Objects.hash(singleRequest);
+      return Objects.hash(singleRequest, batchRequest);
     }
 
     @Override
     public int compareTo(RelayEntry o) {
       return Long.compare(this.getIndex(), o.getIndex());
+    }
+  }
+
+  public RelayEntry first() {
+    try {
+      return entryHeap.isEmpty() ? null : entryHeap.first();
+    } catch (NoSuchElementException e) {
+      return null;
     }
   }
 }

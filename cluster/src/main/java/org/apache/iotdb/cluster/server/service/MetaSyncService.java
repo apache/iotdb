@@ -39,6 +39,7 @@ import org.apache.iotdb.cluster.rpc.thrift.TSMetaService;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
+import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
 import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
 
@@ -160,7 +161,9 @@ public class MetaSyncService extends BaseSyncService implements TSMetaService.If
    */
   @Override
   public TNodeStatus queryNodeStatus() {
-    return new TNodeStatus();
+    return new TNodeStatus()
+        .setFanoutRequestNum(
+            Statistic.RAFT_SENDER_SEND_LOG.getCnt() + Statistic.RAFT_SEND_RELAY.getCnt());
   }
 
   @Override

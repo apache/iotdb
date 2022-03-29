@@ -37,6 +37,7 @@ import org.apache.iotdb.cluster.log.FragmentedLogDispatcher;
 import org.apache.iotdb.cluster.log.HardState;
 import org.apache.iotdb.cluster.log.IndirectLogDispatcher;
 import org.apache.iotdb.cluster.log.Log;
+import org.apache.iotdb.cluster.log.LogAckSender;
 import org.apache.iotdb.cluster.log.LogDispatcher;
 import org.apache.iotdb.cluster.log.LogDispatcher.SendLogRequest;
 import org.apache.iotdb.cluster.log.LogParser;
@@ -72,6 +73,7 @@ import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.AppendNodeEntryHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.handlers.forwarder.IndirectAppendHandler;
+import org.apache.iotdb.cluster.server.monitor.NodeStatus;
 import org.apache.iotdb.cluster.server.monitor.NodeStatusManager;
 import org.apache.iotdb.cluster.server.monitor.Peer;
 import org.apache.iotdb.cluster.server.monitor.Timer;
@@ -110,7 +112,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.SocketTimeoutException;
-import java.nio.Buffer;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -132,6 +133,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.apache.iotdb.cluster.config.ClusterConstant.THREAD_POLL_WAIT_TERMINATION_TIME_S;
+import static org.apache.iotdb.cluster.log.LogDispatcher.concurrentSenderNum;
 
 /**
  * RaftMember process the common raft logic like leader election, log appending, catch-up and so on.
@@ -287,6 +289,10 @@ public abstract class RaftMember implements RaftMemberMBean {
 
   protected LogRelay logRelay;
 
+  protected LogAckSender ackSender;
+
+  private ThreadLocal<String> threadBaseName = new ThreadLocal<>();
+
   protected RaftMember() {}
 
   protected RaftMember(String name, ClientManager clientManager) {
@@ -324,6 +330,8 @@ public abstract class RaftMember implements RaftMemberMBean {
             new IoTThreadFactory(getName() + "-SerialToParallel"),
             getName() + "-SerialToParallel");
     commitLogPool = IoTDBThreadPoolFactory.newSingleThreadExecutor("RaftCommitLog");
+
+    ackSender = new LogAckSender(this);
 
     if (ClusterDescriptor.getInstance().getConfig().isUseIndirectBroadcasting()) {
       logRelay = new LogRelay(this);
@@ -416,6 +424,10 @@ public abstract class RaftMember implements RaftMemberMBean {
     if (logRelay != null) {
       logRelay.stop();
     }
+    if (ackSender != null) {
+      ackSender.stop();
+    }
+
     leader.set(ClusterConstant.EMPTY_NODE);
     catchUpService = null;
     heartBeatService = null;
@@ -572,16 +584,22 @@ public abstract class RaftMember implements RaftMemberMBean {
     return Response.RESPONSE_AGREE;
   }
 
+  private String getThreadBaseName() {
+    if (threadBaseName.get() == null) {
+      threadBaseName.set(Thread.currentThread().getName());
+    }
+    return threadBaseName.get();
+  }
   /**
    * Process an AppendEntryRequest. First check the term of the leader, then parse the log and
    * finally see if we can find a position to append the log.
    */
   public AppendEntryResult appendEntry(AppendEntryRequest request) throws UnknownLogTypeException {
+    long operationStartTime = Statistic.RAFT_RECEIVER_APPEND_ENTRY_FULL.getOperationStartTime();
+    Thread.currentThread()
+        .setName(getThreadBaseName() + "-appending-" + (request.prevLogIndex + 1));
     AppendEntryResult result = appendEntryInternal(request);
-    if (request.isSetSubReceivers()) {
-      request.entry.rewind();
-      logRelay.offer(request, request.subReceivers);
-    }
+    Statistic.RAFT_RECEIVER_APPEND_ENTRY_FULL.calOperationCostTimeFromStart(operationStartTime);
     return result;
   }
 
@@ -600,51 +618,16 @@ public abstract class RaftMember implements RaftMemberMBean {
     log.setByteSize(logByteSize);
     Timer.Statistic.RAFT_RECEIVER_LOG_PARSE.calOperationCostTimeFromStart(startTime);
 
-    AppendEntryResult result =
-        getLogAppender()
-            .appendEntry(request.prevLogIndex, request.prevLogTerm, request.leaderCommit, log);
-    result.setHeader(request.getHeader());
+    long appendStartTime = Timer.Statistic.RAFT_RECEIVER_APPEND_ENTRY.getOperationStartTime();
+    AppendEntryResult result = getLogAppender().appendEntry(request, log);
+    Timer.Statistic.RAFT_RECEIVER_APPEND_ENTRY.calOperationCostTimeFromStart(appendStartTime);
 
     logger.debug("{} AppendEntryRequest of {} completed with result {}", name, log, result.status);
 
     if (!request.isFromLeader) {
-      appendAckLeader(request.leader, log, result.status);
-      Statistic.RAFT_SEND_RELAY_ACK.add(1);
+      ackSender.offer(request.leader, log.getCurrLogIndex(), log.getCurrLogTerm(), result.status);
     }
 
-    return result;
-  }
-
-  private void appendAckLeader(Node leader, Log log, long response) {
-    AppendEntryResult result = new AppendEntryResult();
-    result.setLastLogIndex(log.getCurrLogIndex());
-    result.setLastLogTerm(log.getCurrLogTerm());
-    result.status = response;
-    result.setHeader(getHeader());
-
-    Client syncClient = null;
-    try {
-      if (config.isUseAsyncServer()) {
-        GenericHandler<Void> handler = new GenericHandler<>(leader, null);
-        getAsyncClient(leader).acknowledgeAppendEntry(result, handler);
-      } else {
-        syncClient = getSyncClient(leader);
-        syncClient.acknowledgeAppendEntry(result);
-      }
-    } catch (TException e) {
-      logger.warn("Cannot send ack of {} to leader {}", log, leader, e);
-    } finally {
-      if (syncClient != null) {
-        ClientUtils.putBackSyncClient(syncClient);
-      }
-    }
-  }
-
-  public AppendEntryResult appendEntryIndirect(AppendEntryRequest request, List<Node> subFollowers)
-      throws UnknownLogTypeException {
-    AppendEntryResult result = appendEntry(request);
-    request.entry.rewind();
-    logRelay.offer(request, subFollowers);
     return result;
   }
 
@@ -658,8 +641,19 @@ public abstract class RaftMember implements RaftMemberMBean {
           getAsyncClient(subFollower)
               .appendEntry(request, new IndirectAppendHandler(subFollower, request));
         } else {
+          long operationStartTime = Statistic.RAFT_SENDER_RELAY_LOG.getOperationStartTime();
           syncClient = getSyncClient(subFollower);
+
+          int concurrentSender = concurrentSenderNum.incrementAndGet();
+          Statistic.RAFT_CONCURRENT_SENDER.add(concurrentSender);
           syncClient.appendEntry(request);
+          concurrentSenderNum.decrementAndGet();
+
+          long sendLogTime =
+              Statistic.RAFT_SENDER_RELAY_LOG.calOperationCostTimeFromStart(operationStartTime);
+          NodeStatus nodeStatus = NodeStatusManager.getINSTANCE().getNodeStatus(subFollower, false);
+          nodeStatus.getSendEntryLatencySum().addAndGet(sendLogTime);
+          nodeStatus.getSendEntryNum().incrementAndGet();
         }
       } catch (TException e) {
         logger.error("Cannot send {} to {}", request, subFollower, e);
@@ -697,12 +691,7 @@ public abstract class RaftMember implements RaftMemberMBean {
   /** Similar to appendEntry, while the incoming load is batch of logs instead of a single log. */
   public AppendEntryResult appendEntries(AppendEntriesRequest request)
       throws UnknownLogTypeException {
-    AppendEntryResult result = appendEntriesInternal(request);
-    if (request.isSetSubReceivers()) {
-      request.entries.forEach(Buffer::rewind);
-      logRelay.offer(request, request.subReceivers);
-    }
-    return result;
+    return appendEntriesInternal(request);
   }
 
   /** Similar to appendEntry, while the incoming load is batch of logs instead of a single log. */
@@ -736,9 +725,10 @@ public abstract class RaftMember implements RaftMemberMBean {
 
     Timer.Statistic.RAFT_RECEIVER_LOG_PARSE.calOperationCostTimeFromStart(startTime);
 
-    response =
-        getLogAppender()
-            .appendEntries(request.prevLogIndex, request.prevLogTerm, request.leaderCommit, logs);
+    long appendStartTime = Timer.Statistic.RAFT_RECEIVER_APPEND_ENTRY.getOperationStartTime();
+    response = getLogAppender().appendEntries(request, logs);
+    Timer.Statistic.RAFT_RECEIVER_APPEND_ENTRY.calOperationCostTimeFromStart(appendStartTime);
+
     if (logger.isDebugEnabled()) {
       logger.debug(
           "{} AppendEntriesRequest of log size {} completed with result {}",
@@ -750,7 +740,8 @@ public abstract class RaftMember implements RaftMemberMBean {
     if (!request.isFromLeader) {
       // TODO: use batch ack
       for (Log log : logs) {
-        appendAckLeader(request.leader, log, response.status);
+        ackSender.offer(
+            request.leader, log.getCurrLogIndex(), log.getCurrLogTerm(), response.status);
       }
       Statistic.RAFT_SEND_RELAY_ACK.add(1);
     }
@@ -771,12 +762,11 @@ public abstract class RaftMember implements RaftMemberMBean {
       AtomicBoolean leaderShipStale,
       AtomicLong newLeaderTerm,
       AppendEntryRequest request,
-      Peer peer,
       int quorumSize) {
     AsyncClient client = getSendLogAsyncClient(node);
     if (client != null) {
       AppendNodeEntryHandler handler =
-          getAppendNodeEntryHandler(log, node, leaderShipStale, newLeaderTerm, peer, quorumSize);
+          getAppendNodeEntryHandler(log, node, leaderShipStale, newLeaderTerm, quorumSize);
       try {
         client.appendEntry(request, handler);
         logger.debug("{} sending a log to {}: {}", name, node, log);
@@ -1414,8 +1404,8 @@ public abstract class RaftMember implements RaftMemberMBean {
     }
   }
 
-  public Map<Node, Peer> getPeerMap() {
-    return peerMap;
+  public Peer getPeer(Node node) {
+    return peerMap.computeIfAbsent(node, r -> new Peer(getLogManager().getLastLogIndex()));
   }
 
   /** @return true if there is a log whose index is "index" and term is "term", false otherwise */
@@ -1752,9 +1742,10 @@ public abstract class RaftMember implements RaftMemberMBean {
     int totalAccepted = stronglyAcceptedNodeNum + weaklyAcceptedNodeNum;
     long nextTimeToPrint = 5000;
 
-    long waitStart = System.currentTimeMillis();
+    long waitStart = System.nanoTime();
     long alreadyWait = 0;
 
+    String threadBaseName = Thread.currentThread().getName();
     synchronized (log) {
       while (log.getLog().getCurrLogIndex() == Long.MIN_VALUE
           || stronglyAcceptedNodeNum < quorumSize
@@ -1769,7 +1760,16 @@ public abstract class RaftMember implements RaftMemberMBean {
           Thread.currentThread().interrupt();
           logger.warn("Unexpected interruption when sending a log", e);
         }
-        alreadyWait = System.currentTimeMillis() - waitStart;
+        Thread.currentThread()
+            .setName(
+                threadBaseName
+                    + "-waiting-"
+                    + log.getLog().getCurrLogIndex()
+                    + "-"
+                    + log.getStronglyAcceptedNodeIds()
+                    + "-"
+                    + log.getWeaklyAcceptedNodeIds());
+        alreadyWait = (System.nanoTime() - waitStart) / 1000000;
         if (alreadyWait > nextTimeToPrint) {
           logger.info(
               "Still not receive enough votes for {}, strongly accepted {}, weakly "
@@ -1780,6 +1780,7 @@ public abstract class RaftMember implements RaftMemberMBean {
               log.getStronglyAcceptedNodeIds(),
               log.getWeaklyAcceptedNodeIds(),
               votingLogList.size(),
+              alreadyWait,
               (log.getLog().getSequenceStartTime() - waitStart) / 1000000,
               (log.getLog().getEnqueueTime() - waitStart) / 1000000,
               (log.acceptedTime.get() - waitStart) / 1000000);
@@ -1790,6 +1791,7 @@ public abstract class RaftMember implements RaftMemberMBean {
         totalAccepted = stronglyAcceptedNodeNum + weaklyAcceptedNodeNum;
       }
     }
+    Thread.currentThread().setName(threadBaseName);
 
     if (alreadyWait > 15000) {
       logger.info(
@@ -1820,6 +1822,7 @@ public abstract class RaftMember implements RaftMemberMBean {
                 || (totalAccepted < quorumSize)
                 || votingLogList.size() > config.getMaxNumOfLogsInMem())
             && !log.getStronglyAcceptedNodeIds().contains(Integer.MAX_VALUE))) {
+
       waitAppendResultLoop(log, quorumSize);
     }
     stronglyAcceptedNodeNum = log.getStronglyAcceptedNodeIds().size();
@@ -2177,9 +2180,9 @@ public abstract class RaftMember implements RaftMemberMBean {
     }
 
     if (config.isUseAsyncServer()) {
-      sendLogAsync(log, node, leaderShipStale, newLeaderTerm, request, peer, quorumSize);
+      sendLogAsync(log, node, leaderShipStale, newLeaderTerm, request, quorumSize);
     } else {
-      sendLogSync(log, node, leaderShipStale, newLeaderTerm, request, peer, quorumSize);
+      sendLogSync(log, node, leaderShipStale, newLeaderTerm, request, quorumSize);
     }
   }
 
@@ -2217,12 +2220,11 @@ public abstract class RaftMember implements RaftMemberMBean {
       AtomicBoolean leaderShipStale,
       AtomicLong newLeaderTerm,
       AppendEntryRequest request,
-      Peer peer,
       int quorumSize) {
     Client client = getSyncClient(node);
     if (client != null) {
       AppendNodeEntryHandler handler =
-          getAppendNodeEntryHandler(log, node, leaderShipStale, newLeaderTerm, peer, quorumSize);
+          getAppendNodeEntryHandler(log, node, leaderShipStale, newLeaderTerm, quorumSize);
       try {
         logger.debug("{} sending a log to {}: {}", name, node, log);
         long operationStartTime = Statistic.RAFT_SENDER_SEND_LOG.getOperationStartTime();
@@ -2248,14 +2250,12 @@ public abstract class RaftMember implements RaftMemberMBean {
       Node node,
       AtomicBoolean leaderShipStale,
       AtomicLong newLeaderTerm,
-      Peer peer,
       int quorumSize) {
     AppendNodeEntryHandler handler = new AppendNodeEntryHandler();
-    handler.setReceiver(node);
+    handler.setDirectReceiver(node);
     handler.setLeaderShipStale(leaderShipStale);
     handler.setLog(log);
     handler.setMember(this);
-    handler.setPeer(peer);
     handler.setReceiverTerm(newLeaderTerm);
     handler.setQuorumSize(quorumSize);
     if (ClusterDescriptor.getInstance().getConfig().isUseIndirectBroadcasting()) {
@@ -2283,26 +2283,22 @@ public abstract class RaftMember implements RaftMemberMBean {
   private long checkRequestTerm(long leaderTerm, Node leader) {
     long localTerm;
 
-    synchronized (logManager) {
-      // if the request comes before the heartbeat arrives, the local term may be smaller than the
-      // leader term
-      localTerm = term.get();
-      if (leaderTerm < localTerm) {
-        logger.debug(
-            "{} rejected the AppendEntriesRequest for term: {}/{}", name, leaderTerm, localTerm);
-        return localTerm;
+    // if the request comes before the heartbeat arrives, the local term may be smaller than the
+    // leader term
+    localTerm = term.get();
+    if (leaderTerm < localTerm) {
+      logger.debug(
+          "{} rejected the AppendEntriesRequest for term: {}/{}", name, leaderTerm, localTerm);
+      return localTerm;
+    } else {
+      if (leaderTerm > localTerm) {
+        stepDown(leaderTerm, true);
       } else {
-        if (leaderTerm > localTerm) {
-          stepDown(leaderTerm, true);
-        } else {
-          lastHeartbeatReceivedTime = System.currentTimeMillis();
-        }
-        setLeader(leader);
-        if (character != NodeCharacter.FOLLOWER) {
-          term.notifyAll();
-        }
+        lastHeartbeatReceivedTime = System.currentTimeMillis();
       }
+      setLeader(leader);
     }
+
     logger.debug("{} accepted the AppendEntryRequest for term: {}", name, localTerm);
     return Response.RESPONSE_AGREE;
   }
@@ -2324,17 +2320,19 @@ public abstract class RaftMember implements RaftMemberMBean {
    * @param ack acknowledgement from an indirect receiver.
    */
   public void acknowledgeAppendLog(AppendEntryResult ack) {
+    long operationStartTime = Statistic.RAFT_RECEIVER_HANDLE_APPEND_ACK.getOperationStartTime();
     AppendNodeEntryHandler appendNodeEntryHandler =
         sentLogHandlers.get(new Pair<>(ack.lastLogIndex, ack.lastLogTerm));
+    Statistic.RAFT_RECEIVE_RELAY_ACK.add(1);
     if (appendNodeEntryHandler != null) {
       appendNodeEntryHandler.onComplete(ack);
-      Statistic.RAFT_RECEIVE_RELAY_ACK.add(1);
     }
+    Statistic.RAFT_RECEIVER_HANDLE_APPEND_ACK.calOperationCostTimeFromStart(operationStartTime);
   }
 
   public void registerAppendLogHandler(
       Pair<Long, Long> indexTerm, AppendNodeEntryHandler appendNodeEntryHandler) {
-    sentLogHandlers.put(indexTerm, appendNodeEntryHandler);
+    sentLogHandlers.putIfAbsent(indexTerm, appendNodeEntryHandler);
   }
 
   public void removeAppendLogHandler(Pair<Long, Long> indexTerm) {
@@ -2403,5 +2401,9 @@ public abstract class RaftMember implements RaftMemberMBean {
   @TestOnly
   public void setClientManager(ClientManager clientManager) {
     this.clientManager = clientManager;
+  }
+
+  public LogRelay getLogRelay() {
+    return logRelay;
   }
 }

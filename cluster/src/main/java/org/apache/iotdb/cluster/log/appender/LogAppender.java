@@ -20,6 +20,8 @@
 package org.apache.iotdb.cluster.log.appender;
 
 import org.apache.iotdb.cluster.log.Log;
+import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
+import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryResult;
 
 import java.util.List;
@@ -30,10 +32,9 @@ import java.util.List;
  */
 public interface LogAppender {
 
-  AppendEntryResult appendEntries(
-      long prevLogIndex, long prevLogTerm, long leaderCommit, List<Log> logs);
+  AppendEntryResult appendEntries(AppendEntriesRequest request, List<Log> logs);
 
-  AppendEntryResult appendEntry(long prevLogIndex, long prevLogTerm, long leaderCommit, Log log);
+  AppendEntryResult appendEntry(AppendEntryRequest request, Log log);
 
   void reset();
 }

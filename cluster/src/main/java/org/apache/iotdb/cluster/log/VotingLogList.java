@@ -20,13 +20,19 @@
 package org.apache.iotdb.cluster.log;
 
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.exception.LogExecutionException;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.tsfile.utils.Pair;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class VotingLogList {
+
+  private static final Logger logger = LoggerFactory.getLogger(VotingLogList.class);
 
   private List<VotingLog> logList = new ArrayList<>();
   private volatile long currTerm = -1;
@@ -63,6 +69,7 @@ public class VotingLogList {
    * @return the lastly removed entry if any.
    */
   public void onStronglyAccept(long index, long term, int acceptingNodeId) {
+    logger.debug("{}-{} is strongly accepted by {}", index, term, acceptingNodeId);
     int lastEntryIndexToCommit = -1;
 
     List<VotingLog> acceptedLogs;
@@ -93,6 +100,15 @@ public class VotingLogList {
     }
 
     if (lastEntryIndexToCommit != -1) {
+      Log lastLog = acceptedLogs.get(acceptedLogs.size() - 1).log;
+      synchronized (member.getLogManager()) {
+        try {
+          member.getLogManager().commitTo(lastLog.getCurrLogIndex());
+        } catch (LogExecutionException e) {
+          logger.error("Fail to commit {}", lastLog, e);
+        }
+      }
+
       for (VotingLog acceptedLog : acceptedLogs) {
         synchronized (acceptedLog) {
           acceptedLog.acceptedTime.set(System.nanoTime());

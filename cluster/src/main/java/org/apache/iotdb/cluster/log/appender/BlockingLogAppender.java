@@ -22,6 +22,8 @@ package org.apache.iotdb.cluster.log.appender;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.manage.RaftLogManager;
+import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
+import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryResult;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.RaftMember;
@@ -30,6 +32,7 @@ import org.apache.iotdb.cluster.server.monitor.Timer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.Buffer;
 import java.util.List;
 
 /**
@@ -57,24 +60,28 @@ public class BlockingLogAppender implements LogAppender {
    * @return Response.RESPONSE_AGREE when the log is successfully appended or Response
    *     .RESPONSE_LOG_MISMATCH if the previous log of "log" is not found.
    */
-  public AppendEntryResult appendEntry(
-      long prevLogIndex, long prevLogTerm, long leaderCommit, Log log) {
-    long resp = checkPrevLogIndex(prevLogIndex);
+  public AppendEntryResult appendEntry(AppendEntryRequest request, Log log) {
+    long resp = checkPrevLogIndex(request.prevLogIndex);
     if (resp != Response.RESPONSE_AGREE) {
       return new AppendEntryResult(resp).setHeader(member.getHeader());
     }
 
-    long startTime = Timer.Statistic.RAFT_RECEIVER_APPEND_ENTRY.getOperationStartTime();
     long success;
     AppendEntryResult result = new AppendEntryResult();
     synchronized (logManager) {
-      success = logManager.maybeAppend(prevLogIndex, prevLogTerm, leaderCommit, log);
+      success =
+          logManager.maybeAppend(
+              request.prevLogIndex, request.prevLogTerm, request.leaderCommit, log);
       if (success != -1) {
         result.setLastLogIndex(logManager.getLastLogIndex());
         result.setLastLogTerm(logManager.getLastLogTerm());
+        if (request.isSetSubReceivers() && !request.getSubReceivers().isEmpty()) {
+          request.entry.rewind();
+          member.getLogRelay().offer(request, request.subReceivers);
+        }
       }
     }
-    Timer.Statistic.RAFT_RECEIVER_APPEND_ENTRY.calOperationCostTimeFromStart(startTime);
+
     if (success != -1) {
       logger.debug("{} append a new log {}", member.getName(), log);
       result.status = Response.RESPONSE_STRONG_ACCEPT;
@@ -82,6 +89,7 @@ public class BlockingLogAppender implements LogAppender {
       // the incoming log points to an illegal position, reject it
       result.status = Response.RESPONSE_LOG_MISMATCH;
     }
+    result.setHeader(request.getHeader());
     return result;
   }
 
@@ -134,36 +142,43 @@ public class BlockingLogAppender implements LogAppender {
    * @return Response.RESPONSE_AGREE when the log is successfully appended or Response
    *     .RESPONSE_LOG_MISMATCH if the previous log of "log" is not found.
    */
-  public AppendEntryResult appendEntries(
-      long prevLogIndex, long prevLogTerm, long leaderCommit, List<Log> logs) {
+  public AppendEntryResult appendEntries(AppendEntriesRequest request, List<Log> logs) {
     logger.debug(
         "{}, prevLogIndex={}, prevLogTerm={}, leaderCommit={}",
         member.getName(),
-        prevLogIndex,
-        prevLogTerm,
-        leaderCommit);
+        request.prevLogIndex,
+        request.prevLogTerm,
+        request.leaderCommit);
     if (logs.isEmpty()) {
       return new AppendEntryResult(Response.RESPONSE_AGREE).setHeader(member.getHeader());
     }
 
-    long resp = checkPrevLogIndex(prevLogIndex);
+    long resp = checkPrevLogIndex(request.prevLogIndex);
     if (resp != Response.RESPONSE_AGREE) {
       return new AppendEntryResult(resp).setHeader(member.getHeader());
     }
 
     AppendEntryResult result = new AppendEntryResult();
     synchronized (logManager) {
-      long startTime = Timer.Statistic.RAFT_RECEIVER_APPEND_ENTRY.getOperationStartTime();
-      resp = logManager.maybeAppend(prevLogIndex, prevLogTerm, leaderCommit, logs);
-      Timer.Statistic.RAFT_RECEIVER_APPEND_ENTRY.calOperationCostTimeFromStart(startTime);
+      resp =
+          logManager.maybeAppend(
+              request.prevLogIndex, request.prevLogTerm, request.leaderCommit, logs);
       if (resp != -1) {
         if (logger.isDebugEnabled()) {
           logger.debug(
-              "{} append a new log list {}, commit to {}", member.getName(), logs, leaderCommit);
+              "{} append a new log list {}, commit to {}",
+              member.getName(),
+              logs,
+              request.leaderCommit);
         }
         result.status = Response.RESPONSE_STRONG_ACCEPT;
         result.setLastLogIndex(logManager.getLastLogIndex());
         result.setLastLogTerm(logManager.getLastLogTerm());
+
+        if (request.isSetSubReceivers()) {
+          request.entries.forEach(Buffer::rewind);
+          member.getLogRelay().offer(request, request.subReceivers);
+        }
       } else {
         // the incoming log points to an illegal position, reject it
         result.status = Response.RESPONSE_LOG_MISMATCH;

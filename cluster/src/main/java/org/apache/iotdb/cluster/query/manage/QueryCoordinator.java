@@ -37,7 +37,8 @@ public class QueryCoordinator {
   private static final QueryCoordinator INSTANCE = new QueryCoordinator();
   private static final NodeStatusManager STATUS_MANAGER = NodeStatusManager.getINSTANCE();
 
-  private final Comparator<Node> nodeComparator = Comparator.comparing(this::getNodeStatus);
+  private final Comparator<Node> nodeComparator =
+      Comparator.comparingLong(o -> getNodeStatus(o).getStatus().fanoutRequestNum);
 
   private QueryCoordinator() {
     // singleton class

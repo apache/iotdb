@@ -192,6 +192,8 @@ public class ClusterConfig {
 
   private int relaySenderNum = 8;
 
+  private boolean optimizeIndirectBroadcasting = false;
+
   /**
    * create a clusterConfig class. The internalIP will be set according to the server's hostname. If
    * there is something error for getting the ip of the hostname, then set the internalIp as
@@ -589,5 +591,13 @@ public class ClusterConfig {
 
   public void setRelaySenderNum(int relaySenderNum) {
     this.relaySenderNum = relaySenderNum;
+  }
+
+  public boolean isOptimizeIndirectBroadcasting() {
+    return optimizeIndirectBroadcasting;
+  }
+
+  public void setOptimizeIndirectBroadcasting(boolean optimizeIndirectBroadcasting) {
+    this.optimizeIndirectBroadcasting = optimizeIndirectBroadcasting;
   }
 }

@@ -78,8 +78,7 @@ public class AppendNodeEntryHandlerTest {
         handler.setLog(votingLog);
         handler.setMember(member);
         handler.setReceiverTerm(receiverTerm);
-        handler.setReceiver(TestUtils.getNode(i));
-        handler.setPeer(peer);
+        handler.setDirectReceiver(TestUtils.getNode(i));
         handler.setQuorumSize(ClusterDescriptor.getInstance().getConfig().getReplicationNum() / 2);
         long resp = i >= 5 ? Response.RESPONSE_AGREE : Response.RESPONSE_LOG_MISMATCH;
         AppendEntryResult result = new AppendEntryResult();
@@ -114,8 +113,7 @@ public class AppendNodeEntryHandlerTest {
       handler.setLog(votingLog);
       handler.setMember(member);
       handler.setReceiverTerm(receiverTerm);
-      handler.setReceiver(TestUtils.getNode(i));
-      handler.setPeer(peer);
+      handler.setDirectReceiver(TestUtils.getNode(i));
       handler.setQuorumSize(ClusterDescriptor.getInstance().getConfig().getReplicationNum() / 2);
       AppendEntryResult result = new AppendEntryResult();
       result.setStatus(Response.RESPONSE_AGREE);
@@ -141,8 +139,7 @@ public class AppendNodeEntryHandlerTest {
       handler.setLog(votingLog);
       handler.setMember(member);
       handler.setReceiverTerm(receiverTerm);
-      handler.setReceiver(TestUtils.getNode(0));
-      handler.setPeer(peer);
+      handler.setDirectReceiver(TestUtils.getNode(0));
       handler.setQuorumSize(ClusterDescriptor.getInstance().getConfig().getReplicationNum() / 2);
       new Thread(() -> handler.onComplete(new AppendEntryResult(100L))).start();
       votingLog.wait();
@@ -168,8 +165,7 @@ public class AppendNodeEntryHandlerTest {
       handler.setLog(votingLog);
       handler.setMember(member);
       handler.setReceiverTerm(receiverTerm);
-      handler.setReceiver(TestUtils.getNode(0));
-      handler.setPeer(peer);
+      handler.setDirectReceiver(TestUtils.getNode(0));
       handler.setQuorumSize(ClusterDescriptor.getInstance().getConfig().getReplicationNum() / 2);
       handler.onError(new TestException());
 

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cluster.server.monitor;
 
+import org.apache.iotdb.cluster.log.LogRelay.RelayEntry;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.server.NodeCharacter;
@@ -78,6 +79,7 @@ public class NodeReport {
     long lastHeartbeatReceivedTime;
     long prevLastLogIndex;
     long maxAppliedLogIndex;
+    RelayEntry nextToRelay;
 
     RaftMemberReport(
         NodeCharacter character,
@@ -90,7 +92,8 @@ public class NodeReport {
         boolean isReadOnly,
         long lastHeartbeatReceivedTime,
         long prevLastLogIndex,
-        long maxAppliedLogIndex) {
+        long maxAppliedLogIndex,
+        RelayEntry nextToRelay) {
       this.character = character;
       this.leader = leader;
       this.term = term;
@@ -102,6 +105,7 @@ public class NodeReport {
       this.lastHeartbeatReceivedTime = lastHeartbeatReceivedTime;
       this.prevLastLogIndex = prevLastLogIndex;
       this.maxAppliedLogIndex = maxAppliedLogIndex;
+      this.nextToRelay = nextToRelay;
     }
   }
 
@@ -119,7 +123,8 @@ public class NodeReport {
         boolean isReadOnly,
         long lastHeartbeatReceivedTime,
         long prevLastLogIndex,
-        long maxAppliedLogIndex) {
+        long maxAppliedLogIndex,
+        RelayEntry nextToRelay) {
       super(
           character,
           leader,
@@ -131,7 +136,8 @@ public class NodeReport {
           isReadOnly,
           lastHeartbeatReceivedTime,
           prevLastLogIndex,
-          maxAppliedLogIndex);
+          maxAppliedLogIndex,
+          nextToRelay);
     }
 
     @Override
@@ -212,7 +218,8 @@ public class NodeReport {
         long headerLatency,
         long lastHeartbeatReceivedTime,
         long prevLastLogIndex,
-        long maxAppliedLogIndex) {
+        long maxAppliedLogIndex,
+        RelayEntry nextToRelay) {
       super(
           character,
           leader,
@@ -224,7 +231,8 @@ public class NodeReport {
           isReadOnly,
           lastHeartbeatReceivedTime,
           prevLastLogIndex,
-          maxAppliedLogIndex);
+          maxAppliedLogIndex,
+          nextToRelay);
       this.header = header;
       this.headerLatency = headerLatency;
     }
@@ -254,6 +262,8 @@ public class NodeReport {
           + maxAppliedLogIndex
           + ", readOnly="
           + isReadOnly
+          + ", nextToRelay="
+          + nextToRelay
           + ", headerLatency="
           + headerLatency
           + "ns"

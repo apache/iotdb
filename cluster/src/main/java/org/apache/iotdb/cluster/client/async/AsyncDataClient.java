@@ -147,17 +147,13 @@ public class AsyncDataClient extends TSDataService.AsyncClient {
 
   public static class AsyncDataClientFactory extends AsyncBaseFactory<Node, AsyncDataClient> {
 
-    Exception createStack;
-
     public AsyncDataClientFactory(TProtocolFactory protocolFactory, ClientCategory category) {
       super(protocolFactory, category);
-      createStack = new Exception();
     }
 
     public AsyncDataClientFactory(
         TProtocolFactory protocolFactory, ClientCategory category, IClientManager clientManager) {
       super(protocolFactory, category, clientManager);
-      createStack = new Exception();
     }
 
     @Override

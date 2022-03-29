@@ -235,7 +235,7 @@ struct PreviousFillRequest {
 
 // the spec and load of a node, for query coordinating
 struct TNodeStatus {
-
+  1: required long fanoutRequestNum
 }
 
 struct GetAggrResultRequest {
@@ -283,6 +283,7 @@ struct AppendEntryResult {
   2: optional i64 lastLogTerm;
   3: optional i64 lastLogIndex;
   4: optional RaftNode header;
+  5: optional Node receiver;
 }
 
 

@@ -45,6 +45,9 @@ import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.clusterinfo.ClusterInfoServer;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.server.monitor.NodeReport;
+import org.apache.iotdb.cluster.server.monitor.NodeStatus;
+import org.apache.iotdb.cluster.server.monitor.NodeStatusManager;
+import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
 import org.apache.iotdb.cluster.server.raft.DataRaftHeartBeatService;
 import org.apache.iotdb.cluster.server.raft.DataRaftService;
 import org.apache.iotdb.cluster.server.raft.MetaRaftHeartBeatService;
@@ -79,6 +82,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.HashSet;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
@@ -250,6 +254,7 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     }
 
     // we start IoTDB kernel first. then we start the cluster module.
+    Runtime.getRuntime().addShutdownHook(new ShutdownHook());
     if (MODE_START.equals(mode)) {
       cluster.activeStartNodeMode();
     } else if (MODE_ADD.equals(mode)) {
@@ -285,6 +290,20 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
           .setRpcAddress(ClusterDescriptor.getInstance().getConfig().getInternalIp());
     }
     return true;
+  }
+
+  private static class ShutdownHook extends Thread {
+
+    @Override
+    public void run() {
+      logger.info(
+          "Total request fanout: {}",
+          Statistic.RAFT_SENDER_RELAY_LOG.getCnt() + Statistic.RAFT_SENDER_SEND_LOG.getCnt());
+      for (Entry<Node, NodeStatus> nodeNodeStatusEntry :
+          NodeStatusManager.getINSTANCE().getNodeStatusMap().entrySet()) {
+        logger.info("{}: {}", nodeNodeStatusEntry.getKey(), nodeNodeStatusEntry.getValue());
+      }
+    }
   }
 
   private String clusterConfigCheck() {

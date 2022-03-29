@@ -682,8 +682,15 @@ public abstract class RaftLogManager {
           "There are too many unapplied logs [{}], wait for a while to avoid memory overflow",
           unappliedLogSize);
       try {
-        Thread.sleep(
-            unappliedLogSize - ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem());
+        synchronized (changeApplyCommitIndexCond) {
+          changeApplyCommitIndexCond.wait(
+              Math.min(
+                  (unappliedLogSize
+                              - ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem())
+                          / 10
+                      + 1,
+                  1000));
+        }
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
       }
@@ -954,7 +961,7 @@ public abstract class RaftLogManager {
   }
 
   public void checkAppliedLogIndex() {
-    while (!Thread.currentThread().isInterrupted()) {
+    while (!Thread.interrupted()) {
       try {
         doCheckAppliedLogIndex();
       } catch (IndexOutOfBoundsException e) {
@@ -976,7 +983,7 @@ public abstract class RaftLogManager {
           || nextToCheckIndex > getCommittedEntryManager().getLastIndex()
           || (blockAppliedCommitIndex > 0 && blockAppliedCommitIndex < nextToCheckIndex)) {
         // avoid spinning
-        Thread.sleep(0);
+        Thread.sleep(100);
         return;
       }
       Log log = getCommittedEntryManager().getEntry(nextToCheckIndex);
@@ -992,7 +999,7 @@ public abstract class RaftLogManager {
         synchronized (log) {
           while (!log.isApplied() && maxHaveAppliedCommitIndex < log.getCurrLogIndex()) {
             // wait until the log is applied or a newer snapshot is installed
-            log.wait(1);
+            log.wait(10);
           }
         }
       }

@@ -22,16 +22,23 @@ package org.apache.iotdb.cluster.log.appender;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.manage.RaftLogManager;
+import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
+import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryResult;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.RaftMember;
-import org.apache.iotdb.cluster.server.monitor.Timer;
 import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.nio.Buffer;
 import java.util.Arrays;
 import java.util.List;
 
 public class SlidingWindowLogAppender implements LogAppender {
+
+  private static final Logger logger = LoggerFactory.getLogger(SlidingWindowLogAppender.class);
 
   private int windowCapacity = ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem();
   private int windowLength = 0;
@@ -115,25 +122,43 @@ public class SlidingWindowLogAppender implements LogAppender {
 
     // flush [0, flushPos)
     List<Log> logs = Arrays.asList(logWindow).subList(0, flushPos);
+    logger.debug(
+        "Flushing {} entries to log, first {}, last {}",
+        logs.size(),
+        logs.get(0),
+        logs.get(logs.size() - 1));
     long success =
         logManager.maybeAppend(windowPrevLogIndex, windowPrevLogTerm, leaderCommit, logs);
     if (success != -1) {
-      System.arraycopy(logWindow, flushPos, logWindow, 0, windowCapacity - flushPos);
-      System.arraycopy(prevTerms, flushPos, prevTerms, 0, windowCapacity - flushPos);
-      for (int i = 1; i <= flushPos; i++) {
-        logWindow[windowCapacity - i] = null;
-      }
+      moveWindowRightward(flushPos);
     }
-    firstPosPrevIndex = logManager.getLastLogIndex();
     result.status = Response.RESPONSE_STRONG_ACCEPT;
     result.setLastLogIndex(firstPosPrevIndex);
     result.setLastLogTerm(logManager.getLastLogTerm());
     return success;
   }
 
+  private void moveWindowRightward(int step) {
+    System.arraycopy(logWindow, step, logWindow, 0, windowCapacity - step);
+    System.arraycopy(prevTerms, step, prevTerms, 0, windowCapacity - step);
+    for (int i = 1; i <= step; i++) {
+      logWindow[windowCapacity - i] = null;
+    }
+    firstPosPrevIndex = logManager.getLastLogIndex();
+  }
+
+  private void moveWindowLeftward(int step) {
+    int length = Math.max(windowCapacity - step, 0);
+    System.arraycopy(logWindow, 0, logWindow, step, length);
+    System.arraycopy(prevTerms, 0, prevTerms, step, length);
+    for (int i = 0; i < length; i++) {
+      logWindow[i] = null;
+    }
+    firstPosPrevIndex = logManager.getLastLogIndex();
+  }
+
   @Override
-  public AppendEntryResult appendEntries(
-      long prevLogIndex, long prevLogTerm, long leaderCommit, List<Log> logs) {
+  public AppendEntryResult appendEntries(AppendEntriesRequest request, List<Log> logs) {
     if (logs.isEmpty()) {
       return new AppendEntryResult(Response.RESPONSE_AGREE)
           .setHeader(member.getPartitionGroup().getHeader());
@@ -141,24 +166,56 @@ public class SlidingWindowLogAppender implements LogAppender {
 
     AppendEntryResult result = null;
     for (Log log : logs) {
-      result = appendEntry(prevLogIndex, prevLogTerm, leaderCommit, log);
+      result = appendEntry(request.prevLogIndex, request.prevLogTerm, request.leaderCommit, log);
 
       if (result.status != Response.RESPONSE_AGREE
           && result.status != Response.RESPONSE_STRONG_ACCEPT
           && result.status != Response.RESPONSE_WEAK_ACCEPT) {
         return result;
       }
-      prevLogIndex = log.getCurrLogIndex();
-      prevLogTerm = log.getCurrLogTerm();
+      request.prevLogIndex = log.getCurrLogIndex();
+      request.prevLogTerm = log.getCurrLogTerm();
+    }
+    if (request.isSetSubReceivers()) {
+      request.entries.forEach(Buffer::rewind);
+      member.getLogRelay().offer(request, request.subReceivers);
     }
 
     return result;
   }
 
   @Override
-  public AppendEntryResult appendEntry(
+  public AppendEntryResult appendEntry(AppendEntryRequest request, Log log) {
+
+    AppendEntryResult result = null;
+    long start = System.currentTimeMillis();
+    long retryTime = 0;
+    long maxRetry = 10000;
+    while (result == null
+        || result.status == Response.RESPONSE_OUT_OF_WINDOW && retryTime < maxRetry) {
+      result = appendEntry(request.prevLogIndex, request.prevLogTerm, request.leaderCommit, log);
+      retryTime = System.currentTimeMillis() - start;
+      if (result.status == Response.RESPONSE_OUT_OF_WINDOW && retryTime < maxRetry) {
+        try {
+          Thread.sleep(10);
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          break;
+        }
+      }
+    }
+    result.setHeader(request.getHeader());
+
+    if (request.isSetSubReceivers() && !request.getSubReceivers().isEmpty()) {
+      request.entry.rewind();
+      member.getLogRelay().offer(request, request.subReceivers);
+    }
+
+    return result;
+  }
+
+  private AppendEntryResult appendEntry(
       long prevLogIndex, long prevLogTerm, long leaderCommit, Log log) {
-    long startTime = Timer.Statistic.RAFT_RECEIVER_APPEND_ENTRY.getOperationStartTime();
     long appendedPos = 0;
 
     AppendEntryResult result = new AppendEntryResult();
@@ -170,6 +227,7 @@ public class SlidingWindowLogAppender implements LogAppender {
         result.status = Response.RESPONSE_STRONG_ACCEPT;
         result.setLastLogIndex(logManager.getLastLogIndex());
         result.setLastLogTerm(logManager.getLastLogTerm());
+        moveWindowLeftward(-windowPos);
       } else if (windowPos < windowCapacity) {
         // the new entry falls into the window
         logWindow[windowPos] = log;
@@ -186,14 +244,12 @@ public class SlidingWindowLogAppender implements LogAppender {
 
         Statistic.RAFT_WINDOW_LENGTH.add(windowLength);
       } else {
-        Timer.Statistic.RAFT_RECEIVER_APPEND_ENTRY.calOperationCostTimeFromStart(startTime);
         result.setStatus(Response.RESPONSE_OUT_OF_WINDOW);
         result.setHeader(member.getPartitionGroup().getHeader());
         return result;
       }
     }
 
-    Timer.Statistic.RAFT_RECEIVER_APPEND_ENTRY.calOperationCostTimeFromStart(startTime);
     if (appendedPos == -1) {
       // the incoming log points to an illegal position, reject it
       result.status = Response.RESPONSE_LOG_MISMATCH;

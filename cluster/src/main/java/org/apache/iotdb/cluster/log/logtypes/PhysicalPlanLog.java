@@ -22,6 +22,7 @@ package org.apache.iotdb.cluster.log.logtypes;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.DummyPlan;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import org.slf4j.Logger;
@@ -44,6 +45,16 @@ public class PhysicalPlanLog extends Log {
 
   public PhysicalPlanLog(PhysicalPlan plan) {
     this.plan = plan;
+  }
+
+  @Override
+  public int getDefaultBufferSize() {
+    if (plan instanceof DummyPlan) {
+      int workloadSize =
+          ((DummyPlan) plan).getWorkload() == null ? 0 : ((DummyPlan) plan).getWorkload().length;
+      return workloadSize + 512;
+    }
+    return DEFAULT_BUFFER_SIZE;
   }
 
   @Override

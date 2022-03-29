@@ -22,6 +22,7 @@ package org.apache.iotdb.cluster.server.monitor;
 import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
 
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicLong;
 
 /** NodeStatus contains the last-known spec and load of a node in the cluster. */
 @SuppressWarnings("java:S1135")
@@ -52,6 +53,9 @@ public class NodeStatus implements Comparable<NodeStatus> {
   // deactivated, it cannot be reactivated in a normal way. So we also consider it reactivated if
   // its lastDeactivatedTime is too old.
   private long lastDeactivatedTime;
+
+  private AtomicLong sendEntryNum = new AtomicLong();
+  private AtomicLong sendEntryLatencySum = new AtomicLong();
 
   // TODO-Cluster: decide what should be contained in NodeStatus and how two compare two NodeStatus
   @Override
@@ -114,5 +118,35 @@ public class NodeStatus implements Comparable<NodeStatus> {
   public boolean isActivated() {
     return isActivated
         || (System.currentTimeMillis() - lastDeactivatedTime) > DEACTIVATION_VALID_INTERVAL_MS;
+  }
+
+  public AtomicLong getSendEntryNum() {
+    return sendEntryNum;
+  }
+
+  public AtomicLong getSendEntryLatencySum() {
+    return sendEntryLatencySum;
+  }
+
+  @Override
+  public String toString() {
+    return "NodeStatus{"
+        + "status="
+        + status
+        + ", lastUpdateTime="
+        + lastUpdateTime
+        + ", lastResponseLatency="
+        + lastResponseLatency
+        + ", isActivated="
+        + isActivated
+        + ", lastDeactivatedTime="
+        + lastDeactivatedTime
+        + ", sendEntryNum="
+        + sendEntryNum
+        + ", sendEntryLatencySum="
+        + sendEntryLatencySum
+        + ", sendEntryLatencyAvg="
+        + (sendEntryLatencySum.get() * 1.0 / sendEntryNum.get())
+        + '}';
   }
 }

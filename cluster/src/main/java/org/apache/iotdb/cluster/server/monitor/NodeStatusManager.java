@@ -34,6 +34,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.ConnectException;
+import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -46,7 +47,7 @@ public class NodeStatusManager {
 
   private static final Logger logger = LoggerFactory.getLogger(NodeStatusManager.class);
   // a status is considered stale if it is older than one minute and should be updated
-  private static final long NODE_STATUS_UPDATE_INTERVAL_MS = 60 * 1000L;
+  private static final long NODE_STATUS_UPDATE_INTERVAL_MS = 1 * 10L;
   private static final NodeStatusManager INSTANCE = new NodeStatusManager();
 
   private MetaGroupMember metaGroupMember;
@@ -147,7 +148,7 @@ public class NodeStatusManager {
     } else {
       nodeStatus.setLastResponseLatency(Long.MAX_VALUE);
     }
-    logger.info(
+    logger.debug(
         "NodeStatus of {} is updated, status: {}, response time: {}",
         node,
         nodeStatus.getStatus(),
@@ -179,5 +180,9 @@ public class NodeStatusManager {
    */
   public boolean isActivated(Node node) {
     return getNodeStatus(node, false).isActivated();
+  }
+
+  public Map<Node, NodeStatus> getNodeStatusMap() {
+    return Collections.unmodifiableMap(nodeStatusMap);
   }
 }

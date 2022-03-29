@@ -50,7 +50,7 @@ public abstract class Log implements Comparable<Log> {
 
   private int byteSize = 0;
 
-  public static int getDefaultBufferSize() {
+  public int getDefaultBufferSize() {
     return DEFAULT_BUFFER_SIZE;
   }
 

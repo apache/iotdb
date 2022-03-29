@@ -146,6 +146,16 @@ public class Timer {
         RAFT_SENDER_SEND_LOG_TO_FOLLOWERS),
     RAFT_SENDER_SEND_LOG(
         RAFT_MEMBER_SENDER, "send log", TIME_SCALE, true, RAFT_SENDER_SEND_LOG_TO_FOLLOWERS),
+    RAFT_SENDER_HANDLE_SEND_RESULT(
+        RAFT_MEMBER_SENDER,
+        "handle send log result",
+        TIME_SCALE,
+        true,
+        RAFT_SENDER_SEND_LOG_TO_FOLLOWERS),
+    RAFT_SENDER_RELAY_OFFER_LOG(
+        RAFT_MEMBER_SENDER, "relay offer log", TIME_SCALE, true, RAFT_SENDER_SEND_LOG_TO_FOLLOWERS),
+    RAFT_SENDER_RELAY_LOG(
+        RAFT_MEMBER_SENDER, "relay log", TIME_SCALE, true, RAFT_SENDER_SEND_LOG_TO_FOLLOWERS),
     RAFT_SENDER_VOTE_COUNTER(
         RAFT_MEMBER_SENDER,
         "wait for votes",
@@ -237,14 +247,26 @@ public class Timer {
         RAFT_SENDER_SEND_LOG_TO_FOLLOWERS),
     RAFT_RECEIVER_APPEND_ENTRY(
         RAFT_MEMBER_RECEIVER, "append entrys", TIME_SCALE, true, RAFT_SENDER_SEND_LOG_TO_FOLLOWERS),
-    RAFT_RECEIVER_INDEX_DIFF(RAFT_MEMBER_RECEIVER, "index diff", 1.0, true, ROOT),
-    // log dispatcher
-    LOG_DISPATCHER_FROM_CREATE_TO_ENQUEUE(
-        LOG_DISPATCHER,
-        "from create to queue",
+    RAFT_RECEIVER_APPEND_ACK(
+        RAFT_MEMBER_RECEIVER,
+        "ack append entrys",
         TIME_SCALE,
         true,
-        META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
+        RAFT_SENDER_SEND_LOG_TO_FOLLOWERS),
+    RAFT_RECEIVER_APPEND_ENTRY_FULL(
+        RAFT_MEMBER_RECEIVER,
+        "append entrys(full)",
+        TIME_SCALE,
+        true,
+        RAFT_SENDER_SEND_LOG_TO_FOLLOWERS),
+    RAFT_RECEIVER_HANDLE_APPEND_ACK(
+        RAFT_MEMBER_SENDER,
+        "handle append entrys ack",
+        TIME_SCALE,
+        true,
+        RAFT_SENDER_SEND_LOG_TO_FOLLOWERS),
+    RAFT_RECEIVER_INDEX_DIFF(RAFT_MEMBER_RECEIVER, "index diff", 1.0, true, ROOT),
+    // log dispatcher
     LOG_DISPATCHER_LOG_ENQUEUE(
         LOG_DISPATCHER,
         "enqueue",
@@ -262,6 +284,24 @@ public class Timer {
     LOG_DISPATCHER_FROM_RECEIVE_TO_CREATE(
         LOG_DISPATCHER,
         "from receive to create",
+        TIME_SCALE,
+        true,
+        META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
+    LOG_DISPATCHER_FROM_CREATE_TO_ENQUEUE(
+        LOG_DISPATCHER,
+        "from create to queue",
+        TIME_SCALE,
+        true,
+        META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
+    LOG_DISPATCHER_FROM_CREATE_TO_DEQUEUE(
+        LOG_DISPATCHER,
+        "from create to dequeue",
+        TIME_SCALE,
+        true,
+        META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
+    LOG_DISPATCHER_FROM_CREATE_TO_SENDING(
+        LOG_DISPATCHER,
+        "from create to sending",
         TIME_SCALE,
         true,
         META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
@@ -288,7 +328,9 @@ public class Timer {
     RAFT_SEND_RELAY_ACK(RAFT_MEMBER_RECEIVER, "send relay ack", 1, true, ROOT),
     RAFT_RECEIVE_RELAY_ACK(RAFT_MEMBER_SENDER, "receive relay ack", 1, true, ROOT),
     RAFT_WAIT_AFTER_ACCEPTED(RAFT_MEMBER_SENDER, "wait after accepted", TIME_SCALE, true, ROOT),
-    RAFT_WEAK_ACCEPT(RAFT_MEMBER_SENDER, "weak accept", 1, true, ROOT);
+    RAFT_SENDER_OOW(RAFT_MEMBER_SENDER, "out of window", 1, true, ROOT),
+    RAFT_WEAK_ACCEPT(RAFT_MEMBER_SENDER, "weak accept", 1, true, ROOT),
+    RAFT_CONCURRENT_SENDER(RAFT_MEMBER_SENDER, "concurrent sender", 1, true, ROOT);
 
     String className;
     String blockName;
@@ -335,11 +377,13 @@ public class Timer {
      * This method equals `add(System.nanoTime() - start)`. We wrap `System.nanoTime()` in this
      * method to avoid unnecessary calls when instrumenting is disabled.
      */
-    public void calOperationCostTimeFromStart(long startTime) {
+    public long calOperationCostTimeFromStart(long startTime) {
       if (ENABLE_INSTRUMENTING && startTime != Long.MIN_VALUE && startTime != 0) {
         long consumed = System.nanoTime() - startTime;
         add(consumed);
+        return consumed;
       }
+      return 0;
     }
 
     /** WARN: no current safety guarantee. */
@@ -362,6 +406,10 @@ public class Timer {
       long cnt = counter.get();
       double avg = s / cnt;
       return String.format("%s - %s: %.2f, %d, %.2f, %d", className, blockName, s, cnt, avg, max);
+    }
+
+    public long getCnt() {
+      return counter.get();
     }
   }
 

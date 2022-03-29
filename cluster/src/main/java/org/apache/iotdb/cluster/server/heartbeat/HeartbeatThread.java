@@ -101,7 +101,7 @@ public class HeartbeatThread implements Runnable {
               localMember.setCharacter(NodeCharacter.ELECTOR);
               localMember.setLeader(ClusterConstant.EMPTY_NODE);
             } else {
-              logger.debug(
+              logger.trace(
                   "{}: Heartbeat from leader {} is still valid",
                   memberName,
                   localMember.getLeader());
@@ -158,7 +158,7 @@ public class HeartbeatThread implements Runnable {
   @SuppressWarnings("java:S2445")
   private void sendHeartbeats(Collection<Node> nodes) {
     if (logger.isDebugEnabled()) {
-      logger.debug(
+      logger.trace(
           "{}: Send heartbeat to {} followers, commit log index = {}",
           memberName,
           nodes.size() - 1,
@@ -200,7 +200,7 @@ public class HeartbeatThread implements Runnable {
     if (client != null) {
       // connecting to the local node results in a null
       try {
-        logger.debug("{}: Sending heartbeat to {}", memberName, node);
+        logger.trace("{}: Sending heartbeat to {}", memberName, node);
         client.sendHeartbeat(request, new HeartbeatHandler(localMember, node));
       } catch (Exception e) {
         logger.warn("{}: Cannot send heart beat to node {}", memberName, node, e);
@@ -231,7 +231,7 @@ public class HeartbeatThread implements Runnable {
               Client client = localMember.getSyncHeartbeatClient(node);
               if (client != null) {
                 try {
-                  logger.debug("{}: Sending heartbeat to {}", memberName, node);
+                  logger.trace("{}: Sending heartbeat to {}", memberName, node);
                   HeartBeatResponse heartBeatResponse = client.sendHeartbeat(req);
                   heartbeatHandler.onComplete(heartBeatResponse);
                 } catch (TTransportException e) {
@@ -264,6 +264,16 @@ public class HeartbeatThread implements Runnable {
       localMember.setCharacter(NodeCharacter.LEADER);
       localMember.setLeader(localMember.getThisNode());
       logger.info("{}: Winning the election because the node is the only node.", memberName);
+    }
+
+    if (!ClusterUtils.isNodeEquals(
+        localMember.getThisNode(), localMember.getPartitionGroup().getHeader().node)) {
+      long electionWait = getElectionRandomWaitMs();
+      logger.info(
+          "{}: Sleep {}ms before the first election as this node is not the preferred " + "leader",
+          memberName,
+          electionWait);
+      Thread.sleep(electionWait);
     }
 
     // the election goes on until this node becomes a follower or a leader

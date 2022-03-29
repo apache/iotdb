@@ -23,7 +23,6 @@ import org.apache.iotdb.cluster.log.VotingLog;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryResult;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.RaftMember;
-import org.apache.iotdb.cluster.server.monitor.Peer;
 import org.apache.iotdb.cluster.server.monitor.Timer;
 import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -56,8 +55,7 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
   protected AtomicLong receiverTerm;
   protected VotingLog log;
   protected AtomicBoolean leaderShipStale;
-  protected Node receiver;
-  protected Peer peer;
+  protected Node directReceiver;
   protected int quorumSize;
 
   // nano start time when the send begins
@@ -79,8 +77,11 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
       // the request already failed
       return;
     }
+
+    Node trueReceiver = response.isSetReceiver() ? response.receiver : directReceiver;
+
     logger.debug(
-        "{}: Append response {} from {} for log {}", member.getName(), response, receiver, log);
+        "{}: Append response {} from {} for log {}", member.getName(), response, trueReceiver, log);
     if (leaderShipStale.get()) {
       // someone has rejected this log because the leadership is stale
       return;
@@ -94,8 +95,8 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
           .onStronglyAccept(
               log.getLog().getCurrLogIndex(),
               log.getLog().getCurrLogTerm(),
-              receiver.nodeIdentifier);
-      peer.setMatchIndex(Math.max(log.getLog().getCurrLogIndex(), peer.getMatchIndex()));
+              trueReceiver.nodeIdentifier);
+      member.getPeer(trueReceiver).setMatchIndex(response.lastLogIndex);
     } else if (resp > 0) {
       // a response > 0 is the follower's term
       // the leader ship is stale, wait for the new leader's heartbeat
@@ -103,7 +104,7 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
       logger.debug(
           "{}: Received a rejection from {} because term is stale: {}/{}, log: {}",
           member.getName(),
-          receiver,
+          trueReceiver,
           prevReceiverTerm,
           resp,
           log);
@@ -120,14 +121,10 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
       }
     } else if (resp == RESPONSE_WEAK_ACCEPT) {
       synchronized (log) {
-        log.getWeaklyAcceptedNodeIds().add(receiver.nodeIdentifier);
+        log.getWeaklyAcceptedNodeIds().add(trueReceiver.nodeIdentifier);
         if (log.getWeaklyAcceptedNodeIds().size() + log.getStronglyAcceptedNodeIds().size()
             >= quorumSize) {
           log.acceptedTime.set(System.nanoTime());
-          if (ClusterDescriptor.getInstance().getConfig().isUseIndirectBroadcasting()) {
-            member.removeAppendLogHandler(
-                new Pair<>(log.getLog().getCurrLogIndex(), log.getLog().getCurrLogTerm()));
-          }
         }
         log.notifyAll();
       }
@@ -135,13 +132,20 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
       // e.g., Response.RESPONSE_LOG_MISMATCH
       if (resp == RESPONSE_LOG_MISMATCH || resp == RESPONSE_OUT_OF_WINDOW) {
         logger.debug(
-            "{}: The log {} is rejected by {} because: {}", member.getName(), log, receiver, resp);
+            "{}: The log {} is rejected by {} because: {}",
+            member.getName(),
+            log,
+            trueReceiver,
+            resp);
       } else {
         logger.warn(
-            "{}: The log {} is rejected by {} because: {}", member.getName(), log, receiver, resp);
+            "{}: The log {} is rejected by {} because: {}",
+            member.getName(),
+            log,
+            trueReceiver,
+            resp);
+        onFail(trueReceiver);
       }
-
-      onFail();
     }
     // rejected because the receiver's logs are stale or the receiver has no cluster info, just
     // wait for the heartbeat to handle
@@ -154,17 +158,18 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
           "{}: Cannot append log {}: cannot connect to {}: {}",
           member.getName(),
           log,
-          receiver,
+          directReceiver,
           exception.getMessage());
     } else {
-      logger.warn("{}: Cannot append log {} to {}", member.getName(), log, receiver, exception);
+      logger.warn(
+          "{}: Cannot append log {} to {}", member.getName(), log, directReceiver, exception);
     }
-    onFail();
+    onFail(directReceiver);
   }
 
-  private void onFail() {
+  private void onFail(Node trueReceiver) {
     synchronized (log) {
-      log.getFailedNodeIds().add(receiver.nodeIdentifier);
+      log.getFailedNodeIds().add(trueReceiver.nodeIdentifier);
       if (log.getFailedNodeIds().size() > quorumSize) {
         // quorum members have failed, there is no need to wait for others
         log.getStronglyAcceptedNodeIds().add(Integer.MAX_VALUE);
@@ -189,12 +194,8 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
     this.leaderShipStale = leaderShipStale;
   }
 
-  public void setPeer(Peer peer) {
-    this.peer = peer;
-  }
-
-  public void setReceiver(Node follower) {
-    this.receiver = follower;
+  public void setDirectReceiver(Node follower) {
+    this.directReceiver = follower;
   }
 
   public void setReceiverTerm(AtomicLong receiverTerm) {

@@ -345,6 +345,12 @@ public class ClusterDescriptor {
             properties.getProperty(
                 "use_indirect_broadcasting", String.valueOf(config.isUseIndirectBroadcasting()))));
 
+    config.setOptimizeIndirectBroadcasting(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "optimize_indirect_broadcasting",
+                String.valueOf(config.isOptimizeIndirectBroadcasting()))));
+
     config.setRelaySenderNum(
         Integer.parseInt(
             properties.getProperty(
