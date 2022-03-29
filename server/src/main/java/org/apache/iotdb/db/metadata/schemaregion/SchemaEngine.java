@@ -20,9 +20,12 @@
 package org.apache.iotdb.db.metadata.schemaregion;
 
 import org.apache.iotdb.commons.partition.SchemaRegionId;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.MetadataManagerType;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaRegion;
 
 import java.util.Collection;
 import java.util.Map;
@@ -31,7 +34,8 @@ import java.util.concurrent.ConcurrentHashMap;
 // manage all the schemaRegion in this dataNode
 public class SchemaEngine {
 
-  private Map<SchemaRegionId, SchemaRegion> schemaRegionMap;
+  private Map<SchemaRegionId, ISchemaRegion> schemaRegionMap;
+  private MetadataManagerType schemaRegionStoredType;
 
   private static class SchemaEngineManagerHolder {
     private static final SchemaEngine INSTANCE = new SchemaEngine();
@@ -47,6 +51,7 @@ public class SchemaEngine {
 
   public void init() {
     schemaRegionMap = new ConcurrentHashMap<>();
+    schemaRegionStoredType = IoTDBDescriptor.getInstance().getConfig().getMetadataManagerType();
   }
 
   public void clear() {
@@ -56,22 +61,34 @@ public class SchemaEngine {
     }
   }
 
-  public SchemaRegion getSchemaRegion(SchemaRegionId schemaRegionId) {
+  public ISchemaRegion getSchemaRegion(SchemaRegionId schemaRegionId) {
     return schemaRegionMap.get(schemaRegionId);
   }
 
-  public Collection<SchemaRegion> getAllSchemaRegions() {
+  public Collection<ISchemaRegion> getAllSchemaRegions() {
     return schemaRegionMap.values();
   }
 
-  public synchronized SchemaRegion createSchemaRegion(
+  public synchronized ISchemaRegion createSchemaRegion(
       PartialPath storageGroup, SchemaRegionId schemaRegionId, IStorageGroupMNode storageGroupMNode)
       throws MetadataException {
-    SchemaRegion schemaRegion = schemaRegionMap.get(schemaRegionId);
+    ISchemaRegion schemaRegion = schemaRegionMap.get(schemaRegionId);
     if (schemaRegion != null) {
       return schemaRegion;
     }
-    schemaRegion = new SchemaRegion(storageGroup, schemaRegionId, storageGroupMNode);
+    switch (schemaRegionStoredType) {
+      case MEMORY_MANAGER:
+        schemaRegion = new SchemaRegion(storageGroup, schemaRegionId, storageGroupMNode);
+        break;
+      case ROCKSDB_MANAGER:
+        schemaRegion = new RSchemaRegion(storageGroup, schemaRegionId, storageGroupMNode);
+        break;
+      default:
+        throw new UnsupportedOperationException(
+            String.format(
+                "This type [%s] is not supported. Please check and modify it.",
+                schemaRegionStoredType));
+    }
     schemaRegionMap.put(schemaRegionId, schemaRegion);
     return schemaRegion;
   }

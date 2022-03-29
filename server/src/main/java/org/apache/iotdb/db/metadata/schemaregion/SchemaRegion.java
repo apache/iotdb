@@ -312,6 +312,7 @@ public class SchemaRegion implements ISchemaRegion {
   }
 
   /** function for clearing metadata components of one schema region */
+  @Override
   public synchronized void clear() {
     try {
       if (this.mtree != null) {

@@ -106,7 +106,6 @@ public class RSchemaReadWriteHandler {
     RocksDB.loadLibrary();
   }
 
-  @TestOnly
   public RSchemaReadWriteHandler(String path) throws RocksDBException {
     initReadWriteHandler(path);
   }

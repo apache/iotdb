@@ -18,9 +18,11 @@
  */
 package org.apache.iotdb.db.metadata.schemaregion.rocksdb;
 
+import org.apache.iotdb.commons.partition.SchemaRegionId;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.metadata.AcquireLockTimeoutException;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
@@ -30,6 +32,7 @@ import org.apache.iotdb.db.exception.metadata.MNodeTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
+import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor.StorageGroupFilter;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
@@ -84,6 +87,7 @@ import org.rocksdb.WriteBatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -139,6 +143,10 @@ public class RSchemaRegion implements ISchemaRegion {
 
   private final Map<String, Boolean> storageGroupDeletingFlagMap = new ConcurrentHashMap<>();
 
+  private String schemaRegionDirPath;
+  private String storageGroupFullPath;
+  private SchemaRegionId schemaRegionId;
+
   public RSchemaRegion() throws MetadataException {
     try {
       readWriteHandler = new RSchemaReadWriteHandler();
@@ -146,6 +154,20 @@ public class RSchemaRegion implements ISchemaRegion {
       logger.error("create RocksDBReadWriteHandler fail", e);
       throw new MetadataException(e);
     }
+  }
+
+  public RSchemaRegion(
+      PartialPath storageGroup, SchemaRegionId schemaRegionId, IStorageGroupMNode storageGroupMNode)
+      throws MetadataException {
+    init(storageGroupMNode);
+    try {
+      readWriteHandler = new RSchemaReadWriteHandler(schemaRegionDirPath);
+    } catch (RocksDBException e) {
+      logger.error("create RocksDBReadWriteHandler fail", e);
+      throw new MetadataException(e);
+    }
+    storageGroupFullPath = storageGroup.getFullPath();
+    this.schemaRegionId = schemaRegionId;
   }
 
   @TestOnly
@@ -159,10 +181,33 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public void init(IStorageGroupMNode storageGroupMNode) throws MetadataException {}
+  public void init(IStorageGroupMNode storageGroupMNode) throws MetadataException {
+    schemaRegionDirPath =
+        config.getSchemaDir()
+            + File.separator
+            + storageGroupFullPath
+            + File.separator
+            + schemaRegionId.getSchemaRegionId();
+    File schemaRegionFolder = SystemFileFactory.INSTANCE.getFile(schemaRegionDirPath);
+    if (!schemaRegionFolder.exists()) {
+      if (schemaRegionFolder.mkdirs()) {
+        logger.info("create schema region folder {}", schemaRegionDirPath);
+      } else {
+        if (!schemaRegionFolder.exists()) {
+          logger.error("create schema region folder {} failed.", schemaRegionDirPath);
+          throw new SchemaDirCreationFailureException(schemaRegionDirPath);
+        }
+      }
+    }
+  }
 
   @Override
-  public void clear() {}
+  public synchronized void clear() {}
+
+  @Override
+  public void forceMlog() {
+    // do nothing
+  }
 
   @Override
   public void operation(PhysicalPlan plan) throws IOException, MetadataException {

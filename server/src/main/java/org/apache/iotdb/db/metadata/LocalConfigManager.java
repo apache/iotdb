@@ -33,6 +33,7 @@ import org.apache.iotdb.db.exception.metadata.UndefinedTemplateException;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.rescon.TimeseriesStatistics;
+import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaRegion;
 import org.apache.iotdb.db.metadata.storagegroup.IStorageGroupSchemaManager;
@@ -124,6 +125,7 @@ public class LocalConfigManager {
       templateManager.init();
       storageGroupSchemaManager.init();
       partitionTable.init();
+
       schemaEngine.init();
 
       initSchemaRegion();
@@ -180,7 +182,7 @@ public class LocalConfigManager {
 
       partitionTable.clear();
 
-      for (SchemaRegion schemaRegion : schemaEngine.getAllSchemaRegions()) {
+      for (ISchemaRegion schemaRegion : schemaEngine.getAllSchemaRegions()) {
         schemaRegion.clear();
       }
       schemaEngine.clear();
@@ -207,7 +209,7 @@ public class LocalConfigManager {
     storageGroupSchemaManager.forceLog();
     templateManager.forceLog();
 
-    for (SchemaRegion schemaRegion : schemaEngine.getAllSchemaRegions()) {
+    for (ISchemaRegion schemaRegion : schemaEngine.getAllSchemaRegions()) {
       schemaRegion.forceMlog();
     }
   }
@@ -539,7 +541,7 @@ public class LocalConfigManager {
     }
   }
 
-  private SchemaRegion localCreateSchemaRegion(
+  private ISchemaRegion localCreateSchemaRegion(
       PartialPath storageGroup, SchemaRegionId schemaRegionId) throws MetadataException {
     return schemaEngine.createSchemaRegion(
         storageGroup,

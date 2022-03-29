@@ -43,6 +43,8 @@ public interface ISchemaRegion {
 
   void clear();
 
+  void forceMlog();
+
   // this method is mainly used for recover and metadata sync
   void operation(PhysicalPlan plan) throws IOException, MetadataException;
 
