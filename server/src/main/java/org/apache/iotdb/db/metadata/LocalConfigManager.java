@@ -556,10 +556,10 @@ public class LocalConfigManager {
    * root.sg1. If there's no storage group on the given path, StorageGroupNotSetException will be
    * thrown.
    */
-  public SchemaRegion getBelongedSchemaRegion(PartialPath path) throws MetadataException {
+  public ISchemaRegion getBelongedSchemaRegion(PartialPath path) throws MetadataException {
     PartialPath storageGroup = storageGroupSchemaManager.getBelongedStorageGroup(path);
     SchemaRegionId schemaRegionId = partitionTable.getSchemaRegionId(storageGroup, path);
-    SchemaRegion schemaRegion = schemaEngine.getSchemaRegion(schemaRegionId);
+    ISchemaRegion schemaRegion = schemaEngine.getSchemaRegion(schemaRegionId);
     if (schemaRegion == null) {
       schemaRegion = localCreateSchemaRegion(storageGroup, schemaRegionId);
       partitionTable.putSchemaRegionId(storageGroup, schemaRegionId);
@@ -568,7 +568,7 @@ public class LocalConfigManager {
   }
 
   // This interface involves storage group auto creation
-  public SchemaRegion getBelongedSchemaRegionWithAutoCreate(PartialPath path)
+  public ISchemaRegion getBelongedSchemaRegionWithAutoCreate(PartialPath path)
       throws MetadataException {
     ensureStorageGroup(path, true);
     return getBelongedSchemaRegion(path);
@@ -580,9 +580,9 @@ public class LocalConfigManager {
    * paths represented by the given pathPattern. If isPrefixMatch, all storage groups under the
    * prefixPath that matches the given pathPattern will be collected.
    */
-  public List<SchemaRegion> getInvolvedSchemaRegions(PartialPath pathPattern, boolean isPrefixMatch)
-      throws MetadataException {
-    List<SchemaRegion> result = new ArrayList<>();
+  public List<ISchemaRegion> getInvolvedSchemaRegions(
+      PartialPath pathPattern, boolean isPrefixMatch) throws MetadataException {
+    List<ISchemaRegion> result = new ArrayList<>();
     for (PartialPath storageGroup :
         storageGroupSchemaManager.getInvolvedStorageGroups(pathPattern, isPrefixMatch)) {
       for (SchemaRegionId schemaRegionId :
@@ -594,9 +594,9 @@ public class LocalConfigManager {
     return result;
   }
 
-  public List<SchemaRegion> getSchemaRegionsByStorageGroup(PartialPath storageGroup)
+  public List<ISchemaRegion> getSchemaRegionsByStorageGroup(PartialPath storageGroup)
       throws MetadataException {
-    List<SchemaRegion> result = new ArrayList<>();
+    List<ISchemaRegion> result = new ArrayList<>();
     for (SchemaRegionId schemaRegionId :
         partitionTable.getSchemaRegionIdsByStorageGroup(storageGroup)) {
       result.add(schemaEngine.getSchemaRegion(schemaRegionId));
@@ -706,7 +706,7 @@ public class LocalConfigManager {
   public Set<String> getPathsSetTemplate(String templateName) throws MetadataException {
     Set<String> result = new HashSet<>();
     if (templateName.equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
-      for (SchemaRegion schemaRegion : schemaEngine.getAllSchemaRegions()) {
+      for (ISchemaRegion schemaRegion : schemaEngine.getAllSchemaRegions()) {
         result.addAll(schemaRegion.getPathsSetTemplate(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
       }
     } else {
@@ -723,7 +723,7 @@ public class LocalConfigManager {
   public Set<String> getPathsUsingTemplate(String templateName) throws MetadataException {
     Set<String> result = new HashSet<>();
     if (templateName.equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
-      for (SchemaRegion schemaRegion : schemaEngine.getAllSchemaRegions()) {
+      for (ISchemaRegion schemaRegion : schemaEngine.getAllSchemaRegions()) {
         result.addAll(schemaRegion.getPathsUsingTemplate(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
       }
     } else {
