@@ -18,12 +18,15 @@
  */
 package org.apache.iotdb.db.mpp.sql.statement.crud;
 
+import org.apache.iotdb.commons.partition.TimePartitionId;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.tsfile.utils.BitMap;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -74,6 +77,28 @@ public class InsertTabletStatement extends InsertBaseStatement {
     }
     super.markFailedMeasurementInsertion(index, e);
     columns[index] = null;
+  }
+
+  @Override
+  public List<TimePartitionId> getTimePartitionIds() {
+    List<TimePartitionId> result = new ArrayList<>();
+    long startTime =
+        (times[0] / StorageEngine.getTimePartitionInterval())
+            * StorageEngine.getTimePartitionInterval(); // included
+    long endTime = startTime + StorageEngine.getTimePartitionInterval(); // excluded
+    TimePartitionId timePartitionId = StorageEngine.getTimePartitionId(times[0]);
+    for (int i = 1; i < times.length; i++) { // times are sorted in session API.
+      if (times[i] >= endTime) {
+        result.add(timePartitionId);
+        // next init
+        endTime =
+            (times[i] / StorageEngine.getTimePartitionInterval() + 1)
+                * StorageEngine.getTimePartitionInterval();
+        timePartitionId = StorageEngine.getTimePartitionId(times[i]);
+      }
+    }
+    result.add(timePartitionId);
+    return result;
   }
 
   @Override

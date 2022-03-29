@@ -23,8 +23,8 @@ import org.apache.iotdb.commons.partition.DataPartitionInfo;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.PartitionInfo;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SQLParserException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
@@ -193,14 +193,11 @@ public class Analyzer {
     @Override
     public Analysis visitInsertTablet(
         InsertTabletStatement insertTabletStatement, MPPQueryContext context) {
-      // TODO(INSERT) device + time range -> PartitionInfo
       DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
       dataPartitionQueryParam.setDeviceId(insertTabletStatement.getDevicePath().getFullPath());
-      // TODO(INSERT) calculate the time partition id list
-      //      dataPartitionQueryParam.setTimePartitionIdList();
+      dataPartitionQueryParam.setTimePartitionIdList(insertTabletStatement.getTimePartitionIds());
       PartitionInfo partitionInfo = partitionFetcher.fetchPartitionInfo(dataPartitionQueryParam);
 
-      // TODO(INSERT) get each time series schema according to SchemaPartitionInfo in PartitionInfo
       SchemaTree schemaTree =
           IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()
               ? schemaFetcher.fetchSchemaWithAutoCreate(
@@ -227,8 +224,7 @@ public class Analyzer {
     public Analysis visitInsertRow(InsertRowStatement insertRowStatement, MPPQueryContext context) {
       DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
       dataPartitionQueryParam.setDeviceId(insertRowStatement.getDevicePath().getFullPath());
-      dataPartitionQueryParam.setTimePartitionIdList(
-          Arrays.asList(StorageEngine.getTimePartitionId(insertRowStatement.getTime())));
+      dataPartitionQueryParam.setTimePartitionIdList(insertRowStatement.getTimePartitionIds());
       PartitionInfo partitionInfo = partitionFetcher.fetchPartitionInfo(dataPartitionQueryParam);
 
       SchemaTree schemaTree =
@@ -242,6 +238,12 @@ public class Analyzer {
 
       Analysis analysis = new Analysis();
       analysis.setSchemaTree(schemaTree);
+
+      try {
+        insertRowStatement.transferType(schemaTree);
+      } catch (QueryProcessException e) {
+        throw new SemanticException(e.getMessage());
+      }
 
       if (!insertRowStatement.checkDataType(schemaTree)) {
         throw new SemanticException("Data type mismatch");
