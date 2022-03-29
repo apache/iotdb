@@ -18,14 +18,17 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeIdAllocator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import com.google.common.collect.ImmutableList;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 
 /** LimitNode is used to select top n result. It uses the default order of upstream nodes */
@@ -96,5 +99,13 @@ public class LimitNode extends ProcessNode {
 
   public String toString() {
     return "LimitNode-" + this.getId();
+  }
+
+  @TestOnly
+  public Pair<String, List<String>> print() {
+    String title = String.format("[LimitNode (%s)]", this.getId());
+    List<String> attributes = new ArrayList<>();
+    attributes.add("RowLimit: " + this.getLimit());
+    return new Pair<>(title, attributes);
   }
 }

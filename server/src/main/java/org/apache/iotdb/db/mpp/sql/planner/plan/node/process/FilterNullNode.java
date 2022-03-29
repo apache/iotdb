@@ -18,14 +18,17 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
-import org.apache.iotdb.db.mpp.common.FilterNullPolicy;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullPolicy;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import com.google.common.collect.ImmutableList;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 
 /** WithoutNode is used to discard specific rows from upstream node. */
@@ -43,9 +46,14 @@ public class FilterNullNode extends ProcessNode {
     this.child = child;
   }
 
-  public FilterNullNode(PlanNodeId id, PlanNode child, List<String> filterNullColumnNames) {
+  public FilterNullNode(
+      PlanNodeId id,
+      PlanNode child,
+      FilterNullPolicy discardPolicy,
+      List<String> filterNullColumnNames) {
     super(id);
     this.child = child;
+    this.discardPolicy = discardPolicy;
     this.filterNullColumnNames = filterNullColumnNames;
   }
 
@@ -72,6 +80,14 @@ public class FilterNullNode extends ProcessNode {
     return child.getOutputColumnNames();
   }
 
+  public FilterNullPolicy getDiscardPolicy() {
+    return discardPolicy;
+  }
+
+  public List<String> getFilterNullColumnNames() {
+    return filterNullColumnNames;
+  }
+
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
     return visitor.visitFilterNull(this, context);
@@ -86,5 +102,14 @@ public class FilterNullNode extends ProcessNode {
 
   public void setFilterNullColumnNames(List<String> filterNullColumnNames) {
     this.filterNullColumnNames = filterNullColumnNames;
+  }
+
+  @TestOnly
+  public Pair<String, List<String>> print() {
+    String title = String.format("[FilterNullNode (%s)]", this.getId());
+    List<String> attributes = new ArrayList<>();
+    attributes.add("FilterNullPolicy: " + this.getDiscardPolicy());
+    attributes.add("FilterNullColumnNames: " + this.getFilterNullColumnNames());
+    return new Pair<>(title, attributes);
   }
 }
