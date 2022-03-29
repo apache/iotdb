@@ -53,6 +53,10 @@ public class TimeJoinOperator implements ProcessOperator {
 
   private final int columnCount;
 
+  /**
+   * this field indicates each data type for output columns(not including time column) of
+   * TimeJoinOperator its size should be equal to columnCount
+   */
   private final List<TSDataType> dataTypes;
 
   public TimeJoinOperator(

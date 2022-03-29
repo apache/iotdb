@@ -18,14 +18,17 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
-import org.apache.iotdb.db.mpp.common.FillPolicy;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.mpp.sql.statement.component.FillPolicy;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import com.google.common.collect.ImmutableList;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 
 /** FillNode is used to fill the empty field in one row. */
@@ -63,6 +66,10 @@ public class FillNode extends ProcessNode {
     return child.getOutputColumnNames();
   }
 
+  public FillPolicy getFillPolicy() {
+    return fillPolicy;
+  }
+
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
     return visitor.visitFill(this, context);
@@ -75,8 +82,17 @@ public class FillNode extends ProcessNode {
   @Override
   public void serialize(ByteBuffer byteBuffer) {}
 
-  public FillNode(PlanNodeId id, FillPolicy fillPolicy) {
+  public FillNode(PlanNodeId id, PlanNode child, FillPolicy fillPolicy) {
     this(id);
+    this.child = child;
     this.fillPolicy = fillPolicy;
+  }
+
+  @TestOnly
+  public Pair<String, List<String>> print() {
+    String title = String.format("[FillNode (%s)]", this.getId());
+    List<String> attributes = new ArrayList<>();
+    attributes.add("FillPolicy: " + this.getFillPolicy());
+    return new Pair<>(title, attributes);
   }
 }

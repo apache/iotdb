@@ -66,7 +66,7 @@ public class SeriesReaderTestUtil {
       List<TsFileResource> unseqResources,
       String sgName)
       throws MetadataException, IOException, WriteProcessException {
-    IoTDB.schemaEngine.init();
+    IoTDB.configManager.init();
     prepareSeries(measurementSchemas, deviceIds, sgName);
     prepareFiles(seqResources, unseqResources, measurementSchemas, deviceIds, sgName);
   }
@@ -78,7 +78,7 @@ public class SeriesReaderTestUtil {
     unseqResources.clear();
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
-    IoTDB.schemaEngine.clear();
+    IoTDB.configManager.clear();
     EnvironmentUtils.cleanAllDir();
   }
 
@@ -179,10 +179,10 @@ public class SeriesReaderTestUtil {
     for (int i = 0; i < deviceNum; i++) {
       deviceIds.add(sgName + PATH_SEPARATOR + "device" + i);
     }
-    IoTDB.schemaEngine.setStorageGroup(new PartialPath(sgName));
+    IoTDB.schemaProcessor.setStorageGroup(new PartialPath(sgName));
     for (String device : deviceIds) {
       for (MeasurementSchema measurementSchema : measurementSchemas) {
-        IoTDB.schemaEngine.createTimeseries(
+        IoTDB.schemaProcessor.createTimeseries(
             new PartialPath(device + PATH_SEPARATOR + measurementSchema.getMeasurementId()),
             measurementSchema.getType(),
             measurementSchema.getEncodingType(),

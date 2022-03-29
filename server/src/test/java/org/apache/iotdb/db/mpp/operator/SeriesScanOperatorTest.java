@@ -50,7 +50,7 @@ import java.util.Set;
 import static org.junit.Assert.*;
 
 public class SeriesScanOperatorTest {
-  private static final String SERIES_SCAN_OPERATOR_TEST_SG = "root.seriesScanOperatorTest";
+  private static final String SERIES_SCAN_OPERATOR_TEST_SG = "root.SeriesScanOperatorTest";
   private final List<String> deviceIds = new ArrayList<>();
   private final List<MeasurementSchema> measurementSchemas = new ArrayList<>();
 

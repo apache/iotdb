@@ -98,7 +98,7 @@ public class SchemaUtils {
       TSDataType dataType = schema.getType();
       TSEncoding encoding = schema.getEncodingType();
       CompressionType compressionType = schema.getCompressor();
-      IoTDB.schemaEngine.createTimeseries(
+      IoTDB.schemaProcessor.createTimeseries(
           path, dataType, encoding, compressionType, Collections.emptyMap());
     } catch (PathAlreadyExistException ignored) {
       // ignore added timeseries
@@ -126,7 +126,7 @@ public class SchemaUtils {
 
     IMeasurementMNode measurementMNode =
         MeasurementMNode.getMeasurementMNode(null, path.getMeasurement(), measurementSchema, null);
-    IoTDB.schemaEngine.cacheMeta(path, measurementMNode, true);
+    IoTDB.schemaProcessor.cacheMeta(path, measurementMNode, true);
   }
 
   public static List<TSDataType> getSeriesTypesByPaths(Collection<? extends PartialPath> paths) {
