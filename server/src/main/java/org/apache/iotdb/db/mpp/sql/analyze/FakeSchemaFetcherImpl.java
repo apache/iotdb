@@ -22,9 +22,9 @@ package org.apache.iotdb.db.mpp.sql.analyze;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 
-public class FakeSchemaFetcherImpl implements ISchemaFetcher{
-    @Override
-    public SchemaTree fetchSchema(PathPatternTree patternTree) {
-        return new SchemaTree();
-    }
+public class FakeSchemaFetcherImpl implements ISchemaFetcher {
+  @Override
+  public SchemaTree fetchSchema(PathPatternTree patternTree) {
+    return new SchemaTree();
+  }
 }

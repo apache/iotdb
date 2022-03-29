@@ -49,7 +49,7 @@ public class PlanNodeUtil {
 
   public static String nodeToString(PlanNode root) {
     StringBuilder result = new StringBuilder();
-//    nodeToString(root, 0, result);
+    //    nodeToString(root, 0, result);
     nodeToString(root, new PrintContext(false, 0, new TreeMap<>()), result);
     return result.toString();
   }
@@ -67,12 +67,12 @@ public class PlanNodeUtil {
 
   private static void nodeToString(PlanNode root, PrintContext ctx, StringBuilder result) {
     int level = ctx.level;
-    for (int i = 0 ; i < level; i ++) {
+    for (int i = 0; i < level; i++) {
       result.append(ctx.codeMap.get(i));
     }
     result.append(root.toString());
     result.append(System.lineSeparator());
-    for (int i = 0; i < root.getChildren().size(); i ++) {
+    for (int i = 0; i < root.getChildren().size(); i++) {
       PlanNode child = root.getChildren().get(i);
       PrintContext childCtx = ctx.clone();
       childCtx.isLast = i == root.getChildren().size() - 1;
@@ -80,7 +80,7 @@ public class PlanNodeUtil {
         childCtx.codeMap.put(ctx.level - 1, ctx.isLast ? INDENT : LINE);
       }
       childCtx.codeMap.put(ctx.level, childCtx.isLast ? CORNER : BRO);
-      childCtx.level ++;
+      childCtx.level++;
       nodeToString(child, childCtx, result);
     }
   }
@@ -95,6 +95,7 @@ public class PlanNodeUtil {
     public boolean isLast;
     public int level;
     public Map<Integer, String> codeMap;
+
     public PrintContext() {
       codeMap = new TreeMap<>();
     }

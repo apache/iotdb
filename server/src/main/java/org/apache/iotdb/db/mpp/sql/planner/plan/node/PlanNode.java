@@ -50,8 +50,13 @@ public abstract class PlanNode {
   public abstract PlanNode clone();
 
   public PlanNode cloneWithChildren(List<PlanNode> children) {
-    Validate.isTrue(children == null || allowedChildCount() == CHILD_COUNT_NO_LIMIT || children.size() == allowedChildCount(),
-            String.format("Child count is not correct for PlanNode. Expected: %d, Value: %d", allowedChildCount(), getChildrenCount(children)));
+    Validate.isTrue(
+        children == null
+            || allowedChildCount() == CHILD_COUNT_NO_LIMIT
+            || children.size() == allowedChildCount(),
+        String.format(
+            "Child count is not correct for PlanNode. Expected: %d, Value: %d",
+            allowedChildCount(), getChildrenCount(children)));
     PlanNode node = clone();
     if (children != null) {
       children.forEach(node::addChild);

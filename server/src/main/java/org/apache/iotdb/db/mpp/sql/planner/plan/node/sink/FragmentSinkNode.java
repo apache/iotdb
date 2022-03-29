@@ -25,7 +25,6 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 
 import com.google.common.collect.ImmutableList;
-import org.apache.commons.lang.Validate;
 
 import java.nio.ByteBuffer;
 import java.util.List;

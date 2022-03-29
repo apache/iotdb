@@ -22,8 +22,8 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;

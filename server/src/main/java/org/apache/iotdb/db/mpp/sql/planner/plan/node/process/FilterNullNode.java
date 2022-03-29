@@ -51,7 +51,11 @@ public class FilterNullNode extends ProcessNode {
     this.discardPolicy = policy;
   }
 
-  public FilterNullNode(PlanNodeId id, PlanNode child, FilterNullPolicy discardPolicy, List<String> filterNullColumnNames) {
+  public FilterNullNode(
+      PlanNodeId id,
+      PlanNode child,
+      FilterNullPolicy discardPolicy,
+      List<String> filterNullColumnNames) {
     this(id, discardPolicy);
     this.child = child;
     this.filterNullColumnNames = filterNullColumnNames;

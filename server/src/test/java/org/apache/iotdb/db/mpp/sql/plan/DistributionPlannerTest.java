@@ -202,7 +202,6 @@ public class DistributionPlannerTest {
     sgPartitionMap.put(new DeviceGroupId(device2.length()), d2DataRegionMap);
     sgPartitionMap.put(new DeviceGroupId(device3.length()), d3DataRegionMap);
 
-
     dataPartitionMap.put("root.sg", sgPartitionMap);
 
     dataPartitionInfo.setDataPartitionMap(dataPartitionMap);

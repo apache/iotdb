@@ -28,6 +28,7 @@ import org.apache.iotdb.db.mpp.sql.parser.StatementGenerator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
+
 import org.junit.Test;
 
 import java.time.ZoneId;
@@ -41,7 +42,11 @@ public class QueryPlannerTest {
 
     Statement stmt = StatementGenerator.createStatement(querySql, ZoneId.systemDefault());
 
-    QueryExecution queryExecution = new QueryExecution(stmt, new MPPQueryContext(querySql, new QueryId("query1"), new SessionInfo(), QueryType.READ));
+    QueryExecution queryExecution =
+        new QueryExecution(
+            stmt,
+            new MPPQueryContext(
+                querySql, new QueryId("query1"), new SessionInfo(), QueryType.READ));
     queryExecution.doLogicalPlan();
     System.out.printf("SQL: %s%n%n", querySql);
     System.out.println("===== Step 1: Logical Plan =====");
@@ -52,6 +57,5 @@ public class QueryPlannerTest {
 
     System.out.println("===== Step 4: Split Fragment Instance =====");
     distributedQueryPlan.getInstances().forEach(System.out::println);
-
   }
 }

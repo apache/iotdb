@@ -103,9 +103,7 @@ public class ExchangeNode extends PlanNode {
   }
 
   public String toString() {
-    return String.format(
-        "ExchangeNode-%s: [SourceAddress:%s]",
-        getId(), getSourceAddress());
+    return String.format("ExchangeNode-%s: [SourceAddress:%s]", getId(), getSourceAddress());
   }
 
   public String getSourceAddress() {

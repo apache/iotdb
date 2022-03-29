@@ -28,9 +28,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 public class SchemaTree {
 
@@ -39,7 +37,7 @@ public class SchemaTree {
   /**
    * Return all measurement paths for given path pattern and filter the result by slimit and offset.
    *
-   * @param pathPattern   can be a pattern or a full path of timeseries.
+   * @param pathPattern can be a pattern or a full path of timeseries.
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
    * @return Left: all measurement paths; Right: remaining series offset
    */
@@ -47,20 +45,21 @@ public class SchemaTree {
       PartialPath pathPattern, int slimit, int soffset, boolean isPrefixMatch) {
     // TODO: (xingtanzjr) we mock some results here to test the whole procedure
     try {
-      String[] paths = new String[]{
-          "root.sg.d1.s1",
-          "root.sg.d1.s2",
-          "root.sg.d22.s1",
-          "root.sg.d22.s2",
-          "root.sg.d333.s1",
-          "root.sg.d333.s2",
-      };
+      String[] paths =
+          new String[] {
+            "root.sg.d1.s1",
+            "root.sg.d1.s2",
+            "root.sg.d22.s1",
+            "root.sg.d22.s2",
+            "root.sg.d333.s1",
+            "root.sg.d333.s2",
+          };
 
       List<MeasurementPath> result = new ArrayList<>();
       String target = pathPattern.getFullPath();
       StringBuilder noStar = new StringBuilder();
       boolean lastCharIsStar = false;
-      for(int i = 0 ; i < target.length(); i ++) {
+      for (int i = 0; i < target.length(); i++) {
         char c = target.charAt(i);
         if (c == '*' || (lastCharIsStar && c == '.')) {
           lastCharIsStar = c == '*';
