@@ -151,7 +151,6 @@ public class DistributionPlannerTest {
         new DistributionPlanner(analysis, new LogicalQueryPlan(context, root));
     PlanNode rootAfterRewrite = planner.rewriteSource();
     PlanNode rootWithExchange = planner.addExchangeNode(rootAfterRewrite);
-    PlanNodeVisualizer.printAsBox(rootWithExchange);
     SubPlan subPlan = planner.splitFragment(rootWithExchange);
     assertEquals(subPlan.getChildren().size(), 2);
   }
