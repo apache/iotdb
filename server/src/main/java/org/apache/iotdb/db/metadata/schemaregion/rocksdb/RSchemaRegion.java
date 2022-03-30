@@ -177,6 +177,7 @@ public class RSchemaRegion implements ISchemaRegion {
 
   @Override
   public void init(IStorageGroupMNode storageGroupMNode) throws MetadataException {
+    this.storageGroupMNode = storageGroupMNode;
     schemaRegionDirPath =
         config.getSchemaDir()
             + File.separator
