@@ -51,11 +51,6 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
-import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -687,26 +682,6 @@ public class MTreeBelowSG implements Serializable {
         };
     collector.setPrefixMatch(true);
     collector.traverse();
-  }
-
-  public List<PhysicalPlan> getTimeseriesAsPlan(PartialPath pathPattern) throws MetadataException {
-    List<PhysicalPlan> result = new LinkedList<>();
-    MeasurementCollector<List<PhysicalPlan>> collector =
-        new MeasurementCollector<List<PhysicalPlan>>(root, pathPattern) {
-          @Override
-          protected void collectMeasurement(IMeasurementMNode node) throws MetadataException {
-            PartialPath path = getCurrentPartialPath(node);
-            MeasurementSchema schema = (MeasurementSchema) node.getSchema();
-            if (isUnderAlignedEntity()) {
-              result.add(
-                  new CreateAlignedTimeSeriesPlan(path.getDevicePath(), node.getName(), schema));
-            } else {
-              result.add(new CreateTimeSeriesPlan(path, schema));
-            }
-          }
-        };
-    collector.traverse();
-    return result;
   }
 
   // endregion

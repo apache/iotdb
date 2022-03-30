@@ -260,6 +260,8 @@ public class IoTDBSyncReceiverIT {
                   CompressionType.SNAPPY,
                   CompressionType.SNAPPY,
                   CompressionType.SNAPPY),
+              null,
+              null,
               null));
       planList.add(new SetStorageGroupPlan(new PartialPath("root.sg1")));
       for (PhysicalPlan plan : planList) {

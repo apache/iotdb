@@ -19,7 +19,7 @@
  */
 package org.apache.iotdb.db.newsync.transport.conf;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.sync.conf.SyncConstant;
 
 import java.io.File;

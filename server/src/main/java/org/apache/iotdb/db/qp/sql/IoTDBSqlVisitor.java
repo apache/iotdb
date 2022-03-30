@@ -63,7 +63,6 @@ import org.apache.iotdb.db.qp.logical.sys.CreateContinuousQueryOperator;
 import org.apache.iotdb.db.qp.logical.sys.CreateFunctionOperator;
 import org.apache.iotdb.db.qp.logical.sys.CreatePipeOperator;
 import org.apache.iotdb.db.qp.logical.sys.CreatePipeSinkOperator;
-import org.apache.iotdb.db.qp.logical.sys.CreateSnapshotOperator;
 import org.apache.iotdb.db.qp.logical.sys.CreateTemplateOperator;
 import org.apache.iotdb.db.qp.logical.sys.CreateTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.CreateTriggerOperator;

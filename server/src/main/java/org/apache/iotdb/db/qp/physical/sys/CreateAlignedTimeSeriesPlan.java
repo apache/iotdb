@@ -282,7 +282,7 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan {
     for (CompressionType compressor : compressors) {
       buffer.put((byte) compressor.ordinal());
     }
-    for (Long tagOffset : tagOffsets) {
+    for (Long tagOffset : getTagOffsets()) {
       buffer.putLong(tagOffset);
     }
 

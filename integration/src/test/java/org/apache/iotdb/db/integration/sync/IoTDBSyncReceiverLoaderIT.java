@@ -137,6 +137,8 @@ public class IoTDBSyncReceiverLoaderIT {
                 CompressionType.SNAPPY,
                 CompressionType.SNAPPY,
                 CompressionType.SNAPPY),
+            null,
+            null,
             null));
     for (PhysicalPlan plan : planList) {
       ILoader planLoader = new SchemaLoader(plan);

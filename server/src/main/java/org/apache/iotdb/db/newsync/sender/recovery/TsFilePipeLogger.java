@@ -19,7 +19,7 @@
  */
 package org.apache.iotdb.db.newsync.sender.recovery;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.newsync.conf.SyncConstant;

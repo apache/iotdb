@@ -126,6 +126,7 @@ public class IoTDBConstant {
   public static final String COLUMN_TRIGGER_STATUS_STARTED = "started";
   public static final String COLUMN_TRIGGER_STATUS_STOPPED = "stopped";
 
+  // sync sender
   public static final String COLUMN_PIPESINK_NAME = "name";
   public static final String COLUMN_PIPESINK_TYPE = "type";
   public static final String COLUMN_PIPESINK_ATTRIBUTES = "attributes";

@@ -38,7 +38,6 @@ import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.LocalConfigManager;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.newsync.receiver.ReceiverService;
 import org.apache.iotdb.db.newsync.sender.service.SenderService;
 import org.apache.iotdb.db.protocol.influxdb.meta.InfluxDBMetaManager;

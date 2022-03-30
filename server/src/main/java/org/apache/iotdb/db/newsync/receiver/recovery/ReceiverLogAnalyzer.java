@@ -18,18 +18,21 @@
  */
 package org.apache.iotdb.db.newsync.receiver.recovery;
 
-import org.apache.iotdb.db.exception.StartupException;
+import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.db.newsync.conf.SyncConstant;
 import org.apache.iotdb.db.newsync.conf.SyncPathUtil;
 import org.apache.iotdb.db.newsync.receiver.manager.PipeInfo;
 import org.apache.iotdb.db.newsync.receiver.manager.PipeMessage;
 import org.apache.iotdb.db.newsync.receiver.manager.PipeStatus;
-import org.apache.iotdb.db.service.ServiceType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;

@@ -26,6 +26,7 @@ import org.apache.iotdb.db.exception.SyncConnectionException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.sync.PipeException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.sync.MetadataSyncManager;
 import org.apache.iotdb.db.newsync.conf.SyncConstant;
 import org.apache.iotdb.db.newsync.conf.SyncPathUtil;
 import org.apache.iotdb.db.newsync.pipedata.DeletionPipeData;
@@ -35,8 +36,6 @@ import org.apache.iotdb.db.newsync.pipedata.TsFilePipeData;
 import org.apache.iotdb.db.newsync.pipedata.queue.BufferedPipeDataQueue;
 import org.apache.iotdb.db.newsync.sender.recovery.TsFilePipeLogger;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
@@ -50,8 +49,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
-
-import static org.apache.iotdb.db.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 
 public class TsFilePipe implements Pipe {
   private static final Logger logger = LoggerFactory.getLogger(TsFilePipe.class);
@@ -73,6 +70,8 @@ public class TsFilePipe implements Pipe {
   private TransportHandler transportHandler;
 
   private PipeStatus status;
+
+  private final MetadataSyncManager schemaSyncManager = MetadataSyncManager.getInstance();
 
   public TsFilePipe(
       long createTime, String name, PipeSink pipeSink, long dataStartTime, boolean syncDelOp) {
@@ -175,29 +174,15 @@ public class TsFilePipe implements Pipe {
   }
 
   private void registerMetadata() {
-    IoTDB.metaManager.registerSyncTask(this);
+    schemaSyncManager.registerSyncTask(this);
   }
 
   private void deregisterMetadata() {
-    IoTDB.metaManager.deregisterSyncTask();
+    schemaSyncManager.deregisterSyncTask();
   }
 
   private List<PhysicalPlan> collectHistoryMetadata() {
-    List<PhysicalPlan> historyMetadata = new ArrayList<>();
-    List<SetStorageGroupPlan> storageGroupPlanList = IoTDB.metaManager.getStorageGroupAsPlan();
-    for (SetStorageGroupPlan storageGroupPlan : storageGroupPlanList) {
-      historyMetadata.add(storageGroupPlan);
-      PartialPath sgPath = storageGroupPlan.getPath();
-      try {
-        historyMetadata.addAll(
-            IoTDB.metaManager.getTimeseriesAsPlan(sgPath.concatNode(MULTI_LEVEL_PATH_WILDCARD)));
-      } catch (MetadataException e) {
-        logger.warn(
-            String.format(
-                "Collect history metadata from sg: %s error. Skip this sg.", sgPath.getFullPath()));
-      }
-    }
-    return historyMetadata;
+    return schemaSyncManager.collectHistoryMetadata();
   }
 
   public void collectRealTimeMetaData(PhysicalPlan plan) {
@@ -248,7 +233,7 @@ public class TsFilePipe implements Pipe {
       }
 
       for (PartialPath deletePath :
-          IoTDB.metaManager.splitPathPatternByDevice(deletion.getPath())) {
+          schemaSyncManager.splitPathPatternByDevice(deletion.getPath())) {
         Deletion splitDeletion =
             new Deletion(
                 deletePath,

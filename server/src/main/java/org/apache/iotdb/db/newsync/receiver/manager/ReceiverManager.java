@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.newsync.receiver.manager;
 
-import org.apache.iotdb.db.exception.StartupException;
+import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.db.newsync.conf.SyncPathUtil;
 import org.apache.iotdb.db.newsync.receiver.recovery.ReceiverLog;
 import org.apache.iotdb.db.newsync.receiver.recovery.ReceiverLogAnalyzer;
@@ -27,7 +27,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class ReceiverManager {
 

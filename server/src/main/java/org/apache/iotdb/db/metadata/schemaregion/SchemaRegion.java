@@ -54,8 +54,6 @@ import org.apache.iotdb.db.metadata.sync.MetadataSyncManager;
 import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
-import org.apache.iotdb.db.metadata.utils.MetaUtils;
-import org.apache.iotdb.db.newsync.sender.pipe.TsFilePipe;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -385,6 +383,14 @@ public class SchemaRegion {
   // endregion
 
   // region Interfaces for schema region Info query and operation
+
+  public String getStorageGroupFullPath() {
+    return storageGroupFullPath;
+  }
+
+  public SchemaRegionId getSchemaRegionId() {
+    return schemaRegionId;
+  }
 
   public synchronized void deleteSchemaRegion() throws MetadataException {
     // collect all the LeafMNode in this schema region
@@ -1771,45 +1777,5 @@ public class SchemaRegion {
     }
     return mountedMNode;
   }
-  // endregion
-
-  // region Interfaces for Sync
-
-  public List<SetStorageGroupPlan> getStorageGroupAsPlan() {
-    List<PartialPath> allStorageGroups = mtree.getAllStorageGroupPaths();
-    List<SetStorageGroupPlan> result = new LinkedList<>();
-    for (PartialPath sgPath : allStorageGroups) {
-      result.add(new SetStorageGroupPlan(sgPath));
-    }
-    return result;
-  }
-
-  public List<PhysicalPlan> getTimeseriesAsPlan(PartialPath pathPattern) throws MetadataException {
-    return mtree.getTimeseriesAsPlan(pathPattern);
-  }
-
-  public void registerSyncTask(TsFilePipe syncPipe) {
-    syncManager.registerSyncTask(syncPipe);
-  }
-
-  public void deregisterSyncTask() {
-    syncManager.deregisterSyncTask();
-  }
-
-  private DeleteTimeSeriesPlan splitDeleteTimeseriesPlanByDevice(PartialPath pathPattern)
-      throws MetadataException {
-    return new DeleteTimeSeriesPlan(splitPathPatternByDevice(pathPattern));
-  }
-
-  public List<PartialPath> splitPathPatternByDevice(PartialPath pathPattern)
-      throws MetadataException {
-    Set<PartialPath> devices = mtree.getDevicesByTimeseries(pathPattern);
-    List<PartialPath> resultPathPattern = new LinkedList<>();
-    for (PartialPath device : devices) {
-      resultPathPattern.addAll(pathPattern.alterPrefixPath(device));
-    }
-    return resultPathPattern;
-  }
-
   // endregion
 }

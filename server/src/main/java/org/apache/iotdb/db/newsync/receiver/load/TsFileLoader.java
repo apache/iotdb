@@ -20,6 +20,7 @@ package org.apache.iotdb.db.newsync.receiver.load;
 
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -46,7 +47,7 @@ public class TsFileLoader implements ILoader {
       throws IOException, MetadataException, WriteProcessException, StorageEngineException,
           LoadFileException {
     TsFileResource tsFileResource = new TsFileResource(tsFile);
-    tsFileResource.setClosed(true);
+    tsFileResource.setStatus(TsFileResourceStatus.CLOSED);
     FileLoaderUtils.checkTsFileResource(tsFileResource);
     List<TsFileResource> splitResources = new ArrayList();
     if (tsFileResource.isSpanMultiTimePartitions()) {

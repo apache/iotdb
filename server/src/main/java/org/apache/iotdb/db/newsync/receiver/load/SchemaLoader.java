@@ -19,8 +19,8 @@
 package org.apache.iotdb.db.newsync.receiver.load;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.service.IoTDB;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,6 +42,6 @@ public class SchemaLoader implements ILoader {
 
   @Override
   public void load() throws IOException, MetadataException {
-    MManager.getInstance().operation(plan);
+    IoTDB.schemaProcessor.operation(plan);
   }
 }

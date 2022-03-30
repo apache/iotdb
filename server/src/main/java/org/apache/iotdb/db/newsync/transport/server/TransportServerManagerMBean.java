@@ -19,7 +19,7 @@
  */
 package org.apache.iotdb.db.newsync.transport.server;
 
-import org.apache.iotdb.db.exception.StartupException;
+import org.apache.iotdb.commons.exception.StartupException;
 
 public interface TransportServerManagerMBean {
   String getRPCServiceStatus();

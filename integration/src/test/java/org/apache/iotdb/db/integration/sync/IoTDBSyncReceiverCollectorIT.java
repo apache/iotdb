@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.integration.sync;
 
-import org.apache.iotdb.db.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -51,7 +51,9 @@ import org.junit.experimental.categories.Category;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.*;
+import java.io.DataOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -172,6 +174,8 @@ public class IoTDBSyncReceiverCollectorIT {
                 CompressionType.SNAPPY,
                 CompressionType.SNAPPY,
                 CompressionType.SNAPPY),
+            null,
+            null,
             null));
     for (PhysicalPlan plan : planList) {
       PipeData pipeData = new SchemaPipeData(plan, serialNum++);
@@ -379,6 +383,8 @@ public class IoTDBSyncReceiverCollectorIT {
                     CompressionType.SNAPPY,
                     CompressionType.SNAPPY,
                     CompressionType.SNAPPY),
+                null,
+                null,
                 null),
             serialNum2++);
     pipeData.serialize(pipeLogOutput);
