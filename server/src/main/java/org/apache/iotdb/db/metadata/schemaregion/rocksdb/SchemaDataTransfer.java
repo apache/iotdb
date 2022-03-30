@@ -22,10 +22,7 @@ package org.apache.iotdb.db.metadata.schemaregion.rocksdb;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.metadata.AcquireLockTimeoutException;
-import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
@@ -338,34 +335,36 @@ public class SchemaDataTransfer {
     long start = System.currentTimeMillis();
 
     MTreeAboveSG mTree = new MTreeAboveSG();
-    mTree.init();
-    List<IStorageGroupMNode> storageGroupNodes = mTree.getAllStorageGroupNodes();
-
+    //    mTree.init();
+    //    List<IStorageGroupMNode> storageGroupNodes = mTree.getAllStorageGroupNodes();
+    //
     AtomicInteger errorCount = new AtomicInteger(0);
-    storageGroupNodes
-        .parallelStream()
-        .forEach(
-            sgNode -> {
-              try {
-                rocksDBManager.setStorageGroup(sgNode.getPartialPath());
-                if (sgNode.getDataTTL() > 0) {
-                  rocksDBManager.setTTL(sgNode.getPartialPath(), sgNode.getDataTTL());
-                }
-              } catch (MetadataException | IOException e) {
-                if (!(e instanceof StorageGroupAlreadySetException)
-                    && !(e instanceof PathAlreadyExistException)
-                    && !(e instanceof AliasAlreadyExistException)) {
-                  errorCount.incrementAndGet();
-                }
-                logger.error(
-                    "create storage group {} failed", sgNode.getPartialPath().getFullPath(), e);
-              }
-            });
+    //    storageGroupNodes
+    //        .parallelStream()
+    //        .forEach(
+    //            sgNode -> {
+    //              try {
+    //                rocksDBManager.setStorageGroup(sgNode.getPartialPath());
+    //                if (sgNode.getDataTTL() > 0) {
+    //                  rocksDBManager.setTTL(sgNode.getPartialPath(), sgNode.getDataTTL());
+    //                }
+    //              } catch (MetadataException | IOException e) {
+    //                if (!(e instanceof StorageGroupAlreadySetException)
+    //                    && !(e instanceof PathAlreadyExistException)
+    //                    && !(e instanceof AliasAlreadyExistException)) {
+    //                  errorCount.incrementAndGet();
+    //                }
+    //                logger.error(
+    //                    "create storage group {} failed", sgNode.getPartialPath().getFullPath(),
+    // e);
+    //              }
+    //            });
 
-    if (errorCount.get() > 0) {
-      logger.error("Fatal error. Create some storage groups fail, terminate metadata transfer");
-      return;
-    }
+    //    if (errorCount.get() > 0) {
+    //      logger.error("Fatal error. Create some storage groups fail, terminate metadata
+    // transfer");
+    //      return;
+    //    }
 
     Queue<IMeasurementMNode> failCreatedNodes = new ConcurrentLinkedQueue<>();
     AtomicInteger createdNodeCnt = new AtomicInteger(0);
