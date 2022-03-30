@@ -34,6 +34,7 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -96,9 +97,9 @@ public class SourceHandle implements ISourceHandle {
   }
 
   @Override
-  public synchronized TsBlock receive() {
+  public synchronized TsBlock receive() throws IOException {
     if (throwable != null) {
-      throw new RuntimeException(throwable);
+      throw new IOException(throwable);
     }
     if (closed) {
       throw new IllegalStateException("Source handle is closed.");

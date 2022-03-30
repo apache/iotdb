@@ -33,6 +33,7 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Executors;
@@ -91,7 +92,12 @@ public class SinkHandleTest {
     Assert.assertEquals(0, sinkHandle.getNumOfBufferedTsBlocks());
 
     // Send tsblocks.
-    sinkHandle.send(mockTsBlocks);
+    try {
+      sinkHandle.send(mockTsBlocks);
+    } catch (IOException e) {
+      e.printStackTrace();
+      Assert.fail();
+    }
     sinkHandle.setNoMoreTsBlocks();
     Assert.assertTrue(sinkHandle.isFull().isDone());
     Assert.assertFalse(sinkHandle.isFinished());
@@ -134,7 +140,12 @@ public class SinkHandleTest {
     Assert.assertTrue(sinkHandle.isFinished());
 
     // Close the SinkHandle.
-    sinkHandle.close();
+    try {
+      sinkHandle.close();
+    } catch (IOException e) {
+      e.printStackTrace();
+      Assert.fail();
+    }
 
     Assert.assertTrue(sinkHandle.isClosed());
     Mockito.verify(mockSinkHandleListener, Mockito.times(1)).onClosed(sinkHandle);
@@ -207,7 +218,12 @@ public class SinkHandleTest {
     Assert.assertEquals(0, sinkHandle.getNumOfBufferedTsBlocks());
 
     // Send tsblocks.
-    sinkHandle.send(mockTsBlocks);
+    try {
+      sinkHandle.send(mockTsBlocks);
+    } catch (IOException e) {
+      e.printStackTrace();
+      Assert.fail();
+    }
     Assert.assertFalse(sinkHandle.isFull().isDone());
     Assert.assertFalse(sinkHandle.isFinished());
     Assert.assertFalse(sinkHandle.isClosed());
@@ -250,7 +266,12 @@ public class SinkHandleTest {
     Assert.assertFalse(sinkHandle.isFinished());
 
     // Send tsblocks.
-    sinkHandle.send(mockTsBlocks);
+    try {
+      sinkHandle.send(mockTsBlocks);
+    } catch (IOException e) {
+      e.printStackTrace();
+      Assert.fail();
+    }
     Assert.assertFalse(sinkHandle.isFull().isDone());
     Assert.assertFalse(sinkHandle.isFinished());
     Assert.assertFalse(sinkHandle.isClosed());
@@ -278,7 +299,13 @@ public class SinkHandleTest {
     // Close the SinkHandle.
     sinkHandle.setNoMoreTsBlocks();
     Assert.assertFalse(sinkHandle.isFinished());
-    sinkHandle.close();
+
+    try {
+      sinkHandle.close();
+    } catch (IOException e) {
+      e.printStackTrace();
+      Assert.fail();
+    }
     Assert.assertTrue(sinkHandle.isClosed());
     Mockito.verify(mockSinkHandleListener, Mockito.times(1)).onClosed(sinkHandle);
     Mockito.verify(mockMemoryPool, Mockito.times(numOfMockTsBlock)).free(queryId, mockTsBlockSize);
@@ -355,7 +382,12 @@ public class SinkHandleTest {
     Assert.assertEquals(0, sinkHandle.getNumOfBufferedTsBlocks());
 
     // Send tsblocks.
-    sinkHandle.send(mockTsBlocks);
+    try {
+      sinkHandle.send(mockTsBlocks);
+    } catch (IOException e) {
+      e.printStackTrace();
+      Assert.fail();
+    }
     sinkHandle.setNoMoreTsBlocks();
     Assert.assertFalse(sinkHandle.isFull().isDone());
     Assert.assertFalse(sinkHandle.isFinished());
@@ -367,7 +399,7 @@ public class SinkHandleTest {
         .reserve(queryId, mockTsBlockSize * numOfMockTsBlock);
     try {
       Thread.sleep(100L);
-      Mockito.verify(mockClient, Mockito.times(1))
+      Mockito.verify(mockClient, Mockito.times(SinkHandle.MAX_ATTEMPT_TIMES))
           .onNewDataBlockEvent(
               Mockito.argThat(
                   e ->
@@ -383,16 +415,16 @@ public class SinkHandleTest {
 
     try {
       sinkHandle.send(Collections.singletonList(Mockito.mock(TsBlock.class)));
-      Assert.fail("Expect a RuntimeException.");
-    } catch (RuntimeException e) {
+      Assert.fail("Expect an IOException.");
+    } catch (IOException e) {
       Assert.assertEquals("org.apache.thrift.TException: Mock exception", e.getMessage());
     }
 
     // Close the SinkHandle.
     try {
       sinkHandle.close();
-      Assert.fail("Expect a RuntimeException.");
-    } catch (RuntimeException e) {
+      Assert.fail("Expect an IOException.");
+    } catch (IOException e) {
       Assert.assertEquals("org.apache.thrift.TException: Mock exception", e.getMessage());
     }
     Assert.assertFalse(sinkHandle.isClosed());

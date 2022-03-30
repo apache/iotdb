@@ -23,6 +23,7 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import com.google.common.util.concurrent.ListenableFuture;
 
 import java.io.Closeable;
+import java.io.IOException;
 
 public interface ISourceHandle extends Closeable {
 
@@ -33,7 +34,7 @@ public interface ISourceHandle extends Closeable {
    * Get a {@link TsBlock}. If the source handle is blocked, a null will be returned. A {@link
    * RuntimeException} will be thrown if any error happened.
    */
-  TsBlock receive();
+  TsBlock receive() throws IOException;
 
   /** If there are more tsblocks. */
   boolean isFinished();

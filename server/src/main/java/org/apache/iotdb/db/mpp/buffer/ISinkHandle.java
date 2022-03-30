@@ -22,6 +22,7 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
+import java.io.IOException;
 import java.util.List;
 
 public interface ISinkHandle extends AutoCloseable {
@@ -40,14 +41,14 @@ public interface ISinkHandle extends AutoCloseable {
    * the send tsblock call is ignored. This can happen with limit queries. A {@link
    * RuntimeException} will be thrown if any exception happened * during the data transmission.
    */
-  void send(List<TsBlock> tsBlocks);
+  void send(List<TsBlock> tsBlocks) throws IOException;
 
   /**
    * Send a {@link TsBlock} to a specific partition. If no-more-tsblocks has been set, the send
    * tsblock call is ignored. This can happen with limit queries. A {@link RuntimeException} will be
    * thrown if any exception happened * during the data transmission.
    */
-  void send(int partition, List<TsBlock> tsBlocks);
+  void send(int partition, List<TsBlock> tsBlocks) throws IOException;
 
   /**
    * Notify the handle that no more tsblocks will be sent. Any future calls to send a tsblock should
@@ -70,7 +71,7 @@ public interface ISinkHandle extends AutoCloseable {
    * during the data transmission.
    */
   @Override
-  void close();
+  void close() throws IOException;
 
   /** Abort the sink handle, discarding all tsblocks which may still be in memory buffer. */
   void abort();

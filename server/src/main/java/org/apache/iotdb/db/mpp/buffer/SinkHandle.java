@@ -33,6 +33,7 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.LinkedList;
@@ -46,6 +47,8 @@ import static com.google.common.util.concurrent.Futures.nonCancellationPropagati
 public class SinkHandle implements ISinkHandle {
 
   private static final Logger logger = LoggerFactory.getLogger(SinkHandle.class);
+
+  public static final int MAX_ATTEMPT_TIMES = 3;
 
   private final String remoteHostname;
   private final TFragmentInstanceId remoteFragmentInstanceId;
@@ -102,10 +105,10 @@ public class SinkHandle implements ISinkHandle {
   }
 
   @Override
-  public void send(List<TsBlock> tsBlocks) {
+  public void send(List<TsBlock> tsBlocks) throws IOException {
     Validate.notNull(tsBlocks, "tsBlocks is null");
     if (throwable != null) {
-      throw new RuntimeException(throwable);
+      throw new IOException(throwable);
     }
     if (closed) {
       throw new IllegalStateException("Sink handle is closed.");
@@ -145,37 +148,71 @@ public class SinkHandle implements ISinkHandle {
     throw new UnsupportedOperationException();
   }
 
-  private void submitSendEndOfDataBlockEventTask() {
-    executorService.submit(new SendEndOfDataBlockEventTask());
+  private void sendEndOfDataBlockEvent() throws TException {
+    logger.debug(
+        "Send end of data block event to operator {} of {}.",
+        remoteOperatorId,
+        remoteFragmentInstanceId);
+    int attempt = 0;
+    EndOfDataBlockEvent endOfDataBlockEvent =
+        new EndOfDataBlockEvent(
+            remoteFragmentInstanceId,
+            remoteOperatorId,
+            localFragmentInstanceId,
+            bufferedTsBlocks.size() - 1);
+    while (attempt < MAX_ATTEMPT_TIMES) {
+      attempt += 1;
+      try {
+        client.onEndOfDataBlockEvent(endOfDataBlockEvent);
+        break;
+      } catch (TException e) {
+        logger.error(
+            "Failed to send end of data block event to operator {} of {} due to {}, attempt times: {}",
+            remoteOperatorId,
+            remoteFragmentInstanceId,
+            e.getMessage(),
+            attempt);
+        if (attempt == MAX_ATTEMPT_TIMES) {
+          throw e;
+        }
+      }
+    }
   }
 
   @Override
-  public synchronized void close() {
+  public void close() throws IOException {
     logger.info("Sink handle {} is being closed.", this);
     if (throwable != null) {
-      throw new RuntimeException(throwable);
+      throw new IOException(throwable);
     }
     if (closed) {
       return;
     }
-    closed = true;
-    noMoreTsBlocks = true;
-    submitSendEndOfDataBlockEventTask();
+    synchronized (this) {
+      closed = true;
+      noMoreTsBlocks = true;
+    }
     sinkHandleListener.onClosed(this);
+    try {
+      sendEndOfDataBlockEvent();
+    } catch (TException e) {
+      throw new IOException(e);
+    }
     logger.info("Sink handle {} is closed.", this);
   }
 
   @Override
-  public synchronized void abort() {
+  public void abort() {
     logger.info("Sink handle {} is being aborted.", this);
-    bufferedTsBlocks.clear();
-    numOfBufferedTsBlocks = 0;
-    closed = true;
-    localMemoryManager
-        .getQueryPool()
-        .free(localFragmentInstanceId.getQueryId(), bufferRetainedSizeInBytes);
-    bufferRetainedSizeInBytes = 0;
-    submitSendEndOfDataBlockEventTask();
+    synchronized (this) {
+      bufferedTsBlocks.clear();
+      numOfBufferedTsBlocks = 0;
+      closed = true;
+      localMemoryManager
+          .getQueryPool()
+          .free(localFragmentInstanceId.getQueryId(), bufferRetainedSizeInBytes);
+      bufferRetainedSizeInBytes = 0;
+    }
     sinkHandleListener.onAborted(this);
     logger.info("Sink handle {} is aborted", this);
   }
@@ -274,12 +311,12 @@ public class SinkHandle implements ISinkHandle {
     @Override
     public void run() {
       logger.debug(
-          "Send new data block event [{}, {}) from {} to operator {} of {}.",
+          "Send new data block event [{}, {}) to operator {} of {}.",
           startSequenceId,
           startSequenceId + blockSizes.size(),
-          localFragmentInstanceId,
           remoteOperatorId,
           remoteFragmentInstanceId);
+      int attempt = 0;
       NewDataBlockEvent newDataBlockEvent =
           new NewDataBlockEvent(
               remoteFragmentInstanceId,
@@ -287,34 +324,22 @@ public class SinkHandle implements ISinkHandle {
               localFragmentInstanceId,
               startSequenceId,
               blockSizes);
-      try {
-        client.onNewDataBlockEvent(newDataBlockEvent);
-      } catch (TException e) {
-        // TODO: retry
-        throwable = e;
-      }
-    }
-  }
-
-  /** Send an {@link EndOfDataBlockEvent} to downstream fragment instance. */
-  class SendEndOfDataBlockEventTask implements Runnable {
-    @Override
-    public void run() {
-      logger.debug(
-          "Send end of data block event from {} to operator {} of {}.",
-          localFragmentInstanceId,
-          remoteOperatorId,
-          remoteFragmentInstanceId);
-      try {
-        EndOfDataBlockEvent endOfDataBlockEvent =
-            new EndOfDataBlockEvent(
-                remoteFragmentInstanceId,
-                remoteOperatorId,
-                localFragmentInstanceId,
-                bufferedTsBlocks.size() - 1);
-        client.onEndOfDataBlockEvent(endOfDataBlockEvent);
-      } catch (TException e) {
-        throwable = e;
+      while (attempt < MAX_ATTEMPT_TIMES) {
+        attempt += 1;
+        try {
+          client.onNewDataBlockEvent(newDataBlockEvent);
+          break;
+        } catch (TException e) {
+          logger.error(
+              "Failed to send new data block event to operator {} of {} due to {}, attempt times: {}",
+              remoteOperatorId,
+              remoteFragmentInstanceId,
+              e.getMessage(),
+              attempt);
+          if (attempt == MAX_ATTEMPT_TIMES) {
+            throwable = e;
+          }
+        }
       }
     }
   }
