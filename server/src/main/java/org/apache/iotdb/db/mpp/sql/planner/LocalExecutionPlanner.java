@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner;
 
-import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
 import org.apache.iotdb.db.mpp.execution.FragmentInstanceContext;
@@ -66,14 +65,11 @@ public class LocalExecutionPlanner {
       OperatorContext operatorContext =
           context.taskContext.addOperatorContext(
               context.getNextOperatorId(), node.getId(), SeriesScanOperator.class.getSimpleName());
-      // TODO should create QueryDataSource in SeriesScanOperator's runtime
-      QueryDataSource dataSource = null;
       return new SeriesScanOperator(
           seriesPath,
           node.getAllSensors(),
           seriesPath.getSeriesType(),
           operatorContext,
-          dataSource,
           node.getTimeFilter(),
           node.getValueFilter(),
           ascending);

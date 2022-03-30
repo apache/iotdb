@@ -69,4 +69,8 @@ public class FragmentInstanceContext extends QueryContext {
   public List<OperatorContext> getOperatorContexts() {
     return operatorContexts;
   }
+
+  public FragmentInstanceId getId() {
+    return id;
+  }
 }

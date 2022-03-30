@@ -48,4 +48,9 @@ public interface Operator extends AutoCloseable {
   /** This method will always be called before releasing the Operator reference. */
   @Override
   default void close() throws Exception {}
+
+  /**
+   * Is this operator completely finished processing and no more output TsBlock will be produced.
+   */
+  boolean isFinished() throws IOException;
 }

@@ -30,7 +30,6 @@ import org.apache.iotdb.db.mpp.execution.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderTestUtil;
-import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -83,18 +82,16 @@ public class SeriesScanOperatorTest {
               new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance"));
       fragmentInstanceContext.addOperatorContext(
           1, new PlanNodeId("1"), SeriesScanOperator.class.getSimpleName());
-      QueryDataSource dataSource = new QueryDataSource(seqResources, unSeqResources);
-      QueryUtils.fillOrderIndexes(dataSource, measurementPath.getDevice(), true);
       SeriesScanOperator seriesScanOperator =
           new SeriesScanOperator(
               measurementPath,
               allSensors,
               TSDataType.INT32,
               fragmentInstanceContext.getOperatorContexts().get(0),
-              dataSource,
               null,
               null,
               true);
+      seriesScanOperator.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       int count = 0;
       while (seriesScanOperator.hasNext()) {
         TsBlock tsBlock = seriesScanOperator.next();

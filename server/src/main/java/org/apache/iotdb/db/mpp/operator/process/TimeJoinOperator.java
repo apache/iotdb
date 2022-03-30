@@ -59,6 +59,8 @@ public class TimeJoinOperator implements ProcessOperator {
    */
   private final List<TSDataType> dataTypes;
 
+  private boolean finished;
+
   public TimeJoinOperator(
       OperatorContext operatorContext,
       List<Operator> children,
@@ -154,6 +156,9 @@ public class TimeJoinOperator implements ProcessOperator {
 
   @Override
   public boolean hasNext() throws IOException {
+    if (finished) {
+      return false;
+    }
     for (int i = 0; i < inputCount; i++) {
       if (!empty(i)) {
         return true;
@@ -173,6 +178,22 @@ public class TimeJoinOperator implements ProcessOperator {
     for (Operator child : children) {
       child.close();
     }
+  }
+
+  @Override
+  public boolean isFinished() {
+    if (finished) {
+      return true;
+    }
+    finished = true;
+    for (int i = 0; i < columnCount; i++) {
+      // has more tsBlock output from children[i] or has cached tsBlock in inputTsBlocks[i]
+      if (!noMoreTsBlocks[i] || !empty(i)) {
+        finished = false;
+        break;
+      }
+    }
+    return finished;
   }
 
   private boolean empty(int columnIndex) {
