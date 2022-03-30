@@ -19,7 +19,49 @@
 
 package org.apache.iotdb.db.mpp.common.schematree;
 
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.Map;
+
 public abstract class SchemaNode {
 
-  private String name;
+  protected final String name;
+
+  public SchemaNode(String name) {
+    this.name = name;
+  }
+
+  public String getName() {
+    return name;
+  }
+
+  public SchemaNode getChild(String name) {
+    return null;
+  }
+
+  public void addChild(String name, SchemaNode child) {}
+
+  public Map<String, SchemaNode> getChildren() {
+    return Collections.emptyMap();
+  }
+
+  public Iterator<SchemaNode> getChildrenIterator() {
+    return Collections.emptyIterator();
+  }
+
+  public boolean isEntity() {
+    return false;
+  }
+
+  public boolean isMeasurement() {
+    return false;
+  }
+
+  public SchemaEntityNode getAsEntityNode() {
+    throw new ClassCastException("This not isn't instance of SchemaEntityNode.");
+  }
+
+  public SchemaMeasurementNode getAsMeasurementNode() {
+    throw new ClassCastException("This not isn't instance of SchemaMeasurementNode.");
+  }
 }
