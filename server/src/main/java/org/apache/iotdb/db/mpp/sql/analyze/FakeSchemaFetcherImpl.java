@@ -27,4 +27,9 @@ public class FakeSchemaFetcherImpl implements ISchemaFetcher {
   public SchemaTree fetchSchema(PathPatternTree patternTree) {
     return new SchemaTree();
   }
+
+  @Override
+  public SchemaTree fetchSchemaWithAutoCreate(PathPatternTree patternTree) {
+    return null;
+  }
 }
