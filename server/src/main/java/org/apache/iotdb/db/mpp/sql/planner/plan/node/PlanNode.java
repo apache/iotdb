@@ -84,6 +84,6 @@ public abstract class PlanNode {
   public abstract void serialize(ByteBuffer byteBuffer);
 
   public List<String> getBoxString() {
-    return ImmutableList.of("PlanNode");
+    return ImmutableList.of(String.format("PlanNode-%s", getId()));
   }
 }

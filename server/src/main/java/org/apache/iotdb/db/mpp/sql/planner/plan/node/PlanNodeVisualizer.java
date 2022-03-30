@@ -34,7 +34,10 @@ public class PlanNodeVisualizer {
   private static final String RIGHT_TOP = "┐";
   private static final String SHANG = "┴";
   private static final String XIA = "┬";
+  private static final String CROSS = "┼";
 
+  private static final int BOX_MARGIN = 1;
+  private static final int CONNECTION_LINE_HEIGHT = 2;
 
   private static class Box {
     private PlanNode node;
@@ -66,7 +69,15 @@ public class PlanNodeVisualizer {
       if (idx < lines.size()) {
         return lines.get(idx);
       }
-      return printIndent(lineWidth);
+      return genEmptyLine(lineWidth);
+    }
+
+    private String genEmptyLine(int lineWidth) {
+      StringBuilder line = new StringBuilder();
+      for (int i = 0; i < lineWidth; i++) {
+        line.append(INDENT);
+      }
+      return line.toString();
     }
 
     public int getChildrenLineCount() {
@@ -86,15 +97,15 @@ public class PlanNodeVisualizer {
     }
   }
 
-  public static List<String> getBoxLines(PlanNode root) {
+  public static List<String> toBoxLines(PlanNode root) {
     Box box = buildBoxTree(root);
-    calculateBoxMaxWidth(box);
+    calculateBoxParams(box);
     buildBoxLines(box);
     return box.lines;
   }
 
   public static void printAsBox(PlanNode root) {
-    for (String line : getBoxLines(root)) {
+    for (String line : toBoxLines(root)) {
       System.out.println(line);
     }
   }
@@ -107,17 +118,17 @@ public class PlanNodeVisualizer {
     return box;
   }
 
-  private static void calculateBoxMaxWidth(Box box) {
+  private static void calculateBoxParams(Box box) {
     int childrenWidth = 0;
     for (Box child : box.children) {
-      calculateBoxMaxWidth(child);
+      calculateBoxParams(child);
       childrenWidth += child.lineWidth;
     }
-    childrenWidth += box.children.size() > 1 ? box.children.size() - 1 : 0;
+    childrenWidth += box.childCount() > 1 ? (box.childCount() - 1) * BOX_MARGIN : 0;
     box.lineWidth = Math.max(box.boxWidth, childrenWidth);
     box.startPosition = (box.lineWidth - box.boxWidth) / 2;
     box.endPosition = box.startPosition + box.boxWidth - 1;
-    box.midPosition = box.lineWidth / 2 - 1;
+    box.midPosition = box.lineWidth / 2;
   }
 
   private static void buildBoxLines(Box box) {
@@ -155,55 +166,44 @@ public class PlanNodeVisualizer {
 
     // Print Connection Line
     if (box.children.size() == 1) {
-      for (int i = 0; i < 2; i++) {
-        StringBuilder sb = new StringBuilder();
-        for (int j = 0; j < box.lineWidth; j ++) {
-          if (j == box.midPosition) {
-            sb.append(SHU);
-          } else {
-            sb.append(INDENT);
-          }
+      for (int i = 0; i < CONNECTION_LINE_HEIGHT; i++) {
+        StringBuilder line = new StringBuilder();
+        for (int j = 0; j < box.lineWidth; j++) {
+          line.append(j == box.midPosition ? SHU : INDENT);
         }
-        box.lines.add(sb.toString());
+        box.lines.add(line.toString());
       }
     } else {
       Map<Integer, String> symbolMap = new HashMap<>();
+      Map<Integer, Boolean> childMidPositionMap = new HashMap<>();
       symbolMap.put(box.midPosition, SHANG);
       for (int i = 0; i < box.children.size(); i++) {
-        symbolMap.put(getChildMidPosition(box, i), i == 0 ? LEFT_TOP : i == box.children.size() - 1 ? RIGHT_TOP : XIA);
+        int childMidPosition = getChildMidPosition(box, i);
+        childMidPositionMap.put(childMidPosition, true);
+        if (childMidPosition == box.midPosition) {
+          symbolMap.put(box.midPosition, CROSS);
+          continue;
+        }
+        symbolMap.put(
+            childMidPosition, i == 0 ? LEFT_TOP : i == box.children.size() - 1 ? RIGHT_TOP : XIA);
       }
       StringBuilder line1 = new StringBuilder();
       for (int i = 0; i < box.lineWidth; i++) {
-        if (i < getChildMidPosition(box, 0)) {
-          line1.append(INDENT);
-          continue;
-        }
-        if (i > getChildMidPosition(box, box.childCount() - 1)) {
+        if (i < getChildMidPosition(box, 0) || i > getChildMidPosition(box, box.childCount() - 1)) {
           line1.append(INDENT);
           continue;
         }
         line1.append(symbolMap.getOrDefault(i, HENG));
-
       }
       box.lines.add(line1.toString());
 
-      StringBuilder line2 = new StringBuilder();
-      for (int i = 0; i < box.lineWidth; i++) {
-        if (i < getChildMidPosition(box, 0)) {
-          line2.append(INDENT);
-          continue;
+      for (int row = 1; row < CONNECTION_LINE_HEIGHT; row++) {
+        StringBuilder nextLine = new StringBuilder();
+        for (int i = 0; i < box.lineWidth; i++) {
+          nextLine.append(childMidPositionMap.containsKey(i) ? SHU : INDENT);
         }
-        if (i > getChildMidPosition(box, box.childCount() - 1)) {
-          line2.append(INDENT);
-          continue;
-        }
-        if (symbolMap.containsKey(i) && i != box.midPosition) {
-          line2.append(SHU);
-        } else {
-          line2.append(INDENT);
-        }
+        box.lines.add(nextLine.toString());
       }
-      box.lines.add(line2.toString());
     }
 
     for (Box child : box.children) {
@@ -215,7 +215,9 @@ public class PlanNodeVisualizer {
       for (int j = 0; j < box.childCount(); j++) {
         line.append(box.getChild(j).getLine(i));
         if (j != box.childCount() - 1) {
-          line.append(INDENT);
+          for (int m = 0; m < BOX_MARGIN; m++) {
+            line.append(INDENT);
+          }
         }
       }
       box.lines.add(line.toString());
@@ -226,41 +228,27 @@ public class PlanNodeVisualizer {
     int left = 0;
     for (int i = 0; i < idx; i++) {
       left += box.children.get(i).lineWidth;
-      left += 1;
+      left += BOX_MARGIN;
     }
     left += box.children.get(idx).lineWidth / 2;
     return left;
   }
 
-  private static String printIndent(int count) {
-    StringBuilder sb = new StringBuilder();
-    for (int i = 0; i < count; i++) {
-      sb.append(INDENT);
-    }
-    return sb.toString();
-  }
-
-  private static String printBoxEdge(Box box, boolean top) {
-    StringBuilder sb = new StringBuilder();
+  private static String printBoxEdge(Box box, boolean isTopEdge) {
+    StringBuilder line = new StringBuilder();
     for (int i = 0; i < box.lineWidth; i++) {
       if (i < box.startPosition) {
-        sb.append(INDENT);
-        continue;
+        line.append(INDENT);
+      } else if (i > box.endPosition) {
+        line.append(INDENT);
+      } else if (i == box.startPosition) {
+        line.append(isTopEdge ? LEFT_TOP : LEFT_BOTTOM);
+      } else if (i == box.endPosition) {
+        line.append(isTopEdge ? RIGHT_TOP : RIGHT_BOTTOM);
+      } else {
+        line.append(HENG);
       }
-      if (i > box.endPosition) {
-        sb.append(INDENT);
-        continue;
-      }
-      if (i == box.startPosition) {
-        sb.append(top ? LEFT_TOP : LEFT_BOTTOM);
-        continue;
-      }
-      if (i == box.endPosition) {
-        sb.append(top ? RIGHT_TOP : RIGHT_BOTTOM);
-        continue;
-      }
-      sb.append(HENG);
     }
-    return sb.toString();
+    return line.toString();
   }
 }

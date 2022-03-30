@@ -38,6 +38,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeIdAllocator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeVisualizer;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
@@ -50,6 +51,7 @@ import org.junit.Test;
 import java.util.*;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class DistributionPlannerTest {
 
@@ -75,7 +77,6 @@ public class DistributionPlannerTest {
     PlanNode newRoot = planner.rewriteSource();
 
     System.out.println(PlanNodeUtil.nodeToString(newRoot));
-    PlanNodeVisualizer.printAsBox(newRoot);
     assertEquals(newRoot.getChildren().get(0).getChildren().size(), 3);
   }
 
@@ -105,6 +106,30 @@ public class DistributionPlannerTest {
   }
 
   @Test
+  public void TestOneSeriesAddExchangeNode() throws IllegalPathException {
+    TimeJoinNode timeJoinNode =
+        new TimeJoinNode(
+            PlanNodeIdAllocator.generateId(), OrderBy.TIMESTAMP_ASC, FilterNullPolicy.NO_FILTER);
+
+    timeJoinNode.addChild(
+        new SeriesScanNode(PlanNodeIdAllocator.generateId(), new PartialPath("root.sg.d1.s1")));
+
+    LimitNode root = new LimitNode(PlanNodeIdAllocator.generateId(), 10, timeJoinNode);
+
+    Analysis analysis = constructAnalysis();
+
+    DistributionPlanner planner =
+        new DistributionPlanner(analysis, new LogicalQueryPlan(new MPPQueryContext(), root));
+    PlanNode rootAfterRewrite = planner.rewriteSource();
+    PlanNode rootWithExchange = planner.addExchangeNode(rootAfterRewrite);
+    PlanNode secondNode = rootWithExchange.getChildren().get(0);
+    assertTrue(
+        secondNode.getChildren().size() == 2
+            && (secondNode.getChildren().get(0) instanceof ExchangeNode
+                || secondNode.getChildren().get(1) instanceof ExchangeNode));
+  }
+
+  @Test
   public void TestSplitFragment() throws IllegalPathException {
     TimeJoinNode timeJoinNode =
         new TimeJoinNode(
@@ -126,6 +151,7 @@ public class DistributionPlannerTest {
         new DistributionPlanner(analysis, new LogicalQueryPlan(context, root));
     PlanNode rootAfterRewrite = planner.rewriteSource();
     PlanNode rootWithExchange = planner.addExchangeNode(rootAfterRewrite);
+    PlanNodeVisualizer.printAsBox(rootWithExchange);
     SubPlan subPlan = planner.splitFragment(rootWithExchange);
     assertEquals(subPlan.getChildren().size(), 2);
   }

@@ -215,6 +215,8 @@ public class SeriesScanNode extends SourceNode {
   }
 
   private String getPartitionId() {
-    return getDataRegionReplicaSet() == null ? "<Not Assigned>" : getDataRegionReplicaSet().getId().toString();
+    return getDataRegionReplicaSet() == null
+        ? "<Not Assigned>"
+        : getDataRegionReplicaSet().getId().toString();
   }
 }

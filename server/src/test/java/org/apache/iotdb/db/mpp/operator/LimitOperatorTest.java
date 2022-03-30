@@ -131,27 +131,20 @@ public class LimitOperatorTest {
 
       LimitOperator limitOperator =
           new LimitOperator(
-              fragmentInstanceContext.getOperatorContexts().get(3), 100, timeJoinOperator);
+              fragmentInstanceContext.getOperatorContexts().get(3), 250, timeJoinOperator);
       int count = 0;
-      System.out.println("Time sensor0 sensor1");
       while (limitOperator.hasNext()) {
         TsBlock tsBlock = limitOperator.next();
         assertEquals(2, tsBlock.getValueColumnCount());
         assertTrue(tsBlock.getColumn(0) instanceof IntColumn);
         assertTrue(tsBlock.getColumn(1) instanceof IntColumn);
-//        if (count < 12) {
-//          assertEquals(20, tsBlock.getPositionCount());
-//        } else {
-//          assertEquals(10, tsBlock.getPositionCount());
-//        }
+        if (count < 12) {
+          assertEquals(20, tsBlock.getPositionCount());
+        } else {
+          assertEquals(10, tsBlock.getPositionCount());
+        }
         for (int i = 0; i < tsBlock.getPositionCount(); i++) {
           long expectedTime = i + 20L * count;
-          System.out.println(
-              expectedTime
-                  + " \t "
-                  + tsBlock.getColumn(0).getInt(i)
-                  + " \t "
-                  + tsBlock.getColumn(1).getInt(i));
           assertEquals(expectedTime, tsBlock.getTimeByIndex(i));
           if (expectedTime < 200) {
             assertEquals(20000 + expectedTime, tsBlock.getColumn(0).getInt(i));
@@ -168,7 +161,7 @@ public class LimitOperatorTest {
         }
         count++;
       }
-//      assertEquals(13, count);
+      assertEquals(13, count);
     } catch (IOException | IllegalPathException e) {
       e.printStackTrace();
       fail();
