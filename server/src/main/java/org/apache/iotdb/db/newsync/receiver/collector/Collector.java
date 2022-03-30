@@ -94,10 +94,12 @@ public class Collector {
 
   public void stopPipe(String pipeName, String remoteIp, long createTime) {
     String dir = SyncPathUtil.getReceiverPipeFolderName(pipeName, remoteIp, createTime);
+    logger.info("try stop task key={}", dir);
     synchronized (dir.intern()) {
       if (taskFutures.containsKey(dir)) {
         taskFutures.get(dir).cancel(true);
         taskFutures.remove(dir);
+        logger.info("stop task success, key={}", dir);
       }
     }
   }
@@ -118,19 +120,21 @@ public class Collector {
       PipeDataQueue pipeDataQueue =
           PipeDataQueueFactory.getBufferedPipeDataQueue(
               SyncPathUtil.getReceiverPipeLogDir(pipeName, remoteIp, createTime));
-      while (!Thread.interrupted()) {
+      while (!Thread.currentThread().isInterrupted()) {
         PipeData pipeData = null;
         try {
           pipeData = pipeDataQueue.take();
           logger.info(
-              "Start load pipeData with serialize number {} and type {}",
+              "Start load pipeData with serialize number {} and type {},value={}",
               pipeData.getSerialNumber(),
-              pipeData.getType());
+              pipeData.getType(),
+              pipeData);
           pipeData.createLoader().load();
           pipeDataQueue.commit();
         } catch (InterruptedException e) {
           logger.warn("Be interrupted when waiting for pipe data, because {}", e.getMessage());
           Thread.currentThread().interrupt();
+          break;
         } catch (StorageGroupAlreadySetException e) {
           // bearable exception
           String msg =

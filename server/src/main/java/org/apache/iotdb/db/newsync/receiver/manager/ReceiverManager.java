@@ -69,7 +69,7 @@ public class ReceiverManager {
     }
     pipeInfoMap
         .get(pipeName)
-        .put(remoteIp, new PipeInfo(pipeName, remoteIp, PipeStatus.RUNNING, createTime));
+        .put(remoteIp, new PipeInfo(pipeName, remoteIp, PipeStatus.STOP, createTime));
   }
 
   public void startPipe(String pipeName, String remoteIp) throws IOException {

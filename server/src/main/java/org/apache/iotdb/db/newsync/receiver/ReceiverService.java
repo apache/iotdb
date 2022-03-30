@@ -152,7 +152,6 @@ public class ReceiverService implements IService {
     logger.info("create Pipe name={}, remoteIp={}, createTime={}", pipeName, remoteIp, createTime);
     createDir(pipeName, remoteIp, createTime);
     receiverManager.createPipe(pipeName, remoteIp, createTime);
-    collector.startPipe(pipeName, remoteIp, createTime);
   }
 
   /** start an existed pipe named pipeName */

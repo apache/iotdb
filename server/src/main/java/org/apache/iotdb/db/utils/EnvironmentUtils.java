@@ -342,6 +342,8 @@ public class EnvironmentUtils {
     createDir(sgDir);
     // create wal
     createDir(config.getWalDir());
+    // create new sync
+    createDir(config.getNewSyncDir());
     // create query
     createDir(config.getQueryDir());
     createDir(TestConstant.OUTPUT_DATA_DIR);

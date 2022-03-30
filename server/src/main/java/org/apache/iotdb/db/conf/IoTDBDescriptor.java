@@ -230,6 +230,8 @@ public class IoTDBDescriptor {
 
       conf.setWalDir(properties.getProperty("wal_dir", conf.getWalDir()));
 
+      conf.setNewSyncDir(properties.getProperty("newsync_dir", conf.getNewSyncDir()));
+
       int mlogBufferSize =
           Integer.parseInt(
               properties.getProperty(
@@ -379,10 +381,17 @@ public class IoTDBDescriptor {
               properties
                   .getProperty("sync_server_port", Integer.toString(conf.getSyncServerPort()))
                   .trim()));
-      conf.setSyncServerPort(
+      conf.setPipeServerPort(
           Integer.parseInt(
               properties
-                  .getProperty("local_pipe_server_port", Integer.toString(conf.getSyncServerPort()))
+                  .getProperty("pipe_server_port", Integer.toString(conf.getPipeServerPort()))
+                  .trim()));
+      conf.setMaxNumberOfSyncFileRetry(
+          Integer.parseInt(
+              properties
+                  .getProperty(
+                      "max_number_of_sync_file_retry",
+                      Integer.toString(conf.getMaxNumberOfSyncFileRetry()))
                   .trim()));
 
       conf.setIpWhiteList(properties.getProperty("ip_white_list", conf.getIpWhiteList()));
@@ -1228,6 +1237,20 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "select_into_insert_tablet_plan_row_limit",
                   String.valueOf(conf.getSelectIntoInsertTabletPlanRowLimit()))));
+
+      // update sync config
+      conf.setPipeServerPort(
+          Integer.parseInt(
+              properties.getProperty(
+                  "pipe_server_port", String.valueOf(conf.getPipeServerPort()))));
+      conf.setMaxNumberOfSyncFileRetry(
+          Integer.parseInt(
+              properties
+                  .getProperty(
+                      "max_number_of_sync_file_retry",
+                      Integer.toString(conf.getMaxNumberOfSyncFileRetry()))
+                  .trim()));
+      conf.setIpWhiteList(properties.getProperty("ip_white_list", conf.getIpWhiteList()));
     } catch (Exception e) {
       throw new QueryProcessException(String.format("Fail to reload configuration because %s", e));
     }
