@@ -42,11 +42,11 @@ public class ReceiverManager {
   private ReceiverLog log;
 
   public void init() throws StartupException {
+    log = new ReceiverLog();
     ReceiverLogAnalyzer.scan();
     pipeInfoMap = ReceiverLogAnalyzer.getPipeInfoMap();
     pipeServerEnable = ReceiverLogAnalyzer.isPipeServerEnable();
     pipeMessageMap = ReceiverLogAnalyzer.getPipeMessageMap();
-    log = new ReceiverLog();
   }
 
   public void close() throws IOException {
@@ -70,7 +70,7 @@ public class ReceiverManager {
     }
     pipeInfoMap
         .get(pipeName)
-        .put(remoteIp, new PipeInfo(pipeName, remoteIp, PipeStatus.RUNNING, createTime));
+        .put(remoteIp, new PipeInfo(pipeName, remoteIp, PipeStatus.STOP, createTime));
   }
 
   public void startPipe(String pipeName, String remoteIp) throws IOException {
@@ -121,7 +121,7 @@ public class ReceiverManager {
   }
 
   public List<PipeMessage> getPipeMessages(String pipeName, String remoteIp, long createTime) {
-    List<PipeMessage> res = new ArrayList<>();
+    List<PipeMessage> pipeMessageList = new ArrayList<>();
     if (pipeInfoMap.containsKey(pipeName) && pipeInfoMap.get(pipeName).containsKey(remoteIp)) {
       synchronized (pipeInfoMap.get(pipeName).get(remoteIp)) {
         String pipeIdentifier =
@@ -135,12 +135,12 @@ public class ReceiverManager {
               e.getMessage());
         }
         if (pipeMessageMap.containsKey(pipeIdentifier)) {
-          res = pipeMessageMap.get(pipeIdentifier);
+          pipeMessageList = pipeMessageMap.get(pipeIdentifier);
           pipeMessageMap.remove(pipeIdentifier);
         }
       }
     }
-    return res;
+    return pipeMessageList;
   }
 
   public boolean isPipeServerEnable() {

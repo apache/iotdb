@@ -17,31 +17,20 @@
  * under the License.
  *
  */
-package org.apache.iotdb.db.newsync.sender.pipe;
+package org.apache.iotdb.db.exception.sync;
 
-import org.apache.iotdb.db.exception.sync.PipeSinkException;
+import org.apache.iotdb.db.exception.IoTDBException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-public interface PipeSink {
-  void setAttribute(String attr, String value) throws PipeSinkException;
+public class PipeException extends IoTDBException {
 
-  String getName();
+  private static final long serialVersionUID = -7312720445194413492L;
 
-  Type getType();
-
-  String showAllAttributes();
-
-  enum Type {
-    IoTDB;
+  public PipeException(String message, int errorCode) {
+    super(message, errorCode);
   }
 
-  class PipeSinkFactory {
-    public static PipeSink createPipeSink(String type, String name) {
-      type = type.toLowerCase();
-      if (Type.IoTDB.name().toLowerCase().equals(type)) {
-        return new IoTDBPipeSink(name);
-      }
-      throw new UnsupportedOperationException(
-          String.format("Do not support pipeSink type %s", type));
-    }
+  public PipeException(String message) {
+    super(message, TSStatusCode.PIPE_ERROR.getStatusCode());
   }
 }

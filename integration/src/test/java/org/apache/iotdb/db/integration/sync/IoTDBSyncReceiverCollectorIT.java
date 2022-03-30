@@ -62,7 +62,7 @@ import java.util.concurrent.TimeUnit;
 
 @Category({LocalStandaloneTest.class})
 public class IoTDBSyncReceiverCollectorIT {
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSyncReceiverLoaderIT.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSyncReceiverCollectorIT.class);
   protected static boolean enableSeqSpaceCompaction;
   protected static boolean enableUnseqSpaceCompaction;
   protected static boolean enableCrossSpaceCompaction;
