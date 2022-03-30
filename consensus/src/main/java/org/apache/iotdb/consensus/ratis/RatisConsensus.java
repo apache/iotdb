@@ -85,6 +85,9 @@ public class RatisConsensus implements IConsensus {
   private ClientId localFakeId;
   private AtomicLong localFakeCallId;
 
+  private static final int DEFAULT_PRIORITY = 0;
+  private static final int LEADER_PRIORITY = 1;
+
   private Logger logger = LoggerFactory.getLogger(RatisConsensus.class);
   /**
    * This function will use the previous client for groupId to query the latest group info It will
@@ -297,7 +300,7 @@ public class RatisConsensus implements IConsensus {
       return failed(e);
     }
     RaftGroup group = raftGroupMap.get(raftGroupId);
-    RaftPeer peerToAdd = Utils.toRaftPeer(peer);
+    RaftPeer peerToAdd = Utils.toRaftPeer(peer, DEFAULT_PRIORITY);
 
     // pre-conditions: group exists and myself in this group
     if (group == null || !group.getPeers().contains(myself)) {
@@ -340,7 +343,7 @@ public class RatisConsensus implements IConsensus {
       return failed(e);
     }
     RaftGroup group = raftGroupMap.get(raftGroupId);
-    RaftPeer peerToRemove = Utils.toRaftPeer(peer);
+    RaftPeer peerToRemove = Utils.toRaftPeer(peer, DEFAULT_PRIORITY);
 
     // pre-conditions: group exists and myself in this group
     if (group == null || !group.getPeers().contains(myself)) {
@@ -396,21 +399,58 @@ public class RatisConsensus implements IConsensus {
 
   @Override
   public ConsensusGenericResponse transferLeader(ConsensusGroupId groupId, Peer newLeader) {
-    RaftGroupId raftGroupId = Utils.toRatisGroupId(groupId);
-    RaftClient client = clientMap.getOrDefault(raftGroupId, null);
-    if (client == null) {
-      return failed(new ConsensusGroupNotExistException(groupId));
+    // By default, Ratis gives every Raft Peer same priority 0
+    // Ratis does not allow a peer.priority <= currentLeader.priority to becomes the leader
+    // So we have to enhance to leader's priority
+
+    // first fetch the newest information
+    try {
+      syncGroupInfoAndRebuildClient(groupId);
+    } catch (ConsensusGroupNotExistException e) {
+      return failed(e);
     }
-    RaftPeer newRaftLeader = Utils.toRaftPeer(newLeader);
+
+    RaftGroupId raftGroupId = Utils.toRatisGroupId(groupId);
+    RaftGroup raftGroup = raftGroupMap.get(raftGroupId);
+    RaftClient client = clientMap.get(raftGroupId);
+    RaftPeer newRaftLeader = Utils.toRaftPeer(newLeader, LEADER_PRIORITY);
+
+    ArrayList<RaftPeer> newConfiguration = new ArrayList<>();
+    for (RaftPeer raftPeer : raftGroup.getPeers()) {
+      if (raftPeer.getId().equals(newRaftLeader.getId())) {
+        newConfiguration.add(newRaftLeader);
+      } else {
+        // degrade every other peer to default priority
+        newConfiguration.add(Utils.toRaftPeer(Utils.getEndPoint(raftPeer), DEFAULT_PRIORITY));
+      }
+    }
 
     RaftClientReply reply = null;
     try {
+      RaftClientReply configChangeReply = client.admin().setConfiguration(newConfiguration);
+      if (!configChangeReply.isSuccess()) {
+        return failed(new RatisRequestFailedException(configChangeReply.getException()));
+      }
       // TODO tuning for timeoutMs
       reply = client.admin().transferLeadership(newRaftLeader.getId(), 2000);
     } catch (IOException e) {
       return failed(new RatisRequestFailedException(e));
     }
     return ConsensusGenericResponse.newBuilder().setSuccess(reply.isSuccess()).build();
+  }
+
+  @Override
+  public boolean isLeaderOf(ConsensusGroupId groupId) {
+    RaftGroupId raftGroupId = Utils.toRatisGroupId(groupId);
+
+    boolean isLeader;
+    try {
+      isLeader = server.getDivision(raftGroupId).getInfo().isLeader();
+    } catch (IOException exception) {
+      // if the query fails, simply return not leader
+      isLeader = false;
+    }
+    return isLeader;
   }
 
   @Override
@@ -443,7 +483,10 @@ public class RatisConsensus implements IConsensus {
   }
 
   private RaftGroup buildRaftGroup(ConsensusGroupId groupId, List<Peer> peers) {
-    List<RaftPeer> raftPeers = peers.stream().map(Utils::toRaftPeer).collect(Collectors.toList());
+    List<RaftPeer> raftPeers =
+        peers.stream()
+            .map(peer -> Utils.toRaftPeer(peer, DEFAULT_PRIORITY))
+            .collect(Collectors.toList());
     return RaftGroup.valueOf(Utils.toRatisGroupId(groupId), raftPeers);
   }
 
@@ -483,7 +526,7 @@ public class RatisConsensus implements IConsensus {
 
     // create a RaftPeer as endpoint of comm
     String address = Utils.IP_PORT(endpoint);
-    myself = Utils.toRaftPeer(endpoint);
+    myself = Utils.toRaftPeer(endpoint, DEFAULT_PRIORITY);
 
     RaftProperties properties = new RaftProperties();
 
