@@ -23,21 +23,24 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
-import org.apache.iotdb.db.mpp.sql.analyze.Analyzer;
 import org.apache.iotdb.db.mpp.sql.parser.StatementGenerator;
 import org.apache.iotdb.db.mpp.sql.planner.LogicalPlanner;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeIdAllocator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AlterTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.ShowDevicesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.ShowTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateTimeSeriesNode;
+import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.time.ZonedDateTime;
@@ -48,6 +51,69 @@ import java.util.Map;
 import static org.junit.Assert.fail;
 
 public class LogicalPlannerTest {
+
+  LogicalPlanPrinter planPrinter = new LogicalPlanPrinter();
+
+  @Before
+  public void setUp() {
+    PlanNodeIdAllocator.reset();
+  }
+
+  @Test
+  @Ignore
+  public void rawDataQueryTest() {
+    PlanNode root =
+        parseSQLToPlanNode(
+            "SELECT s1,s2 FROM root.sg1.d1 WHERE time > 10 and s2 > 100 WITHOUT NULL ANY(s1) LIMIT 1 OFFSET 10");
+    System.out.println(planPrinter.print(root));
+    // TODO: replace all paths to full paths
+    Assert.assertEquals(
+        "[OffsetNode (7)]\n"
+            + " │   RowOffset: 10\n"
+            + " └─[LimitNode (6)]\n"
+            + "    │   RowLimit: 1\n"
+            + "    └─[FilterNullNode (5)]\n"
+            + "       │   FilterNullPolicy: CONTAINS_NULL\n"
+            + "       │   FilterNullColumnNames: [s1]\n"
+            + "       └─[FilterNode (4)]\n"
+            + "          │   QueryFilter: [and [time>10][s2>100]]\n"
+            + "          └─[TimeJoinNode (3)]\n"
+            + "             │   MergeOrder: TIMESTAMP_ASC\n"
+            + "             │   FilterNullPolicy: null\n"
+            + "             └─[SeriesScanNode (1)]\n"
+            + "                │   SeriesPath: s1\n"
+            + "                │   scanOrder: TIMESTAMP_ASC\n"
+            + "               [SeriesScanNode (2)]\n"
+            + "                │   SeriesPath: s2\n"
+            + "                │   scanOrder: TIMESTAMP_ASC\n",
+        planPrinter.print(root));
+  }
+
+  @Test
+  @Ignore
+  public void aggregationQueryTest() {
+    PlanNode root =
+        parseSQLToPlanNode(
+            "SELECT sum(s1), avg(s2) FROM root.sg1.d1 WHERE time > 10 LIMIT 1 OFFSET 10");
+    System.out.println(planPrinter.print(root));
+    // TODO: replace all paths to full paths
+    Assert.assertEquals(
+        "[OffsetNode (6)]\n"
+            + " │   RowOffset: 10\n"
+            + " └─[LimitNode (5)]\n"
+            + "    │   RowLimit: 1\n"
+            + "    └─[FilterNode (4)]\n"
+            + "       │   QueryFilter: [time>10]\n"
+            + "       └─[TimeJoinNode (3)]\n"
+            + "          │   MergeOrder: TIMESTAMP_ASC\n"
+            + "          │   FilterNullPolicy: null\n"
+            + "          └─[SeriesAggregateScanNode (2)]\n"
+            + "             │   AggregateFunction: avg(s2)\n"
+            + "            [SeriesAggregateScanNode (1)]\n"
+            + "             │   AggregateFunction: sum(s1)\n",
+        planPrinter.print(root));
+  }
+
   @Test
   public void createTimeseriesPlanTest() {
     String sql =
@@ -336,11 +402,14 @@ public class LogicalPlannerTest {
   private PlanNode parseSQLToPlanNode(String sql) {
     PlanNode planNode = null;
     try {
+      Statement statement =
+          StatementGenerator.createStatement(sql, ZonedDateTime.now().getOffset());
       MPPQueryContext context = new MPPQueryContext();
-      Analyzer analyzer = new Analyzer(context);
-      Analysis analysis =
-          analyzer.analyze(
-              StatementGenerator.createStatement(sql, ZonedDateTime.now().getOffset()));
+      // TODO: do analyze after implementing ISchemaFetcher and IPartitionFetcher
+      //      Analyzer analyzer = new Analyzer(context);
+      //      Analysis analysis = analyzer.analyze(statement);
+      Analysis analysis = new Analysis();
+      analysis.setStatement(statement);
       LogicalPlanner planner = new LogicalPlanner(context, new ArrayList<>());
       planNode = planner.plan(analysis).getRootNode();
     } catch (Exception e) {

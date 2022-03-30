@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.sql.analyze;
 
+import org.apache.iotdb.commons.partition.DataPartitionInfo;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.PartitionInfo;
 import org.apache.iotdb.commons.partition.SchemaPartitionInfo;
@@ -26,13 +27,18 @@ import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
 import org.apache.iotdb.db.exception.sql.SQLParserException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
+import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
+import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.sql.rewriter.ConcatPathRewriter;
 import org.apache.iotdb.db.mpp.sql.rewriter.DnfFilterOptimizer;
 import org.apache.iotdb.db.mpp.sql.rewriter.MergeSingleFilterOptimizer;
 import org.apache.iotdb.db.mpp.sql.rewriter.RemoveNotOptimizer;
+import org.apache.iotdb.db.mpp.sql.rewriter.WildcardsRemover;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
+import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.component.WhereCondition;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertTabletStatement;
@@ -45,7 +51,9 @@ import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.tree.StatementVisitor;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -57,9 +65,9 @@ public class Analyzer {
   private final MPPQueryContext context;
 
   // TODO need to use factory to decide standalone or cluster
-  private final IPartitionFetcher partitionFetcher = StandalonePartitionFetcher.getInstance();
+  private final IPartitionFetcher partitionFetcher = new FakePartitionFetcherImpl();
   // TODO need to use factory to decide standalone or cluster
-  private final ISchemaFetcher schemaFetcher = StandaloneSchemaFetcher.getInstance();
+  private final ISchemaFetcher schemaFetcher = new FakeSchemaFetcherImpl();
 
   public Analyzer(MPPQueryContext context) {
     this.context = context;
@@ -86,11 +94,29 @@ public class Analyzer {
         // check for semantic errors
         queryStatement.selfCheck();
 
-        // concat path and remove wildcards
+        // concat path and construct path pattern tree
+        PathPatternTree patternTree = new PathPatternTree();
         QueryStatement rewrittenStatement =
-            (QueryStatement) new ConcatPathRewriter().rewrite(queryStatement, context);
+            (QueryStatement) new ConcatPathRewriter().rewrite(queryStatement, patternTree);
 
-        // TODO: check access permissions here
+        // request schema fetch API
+        SchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree);
+
+        // bind metadata, remove wildcards, and apply SLIMIT & SOFFSET
+        Map<String, Set<PartialPath>> deviceIdToPathsMap = new HashMap<>();
+        rewrittenStatement =
+            (QueryStatement)
+                new WildcardsRemover().rewrite(rewrittenStatement, schemaTree, deviceIdToPathsMap);
+
+        // fetch partition information
+        List<DataPartitionQueryParam> dataPartitionQueryParams = new ArrayList<>();
+        for (String deviceId : deviceIdToPathsMap.keySet()) {
+          DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
+          dataPartitionQueryParam.setDeviceId(deviceId);
+          dataPartitionQueryParams.add(dataPartitionQueryParam);
+        }
+        DataPartitionInfo dataPartitionInfo =
+            partitionFetcher.fetchDataPartitionInfos(dataPartitionQueryParams);
 
         // optimize expressions in whereCondition
         WhereCondition whereCondition = rewrittenStatement.getWhereCondition();
@@ -102,6 +128,9 @@ public class Analyzer {
           whereCondition.setQueryFilter(filter);
         }
         analysis.setStatement(rewrittenStatement);
+        analysis.setSchemaTree(schemaTree);
+        analysis.setDeviceIdToPathsMap(deviceIdToPathsMap);
+        analysis.setDataPartitionInfo(dataPartitionInfo);
       } catch (StatementAnalyzeException | PathNumOverLimitException e) {
         e.printStackTrace();
       }
@@ -180,13 +209,14 @@ public class Analyzer {
       PartitionInfo partitionInfo = partitionFetcher.fetchPartitionInfo(dataPartitionQueryParam);
 
       // TODO(INSERT) get each time series schema according to SchemaPartitionInfo in PartitionInfo
-      Map<String, MeasurementSchema> schemaMap =
-          schemaFetcher.fetchSchema(
-              insertTabletStatement.getDevicePath(),
-              Arrays.asList(insertTabletStatement.getMeasurements()));
+      PathPatternTree patternTree = new PathPatternTree();
+      patternTree.appendPaths(
+          insertTabletStatement.getDevicePath(),
+          Arrays.asList(insertTabletStatement.getMeasurements()));
+      SchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree);
 
       Analysis analysis = new Analysis();
-      analysis.setSchemaMap(schemaMap);
+      analysis.setSchemaTree(schemaTree);
       // TODO(INSERT) do type check here
       analysis.setStatement(insertTabletStatement);
       analysis.setDataPartitionInfo(partitionInfo.getDataPartitionInfo());

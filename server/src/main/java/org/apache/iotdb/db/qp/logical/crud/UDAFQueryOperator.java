@@ -92,7 +92,7 @@ public class UDAFQueryOperator extends QueryOperator {
   private void addInnerResultColumn(Expression expression) {
     for (Iterator<Expression> it = expression.iterator(); it.hasNext(); ) {
       Expression currentExp = it.next();
-      if (currentExp.isPlainAggregationFunctionExpression()) {
+      if (currentExp.isBuiltInAggregationFunctionExpression()) {
         innerResultColumnsCache.add(new ResultColumn(currentExp));
       }
     }
@@ -163,7 +163,7 @@ public class UDAFQueryOperator extends QueryOperator {
       throw new LogicalOperatorException(AggregationQueryOperator.ERROR_MESSAGE1);
     }
     // Currently, the aggregation function expression can only contain a timeseries operand.
-    if (expression.isPlainAggregationFunctionExpression()) {
+    if (expression.isBuiltInAggregationFunctionExpression()) {
       if (expression.getExpressions().size() == 1
           && expression.getExpressions().get(0) instanceof TimeSeriesOperand) {
         return;
