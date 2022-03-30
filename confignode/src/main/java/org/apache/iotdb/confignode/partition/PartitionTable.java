@@ -79,10 +79,14 @@ public class PartitionTable {
     lock.writeLock().lock();
 
     if (dataNodesMap.containsValue(info)) {
-      result = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
-      result.setMessage(
-          String.format(
-              "DataNode %s is already registered.", plan.getInfo().getEndPoint().toString()));
+      // TODO: optimize
+      result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      for (Map.Entry<Integer, DataNodeInfo> entry : dataNodesMap.entrySet()) {
+        if (entry.getValue().equals(info)) {
+          result.setMessage(String.valueOf(entry.getKey()));
+          break;
+        }
+      }
     } else {
       info.setDataNodeID(nextDataNode);
       dataNodesMap.put(info.getDataNodeID(), info);

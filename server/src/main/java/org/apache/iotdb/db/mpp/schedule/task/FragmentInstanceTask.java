@@ -46,7 +46,7 @@ public class FragmentInstanceTask implements IDIndexedAccessible {
   private final ExecFragmentInstance fragmentInstance;
 
   // the higher this field is, the higher probability it will be scheduled.
-  private double schedulePriority;
+  private volatile double schedulePriority;
   private final long ddl;
   private final Lock lock;
 
@@ -63,7 +63,7 @@ public class FragmentInstanceTask implements IDIndexedAccessible {
     this.fragmentInstance = instance;
     this.id = new FragmentInstanceTaskID(instance.getInfo());
     this.setStatus(status);
-    this.schedulePriority = 0L;
+    this.schedulePriority = 0.0D;
     this.ddl = System.currentTimeMillis() + timeoutMs;
     this.lock = new ReentrantLock();
   }
