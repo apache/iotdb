@@ -737,7 +737,7 @@ public class StorageGroupProcessorTest {
       Thread.sleep(500);
 
       for (TsFileResource resource : processor.getSequenceFileList()) {
-        Assert.assertTrue(resource.getTsFile().exists());
+        Assert.assertFalse(resource.getTsFile().exists());
       }
       TsFileResource targetTsFileResource =
           TsFileNameGenerator.getInnerCompactionTargetFileResource(
@@ -927,11 +927,7 @@ public class StorageGroupProcessorTest {
   class DummySGP extends VirtualStorageGroupProcessor {
 
     DummySGP(String systemInfoDir, String storageGroupName) throws StorageGroupProcessorException {
-      super(
-          systemInfoDir,
-          storageGroupName,
-          new TsFileFlushPolicy.DirectFlushPolicy(),
-          storageGroupName);
+      super(systemInfoDir, "0", new TsFileFlushPolicy.DirectFlushPolicy(), storageGroupName);
     }
   }
 }

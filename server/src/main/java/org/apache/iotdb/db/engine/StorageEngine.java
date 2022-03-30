@@ -857,8 +857,12 @@ public class StorageEngine implements IService {
     if (!processorMap.containsKey(storageGroupPath)) {
       return;
     }
-
     CompactionTaskManager.getInstance().abortCompaction(storageGroupPath.getFullPath());
+    try {
+      Thread.sleep(2000);
+    } catch (InterruptedException e) {
+      // Wait two seconds so that the compaction thread can end
+    }
     deleteAllDataFilesInOneStorageGroup(storageGroupPath);
     releaseWalDirectByteBufferPoolInOneStorageGroup(storageGroupPath);
     StorageGroupManager storageGroupManager = processorMap.remove(storageGroupPath);
