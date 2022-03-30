@@ -22,7 +22,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.newsync.conf.SyncPathUtil;
 import org.apache.iotdb.db.newsync.receiver.manager.PipeInfo;
 import org.apache.iotdb.db.newsync.receiver.manager.PipeMessage;
-import org.apache.iotdb.db.newsync.receiver.manager.PipeStatus;
+import org.apache.iotdb.db.newsync.sender.pipe.Pipe.PipeStatus;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
 import org.junit.After;
@@ -76,7 +76,7 @@ public class ReceiverLogAnalyzerTest {
       Assert.assertEquals(2, map.get(pipe1).size());
       Assert.assertEquals(1, map.get(pipe2).size());
       Assert.assertEquals(1, map.get(pipe2).size());
-      Assert.assertEquals(new PipeInfo(pipe2, ip2, PipeStatus.PAUSE, 2), map.get(pipe2).get(ip2));
+      Assert.assertEquals(new PipeInfo(pipe2, ip2, PipeStatus.STOP, 2), map.get(pipe2).get(ip2));
       Assert.assertEquals(new PipeInfo(pipe1, ip1, PipeStatus.RUNNING, 1), map.get(pipe1).get(ip1));
       Assert.assertEquals(new PipeInfo(pipe1, ip2, PipeStatus.DROP, 3), map.get(pipe1).get(ip2));
     } catch (Exception e) {

@@ -22,6 +22,7 @@ import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.newsync.conf.SyncPathUtil;
 import org.apache.iotdb.db.newsync.receiver.recovery.ReceiverLog;
 import org.apache.iotdb.db.newsync.receiver.recovery.ReceiverLogAnalyzer;
+import org.apache.iotdb.db.newsync.sender.pipe.Pipe.PipeStatus;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -79,7 +80,7 @@ public class ReceiverManager {
 
   public void stopPipe(String pipeName, String remoteIp) throws IOException {
     log.stopPipe(pipeName, remoteIp);
-    pipeInfoMap.get(pipeName).get(remoteIp).setStatus(PipeStatus.PAUSE);
+    pipeInfoMap.get(pipeName).get(remoteIp).setStatus(PipeStatus.STOP);
   }
 
   public void dropPipe(String pipeName, String remoteIp) throws IOException {

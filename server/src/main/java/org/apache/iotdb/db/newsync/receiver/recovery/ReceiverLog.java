@@ -21,7 +21,7 @@ package org.apache.iotdb.db.newsync.receiver.recovery;
 import org.apache.iotdb.db.newsync.conf.SyncConstant;
 import org.apache.iotdb.db.newsync.conf.SyncPathUtil;
 import org.apache.iotdb.db.newsync.receiver.manager.PipeMessage;
-import org.apache.iotdb.db.newsync.receiver.manager.PipeStatus;
+import org.apache.iotdb.db.newsync.sender.pipe.Pipe.PipeStatus;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -69,7 +69,7 @@ public class ReceiverLog {
   }
 
   public void stopPipe(String pipeName, String remoteIp) throws IOException {
-    writeLog(pipeName, remoteIp, PipeStatus.PAUSE);
+    writeLog(pipeName, remoteIp, PipeStatus.STOP);
   }
 
   public void dropPipe(String pipeName, String remoteIp) throws IOException {

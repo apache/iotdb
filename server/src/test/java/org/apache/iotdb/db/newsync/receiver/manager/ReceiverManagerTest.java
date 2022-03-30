@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.newsync.receiver.manager;
 
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.newsync.sender.pipe.Pipe.PipeStatus;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
 import org.junit.After;
@@ -66,7 +67,7 @@ public class ReceiverManagerTest {
       Assert.assertEquals(2, pipeInfos1.size());
       Assert.assertEquals(1, pipeInfos2.size());
       for (PipeInfo pipeInfo : pipeInfos2) {
-        Assert.assertEquals(new PipeInfo(pipe2, ip2, PipeStatus.PAUSE, 2), pipeInfo);
+        Assert.assertEquals(new PipeInfo(pipe2, ip2, PipeStatus.STOP, 2), pipeInfo);
       }
       for (PipeInfo pipeInfo : pipeInfos1) {
         if (pipeInfo.getRemoteIp().equals(ip1)) {
