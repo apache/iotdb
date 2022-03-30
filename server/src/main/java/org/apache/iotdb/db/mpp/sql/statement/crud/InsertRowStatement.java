@@ -26,13 +26,13 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.sql.constant.StatementType;
 import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -123,11 +123,11 @@ public class InsertRowStatement extends InsertBaseStatement {
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void transferType(SchemaTree schemaTree) throws QueryProcessException {
-    List<MeasurementPath> measurementPaths =
-        schemaTree.searchMeasurementPaths(devicePath, Arrays.asList(measurements));
+    List<MeasurementSchema> measurementSchemas =
+        schemaTree.searchMeasurementSchema(devicePath, Arrays.asList(measurements));
     if (isNeedInferType) {
-      for (int i = 0; i < measurementPaths.size(); i++) {
-        if (measurementPaths.get(i) == null) {
+      for (int i = 0; i < measurementSchemas.size(); i++) {
+        if (measurementSchemas.get(i) == null) {
           if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
             markFailedMeasurementInsertion(
                 i,
@@ -144,7 +144,7 @@ public class InsertRowStatement extends InsertBaseStatement {
           continue;
         }
 
-        dataTypes[i] = measurementPaths.get(i).getSeriesType();
+        dataTypes[i] = measurementSchemas.get(i).getType();
         try {
           values[i] = CommonUtils.parseValue(dataTypes[i], values[i].toString());
         } catch (Exception e) {
@@ -171,9 +171,7 @@ public class InsertRowStatement extends InsertBaseStatement {
     }
     super.markFailedMeasurementInsertion(index, e);
     values[index] = null;
-    if (isNeedInferType) {
-      dataTypes[index] = null;
-    }
+    dataTypes[index] = null;
   }
 
   @Override
@@ -182,17 +180,17 @@ public class InsertRowStatement extends InsertBaseStatement {
   }
 
   public boolean checkDataType(SchemaTree schemaTree) {
-    List<MeasurementPath> measurementPaths =
-        schemaTree.searchMeasurementPaths(devicePath, Arrays.asList(measurements));
-    for (int i = 0; i < measurementPaths.size(); i++) {
-      if (dataTypes[i] != measurementPaths.get(i).getSeriesType()) {
+    List<MeasurementSchema> measurementSchemas =
+        schemaTree.searchMeasurementSchema(devicePath, Arrays.asList(measurements));
+    for (int i = 0; i < measurementSchemas.size(); i++) {
+      if (dataTypes[i] != measurementSchemas.get(i).getType()) {
         if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
           return false;
         } else {
           markFailedMeasurementInsertion(
               i,
               new DataTypeMismatchException(
-                  measurements[i], measurementPaths.get(i).getSeriesType(), dataTypes[i]));
+                  measurements[i], measurementSchemas.get(i).getType(), dataTypes[i]));
         }
       }
     }

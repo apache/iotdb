@@ -76,6 +76,10 @@ public abstract class InsertBaseStatement extends Statement {
     isAligned = aligned;
   }
 
+  public List<String> getFailedMeasurements() {
+    return failedMeasurements;
+  }
+
   public abstract List<TimePartitionId> getTimePartitionIds();
 
   public abstract boolean checkDataType(SchemaTree schemaTree);

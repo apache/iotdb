@@ -54,8 +54,8 @@ public class InsertTabletNode extends InsertNode {
   // proper positions.
   private List<Integer> range;
 
-  public void setRange(List<Integer> range) {
-    this.range = range;
+  public InsertTabletNode(PlanNodeId id) {
+    super(id);
   }
 
   public InsertTabletNode(
@@ -99,10 +99,6 @@ public class InsertTabletNode extends InsertNode {
     this.columns = columns;
   }
 
-  public InsertTabletNode(PlanNodeId id) {
-    super(id);
-  }
-
   public int getRowCount() {
     return rowCount;
   }
@@ -113,6 +109,10 @@ public class InsertTabletNode extends InsertNode {
 
   public List<Integer> getRange() {
     return range;
+  }
+
+  public void setRange(List<Integer> range) {
+    this.range = range;
   }
 
   @Override

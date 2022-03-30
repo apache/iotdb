@@ -36,7 +36,6 @@ public class InsertRowNode extends InsertNode {
 
   private long time;
   private Object[] values;
-  private boolean isNeedInferType = false;
 
   public InsertRowNode(PlanNodeId id) {
     super(id);
@@ -49,12 +48,10 @@ public class InsertRowNode extends InsertNode {
       MeasurementSchema[] measurements,
       TSDataType[] dataTypes,
       long time,
-      Object[] values,
-      boolean isNeedInferType) {
+      Object[] values) {
     super(id, devicePath, isAligned, measurements, dataTypes);
     this.time = time;
     this.values = values;
-    this.isNeedInferType = isNeedInferType;
   }
 
   @Override
@@ -96,14 +93,6 @@ public class InsertRowNode extends InsertNode {
 
   @Override
   public void serialize(ByteBuffer byteBuffer) {}
-
-  public boolean isNeedInferType() {
-    return isNeedInferType;
-  }
-
-  public void setNeedInferType(boolean needInferType) {
-    isNeedInferType = needInferType;
-  }
 
   public Object[] getValues() {
     return values;

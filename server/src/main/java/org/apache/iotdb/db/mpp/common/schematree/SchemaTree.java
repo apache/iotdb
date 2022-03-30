@@ -24,6 +24,7 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -82,7 +83,7 @@ public class SchemaTree {
     return new Pair<>(new ArrayList<>(), 0);
   }
 
-  public List<MeasurementPath> searchMeasurementPaths(
+  public List<MeasurementSchema> searchMeasurementSchema(
       PartialPath devicePath, List<String> measurements) {
     return new ArrayList<>();
   }
