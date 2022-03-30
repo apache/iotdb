@@ -42,7 +42,7 @@ import java.util.stream.Stream;
 public class SourceHandleTest {
 
   @Test
-  public void testNonBlockedOneTimeReceive() throws TException, InterruptedException {
+  public void testNonBlockedOneTimeReceive() {
     final String queryId = "q0";
     final long mockTsBlockSize = 1024L * 1024L;
     final int numOfMockTsBlock = 10;
@@ -58,18 +58,23 @@ public class SourceHandleTest {
     Mockito.when(mockLocalMemoryManager.getQueryPool()).thenReturn(mockMemoryPool);
     // Construct a mock client.
     Client mockClient = Mockito.mock(Client.class);
-    Mockito.doAnswer(
-            invocation -> {
-              GetDataBlockRequest req = invocation.getArgument(0);
-              List<ByteBuffer> byteBuffers =
-                  new ArrayList<>(req.getEndSequenceId() - req.getStartSequenceId());
-              for (int i = 0; i < req.getEndSequenceId() - req.getStartSequenceId(); i++) {
-                byteBuffers.add(ByteBuffer.allocate(0));
-              }
-              return new GetDataBlockResponse(byteBuffers);
-            })
-        .when(mockClient)
-        .getDataBlock(Mockito.any(GetDataBlockRequest.class));
+    try {
+      Mockito.doAnswer(
+              invocation -> {
+                GetDataBlockRequest req = invocation.getArgument(0);
+                List<ByteBuffer> byteBuffers =
+                    new ArrayList<>(req.getEndSequenceId() - req.getStartSequenceId());
+                for (int i = 0; i < req.getEndSequenceId() - req.getStartSequenceId(); i++) {
+                  byteBuffers.add(ByteBuffer.allocate(0));
+                }
+                return new GetDataBlockResponse(byteBuffers);
+              })
+          .when(mockClient)
+          .getDataBlock(Mockito.any(GetDataBlockRequest.class));
+    } catch (TException e) {
+      e.printStackTrace();
+      Assert.fail();
+    }
     // Construct a mock SourceHandleListener.
     SourceHandleListener mockSourceHandleListener = Mockito.mock(SourceHandleListener.class);
     // Construct a mock TsBlockSerde that deserializes any bytebuffer into a mock TsBlock.
@@ -97,19 +102,24 @@ public class SourceHandleTest {
         Stream.generate(() -> mockTsBlockSize)
             .limit(numOfMockTsBlock)
             .collect(Collectors.toList()));
-    Thread.sleep(100L);
+    try {
+      Thread.sleep(100L);
+      Mockito.verify(mockClient, Mockito.times(1))
+          .getDataBlock(
+              Mockito.argThat(
+                  req ->
+                      remoteFragmentInstanceId.equals(req.getSourceFragnemtInstanceId())
+                          && 0 == req.getStartSequenceId()
+                          && numOfMockTsBlock == req.getEndSequenceId()));
+    } catch (InterruptedException | TException e) {
+      e.printStackTrace();
+      Assert.fail();
+    }
     Assert.assertTrue(sourceHandle.isBlocked().isDone());
     Assert.assertFalse(sourceHandle.isClosed());
     Assert.assertFalse(sourceHandle.isFinished());
     Assert.assertEquals(
         numOfMockTsBlock * mockTsBlockSize, sourceHandle.getBufferRetainedSizeInBytes());
-    Mockito.verify(mockClient, Mockito.times(1))
-        .getDataBlock(
-            Mockito.argThat(
-                req ->
-                    remoteFragmentInstanceId.equals(req.getSourceFragnemtInstanceId())
-                        && 0 == req.getStartSequenceId()
-                        && numOfMockTsBlock == req.getEndSequenceId()));
 
     // The local fragment instance consumes the data blocks.
     for (int i = 0; i < numOfMockTsBlock; i++) {
@@ -140,7 +150,7 @@ public class SourceHandleTest {
   }
 
   @Test
-  public void testBlockedOneTimeReceive() throws TException, InterruptedException {
+  public void testBlockedOneTimeReceive() {
     final String queryId = "q0";
     final long mockTsBlockSize = 1024L * 1024L;
     final int numOfMockTsBlock = 10;
@@ -156,18 +166,23 @@ public class SourceHandleTest {
     Mockito.when(mockLocalMemoryManager.getQueryPool()).thenReturn(mockMemoryPool);
     // Construct a mock client.
     Client mockClient = Mockito.mock(Client.class);
-    Mockito.doAnswer(
-            invocation -> {
-              GetDataBlockRequest req = invocation.getArgument(0);
-              List<ByteBuffer> byteBuffers =
-                  new ArrayList<>(req.getEndSequenceId() - req.getStartSequenceId());
-              for (int i = 0; i < req.getEndSequenceId() - req.getStartSequenceId(); i++) {
-                byteBuffers.add(ByteBuffer.allocate(0));
-              }
-              return new GetDataBlockResponse(byteBuffers);
-            })
-        .when(mockClient)
-        .getDataBlock(Mockito.any(GetDataBlockRequest.class));
+    try {
+      Mockito.doAnswer(
+              invocation -> {
+                GetDataBlockRequest req = invocation.getArgument(0);
+                List<ByteBuffer> byteBuffers =
+                    new ArrayList<>(req.getEndSequenceId() - req.getStartSequenceId());
+                for (int i = 0; i < req.getEndSequenceId() - req.getStartSequenceId(); i++) {
+                  byteBuffers.add(ByteBuffer.allocate(0));
+                }
+                return new GetDataBlockResponse(byteBuffers);
+              })
+          .when(mockClient)
+          .getDataBlock(Mockito.any(GetDataBlockRequest.class));
+    } catch (TException e) {
+      e.printStackTrace();
+      Assert.fail();
+    }
     // Construct a mock SourceHandleListener.
     SourceHandleListener mockSourceHandleListener = Mockito.mock(SourceHandleListener.class);
     // Construct a mock TsBlockSerde that deserializes any bytebuffer into a mock TsBlock.
@@ -195,23 +210,48 @@ public class SourceHandleTest {
         Stream.generate(() -> mockTsBlockSize)
             .limit(numOfMockTsBlock)
             .collect(Collectors.toList()));
-    Thread.sleep(100L);
+    try {
+      Thread.sleep(100L);
+      Mockito.verify(mockClient, Mockito.times(1))
+          .getDataBlock(
+              Mockito.argThat(
+                  req ->
+                      remoteFragmentInstanceId.equals(req.getSourceFragnemtInstanceId())
+                          && 0 == req.getStartSequenceId()
+                          && 5 == req.getEndSequenceId()));
+    } catch (InterruptedException | TException e) {
+      e.printStackTrace();
+      Assert.fail();
+    }
     Assert.assertTrue(sourceHandle.isBlocked().isDone());
     Assert.assertFalse(sourceHandle.isClosed());
     Assert.assertFalse(sourceHandle.isFinished());
     Assert.assertEquals(5 * mockTsBlockSize, sourceHandle.getBufferRetainedSizeInBytes());
-    Mockito.verify(mockClient, Mockito.times(1))
-        .getDataBlock(
-            Mockito.argThat(
-                req ->
-                    remoteFragmentInstanceId.equals(req.getSourceFragnemtInstanceId())
-                        && 0 == req.getStartSequenceId()
-                        && 5 == req.getEndSequenceId()));
 
     // The local fragment instance consumes the data blocks.
     for (int i = 0; i < numOfMockTsBlock; i++) {
       sourceHandle.receive();
-      Thread.sleep(100L);
+      try {
+        Thread.sleep(100L);
+        if (i < 5) {
+          Assert.assertEquals(5 * mockTsBlockSize, sourceHandle.getBufferRetainedSizeInBytes());
+          final int startSequenceId = 5 + i;
+          Mockito.verify(mockClient, Mockito.times(1))
+              .getDataBlock(
+                  Mockito.argThat(
+                      req ->
+                          remoteFragmentInstanceId.equals(req.getSourceFragnemtInstanceId())
+                              && startSequenceId == req.getStartSequenceId()
+                              && startSequenceId + 1 == req.getEndSequenceId()));
+        } else {
+          Assert.assertEquals(
+              (numOfMockTsBlock - 1 - i) * mockTsBlockSize,
+              sourceHandle.getBufferRetainedSizeInBytes());
+        }
+      } catch (InterruptedException | TException e) {
+        e.printStackTrace();
+        Assert.fail();
+      }
       if (i < numOfMockTsBlock - 1) {
         Assert.assertTrue(sourceHandle.isBlocked().isDone());
       } else {
@@ -219,21 +259,6 @@ public class SourceHandleTest {
       }
       Assert.assertFalse(sourceHandle.isClosed());
       Assert.assertFalse(sourceHandle.isFinished());
-      if (i < 5) {
-        Assert.assertEquals(5 * mockTsBlockSize, sourceHandle.getBufferRetainedSizeInBytes());
-        final int startSequenceId = 5 + i;
-        Mockito.verify(mockClient, Mockito.times(1))
-            .getDataBlock(
-                Mockito.argThat(
-                    req ->
-                        remoteFragmentInstanceId.equals(req.getSourceFragnemtInstanceId())
-                            && startSequenceId == req.getStartSequenceId()
-                            && startSequenceId + 1 == req.getEndSequenceId()));
-      } else {
-        Assert.assertEquals(
-            (numOfMockTsBlock - 1 - i) * mockTsBlockSize,
-            sourceHandle.getBufferRetainedSizeInBytes());
-      }
     }
 
     // Receive EndOfDataBlock event from upstream fragment instance.
@@ -249,7 +274,7 @@ public class SourceHandleTest {
   }
 
   @Test
-  public void testMultiTimesReceive() throws TException, InterruptedException {
+  public void testMultiTimesReceive() {
     final String queryId = "q0";
     final long mockTsBlockSize = 1024L * 1024L;
     final int numOfMockTsBlock = 10;
@@ -269,18 +294,23 @@ public class SourceHandleTest {
     TsBlockSerde mockTsBlockSerde = Utils.createMockTsBlockSerde(mockTsBlockSize);
     // Construct a mock client.
     Client mockClient = Mockito.mock(Client.class);
-    Mockito.doAnswer(
-            invocation -> {
-              GetDataBlockRequest req = invocation.getArgument(0);
-              List<ByteBuffer> byteBuffers =
-                  new ArrayList<>(req.getEndSequenceId() - req.getStartSequenceId());
-              for (int i = 0; i < req.getEndSequenceId() - req.getStartSequenceId(); i++) {
-                byteBuffers.add(ByteBuffer.allocate(0));
-              }
-              return new GetDataBlockResponse(byteBuffers);
-            })
-        .when(mockClient)
-        .getDataBlock(Mockito.any(GetDataBlockRequest.class));
+    try {
+      Mockito.doAnswer(
+              invocation -> {
+                GetDataBlockRequest req = invocation.getArgument(0);
+                List<ByteBuffer> byteBuffers =
+                    new ArrayList<>(req.getEndSequenceId() - req.getStartSequenceId());
+                for (int i = 0; i < req.getEndSequenceId() - req.getStartSequenceId(); i++) {
+                  byteBuffers.add(ByteBuffer.allocate(0));
+                }
+                return new GetDataBlockResponse(byteBuffers);
+              })
+          .when(mockClient)
+          .getDataBlock(Mockito.any(GetDataBlockRequest.class));
+    } catch (TException e) {
+      e.printStackTrace();
+      Assert.fail();
+    }
 
     SourceHandle sourceHandle =
         new SourceHandle(
@@ -304,32 +334,42 @@ public class SourceHandleTest {
         Stream.generate(() -> mockTsBlockSize)
             .limit(numOfMockTsBlock)
             .collect(Collectors.toList()));
-    Thread.sleep(100L);
+    try {
+      Thread.sleep(100L);
+      Mockito.verify(mockClient, Mockito.times(0))
+          .getDataBlock(Mockito.any(GetDataBlockRequest.class));
+    } catch (InterruptedException | TException e) {
+      e.printStackTrace();
+      Assert.fail();
+    }
     Assert.assertFalse(sourceHandle.isBlocked().isDone());
     Assert.assertFalse(sourceHandle.isClosed());
     Assert.assertFalse(sourceHandle.isFinished());
     Assert.assertEquals(0L, sourceHandle.getBufferRetainedSizeInBytes());
-    Mockito.verify(mockClient, Mockito.times(0))
-        .getDataBlock(Mockito.any(GetDataBlockRequest.class));
 
     sourceHandle.updatePendingDataBlockInfo(
         0,
         Stream.generate(() -> mockTsBlockSize)
             .limit(numOfMockTsBlock)
             .collect(Collectors.toList()));
-    Thread.sleep(100L);
+    try {
+      Thread.sleep(100L);
+      Mockito.verify(mockClient, Mockito.times(1))
+          .getDataBlock(
+              Mockito.argThat(
+                  req ->
+                      remoteFragmentInstanceId.equals(req.getSourceFragnemtInstanceId())
+                          && 0 == req.getStartSequenceId()
+                          && numOfMockTsBlock * 2 == req.getEndSequenceId()));
+    } catch (InterruptedException | TException e) {
+      e.printStackTrace();
+      Assert.fail();
+    }
     Assert.assertTrue(sourceHandle.isBlocked().isDone());
     Assert.assertFalse(sourceHandle.isClosed());
     Assert.assertFalse(sourceHandle.isFinished());
     Assert.assertEquals(
         numOfMockTsBlock * 2 * mockTsBlockSize, sourceHandle.getBufferRetainedSizeInBytes());
-    Mockito.verify(mockClient, Mockito.times(1))
-        .getDataBlock(
-            Mockito.argThat(
-                req ->
-                    remoteFragmentInstanceId.equals(req.getSourceFragnemtInstanceId())
-                        && 0 == req.getStartSequenceId()
-                        && numOfMockTsBlock * 2 == req.getEndSequenceId()));
 
     // The local fragment instance consumes the data blocks.
     for (int i = 0; i < 2 * numOfMockTsBlock; i++) {
@@ -352,19 +392,24 @@ public class SourceHandleTest {
         Stream.generate(() -> mockTsBlockSize)
             .limit(numOfMockTsBlock)
             .collect(Collectors.toList()));
-    Thread.sleep(100L);
+    try {
+      Thread.sleep(100L);
+      Mockito.verify(mockClient, Mockito.times(1))
+          .getDataBlock(
+              Mockito.argThat(
+                  req ->
+                      remoteFragmentInstanceId.equals(req.getSourceFragnemtInstanceId())
+                          && numOfMockTsBlock * 2 == req.getStartSequenceId()
+                          && numOfMockTsBlock * 3 == req.getEndSequenceId()));
+    } catch (InterruptedException | TException e) {
+      e.printStackTrace();
+      Assert.fail();
+    }
     Assert.assertTrue(sourceHandle.isBlocked().isDone());
     Assert.assertFalse(sourceHandle.isClosed());
     Assert.assertFalse(sourceHandle.isFinished());
     Assert.assertEquals(
         numOfMockTsBlock * mockTsBlockSize, sourceHandle.getBufferRetainedSizeInBytes());
-    Mockito.verify(mockClient, Mockito.times(1))
-        .getDataBlock(
-            Mockito.argThat(
-                req ->
-                    remoteFragmentInstanceId.equals(req.getSourceFragnemtInstanceId())
-                        && numOfMockTsBlock * 2 == req.getStartSequenceId()
-                        && numOfMockTsBlock * 3 == req.getEndSequenceId()));
 
     // The local fragment instance consumes the data blocks.
     for (int i = 0; i < numOfMockTsBlock; i++) {

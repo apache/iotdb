@@ -40,7 +40,7 @@ import java.util.concurrent.Executors;
 public class SinkHandleTest {
 
   @Test
-  public void testOneTimeNotBlockedSend() throws TException, InterruptedException {
+  public void testOneTimeNotBlockedSend() {
     final String queryId = "q0";
     final long mockTsBlockSize = 1024L * 1024L;
     final int numOfMockTsBlock = 10;
@@ -56,10 +56,17 @@ public class SinkHandleTest {
     Mockito.when(mockLocalMemoryManager.getQueryPool()).thenReturn(mockMemoryPool);
     // Construct a mock client.
     Client mockClient = Mockito.mock(Client.class);
-    Mockito.doNothing()
-        .when(mockClient)
-        .onEndOfDataBlockEvent(Mockito.any(EndOfDataBlockEvent.class));
-    Mockito.doNothing().when(mockClient).onNewDataBlockEvent(Mockito.any(NewDataBlockEvent.class));
+    try {
+      Mockito.doNothing()
+          .when(mockClient)
+          .onEndOfDataBlockEvent(Mockito.any(EndOfDataBlockEvent.class));
+      Mockito.doNothing()
+          .when(mockClient)
+          .onNewDataBlockEvent(Mockito.any(NewDataBlockEvent.class));
+    } catch (TException e) {
+      e.printStackTrace();
+      Assert.fail();
+    }
     // Construct a mock SinkHandleListener.
     SinkHandleListener mockSinkHandleListener = Mockito.mock(SinkHandleListener.class);
     // Construct several mock TsBlock(s).
@@ -94,16 +101,21 @@ public class SinkHandleTest {
     Assert.assertEquals(numOfMockTsBlock, sinkHandle.getNumOfBufferedTsBlocks());
     Mockito.verify(mockMemoryPool, Mockito.times(1))
         .reserve(queryId, mockTsBlockSize * numOfMockTsBlock);
-    Thread.sleep(100L);
-    Mockito.verify(mockClient, Mockito.times(1))
-        .onNewDataBlockEvent(
-            Mockito.argThat(
-                e ->
-                    remoteFragmentInstanceId.equals(e.getTargetFragmentInstanceId())
-                        && remoteOperatorId.equals(e.getTargetOperatorId())
-                        && localFragmentInstanceId.equals(e.getSourceFragnemtInstanceId())
-                        && e.getStartSequenceId() == 0
-                        && e.getBlockSizes().size() == numOfMockTsBlock));
+    try {
+      Thread.sleep(100L);
+      Mockito.verify(mockClient, Mockito.times(1))
+          .onNewDataBlockEvent(
+              Mockito.argThat(
+                  e ->
+                      remoteFragmentInstanceId.equals(e.getTargetFragmentInstanceId())
+                          && remoteOperatorId.equals(e.getTargetOperatorId())
+                          && localFragmentInstanceId.equals(e.getSourceFragnemtInstanceId())
+                          && e.getStartSequenceId() == 0
+                          && e.getBlockSizes().size() == numOfMockTsBlock));
+    } catch (InterruptedException | TException e) {
+      e.printStackTrace();
+      Assert.fail();
+    }
 
     // Get tsblocks.
     for (int i = 0; i < numOfMockTsBlock; i++) {
@@ -123,17 +135,22 @@ public class SinkHandleTest {
 
     // Close the SinkHandle.
     sinkHandle.close();
-    Thread.sleep(100L);
+
     Assert.assertTrue(sinkHandle.isClosed());
     Mockito.verify(mockSinkHandleListener, Mockito.times(1)).onClosed(sinkHandle);
-    Mockito.verify(mockClient, Mockito.times(1)).onEndOfDataBlockEvent(Mockito.any());
-    Mockito.verify(mockClient, Mockito.times(1))
-        .onEndOfDataBlockEvent(
-            Mockito.argThat(
-                e ->
-                    remoteFragmentInstanceId.equals(e.getTargetFragmentInstanceId())
-                        && remoteOperatorId.equals(e.getTargetOperatorId())
-                        && localFragmentInstanceId.equals(e.getSourceFragnemtInstanceId())));
+    try {
+      Thread.sleep(100L);
+      Mockito.verify(mockClient, Mockito.times(1))
+          .onEndOfDataBlockEvent(
+              Mockito.argThat(
+                  e ->
+                      remoteFragmentInstanceId.equals(e.getTargetFragmentInstanceId())
+                          && remoteOperatorId.equals(e.getTargetOperatorId())
+                          && localFragmentInstanceId.equals(e.getSourceFragnemtInstanceId())));
+    } catch (InterruptedException | TException e) {
+      e.printStackTrace();
+      Assert.fail();
+    }
   }
 
   @Test
@@ -348,6 +365,21 @@ public class SinkHandleTest {
     Assert.assertEquals(numOfMockTsBlock, sinkHandle.getNumOfBufferedTsBlocks());
     Mockito.verify(mockMemoryPool, Mockito.times(1))
         .reserve(queryId, mockTsBlockSize * numOfMockTsBlock);
+    try {
+      Thread.sleep(100L);
+      Mockito.verify(mockClient, Mockito.times(1))
+          .onNewDataBlockEvent(
+              Mockito.argThat(
+                  e ->
+                      remoteFragmentInstanceId.equals(e.getTargetFragmentInstanceId())
+                          && remoteOperatorId.equals(e.getTargetOperatorId())
+                          && localFragmentInstanceId.equals(e.getSourceFragnemtInstanceId())
+                          && e.getStartSequenceId() == 0
+                          && e.getBlockSizes().size() == numOfMockTsBlock));
+    } catch (InterruptedException | TException e) {
+      e.printStackTrace();
+      Assert.fail();
+    }
 
     try {
       sinkHandle.send(Collections.singletonList(Mockito.mock(TsBlock.class)));
