@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.mpp.sql.statement;
 
-import org.apache.iotdb.db.mpp.sql.tree.StatementVisitor;
-
 /** This class is a superclass of all statements and clauses in statement. */
 public abstract class StatementNode {
 

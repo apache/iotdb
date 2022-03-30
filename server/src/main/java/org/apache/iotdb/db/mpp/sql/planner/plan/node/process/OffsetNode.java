@@ -18,11 +18,14 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -32,13 +35,17 @@ import java.util.List;
 public class OffsetNode extends ProcessNode {
 
   // The limit count
-  private final PlanNode child;
+  private PlanNode child;
   private final int offset;
 
-  public OffsetNode(PlanNodeId id, PlanNode child, int offset) {
+  public OffsetNode(PlanNodeId id, int offset) {
     super(id);
-    this.child = child;
     this.offset = offset;
+  }
+
+  public OffsetNode(PlanNodeId id, PlanNode child, int offset) {
+    this(id, offset);
+    this.child = child;
   }
 
   @Override
@@ -47,16 +54,18 @@ public class OffsetNode extends ProcessNode {
   }
 
   @Override
-  public void addChildren(PlanNode child) {}
-
-  @Override
-  public PlanNode clone() {
-    return null;
+  public void addChild(PlanNode child) {
+    this.child = child;
   }
 
   @Override
-  public PlanNode cloneWithChildren(List<PlanNode> children) {
-    return null;
+  public PlanNode clone() {
+    return new OffsetNode(getId(), offset);
+  }
+
+  @Override
+  public int allowedChildCount() {
+    return ONE_CHILD;
   }
 
   @Override
@@ -82,5 +91,13 @@ public class OffsetNode extends ProcessNode {
 
   public int getOffset() {
     return offset;
+  }
+
+  @TestOnly
+  public Pair<String, List<String>> print() {
+    String title = String.format("[OffsetNode (%s)]", this.getId());
+    List<String> attributes = new ArrayList<>();
+    attributes.add("RowOffset: " + this.getOffset());
+    return new Pair<>(title, attributes);
   }
 }

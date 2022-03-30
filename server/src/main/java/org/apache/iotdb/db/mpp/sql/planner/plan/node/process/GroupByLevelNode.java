@@ -18,12 +18,18 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.tsfile.exception.NotImplementedException;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 /**
  * This node is responsible for the final aggregation merge operation. It will process the data from
@@ -43,12 +49,15 @@ public class GroupByLevelNode extends ProcessNode {
 
   private List<String> columnNames;
 
+  private Map<String, String> groupedPathMap;
+
   public GroupByLevelNode(
-      PlanNodeId id, PlanNode child, int[] groupByLevels, List<String> columnNames) {
+      PlanNodeId id, PlanNode child, int[] groupByLevels, Map<String, String> groupedPathMap) {
     super(id);
     this.child = child;
     this.groupByLevels = groupByLevels;
-    this.columnNames = columnNames;
+    this.groupedPathMap = groupedPathMap;
+    this.columnNames = new ArrayList<>(groupedPathMap.values());
   }
 
   @Override
@@ -57,16 +66,18 @@ public class GroupByLevelNode extends ProcessNode {
   }
 
   @Override
-  public void addChildren(PlanNode child) {}
-
-  @Override
-  public PlanNode clone() {
-    return null;
+  public void addChild(PlanNode child) {
+    throw new NotImplementedException("addChild of GroupByLevelNode is not implemented");
   }
 
   @Override
-  public PlanNode cloneWithChildren(List<PlanNode> children) {
-    return null;
+  public PlanNode clone() {
+    throw new NotImplementedException("Clone of GroupByLevelNode is not implemented");
+  }
+
+  @Override
+  public int allowedChildCount() {
+    return CHILD_COUNT_NO_LIMIT;
   }
 
   @Override
@@ -100,5 +111,14 @@ public class GroupByLevelNode extends ProcessNode {
 
   public void setColumnNames(List<String> columnNames) {
     this.columnNames = columnNames;
+  }
+
+  @TestOnly
+  public Pair<String, List<String>> print() {
+    String title = String.format("[GroupByLevelNode (%s)]", this.getId());
+    List<String> attributes = new ArrayList<>();
+    attributes.add("GroupByLevels: " + Arrays.toString(this.getGroupByLevels()));
+    attributes.add("ColumnNames: " + this.getOutputColumnNames());
+    return new Pair<>(title, attributes);
   }
 }

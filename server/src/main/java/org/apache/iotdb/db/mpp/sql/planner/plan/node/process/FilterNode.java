@@ -18,28 +18,34 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
+import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import com.google.common.collect.ImmutableList;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 
 /** The FilterNode is responsible to filter the RowRecord from TsBlock. */
 public class FilterNode extends ProcessNode {
 
-  private final PlanNode child;
-  // TODO we need to rename it to something like expression in order to distinguish from Operator
-  // class
-  private final FilterOperator predicate;
+  private PlanNode child;
 
-  public FilterNode(PlanNodeId id, PlanNode child, FilterOperator predicate) {
+  private final QueryFilter predicate;
+
+  public FilterNode(PlanNodeId id, QueryFilter predicate) {
     super(id);
-    this.child = child;
     this.predicate = predicate;
+  }
+
+  public FilterNode(PlanNodeId id, PlanNode child, QueryFilter predicate) {
+    this(id, predicate);
+    this.child = child;
   }
 
   @Override
@@ -48,16 +54,18 @@ public class FilterNode extends ProcessNode {
   }
 
   @Override
-  public void addChildren(PlanNode child) {}
-
-  @Override
-  public PlanNode clone() {
-    return null;
+  public void addChild(PlanNode child) {
+    this.child = child;
   }
 
   @Override
-  public PlanNode cloneWithChildren(List<PlanNode> children) {
-    return null;
+  public PlanNode clone() {
+    return new FilterNode(getId(), predicate);
+  }
+
+  @Override
+  public int allowedChildCount() {
+    return ONE_CHILD;
   }
 
   @Override
@@ -77,11 +85,19 @@ public class FilterNode extends ProcessNode {
   @Override
   public void serialize(ByteBuffer byteBuffer) {}
 
-  public FilterOperator getPredicate() {
+  public QueryFilter getPredicate() {
     return predicate;
   }
 
   public PlanNode getChild() {
     return child;
+  }
+
+  @TestOnly
+  public Pair<String, List<String>> print() {
+    String title = String.format("[FilterNode (%s)]", this.getId());
+    List<String> attributes = new ArrayList<>();
+    attributes.add("QueryFilter: " + this.getPredicate());
+    return new Pair<>(title, attributes);
   }
 }

@@ -83,4 +83,9 @@ public class L1PriorityQueue<E extends IDIndexedAccessible> extends IndexedBlock
   protected E get(E element) {
     return elements.get(element);
   }
+
+  @Override
+  protected void clearAllElements() {
+    elements.clear();
+  }
 }

@@ -18,9 +18,14 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner;
 
+import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
 import org.apache.iotdb.db.mpp.execution.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.operator.Operator;
+import org.apache.iotdb.db.mpp.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.operator.process.LimitOperator;
+import org.apache.iotdb.db.mpp.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.AggregateNode;
@@ -35,7 +40,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregateScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
-import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
+import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 
 import java.util.List;
 
@@ -56,7 +61,22 @@ public class LocalExecutionPlanner {
 
     @Override
     public Operator visitSeriesScan(SeriesScanNode node, LocalExecutionPlanContext context) {
-      return super.visitSeriesScan(node, context);
+      PartialPath seriesPath = node.getSeriesPath();
+      boolean ascending = node.getScanOrder() == OrderBy.TIMESTAMP_ASC;
+      OperatorContext operatorContext =
+          context.taskContext.addOperatorContext(
+              context.getNextOperatorId(), node.getId(), SeriesScanOperator.class.getSimpleName());
+      // TODO should create QueryDataSource in SeriesScanOperator's runtime
+      QueryDataSource dataSource = null;
+      return new SeriesScanOperator(
+          seriesPath,
+          node.getAllSensors(),
+          seriesPath.getSeriesType(),
+          operatorContext,
+          dataSource,
+          node.getTimeFilter(),
+          node.getValueFilter(),
+          ascending);
     }
 
     @Override
@@ -79,7 +99,7 @@ public class LocalExecutionPlanner {
     public Operator visitFilter(FilterNode node, LocalExecutionPlanContext context) {
       PlanNode child = node.getChild();
 
-      FilterOperator filterExpression = node.getPredicate();
+      QueryFilter filterExpression = node.getPredicate();
       List<String> outputSymbols = node.getOutputColumnNames();
       return super.visitFilter(node, context);
     }

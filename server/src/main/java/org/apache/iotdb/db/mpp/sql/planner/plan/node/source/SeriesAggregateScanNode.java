@@ -19,16 +19,20 @@
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.source;
 
 import org.apache.iotdb.commons.partition.DataRegionReplicaSet;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.common.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
+import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import com.google.common.collect.ImmutableList;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -74,16 +78,16 @@ public class SeriesAggregateScanNode extends SourceNode {
   }
 
   @Override
-  public void addChildren(PlanNode child) {}
+  public void addChild(PlanNode child) {}
 
   @Override
   public PlanNode clone() {
-    return null;
+    throw new NotImplementedException("clone of SeriesAggregateScanNode is not implemented");
   }
 
   @Override
-  public PlanNode cloneWithChildren(List<PlanNode> children) {
-    return null;
+  public int allowedChildCount() {
+    return NO_CHILD_ALLOWED;
   }
 
   @Override
@@ -116,6 +120,16 @@ public class SeriesAggregateScanNode extends SourceNode {
   }
 
   @Override
+  public String getDeviceName() {
+    return aggregateFunc.getPaths().get(0).getDevice();
+  }
+
+  @Override
+  protected String getExpressionString() {
+    return aggregateFunc.getExpressionString();
+  }
+
+  @Override
   public void close() throws Exception {}
 
   @Override
@@ -135,5 +149,13 @@ public class SeriesAggregateScanNode extends SourceNode {
   // push-down stage
   public void setFilter(Filter filter) {
     this.filter = filter;
+  }
+
+  @TestOnly
+  public Pair<String, List<String>> print() {
+    String title = String.format("[SeriesAggregateScanNode (%s)]", this.getId());
+    List<String> attributes = new ArrayList<>();
+    attributes.add("AggregateFunction: " + this.getExpressionString());
+    return new Pair<>(title, attributes);
   }
 }
