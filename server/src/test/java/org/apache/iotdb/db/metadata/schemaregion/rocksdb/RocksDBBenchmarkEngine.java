@@ -80,7 +80,6 @@ public class RocksDBBenchmarkEngine {
       /** rocksdb benchmark * */
       RSchemaRegion rocksDBManager = new RSchemaRegion();
       MRocksDBBenchmark mRocksDBBenchmark = new MRocksDBBenchmark(rocksDBManager);
-      mRocksDBBenchmark.testStorageGroupCreation(storageGroups);
       mRocksDBBenchmark.testTimeSeriesCreation(timeSeriesSet);
       mRocksDBBenchmark.testMeasurementNodeQuery(measurementPathSet);
       RocksDBTestUtils.printReport(mRocksDBBenchmark.benchmarkResults, "rocksDB");

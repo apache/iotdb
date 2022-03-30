@@ -35,7 +35,6 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.rescon.TimeseriesStatistics;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
-import org.apache.iotdb.db.metadata.schemaregion.SchemaRegion;
 import org.apache.iotdb.db.metadata.storagegroup.IStorageGroupSchemaManager;
 import org.apache.iotdb.db.metadata.storagegroup.StorageGroupSchemaManager;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -512,7 +511,7 @@ public class LocalConfigManager {
     partitionTable.putSchemaRegionId(storageGroup, schemaRegionId);
   }
 
-  public SchemaRegion getSchemaRegion(PartialPath storageGroup, SchemaRegionId schemaRegionId)
+  public ISchemaRegion getSchemaRegion(PartialPath storageGroup, SchemaRegionId schemaRegionId)
       throws MetadataException {
     return schemaEngine.getSchemaRegion(schemaRegionId);
   }

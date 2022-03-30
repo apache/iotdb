@@ -68,6 +68,7 @@ import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SchemaUtils;
+import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -146,6 +147,7 @@ public class RSchemaRegion implements ISchemaRegion {
   private String schemaRegionDirPath;
   private String storageGroupFullPath;
   private SchemaRegionId schemaRegionId;
+  private IStorageGroupMNode storageGroupMNode;
 
   public RSchemaRegion() throws MetadataException {
     try {
@@ -594,6 +596,7 @@ public class RSchemaRegion implements ISchemaRegion {
       throws MetadataException {
     Set<String> failedNames = ConcurrentHashMap.newKeySet();
     Map<IStorageGroupMNode, Set<IMNode>> mapToDeletedPath = new ConcurrentHashMap<>();
+    AtomicInteger atomicInteger = new AtomicInteger(0);
     traverseOutcomeBasins(
         pathPattern.getNodes(),
         MAX_PATH_DEPTH,
@@ -609,6 +612,7 @@ public class RSchemaRegion implements ISchemaRegion {
             if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
               try {
                 deletedNode = new RMeasurementMNode(path, value, readWriteHandler);
+                atomicInteger.incrementAndGet();
                 WriteBatch batch = new WriteBatch();
                 // delete the last node of path
                 batch.delete(key);
@@ -702,7 +706,7 @@ public class RSchemaRegion implements ISchemaRegion {
       mapToDeletedPath.putAll(tempMap);
     }
 
-    return failedNames.isEmpty() ? null : String.join(",", failedNames);
+    return new Pair<>(atomicInteger.get(), failedNames);
   }
 
   private void traverseOutcomeBasins(
@@ -925,6 +929,11 @@ public class RSchemaRegion implements ISchemaRegion {
     return getCountByNodeType(new Character[] {NODE_TYPE_MEASUREMENT}, pathPattern.getNodes());
   }
 
+  @TestOnly
+  public int getAllTimeseriesCount(PartialPath pathPattern) throws MetadataException {
+    return getAllTimeseriesCount(pathPattern, false);
+  }
+
   @Override
   public int getDevicesNum(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
@@ -1103,21 +1112,16 @@ public class RSchemaRegion implements ISchemaRegion {
     BiFunction<byte[], byte[], Boolean> function =
         (a, b) -> {
           String fullPath = RSchemaUtils.getPathByInnerName(new String(a));
-          try {
-            res.add(
-                new ShowDevicesResult(
-                    fullPath,
-                    RSchemaUtils.isAligned(b),
-                    getBelongedToSG(plan.getPath().getNodes())));
-          } catch (MetadataException e) {
-            logger.error(e.getMessage());
-            return false;
-          }
+          res.add(
+              new ShowDevicesResult(
+                  fullPath, RSchemaUtils.isAligned(b), storageGroupMNode.getFullPath()));
           return true;
         };
     traverseOutcomeBasins(
         plan.getPath().getNodes(), MAX_PATH_DEPTH, function, new Character[] {NODE_TYPE_ENTITY});
-    return res;
+
+    // todo Page query, record offset
+    return new Pair<>(res, 1);
   }
 
   @Override
@@ -1165,13 +1169,13 @@ public class RSchemaRegion implements ISchemaRegion {
     }
   }
 
-  private List<ShowTimeSeriesResult> showTimeseriesWithIndex(
+  private Pair<List<ShowTimeSeriesResult>, Integer> showTimeseriesWithIndex(
       ShowTimeSeriesPlan plan, QueryContext context) throws MetadataException {
     // temporarily unsupported
-    return Collections.emptyList();
+    throw new UnsupportedOperationException("temporarily unsupported : showTimeseriesWithIndex");
   }
 
-  private List<ShowTimeSeriesResult> showTimeseriesWithoutIndex(
+  private Pair<List<ShowTimeSeriesResult>, Integer> showTimeseriesWithoutIndex(
       ShowTimeSeriesPlan plan, QueryContext context) throws MetadataException {
 
     List<ShowTimeSeriesResult> res = new LinkedList<>();
@@ -1184,7 +1188,7 @@ public class RSchemaRegion implements ISchemaRegion {
           new ShowTimeSeriesResult(
               measurementPath.getFullPath(),
               measurementPath.getMeasurementAlias(),
-              getBelongedToSG(measurementPath.getNodes()),
+              storageGroupMNode.getFullPath(),
               measurementPath.getMeasurementSchema().getType(),
               measurementPath.getMeasurementSchema().getEncodingType(),
               measurementPath.getMeasurementSchema().getCompressor(),
@@ -1192,7 +1196,8 @@ public class RSchemaRegion implements ISchemaRegion {
               entry.getValue().left,
               entry.getValue().right));
     }
-    return res;
+    // todo Page query, record offset
+    return new Pair<>(res, 1);
   }
 
   private Map<MeasurementPath, Pair<Map<String, String>, Map<String, String>>>
@@ -1839,6 +1844,46 @@ public class RSchemaRegion implements ISchemaRegion {
       }
     }
     return deviceMNode;
+  }
+
+  private void checkDataTypeMatch(InsertPlan plan, int loc, TSDataType dataType)
+      throws MetadataException {
+    TSDataType insertDataType;
+    if (plan instanceof InsertRowPlan) {
+      if (!((InsertRowPlan) plan).isNeedInferType()) {
+        // only when InsertRowPlan's values is object[], we should check type
+        insertDataType = getTypeInLoc(plan, loc);
+      } else {
+        insertDataType = dataType;
+      }
+    } else {
+      insertDataType = getTypeInLoc(plan, loc);
+    }
+    if (dataType != insertDataType) {
+      String measurement = plan.getMeasurements()[loc];
+      logger.warn(
+          "DataType mismatch, Insert measurement {} type {}, metadata tree type {}",
+          measurement,
+          insertDataType,
+          dataType);
+      throw new DataTypeMismatchException(measurement, insertDataType, dataType);
+    }
+  }
+  /** get dataType of plan, in loc measurements only support InsertRowPlan and InsertTabletPlan */
+  private TSDataType getTypeInLoc(InsertPlan plan, int loc) throws MetadataException {
+    TSDataType dataType;
+    if (plan instanceof InsertRowPlan) {
+      InsertRowPlan tPlan = (InsertRowPlan) plan;
+      dataType =
+          TypeInferenceUtils.getPredictedDataType(tPlan.getValues()[loc], tPlan.isNeedInferType());
+    } else if (plan instanceof InsertTabletPlan) {
+      dataType = (plan).getDataTypes()[loc];
+    } else {
+      throw new MetadataException(
+          String.format(
+              "Only support insert and insertTablet, plan is [%s]", plan.getOperatorType()));
+    }
+    return dataType;
   }
 
   @Override

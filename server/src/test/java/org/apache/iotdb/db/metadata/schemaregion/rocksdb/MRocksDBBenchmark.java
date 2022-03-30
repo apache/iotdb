@@ -24,7 +24,6 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -42,22 +41,22 @@ public class MRocksDBBenchmark {
 
   public List<RocksDBBenchmarkTask.BenchmarkResult> benchmarkResults = new ArrayList<>();
 
-  public void testStorageGroupCreation(List<SetStorageGroupPlan> storageGroups) {
-    RocksDBBenchmarkTask<SetStorageGroupPlan> task =
-        new RocksDBBenchmarkTask<>(storageGroups, RocksDBTestUtils.WRITE_CLIENT_NUM, 100);
-    RocksDBBenchmarkTask.BenchmarkResult result =
-        task.runWork(
-            setStorageGroupPlan -> {
-              try {
-                rocksDBManager.setStorageGroup(setStorageGroupPlan.getPath());
-                return true;
-              } catch (Exception e) {
-                return false;
-              }
-            },
-            "CreateStorageGroup");
-    benchmarkResults.add(result);
-  }
+  //  public void testStorageGroupCreation(List<SetStorageGroupPlan> storageGroups) {
+  //    RocksDBBenchmarkTask<SetStorageGroupPlan> task =
+  //        new RocksDBBenchmarkTask<>(storageGroups, RocksDBTestUtils.WRITE_CLIENT_NUM, 100);
+  //    RocksDBBenchmarkTask.BenchmarkResult result =
+  //        task.runWork(
+  //            setStorageGroupPlan -> {
+  //              try {
+  //                rocksDBManager.setStorageGroup(setStorageGroupPlan.getPath());
+  //                return true;
+  //              } catch (Exception e) {
+  //                return false;
+  //              }
+  //            },
+  //            "CreateStorageGroup");
+  //    benchmarkResults.add(result);
+  //  }
 
   public void testTimeSeriesCreation(List<List<CreateTimeSeriesPlan>> timeSeriesSet)
       throws IOException {
