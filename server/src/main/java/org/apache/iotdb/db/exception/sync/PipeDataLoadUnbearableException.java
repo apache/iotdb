@@ -16,14 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.newsync.receiver.load;
+package org.apache.iotdb.db.exception.sync;
 
-import org.apache.iotdb.db.exception.sync.PipeDataLoadException;
-
-/**
- * This interface is used to load files, including tsFile, syncTask, schema, modsFile and
- * deletePlan.
- */
-public interface ILoader {
-  void load() throws PipeDataLoadException;
+public class PipeDataLoadUnbearableException extends PipeDataLoadException {
+  public PipeDataLoadUnbearableException(String message) {
+    super(message);
+  }
 }
