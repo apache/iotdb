@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.schemaregion.rocksdb;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.partition.SchemaRegionId;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -90,6 +91,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -196,7 +198,9 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public synchronized void clear() {}
+  public synchronized void clear() {
+    // do nothing
+  }
 
   @Override
   public void forceMlog() {
@@ -240,7 +244,10 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public void deleteSchemaRegion() throws MetadataException {}
+  public void deleteSchemaRegion() throws MetadataException {
+    deactivate();
+    clearAllData();
+  }
 
   @Override
   public void createTimeseries(CreateTimeSeriesPlan plan) throws MetadataException {
@@ -715,7 +722,6 @@ public class RSchemaRegion implements ISchemaRegion {
 
   private void traverseByPatternPath(
       String[] nodes, BiFunction<byte[], byte[], Boolean> function, Character[] nodeTypeArray) {
-    //    String[] nodes = pathPattern.getNodes();
 
     int startIndex = 0;
     List<String[]> scanKeys = new ArrayList<>();
@@ -826,48 +832,10 @@ public class RSchemaRegion implements ISchemaRegion {
     return deleteTimeseries(pathPattern, false);
   }
 
-  //  private int ensureStorageGroup(PartialPath path) throws MetadataException {
-  //    int sgIndex = -1;
-  //    String[] nodes = path.getNodes();
-  //    try {
-  //      sgIndex = indexOfSgNode(nodes);
-  //      if (sgIndex < 0) {
-  //        if (!config.isAutoCreateSchemaEnabled()) {
-  //          throw new StorageGroupNotSetException(path.getFullPath());
-  //        }
-  //        PartialPath sgPath =
-  //            MetaUtils.getStorageGroupPathByLevel(path, config.getDefaultStorageGroupLevel());
-  //        setStorageGroup(sgPath);
-  //        sgIndex = sgPath.getNodeLength() - 1;
-  //      }
-  //      String sgPath =
-  //          String.join(PATH_SEPARATOR, ArrayUtils.subarray(path.getNodes(), 0, sgIndex + 1));
-  //      if (storageGroupDeletingFlagMap.getOrDefault(sgPath, false)) {
-  //        throw new MetadataException("Storage Group is deleting: " + sgPath);
-  //      }
-  //    } catch (RocksDBException e) {
-  //      throw new MetadataException(e);
-  //    }
-  //    return sgIndex;
-  //  }
-
-  private int indexOfSgNode(String[] nodes) throws RocksDBException {
-    int result = -1;
-    // ignore the first element: "root"
-    for (int i = 1; i < nodes.length; i++) {
-      String levelPath = RSchemaUtils.getLevelPath(nodes, i);
-      if (readWriteHandler.keyExistByType(levelPath, RMNodeType.STORAGE_GROUP)) {
-        result = i;
-        break;
-      }
-    }
-    return result;
-  }
-
   @Override
   public IMNode getDeviceNodeWithAutoCreate(PartialPath path, boolean autoCreateSchema)
       throws IOException, MetadataException {
-    return null;
+    throw new UnsupportedEncodingException();
   }
 
   @Override
@@ -1066,13 +1034,23 @@ public class RSchemaRegion implements ISchemaRegion {
 
   @Override
   public Set<PartialPath> getBelongedDevices(PartialPath timeseries) throws MetadataException {
-    GetBelongedToSpecifiedType type;
-    try {
-      type = new GetBelongedToSpecifiedType(timeseries, readWriteHandler, NODE_TYPE_ENTITY);
-      return type.getAllResult();
-    } catch (RocksDBException e) {
-      throw new MetadataException(e);
-    }
+    Set<PartialPath> result = Collections.synchronizedSet(new HashSet<>());
+    BiFunction<byte[], byte[], Boolean> function =
+        (a, b) -> {
+          String path = new String(a);
+          PartialPath partialPath;
+          try {
+            partialPath =
+                new PartialPath(path.substring(0, path.lastIndexOf(IoTDBConstant.PATH_SEPARATOR)));
+          } catch (IllegalPathException e) {
+            return false;
+          }
+          result.add(partialPath);
+          return true;
+        };
+    traverseOutcomeBasins(
+        timeseries.getNodes(), MAX_PATH_DEPTH, function, new Character[NODE_TYPE_ENTITY]);
+    return result;
   }
 
   @Override
@@ -1236,10 +1214,8 @@ public class RSchemaRegion implements ISchemaRegion {
           RSchemaUtils.getLevelPath(fullPath.getNodes(), fullPath.getNodeLength() - 1);
       Holder<byte[]> holder = new Holder<>();
       if (readWriteHandler.keyExistByType(levelKey, RMNodeType.MEASUREMENT, holder)) {
-        MeasurementSchema measurementSchema =
-            (MeasurementSchema)
-                RSchemaUtils.parseNodeValue(holder.getValue(), RMNodeValueType.SCHEMA);
-        return measurementSchema;
+        return (MeasurementSchema)
+            RSchemaUtils.parseNodeValue(holder.getValue(), RMNodeValueType.SCHEMA);
       } else {
         throw new PathNotExistException(fullPath.getFullPath());
       }
@@ -1931,7 +1907,8 @@ public class RSchemaRegion implements ISchemaRegion {
 
   @Override
   public String toString() {
-    return "Storage group:" + storageGroupFullPath + ", data path:" + storageGroupFullPath;
+    return String.format(
+        "storage group:[%s],data path:[%s]", storageGroupFullPath, storageGroupFullPath);
   }
 
   @TestOnly
@@ -1939,7 +1916,6 @@ public class RSchemaRegion implements ISchemaRegion {
     readWriteHandler.scanAllKeys(schemaRegionDirPath + File.separator + "scanAllKeys.txt");
   }
 
-  @TestOnly
   public void clearAllData() {
     File rockdDbFile = new File(schemaRegionDirPath);
     if (rockdDbFile.exists() && rockdDbFile.isDirectory()) {
