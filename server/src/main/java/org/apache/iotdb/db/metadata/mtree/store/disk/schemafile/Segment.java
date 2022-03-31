@@ -58,6 +58,9 @@ public class Segment implements ISegment {
   // reconstruct from key-address pair buffer
   List<Pair<String, Short>> keyAddressList;
 
+  // reconstruct every initiation after keyAddressList but not write into buffer
+  List<Pair<String, String>> aliasKeyList;
+
   /**
    * Init Segment with a buffer, which contains all information about this segment
    *
@@ -95,6 +98,7 @@ public class Segment implements ISegment {
       // parRecord = lastSegAddr = nextSegAddr = 0L;
 
       keyAddressList = new ArrayList<>();
+      aliasKeyList = new ArrayList<>();
     } else {
       length = ReadWriteIOUtils.readShort(buffer);
       freeAddr = ReadWriteIOUtils.readShort(buffer);
@@ -111,6 +115,7 @@ public class Segment implements ISegment {
       ByteBuffer pairBuffer = buffer.slice();
       buffer.clear(); // reconstruction finished, reset buffer position and limit
       reconstructKeyAddress(pairBuffer);
+      reconstructAliasAddressList();
     }
   }
 
@@ -145,6 +150,29 @@ public class Segment implements ISegment {
     }
   }
 
+  private void reconstructAliasAddressList() {
+    aliasKeyList = new ArrayList<>();
+    ByteBuffer bufferR = this.buffer.asReadOnlyBuffer();
+    bufferR.clear();
+    try {
+      for (Pair<String, Short> p : keyAddressList) {
+        if (p.right >= 0) {
+          bufferR.position(p.right);
+          if (RecordUtils.getRecordType(bufferR) == RecordUtils.MEASUREMENT_TYPE) {
+            String alias = RecordUtils.getRecordAlias(bufferR);
+            if (alias != null && !alias.equals("")) {
+              aliasKeyList.add(
+                  binaryInsertPairList(aliasKeyList, alias), new Pair<>(alias, p.left));
+            }
+          }
+        }
+      }
+    } catch (RecordDuplicatedException e) {
+      e.printStackTrace();
+      logger.error("Record corrupted.");
+    }
+  }
+
   // region Interface Implementation
 
   /**
@@ -165,64 +193,13 @@ public class Segment implements ISegment {
     }
     pairLength = (short) newPairLength;
 
-    int tarIdx = 0;
+    int tarIdx = binaryInsertPairList(keyAddressList, key);
 
-    int head = 0;
-    int tail = keyAddressList.size() - 1;
-
-    if (tail == -1) {
-      // no element
-      tarIdx = 0;
-    } else if (tail == 0) {
-      // only one element
-      if (keyAddressList.get(0).left.compareTo(key) == 0) {
-        throw new RecordDuplicatedException(key);
-      }
-      tarIdx = keyAddressList.get(0).left.compareTo(key) > 0 ? 0 : 1;
-    } else if (keyAddressList.get(head).left.compareTo(key) == 0
-        || keyAddressList.get(tail).left.compareTo(key) == 0) {
-      throw new RecordDuplicatedException(key);
-    } else if (keyAddressList.get(head).left.compareTo(key) > 0) {
-      tarIdx = 0;
-    } else if (keyAddressList.get(tail).left.compareTo(key) < 0) {
-      tarIdx = keyAddressList.size();
-    } else {
-      while (head != tail) {
-        int pivot = (head + tail) / 2;
-        if (pivot == keyAddressList.size() - 1) {
-          tarIdx = pivot;
-          break;
-        }
-
-        if (keyAddressList.get(pivot).left.compareTo(key) == 0
-            || keyAddressList.get(pivot + 1).left.compareTo(key) == 0) {
-          throw new RecordDuplicatedException(key);
-        }
-
-        if (keyAddressList.get(pivot).left.compareTo(key) < 0
-            && keyAddressList.get(pivot + 1).left.compareTo(key) > 0) {
-          tarIdx = pivot + 1;
-          break;
-        }
-
-        if (pivot == head || pivot == tail) {
-          if (keyAddressList.get(head).left.compareTo(key) > 0) {
-            tarIdx = head;
-          }
-          if (keyAddressList.get(tail).left.compareTo(key) < 0) {
-            tarIdx = tail + 1;
-          }
-          break;
-        }
-
-        // impossible for pivot.cmp > 0 and (pivot+1).cmp < 0
-        if (keyAddressList.get(pivot).left.compareTo(key) > 0) {
-          tail = pivot;
-        }
-
-        if (keyAddressList.get(pivot + 1).left.compareTo(key) < 0) {
-          head = pivot;
-        }
+    // update aliasKeyList
+    if (RecordUtils.getRecordType(buf) == RecordUtils.MEASUREMENT_TYPE) {
+      String alias = RecordUtils.getRecordAlias(buf);
+      if (alias != null && !alias.equals("")) {
+        aliasKeyList.add(binaryInsertPairList(aliasKeyList, alias), new Pair<>(alias, key));
       }
     }
 
@@ -239,14 +216,19 @@ public class Segment implements ISegment {
 
   @Override
   public IMNode getRecordAsIMNode(String key) throws MetadataException {
-    int index =
-        getRecordIndexByKey(key) >= 0 ? getRecordIndexByKey(key) : getRecordIndexByAlias(key);
+    // index means order for target node in keyAddressList, NOT aliasKeyList
+    int index = getRecordIndexByKey(key);
+
+    if (index < 0) {
+      index = getRecordIndexByAlias(key);
+    }
+
     if (index < 0) {
       return null;
     }
 
     ByteBuffer roBuffer = this.buffer.asReadOnlyBuffer(); // for concurrent read
-    short offset = getOffsetByIndex(index);
+    short offset = getOffsetByKeyIndex(index);
     roBuffer.clear();
     roBuffer.position(offset);
     short len = RecordUtils.getRecordLength(roBuffer);
@@ -296,24 +278,14 @@ public class Segment implements ISegment {
   }
 
   /**
-   * @param key
-   * @param buffer
+   * @param key name of the record, not the alias
+   * @param uBuffer
    * @return index of keyAddressList, -1 for not found, exception for space run out
    * @throws SegmentOverflowException if segment runs out of memory
    */
   @Override
-  public int updateRecord(String key, ByteBuffer buffer) throws SegmentOverflowException {
-    try {
-      buffer.clear();
-      bufferChecker(buffer);
-    } catch (BufferUnderflowException | BufferOverflowException e) {
-      logger.error(
-          String.format(
-              "Buffer broken when update, key:%s, buffer:%s",
-              key, Arrays.toString(buffer.array())));
-      e.printStackTrace();
-      throw e;
-    }
+  public int updateRecord(String key, ByteBuffer uBuffer)
+      throws SegmentOverflowException, RecordDuplicatedException {
 
     int idx = getRecordIndexByKey(key);
     if (idx < 0) {
@@ -321,14 +293,20 @@ public class Segment implements ISegment {
     }
 
     this.buffer.clear();
-    buffer.clear();
+    uBuffer.clear();
     this.buffer.position(keyAddressList.get(idx).right);
+
+    String oriAlias = null;
+    if (RecordUtils.getRecordType(this.buffer) == RecordUtils.MEASUREMENT_TYPE) {
+      oriAlias = RecordUtils.getRecordAlias(this.buffer);
+    }
+
     short oriLen = RecordUtils.getRecordLength(this.buffer);
-    short newLen = (short) buffer.capacity();
+    short newLen = (short) uBuffer.capacity();
     if (oriLen >= newLen) {
       // update in place
       this.buffer.limit(this.buffer.position() + oriLen);
-      this.buffer.put(buffer);
+      this.buffer.put(uBuffer);
     } else {
       // allocate new space for record, modify key-address list, freeAddr
       if (ISegment.SEG_HEADER_SIZE + pairLength + newLen > freeAddr) {
@@ -341,7 +319,18 @@ public class Segment implements ISegment {
       this.buffer.position(freeAddr);
       this.buffer.limit(freeAddr + newLen);
       keyAddressList.get(idx).right = freeAddr;
-      this.buffer.put(buffer);
+      this.buffer.put(uBuffer);
+    }
+
+    // update alias-key list accordingly
+    if (oriAlias != null && !oriAlias.equals("")) {
+      aliasKeyList.remove(binarySearchPairList(aliasKeyList, oriAlias));
+
+      uBuffer.clear();
+      String alias = RecordUtils.getRecordAlias(uBuffer);
+      if (alias != null && !alias.equals("")) {
+        aliasKeyList.add(binaryInsertPairList(aliasKeyList, alias), new Pair<>(alias, key));
+      }
     }
 
     return idx;
@@ -354,11 +343,21 @@ public class Segment implements ISegment {
       return -1;
     }
 
+    this.buffer.clear();
+    this.buffer.position(keyAddressList.get(idx).right);
+
+    // free address pointer forwards if last record removed
     if (keyAddressList.get(idx).right == freeAddr) {
-      this.buffer.clear();
-      this.buffer.position(freeAddr);
       short len = RecordUtils.getRecordLength(this.buffer);
       freeAddr += len;
+    }
+
+    // update alias-key list accordingly
+    if (RecordUtils.getRecordType(this.buffer) == RecordUtils.MEASUREMENT_TYPE) {
+      String alias = RecordUtils.getRecordAlias(this.buffer);
+      if (alias != null && !alias.equals("")) {
+        aliasKeyList.remove(binarySearchPairList(aliasKeyList, alias));
+      }
     }
 
     // TODO: compact segment further as well
@@ -495,7 +494,7 @@ public class Segment implements ISegment {
 
   protected void updateRecordSegAddr(String key, long newSegAddr) {
     int index = getRecordIndexByKey(key);
-    short offset = getOffsetByIndex(index);
+    short offset = getOffsetByKeyIndex(index);
 
     this.buffer.clear();
     this.buffer.position(offset);
@@ -513,27 +512,50 @@ public class Segment implements ISegment {
    * @return index of record, -1 for not found
    */
   private int getRecordIndexByKey(String key) {
-    int head = 0;
-    int tail = keyAddressList.size() - 1;
-    if (tail < 0
-        || key.compareTo(keyAddressList.get(head).left) < 0
-        || key.compareTo(keyAddressList.get(tail).left) > 0) {
+    return binarySearchPairList(keyAddressList, key);
+  }
+
+  /**
+   * Notice it figures index of the record within {@link #keyAddressList} whose alias is target
+   * parameter.
+   *
+   * @param alias
+   * @return index of the record within {@link #keyAddressList}
+   */
+  private int getRecordIndexByAlias(String alias) {
+    int aliasIndex = binarySearchPairList(aliasKeyList, alias);
+    if (aliasIndex < 0) {
       return -1;
     }
-    if (key.compareTo(keyAddressList.get(head).left) == 0) {
+    return binarySearchPairList(keyAddressList, aliasKeyList.get(aliasIndex).right);
+  }
+
+  private short getOffsetByKeyIndex(int index) {
+    return keyAddressList.get(index).right;
+  }
+
+  private <T> int binarySearchPairList(List<Pair<String, T>> list, String key) {
+    int head = 0;
+    int tail = list.size() - 1;
+    if (tail < 0
+        || key.compareTo(list.get(head).left) < 0
+        || key.compareTo(list.get(tail).left) > 0) {
+      return -1;
+    }
+    if (key.compareTo(list.get(head).left) == 0) {
       return head;
     }
-    if (key.compareTo(keyAddressList.get(tail).left) == 0) {
+    if (key.compareTo(list.get(tail).left) == 0) {
       return tail;
     }
     int pivot = (head + tail) / 2;
-    while (key.compareTo(keyAddressList.get(pivot).left) != 0) {
+    while (key.compareTo(list.get(pivot).left) != 0) {
       if (head == tail || pivot == head || pivot == tail) {
         return -1;
       }
-      if (key.compareTo(keyAddressList.get(pivot).left) < 0) {
+      if (key.compareTo(list.get(pivot).left) < 0) {
         tail = pivot;
-      } else if (key.compareTo(keyAddressList.get(pivot).left) > 0) {
+      } else if (key.compareTo(list.get(pivot).left) > 0) {
         head = pivot;
       }
       pivot = (head + tail) / 2;
@@ -541,42 +563,73 @@ public class Segment implements ISegment {
     return pivot;
   }
 
-  private int getRecordIndexByAlias(String alias) {
-    int debuggerI = 0;
-    ByteBuffer roBuffer = this.buffer.asReadOnlyBuffer();
-    try {
-      for (int i = 0; i < keyAddressList.size(); i++) {
-        debuggerI = i;
-        roBuffer.clear();
-        roBuffer.position(keyAddressList.get(i).right);
-        if (RecordUtils.getRecordType(roBuffer) == 4) {
-          String tarAlias = RecordUtils.getRecordAlias(roBuffer);
-          if (tarAlias != null && tarAlias.equals(alias)) {
-            return i;
+  /**
+   * @return target index the record with passing in key should be inserted
+   * @throws RecordDuplicatedException
+   */
+  private <T> int binaryInsertPairList(List<Pair<String, T>> list, String key)
+      throws RecordDuplicatedException {
+    int tarIdx = 0;
+
+    int head = 0;
+    int tail = list.size() - 1;
+
+    if (tail == -1) {
+      // no element
+      tarIdx = 0;
+    } else if (tail == 0) {
+      // only one element
+      if (list.get(0).left.compareTo(key) == 0) {
+        throw new RecordDuplicatedException(key);
+      }
+      tarIdx = list.get(0).left.compareTo(key) > 0 ? 0 : 1;
+    } else if (list.get(head).left.compareTo(key) == 0 || list.get(tail).left.compareTo(key) == 0) {
+      throw new RecordDuplicatedException(key);
+    } else if (list.get(head).left.compareTo(key) > 0) {
+      tarIdx = 0;
+    } else if (list.get(tail).left.compareTo(key) < 0) {
+      tarIdx = list.size();
+    } else {
+      while (head != tail) {
+        int pivot = (head + tail) / 2;
+        if (pivot == list.size() - 1) {
+          tarIdx = pivot;
+          break;
+        }
+
+        if (list.get(pivot).left.compareTo(key) == 0
+            || list.get(pivot + 1).left.compareTo(key) == 0) {
+          throw new RecordDuplicatedException(key);
+        }
+
+        if (list.get(pivot).left.compareTo(key) < 0
+            && list.get(pivot + 1).left.compareTo(key) > 0) {
+          tarIdx = pivot + 1;
+          break;
+        }
+
+        if (pivot == head || pivot == tail) {
+          if (list.get(head).left.compareTo(key) > 0) {
+            tarIdx = head;
           }
+          if (list.get(tail).left.compareTo(key) < 0) {
+            tarIdx = tail + 1;
+          }
+          break;
+        }
+
+        // impossible for pivot.cmp > 0 and (pivot+1).cmp < 0
+        if (list.get(pivot).left.compareTo(key) > 0) {
+          tail = pivot;
+        }
+
+        if (list.get(pivot + 1).left.compareTo(key) < 0) {
+          head = pivot;
         }
       }
-    } catch (BufferUnderflowException | BufferOverflowException e) {
-      logger.error(
-          String.format(
-              "Target alias: %s, segment size:%d, K-AL size: %d, pair of crashed index:%s",
-              alias, this.length, keyAddressList.size(), keyAddressList.get(debuggerI)));
-      logger.error(
-          String.format(
-              "Snippet of crashed record: %s",
-              Arrays.toString(
-                  Arrays.copyOfRange(
-                      roBuffer.array(),
-                      keyAddressList.get(debuggerI).right,
-                      keyAddressList.get(debuggerI).right + 30))));
-      e.printStackTrace();
-      throw e;
     }
-    return -1;
-  }
 
-  private short getOffsetByIndex(int index) {
-    return keyAddressList.get(index).right;
+    return tarIdx;
   }
 
   // endregion
