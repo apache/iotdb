@@ -162,6 +162,10 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
         isHoldingReadLock[i] = false;
         selectedTsFileResourceList.get(i).writeLock();
         isHoldingWriteLock[i] = true;
+        if (Thread.currentThread().isInterrupted()) {
+          throw new InterruptedException(
+              String.format("%s [Compaction] abort", fullStorageGroupName));
+        }
       }
 
       if (targetTsFileResource.getTsFile().length()
