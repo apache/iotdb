@@ -15,25 +15,26 @@ import java.util.ArrayList;
 public class CompressTest {
 
     public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
-        String inputPath = "/home/client-py/data", ouputPath = "/home/client-py/encodeSpeed.csv";
+        String inputPath = "D:\\HCY\\其他\\挑战杯\\client-py\\data\\learn\\float", Output = "D:\\HCY\\compressSpeed.csv";
         if (args.length >= 2) inputPath = args[1];
-        if (args.length >= 3) ouputPath = args[2];
+        if (args.length >= 3) Output = args[2];
 
         File file = new File(inputPath);
         File[] tempList = file.listFiles();
-        CsvWriter writer = new CsvWriter(ouputPath, ',', StandardCharsets.UTF_8);
+        CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
+        CompressionType[] schemes = {CompressionType.SNAPPY,CompressionType.SNAPPY,CompressionType.GZIP};
         ICompressor compressor;
         IUnCompressor unCompressor;
 
         String[] head = {"Encoding", "DataType", "Encoding Time", "Decoding Time"};
         writer.writeRecord(head);
-        int repeatTime = 10;
+        int repeatTime = 1;
 
         assert tempList != null;
         for (File f : tempList) {
             InputStream inputStream = new FileInputStream(f);
             CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
-            String fileName = f.getName();
+            String fileName = f.getAbsolutePath();
             ArrayList<String> data = new ArrayList<>();
 
             loader.readHeaders();
@@ -47,7 +48,7 @@ public class CompressTest {
                 for (String value : data) {
                     out.appendInt(Integer.parseInt(value));
                 }
-                for (CompressionType scheme : CompressionType.values()) {
+                for (CompressionType scheme :schemes) {
                     compressor = ICompressor.getCompressor(scheme);
                     unCompressor = IUnCompressor.getUnCompressor(scheme);
                     byte[] compressed = new byte[compressor.getMaxBytesForCompression(out.length)];
@@ -60,7 +61,7 @@ public class CompressTest {
                         compressTime += (e - s);
 
                         s = System.nanoTime();
-                        unCompressor.uncompress(compressed);
+                        byte[] uncompressed = unCompressor.uncompress(compressed);
                         e = System.nanoTime();
                         uncompressTime += (e - s);
                     }

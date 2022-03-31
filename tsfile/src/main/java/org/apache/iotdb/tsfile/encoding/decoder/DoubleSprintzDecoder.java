@@ -122,7 +122,6 @@ public class DoubleSprintzDecoder extends SprintzDecoder {
 
   @Override
   public double readDouble(ByteBuffer buffer) {
-    logger.error("Decode SPRINTZ start");
     if (!isBlockReaded) {
       try {
         decodeBlock(buffer);
@@ -135,7 +134,6 @@ public class DoubleSprintzDecoder extends SprintzDecoder {
       isBlockReaded = false;
       currentCount = 0;
     }
-    logger.error("Decode SPRINTZ stop");
     return currentValue;
   }
 }

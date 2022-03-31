@@ -109,7 +109,6 @@ public class IntSprintzEncoder extends SprintzEncoder {
 
   @Override
   public void flush(ByteArrayOutputStream out) throws IOException {
-    logger.error("Flush SPRINTZ start");
     if (byteCache.size() > 0) {
       byteCache.writeTo(out);
     }
@@ -124,12 +123,10 @@ public class IntSprintzEncoder extends SprintzEncoder {
       encoder.flush(out);
     }
     reset();
-    logger.error("Flush SPRINTZ stop");
   }
 
   @Override
   public void encode(int value, ByteArrayOutputStream out) {
-    logger.error("Encode SPRINTZ start");
     if (!isFirstCached) {
       values.add(value);
       isFirstCached = true;
@@ -158,6 +155,5 @@ public class IntSprintzEncoder extends SprintzEncoder {
       }
     }
 
-    logger.error("Encode SPRINTZ stop");
   }
 }

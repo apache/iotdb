@@ -43,9 +43,7 @@ public class LongRleEncoder extends RleEncoder<Long> {
 
   @Override
   public void encode(long value, ByteArrayOutputStream out) {
-    logger.error("Encode RLE start");
     values.add(value);
-    logger.error("Encode RLE stop");
   }
 
   /**
@@ -56,7 +54,6 @@ public class LongRleEncoder extends RleEncoder<Long> {
    */
   @Override
   public void flush(ByteArrayOutputStream out) throws IOException {
-    logger.error("Flush RLE start");
     // we get bit width after receiving all data
     this.bitWidth = ReadWriteForEncodingUtils.getLongMaxBitWidth(values);
     packer = new LongPacker(bitWidth);
@@ -64,7 +61,6 @@ public class LongRleEncoder extends RleEncoder<Long> {
       encodeValue(value);
     }
     super.flush(out);
-    logger.error("Flush RLE stop");
   }
 
   @Override

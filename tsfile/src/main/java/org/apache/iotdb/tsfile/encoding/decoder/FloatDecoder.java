@@ -83,36 +83,16 @@ public class FloatDecoder extends Decoder {
 
   @Override
   public float readFloat(ByteBuffer buffer) {
-    if (encoderType == TSEncoding.TS_2DIFF) {
-      logger.error("Decode TS_2DIFF start");
-    } else if (encoderType == TSEncoding.RLE) {
-      logger.error("Decode RLE start");
-    }
     readMaxPointValue(buffer);
     int value = decoder.readInt(buffer);
     double result = value / maxPointValue;
-    if (encoderType == TSEncoding.TS_2DIFF) {
-      logger.error("Decode TS_2DIFF stop");
-    } else if (encoderType == TSEncoding.RLE) {
-      logger.error("Decode RLE stop");
-    }
     return (float) result;
   }
 
   @Override
   public double readDouble(ByteBuffer buffer) {
-    if (encoderType == TSEncoding.TS_2DIFF) {
-      logger.error("Decode TS_2DIFF start");
-    } else if (encoderType == TSEncoding.RLE) {
-      logger.error("Decode RLE start");
-    }
     readMaxPointValue(buffer);
     long value = decoder.readLong(buffer);
-    if (encoderType == TSEncoding.TS_2DIFF) {
-      logger.error("Decode TS_2DIFF stop");
-    } else if (encoderType == TSEncoding.RLE) {
-      logger.error("Decode RLE stop");
-    }
     return value / maxPointValue;
   }
 

@@ -36,14 +36,11 @@ public class DoublePrecisionEncoderV2 extends LongGorillaEncoder {
 
   @Override
   public final void encode(double value, ByteArrayOutputStream out) {
-    logger.error("Encode GORILLA start");
     encode(Double.doubleToRawLongBits(value), out);
-    logger.error("Encode GORILLA stop");
   }
 
   @Override
   public void flush(ByteArrayOutputStream out) {
-    logger.error("Flush GORILLA start");
     // ending stream
     encode(GORILLA_ENCODING_ENDING_DOUBLE, out);
 
@@ -54,6 +51,5 @@ public class DoublePrecisionEncoderV2 extends LongGorillaEncoder {
 
     // the encoder may be reused, so let us reset it
     reset();
-    logger.error("Flush GORILLA stop");
   }
 }

@@ -39,9 +39,7 @@ public class SinglePrecisionDecoderV2 extends IntGorillaDecoder {
 
   @Override
   public final float readFloat(ByteBuffer in) {
-    logger.error("Decode GORILLA start");
     float r = Float.intBitsToFloat(readInt(in));
-    logger.error("Decode GORILLA stop");
     return r;
   }
 

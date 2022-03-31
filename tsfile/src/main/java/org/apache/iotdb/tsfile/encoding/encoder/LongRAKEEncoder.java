@@ -25,11 +25,9 @@ public class LongRAKEEncoder extends RAKEEncoder {
 
   @Override
   public void encode(long value, ByteArrayOutputStream out) {
-    logger.error("Encode RAKE start");
     isReadFinish = false;
     String bit_value = Long.toBinaryString(value);
     encodeNumber(bit_value, 64, out);
-    logger.error("Encode RAKE stop");
   }
 
   @Override

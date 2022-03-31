@@ -24,13 +24,11 @@ import java.nio.ByteBuffer;
 public class FloatRAKEDecoder extends RAKEDecoder {
   @Override
   public float readFloat(ByteBuffer buffer) {
-    logger.error("Decode RAKE start");
     parseBuffer(buffer, 32);
     String subNumBuffer = numBuffer.substring(0, 32);
     this.numBuffer = "";
     if (subNumBuffer.charAt(0) == '0') {
       float r = Float.intBitsToFloat(Integer.parseUnsignedInt(subNumBuffer, 2));
-      logger.error("Decode RAKE stop");
       return r;
     } else {
       String tmpSubNumBuffer = "0";
@@ -38,7 +36,6 @@ public class FloatRAKEDecoder extends RAKEDecoder {
         tmpSubNumBuffer += subNumBuffer.charAt(i);
       }
       float r = -Float.intBitsToFloat(Integer.parseUnsignedInt(tmpSubNumBuffer, 2));
-      logger.error("Decode RAKE stop");
       return r;
     }
   }

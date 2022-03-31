@@ -114,7 +114,6 @@ public class DoubleSprintzEncoder extends SprintzEncoder {
 
   @Override
   public void flush(ByteArrayOutputStream out) throws IOException {
-    logger.error("Flush SPRINTZ start");
     if (byteCache.size() > 0) {
       byteCache.writeTo(out);
     }
@@ -129,12 +128,10 @@ public class DoubleSprintzEncoder extends SprintzEncoder {
       encoder.flush(out);
     }
     reset();
-    logger.error("Flush SPRINTZ stop");
   }
 
   @Override
   public void encode(double value, ByteArrayOutputStream out) {
-    logger.error("Encode SPRINTZ start");
     if (!isFirstCached) {
       values.add(value);
       isFirstCached = true;
@@ -159,6 +156,5 @@ public class DoubleSprintzEncoder extends SprintzEncoder {
         logger.error("Error occured when encoding INT32 Type value with with Sprintz", e);
       }
     }
-    logger.error("Encode SPRINTZ stop");
   }
 }

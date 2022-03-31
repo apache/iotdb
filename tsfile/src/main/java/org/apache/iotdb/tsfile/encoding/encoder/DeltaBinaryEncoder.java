@@ -111,13 +111,11 @@ public abstract class DeltaBinaryEncoder extends Encoder {
   /** calling this method to flush all values which haven't encoded to result byte array. */
   @Override
   public void flush(ByteArrayOutputStream out) {
-    logger.error("Flush TS_2DIFF start");
     try {
       flushBlockBuffer(out);
     } catch (IOException e) {
       logger.error("flush data to stream failed!", e);
     }
-    logger.error("Flush TS_2DIFF stop");
   }
 
   public static class IntDeltaEncoder extends DeltaBinaryEncoder {
@@ -213,9 +211,7 @@ public abstract class DeltaBinaryEncoder extends Encoder {
 
     @Override
     public void encode(int value, ByteArrayOutputStream out) {
-      logger.error("Encode TS_2DIFF start");
       encodeValue(value, out);
-      logger.error("Encode TS_2DIFF stop");
     }
 
     @Override
@@ -294,9 +290,7 @@ public abstract class DeltaBinaryEncoder extends Encoder {
 
     @Override
     public void encode(long value, ByteArrayOutputStream out) {
-      logger.error("Encode TS_2DIFF start");
       encodeValue(value, out);
-      logger.error("Encode TS_2DIFF stop");
     }
 
     @Override

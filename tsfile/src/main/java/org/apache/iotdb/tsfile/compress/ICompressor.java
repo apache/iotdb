@@ -117,8 +117,6 @@ public interface ICompressor extends Serializable {
 
     @Override
     public byte[] compress(byte[] data) {
-      logger.error("Compress NONE start");
-      logger.error("Compress NONE stop");
       return data;
     }
 
@@ -152,18 +150,15 @@ public interface ICompressor extends Serializable {
 
     @Override
     public byte[] compress(byte[] data) throws IOException {
-      logger.error("Compress SNAPPY start");
       if (data == null) {
         return new byte[0];
       }
       byte[] r = Snappy.compress(data);
-      logger.error("Compress SNAPPY stop");
       return r;
     }
 
     @Override
     public byte[] compress(byte[] data, int offset, int length) throws IOException {
-      logger.error("Compress SNAPPY start");
       byte[] maxCompressed = new byte[getMaxBytesForCompression(length)];
       int compressedSize = Snappy.compress(data, offset, length, maxCompressed, 0);
       byte[] compressed = null;
@@ -173,23 +168,18 @@ public interface ICompressor extends Serializable {
       } else {
         compressed = maxCompressed;
       }
-      logger.error("Compress SNAPPY stop");
       return compressed;
     }
 
     @Override
     public int compress(byte[] data, int offset, int length, byte[] compressed) throws IOException {
-      logger.error("Compress SNAPPY start");
       int r = Snappy.compress(data, offset, length, compressed, 0);
-      logger.error("Compress SNAPPY stop");
       return r;
     }
 
     @Override
     public int compress(ByteBuffer data, ByteBuffer compressed) throws IOException {
-      logger.error("Compress SNAPPY start");
       int r = Snappy.compress(data, compressed);
-      logger.error("Compress SNAPPY stop");
       return r;
     }
 
@@ -215,38 +205,29 @@ public interface ICompressor extends Serializable {
 
     @Override
     public byte[] compress(byte[] data) {
-      logger.error("Compress LZ4 start");
       if (data == null) {
-        logger.error("Compress LZ4 stop");
         return new byte[0];
       }
       byte[] r = compressor.compress(data);
-      logger.error("Compress LZ4 stop");
       return r;
     }
 
     @Override
     public byte[] compress(byte[] data, int offset, int length) throws IOException {
-      logger.error("Compress LZ4 start");
       byte[] r = compressor.compress(data, offset, length);
-      logger.error("Compress LZ4 stop");
       return r;
     }
 
     @Override
     public int compress(byte[] data, int offset, int length, byte[] compressed) {
-      logger.error("Compress LZ4 start");
       int r = compressor.compress(data, offset, length, compressed, 0);
-      logger.error("Compress LZ4 stop");
       return r;
     }
 
     @Override
     public int compress(ByteBuffer data, ByteBuffer compressed) {
-      logger.error("Compress LZ4 start");
       compressor.compress(data, compressed);
       int r = data.limit();
-      logger.error("Compress LZ4 stop");
       return r;
     }
 
@@ -290,29 +271,24 @@ public interface ICompressor extends Serializable {
   class GZIPCompressor implements ICompressor {
     @Override
     public byte[] compress(byte[] data) throws IOException {
-      logger.error("Compress GZIP start");
       if (null == data) {
         return new byte[0];
       }
       byte[] r = GZIPCompress.compress(data);
-      logger.error("Compress GZIP stop");
       return r;
     }
 
     @Override
     public byte[] compress(byte[] data, int offset, int length) throws IOException {
-      logger.error("Compress GZIP start");
       byte[] dataBefore = new byte[length];
       System.arraycopy(data, offset, dataBefore, 0, length);
       byte[] r = GZIPCompress.compress(dataBefore);
-      logger.error("Compress GZIP stop");
       return r;
     }
 
     /** @exception GZIPCompressOverflowException if compressed byte array is too small. */
     @Override
     public int compress(byte[] data, int offset, int length, byte[] compressed) throws IOException {
-      logger.error("Compress GZIP start");
       byte[] dataBefore = new byte[length];
       System.arraycopy(data, offset, dataBefore, 0, length);
       byte[] res = GZIPCompress.compress(dataBefore);
@@ -320,14 +296,12 @@ public interface ICompressor extends Serializable {
         throw new GZIPCompressOverflowException();
       }
       System.arraycopy(res, 0, compressed, 0, res.length);
-      logger.error("Compress GZIP stop");
       return res.length;
     }
 
     /** @exception GZIPCompressOverflowException if compressed ByteBuffer is too small. */
     @Override
     public int compress(ByteBuffer data, ByteBuffer compressed) throws IOException {
-      logger.error("Compress GZIP start");
       int length = data.remaining();
       byte[] dataBefore = new byte[length];
       data.get(dataBefore, 0, length);
@@ -336,7 +310,6 @@ public interface ICompressor extends Serializable {
         throw new GZIPCompressOverflowException();
       }
       compressed.put(res);
-      logger.error("Compress GZIP stop");
       return res.length;
     }
 

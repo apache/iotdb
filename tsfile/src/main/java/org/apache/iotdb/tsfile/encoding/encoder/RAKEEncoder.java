@@ -158,11 +158,9 @@ public abstract class RAKEEncoder extends Encoder {
 
   @Override
   public void flush(ByteArrayOutputStream out) throws IOException {
-    logger.error("Flush RAKE start");
     if (byteCache.size() > 0) {
       byteCache.writeTo(out);
     }
     byteCache.reset();
-    logger.error("Flush RAKE stop");
   }
 }

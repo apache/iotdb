@@ -91,36 +91,21 @@ public class FloatEncoder extends Encoder {
   @Override
   public void encode(float value, ByteArrayOutputStream out) {
     if (this.encoderType == TSEncoding.RLE) {
-      logger.error("Encode RLE start");
     } else if (this.encoderType == TSEncoding.TS_2DIFF) {
-      logger.error("Encode TS_2DIFF start");
     }
     saveMaxPointNumber(out);
     int valueInt = convertFloatToInt(value);
     encoder.encode(valueInt, out);
     if (this.encoderType == TSEncoding.RLE) {
-      logger.error("Encode RLE stop");
     } else if (this.encoderType == TSEncoding.TS_2DIFF) {
-      logger.error("Encode TS_2DIFF stop");
     }
   }
 
   @Override
   public void encode(double value, ByteArrayOutputStream out) {
-    if (this.encoderType == TSEncoding.RLE) {
-      logger.error("Encode RLE start");
-    } else if (this.encoderType == TSEncoding.TS_2DIFF) {
-      logger.error("Encode TS_2DIFF start");
-    }
-    logger.error("Encode RLE start");
     saveMaxPointNumber(out);
     long valueLong = convertDoubleToLong(value);
     encoder.encode(valueLong, out);
-    if (this.encoderType == TSEncoding.RLE) {
-      logger.error("Encode RLE stop");
-    } else if (this.encoderType == TSEncoding.TS_2DIFF) {
-      logger.error("Encode TS_2DIFF stop");
-    }
   }
 
   private void calculateMaxPonitNum() {
@@ -142,18 +127,8 @@ public class FloatEncoder extends Encoder {
 
   @Override
   public void flush(ByteArrayOutputStream out) throws IOException {
-    if (this.encoderType == TSEncoding.RLE) {
-      logger.error("Flush RLE start");
-    } else if (this.encoderType == TSEncoding.TS_2DIFF) {
-      logger.error("Flush TS_2DIFF start");
-    }
     encoder.flush(out);
     reset();
-    if (this.encoderType == TSEncoding.RLE) {
-      logger.error("Flush RLE stop");
-    } else if (this.encoderType == TSEncoding.TS_2DIFF) {
-      logger.error("Flush TS_2DIFF stop");
-    }
   }
 
   private void reset() {

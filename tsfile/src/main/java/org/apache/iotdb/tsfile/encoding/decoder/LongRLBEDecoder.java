@@ -124,13 +124,10 @@ public class LongRLBEDecoder extends Decoder {
 
   @Override
   public long readLong(ByteBuffer buffer) {
-    logger.error("Decode RLBE start");
     if (readindex < writeindex) {
-      logger.error("Decode RLBE stop");
       return data[++readindex];
     } else {
       readT(buffer);
-      logger.error("Decode RLBE stop");
       return data[++readindex];
     }
   }

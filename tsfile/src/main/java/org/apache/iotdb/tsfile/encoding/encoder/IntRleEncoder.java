@@ -42,20 +42,16 @@ public class IntRleEncoder extends RleEncoder<Integer> {
 
   @Override
   public void encode(int value, ByteArrayOutputStream out) {
-    logger.error("Encode RLE start");
     values.add(value);
-    logger.error("Encode RLE stop");
   }
 
   @Override
   public void encode(boolean value, ByteArrayOutputStream out) {
-    logger.error("Encode RLE start");
     if (value) {
       this.encode(1, out);
     } else {
       this.encode(0, out);
     }
-    logger.error("Encode RLE stop");
   }
 
   /**
@@ -66,7 +62,6 @@ public class IntRleEncoder extends RleEncoder<Integer> {
    */
   @Override
   public void flush(ByteArrayOutputStream out) throws IOException {
-    logger.error("Flush RLE start");
     // we get bit width after receiving all data
     this.bitWidth = ReadWriteForEncodingUtils.getIntMaxBitWidth(values);
     packer = new IntPacker(bitWidth);
@@ -74,7 +69,6 @@ public class IntRleEncoder extends RleEncoder<Integer> {
       encodeValue(value);
     }
     super.flush(out);
-    logger.error("Flush RLE stop");
   }
 
   @Override

@@ -123,7 +123,6 @@ public class FloatSprintzDecoder extends SprintzDecoder {
 
   @Override
   public float readFloat(ByteBuffer buffer) {
-    logger.error("Decode SPRINTZ start");
     if (!isBlockReaded) {
       try {
         decodeBlock(buffer);
@@ -131,12 +130,12 @@ public class FloatSprintzDecoder extends SprintzDecoder {
         logger.error("Error occured when readInt with Sprintz Decoder.", e);
       }
     }
-    currentValue = currentBuffer[currentCount++];
+    currentValue = currentBuffer[currentCount];
+    currentCount++;
     if (currentCount == decodeSize) {
       isBlockReaded = false;
       currentCount = 0;
     }
-    logger.error("Decode SPRINTZ stop");
     return currentValue;
   }
 }

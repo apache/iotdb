@@ -35,49 +35,37 @@ public class PlainDecoder extends Decoder {
 
   @Override
   public boolean readBoolean(ByteBuffer buffer) {
-    logger.error("Decode PLAIN start");
     byte r = buffer.get();
-    logger.error("Decode PLAIN stop");
     return r != 0;
   }
 
   @Override
   public short readShort(ByteBuffer buffer) {
-    logger.error("Decode PLAIN start");
     short r = buffer.getShort();
-    logger.error("Decode PLAIN stop");
     return r;
   }
 
   @Override
   public int readInt(ByteBuffer buffer) {
-    logger.error("Decode PLAIN start");
     int r = ReadWriteForEncodingUtils.readVarInt(buffer);
-    logger.error("Decode PLAIN stop");
     return r;
   }
 
   @Override
   public long readLong(ByteBuffer buffer) {
-    logger.error("Decode PLAIN start");
     long r = buffer.getLong();
-    logger.error("Decode PLAIN stop");
     return r;
   }
 
   @Override
   public float readFloat(ByteBuffer buffer) {
-    logger.error("Decode PLAIN start");
     float r = buffer.getFloat();
-    logger.error("Decode PLAIN stop");
     return r;
   }
 
   @Override
   public double readDouble(ByteBuffer buffer) {
-    logger.error("Decode PLAIN start");
     double r = buffer.getDouble();
-    logger.error("Decode PLAIN stop");
     return buffer.getDouble();
   }
 

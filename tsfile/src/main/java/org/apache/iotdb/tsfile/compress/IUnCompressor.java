@@ -114,16 +114,12 @@ public interface IUnCompressor {
 
     @Override
     public byte[] uncompress(byte[] byteArray) {
-      logger.error("Uncompress NONE start");
-      logger.error("Uncompress NONE stop");
       return byteArray;
     }
 
     @Override
     public int uncompress(byte[] byteArray, int offset, int length, byte[] output, int outOffset) {
-      logger.error("Uncompress NONE start");
       System.arraycopy(byteArray, offset, output, outOffset, length);
-      logger.error("Uncompress NONE stop");
       return length;
     }
 
@@ -154,30 +150,24 @@ public interface IUnCompressor {
 
     @Override
     public byte[] uncompress(byte[] bytes) {
-      logger.error("Uncompress SNAPPY start");
       if (bytes == null) {
-        logger.error("Uncompress SNAPPY stop");
         return new byte[0];
       }
 
       try {
         byte[] r = Snappy.uncompress(bytes);
-        logger.error("Uncompress SNAPPY stop");
         return r;
       } catch (IOException e) {
         logger.error(
             "tsfile-compression SnappyUnCompressor: errors occurs when uncompress input byte", e);
       }
-      logger.error("Uncompress SNAPPY stop");
       return new byte[0];
     }
 
     @Override
     public int uncompress(byte[] byteArray, int offset, int length, byte[] output, int outOffset)
         throws IOException {
-      logger.error("Uncompress SNAPPY start");
       int r = Snappy.uncompress(byteArray, offset, length, output, outOffset);
-      logger.error("Uncompress SNAPPY stop");
       return r;
     }
 
@@ -188,9 +178,7 @@ public interface IUnCompressor {
       }
 
       try {
-        logger.error("Uncompress SNAPPY start");
         int r = Snappy.uncompress(compressed, uncompressed);
-        logger.error("Uncompress SNAPPY stop");
         return r;
       } catch (IOException e) {
         logger.error(
@@ -236,16 +224,12 @@ public interface IUnCompressor {
      */
     @Override
     public byte[] uncompress(byte[] bytes) throws IOException {
-      logger.error("Uncompress LZ4 start");
       if (bytes == null) {
-        logger.error("Uncompress LZ4 stop");
         return new byte[0];
       }
 
       try {
-        byte[] r = decompressor.decompress(bytes, MAX_COMPRESS_RATIO * bytes.length);
-        logger.error("Uncompress LZ4 stop");
-        return r;
+        return decompressor.decompress(bytes, MAX_COMPRESS_RATIO * bytes.length);
       } catch (RuntimeException e) {
         logger.error(UNCOMPRESS_INPUT_ERROR, e);
         throw new IOException(e);
@@ -256,10 +240,7 @@ public interface IUnCompressor {
     public int uncompress(byte[] byteArray, int offset, int length, byte[] output, int outOffset)
         throws IOException {
       try {
-        logger.error("Uncompress LZ4 start");
-        int r = decompressor.decompress(byteArray, offset, length, output, offset);
-        logger.error("Uncompress LZ4 stop");
-        return r;
+        return decompressor.decompress(byteArray, offset, length, output, offset);
       } catch (RuntimeException e) {
         logger.error(UNCOMPRESS_INPUT_ERROR, e);
         throw new IOException(e);
@@ -273,9 +254,7 @@ public interface IUnCompressor {
       }
 
       try {
-        logger.error("Uncompress LZ4 start");
         decompressor.decompress(compressed, uncompressed);
-        logger.error("Uncompress LZ4 stop");
         return compressed.limit();
       } catch (RuntimeException e) {
         logger.error(UNCOMPRESS_INPUT_ERROR, e);
@@ -306,34 +285,27 @@ public interface IUnCompressor {
       if (null == byteArray) {
         return new byte[0];
       }
-      logger.error("Uncompress GZIP start");
-      byte[] r = ICompressor.GZIPCompress.uncompress(byteArray);
-      logger.error("Uncompress GZIP stop");
-      return r;
+      return ICompressor.GZIPCompress.uncompress(byteArray);
     }
 
     @Override
     public int uncompress(byte[] byteArray, int offset, int length, byte[] output, int outOffset)
         throws IOException {
-      logger.error("Uncompress GZIP start");
       byte[] dataBefore = new byte[length];
       System.arraycopy(byteArray, offset, dataBefore, 0, length);
       byte[] res = ICompressor.GZIPCompress.uncompress(dataBefore);
       System.arraycopy(res, 0, output, outOffset, res.length);
-      logger.error("Uncompress GZIP stop");
       return res.length;
     }
 
     @Override
     public int uncompress(ByteBuffer compressed, ByteBuffer uncompressed) throws IOException {
-      logger.error("Uncompress GZIP start");
       int length = compressed.remaining();
       byte[] dataBefore = new byte[length];
       compressed.get(dataBefore, 0, length);
 
       byte[] res = ICompressor.GZIPCompress.uncompress(dataBefore);
       uncompressed.put(res);
-      logger.error("Uncompress GZIP stop");
       return res.length;
     }
 

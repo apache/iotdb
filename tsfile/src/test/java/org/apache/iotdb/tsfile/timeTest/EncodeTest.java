@@ -2,15 +2,16 @@ package org.apache.iotdb.tsfile.timeTest;
 
 import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
+import org.apache.iotdb.tsfile.compress.ICompressor;
+import org.apache.iotdb.tsfile.compress.IUnCompressor;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 import org.apache.iotdb.tsfile.encoding.encoder.TSEncodingBuilder;
-import org.apache.iotdb.tsfile.exception.NotImplementedException;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import java.io.*;
-import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -18,36 +19,37 @@ import java.util.ArrayList;
 public class EncodeTest {
 
     public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
-        String inputPath = "/home/client-py/data", ouputPath = "/home/client-py/encodeSpeed.csv";
+        String inputPath = "D:\\HCY\\其他\\挑战杯\\client-py\\data\\learn\\int", Output = "D:\\HCY\\SpeedResult.csv";
         if (args.length >= 2) inputPath = args[1];
-        if (args.length >= 3) ouputPath = args[2];
+        if (args.length >= 3) Output = args[2];
 
         File file = new File(inputPath);
         File[] tempList = file.listFiles();
-        TSEncoding[] schemeList = {TSEncoding.PLAIN, TSEncoding.GORILLA, TSEncoding.TS_2DIFF, TSEncoding.RLE,
-                TSEncoding.SPRINTZ, TSEncoding.RLBE, TSEncoding.RLBE};
-        CsvWriter writer = new CsvWriter(ouputPath, ',', StandardCharsets.UTF_8);
-        Encoder encoder;
-        Decoder decoder;
+        TSEncoding[] schemeList = {TSEncoding.PLAIN, TSEncoding.TS_2DIFF, TSEncoding.RLE,
+                TSEncoding.SPRINTZ, TSEncoding.RLBE, TSEncoding.GORILLA};
+        CompressionType[] compressList = {CompressionType.LZ4, CompressionType.GZIP, CompressionType.SNAPPY};
+        CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
 
-        String[] head = {"Encoding", "DataType", "Encoding Time", "Decoding Time"};
+        String[] head = {"Encoding", "Compress", "Encoding Time", "Compress Time", "Uncompress Time", "Decoding Time",
+                "Compression Ratio"};
         writer.writeRecord(head);
-        int repeatTime = 10;
+        int repeatTime = 1;
 
         assert tempList != null;
         for (File f : tempList) {
+            System.out.println(f);
             InputStream inputStream = new FileInputStream(f);
             CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
-            String fileName = f.getName();
+            String fileName = f.getAbsolutePath();
             ArrayList<String> data = new ArrayList<>();
             TSDataType dataType;
 
-            loader.readHeaders();
             loader.readHeaders();
             while (loader.readRecord()) {
                 data.add(loader.getValues()[1]);
             }
             loader.close();
+            inputStream.close();
 
             if (fileName.contains("int")) {
                 ArrayList<Integer> tmp = new ArrayList<>();
@@ -56,62 +58,82 @@ public class EncodeTest {
                     tmp.add(Integer.valueOf(value));
                 }
                 for (TSEncoding scheme : schemeList) {
-                    encoder = TSEncodingBuilder.getEncodingBuilder(scheme).getEncoder(dataType);
-                    decoder = Decoder.getDecoderByType(scheme, dataType);
-                    long startTime = System.nanoTime();
-                    ByteArrayOutputStream tmpBuffer = new ByteArrayOutputStream();
-                    for (int i = 0; i < repeatTime; i++) {
-                        for (int val : tmp) {
-                            encoder.encode(val, tmpBuffer);
-                        }
-                        encoder.flush(tmpBuffer);
-                    }
-                    long endTime = System.nanoTime();
-                    long encodeTime = (endTime - startTime) / repeatTime;
+                    Encoder encoder = TSEncodingBuilder.getEncodingBuilder(scheme).getEncoder(dataType);
+                    Decoder decoder = Decoder.getDecoderByType(scheme, dataType);
+                    long encodeTime = 0;
+                    long decodeTime = 0;
+                    for (CompressionType comp : compressList) {
+                        ICompressor compressor = ICompressor.getCompressor(comp);
+                        IUnCompressor unCompressor = IUnCompressor.getUnCompressor(comp);
+                        long compressTime = 0;
+                        long uncompressTime = 0;
+                        double ratio = tmp.size() * Integer.BYTES;
+                        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
 
-                    ByteBuffer buffer = ByteBuffer.wrap(tmpBuffer.toByteArray());
-                    startTime = System.nanoTime();
-                    for (int i = 0; i < repeatTime; i++) {
-                        while (decoder.hasNext(buffer)) {
-                            decoder.readInt(buffer);
-                        }
-                        decoder.reset();
+                        long s = System.nanoTime();
+                        for (int val : tmp) encoder.encode(val, buffer);
+                        encoder.flush(buffer);
+                        long e = System.nanoTime();
+                        encodeTime += (e - s);
+
+                        byte[] elems = buffer.toByteArray();
+                        s = System.nanoTime();
+                        byte[] compressed = compressor.compress(elems);
+                        e = System.nanoTime();
+                        compressTime += (e - s);
+
+                        ratio /= compressed.length;
+
+                        s = System.nanoTime();
+                        unCompressor.uncompress(compressed);
+                        e = System.nanoTime();
+                        uncompressTime += (e - s);
+
+                        ByteBuffer ebuffer = ByteBuffer.wrap(elems);
+                        s = System.nanoTime();
+                        while (decoder.hasNext(ebuffer)) decoder.readInt(ebuffer);
+                        e = System.nanoTime();
+                        decodeTime += (e - s);
+                        buffer.close();
+
+                        encodeTime = encodeTime * 1000 / tmp.size();
+                        decodeTime = decodeTime * 1000 / tmp.size();
+                        compressTime = compressTime * 1000 / tmp.size();
+                        uncompressTime = uncompressTime * 1000 / tmp.size();
+
+                        String[] record = {scheme.toString(), comp.toString(), String.valueOf(encodeTime), String.valueOf(compressTime),
+                                String.valueOf(uncompressTime), String.valueOf(decodeTime), String.valueOf(ratio)};
+                        writer.writeRecord(record);
                     }
-                    endTime = System.nanoTime();
-                    long decodeTime = (endTime - startTime) / repeatTime;
-                    String[] record = {scheme.toString(), "INT", String.valueOf(encodeTime), String.valueOf(decodeTime)};
-                    writer.writeRecord(record);
                 }
             } else if (fileName.contains("long")) {
+
                 ArrayList<Long> tmp = new ArrayList<>();
                 dataType = TSDataType.INT64;
                 for (String value : data) {
                     tmp.add(Long.valueOf(value));
                 }
                 for (TSEncoding scheme : schemeList) {
-                    encoder = TSEncodingBuilder.getEncodingBuilder(scheme).getEncoder(dataType);
-                    decoder = Decoder.getDecoderByType(scheme, dataType);
-                    long startTime = System.nanoTime();
-                    ByteArrayOutputStream tmpBuffer = new ByteArrayOutputStream();
+                    Encoder encoder = TSEncodingBuilder.getEncodingBuilder(scheme).getEncoder(dataType);
+                    Decoder decoder = Decoder.getDecoderByType(scheme, dataType);
+                    long encodeTime = 0;
+                    long decodeTime = 0;
                     for (int i = 0; i < repeatTime; i++) {
-                        for (long val : tmp) {
-                            encoder.encode(val, tmpBuffer);
-                        }
-                        encoder.flush(tmpBuffer);
-                    }
-                    long endTime = System.nanoTime();
-                    long encodeTime = (endTime - startTime) / repeatTime;
+                        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+                        long s = System.nanoTime();
+                        for (long val : tmp) encoder.encode(val, buffer);
+                        long e = System.nanoTime();
+                        encodeTime += (e - s);
 
-                    ByteBuffer buffer = ByteBuffer.wrap(tmpBuffer.toByteArray());
-                    startTime = System.nanoTime();
-                    for (int i = 0; i < repeatTime; i++) {
-                        while (decoder.hasNext(buffer)) {
-                            decoder.readLong(buffer);
-                        }
-                        decoder.reset();
+                        ByteBuffer ebuffer = ByteBuffer.wrap(buffer.toByteArray());
+                        s = System.nanoTime();
+                        for (int c = 0; c < tmp.size(); c++) decoder.readLong(ebuffer);
+                        e = System.nanoTime();
+                        decodeTime += (e - s);
                     }
-                    endTime = System.nanoTime();
-                    long decodeTime = (endTime - startTime) / repeatTime;
+
+                    encodeTime /= tmp.size();
+                    decodeTime /= tmp.size();
                     String[] record = {scheme.toString(), "LONG", String.valueOf(encodeTime), String.valueOf(decodeTime)};
                     writer.writeRecord(record);
                 }
@@ -122,29 +144,26 @@ public class EncodeTest {
                     tmp.add(Double.valueOf(value));
                 }
                 for (TSEncoding scheme : schemeList) {
-                    encoder = TSEncodingBuilder.getEncodingBuilder(scheme).getEncoder(dataType);
-                    decoder = Decoder.getDecoderByType(scheme, dataType);
-                    long startTime = System.nanoTime();
-                    ByteArrayOutputStream tmpBuffer = new ByteArrayOutputStream();
+                    Encoder encoder = TSEncodingBuilder.getEncodingBuilder(scheme).getEncoder(dataType);
+                    Decoder decoder = Decoder.getDecoderByType(scheme, dataType);
+                    long encodeTime = 0;
+                    long decodeTime = 0;
                     for (int i = 0; i < repeatTime; i++) {
-                        for (double val : tmp) {
-                            encoder.encode(val, tmpBuffer);
-                        }
-                        encoder.flush(tmpBuffer);
-                    }
-                    long endTime = System.nanoTime();
-                    long encodeTime = (endTime - startTime) / repeatTime;
+                        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+                        long s = System.nanoTime();
+                        for (double val : tmp) encoder.encode(val, buffer);
+                        long e = System.nanoTime();
+                        encodeTime += (e - s);
 
-                    ByteBuffer buffer = ByteBuffer.wrap(tmpBuffer.toByteArray());
-                    startTime = System.nanoTime();
-                    for (int i = 0; i < repeatTime; i++) {
-                        while (decoder.hasNext(buffer)) {
-                            decoder.readDouble(buffer);
-                        }
-                        decoder.reset();
+                        ByteBuffer ebuffer = ByteBuffer.wrap(buffer.toByteArray());
+                        s = System.nanoTime();
+                        for (int c = 0; c < tmp.size(); c++) decoder.readDouble(ebuffer);
+                        e = System.nanoTime();
+                        decodeTime += (e - s);
                     }
-                    endTime = System.nanoTime();
-                    long decodeTime = (endTime - startTime) / repeatTime;
+
+                    encodeTime /= tmp.size();
+                    decodeTime /= tmp.size();
                     String[] record = {scheme.toString(), "DOUBLE", String.valueOf(encodeTime), String.valueOf(decodeTime)};
                     writer.writeRecord(record);
                 }
@@ -155,66 +174,61 @@ public class EncodeTest {
                     tmp.add(Float.valueOf(value));
                 }
                 for (TSEncoding scheme : schemeList) {
-                    encoder = TSEncodingBuilder.getEncodingBuilder(scheme).getEncoder(dataType);
-                    decoder = Decoder.getDecoderByType(scheme, dataType);
-                    long startTime = System.nanoTime();
-                    ByteArrayOutputStream tmpBuffer = new ByteArrayOutputStream();
+                    Encoder encoder = TSEncodingBuilder.getEncodingBuilder(scheme).getEncoder(dataType);
+                    Decoder decoder = Decoder.getDecoderByType(scheme, dataType);
+                    long encodeTime = 0;
+                    long decodeTime = 0;
                     for (int i = 0; i < repeatTime; i++) {
-                        for (float val : tmp) {
-                            encoder.encode(val, tmpBuffer);
-                        }
-                        encoder.flush(tmpBuffer);
-                    }
-                    long endTime = System.nanoTime();
-                    long encodeTime = (endTime - startTime) / repeatTime;
+                        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+                        long s = System.nanoTime();
+                        for (float val : tmp) encoder.encode(val, buffer);
+                        long e = System.nanoTime();
+                        encodeTime += (e - s);
 
-                    ByteBuffer buffer = ByteBuffer.wrap(tmpBuffer.toByteArray());
-                    startTime = System.nanoTime();
-                    for (int i = 0; i < repeatTime; i++) {
-                        while (decoder.hasNext(buffer)) {
-                            decoder.readFloat(buffer);
-                        }
-                        decoder.reset();
+                        ByteBuffer ebuffer = ByteBuffer.wrap(buffer.toByteArray());
+                        s = System.nanoTime();
+                        for (int c = 0; c < tmp.size(); c++) decoder.readFloat(ebuffer);
+                        e = System.nanoTime();
+                        decodeTime += (e - s);
                     }
-                    endTime = System.nanoTime();
-                    long decodeTime = (endTime - startTime) / repeatTime;
+
+                    encodeTime /= tmp.size();
+                    decodeTime /= tmp.size();
                     String[] record = {scheme.toString(), "FLOAT", String.valueOf(encodeTime), String.valueOf(decodeTime)};
                     writer.writeRecord(record);
                 }
             } else if (fileName.contains("text")) {
                 ArrayList<Byte> tmp = new ArrayList<>();
-                dataType = TSDataType.TEXT;
+                dataType = TSDataType.FLOAT;
                 for (String value : data) {
                     tmp.add(Byte.valueOf(value));
                 }
                 for (TSEncoding scheme : schemeList) {
-                    encoder = TSEncodingBuilder.getEncodingBuilder(scheme).getEncoder(dataType);
-                    decoder = Decoder.getDecoderByType(scheme, dataType);
-                    long startTime = System.nanoTime();
-                    ByteArrayOutputStream tmpBuffer = new ByteArrayOutputStream();
+                    Encoder encoder = TSEncodingBuilder.getEncodingBuilder(scheme).getEncoder(dataType);
+                    Decoder decoder = Decoder.getDecoderByType(scheme, dataType);
+                    long encodeTime = 0;
+                    long decodeTime = 0;
                     for (int i = 0; i < repeatTime; i++) {
-                        for (int val : tmp) {
-                            encoder.encode(val, tmpBuffer);
-                        }
-                        encoder.flush(tmpBuffer);
-                    }
-                    long endTime = System.nanoTime();
-                    long encodeTime = (endTime - startTime) / repeatTime;
+                        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+                        long s = System.nanoTime();
+                        for (byte val : tmp) encoder.encode(val, buffer);
+                        long e = System.nanoTime();
+                        encodeTime += (e - s);
 
-                    ByteBuffer buffer = ByteBuffer.wrap(tmpBuffer.toByteArray());
-                    startTime = System.nanoTime();
-                    for (int i = 0; i < repeatTime; i++) {
-                        while (decoder.hasNext(buffer)) {
-                            decoder.readBinary(buffer);
-                        }
-                        decoder.reset();
+                        ByteBuffer ebuffer = ByteBuffer.wrap(buffer.toByteArray());
+                        s = System.nanoTime();
+                        for (int c = 0; c < tmp.size(); c++) decoder.readBinary(ebuffer);
+                        e = System.nanoTime();
+                        decodeTime += (e - s);
                     }
-                    endTime = System.nanoTime();
-                    long decodeTime = (endTime - startTime) / repeatTime;
+
+                    encodeTime /= tmp.size();
+                    decodeTime /= tmp.size();
                     String[] record = {scheme.toString(), "TEXT", String.valueOf(encodeTime), String.valueOf(decodeTime)};
                     writer.writeRecord(record);
                 }
-            } else throw new NotImplementedException();
+            } //else throw new NotImplementedException();
+            //System.gc();
         }
 
         writer.close();

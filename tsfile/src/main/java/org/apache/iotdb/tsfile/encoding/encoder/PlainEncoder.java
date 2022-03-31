@@ -47,60 +47,47 @@ public class PlainEncoder extends Encoder {
 
   @Override
   public void encode(boolean value, ByteArrayOutputStream out) {
-    logger.error("Encode PLAIN start");
     if (value) {
       out.write(1);
     } else {
       out.write(0);
     }
-    logger.error("Encode PLAIN stop");
   }
 
   @Override
   public void encode(short value, ByteArrayOutputStream out) {
-    logger.error("Encode PLAIN start");
     out.write((value >> 8) & 0xFF);
     out.write(value & 0xFF);
-    logger.error("Encode PLAIN stop");
   }
 
   @Override
   public void encode(int value, ByteArrayOutputStream out) {
-    logger.error("Encode PLAIN start");
     ReadWriteForEncodingUtils.writeVarInt(value, out);
-    logger.error("Encode PLAIN stop");
   }
 
   @Override
   public void encode(long value, ByteArrayOutputStream out) {
-    logger.error("Encode PLAIN start");
     for (int i = 7; i >= 0; i--) {
       out.write((byte) (((value) >> (i * 8)) & 0xFF));
     }
-    logger.error("Encode PLAIN stop");
   }
 
   @Override
   public void encode(float value, ByteArrayOutputStream out) {
-    logger.error("Encode PLAIN start");
     int floatInt = Float.floatToIntBits(value);
     out.write((floatInt >> 24) & 0xFF);
     out.write((floatInt >> 16) & 0xFF);
     out.write((floatInt >> 8) & 0xFF);
     out.write(floatInt & 0xFF);
-    logger.error("Encode PLAIN stop");
   }
 
   @Override
   public void encode(double value, ByteArrayOutputStream out) {
-    logger.error("Encode PLAIN start");
     encode(Double.doubleToLongBits(value), out);
-    logger.error("Encode PLAIN stop");
   }
 
   @Override
   public void encode(Binary value, ByteArrayOutputStream out) {
-    logger.error("Encode PLAIN start");
     try {
       // write the length of the bytes
       encode(value.getLength(), out);
@@ -110,7 +97,6 @@ public class PlainEncoder extends Encoder {
       logger.error(
           "tsfile-encoding PlainEncoder: error occurs when encode Binary value {}", value, e);
     }
-    logger.error("Encode PLAIN stop");
   }
 
   @Override

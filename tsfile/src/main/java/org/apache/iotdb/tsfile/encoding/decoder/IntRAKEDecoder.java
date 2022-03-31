@@ -25,13 +25,11 @@ public class IntRAKEDecoder extends RAKEDecoder {
 
   @Override
   public int readInt(ByteBuffer buffer) {
-    logger.error("Decode RAKE start");
     parseBuffer(buffer, 32);
-    String subNumBuffer = numBuffer.substring(0, 32);
+    String subNumBuffer = numBuffer.substring(0, Math.min(32,numBuffer.length()));
     this.numBuffer = "";
     if (subNumBuffer.charAt(0) == '0') {
       int r = Integer.parseInt(subNumBuffer, 2);
-      logger.error("Decode RAKE stop");
       return r;
     } else {
       String tmpSubNumBuffer = "0";
@@ -40,7 +38,6 @@ public class IntRAKEDecoder extends RAKEDecoder {
         else tmpSubNumBuffer += "1";
       }
       int r = -Integer.parseInt(tmpSubNumBuffer, 2) - 1;
-      logger.error("Decode RAKE stop");
       return r;
     }
   }
