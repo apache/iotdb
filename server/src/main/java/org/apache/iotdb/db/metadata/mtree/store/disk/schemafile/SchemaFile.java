@@ -391,13 +391,14 @@ public class SchemaFile implements ISchemaFile {
       throws MetadataException, IOException {
     if (getNodeAddress(parent) < 0) {
       throw new MetadataException(
-          String.format("Node [%s] has no child in schema file.", parent.getFullPath()));
+          String.format(
+              "Node [%s] has no valid segment address in schema file.", parent.getFullPath()));
     }
 
     long actualSegAddr = getTargetSegmentAddress(getNodeAddress(parent), childName);
     if (actualSegAddr < 0) {
-      throw new MetadataException(
-          String.format("Node [%s] has no child named [%s].", parent.getFullPath(), childName));
+      // no target child
+      return null;
     }
     try {
       return getPageInstance(getPageIndex(actualSegAddr))
