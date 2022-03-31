@@ -48,7 +48,6 @@ import org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode.RMeasurementMNode
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
-import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
@@ -91,7 +90,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -208,7 +206,7 @@ public class RSchemaRegion implements ISchemaRegion {
     switch (plan.getOperatorType()) {
       case CREATE_TIMESERIES:
         CreateTimeSeriesPlan createTimeSeriesPlan = (CreateTimeSeriesPlan) plan;
-        createTimeseries(createTimeSeriesPlan);
+        createTimeseries(createTimeSeriesPlan, createTimeSeriesPlan.getTagOffset());
         break;
       case CREATE_ALIGNED_TIMESERIES:
         CreateAlignedTimeSeriesPlan createAlignedTimeSeriesPlan =
@@ -246,7 +244,7 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public void createTimeseries(CreateTimeSeriesPlan plan) throws MetadataException {
+  public void createTimeseries(CreateTimeSeriesPlan plan, long offset) throws MetadataException {
     createTimeSeries(
         plan.getPath(),
         new MeasurementSchema(
@@ -260,13 +258,8 @@ public class RSchemaRegion implements ISchemaRegion {
         plan.getAttributes());
   }
 
-  @Override
-  public void createTimeseries(CreateTimeSeriesPlan plan, long offset) throws MetadataException {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public void createTimeseries(
+  @TestOnly
+  protected void createTimeseries(
       PartialPath path,
       TSDataType dataType,
       TSEncoding encoding,
@@ -276,7 +269,8 @@ public class RSchemaRegion implements ISchemaRegion {
     createTimeseries(path, dataType, encoding, compressor, props, null);
   }
 
-  public void createTimeseries(
+  @TestOnly
+  protected void createTimeseries(
       PartialPath path,
       TSDataType dataType,
       TSEncoding encoding,
@@ -443,8 +437,7 @@ public class RSchemaRegion implements ISchemaRegion {
     }
   }
 
-  @Override
-  public void createAlignedTimeSeries(
+  private void createAlignedTimeSeries(
       PartialPath prefixPath,
       List<String> measurements,
       List<TSDataType> dataTypes,
@@ -822,20 +815,12 @@ public class RSchemaRegion implements ISchemaRegion {
     return index;
   }
 
-  @Override
-  public Pair<Integer, Set<String>> deleteTimeseries(PartialPath pathPattern)
+  protected Pair<Integer, Set<String>> deleteTimeseries(PartialPath pathPattern)
       throws MetadataException {
     return deleteTimeseries(pathPattern, false);
   }
 
-  @Override
-  public IMNode getDeviceNodeWithAutoCreate(PartialPath path, boolean autoCreateSchema)
-      throws IOException, MetadataException {
-    throw new UnsupportedEncodingException();
-  }
-
-  @Override
-  public IMNode getDeviceNodeWithAutoCreate(PartialPath devicePath)
+  private IMNode getDeviceNodeWithAutoCreate(PartialPath devicePath, boolean autoCreateSchema)
       throws MetadataException, IOException {
     IMNode node;
     try {
@@ -907,11 +892,6 @@ public class RSchemaRegion implements ISchemaRegion {
         };
     traverseOutcomeBasins(nodes, MAX_PATH_DEPTH, function, nodetype);
     return atomicInteger.get();
-  }
-
-  @Override
-  public int getDevicesNum(PartialPath pathPattern) throws MetadataException {
-    return getDevicesNum(pathPattern, false);
   }
 
   @Override
@@ -1091,26 +1071,8 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public List<MeasurementPath> getMeasurementPaths(PartialPath pathPattern, boolean isPrefixMatch)
+  public List<MeasurementPath> getMeasurementPaths(PartialPath pathPattern, boolean isPrefixMath)
       throws MetadataException {
-    return getMatchedMeasurementPath(pathPattern.getNodes());
-  }
-
-  @Override
-  public List<MeasurementPath> getMeasurementPaths(PartialPath pathPattern)
-      throws MetadataException {
-    return getMeasurementPaths(pathPattern, false);
-  }
-
-  @Override
-  public Pair<List<MeasurementPath>, Integer> getMeasurementPathsWithAlias(
-      PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch)
-      throws MetadataException {
-    return new Pair<>(getMatchedMeasurementPath(pathPattern.getNodes()), offset + limit);
-  }
-
-  private List<MeasurementPath> getMatchedMeasurementPath(String[] nodes)
-      throws IllegalPathException {
     List<MeasurementPath> allResult = Collections.synchronizedList(new ArrayList<>());
     BiFunction<byte[], byte[], Boolean> function =
         (a, b) -> {
@@ -1120,9 +1082,18 @@ public class RSchemaRegion implements ISchemaRegion {
                   .getMeasurementPath());
           return true;
         };
-    traverseOutcomeBasins(nodes, MAX_PATH_DEPTH, function, new Character[] {NODE_TYPE_MEASUREMENT});
+    traverseOutcomeBasins(
+        pathPattern.getNodes(), MAX_PATH_DEPTH, function, new Character[] {NODE_TYPE_MEASUREMENT});
 
     return allResult;
+  }
+
+  @Override
+  public Pair<List<MeasurementPath>, Integer> getMeasurementPathsWithAlias(
+      PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch)
+      throws MetadataException {
+    // TODO: unsupported right now
+    throw new UnsupportedOperationException();
   }
 
   @Override
@@ -1193,31 +1164,6 @@ public class RSchemaRegion implements ISchemaRegion {
     traverseOutcomeBasins(nodes, MAX_PATH_DEPTH, function, new Character[] {NODE_TYPE_MEASUREMENT});
 
     return allResult;
-  }
-
-  @Override
-  public TSDataType getSeriesType(PartialPath fullPath) throws MetadataException {
-    if (fullPath.equals(SQLConstant.TIME_PATH)) {
-      return TSDataType.INT64;
-    }
-    return getSeriesSchema(fullPath).getType();
-  }
-
-  @Override
-  public IMeasurementSchema getSeriesSchema(PartialPath fullPath) throws MetadataException {
-    try {
-      String levelKey =
-          RSchemaUtils.getLevelPath(fullPath.getNodes(), fullPath.getNodeLength() - 1);
-      Holder<byte[]> holder = new Holder<>();
-      if (readWriteHandler.keyExistByType(levelKey, RMNodeType.MEASUREMENT, holder)) {
-        return (MeasurementSchema)
-            RSchemaUtils.parseNodeValue(holder.getValue(), RMNodeValueType.SCHEMA);
-      } else {
-        throw new PathNotExistException(fullPath.getFullPath());
-      }
-    } catch (RocksDBException e) {
-      throw new MetadataException(e);
-    }
   }
 
   @Override
@@ -1876,8 +1822,7 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public boolean isTemplateAppendable(Template template, List<String> measurements)
-      throws MetadataException {
+  public boolean isTemplateAppendable(Template template, List<String> measurements) {
     throw new UnsupportedOperationException();
   }
 
@@ -1897,14 +1842,8 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public IMNode setUsingSchemaTemplate(IMNode node) throws MetadataException {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
   public String toString() {
-    return String.format(
-        "storage group:[%s],data path:[%s]", storageGroupFullPath, storageGroupFullPath);
+    return String.format("storage group:[%s]", storageGroupFullPath);
   }
 
   @TestOnly
