@@ -83,6 +83,7 @@ struct CreateUserReq{
 
 struct CreateRoleReq{
     1: required string username
+}
 
 struct FetchDataPartitionReq {
     1: required map<i32, list<i64>> deviceGroupIDToStartTimeMap
