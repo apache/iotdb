@@ -1349,29 +1349,33 @@ public class RSchemaRegion implements ISchemaRegion {
                 }
               }
 
-              WriteBatch batch = new WriteBatch();
-              if (tagsMap != null && !tagsMap.isEmpty()) {
-                if (mNode.getTags() == null) {
-                  mNode.setTags(tagsMap);
-                } else {
-                  mNode.getTags().putAll(tagsMap);
+              try (WriteBatch batch = new WriteBatch()) {
+                if (tagsMap != null && !tagsMap.isEmpty()) {
+                  if (mNode.getTags() == null) {
+                    mNode.setTags(tagsMap);
+                  } else {
+                    mNode.getTags().putAll(tagsMap);
+                  }
+                  batch.put(
+                      readWriteHandler.getCFHByName(TABLE_NAME_TAGS),
+                      originKey,
+                      DEFAULT_NODE_VALUE);
+                  hasUpdate = true;
                 }
-                batch.put(
-                    readWriteHandler.getCFHByName(TABLE_NAME_TAGS), originKey, DEFAULT_NODE_VALUE);
-                hasUpdate = true;
-              }
-              if (attributesMap != null && !attributesMap.isEmpty()) {
-                if (mNode.getAttributes() == null) {
-                  mNode.setAttributes(attributesMap);
-                } else {
-                  mNode.getAttributes().putAll(attributesMap);
+                if (attributesMap != null && !attributesMap.isEmpty()) {
+                  if (mNode.getAttributes() == null) {
+                    mNode.setAttributes(attributesMap);
+                  } else {
+                    mNode.getAttributes().putAll(attributesMap);
+                  }
+                  hasUpdate = true;
                 }
-                hasUpdate = true;
+                if (hasUpdate) {
+                  batch.put(originKey, mNode.getRocksDBValue());
+                  readWriteHandler.executeBatch(batch);
+                }
               }
-              if (hasUpdate) {
-                batch.put(originKey, mNode.getRocksDBValue());
-                readWriteHandler.executeBatch(batch);
-              }
+
             } finally {
               rawKeyLock.unlock();
             }
