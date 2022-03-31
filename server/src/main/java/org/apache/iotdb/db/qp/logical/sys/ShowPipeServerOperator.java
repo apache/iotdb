@@ -24,16 +24,7 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPipeServerPlan;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
-import org.apache.commons.lang3.StringUtils;
-
 public class ShowPipeServerOperator extends ShowOperator {
-
-  private String pipeName;
-
-  public ShowPipeServerOperator(String pipeName, int tokenIntType) {
-    this(tokenIntType);
-    this.pipeName = pipeName;
-  }
 
   public ShowPipeServerOperator(int tokenIntType) {
     super(tokenIntType);
@@ -42,10 +33,6 @@ public class ShowPipeServerOperator extends ShowOperator {
   @Override
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
-    if (StringUtils.isEmpty(pipeName)) {
-      return new ShowPipeServerPlan();
-    } else {
-      return new ShowPipeServerPlan(pipeName);
-    }
+    return new ShowPipeServerPlan();
   }
 }

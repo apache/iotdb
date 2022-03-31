@@ -32,13 +32,11 @@ import org.apache.iotdb.db.newsync.sender.pipe.Pipe;
 import org.apache.iotdb.db.newsync.sender.pipe.TsFilePipe;
 import org.apache.iotdb.db.newsync.transport.client.TransportClient;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowPipeServerPlan;
+import org.apache.iotdb.db.qp.physical.sys.*;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
+import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.service.transport.thrift.RequestType;
 import org.apache.iotdb.service.transport.thrift.ResponseType;
 import org.apache.iotdb.service.transport.thrift.SyncRequest;
@@ -46,9 +44,6 @@ import org.apache.iotdb.service.transport.thrift.SyncResponse;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.common.Field;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
-import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.apache.commons.io.FileUtils;
@@ -63,6 +58,9 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.net.InetAddress;
 import java.net.Socket;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -153,56 +151,68 @@ public class IoTDBSyncReceiverIT {
   @Test
   public void testPipeOperation() {
     logger.info("testPipeOperation");
-    try {
+    String[] columnNames = {"create time", "name", "role", "remote", "status", "message"};
+    String showPipeSql = "SHOW PIPE";
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       // create
       client.heartbeat(new SyncRequest(RequestType.CREATE, pipeName1, remoteIp1, createdTime1));
-      QueryDataSet allDataSet = ReceiverService.getInstance().showPipe(new ShowPipeServerPlan(""));
-      RowRecord rowRecord = allDataSet.next();
-      List<Field> fields = rowRecord.getFields();
-      Assert.assertEquals(4, fields.size());
-      Assert.assertEquals(pipeName1, fields.get(0).getStringValue());
-      Assert.assertEquals(remoteIp1, fields.get(1).getStringValue());
-      Assert.assertEquals(PipeStatus.STOP.name(), fields.get(2).getStringValue());
-      Assert.assertEquals(
-          DatetimeUtils.convertLongToDate(createdTime1), fields.get(3).getStringValue());
-      Assert.assertFalse(allDataSet.hasNext());
+      String[] retArray =
+          new String[] {
+            String.format(
+                "%s,%s,%s,%s,%s,%s",
+                DatetimeUtils.convertLongToDate(createdTime1),
+                pipeName1,
+                "receiver",
+                remoteIp1,
+                PipeStatus.STOP.name(),
+                "")
+          };
+      SyncTestUtil.checkResult(showPipeSql, columnNames, retArray, false);
       // start
       client.heartbeat(new SyncRequest(RequestType.START, pipeName1, remoteIp1, createdTime1));
-      QueryDataSet pipe1DataSet =
-          ReceiverService.getInstance().showPipe(new ShowPipeServerPlan(pipeName1));
-      rowRecord = pipe1DataSet.next();
-      fields = rowRecord.getFields();
-      Assert.assertEquals(4, fields.size());
-      Assert.assertEquals(pipeName1, fields.get(0).getStringValue());
-      Assert.assertEquals(remoteIp1, fields.get(1).getStringValue());
-      Assert.assertEquals(PipeStatus.RUNNING.name(), fields.get(2).getStringValue());
-      Assert.assertEquals(
-          DatetimeUtils.convertLongToDate(createdTime1), fields.get(3).getStringValue());
-      Assert.assertFalse(pipe1DataSet.hasNext());
+      retArray =
+          new String[] {
+            String.format(
+                "%s,%s,%s,%s,%s,%s",
+                DatetimeUtils.convertLongToDate(createdTime1),
+                pipeName1,
+                "receiver",
+                remoteIp1,
+                PipeStatus.RUNNING.name(),
+                "")
+          };
+      SyncTestUtil.checkResult(showPipeSql, columnNames, retArray, false);
       // stop
       client.heartbeat(new SyncRequest(RequestType.STOP, pipeName1, remoteIp1, createdTime1));
-      pipe1DataSet = ReceiverService.getInstance().showPipe(new ShowPipeServerPlan(pipeName1));
-      rowRecord = pipe1DataSet.next();
-      fields = rowRecord.getFields();
-      Assert.assertEquals(4, fields.size());
-      Assert.assertEquals(pipeName1, fields.get(0).getStringValue());
-      Assert.assertEquals(remoteIp1, fields.get(1).getStringValue());
-      Assert.assertEquals(PipeStatus.STOP.name(), fields.get(2).getStringValue());
-      Assert.assertEquals(
-          DatetimeUtils.convertLongToDate(createdTime1), fields.get(3).getStringValue());
-      Assert.assertFalse(pipe1DataSet.hasNext());
+      retArray =
+          new String[] {
+            String.format(
+                "%s,%s,%s,%s,%s,%s",
+                DatetimeUtils.convertLongToDate(createdTime1),
+                pipeName1,
+                "receiver",
+                remoteIp1,
+                PipeStatus.STOP.name(),
+                "")
+          };
+      SyncTestUtil.checkResult(showPipeSql, columnNames, retArray, false);
       // drop
       client.heartbeat(new SyncRequest(RequestType.DROP, pipeName1, remoteIp1, createdTime1));
-      pipe1DataSet = ReceiverService.getInstance().showPipe(new ShowPipeServerPlan(pipeName1));
-      rowRecord = pipe1DataSet.next();
-      fields = rowRecord.getFields();
-      Assert.assertEquals(4, fields.size());
-      Assert.assertEquals(pipeName1, fields.get(0).getStringValue());
-      Assert.assertEquals(remoteIp1, fields.get(1).getStringValue());
-      Assert.assertEquals(PipeStatus.DROP.name(), fields.get(2).getStringValue());
-      Assert.assertEquals(
-          DatetimeUtils.convertLongToDate(createdTime1), fields.get(3).getStringValue());
-      Assert.assertFalse(pipe1DataSet.hasNext());
+      retArray =
+          new String[] {
+            String.format(
+                "%s,%s,%s,%s,%s,%s",
+                DatetimeUtils.convertLongToDate(createdTime1),
+                pipeName1,
+                "receiver",
+                remoteIp1,
+                PipeStatus.DROP.name(),
+                "")
+          };
+      SyncTestUtil.checkResult(showPipeSql, columnNames, retArray, false);
     } catch (Exception e) {
       e.printStackTrace();
       Assert.fail(e.getMessage());

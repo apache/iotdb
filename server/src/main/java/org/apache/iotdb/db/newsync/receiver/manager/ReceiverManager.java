@@ -99,6 +99,14 @@ public class ReceiverManager {
     return res;
   }
 
+  /**
+   * write a single message and serialize to disk
+   *
+   * @param pipeName name of pipe
+   * @param remoteIp remoteIp of pipe
+   * @param createTime createTime of pipe
+   * @param message pipe message
+   */
   public void writePipeMessage(
       String pipeName, String remoteIp, long createTime, PipeMessage message) {
     if (pipeInfoMap.containsKey(pipeName) && pipeInfoMap.get(pipeName).containsKey(remoteIp)) {
@@ -119,27 +127,66 @@ public class ReceiverManager {
     }
   }
 
-  public List<PipeMessage> getPipeMessages(String pipeName, String remoteIp, long createTime) {
+  /**
+   * read recent messages about one pipe
+   *
+   * @param pipeName name of pipe
+   * @param remoteIp remoteIp of pipe
+   * @param createTime createTime of pipe
+   * @param del if del is true, these messages will not be deleted. Otherwise, these messages can be
+   *     read next time.
+   * @return recent messages
+   */
+  public List<PipeMessage> getPipeMessages(
+      String pipeName, String remoteIp, long createTime, boolean del) {
     List<PipeMessage> pipeMessageList = new ArrayList<>();
     if (pipeInfoMap.containsKey(pipeName) && pipeInfoMap.get(pipeName).containsKey(remoteIp)) {
       synchronized (pipeInfoMap.get(pipeName).get(remoteIp)) {
         String pipeIdentifier =
             SyncPathUtil.getReceiverPipeFolderName(pipeName, remoteIp, createTime);
-        try {
-          log.readPipeMsg(pipeIdentifier);
-        } catch (IOException e) {
-          logger.error(
-              "Can not read pipe message about {} from disk because {}",
-              pipeIdentifier,
-              e.getMessage());
+        if (del) {
+          try {
+            log.readPipeMsg(pipeIdentifier);
+          } catch (IOException e) {
+            logger.error(
+                "Can not read pipe message about {} from disk because {}",
+                pipeIdentifier,
+                e.getMessage());
+          }
         }
         if (pipeMessageMap.containsKey(pipeIdentifier)) {
           pipeMessageList = pipeMessageMap.get(pipeIdentifier);
-          pipeMessageMap.remove(pipeIdentifier);
+          if (del) {
+            pipeMessageMap.remove(pipeIdentifier);
+          }
         }
       }
     }
     return pipeMessageList;
+  }
+
+  /**
+   * read the most important message about one pipe. ERROR > WARN > INFO.
+   *
+   * @param pipeName name of pipe
+   * @param remoteIp remoteIp of pipe
+   * @param createTime createTime of pipe
+   * @param del if del is true, recent messages will not be deleted. Otherwise, these messages can
+   *     be read next time.
+   * @return the most important message
+   */
+  public PipeMessage getPipeMessage(
+      String pipeName, String remoteIp, long createTime, boolean del) {
+    List<PipeMessage> pipeMessageList = getPipeMessages(pipeName, remoteIp, createTime, del);
+    PipeMessage message = new PipeMessage(PipeMessage.MsgType.INFO, "");
+    if (!pipeMessageList.isEmpty()) {
+      for (PipeMessage pipeMessage : pipeMessageList) {
+        if (pipeMessage.getType().getValue() > message.getType().getValue()) {
+          message = pipeMessage;
+        }
+      }
+    }
+    return message;
   }
 
   public boolean isPipeServerEnable() {

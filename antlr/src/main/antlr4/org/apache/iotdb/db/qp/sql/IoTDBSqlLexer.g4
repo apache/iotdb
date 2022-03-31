@@ -490,6 +490,10 @@ START
     : S T A R T
     ;
 
+STATUS
+    : S T A T U S
+    ;
+
 STOP
     : S T O P
     ;
