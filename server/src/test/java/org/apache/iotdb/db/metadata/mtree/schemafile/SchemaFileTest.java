@@ -31,7 +31,6 @@ import org.apache.iotdb.db.metadata.mnode.StorageGroupEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaFile;
-import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaPage;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.RecordUtils;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaPage;
@@ -39,7 +38,6 @@ import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.Segment;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -48,11 +46,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -153,15 +147,85 @@ public class SchemaFileTest {
     nsf.close();
   }
 
-  public void inspectFile() throws MetadataException, IOException {
-    essentialTestSchemaFile();
-    ISchemaFile sf = SchemaFile.loadSchemaFile("root.test.vRoot1", TEST_SCHEMA_REGION_ID);
-    System.out.println(((SchemaFile) sf).inspect());
+  @Test
+  public void testVerticalTree() throws MetadataException, IOException {
+    ISchemaFile sf = SchemaFile.initSchemaFile("root.sgvt.vt", TEST_SCHEMA_REGION_ID);
+    IStorageGroupMNode sgNode = new StorageGroupEntityMNode(null, "sg", 11_111L);
+    sf.updateStorageGroupNode(sgNode);
+
+    IMNode root = getVerticalTree(100, "VT");
+    Iterator<IMNode> ite = getTreeBFT(root);
+    while (ite.hasNext()) {
+      sf.writeMNode(ite.next());
+    }
+
+    IMNode vt1 = getNode(root, "root.VT_0.VT_1");
+    IMNode vt4 = getNode(root, "root.VT_0.VT_1.VT_2.VT_3.VT_4");
+    ICachedMNodeContainer.getCachedMNodeContainer(vt1).getNewChildBuffer().clear();
+    addMeasurementChild(vt1, "newM");
+    sf.writeMNode(vt1);
+
+    IMNode vt0 = getNode(root, "root.VT_0");
+    Assert.assertEquals(
+        ICachedMNodeContainer.getCachedMNodeContainer(vt1).getSegmentAddress(),
+        RecordUtils.getRecordSegAddr(
+            getSegment(sf, ICachedMNodeContainer.getCachedMNodeContainer(vt0).getSegmentAddress())
+                .getRecord("VT_1")));
+    Assert.assertEquals(
+        2,
+        getSegment(sf, ICachedMNodeContainer.getCachedMNodeContainer(vt1).getSegmentAddress())
+            .getKeyOffsetList()
+            .size());
     sf.close();
+
+    ISchemaFile nsf = SchemaFile.loadSchemaFile("root.sgvt.vt", TEST_SCHEMA_REGION_ID);
+
+    ICachedMNodeContainer.getCachedMNodeContainer(vt1).getNewChildBuffer().clear();
+    ICachedMNodeContainer.getCachedMNodeContainer(vt4).getNewChildBuffer().clear();
+    Set<String> newNodes = new HashSet<>();
+    for (int i = 0; i < 15; i++) {
+      addMeasurementChild(vt1, "r1_" + i);
+      addMeasurementChild(vt4, "r4_" + i);
+      newNodes.add("r1_" + i);
+      newNodes.add("r4_" + i);
+    }
+    nsf.writeMNode(vt1);
+    nsf.writeMNode(vt4);
+
+    nsf.close();
+    nsf = SchemaFile.loadSchemaFile("root.sgvt.vt", TEST_SCHEMA_REGION_ID);
+
+    Iterator<IMNode> vt1Children = nsf.getChildren(vt1);
+    Iterator<IMNode> vt4Children = nsf.getChildren(vt4);
+
+    while (vt1Children.hasNext()) {
+      newNodes.remove(vt1Children.next().getName());
+    }
+
+    while (vt4Children.hasNext()) {
+      newNodes.remove(vt4Children.next().getName());
+    }
+
+    Assert.assertTrue(newNodes.isEmpty());
+
+    ICachedMNodeContainer.getCachedMNodeContainer(vt1).getNewChildBuffer().clear();
+    ICachedMNodeContainer.getCachedMNodeContainer(vt4).getNewChildBuffer().clear();
+    for (int i = 0; i < 660; i++) {
+      addMeasurementChild(vt1, "2r1_" + i);
+      addMeasurementChild(vt4, "2r4_" + i);
+      newNodes.add("2r1_" + i);
+      newNodes.add("2r4_" + i);
+    }
+    nsf.writeMNode(vt1);
+    nsf.writeMNode(vt4);
+
+    Assert.assertEquals(11111L, nsf.init().getAsStorageGroupMNode().getDataTTL());
+
+    nsf.close();
   }
 
   @Test
-  public void testReadFromFlat() throws MetadataException, IOException {
+  public void testFaltTree() throws MetadataException, IOException {
     ISchemaFile sf = SchemaFile.initSchemaFile("root.test.vRoot1", TEST_SCHEMA_REGION_ID);
 
     Iterator<IMNode> ite = getTreeBFT(getFlatTree(50000, "aa"));
@@ -193,11 +257,11 @@ public class SchemaFileTest {
     Iterator<IMNode> res = sf.getChildren(node);
     int cnt = 0;
     while (res.hasNext()) {
-      System.out.println(res.next().getName());
+      res.next();
       cnt++;
     }
     sf.close();
-    System.out.println(cnt);
+    Assert.assertEquals(1002, cnt);
   }
 
   @Test
@@ -324,26 +388,157 @@ public class SchemaFileTest {
     sf.close();
   }
 
+  @Test
+  public void testUpdateOnFullPageSegment() throws MetadataException, IOException {
+    ISchemaFile sf = SchemaFile.initSchemaFile("root.sg", TEST_SCHEMA_REGION_ID);
+    IMNode root = getFlatTree(783, "aa");
+    Iterator<IMNode> ite = getTreeBFT(root);
+    while (ite.hasNext()) {
+      IMNode cur = ite.next();
+      if (!cur.isMeasurement()) {
+        sf.writeMNode(cur);
+      }
+    }
+
+    root.getChildren().clear();
+    root.addChild(getMeasurementNode(root, "aa0", "updatedupdatednode"));
+
+    ICachedMNodeContainer.getCachedMNodeContainer(root).moveMNodeToCache("aa0");
+    ICachedMNodeContainer.getCachedMNodeContainer(root).updateMNode("aa0");
+
+    sf.writeMNode(root);
+
+    Assert.assertEquals(
+        "updatedupdatednode", sf.getChildNode(root, "aa0").getAsMeasurementMNode().getAlias());
+    Assert.assertEquals(
+        1,
+        getSegment(sf, getSegAddr(sf, getSegAddrInContainer(root), "aa0"))
+            .getKeyOffsetList()
+            .size());
+
+    root.getChildren().clear();
+
+    root.addChild(new EntityMNode(root, "ent1"));
+
+    IMNode ent1 = root.getChild("ent1");
+    ent1.addChild(getMeasurementNode(ent1, "m1", "m1a"));
+
+    sf.writeMNode(root);
+    sf.writeMNode(ent1);
+
+    ent1.getChildren().clear();
+
+    ent1.addChild(getMeasurementNode(ent1, "m1", "m1aaaaaa"));
+    ICachedMNodeContainer.getCachedMNodeContainer(ent1).moveMNodeToCache("m1");
+    ICachedMNodeContainer.getCachedMNodeContainer(ent1).updateMNode("m1");
+
+    Assert.assertEquals(
+        64, getSegment(sf, getSegAddr(sf, getSegAddrInContainer(ent1), "m1")).size());
+
+    sf.writeMNode(ent1);
+
+    Assert.assertEquals(
+        1024, getSegment(sf, getSegAddr(sf, getSegAddrInContainer(ent1), "m1")).size());
+
+    ent1.getChildren().clear();
+
+    while (ent1.getChildren().size() < 374) {
+      addMeasurementChild(ent1, "nc" + ent1.getChildren().size());
+    }
+
+    sf.writeMNode(ent1);
+    ent1.getChildren().clear();
+    ent1.addChild(getMeasurementNode(ent1, "nc0", "updated_nc0updated_nc0updated_nc0updated_nc0"));
+    moveToUpdateBuffer(ent1, "nc0");
+    sf.writeMNode(ent1);
+
+    ent1.getChildren().clear();
+    ent1.addChild(getMeasurementNode(ent1, "nc1", "updated_nc1updated_nc1updated_nc1updated_nc1"));
+    moveToUpdateBuffer(ent1, "nc1");
+    sf.writeMNode(ent1);
+
+    Assert.assertEquals(
+        getSegAddr(sf, getSegAddrInContainer(ent1), "nc1"),
+        getSegAddr(sf, getSegAddrInContainer(ent1), "nc0"));
+
+    sf.close();
+  }
+
+  @Test
+  public void testRearrangementWhenInsert() throws MetadataException, IOException {
+    ISchemaFile sf = SchemaFile.initSchemaFile("root.sg", TEST_SCHEMA_REGION_ID);
+    IMNode root = new StorageGroupEntityMNode(null, "sgRoot", 0L);
+
+    root.getChildren().clear();
+    IMNode ent2 = new EntityMNode(root, "ent2");
+    IMNode ent3 = new EntityMNode(root, "ent3");
+    IMNode ent4 = new EntityMNode(root, "ent4");
+    root.addChild(ent2);
+    root.addChild(ent3);
+    root.addChild(ent4);
+
+    while (ent4.getChildren().size() < 19) {
+      ent4.addChild(getMeasurementNode(ent4, "e4m" + ent4.getChildren().size(), "e4malais"));
+    }
+    sf.writeMNode(root);
+    sf.writeMNode(ent4);
+
+    ent4.getChildren().clear();
+    ent4.addChild(
+        getMeasurementNode(
+            ent4,
+            "e4m0",
+            "updated_updated_updated_updated_updated_updated_updated_updated_updated_updated_updated_updated_updated_updated_updated_updated_updated_updated_updated_updated_updated_updated_updated_updated_updated_updated_updated_updated_updated_updated_updated_updated_updated_updated_updated_updated_"));
+    moveToUpdateBuffer(ent4, "e4m0");
+    sf.writeMNode(ent4);
+
+    while (ent2.getChildren().size() < 19) {
+      ent2.addChild(getMeasurementNode(ent2, "e2m" + ent2.getChildren().size(), "e2malais"));
+    }
+    sf.writeMNode(ent2);
+
+    while (ent3.getChildren().size() < 180) {
+      ent3.addChild(getMeasurementNode(ent3, "e3m" + ent3.getChildren().size(), "e3malais"));
+    }
+    sf.writeMNode(ent3);
+
+    ent2.getChildren().clear();
+    while (ent2.getChildren().size() < 70) {
+      ent2.addChild(getMeasurementNode(ent2, "e2ms" + ent2.getChildren().size(), "e2malais"));
+    }
+    sf.writeMNode(ent2);
+
+    Assert.assertEquals(
+        getSegAddr(sf, getSegAddrInContainer(ent2), "e2m0") - 1,
+        getSegAddr(sf, getSegAddrInContainer(ent3), "e3m0"));
+    Assert.assertEquals(
+        getSegAddr(sf, getSegAddrInContainer(ent2), "e2m0") - 2,
+        getSegAddr(sf, getSegAddrInContainer(ent4), "e4m0"));
+
+    root.getChildren().clear();
+    IMNode ent5 = new EntityMNode(root, "ent5");
+    root.addChild(ent5);
+    while (ent5.getChildren().size() < 19) {
+      ent5.addChild(getMeasurementNode(ent5, "e5mk" + ent5.getChildren().size(), "e5malaikkkkks"));
+    }
+
+    sf.writeMNode(root);
+    sf.writeMNode(ent5);
+    ent5.getChildren().clear();
+    ent5.addChild(
+        getMeasurementNode(
+            ent5,
+            "e5extm",
+            "e5malaikkkkkse5malaikkkkkse5malaikkkkkse5malaikkkkkse5"
+                + "malaikkkkkse5malaikkkkkse5malaikkkkkse5malaikkkkkse5malaikkkkkse5malaikkkkkse5malaikkkkkse5malaikkkkks"));
+    sf.writeMNode(ent5);
+    Assert.assertEquals(20, getSegment(sf, getSegAddrInContainer(ent5)).getAllRecords().size());
+
+    sf.close();
+  }
+
+  @Test
   public void bitwiseTest() {
-
-    byte[] bArray = new byte[] {1, 2, 3, 4, 5, 6, 7};
-    ByteBuffer b1 = ByteBuffer.wrap(bArray);
-    ByteBuffer b2 = b1.duplicate();
-    b2.position(3);
-    ByteBuffer b3 = b2.slice();
-    b1.position(3);
-    b1.put((byte) 99);
-
-    Assert.assertEquals(99, b2.get());
-    Assert.assertEquals(99, b3.get());
-    Assert.assertEquals(1, b3.position());
-
-    b3.put((byte) 100);
-    Assert.assertEquals(100, b1.get());
-
-    print(SchemaFile.getPageIndex(12451840));
-    print(SchemaFile.getGlobalIndex(190, (short) 0));
-
     long initGlbAdr = 1099780063232L;
     int pageIndex = SchemaFile.getPageIndex(initGlbAdr);
 
@@ -364,139 +559,105 @@ public class SchemaFileTest {
       pageIndex = SchemaFile.getPageIndex(initGlbAdr);
       segIdx = SchemaFile.getSegIndex(initGlbAdr);
     }
-
-    byte[] bta = {0b1, 0b10, 0b100};
-    print(Arrays.toString(bta));
-    print(ByteBuffer.wrap(bta));
-
-    ByteBuffer buf = ByteBuffer.allocate(20);
-    ReadWriteIOUtils.write((byte) 1, buf);
-    ReadWriteIOUtils.write("", buf);
-    ReadWriteIOUtils.write((byte) 1, buf);
-    print(Arrays.toString(buf.array()));
-
-    print(String.format("aaa:%s", null));
   }
 
-  public void testDebugger() throws MetadataException, IOException {
-    String filePath = "./buffer.temp";
-
-    File pmtFile = new File(filePath);
-    BufferedReader reader = new BufferedReader(new FileReader(pmtFile));
-    byte[] bytas = new byte[16 * 1024];
-    String txt = reader.readLine();
-    txt.trim();
-    String[] tar = txt.split(",");
-
-    print(tar.length);
-    for (int i = 0; i < tar.length; i++) {
-      if (i == 0) {
-        bytas[i] = Byte.parseByte(tar[i].trim().substring(1));
-      } else if (i == tar.length - 1) {
-        bytas[i] = Byte.parseByte(tar[i].trim().substring(0, 2));
-      } else {
-        bytas[i] = Byte.parseByte(tar[i].trim());
-      }
-    }
-
-    reader.close();
-    ByteBuffer bf = ByteBuffer.wrap(bytas);
-    ISchemaPage page = SchemaPage.loadPage(bf, 999);
-    print(page.inspect());
-  }
-
-  @Test
-  public void testVerticalTree() throws MetadataException, IOException {
-    ISchemaFile sf = SchemaFile.initSchemaFile("root.sgvt.vt", TEST_SCHEMA_REGION_ID);
-    IStorageGroupMNode sgNode = new StorageGroupEntityMNode(null, "sg", 11_111L);
-    sf.updateStorageGroupNode(sgNode);
-
-    IMNode root = getVerticalTree(100, "VT");
-    Iterator<IMNode> ite = getTreeBFT(root);
-    while (ite.hasNext()) {
-      sf.writeMNode(ite.next());
-    }
-
-    IMNode vt1 = getNode(root, "root.VT_0.VT_1");
-    IMNode vt4 = getNode(root, "root.VT_0.VT_1.VT_2.VT_3.VT_4");
-    ICachedMNodeContainer.getCachedMNodeContainer(vt1).getNewChildBuffer().clear();
-    addMeasurementChild(vt1, "newM");
-    sf.writeMNode(vt1);
-
-    IMNode vt0 = getNode(root, "root.VT_0");
-    Assert.assertEquals(
-        ICachedMNodeContainer.getCachedMNodeContainer(vt1).getSegmentAddress(),
-        RecordUtils.getRecordSegAddr(
-            getSegment(sf, ICachedMNodeContainer.getCachedMNodeContainer(vt0).getSegmentAddress())
-                .getRecord("VT_1")));
-    Assert.assertEquals(
-        2,
-        getSegment(sf, ICachedMNodeContainer.getCachedMNodeContainer(vt1).getSegmentAddress())
-            .getKeyOffsetList()
-            .size());
-    sf.close();
-
-    ISchemaFile nsf = SchemaFile.loadSchemaFile("root.sgvt.vt", TEST_SCHEMA_REGION_ID);
-
-    ICachedMNodeContainer.getCachedMNodeContainer(vt1).getNewChildBuffer().clear();
-    ICachedMNodeContainer.getCachedMNodeContainer(vt4).getNewChildBuffer().clear();
-    Set<String> newNodes = new HashSet<>();
-    for (int i = 0; i < 15; i++) {
-      addMeasurementChild(vt1, "r1_" + i);
-      addMeasurementChild(vt4, "r4_" + i);
-      newNodes.add("r1_" + i);
-      newNodes.add("r4_" + i);
-    }
-    nsf.writeMNode(vt1);
-    nsf.writeMNode(vt4);
-
-    nsf.close();
-    nsf = SchemaFile.loadSchemaFile("root.sgvt.vt", TEST_SCHEMA_REGION_ID);
-
-    Iterator<IMNode> vt1Children = nsf.getChildren(vt1);
-    Iterator<IMNode> vt4Children = nsf.getChildren(vt4);
-
-    while (vt1Children.hasNext()) {
-      newNodes.remove(vt1Children.next().getName());
-    }
-
-    while (vt4Children.hasNext()) {
-      newNodes.remove(vt4Children.next().getName());
-    }
-
-    Assert.assertTrue(newNodes.isEmpty());
-
-    ICachedMNodeContainer.getCachedMNodeContainer(vt1).getNewChildBuffer().clear();
-    ICachedMNodeContainer.getCachedMNodeContainer(vt4).getNewChildBuffer().clear();
-    for (int i = 0; i < 660; i++) {
-      addMeasurementChild(vt1, "2r1_" + i);
-      addMeasurementChild(vt4, "2r4_" + i);
-      newNodes.add("2r1_" + i);
-      newNodes.add("2r4_" + i);
-    }
-    nsf.writeMNode(vt1);
-    nsf.writeMNode(vt4);
-
-    Assert.assertEquals(11111L, nsf.init().getAsStorageGroupMNode().getDataTTL());
-
-    nsf.close();
-  }
+  // region Quick Print
 
   private void printSF(ISchemaFile file) throws IOException, MetadataException {
     System.out.println(((SchemaFile) file).inspect());
   }
 
-  private SchemaPage getPage(ISchemaFile sf, long addr) throws MetadataException, IOException {
-    return ((SchemaFile) sf).getPageOnTest(SchemaFile.getPageIndex(addr));
-  }
-
-  private Segment getSegment(ISchemaFile sf, long addr) throws MetadataException, IOException {
-    return getPage(sf, addr).getSegmentTest(SchemaFile.getSegIndex(addr));
-  }
-
   public static void print(Object o) {
     System.out.println(o.toString());
   }
+
+  // endregion
+
+  // region Schema File Shortcut
+  private SchemaPage getPage(ISchemaFile sf, long addr) {
+    try {
+      return ((SchemaFile) sf).getPageOnTest(SchemaFile.getPageIndex(addr));
+    } catch (MetadataException | IOException e) {
+      e.printStackTrace();
+      return null;
+    }
+  }
+
+  private static Segment getSegment(ISchemaFile sf, long address) {
+    try {
+      return ((SchemaFile) sf)
+          .getPageOnTest(SchemaFile.getPageIndex(address))
+          .getSegmentTest(SchemaFile.getSegIndex(address));
+    } catch (MetadataException | IOException e) {
+      e.printStackTrace();
+      return null;
+    }
+  }
+
+  private static long getSegAddr(ISchemaFile sf, long curAddr, String key) {
+    try {
+      return ((SchemaFile) sf).getTargetSegmentOnTest(curAddr, key);
+    } catch (MetadataException | IOException e) {
+      e.printStackTrace();
+      return -1L;
+    }
+  }
+
+  // endregion
+
+  // region IMNode Shortcut
+  private void addMeasurementChild(IMNode par, String mid) {
+    par.addChild(getMeasurementNode(par, mid, mid + "alias"));
+  }
+
+  private IMeasurementSchema getSchema(String id) {
+    return new MeasurementSchema(id, TSDataType.FLOAT);
+  }
+
+  private IMNode getNode(IMNode root, String path) throws MetadataException {
+    String[] pathNodes = MetaUtils.splitPathToDetachedPath(path);
+    IMNode cur = root;
+    for (String node : pathNodes) {
+      if (!node.equals("root")) {
+        cur = cur.getChild(node);
+      }
+    }
+    return cur;
+  }
+
+  private IMNode getInternalWithSegAddr(IMNode par, String name, long segAddr) {
+    IMNode node = new EntityMNode(par, name);
+    ICachedMNodeContainer.getCachedMNodeContainer(node).setSegmentAddress(segAddr);
+    return node;
+  }
+
+  private IMNode getMeasurementNode(IMNode par, String name, String alias) {
+    IMeasurementSchema schema = new MeasurementSchema(name, TSDataType.FLOAT);
+    IMeasurementMNode mNode =
+        MeasurementMNode.getMeasurementMNode(par.getAsEntityMNode(), name, schema, alias);
+    return mNode;
+  }
+
+  private static void addNodeToUpdateBuffer(IMNode par, IMNode child) {
+    ICachedMNodeContainer.getCachedMNodeContainer(par).remove(child.getName());
+    ICachedMNodeContainer.getCachedMNodeContainer(par).appendMNode(child);
+    ICachedMNodeContainer.getCachedMNodeContainer(par).moveMNodeToCache(child.getName());
+    ICachedMNodeContainer.getCachedMNodeContainer(par).updateMNode(child.getName());
+  }
+
+  private static void moveToUpdateBuffer(IMNode par, String childName) {
+    ICachedMNodeContainer.getCachedMNodeContainer(par).appendMNode(par.getChild(childName));
+    ICachedMNodeContainer.getCachedMNodeContainer(par).moveMNodeToCache(childName);
+    ICachedMNodeContainer.getCachedMNodeContainer(par).updateMNode(childName);
+  }
+
+  private static long getSegAddrInContainer(IMNode par) {
+    return ICachedMNodeContainer.getCachedMNodeContainer(par).getSegmentAddress();
+  }
+
+  // endregion
+
+  // region Tree Constructor
 
   private IMNode virtualTriangleMTree(int size, String sgPath) throws MetadataException {
     String[] sgPathNodes = MetaUtils.splitPathToDetachedPath(sgPath);
@@ -573,29 +734,6 @@ public class SchemaFileTest {
     return root;
   }
 
-  private void addMeasurementChild(IMNode par, String mid) {
-    par.addChild(getMeasurementNode(par, mid, mid + "alias"));
-  }
-
-  private IMeasurementSchema getSchema(String id) {
-    return new MeasurementSchema(id, TSDataType.FLOAT);
-  }
-
-  private IMNode getNode(IMNode root, String path) throws MetadataException {
-    String[] pathNodes = MetaUtils.splitPathToDetachedPath(path);
-    IMNode cur = root;
-    for (String node : pathNodes) {
-      if (!node.equals("root")) {
-        cur = cur.getChild(node);
-      }
-    }
-    return cur;
-  }
-
-  private IMNode getFlatTree(int flatSize) {
-    return getFlatTree(flatSize, "app");
-  }
-
   private Iterator<IMNode> getTreeBFT(IMNode root) {
     return new Iterator<IMNode>() {
       Queue<IMNode> queue = new LinkedList<IMNode>();
@@ -622,23 +760,6 @@ public class SchemaFileTest {
     };
   }
 
-  private IMNode getInternalWithSegAddr(IMNode par, String name, long segAddr) {
-    IMNode node = new EntityMNode(par, name);
-    ICachedMNodeContainer.getCachedMNodeContainer(node).setSegmentAddress(segAddr);
-    return node;
-  }
+  // endregion
 
-  private IMNode getMeasurementNode(IMNode par, String name, String alias) {
-    IMeasurementSchema schema = new MeasurementSchema(name, TSDataType.FLOAT);
-    IMeasurementMNode mNode =
-        MeasurementMNode.getMeasurementMNode(par.getAsEntityMNode(), name, schema, alias);
-    return mNode;
-  }
-
-  public static void addNodeToUpdateBuffer(IMNode par, IMNode child) {
-    ICachedMNodeContainer.getCachedMNodeContainer(par).remove(child.getName());
-    ICachedMNodeContainer.getCachedMNodeContainer(par).appendMNode(child);
-    ICachedMNodeContainer.getCachedMNodeContainer(par).moveMNodeToCache(child.getName());
-    ICachedMNodeContainer.getCachedMNodeContainer(par).updateMNode(child.getName());
-  }
 }
