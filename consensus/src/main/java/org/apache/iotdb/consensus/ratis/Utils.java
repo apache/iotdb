@@ -42,7 +42,7 @@ public class Utils {
   private static final String SchemaRegionAbbr = "SR";
   private static final String PartitionRegionAbbr = "PR";
 
-  public static String IP_PORT(Endpoint endpoint) {
+  public static String IPAddress(Endpoint endpoint) {
     return String.format("%s:%d", endpoint.getIp(), endpoint.getPort());
   }
 
@@ -74,7 +74,7 @@ public class Utils {
     String Id = String.format("%s-%d", endpoint.getIp(), endpoint.getPort());
     return RaftPeer.newBuilder()
         .setId(Id)
-        .setAddress(IP_PORT(endpoint))
+        .setAddress(IPAddress(endpoint))
         .setPriority(priority)
         .build();
   }

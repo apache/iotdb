@@ -170,7 +170,7 @@ public class StandAloneConsensus implements IConsensus {
   }
 
   @Override
-  public boolean isLeaderOf(ConsensusGroupId groupId) {
-    return false;
+  public boolean isLeader(ConsensusGroupId groupId) {
+    return true;
   }
 }

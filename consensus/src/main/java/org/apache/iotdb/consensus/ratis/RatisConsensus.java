@@ -440,7 +440,7 @@ public class RatisConsensus implements IConsensus {
   }
 
   @Override
-  public boolean isLeaderOf(ConsensusGroupId groupId) {
+  public boolean isLeader(ConsensusGroupId groupId) {
     RaftGroupId raftGroupId = Utils.toRatisGroupId(groupId);
 
     boolean isLeader;
@@ -448,6 +448,7 @@ public class RatisConsensus implements IConsensus {
       isLeader = server.getDivision(raftGroupId).getInfo().isLeader();
     } catch (IOException exception) {
       // if the query fails, simply return not leader
+      logger.warn("isLeader request failed with exception: ", exception);
       isLeader = false;
     }
     return isLeader;
@@ -525,7 +526,7 @@ public class RatisConsensus implements IConsensus {
     this.localFakeCallId = new AtomicLong(0);
 
     // create a RaftPeer as endpoint of comm
-    String address = Utils.IP_PORT(endpoint);
+    String address = Utils.IPAddress(endpoint);
     myself = Utils.toRaftPeer(endpoint, DEFAULT_PRIORITY);
 
     RaftProperties properties = new RaftProperties();
