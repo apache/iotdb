@@ -309,17 +309,31 @@ public class CompactionTaskManager implements IService {
   }
 
   /**
-   * Abort all compactions of a storage group. The caller must acquire the write lock of the
-   * corresponding storage group.
+   * Abort all compactions of a storage group. The running compaction tasks will be returned as a
+   * list, the compaction threads for the storage group are not terminated util all the tasks in the
+   * list is finish. The outer caller can use function isAnyTaskInListStillRunning to determine
+   * this.
    */
-  public synchronized void abortCompaction(String storageGroupName) {
+  public synchronized List<AbstractCompactionTask> abortCompaction(String storageGroupName) {
+    List<AbstractCompactionTask> compactionTaskOfCurSG = new ArrayList<>();
     for (Pair<AbstractCompactionTask, Future<Void>> futurePair : futureList) {
       if (futurePair.left.getFullStorageGroupName().contains(storageGroupName)) {
         futurePair.right.cancel(true);
+        compactionTaskOfCurSG.add(futurePair.left);
       }
     }
 
     candidateCompactionTaskQueue.clear();
+    return compactionTaskOfCurSG;
+  }
+
+  public synchronized boolean isAnyTaskInListStillRunning(
+      List<AbstractCompactionTask> compactionTasks) {
+    boolean anyTaskRunning = false;
+    for (AbstractCompactionTask task : compactionTasks) {
+      anyTaskRunning = anyTaskRunning || runningCompactionTaskList.contains(task);
+    }
+    return anyTaskRunning;
   }
 
   public int getExecutingTaskCount() {

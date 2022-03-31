@@ -28,6 +28,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.ServerConfigConsistent;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
+import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.CloseFileListener;
 import org.apache.iotdb.db.engine.flush.FlushListener;
@@ -857,18 +858,33 @@ public class StorageEngine implements IService {
     if (!processorMap.containsKey(storageGroupPath)) {
       return;
     }
-    CompactionTaskManager.getInstance().abortCompaction(storageGroupPath.getFullPath());
-    try {
-      Thread.sleep(2000);
-    } catch (InterruptedException e) {
-      // Wait two seconds so that the compaction thread can end
-    }
+    abortCompactionTaskForStorageGroup(storageGroupPath);
     deleteAllDataFilesInOneStorageGroup(storageGroupPath);
     releaseWalDirectByteBufferPoolInOneStorageGroup(storageGroupPath);
     StorageGroupManager storageGroupManager = processorMap.remove(storageGroupPath);
     storageGroupManager.deleteStorageGroupSystemFolder(
         systemDir + File.pathSeparator + storageGroupPath);
     storageGroupManager.stopSchedulerPool();
+  }
+
+  private void abortCompactionTaskForStorageGroup(PartialPath storageGroupPath) {
+    if (!processorMap.containsKey(storageGroupPath)) {
+      return;
+    }
+
+    StorageGroupManager manager = processorMap.get(storageGroupPath);
+    manager.setAllowCompaction(false);
+
+    List<AbstractCompactionTask> runningTasks =
+        CompactionTaskManager.getInstance().abortCompaction(storageGroupPath.getFullPath());
+    while (CompactionTaskManager.getInstance().isAnyTaskInListStillRunning(runningTasks)) {
+      try {
+        Thread.sleep(10);
+      } catch (InterruptedException e) {
+        logger.error("Thread get interrupted while waiting for running compaction task to finish");
+        break;
+      }
+    }
   }
 
   public void loadNewTsFileForSync(TsFileResource newTsFileResource)

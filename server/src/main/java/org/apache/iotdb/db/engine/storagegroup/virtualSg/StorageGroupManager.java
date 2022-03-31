@@ -507,6 +507,12 @@ public class StorageGroupManager {
     isSettling.set(settling);
   }
 
+  public void setAllowCompaction(boolean allowCompaction) {
+    for (VirtualStorageGroupProcessor processor : virtualStorageGroupProcessor) {
+      processor.setAllowCompaction(allowCompaction);
+    }
+  }
+
   public AtomicBoolean getIsSettling() {
     return isSettling;
   }

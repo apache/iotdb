@@ -30,6 +30,7 @@ import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
+import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.compaction.task.CompactionRecoverManager;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.CloseFileListener;
@@ -2974,10 +2975,8 @@ public class VirtualStorageGroupProcessor {
     // this requires blocking all other activities
     writeLock("removePartitions");
     try {
-      tsFileManager.setAllowCompaction(false);
-      // abort ongoing comapctions and merges
-      CompactionTaskManager.getInstance()
-          .abortCompaction(logicalStorageGroupName + "-" + virtualStorageGroupId);
+      // abort ongoing compaction
+      abortCompaction();
       try {
         Thread.sleep(2000);
       } catch (InterruptedException e) {
@@ -2993,6 +2992,21 @@ public class VirtualStorageGroupProcessor {
 
     } finally {
       writeUnlock();
+    }
+  }
+
+  private void abortCompaction() {
+    tsFileManager.setAllowCompaction(false);
+    List<AbstractCompactionTask> runningTasks =
+        CompactionTaskManager.getInstance()
+            .abortCompaction(logicalStorageGroupName + "-" + virtualStorageGroupId);
+    while (CompactionTaskManager.getInstance().isAnyTaskInListStillRunning(runningTasks)) {
+      try {
+        Thread.sleep(10);
+      } catch (InterruptedException e) {
+        logger.error("Thread get interrupted when waiting compaction to finish", e);
+        break;
+      }
     }
   }
 
@@ -3149,6 +3163,10 @@ public class VirtualStorageGroupProcessor {
 
   public void setCustomFlushListeners(List<FlushListener> customFlushListeners) {
     this.customFlushListeners = customFlushListeners;
+  }
+
+  public void setAllowCompaction(boolean allowCompaction) {
+    this.tsFileManager.setAllowCompaction(allowCompaction);
   }
 
   private enum LoadTsFileType {
