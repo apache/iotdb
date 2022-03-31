@@ -29,12 +29,14 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.time.ZoneId;
 
 public class QueryPlannerTest {
 
+  @Ignore
   @Test
   public void TestSqlToDistributedPlan() {
 
