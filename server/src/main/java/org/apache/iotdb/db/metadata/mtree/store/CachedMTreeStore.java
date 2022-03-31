@@ -138,8 +138,6 @@ public class CachedMTreeStore implements IMTreeStore {
     if (!getCachedMNodeContainer(parent).isVolatile()) {
       try {
         node = file.getChildNode(parent, name);
-      } catch (MetadataException e) {
-        // todo fix this exception handler
       } catch (IOException e) {
         throw new MetadataException(e);
       }
