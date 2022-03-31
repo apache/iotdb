@@ -369,18 +369,18 @@ public class TSServiceImpl implements TSIService.Iface {
         LOGGER.error("There is an exception during start DoubleWrite", e);
       }
 
-      if (isSyncDoubleWrite) {
-        // create DoubleWriteTaskThreadPool
-        doubleWriteTaskThreadPool =
-            new ThreadPoolExecutor(
-                config.getDoubleWriteTaskCorePoolSize(),
-                config.getDoubleWriteTaskMaxPoolSize(),
-                config.getDoubleWriteTaskKeepAliveTime(),
-                TimeUnit.HOURS,
-                new ArrayBlockingQueue<>(config.getDoubleWriteTaskMaxPoolSize()),
-                Executors.defaultThreadFactory(),
-                new ThreadPoolExecutor.DiscardOldestPolicy());
+      // create DoubleWriteTaskThreadPool
+      doubleWriteTaskThreadPool =
+          new ThreadPoolExecutor(
+              config.getDoubleWriteTaskCorePoolSize(),
+              config.getDoubleWriteTaskMaxPoolSize(),
+              config.getDoubleWriteTaskKeepAliveTime(),
+              TimeUnit.HOURS,
+              new ArrayBlockingQueue<>(config.getDoubleWriteTaskMaxPoolSize()),
+              Executors.defaultThreadFactory(),
+              new ThreadPoolExecutor.DiscardOldestPolicy());
 
+      if (isSyncDoubleWrite) {
         doubleWriteProducer = null;
       } else {
         // create DoubleWriteProducer and DoubleWriteConsumer
@@ -392,19 +392,13 @@ public class TSServiceImpl implements TSIService.Iface {
               new DoubleWriteConsumer(blockingQueue, doubleWriteSessionPool);
           new Thread(consumer).start();
         }
-
-        doubleWriteTaskThreadPool = null;
       }
-
     } else {
       isEnableDoubleWrite = false;
       isSyncDoubleWrite = true;
-
       doubleWriteSessionPool = null;
       doubleWriteProtectorService = null;
-
       doubleWriteTaskThreadPool = null;
-
       doubleWriteProducer = null;
     }
   }
@@ -2184,8 +2178,31 @@ public class TSServiceImpl implements TSIService.Iface {
       LOGGER.error("double write deserialization failed.", e);
     }
 
-    if (physicalPlan instanceof InsertPlan) {
-      LOGGER.info("DoubleWrite receive: {}", physicalPlan.getPaths().get(0));
+    if (physicalPlan instanceof SetStorageGroupPlan) {
+      LOGGER.info(
+          "DoubleWrite receive SetStorageGroupPlan: {}",
+          ((SetStorageGroupPlan) physicalPlan).getPath().toString());
+    } else if (physicalPlan instanceof DeleteStorageGroupPlan) {
+      LOGGER.info(
+          "DoubleWrite receive DeleteStorageGroupPlan: {}", physicalPlan.getPaths().toString());
+    } else if (physicalPlan instanceof CreateTimeSeriesPlan) {
+      LOGGER.info(
+          "DoubleWrite receive CreateTimeSeriesPlan: {}", physicalPlan.getPaths().toString());
+    } else if (physicalPlan instanceof CreateMultiTimeSeriesPlan) {
+      LOGGER.info(
+          "DoubleWrite receive CreateMultiTimeSeriesPlan: {}", physicalPlan.getPaths().toString());
+    } else if (physicalPlan instanceof CreateAlignedTimeSeriesPlan) {
+      LOGGER.info(
+          "DoubleWrite receive CreateAlignedTimeSeriesPlan: {}",
+          physicalPlan.getPaths().toString());
+    } else if (physicalPlan instanceof DeleteTimeSeriesPlan) {
+      LOGGER.info("DoubleWrite receive: {}", physicalPlan.getPaths().toString());
+    } else if (physicalPlan instanceof InsertPlan) {
+      LOGGER.info("DoubleWrite receive: {}", physicalPlan.getPaths().toString());
+    } else {
+      LOGGER.error(
+          "DoubleWrite receive unsupported PhysicalPlan type: {}", physicalPlan.getOperatorName());
+      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
     }
 
     try {
@@ -2199,8 +2216,27 @@ public class TSServiceImpl implements TSIService.Iface {
 
   private void transmitDoubleWrite(PhysicalPlan physicalPlan) {
 
-    if (physicalPlan instanceof InsertPlan) {
-      LOGGER.info("DoubleWrite transmit: {}", physicalPlan.getPaths().get(0));
+    if (physicalPlan instanceof SetStorageGroupPlan) {
+      LOGGER.info(
+          "DoubleWrite transmit SetStorageGroupPlan: {}",
+          ((SetStorageGroupPlan) physicalPlan).getPath().toString());
+    } else if (physicalPlan instanceof DeleteStorageGroupPlan) {
+      LOGGER.info(
+          "DoubleWrite transmit DeleteStorageGroupPlan: {}", physicalPlan.getPaths().toString());
+    } else if (physicalPlan instanceof CreateTimeSeriesPlan) {
+      LOGGER.info(
+          "DoubleWrite transmit CreateTimeSeriesPlan: {}", physicalPlan.getPaths().toString());
+    } else if (physicalPlan instanceof CreateMultiTimeSeriesPlan) {
+      LOGGER.info(
+          "DoubleWrite transmit CreateMultiTimeSeriesPlan: {}", physicalPlan.getPaths().toString());
+    } else if (physicalPlan instanceof CreateAlignedTimeSeriesPlan) {
+      LOGGER.info(
+          "DoubleWrite transmit CreateAlignedTimeSeriesPlan: {}",
+          physicalPlan.getPaths().toString());
+    } else if (physicalPlan instanceof DeleteTimeSeriesPlan) {
+      LOGGER.info("DoubleWrite transmit: {}", physicalPlan.getPaths().toString());
+    } else if (physicalPlan instanceof InsertPlan) {
+      LOGGER.info("DoubleWrite transmit: {}", physicalPlan.getPaths().toString());
     } else {
       return;
     }
@@ -2218,7 +2254,8 @@ public class TSServiceImpl implements TSIService.Iface {
       return;
     }
 
-    if (isSyncDoubleWrite) {
+    // Sync transmit when is sync DoubleWrite mode or the PhysicalPlan is DDL
+    if (isSyncDoubleWrite || !(physicalPlan instanceof InsertPlan)) {
       // create and wait DoubleWriteTask
       DoubleWriteTask doubleWriteTask =
           new DoubleWriteTask(doubleWriteProtectorService, buffer, doubleWriteSessionPool);
