@@ -23,6 +23,8 @@ import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SourceNode;
 import org.apache.iotdb.db.mpp.sql.rewriter.WildcardsRemover;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.expression.Expression;
@@ -33,7 +35,7 @@ import org.apache.iotdb.db.query.udf.core.layer.RawQueryInputLayer;
 import org.apache.iotdb.db.query.udf.core.layer.SingleInputColumnMultiReferenceIntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.layer.SingleInputColumnSingleReferenceIntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
-import org.apache.iotdb.db.query.udf.core.transformer.ArithmeticBinaryTransformer;
+import org.apache.iotdb.db.query.udf.core.transformer.BinaryTransformer;
 import org.apache.iotdb.db.query.udf.core.transformer.Transformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -75,8 +77,8 @@ public abstract class BinaryExpression extends Expression {
 
   @Override
   public boolean isUserDefinedAggregationFunctionExpression() {
-    return leftExpression.isPlainAggregationFunctionExpression()
-        || rightExpression.isPlainAggregationFunctionExpression()
+    return leftExpression.isBuiltInAggregationFunctionExpression()
+        || rightExpression.isBuiltInAggregationFunctionExpression()
         || leftExpression.isUserDefinedAggregationFunctionExpression()
         || rightExpression.isUserDefinedAggregationFunctionExpression();
   }
@@ -84,6 +86,20 @@ public abstract class BinaryExpression extends Expression {
   @Override
   public List<Expression> getExpressions() {
     return Arrays.asList(leftExpression, rightExpression);
+  }
+
+  @Override
+  public final void concat(
+      List<PartialPath> prefixPaths,
+      List<Expression> resultExpressions,
+      PathPatternTree patternTree) {
+    List<Expression> leftExpressions = new ArrayList<>();
+    leftExpression.concat(prefixPaths, leftExpressions, patternTree);
+
+    List<Expression> rightExpressions = new ArrayList<>();
+    rightExpression.concat(prefixPaths, rightExpressions, patternTree);
+
+    reconstruct(leftExpressions, rightExpressions, resultExpressions);
   }
 
   @Override
@@ -146,6 +162,30 @@ public abstract class BinaryExpression extends Expression {
           case "%":
             resultExpressions.add(new ModuloExpression(le, re));
             break;
+          case "<":
+            resultExpressions.add(new LessThanExpression(le, re));
+            break;
+          case "<=":
+            resultExpressions.add(new LessEqualExpression(le, re));
+            break;
+          case ">":
+            resultExpressions.add(new GreaterThanExpression(le, re));
+            break;
+          case ">=":
+            resultExpressions.add(new GreaterEqualExpression(le, re));
+            break;
+          case "=":
+            resultExpressions.add(new EqualToExpression(le, re));
+            break;
+          case "!=":
+            resultExpressions.add(new NonEqualExpression(le, re));
+            break;
+          case "&":
+            resultExpressions.add(new LogicAndExpression(le, re));
+            break;
+          case "|":
+            resultExpressions.add(new LogicOrExpression(le, re));
+            break;
           default:
             throw new UnsupportedOperationException();
         }
@@ -157,6 +197,11 @@ public abstract class BinaryExpression extends Expression {
   public void collectPaths(Set<PartialPath> pathSet) {
     leftExpression.collectPaths(pathSet);
     rightExpression.collectPaths(pathSet);
+  }
+
+  @Override
+  public void collectPlanNode(Set<SourceNode> planNodeSet) {
+    // TODO: support nested expressions
   }
 
   @Override
@@ -222,7 +267,7 @@ public abstract class BinaryExpression extends Expression {
     return expressionIntermediateLayerMap.get(this);
   }
 
-  protected abstract ArithmeticBinaryTransformer constructTransformer(
+  protected abstract BinaryTransformer constructTransformer(
       LayerPointReader leftParentLayerPointReader, LayerPointReader rightParentLayerPointReader);
 
   @Override

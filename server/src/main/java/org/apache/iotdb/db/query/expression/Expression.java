@@ -23,6 +23,8 @@ import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SourceNode;
 import org.apache.iotdb.db.mpp.sql.rewriter.WildcardsRemover;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.expression.unary.ConstantOperand;
@@ -47,7 +49,7 @@ public abstract class Expression {
   private String expressionStringCache;
   protected Boolean isConstantOperandCache = null;
 
-  public boolean isPlainAggregationFunctionExpression() {
+  public boolean isBuiltInAggregationFunctionExpression() {
     return false;
   }
 
@@ -59,6 +61,12 @@ public abstract class Expression {
     return false;
   }
 
+  public abstract void concat(
+      List<PartialPath> prefixPaths,
+      List<Expression> resultExpressions,
+      PathPatternTree patternTree);
+
+  // TODO: remove after MPP finish
   public abstract void concat(List<PartialPath> prefixPaths, List<Expression> resultExpressions);
 
   public abstract void removeWildcards(
@@ -75,6 +83,8 @@ public abstract class Expression {
 
   public abstract void constructUdfExecutors(
       Map<String, UDTFExecutor> expressionName2Executor, ZoneId zoneId);
+
+  public abstract void collectPlanNode(Set<SourceNode> planNodeSet);
 
   public abstract void updateStatisticsForMemoryAssigner(LayerMemoryAssigner memoryAssigner);
 

@@ -75,7 +75,7 @@ public class UDAFQueryStatement extends QueryStatement {
           "Common queries and aggregated queries are not allowed to appear at the same time.");
     }
     // Currently, the aggregation function expression can only contain a timeseries operand.
-    if (expression.isPlainAggregationFunctionExpression()) {
+    if (expression.isBuiltInAggregationFunctionExpression()) {
       if (expression.getExpressions().size() == 1
           && expression.getExpressions().get(0) instanceof TimeSeriesOperand) {
         return;

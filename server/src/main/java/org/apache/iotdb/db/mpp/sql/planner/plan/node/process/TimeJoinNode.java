@@ -18,12 +18,14 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
-import org.apache.iotdb.db.mpp.common.FilterNullPolicy;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeIdAllocator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullPolicy;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -71,19 +73,14 @@ public class TimeJoinNode extends ProcessNode {
   }
 
   @Override
-  public void addChildren(PlanNode child) {}
-
-  @Override
   public PlanNode clone() {
     return new TimeJoinNode(
         PlanNodeIdAllocator.generateId(), this.mergeOrder, this.filterNullPolicy);
   }
 
   @Override
-  public PlanNode cloneWithChildren(List<PlanNode> children) {
-    TimeJoinNode node = (TimeJoinNode) this.clone();
-    node.setChildren(children);
-    return node;
+  public int allowedChildCount() {
+    return CHILD_COUNT_NO_LIMIT;
   }
 
   @Override
@@ -105,12 +102,21 @@ public class TimeJoinNode extends ProcessNode {
   @Override
   public void serialize(ByteBuffer byteBuffer) {}
 
+  @Override
   public void addChild(PlanNode child) {
     this.children.add(child);
   }
 
   public void setChildren(List<PlanNode> children) {
     this.children = children;
+  }
+
+  public OrderBy getMergeOrder() {
+    return mergeOrder;
+  }
+
+  public FilterNullPolicy getFilterNullPolicy() {
+    return filterNullPolicy;
   }
 
   public void setMergeOrder(OrderBy mergeOrder) {
@@ -123,5 +129,16 @@ public class TimeJoinNode extends ProcessNode {
 
   public String toString() {
     return "TimeJoinNode-" + this.getId();
+  }
+
+  @TestOnly
+  public Pair<String, List<String>> print() {
+    String title = String.format("[TimeJoinNode (%s)]", this.getId());
+    List<String> attributes = new ArrayList<>();
+    attributes.add("MergeOrder: " + (this.getMergeOrder() == null ? "null" : this.getMergeOrder()));
+    attributes.add(
+        "FilterNullPolicy: "
+            + (this.getFilterNullPolicy() == null ? "null" : this.getFilterNullPolicy()));
+    return new Pair<>(title, attributes);
   }
 }

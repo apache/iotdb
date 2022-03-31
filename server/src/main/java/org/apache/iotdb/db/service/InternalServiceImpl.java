@@ -20,8 +20,16 @@
 package org.apache.iotdb.db.service;
 
 import org.apache.iotdb.mpp.rpc.thrift.InternalService;
-import org.apache.iotdb.mpp.rpc.thrift.ShcameFetchReqest;
-import org.apache.iotdb.mpp.rpc.thrift.ShcameFetchResponse;
+import org.apache.iotdb.mpp.rpc.thrift.SchemaFetchRequest;
+import org.apache.iotdb.mpp.rpc.thrift.SchemaFetchResponse;
+import org.apache.iotdb.mpp.rpc.thrift.TCancelFragmentInstanceReq;
+import org.apache.iotdb.mpp.rpc.thrift.TCancelPlanFragmentReq;
+import org.apache.iotdb.mpp.rpc.thrift.TCancelQueryReq;
+import org.apache.iotdb.mpp.rpc.thrift.TCancelResp;
+import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStateReq;
+import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceStateResp;
+import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceReq;
+import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceResp;
 
 import org.apache.thrift.TException;
 
@@ -32,7 +40,34 @@ public class InternalServiceImpl implements InternalService.Iface {
   }
 
   @Override
-  public ShcameFetchResponse fetchSchema(ShcameFetchReqest req) throws TException {
+  public TSendFragmentInstanceResp sendFragmentInstance(TSendFragmentInstanceReq req)
+      throws TException {
+    return null;
+  }
+
+  @Override
+  public TFragmentInstanceStateResp fetchFragmentInstanceState(TFetchFragmentInstanceStateReq req)
+      throws TException {
+    return null;
+  }
+
+  @Override
+  public TCancelResp cancelQuery(TCancelQueryReq req) throws TException {
+    return null;
+  }
+
+  @Override
+  public TCancelResp cancelPlanFragment(TCancelPlanFragmentReq req) throws TException {
+    return null;
+  }
+
+  @Override
+  public TCancelResp cancelFragmentInstance(TCancelFragmentInstanceReq req) throws TException {
+    return null;
+  }
+
+  @Override
+  public SchemaFetchResponse fetchSchema(SchemaFetchRequest req) throws TException {
     throw new UnsupportedOperationException();
   }
 }

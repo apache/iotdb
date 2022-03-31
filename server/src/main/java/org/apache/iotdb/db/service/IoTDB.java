@@ -35,12 +35,9 @@ import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.cq.ContinuousQueryService;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.ISchemaEngine;
-import org.apache.iotdb.db.metadata.MetadataManagerType;
-import org.apache.iotdb.db.metadata.SchemaEngine;
-import org.apache.iotdb.db.metadata.rocksdb.RSchemaEngine;
+import org.apache.iotdb.db.metadata.LocalConfigManager;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.protocol.influxdb.meta.InfluxDBMetaManager;
 import org.apache.iotdb.db.protocol.rest.RestService;
 import org.apache.iotdb.db.query.udf.service.TemporaryQueryDataFileService;
@@ -65,8 +62,9 @@ public class IoTDB implements IoTDBMBean {
   private final String mbeanName =
       String.format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, "IoTDB");
   private static final RegisterManager registerManager = new RegisterManager();
+  public static LocalSchemaProcessor schemaProcessor = LocalSchemaProcessor.getInstance();
+  public static LocalConfigManager configManager = LocalConfigManager.getInstance();
   public static ServiceProvider serviceProvider;
-  public static ISchemaEngine schemaEngine;
   private static boolean clusterMode = false;
 
   public static IoTDB getInstance() {
@@ -85,8 +83,8 @@ public class IoTDB implements IoTDBMBean {
     daemon.active();
   }
 
-  public static void setSchemaEngine(SchemaEngine schemaEngine) {
-    IoTDB.schemaEngine = schemaEngine;
+  public static void setSchemaProcessor(LocalSchemaProcessor schemaProcessor) {
+    IoTDB.schemaProcessor = schemaProcessor;
   }
 
   public static void setServiceProvider(ServiceProvider serviceProvider) {
@@ -130,7 +128,7 @@ public class IoTDB implements IoTDBMBean {
     initServiceProvider();
     registerManager.register(MetricsService.getInstance());
     logger.info("recover the schema...");
-    initSchemaEngine();
+    initConfigManager();
     registerManager.register(JMXService.getInstance());
     registerManager.register(FlushManager.getInstance());
     registerManager.register(MultiFileLogNodeManager.getInstance());
@@ -173,6 +171,9 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(TriggerRegistrationService.getInstance());
     registerManager.register(ContinuousQueryService.getInstance());
 
+    // start reporter
+    MetricsService.getInstance().startAllReporter();
+
     logger.info("Congratulation, IoTDB is set up successfully. Now, enjoy yourself!");
   }
 
@@ -202,32 +203,12 @@ public class IoTDB implements IoTDBMBean {
     logger.info("Deactivating IoTDB...");
     registerManager.deregisterAll();
     JMXService.deregisterMBean(mbeanName);
-    try {
-      schemaEngine.deactivate();
-    } catch (MetadataException e) {
-      logger.error("Failed to close SchemaEngine because:", e);
-    }
     logger.info("IoTDB is deactivated.");
   }
 
-  private void initSchemaEngine() {
+  private void initConfigManager() {
     long time = System.currentTimeMillis();
-    if (schemaEngine == null) {
-      try {
-        if (IoTDBDescriptor.getInstance().getConfig().getMetadataManagerType()
-            == MetadataManagerType.ROCKSDB_MANAGER) {
-          schemaEngine = new RSchemaEngine();
-          logger.info("Use MRocksDBManager to manage metadata");
-        } else {
-          schemaEngine = SchemaEngine.getInstance();
-          logger.info("Use MManager to manage metadata");
-        }
-      } catch (Exception e) {
-        logger.error("create meta manager fail", e);
-        System.exit(1);
-      }
-    }
-    IoTDB.schemaEngine.init();
+    IoTDB.configManager.init();
     long end = System.currentTimeMillis() - time;
     logger.info("spend {}ms to recover schema.", end);
     logger.info(
