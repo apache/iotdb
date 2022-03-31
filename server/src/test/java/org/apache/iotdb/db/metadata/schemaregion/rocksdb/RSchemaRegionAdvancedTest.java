@@ -21,7 +21,6 @@ package org.apache.iotdb.db.metadata.schemaregion.rocksdb;
 import org.apache.iotdb.commons.partition.SchemaRegionId;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode.RStorageGroupMNode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -36,10 +35,6 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.Collections;
-import java.util.List;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
 
 @Ignore
 public class RSchemaRegionAdvancedTest {
@@ -134,30 +129,6 @@ public class RSchemaRegionAdvancedTest {
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
-  }
-
-  @Test
-  public void test() {
-
-    try {
-      List<MeasurementPath> pathList =
-          schemaRegion.getMeasurementPaths(new PartialPath("root.vehicle.s1.d1.**"));
-      assertEquals(6, pathList.size());
-      pathList = schemaRegion.getMeasurementPaths(new PartialPath("root.vehicle.s0.d0.**"));
-      assertEquals(6, pathList.size());
-      //      pathList = schemaEngine.getMeasurementPaths(new PartialPath("root.vehicle.s*.**"));
-      //      assertEquals(12, pathList.size());
-      //      pathList = schemaEngine.getMeasurementPaths(new PartialPath("root.ve*.**"));
-      //      assertEquals(12, pathList.size());
-      //      pathList = schemaEngine.getMeasurementPaths(new
-      // PartialPath("root.vehicle*.s*.d*.s1"));
-      //      assertEquals(2, pathList.size());
-      pathList = schemaRegion.getMeasurementPaths(new PartialPath("root.vehicle.s2.**"));
-      assertEquals(0, pathList.size());
-    } catch (MetadataException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
   }
 
   @Test
