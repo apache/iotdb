@@ -14,7 +14,6 @@ pids
 *.pid
 *.seed
 *.pid.lock
-*.sum
 *.mod
 *.sum
 *.sh
