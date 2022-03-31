@@ -35,6 +35,9 @@ import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor.StorageGroupFilter;
+import org.apache.iotdb.db.metadata.MetadataConstant;
+import org.apache.iotdb.db.metadata.idtable.IDTable;
+import org.apache.iotdb.db.metadata.idtable.IDTableManager;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
@@ -109,7 +112,9 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
@@ -139,10 +144,10 @@ public class RSchemaRegion implements ISchemaRegion {
 
   private final RSchemaReadWriteHandler readWriteHandler;
 
+  private final ReadWriteLock deleteUpdateLock = new ReentrantReadWriteLock();
+
   private final Map<String, ReentrantLock> locksPool =
       new MapMaker().weakValues().initialCapacity(10000).makeMap();
-
-  private final Map<String, Boolean> storageGroupDeletingFlagMap = new ConcurrentHashMap<>();
 
   private String schemaRegionDirPath;
   private String storageGroupFullPath;
@@ -238,24 +243,40 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public void deleteSchemaRegion() throws MetadataException {
+  public void deleteSchemaRegion() {
     clear();
     clearAllData();
   }
 
   @Override
   public void createTimeseries(CreateTimeSeriesPlan plan, long offset) throws MetadataException {
-    createTimeSeries(
-        plan.getPath(),
-        new MeasurementSchema(
-            plan.getPath().getMeasurement(),
-            plan.getDataType(),
-            plan.getEncoding(),
-            plan.getCompressor(),
-            plan.getProps()),
-        plan.getAlias(),
-        plan.getTags(),
-        plan.getAttributes());
+    try {
+      if (deleteUpdateLock.readLock().tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
+        createTimeSeries(
+            plan.getPath(),
+            new MeasurementSchema(
+                plan.getPath().getMeasurement(),
+                plan.getDataType(),
+                plan.getEncoding(),
+                plan.getCompressor(),
+                plan.getProps()),
+            plan.getAlias(),
+            plan.getTags(),
+            plan.getAttributes());
+        // update id table if id table log file is disabled
+        if (config.isEnableIDTable() && !config.isEnableIDTableLogFile()) {
+          IDTable idTable = IDTableManager.getInstance().getIDTable(plan.getPath().getDevicePath());
+          idTable.createTimeseries(plan);
+        }
+      } else {
+        throw new AcquireLockTimeoutException(
+            "Acquire lock timeout when creating timeseries: " + plan.getPath().getFullPath());
+      }
+    } catch (InterruptedException e) {
+      throw new MetadataException(e);
+    } finally {
+      deleteUpdateLock.readLock().unlock();
+    }
   }
 
   @TestOnly
@@ -306,11 +327,17 @@ public class RSchemaRegion implements ISchemaRegion {
     // sg check and create
     String[] nodes = path.getNodes();
     SchemaUtils.checkDataTypeWithEncoding(schema.getType(), schema.getEncodingType());
-    int sgIndex = storageGroupPathLevel;
 
     try {
       createTimeSeriesRecursively(
-          nodes, nodes.length, sgIndex, schema, alias, tags, attributes, new Stack<>());
+          nodes,
+          nodes.length,
+          storageGroupPathLevel,
+          schema,
+          alias,
+          tags,
+          attributes,
+          new Stack<>());
       // TODO: load tags to memory
     } catch (RocksDBException | InterruptedException | IOException e) {
       throw new MetadataException(e);
@@ -328,7 +355,7 @@ public class RSchemaRegion implements ISchemaRegion {
       Stack<Lock> lockedLocks)
       throws InterruptedException, MetadataException, RocksDBException, IOException {
     if (start <= end) {
-      // nodes "root" must exist and don't need to check
+      // "ROOT" node must exist and don't need to check
       return;
     }
     String levelPath = RSchemaUtils.getLevelPath(nodes, start - 1);
@@ -349,12 +376,7 @@ public class RSchemaRegion implements ISchemaRegion {
           }
         } else {
           if (start == nodes.length) {
-            throw new PathAlreadyExistException(levelPath);
-          }
-
-          if (checkResult.getResult(RMNodeType.MEASUREMENT)
-              || checkResult.getResult(RMNodeType.ALISA)) {
-            throw new PathAlreadyExistException(levelPath);
+            throw new PathAlreadyExistException(RSchemaUtils.getPathByLevelPath(levelPath));
           }
 
           if (start == nodes.length - 1) {
@@ -368,9 +390,15 @@ public class RSchemaRegion implements ISchemaRegion {
                     RSchemaUtils.getPathByLevelPath(levelPath));
               }
             } else {
-              throw new MetadataException(
-                  "parent of measurement could only be entity or internal node");
+              throw new MNodeTypeMismatchException(
+                  RSchemaUtils.getPathByLevelPath(levelPath), MetadataConstant.ENTITY_MNODE_TYPE);
             }
+          }
+
+          if (checkResult.getResult(RMNodeType.MEASUREMENT)
+              || checkResult.getResult(RMNodeType.ALISA)) {
+            throw new MNodeTypeMismatchException(
+                RSchemaUtils.getPathByLevelPath(levelPath), MetadataConstant.INTERNAL_MNODE_TYPE);
           }
         }
       } catch (Exception e) {
@@ -423,7 +451,8 @@ public class RSchemaRegion implements ISchemaRegion {
               batch.put(aliasNodeKey, RSchemaUtils.buildAliasNodeValue(measurementKey));
               readWriteHandler.executeBatch(batch);
             } else {
-              throw new AliasAlreadyExistException(levelPath, alias);
+              throw new AliasAlreadyExistException(
+                  RSchemaUtils.getPathByLevelPath(levelPath), alias);
             }
           } finally {
             lock.unlock();
@@ -441,21 +470,8 @@ public class RSchemaRegion implements ISchemaRegion {
       PartialPath prefixPath,
       List<String> measurements,
       List<TSDataType> dataTypes,
-      List<TSEncoding> encodings,
-      List<CompressionType> compressors)
+      List<TSEncoding> encodings)
       throws MetadataException {
-    createAlignedTimeSeries(
-        new CreateAlignedTimeSeriesPlan(
-            prefixPath, measurements, dataTypes, encodings, compressors, null, null, null));
-  }
-
-  @Override
-  public void createAlignedTimeSeries(CreateAlignedTimeSeriesPlan plan) throws MetadataException {
-    PartialPath prefixPath = plan.getPrefixPath();
-    List<String> measurements = plan.getMeasurements();
-    List<TSDataType> dataTypes = plan.getDataTypes();
-    List<TSEncoding> encodings = plan.getEncodings();
-
     if (prefixPath.getNodeLength() > MAX_PATH_DEPTH - 1) {
       throw new IllegalPathException(
           String.format(
@@ -470,11 +486,13 @@ public class RSchemaRegion implements ISchemaRegion {
       MetaFormatUtils.checkNodeName(measurements.get(i));
     }
 
-    int sgIndex = storageGroupPathLevel;
-
     try (WriteBatch batch = new WriteBatch()) {
       createEntityRecursively(
-          prefixPath.getNodes(), prefixPath.getNodeLength(), sgIndex + 1, true, new Stack<>());
+          prefixPath.getNodes(),
+          prefixPath.getNodeLength(),
+          storageGroupPathLevel + 1,
+          true,
+          new Stack<>());
       String[] locks = new String[measurements.size()];
       for (int i = 0; i < measurements.size(); i++) {
         String measurement = measurements.get(i);
@@ -512,12 +530,38 @@ public class RSchemaRegion implements ISchemaRegion {
       throw new MetadataException(e);
     }
   }
-  /** The method assume Storage Group Node has been created */
+
+  @Override
+  public void createAlignedTimeSeries(CreateAlignedTimeSeriesPlan plan) throws MetadataException {
+    PartialPath prefixPath = plan.getPrefixPath();
+    List<String> measurements = plan.getMeasurements();
+    List<TSDataType> dataTypes = plan.getDataTypes();
+    List<TSEncoding> encodings = plan.getEncodings();
+
+    try {
+      if (deleteUpdateLock.readLock().tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
+        createAlignedTimeSeries(prefixPath, measurements, dataTypes, encodings);
+        // update id table if not in recovering or disable id table log file
+        if (config.isEnableIDTable() && !config.isEnableIDTableLogFile()) {
+          IDTable idTable = IDTableManager.getInstance().getIDTable(plan.getPrefixPath());
+          idTable.createAlignedTimeseries(plan);
+        }
+      } else {
+        throw new AcquireLockTimeoutException(
+            "Acquire lock timeout when do createAlignedTimeSeries: " + prefixPath.getFullPath());
+      }
+    } catch (InterruptedException e) {
+      throw new MetadataException(e);
+    } finally {
+      deleteUpdateLock.readLock().unlock();
+    }
+  }
+
   private void createEntityRecursively(
       String[] nodes, int start, int end, boolean aligned, Stack<Lock> lockedLocks)
       throws RocksDBException, MetadataException, InterruptedException {
     if (start <= end) {
-      // nodes before "end" must exist
+      // "ROOT" must exist
       return;
     }
     String levelPath = RSchemaUtils.getLevelPath(nodes, start - 1);
@@ -536,7 +580,6 @@ public class RSchemaRegion implements ISchemaRegion {
           }
         } else {
           if (start == nodes.length) {
-
             // make sure sg node and entity node are different
             // eg.,'root.a' is a storage group path, 'root.a.b' can not be a timeseries
             if (checkResult.getResult(RMNodeType.STORAGE_GROUP)) {
@@ -544,10 +587,8 @@ public class RSchemaRegion implements ISchemaRegion {
             }
 
             if (!checkResult.getResult(RMNodeType.ENTITY)) {
-              throw new MetadataException(
-                  "Node already exists but not entity. (Path: "
-                      + RSchemaUtils.getPathByLevelPath(levelPath)
-                      + ")");
+              throw new MNodeTypeMismatchException(
+                  RSchemaUtils.getPathByLevelPath(levelPath), MetadataConstant.ENTITY_MNODE_TYPE);
             }
 
             if ((checkResult.getValue()[1] & FLAG_IS_ALIGNED) == 0) {
@@ -558,7 +599,8 @@ public class RSchemaRegion implements ISchemaRegion {
             }
           } else if (checkResult.getResult(RMNodeType.MEASUREMENT)
               || checkResult.getResult(RMNodeType.ALISA)) {
-            throw new MetadataException("Path contains measurement node");
+            throw new MNodeTypeMismatchException(
+                RSchemaUtils.getPathByLevelPath(levelPath), MetadataConstant.ENTITY_MNODE_TYPE);
           }
         }
       } catch (Exception e) {
@@ -582,121 +624,95 @@ public class RSchemaRegion implements ISchemaRegion {
   @Override
   public Pair<Integer, Set<String>> deleteTimeseries(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
-    Set<String> failedNames = ConcurrentHashMap.newKeySet();
-    Map<IStorageGroupMNode, Set<IMNode>> mapToDeletedPath = new ConcurrentHashMap<>();
-    AtomicInteger atomicInteger = new AtomicInteger(0);
-    traverseOutcomeBasins(
-        pathPattern.getNodes(),
-        MAX_PATH_DEPTH,
-        (key, value) -> {
-          String path = null;
-          RMeasurementMNode deletedNode;
-          try {
-            path = RSchemaUtils.getPathByInnerName(new String(key));
-            String[] nodes = MetaUtils.splitPathToDetachedPath(path);
-            String levelPath = RSchemaUtils.getLevelPath(nodes, nodes.length - 1);
-            // Delete measurement node
-            Lock lock = locksPool.computeIfAbsent(levelPath, x -> new ReentrantLock());
-            if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
+    try {
+      if (deleteUpdateLock.writeLock().tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
+        Set<String> failedNames = ConcurrentHashMap.newKeySet();
+        Set<IMNode> parentNeedsToCheck = ConcurrentHashMap.newKeySet();
+
+        AtomicInteger atomicInteger = new AtomicInteger(0);
+        traverseOutcomeBasins(
+            pathPattern.getNodes(),
+            MAX_PATH_DEPTH,
+            (key, value) -> {
+              String path = null;
+              RMeasurementMNode deletedNode;
               try {
+                path = RSchemaUtils.getPathByInnerName(new String(key));
+                String[] nodes = MetaUtils.splitPathToDetachedPath(path);
                 deletedNode = new RMeasurementMNode(path, value, readWriteHandler);
                 atomicInteger.incrementAndGet();
-                WriteBatch batch = new WriteBatch();
-                // delete the last node of path
-                batch.delete(key);
-                if (deletedNode.getAlias() != null) {
-                  String[] aliasNodes = Arrays.copyOf(nodes, nodes.length);
-                  aliasNodes[nodes.length - 1] = deletedNode.getAlias();
-                  String aliasLevelPath =
-                      RSchemaUtils.getLevelPath(aliasNodes, aliasNodes.length - 1);
-                  batch.delete(RSchemaUtils.toAliasNodeKey(aliasLevelPath));
+                try (WriteBatch batch = new WriteBatch()) {
+                  // delete the last node of path
+                  batch.delete(key);
+                  if (deletedNode.getAlias() != null) {
+                    String[] aliasNodes = Arrays.copyOf(nodes, nodes.length);
+                    aliasNodes[nodes.length - 1] = deletedNode.getAlias();
+                    String aliasLevelPath =
+                        RSchemaUtils.getLevelPath(aliasNodes, aliasNodes.length - 1);
+                    batch.delete(RSchemaUtils.toAliasNodeKey(aliasLevelPath));
+                  }
+                  if (deletedNode.getTags() != null && !deletedNode.getTags().isEmpty()) {
+                    batch.delete(readWriteHandler.getCFHByName(TABLE_NAME_TAGS), key);
+                    // TODO: tags invert index update
+                  }
+                  readWriteHandler.executeBatch(batch);
+                  if (!deletedNode.getParent().isStorageGroup()) {
+                    parentNeedsToCheck.add(deletedNode.getParent());
+                  }
                 }
-                if (deletedNode.getTags() != null && !deletedNode.getTags().isEmpty()) {
-                  batch.delete(readWriteHandler.getCFHByName(TABLE_NAME_TAGS), key);
-                  // TODO: tags invert index update
-                }
-                readWriteHandler.executeBatch(batch);
-                //                IStorageGroupMNode mNode =
-                //                    getStorageGroupNodeByPath(
-                //                        new
-                // PartialPath(RSchemaUtils.getPathByLevelPath(levelPath)));
-                IStorageGroupMNode mNode = storageGroupMNode;
-                mapToDeletedPath
-                    .computeIfAbsent(mNode, s -> ConcurrentHashMap.newKeySet())
-                    .add(deletedNode.getParent());
-              } finally {
-                lock.unlock();
+              } catch (Exception e) {
+                logger.error("delete timeseries [{}] fail", path, e);
+                failedNames.add(path);
+                return false;
               }
-            } else {
-              throw new AcquireLockTimeoutException("acquire lock timeout, " + path);
-            }
-          } catch (IllegalPathException e) {
-          } catch (Exception e) {
-            logger.error("delete timeseries [{}] fail", path, e);
-            failedNames.add(path);
-            return false;
+              return true;
+            },
+            new Character[] {NODE_TYPE_MEASUREMENT});
+
+        // delete parent without child after timeseries deleted
+        while (true) {
+          if (parentNeedsToCheck.isEmpty()) {
+            break;
           }
-          return true;
-        },
-        new Character[] {NODE_TYPE_MEASUREMENT});
+          Set<IMNode> tempSet = ConcurrentHashMap.newKeySet();
 
-    // TODO: do we need to delete parent??
-    while (true) {
-      if (mapToDeletedPath.isEmpty()) {
-        break;
+          parentNeedsToCheck
+              .parallelStream()
+              .forEach(
+                  currentNode -> {
+                    if (!currentNode.isStorageGroup()) {
+                      PartialPath parentPath = currentNode.getPartialPath();
+                      int level = parentPath.getNodeLength();
+                      int end = parentPath.getNodeLength() - 1;
+                      if (!readWriteHandler.existAnySiblings(
+                          RSchemaUtils.getLevelPathPrefix(parentPath.getNodes(), end, level))) {
+                        try {
+                          readWriteHandler.deleteNode(
+                              parentPath.getNodes(), RSchemaUtils.typeOfMNode(currentNode));
+                          IMNode parentNode = currentNode.getParent();
+                          if (!parentNode.isStorageGroup()) {
+                            tempSet.add(currentNode.getParent());
+                          }
+                        } catch (Exception e) {
+                          logger.error("delete {} fail.", parentPath.getFullPath(), e);
+                          failedNames.add(parentPath.getFullPath());
+                        }
+                      }
+                    }
+                  });
+          parentNeedsToCheck.clear();
+          parentNeedsToCheck.addAll(tempSet);
+        }
+        return new Pair<>(atomicInteger.get(), failedNames);
+      } else {
+        throw new AcquireLockTimeoutException(
+            "acquire lock timeout when delete timeseries: " + pathPattern);
       }
-      Map<IStorageGroupMNode, Set<IMNode>> tempMap = new ConcurrentHashMap<>();
-      mapToDeletedPath
-          .keySet()
-          .parallelStream()
-          .forEach(
-              sgNode -> {
-                if (storageGroupDeletingFlagMap.getOrDefault(sgNode.getFullPath(), false)) {
-                  // deleting the storage group, ignore parent delete
-                  return;
-                }
-                try {
-                  // lock the responding storage group
-                  storageGroupDeletingFlagMap.put(sgNode.getFullPath(), true);
-                  // wait for all executing createTimeseries operations are complete
-                  Thread.sleep(MAX_LOCK_WAIT_TIME * MAX_PATH_DEPTH);
-                  mapToDeletedPath
-                      .get(sgNode)
-                      .parallelStream()
-                      .forEach(
-                          parentNode -> {
-                            if (!parentNode.isStorageGroup()) {
-                              PartialPath parentPath = parentNode.getPartialPath();
-                              int level = parentPath.getNodeLength();
-                              int end = parentPath.getNodeLength() - 1;
-                              if (!readWriteHandler.existAnySiblings(
-                                  RSchemaUtils.getLevelPathPrefix(
-                                      parentPath.getNodes(), end, level))) {
-                                try {
-                                  readWriteHandler.deleteNode(
-                                      parentPath.getNodes(), RSchemaUtils.typeOfMNode(parentNode));
-                                  tempMap
-                                      .computeIfAbsent(sgNode, k -> ConcurrentHashMap.newKeySet())
-                                      .add(parentNode.getParent());
-                                } catch (Exception e) {
-                                  logger.error("delete {} fail.", parentPath.getFullPath(), e);
-                                  failedNames.add(parentPath.getFullPath());
-                                }
-                              }
-                            }
-                          });
-
-                } catch (Exception e) {
-
-                } finally {
-                  storageGroupDeletingFlagMap.remove(sgNode.getFullPath());
-                }
-              });
-      mapToDeletedPath.clear();
-      mapToDeletedPath.putAll(tempMap);
+    } catch (InterruptedException e) {
+      throw new MetadataException(e);
+    } finally {
+      deleteUpdateLock.writeLock().unlock();
     }
-
-    return new Pair<>(atomicInteger.get(), failedNames);
   }
 
   private void traverseOutcomeBasins(
@@ -821,19 +837,22 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   private IMNode getDeviceNodeWithAutoCreate(PartialPath devicePath, boolean autoCreateSchema)
-      throws MetadataException, IOException {
+      throws MetadataException {
     IMNode node;
     try {
       node = getDeviceNode(devicePath);
       return node;
     } catch (PathNotExistException e) {
-      int sgIndex = storageGroupPathLevel;
       if (!config.isAutoCreateSchemaEnabled()) {
         throw new PathNotExistException(devicePath.getFullPath());
       }
       try {
         createEntityRecursively(
-            devicePath.getNodes(), devicePath.getNodeLength(), sgIndex, false, new Stack<>());
+            devicePath.getNodes(),
+            devicePath.getNodeLength(),
+            storageGroupPathLevel,
+            false,
+            new Stack<>());
         node = getDeviceNode(devicePath);
       } catch (RocksDBException | InterruptedException ex) {
         throw new MetadataException(ex);
@@ -1260,102 +1279,116 @@ public class RSchemaRegion implements ISchemaRegion {
       Map<String, String> attributesMap,
       PartialPath path)
       throws MetadataException, IOException {
-    String levelPath = RSchemaUtils.getLevelPath(path.getNodes(), path.getNodeLength() - 1);
-    byte[] originKey = RSchemaUtils.toMeasurementNodeKey(levelPath);
     try {
-      Lock rawKeyLock = locksPool.computeIfAbsent(levelPath, x -> new ReentrantLock());
-      if (rawKeyLock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
+      if (deleteUpdateLock.readLock().tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
+        String levelPath = RSchemaUtils.getLevelPath(path.getNodes(), path.getNodeLength() - 1);
+        byte[] originKey = RSchemaUtils.toMeasurementNodeKey(levelPath);
         try {
-          boolean hasUpdate = false;
-          String[] nodes = path.getNodes();
-          RMeasurementMNode mNode = (RMeasurementMNode) getMeasurementMNode(path);
-          // upsert alias
-          if (StringUtils.isNotEmpty(alias)
-              && (StringUtils.isEmpty(mNode.getAlias()) || !mNode.getAlias().equals(alias))) {
-            String oldAliasStr = mNode.getAlias();
-            mNode.setAlias(alias);
-            hasUpdate = true;
-            String[] newAlias = Arrays.copyOf(nodes, nodes.length);
-            newAlias[nodes.length - 1] = alias;
-            String newAliasLevel = RSchemaUtils.getLevelPath(newAlias, newAlias.length - 1);
-            byte[] newAliasKey = RSchemaUtils.toAliasNodeKey(newAliasLevel);
-            Lock newAliasLock = locksPool.computeIfAbsent(newAliasLevel, x -> new ReentrantLock());
-            Lock oldAliasLock = null;
-            boolean lockedOldAlias = false;
-            boolean lockedNewAlias = false;
-            try (WriteBatch batch = new WriteBatch()) {
-              if (newAliasLock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
-                lockedNewAlias = true;
-                if (readWriteHandler.keyExistByAllTypes(newAliasLevel).existAnyKey()) {
-                  throw new PathAlreadyExistException("Alias node has exist: " + newAliasLevel);
-                }
-                batch.put(newAliasKey, RSchemaUtils.buildAliasNodeValue(originKey));
-                if (StringUtils.isNotEmpty(oldAliasStr)) {
-                  String[] oldAliasNodes = Arrays.copyOf(nodes, nodes.length);
-                  oldAliasNodes[nodes.length - 1] = oldAliasStr;
-                  String oldAliasLevel =
-                      RSchemaUtils.getLevelPath(oldAliasNodes, oldAliasNodes.length - 1);
-                  byte[] oldAliasKey = RSchemaUtils.toAliasNodeKey(oldAliasLevel);
-                  oldAliasLock = locksPool.computeIfAbsent(oldAliasLevel, x -> new ReentrantLock());
-                  if (oldAliasLock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
-                    lockedOldAlias = true;
-                    if (!readWriteHandler.keyExist(oldAliasKey)) {
-                      logger.error(
-                          "origin node [{}] has alias but alias node [{}] doesn't exist ",
-                          levelPath,
-                          oldAliasLevel);
+          Lock rawKeyLock = locksPool.computeIfAbsent(levelPath, x -> new ReentrantLock());
+          if (rawKeyLock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
+            try {
+              boolean hasUpdate = false;
+              String[] nodes = path.getNodes();
+              RMeasurementMNode mNode = (RMeasurementMNode) getMeasurementMNode(path);
+              // upsert alias
+              if (StringUtils.isNotEmpty(alias)
+                  && (StringUtils.isEmpty(mNode.getAlias()) || !mNode.getAlias().equals(alias))) {
+                String oldAliasStr = mNode.getAlias();
+                mNode.setAlias(alias);
+                hasUpdate = true;
+                String[] newAlias = Arrays.copyOf(nodes, nodes.length);
+                newAlias[nodes.length - 1] = alias;
+                String newAliasLevel = RSchemaUtils.getLevelPath(newAlias, newAlias.length - 1);
+                byte[] newAliasKey = RSchemaUtils.toAliasNodeKey(newAliasLevel);
+                Lock newAliasLock =
+                    locksPool.computeIfAbsent(newAliasLevel, x -> new ReentrantLock());
+                Lock oldAliasLock = null;
+                boolean lockedOldAlias = false;
+                boolean lockedNewAlias = false;
+                try (WriteBatch batch = new WriteBatch()) {
+                  if (newAliasLock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
+                    lockedNewAlias = true;
+                    if (readWriteHandler.keyExistByAllTypes(newAliasLevel).existAnyKey()) {
+                      throw new PathAlreadyExistException("Alias node has exist: " + newAliasLevel);
                     }
-                    batch.delete(oldAliasKey);
+                    batch.put(newAliasKey, RSchemaUtils.buildAliasNodeValue(originKey));
+                    if (StringUtils.isNotEmpty(oldAliasStr)) {
+                      String[] oldAliasNodes = Arrays.copyOf(nodes, nodes.length);
+                      oldAliasNodes[nodes.length - 1] = oldAliasStr;
+                      String oldAliasLevel =
+                          RSchemaUtils.getLevelPath(oldAliasNodes, oldAliasNodes.length - 1);
+                      byte[] oldAliasKey = RSchemaUtils.toAliasNodeKey(oldAliasLevel);
+                      oldAliasLock =
+                          locksPool.computeIfAbsent(oldAliasLevel, x -> new ReentrantLock());
+                      if (oldAliasLock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
+                        lockedOldAlias = true;
+                        if (!readWriteHandler.keyExist(oldAliasKey)) {
+                          logger.error(
+                              "origin node [{}] has alias but alias node [{}] doesn't exist ",
+                              levelPath,
+                              oldAliasLevel);
+                        }
+                        batch.delete(oldAliasKey);
+                      } else {
+                        throw new AcquireLockTimeoutException(
+                            "acquire lock timeout: " + oldAliasLevel);
+                      }
+                    }
                   } else {
-                    throw new AcquireLockTimeoutException("acquire lock timeout: " + oldAliasLevel);
+                    throw new AcquireLockTimeoutException("acquire lock timeout: " + newAliasLevel);
+                  }
+                  // TODO: need application lock
+                  readWriteHandler.executeBatch(batch);
+                } finally {
+                  if (lockedNewAlias) {
+                    newAliasLock.unlock();
+                  }
+                  if (oldAliasLock != null && lockedOldAlias) {
+                    oldAliasLock.unlock();
                   }
                 }
-              } else {
-                throw new AcquireLockTimeoutException("acquire lock timeout: " + newAliasLevel);
               }
-              // TODO: need application lock
-              readWriteHandler.executeBatch(batch);
-            } finally {
-              if (lockedNewAlias) {
-                newAliasLock.unlock();
-              }
-              if (oldAliasLock != null && lockedOldAlias) {
-                oldAliasLock.unlock();
-              }
-            }
-          }
 
-          WriteBatch batch = new WriteBatch();
-          if (tagsMap != null && !tagsMap.isEmpty()) {
-            if (mNode.getTags() == null) {
-              mNode.setTags(tagsMap);
-            } else {
-              mNode.getTags().putAll(tagsMap);
+              WriteBatch batch = new WriteBatch();
+              if (tagsMap != null && !tagsMap.isEmpty()) {
+                if (mNode.getTags() == null) {
+                  mNode.setTags(tagsMap);
+                } else {
+                  mNode.getTags().putAll(tagsMap);
+                }
+                batch.put(
+                    readWriteHandler.getCFHByName(TABLE_NAME_TAGS), originKey, DEFAULT_NODE_VALUE);
+                hasUpdate = true;
+              }
+              if (attributesMap != null && !attributesMap.isEmpty()) {
+                if (mNode.getAttributes() == null) {
+                  mNode.setAttributes(attributesMap);
+                } else {
+                  mNode.getAttributes().putAll(attributesMap);
+                }
+                hasUpdate = true;
+              }
+              if (hasUpdate) {
+                batch.put(originKey, mNode.getRocksDBValue());
+                readWriteHandler.executeBatch(batch);
+              }
+            } finally {
+              rawKeyLock.unlock();
             }
-            batch.put(
-                readWriteHandler.getCFHByName(TABLE_NAME_TAGS), originKey, DEFAULT_NODE_VALUE);
-            hasUpdate = true;
+          } else {
+            throw new AcquireLockTimeoutException("acquire lock timeout: " + levelPath);
           }
-          if (attributesMap != null && !attributesMap.isEmpty()) {
-            if (mNode.getAttributes() == null) {
-              mNode.setAttributes(attributesMap);
-            } else {
-              mNode.getAttributes().putAll(attributesMap);
-            }
-            hasUpdate = true;
-          }
-          if (hasUpdate) {
-            batch.put(originKey, mNode.getRocksDBValue());
-            readWriteHandler.executeBatch(batch);
-          }
-        } finally {
-          rawKeyLock.unlock();
+        } catch (RocksDBException | InterruptedException e) {
+          throw new MetadataException(e);
         }
       } else {
-        throw new AcquireLockTimeoutException("acquire lock timeout: " + levelPath);
+        throw new AcquireLockTimeoutException(
+            "acquire lock timeout when do upsertTagsAndAttributes: " + path.getFullPath());
       }
-    } catch (RocksDBException | InterruptedException e) {
+    } catch (InterruptedException e) {
       throw new MetadataException(e);
+    } finally {
+      deleteUpdateLock.readLock().unlock();
     }
   }
 
@@ -1365,40 +1398,53 @@ public class RSchemaRegion implements ISchemaRegion {
     if (attributesMap == null || attributesMap.isEmpty()) {
       return;
     }
-    String levelPath = RSchemaUtils.getLevelPath(path.getNodes(), path.getNodeLength() - 1);
-    byte[] key = RSchemaUtils.toMeasurementNodeKey(levelPath);
-    Holder<byte[]> holder = new Holder<>();
-    try {
-      Lock lock = locksPool.computeIfAbsent(levelPath, x -> new ReentrantLock());
-      if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
-        try {
-          if (!readWriteHandler.keyExist(key, holder)) {
-            throw new PathNotExistException(path.getFullPath());
-          }
 
-          byte[] originValue = holder.getValue();
-          RMeasurementMNode mNode =
-              new RMeasurementMNode(path.getFullPath(), originValue, readWriteHandler);
-          if (mNode.getAttributes() != null) {
-            for (Map.Entry<String, String> entry : attributesMap.entrySet()) {
-              if (mNode.getAttributes().containsKey(entry.getKey())) {
-                throw new MetadataException(
-                    String.format(
-                        "TimeSeries [%s] already has the attribute [%s].", path, new String(key)));
+    try {
+      if (deleteUpdateLock.readLock().tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
+        String levelPath = RSchemaUtils.getLevelPath(path.getNodes(), path.getNodeLength() - 1);
+        byte[] key = RSchemaUtils.toMeasurementNodeKey(levelPath);
+        Holder<byte[]> holder = new Holder<>();
+        try {
+          Lock lock = locksPool.computeIfAbsent(levelPath, x -> new ReentrantLock());
+          if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
+            try {
+              if (!readWriteHandler.keyExist(key, holder)) {
+                throw new PathNotExistException(path.getFullPath());
               }
+
+              byte[] originValue = holder.getValue();
+              RMeasurementMNode mNode =
+                  new RMeasurementMNode(path.getFullPath(), originValue, readWriteHandler);
+              if (mNode.getAttributes() != null) {
+                for (Map.Entry<String, String> entry : attributesMap.entrySet()) {
+                  if (mNode.getAttributes().containsKey(entry.getKey())) {
+                    throw new MetadataException(
+                        String.format(
+                            "TimeSeries [%s] already has the attribute [%s].",
+                            path, new String(key)));
+                  }
+                }
+                attributesMap.putAll(mNode.getAttributes());
+              }
+              mNode.setAttributes(attributesMap);
+              readWriteHandler.updateNode(key, mNode.getRocksDBValue());
+            } finally {
+              lock.unlock();
             }
-            attributesMap.putAll(mNode.getAttributes());
+          } else {
+            throw new AcquireLockTimeoutException("acquire lock timeout: " + levelPath);
           }
-          mNode.setAttributes(attributesMap);
-          readWriteHandler.updateNode(key, mNode.getRocksDBValue());
-        } finally {
-          lock.unlock();
+        } catch (RocksDBException | InterruptedException e) {
+          throw new MetadataException(e);
         }
       } else {
-        throw new AcquireLockTimeoutException("acquire lock timeout: " + levelPath);
+        throw new AcquireLockTimeoutException(
+            "acquire lock timeout when do addAttributes: " + path.getFullPath());
       }
-    } catch (RocksDBException | InterruptedException e) {
+    } catch (InterruptedException e) {
       throw new MetadataException(e);
+    } finally {
+      deleteUpdateLock.readLock().unlock();
     }
   }
 
@@ -1409,48 +1455,60 @@ public class RSchemaRegion implements ISchemaRegion {
       return;
     }
 
-    String levelPath = RSchemaUtils.getLevelPath(path.getNodes(), path.getNodeLength() - 1);
-    byte[] key = RSchemaUtils.toMeasurementNodeKey(levelPath);
-    Holder<byte[]> holder = new Holder<>();
     try {
-      Lock lock = locksPool.computeIfAbsent(levelPath, x -> new ReentrantLock());
-      if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
+      if (deleteUpdateLock.readLock().tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
+        String levelPath = RSchemaUtils.getLevelPath(path.getNodes(), path.getNodeLength() - 1);
+        byte[] key = RSchemaUtils.toMeasurementNodeKey(levelPath);
+        Holder<byte[]> holder = new Holder<>();
         try {
-          if (!readWriteHandler.keyExist(key, holder)) {
-            throw new PathNotExistException(path.getFullPath());
-          }
-          byte[] originValue = holder.getValue();
-          RMeasurementMNode mNode =
-              new RMeasurementMNode(path.getFullPath(), originValue, readWriteHandler);
-          boolean hasTags = false;
-          if (mNode.getTags() != null && mNode.getTags().size() > 0) {
-            hasTags = true;
-            for (Map.Entry<String, String> entry : tagsMap.entrySet()) {
-              if (mNode.getTags().containsKey(entry.getKey())) {
-                throw new MetadataException(
-                    String.format(
-                        "TimeSeries [%s] already has the tag [%s].", path, new String(key)));
+          Lock lock = locksPool.computeIfAbsent(levelPath, x -> new ReentrantLock());
+          if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
+            try {
+              if (!readWriteHandler.keyExist(key, holder)) {
+                throw new PathNotExistException(path.getFullPath());
               }
-              tagsMap.putAll(mNode.getTags());
+              byte[] originValue = holder.getValue();
+              RMeasurementMNode mNode =
+                  new RMeasurementMNode(path.getFullPath(), originValue, readWriteHandler);
+              boolean hasTags = false;
+              if (mNode.getTags() != null && mNode.getTags().size() > 0) {
+                hasTags = true;
+                for (Map.Entry<String, String> entry : tagsMap.entrySet()) {
+                  if (mNode.getTags().containsKey(entry.getKey())) {
+                    throw new MetadataException(
+                        String.format(
+                            "TimeSeries [%s] already has the tag [%s].", path, new String(key)));
+                  }
+                  tagsMap.putAll(mNode.getTags());
+                }
+              }
+              mNode.setTags(tagsMap);
+              try (WriteBatch batch = new WriteBatch()) {
+                if (!hasTags) {
+                  batch.put(
+                      readWriteHandler.getCFHByName(TABLE_NAME_TAGS), key, DEFAULT_NODE_VALUE);
+                }
+                batch.put(key, mNode.getRocksDBValue());
+                // TODO: need application lock
+                readWriteHandler.executeBatch(batch);
+              }
+            } finally {
+              lock.unlock();
             }
+          } else {
+            throw new AcquireLockTimeoutException("acquire lock timeout: " + levelPath);
           }
-          mNode.setTags(tagsMap);
-          try (WriteBatch batch = new WriteBatch()) {
-            if (!hasTags) {
-              batch.put(readWriteHandler.getCFHByName(TABLE_NAME_TAGS), key, DEFAULT_NODE_VALUE);
-            }
-            batch.put(key, mNode.getRocksDBValue());
-            // TODO: need application lock
-            readWriteHandler.executeBatch(batch);
-          }
-        } finally {
-          lock.unlock();
+        } catch (RocksDBException | InterruptedException e) {
+          throw new MetadataException(e);
         }
       } else {
-        throw new AcquireLockTimeoutException("acquire lock timeout: " + levelPath);
+        throw new AcquireLockTimeoutException(
+            "acquire lock timeout when do addTags: " + path.getFullPath());
       }
-    } catch (RocksDBException | InterruptedException e) {
+    } catch (InterruptedException e) {
       throw new MetadataException(e);
+    } finally {
+      deleteUpdateLock.readLock().unlock();
     }
   }
 
@@ -1460,54 +1518,65 @@ public class RSchemaRegion implements ISchemaRegion {
     if (keySet == null || keySet.isEmpty()) {
       return;
     }
-    String levelPath = RSchemaUtils.getLevelPath(path.getNodes(), path.getNodeLength() - 1);
-    byte[] key = RSchemaUtils.toMeasurementNodeKey(levelPath);
-    Holder<byte[]> holder = new Holder<>();
     try {
-      Lock lock = locksPool.computeIfAbsent(levelPath, x -> new ReentrantLock());
-      if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
+      if (deleteUpdateLock.readLock().tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
+        String levelPath = RSchemaUtils.getLevelPath(path.getNodes(), path.getNodeLength() - 1);
+        byte[] key = RSchemaUtils.toMeasurementNodeKey(levelPath);
+        Holder<byte[]> holder = new Holder<>();
         try {
-          if (!readWriteHandler.keyExist(key, holder)) {
-            throw new PathNotExistException(path.getFullPath());
-          }
-
-          byte[] originValue = holder.getValue();
-          RMeasurementMNode mNode =
-              new RMeasurementMNode(path.getFullPath(), originValue, readWriteHandler);
-          int tagLen = mNode.getTags() == null ? 0 : mNode.getTags().size();
-
-          boolean didAnyUpdate = false;
-          for (String toDelete : keySet) {
-            didAnyUpdate = false;
-            if (mNode.getTags() != null && mNode.getTags().containsKey(toDelete)) {
-              mNode.getTags().remove(toDelete);
-              didAnyUpdate = true;
-            }
-            if (mNode.getAttributes() != null && mNode.getAttributes().containsKey(toDelete)) {
-              mNode.getAttributes().remove(toDelete);
-              didAnyUpdate = true;
-            }
-            if (!didAnyUpdate) {
-              logger.warn("TimeSeries [{}] does not have tag/attribute [{}]", path, toDelete);
-            }
-          }
-          if (didAnyUpdate) {
-            try (WriteBatch batch = new WriteBatch()) {
-              if (tagLen > 0 && mNode.getTags().size() <= 0) {
-                batch.delete(readWriteHandler.getCFHByName(TABLE_NAME_TAGS), key);
+          Lock lock = locksPool.computeIfAbsent(levelPath, x -> new ReentrantLock());
+          if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
+            try {
+              if (!readWriteHandler.keyExist(key, holder)) {
+                throw new PathNotExistException(path.getFullPath());
               }
-              batch.put(key, mNode.getRocksDBValue());
-              readWriteHandler.executeBatch(batch);
+
+              byte[] originValue = holder.getValue();
+              RMeasurementMNode mNode =
+                  new RMeasurementMNode(path.getFullPath(), originValue, readWriteHandler);
+              int tagLen = mNode.getTags() == null ? 0 : mNode.getTags().size();
+
+              boolean didAnyUpdate = false;
+              for (String toDelete : keySet) {
+                didAnyUpdate = false;
+                if (mNode.getTags() != null && mNode.getTags().containsKey(toDelete)) {
+                  mNode.getTags().remove(toDelete);
+                  didAnyUpdate = true;
+                }
+                if (mNode.getAttributes() != null && mNode.getAttributes().containsKey(toDelete)) {
+                  mNode.getAttributes().remove(toDelete);
+                  didAnyUpdate = true;
+                }
+                if (!didAnyUpdate) {
+                  logger.warn("TimeSeries [{}] does not have tag/attribute [{}]", path, toDelete);
+                }
+              }
+              if (didAnyUpdate) {
+                try (WriteBatch batch = new WriteBatch()) {
+                  if (tagLen > 0 && mNode.getTags().size() <= 0) {
+                    batch.delete(readWriteHandler.getCFHByName(TABLE_NAME_TAGS), key);
+                  }
+                  batch.put(key, mNode.getRocksDBValue());
+                  readWriteHandler.executeBatch(batch);
+                }
+              }
+            } finally {
+              lock.unlock();
             }
+          } else {
+            throw new AcquireLockTimeoutException("acquire lock timeout: " + levelPath);
           }
-        } finally {
-          lock.unlock();
+        } catch (RocksDBException | InterruptedException e) {
+          throw new MetadataException(e);
         }
       } else {
-        throw new AcquireLockTimeoutException("acquire lock timeout: " + levelPath);
+        throw new AcquireLockTimeoutException(
+            "acquire lock timeout when do dropTagsOrAttributes: " + path.getFullPath());
       }
-    } catch (RocksDBException | InterruptedException e) {
+    } catch (InterruptedException e) {
       throw new MetadataException(e);
+    } finally {
+      deleteUpdateLock.readLock().unlock();
     }
   }
 
@@ -1518,49 +1587,61 @@ public class RSchemaRegion implements ISchemaRegion {
       return;
     }
 
-    String levelPath = RSchemaUtils.getLevelPath(path.getNodes(), path.getNodeLength() - 1);
-    byte[] key = RSchemaUtils.toMeasurementNodeKey(levelPath);
-    Holder<byte[]> holder = new Holder<>();
     try {
-      Lock lock = locksPool.computeIfAbsent(levelPath, x -> new ReentrantLock());
-      if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
+      if (deleteUpdateLock.readLock().tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
+        String levelPath = RSchemaUtils.getLevelPath(path.getNodes(), path.getNodeLength() - 1);
+        byte[] key = RSchemaUtils.toMeasurementNodeKey(levelPath);
+        Holder<byte[]> holder = new Holder<>();
         try {
-          byte[] originValue = holder.getValue();
-          RMeasurementMNode mNode =
-              new RMeasurementMNode(path.getFullPath(), originValue, readWriteHandler);
-          boolean didAnyUpdate = false;
-          for (Map.Entry<String, String> entry : alterMap.entrySet()) {
-            didAnyUpdate = false;
-            if (mNode.getTags() != null && mNode.getTags().containsKey(entry.getKey())) {
-              mNode.getTags().put(entry.getKey(), entry.getValue());
-              didAnyUpdate = true;
+          Lock lock = locksPool.computeIfAbsent(levelPath, x -> new ReentrantLock());
+          if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
+            try {
+              if (!readWriteHandler.keyExist(key, holder)) {
+                throw new PathNotExistException(path.getFullPath());
+              }
+              byte[] originValue = holder.getValue();
+              RMeasurementMNode mNode =
+                  new RMeasurementMNode(path.getFullPath(), originValue, readWriteHandler);
+              boolean didAnyUpdate = false;
+              for (Map.Entry<String, String> entry : alterMap.entrySet()) {
+                didAnyUpdate = false;
+                if (mNode.getTags() != null && mNode.getTags().containsKey(entry.getKey())) {
+                  mNode.getTags().put(entry.getKey(), entry.getValue());
+                  didAnyUpdate = true;
+                }
+                if (mNode.getAttributes() != null
+                    && mNode.getAttributes().containsKey(entry.getKey())) {
+                  mNode.getAttributes().put(entry.getKey(), entry.getValue());
+                  didAnyUpdate = true;
+                }
+                if (!didAnyUpdate) {
+                  throw new MetadataException(
+                      String.format(
+                          "TimeSeries [%s] does not have tag/attribute [%s].",
+                          path, new String(key)),
+                      true);
+                }
+              }
+              if (didAnyUpdate) {
+                readWriteHandler.updateNode(key, mNode.getRocksDBValue());
+              }
+            } finally {
+              lock.unlock();
             }
-            if (mNode.getAttributes() != null
-                && mNode.getAttributes().containsKey(entry.getKey())) {
-              mNode.getAttributes().put(entry.getKey(), entry.getValue());
-              didAnyUpdate = true;
-            }
-            if (!didAnyUpdate) {
-              throw new MetadataException(
-                  String.format(
-                      "TimeSeries [%s] does not have tag/attribute [%s].", path, new String(key)),
-                  true);
-            }
+          } else {
+            throw new AcquireLockTimeoutException("acquire lock timeout: " + levelPath);
           }
-          if (didAnyUpdate) {
-            readWriteHandler.updateNode(key, mNode.getRocksDBValue());
-          }
-        } finally {
-          lock.unlock();
+        } catch (RocksDBException | InterruptedException e) {
+          throw new MetadataException(e);
         }
       } else {
-        throw new AcquireLockTimeoutException("acquire lock timeout: " + levelPath);
+        throw new AcquireLockTimeoutException(
+            "acquire lock timeout when do setTagsOrAttributesValue: " + path.getFullPath());
       }
-      if (!readWriteHandler.keyExist(key, holder)) {
-        throw new PathNotExistException(path.getFullPath());
-      }
-    } catch (RocksDBException | InterruptedException e) {
+    } catch (InterruptedException e) {
       throw new MetadataException(e);
+    } finally {
+      deleteUpdateLock.readLock().unlock();
     }
   }
 
@@ -1571,49 +1652,61 @@ public class RSchemaRegion implements ISchemaRegion {
       return;
     }
 
-    String levelPath = RSchemaUtils.getLevelPath(path.getNodes(), path.getNodeLength() - 1);
-    byte[] nodeKey = RSchemaUtils.toMeasurementNodeKey(levelPath);
-    Holder<byte[]> holder = new Holder<>();
     try {
-      Lock lock = locksPool.computeIfAbsent(levelPath, x -> new ReentrantLock());
-      if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
+      if (deleteUpdateLock.readLock().tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
+        String levelPath = RSchemaUtils.getLevelPath(path.getNodes(), path.getNodeLength() - 1);
+        byte[] nodeKey = RSchemaUtils.toMeasurementNodeKey(levelPath);
+        Holder<byte[]> holder = new Holder<>();
         try {
-          if (!readWriteHandler.keyExist(nodeKey, holder)) {
-            throw new PathNotExistException(path.getFullPath());
-          }
-          byte[] originValue = holder.getValue();
-          RMeasurementMNode mNode =
-              new RMeasurementMNode(path.getFullPath(), originValue, readWriteHandler);
-          boolean didAnyUpdate = false;
-          if (mNode.getTags() != null && mNode.getTags().containsKey(oldKey)) {
-            String value = mNode.getTags().get(oldKey);
-            mNode.getTags().remove(oldKey);
-            mNode.getTags().put(newKey, value);
-            didAnyUpdate = true;
-          }
+          Lock lock = locksPool.computeIfAbsent(levelPath, x -> new ReentrantLock());
+          if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
+            try {
+              if (!readWriteHandler.keyExist(nodeKey, holder)) {
+                throw new PathNotExistException(path.getFullPath());
+              }
+              byte[] originValue = holder.getValue();
+              RMeasurementMNode mNode =
+                  new RMeasurementMNode(path.getFullPath(), originValue, readWriteHandler);
+              boolean didAnyUpdate = false;
+              if (mNode.getTags() != null && mNode.getTags().containsKey(oldKey)) {
+                String value = mNode.getTags().get(oldKey);
+                mNode.getTags().remove(oldKey);
+                mNode.getTags().put(newKey, value);
+                didAnyUpdate = true;
+              }
 
-          if (mNode.getAttributes() != null && mNode.getAttributes().containsKey(oldKey)) {
-            String value = mNode.getAttributes().get(oldKey);
-            mNode.getAttributes().remove(oldKey);
-            mNode.getAttributes().put(newKey, value);
-            didAnyUpdate = true;
-          }
+              if (mNode.getAttributes() != null && mNode.getAttributes().containsKey(oldKey)) {
+                String value = mNode.getAttributes().get(oldKey);
+                mNode.getAttributes().remove(oldKey);
+                mNode.getAttributes().put(newKey, value);
+                didAnyUpdate = true;
+              }
 
-          if (didAnyUpdate) {
-            readWriteHandler.updateNode(nodeKey, mNode.getRocksDBValue());
+              if (didAnyUpdate) {
+                readWriteHandler.updateNode(nodeKey, mNode.getRocksDBValue());
+              } else {
+                throw new MetadataException(
+                    String.format(
+                        "TimeSeries [%s] does not have tag/attribute [%s].", path, oldKey),
+                    true);
+              }
+            } finally {
+              lock.unlock();
+            }
           } else {
-            throw new MetadataException(
-                String.format("TimeSeries [%s] does not have tag/attribute [%s].", path, oldKey),
-                true);
+            throw new AcquireLockTimeoutException("acquire lock timeout: " + levelPath);
           }
-        } finally {
-          lock.unlock();
+        } catch (RocksDBException | InterruptedException e) {
+          throw new MetadataException(e);
         }
       } else {
-        throw new AcquireLockTimeoutException("acquire lock timeout: " + levelPath);
+        throw new AcquireLockTimeoutException(
+            "acquire lock timeout when do renameTagOrAttributeKey: " + path.getFullPath());
       }
-    } catch (RocksDBException | InterruptedException e) {
+    } catch (InterruptedException e) {
       throw new MetadataException(e);
+    } finally {
+      deleteUpdateLock.readLock().unlock();
     }
   }
 
@@ -1690,7 +1783,7 @@ public class RSchemaRegion implements ISchemaRegion {
           dataTypes.add(type);
           encodings.add(getDefaultEncoding(type));
         }
-        createAlignedTimeSeries(devicePath, measurements, dataTypes, encodings, null);
+        createAlignedTimeSeries(devicePath, measurements, dataTypes, encodings);
       } else {
         for (Map.Entry<Integer, PartialPath> entry : missingNodeIndex.entrySet()) {
           IMeasurementSchema schema =
