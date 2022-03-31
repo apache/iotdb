@@ -20,7 +20,9 @@ package org.apache.iotdb.db.protocol.influxdb.meta;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.protocol.influxdb.constant.InfluxConstant;
@@ -134,7 +136,7 @@ public class InfluxDBMetaManager {
       if (e.getErrorCode() != 300) {
         throw new InfluxDBException(e.getMessage());
       }
-    } catch (MetadataException | StorageEngineException e) {
+    } catch (IllegalPathException | StorageGroupNotSetException | StorageEngineException e) {
       throw new InfluxDBException(e.getMessage());
     }
 
@@ -196,7 +198,7 @@ public class InfluxDBMetaManager {
     for (InsertRowPlan plan : plans) {
       try {
         serviceProvider.executeNonQuery(plan);
-      } catch (QueryProcessException | MetadataException | StorageEngineException e) {
+      } catch (QueryProcessException | StorageGroupNotSetException | StorageEngineException e) {
         throw new InfluxDBException(e.getMessage());
       }
     }

@@ -121,7 +121,9 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.cluster.query.ClusterPlanExecutor.*;
+import static org.apache.iotdb.cluster.query.ClusterPlanExecutor.LOG_FAIL_CONNECT;
+import static org.apache.iotdb.cluster.query.ClusterPlanExecutor.THREAD_POOL_SIZE;
+import static org.apache.iotdb.cluster.query.ClusterPlanExecutor.waitForThreadPool;
 import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
 
 @SuppressWarnings("java:S1135") // ignore todos
@@ -547,8 +549,7 @@ public class CSchemaProcessor extends LocalSchemaProcessor {
   }
 
   @SuppressWarnings("squid:S3776")
-  private void verifyCreatedSgSuccess(List<PartialPath> storageGroups, PhysicalPlan physicalPlan)
-      throws MetadataException {
+  private void verifyCreatedSgSuccess(List<PartialPath> storageGroups, PhysicalPlan physicalPlan) {
     long startTime = System.currentTimeMillis();
     boolean[] ready = new boolean[storageGroups.size()];
     Arrays.fill(ready, false);

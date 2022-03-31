@@ -68,6 +68,7 @@ import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.StartUpStatus;
 import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
+import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.monitor.NodeStatusManager;
@@ -87,6 +88,7 @@ import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
@@ -117,6 +119,7 @@ import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TCompactProtocol.Factory;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -241,7 +244,9 @@ public class MetaGroupMemberTest extends BaseMember {
             try {
               planExecutor.processNonQuery(plan);
               return StatusUtils.OK;
-            } catch (QueryProcessException | MetadataException | StorageEngineException e) {
+            } catch (QueryProcessException
+                | StorageGroupNotSetException
+                | StorageEngineException e) {
               return StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR, e.getMessage());
             }
           }
@@ -303,7 +308,7 @@ public class MetaGroupMemberTest extends BaseMember {
             null, partitionTable, group.getHeader().getNode(), TestSnapshot.Factory.INSTANCE));
     dataGroupMember.setThisNode(TestUtils.getNode(0));
     dataGroupMember.setLeader(node);
-    dataGroupMember.setCharacter(LEADER);
+    dataGroupMember.setCharacter(NodeCharacter.LEADER);
     dataGroupMember.setLocalQueryExecutor(
         new LocalQueryExecutor(dataGroupMember) {
           @Override
@@ -493,8 +498,9 @@ public class MetaGroupMemberTest extends BaseMember {
                               resultHandler.onComplete(StatusUtils.OK);
                             } catch (IOException
                                 | QueryProcessException
-                                | MetadataException
-                                | StorageEngineException e) {
+                                | StorageGroupNotSetException
+                                | StorageEngineException
+                                | IllegalPathException e) {
                               resultHandler.onError(e);
                             }
                           })
@@ -558,7 +564,7 @@ public class MetaGroupMemberTest extends BaseMember {
     metaGroupMember.getCoordinator().linkMetaGroupMember(metaGroupMember);
     metaGroupMember.setLeader(node);
     metaGroupMember.setAllNodes(allNodes);
-    metaGroupMember.setCharacter(LEADER);
+    metaGroupMember.setCharacter(NodeCharacter.LEADER);
     metaGroupMember.setAppendLogThreadPool(testThreadPool);
     metaGroupMember.setReady(true);
     metaGroupMember.setPartitionTable(partitionTable);
@@ -585,7 +591,7 @@ public class MetaGroupMemberTest extends BaseMember {
 
   @Test
   public void testClosePartition()
-      throws QueryProcessException, StorageEngineException, MetadataException,
+      throws QueryProcessException, StorageEngineException, StorageGroupNotSetException,
           IllegalPathException {
     System.out.println("Start testClosePartition()");
     // the operation is accepted
@@ -775,7 +781,7 @@ public class MetaGroupMemberTest extends BaseMember {
       userMap.put("user_3", authorizer.getUser("user_3"));
       userMap.put("user_4", authorizer.getUser("user_4"));
     } catch (AuthException e) {
-      fail(e.getMessage());
+      Assert.fail(e.getMessage());
     }
 
     // 4. prepare the template info
@@ -828,12 +834,12 @@ public class MetaGroupMemberTest extends BaseMember {
       assertEquals(localPartitionTable, partitionTable);
 
     } catch (AuthException e) {
-      fail(e.getMessage());
+      Assert.fail(e.getMessage());
     }
   }
 
   @Test
-  public void testProcessNonQuery() throws MetadataException {
+  public void testProcessNonQuery() throws IllegalPathException {
     System.out.println("Start testProcessNonQuery()");
     mockDataClusterServer = true;
     // as a leader
@@ -870,7 +876,7 @@ public class MetaGroupMemberTest extends BaseMember {
   }
 
   @Test
-  public void testProcessNonQueryAsFollower() throws MetadataException, QueryProcessException {
+  public void testProcessNonQueryAsFollower() throws IllegalPathException, QueryProcessException {
     System.out.println("Start testProcessNonQuery()");
     mockDataClusterServer = true;
 
@@ -935,7 +941,8 @@ public class MetaGroupMemberTest extends BaseMember {
 
   @Test
   public void testGetReaderByTimestamp()
-      throws QueryProcessException, StorageEngineException, IOException, MetadataException {
+      throws QueryProcessException, StorageEngineException, IOException,
+          StorageGroupNotSetException, IllegalPathException {
     System.out.println("Start testGetReaderByTimestamp()");
     ClusterConstant.setReadOperationTimeoutMS(10000);
     mockDataClusterServer = true;
@@ -999,8 +1006,8 @@ public class MetaGroupMemberTest extends BaseMember {
 
   @Test
   public void testGetReader()
-      throws QueryProcessException, StorageEngineException, IOException, MetadataException,
-          EmptyIntervalException {
+      throws QueryProcessException, StorageEngineException, IOException,
+          StorageGroupNotSetException, IllegalPathException, EmptyIntervalException {
     System.out.println("Start testGetReader()");
     mockDataClusterServer = true;
     InsertRowPlan insertPlan = new InsertRowPlan();

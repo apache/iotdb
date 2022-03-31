@@ -22,7 +22,7 @@ package org.apache.iotdb.cluster.query;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
@@ -53,7 +53,9 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 
 public class ClusterDataQueryExecutorTest extends BaseQueryTest {
 
@@ -165,7 +167,8 @@ public class ClusterDataQueryExecutorTest extends BaseQueryTest {
 
   @Test // IOTDB-2219
   public void testQueryInMemory()
-      throws IOException, StorageEngineException, MetadataException, QueryProcessException {
+      throws IOException, StorageEngineException, IllegalPathException, QueryProcessException,
+          StorageGroupNotSetException {
     PlanExecutor planExecutor = new PlanExecutor();
     MeasurementPath[] paths =
         new MeasurementPath[] {

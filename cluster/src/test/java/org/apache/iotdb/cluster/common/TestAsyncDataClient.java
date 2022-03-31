@@ -42,7 +42,8 @@ import org.apache.iotdb.cluster.server.service.DataAsyncService;
 import org.apache.iotdb.cluster.utils.IOUtils;
 import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -176,8 +177,9 @@ public class TestAsyncDataClient extends AsyncDataClient {
                 resultHandler.onComplete(StatusUtils.OK);
               } catch (IOException
                   | QueryProcessException
-                  | MetadataException
-                  | StorageEngineException e) {
+                  | StorageGroupNotSetException
+                  | StorageEngineException
+                  | IllegalPathException e) {
                 resultHandler.onError(e);
               }
             })
