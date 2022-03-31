@@ -158,13 +158,12 @@ session.insert_tablet(tablet_)
 ```
 * Numpy Tablet
 
-相较于普通 Tablet，Numpy Tablet 使用 [numpy ndarray](https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html) 来记录数值型数据。
+相较于普通 Tablet，Numpy Tablet 使用 [numpy.ndarray](https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html) 来记录数值型数据。
 内存占用和序列化耗时会降低很多，写入效率也会有很大提升。
 
 **注意**
 1. Tablet 中的每一列值记录为一个 ndarray
 2. ndarray 需要为大端类型的数据类型，具体可参考下面的例子
-3. TEXT 类型数据不支持 ndarray
 
 ```python
 data_types_ = [
@@ -181,7 +180,7 @@ np_values_ = [
     np.array([11, 11111, 1, 0], np.dtype('>i8')),
     np.array([1.1, 1.25, 188.1, 0], np.dtype('>f4')),
     np.array([10011.1, 101.0, 688.25, 6.25], np.dtype('>f8')),
-    ["test01", "test02", "test03", "test04"],
+    np.array(["test01", "test02", "test03", "test04"]),
 ]
 np_timestamps_ = np.array([1, 2, 3, 4], np.dtype('>i8'))
 np_tablet_ = NumpyTablet(

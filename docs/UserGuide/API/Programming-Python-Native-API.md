@@ -158,13 +158,12 @@ session.insert_tablet(tablet_)
 ```
 * Numpy Tablet
 
-Comparing with Tablet, Numpy Tablet is using [numpy ndarray](https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html) to record data.
+Comparing with Tablet, Numpy Tablet is using [numpy.ndarray](https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html) to record data.
 With less memory footprint and time cost of serialization, the insert performance will be better.
 
 **Notice**
 1. time and numerical value columns in Tablet is ndarray
 2. ndarray should be big-endian, see the example below
-3. TEXT type cannot be ndarray
 
 ```python
 data_types_ = [
@@ -181,7 +180,7 @@ np_values_ = [
     np.array([11, 11111, 1, 0], np.dtype('>i8')),
     np.array([1.1, 1.25, 188.1, 0], np.dtype('>f4')),
     np.array([10011.1, 101.0, 688.25, 6.25], np.dtype('>f8')),
-    ["test01", "test02", "test03", "test04"],
+    np.array(["test01", "test02", "test03", "test04"]),
 ]
 np_timestamps_ = np.array([1, 2, 3, 4], np.dtype('>i8'))
 np_tablet_ = NumpyTablet(
