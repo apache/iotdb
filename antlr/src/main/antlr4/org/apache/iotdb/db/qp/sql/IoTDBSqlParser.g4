@@ -717,7 +717,7 @@ stopPipeServer
     ;
 
 showPipeServer
-    : SHOW PIPESERVER STATUS
+    : SHOW PIPESERVER
     ;
 
 /**

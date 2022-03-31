@@ -1215,7 +1215,7 @@ public class PhysicalPlanTest {
 
   @Test
   public void testShowPipeServer() throws QueryProcessException {
-    String sql1 = "SHOW PIPESERVER STATUS";
+    String sql1 = "SHOW PIPESERVER";
     ShowPipeServerPlan plan1 = (ShowPipeServerPlan) processor.parseSQLToPhysicalPlan(sql1);
     Assert.assertTrue(plan1.isQuery());
     Assert.assertEquals(ShowPlan.ShowContentType.PIPESERVER, plan1.getShowContentType());
