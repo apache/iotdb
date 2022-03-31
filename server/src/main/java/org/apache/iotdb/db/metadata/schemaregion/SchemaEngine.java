@@ -60,13 +60,6 @@ public class SchemaEngine {
 
   public void clear() {
     if (schemaRegionMap != null) {
-      for (ISchemaRegion schemaRegion : schemaRegionMap.values()) {
-        try {
-          schemaRegion.deactivate();
-        } catch (MetadataException e) {
-          logger.error(String.format("This schemaRegion [%s] closed failed.", schemaRegion));
-        }
-      }
       schemaRegionMap.clear();
       schemaRegionMap = null;
     }

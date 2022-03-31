@@ -25,6 +25,7 @@ import org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode.RMNodeType;
 
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.rocksdb.RocksDBException;
 
@@ -34,6 +35,7 @@ import java.util.List;
 
 import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaReadWriteHandler.ROCKSDB_PATH;
 
+@Ignore
 public class RSchemaReadWriteHandlerTest {
 
   private RSchemaReadWriteHandler readWriteHandler;

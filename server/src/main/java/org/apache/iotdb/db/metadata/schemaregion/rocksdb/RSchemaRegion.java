@@ -199,11 +199,6 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public synchronized void clear() {
-    // do nothing
-  }
-
-  @Override
   public void forceMlog() {
     // do nothing
   }
@@ -246,7 +241,7 @@ public class RSchemaRegion implements ISchemaRegion {
 
   @Override
   public void deleteSchemaRegion() throws MetadataException {
-    deactivate();
+    clear();
     clearAllData();
   }
 
@@ -1856,7 +1851,7 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public void deactivate() throws MetadataException {
+  public void clear() {
     try {
       readWriteHandler.close();
     } catch (RocksDBException e) {
@@ -1865,7 +1860,7 @@ public class RSchemaRegion implements ISchemaRegion {
         Thread.sleep(5);
         readWriteHandler.close();
       } catch (RocksDBException | InterruptedException e1) {
-        throw new MetadataException(e1);
+        logger.error(String.format("This schemaRegion [%s] closed failed.", this), e);
       }
     }
   }

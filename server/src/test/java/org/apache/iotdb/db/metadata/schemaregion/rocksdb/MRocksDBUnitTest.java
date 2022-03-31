@@ -35,12 +35,14 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+@Ignore
 public class MRocksDBUnitTest {
 
   private RSchemaRegion rSchemaRegion;
@@ -241,7 +243,6 @@ public class MRocksDBUnitTest {
 
   @After
   public void clean() throws MetadataException {
-    rSchemaRegion.deactivate();
-    rSchemaRegion.clearAllData();
+    rSchemaRegion.deleteSchemaRegion();
   }
 }

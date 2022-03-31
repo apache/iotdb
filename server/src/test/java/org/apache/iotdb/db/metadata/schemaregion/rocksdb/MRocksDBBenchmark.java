@@ -25,12 +25,15 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 
+import org.junit.Ignore;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 
+@Ignore
 public class MRocksDBBenchmark {
   protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private RSchemaRegion rocksDBManager;

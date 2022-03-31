@@ -188,8 +188,6 @@ public interface ISchemaRegion {
   // Suppress high Cognitive Complexity warning
   IMNode getSeriesSchemasAndReadLockDevice(InsertPlan plan) throws MetadataException, IOException;
 
-  void deactivate() throws MetadataException;
-
   Set<String> getPathsSetTemplate(String templateName) throws MetadataException;
 
   Set<String> getPathsUsingTemplate(String templateName) throws MetadataException;

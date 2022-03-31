@@ -1505,11 +1505,6 @@ public class SchemaRegion implements ISchemaRegion {
     return deviceMNode;
   }
 
-  @Override
-  public void deactivate() throws MetadataException {
-    // do nothing
-  }
-
   private Pair<IMNode, IMeasurementMNode> getMeasurementMNodeForInsertPlan(
       InsertPlan plan, int loc, IMNode deviceMNode) throws MetadataException {
     PartialPath devicePath = plan.getDevicePath();
