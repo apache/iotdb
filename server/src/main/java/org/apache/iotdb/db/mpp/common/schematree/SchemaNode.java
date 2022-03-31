@@ -58,10 +58,10 @@ public abstract class SchemaNode {
   }
 
   public SchemaEntityNode getAsEntityNode() {
-    throw new ClassCastException("This not isn't instance of SchemaEntityNode.");
+    throw new UnsupportedOperationException("This not isn't instance of SchemaEntityNode.");
   }
 
   public SchemaMeasurementNode getAsMeasurementNode() {
-    throw new ClassCastException("This not isn't instance of SchemaMeasurementNode.");
+    throw new UnsupportedOperationException("This not isn't instance of SchemaMeasurementNode.");
   }
 }

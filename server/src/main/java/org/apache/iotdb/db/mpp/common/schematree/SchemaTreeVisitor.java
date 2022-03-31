@@ -22,10 +22,11 @@ package org.apache.iotdb.db.mpp.common.schematree;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 
+import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.regex.Pattern;
@@ -46,9 +47,9 @@ public class SchemaTreeVisitor implements Iterator<MeasurementPath> {
   private int count = 0;
   private int curOffset = -1;
 
-  private final Deque<Integer> indexStack = new LinkedList<>();
-  private final Deque<Iterator<SchemaNode>> stack = new LinkedList<>();
-  private final Deque<SchemaNode> context = new LinkedList<>();
+  private final Deque<Integer> indexStack = new ArrayDeque<>();
+  private final Deque<Iterator<SchemaNode>> stack = new ArrayDeque<>();
+  private final Deque<SchemaNode> context = new ArrayDeque<>();
 
   private SchemaMeasurementNode nextMatchedNode;
 
@@ -85,7 +86,7 @@ public class SchemaTreeVisitor implements Iterator<MeasurementPath> {
   }
 
   public List<MeasurementPath> getAllResult() {
-    List<MeasurementPath> result = new LinkedList<>();
+    List<MeasurementPath> result = new ArrayList<>();
     while (hasNext()) {
       result.add(next());
     }
@@ -215,7 +216,7 @@ public class SchemaTreeVisitor implements Iterator<MeasurementPath> {
   }
 
   private MeasurementPath generateMeasurementPath() {
-    List<String> nodeNames = new LinkedList<>();
+    List<String> nodeNames = new ArrayList<>();
     Iterator<SchemaNode> iterator = context.descendingIterator();
     while (iterator.hasNext()) {
       nodeNames.add(iterator.next().getName());
