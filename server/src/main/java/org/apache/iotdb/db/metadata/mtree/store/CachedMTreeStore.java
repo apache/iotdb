@@ -119,7 +119,6 @@ public class CachedMTreeStore implements IMTreeStore {
       } else {
         try {
           cacheManager.updateCacheStatusAfterMemoryRead(node);
-          ensureMemoryStatus();
         } catch (MNodeNotCachedException e) {
           node = loadChildFromDisk(parent, name);
         }
@@ -296,10 +295,19 @@ public class CachedMTreeStore implements IMTreeStore {
   public void unPin(IMNode node) {
     readLock.lock();
     try {
-      cacheManager.unPinMNode(node);
-      ensureMemoryStatus();
+      if (cacheManager.unPinMNode(node)) {
+        ensureMemoryStatus();
+      }
     } finally {
       readLock.unlock();
+    }
+  }
+
+  @Override
+  public void unPinPath(IMNode node) {
+    while (!node.isStorageGroup()) {
+      unPin(node);
+      node = node.getParent();
     }
   }
 

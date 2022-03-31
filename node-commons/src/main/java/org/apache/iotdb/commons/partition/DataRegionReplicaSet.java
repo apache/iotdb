@@ -50,4 +50,12 @@ public class DataRegionReplicaSet {
   public String toString() {
     return String.format("%s:%s", Id, endPointList);
   }
+
+  public int hashCode() {
+    return toString().hashCode();
+  }
+
+  public boolean equals(Object obj) {
+    return obj instanceof DataRegionReplicaSet && obj.toString().equals(toString());
+  }
 }

@@ -25,13 +25,17 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.BatchDataFactory;
-import org.apache.iotdb.tsfile.read.common.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 
 import java.io.IOException;
+import java.util.Collections;
 
 public class MemPageReader implements IPageReader {
 
@@ -66,43 +70,86 @@ public class MemPageReader implements IPageReader {
     TSDataType dataType = chunkMetadata.getDataType();
     // TODO we still need to consider data type, ascending and descending here
 
-    TsBlock tsBlock = new TsBlock();
-    while (timeValuePairIterator.hasNextTimeValuePair()) {
-      TimeValuePair timeValuePair = timeValuePairIterator.nextTimeValuePair();
-      if (valueFilter == null
-          || valueFilter.satisfy(
-              timeValuePair.getTimestamp(), timeValuePair.getValue().getValue())) {
-        switch (dataType) {
-          case BOOLEAN:
-            //            tsBlock.putBoolean(timeValuePair.getTimestamp(),
-            // timeValuePair.getValue().getBoolean());
-            break;
-          case INT32:
-            //            tsBlock.putInt(timeValuePair.getTimestamp(),
-            // timeValuePair.getValue().getInt());
-            break;
-          case INT64:
-            //            tsBlock.putLong(timeValuePair.getTimestamp(),
-            // timeValuePair.getValue().getLong());
-            break;
-          case FLOAT:
-            //            tsBlock.putFloat(timeValuePair.getTimestamp(),
-            // timeValuePair.getValue().getFloat());
-            break;
-          case DOUBLE:
-            //            tsBlock.putDouble(timeValuePair.getTimestamp(),
-            // timeValuePair.getValue().getDouble());
-            break;
-          case TEXT:
-            //            tsBlock.putBinary(timeValuePair.getTimestamp(),
-            // timeValuePair.getValue().getBinary());
-            break;
-          default:
-            throw new UnSupportedDataTypeException(String.valueOf(dataType));
+    TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(dataType));
+    TimeColumnBuilder timeBuilder = builder.getTimeColumnBuilder();
+    ColumnBuilder valueBuilder = builder.getColumnBuilder(0);
+    switch (dataType) {
+      case BOOLEAN:
+        while (timeValuePairIterator.hasNextTimeValuePair()) {
+          TimeValuePair timeValuePair = timeValuePairIterator.nextTimeValuePair();
+          if (valueFilter == null
+              || valueFilter.satisfy(
+                  timeValuePair.getTimestamp(), timeValuePair.getValue().getValue())) {
+            timeBuilder.writeLong(timeValuePair.getTimestamp());
+            valueBuilder.writeBoolean(timeValuePair.getValue().getBoolean());
+            builder.declarePosition();
+          }
         }
-      }
+        break;
+      case INT32:
+        while (timeValuePairIterator.hasNextTimeValuePair()) {
+          TimeValuePair timeValuePair = timeValuePairIterator.nextTimeValuePair();
+          if (valueFilter == null
+              || valueFilter.satisfy(
+                  timeValuePair.getTimestamp(), timeValuePair.getValue().getValue())) {
+            timeBuilder.writeLong(timeValuePair.getTimestamp());
+            valueBuilder.writeInt(timeValuePair.getValue().getInt());
+            builder.declarePosition();
+          }
+        }
+        break;
+      case INT64:
+        while (timeValuePairIterator.hasNextTimeValuePair()) {
+          TimeValuePair timeValuePair = timeValuePairIterator.nextTimeValuePair();
+          if (valueFilter == null
+              || valueFilter.satisfy(
+                  timeValuePair.getTimestamp(), timeValuePair.getValue().getValue())) {
+            timeBuilder.writeLong(timeValuePair.getTimestamp());
+            valueBuilder.writeLong(timeValuePair.getValue().getLong());
+            builder.declarePosition();
+          }
+        }
+        break;
+      case FLOAT:
+        while (timeValuePairIterator.hasNextTimeValuePair()) {
+          TimeValuePair timeValuePair = timeValuePairIterator.nextTimeValuePair();
+          if (valueFilter == null
+              || valueFilter.satisfy(
+                  timeValuePair.getTimestamp(), timeValuePair.getValue().getValue())) {
+            timeBuilder.writeLong(timeValuePair.getTimestamp());
+            valueBuilder.writeFloat(timeValuePair.getValue().getFloat());
+            builder.declarePosition();
+          }
+        }
+        break;
+      case DOUBLE:
+        while (timeValuePairIterator.hasNextTimeValuePair()) {
+          TimeValuePair timeValuePair = timeValuePairIterator.nextTimeValuePair();
+          if (valueFilter == null
+              || valueFilter.satisfy(
+                  timeValuePair.getTimestamp(), timeValuePair.getValue().getValue())) {
+            timeBuilder.writeLong(timeValuePair.getTimestamp());
+            valueBuilder.writeDouble(timeValuePair.getValue().getDouble());
+            builder.declarePosition();
+          }
+        }
+        break;
+      case TEXT:
+        while (timeValuePairIterator.hasNextTimeValuePair()) {
+          TimeValuePair timeValuePair = timeValuePairIterator.nextTimeValuePair();
+          if (valueFilter == null
+              || valueFilter.satisfy(
+                  timeValuePair.getTimestamp(), timeValuePair.getValue().getValue())) {
+            timeBuilder.writeLong(timeValuePair.getTimestamp());
+            valueBuilder.writeBinary(timeValuePair.getValue().getBinary());
+            builder.declarePosition();
+          }
+        }
+        break;
+      default:
+        throw new UnSupportedDataTypeException(String.valueOf(dataType));
     }
-    return tsBlock;
+    return builder.build();
   }
 
   @Override

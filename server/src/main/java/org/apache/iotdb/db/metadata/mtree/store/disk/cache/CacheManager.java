@@ -386,10 +386,10 @@ public abstract class CacheManager implements ICacheManager {
    * @return
    */
   @Override
-  public void unPinMNode(IMNode node) {
+  public boolean unPinMNode(IMNode node) {
     CacheEntry cacheEntry = getCacheEntry(node);
     if (cacheEntry == null) {
-      return;
+      return false;
     }
     cacheEntry.unPin();
     if (!cacheEntry.isPinned()) {
@@ -405,6 +405,9 @@ public abstract class CacheManager implements ICacheManager {
         }
         memManager.releasePinnedMemResource(parent);
       }
+      return true;
+    } else {
+      return false;
     }
   }
 

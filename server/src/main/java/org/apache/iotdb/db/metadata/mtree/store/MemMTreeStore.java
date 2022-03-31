@@ -88,6 +88,9 @@ public class MemMTreeStore implements IMTreeStore {
   public void unPin(IMNode node) {}
 
   @Override
+  public void unPinPath(IMNode node) {}
+
+  @Override
   public void clear() {
     root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
   }
