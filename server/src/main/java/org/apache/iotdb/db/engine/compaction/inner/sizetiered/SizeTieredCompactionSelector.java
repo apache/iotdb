@@ -23,7 +23,6 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionSelector;
-import org.apache.iotdb.db.engine.compaction.inner.InnerSpaceCompactionTaskFactory;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.compaction.task.CompactionTaskComparator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
@@ -37,7 +36,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.Iterator;
 import java.util.List;
 import java.util.PriorityQueue;
 
@@ -54,22 +52,15 @@ import java.util.PriorityQueue;
 public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSelector {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
-  private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   public SizeTieredCompactionSelector(
       String logicalStorageGroupName,
       String virtualStorageGroupName,
       long timePartition,
       TsFileManager tsFileManager,
-      boolean sequence,
-      InnerSpaceCompactionTaskFactory taskFactory) {
-    super(
-        logicalStorageGroupName,
-        virtualStorageGroupName,
-        timePartition,
-        tsFileManager,
-        sequence,
-        taskFactory);
+      boolean sequence) {
+    super(logicalStorageGroupName, virtualStorageGroupName, timePartition, tsFileManager, sequence);
   }
 
   /**
@@ -156,9 +147,7 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
 
   private int searchMaxFileLevel() throws IOException {
     int maxLevel = -1;
-    Iterator<TsFileResource> iterator = tsFileResources.iterator();
-    while (iterator.hasNext()) {
-      TsFileResource currentFile = iterator.next();
+    for (TsFileResource currentFile : tsFileResources) {
       TsFileNameGenerator.TsFileName currentName =
           TsFileNameGenerator.getTsFileName(currentFile.getTsFile().getName());
       if (currentName.getInnerCompactionCnt() > maxLevel) {
@@ -168,17 +157,18 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
     return maxLevel;
   }
 
-  private boolean createAndSubmitTask(List<TsFileResource> selectedFileList)
+  private void createAndSubmitTask(List<TsFileResource> selectedFileList)
       throws InterruptedException {
     AbstractCompactionTask compactionTask =
-        taskFactory.createTask(
+        new SizeTieredCompactionTask(
             logicalStorageGroupName,
             virtualStorageGroupName,
             timePartition,
             tsFileManager,
             selectedFileList,
-            sequence);
-    return CompactionTaskManager.getInstance().addTaskToWaitingQueue(compactionTask);
+            sequence,
+            CompactionTaskManager.currentTaskNum);
+    CompactionTaskManager.getInstance().addTaskToWaitingQueue(compactionTask);
   }
 
   private class SizeTieredCompactionTaskComparator

@@ -22,9 +22,7 @@ package org.apache.iotdb.db.engine.compaction;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionSelector;
-import org.apache.iotdb.db.engine.compaction.cross.CrossSpaceCompactionTaskFactory;
 import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionSelector;
-import org.apache.iotdb.db.engine.compaction.inner.InnerSpaceCompactionTaskFactory;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionSelector;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 
@@ -51,22 +49,19 @@ public class CompactionScheduler {
         tsFileManager.getVirtualStorageGroup(),
         tsFileManager.getStorageGroupDir(),
         timePartition,
-        tsFileManager,
-        new CrossSpaceCompactionTaskFactory());
+        tsFileManager);
     tryToSubmitInnerSpaceCompactionTask(
         tsFileManager.getStorageGroupName(),
         tsFileManager.getVirtualStorageGroup(),
         timePartition,
         tsFileManager,
-        true,
-        new InnerSpaceCompactionTaskFactory());
+        true);
     tryToSubmitInnerSpaceCompactionTask(
         tsFileManager.getStorageGroupName(),
         tsFileManager.getVirtualStorageGroup(),
         timePartition,
         tsFileManager,
-        false,
-        new InnerSpaceCompactionTaskFactory());
+        false);
   }
 
   public static void tryToSubmitInnerSpaceCompactionTask(
@@ -74,8 +69,7 @@ public class CompactionScheduler {
       String virtualStorageGroupName,
       long timePartition,
       TsFileManager tsFileManager,
-      boolean sequence,
-      InnerSpaceCompactionTaskFactory taskFactory) {
+      boolean sequence) {
     if ((!config.isEnableSeqSpaceCompaction() && sequence)
         || (!config.isEnableUnseqSpaceCompaction() && !sequence)) {
       return;
@@ -89,8 +83,7 @@ public class CompactionScheduler {
                 virtualStorageGroupName,
                 timePartition,
                 tsFileManager,
-                sequence,
-                taskFactory);
+                sequence);
     innerSpaceCompactionSelector.selectAndSubmit();
   }
 
@@ -99,8 +92,7 @@ public class CompactionScheduler {
       String virtualStorageGroupName,
       String storageGroupDir,
       long timePartition,
-      TsFileManager tsFileManager,
-      CrossSpaceCompactionTaskFactory taskFactory) {
+      TsFileManager tsFileManager) {
     if (!config.isEnableCrossSpaceCompaction()) {
       return;
     }
@@ -112,8 +104,7 @@ public class CompactionScheduler {
                 virtualStorageGroupName,
                 storageGroupDir,
                 timePartition,
-                tsFileManager,
-                taskFactory);
+                tsFileManager);
     crossSpaceCompactionSelector.selectAndSubmit();
   }
 }

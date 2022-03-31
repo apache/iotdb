@@ -23,7 +23,6 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionSelector;
-import org.apache.iotdb.db.engine.compaction.cross.CrossSpaceCompactionTaskFactory;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.manage.CrossSpaceCompactionResource;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.ICrossSpaceMergeFileSelector;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
@@ -50,15 +49,13 @@ public class RewriteCrossSpaceCompactionSelector extends AbstractCrossSpaceCompa
       String virtualStorageGroupId,
       String storageGroupDir,
       long timePartition,
-      TsFileManager tsFileManager,
-      CrossSpaceCompactionTaskFactory taskFactory) {
+      TsFileManager tsFileManager) {
     super(
         logicalStorageGroupName,
         virtualStorageGroupId,
         storageGroupDir,
         timePartition,
-        tsFileManager,
-        taskFactory);
+        tsFileManager);
   }
 
   /**
@@ -116,13 +113,16 @@ public class RewriteCrossSpaceCompactionSelector extends AbstractCrossSpaceCompa
 
       if (mergeFiles[0].size() > 0 && mergeFiles[1].size() > 0) {
         AbstractCompactionTask compactionTask =
-            taskFactory.createTask(
-                logicalStorageGroupName,
-                virtualGroupId,
-                timePartition,
-                tsFileManager,
-                mergeFiles[0],
-                mergeFiles[1]);
+            IoTDBDescriptor.getInstance()
+                .getConfig()
+                .getCrossCompactionStrategy()
+                .getCompactionTask(
+                    logicalStorageGroupName,
+                    virtualGroupId,
+                    timePartition,
+                    tsFileManager,
+                    mergeFiles[0],
+                    mergeFiles[1]);
         CompactionTaskManager.getInstance().addTaskToWaitingQueue(compactionTask);
         LOGGER.info(
             "{} [Compaction] submit a task with {} sequence file and {} unseq files",

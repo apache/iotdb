@@ -32,22 +32,19 @@ public abstract class AbstractCrossSpaceCompactionSelector extends AbstractCompa
   protected TsFileManager tsFileManager;
   protected List<TsFileResource> sequenceFileList;
   protected List<TsFileResource> unsequenceFileList;
-  protected CrossSpaceCompactionTaskFactory taskFactory;
 
   public AbstractCrossSpaceCompactionSelector(
       String logicalStorageGroupName,
       String virtualGroupId,
       String storageGroupDir,
       long timePartition,
-      TsFileManager tsFileManager,
-      CrossSpaceCompactionTaskFactory taskFactory) {
+      TsFileManager tsFileManager) {
     this.logicalStorageGroupName = logicalStorageGroupName;
     this.virtualGroupId = virtualGroupId;
     this.storageGroupDir = storageGroupDir;
     this.timePartition = timePartition;
     this.sequenceFileList = tsFileManager.getSequenceListByTimePartition(timePartition);
     this.unsequenceFileList = tsFileManager.getUnsequenceListByTimePartition(timePartition);
-    this.taskFactory = taskFactory;
     this.tsFileManager = tsFileManager;
   }
 

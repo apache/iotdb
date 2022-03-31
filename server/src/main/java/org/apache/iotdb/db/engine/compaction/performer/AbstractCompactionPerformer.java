@@ -16,33 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.engine.compaction.performer;
 
-package org.apache.iotdb.db.engine.compaction.inner;
-
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
-import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 
+import java.io.IOException;
 import java.util.List;
 
-public class InnerSpaceCompactionTaskFactory {
-  public AbstractCompactionTask createTask(
-      String logicalStorageGroupName,
-      String virtualStorageGroup,
-      long timePartition,
-      TsFileManager tsFileManager,
-      List<TsFileResource> selectedTsFileResourceList,
-      boolean sequence) {
-    return IoTDBDescriptor.getInstance()
-        .getConfig()
-        .getInnerCompactionStrategy()
-        .getCompactionTask(
-            logicalStorageGroupName,
-            virtualStorageGroup,
-            timePartition,
-            tsFileManager,
-            selectedTsFileResourceList,
-            sequence);
-  }
+/**
+ * CompactionPerformer is used to compact multiple files into one or multiple files. Different
+ * performers may use different implementation to achieve this goal. Some may read chunk directly
+ * from tsfile, and some may using query tools to read data point by point from tsfile. Notice, not
+ * all kinds of Performer can be used for all kinds of compaction tasks!
+ */
+public abstract class AbstractCompactionPerformer {
+  protected List<TsFileResource> seqFiles;
+  protected List<TsFileResource> unseqFiles;
+
+  public abstract void perform() throws IOException;
 }
