@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.newsync.receiver.manager;
 
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.newsync.sender.pipe.Pipe.PipeStatus;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
 import org.junit.After;

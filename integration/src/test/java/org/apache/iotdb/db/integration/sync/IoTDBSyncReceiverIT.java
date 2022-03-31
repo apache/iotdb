@@ -27,8 +27,8 @@ import org.apache.iotdb.db.newsync.pipedata.PipeData;
 import org.apache.iotdb.db.newsync.pipedata.SchemaPipeData;
 import org.apache.iotdb.db.newsync.pipedata.TsFilePipeData;
 import org.apache.iotdb.db.newsync.receiver.ReceiverService;
-import org.apache.iotdb.db.newsync.receiver.manager.PipeStatus;
 import org.apache.iotdb.db.newsync.sender.pipe.Pipe;
+import org.apache.iotdb.db.newsync.sender.pipe.Pipe.PipeStatus;
 import org.apache.iotdb.db.newsync.sender.pipe.TsFilePipe;
 import org.apache.iotdb.db.newsync.transport.client.TransportClient;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -121,8 +121,7 @@ public class IoTDBSyncReceiverIT {
         .getConfig()
         .setEnableCrossSpaceCompaction(enableCrossSpaceCompaction);
     FileUtils.deleteDirectory(tmpDir);
-    //    client.close();
-    //    ReceiverService.getInstance().stopPipeServer();
+    client.close();
     EnvironmentUtils.cleanEnv();
   }
 
