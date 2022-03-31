@@ -77,7 +77,7 @@ struct DeviceGroupHashInfo {
 }
 
 struct FetchDataPartitionReq {
-    1: required map<string, list<i64>> devicePathsToStartTimeMap
+    1: required map<i32, list<i64>> deviceGroupIDToStartTimeMap
 }
 
 struct FetchSchemaPartitionReq {
@@ -85,7 +85,7 @@ struct FetchSchemaPartitionReq {
 }
 
 struct FetchPartitionReq {
-    1: required map<string, list<i64>> devicePathsToStartTimeMap
+    1: required map<i32, list<i64>> deviceGroupIDToStartTimeMap
 }
 
 struct RegionInfo {
