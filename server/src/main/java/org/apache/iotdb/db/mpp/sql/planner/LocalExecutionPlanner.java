@@ -18,17 +18,24 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner;
 
+import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.buffer.ISinkHandle;
 import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
+import org.apache.iotdb.db.mpp.execution.Driver;
+import org.apache.iotdb.db.mpp.execution.DriverContext;
 import org.apache.iotdb.db.mpp.execution.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.operator.Operator;
 import org.apache.iotdb.db.mpp.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.operator.process.LimitOperator;
+import org.apache.iotdb.db.mpp.operator.process.TimeJoinOperator;
 import org.apache.iotdb.db.mpp.operator.source.SeriesScanOperator;
+import org.apache.iotdb.db.mpp.operator.source.SourceOperator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.AggregateNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.DeviceMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.FillNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.FilterNullNode;
@@ -37,11 +44,18 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.sink.FragmentSinkNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregateScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
+
+import static com.google.common.base.Preconditions.checkArgument;
+import static java.util.Objects.requireNonNull;
 
 /**
  * used to plan a fragment instance. Currently, we simply change it from PlanNode to executable
@@ -49,6 +63,30 @@ import java.util.List;
  * run a fragment instance parallel and take full advantage of multi-cores
  */
 public class LocalExecutionPlanner {
+
+  public static LocalExecutionPlanner getInstance() {
+    return InstanceHolder.INSTANCE;
+  }
+
+  public Driver plan(
+      PlanNode plan,
+      FragmentInstanceContext instanceContext,
+      Filter timeFilter,
+      VirtualStorageGroupProcessor dataRegion) {
+    LocalExecutionPlanContext context = new LocalExecutionPlanContext(instanceContext);
+
+    Operator root = plan.accept(new Visitor(), context);
+
+    DriverContext driverContext =
+        new DriverContext(
+            instanceContext,
+            context.getPaths(),
+            timeFilter,
+            dataRegion,
+            context.getSourceOperators());
+    instanceContext.setDriverContext(driverContext);
+    return new Driver(root, context.getSinkHandle(), driverContext);
+  }
 
   /** This Visitor is responsible for transferring PlanNode Tree to Operator Tree */
   private class Visitor extends PlanVisitor<Operator, LocalExecutionPlanContext> {
@@ -63,16 +101,23 @@ public class LocalExecutionPlanner {
       PartialPath seriesPath = node.getSeriesPath();
       boolean ascending = node.getScanOrder() == OrderBy.TIMESTAMP_ASC;
       OperatorContext operatorContext =
-          context.taskContext.addOperatorContext(
+          context.instanceContext.addOperatorContext(
               context.getNextOperatorId(), node.getId(), SeriesScanOperator.class.getSimpleName());
-      return new SeriesScanOperator(
-          seriesPath,
-          node.getAllSensors(),
-          seriesPath.getSeriesType(),
-          operatorContext,
-          node.getTimeFilter(),
-          node.getValueFilter(),
-          ascending);
+
+      SeriesScanOperator seriesScanOperator =
+          new SeriesScanOperator(
+              seriesPath,
+              node.getAllSensors(),
+              seriesPath.getSeriesType(),
+              operatorContext,
+              node.getTimeFilter(),
+              node.getValueFilter(),
+              ascending);
+
+      context.addSourceOperator(seriesScanOperator);
+      context.addPath(seriesPath);
+
+      return seriesScanOperator;
     }
 
     @Override
@@ -114,7 +159,7 @@ public class LocalExecutionPlanner {
     public Operator visitLimit(LimitNode node, LocalExecutionPlanContext context) {
       Operator child = node.getChild().accept(this, context);
       return new LimitOperator(
-          context.taskContext.addOperatorContext(
+          context.instanceContext.addOperatorContext(
               context.getNextOperatorId(), node.getId(), LimitOperator.class.getSimpleName()),
           node.getLimit(),
           child);
@@ -138,20 +183,81 @@ public class LocalExecutionPlanner {
 
     @Override
     public Operator visitTimeJoin(TimeJoinNode node, LocalExecutionPlanContext context) {
-      return super.visitTimeJoin(node, context);
+      List<Operator> children =
+          node.getChildren().stream()
+              .map(child -> child.accept(this, context))
+              .collect(Collectors.toList());
+      OperatorContext operatorContext =
+          context.instanceContext.addOperatorContext(
+              context.getNextOperatorId(), node.getId(), TimeJoinOperator.class.getSimpleName());
+      return new TimeJoinOperator(operatorContext, children, node.getMergeOrder(), node.getTypes());
+    }
+
+    @Override
+    public Operator visitExchange(ExchangeNode node, LocalExecutionPlanContext context) {
+      return super.visitExchange(node, context);
+    }
+
+    @Override
+    public Operator visitFragmentSink(FragmentSinkNode node, LocalExecutionPlanContext context) {
+      Operator child = node.getChild().accept(this, context);
+      // TODO(jackie tien) create SinkHandle here
+      ISinkHandle sinkHandle = null;
+      context.setSinkHandle(sinkHandle);
+      return child;
     }
   }
 
+  private static class InstanceHolder {
+
+    private InstanceHolder() {}
+
+    private static final LocalExecutionPlanner INSTANCE = new LocalExecutionPlanner();
+  }
+
   private static class LocalExecutionPlanContext {
-    private final FragmentInstanceContext taskContext;
+    private final FragmentInstanceContext instanceContext;
+    private final List<PartialPath> paths;
+    private final List<SourceOperator> sourceOperators;
+    private ISinkHandle sinkHandle;
+
     private int nextOperatorId = 0;
 
-    public LocalExecutionPlanContext(FragmentInstanceContext taskContext) {
-      this.taskContext = taskContext;
+    public LocalExecutionPlanContext(FragmentInstanceContext instanceContext) {
+      this.instanceContext = instanceContext;
+      this.paths = new ArrayList<>();
+      this.sourceOperators = new ArrayList<>();
     }
 
     private int getNextOperatorId() {
       return nextOperatorId++;
+    }
+
+    public List<PartialPath> getPaths() {
+      return paths;
+    }
+
+    public List<SourceOperator> getSourceOperators() {
+      return sourceOperators;
+    }
+
+    public void addPath(PartialPath path) {
+      paths.add(path);
+    }
+
+    public void addSourceOperator(SourceOperator sourceOperator) {
+      sourceOperators.add(sourceOperator);
+    }
+
+    public ISinkHandle getSinkHandle() {
+      return sinkHandle;
+    }
+
+    public void setSinkHandle(ISinkHandle sinkHandle) {
+      requireNonNull(sinkHandle, "sinkHandle is null");
+      checkArgument(this.sinkHandle == null, "There must be at most one SinkNode");
+
+      this.sinkHandle = sinkHandle;
     }
   }
 }

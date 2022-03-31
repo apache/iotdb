@@ -27,11 +27,24 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import java.util.List;
 
 public class DriverContext {
-  private FragmentInstanceContext fragmentInstanceContext;
-  private List<PartialPath> paths;
-  private Filter timeFilter;
-  private VirtualStorageGroupProcessor dataRegion;
-  private List<SourceOperator> sourceOperators;
+  private final FragmentInstanceContext fragmentInstanceContext;
+  private final List<PartialPath> paths;
+  private final Filter timeFilter;
+  private final VirtualStorageGroupProcessor dataRegion;
+  private final List<SourceOperator> sourceOperators;
+
+  public DriverContext(
+      FragmentInstanceContext fragmentInstanceContext,
+      List<PartialPath> paths,
+      Filter timeFilter,
+      VirtualStorageGroupProcessor dataRegion,
+      List<SourceOperator> sourceOperators) {
+    this.fragmentInstanceContext = fragmentInstanceContext;
+    this.paths = paths;
+    this.timeFilter = timeFilter;
+    this.dataRegion = dataRegion;
+    this.sourceOperators = sourceOperators;
+  }
 
   public FragmentInstanceId getId() {
     return fragmentInstanceContext.getId();

@@ -38,7 +38,7 @@ import java.util.List;
 
 public class FragmentInstanceManagerTest {
 
-  private final FragmentInstanceManager manager = FragmentInstanceManager.getInstance();
+  private final FragmentInstanceScheduler manager = FragmentInstanceScheduler.getInstance();
 
   @After
   public void tearDown() {

@@ -25,7 +25,7 @@ import org.apache.iotdb.db.mpp.execution.ExecFragmentInstance;
 import java.util.List;
 
 /** the interface of fragment instance scheduling */
-public interface IFragmentInstanceManager {
+public interface IFragmentInstanceScheduler {
 
   /**
    * Submit one or more {@link ExecFragmentInstance} in one query for later scheduling.

@@ -65,7 +65,6 @@ public class TimeJoinOperator implements ProcessOperator {
       OperatorContext operatorContext,
       List<Operator> children,
       OrderBy mergeOrder,
-      int columnCount,
       List<TSDataType> dataTypes) {
     this.operatorContext = operatorContext;
     this.children = children;
@@ -74,7 +73,7 @@ public class TimeJoinOperator implements ProcessOperator {
     this.inputIndex = new int[this.inputCount];
     this.noMoreTsBlocks = new boolean[this.inputCount];
     this.timeSelector = new TimeSelector(this.inputCount << 1, OrderBy.TIMESTAMP_ASC == mergeOrder);
-    this.columnCount = columnCount;
+    this.columnCount = dataTypes.size();
     this.dataTypes = dataTypes;
   }
 

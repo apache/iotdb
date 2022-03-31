@@ -37,6 +37,8 @@ public class FragmentInstanceContext extends QueryContext {
   private final List<OperatorContext> operatorContexts = new ArrayList<>();
   private final long createNanos = System.nanoTime();
 
+  private DriverContext driverContext;
+
   //    private final GcMonitor gcMonitor;
   //    private final AtomicLong startNanos = new AtomicLong();
   //    private final AtomicLong startFullGcCount = new AtomicLong(-1);
@@ -72,5 +74,13 @@ public class FragmentInstanceContext extends QueryContext {
 
   public FragmentInstanceId getId() {
     return id;
+  }
+
+  public DriverContext getDriverContext() {
+    return driverContext;
+  }
+
+  public void setDriverContext(DriverContext driverContext) {
+    this.driverContext = driverContext;
   }
 }

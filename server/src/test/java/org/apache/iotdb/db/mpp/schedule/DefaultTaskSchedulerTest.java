@@ -41,7 +41,7 @@ import java.util.concurrent.TimeUnit;
 
 public class DefaultTaskSchedulerTest {
 
-  private final FragmentInstanceManager manager = FragmentInstanceManager.getInstance();
+  private final FragmentInstanceScheduler manager = FragmentInstanceScheduler.getInstance();
 
   @After
   public void tearDown() {

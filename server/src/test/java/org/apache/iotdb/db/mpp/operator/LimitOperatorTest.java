@@ -123,7 +123,6 @@ public class LimitOperatorTest {
               fragmentInstanceContext.getOperatorContexts().get(2),
               Arrays.asList(seriesScanOperator1, seriesScanOperator2),
               OrderBy.TIMESTAMP_ASC,
-              2,
               Arrays.asList(TSDataType.INT32, TSDataType.INT32));
 
       LimitOperator limitOperator =

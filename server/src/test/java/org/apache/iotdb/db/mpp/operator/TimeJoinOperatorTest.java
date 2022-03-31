@@ -117,7 +117,6 @@ public class TimeJoinOperatorTest {
               fragmentInstanceContext.getOperatorContexts().get(2),
               Arrays.asList(seriesScanOperator1, seriesScanOperator2),
               OrderBy.TIMESTAMP_ASC,
-              2,
               Arrays.asList(TSDataType.INT32, TSDataType.INT32));
       int count = 0;
       while (timeJoinOperator.hasNext()) {
