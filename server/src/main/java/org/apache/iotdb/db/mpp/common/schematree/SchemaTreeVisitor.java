@@ -147,10 +147,10 @@ public class SchemaTreeVisitor implements Iterator<MeasurementPath> {
 
       if (nodes[patternIndex].equals(ONE_LEVEL_PATH_WILDCARD)) {
         String regex = nodes[patternIndex].replace("*", ".*");
-        while (!Pattern.matches(regex, node.getName()) && iterator.hasNext()) {
+        while (!checkOneLevelWildcardMatch(regex, node) && iterator.hasNext()) {
           node = iterator.next();
         }
-        if (!Pattern.matches(regex, node.getName())) {
+        if (!checkOneLevelWildcardMatch(regex, node)) {
           popStack();
           continue;
         }
@@ -203,6 +203,17 @@ public class SchemaTreeVisitor implements Iterator<MeasurementPath> {
     }
   }
 
+  private boolean checkOneLevelWildcardMatch(String regex, SchemaNode node) {
+    if (!node.isMeasurement()) {
+      return Pattern.matches(regex, node.getName());
+    }
+
+    SchemaMeasurementNode measurementNode = node.getAsMeasurementNode();
+
+    return Pattern.matches(regex, measurementNode.getName())
+        || Pattern.matches(regex, measurementNode.getAlias());
+  }
+
   private MeasurementPath generateMeasurementPath() {
     List<String> nodeNames = new LinkedList<>();
     Iterator<SchemaNode> iterator = context.descendingIterator();
@@ -214,7 +225,7 @@ public class SchemaTreeVisitor implements Iterator<MeasurementPath> {
         new MeasurementPath(nodeNames.toArray(new String[0]), nextMatchedNode.getSchema());
     result.setUnderAlignedEntity(context.peek().getAsEntityNode().isAligned());
     String alias = nextMatchedNode.getAlias();
-    if (alias != null) {
+    if (nodes[nodes.length - 1].equals(alias)) {
       result.setMeasurementAlias(alias);
     }
 

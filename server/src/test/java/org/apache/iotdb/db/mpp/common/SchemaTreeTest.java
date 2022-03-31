@@ -45,6 +45,10 @@ public class SchemaTreeTest {
 
     visitor = new SchemaTreeVisitor(root, new PartialPath("root.sg.*.s2"), 0, 0, false);
     checkVisitorResult(
+        visitor, 2, new String[] {"root.sg.d1.s2", "root.sg.d2.s2"}, new String[] {"", ""}, null);
+
+    visitor = new SchemaTreeVisitor(root, new PartialPath("root.sg.*.status"), 0, 0, false);
+    checkVisitorResult(
         visitor,
         2,
         new String[] {"root.sg.d1.s2", "root.sg.d2.s2"},
@@ -56,7 +60,7 @@ public class SchemaTreeTest {
         visitor,
         2,
         new String[] {"root.sg.d2.a.s1", "root.sg.d2.a.s2"},
-        new String[] {"", "status"},
+        new String[] {"", ""},
         new boolean[] {true, true});
 
     visitor = new SchemaTreeVisitor(root, new PartialPath("root.sg.d1"), 0, 0, true);
@@ -64,7 +68,7 @@ public class SchemaTreeTest {
         visitor,
         2,
         new String[] {"root.sg.d1.s1", "root.sg.d1.s2"},
-        new String[] {"", "status"},
+        new String[] {"", ""},
         new boolean[] {false, false});
 
     visitor = new SchemaTreeVisitor(root, new PartialPath("root.sg.*.a"), 0, 0, true);
@@ -72,7 +76,7 @@ public class SchemaTreeTest {
         visitor,
         2,
         new String[] {"root.sg.d2.a.s1", "root.sg.d2.a.s2"},
-        new String[] {"", "status"},
+        new String[] {"", ""},
         new boolean[] {true, true},
         new int[] {0, 0});
 
@@ -81,7 +85,7 @@ public class SchemaTreeTest {
         visitor,
         2,
         new String[] {"root.sg.d2.s1", "root.sg.d2.s2"},
-        new String[] {"", "status"},
+        new String[] {"", ""},
         new boolean[] {false, false},
         new int[] {3, 4});
 
@@ -90,7 +94,7 @@ public class SchemaTreeTest {
         visitor,
         2,
         new String[] {"root.sg.d2.a.s2", "root.sg.d2.s1"},
-        new String[] {"status", ""},
+        new String[] {"", ""},
         new boolean[] {true, false},
         new int[] {4, 5});
 
@@ -99,7 +103,7 @@ public class SchemaTreeTest {
         visitor,
         2,
         new String[] {"root.sg.d1.s1", "root.sg.d1.s2"},
-        new String[] {"", "status"},
+        new String[] {"", ""},
         new boolean[] {false, false});
 
     visitor = new SchemaTreeVisitor(root, new PartialPath("root.sg.d2.**"), 3, 1, true);
@@ -107,11 +111,11 @@ public class SchemaTreeTest {
         visitor,
         3,
         new String[] {"root.sg.d2.a.s2", "root.sg.d2.s1", "root.sg.d2.s2"},
-        new String[] {"status", "", "status"},
+        new String[] {"", "", ""},
         new boolean[] {true, false, false},
         new int[] {2, 3, 4});
 
-    visitor = new SchemaTreeVisitor(root, new PartialPath("root.sg.**.s2"), 2, 1, true);
+    visitor = new SchemaTreeVisitor(root, new PartialPath("root.sg.**.status"), 2, 1, true);
     checkVisitorResult(
         visitor,
         2,
