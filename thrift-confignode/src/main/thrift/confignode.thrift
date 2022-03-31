@@ -21,6 +21,11 @@ include "rpc.thrift"
 namespace java org.apache.iotdb.confignode.rpc.thrift
 namespace py iotdb.thrift.confignode
 
+struct EndPoint {
+  1: required string ip
+  2: required i32 port
+}
+
 struct DataNodeRegisterReq {
     1: required rpc.EndPoint endPoint
 }
@@ -76,6 +81,20 @@ struct DeviceGroupHashInfo {
     2: required string hashClass
 }
 
+struct fetchDataPartitionReq {
+    1: required map<string, list<i64>> devicesNameStartTimeMap
+}
+
+struct DataRegionReplicaInfo {
+    1: required i32 dataRegionId
+    2: required list<EndPoint> endPointList
+}
+
+struct DataPartitionInfoResp {
+    // Map<StorageGroup, Map<DeviceGroupID, Map<TimePartitionId, List<DataRegionReplicaInfo>>>>
+    1: required map<string, map<i32, map<i64, list<DataRegionReplicaInfo>>>> dataPartitionMap
+}
+
 service ConfigIService {
   // Return TSStatusCode.SUCCESS_STATUS and the register DataNode id when successful registered.
   // Otherwise, return TSStatusCode.INTERNAL_SERVER_ERROR
@@ -96,4 +115,6 @@ service ConfigIService {
   DataPartitionInfo getDataPartition(GetDataPartitionReq req)
 
   DeviceGroupHashInfo getDeviceGroupHashInfo()
+
+  DataPartitionInfoResp getDataPartitionInfo(fetchDataPartitionReq req)
 }
