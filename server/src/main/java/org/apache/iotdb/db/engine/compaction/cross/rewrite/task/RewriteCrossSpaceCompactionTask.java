@@ -147,10 +147,18 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
       CompactionUtils.compact(
           selectedSeqTsFileResourceList, selectedUnSeqTsFileResourceList, targetTsfileResourceList);
 
+      if (Thread.currentThread().isInterrupted()) {
+        throw new InterruptedException(
+            String.format("%s [Compaction] abort", fullStorageGroupName));
+      }
       CompactionUtils.moveTargetFile(targetTsfileResourceList, false, fullStorageGroupName);
       CompactionUtils.combineModsInCompaction(
           selectedSeqTsFileResourceList, selectedUnSeqTsFileResourceList, targetTsfileResourceList);
 
+      if (Thread.currentThread().isInterrupted()) {
+        throw new InterruptedException(
+            String.format("%s [Compaction] abort", fullStorageGroupName));
+      }
       // update tsfile resource in memory
       tsFileManager.replace(
           selectedSeqTsFileResourceList,
@@ -160,7 +168,15 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
           true);
 
       releaseReadAndLockWrite(selectedSeqTsFileResourceList);
+      if (Thread.currentThread().isInterrupted()) {
+        throw new InterruptedException(
+            String.format("%s [Compaction] abort", fullStorageGroupName));
+      }
       releaseReadAndLockWrite(selectedUnSeqTsFileResourceList);
+      if (Thread.currentThread().isInterrupted()) {
+        throw new InterruptedException(
+            String.format("%s [Compaction] abort", fullStorageGroupName));
+      }
 
       deleteOldFiles(selectedSeqTsFileResourceList);
       deleteOldFiles(selectedUnSeqTsFileResourceList);
