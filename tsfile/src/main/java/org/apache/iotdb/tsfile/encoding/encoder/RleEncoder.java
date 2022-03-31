@@ -312,6 +312,12 @@ public abstract class RleEncoder<T extends Comparable<T>> extends Encoder {
   }
 
   @Override
+  public void encode(String value, ByteArrayOutputStream out){
+    throw new TsFileEncodingException(getClass().getName());
+  }
+
+
+  @Override
   public void encode(float value, ByteArrayOutputStream out) {
     throw new TsFileEncodingException(getClass().getName());
   }

@@ -65,7 +65,11 @@ public abstract class Encoder {
     throw new TsFileEncodingException("Method encode long is not supported by Encoder");
   }
 
-  public void encode(float value, ByteArrayOutputStream out) {
+    public void encode(String value, ByteArrayOutputStream out){
+      throw new TsFileEncodingException("Method encode text is not supported by Encoder");
+    };
+
+    public void encode(float value, ByteArrayOutputStream out) {
     throw new TsFileEncodingException("Method encode float is not supported by Encoder");
   }
 
