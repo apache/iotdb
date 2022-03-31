@@ -16,10 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.compaction.utils.log;
+package org.apache.iotdb.db.engine.compaction.log;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.db.engine.compaction.TsFileIdentifier;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
 import java.io.BufferedReader;
@@ -29,15 +28,15 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger.SEQUENCE_NAME_FROM_OLD;
-import static org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger.STR_MERGE_START_FROM_OLD;
-import static org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger.STR_SEQ_FILES_FROM_OLD;
-import static org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger.STR_SOURCE_FILES;
-import static org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger.STR_SOURCE_FILES_FROM_OLD;
-import static org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger.STR_TARGET_FILES;
-import static org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger.STR_TARGET_FILES_FROM_OLD;
-import static org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger.STR_UNSEQ_FILES_FROM_OLD;
-import static org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger.UNSEQUENCE_NAME_FROM_OLD;
+import static org.apache.iotdb.db.engine.compaction.log.CompactionLogger.SEQUENCE_NAME_FROM_OLD;
+import static org.apache.iotdb.db.engine.compaction.log.CompactionLogger.STR_MERGE_START_FROM_OLD;
+import static org.apache.iotdb.db.engine.compaction.log.CompactionLogger.STR_SEQ_FILES_FROM_OLD;
+import static org.apache.iotdb.db.engine.compaction.log.CompactionLogger.STR_SOURCE_FILES;
+import static org.apache.iotdb.db.engine.compaction.log.CompactionLogger.STR_SOURCE_FILES_FROM_OLD;
+import static org.apache.iotdb.db.engine.compaction.log.CompactionLogger.STR_TARGET_FILES;
+import static org.apache.iotdb.db.engine.compaction.log.CompactionLogger.STR_TARGET_FILES_FROM_OLD;
+import static org.apache.iotdb.db.engine.compaction.log.CompactionLogger.STR_UNSEQ_FILES_FROM_OLD;
+import static org.apache.iotdb.db.engine.compaction.log.CompactionLogger.UNSEQUENCE_NAME_FROM_OLD;
 
 public class CompactionLogAnalyzer {
 

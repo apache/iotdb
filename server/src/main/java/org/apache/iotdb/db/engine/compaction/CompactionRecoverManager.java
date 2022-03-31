@@ -16,11 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.compaction.task;
+package org.apache.iotdb.db.engine.compaction;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
-import org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger;
+import org.apache.iotdb.db.engine.compaction.log.CompactionLogger;
+import org.apache.iotdb.db.engine.compaction.task.CompactionRecoverTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 
@@ -31,8 +32,8 @@ import java.io.File;
 import java.util.List;
 import java.util.regex.Pattern;
 
-import static org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger.CROSS_COMPACTION_LOG_NAME_FROM_OLD;
-import static org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX_FROM_OLD;
+import static org.apache.iotdb.db.engine.compaction.log.CompactionLogger.CROSS_COMPACTION_LOG_NAME_FROM_OLD;
+import static org.apache.iotdb.db.engine.compaction.log.CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX_FROM_OLD;
 
 /**
  * CompactionRecoverManager searches compaction log and call {@link CompactionRecoverTask} to
