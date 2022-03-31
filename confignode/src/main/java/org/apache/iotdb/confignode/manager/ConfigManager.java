@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.iotdb.confignode.conf.ConfigNodeConf;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.response.DataNodesInfoDataSet;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
 import org.apache.iotdb.confignode.physical.sys.DataPartitionPlan;
@@ -26,17 +28,24 @@ import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
 import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.physical.sys.SchemaPartitionPlan;
 import org.apache.iotdb.confignode.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.confignode.rpc.thrift.DeviceGroupHashInfo;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
-/** Entry of all management classes */
-public class ConfigNodeManager implements Manager {
+import java.io.IOException;
+
+/** Entry of all management, AssignPartitionManager,AssignRegionManager. */
+public class ConfigManager implements Manager {
+  private static final ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();
   private static final TSStatus ERROR_TSSTATUS =
       new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
 
+  /** manage consensus, write or read consensus */
+  private final ConsensusManager consensusManager;
+
   /** manage data node */
-  private final DataNodeInfoManager dataNodeInfoManager;
+  private final DataNodeManager dataNodeManager;
 
   /** manage assign data partition and schema partition */
   private final AssignPartitionManager assignPartitionManager;
@@ -44,10 +53,11 @@ public class ConfigNodeManager implements Manager {
   /** manager assign schema region and data region */
   private final AssignRegionManager assignRegionManager;
 
-  public ConfigNodeManager() {
-    this.dataNodeInfoManager = new DataNodeInfoManager(this);
+  public ConfigManager() throws IOException {
+    this.dataNodeManager = new DataNodeManager(this);
     this.assignPartitionManager = new AssignPartitionManager(this);
     this.assignRegionManager = new AssignRegionManager(this);
+    this.consensusManager = new ConsensusManager();
   }
 
   @Override
@@ -58,7 +68,7 @@ public class ConfigNodeManager implements Manager {
   @Override
   public TSStatus registerDataNode(PhysicalPlan physicalPlan) {
     if (physicalPlan instanceof RegisterDataNodePlan) {
-      return dataNodeInfoManager.registerDataNode((RegisterDataNodePlan) physicalPlan);
+      return dataNodeManager.registerDataNode((RegisterDataNodePlan) physicalPlan);
     }
     return ERROR_TSSTATUS;
   }
@@ -66,7 +76,7 @@ public class ConfigNodeManager implements Manager {
   @Override
   public DataSet getDataNodeInfo(PhysicalPlan physicalPlan) {
     if (physicalPlan instanceof QueryDataNodeInfoPlan) {
-      return dataNodeInfoManager.getDataNodeInfo((QueryDataNodeInfoPlan) physicalPlan);
+      return dataNodeManager.getDataNodeInfo((QueryDataNodeInfoPlan) physicalPlan);
     }
     return new DataNodesInfoDataSet();
   }
@@ -85,8 +95,8 @@ public class ConfigNodeManager implements Manager {
   }
 
   @Override
-  public DataNodeInfoManager getDataNodeInfoManager() {
-    return dataNodeInfoManager;
+  public DataNodeManager getDataNodeManager() {
+    return dataNodeManager;
   }
 
   @Override
@@ -124,5 +134,16 @@ public class ConfigNodeManager implements Manager {
       return assignPartitionManager.applyDataPartition((DataPartitionPlan) physicalPlan);
     }
     return new DataNodesInfoDataSet();
+  }
+
+  @Override
+  public DeviceGroupHashInfo getDeviceGroupHashInfo() {
+    return new DeviceGroupHashInfo(
+        conf.getDeviceGroupCount(), conf.getDeviceGroupHashExecutorClass());
+  }
+
+  @Override
+  public ConsensusManager getConsensusManager() {
+    return consensusManager;
   }
 }

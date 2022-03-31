@@ -19,6 +19,7 @@
 package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
+import org.apache.iotdb.confignode.rpc.thrift.DeviceGroupHashInfo;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
@@ -71,7 +72,7 @@ public interface Manager {
    *
    * @return DataNodeInfoManager instance
    */
-  DataNodeInfoManager getDataNodeInfoManager();
+  DataNodeManager getDataNodeManager();
 
   /**
    * get data partition
@@ -111,4 +112,8 @@ public interface Manager {
    * @return data set
    */
   DataSet applyDataPartition(PhysicalPlan physicalPlan);
+
+  DeviceGroupHashInfo getDeviceGroupHashInfo();
+
+  ConsensusManager getConsensusManager();
 }

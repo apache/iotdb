@@ -23,7 +23,6 @@ import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.statemachine.PartitionRegionStateMachine;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
-import org.apache.iotdb.confignode.rpc.thrift.DeviceGroupHashInfo;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.ConsensusGroupId;
 import org.apache.iotdb.consensus.common.Endpoint;
@@ -148,11 +147,6 @@ public class ConsensusManager {
   /** Transmit PhysicalPlan to confignode.consensus.statemachine */
   public ConsensusReadResponse read(PhysicalPlan plan) {
     return consensusImpl.read(consensusGroupId, plan);
-  }
-
-  public DeviceGroupHashInfo getDeviceGroupHashInfo() {
-    return new DeviceGroupHashInfo(
-        conf.getDeviceGroupCount(), conf.getDeviceGroupHashExecutorClass());
   }
 
   // TODO: Interfaces for LoadBalancer control

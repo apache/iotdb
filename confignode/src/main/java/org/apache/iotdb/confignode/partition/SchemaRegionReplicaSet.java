@@ -20,6 +20,8 @@ package org.apache.iotdb.confignode.partition;
 
 import org.apache.iotdb.consensus.common.Endpoint;
 
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 
 public class SchemaRegionReplicaSet {
@@ -40,6 +42,30 @@ public class SchemaRegionReplicaSet {
 
   public void setEndPointList(List<Endpoint> endPointList) {
     this.endPointList = endPointList;
+  }
+
+  public void serializeImpl(ByteBuffer buffer) {
+    buffer.putInt(schemaRegionId);
+
+    buffer.putInt(endPointList.size());
+    endPointList.forEach(
+        endpoint -> {
+          endpoint.serializeImpl(buffer);
+        });
+  }
+
+  public void deserializeImpl(ByteBuffer buffer) {
+    schemaRegionId = buffer.getInt();
+    int size = buffer.getInt();
+
+    if (endPointList == null) {
+      endPointList = new ArrayList<>();
+    }
+    for (int i = 0; i < size; i++) {
+      Endpoint endpoint = new Endpoint();
+      endpoint.deserializeImpl(buffer);
+      endPointList.add(endpoint);
+    }
   }
 
   @Override

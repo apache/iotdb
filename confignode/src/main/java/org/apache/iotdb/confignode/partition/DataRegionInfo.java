@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.confignode.partition;
 
+import org.apache.iotdb.confignode.util.SerializeDeserializeUtil;
+
+import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -26,7 +29,7 @@ public class DataRegionInfo {
 
   // TODO: Serialize and Deserialize
   // Map<DataRegionID, List<DataNodeID>>
-  private final Map<Integer, List<Integer>> dataRegionDataNodesMap;
+  private Map<Integer, List<Integer>> dataRegionDataNodesMap;
 
   // Map<StorageGroup, Map<DeviceGroupID, DataPartitionRule>>
   private final Map<String, Map<Integer, DataPartitionRule>> dataPartitionRuleTable;
@@ -34,6 +37,10 @@ public class DataRegionInfo {
   public DataRegionInfo() {
     this.dataRegionDataNodesMap = new HashMap<>();
     this.dataPartitionRuleTable = new HashMap<>();
+  }
+
+  public Map<Integer, List<Integer>> getDataRegionDataNodesMap() {
+    return dataRegionDataNodesMap;
   }
 
   public void createDataRegion(int dataRegionGroup, List<Integer> dataNodeList) {
@@ -47,5 +54,13 @@ public class DataRegionInfo {
   public void updateDataPartitionRule(
       String StorageGroup, int deviceGroup, DataPartitionRule rule) {
     // TODO: Data partition policy by @YongzaoDan
+  }
+
+  public void serializeImpl(ByteBuffer buffer) {
+    SerializeDeserializeUtil.writeIntMapLists(dataRegionDataNodesMap, buffer);
+  }
+
+  public void deserializeImpl(ByteBuffer buffer) {
+    dataRegionDataNodesMap = SerializeDeserializeUtil.readIntMapLists(buffer);
   }
 }

@@ -16,8 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager;
+package org.apache.iotdb.confignode.persistence;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.response.DataNodesInfoDataSet;
 import org.apache.iotdb.confignode.partition.DataNodeInfo;
 import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
@@ -31,37 +32,48 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-/** Manager server info of data node, add node or remove node */
-public class DataNodeInfoManager {
-  private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeInfoManager.class);
+public class DataNodeInfoPersistence {
+  private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeInfoPersistence.class);
 
   /** online data nodes */
   private final ConcurrentNavigableMap<Integer, DataNodeInfo> onlineDataNodes =
       new ConcurrentSkipListMap();
 
-  /** For remove node or draning node */
+  /** For remove node or draining node */
   private Set<DataNodeInfo> drainingDataNodes = new HashSet<>();
-
-  private Manager configNodeServices;
-
-  /** TODO:do some operate after add node or remove node */
-  private List<ChangeServerListener> listeners = new CopyOnWriteArrayList<>();
 
   private final ReentrantReadWriteLock dataNodeInfoReadWriteLock;
 
-  private int nextDataNodeId;
-
-  public DataNodeInfoManager(Manager configNodeServices) {
-    this.configNodeServices = configNodeServices;
+  private DataNodeInfoPersistence() {
     this.dataNodeInfoReadWriteLock = new ReentrantReadWriteLock();
+  }
+
+  public ConcurrentNavigableMap<Integer, DataNodeInfo> getOnlineDataNodes() {
+    return onlineDataNodes;
+  }
+
+  public boolean containsValue(DataNodeInfo info) {
+    return onlineDataNodes.containsValue(info);
+  }
+
+  public void put(int dataNodeID, DataNodeInfo info) {
+    onlineDataNodes.put(dataNodeID, info);
+  }
+
+  public int getDataNodeInfo(DataNodeInfo info) {
+    // TODO: optimize
+    for (Map.Entry<Integer, DataNodeInfo> entry : onlineDataNodes.entrySet()) {
+      if (entry.getValue().equals(info)) {
+        return info.getDataNodeID();
+      }
+    }
+    return -1;
   }
 
   /**
@@ -74,23 +86,17 @@ public class DataNodeInfoManager {
     TSStatus result;
     DataNodeInfo info = plan.getInfo();
     dataNodeInfoReadWriteLock.writeLock().lock();
-
     try {
       if (onlineDataNodes.containsValue(info)) {
-        // TODO: optimize
-        result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-        for (Map.Entry<Integer, DataNodeInfo> entry : onlineDataNodes.entrySet()) {
-          if (entry.getValue().equals(info)) {
-            result.setMessage(String.valueOf(entry.getKey()));
-            break;
-          }
-        }
+        result = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+        result.setMessage(
+            String.format(
+                "DataNode %s is already registered.", plan.getInfo().getEndPoint().toString()));
       } else {
-        info.setDataNodeID(nextDataNodeId);
         onlineDataNodes.put(info.getDataNodeID(), info);
         result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-        result.setMessage(String.valueOf(nextDataNodeId));
-        nextDataNodeId += 1;
+        result.setMessage(String.valueOf(info.getDataNodeID()));
+        LOGGER.info("Register data node success, data node is {}", plan);
       }
     } finally {
       dataNodeInfoReadWriteLock.writeLock().unlock();
@@ -121,7 +127,7 @@ public class DataNodeInfoManager {
     return result;
   }
 
-  public Set<Integer> getDataNodeId() {
+  public Set<Integer> getDataNodeIds() {
     return onlineDataNodes.keySet();
   }
 
@@ -159,69 +165,22 @@ public class DataNodeInfoManager {
     }
   }
 
-  public ConcurrentNavigableMap<Integer, DataNodeInfo> getOnlineDataNodes() {
-    return onlineDataNodes;
+  @TestOnly
+  public void clear() {
+    onlineDataNodes.clear();
+    drainingDataNodes.clear();
   }
 
-  public void registerListener(final ChangeServerListener serverListener) {
-    listeners.add(serverListener);
-  }
+  private static class DataNodeInfoPersistenceHolder {
 
-  public boolean unregisterListener(final ChangeServerListener serverListener) {
-    return listeners.remove(serverListener);
-  }
+    private static final DataNodeInfoPersistence INSTANCE = new DataNodeInfoPersistence();
 
-  /** TODO: wait data node register, wait */
-  public void waitForDataNodes() {
-    listeners.stream().forEach(serverListener -> serverListener.waiting());
-  }
-
-  private class ServerStartListenerThread extends Thread implements ChangeServerListener {
-    private boolean changed = false;
-
-    ServerStartListenerThread() {
-      setDaemon(true);
-    }
-
-    @Override
-    public void addDataNode(DataNodeInfo DataNodeInfo) {
-      serverChanged();
-    }
-
-    @Override
-    public void removeDataNode(DataNodeInfo dataNodeInfo) {
-      serverChanged();
-    }
-
-    private synchronized void serverChanged() {
-      changed = true;
-      this.notify();
-    }
-
-    @Override
-    public void run() {
-      while (!configNodeServices.isStopped()) {}
+    private DataNodeInfoPersistenceHolder() {
+      // empty constructor
     }
   }
 
-  /** TODO: For listener for add or remove data node */
-  public interface ChangeServerListener {
-
-    /** Started waiting on DataNode to check */
-    default void waiting() {};
-
-    /**
-     * The server has joined the cluster
-     *
-     * @param dataNodeInfo datanode info
-     */
-    void addDataNode(final DataNodeInfo dataNodeInfo);
-
-    /**
-     * remove data node
-     *
-     * @param dataNodeInfo data node info
-     */
-    void removeDataNode(final DataNodeInfo dataNodeInfo);
+  public static DataNodeInfoPersistence getInstance() {
+    return DataNodeInfoPersistence.DataNodeInfoPersistenceHolder.INSTANCE;
   }
 }

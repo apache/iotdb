@@ -19,6 +19,9 @@
 package org.apache.iotdb.confignode.service.thrift.server;
 
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.persistence.DataNodeInfoPersistence;
+import org.apache.iotdb.confignode.persistence.PartitionInfoPersistence;
+import org.apache.iotdb.confignode.persistence.RegionInfoPersistence;
 import org.apache.iotdb.confignode.rpc.thrift.DataNodeMessage;
 import org.apache.iotdb.confignode.rpc.thrift.DataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.DataNodeRegisterResp;
@@ -32,7 +35,9 @@ import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import org.apache.thrift.TException;
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -42,6 +47,16 @@ import java.util.List;
 import java.util.Map;
 
 public class ConfigNodeRPCServerProcessorTest {
+
+  @Before
+  public void before() {}
+
+  @After
+  public void after() {
+    DataNodeInfoPersistence.getInstance().clear();
+    PartitionInfoPersistence.getInstance().clear();
+    RegionInfoPersistence.getInstance().clear();
+  }
 
   @Test
   public void registerDataNodeTest() throws TException, IOException {

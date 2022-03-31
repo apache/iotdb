@@ -199,7 +199,6 @@ public class SerializeDeserializeUtil {
     }
 
     int length = 0;
-    byte[] bytes;
     buffer.putInt(map.size());
     for (Map.Entry<Integer, List<Integer>> entry : map.entrySet()) {
       buffer.putInt(entry.getKey());

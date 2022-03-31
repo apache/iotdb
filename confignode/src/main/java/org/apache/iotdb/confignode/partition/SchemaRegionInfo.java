@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.confignode.partition;
 
+import org.apache.iotdb.confignode.util.SerializeDeserializeUtil;
+
+import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -26,7 +29,7 @@ public class SchemaRegionInfo {
 
   // TODO: Serialize and Deserialize
   // Map<SchemaRegionID, List<DataNodeID>>
-  private final Map<Integer, List<Integer>> schemaRegionDataNodesMap;
+  private Map<Integer, List<Integer>> schemaRegionDataNodesMap;
 
   public SchemaRegionInfo() {
     this.schemaRegionDataNodesMap = new HashMap<>();
@@ -44,5 +47,13 @@ public class SchemaRegionInfo {
 
   public Map<Integer, List<Integer>> getSchemaRegionDataNodesMap() {
     return schemaRegionDataNodesMap;
+  }
+
+  public void serializeImpl(ByteBuffer buffer) {
+    SerializeDeserializeUtil.writeIntMapLists(schemaRegionDataNodesMap, buffer);
+  }
+
+  public void deserializeImpl(ByteBuffer buffer) {
+    schemaRegionDataNodesMap = SerializeDeserializeUtil.readIntMapLists(buffer);
   }
 }

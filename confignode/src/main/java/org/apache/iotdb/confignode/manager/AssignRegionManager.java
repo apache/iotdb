@@ -24,18 +24,17 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaDataSet;
 import org.apache.iotdb.confignode.partition.DataRegionInfo;
 import org.apache.iotdb.confignode.partition.SchemaRegionInfo;
-import org.apache.iotdb.confignode.partition.SchemaRegionReplicaSet;
 import org.apache.iotdb.confignode.partition.StorageGroupSchema;
+import org.apache.iotdb.confignode.persistence.RegionInfoPersistence;
+import org.apache.iotdb.confignode.physical.sys.QueryStorageGroupSchemaPlan;
 import org.apache.iotdb.confignode.physical.sys.SetStorageGroupPlan;
-import org.apache.iotdb.consensus.common.Endpoint;
+import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /** manage data partition and schema partition */
@@ -49,27 +48,21 @@ public class AssignRegionManager {
   private final ReentrantReadWriteLock partitionReadWriteLock;
 
   // TODO: Serialize and Deserialize
-  private final Map<String, StorageGroupSchema> storageGroupsMap;
-
-  // TODO: Serialize and Deserialize
   private int nextSchemaRegionGroup = 0;
   // TODO: Serialize and Deserialize
   private int nextDataRegionGroup = 0;
 
-  // TODO: Serialize and Deserialize
-  private final SchemaRegionInfo schemaRegion;
-
-  // TODO: Serialize and Deserialize
-  private final DataRegionInfo dataRegion;
+  private RegionInfoPersistence regionInfoPersistence = RegionInfoPersistence.getInstance();
 
   private final Manager configNodeManager;
 
   public AssignRegionManager(Manager configNodeManager) {
     this.partitionReadWriteLock = new ReentrantReadWriteLock();
-    this.storageGroupsMap = new HashMap<>();
-    this.schemaRegion = new SchemaRegionInfo();
-    this.dataRegion = new DataRegionInfo();
     this.configNodeManager = configNodeManager;
+  }
+
+  private ConsensusManager getConsensusManager() {
+    return configNodeManager.getConsensusManager();
   }
 
   /**
@@ -82,19 +75,28 @@ public class AssignRegionManager {
     TSStatus result;
     partitionReadWriteLock.writeLock().lock();
     try {
-      if (configNodeManager.getDataNodeInfoManager().getDataNodeId().size() < regionReplicaCount) {
+      if (configNodeManager.getDataNodeManager().getDataNodeId().size() < regionReplicaCount) {
         result = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
         result.setMessage("DataNode is not enough, please register more.");
       } else {
-        if (storageGroupsMap.containsKey(plan.getSchema().getName())) {
+        if (regionInfoPersistence.containsKey(plan.getSchema().getName())) {
           result = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
           result.setMessage(
               String.format("StorageGroup %s is already set.", plan.getSchema().getName()));
         } else {
-          StorageGroupSchema schema = new StorageGroupSchema(plan.getSchema().getName());
-          regionAllocation(schema);
-          storageGroupsMap.put(schema.getName(), schema);
-          result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+          String storageGroupName = plan.getSchema().getName();
+          StorageGroupSchema storageGroupSchema = new StorageGroupSchema(storageGroupName);
+
+          // allocate schema region
+          SchemaRegionInfo schemaRegionInfo = schemaRegionAllocation(storageGroupSchema);
+          plan.setSchemaRegionInfo(schemaRegionInfo);
+
+          // allocate data region
+          DataRegionInfo dataRegionInfo = dataRegionAllocation(storageGroupSchema);
+          plan.setDataRegionInfo(dataRegionInfo);
+
+          // write consensus
+          result = getConsensusManager().write(plan).getStatus();
         }
       }
     } finally {
@@ -103,82 +105,48 @@ public class AssignRegionManager {
     return result;
   }
 
-  private DataNodeInfoManager getDataNodeInfoManager() {
-    return configNodeManager.getDataNodeInfoManager();
+  private DataNodeManager getDataNodeInfoManager() {
+    return configNodeManager.getDataNodeManager();
+  }
+
+  private SchemaRegionInfo schemaRegionAllocation(StorageGroupSchema storageGroupSchema) {
+
+    SchemaRegionInfo schemaRegionInfo = new SchemaRegionInfo();
+    // TODO: Use CopySet algorithm to optimize region allocation policy
+    for (int i = 0; i < schemaRegionCount; i++) {
+      List<Integer> dataNodeList = new ArrayList<>(getDataNodeInfoManager().getDataNodeId());
+      Collections.shuffle(dataNodeList);
+      schemaRegionInfo.createSchemaRegion(
+          nextSchemaRegionGroup, dataNodeList.subList(0, regionReplicaCount));
+      storageGroupSchema.addSchemaRegionGroup(nextSchemaRegionGroup);
+      nextSchemaRegionGroup += 1;
+    }
+    return schemaRegionInfo;
   }
 
   /**
    * TODO: Only perform in leader node, @rongzhao
    *
-   * @param schema
+   * @param storageGroupSchema
    */
-  private void regionAllocation(StorageGroupSchema schema) {
+  private DataRegionInfo dataRegionAllocation(StorageGroupSchema storageGroupSchema) {
     // TODO: Use CopySet algorithm to optimize region allocation policy
-    for (int i = 0; i < schemaRegionCount; i++) {
-      List<Integer> dataNodeList = new ArrayList<>(getDataNodeInfoManager().getDataNodeId());
-      Collections.shuffle(dataNodeList);
-      for (int j = 0; j < regionReplicaCount; j++) {
-        configNodeManager
-            .getDataNodeInfoManager()
-            .addSchemaRegionGroup(dataNodeList.get(j), nextSchemaRegionGroup);
-      }
-      schemaRegion.createSchemaRegion(
-          nextSchemaRegionGroup, dataNodeList.subList(0, regionReplicaCount));
-      schema.addSchemaRegionGroup(nextSchemaRegionGroup);
-      nextSchemaRegionGroup += 1;
-    }
+    DataRegionInfo dataRegionInfo = new DataRegionInfo();
     for (int i = 0; i < dataRegionCount; i++) {
       List<Integer> dataNodeList = new ArrayList<>(getDataNodeInfoManager().getDataNodeId());
       Collections.shuffle(dataNodeList);
-      for (int j = 0; j < regionReplicaCount; j++) {
-        configNodeManager
-            .getDataNodeInfoManager()
-            .addDataRegionGroup(dataNodeList.get(j), nextDataRegionGroup);
-      }
-      dataRegion.createDataRegion(nextDataRegionGroup, dataNodeList.subList(0, regionReplicaCount));
-      schema.addDataRegionGroup(nextDataRegionGroup);
+      dataRegionInfo.createDataRegion(
+          nextDataRegionGroup, dataNodeList.subList(0, regionReplicaCount));
+      storageGroupSchema.addDataRegionGroup(nextDataRegionGroup);
       nextDataRegionGroup += 1;
     }
+    return dataRegionInfo;
   }
 
   public StorageGroupSchemaDataSet getStorageGroupSchema() {
-    StorageGroupSchemaDataSet result = new StorageGroupSchemaDataSet();
-    partitionReadWriteLock.readLock().lock();
-    try {
-      result.setSchemaList(new ArrayList<>(storageGroupsMap.values()));
-    } finally {
-      partitionReadWriteLock.readLock().unlock();
-    }
-    return result;
-  }
 
-  /** @return key is schema region id, value is endpoint list */
-  public List<SchemaRegionReplicaSet> getSchemaRegionEndPoint() {
-    List<SchemaRegionReplicaSet> schemaRegionEndPoints = new ArrayList<>();
-
-    schemaRegion
-        .getSchemaRegionDataNodesMap()
-        .entrySet()
-        .forEach(
-            entity -> {
-              SchemaRegionReplicaSet schemaRegionReplicaSet = new SchemaRegionReplicaSet();
-              List<Endpoint> endPoints = new ArrayList<>();
-              entity
-                  .getValue()
-                  .forEach(
-                      dataNodeId -> {
-                        if (getDataNodeInfoManager().getOnlineDataNodes().containsKey(dataNodeId)) {
-                          endPoints.add(
-                              getDataNodeInfoManager()
-                                  .getOnlineDataNodes()
-                                  .get(dataNodeId)
-                                  .getEndPoint());
-                        }
-                      });
-              schemaRegionReplicaSet.setSchemaRegionId(entity.getKey());
-              schemaRegionReplicaSet.setEndPointList(endPoints);
-              schemaRegionEndPoints.add(schemaRegionReplicaSet);
-            });
-    return schemaRegionEndPoints;
+    ConsensusReadResponse readResponse =
+        getConsensusManager().read(new QueryStorageGroupSchemaPlan());
+    return (StorageGroupSchemaDataSet) readResponse.getDataset();
   }
 }
