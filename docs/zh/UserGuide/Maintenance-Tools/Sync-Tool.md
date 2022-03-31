@@ -19,171 +19,332 @@
 
 -->
 
-# 端云协同 
+# 端云协同
 
-## TsFile 同步工具
+## 1.介绍
 
-### 介绍
+同步工具是持续将边缘端（发送端） IoTDB 中的时间序列数据上传并加载至云端（接收端） IoTDB 的套件工具。
 
-同步工具是定期将本地磁盘中新增的已持久化的 tsfile 文件上传至云端并加载到 IoTDB 的套件工具。
+同步工具的发送端内嵌于 IoTDB 的引擎，使用同步工具需要首先启动IoTDB。
 
-在同步工具的发送端，同步模块是一个独立的进程，独立于本地的 IoTDB。通过独立的脚本进行启动和关闭（详见本章节`使用方式`)，同步的频率周期可由用户设置。
+您可以在发送端使用SQL命令来启动或者关闭一个同步任务，并且可以随时查看同步任务的状态。在接收端，您可以通过设置IP白名单来规定准入IP地址范围。
 
-在同步工具的接收端，同步模块内嵌于 IoTDB 的引擎，和 IoTDB 处于同一个进程中。同步模块监听一个独立的端口，该端口可由用户设置（详见本章节`配置参数`)。用户使用前，需要在同步接收端设置同步白名单，以网段形式表示，接收端的同步模块只接受位于白名单网段中的发送端同步的数据。
+## 2.模型定义
 
-同步工具具有多对一的发送-接受模式，即一个同步接收端可以同时接受多个同步发送端传输的数据，一个同步发送端只能向一个同步接收端发送数据。
+![img](https://y8dp9fjm8f.feishu.cn/space/api/box/stream/download/asynccode/?code=MTY1OWY0ZmMwZDNlYWZmMWI1Y2QwMTgzNzIzODc2NDZfZWJJejFqY1A2bHZndHc5bjV4aVAxRm81a04yMVppVWlfVG9rZW46Ym94Y25CRjF5dXd0QkVEYzVrSnJHcUdkd3VlXzE2NDg3MDI1MjI6MTY0ODcwNjEyMl9WNA)
 
-> 注意：在使用同步工具前，同步工具的接收端和发送端需要单独配置。
+假设目前有两台机器A和B都安装了IoTDB，希望将A上的数据不断同步至B中。为了更好地描述这个过程，我们引入以下概念。
 
-### 应用场景
+- Pipe
+  - 指一次同步任务，在上述案例中，我们可以看作在A和B之间有一根数据流管道连接了A和B。
+  - 一个Pipe有三种状态，RUNNING，STOP，DROP，分别表示正在运行，暂停和永久取消。
+- PipeSink
+  - 指接收端，在上述案例中，PipeSink即是B这台机器。PipeSink的类型目前仅支持IoTDB，即接收端为B上安装的IoTDB实例。
+  -  PipeServer：当PipeSink的类型为IoTDB的时候，需要打开IoTDB的PipeServer服务来让Pipe数据得到处理。
 
-以一个工厂应用为例，通常有多个分厂和多个总厂，每个分厂中使用一个 IoTDB 实例收集数据，然后将数据定时汇总到总厂中进行备份或者分析等，一个总厂可以接收来自多个分厂的数据，在这种场景下每个 IoTDB 实例所管理的设备各不相同。
+## 3.注意事项
 
-在 sync 模块中，每个分厂是发送端，总厂是接收端，发送端定时将数据同步给接收端，在上述应用场景下一个设备的数据只能由一个发送端来收集，因此多个发送端同步的数据之间必须是没有设备重叠的，否则不符合 sync 功能的应用场景。
+- 目前仅支持多对一模式，不支持一对多，即一个发送端只能发送数据到一个接收端，而一个接收端可以接受来自多个发送端的数据。
+- 发送端只能有一个非DROP状态的Pipe，如果想创建一个新的Pipe，请取消当前Pipe。
+- 当有一个或多个发送端指向一个接收端时，这些发送端和接收端各自的设备路径集合之间应当没有交集，否则可能产生不可预料错误
+  - 例如：当发送端A包括路径`root.sg.d.s`，发送端B也包括路径`root.sg.d.s`，当发送端A删除`root.sg`存储组时将也会在接收端删除所有B在接收端的`root.sg.d.s`中存放的数据。
+- 两台机器之间目前不支持相互同步。
+- 同步工具仅同步所有对数据插入和删除，元数据的创建和删除，如TTL的设置，Trigger等其他操作均不同步。
 
-当出现异常场景时，即两个或两个以上的发送端向同一个接收端同步相同设备（其存储组设为 root.sg) 的数据时，后被接收端收到的含有该设备数据的发送端的 root.sg 数据将会被拒绝接收。示例：发送端 1 向接收端同步存储组 root.sg1 和 root.sg2, 发送端 2 向接收端同步存储组 root.sg2 和 root.sg3, 
-均包括时间序列 root.sg2.d0.s0, 若接收端先接收到发送端 1 的 root.sg2.d0.s0 的数据，那么接收端将拒绝发送端 2 的 root.sg2 同步的数据。
+## 4.快速上手
 
-### 注意事项
+在发送端和接收端执行如下语句即可快速开始两个IoTDB之间的数据同步，完整的SQL语句和配置事项请查看`配置参数`和`SQL`两节，更多使用范例请参考`使用范例`节。
 
-sync功能开启之后，发送端的 alter timeseries add tag 语句将不会被同步到接收端
+#### 4.1接收端
 
-### 配置参数
-
-#### 同步工具接收端
-同步工具接收端的参数配置位于 IoTDB 的配置文件 iotdb-engine.properties 中，其安装目录为$IOTDB_HOME/conf/iotdb-engine.properties。在该配置文件中，有四个参数和同步接收端有关，配置说明如下：
-
-|参数名|is_sync_enable|
-|--- |--- |
-|描述|同步功能开关，配置为 true 表示接收端允许接收同步的数据并加载，设置为 false 的时候表示接收端不允许接收同步的数据|
-|类型|Boolean|
-|默认值|false|
-|改后生效方式|重启服务生效|
-
-|参数名|ip_white_list|
-|--- |--- |
-|描述|设置同步功能发送端 IP 地址的白名单，以网段的形式表示，多个网段之间用逗号分隔。发送端向接收端同步数据时，只有当该发送端 IP 地址处于该白名单设置的网段范围内，接收端才允许同步操作。如果白名单为空，则接收端不允许任何发送端同步数据。默认接收端接受全部 IP 的同步请求。|
-|类型|String|
-|默认值|0.0.0.0/0|
-|改后生效方式|重启服务生效|
-
-|参数名|sync_server_port|
-|--- |--- |
-|描述|同步接收端服务器监听接口，请确认该端口不是系统保留端口并且未被占用。参数 is_sync_enable 设置为 true 时有效，参数 is_sync_enable 设置为 false 时无效|
-|类型|Short Int : [0,65535]|
-|默认值|5555|
-|改后生效方式|重启服务生效|
-
-#### 同步工具发送端
-同步功能发送端的参数配置在一个单独的配置文件中，其安装目录为```$IOTDB_HOME/conf/iotdb-sync-client.properties```。在该配置文件中，有五个参数和同步发送端有关，配置说明如下：
-
-|参数名|server_ip|
-|--- |--- |
-|描述|同步接收端的 IP 地址|
-|类型|String|
-|默认值|127.0.0.1|
-|改后生效方式|重启同步功能发送端生效|
-
-|参数名|server_port|
-|--- |--- |
-|描述|同步接收端服务器监听端口，需要保证该端口和同步接收端配置的监听端口一致|
-|类型|Short Int : [0,65535]|
-|默认值|5555|
-|改后生效方式|重启同步功能发送端生效|
-
-|参数名|sync_period_in_second|
-|--- |--- |
-|描述|同步周期，两次同步任务开始时间的间隔，单位为秒 (s)|
-|类型|Int : [0,2147483647]|
-|默认值|600|
-|改后生效方式|重启同步功能发送端生效|
-
-|参数名|sync_storage_groups|
-|--- |--- |
-|描述|进行同步的存储组列表，存储组间用逗号分隔；若列表设置为空表示同步所有存储组，默认为空|
-|类型|String|
-|示例|root.sg1, root.sg2|
-|改后生效方式|重启同步功能发送端生效|
-
-|参数名|max_number_of_sync_file_retry|
-|--- |--- |
-|描述|发送端同步文件到接收端失败时的最大重试次数|
-|类型|Int : [0,2147483647]|
-|示例|5|
-|改后生效方式|重启同步功能发送端生效|
-
-### 使用方式
-
-#### 启动同步功能接收端
-
-1. 配置接收端的参数，例如：
+- 开启PipeServer
 
 ```
-	####################
-	### Sync Server Configuration
-	####################
-
-	# Whether to open the sync_server_port for receiving data from sync client, the default is closed
-	is_sync_enable=true
-
-	# Sync server port to listen
-	sync_server_port=5555
-
-	# White IP list of Sync client.
-	# Please use the form of network segment to present the range of IP, for example: 192.168.0.0/16
-	# If there are more than one IP segment, please separate them by commas
-	# The default is to allow all IP to sync
-	ip_white_list=0.0.0.0/0
+IoTDB> START PIPESERVER
 ```
 
-2. 启动 IoTDB 引擎，同步功能接收端会同时启动，启动时 LOG 日志会出现`IoTDB: start SYNC ServerService successfully`字样，表示同步接收端启动成功。
-
-#### 关闭同步功能接收端
-
-关闭 IoTDB，同步功能接收端会同时关闭。
-
-#### 启动同步功能发送端
-1. 配置发送端的参数
+- 关闭PipeServer（在所有发送端取消了Pipe之后执行）
 
 ```
-	# Sync receiver server address
-	server_ip=127.0.0.1
-
-	# Sync receiver server port
-	server_port=5555
-
-	# The period time of sync process, the time unit is second.
-	sync_period_in_second=600
-
-	# This parameter represents storage groups that participate in the synchronization task, which distinguishes each storage group by comma.
-	# If the list is empty, it means that all storage groups participate in synchronization.
-	# By default, it is empty list.
-	# sync_storage_groups = root.sg1, root.sg2
-
-	# The maximum number of retry when syncing a file to receiver fails.
-	max_number_of_sync_file_retry=5
-
-```
-2. 启动同步功能发送端
-
-用户可以使用```$IOTDB_HOME/tools```文件夹下的脚本启动同步功能的发送端
-Linux 系统与 MacOS 系统启动命令如下：
-```
-  Shell >$IOTDB_HOME/tools/start-sync-client.sh
-```
-Windows 系统启动命令如下：
-```
-  Shell >$IOTDB_HOME\tools\start-sync-client.bat
+IOTDB> STOP PIPESERVER
 ```
 
-#### 关闭同步功能发送端
+#### 4.2发送端
 
-用户可以使用```$IOTDB_HOME/tools```文件夹下的脚本关闭同步功能的发送端。
-Linux 系统与 MacOS 系统停止命令如下：
+- 创建接收端为 IoTDB 类型的 Pipe Sink
+
 ```
-  Shell >$IOTDB_HOME/tools/stop-sync-client.sh
+IoTDB> CREATE PIPESINK my_iotdb AS IoTDB (IP='输入你的IP')
 ```
-Windows 系统停止命令如下：
+
+- 创建同步任务Pipe（开启之前请确保接收端IoTDB的PipeServer已经启动）
+
 ```
-  Shell >$IOTDB_HOME\tools\stop-sync-client.bat
+IoTDB> CREATE PIPE my_pipe TO my_iotdb
 ```
+
+- 开始同步任务
+
+```
+IoTDB> START PIPE my_pipe
+```
+
+- 显示所有同步任务状态
+
+```
+IoTDB> SHOW PIPES
+```
+
+- 暂停任务
+
+```
+IoTDB> STOP PIPE my_pipe
+```
+
+- 继续被暂停的任务
+
+```
+IoTDB> START PIPE my_pipe
+```
+
+- 关闭任务（状态信息可被删除）
+
+```
+IoTDB> DROP PIPE my_pipe
+```
+
+## 5.配置参数
+
+所有参数修改均在`$IOTDB_HOME$/conf/iotdb-engine.properties`中，所有修改完成之后执行`load configuration`之后即可立刻生效。
+
+#### 5.1发送端相关
+
+| **参数名** | **max_number_of_sync_file_retry**          |
+| ---------- | ------------------------------------------ |
+| 描述       | 发送端同步文件到接收端失败时的最大重试次数 |
+| 类型       | Int : [0,2147483647]                       |
+| 默认值     | 5                                          |
+
+
+
+#### 5.2接收端相关
+
+| **参数名** | **ip_white_list**                                            |
+| ---------- | ------------------------------------------------------------ |
+| 描述       | 设置同步功能发送端 IP 地址的白名单，以网段的形式表示，多个网段之间用逗号分隔。发送端向接收端同步数据时，只有当该发送端 IP 地址处于该白名单设置的网段范围内，接收端才允许同步操作。如果白名单为空，则接收端不允许任何发送端同步数据。默认接收端接受全部 IP 的同步请求。 |
+| 类型       | String                                                       |
+| 默认值     | 0.0.0.0/0                                                    |
+
+
+
+| **参数名** | **sync_server_port**                                         |
+| ---------- | ------------------------------------------------------------ |
+| 描述       | 同步接收端服务器监听接口，请确认该端口不是系统保留端口并且未被占用。 |
+| 类型       | Short Int : [0,65535]                                        |
+| 默认值     | 6670                                                         |
+
+
+
+## 6.SQL
+
+#### 6.1发送端
+
+- 创建接收端为 IoTDB 类型的 Pipe Sink，其中IP和port是可选参数
+
+```
+IoTDB> CREATE PIPESINK <PipeSinkName> AS IoTDB [(IP='127.0.0.1',port=6670);]
+```
+
+- 显示当前所能支持的 Pipe Sink 类型
+
+```Plain%20Text
+IoTDB> SHOW PIPESINKTYPE
+IoTDB>
++-----+
+| type|
++-----+
+|IoTDB|
++-----+
+```
+
+- 显示当前所有 Pipe Sink 定义，结果集有三列，分别表示pipesink的名字，pipesink的类型，pipesink的属性
+
+```
+IoTDB> SHOW PIPESINKS
+IoTDB> SHOW PIPESINK [PipeSinkName]
+IoTDB> 
++-----------+-----+------------------------+
+|       name| type|              attributes|
++-----------+-----+------------------------+
+|my_pipesink|IoTDB|ip='127.0.0.1',port=6670|
++-----------+-----+------------------------+
+```
+
+- 删除 Pipe Sink 信息
+
+```
+IoTDB> DROP PIPESINK <PipeSinkName>
+```
+
+- 创建同步任务
+- 其中Select语句目前仅支持`**`（即所有序列中的数据），FROM语句目前仅支持`root`，Where语句仅支持指定time的起始时间
+- `SyncDelOp`参数为true时会同步删除数据操作，否则不同步删除数据操作
+
+```
+IoTDB> CREATE PIPE my_pipe TO my_iotdb [FROM (select ** from root WHERE time>='yyyy-mm-dd HH:MM:SS' )] [WITH SyncDelOp=true]
+```
+
+- 显示所有同步任务状态
+- create time，pipe的创建时间；name，pipe的名字，pipesink，pipe连接到的接收端名字；status，pipe状态
+- message，pipe运行状态，当pipe正常运行时，这一栏通常为空，当出现异常时，message可能出现两种状态 
+  - WARN状态，这表明发生了数据丢失或者其他错误，但是Pipe会保持运行
+  - ERROR状态，这表明发生了网络长时间中断或者接收端出现问题，Pipe被停止，置为STOP状态
+
+```
+IoTDB> SHOW PIPES
+IoTDB>
++-----------------------+-------+-----------+------+-------+
+|            create time|   name|   pipeSink|status|message|
++-----------------------+-------+-----------+------+-------+
+|2022-03-30T20:58:30.689|my_pipe|my_pipesink|  STOP|       |
++-----------------------+-------+-----------+------+-------+
+```
+
+- 显示指定同步任务状态，当未指定PipeName时，与`SHOW PIPES`等效
+
+```
+IoTDB> SHOW PIPE [PipeName]
+```
+
+- 暂停任务
+
+```
+IoTDB> STOP PIPE <PipeName>
+```
+
+- 继续被暂停的任务
+
+```
+IoTDB> START PIPE <PipeName>
+```
+
+- 关闭任务（状态信息可被删除）
+
+```
+IoTDB> DROP PIPE <PipeName>
+```
+
+#### 6.2接收端
+
+- 启动本地的 IoTDB Pipe Server
+
+```
+IoTDB> START PIPESERVER
+```
+
+- 关闭本地的 IoTDB Pipe Server
+
+```
+IoTDB> STOP PIPESERVER
+```
+
+- 显示本地 Pipe Server 的信息
+- true表示PipeServer正在运行，否则PipeServeri停止服务
+
+```
+IoTDB> SHOW PIPESERVER STATUS
++----------+
+|    enalbe|
++----------+
+|true/false|
++----------+
+```
+
+## 7.使用示例
+
+##### **目标**
+
+- 创建一个从边端 IoTDB 到 云端 IoTDB 的 同步工作
+- 边端希望同步从2022年3月30日0时之后的数据
+- 边端不希望同步所有的删除操作
+- 边端处于弱网环境，需要配置更多的重试次数
+- 云端IoTDB仅接受来自边端的IoTDB的数据
+
+##### **接收端操作**
+
+- `vi conf/iotdb-engine.properties` 配置云端参数，将白名单设置为仅接收来自IP为 192.168.0.1的边端的数据
+
+```
+####################
+### PIPE Server Configuration
+####################
+# PIPE server port to listen
+# Datatype: int
+# pipe_server_port=6670
+
+# White IP list of Sync client.
+# Please use the form of network segment to present the range of IP, for example: 192.168.0.0/16
+# If there are more than one IP segment, please separate them by commas
+# The default is to allow all IP to sync
+# Datatype: String
+ip_white_list=192.168.0.1/1
+```
+
+- 云端启动 IoTDB 同步接收端
+
+```
+IoTDB> START PIPESERVER
+```
+
+- 云端显示 IoTDB 同步接收端信息，如果结果为true则表示正确启动
+
+```
+IoTDB> SHOW PIPESERVER STATUS
+```
+
+##### **发送端操作**
+
+- 配置边端参数，将`max_number_of_sync_file_retry`参数设置为10
+
+```
+####################
+### PIPE Sender Configuration
+####################
+# The maximum number of retry when syncing a file to receiver fails.
+max_number_of_sync_file_retry=10
+```
+
+- 创建云端PipeSink，指定类型为IoTDB，指定云端IP地址为192.168.0.1，指定云端的PipeServer服务端口为6670
+
+```
+IoTDB> CREATE PIPESINK my_iotdb AS IoTDB (IP='192.168.0.1'，PORT=6670)
+```
+
+- 创建Pipe，指定连接到my_iotdb的PipeSink，在WHREE子句中输入开始时间点2022年3月30日0时，将SyncDelOp置为false
+
+```
+IoTDB> CREATE PIPE p TO my_iotdb FROM (select ** from root where time>='2022-03-30 00:00:00') WITH SyncDelOp=false
+```
+
+- 显示同步任务状态
+
+```
+IoTDB> SHOW PIPE p
+```
+
+- 永久停止指定的同步任务
+
+```
+IoTDB> DROP PIPE p
+```
+
+## 8.常见问题
+
+- 执行 `STOP PIPESERVER`关闭本地的 IoTDB Pipe Server 时提示 
+
+  ```
+  Msg: 328: Failed to stop pipe server because there is pipe still running.
+  ```
+
+  - 原因：接收端有正在运行的同步任务
+  - 解决方案：在发送端先执行 `STOP PIPE` PipeName 停止任务，后关闭 IoTDB Pipe Server
