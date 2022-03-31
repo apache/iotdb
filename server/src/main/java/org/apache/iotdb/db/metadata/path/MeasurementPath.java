@@ -94,6 +94,11 @@ public class MeasurementPath extends PartialPath {
     this.measurementSchema = measurementSchema;
   }
 
+  public MeasurementPath(String[] nodes, MeasurementSchema schema) {
+    super(nodes);
+    this.measurementSchema = schema;
+  }
+
   public IMeasurementSchema getMeasurementSchema() {
     return measurementSchema;
   }

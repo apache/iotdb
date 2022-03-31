@@ -79,6 +79,40 @@ struct DeviceGroupHashInfo {
     2: required string hashClass
 }
 
+struct FetchDataPartitionReq {
+    1: required map<i32, list<i64>> deviceGroupIDToStartTimeMap
+}
+
+struct FetchSchemaPartitionReq {
+    1: required list<string> devicePaths
+}
+
+struct FetchPartitionReq {
+    1: required map<i32, list<i64>> deviceGroupIDToStartTimeMap
+}
+
+struct RegionInfo {
+    1: required i32 regionId
+    2: required list<rpc.EndPoint> endPointList
+}
+
+struct DataPartitionInfoResp {
+    // Map<StorageGroup, Map<DeviceGroupID, Map<TimePartitionId, List<DataRegionReplicaInfo>>>>
+    1: required map<string, map<i32, map<i64, list<RegionInfo>>>> dataPartitionMap
+}
+
+struct SchemaPartitionInfoResp {
+    // Map<StorageGroup, Map<DeviceGroupID, SchemaRegionPlaceInfo>>
+    1: required map<string, map<i32, RegionInfo>> schemaPartitionInfo
+}
+
+struct PartitionInfoResp {
+    // Map<StorageGroup, Map<DeviceGroupID, Map<TimePartitionId, List<DataRegionReplicaInfo>>>>
+    1: required map<string, map<i32, map<i64, list<RegionInfo>>>> dataPartitionMap
+    // Map<StorageGroup, Map<DeviceGroupID, SchemaRegionPlaceInfo>>
+    2: required map<string, map<i32, RegionInfo>> schemaPartitionInfo
+}
+
 service ConfigIService {
   // Return TSStatusCode.SUCCESS_STATUS and the register DataNode id when successful registered.
   // Otherwise, return TSStatusCode.INTERNAL_SERVER_ERROR
@@ -105,4 +139,10 @@ service ConfigIService {
 
   // apply schema partition when create schema
   SchemaPartitionInfo applySchemaPartition(GetSchemaPartitionReq req)
+
+  DataPartitionInfoResp fetchDataPartitionInfo(FetchDataPartitionReq req)
+
+  SchemaPartitionInfoResp fetchSchemaPartitionInfo(FetchSchemaPartitionReq req)
+
+  PartitionInfoResp fetchPartitionInfo(FetchPartitionReq req)
 }

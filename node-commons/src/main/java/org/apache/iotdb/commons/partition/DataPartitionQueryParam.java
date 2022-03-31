@@ -22,15 +22,15 @@ import java.util.List;
 
 public class DataPartitionQueryParam {
 
-  private String deviceId;
+  private String devicePath;
   private List<TimePartitionId> timePartitionIdList;
 
-  public String getDeviceId() {
-    return deviceId;
+  public String getDevicePath() {
+    return devicePath;
   }
 
-  public void setDeviceId(String deviceId) {
-    this.deviceId = deviceId;
+  public void setDevicePath(String devicePath) {
+    this.devicePath = devicePath;
   }
 
   public List<TimePartitionId> getTimePartitionIdList() {

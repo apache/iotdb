@@ -45,12 +45,12 @@ public class StandalonePartitionFetcher implements IPartitionFetcher {
   }
 
   @Override
-  public SchemaPartitionInfo fetchSchemaPartitionInfo(String deviceId) {
+  public SchemaPartitionInfo fetchSchemaPartitionInfo(String devicePath) {
     return null;
   }
 
   @Override
-  public SchemaPartitionInfo fetchSchemaPartitionInfos(List<String> deviceId) {
+  public SchemaPartitionInfo fetchSchemaPartitionInfos(List<String> devicePath) {
     return null;
   }
 
