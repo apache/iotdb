@@ -26,8 +26,8 @@ struct TFragmentInstanceId {
   3: required string instanceId
 }
 
-struct GetDataBlockReqest {
-  1: required TFragmentInstanceId fragnemtInstanceId
+struct GetDataBlockRequest {
+  1: required TFragmentInstanceId fragmentInstanceId
   2: required i64 blockId
 }
 
@@ -82,16 +82,16 @@ struct TCancelFragmentInstanceReq {
 
 struct TCancelResp {
   1: required bool cancelled
-  2: optional string messsga
+  2: optional string messsage
 }
 
-struct ShcameFetchReqest {
+struct SchemaFetchRequest {
   1: required binary serializedPathPatternTree
   2: required bool isPrefixMatchPath
 }
 
-struct ShcameFetchResponse {
-  1: required binary serializedSchameTree
+struct SchemaFetchResponse {
+  1: required binary serializedSchemaTree
 }
 
 service InternalService {
@@ -105,11 +105,11 @@ service InternalService {
 
     TCancelResp cancelFragmentInstance(TCancelFragmentInstanceReq req);
 
-    ShcameFetchResponse fetchSchema(ShcameFetchReqest req)
+    SchemaFetchResponse fetchSchema(SchemaFetchRequest req)
 }
 
 service DataBlockService {
-  GetDataBlockResponse getDataBlock(GetDataBlockReqest req);
+  GetDataBlockResponse getDataBlock(GetDataBlockRequest req);
 
   void onNewDataBlockEvent(NewDataBlockEvent e);
 

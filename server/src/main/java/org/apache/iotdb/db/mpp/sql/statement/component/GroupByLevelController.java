@@ -48,7 +48,7 @@ public class GroupByLevelController {
   private final int[] levels;
   int prevSize = 0;
   /** count(root.sg.d1.s1) with level = 1 -> count(root.*.d1.s1) */
-  private Map<String, String> groupedPathMap;
+  private final Map<String, String> groupedPathMap;
   /** count(root.*.d1.s1) -> alias */
   private Map<String, String> columnToAliasMap;
   /**
@@ -96,7 +96,7 @@ public class GroupByLevelController {
       for (Iterator<Expression> it = rootExpression.iterator(); it.hasNext(); ) {
         Expression expression = it.next();
         if (expression instanceof FunctionExpression
-            && expression.isPlainAggregationFunctionExpression()) {
+            && expression.isBuiltInAggregationFunctionExpression()) {
           hasAggregation = true;
           List<PartialPath> paths = ((FunctionExpression) expression).getPaths();
           String functionName = ((FunctionExpression) expression).getFunctionName();
@@ -149,7 +149,7 @@ public class GroupByLevelController {
     for (Iterator<Expression> it = rawColumn.getExpression().iterator(); it.hasNext(); ) {
       Expression expression = it.next();
       if (expression instanceof FunctionExpression
-          && expression.isPlainAggregationFunctionExpression()
+          && expression.isBuiltInAggregationFunctionExpression()
           && ((FunctionExpression) expression).isCountStar()) {
         countWildcardIterIndices.add(idx);
       }
@@ -217,5 +217,9 @@ public class GroupByLevelController {
       transformedPath.append(nodes[nodes.length - 1]);
     }
     return transformedPath.toString();
+  }
+
+  public Map<String, String> getGroupedPathMap() {
+    return groupedPathMap;
   }
 }

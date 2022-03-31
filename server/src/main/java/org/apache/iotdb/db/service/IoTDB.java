@@ -37,7 +37,7 @@ import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.LocalConfigManager;
-import org.apache.iotdb.db.metadata.SchemaEngine;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.protocol.influxdb.meta.InfluxDBMetaManager;
 import org.apache.iotdb.db.protocol.rest.RestService;
 import org.apache.iotdb.db.query.udf.service.TemporaryQueryDataFileService;
@@ -62,7 +62,7 @@ public class IoTDB implements IoTDBMBean {
   private final String mbeanName =
       String.format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, "IoTDB");
   private static final RegisterManager registerManager = new RegisterManager();
-  public static SchemaEngine schemaEngine = SchemaEngine.getInstance();
+  public static LocalSchemaProcessor schemaProcessor = LocalSchemaProcessor.getInstance();
   public static LocalConfigManager configManager = LocalConfigManager.getInstance();
   public static ServiceProvider serviceProvider;
   private static boolean clusterMode = false;
@@ -83,8 +83,8 @@ public class IoTDB implements IoTDBMBean {
     daemon.active();
   }
 
-  public static void setSchemaEngine(SchemaEngine schemaEngine) {
-    IoTDB.schemaEngine = schemaEngine;
+  public static void setSchemaProcessor(LocalSchemaProcessor schemaProcessor) {
+    IoTDB.schemaProcessor = schemaProcessor;
   }
 
   public static void setServiceProvider(ServiceProvider serviceProvider) {

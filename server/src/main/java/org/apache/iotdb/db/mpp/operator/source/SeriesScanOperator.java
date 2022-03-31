@@ -23,7 +23,7 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.operator.Operator;
 import org.apache.iotdb.db.mpp.operator.OperatorContext;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.io.IOException;
@@ -127,6 +127,6 @@ public class SeriesScanOperator implements Operator {
   }
 
   private boolean isEmpty(TsBlock tsBlock) {
-    return tsBlock == null || !tsBlock.hasNext();
+    return tsBlock == null || tsBlock.isEmpty();
   }
 }

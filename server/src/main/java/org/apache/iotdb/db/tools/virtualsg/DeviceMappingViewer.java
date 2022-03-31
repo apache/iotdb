@@ -21,7 +21,7 @@ package org.apache.iotdb.db.tools.virtualsg;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.virtualSg.HashVirtualPartitioner;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.SchemaEngine;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 
@@ -41,10 +41,10 @@ public class DeviceMappingViewer {
 
     HashVirtualPartitioner partitioner = HashVirtualPartitioner.getInstance();
     IoTDB.configManager.init();
-    SchemaEngine schemaEngine = SchemaEngine.getInstance();
+    LocalSchemaProcessor schemaProcessor = LocalSchemaProcessor.getInstance();
 
     Set<PartialPath> partialPathSet =
-        schemaEngine.getMatchedDevices(new PartialPath("root.**"), false);
+        schemaProcessor.getMatchedDevices(new PartialPath("root.**"), false);
 
     if (partialPathSet.isEmpty() && args.length == 1) {
       System.out.println("no mlog in given system schema dir: " + args[0] + " please have a check");

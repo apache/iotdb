@@ -159,11 +159,11 @@ public class SizeTieredCompactionRecoverTest {
               CompressionType.UNCOMPRESSED);
       deviceIds[i] = new PartialPath(fullPaths[i].substring(0, 27));
     }
-    IoTDB.schemaEngine.setStorageGroup(new PartialPath(COMPACTION_TEST_SG));
+    IoTDB.schemaProcessor.setStorageGroup(new PartialPath(COMPACTION_TEST_SG));
     for (int i = 0; i < fullPaths.length; ++i) {
       MeasurementSchema schema = schemas[i];
       PartialPath deviceId = deviceIds[i];
-      IoTDB.schemaEngine.createTimeseries(
+      IoTDB.schemaProcessor.createTimeseries(
           deviceId.concatNode(schema.getMeasurementId()),
           schema.getType(),
           schema.getEncodingType(),
