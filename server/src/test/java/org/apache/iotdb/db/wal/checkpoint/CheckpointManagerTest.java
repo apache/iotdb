@@ -105,7 +105,7 @@ public class CheckpointManagerTest {
       future.get();
     }
     // check first valid version id
-    assertEquals(memTablesNum / 2, checkpointManager.getFirstValidVersionId());
+    assertEquals(memTablesNum / 2, checkpointManager.getFirstValidWALVersionId());
     // fsync to checkpoint file
     checkpointManager.fsyncCheckpointFile();
     // recover info from checkpoint file
@@ -143,7 +143,7 @@ public class CheckpointManagerTest {
     }
     checkpointManager.fsyncCheckpointFile();
     // check first valid version id
-    assertEquals(5, checkpointManager.getFirstValidVersionId());
+    assertEquals(5, checkpointManager.getFirstValidWALVersionId());
     // check checkpoint files
     assertFalse(
         new File(logDirectory + File.separator + CheckpointWriter.getLogFileName(0)).exists());

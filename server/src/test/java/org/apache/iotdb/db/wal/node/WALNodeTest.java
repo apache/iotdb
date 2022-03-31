@@ -206,7 +206,7 @@ public class WALNodeTest {
             int firstFileVersionId = walNode.getCurrentLogVersion();
             walNode.onMemTableCreated(memTable, tsFilePath);
             if (memTableId % 2 == 0) {
-              walNode.onFlushEnd(memTable);
+              walNode.onMemTableFlushed(memTable);
             } else {
               // mimic MemTableInfo
               MemTableInfo memTableInfo =
@@ -246,7 +246,7 @@ public class WALNodeTest {
       WALFlushListener walFlushListener = walNode.log(memTableId, insertTabletPlan);
       walFlushListeners.add(walFlushListener);
     }
-    walNode.onFlushEnd(memTable);
+    walNode.onMemTableFlushed(memTable);
     // check existence of _0.wal file
     assertTrue(new File(logDirectory + File.separator + WALWriter.getLogFileName(0)).exists());
     assertTrue(new File(logDirectory + File.separator + WALWriter.getLogFileName(1)).exists());

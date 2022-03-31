@@ -331,7 +331,7 @@ public class VirtualStorageGroupProcessor {
   /** this class is used to store recovering context */
   private class VSGRecoveryContext {
     /** number of files to be recovered */
-    private final long filesToRecoverNum;
+    private final long numOfFilesToRecover;
     /** when the change of recoveredFilesNum exceeds this, log check will be triggered */
     private final long filesNumLogCheckTrigger;
     /** number of already recovered files */
@@ -341,10 +341,10 @@ public class VirtualStorageGroupProcessor {
     /** last recovery log files num */
     private long lastLogCheckFilesNum;
 
-    public VSGRecoveryContext(long filesToRecoverNum, long recoveredFilesNum) {
-      this.filesToRecoverNum = filesToRecoverNum;
-      this.recoveredFilesNum = recoveredFilesNum;
-      this.filesNumLogCheckTrigger = this.filesToRecoverNum / 100;
+    public VSGRecoveryContext(long numOfFilesToRecover) {
+      this.numOfFilesToRecover = numOfFilesToRecover;
+      this.recoveredFilesNum = 0;
+      this.filesNumLogCheckTrigger = this.numOfFilesToRecover / 100;
       this.lastLogTime = System.currentTimeMillis();
       this.lastLogCheckFilesNum = 0;
     }
@@ -360,7 +360,7 @@ public class VirtualStorageGroupProcessor {
               "The virtual storage group {}[{}] has recovered {}%, please wait a moment.",
               logicalStorageGroupName,
               virtualStorageGroupId,
-              recoveredFilesNum * 1.0 / filesToRecoverNum);
+              recoveredFilesNum * 1.0 / numOfFilesToRecover);
           lastLogTime = System.currentTimeMillis();
         }
       }
@@ -395,7 +395,7 @@ public class VirtualStorageGroupProcessor {
       // split by partition so that we can find the last file of each partition and decide to
       // close it or not
       VSGRecoveryContext VSGRecoveryContext =
-          new VSGRecoveryContext(tmpSeqTsFiles.size() + tmpUnseqTsFiles.size(), 0);
+          new VSGRecoveryContext(tmpSeqTsFiles.size() + tmpUnseqTsFiles.size());
       Map<Long, List<TsFileResource>> partitionTmpSeqTsFiles =
           splitResourcesByPartition(tmpSeqTsFiles);
       Map<Long, List<TsFileResource>> partitionTmpUnseqTsFiles =
@@ -657,7 +657,7 @@ public class VirtualStorageGroupProcessor {
       TsFileResource unsealedTsFile, VSGRecoveryContext context, boolean isSeq) {
     UnsealedTsFileRecoverPerformer recoverPerformer =
         new UnsealedTsFileRecoverPerformer(
-            unsealedTsFile, isSeq, this, this::callbackAfterUnsealedTsFileRecovered);
+            unsealedTsFile, isSeq, idTable, this::callbackAfterUnsealedTsFileRecovered);
     // remember to close UnsealedTsFileRecoverPerformer
     return WALRecoverManager.getInstance().addRecoverPerformer(recoverPerformer);
   }

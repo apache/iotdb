@@ -899,11 +899,12 @@ public class IoTDBDescriptor {
       conf.setFsyncWalDelayInMs(fsyncWalDelayInMs);
     }
 
-    int maxWalNodeNum =
+    int maxWalNodesNum =
         Integer.parseInt(
-            properties.getProperty("max_wal_node_num", Integer.toString(conf.getMaxWalNodeNum())));
-    if (maxWalNodeNum > 0) {
-      conf.setMaxWalNodeNum(maxWalNodeNum);
+            properties.getProperty(
+                "max_wal_nodes_num", Integer.toString(conf.getMaxWalNodesNum())));
+    if (maxWalNodesNum > 0) {
+      conf.setMaxWalNodesNum(maxWalNodesNum);
     }
 
     int walBufferSize =
@@ -920,6 +921,14 @@ public class IoTDBDescriptor {
                 "wal_buffer_entry_size_in_byte", Integer.toString(conf.getWalBufferEntrySize())));
     if (walBufferEntrySize > 0) {
       conf.setWalBufferEntrySize(walBufferEntrySize);
+    }
+
+    int walBufferQueueCapacity =
+        Integer.parseInt(
+            properties.getProperty(
+                "wal_buffer_queue_capacity", Integer.toString(conf.getWalBufferQueueCapacity())));
+    if (walBufferQueueCapacity > 0) {
+      conf.setWalBufferQueueCapacity(walBufferQueueCapacity);
     }
 
     long walFileSizeThreshold =
@@ -947,6 +956,24 @@ public class IoTDBDescriptor {
                 Long.toString(conf.getWalMemTableSnapshotThreshold())));
     if (walMemTableSnapshotThreshold > 0) {
       conf.setWalMemTableSnapshotThreshold(walMemTableSnapshotThreshold);
+    }
+
+    long fsyncCheckpointFilePeriod =
+        Long.parseLong(
+            properties.getProperty(
+                "fsync_checkpoint_file_period_in_ms",
+                Long.toString(conf.getFsyncCheckpointFilePeriodInMs())));
+    if (fsyncCheckpointFilePeriod > 0) {
+      conf.setFsyncCheckpointFilePeriodInMs(fsyncCheckpointFilePeriod);
+    }
+
+    long deleteWalFilesPeriod =
+        Long.parseLong(
+            properties.getProperty(
+                "delete_wal_files_period_in_ms",
+                Long.toString(conf.getDeleteWalFilesPeriodInMs())));
+    if (deleteWalFilesPeriod > 0) {
+      conf.setDeleteWalFilesPeriodInMs(deleteWalFilesPeriod);
     }
   }
 

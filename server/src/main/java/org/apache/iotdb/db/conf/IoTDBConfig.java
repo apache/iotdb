@@ -153,22 +153,25 @@ public class IoTDBConfig {
 
   // region Write Ahead Log Configuration
   /** Write mode of wal */
-  private WALMode walMode = WALMode.SYNC;
+  private WALMode walMode = WALMode.ASYNC;
 
   /** WAL directories */
   private String[] walDirs = {DEFAULT_BASE_DIR + File.separator + IoTDBConstant.WAL_FOLDER_NAME};
 
   /** Duration a wal flush operation will wait before calling fsync. Unit: millisecond */
-  private long fsyncWalDelayInMs = 0;
+  private long fsyncWalDelayInMs = 100;
 
   /** Max number of wal nodes, each node corresponds to one wal directory */
-  private int maxWalNodeNum = 0;
+  private int maxWalNodesNum = 0;
 
   /** Buffer size of each wal node. Unit: byte */
   private int walBufferSize = 16 * 1024 * 1024;
 
   /** Buffer entry size of each wal buffer. Unit: byte */
   private int walBufferEntrySize = 16 * 1024;
+
+  /** Blocking queue capacity of each wal buffer */
+  private int walBufferQueueCapacity = 10_000;
 
   /** Size threshold of each wal file. Unit: byte */
   private long walFileSizeThresholdInByte = 10 * 1024 * 1024;
@@ -182,6 +185,14 @@ public class IoTDBConfig {
    * Unit: byte
    */
   private long walMemTableSnapshotThreshold = 128 * 1024 * 1024;
+
+  /**
+   * The period when checkpoint file is periodically forced to be written to disk. Unit: millisecond
+   */
+  private long fsyncCheckpointFilePeriodInMs = 200;
+
+  /** The period when outdated wal files are periodically deleted. Unit: millisecond */
+  private long deleteWalFilesPeriodInMs = 10 * 60 * 1000;
   // endregion
 
   /** Unit: byte */
@@ -1368,12 +1379,12 @@ public class IoTDBConfig {
     this.fsyncWalDelayInMs = fsyncWalDelayInMs;
   }
 
-  public int getMaxWalNodeNum() {
-    return maxWalNodeNum;
+  public int getMaxWalNodesNum() {
+    return maxWalNodesNum;
   }
 
-  void setMaxWalNodeNum(int maxWalNodeNum) {
-    this.maxWalNodeNum = maxWalNodeNum;
+  void setMaxWalNodesNum(int maxWalNodesNum) {
+    this.maxWalNodesNum = maxWalNodesNum;
   }
 
   public int getWalBufferSize() {
@@ -1390,6 +1401,14 @@ public class IoTDBConfig {
 
   void setWalBufferEntrySize(int walBufferEntrySize) {
     this.walBufferEntrySize = walBufferEntrySize;
+  }
+
+  public int getWalBufferQueueCapacity() {
+    return walBufferQueueCapacity;
+  }
+
+  void setWalBufferQueueCapacity(int walBufferQueueCapacity) {
+    this.walBufferQueueCapacity = walBufferQueueCapacity;
   }
 
   public long getWalFileSizeThresholdInByte() {
@@ -1414,6 +1433,22 @@ public class IoTDBConfig {
 
   void setWalMemTableSnapshotThreshold(long walMemTableSnapshotThreshold) {
     this.walMemTableSnapshotThreshold = walMemTableSnapshotThreshold;
+  }
+
+  public long getFsyncCheckpointFilePeriodInMs() {
+    return fsyncCheckpointFilePeriodInMs;
+  }
+
+  void setFsyncCheckpointFilePeriodInMs(long fsyncCheckpointFilePeriodInMs) {
+    this.fsyncCheckpointFilePeriodInMs = fsyncCheckpointFilePeriodInMs;
+  }
+
+  public long getDeleteWalFilesPeriodInMs() {
+    return deleteWalFilesPeriodInMs;
+  }
+
+  void setDeleteWalFilesPeriodInMs(long deleteWalFilesPeriodInMs) {
+    this.deleteWalFilesPeriodInMs = deleteWalFilesPeriodInMs;
   }
 
   public int getEstimatedSeriesSize() {

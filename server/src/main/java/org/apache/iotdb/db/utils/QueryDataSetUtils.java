@@ -226,22 +226,22 @@ public class QueryDataSetUtils {
     return bitMaps;
   }
 
-  public static Object[] readValuesFromBuffer(
+  public static Object[] readTabletValuesFromBuffer(
       ByteBuffer buffer, List<Integer> types, int columns, int size) {
     TSDataType[] dataTypes = new TSDataType[types.size()];
     for (int i = 0; i < dataTypes.length; i++) {
       dataTypes[i] = TSDataType.values()[types.get(i)];
     }
-    return readValuesFromBuffer(buffer, dataTypes, columns, size);
+    return readTabletValuesFromBuffer(buffer, dataTypes, columns, size);
   }
 
-  public static Object[] readValuesFromBuffer(
+  public static Object[] readTabletValuesFromStream(
       DataInputStream stream, List<Integer> types, int columns, int size) throws IOException {
     TSDataType[] dataTypes = new TSDataType[types.size()];
     for (int i = 0; i < dataTypes.length; i++) {
       dataTypes[i] = TSDataType.values()[types.get(i)];
     }
-    return readValuesFromBuffer(stream, dataTypes, columns, size);
+    return readTabletValuesFromStream(stream, dataTypes, columns, size);
   }
 
   /**
@@ -250,7 +250,7 @@ public class QueryDataSetUtils {
    * @param size value count in each column
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  public static Object[] readValuesFromBuffer(
+  public static Object[] readTabletValuesFromBuffer(
       ByteBuffer buffer, TSDataType[] types, int columns, int size) {
     Object[] values = new Object[columns];
     for (int i = 0; i < columns; i++) {
@@ -308,7 +308,7 @@ public class QueryDataSetUtils {
     return values;
   }
 
-  public static Object[] readValuesFromBuffer(
+  public static Object[] readTabletValuesFromStream(
       DataInputStream stream, TSDataType[] types, int columns, int size) throws IOException {
     Object[] values = new Object[columns];
     for (int i = 0; i < columns; i++) {

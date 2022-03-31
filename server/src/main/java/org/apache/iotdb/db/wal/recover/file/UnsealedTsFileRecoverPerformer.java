@@ -26,8 +26,8 @@ import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
+import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -70,12 +70,12 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
   public UnsealedTsFileRecoverPerformer(
       TsFileResource tsFileResource,
       boolean sequence,
-      VirtualStorageGroupProcessor vsgProcessor,
+      IDTable idTable,
       Consumer<UnsealedTsFileRecoverPerformer> callbackAfterUnsealedTsFileRecovered) {
     super(tsFileResource);
     this.sequence = sequence;
     this.callbackAfterUnsealedTsFileRecovered = callbackAfterUnsealedTsFileRecovered;
-    this.walRedoer = new TsFilePlanRedoer(tsFileResource, sequence, vsgProcessor);
+    this.walRedoer = new TsFilePlanRedoer(tsFileResource, sequence, idTable);
     this.recoverListener = new WALRecoverListener(tsFileResource.getTsFilePath());
   }
 
@@ -90,11 +90,11 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
       // tsfile has crashed due to failure,
       // the last ChunkGroup may contain the same data as the WALs,
       // so the time map must be updated first to avoid duplicated insertion
-      loadResourceFromWriter();
+      constructResourceFromTsFile();
     }
   }
 
-  private void loadResourceFromWriter() {
+  private void constructResourceFromTsFile() {
     Map<String, Map<String, List<Deletion>>> modificationsForResource =
         loadModificationsForResource();
     Map<String, List<ChunkMetadata>> deviceChunkMetaDataMap = writer.getDeviceChunkMetadataMap();

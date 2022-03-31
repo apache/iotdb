@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.wal.buffer;
 
-import org.apache.iotdb.db.wal.utils.SerializedSize;
+import org.apache.iotdb.db.utils.SerializedSize;
 
 /** A class implements this interface can be written into .wal file. */
 public interface WALEditValue extends SerializedSize {

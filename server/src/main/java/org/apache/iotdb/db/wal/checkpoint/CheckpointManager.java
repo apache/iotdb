@@ -62,7 +62,7 @@ public class CheckpointManager implements AutoCloseable {
   /** cache the biggest byte buffer to serialize checkpoint */
   private volatile ByteBuffer cachedByteBuffer;
   /** current checkpoint file version id, only updated by fsyncAndDeleteThread */
-  private int currentLogVersion = 0;
+  private int currentCheckPointFileVersion = 0;
   /** current checkpoint file log writer, only updated by fsyncAndDeleteThread */
   private ILogWriter currentLogWriter;
   // endregion
@@ -77,7 +77,7 @@ public class CheckpointManager implements AutoCloseable {
     currentLogWriter =
         new CheckpointWriter(
             SystemFileFactory.INSTANCE.getFile(
-                logDirectory, CheckpointWriter.getLogFileName(currentLogVersion)));
+                logDirectory, CheckpointWriter.getLogFileName(currentCheckPointFileVersion)));
     makeGlobalInfoCP();
     fsyncCheckpointFile();
   }
@@ -167,7 +167,7 @@ public class CheckpointManager implements AutoCloseable {
           currentLogWriter.force();
           File oldFile =
               SystemFileFactory.INSTANCE.getFile(
-                  logDirectory, CheckpointWriter.getLogFileName(currentLogVersion - 1));
+                  logDirectory, CheckpointWriter.getLogFileName(currentCheckPointFileVersion - 1));
           oldFile.delete();
         }
       } catch (IOException e) {
@@ -187,10 +187,10 @@ public class CheckpointManager implements AutoCloseable {
       return false;
     }
     currentLogWriter.close();
-    currentLogVersion++;
+    currentCheckPointFileVersion++;
     File nextLogFile =
         SystemFileFactory.INSTANCE.getFile(
-            logDirectory, CheckpointWriter.getLogFileName(currentLogVersion));
+            logDirectory, CheckpointWriter.getLogFileName(currentCheckPointFileVersion));
     currentLogWriter = new CheckpointWriter(nextLogFile);
     return true;
   }
@@ -222,7 +222,7 @@ public class CheckpointManager implements AutoCloseable {
    *
    * @return Return {@link Integer#MIN_VALUE} if no file is valid
    */
-  public int getFirstValidVersionId() {
+  public int getFirstValidWALVersionId() {
     List<MemTableInfo> memTableInfos;
     infoLock.lock();
     try {

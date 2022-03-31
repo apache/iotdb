@@ -62,12 +62,12 @@ public class WALFakeNode implements IWALNode {
   }
 
   @Override
-  public void onFlushStart(IMemTable memTable) {
+  public void onMemTableFlushStarted(IMemTable memTable) {
     // do nothing
   }
 
   @Override
-  public void onFlushEnd(IMemTable memTable) {
+  public void onMemTableFlushed(IMemTable memTable) {
     // do nothing
   }
 

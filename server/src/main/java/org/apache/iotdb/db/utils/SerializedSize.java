@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.wal.utils;
+package org.apache.iotdb.db.utils;
 
 /** Implementations should calculate their accurate serialized size in bytes. */
 public interface SerializedSize {

@@ -37,9 +37,9 @@ import org.apache.iotdb.db.wal.buffer.WALEdit;
 import org.apache.iotdb.db.wal.checkpoint.CheckpointManager;
 import org.apache.iotdb.db.wal.checkpoint.MemTableInfo;
 import org.apache.iotdb.db.wal.io.WALWriter;
-import org.apache.iotdb.db.wal.utils.TsFilePathUtils;
 import org.apache.iotdb.db.wal.utils.listener.WALFlushListener;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.utils.TsFileUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -103,12 +103,12 @@ public class WALNode implements IWALNode {
   }
 
   @Override
-  public void onFlushStart(IMemTable memTable) {
+  public void onMemTableFlushStarted(IMemTable memTable) {
     // do nothing
   }
 
   @Override
-  public void onFlushEnd(IMemTable memTable) {
+  public void onMemTableFlushed(IMemTable memTable) {
     if (memTable.isSignalMemTable()) {
       return;
     }
@@ -118,7 +118,7 @@ public class WALNode implements IWALNode {
   @Override
   public void onMemTableCreated(IMemTable memTable, String targetTsFile) {
     // use current log version id as first file version id
-    int firstFileVersionId = buffer.getCurrentLogVersion();
+    int firstFileVersionId = buffer.getCurrentWALFileVersion();
     MemTableInfo memTableInfo = new MemTableInfo(memTable, targetTsFile, firstFileVersionId);
     checkpointManager.makeCreateMemTableCP(memTableInfo);
   }
@@ -159,8 +159,8 @@ public class WALNode implements IWALNode {
           vsgProcessor =
               StorageEngine.getInstance()
                   .getProcessorByVSGId(
-                      new PartialPath(TsFilePathUtils.getStorageGroup(oldestTsFile)),
-                      TsFilePathUtils.getVirtualStorageGroupId(oldestTsFile));
+                      new PartialPath(TsFileUtils.getStorageGroup(oldestTsFile)),
+                      TsFileUtils.getVirtualStorageGroupId(oldestTsFile));
         } catch (IllegalPathException | StorageEngineException e) {
           logger.error("Fail to get virtual storage group processor for {}", oldestTsFile, e);
           return;
@@ -170,15 +170,14 @@ public class WALNode implements IWALNode {
         if (oldestMemTableInfo.getMemTable().getTVListsRamCost()
             > MEM_TABLE_SNAPSHOT_THRESHOLD_IN_BYTE) {
           vsgProcessor.submitAFlushTask(
-              TsFilePathUtils.getTimePartition(oldestTsFile),
-              TsFilePathUtils.isSequence(oldestTsFile));
+              TsFileUtils.getTimePartition(oldestTsFile), TsFileUtils.isSequence(oldestTsFile));
         } else {
           // get vsg write lock to make sure no more writes to the memTable
           vsgProcessor.writeLock("CheckpointManager#snapshotOrFlushOldestMemTable");
           try {
             // update first version id first to make sure snapshot is in the files ≥ current log
             // version
-            oldestMemTableInfo.setFirstFileVersionId(buffer.getCurrentLogVersion());
+            oldestMemTableInfo.setFirstFileVersionId(buffer.getCurrentWALFileVersion());
             // log snapshot in .wal file
             WALEdit walEdit =
                 new WALEdit(
@@ -198,9 +197,9 @@ public class WALNode implements IWALNode {
     }
 
     private void deleteOldFiles() {
-      firstValidVersionId = checkpointManager.getFirstValidVersionId();
+      firstValidVersionId = checkpointManager.getFirstValidWALVersionId();
       if (firstValidVersionId == Integer.MIN_VALUE) {
-        firstValidVersionId = buffer.getCurrentLogVersion();
+        firstValidVersionId = buffer.getCurrentWALFileVersion();
       }
       File directory = SystemFileFactory.INSTANCE.getFile(logDirectory);
       File[] filesToDelete = directory.listFiles(this::filterFilesToDelete);
@@ -239,6 +238,6 @@ public class WALNode implements IWALNode {
 
   @TestOnly
   int getCurrentLogVersion() {
-    return buffer.getCurrentLogVersion();
+    return buffer.getCurrentWALFileVersion();
   }
 }

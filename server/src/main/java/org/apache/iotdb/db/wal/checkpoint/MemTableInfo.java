@@ -19,8 +19,8 @@
 package org.apache.iotdb.db.wal.checkpoint;
 
 import org.apache.iotdb.db.engine.memtable.IMemTable;
+import org.apache.iotdb.db.utils.SerializedSize;
 import org.apache.iotdb.db.wal.buffer.WALEdit;
-import org.apache.iotdb.db.wal.utils.SerializedSize;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataInputStream;
@@ -33,7 +33,7 @@ import java.util.Objects;
  * file version id of its first {@link WALEdit}.
  */
 public class MemTableInfo implements SerializedSize {
-  /** memTable id 4 bytes, tsFile path length 4 bytes, first version id 4 bytes */
+  /** memTable id 4 bytes, first version id 4 bytes */
   private static final int FIXED_SERIALIZED_SIZE = Integer.BYTES * 2;
 
   /** memTable */
@@ -56,7 +56,7 @@ public class MemTableInfo implements SerializedSize {
 
   @Override
   public int serializedSize() {
-    return FIXED_SERIALIZED_SIZE + (Integer.BYTES + tsFilePath.getBytes().length);
+    return FIXED_SERIALIZED_SIZE + ReadWriteIOUtils.sizeToWrite(tsFilePath);
   }
 
   public void serialize(ByteBuffer buffer) {

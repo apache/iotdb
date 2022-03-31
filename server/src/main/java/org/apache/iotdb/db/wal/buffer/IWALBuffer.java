@@ -20,7 +20,7 @@ package org.apache.iotdb.db.wal.buffer;
 
 import org.apache.iotdb.commons.utils.TestOnly;
 
-/** Currently, there are 2 buffer types */
+/** Currently, there are 2 buffer types, including wal rolling buffer and wal segmented buffer. */
 public interface IWALBuffer extends AutoCloseable {
   /**
    * Write WALEdit into wal buffer.
@@ -30,7 +30,7 @@ public interface IWALBuffer extends AutoCloseable {
   void write(WALEdit edit);
 
   /** Get current log version id */
-  int getCurrentLogVersion();
+  int getCurrentWALFileVersion();
 
   @Override
   void close();

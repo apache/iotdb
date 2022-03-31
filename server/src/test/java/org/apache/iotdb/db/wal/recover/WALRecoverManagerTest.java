@@ -165,7 +165,7 @@ public class WALRecoverManagerTest {
     int threadsNum = 5;
     ExecutorService executorService = Executors.newFixedThreadPool(threadsNum);
     List<Future<Void>> futures = new ArrayList<>();
-    int firstWALVersionId = walBuffer.getCurrentLogVersion();
+    int firstWALVersionId = walBuffer.getCurrentWALFileVersion();
     for (int i = 0; i < threadsNum; ++i) {
       IMemTable fakeMemTable = new PrimitiveMemTable();
       int memTableId = fakeMemTable.getMemTableId();
@@ -174,7 +174,7 @@ public class WALRecoverManagerTest {
             checkpointManager.makeCreateMemTableCP(
                 new MemTableInfo(fakeMemTable, "fake.tsfile", 0));
             try {
-              while (walBuffer.getCurrentLogVersion() - firstWALVersionId < 2) {
+              while (walBuffer.getCurrentWALFileVersion() - firstWALVersionId < 2) {
                 WALEdit walEdit =
                     new WALEdit(
                         memTableId, getInsertTabletPlan(SG_NAME.concat("test_d" + memTableId)));
@@ -199,7 +199,7 @@ public class WALRecoverManagerTest {
     }
     Thread.sleep(1_000);
     // write normal .wal files
-    int firstValidVersionId = walBuffer.getCurrentLogVersion();
+    int firstValidVersionId = walBuffer.getCurrentWALFileVersion();
     IMemTable targetMemTable = new PrimitiveMemTable();
     WALEdit walEdit =
         new WALEdit(targetMemTable.getMemTableId(), getInsertRowPlan(DEVICE2_NAME, 4L), true);
@@ -223,7 +223,7 @@ public class WALRecoverManagerTest {
     int threadsNum = 5;
     ExecutorService executorService = Executors.newFixedThreadPool(threadsNum);
     List<Future<Void>> futures = new ArrayList<>();
-    int firstWALVersionId = walBuffer.getCurrentLogVersion();
+    int firstWALVersionId = walBuffer.getCurrentWALFileVersion();
     for (int i = 0; i < threadsNum; ++i) {
       IMemTable fakeMemTable = new PrimitiveMemTable();
       int memTableId = fakeMemTable.getMemTableId();
@@ -232,7 +232,7 @@ public class WALRecoverManagerTest {
             checkpointManager.makeCreateMemTableCP(
                 new MemTableInfo(fakeMemTable, "fake.tsfile", 0));
             try {
-              while (walBuffer.getCurrentLogVersion() - firstWALVersionId < 2) {
+              while (walBuffer.getCurrentWALFileVersion() - firstWALVersionId < 2) {
                 WALEdit walEdit =
                     new WALEdit(
                         memTableId, getInsertTabletPlan(SG_NAME.concat("test_d" + memTableId)));
@@ -257,7 +257,7 @@ public class WALRecoverManagerTest {
     }
     Thread.sleep(1_000);
     // write normal .wal files
-    int firstValidVersionId = walBuffer.getCurrentLogVersion();
+    int firstValidVersionId = walBuffer.getCurrentWALFileVersion();
     IMemTable targetMemTable = new PrimitiveMemTable();
     InsertRowPlan insertRowPlan = getInsertRowPlan(DEVICE2_NAME, 4L);
     targetMemTable.insert(insertRowPlan);

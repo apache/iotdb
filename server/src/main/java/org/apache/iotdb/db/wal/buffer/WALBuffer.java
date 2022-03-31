@@ -25,7 +25,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.utils.MmapUtil;
 import org.apache.iotdb.db.wal.exception.WALNodeClosedException;
-import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.db.wal.utils.listener.WALFlushListener;
 
 import org.slf4j.Logger;
@@ -55,19 +54,15 @@ public class WALBuffer extends AbstractWALBuffer {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final int WAL_BUFFER_SIZE = config.getWalBufferSize();
   private static final long FSYNC_WAL_DELAY_IN_MS = config.getFsyncWalDelayInMs();
-  /** default delay time of each serialize task when wal mode is async */
-  public static final long ASYNC_WAL_DELAY_IN_MS = 100;
-  /** Maximum number of WALEdits in one serialize task when wal mode is sync */
-  public static final int SYNC_BATCH_SIZE_LIMIT = 100;
-  /** Maximum number of WALEdits in the blocking queue */
-  public static final int SIZE_LIMIT = 10_000;
+  public static final int QUEUE_CAPACITY = config.getWalBufferQueueCapacity();
+
   /** notify serializeThread to stop */
   private static final WALEdit CLOSE_SIGNAL = new WALEdit(-1, new DeletePlan());
 
   /** whether close method is called */
   private volatile boolean isClosed = false;
   /** WALEdits */
-  private final BlockingQueue<WALEdit> walEdits = new ArrayBlockingQueue<>(SIZE_LIMIT);
+  private final BlockingQueue<WALEdit> walEdits = new ArrayBlockingQueue<>(QUEUE_CAPACITY);
   /** lock to provide synchronization for double buffers mechanism, protecting buffers status */
   private final Lock buffersLock = new ReentrantLock();
   /** condition to guarantee correctness of switching buffers */
@@ -165,19 +160,16 @@ public class WALBuffer extends AbstractWALBuffer {
         Thread.currentThread().interrupt();
       }
       // for better fsync performance, sleep a while to enlarge write batch
-      if (FSYNC_WAL_DELAY_IN_MS > 0 || config.getWalMode() == WALMode.ASYNC) {
-        long sleepTime = FSYNC_WAL_DELAY_IN_MS > 0 ? FSYNC_WAL_DELAY_IN_MS : ASYNC_WAL_DELAY_IN_MS;
+      if (FSYNC_WAL_DELAY_IN_MS > 0) {
         try {
-          Thread.sleep(sleepTime);
+          Thread.sleep(FSYNC_WAL_DELAY_IN_MS);
         } catch (InterruptedException e) {
           logger.warn("Interrupted when sleeping a while to enlarge wal write batch.");
           Thread.currentThread().interrupt();
         }
       }
       // try to get more WALEdits with non-blocking interface to enlarge write batch
-      // control batch size in sync mode to return quickly
-      int bachSizeLimit = config.getWalMode() == WALMode.SYNC ? SYNC_BATCH_SIZE_LIMIT : SIZE_LIMIT;
-      while (walEdits.peek() != null && batchSize < bachSizeLimit) {
+      while (walEdits.peek() != null && batchSize < QUEUE_CAPACITY) {
         WALEdit edit = walEdits.poll();
         if (edit == null || edit == CLOSE_SIGNAL) {
           break;
@@ -278,18 +270,18 @@ public class WALBuffer extends AbstractWALBuffer {
 
   /** Notice: this method only called when buffer is exhausted by SerializeTask. */
   private void syncWorkingBuffer() {
-    switchIdleBufferToWorking();
+    switchWorkingBufferToFlushing();
     syncBufferThread.submit(new SyncBufferTask(false));
   }
 
   /** Notice: this method only called at the last of SerializeTask. */
   private void fsyncWorkingBuffer(List<WALFlushListener> fsyncListeners) {
-    switchIdleBufferToWorking();
+    switchWorkingBufferToFlushing();
     syncBufferThread.submit(new SyncBufferTask(true, fsyncListeners));
   }
 
   // only called by serializeThread
-  private void switchIdleBufferToWorking() {
+  private void switchWorkingBufferToFlushing() {
     buffersLock.lock();
     try {
       while (idleBuffer == null) {
@@ -329,7 +321,7 @@ public class WALBuffer extends AbstractWALBuffer {
     public void run() {
       // flush buffer to os
       try {
-        currentLogWriter.write(syncingBuffer);
+        currentWALFileWriter.write(syncingBuffer);
       } catch (Throwable e) {
         logger.error(
             "Fail to sync wal node-{}'s buffer, change system mode to read-only.", identifier, e);
@@ -341,7 +333,7 @@ public class WALBuffer extends AbstractWALBuffer {
       if (force) {
         // force os cache to the storage device
         try {
-          currentLogWriter.force();
+          currentWALFileWriter.force();
         } catch (IOException e) {
           logger.error(
               "Fail to fsync wal node-{}'s log writer, change system mode to read-only.",
@@ -397,9 +389,9 @@ public class WALBuffer extends AbstractWALBuffer {
       shutdownThread(syncBufferThread, ThreadName.WAL_SYNC);
     }
 
-    if (currentLogWriter != null) {
+    if (currentWALFileWriter != null) {
       try {
-        currentLogWriter.close();
+        currentWALFileWriter.close();
       } catch (IOException e) {
         logger.error("Fail to close wal node-{}'s log writer.", identifier, e);
       }

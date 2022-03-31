@@ -25,21 +25,21 @@ import java.io.IOException;
 
 public interface FlushListener {
 
-  void onFlushStart(IMemTable memTable) throws IOException;
+  void onMemTableFlushStarted(IMemTable memTable) throws IOException;
 
-  void onFlushEnd(IMemTable memTable);
+  void onMemTableFlushed(IMemTable memTable);
 
   class EmptyListener implements FlushListener {
 
     public static final EmptyListener INSTANCE = new EmptyListener();
 
     @Override
-    public void onFlushStart(IMemTable memTable) {
+    public void onMemTableFlushStarted(IMemTable memTable) {
       // do nothing
     }
 
     @Override
-    public void onFlushEnd(IMemTable memTable) {
+    public void onMemTableFlushed(IMemTable memTable) {
       // do nothing
     }
   }

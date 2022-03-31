@@ -24,12 +24,12 @@ import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -56,16 +56,15 @@ public class TsFilePlanRedoer {
   private final TsFileResource tsFileResource;
   /** only unsequence file tolerates duplicated data */
   private final boolean sequence;
-  /** this TsFile's virtual storage group */
-  private final VirtualStorageGroupProcessor vsgProcessor;
+  /** virtual storage group's idTable of this tsFile */
+  private final IDTable idTable;
   /** store data when redoing logs */
   private IMemTable recoveryMemTable = new PrimitiveMemTable();
 
-  public TsFilePlanRedoer(
-      TsFileResource tsFileResource, boolean sequence, VirtualStorageGroupProcessor vsgProcessor) {
+  public TsFilePlanRedoer(TsFileResource tsFileResource, boolean sequence, IDTable idTable) {
     this.tsFileResource = tsFileResource;
     this.sequence = sequence;
-    this.vsgProcessor = vsgProcessor;
+    this.idTable = idTable;
   }
 
   void redoDelete(DeletePlan deletePlan) throws IOException, MetadataException {
@@ -104,7 +103,7 @@ public class TsFilePlanRedoer {
     plan.setMeasurementMNodes(new IMeasurementMNode[plan.getMeasurements().length]);
     try {
       if (IoTDBDescriptor.getInstance().getConfig().isEnableIDTable()) {
-        vsgProcessor.getIdTable().getSeriesSchemas(plan);
+        idTable.getSeriesSchemas(plan);
       } else {
         IoTDB.schemaProcessor.getSeriesSchemasAndReadLockDevice(plan);
         plan.setDeviceID(DeviceIDFactory.getInstance().getDeviceID(plan.getDevicePath()));

@@ -44,6 +44,8 @@ public abstract class LogWriter implements ILogWriter {
   private final FileOutputStream logStream;
   private final FileChannel logChannel;
 
+  private long size;
+
   public LogWriter(File logFile) throws FileNotFoundException {
     this.logFile = logFile;
     this.logStream = new FileOutputStream(logFile, true);
@@ -52,6 +54,7 @@ public abstract class LogWriter implements ILogWriter {
 
   @Override
   public void write(ByteBuffer buffer) throws IOException {
+    size += buffer.position();
     buffer.flip();
     try {
       logChannel.write(buffer);
@@ -74,7 +77,7 @@ public abstract class LogWriter implements ILogWriter {
 
   @Override
   public long size() throws IOException {
-    return logChannel.size();
+    return size;
   }
 
   @Override

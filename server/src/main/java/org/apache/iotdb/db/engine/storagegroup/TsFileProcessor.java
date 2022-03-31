@@ -31,7 +31,6 @@ import org.apache.iotdb.db.engine.flush.NotifyFlushMemTable;
 import org.apache.iotdb.db.engine.memtable.AlignedWritableMemChunk;
 import org.apache.iotdb.db.engine.memtable.AlignedWritableMemChunkGroup;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
-import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
@@ -337,12 +336,7 @@ public class TsFileProcessor {
   }
 
   private void createNewWorkingMemTable() throws WriteProcessException {
-    if (enableMemControl) {
-      workMemTable = new PrimitiveMemTable(enableMemControl);
-      MemTableManager.getInstance().addMemtableNumber();
-    } else {
-      workMemTable = MemTableManager.getInstance().getAvailableMemTable(storageGroupName);
-    }
+    workMemTable = MemTableManager.getInstance().getAvailableMemTable(storageGroupName);
     walNode.onMemTableCreated(workMemTable, tsFileResource.getTsFilePath());
   }
 
@@ -927,7 +921,7 @@ public class TsFileProcessor {
     }
 
     for (FlushListener flushListener : flushListeners) {
-      flushListener.onFlushStart(tobeFlushed);
+      flushListener.onMemTableFlushStarted(tobeFlushed);
     }
 
     if (enableMemControl) {
@@ -1061,7 +1055,7 @@ public class TsFileProcessor {
     }
 
     for (FlushListener flushListener : flushListeners) {
-      flushListener.onFlushEnd(memTableToFlush);
+      flushListener.onMemTableFlushed(memTableToFlush);
     }
 
     try {

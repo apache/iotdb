@@ -735,7 +735,7 @@ public class InsertTabletPlan extends InsertPlan {
     if (hasBitMaps) {
       bitMaps = QueryDataSetUtils.readBitMapsFromBuffer(stream, dataTypeSize, rows);
     }
-    columns = QueryDataSetUtils.readValuesFromBuffer(stream, dataTypes, dataTypeSize, rows);
+    columns = QueryDataSetUtils.readTabletValuesFromStream(stream, dataTypes, dataTypeSize, rows);
     this.index = stream.readLong();
     this.isAligned = stream.readByte() == 1;
   }
@@ -765,7 +765,7 @@ public class InsertTabletPlan extends InsertPlan {
     if (hasBitMaps) {
       bitMaps = QueryDataSetUtils.readBitMapsFromBuffer(buffer, dataTypeSize, rows);
     }
-    columns = QueryDataSetUtils.readValuesFromBuffer(buffer, dataTypes, dataTypeSize, rows);
+    columns = QueryDataSetUtils.readTabletValuesFromBuffer(buffer, dataTypes, dataTypeSize, rows);
     this.index = buffer.getLong();
     this.isAligned = buffer.get() == 1;
   }

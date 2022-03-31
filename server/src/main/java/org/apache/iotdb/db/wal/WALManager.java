@@ -50,13 +50,13 @@ import java.util.concurrent.locks.ReentrantLock;
 
 /** This class is used to manage all wal nodes */
 public class WALManager implements IService {
-  public static final long FSYNC_CHECKPOINT_FILE_DELAY_IN_MS = 200;
-  public static final long DELETE_WAL_FILES_DELAY_IN_MS = 10 * 60 * 1000;
-
   private static final Logger logger = LoggerFactory.getLogger(WALManager.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  public static final long FSYNC_CHECKPOINT_FILE_PERIOD_IN_MS =
+      config.getFsyncCheckpointFilePeriodInMs();
+  public static final long DELETE_WAL_FILES_PERIOD_IN_MS = config.getDeleteWalFilesPeriodInMs();
   private static final int MAX_WAL_NODE_NUM =
-      config.getMaxWalNodeNum() > 0 ? config.getMaxWalNodeNum() : config.getWalDirs().length * 2;
+      config.getMaxWalNodesNum() > 0 ? config.getMaxWalNodesNum() : config.getWalDirs().length * 2;
 
   /** manage wal folders */
   private FolderManager folderManager;
@@ -109,8 +109,8 @@ public class WALManager implements IService {
         walNodes.add(selectedNode);
       } else {
         // select next wal node by sequence order
-        nodeCursor++;
-        selectedNode = walNodes.get(nodeCursor % MAX_WAL_NODE_NUM);
+        nodeCursor = (nodeCursor + 1) % MAX_WAL_NODE_NUM;
+        selectedNode = walNodes.get(nodeCursor);
       }
     } finally {
       nodesLock.unlock();
@@ -135,13 +135,13 @@ public class WALManager implements IService {
           IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(ThreadName.WAL_DELETE.getName());
       checkpointThread.scheduleAtFixedRate(
           this::fsyncCheckpointFile,
-          FSYNC_CHECKPOINT_FILE_DELAY_IN_MS,
-          FSYNC_CHECKPOINT_FILE_DELAY_IN_MS,
+          FSYNC_CHECKPOINT_FILE_PERIOD_IN_MS,
+          FSYNC_CHECKPOINT_FILE_PERIOD_IN_MS,
           TimeUnit.MILLISECONDS);
       walDeleteThread.scheduleAtFixedRate(
           this::deleteOutdatedFiles,
-          DELETE_WAL_FILES_DELAY_IN_MS,
-          DELETE_WAL_FILES_DELAY_IN_MS,
+          DELETE_WAL_FILES_PERIOD_IN_MS,
+          DELETE_WAL_FILES_PERIOD_IN_MS,
           TimeUnit.MILLISECONDS);
     } catch (Exception e) {
       throw new StartupException(this.getID().getName(), e.getMessage());

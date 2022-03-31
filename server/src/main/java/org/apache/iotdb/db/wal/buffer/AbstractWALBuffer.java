@@ -43,9 +43,9 @@ public abstract class AbstractWALBuffer implements IWALBuffer {
   /** directory to store .wal files */
   protected final String logDirectory;
   /** current wal file version id */
-  protected final AtomicInteger currentLogVersion = new AtomicInteger();
+  protected final AtomicInteger currentWALFileVersion = new AtomicInteger();
   /** current wal file log writer */
-  protected volatile ILogWriter currentLogWriter;
+  protected volatile ILogWriter currentWALFileWriter;
 
   public AbstractWALBuffer(String identifier, String logDirectory) throws FileNotFoundException {
     this.identifier = identifier;
@@ -54,27 +54,27 @@ public abstract class AbstractWALBuffer implements IWALBuffer {
     if (!logDirFile.exists() && logDirFile.mkdirs()) {
       logger.info("create folder {} for wal buffer-{}.", logDirectory, identifier);
     }
-    currentLogWriter =
+    currentWALFileWriter =
         new WALWriter(
             SystemFileFactory.INSTANCE.getFile(
-                logDirectory, WALWriter.getLogFileName(currentLogVersion.get())));
+                logDirectory, WALWriter.getLogFileName(currentWALFileVersion.get())));
   }
 
   @Override
-  public int getCurrentLogVersion() {
-    return currentLogVersion.get();
+  public int getCurrentWALFileVersion() {
+    return currentWALFileVersion.get();
   }
 
-  /** Notice: old log writer will be closed by this function. */
+  /** Notice: only called by syncBufferThread and old log writer will be closed by this function. */
   protected boolean tryRollingLogWriter() throws IOException {
-    if (currentLogWriter.size() < FILE_SIZE_THRESHOLD) {
+    if (currentWALFileWriter.size() < FILE_SIZE_THRESHOLD) {
       return false;
     }
-    currentLogWriter.close();
+    currentWALFileWriter.close();
     File nextLogFile =
         SystemFileFactory.INSTANCE.getFile(
-            logDirectory, WALWriter.getLogFileName(currentLogVersion.incrementAndGet()));
-    currentLogWriter = new WALWriter(nextLogFile);
+            logDirectory, WALWriter.getLogFileName(currentWALFileVersion.incrementAndGet()));
+    currentWALFileWriter = new WALWriter(nextLogFile);
     return true;
   }
 }

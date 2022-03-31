@@ -37,6 +37,7 @@ import java.util.List;
 import java.util.Objects;
 
 public class DeletePlan extends PhysicalPlan implements WALEditValue {
+  /** byte: type, integer: paths.size(), long: deleteStartTime, deleteEndTime, index */
   private static final int FIXED_SERIALIZED_SIZE = Byte.BYTES + Integer.BYTES + Long.BYTES * 3;
 
   private long deleteStartTime;

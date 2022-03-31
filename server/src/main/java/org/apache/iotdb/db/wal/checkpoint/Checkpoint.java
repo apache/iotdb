@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.wal.checkpoint;
 
-import org.apache.iotdb.db.wal.utils.SerializedSize;
+import org.apache.iotdb.db.utils.SerializedSize;
 
 import java.io.DataInputStream;
 import java.io.IOException;
