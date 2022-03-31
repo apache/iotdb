@@ -34,6 +34,10 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
 
 public abstract class PlanVisitor<R, C> {
 
+  public R process(PlanNode node, C context) {
+    return node.accept(this, context);
+  }
+
   public abstract R visitPlan(PlanNode node, C context);
 
   public R visitSeriesScan(SeriesScanNode node, C context) {

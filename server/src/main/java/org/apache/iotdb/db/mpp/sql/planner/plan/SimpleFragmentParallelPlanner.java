@@ -72,7 +72,8 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
     // one by one
     int instanceIdx = 0;
     PlanNode rootCopy = PlanNodeUtil.deepCopy(fragment.getRoot());
-    FragmentInstance fragmentInstance = new FragmentInstance(fragment, instanceIdx);
+    FragmentInstance fragmentInstance =
+        new FragmentInstance(new PlanFragment(fragment.getId(), rootCopy), instanceIdx);
 
     // Get the target DataRegion for origin PlanFragment, then its instance will be distributed one
     // of them.

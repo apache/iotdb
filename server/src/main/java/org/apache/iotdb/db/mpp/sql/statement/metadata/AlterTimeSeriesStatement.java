@@ -22,7 +22,7 @@ package org.apache.iotdb.db.mpp.sql.statement.metadata;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.constant.StatementType;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
-import org.apache.iotdb.db.mpp.sql.tree.StatementVisitor;
+import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 
 import java.util.Map;
 
