@@ -79,7 +79,6 @@ public class CheckpointManager implements AutoCloseable {
             SystemFileFactory.INSTANCE.getFile(
                 logDirectory, CheckpointWriter.getLogFileName(currentCheckPointFileVersion)));
     makeGlobalInfoCP();
-    fsyncCheckpointFile();
   }
 
   /**
@@ -136,6 +135,7 @@ public class CheckpointManager implements AutoCloseable {
       cachedByteBuffer = ByteBuffer.allocate(estimateSize);
     }
     checkpoint.serialize(cachedByteBuffer);
+
     try {
       currentLogWriter.write(cachedByteBuffer);
     } catch (IOException e) {
@@ -143,11 +143,13 @@ public class CheckpointManager implements AutoCloseable {
     } finally {
       cachedByteBuffer.clear();
     }
+
+    fsyncCheckpointFile();
   }
 
   // region Task to fsync checkpoint file
   /** Fsync checkpoints to the disk */
-  public void fsyncCheckpointFile() {
+  private void fsyncCheckpointFile() {
     infoLock.lock();
     try {
       try {

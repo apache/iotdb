@@ -52,8 +52,6 @@ import java.util.concurrent.locks.ReentrantLock;
 public class WALManager implements IService {
   private static final Logger logger = LoggerFactory.getLogger(WALManager.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  public static final long FSYNC_CHECKPOINT_FILE_PERIOD_IN_MS =
-      config.getFsyncCheckpointFilePeriodInMs();
   public static final long DELETE_WAL_FILES_PERIOD_IN_MS = config.getDeleteWalFilesPeriodInMs();
   private static final int MAX_WAL_NODE_NUM =
       config.getMaxWalNodesNum() > 0 ? config.getMaxWalNodesNum() : config.getWalDirs().length * 2;
@@ -70,8 +68,6 @@ public class WALManager implements IService {
   /** each wal node has a unique long value identifier */
   private long nodeIdCounter = -1;
   // endregion
-  /** single thread to fsync .checkpoint files */
-  private ScheduledExecutorService checkpointThread;
   /** single thread to delete old .wal files */
   private ScheduledExecutorService walDeleteThread;
 
@@ -128,16 +124,8 @@ public class WALManager implements IService {
       folderManager =
           new FolderManager(
               Arrays.asList(config.getWalDirs()), DirectoryStrategyType.SEQUENCE_STRATEGY);
-      checkpointThread =
-          IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-              ThreadName.WAL_CHECKPOINT.getName());
       walDeleteThread =
           IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(ThreadName.WAL_DELETE.getName());
-      checkpointThread.scheduleAtFixedRate(
-          this::fsyncCheckpointFile,
-          FSYNC_CHECKPOINT_FILE_PERIOD_IN_MS,
-          FSYNC_CHECKPOINT_FILE_PERIOD_IN_MS,
-          TimeUnit.MILLISECONDS);
       walDeleteThread.scheduleAtFixedRate(
           this::deleteOutdatedFiles,
           DELETE_WAL_FILES_PERIOD_IN_MS,
@@ -145,12 +133,6 @@ public class WALManager implements IService {
           TimeUnit.MILLISECONDS);
     } catch (Exception e) {
       throw new StartupException(this.getID().getName(), e.getMessage());
-    }
-  }
-
-  private void fsyncCheckpointFile() {
-    for (WALNode walNode : getNodesSnapshot()) {
-      walNode.fsyncCheckpointFile();
     }
   }
 
@@ -179,9 +161,6 @@ public class WALManager implements IService {
   public void stop() {
     if (config.getWalMode() == WALMode.DISABLE) {
       return;
-    }
-    if (checkpointThread != null) {
-      shutdownThread(checkpointThread, ThreadName.WAL_CHECKPOINT);
     }
     if (walDeleteThread != null) {
       shutdownThread(walDeleteThread, ThreadName.WAL_DELETE);

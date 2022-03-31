@@ -222,8 +222,6 @@ public class WALNodeTest {
     for (Future<Void> future : futures) {
       future.get();
     }
-    // fsync to checkpoint file
-    walNode.fsyncCheckpointFile();
     // recover info from checkpoint file
     Map<Integer, MemTableInfo> actualMemTableId2Info =
         CheckpointRecoverUtils.recoverMemTableInfo(new File(logDirectory));

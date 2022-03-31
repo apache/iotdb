@@ -106,8 +106,6 @@ public class CheckpointManagerTest {
     }
     // check first valid version id
     assertEquals(memTablesNum / 2, checkpointManager.getFirstValidWALVersionId());
-    // fsync to checkpoint file
-    checkpointManager.fsyncCheckpointFile();
     // recover info from checkpoint file
     Map<Integer, MemTableInfo> actualMemTableId2Info =
         CheckpointRecoverUtils.recoverMemTableInfo(new File(logDirectory));
@@ -141,7 +139,6 @@ public class CheckpointManagerTest {
         expectedMemTableId2Info.put(memTableInfo.getMemTableId(), memTableInfo);
       }
     }
-    checkpointManager.fsyncCheckpointFile();
     // check first valid version id
     assertEquals(5, checkpointManager.getFirstValidWALVersionId());
     // check checkpoint files

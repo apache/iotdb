@@ -208,7 +208,6 @@ public class WALRecoverManagerTest {
     // write .checkpoint file
     checkpointManager.makeCreateMemTableCP(
         new MemTableInfo(targetMemTable, FILE_WITH_WAL_NAME, firstValidVersionId));
-    checkpointManager.fsyncCheckpointFile();
   }
 
   @Test
@@ -272,7 +271,6 @@ public class WALRecoverManagerTest {
     // write .checkpoint file
     checkpointManager.makeCreateMemTableCP(
         new MemTableInfo(targetMemTable, FILE_WITH_WAL_NAME, firstValidVersionId));
-    checkpointManager.fsyncCheckpointFile();
   }
 
   private void recoverAndCheck() throws Exception {

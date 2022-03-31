@@ -958,15 +958,6 @@ public class IoTDBDescriptor {
       conf.setWalMemTableSnapshotThreshold(walMemTableSnapshotThreshold);
     }
 
-    long fsyncCheckpointFilePeriod =
-        Long.parseLong(
-            properties.getProperty(
-                "fsync_checkpoint_file_period_in_ms",
-                Long.toString(conf.getFsyncCheckpointFilePeriodInMs())));
-    if (fsyncCheckpointFilePeriod > 0) {
-      conf.setFsyncCheckpointFilePeriodInMs(fsyncCheckpointFilePeriod);
-    }
-
     long deleteWalFilesPeriod =
         Long.parseLong(
             properties.getProperty(

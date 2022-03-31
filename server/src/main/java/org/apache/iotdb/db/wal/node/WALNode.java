@@ -123,11 +123,6 @@ public class WALNode implements IWALNode {
     checkpointManager.makeCreateMemTableCP(memTableInfo);
   }
 
-  /** Fsync checkpoints to the disk */
-  public void fsyncCheckpointFile() {
-    checkpointManager.fsyncCheckpointFile();
-  }
-
   // region Task to delete outdated .wal files
   /** Delete outdated .wal files */
   public void deleteOutdatedFiles() {

@@ -186,11 +186,6 @@ public class IoTDBConfig {
    */
   private long walMemTableSnapshotThreshold = 128 * 1024 * 1024;
 
-  /**
-   * The period when checkpoint file is periodically forced to be written to disk. Unit: millisecond
-   */
-  private long fsyncCheckpointFilePeriodInMs = 200;
-
   /** The period when outdated wal files are periodically deleted. Unit: millisecond */
   private long deleteWalFilesPeriodInMs = 10 * 60 * 1000;
   // endregion
@@ -1433,14 +1428,6 @@ public class IoTDBConfig {
 
   void setWalMemTableSnapshotThreshold(long walMemTableSnapshotThreshold) {
     this.walMemTableSnapshotThreshold = walMemTableSnapshotThreshold;
-  }
-
-  public long getFsyncCheckpointFilePeriodInMs() {
-    return fsyncCheckpointFilePeriodInMs;
-  }
-
-  void setFsyncCheckpointFilePeriodInMs(long fsyncCheckpointFilePeriodInMs) {
-    this.fsyncCheckpointFilePeriodInMs = fsyncCheckpointFilePeriodInMs;
   }
 
   public long getDeleteWalFilesPeriodInMs() {

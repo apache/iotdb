@@ -40,7 +40,6 @@ public enum ThreadName {
   COMPACTION_SCHEDULE("Compaction_Schedule"),
   WAL_SERIALIZE("WAL-Serialize"),
   WAL_SYNC("WAL-Sync"),
-  WAL_CHECKPOINT("WAL-Checkpoint"),
   WAL_DELETE("WAL-Delete"),
   WAL_RECOVER("WAL-Recover"),
   INDEX_SERVICE("Index"),
