@@ -21,11 +21,6 @@ include "rpc.thrift"
 namespace java org.apache.iotdb.confignode.rpc.thrift
 namespace py iotdb.thrift.confignode
 
-struct EndPoint {
-  1: required string ip
-  2: required i32 port
-}
-
 struct DataNodeRegisterReq {
     1: required rpc.EndPoint endPoint
 }
@@ -81,18 +76,38 @@ struct DeviceGroupHashInfo {
     2: required string hashClass
 }
 
-struct fetchDataPartitionReq {
-    1: required map<string, list<i64>> devicesNameStartTimeMap
+struct FetchDataPartitionReq {
+    1: required map<string, list<i64>> devicePathsToStartTimeMap
 }
 
-struct DataRegionReplicaInfo {
-    1: required i32 dataRegionId
-    2: required list<EndPoint> endPointList
+struct FetchSchemaPartitionReq {
+    1: required list<string> devicePaths
+}
+
+struct FetchPartitionReq {
+    1: required map<string, list<i64>> devicePathsToStartTimeMap
+}
+
+struct RegionInfo {
+    1: required i32 regionId
+    2: required list<rpc.EndPoint> endPointList
 }
 
 struct DataPartitionInfoResp {
     // Map<StorageGroup, Map<DeviceGroupID, Map<TimePartitionId, List<DataRegionReplicaInfo>>>>
-    1: required map<string, map<i32, map<i64, list<DataRegionReplicaInfo>>>> dataPartitionMap
+    1: required map<string, map<i32, map<i64, list<RegionInfo>>>> dataPartitionMap
+}
+
+struct SchemaPartitionInfoResp {
+    // Map<StorageGroup, Map<DeviceGroupID, SchemaRegionPlaceInfo>>
+    1: required map<string, map<i32, RegionInfo>> schemaPartitionInfo
+}
+
+struct PartitionInfoResp {
+    // Map<StorageGroup, Map<DeviceGroupID, Map<TimePartitionId, List<DataRegionReplicaInfo>>>>
+    1: required map<string, map<i32, map<i64, list<RegionInfo>>>> dataPartitionMap
+    // Map<StorageGroup, Map<DeviceGroupID, SchemaRegionPlaceInfo>>
+    2: required map<string, map<i32, RegionInfo>> schemaPartitionInfo
 }
 
 service ConfigIService {
@@ -116,5 +131,9 @@ service ConfigIService {
 
   DeviceGroupHashInfo getDeviceGroupHashInfo()
 
-  DataPartitionInfoResp getDataPartitionInfo(fetchDataPartitionReq req)
+  DataPartitionInfoResp fetchDataPartitionInfo(FetchDataPartitionReq req)
+
+  SchemaPartitionInfoResp fetchSchemaPartitionInfo(FetchSchemaPartitionReq req)
+
+  PartitionInfoResp fetchPartitionInfo(FetchPartitionReq req)
 }

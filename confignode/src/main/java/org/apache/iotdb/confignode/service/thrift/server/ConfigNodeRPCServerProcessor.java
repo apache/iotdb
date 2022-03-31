@@ -35,12 +35,16 @@ import org.apache.iotdb.confignode.rpc.thrift.DataPartitionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.DataPartitionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.DeleteStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.DeviceGroupHashInfo;
+import org.apache.iotdb.confignode.rpc.thrift.FetchDataPartitionReq;
+import org.apache.iotdb.confignode.rpc.thrift.FetchPartitionReq;
+import org.apache.iotdb.confignode.rpc.thrift.FetchSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.GetDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.GetSchemaPartitionReq;
+import org.apache.iotdb.confignode.rpc.thrift.PartitionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.SchemaPartitionInfo;
+import org.apache.iotdb.confignode.rpc.thrift.SchemaPartitionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.SetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.StorageGroupMessage;
-import org.apache.iotdb.confignode.rpc.thrift.fetchDataPartitionReq;
 import org.apache.iotdb.consensus.common.Endpoint;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
@@ -158,12 +162,23 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
     return null;
   }
 
-  public void handleClientExit() {}
-
   @Override
-  public DataPartitionInfoResp getDataPartitionInfo(fetchDataPartitionReq req) throws TException {
+  public DataPartitionInfoResp fetchDataPartitionInfo(FetchDataPartitionReq req) throws TException {
     return null;
   }
+
+  @Override
+  public SchemaPartitionInfoResp fetchSchemaPartitionInfo(FetchSchemaPartitionReq req)
+      throws TException {
+    return null;
+  }
+
+  @Override
+  public PartitionInfoResp fetchPartitionInfo(FetchPartitionReq req) throws TException {
+    return null;
+  }
+
+  public void handleClientExit() {}
 
   // TODO: Interfaces for data operations
 }
