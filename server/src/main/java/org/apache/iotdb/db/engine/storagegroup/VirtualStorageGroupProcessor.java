@@ -2978,6 +2978,11 @@ public class VirtualStorageGroupProcessor {
       // abort ongoing comapctions and merges
       CompactionTaskManager.getInstance()
           .abortCompaction(logicalStorageGroupName + "-" + virtualStorageGroupId);
+      try {
+        Thread.sleep(2000);
+      } catch (InterruptedException e) {
+        // Wait two seconds for the compaction thread to terminate
+      }
       // close all working files that should be removed
       removePartitions(filter, workSequenceTsFileProcessors.entrySet(), true);
       removePartitions(filter, workUnsequenceTsFileProcessors.entrySet(), false);

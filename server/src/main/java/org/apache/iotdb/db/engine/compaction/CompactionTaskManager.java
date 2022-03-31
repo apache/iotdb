@@ -278,8 +278,10 @@ public class CompactionTaskManager implements IService {
 
   public synchronized void removeRunningTaskFromList(AbstractCompactionTask task) {
     int idx = runningCompactionTaskList.indexOf(task);
-    runningCompactionTaskList.remove(idx);
-    futureList.remove(idx);
+    if (idx != -1) {
+      runningCompactionTaskList.remove(idx);
+      futureList.remove(idx);
+    }
     // add metrics
     CompactionMetricsManager.recordTaskInfo(
         task, CompactionTaskStatus.FINISHED, runningCompactionTaskList.size());
