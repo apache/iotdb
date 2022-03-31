@@ -66,13 +66,6 @@ public class ConfigNodeRPCServerProcessorTest {
         TSStatusCode.SUCCESS_STATUS.getStatusCode(), resp.getRegisterResult().getCode());
     Assert.assertEquals(2, resp.getDataNodeID());
 
-    // test reject register
-    resp = processor.registerDataNode(registerReq0);
-    Assert.assertEquals(
-        TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode(), resp.getRegisterResult().getCode());
-    Assert.assertEquals(
-        "DataNode 0.0.0.0:6667 is already registered.", resp.getRegisterResult().getMessage());
-
     // test query DataNodeInfo
     Map<Integer, DataNodeMessage> messageMap = processor.getDataNodesMessage(-1);
     Assert.assertEquals(3, messageMap.size());

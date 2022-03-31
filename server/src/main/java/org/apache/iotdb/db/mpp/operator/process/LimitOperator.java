@@ -20,7 +20,7 @@ package org.apache.iotdb.db.mpp.operator.process;
 
 import org.apache.iotdb.db.mpp.operator.Operator;
 import org.apache.iotdb.db.mpp.operator.OperatorContext;
-import org.apache.iotdb.tsfile.read.common.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
@@ -56,8 +56,8 @@ public class LimitOperator implements ProcessOperator {
   public TsBlock next() throws IOException {
     TsBlock block = child.next();
     TsBlock res = block;
-    if (block.getCount() <= remainingLimit) {
-      remainingLimit -= block.getCount();
+    if (block.getPositionCount() <= remainingLimit) {
+      remainingLimit -= block.getPositionCount();
     } else {
       res = block.getRegion(0, (int) remainingLimit);
       remainingLimit = 0;
@@ -67,7 +67,7 @@ public class LimitOperator implements ProcessOperator {
 
   @Override
   public boolean hasNext() throws IOException {
-    return child.hasNext();
+    return remainingLimit > 0 && child.hasNext();
   }
 
   @Override

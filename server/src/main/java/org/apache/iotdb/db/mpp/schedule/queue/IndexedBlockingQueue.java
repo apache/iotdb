@@ -120,6 +120,12 @@ public abstract class IndexedBlockingQueue<E extends IDIndexedAccessible> {
     return get(queryHolder);
   }
 
+  /** Clear all the elements in the queue. */
+  public synchronized void clear() {
+    clearAllElements();
+    size = 0;
+  }
+
   /**
    * Get the current queue size.
    *
@@ -185,4 +191,11 @@ public abstract class IndexedBlockingQueue<E extends IDIndexedAccessible> {
    * @return the element with the same id in the queue. Null if it doesn't exist.
    */
   protected abstract E get(E element);
+
+  /**
+   * Clear all elements in this queue.
+   *
+   * <p>This implementation needn't be thread-safe.
+   */
+  protected abstract void clearAllElements();
 }

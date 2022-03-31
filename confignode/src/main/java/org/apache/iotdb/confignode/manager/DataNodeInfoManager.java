@@ -32,6 +32,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
@@ -73,19 +74,23 @@ public class DataNodeInfoManager {
     TSStatus result;
     DataNodeInfo info = plan.getInfo();
     dataNodeInfoReadWriteLock.writeLock().lock();
+
     try {
       if (onlineDataNodes.containsValue(info)) {
-        result = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
-        result.setMessage(
-            String.format(
-                "DataNode %s is already registered.", plan.getInfo().getEndPoint().toString()));
+        // TODO: optimize
+        result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        for (Map.Entry<Integer, DataNodeInfo> entry : onlineDataNodes.entrySet()) {
+          if (entry.getValue().equals(info)) {
+            result.setMessage(String.valueOf(entry.getKey()));
+            break;
+          }
+        }
       } else {
         info.setDataNodeID(nextDataNodeId);
-        onlineDataNodes.put(nextDataNodeId, info);
+        onlineDataNodes.put(info.getDataNodeID(), info);
         result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
         result.setMessage(String.valueOf(nextDataNodeId));
-        nextDataNodeId++;
-        LOGGER.info("Register data node success, data node is {}", plan);
+        nextDataNodeId += 1;
       }
     } finally {
       dataNodeInfoReadWriteLock.writeLock().unlock();

@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.SchemaEngine;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.service.IoTDB;
@@ -37,12 +37,12 @@ public class SchemaUtilsTest {
   @Test
   public void registerTimeseriesTest() throws MetadataException {
     IoTDB.configManager.init();
-    SchemaEngine schemaEngine = IoTDB.schemaEngine;
+    LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
 
     String tsPath = "root.sg.d1.s1";
     TimeseriesSchema timeseriesSchema = new TimeseriesSchema(tsPath, TSDataType.INT32);
     SchemaUtils.registerTimeseries(timeseriesSchema);
-    Assert.assertTrue(IoTDB.schemaEngine.isPathExist(new PartialPath(tsPath)));
+    Assert.assertTrue(IoTDB.schemaProcessor.isPathExist(new PartialPath(tsPath)));
   }
 
   @Test
