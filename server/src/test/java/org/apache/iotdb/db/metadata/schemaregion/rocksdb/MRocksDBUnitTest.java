@@ -27,10 +27,10 @@ import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -98,8 +98,10 @@ public class MRocksDBUnitTest {
       encodings.add(TSEncoding.PLAIN);
       compressions.add(CompressionType.UNCOMPRESSED);
     }
+
     rSchemaRegion.createAlignedTimeSeries(
-        prefixPath, measurements, dataTypes, encodings, compressions);
+        new CreateAlignedTimeSeriesPlan(
+            prefixPath, measurements, dataTypes, encodings, compressions, null, null, null));
 
     try {
       PartialPath path = new PartialPath("root.tt.sg.dd.mn");
@@ -137,7 +139,8 @@ public class MRocksDBUnitTest {
     Assert.assertEquals(2, rSchemaRegion.getAllTimeseriesCount(new PartialPath("root.**"), false));
 
     // test device number
-    Assert.assertEquals(0, rSchemaRegion.getDevicesNum(new PartialPath("root.inner1.inner2")));
+    Assert.assertEquals(
+        0, rSchemaRegion.getDevicesNum(new PartialPath("root.inner1.inner2"), false));
     Assert.assertEquals(
         0, rSchemaRegion.getDevicesNum(new PartialPath("root.inner1.inner2.**"), false));
     Assert.assertEquals(2, rSchemaRegion.getDevicesNum(new PartialPath("root.tt.sg.**"), false));
@@ -226,19 +229,6 @@ public class MRocksDBUnitTest {
 
     IMeasurementMNode m3 = rSchemaRegion.getMeasurementMNode(new PartialPath("root.tt.sg.dd.test"));
     Assert.assertEquals(m3.getAlias(), "test");
-  }
-
-  @Test
-  public void testGetSeriesSchema() throws MetadataException {
-    PartialPath path2 = new PartialPath("root.tt.sg.dd.m2");
-    rSchemaRegion.createTimeseries(
-        path2, TSDataType.TEXT, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED, null, "ma");
-
-    IMeasurementSchema schema = rSchemaRegion.getSeriesSchema(path2);
-
-    Assert.assertEquals(schema.getEncodingType(), TSEncoding.PLAIN);
-    Assert.assertEquals(schema.getType(), TSDataType.TEXT);
-    Assert.assertEquals(schema.getCompressor(), CompressionType.UNCOMPRESSED);
   }
 
   @After

@@ -502,7 +502,7 @@ public class SchemaRegion implements ISchemaRegion {
    * @param encoding the encoding function {@code Encoding} of the timeseries
    * @param compressor the compressor function {@code Compressor} of the time series
    */
-  public void createTimeseries(
+  private void createTimeseries(
       PartialPath path,
       TSDataType dataType,
       TSEncoding encoding,

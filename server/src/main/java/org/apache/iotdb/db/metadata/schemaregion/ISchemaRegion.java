@@ -40,9 +40,6 @@ import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
@@ -68,39 +65,14 @@ public interface ISchemaRegion {
 
   void deleteSchemaRegion() throws MetadataException;
 
-  void createTimeseries(CreateTimeSeriesPlan plan) throws MetadataException;
-
   @SuppressWarnings("squid:S3776")
   // Suppress high Cognitive Complexity warning
   void createTimeseries(CreateTimeSeriesPlan plan, long offset) throws MetadataException;
-
-  void createTimeseries(
-      PartialPath path,
-      TSDataType dataType,
-      TSEncoding encoding,
-      CompressionType compressor,
-      Map<String, String> props)
-      throws MetadataException;
-
-  void createAlignedTimeSeries(
-      PartialPath prefixPath,
-      List<String> measurements,
-      List<TSDataType> dataTypes,
-      List<TSEncoding> encodings,
-      List<CompressionType> compressors)
-      throws MetadataException;
 
   void createAlignedTimeSeries(CreateAlignedTimeSeriesPlan plan) throws MetadataException;
 
   Pair<Integer, Set<String>> deleteTimeseries(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException;
-
-  Pair<Integer, Set<String>> deleteTimeseries(PartialPath pathPattern) throws MetadataException;
-
-  IMNode getDeviceNodeWithAutoCreate(PartialPath path, boolean autoCreateSchema)
-      throws IOException, MetadataException;
-
-  IMNode getDeviceNodeWithAutoCreate(PartialPath path) throws MetadataException, IOException;
 
   void autoCreateDeviceMNode(AutoCreateDeviceMNodePlan plan) throws MetadataException;
 
@@ -110,8 +82,6 @@ public interface ISchemaRegion {
       throws MetadataException;
 
   int getDevicesNum(PartialPath pathPattern, boolean isPrefixMatch) throws MetadataException;
-
-  int getDevicesNum(PartialPath pathPattern) throws MetadataException;
 
   int getNodesCountInGivenLevel(PartialPath pathPattern, int level, boolean isPrefixMatch)
       throws MetadataException;
@@ -136,21 +106,12 @@ public interface ISchemaRegion {
   Pair<List<ShowDevicesResult>, Integer> getMatchedDevices(ShowDevicesPlan plan)
       throws MetadataException;
 
-  List<MeasurementPath> getMeasurementPaths(PartialPath pathPattern, boolean isPrefixMatch)
-      throws MetadataException;
-
-  List<MeasurementPath> getMeasurementPaths(PartialPath pathPattern) throws MetadataException;
-
   Pair<List<MeasurementPath>, Integer> getMeasurementPathsWithAlias(
       PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch)
       throws MetadataException;
 
   Pair<List<ShowTimeSeriesResult>, Integer> showTimeseries(
       ShowTimeSeriesPlan plan, QueryContext context) throws MetadataException;
-
-  TSDataType getSeriesType(PartialPath fullPath) throws MetadataException;
-
-  IMeasurementSchema getSeriesSchema(PartialPath fullPath) throws MetadataException;
 
   // attention: this path must be a device node
   List<MeasurementPath> getAllMeasurementByDevicePath(PartialPath devicePath)
@@ -163,6 +124,9 @@ public interface ISchemaRegion {
       throws MetadataException;
 
   IMeasurementMNode getMeasurementMNode(PartialPath fullPath) throws MetadataException;
+
+  List<MeasurementPath> getMeasurementPaths(PartialPath pathPattern, boolean isPrefixMatch)
+      throws MetadataException;
 
   void changeAlias(PartialPath path, String alias) throws MetadataException, IOException;
 
@@ -218,6 +182,4 @@ public interface ISchemaRegion {
   void unsetSchemaTemplate(UnsetTemplatePlan plan) throws MetadataException;
 
   void setUsingSchemaTemplate(ActivateTemplatePlan plan) throws MetadataException;
-
-  IMNode setUsingSchemaTemplate(IMNode node) throws MetadataException;
 }
