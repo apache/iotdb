@@ -268,7 +268,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   @Override
   public boolean processNonQuery(PhysicalPlan plan)
-      throws QueryProcessException, MetadataException, StorageEngineException {
+      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
     switch (plan.getOperatorType()) {
       case DELETE:
         delete((DeletePlan) plan);
@@ -539,7 +539,7 @@ public class PlanExecutor implements IPlanExecutor {
     IoTDBDescriptor.getInstance().getConfig().setReadOnly(plan.isReadOnly());
   }
 
-  private void operateFlush(FlushPlan plan) throws MetadataException {
+  private void operateFlush(FlushPlan plan) throws StorageGroupNotSetException {
     if (plan.getPaths().isEmpty()) {
       StorageEngine.getInstance().syncCloseAllProcessor();
     } else {
@@ -2265,8 +2265,7 @@ public class PlanExecutor implements IPlanExecutor {
    * @param storageGroups the storage groups to check
    * @return List of PartialPath the storage groups that not exist
    */
-  List<PartialPath> checkStorageGroupExist(List<PartialPath> storageGroups)
-      throws MetadataException {
+  List<PartialPath> checkStorageGroupExist(List<PartialPath> storageGroups) {
     List<PartialPath> noExistSg = new ArrayList<>();
     if (storageGroups == null) {
       return noExistSg;

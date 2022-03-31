@@ -26,7 +26,7 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -79,8 +79,8 @@ public class PartitionedSnapshotTest extends DataSnapshotTest {
 
   @Test
   public void testInstallSuccessfully()
-      throws IOException, WriteProcessException, SnapshotInstallationException, MetadataException,
-          StorageEngineException {
+      throws IOException, WriteProcessException, SnapshotInstallationException,
+          IllegalPathException, StorageEngineException {
     List<TsFileResource> tsFileResources = TestUtils.prepareTsFileResources(0, 10, 10, 10, true);
     PartitionedSnapshot snapshot = new PartitionedSnapshot(FileSnapshot.Factory.INSTANCE);
     List<TimeseriesSchema> timeseriesSchemas = new ArrayList<>();
@@ -128,8 +128,8 @@ public class PartitionedSnapshotTest extends DataSnapshotTest {
 
   @Test
   public void testInstallOmitted()
-      throws IOException, WriteProcessException, SnapshotInstallationException, MetadataException,
-          StorageEngineException, InterruptedException {
+      throws IOException, WriteProcessException, SnapshotInstallationException,
+          IllegalPathException, StorageEngineException, InterruptedException {
     List<TsFileResource> tsFileResources = TestUtils.prepareTsFileResources(0, 10, 10, 10, true);
     PartitionedSnapshot snapshot = new PartitionedSnapshot(FileSnapshot.Factory.INSTANCE);
     List<TimeseriesSchema> timeseriesSchemas = new ArrayList<>();

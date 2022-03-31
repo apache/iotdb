@@ -70,7 +70,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.TriggerExecutionException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -119,7 +119,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.apache.iotdb.cluster.common.TestUtils.getTestMeasurement;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class DataGroupMemberTest extends BaseMember {
 
@@ -584,7 +589,7 @@ public class DataGroupMemberTest extends BaseMember {
   }
 
   @Test
-  public void testFollowerExecuteNonQuery() throws MetadataException {
+  public void testFollowerExecuteNonQuery() throws IllegalPathException {
     System.out.println("Start testFollowerExecuteNonQuery()");
     dataGroupMember.setCharacter(NodeCharacter.FOLLOWER);
     dataGroupMember.setLeader(TestUtils.getNode(1));
@@ -604,7 +609,7 @@ public class DataGroupMemberTest extends BaseMember {
   }
 
   @Test
-  public void testLeaderExecuteNonQuery() throws QueryProcessException, MetadataException {
+  public void testLeaderExecuteNonQuery() throws QueryProcessException, IllegalPathException {
     System.out.println("Start testLeaderExecuteNonQuery()");
     dataGroupMember.setCharacter(NodeCharacter.LEADER);
     dataGroupMember.setLeader(TestUtils.getNode(1));
@@ -713,7 +718,8 @@ public class DataGroupMemberTest extends BaseMember {
 
   @Test
   public void testQuerySingleSeries()
-      throws QueryProcessException, MetadataException, StorageEngineException {
+      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException,
+          IllegalPathException {
     System.out.println("Start testQuerySingleSeries()");
     InsertRowPlan insertPlan = new InsertRowPlan();
     insertPlan.setDevicePath(new PartialPath(TestUtils.getTestSg(0)));
@@ -780,7 +786,8 @@ public class DataGroupMemberTest extends BaseMember {
 
   @Test
   public void testQuerySingleSeriesWithValueFilter()
-      throws QueryProcessException, MetadataException, StorageEngineException {
+      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException,
+          IllegalPathException {
     System.out.println("Start testQuerySingleSeriesWithValueFilter()");
     InsertRowPlan insertPlan = new InsertRowPlan();
     insertPlan.setDevicePath(new PartialPath(TestUtils.getTestSg(0)));
@@ -847,7 +854,8 @@ public class DataGroupMemberTest extends BaseMember {
 
   @Test
   public void testQuerySingleSeriesByTimestamp()
-      throws QueryProcessException, MetadataException, StorageEngineException {
+      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException,
+          IllegalPathException {
     System.out.println("Start testQuerySingleSeriesByTimestamp()");
     InsertRowPlan insertPlan = new InsertRowPlan();
     insertPlan.setDevicePath(new PartialPath(TestUtils.getTestSg(0)));
@@ -914,7 +922,8 @@ public class DataGroupMemberTest extends BaseMember {
 
   @Test
   public void testQuerySingleSeriesByTimestampWithValueFilter()
-      throws QueryProcessException, MetadataException, StorageEngineException {
+      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException,
+          IllegalPathException {
     System.out.println("Start testQuerySingleSeriesByTimestampWithValueFilter()");
     InsertRowPlan insertPlan = new InsertRowPlan();
     insertPlan.setDevicePath(new PartialPath(TestUtils.getTestSg(0)));
@@ -1137,7 +1146,8 @@ public class DataGroupMemberTest extends BaseMember {
 
   @Test
   public void testGroupBy()
-      throws QueryProcessException, MetadataException, StorageEngineException {
+      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException,
+          IllegalPathException {
     System.out.println("Start testGroupBy()");
     TestUtils.prepareData();
 

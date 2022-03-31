@@ -26,7 +26,6 @@ import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
 import org.apache.iotdb.cluster.server.monitor.Timer;
 import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -92,7 +91,7 @@ public class AsyncDataLogApplier implements LogApplier {
     PartialPath logKey;
     try {
       logKey = getLogKey(log);
-    } catch (MetadataException e) {
+    } catch (StorageGroupNotSetException e) {
       logger.debug("Exception occurred when applying {}", log, e);
       log.setException(e);
       log.setApplied(true);
@@ -114,7 +113,7 @@ public class AsyncDataLogApplier implements LogApplier {
     Statistic.RAFT_SENDER_COMMIT_EXCLUSIVE_LOGS.calOperationCostTimeFromStart(startTime);
   }
 
-  private PartialPath getLogKey(Log log) throws MetadataException {
+  private PartialPath getLogKey(Log log) throws StorageGroupNotSetException {
     // we can only apply some kinds of plans in parallel, for other logs, we must wait until all
     // previous logs are applied, or the order of deletions and insertions may get wrong
     if (log instanceof PhysicalPlanLog) {
@@ -135,7 +134,7 @@ public class AsyncDataLogApplier implements LogApplier {
     return null;
   }
 
-  private PartialPath getPlanKey(PhysicalPlan plan) throws MetadataException {
+  private PartialPath getPlanKey(PhysicalPlan plan) throws StorageGroupNotSetException {
     return getPlanSG(plan);
   }
 
@@ -151,7 +150,7 @@ public class AsyncDataLogApplier implements LogApplier {
    * @return the sg that the plan belongs to
    * @throws StorageGroupNotSetException if no sg found
    */
-  private PartialPath getPlanSG(PhysicalPlan plan) throws MetadataException {
+  private PartialPath getPlanSG(PhysicalPlan plan) throws StorageGroupNotSetException {
     PartialPath sgPath = null;
     if (plan instanceof InsertMultiTabletPlan) {
       PartialPath deviceId = ((InsertMultiTabletPlan) plan).getFirstDeviceId();

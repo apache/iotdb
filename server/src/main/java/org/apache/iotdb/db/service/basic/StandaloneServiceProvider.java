@@ -21,7 +21,7 @@ package org.apache.iotdb.db.service.basic;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.StorageEngineReadonlyException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -43,7 +43,7 @@ public class StandaloneServiceProvider extends ServiceProvider {
 
   @Override
   public boolean executeNonQuery(PhysicalPlan plan)
-      throws QueryProcessException, MetadataException, StorageEngineException {
+      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
     plan.checkIntegrity();
     if (!(plan instanceof SetSystemModePlan)
         && !(plan instanceof FlushPlan)
