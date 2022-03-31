@@ -98,20 +98,20 @@ session.delete_storage_groups(group_name_lst)
 
 ```python
 session.create_time_series(ts_path, data_type, encoding, compressor,
-        props=None, tags=None, attributes=None, alias=None)
+    props=None, tags=None, attributes=None, alias=None)
       
 session.create_multi_time_series(
-            ts_path_lst, data_type_lst, encoding_lst, compressor_lst,
-            props_lst=None, tags_lst=None, attributes_lst=None, alias_lst=None
-    )
+    ts_path_lst, data_type_lst, encoding_lst, compressor_lst,
+    props_lst=None, tags_lst=None, attributes_lst=None, alias_lst=None
+)
 ```
 
 * Create aligned timeseries
 
 ```python
 session.create_aligned_time_series(
-            device_id, measurements_lst, data_type_lst, encoding_lst, compressor_lst
-    )
+    device_id, measurements_lst, data_type_lst, encoding_lst, compressor_lst
+)
 ```
 
 Attention: Alias of measurements are **not supported** currently.
@@ -130,7 +130,7 @@ session.check_time_series_exists(path)
 
 ### Data Manipulation Interface (DML Interface)
 
-##### Insert
+#### Insert
 
 It is recommended to use insertTablet to help improve write efficiency.
 

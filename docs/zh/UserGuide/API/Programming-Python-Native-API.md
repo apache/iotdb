@@ -99,20 +99,20 @@ session.delete_storage_groups(group_name_lst)
 
 ```python
 session.create_time_series(ts_path, data_type, encoding, compressor,
-        props=None, tags=None, attributes=None, alias=None)
+    props=None, tags=None, attributes=None, alias=None)
       
 session.create_multi_time_series(
-            ts_path_lst, data_type_lst, encoding_lst, compressor_lst,
-            props_lst=None, tags_lst=None, attributes_lst=None, alias_lst=None
-    )
+    ts_path_lst, data_type_lst, encoding_lst, compressor_lst,
+    props_lst=None, tags_lst=None, attributes_lst=None, alias_lst=None
+)
 ```
 
 * 创建对齐时间序列
 
 ```python
 session.create_aligned_time_series(
-            device_id, measurements_lst, data_type_lst, encoding_lst, compressor_lst
-    )
+    device_id, measurements_lst, data_type_lst, encoding_lst, compressor_lst
+)
 ```
 
 注意：目前**暂不支持**使用传感器别名。
