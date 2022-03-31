@@ -23,6 +23,7 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement.AlterType;
+import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
 import java.nio.ByteBuffer;
 import java.util.List;
@@ -117,16 +118,16 @@ public class AlterTimeSeriesNode extends PlanNode {
   }
 
   @Override
-  public void addChildren(PlanNode child) {}
+  public void addChild(PlanNode child) {}
 
   @Override
   public PlanNode clone() {
-    return null;
+    throw new NotImplementedException("Clone of AlterTimeSeriesNode is not implemented");
   }
 
   @Override
-  public PlanNode cloneWithChildren(List<PlanNode> children) {
-    return null;
+  public int allowedChildCount() {
+    return NO_CHILD_ALLOWED;
   }
 
   @Override

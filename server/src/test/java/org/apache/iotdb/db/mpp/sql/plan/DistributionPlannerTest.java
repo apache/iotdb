@@ -36,6 +36,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.mpp.sql.planner.plan.SubPlan;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeIdAllocator;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
@@ -72,7 +73,7 @@ public class DistributionPlannerTest {
         new DistributionPlanner(analysis, new LogicalQueryPlan(new MPPQueryContext(), root));
     PlanNode newRoot = planner.rewriteSource();
 
-    //        PlanNodeUtil.printPlanNode(newRoot);
+    System.out.println(PlanNodeUtil.nodeToString(newRoot));
     assertEquals(newRoot.getChildren().get(0).getChildren().size(), 3);
   }
 
@@ -138,7 +139,7 @@ public class DistributionPlannerTest {
     timeJoinNode.addChild(
         new SeriesScanNode(PlanNodeIdAllocator.generateId(), new PartialPath("root.sg.d1.s2")));
     timeJoinNode.addChild(
-        new SeriesScanNode(PlanNodeIdAllocator.generateId(), new PartialPath("root.sg.d22.s1")));
+        new SeriesScanNode(PlanNodeIdAllocator.generateId(), new PartialPath("root.sg.d333.s1")));
 
     LimitNode root = new LimitNode(PlanNodeIdAllocator.generateId(), 10, timeJoinNode);
 
@@ -164,15 +165,16 @@ public class DistributionPlannerTest {
         dataPartitionMap = new HashMap<>();
     Map<DeviceGroupId, Map<TimePartitionId, List<DataRegionReplicaSet>>> sgPartitionMap =
         new HashMap<>();
+
     List<DataRegionReplicaSet> d1DataRegions = new ArrayList<>();
     d1DataRegions.add(
         new DataRegionReplicaSet(
             new DataRegionId(1),
-            Arrays.asList(new EndPoint("192.0.0.1", 9000), new EndPoint("192.0.0.2", 9000))));
+            Arrays.asList(new EndPoint("192.0.1.1", 9000), new EndPoint("192.0.1.2", 9000))));
     d1DataRegions.add(
         new DataRegionReplicaSet(
             new DataRegionId(2),
-            Arrays.asList(new EndPoint("192.0.0.3", 9000), new EndPoint("192.0.0.4", 9000))));
+            Arrays.asList(new EndPoint("192.0.2.1", 9000), new EndPoint("192.0.2.2", 9000))));
     Map<TimePartitionId, List<DataRegionReplicaSet>> d1DataRegionMap = new HashMap<>();
     d1DataRegionMap.put(new TimePartitionId(), d1DataRegions);
 
@@ -180,12 +182,25 @@ public class DistributionPlannerTest {
     d2DataRegions.add(
         new DataRegionReplicaSet(
             new DataRegionId(3),
-            Arrays.asList(new EndPoint("192.0.0.5", 9000), new EndPoint("192.0.0.6", 9000))));
+            Arrays.asList(new EndPoint("192.0.3.1", 9000), new EndPoint("192.0.3.2", 9000))));
     Map<TimePartitionId, List<DataRegionReplicaSet>> d2DataRegionMap = new HashMap<>();
     d2DataRegionMap.put(new TimePartitionId(), d2DataRegions);
 
+    List<DataRegionReplicaSet> d3DataRegions = new ArrayList<>();
+    d3DataRegions.add(
+        new DataRegionReplicaSet(
+            new DataRegionId(1),
+            Arrays.asList(new EndPoint("192.0.1.1", 9000), new EndPoint("192.0.1.2", 9000))));
+    d3DataRegions.add(
+        new DataRegionReplicaSet(
+            new DataRegionId(4),
+            Arrays.asList(new EndPoint("192.0.4.1", 9000), new EndPoint("192.0.4.2", 9000))));
+    Map<TimePartitionId, List<DataRegionReplicaSet>> d3DataRegionMap = new HashMap<>();
+    d3DataRegionMap.put(new TimePartitionId(), d3DataRegions);
+
     sgPartitionMap.put(new DeviceGroupId(device1.length()), d1DataRegionMap);
     sgPartitionMap.put(new DeviceGroupId(device2.length()), d2DataRegionMap);
+    sgPartitionMap.put(new DeviceGroupId(device3.length()), d3DataRegionMap);
 
     dataPartitionMap.put("root.sg", sgPartitionMap);
 

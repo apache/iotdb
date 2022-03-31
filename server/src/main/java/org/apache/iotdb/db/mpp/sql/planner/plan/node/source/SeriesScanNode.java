@@ -33,6 +33,7 @@ import com.google.common.collect.ImmutableList;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 /**
  * SeriesScanOperator is responsible for read data a specific series. When reading data, the
@@ -45,6 +46,9 @@ public class SeriesScanNode extends SourceNode {
 
   // The path of the target series which will be scanned.
   private PartialPath seriesPath;
+
+  // all the sensors in seriesPath's device of current query
+  private Set<String> allSensors;
 
   // The order to traverse the data.
   // Currently, we only support TIMESTAMP_ASC and TIMESTAMP_DESC here.
@@ -112,10 +116,6 @@ public class SeriesScanNode extends SourceNode {
     return seriesPath.getFullPath();
   }
 
-  public OrderBy getScanOrder() {
-    return scanOrder;
-  }
-
   public int getLimit() {
     return limit;
   }
@@ -142,7 +142,7 @@ public class SeriesScanNode extends SourceNode {
   }
 
   @Override
-  public void addChildren(PlanNode child) {}
+  public void addChild(PlanNode child) {}
 
   @Override
   public PlanNode clone() {
@@ -150,13 +150,21 @@ public class SeriesScanNode extends SourceNode {
   }
 
   @Override
-  public PlanNode cloneWithChildren(List<PlanNode> children) {
-    return this.clone();
+  public int allowedChildCount() {
+    return NO_CHILD_ALLOWED;
   }
 
   @Override
   public List<String> getOutputColumnNames() {
     return ImmutableList.of(columnName);
+  }
+
+  public Set<String> getAllSensors() {
+    return allSensors;
+  }
+
+  public OrderBy getScanOrder() {
+    return scanOrder;
   }
 
   @Override
@@ -177,6 +185,10 @@ public class SeriesScanNode extends SourceNode {
 
   public Filter getTimeFilter() {
     return timeFilter;
+  }
+
+  public Filter getValueFilter() {
+    return valueFilter;
   }
 
   public String toString() {

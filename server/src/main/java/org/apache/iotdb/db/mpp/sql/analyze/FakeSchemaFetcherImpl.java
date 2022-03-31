@@ -16,39 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.consensus;
 
-import java.util.Arrays;
+package org.apache.iotdb.db.mpp.sql.analyze;
 
-public enum ConsensusType {
-  STANDALONE("standalone"),
-  RATIS("ratis");
+import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
+import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 
-  private final String typeName;
-
-  ConsensusType(String typeName) {
-    this.typeName = typeName;
-  }
-
-  public String getTypeName() {
-    return typeName;
-  }
-
+public class FakeSchemaFetcherImpl implements ISchemaFetcher {
   @Override
-  public String toString() {
-    return typeName;
-  }
-
-  public static ConsensusType getConsensusType(String typeName) {
-    for (ConsensusType type : ConsensusType.values()) {
-      if (type.getTypeName().equals(typeName)) {
-        return type;
-      }
-    }
-
-    throw new IllegalArgumentException(
-        String.format(
-            "Unknown consensus type, found: %s expected: %s",
-            typeName, Arrays.toString(ConsensusType.values())));
+  public SchemaTree fetchSchema(PathPatternTree patternTree) {
+    return new SchemaTree();
   }
 }

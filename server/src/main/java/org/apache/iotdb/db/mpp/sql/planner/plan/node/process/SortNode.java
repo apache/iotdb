@@ -37,17 +37,21 @@ import java.util.List;
  */
 public class SortNode extends ProcessNode {
 
-  private final PlanNode child;
+  private PlanNode child;
 
   private final List<String> orderBy;
 
   private OrderBy sortOrder;
 
-  public SortNode(PlanNodeId id, PlanNode child, List<String> orderBy, OrderBy sortOrder) {
+  public SortNode(PlanNodeId id, List<String> orderBy, OrderBy sortOrder) {
     super(id);
-    this.child = child;
     this.orderBy = orderBy;
     this.sortOrder = sortOrder;
+  }
+
+  public SortNode(PlanNodeId id, PlanNode child, List<String> orderBy, OrderBy sortOrder) {
+    this(id, orderBy, sortOrder);
+    this.child = child;
   }
 
   @Override
@@ -56,16 +60,18 @@ public class SortNode extends ProcessNode {
   }
 
   @Override
-  public void addChildren(PlanNode child) {}
-
-  @Override
-  public PlanNode clone() {
-    return null;
+  public void addChild(PlanNode child) {
+    this.child = child;
   }
 
   @Override
-  public PlanNode cloneWithChildren(List<PlanNode> children) {
-    return null;
+  public PlanNode clone() {
+    return new SortNode(getId(), orderBy, sortOrder);
+  }
+
+  @Override
+  public int allowedChildCount() {
+    return ONE_CHILD;
   }
 
   @Override

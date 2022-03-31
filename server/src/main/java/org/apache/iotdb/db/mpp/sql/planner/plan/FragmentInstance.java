@@ -95,7 +95,6 @@ public class FragmentInstance implements IConsensusRequest {
             getId(), getHostEndpoint().getIp(), getDataRegionId().getId()));
     ret.append("---- Plan Node Tree ----\n");
     ret.append(PlanNodeUtil.nodeToString(getFragment().getRoot()));
-    ret.append("\n");
     return ret.toString();
   }
 

@@ -73,19 +73,14 @@ public class TimeJoinNode extends ProcessNode {
   }
 
   @Override
-  public void addChildren(PlanNode child) {}
-
-  @Override
   public PlanNode clone() {
     return new TimeJoinNode(
         PlanNodeIdAllocator.generateId(), this.mergeOrder, this.filterNullPolicy);
   }
 
   @Override
-  public PlanNode cloneWithChildren(List<PlanNode> children) {
-    TimeJoinNode node = (TimeJoinNode) this.clone();
-    node.setChildren(children);
-    return node;
+  public int allowedChildCount() {
+    return CHILD_COUNT_NO_LIMIT;
   }
 
   @Override
@@ -107,6 +102,7 @@ public class TimeJoinNode extends ProcessNode {
   @Override
   public void serialize(ByteBuffer byteBuffer) {}
 
+  @Override
   public void addChild(PlanNode child) {
     this.children.add(child);
   }

@@ -98,7 +98,7 @@ public class PlanFragment {
     PlanNode root = PlanNodeType.deserialize(byteBuffer);
     int childrenCount = byteBuffer.getInt();
     for (int i = 0; i < childrenCount; i++) {
-      root.addChildren(deserializeHelper(byteBuffer));
+      root.addChild(deserializeHelper(byteBuffer));
     }
     return root;
   }
