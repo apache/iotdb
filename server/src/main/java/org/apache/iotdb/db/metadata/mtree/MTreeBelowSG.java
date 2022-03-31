@@ -1505,10 +1505,7 @@ public class MTreeBelowSG implements Serializable {
   }
 
   private void unPinPath(IMNode node) {
-    while (!node.isStorageGroup()) {
-      store.unPin(node);
-      node = node.getParent();
-    }
+    store.unPinPath(node);
   }
 
   public void updateMNode(IMNode node) throws MetadataException {

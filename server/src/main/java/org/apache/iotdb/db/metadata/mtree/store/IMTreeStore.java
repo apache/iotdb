@@ -50,5 +50,7 @@ public interface IMTreeStore {
 
   void unPin(IMNode node);
 
+  void unPinPath(IMNode node);
+
   void clear();
 }

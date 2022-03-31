@@ -46,7 +46,7 @@ public interface ICacheManager {
 
   void pinMNode(IMNode node) throws MNodeNotPinnedException;
 
-  void unPinMNode(IMNode node);
+  boolean unPinMNode(IMNode node);
 
   void clear();
 }
