@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.service.executor;
 import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeException;
 import org.apache.iotdb.confignode.partition.PartitionTable;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
+import org.apache.iotdb.confignode.physical.sys.AuthorPlan;
 import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
 import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.physical.sys.SetStorageGroupPlan;
@@ -52,6 +53,8 @@ public class PlanExecutor {
         return partitionTable.registerDataNode((RegisterDataNodePlan) plan);
       case SetStorageGroup:
         return partitionTable.setStorageGroup((SetStorageGroupPlan) plan);
+      case CREATE_USER:
+        return partitionTable.createUser((AuthorPlan) plan);
       default:
         throw new UnknownPhysicalPlanTypeException(plan.getType());
     }

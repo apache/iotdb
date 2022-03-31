@@ -76,6 +76,15 @@ struct DeviceGroupHashInfo {
     2: required string hashClass
 }
 
+struct CreateUserReq{
+    1: required string username
+    2: required string password
+}
+
+struct CreateRoleReq{
+    1: required string username
+}
+
 service ConfigIService {
   // Return TSStatusCode.SUCCESS_STATUS and the register DataNode id when successful registered.
   // Otherwise, return TSStatusCode.INTERNAL_SERVER_ERROR
@@ -96,4 +105,8 @@ service ConfigIService {
   DataPartitionInfo getDataPartition(GetDataPartitionReq req)
 
   DeviceGroupHashInfo getDeviceGroupHashInfo()
+
+  rpc.TSStatus createUser(CreateUserReq req)
+
+  rpc.TSStatus createRole(CreateRoleReq req)
 }

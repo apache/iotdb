@@ -1779,45 +1779,45 @@ public class PlanExecutor implements IPlanExecutor {
     try {
       switch (authorType) {
         case UPDATE_USER:
-          authorizer.updateUserPassword(userName, newPassword);
+          IoTDB.authorizer.updateUserPassword(userName, newPassword);
           break;
         case CREATE_USER:
-          authorizer.createUser(userName, password);
+          IoTDB.authorizer.createUser(userName, password);
           break;
         case CREATE_ROLE:
-          authorizer.createRole(roleName);
+          IoTDB.authorizer.createRole(roleName);
           break;
         case DROP_USER:
-          authorizer.deleteUser(userName);
+          IoTDB.authorizer.deleteUser(userName);
           break;
         case DROP_ROLE:
-          authorizer.deleteRole(roleName);
+          IoTDB.authorizer.deleteRole(roleName);
           break;
         case GRANT_ROLE:
           for (int i : permissions) {
-            authorizer.grantPrivilegeToRole(roleName, nodeName.getFullPath(), i);
+            IoTDB.authorizer.grantPrivilegeToRole(roleName, nodeName.getFullPath(), i);
           }
           break;
         case GRANT_USER:
           for (int i : permissions) {
-            authorizer.grantPrivilegeToUser(userName, nodeName.getFullPath(), i);
+            IoTDB.authorizer.grantPrivilegeToUser(userName, nodeName.getFullPath(), i);
           }
           break;
         case GRANT_ROLE_TO_USER:
-          authorizer.grantRoleToUser(roleName, userName);
+          IoTDB.authorizer.grantRoleToUser(roleName, userName);
           break;
         case REVOKE_USER:
           for (int i : permissions) {
-            authorizer.revokePrivilegeFromUser(userName, nodeName.getFullPath(), i);
+            IoTDB.authorizer.revokePrivilegeFromUser(userName, nodeName.getFullPath(), i);
           }
           break;
         case REVOKE_ROLE:
           for (int i : permissions) {
-            authorizer.revokePrivilegeFromRole(roleName, nodeName.getFullPath(), i);
+            IoTDB.authorizer.revokePrivilegeFromRole(roleName, nodeName.getFullPath(), i);
           }
           break;
         case REVOKE_ROLE_FROM_USER:
-          authorizer.revokeRoleFromUser(roleName, userName);
+          IoTDB.authorizer.revokeRoleFromUser(roleName, userName);
           break;
         default:
           throw new QueryProcessException("Unsupported operation " + authorType);
@@ -2063,7 +2063,7 @@ public class PlanExecutor implements IPlanExecutor {
       return dataSet;
     }
 
-    List<String> roleList = authorizer.listAllRoles();
+    List<String> roleList = IoTDB.authorizer.listAllRoles();
     addToDataSet(roleList, dataSet);
     return dataSet;
   }
@@ -2096,13 +2096,13 @@ public class PlanExecutor implements IPlanExecutor {
       return dataSet;
     }
 
-    List<String> userList = authorizer.listAllUsers();
+    List<String> userList = IoTDB.authorizer.listAllUsers();
     addToDataSet(userList, dataSet);
     return dataSet;
   }
 
   private ListDataSet executeListRoleUsers(String roleName) throws AuthException {
-    Role role = authorizer.getRole(roleName);
+    Role role = IoTDB.authorizer.getRole(roleName);
     if (role == null) {
       throw new AuthException("No such role : " + roleName);
     }
@@ -2110,10 +2110,10 @@ public class PlanExecutor implements IPlanExecutor {
         new ListDataSet(
             Collections.singletonList(new PartialPath(COLUMN_USER, false)),
             Collections.singletonList(TSDataType.TEXT));
-    List<String> userList = authorizer.listAllUsers();
+    List<String> userList = IoTDB.authorizer.listAllUsers();
     int index = 0;
     for (String userN : userList) {
-      User userObj = authorizer.getUser(userN);
+      User userObj = IoTDB.authorizer.getUser(userN);
       if (userObj != null && userObj.hasRole(roleName)) {
         RowRecord record = new RowRecord(index++);
         Field field = new Field(TSDataType.TEXT);
@@ -2126,7 +2126,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private ListDataSet executeListUserRoles(String userName) throws AuthException {
-    User user = authorizer.getUser(userName);
+    User user = IoTDB.authorizer.getUser(userName);
     if (user != null) {
       ListDataSet dataSet =
           new ListDataSet(
@@ -2148,7 +2148,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   private ListDataSet executeListRolePrivileges(String roleName, PartialPath path)
       throws AuthException {
-    Role role = authorizer.getRole(roleName);
+    Role role = IoTDB.authorizer.getRole(roleName);
     if (role != null) {
       List<PartialPath> headerList = new ArrayList<>();
       List<TSDataType> typeList = new ArrayList<>();
@@ -2173,7 +2173,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   private ListDataSet executeListUserPrivileges(String userName, PartialPath path)
       throws AuthException {
-    User user = authorizer.getUser(userName);
+    User user = IoTDB.authorizer.getUser(userName);
     if (user == null) {
       throw new AuthException("No such user : " + userName);
     }
@@ -2211,7 +2211,7 @@ public class PlanExecutor implements IPlanExecutor {
         }
       }
       for (String roleN : user.getRoleList()) {
-        Role role = authorizer.getRole(roleN);
+        Role role = IoTDB.authorizer.getRole(roleN);
         if (role == null) {
           continue;
         }

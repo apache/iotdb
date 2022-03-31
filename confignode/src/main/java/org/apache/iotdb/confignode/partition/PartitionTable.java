@@ -22,9 +22,13 @@ import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.response.DataNodesInfoDataSet;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaDataSet;
+import org.apache.iotdb.confignode.physical.sys.AuthorPlan;
 import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
 import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.db.auth.AuthException;
+import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
+import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
@@ -140,6 +144,21 @@ public class PartitionTable {
     }
 
     lock.writeLock().unlock();
+    return result;
+  }
+
+  public TSStatus createUser(AuthorPlan plan) {
+    TSStatus result;
+    IAuthorizer iAuthorizer = null;
+    try {
+      iAuthorizer = BasicAuthorizer.getInstance();
+      iAuthorizer.createUser(plan.getUserName(), plan.getPassword());
+      result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } catch (AuthException e) {
+      result = new TSStatus();
+      result.setMessage(e.getMessage());
+      result.setCode(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+    }
     return result;
   }
 

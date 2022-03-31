@@ -26,6 +26,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeIdAllocator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AlterTimeSeriesNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AuthorNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.*;
@@ -40,6 +41,7 @@ import org.apache.iotdb.db.mpp.sql.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.query.expression.Expression;
 
 import java.util.*;
@@ -282,6 +284,19 @@ public class LogicalPlanner {
       InsertTabletNode node = new InsertTabletNode(PlanNodeIdAllocator.generateId());
 
       return node;
+    }
+
+    @Override
+    public PlanNode visitCreateUser(AuthorStatement authorStatement, MPPQueryContext context) {
+      return new AuthorNode(
+          PlanNodeIdAllocator.generateId(),
+          authorStatement.getAuthorType(),
+          authorStatement.getUserName(),
+          authorStatement.getRoleName(),
+          authorStatement.getPassWord(),
+          authorStatement.getNewPassword(),
+          authorStatement.getPrivilegeList(),
+          authorStatement.getNodeName());
     }
   }
 

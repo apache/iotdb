@@ -23,11 +23,15 @@ import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaDataSet;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.partition.DataNodeInfo;
 import org.apache.iotdb.confignode.partition.StorageGroupSchema;
+import org.apache.iotdb.confignode.physical.PhysicalPlanType;
+import org.apache.iotdb.confignode.physical.sys.AuthorPlan;
 import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
 import org.apache.iotdb.confignode.physical.sys.QueryStorageGroupSchemaPlan;
 import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
+import org.apache.iotdb.confignode.rpc.thrift.CreateRoleReq;
+import org.apache.iotdb.confignode.rpc.thrift.CreateUserReq;
 import org.apache.iotdb.confignode.rpc.thrift.DataNodeMessage;
 import org.apache.iotdb.confignode.rpc.thrift.DataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.DataNodeRegisterResp;
@@ -42,6 +46,7 @@ import org.apache.iotdb.confignode.rpc.thrift.StorageGroupMessage;
 import org.apache.iotdb.consensus.common.Endpoint;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
+import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
@@ -127,6 +132,30 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
 
   @Override
   public DeviceGroupHashInfo getDeviceGroupHashInfo() throws TException {
+    return null;
+  }
+
+  @Override
+  public TSStatus createUser(CreateUserReq req) throws TException {
+    AuthorPlan plan = null;
+    try {
+      plan =
+          new AuthorPlan(
+              PhysicalPlanType.CREATE_USER,
+              req.getUsername(),
+              null,
+              req.getPassword(),
+              null,
+              null,
+              null);
+    } catch (AuthException e) {
+      e.printStackTrace();
+    }
+    return configManager.write(plan).getStatus();
+  }
+
+  @Override
+  public TSStatus createRole(CreateRoleReq req) throws TException {
     return null;
   }
 

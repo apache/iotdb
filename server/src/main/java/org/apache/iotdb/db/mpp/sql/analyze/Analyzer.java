@@ -45,6 +45,7 @@ import org.apache.iotdb.db.mpp.sql.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.sys.AuthorStatement;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -216,6 +217,13 @@ public class Analyzer {
       analysis.setStatement(insertTabletStatement);
       analysis.setDataPartitionInfo(partitionInfo.getDataPartitionInfo());
       analysis.setSchemaPartitionInfo(partitionInfo.getSchemaPartitionInfo());
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitCreateUser(AuthorStatement authorStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(authorStatement);
       return analysis;
     }
   }
