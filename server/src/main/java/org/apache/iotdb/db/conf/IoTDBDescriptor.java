@@ -922,6 +922,15 @@ public class IoTDBDescriptor {
       conf.setWalBufferEntrySize(walBufferEntrySize);
     }
 
+    long walFileSizeThreshold =
+        Long.parseLong(
+            properties.getProperty(
+                "wal_file_size_threshold_in_byte",
+                Long.toString(conf.getWalFileSizeThresholdInByte())));
+    if (walFileSizeThreshold > 0) {
+      conf.setWalFileSizeThresholdInByte(walFileSizeThreshold);
+    }
+
     long walNodeMaxStorageSpace =
         Long.parseLong(
             properties.getProperty(

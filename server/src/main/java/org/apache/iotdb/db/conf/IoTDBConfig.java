@@ -170,6 +170,9 @@ public class IoTDBConfig {
   /** Buffer entry size of each wal buffer. Unit: byte */
   private int walBufferEntrySize = 16 * 1024;
 
+  /** Size threshold of each wal file. Unit: byte */
+  private long walFileSizeThresholdInByte = 10 * 1024 * 1024;
+
   /** Max storage space for each wal node. Unit: MB */
   private long walNodeMaxStorageSpaceInMb = 3 * 1024;
 
@@ -1387,6 +1390,14 @@ public class IoTDBConfig {
 
   void setWalBufferEntrySize(int walBufferEntrySize) {
     this.walBufferEntrySize = walBufferEntrySize;
+  }
+
+  public long getWalFileSizeThresholdInByte() {
+    return walFileSizeThresholdInByte;
+  }
+
+  void setWalFileSizeThresholdInByte(long walFileSizeThresholdInByte) {
+    this.walFileSizeThresholdInByte = walFileSizeThresholdInByte;
   }
 
   public long getWalNodeMaxStorageSpaceInMb() {
