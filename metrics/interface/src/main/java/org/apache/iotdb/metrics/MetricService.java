@@ -61,9 +61,10 @@ public abstract class MetricService {
     // do some init work
     metricManager.init();
     // do start all reporter without first time
-    if (!firstInit.getAndSet(false)) {
-      startAllReporter();
-    }
+
+        if (!firstInit.getAndSet(false)) {
+    startAllReporter();
+        }
 
     logger.info("Start predefined metric:" + metricConfig.getPredefinedMetrics());
     for (PredefinedMetric predefinedMetric : metricConfig.getPredefinedMetrics()) {
@@ -72,6 +73,10 @@ public abstract class MetricService {
     logger.info("Start metric at level: " + metricConfig.getMetricLevel().name());
 
     collectFileSystemInfo();
+
+    collectProcessInfo();
+
+    collectSystemInfo();
   }
 
   /** Stop metric service. if is disabled, do nothing */
@@ -155,6 +160,12 @@ public abstract class MetricService {
 
   /** collect file system info in metric way */
   protected abstract void collectFileSystemInfo();
+
+  /** collect process info in metric way */
+  protected abstract void collectProcessInfo();
+
+  /** collect system hardware info in metric way*/
+  protected abstract void collectSystemInfo();
 
   /**
    * support hot load of some properties

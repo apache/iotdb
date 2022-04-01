@@ -28,6 +28,16 @@ public class DoNothingMetricService extends MetricService {
   }
 
   @Override
+  protected void collectProcessInfo() {
+    // do nothing
+  }
+
+  @Override
+  protected void collectSystemInfo() {
+    // do nothing
+  }
+
+  @Override
   protected void reloadProperties(ReloadLevel reloadLevel) {
     // do nothing
   }
