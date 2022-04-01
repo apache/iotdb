@@ -58,6 +58,9 @@ export class DataSource extends DataSourceWithBackend<IoTDBQuery, IoTDBOptions> 
     myHeader.append('Content-Type', 'application/json');
     const Authorization = 'Basic ' + Buffer.from(this.username + ':' + this.password).toString('base64');
     myHeader.append('Authorization', Authorization);
+    if (this.url.substr(this.url.length - 1, 1) === '/') {
+      this.url = this.url.substr(0, this.url.length - 1);
+    }
     return await getBackendSrv()
       .datasourceRequest({
         method: 'POST',
