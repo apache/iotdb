@@ -43,6 +43,7 @@ public class RegionInfoPersistence {
   private final ReentrantReadWriteLock partitionReadWriteLock;
 
   // TODO: Serialize and Deserialize
+  // storageGroupName -> StorageGroupSchema
   private final Map<String, StorageGroupSchema> storageGroupsMap;
 
   // TODO: Serialize and Deserialize
@@ -86,7 +87,7 @@ public class RegionInfoPersistence {
             .entrySet()
             .forEach(
                 entity -> {
-                  schemaRegion.createSchemaRegion(entity.getKey(), entity.getValue());
+                  schemaRegion.addSchemaRegion(entity.getKey(), entity.getValue());
                   entity
                       .getValue()
                       .forEach(
@@ -162,7 +163,7 @@ public class RegionInfoPersistence {
     return schemaRegionEndPoints;
   }
 
-  public boolean containsKey(String storageName) {
+  public boolean containsStorageGroup(String storageName) {
     return storageGroupsMap.containsKey(storageName);
   }
 

@@ -35,7 +35,7 @@ public class SchemaRegionInfo {
     this.schemaRegionDataNodesMap = new HashMap<>();
   }
 
-  public void createSchemaRegion(int schemaRegion, List<Integer> dataNode) {
+  public void addSchemaRegion(int schemaRegion, List<Integer> dataNode) {
     if (!schemaRegionDataNodesMap.containsKey(schemaRegion)) {
       schemaRegionDataNodesMap.put(schemaRegion, dataNode);
     }

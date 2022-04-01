@@ -48,15 +48,15 @@ public class ConfigManager implements Manager {
   private final DataNodeManager dataNodeManager;
 
   /** manage assign data partition and schema partition */
-  private final AssignPartitionManager assignPartitionManager;
+  private final PartitionManager partitionManager;
 
   /** manager assign schema region and data region */
-  private final AssignRegionManager assignRegionManager;
+  private final RegionManager regionManager;
 
   public ConfigManager() throws IOException {
     this.dataNodeManager = new DataNodeManager(this);
-    this.assignPartitionManager = new AssignPartitionManager(this);
-    this.assignRegionManager = new AssignRegionManager(this);
+    this.partitionManager = new PartitionManager(this);
+    this.regionManager = new RegionManager(this);
     this.consensusManager = new ConsensusManager();
   }
 
@@ -83,13 +83,13 @@ public class ConfigManager implements Manager {
 
   @Override
   public DataSet getStorageGroupSchema() {
-    return assignRegionManager.getStorageGroupSchema();
+    return regionManager.getStorageGroupSchema();
   }
 
   @Override
   public TSStatus setStorageGroup(PhysicalPlan physicalPlan) {
     if (physicalPlan instanceof SetStorageGroupPlan) {
-      return assignRegionManager.setStorageGroup((SetStorageGroupPlan) physicalPlan);
+      return regionManager.setStorageGroup((SetStorageGroupPlan) physicalPlan);
     }
     return ERROR_TSSTATUS;
   }
@@ -102,7 +102,7 @@ public class ConfigManager implements Manager {
   @Override
   public DataSet getDataPartition(PhysicalPlan physicalPlan) {
     if (physicalPlan instanceof DataPartitionPlan) {
-      return assignPartitionManager.getDataPartition((DataPartitionPlan) physicalPlan);
+      return partitionManager.getDataPartition((DataPartitionPlan) physicalPlan);
     }
     return new DataNodesInfoDataSet();
   }
@@ -110,20 +110,20 @@ public class ConfigManager implements Manager {
   @Override
   public DataSet getSchemaPartition(PhysicalPlan physicalPlan) {
     if (physicalPlan instanceof SchemaPartitionPlan) {
-      return assignPartitionManager.getSchemaPartition((SchemaPartitionPlan) physicalPlan);
+      return partitionManager.getSchemaPartition((SchemaPartitionPlan) physicalPlan);
     }
     return new DataNodesInfoDataSet();
   }
 
   @Override
-  public AssignRegionManager getAssignRegionManager() {
-    return assignRegionManager;
+  public RegionManager getRegionManager() {
+    return regionManager;
   }
 
   @Override
   public DataSet applySchemaPartition(PhysicalPlan physicalPlan) {
     if (physicalPlan instanceof SchemaPartitionPlan) {
-      return assignPartitionManager.applySchemaPartition((SchemaPartitionPlan) physicalPlan);
+      return partitionManager.applySchemaPartition((SchemaPartitionPlan) physicalPlan);
     }
     return new DataNodesInfoDataSet();
   }
@@ -131,7 +131,7 @@ public class ConfigManager implements Manager {
   @Override
   public DataSet applyDataPartition(PhysicalPlan physicalPlan) {
     if (physicalPlan instanceof DataPartitionPlan) {
-      return assignPartitionManager.applyDataPartition((DataPartitionPlan) physicalPlan);
+      return partitionManager.applyDataPartition((DataPartitionPlan) physicalPlan);
     }
     return new DataNodesInfoDataSet();
   }

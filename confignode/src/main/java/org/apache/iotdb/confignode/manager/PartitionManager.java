@@ -39,8 +39,8 @@ import java.util.Random;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /** manage data partition and schema partition */
-public class AssignPartitionManager {
-  private static final Logger LOGGER = LoggerFactory.getLogger(AssignPartitionManager.class);
+public class PartitionManager {
+  private static final Logger LOGGER = LoggerFactory.getLogger(PartitionManager.class);
 
   /** schema partition read write lock */
   private final ReentrantReadWriteLock schemaPartitionReadWriteLock;
@@ -53,7 +53,7 @@ public class AssignPartitionManager {
 
   private final Manager configNodeManager;
 
-  public AssignPartitionManager(Manager configNodeManager) {
+  public PartitionManager(Manager configNodeManager) {
     this.schemaPartitionReadWriteLock = new ReentrantReadWriteLock();
     this.dataPartitionReadWriteLock = new ReentrantReadWriteLock();
     this.configNodeManager = configNodeManager;

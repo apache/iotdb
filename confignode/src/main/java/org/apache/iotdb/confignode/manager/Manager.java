@@ -24,8 +24,8 @@ import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 /**
- * a subset of services provided by {@ConfigNodeManager}. For use internally only, pased to
- * Managers, services.
+ * a subset of services provided by {@ConfigManager}. For use internally only, pased to Managers,
+ * services.
  */
 public interface Manager {
 
@@ -95,7 +95,7 @@ public interface Manager {
    *
    * @return AssignRegionManager instance
    */
-  AssignRegionManager getAssignRegionManager();
+  RegionManager getRegionManager();
 
   /**
    * apply schema partition

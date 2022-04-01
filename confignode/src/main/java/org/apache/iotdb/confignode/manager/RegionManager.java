@@ -38,7 +38,7 @@ import java.util.List;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /** manage data partition and schema partition */
-public class AssignRegionManager {
+public class RegionManager {
   private static final ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();
   private static final int regionReplicaCount = conf.getRegionReplicaCount();
   private static final int schemaRegionCount = conf.getSchemaRegionCount();
@@ -56,7 +56,7 @@ public class AssignRegionManager {
 
   private final Manager configNodeManager;
 
-  public AssignRegionManager(Manager configNodeManager) {
+  public RegionManager(Manager configNodeManager) {
     this.partitionReadWriteLock = new ReentrantReadWriteLock();
     this.configNodeManager = configNodeManager;
   }
@@ -79,7 +79,7 @@ public class AssignRegionManager {
         result = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
         result.setMessage("DataNode is not enough, please register more.");
       } else {
-        if (regionInfoPersistence.containsKey(plan.getSchema().getName())) {
+        if (regionInfoPersistence.containsStorageGroup(plan.getSchema().getName())) {
           result = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
           result.setMessage(
               String.format("StorageGroup %s is already set.", plan.getSchema().getName()));
@@ -116,7 +116,7 @@ public class AssignRegionManager {
     for (int i = 0; i < schemaRegionCount; i++) {
       List<Integer> dataNodeList = new ArrayList<>(getDataNodeInfoManager().getDataNodeId());
       Collections.shuffle(dataNodeList);
-      schemaRegionInfo.createSchemaRegion(
+      schemaRegionInfo.addSchemaRegion(
           nextSchemaRegionGroup, dataNodeList.subList(0, regionReplicaCount));
       storageGroupSchema.addSchemaRegionGroup(nextSchemaRegionGroup);
       nextSchemaRegionGroup += 1;
