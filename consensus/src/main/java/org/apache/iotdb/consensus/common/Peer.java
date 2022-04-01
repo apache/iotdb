@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.consensus.common;
 
+import org.apache.iotdb.commons.partition.ConsensusGroupId;
+
 import java.util.Objects;
 
 // TODO Use a mature IDL framework such as Protobuf to manage this structure

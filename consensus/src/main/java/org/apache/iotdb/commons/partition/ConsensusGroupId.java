@@ -17,11 +17,48 @@
  * under the License.
  */
 
-package org.apache.iotdb.consensus.common;
+package org.apache.iotdb.commons.partition;
+
+import java.util.Objects;
 
 // TODO Use a mature IDL framework such as Protobuf to manage this structure
-public enum GroupType {
-  PartitionRegion,
-  DataRegion,
-  SchemaRegion
+public class ConsensusGroupId {
+
+  private final GroupType type;
+  private final long id;
+
+  public ConsensusGroupId(GroupType type, long id) {
+    this.type = type;
+    this.id = id;
+  }
+
+  public GroupType getType() {
+    return type;
+  }
+
+  public long getId() {
+    return id;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    ConsensusGroupId that = (ConsensusGroupId) o;
+    return id == that.id && Objects.equals(type, that.type);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(type, id);
+  }
+
+  @Override
+  public String toString() {
+    return "ConsensusGroupId{" + "type=" + type + ", id=" + id + '}';
+  }
 }

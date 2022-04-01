@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.consensus.exception;
 
-import org.apache.iotdb.consensus.common.ConsensusGroupId;
+import org.apache.iotdb.commons.partition.ConsensusGroupId;
 
 public class ConsensusGroupAlreadyExistException extends ConsensusException {
 
