@@ -73,6 +73,10 @@ public class DataDriver implements ExecFragmentInstance {
     this.root = root;
     this.sinkHandle = sinkHandle;
     this.dataDriverContext = dataDriverContext;
+    // initially the driverBlockedFuture is not blocked (it is completed)
+    SettableFuture<Void> future = SettableFuture.create();
+    future.set(null);
+    driverBlockedFuture.set(future);
   }
 
   @Override
