@@ -55,6 +55,62 @@ public class AuthorNode extends PlanNode {
     this.nodeName = nodeName;
   }
 
+  public AuthorStatement.AuthorType getAuthorType() {
+    return authorType;
+  }
+
+  public void setAuthorType(AuthorStatement.AuthorType authorType) {
+    this.authorType = authorType;
+  }
+
+  public String getUserName() {
+    return userName;
+  }
+
+  public void setUserName(String userName) {
+    this.userName = userName;
+  }
+
+  public String getRoleName() {
+    return roleName;
+  }
+
+  public void setRoleName(String roleName) {
+    this.roleName = roleName;
+  }
+
+  public String getPassword() {
+    return password;
+  }
+
+  public void setPassword(String password) {
+    this.password = password;
+  }
+
+  public String getNewPassword() {
+    return newPassword;
+  }
+
+  public void setNewPassword(String newPassword) {
+    this.newPassword = newPassword;
+  }
+
+  public String[] getPrivilegeList() {
+    return privilegeList;
+  }
+
+  public void setPrivilegeList(String[] privilegeList) {
+    this.privilegeList = privilegeList;
+  }
+
+  public PartialPath getNodeName() {
+    return nodeName;
+  }
+
+  public void setNodeName(PartialPath nodeName) {
+    this.nodeName = nodeName;
+  }
+
   @Override
   public List<PlanNode> getChildren() {
     return null;

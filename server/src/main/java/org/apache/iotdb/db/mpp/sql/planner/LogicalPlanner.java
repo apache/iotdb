@@ -26,6 +26,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeIdAllocator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AlterTimeSeriesNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AuthorNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.*;
@@ -40,6 +41,7 @@ import org.apache.iotdb.db.mpp.sql.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.query.expression.Expression;
 
 import java.util.*;
@@ -282,6 +284,120 @@ public class LogicalPlanner {
       InsertTabletNode node = new InsertTabletNode(PlanNodeIdAllocator.generateId());
 
       return node;
+    }
+
+    @Override
+    public PlanNode visitCreateUser(AuthorStatement authorStatement, MPPQueryContext context) {
+      return getNewAuthorNode(authorStatement, context);
+    }
+
+    @Override
+    public PlanNode visitCreateRole(AuthorStatement authorStatement, MPPQueryContext context) {
+      return getNewAuthorNode(authorStatement, context);
+    }
+
+    @Override
+    public PlanNode visitAlterUser(AuthorStatement authorStatement, MPPQueryContext context) {
+      return getNewAuthorNode(authorStatement, context);
+    }
+
+    @Override
+    public PlanNode visitGrantUser(AuthorStatement authorStatement, MPPQueryContext context) {
+      return getNewAuthorNode(authorStatement, context);
+    }
+
+    @Override
+    public PlanNode visitGrantRole(AuthorStatement authorStatement, MPPQueryContext context) {
+      return getNewAuthorNode(authorStatement, context);
+    }
+
+    @Override
+    public PlanNode visitGrantRoleToUser(AuthorStatement authorStatement, MPPQueryContext context) {
+      return getNewAuthorNode(authorStatement, context);
+    }
+
+    @Override
+    public PlanNode visitRevokeUser(AuthorStatement authorStatement, MPPQueryContext context) {
+      return getNewAuthorNode(authorStatement, context);
+    }
+
+    @Override
+    public PlanNode visitRevokeRole(AuthorStatement authorStatement, MPPQueryContext context) {
+      return getNewAuthorNode(authorStatement, context);
+    }
+
+    @Override
+    public PlanNode visitRevokeRoleFromUser(
+        AuthorStatement authorStatement, MPPQueryContext context) {
+      return getNewAuthorNode(authorStatement, context);
+    }
+
+    @Override
+    public PlanNode visitDropUser(AuthorStatement authorStatement, MPPQueryContext context) {
+      return getNewAuthorNode(authorStatement, context);
+    }
+
+    @Override
+    public PlanNode visitDropRole(AuthorStatement authorStatement, MPPQueryContext context) {
+      return getNewAuthorNode(authorStatement, context);
+    }
+
+    @Override
+    public PlanNode visitListUser(AuthorStatement authorStatement, MPPQueryContext context) {
+      return getNewAuthorNode(authorStatement, context);
+    }
+
+    @Override
+    public PlanNode visitListRole(AuthorStatement authorStatement, MPPQueryContext context) {
+      return getNewAuthorNode(authorStatement, context);
+    }
+
+    @Override
+    public PlanNode visitListPrivilegesUser(
+        AuthorStatement authorStatement, MPPQueryContext context) {
+      return getNewAuthorNode(authorStatement, context);
+    }
+
+    @Override
+    public PlanNode visitListPrivilegesRole(
+        AuthorStatement authorStatement, MPPQueryContext context) {
+      return getNewAuthorNode(authorStatement, context);
+    }
+
+    @Override
+    public PlanNode visitListUserPrivileges(
+        AuthorStatement authorStatement, MPPQueryContext context) {
+      return getNewAuthorNode(authorStatement, context);
+    }
+
+    @Override
+    public PlanNode visitListRolePrivileges(
+        AuthorStatement authorStatement, MPPQueryContext context) {
+      return getNewAuthorNode(authorStatement, context);
+    }
+
+    @Override
+    public PlanNode visitListAllRoleOfUser(
+        AuthorStatement authorStatement, MPPQueryContext context) {
+      return getNewAuthorNode(authorStatement, context);
+    }
+
+    @Override
+    public PlanNode visitListAllUserOfRole(
+        AuthorStatement authorStatement, MPPQueryContext context) {
+      return getNewAuthorNode(authorStatement, context);
+    }
+
+    public AuthorNode getNewAuthorNode(AuthorStatement authorStatement, MPPQueryContext context) {
+      return new AuthorNode(
+          PlanNodeIdAllocator.generateId(),
+          authorStatement.getAuthorType(),
+          authorStatement.getUserName(),
+          authorStatement.getRoleName(),
+          authorStatement.getPassWord(),
+          authorStatement.getNewPassword(),
+          authorStatement.getPrivilegeList(),
+          authorStatement.getNodeName());
     }
   }
 

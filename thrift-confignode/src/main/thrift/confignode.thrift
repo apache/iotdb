@@ -81,10 +81,6 @@ struct CreateUserReq{
     2: required string password
 }
 
-struct CreateRoleReq{
-    1: required string username
-}
-
 struct FetchDataPartitionReq {
     1: required map<i32, list<i64>> deviceGroupIDToStartTimeMap
 }
@@ -141,8 +137,6 @@ service ConfigIService {
   DeviceGroupHashInfo getDeviceGroupHashInfo()
 
   rpc.TSStatus createUser(CreateUserReq req)
-
-  rpc.TSStatus createRole(CreateRoleReq req)
 
   DataPartitionInfoResp fetchDataPartitionInfo(FetchDataPartitionReq req)
 
