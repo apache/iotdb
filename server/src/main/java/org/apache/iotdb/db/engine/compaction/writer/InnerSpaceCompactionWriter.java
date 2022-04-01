@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.engine.compaction.writer;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import java.io.IOException;
@@ -31,8 +30,8 @@ public class InnerSpaceCompactionWriter extends AbstractCompactionWriter {
 
   private final TsFileResource targetTsFileResource;
 
-  public InnerSpaceCompactionWriter(TsFileResource targetFileResource) throws IOException {
-    fileWriter = new RestorableTsFileIOWriter(targetFileResource.getTsFile());
+  public InnerSpaceCompactionWriter(TsFileResource targetFileResource, TsFileIOWriter fileWriter) {
+    this.fileWriter = fileWriter;
     isEmptyFile = true;
     this.targetTsFileResource = targetFileResource;
   }
@@ -50,17 +49,19 @@ public class InnerSpaceCompactionWriter extends AbstractCompactionWriter {
   }
 
   @Override
-  public void endMeasurement() throws IOException {
-    writeRateLimit(chunkWriter.estimateMaxSeriesMemSize());
-    chunkWriter.writeToFileWriter(fileWriter);
-    chunkWriter = null;
+  public void endMeasurement(int subTaskId) throws IOException {
+    writeRateLimit(chunkWriterMap.get(subTaskId).estimateMaxSeriesMemSize());
+    synchronized (fileWriter) {
+      chunkWriterMap.get(subTaskId).writeToFileWriter(fileWriter);
+    }
+    // chunkWriter = null;
   }
 
   @Override
-  public void write(long timestamp, Object value) throws IOException {
-    writeDataPoint(timestamp, value);
+  public void write(long timestamp, Object value, int subTaskId) throws IOException {
+    writeDataPoint(timestamp, value, subTaskId);
     updateDeviceStartAndEndTime(targetTsFileResource, timestamp);
-    checkChunkSizeAndMayOpenANewChunk(fileWriter);
+    checkChunkSizeAndMayOpenANewChunk(fileWriter, subTaskId);
     isEmptyFile = false;
   }
 
@@ -80,7 +81,8 @@ public class InnerSpaceCompactionWriter extends AbstractCompactionWriter {
     if (fileWriter != null && fileWriter.canWrite()) {
       fileWriter.close();
     }
-    chunkWriter = null;
+    // chunkWriter = null;
+    chunkWriterMap.clear();
     fileWriter = null;
   }
 }

@@ -20,6 +20,7 @@ package org.apache.iotdb.db.engine.compaction;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.task.SubCompactionTask;
 import org.apache.iotdb.db.engine.compaction.inner.utils.MultiTsFileDeviceIterator;
 import org.apache.iotdb.db.engine.compaction.writer.AbstractCompactionWriter;
 import org.apache.iotdb.db.engine.compaction.writer.CrossSpaceCompactionWriter;
@@ -50,18 +51,20 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-
+import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
 /**
@@ -73,6 +76,8 @@ import java.util.stream.Collectors;
 public class CompactionUtils {
   private static final Logger logger =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
+  private static final int subTaskNum =
+      IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum();
 
   public static void compact(
       List<TsFileResource> seqFileResources,
@@ -86,8 +91,11 @@ public class CompactionUtils {
         .getQueryFileManager()
         .addUsedFilesForQuery(queryId, queryDataSource);
 
+    List<TsFileIOWriter> targetFileWriters =
+        getTsFileIOWriter(seqFileResources, unseqFileResources, targetFileResources);
     try (AbstractCompactionWriter compactionWriter =
-        getCompactionWriter(seqFileResources, unseqFileResources, targetFileResources)) {
+        getCompactionWriter(
+            seqFileResources, unseqFileResources, targetFileResources, targetFileWriters)) {
       // Do not close device iterator, because tsfile reader is managed by FileReaderManager.
       MultiTsFileDeviceIterator deviceIterator =
           new MultiTsFileDeviceIterator(seqFileResources, unseqFileResources);
@@ -157,9 +165,9 @@ public class CompactionUtils {
     if (dataBatchReader.hasNextBatch()) {
       // chunkgroup is serialized only when at least one timeseries under this device has data
       compactionWriter.startChunkGroup(device, true);
-      compactionWriter.startMeasurement(measurementSchemas);
-      writeWithReader(compactionWriter, dataBatchReader);
-      compactionWriter.endMeasurement();
+      compactionWriter.startMeasurement(measurementSchemas, 0);
+      writeWithReader(compactionWriter, dataBatchReader, 0);
+      compactionWriter.endMeasurement(0);
       compactionWriter.endChunkGroup();
     }
   }
@@ -170,59 +178,53 @@ public class CompactionUtils {
       AbstractCompactionWriter compactionWriter,
       QueryContext queryContext,
       QueryDataSource queryDataSource)
-      throws MetadataException, IOException {
-    boolean hasStartChunkGroup = false;
+      throws IOException {
     MultiTsFileDeviceIterator.MeasurementIterator measurementIterator =
         deviceIterator.iterateNotAlignedSeries(device, false);
     Set<String> allMeasurements = measurementIterator.getAllMeasurements();
+    int subTaskNums = Math.min(allMeasurements.size(), subTaskNum);
+    Set<String>[] measurementsForEachSubTask = new HashSet[subTaskNums];
+    int idx = 0;
     for (String measurement : allMeasurements) {
-      List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
+      if (measurementsForEachSubTask[idx % subTaskNums] == null) {
+        measurementsForEachSubTask[idx % subTaskNums] = new HashSet<String>();
+      }
+      measurementsForEachSubTask[idx++ % subTaskNums].add(measurement);
+    }
+    List<Future<Void>> futures = new ArrayList<>();
+    compactionWriter.startChunkGroup(device, false);
+    for (int i = 0; i < subTaskNums; i++) {
+      futures.add(
+          CompactionTaskManager.getInstance()
+              .submitSubTask(
+                  new SubCompactionTask(
+                      device,
+                      measurementsForEachSubTask[i],
+                      queryContext,
+                      queryDataSource,
+                      compactionWriter,
+                      i)));
+    }
+    for (int i = 0; i < subTaskNums; i++) {
       try {
-        if (IoTDBDescriptor.getInstance().getConfig().isEnableIDTable()) {
-          measurementSchemas.add(IDTableManager.getInstance().getSeriesSchema(device, measurement));
-        } else {
-          measurementSchemas.add(
-              IoTDB.schemaProcessor.getSeriesSchema(new PartialPath(device, measurement)));
-        }
-      } catch (PathNotExistException e) {
-        logger.info("A deleted path is skipped: {}", e.getMessage());
-        continue;
-      }
-
-      IBatchReader dataBatchReader =
-          constructReader(
-              device,
-              Collections.singletonList(measurement),
-              measurementSchemas,
-              allMeasurements,
-              queryContext,
-              queryDataSource,
-              false);
-
-      if (dataBatchReader.hasNextBatch()) {
-        if (!hasStartChunkGroup) {
-          // chunkgroup is serialized only when at least one timeseries under this device has
-          // data
-          compactionWriter.startChunkGroup(device, false);
-          hasStartChunkGroup = true;
-        }
-        compactionWriter.startMeasurement(measurementSchemas);
-        writeWithReader(compactionWriter, dataBatchReader);
-        compactionWriter.endMeasurement();
+        futures.get(i).get();
+      } catch (InterruptedException e) {
+        logger.error("SubCompactionTask interrupted", e);
+        Thread.currentThread().interrupt();
+      } catch (ExecutionException e) {
+        throw new IOException(e);
       }
     }
 
-    if (hasStartChunkGroup) {
-      compactionWriter.endChunkGroup();
-    }
+    compactionWriter.endChunkGroup();
   }
 
-  private static void writeWithReader(AbstractCompactionWriter writer, IBatchReader reader)
-      throws IOException {
+  public static void writeWithReader(
+      AbstractCompactionWriter writer, IBatchReader reader, int subTaskId) throws IOException {
     while (reader.hasNextBatch()) {
       BatchData batchData = reader.nextBatch();
       while (batchData.hasCurrent()) {
-        writer.write(batchData.currentTime(), batchData.currentValue());
+        writer.write(batchData.currentTime(), batchData.currentValue(), subTaskId);
         batchData.next();
       }
     }
@@ -232,7 +234,7 @@ public class CompactionUtils {
    * @param measurementIds if device is aligned, then measurementIds contain all measurements. If
    *     device is not aligned, then measurementIds only contain one measurement.
    */
-  private static IBatchReader constructReader(
+  public static IBatchReader constructReader(
       String deviceId,
       List<String> measurementIds,
       List<IMeasurementSchema> measurementSchemas,
@@ -254,17 +256,37 @@ public class CompactionUtils {
         seriesPath, allSensors, tsDataType, queryContext, queryDataSource, null, null, null, true);
   }
 
-  private static AbstractCompactionWriter getCompactionWriter(
+  private static List<TsFileIOWriter> getTsFileIOWriter(
       List<TsFileResource> seqFileResources,
       List<TsFileResource> unseqFileResources,
       List<TsFileResource> targetFileResources)
       throws IOException {
+    List<TsFileIOWriter> targetFileWriters = new ArrayList<>();
     if (!seqFileResources.isEmpty() && !unseqFileResources.isEmpty()) {
       // cross space
-      return new CrossSpaceCompactionWriter(targetFileResources, seqFileResources);
+      for (TsFileResource targetFileResource : targetFileResources) {
+        targetFileWriters.add(new TsFileIOWriter(targetFileResource.getTsFile()));
+      }
     } else {
       // inner space
-      return new InnerSpaceCompactionWriter(targetFileResources.get(0));
+      targetFileWriters.add(new TsFileIOWriter(targetFileResources.get(0).getTsFile()));
+    }
+    return targetFileWriters;
+  }
+
+  private static AbstractCompactionWriter getCompactionWriter(
+      List<TsFileResource> seqFileResources,
+      List<TsFileResource> unseqFileResources,
+      List<TsFileResource> targetFileResources,
+      List<TsFileIOWriter> targetFileWriters)
+      throws IOException {
+    if (!seqFileResources.isEmpty() && !unseqFileResources.isEmpty()) {
+      // cross space
+      return new CrossSpaceCompactionWriter(
+          targetFileResources, seqFileResources, targetFileWriters);
+    } else {
+      // inner space
+      return new InnerSpaceCompactionWriter(targetFileResources.get(0), targetFileWriters.get(0));
     }
   }
 
