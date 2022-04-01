@@ -23,6 +23,8 @@ import org.apache.iotdb.db.engine.compaction.CompactionExceptionHandler;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.log.CompactionLogger;
+import org.apache.iotdb.db.engine.compaction.performer.AbstractCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.performer.ReadPointCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
@@ -55,6 +57,7 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
   protected TsFileResourceList seqTsFileResourceList;
   protected TsFileResourceList unseqTsFileResourceList;
   private File logFile;
+  private AbstractCompactionPerformer performer;
 
   private List<TsFileResource> targetTsfileResourceList;
   private List<TsFileResource> holdReadLockList = new ArrayList<>();
@@ -144,8 +147,12 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
       // restart recovery
       compactionLogger.close();
 
-      CompactionUtils.compact(
-          selectedSeqTsFileResourceList, selectedUnSeqTsFileResourceList, targetTsfileResourceList);
+      performer =
+          new ReadPointCompactionPerformer(
+              selectedSeqTsFileResourceList,
+              selectedUnSeqTsFileResourceList,
+              targetTsfileResourceList);
+      performer.perform();
 
       CompactionUtils.moveTargetFile(targetTsfileResourceList, false, fullStorageGroupName);
       CompactionUtils.combineModsInCompaction(

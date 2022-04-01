@@ -24,6 +24,7 @@ import org.apache.iotdb.db.engine.compaction.inner.utils.AlignedSeriesCompaction
 import org.apache.iotdb.db.engine.compaction.inner.utils.MultiTsFileDeviceIterator;
 import org.apache.iotdb.db.engine.compaction.inner.utils.SingleSeriesCompactionExecutor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.metadata.idtable.IDTableManager;
@@ -54,7 +55,8 @@ public class ReadChunkCompactionPerformer extends AbstractCompactionPerformer {
   }
 
   @Override
-  public void perform() throws IOException, MetadataException, InterruptedException {
+  public void perform()
+      throws IOException, MetadataException, InterruptedException, StorageEngineException {
     try (MultiTsFileDeviceIterator deviceIterator = new MultiTsFileDeviceIterator(seqFiles);
         TsFileIOWriter writer = new TsFileIOWriter(targetResource.getTsFile())) {
       while (deviceIterator.hasNextDevice()) {

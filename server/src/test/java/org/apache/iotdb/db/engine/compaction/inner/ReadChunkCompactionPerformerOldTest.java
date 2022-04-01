@@ -73,7 +73,8 @@ public class ReadChunkCompactionPerformerOldTest extends InnerCompactionTest {
   }
 
   @Test
-  public void testCompact() throws IOException, MetadataException, InterruptedException {
+  public void testCompact()
+      throws IOException, MetadataException, InterruptedException, StorageEngineException {
     TsFileResource targetTsFileResource =
         new TsFileResource(
             new File(

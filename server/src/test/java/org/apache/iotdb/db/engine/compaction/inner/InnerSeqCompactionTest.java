@@ -335,7 +335,7 @@ public class InnerSeqCompactionTest {
           }
         }
       }
-    } catch (InterruptedException e) {
+    } catch (InterruptedException | StorageEngineException e) {
       e.printStackTrace();
     } finally {
       IoTDBDescriptor.getInstance()
@@ -348,7 +348,8 @@ public class InnerSeqCompactionTest {
   }
 
   @Test
-  public void testAppendPage() throws IOException, MetadataException, InterruptedException {
+  public void testAppendPage()
+      throws IOException, MetadataException, InterruptedException, StorageEngineException {
 
     for (int toMergeFileNum : toMergeFileNums) {
       for (CompactionTimeseriesType compactionTimeseriesType : compactionTimeseriesTypes) {
@@ -610,7 +611,8 @@ public class InnerSeqCompactionTest {
   }
 
   @Test
-  public void testAppendChunk() throws IOException, IllegalPathException, MetadataException {
+  public void testAppendChunk()
+      throws IOException, IllegalPathException, MetadataException, StorageEngineException {
     long prevChunkPointNumLowerBoundInCompaction =
         IoTDBDescriptor.getInstance().getConfig().getChunkPointNumLowerBoundInCompaction();
     IoTDBDescriptor.getInstance().getConfig().setChunkPointNumLowerBoundInCompaction(1);

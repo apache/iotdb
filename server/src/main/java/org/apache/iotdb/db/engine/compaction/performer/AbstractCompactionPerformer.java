@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.engine.compaction.performer;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 
 import java.io.IOException;
@@ -34,5 +35,6 @@ public abstract class AbstractCompactionPerformer {
   protected List<TsFileResource> seqFiles;
   protected List<TsFileResource> unseqFiles;
 
-  public abstract void perform() throws IOException, MetadataException, InterruptedException;
+  public abstract void perform()
+      throws IOException, MetadataException, StorageEngineException, InterruptedException;
 }
