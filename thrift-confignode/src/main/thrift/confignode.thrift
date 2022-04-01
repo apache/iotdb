@@ -76,10 +76,21 @@ struct DeviceGroupHashInfo {
     2: required string hashClass
 }
 
-struct CreateUserReq{
-    1: required string username
-    2: required string password
+struct AuthorizerReq{
+    1: required string authorType
+    2: required string userName
+    3: required string roleName
+    4: required string password
+    5: required string newPassword
+    6: required set<i32> permissions
+    7: required string nodeName
 }
+
+struct AuthorizerResp{
+    1: required list<string> queryResult
+    2: required rpc.TSStatus authorizerResult
+}
+
 
 struct FetchDataPartitionReq {
     1: required map<i32, list<i64>> deviceGroupIDToStartTimeMap
@@ -136,7 +147,9 @@ service ConfigIService {
 
   DeviceGroupHashInfo getDeviceGroupHashInfo()
 
-  rpc.TSStatus createUser(CreateUserReq req)
+  rpc.TSStatus AuthorierNonQuerty(AuthorizerReq req)
+
+  AuthorizerResp AuthorierQuerty(AuthorizerReq req)
 
   DataPartitionInfoResp fetchDataPartitionInfo(FetchDataPartitionReq req)
 

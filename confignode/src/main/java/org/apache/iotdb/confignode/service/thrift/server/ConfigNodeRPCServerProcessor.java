@@ -29,8 +29,9 @@ import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
 import org.apache.iotdb.confignode.physical.sys.QueryStorageGroupSchemaPlan;
 import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.confignode.rpc.thrift.AuthorizerReq;
+import org.apache.iotdb.confignode.rpc.thrift.AuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
-import org.apache.iotdb.confignode.rpc.thrift.CreateUserReq;
 import org.apache.iotdb.confignode.rpc.thrift.DataNodeMessage;
 import org.apache.iotdb.confignode.rpc.thrift.DataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.DataNodeRegisterResp;
@@ -48,6 +49,7 @@ import org.apache.iotdb.confignode.rpc.thrift.SchemaPartitionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.SchemaPartitionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.SetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.StorageGroupMessage;
+import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Endpoint;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
@@ -157,22 +159,99 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
   }
 
   @Override
-  public TSStatus createUser(CreateUserReq req) throws TException {
+  public TSStatus AuthorierNonQuerty(AuthorizerReq req) throws TException {
+    PhysicalPlanType authorType = null;
+    switch (req.getAuthorType()) {
+      case "CREATE_USER":
+        authorType = PhysicalPlanType.CREATE_USER;
+        break;
+      case "CREATE_ROLE":
+        authorType = PhysicalPlanType.CREATE_ROLE;
+        break;
+      case "DROP_USER":
+        authorType = PhysicalPlanType.DROP_USER;
+        break;
+      case "DROP_ROLE":
+        authorType = PhysicalPlanType.DROP_ROLE;
+        break;
+      case "GRANT_ROLE":
+        authorType = PhysicalPlanType.GRANT_ROLE;
+        break;
+      case "GRANT_USER":
+        authorType = PhysicalPlanType.GRANT_USER;
+        break;
+      case "GRANT_ROLE_TO_USER":
+        authorType = PhysicalPlanType.GRANT_ROLE_TO_USER;
+        break;
+      case "REVOKE_USER":
+        authorType = PhysicalPlanType.REVOKE_USER;
+        break;
+      case "REVOKE_ROLE":
+        authorType = PhysicalPlanType.REVOKE_ROLE;
+        break;
+      case "REVOKE_ROLE_FROM_USER":
+        authorType = PhysicalPlanType.REVOKE_ROLE_FROM_USER;
+        break;
+      case "UPDATE_USER":
+        authorType = PhysicalPlanType.UPDATE_USER;
+        break;
+    }
     AuthorPlan plan = null;
     try {
       plan =
           new AuthorPlan(
-              PhysicalPlanType.CREATE_USER,
-              req.getUsername(),
-              null,
+              authorType,
+              req.getUserName(),
+              req.getRoleName(),
               req.getPassword(),
-              null,
-              null,
-              null);
+              req.getNewPassword(),
+              req.getPermissions(),
+              req.getNodeName());
     } catch (AuthException e) {
-      LOGGER.error("create user failed:" + e.getMessage());
+      LOGGER.error(e.getMessage());
     }
     return configManager.write(plan).getStatus();
+  }
+
+  @Override
+  public AuthorizerResp AuthorierQuerty(AuthorizerReq req) throws TException {
+    PhysicalPlanType authorType = null;
+    switch (req.getAuthorType()) {
+      case "LIST_USER":
+        authorType = PhysicalPlanType.LIST_USER;
+        break;
+      case "LIST_ROLE":
+        authorType = PhysicalPlanType.LIST_ROLE;
+        break;
+      case "LIST_USER_PRIVILEGE":
+        authorType = PhysicalPlanType.LIST_USER_PRIVILEGE;
+        break;
+      case "LIST_ROLE_PRIVILEGE":
+        authorType = PhysicalPlanType.LIST_ROLE_PRIVILEGE;
+        break;
+      case "LIST_USER_ROLES":
+        authorType = PhysicalPlanType.LIST_USER_ROLES;
+        break;
+      case "LIST_ROLE_USERS":
+        authorType = PhysicalPlanType.LIST_ROLE_USERS;
+        break;
+    }
+    AuthorPlan plan = null;
+    try {
+      plan =
+          new AuthorPlan(
+              authorType,
+              req.getUserName(),
+              req.getRoleName(),
+              req.getPassword(),
+              req.getNewPassword(),
+              req.getPermissions(),
+              req.getNodeName());
+    } catch (AuthException e) {
+      LOGGER.error(e.getMessage());
+    }
+    DataSet dataset = configManager.read(plan).getDataset();
+    return null;
   }
 
   @Override

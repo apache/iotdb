@@ -25,6 +25,7 @@ import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.statemachine.IStateMachine;
+import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
@@ -68,7 +69,7 @@ public class PartitionRegionStateMachine implements IStateMachine {
     TSStatus result;
     try {
       result = executor.executorNonQueryPlan(plan);
-    } catch (UnknownPhysicalPlanTypeException e) {
+    } catch (UnknownPhysicalPlanTypeException | AuthException e) {
       LOGGER.error(e.getMessage());
       result = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
@@ -99,7 +100,7 @@ public class PartitionRegionStateMachine implements IStateMachine {
     DataSet result;
     try {
       result = executor.executorQueryPlan(plan);
-    } catch (UnknownPhysicalPlanTypeException e) {
+    } catch (UnknownPhysicalPlanTypeException | AuthException e) {
       LOGGER.error(e.getMessage());
       result = null;
     }

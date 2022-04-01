@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.confignode.auth;
 
+import org.apache.iotdb.confignode.rpc.thrift.AuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
-import org.apache.iotdb.confignode.rpc.thrift.CreateUserReq;
 import org.apache.iotdb.confignode.utils.ConfigNodeEnvironmentUtils;
 import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
@@ -34,6 +34,9 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.util.HashSet;
+import java.util.Set;
 
 public class AuthorTest {
 
@@ -57,9 +60,10 @@ public class AuthorTest {
     transport = RpcTransportFactory.INSTANCE.getTransport("0.0.0.0", 22277, 2000);
     transport.open();
     client = new ConfigIService.Client(new TBinaryProtocol(transport));
-    TSStatus tsStatus = client.createUser(new CreateUserReq("root1", "root1"));
-    System.out.println(tsStatus.getCode());
-    System.out.println(tsStatus.getMessage());
+    Set<Integer> i = new HashSet<>();
+    TSStatus tsStatus =
+        client.AuthorierNonQuerty(
+            new AuthorizerReq("CREATE_USER", "root01", "", "root001", "", i, ""));
     Assert.assertEquals(tsStatus.getCode(), TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 }
