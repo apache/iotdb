@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.consensus.standalone;
 
-import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.commons.partition.ConsensusGroupId;
+import org.apache.iotdb.commons.partition.GroupType;
+import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Endpoint;
-import org.apache.iotdb.commons.partition.GroupType;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
