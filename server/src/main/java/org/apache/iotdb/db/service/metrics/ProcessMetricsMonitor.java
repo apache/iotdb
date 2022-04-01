@@ -48,14 +48,14 @@ public class ProcessMetricsMonitor {
                 sunOsMXBean,
                 a -> (long)(sunOsMXBean.getProcessCpuLoad()*100),
                 Tag.NAME.toString(),
-                "process_cpu_load");
+                "process");
         metricManager.getOrCreateAutoGauge(
                 Metric.PROCESS_CPU_TIME.toString(),
                 MetricLevel.IMPORTANT,
                 sunOsMXBean,
                 com.sun.management.OperatingSystemMXBean::getProcessCpuTime,
                 Tag.NAME.toString(),
-                "process_cpu_time");
+                "process");
     }
 
     public void collectMemoryInfo() {
@@ -66,21 +66,21 @@ public class ProcessMetricsMonitor {
                 runtime,
                 a -> runtime.maxMemory(),
                 Tag.NAME.toString(),
-                "process_max_memory");
+                "process");
         metricManager.getOrCreateAutoGauge(
                     Metric.PROCESS_TOTAL_MEM.toString(),
                 MetricLevel.IMPORTANT,
                 runtime,
                 a -> runtime.totalMemory(),
                 Tag.NAME.toString(),
-                "process_total_memory");
+                "process");
         metricManager.getOrCreateAutoGauge(
                     Metric.PROCESS_FREE_MEM.toString(),
                 MetricLevel.IMPORTANT,
                 runtime,
                 a -> runtime.freeMemory(),
                 Tag.NAME.toString(),
-                "process_free_memory");
+                "process");
 
     }
 

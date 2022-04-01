@@ -46,13 +46,13 @@ public class SysRunMetricsMonitor {
                 osMXBean,
                 a -> (long) (osMXBean.getSystemCpuLoad() * 100),
                 Tag.NAME.toString(),
-                "system_cpu_load");
+                "system");
 
         metricManager.getOrCreateGauge(
                 Metric.SYS_CPU_CORES.toString(),
                 MetricLevel.IMPORTANT,
                 Tag.NAME.toString(),
-                "system_cpu_cores").set(osMXBean.getAvailableProcessors());
+                "system").set(osMXBean.getAvailableProcessors());
     }
 
     public void collectSystemMEMInfo() {
@@ -60,7 +60,7 @@ public class SysRunMetricsMonitor {
                 Metric.SYS_TOTAL_PHYSICAL_MEMORY_SIZE.toString(),
                 MetricLevel.IMPORTANT,
                 Tag.NAME.toString(),
-                "system_total_physical_memory_size")
+                "system")
                 .set(osMXBean.getTotalPhysicalMemorySize());
         metricManager.getOrCreateAutoGauge(
                 Metric.SYS_FREE_PHYSICAL_MEMORY_SIZE.toString(),
@@ -68,28 +68,28 @@ public class SysRunMetricsMonitor {
                 osMXBean,
                 a -> osMXBean.getFreePhysicalMemorySize(),
                 Tag.NAME.toString(),
-                "system_free_physical_memory_size");
+                "system");
         metricManager.getOrCreateAutoGauge(
                 Metric.SYS_TOTAL_SWAP_SPACE_SIZE.toString(),
                 MetricLevel.IMPORTANT,
                 osMXBean,
                 a -> osMXBean.getTotalSwapSpaceSize(),
                 Tag.NAME.toString(),
-                "system_total_swap_space_size");
+                "system");
         metricManager.getOrCreateAutoGauge(
                 Metric.SYS_FREE_SWAP_SPACE_SIZE.toString(),
                 MetricLevel.IMPORTANT,
                 osMXBean,
                 a -> osMXBean.getFreeSwapSpaceSize(),
                 Tag.NAME.toString(),
-                "system_free_swap_space_size");
+                "system");
         metricManager.getOrCreateAutoGauge(
                 Metric.SYS_COMMITTED_VM_SIZE.toString(),
                 MetricLevel.IMPORTANT,
                 osMXBean,
                 a -> osMXBean.getCommittedVirtualMemorySize(),
                 Tag.NAME.toString(),
-                "system_committed_virtual_memory_size");
+                "system");
     }
 
 
