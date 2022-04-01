@@ -138,8 +138,6 @@ public class CachedMTreeStore implements IMTreeStore {
     if (!getCachedMNodeContainer(parent).isVolatile()) {
       try {
         node = file.getChildNode(parent, name);
-      } catch (MetadataException e) {
-        // todo fix this exception handler
       } catch (IOException e) {
         throw new MetadataException(e);
       }
@@ -156,7 +154,6 @@ public class CachedMTreeStore implements IMTreeStore {
       if (nodeAlreadyLoaded != null) {
         try {
           cacheManager.updateCacheStatusAfterMemoryRead(nodeAlreadyLoaded);
-          ensureMemoryStatus();
           return nodeAlreadyLoaded;
         } catch (MNodeNotCachedException ignored) {
           // the nodeAlreadyLoaded is evicted and use the node read from disk
@@ -277,7 +274,6 @@ public class CachedMTreeStore implements IMTreeStore {
     readLock.lock();
     try {
       cacheManager.pinMNode(node);
-      ensureMemoryStatus();
     } finally {
       readLock.unlock();
     }
@@ -478,7 +474,6 @@ public class CachedMTreeStore implements IMTreeStore {
             IMNode nodeInMem = parent.getChild(node.getName());
             try {
               cacheManager.updateCacheStatusAfterMemoryRead(nodeInMem);
-              ensureMemoryStatus();
               node = nodeInMem;
             } catch (MNodeNotCachedException e) {
               node = loadChildFromDiskToParent(parent, node);
