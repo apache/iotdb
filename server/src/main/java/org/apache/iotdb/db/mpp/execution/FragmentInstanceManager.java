@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.mpp.execution;
 
 import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
+import org.apache.iotdb.db.metadata.schemaregion.SchemaRegion;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.schedule.FragmentInstanceScheduler;
 import org.apache.iotdb.db.mpp.schedule.IFragmentInstanceScheduler;
@@ -57,12 +58,31 @@ public class FragmentInstanceManager {
               FragmentInstanceContext context =
                   instanceContext.computeIfAbsent(instanceId, FragmentInstanceContext::new);
 
-              Driver driver =
+              DataDriver driver =
                   planner.plan(
                       instance.getFragment().getRoot(),
                       context,
                       instance.getTimeFilter(),
                       dataRegion);
+              return new FragmentInstanceExecution(scheduler, instanceId, context, driver);
+            });
+
+    return execution.getInstanceInfo();
+  }
+
+  public FragmentInstanceInfo execSchemaQueryFragmentInstance(
+      FragmentInstance instance, SchemaRegion schemaRegion) {
+    FragmentInstanceId instanceId = instance.getId();
+
+    FragmentInstanceExecution execution =
+        instanceExecution.computeIfAbsent(
+            instanceId,
+            id -> {
+              FragmentInstanceContext context =
+                  instanceContext.computeIfAbsent(instanceId, FragmentInstanceContext::new);
+
+              SchemaDriver driver =
+                  planner.plan(instance.getFragment().getRoot(), context, schemaRegion);
               return new FragmentInstanceExecution(scheduler, instanceId, context, driver);
             });
 

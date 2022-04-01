@@ -20,11 +20,14 @@ package org.apache.iotdb.db.mpp.sql.planner;
 
 import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.schemaregion.SchemaRegion;
 import org.apache.iotdb.db.mpp.buffer.ISinkHandle;
 import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
-import org.apache.iotdb.db.mpp.execution.Driver;
-import org.apache.iotdb.db.mpp.execution.DriverContext;
+import org.apache.iotdb.db.mpp.execution.DataDriver;
+import org.apache.iotdb.db.mpp.execution.DataDriverContext;
 import org.apache.iotdb.db.mpp.execution.FragmentInstanceContext;
+import org.apache.iotdb.db.mpp.execution.SchemaDriver;
+import org.apache.iotdb.db.mpp.execution.SchemaDriverContext;
 import org.apache.iotdb.db.mpp.operator.Operator;
 import org.apache.iotdb.db.mpp.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.operator.process.LimitOperator;
@@ -68,7 +71,7 @@ public class LocalExecutionPlanner {
     return InstanceHolder.INSTANCE;
   }
 
-  public Driver plan(
+  public DataDriver plan(
       PlanNode plan,
       FragmentInstanceContext instanceContext,
       Filter timeFilter,
@@ -77,19 +80,33 @@ public class LocalExecutionPlanner {
 
     Operator root = plan.accept(new Visitor(), context);
 
-    DriverContext driverContext =
-        new DriverContext(
+    DataDriverContext dataDriverContext =
+        new DataDriverContext(
             instanceContext,
             context.getPaths(),
             timeFilter,
             dataRegion,
             context.getSourceOperators());
-    instanceContext.setDriverContext(driverContext);
-    return new Driver(root, context.getSinkHandle(), driverContext);
+    instanceContext.setDriverContext(dataDriverContext);
+    return new DataDriver(root, context.getSinkHandle(), dataDriverContext);
+  }
+
+  public SchemaDriver plan(
+      PlanNode plan, FragmentInstanceContext instanceContext, SchemaRegion schemaRegion) {
+
+    SchemaDriverContext schemaDriverContext =
+        new SchemaDriverContext(instanceContext, schemaRegion);
+    instanceContext.setDriverContext(schemaDriverContext);
+
+    LocalExecutionPlanContext context = new LocalExecutionPlanContext(instanceContext);
+
+    Operator root = plan.accept(new Visitor(), context);
+
+    return new SchemaDriver(root, context.getSinkHandle(), schemaDriverContext);
   }
 
   /** This Visitor is responsible for transferring PlanNode Tree to Operator Tree */
-  private class Visitor extends PlanVisitor<Operator, LocalExecutionPlanContext> {
+  private static class Visitor extends PlanVisitor<Operator, LocalExecutionPlanContext> {
 
     @Override
     public Operator visitPlan(PlanNode node, LocalExecutionPlanContext context) {
@@ -195,6 +212,7 @@ public class LocalExecutionPlanner {
 
     @Override
     public Operator visitExchange(ExchangeNode node, LocalExecutionPlanContext context) {
+      // TODO(jackie tien) create SourceHandle here
       return super.visitExchange(node, context);
     }
 

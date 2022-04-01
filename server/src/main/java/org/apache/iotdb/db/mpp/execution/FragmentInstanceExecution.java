@@ -32,7 +32,7 @@ public class FragmentInstanceExecution {
   private final FragmentInstanceId instanceId;
   private final FragmentInstanceContext context;
 
-  private final Driver driver;
+  private final ExecFragmentInstance driver;
 
   private FragmentInstanceState state;
 
@@ -42,7 +42,7 @@ public class FragmentInstanceExecution {
       IFragmentInstanceScheduler scheduler,
       FragmentInstanceId instanceId,
       FragmentInstanceContext context,
-      Driver driver) {
+      ExecFragmentInstance driver) {
     this.scheduler = scheduler;
     this.instanceId = instanceId;
     this.context = context;
