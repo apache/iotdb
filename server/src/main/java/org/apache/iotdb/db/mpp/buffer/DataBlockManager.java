@@ -79,7 +79,7 @@ public class DataBlockManager implements IDataBlockManager {
         ByteBuffer serializedTsBlock =
             sinkHandles
                 .get(req.getSourceFragnemtInstanceId())
-                .getSerializedTsBlock(req.getStartSequenceId());
+                .getSerializedTsBlock(i);
         resp.addToTsBlocks(serializedTsBlock);
       }
       return resp;
