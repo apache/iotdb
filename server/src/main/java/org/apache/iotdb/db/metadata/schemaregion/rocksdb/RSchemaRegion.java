@@ -694,8 +694,7 @@ public class RSchemaRegion implements ISchemaRegion {
                             tempSet.add(currentNode.getParent());
                           }
                         } catch (Exception e) {
-                          logger.error("delete {} fail.", parentPath.getFullPath(), e);
-                          failedNames.add(parentPath.getFullPath());
+                          logger.warn("delete {} fail.", parentPath.getFullPath(), e);
                         }
                       }
                     }
