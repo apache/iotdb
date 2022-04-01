@@ -21,54 +21,56 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
 import java.nio.ByteBuffer;
+import java.util.List;
 
-public abstract class ShowNode extends PlanNode {
-  protected int limit = 0;
-  protected int offset = 0;
-  protected PartialPath path;
-  private boolean hasLimit;
+public class DevicesMetaScanNode extends MetaScanNode {
 
-  protected ShowNode(PlanNodeId id) {
+  private boolean hasSgCol;
+
+  public DevicesMetaScanNode(PlanNodeId id, PartialPath path, int limit, int offset, boolean hasSgCol) {
     super(id);
-  }
-
-  public int getLimit() {
-    return limit;
-  }
-
-  public void setLimit(int limit) {
-    this.limit = limit;
-    if (limit == 0) {
-      hasLimit = false;
-    } else {
-      hasLimit = true;
-    }
-  }
-
-  public int getOffset() {
-    return offset;
-  }
-
-  public void setOffset(int offset) {
-    this.offset = offset;
-  }
-
-  public PartialPath getPath() {
-    return path;
-  }
-
-  public void setPath(PartialPath path) {
+    super.setLimit(limit);
     this.path = path;
+    this.offset = offset;
+    this.hasSgCol = hasSgCol;
   }
 
-  public boolean isHasLimit() {
-    return hasLimit;
+  public boolean isHasSgCol() {
+    return hasSgCol;
   }
 
-  public void setHasLimit(boolean hasLimit) {
-    this.hasLimit = hasLimit;
+  public void setHasSgCol(boolean hasSgCol) {
+    this.hasSgCol = hasSgCol;
+  }
+
+  @Override
+  public List<PlanNode> getChildren() {
+    return null;
+  }
+
+  @Override
+  public void addChild(PlanNode child) {}
+
+  @Override
+  public PlanNode clone() {
+    throw new NotImplementedException("Clone of ShowDevicesNode is not implemented");
+  }
+
+  @Override
+  public int allowedChildCount() {
+    return NO_CHILD_ALLOWED;
+  }
+
+  @Override
+  public List<String> getOutputColumnNames() {
+    return null;
+  }
+
+  public static DevicesMetaScanNode deserialize(ByteBuffer byteBuffer) {
+    return null;
   }
 
   @Override

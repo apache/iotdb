@@ -41,4 +41,19 @@ public class SchemaRegionReplicaSet {
   public void setEndPointList(List<EndPoint> endPointList) {
     this.endPointList = endPointList;
   }
+
+  @Override
+  public String toString() {
+    return String.format("%s:%s", schemaRegionId, endPointList);
+  }
+
+  @Override
+  public int hashCode() {
+    return toString().hashCode();
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    return obj instanceof DataRegionReplicaSet && obj.toString().equals(toString());
+  }
 }

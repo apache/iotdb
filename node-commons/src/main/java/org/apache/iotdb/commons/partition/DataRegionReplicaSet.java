@@ -47,14 +47,17 @@ public class DataRegionReplicaSet {
     this.Id = id;
   }
 
+  @Override
   public String toString() {
     return String.format("%s:%s", Id, endPointList);
   }
 
+  @Override
   public int hashCode() {
     return toString().hashCode();
   }
 
+  @Override
   public boolean equals(Object obj) {
     return obj instanceof DataRegionReplicaSet && obj.toString().equals(toString());
   }

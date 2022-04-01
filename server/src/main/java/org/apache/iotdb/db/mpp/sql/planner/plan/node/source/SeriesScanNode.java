@@ -102,6 +102,7 @@ public class SeriesScanNode extends SourceNode {
     return dataRegionReplicaSet;
   }
 
+  @Override
   public void setDataRegionReplicaSet(DataRegionReplicaSet dataRegion) {
     this.dataRegionReplicaSet = dataRegion;
   }

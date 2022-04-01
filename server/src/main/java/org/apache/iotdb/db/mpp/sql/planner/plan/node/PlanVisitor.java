@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node;
 
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.MetaMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.MetaScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.AggregateNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.DeviceMergeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ExchangeNode;
@@ -89,6 +91,14 @@ public abstract class PlanVisitor<R, C> {
   }
 
   public R visitExchange(ExchangeNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitMetaMerge(MetaMergeNode node, C context) {
+    return visitPlan(node, context);
+  };
+
+  public R visitMetaScan(MetaScanNode node, C context) {
     return visitPlan(node, context);
   }
 }

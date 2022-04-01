@@ -20,7 +20,7 @@ package org.apache.iotdb.commons.partition;
 
 import java.util.Objects;
 
-public class SchemaRegionId {
+public class SchemaRegionId implements Comparable<SchemaRegionId>{
   private int schemaRegionId;
 
   public SchemaRegionId(int schemaRegionId) {
@@ -37,8 +37,12 @@ public class SchemaRegionId {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     SchemaRegionId that = (SchemaRegionId) o;
     return schemaRegionId == that.schemaRegionId;
   }
@@ -48,7 +52,13 @@ public class SchemaRegionId {
     return Objects.hash(schemaRegionId);
   }
 
+  @Override
   public String toString() {
     return String.format("SchemaRegion-%d", schemaRegionId);
+  }
+
+  @Override
+  public int compareTo(SchemaRegionId o) {
+    return this.getSchemaRegionId() - o.getSchemaRegionId();
   }
 }

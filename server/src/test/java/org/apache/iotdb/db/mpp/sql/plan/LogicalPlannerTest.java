@@ -29,8 +29,8 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeIdAllocator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AlterTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.ShowDevicesNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.ShowTimeSeriesNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.DevicesMetaScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesMetaScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement;
@@ -360,7 +360,7 @@ public class LogicalPlannerTest {
         "SHOW LATEST TIMESERIES root.ln.wf01.wt01.status WHERE tagK = tagV limit 20 offset 10";
 
     try {
-      ShowTimeSeriesNode showTimeSeriesNode = (ShowTimeSeriesNode) parseSQLToPlanNode(sql);
+      TimeSeriesMetaScanNode showTimeSeriesNode = (TimeSeriesMetaScanNode) parseSQLToPlanNode(sql);
       Assert.assertNotNull(showTimeSeriesNode);
       Assert.assertEquals(
           new PartialPath("root.ln.wf01.wt01.status"), showTimeSeriesNode.getPath());
@@ -374,7 +374,7 @@ public class LogicalPlannerTest {
       Assert.assertTrue(showTimeSeriesNode.isHasLimit());
       sql =
           "SHOW LATEST TIMESERIES root.ln.wf01.wt01.status WHERE tagK contains tagV limit 20 offset 10";
-      showTimeSeriesNode = (ShowTimeSeriesNode) parseSQLToPlanNode(sql);
+      showTimeSeriesNode = (TimeSeriesMetaScanNode) parseSQLToPlanNode(sql);
       Assert.assertTrue(showTimeSeriesNode.isContains());
     } catch (Exception e) {
       e.printStackTrace();
@@ -386,7 +386,7 @@ public class LogicalPlannerTest {
   public void testDevicesNodeTests() {
     String sql = "SHOW DEVICES root.ln.wf01.wt01 WITH STORAGE GROUP limit 20 offset 10";
     try {
-      ShowDevicesNode showDevicesNode = (ShowDevicesNode) parseSQLToPlanNode(sql);
+      DevicesMetaScanNode showDevicesNode = (DevicesMetaScanNode) parseSQLToPlanNode(sql);
       Assert.assertNotNull(showDevicesNode);
       Assert.assertEquals(new PartialPath("root.ln.wf01.wt01"), showDevicesNode.getPath());
       Assert.assertTrue(showDevicesNode.isHasSgCol());

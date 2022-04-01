@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node;
 
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.ShowDevicesNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.DevicesMetaScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.AggregateNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.DeviceMergeNode;
@@ -115,7 +115,7 @@ public enum PlanNodeType {
       case 17:
         return InsertMultiTabletNode.deserialize(buffer);
       case 18:
-        return ShowDevicesNode.deserialize(buffer);
+        return DevicesMetaScanNode.deserialize(buffer);
       case 19:
         return CreateTimeSeriesNode.deserialize(buffer);
       case 20:

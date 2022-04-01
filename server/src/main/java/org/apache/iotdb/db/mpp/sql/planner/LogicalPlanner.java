@@ -18,6 +18,13 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
@@ -25,16 +32,28 @@ import org.apache.iotdb.db.mpp.sql.optimization.PlanOptimizer;
 import org.apache.iotdb.db.mpp.sql.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeIdAllocator;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.ShowDevicesNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.ShowTimeSeriesNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.DevicesMetaScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.MetaMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesMetaScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AlterTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateTimeSeriesNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.*;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.DeviceMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.FilterNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.FilterNullNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.GroupByLevelNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.LimitNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.OffsetNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.SortNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SourceNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
-import org.apache.iotdb.db.mpp.sql.statement.component.*;
+import org.apache.iotdb.db.mpp.sql.statement.component.FillComponent;
+import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullComponent;
+import org.apache.iotdb.db.mpp.sql.statement.component.GroupByLevelComponent;
+import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
+import org.apache.iotdb.db.mpp.sql.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.sql.statement.crud.AggregationQueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.FillQueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertTabletStatement;
@@ -44,11 +63,7 @@ import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesSta
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowTimeSeriesStatement;
-import org.apache.iotdb.db.mpp.sql.tree.StatementVisitor;
 import org.apache.iotdb.db.query.expression.Expression;
-
-import java.util.*;
-import java.util.stream.Collectors;
 
 /** Generate a logical plan for the statement. */
 public class LogicalPlanner {
@@ -292,26 +307,44 @@ public class LogicalPlanner {
     @Override
     public PlanNode visitShowTimeSeries(
         ShowTimeSeriesStatement showTimeSeriesStatement, MPPQueryContext context) {
-      return new ShowTimeSeriesNode(
-          PlanNodeIdAllocator.generateId(),
-          showTimeSeriesStatement.getPathPattern(),
-          showTimeSeriesStatement.getKey(),
-          showTimeSeriesStatement.getValue(),
-          showTimeSeriesStatement.getLimit(),
-          showTimeSeriesStatement.getOffset(),
-          showTimeSeriesStatement.isOrderByHeat(),
-          showTimeSeriesStatement.isContains());
+      PlanBuilder planBuilder =
+          new PlanBuilder(
+              new TimeSeriesMetaScanNode(
+                  PlanNodeIdAllocator.generateId(),
+                  showTimeSeriesStatement.getPathPattern(),
+                  showTimeSeriesStatement.getKey(),
+                  showTimeSeriesStatement.getValue(),
+                  showTimeSeriesStatement.getLimit(),
+                  showTimeSeriesStatement.getOffset(),
+                  showTimeSeriesStatement.isOrderByHeat(),
+                  showTimeSeriesStatement.isContains()));
+      MetaMergeNode metaMergeNode =
+          new MetaMergeNode(
+              PlanNodeIdAllocator.generateId(), showTimeSeriesStatement.isOrderByHeat());
+      metaMergeNode.addChild(planBuilder.getRoot());
+      planBuilder = planBuilder.withNewRoot(metaMergeNode);
+      planBuilder = planOffset(planBuilder, showTimeSeriesStatement.getOffset());
+      planBuilder = planLimit(planBuilder, showTimeSeriesStatement.getLimit());
+      return planBuilder.getRoot();
     }
 
     @Override
     public PlanNode visitShowDevices(
         ShowDevicesStatement showDevicesStatement, MPPQueryContext context) {
-      return new ShowDevicesNode(
-          PlanNodeIdAllocator.generateId(),
-          showDevicesStatement.getPathPattern(),
-          showDevicesStatement.getLimit(),
-          showDevicesStatement.getOffset(),
-          showDevicesStatement.hasSgCol());
+      PlanBuilder planBuilder =
+          new PlanBuilder(
+              new DevicesMetaScanNode(
+                  PlanNodeIdAllocator.generateId(),
+                  showDevicesStatement.getPathPattern(),
+                  showDevicesStatement.getLimit(),
+                  showDevicesStatement.getOffset(),
+                  showDevicesStatement.hasSgCol()));
+      MetaMergeNode metaMergeNode = new MetaMergeNode(PlanNodeIdAllocator.generateId());
+      metaMergeNode.addChild(planBuilder.getRoot());
+      planBuilder = planBuilder.withNewRoot(metaMergeNode);
+      planBuilder = planOffset(planBuilder, showDevicesStatement.getOffset());
+      planBuilder = planLimit(planBuilder, showDevicesStatement.getLimit());
+      return planBuilder.getRoot();
     }
   }
 

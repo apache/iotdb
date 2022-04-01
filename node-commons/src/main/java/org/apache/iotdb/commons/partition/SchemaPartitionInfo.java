@@ -23,14 +23,14 @@ import java.util.Map;
 public class SchemaPartitionInfo {
 
   // Map<StorageGroup, Map<DeviceGroupID, SchemaRegionPlaceInfo>>
-  private Map<String, Map<DeviceGroupId, SchemaRegionReplicaSet>> schemaPartitionInfo;
+  private Map<String, Map<DeviceGroupId, SchemaRegionReplicaSet>> schemaPartitionMap;
 
-  public Map<String, Map<DeviceGroupId, SchemaRegionReplicaSet>> getSchemaPartitionInfo() {
-    return schemaPartitionInfo;
+  public Map<String, Map<DeviceGroupId, SchemaRegionReplicaSet>> getSchemaPartitionMap() {
+    return schemaPartitionMap;
   }
 
-  public void setSchemaPartitionInfo(
-      Map<String, Map<DeviceGroupId, SchemaRegionReplicaSet>> schemaPartitionInfo) {
-    this.schemaPartitionInfo = schemaPartitionInfo;
+  public void setSchemaPartitionMap(
+      Map<String, Map<DeviceGroupId, SchemaRegionReplicaSet>> schemaPartitionMap) {
+    this.schemaPartitionMap = schemaPartitionMap;
   }
 }

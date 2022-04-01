@@ -6,7 +6,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 
 import java.util.List;
 
-public class ShowTimeSeriesNode extends ShowNode {
+public class TimeSeriesMetaScanNode extends MetaScanNode {
 
   private String key;
   private String value;
@@ -15,7 +15,7 @@ public class ShowTimeSeriesNode extends ShowNode {
   // if is true, the result will be sorted according to the inserting frequency of the timeseries
   private boolean orderByHeat;
 
-  public ShowTimeSeriesNode(
+  public TimeSeriesMetaScanNode(
       PlanNodeId id,
       PartialPath partialPath,
       String key,
@@ -72,7 +72,9 @@ public class ShowTimeSeriesNode extends ShowNode {
   }
 
   @Override
-  public void addChildren(PlanNode child) {}
+  public void addChild(PlanNode child) {
+
+  }
 
   @Override
   public PlanNode clone() {
@@ -82,6 +84,11 @@ public class ShowTimeSeriesNode extends ShowNode {
   @Override
   public PlanNode cloneWithChildren(List<PlanNode> children) {
     return null;
+  }
+
+  @Override
+  public int allowedChildCount() {
+    return NO_CHILD_ALLOWED;
   }
 
   @Override
