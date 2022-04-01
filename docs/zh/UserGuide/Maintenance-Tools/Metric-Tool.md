@@ -110,25 +110,41 @@ IoTDB对外提供JMX和Prometheus格式的监控指标，对于JMX，可以通�
 | data_written            | name="compaction", <br />type="aligned/not-aligned/total"               | important          | 合并文件时写入量                  | data_written{name="compaction",type="total",} 10240  |
 | data_read               | name="compaction"                                                       | important          | 合并文件时的读取量                 | data_read={name="compaction",} 10240                 |
 
-#### 4.3.5. 内存占用
+#### 4.3.5. CPU
+| Metric | Tag                                     | level | 说明                                              | 示例                              |
+| ------ | --------------------------------------- | ------ | -------------------------------------------------- | --------------------------------- |
+| process_cpu_load | name="process" | important | process当前CPU占用率（%） | process_cpu_load{name="process",} 5.0 |
+| process_cpu_time | name="process" | important | process累计占用CPU时间（ns) | process_cpu_time{name="process",} 3.265625E9 |
+| sys_cpu_load | name="system" | important | system当前CPU占用率（%） | sys_cpu_load{name="system",} 15.0 |
+| sys_cpu_cores | name="system"  | important | jvm可用处理器数 | sys_cpu_cores{name="system",} 16.0 |
 
-| Metric | Tag                                     | 说明   | level                                              | 示例                              |
+#### 4.3.6. 内存占用
+
+| Metric | Tag                                     | level | 说明                                              | 示例                              |
 | ------ | --------------------------------------- | ------ | -------------------------------------------------- | --------------------------------- |
 | mem    | name="chunkMetaData/storageGroup/mtree" | important | chunkMetaData/storageGroup/mtree占用的内存（byte） | mem{name="chunkMetaData",} 2050.0 |
+| process_max_mem | name="process" | important | process最大可用内存 | process_max_mem{name="process",} 3.545759744E9 |
+| process_total_mem | name="process" | important | process当前占用内存 | process_total_mem{name="process",} 2.39599616E8 |
+| process_free_mem | name="process" | important | process当前剩余可用内存 | process_free_mem{name="process",} 1.94035584E8 |
+| sys_total_physical_memory_size | name="system" | important | system最大物理内存 | sys_total_physical_memory_size{name="system",} 1.5950999552E10 |
+| sys_free_physical_memory_size | name="system" | important | system当前剩余可用内存 | sys_free_physical_memory_size{name="system",} 4.532396032E9 |
+| sys_total_swap_space_size | name="system" | important | system交换区最大空间 | sys_total_swap_space_size{name="system",} 2.1051273216E10 |
+| sys_free_swap_space_size | name="system" | important | system交换区剩余可用空间 | sys_free_swap_space_size{name="system",} 2.931576832E9 |
+| sys_committed_vm_size | name="system" | important | system保证可用于正在运行的进程的虚拟内存量 | sys_committed_vm_size{name="system",} 5.04344576E8 |
 
-#### 4.3.6. 缓存命中率
+#### 4.3.7. 缓存命中率
 
 | Metric    | Tag                                     | level  | 说明                                             | 示例                        |
 | --------- | --------------------------------------- | ------ | ------------------------------------------------ | --------------------------- |
 | cache_hit | name="chunk/timeSeriesMeta/bloomFilter" | important | chunk/timeSeriesMeta缓存命中率,bloomFilter拦截率 | cache_hit{name="chunk",} 80 |
 
-#### 4.3.7. 业务数据
+#### 4.3.8. 业务数据
 
 | Metric   | Tag                                   | level  | 说明                                         | 示例                             |
 | -------- | ------------------------------------- | ------ | -------------------------------------------- | -------------------------------- |
 | quantity | name="timeSeries/storageGroup/device" | important | 当前时间timeSeries/storageGroup/device的数量 | quantity{name="timeSeries",} 1.0 |
 
-#### 4.3.8. 集群
+#### 4.3.9. 集群
 
 | Metric                    | Tag                             | level  | 说明                                                          | 示例                                                                         |
 | ------------------------- | ------------------------------- | ------ | ------------------------------------------------------------- | ---------------------------------------------------------------------------- |
