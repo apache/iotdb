@@ -22,7 +22,6 @@ go get -u github.com/grafana/grafana-plugin-sdk-go
 go mod tidy
 check_results=`go env |grep GOPATH= | sed 's/\"//g'`
 go_path=${check_results/GOPATH=/}
-cd $go_path/pkg/mod/github.com/
-chmod 755 ./magefile/*
-go run ./magefile/mage@v1.13.0/bootstrap.go
+chmod 755 $go_path/pkg/mod/github.com/magefile/*
+go run $go_path/pkg/mod/github.com/magefile/mage@v1.13.0/bootstrap.go
 $go_path/bin/mage -v
