@@ -24,7 +24,7 @@ import org.apache.iotdb.confignode.rpc.thrift.DataNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.SetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.StorageGroupMessage;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.EndPoint;
+import org.apache.iotdb.service.rpc.thrift.TEndpoint;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import org.apache.thrift.TException;
@@ -44,9 +44,9 @@ public class ConfigNodeRPCServerProcessorTest {
     ConfigNodeRPCServerProcessor processor = new ConfigNodeRPCServerProcessor();
 
     DataNodeRegisterResp resp;
-    DataNodeRegisterReq registerReq0 = new DataNodeRegisterReq(new EndPoint("0.0.0.0", 6667));
-    DataNodeRegisterReq registerReq1 = new DataNodeRegisterReq(new EndPoint("0.0.0.0", 6668));
-    DataNodeRegisterReq registerReq2 = new DataNodeRegisterReq(new EndPoint("0.0.0.0", 6669));
+    DataNodeRegisterReq registerReq0 = new DataNodeRegisterReq(new TEndpoint("0.0.0.0", 6667));
+    DataNodeRegisterReq registerReq1 = new DataNodeRegisterReq(new TEndpoint("0.0.0.0", 6668));
+    DataNodeRegisterReq registerReq2 = new DataNodeRegisterReq(new TEndpoint("0.0.0.0", 6669));
 
     // test success register
     resp = processor.registerDataNode(registerReq0);
@@ -94,9 +94,9 @@ public class ConfigNodeRPCServerProcessorTest {
     Assert.assertEquals("DataNode is not enough, please register more.", status.getMessage());
 
     // register DataNodes
-    DataNodeRegisterReq registerReq0 = new DataNodeRegisterReq(new EndPoint("0.0.0.0", 6667));
-    DataNodeRegisterReq registerReq1 = new DataNodeRegisterReq(new EndPoint("0.0.0.0", 6668));
-    DataNodeRegisterReq registerReq2 = new DataNodeRegisterReq(new EndPoint("0.0.0.0", 6669));
+    DataNodeRegisterReq registerReq0 = new DataNodeRegisterReq(new TEndpoint("0.0.0.0", 6667));
+    DataNodeRegisterReq registerReq1 = new DataNodeRegisterReq(new TEndpoint("0.0.0.0", 6668));
+    DataNodeRegisterReq registerReq2 = new DataNodeRegisterReq(new TEndpoint("0.0.0.0", 6669));
     status = processor.registerDataNode(registerReq0).getRegisterResult();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     status = processor.registerDataNode(registerReq1).getRegisterResult();

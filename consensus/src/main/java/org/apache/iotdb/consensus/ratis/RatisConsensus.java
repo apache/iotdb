@@ -20,9 +20,9 @@
 package org.apache.iotdb.consensus.ratis;
 
 import org.apache.iotdb.commons.partition.ConsensusGroupId;
+import org.apache.iotdb.commons.partition.Endpoint;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.DataSet;
-import org.apache.iotdb.consensus.common.Endpoint;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
@@ -34,7 +34,7 @@ import org.apache.iotdb.consensus.exception.PeerAlreadyInConsensusGroupException
 import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
 import org.apache.iotdb.consensus.exception.RatisRequestFailedException;
 import org.apache.iotdb.consensus.statemachine.IStateMachine;
-import org.apache.iotdb.service.rpc.thrift.EndPoint;
+import org.apache.iotdb.service.rpc.thrift.TEndpoint;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import org.apache.ratis.client.RaftClient;
@@ -185,8 +185,9 @@ public class RatisConsensus implements IConsensus {
     }
 
     if (suggestedLeader != null) {
-      Endpoint leaderEndPoint = Utils.getEndPoint(suggestedLeader);
-      writeResult.setRedirectNode(new EndPoint(leaderEndPoint.getIp(), leaderEndPoint.getPort()));
+      Endpoint leaderTEndpoint = Utils.getEndpoint(suggestedLeader);
+      writeResult.setRedirectNode(
+          new TEndpoint(leaderTEndpoint.getIp(), leaderTEndpoint.getPort()));
     }
 
     return ConsensusWriteResponse.newBuilder().setStatus(writeResult).build();
@@ -421,7 +422,7 @@ public class RatisConsensus implements IConsensus {
         newConfiguration.add(newRaftLeader);
       } else {
         // degrade every other peer to default priority
-        newConfiguration.add(Utils.toRaftPeer(Utils.getEndPoint(raftPeer), DEFAULT_PRIORITY));
+        newConfiguration.add(Utils.toRaftPeer(Utils.getEndpoint(raftPeer), DEFAULT_PRIORITY));
       }
     }
 

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.confignode.service.thrift.server;
 
+import org.apache.iotdb.commons.partition.Endpoint;
 import org.apache.iotdb.confignode.consensus.response.DataNodesInfoDataSet;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaDataSet;
 import org.apache.iotdb.confignode.manager.ConfigManager;
@@ -45,11 +46,10 @@ import org.apache.iotdb.confignode.rpc.thrift.SchemaPartitionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.SchemaPartitionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.SetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.StorageGroupMessage;
-import org.apache.iotdb.consensus.common.Endpoint;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.EndPoint;
+import org.apache.iotdb.service.rpc.thrift.TEndpoint;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import org.apache.thrift.TException;
@@ -106,7 +106,7 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
             info.getDataNodeID(),
             new DataNodeMessage(
                 info.getDataNodeID(),
-                new EndPoint(info.getEndPoint().getIp(), info.getEndPoint().getPort())));
+                new TEndpoint(info.getEndPoint().getIp(), info.getEndPoint().getPort())));
       }
       return result;
     }

@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.mpp.sql.analyze;
 
 import org.apache.iotdb.commons.partition.*;
-import org.apache.iotdb.service.rpc.thrift.EndPoint;
 
 import java.util.*;
 
@@ -37,41 +36,41 @@ public class FakePartitionFetcherImpl implements IPartitionFetcher {
     String device3 = "root.sg.d333";
 
     DataPartitionInfo dataPartitionInfo = new DataPartitionInfo();
-    Map<String, Map<DeviceGroupId, Map<TimePartitionId, List<DataRegionReplicaSet>>>>
-        dataPartitionMap = new HashMap<>();
-    Map<DeviceGroupId, Map<TimePartitionId, List<DataRegionReplicaSet>>> sgPartitionMap =
+    Map<String, Map<DeviceGroupId, Map<TimePartitionId, List<RegionReplicaSet>>>> dataPartitionMap =
+        new HashMap<>();
+    Map<DeviceGroupId, Map<TimePartitionId, List<RegionReplicaSet>>> sgPartitionMap =
         new HashMap<>();
 
-    List<DataRegionReplicaSet> d1DataRegions = new ArrayList<>();
+    List<RegionReplicaSet> d1DataRegions = new ArrayList<>();
     d1DataRegions.add(
-        new DataRegionReplicaSet(
-            new DataRegionId(1),
-            Arrays.asList(new EndPoint("192.0.1.1", 9000), new EndPoint("192.0.1.2", 9000))));
+        new RegionReplicaSet(
+            new ConsensusGroupId(GroupType.DataRegion, 1),
+            Arrays.asList(new Endpoint("192.0.1.1", 9000), new Endpoint("192.0.1.2", 9000))));
     d1DataRegions.add(
-        new DataRegionReplicaSet(
-            new DataRegionId(2),
-            Arrays.asList(new EndPoint("192.0.2.1", 9000), new EndPoint("192.0.2.2", 9000))));
-    Map<TimePartitionId, List<DataRegionReplicaSet>> d1DataRegionMap = new HashMap<>();
+        new RegionReplicaSet(
+            new ConsensusGroupId(GroupType.DataRegion, 2),
+            Arrays.asList(new Endpoint("192.0.2.1", 9000), new Endpoint("192.0.2.2", 9000))));
+    Map<TimePartitionId, List<RegionReplicaSet>> d1DataRegionMap = new HashMap<>();
     d1DataRegionMap.put(new TimePartitionId(), d1DataRegions);
 
-    List<DataRegionReplicaSet> d2DataRegions = new ArrayList<>();
+    List<RegionReplicaSet> d2DataRegions = new ArrayList<>();
     d2DataRegions.add(
-        new DataRegionReplicaSet(
-            new DataRegionId(3),
-            Arrays.asList(new EndPoint("192.0.3.1", 9000), new EndPoint("192.0.3.2", 9000))));
-    Map<TimePartitionId, List<DataRegionReplicaSet>> d2DataRegionMap = new HashMap<>();
+        new RegionReplicaSet(
+            new ConsensusGroupId(GroupType.DataRegion, 3),
+            Arrays.asList(new Endpoint("192.0.3.1", 9000), new Endpoint("192.0.3.2", 9000))));
+    Map<TimePartitionId, List<RegionReplicaSet>> d2DataRegionMap = new HashMap<>();
     d2DataRegionMap.put(new TimePartitionId(), d2DataRegions);
 
-    List<DataRegionReplicaSet> d3DataRegions = new ArrayList<>();
+    List<RegionReplicaSet> d3DataRegions = new ArrayList<>();
     d3DataRegions.add(
-        new DataRegionReplicaSet(
-            new DataRegionId(1),
-            Arrays.asList(new EndPoint("192.0.1.1", 9000), new EndPoint("192.0.1.2", 9000))));
+        new RegionReplicaSet(
+            new ConsensusGroupId(GroupType.DataRegion, 1),
+            Arrays.asList(new Endpoint("192.0.1.1", 9000), new Endpoint("192.0.1.2", 9000))));
     d3DataRegions.add(
-        new DataRegionReplicaSet(
-            new DataRegionId(4),
-            Arrays.asList(new EndPoint("192.0.4.1", 9000), new EndPoint("192.0.4.2", 9000))));
-    Map<TimePartitionId, List<DataRegionReplicaSet>> d3DataRegionMap = new HashMap<>();
+        new RegionReplicaSet(
+            new ConsensusGroupId(GroupType.DataRegion, 4),
+            Arrays.asList(new Endpoint("192.0.4.1", 9000), new Endpoint("192.0.4.2", 9000))));
+    Map<TimePartitionId, List<RegionReplicaSet>> d3DataRegionMap = new HashMap<>();
     d3DataRegionMap.put(new TimePartitionId(), d3DataRegions);
 
     sgPartitionMap.put(new DeviceGroupId(device1.length()), d1DataRegionMap);

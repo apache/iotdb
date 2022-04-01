@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.source;
 
-import org.apache.iotdb.commons.partition.DataRegionReplicaSet;
+import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
@@ -70,17 +70,16 @@ public class SeriesScanNode extends SourceNode {
   private String columnName;
 
   // The id of DataRegion where the node will run
-  private DataRegionReplicaSet dataRegionReplicaSet;
+  private RegionReplicaSet regionReplicaSet;
 
   public SeriesScanNode(PlanNodeId id, PartialPath seriesPath) {
     super(id);
     this.seriesPath = seriesPath;
   }
 
-  public SeriesScanNode(
-      PlanNodeId id, PartialPath seriesPath, DataRegionReplicaSet dataRegionReplicaSet) {
+  public SeriesScanNode(PlanNodeId id, PartialPath seriesPath, RegionReplicaSet regionReplicaSet) {
     this(id, seriesPath);
-    this.dataRegionReplicaSet = dataRegionReplicaSet;
+    this.regionReplicaSet = regionReplicaSet;
   }
 
   public void setTimeFilter(Filter timeFilter) {
@@ -98,12 +97,12 @@ public class SeriesScanNode extends SourceNode {
   public void open() throws Exception {}
 
   @Override
-  public DataRegionReplicaSet getDataRegionReplicaSet() {
-    return dataRegionReplicaSet;
+  public RegionReplicaSet getDataRegionReplicaSet() {
+    return regionReplicaSet;
   }
 
-  public void setDataRegionReplicaSet(DataRegionReplicaSet dataRegion) {
-    this.dataRegionReplicaSet = dataRegion;
+  public void setDataRegionReplicaSet(RegionReplicaSet dataRegion) {
+    this.regionReplicaSet = dataRegion;
   }
 
   @Override
@@ -146,7 +145,7 @@ public class SeriesScanNode extends SourceNode {
 
   @Override
   public PlanNode clone() {
-    return new SeriesScanNode(getId(), getSeriesPath(), this.dataRegionReplicaSet);
+    return new SeriesScanNode(getId(), getSeriesPath(), this.regionReplicaSet);
   }
 
   @Override

@@ -26,21 +26,21 @@ import java.util.stream.Collectors;
 public class DataPartitionInfo {
 
   // Map<StorageGroup, Map<DeviceGroupID, Map<TimePartitionId, List<DataRegionPlaceInfo>>>>
-  private Map<String, Map<DeviceGroupId, Map<TimePartitionId, List<DataRegionReplicaSet>>>>
+  private Map<String, Map<DeviceGroupId, Map<TimePartitionId, List<RegionReplicaSet>>>>
       dataPartitionMap;
 
-  public Map<String, Map<DeviceGroupId, Map<TimePartitionId, List<DataRegionReplicaSet>>>>
+  public Map<String, Map<DeviceGroupId, Map<TimePartitionId, List<RegionReplicaSet>>>>
       getDataPartitionMap() {
     return dataPartitionMap;
   }
 
   public void setDataPartitionMap(
-      Map<String, Map<DeviceGroupId, Map<TimePartitionId, List<DataRegionReplicaSet>>>>
+      Map<String, Map<DeviceGroupId, Map<TimePartitionId, List<RegionReplicaSet>>>>
           dataPartitionMap) {
     this.dataPartitionMap = dataPartitionMap;
   }
 
-  public List<DataRegionReplicaSet> getDataRegionReplicaSet(
+  public List<RegionReplicaSet> getDataRegionReplicaSet(
       String deviceName, List<TimePartitionId> timePartitionIdList) {
     String storageGroup = getStorageGroupByDevice(deviceName);
     DeviceGroupId deviceGroupId = calculateDeviceGroupId(deviceName);

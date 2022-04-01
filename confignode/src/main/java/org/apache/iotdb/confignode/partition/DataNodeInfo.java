@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.confignode.partition;
 
-import org.apache.iotdb.consensus.common.Endpoint;
+import org.apache.iotdb.commons.partition.Endpoint;
 
 import java.util.ArrayList;
 import java.util.List;

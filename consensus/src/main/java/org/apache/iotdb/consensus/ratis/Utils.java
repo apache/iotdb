@@ -19,8 +19,8 @@
 package org.apache.iotdb.consensus.ratis;
 
 import org.apache.iotdb.commons.partition.ConsensusGroupId;
+import org.apache.iotdb.commons.partition.Endpoint;
 import org.apache.iotdb.commons.partition.GroupType;
-import org.apache.iotdb.consensus.common.Endpoint;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
@@ -83,7 +83,7 @@ public class Utils {
     return toRaftPeer(peer.getEndpoint(), priority);
   }
 
-  public static Endpoint getEndPoint(RaftPeer raftPeer) {
+  public static Endpoint getEndpoint(RaftPeer raftPeer) {
     String address = raftPeer.getAddress(); // ip:port
     String[] split = address.split(":");
     return new Endpoint(split[0], Integer.parseInt(split[1]));

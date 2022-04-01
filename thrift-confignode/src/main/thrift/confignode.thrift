@@ -22,7 +22,7 @@ namespace java org.apache.iotdb.confignode.rpc.thrift
 namespace py iotdb.thrift.confignode
 
 struct DataNodeRegisterReq {
-    1: required rpc.EndPoint endPoint
+    1: required rpc.TEndpoint endPoint
 }
 
 struct DataNodeRegisterResp {
@@ -32,7 +32,7 @@ struct DataNodeRegisterResp {
 
 struct DataNodeMessage {
   1: required i32 dataNodeID
-  2: required rpc.EndPoint endPoint
+  2: required rpc.TEndpoint endPoint
 }
 
 struct SetStorageGroupReq {
@@ -90,7 +90,7 @@ struct FetchPartitionReq {
 
 struct RegionInfo {
     1: required i32 regionId
-    2: required list<rpc.EndPoint> endPointList
+    2: required list<rpc.TEndpoint> endPointList
 }
 
 struct DataPartitionInfoResp {

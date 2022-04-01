@@ -18,10 +18,10 @@
  */
 package org.apache.iotdb.confignode.physical.sys;
 
+import org.apache.iotdb.commons.partition.Endpoint;
 import org.apache.iotdb.confignode.partition.DataNodeInfo;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
 import org.apache.iotdb.confignode.physical.PhysicalPlanType;
-import org.apache.iotdb.consensus.common.Endpoint;
 
 import java.nio.ByteBuffer;
 

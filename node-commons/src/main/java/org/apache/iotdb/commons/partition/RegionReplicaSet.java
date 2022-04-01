@@ -18,32 +18,30 @@
  */
 package org.apache.iotdb.commons.partition;
 
-import org.apache.iotdb.service.rpc.thrift.EndPoint;
-
 import java.util.List;
 
-public class DataRegionReplicaSet {
-  private DataRegionId Id;
-  private List<EndPoint> endPointList;
+public class RegionReplicaSet {
+  private ConsensusGroupId Id;
+  private List<Endpoint> endPointList;
 
-  public DataRegionReplicaSet(DataRegionId Id, List<EndPoint> endPointList) {
+  public RegionReplicaSet(ConsensusGroupId Id, List<Endpoint> endPointList) {
     this.Id = Id;
     this.endPointList = endPointList;
   }
 
-  public List<EndPoint> getEndPointList() {
+  public List<Endpoint> getEndPointList() {
     return endPointList;
   }
 
-  public void setEndPointList(List<EndPoint> endPointList) {
+  public void setEndPointList(List<Endpoint> endPointList) {
     this.endPointList = endPointList;
   }
 
-  public DataRegionId getId() {
+  public ConsensusGroupId getId() {
     return Id;
   }
 
-  public void setId(DataRegionId id) {
+  public void setId(ConsensusGroupId id) {
     this.Id = id;
   }
 
@@ -56,6 +54,6 @@ public class DataRegionReplicaSet {
   }
 
   public boolean equals(Object obj) {
-    return obj instanceof DataRegionReplicaSet && obj.toString().equals(toString());
+    return obj instanceof RegionReplicaSet && obj.toString().equals(toString());
   }
 }

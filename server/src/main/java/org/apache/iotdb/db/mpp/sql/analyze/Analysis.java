@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.mpp.sql.analyze;
 
 import org.apache.iotdb.commons.partition.DataPartitionInfo;
-import org.apache.iotdb.commons.partition.DataRegionReplicaSet;
+import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.commons.partition.SchemaPartitionInfo;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
@@ -53,7 +53,7 @@ public class Analysis {
 
   private Map<String, Set<PartialPath>> deviceIdToPathsMap;
 
-  public List<DataRegionReplicaSet> getPartitionInfo(PartialPath seriesPath, Filter timefilter) {
+  public List<RegionReplicaSet> getPartitionInfo(PartialPath seriesPath, Filter timefilter) {
     // TODO: (xingtanzjr) implement the calculation of timePartitionIdList
     return dataPartitionInfo.getDataRegionReplicaSet(seriesPath.getDevice(), null);
   }

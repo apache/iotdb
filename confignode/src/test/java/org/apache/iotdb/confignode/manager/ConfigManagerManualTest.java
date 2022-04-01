@@ -24,7 +24,7 @@ import org.apache.iotdb.confignode.rpc.thrift.DataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.DataNodeRegisterResp;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.EndPoint;
+import org.apache.iotdb.service.rpc.thrift.TEndpoint;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -74,7 +74,7 @@ public class ConfigManagerManualTest {
 
   private void registerDataNodes() throws TException {
     for (int i = 0; i < 3; i++) {
-      DataNodeRegisterReq req = new DataNodeRegisterReq(new EndPoint("0.0.0.0", 6667 + i));
+      DataNodeRegisterReq req = new DataNodeRegisterReq(new TEndpoint("0.0.0.0", 6667 + i));
       DataNodeRegisterResp resp = clients[0].registerDataNode(req);
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), resp.registerResult.getCode());
@@ -114,7 +114,7 @@ public class ConfigManagerManualTest {
     }
 
     DataNodeRegisterResp resp =
-        clients[1].registerDataNode(new DataNodeRegisterReq(new EndPoint("0.0.0.0", 6670)));
+        clients[1].registerDataNode(new DataNodeRegisterReq(new TEndpoint("0.0.0.0", 6670)));
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), resp.registerResult.getCode());
     Assert.assertEquals(3, resp.getDataNodeID());
 

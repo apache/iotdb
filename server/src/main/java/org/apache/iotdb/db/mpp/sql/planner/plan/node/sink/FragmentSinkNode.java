@@ -18,11 +18,11 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.sink;
 
+import org.apache.iotdb.commons.partition.Endpoint;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ExchangeNode;
-import org.apache.iotdb.service.rpc.thrift.EndPoint;
 
 import com.google.common.collect.ImmutableList;
 
@@ -33,7 +33,7 @@ public class FragmentSinkNode extends SinkNode {
   private PlanNode child;
   private ExchangeNode downStreamNode;
 
-  private EndPoint downStreamEndpoint;
+  private Endpoint downStreamEndpoint;
   private FragmentInstanceId downStreamInstanceId;
   private PlanNodeId downStreamPlanNodeId;
 
@@ -111,13 +111,13 @@ public class FragmentSinkNode extends SinkNode {
     this.downStreamNode = downStreamNode;
   }
 
-  public void setDownStream(EndPoint endPoint, FragmentInstanceId instanceId, PlanNodeId nodeId) {
+  public void setDownStream(Endpoint endPoint, FragmentInstanceId instanceId, PlanNodeId nodeId) {
     this.downStreamEndpoint = endPoint;
     this.downStreamInstanceId = instanceId;
     this.downStreamPlanNodeId = nodeId;
   }
 
-  public EndPoint getDownStreamEndpoint() {
+  public Endpoint getDownStreamEndpoint() {
     return downStreamEndpoint;
   }
 
