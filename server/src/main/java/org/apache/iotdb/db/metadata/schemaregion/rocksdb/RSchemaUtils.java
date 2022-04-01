@@ -74,7 +74,7 @@ import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants
 import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants.ZERO;
 
 public class RSchemaUtils {
-  public static RMNodeType[] NODE_TYPE_ARRAY = new RMNodeType[NODE_TYPE_ALIAS + 1];
+  public static final RMNodeType[] NODE_TYPE_ARRAY = new RMNodeType[NODE_TYPE_ALIAS + 1];
 
   static {
     NODE_TYPE_ARRAY[NODE_TYPE_INTERNAL] = RMNodeType.INTERNAL;
@@ -419,12 +419,10 @@ public class RSchemaUtils {
       return false;
     }
 
-    for (int i = key.length - 1, j = suffix.length - 1; i >= 0 && j >= 0; ) {
+    for (int i = key.length - 1, j = suffix.length - 1; i >= 0 && j >= 0; i--, j--) {
       if ((key[i] ^ suffix[j]) != 0) {
         return false;
       }
-      i--;
-      j--;
     }
     return true;
   }
@@ -434,12 +432,10 @@ public class RSchemaUtils {
       return false;
     }
 
-    for (int i = 0, j = 0; i < key.length && j < prefix.length; ) {
+    for (int i = 0, j = 0; i < key.length && j < prefix.length; i++, j++) {
       if ((key[i] ^ prefix[j]) != 0) {
         return false;
       }
-      i++;
-      j++;
     }
     return true;
   }

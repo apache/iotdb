@@ -723,7 +723,6 @@ public class SchemaRegion implements ISchemaRegion {
    * <p>(we develop this method as we need to get the node's lock after we get the lock.writeLock())
    *
    * @param path path
-   * @param
    */
   public IMNode getDeviceNodeWithAutoCreate(PartialPath path, boolean autoCreateSchema)
       throws IOException, MetadataException {

@@ -138,7 +138,7 @@ public class RSchemaRegion implements ISchemaRegion {
   protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   // TODO: make it configurable
-  public static int MAX_PATH_DEPTH = 10;
+  public static final int MAX_PATH_DEPTH = 10;
 
   private static final long MAX_LOCK_WAIT_TIME = 50;
 
@@ -252,7 +252,7 @@ public class RSchemaRegion implements ISchemaRegion {
   public void createTimeseries(CreateTimeSeriesPlan plan, long offset) throws MetadataException {
     try {
       if (deleteUpdateLock.readLock().tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
-        createTimeSeries(
+        createTimeseries(
             plan.getPath(),
             new MeasurementSchema(
                 plan.getPath().getMeasurement(),
@@ -299,7 +299,7 @@ public class RSchemaRegion implements ISchemaRegion {
       Map<String, String> props,
       String alias)
       throws MetadataException {
-    createTimeSeries(
+    createTimeseries(
         path,
         new MeasurementSchema(path.getMeasurement(), dataType, encoding, compressor, props),
         alias,
@@ -307,7 +307,7 @@ public class RSchemaRegion implements ISchemaRegion {
         null);
   }
 
-  protected void createTimeSeries(
+  protected void createTimeseries(
       PartialPath path,
       IMeasurementSchema schema,
       String alias,
@@ -386,7 +386,8 @@ public class RSchemaRegion implements ISchemaRegion {
             } else if (checkResult.getResult(RMNodeType.ENTITY)) {
               if ((checkResult.getValue()[1] & FLAG_IS_ALIGNED) != 0) {
                 throw new AlignedTimeseriesException(
-                    "Timeseries under this entity is aligned, please use createAlignedTimeseries or change entity.",
+                    "Timeseries under this entity is aligned, please use createAlignedTimeseries"
+                        + " or change entity.",
                     RSchemaUtils.getPathByLevelPath(levelPath));
               }
             } else {
@@ -436,7 +437,9 @@ public class RSchemaRegion implements ISchemaRegion {
       // measurement with tags will save in a separate table at the same time
       if (tags != null && !tags.isEmpty()) {
         batch.put(
-            readWriteHandler.getCFHByName(TABLE_NAME_TAGS), measurementKey, DEFAULT_NODE_VALUE);
+            readWriteHandler.getColumnFamilyHandleByName(TABLE_NAME_TAGS),
+            measurementKey,
+            DEFAULT_NODE_VALUE);
       }
 
       if (StringUtils.isNotEmpty(alias)) {
@@ -652,7 +655,8 @@ public class RSchemaRegion implements ISchemaRegion {
                     batch.delete(RSchemaUtils.toAliasNodeKey(aliasLevelPath));
                   }
                   if (deletedNode.getTags() != null && !deletedNode.getTags().isEmpty()) {
-                    batch.delete(readWriteHandler.getCFHByName(TABLE_NAME_TAGS), key);
+                    batch.delete(
+                        readWriteHandler.getColumnFamilyHandleByName(TABLE_NAME_TAGS), key);
                     // TODO: tags invert index update
                   }
                   readWriteHandler.executeBatch(batch);
@@ -918,7 +922,8 @@ public class RSchemaRegion implements ISchemaRegion {
     // todo support wildcard
     if (pathPattern.getFullPath().contains(ONE_LEVEL_PATH_WILDCARD)) {
       throw new MetadataException(
-          "Wildcards are not currently supported for this operation [COUNT NODES pathPattern].");
+          "Wildcards are not currently supported for this operation"
+              + " [COUNT NODES pathPattern].");
     }
     String innerNameByLevel =
         RSchemaUtils.getLevelPath(pathPattern.getNodes(), pathPattern.getNodeLength() - 1, level);
@@ -994,7 +999,8 @@ public class RSchemaRegion implements ISchemaRegion {
     // todo support wildcard
     if (pathPattern.getFullPath().contains(ONE_LEVEL_PATH_WILDCARD)) {
       throw new MetadataException(
-          "Wildcards are not currently supported for this operation [SHOW CHILD PATHS pathPattern].");
+          "Wildcards are not currently supported for this operation"
+              + " [SHOW CHILD PATHS pathPattern].");
     }
     Set<String> result = Collections.synchronizedSet(new HashSet<>());
     String innerNameByLevel =
@@ -1125,7 +1131,7 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   private Pair<List<ShowTimeSeriesResult>, Integer> showTimeseriesWithIndex(
-      ShowTimeSeriesPlan plan, QueryContext context) throws MetadataException {
+      ShowTimeSeriesPlan plan, QueryContext context) {
     // temporarily unsupported
     throw new UnsupportedOperationException("temporarily unsupported : showTimeseriesWithIndex");
   }
@@ -1356,7 +1362,7 @@ public class RSchemaRegion implements ISchemaRegion {
                     mNode.getTags().putAll(tagsMap);
                   }
                   batch.put(
-                      readWriteHandler.getCFHByName(TABLE_NAME_TAGS),
+                      readWriteHandler.getColumnFamilyHandleByName(TABLE_NAME_TAGS),
                       originKey,
                       DEFAULT_NODE_VALUE);
                   hasUpdate = true;
@@ -1489,7 +1495,9 @@ public class RSchemaRegion implements ISchemaRegion {
               try (WriteBatch batch = new WriteBatch()) {
                 if (!hasTags) {
                   batch.put(
-                      readWriteHandler.getCFHByName(TABLE_NAME_TAGS), key, DEFAULT_NODE_VALUE);
+                      readWriteHandler.getColumnFamilyHandleByName(TABLE_NAME_TAGS),
+                      key,
+                      DEFAULT_NODE_VALUE);
                 }
                 batch.put(key, mNode.getRocksDBValue());
                 // TODO: need application lock
@@ -1557,7 +1565,8 @@ public class RSchemaRegion implements ISchemaRegion {
               if (didAnyUpdate) {
                 try (WriteBatch batch = new WriteBatch()) {
                   if (tagLen > 0 && mNode.getTags().size() <= 0) {
-                    batch.delete(readWriteHandler.getCFHByName(TABLE_NAME_TAGS), key);
+                    batch.delete(
+                        readWriteHandler.getColumnFamilyHandleByName(TABLE_NAME_TAGS), key);
                   }
                   batch.put(key, mNode.getRocksDBValue());
                   readWriteHandler.executeBatch(batch);
@@ -1740,14 +1749,16 @@ public class RSchemaRegion implements ISchemaRegion {
       if (plan.isAligned() && !deviceMNode.getAsEntityMNode().isAligned()) {
         throw new MetadataException(
             String.format(
-                "Timeseries under path [%s] is not aligned , please set InsertPlan.isAligned() = false",
+                "Timeseries under path [%s] is not aligned , please set"
+                    + " InsertPlan.isAligned() = false",
                 plan.getDevicePath()));
       }
 
       if (!plan.isAligned() && deviceMNode.getAsEntityMNode().isAligned()) {
         throw new MetadataException(
             String.format(
-                "Timeseries under path [%s] is aligned , please set InsertPlan.isAligned() = true",
+                "Timeseries under path [%s] is aligned , please set"
+                    + " InsertPlan.isAligned() = true",
                 plan.getDevicePath()));
       }
     }
@@ -1792,7 +1803,7 @@ public class RSchemaRegion implements ISchemaRegion {
           IMeasurementSchema schema =
               new MeasurementSchema(
                   entry.getValue().getMeasurement(), plan.getDataTypes()[entry.getKey()]);
-          createTimeSeries(entry.getValue(), schema, null, null, null);
+          createTimeseries(entry.getValue(), schema, null, null, null);
         }
       }
 
