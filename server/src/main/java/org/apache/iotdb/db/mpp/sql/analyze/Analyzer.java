@@ -109,7 +109,7 @@ public class Analyzer {
         List<DataPartitionQueryParam> dataPartitionQueryParams = new ArrayList<>();
         for (String deviceId : deviceIdToPathsMap.keySet()) {
           DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
-          dataPartitionQueryParam.setDeviceId(deviceId);
+          dataPartitionQueryParam.setDevicePath(deviceId);
           dataPartitionQueryParams.add(dataPartitionQueryParam);
         }
         DataPartitionInfo dataPartitionInfo =
@@ -200,7 +200,7 @@ public class Analyzer {
         InsertTabletStatement insertTabletStatement, MPPQueryContext context) {
       // TODO(INSERT) device + time range -> PartitionInfo
       DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
-      dataPartitionQueryParam.setDeviceId(insertTabletStatement.getDevicePath().getFullPath());
+      dataPartitionQueryParam.setDevicePath(insertTabletStatement.getDevicePath().getFullPath());
       // TODO(INSERT) calculate the time partition id list
       //      dataPartitionQueryParam.setTimePartitionIdList();
       PartitionInfo partitionInfo = partitionFetcher.fetchPartitionInfo(dataPartitionQueryParam);
