@@ -25,10 +25,12 @@ import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.partition.DataNodeInfo;
 import org.apache.iotdb.confignode.partition.StorageGroupSchema;
 import org.apache.iotdb.confignode.physical.PhysicalPlanType;
+import org.apache.iotdb.confignode.physical.sys.AuthorPlan;
 import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
 import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.physical.sys.SchemaPartitionPlan;
 import org.apache.iotdb.confignode.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.confignode.rpc.thrift.AuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
 import org.apache.iotdb.confignode.rpc.thrift.DataNodeMessage;
 import org.apache.iotdb.confignode.rpc.thrift.DataNodeRegisterReq;
@@ -49,6 +51,7 @@ import org.apache.iotdb.confignode.rpc.thrift.SetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.StorageGroupMessage;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Endpoint;
+import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
@@ -150,6 +153,61 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
   @Override
   public DeviceGroupHashInfo getDeviceGroupHashInfo() throws TException {
     return configManager.getDeviceGroupHashInfo();
+  }
+
+  @Override
+  public TSStatus AuthorierNonQuerty(AuthorizerReq req) throws TException {
+    PhysicalPlanType authorType = null;
+    switch (req.getAuthorType()) {
+      case "CREATE_USER":
+        authorType = PhysicalPlanType.CREATE_USER;
+        break;
+      case "CREATE_ROLE":
+        authorType = PhysicalPlanType.CREATE_ROLE;
+        break;
+      case "DROP_USER":
+        authorType = PhysicalPlanType.DROP_USER;
+        break;
+      case "DROP_ROLE":
+        authorType = PhysicalPlanType.DROP_ROLE;
+        break;
+      case "GRANT_ROLE":
+        authorType = PhysicalPlanType.GRANT_ROLE;
+        break;
+      case "GRANT_USER":
+        authorType = PhysicalPlanType.GRANT_USER;
+        break;
+      case "GRANT_ROLE_TO_USER":
+        authorType = PhysicalPlanType.GRANT_ROLE_TO_USER;
+        break;
+      case "REVOKE_USER":
+        authorType = PhysicalPlanType.REVOKE_USER;
+        break;
+      case "REVOKE_ROLE":
+        authorType = PhysicalPlanType.REVOKE_ROLE;
+        break;
+      case "REVOKE_ROLE_FROM_USER":
+        authorType = PhysicalPlanType.REVOKE_ROLE_FROM_USER;
+        break;
+      case "UPDATE_USER":
+        authorType = PhysicalPlanType.UPDATE_USER;
+        break;
+    }
+    AuthorPlan plan = null;
+    try {
+      plan =
+          new AuthorPlan(
+              authorType,
+              req.getUserName(),
+              req.getRoleName(),
+              req.getPassword(),
+              req.getNewPassword(),
+              req.getPermissions(),
+              req.getNodeName());
+    } catch (AuthException e) {
+      LOGGER.error(e.getMessage());
+    }
+    return null;
   }
 
   @Override
