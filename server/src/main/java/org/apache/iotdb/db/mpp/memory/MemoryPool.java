@@ -22,9 +22,8 @@ package org.apache.iotdb.db.mpp.memory;
 import com.google.common.util.concurrent.AbstractFuture;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
-import org.apache.commons.lang3.Validate;
-
 import javax.annotation.Nullable;
+import org.apache.commons.lang3.Validate;
 
 import java.util.HashMap;
 import java.util.Iterator;
@@ -36,9 +35,11 @@ import java.util.Queue;
 public class MemoryPool {
 
   private static class MemoryReservationFuture<V> extends AbstractFuture<V> {
+    private final String queryId;
     private final long bytes;
 
-    private MemoryReservationFuture(long bytes) {
+    private MemoryReservationFuture(String queryId, long bytes) {
+      this.queryId = Validate.notNull(queryId, "queryId cannot be null");
       Validate.isTrue(bytes > 0L, "bytes should be greater than zero.");
       this.bytes = bytes;
     }
@@ -47,8 +48,12 @@ public class MemoryPool {
       return bytes;
     }
 
-    public static <V> MemoryReservationFuture<V> create(long bytes) {
-      return new MemoryReservationFuture<>(bytes);
+    public String getQueryId() {
+      return queryId;
+    }
+
+    public static <V> MemoryReservationFuture<V> create(String queryId, long bytes) {
+      return new MemoryReservationFuture<>(queryId, bytes);
     }
 
     @Override
@@ -93,7 +98,7 @@ public class MemoryPool {
     synchronized (this) {
       if (maxBytes - reservedBytes < bytes
           || maxBytesPerQuery - queryMemoryReservations.getOrDefault(queryId, 0L) < bytes) {
-        result = MemoryReservationFuture.create(bytes);
+        result = MemoryReservationFuture.create(queryId, bytes);
         memoryReservationFutures.add((MemoryReservationFuture<Void>) result);
       } else {
         reservedBytes += bytes;
@@ -157,12 +162,12 @@ public class MemoryPool {
 
       long bytesToReserve = future.getBytes();
       if (maxBytes - reservedBytes < bytesToReserve
-          || maxBytesPerQuery - queryMemoryReservations.getOrDefault(queryId, 0L)
+          || maxBytesPerQuery - queryMemoryReservations.getOrDefault(future.getQueryId(), 0L)
               < bytesToReserve) {
         return;
       } else {
         reservedBytes += bytesToReserve;
-        queryMemoryReservations.merge(queryId, bytesToReserve, Long::sum);
+        queryMemoryReservations.merge(future.getQueryId(), bytesToReserve, Long::sum);
         future.set(null);
         iterator.remove();
       }
