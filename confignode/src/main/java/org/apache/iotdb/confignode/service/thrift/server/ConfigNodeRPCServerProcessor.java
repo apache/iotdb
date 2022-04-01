@@ -30,7 +30,6 @@ import org.apache.iotdb.confignode.physical.sys.QueryStorageGroupSchemaPlan;
 import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
-import org.apache.iotdb.confignode.rpc.thrift.CreateRoleReq;
 import org.apache.iotdb.confignode.rpc.thrift.CreateUserReq;
 import org.apache.iotdb.confignode.rpc.thrift.DataNodeMessage;
 import org.apache.iotdb.confignode.rpc.thrift.DataNodeRegisterReq;
@@ -171,14 +170,9 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
               null,
               null);
     } catch (AuthException e) {
-      e.printStackTrace();
+      LOGGER.error("create user failed:" + e.getMessage());
     }
     return configManager.write(plan).getStatus();
-  }
-
-  @Override
-  public TSStatus createRole(CreateRoleReq req) throws TException {
-    return null;
   }
 
   @Override

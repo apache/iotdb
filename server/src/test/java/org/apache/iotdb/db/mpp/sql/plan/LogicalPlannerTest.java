@@ -28,6 +28,7 @@ import org.apache.iotdb.db.mpp.sql.planner.LogicalPlanner;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeIdAllocator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AlterTimeSeriesNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AuthorNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
@@ -350,6 +351,15 @@ public class LogicalPlannerTest {
       e.printStackTrace();
       fail();
     }
+  }
+
+  @Test
+  public void authorTest() {
+    String sql = "CREATE USER root01 'root001'";
+    AuthorNode authorNode = (AuthorNode) parseSQLToPlanNode(sql);
+    Assert.assertNotNull(authorNode);
+    Assert.assertEquals("root01", authorNode.getUserName());
+    Assert.assertEquals("root001", authorNode.getPassword());
   }
 
   private PlanNode parseSQLToPlanNode(String sql) {

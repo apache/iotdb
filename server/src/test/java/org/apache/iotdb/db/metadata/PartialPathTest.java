@@ -155,15 +155,4 @@ public class PartialPathTest {
     Assert.assertEquals("root.sg1.d1.s1", stringPaths.get(0));
     Assert.assertEquals("root.sg1.d1.s2", stringPaths.get(1));
   }
-
-  @Test
-  public void testSame() throws IllegalPathException {
-    PartialPath a = new PartialPath("root. .a.b.c.d");
-    PartialPath b = new PartialPath("root.a.b.c.d");
-    System.out.println(a.getFullPath());
-    System.out.println(b.getFullPath());
-    // System.out.println(Arrays.stream(a.getNodes()).collect(System.out::println));
-    System.out.println(a.getNodes().length);
-    System.out.println(b.getNodes().length);
-  }
 }
