@@ -19,7 +19,7 @@
 package org.apache.iotdb.confignode.physical.sys;
 
 import org.apache.iotdb.commons.partition.Endpoint;
-import org.apache.iotdb.confignode.partition.DataNodeInfo;
+import org.apache.iotdb.commons.partition.DataNodeLocation;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
 import org.apache.iotdb.confignode.physical.PhysicalPlanType;
 
@@ -27,7 +27,7 @@ import java.nio.ByteBuffer;
 
 public class RegisterDataNodePlan extends PhysicalPlan {
 
-  private DataNodeInfo info;
+  private DataNodeLocation info;
 
   public RegisterDataNodePlan() {
     super(PhysicalPlanType.RegisterDataNode);
@@ -35,10 +35,10 @@ public class RegisterDataNodePlan extends PhysicalPlan {
 
   public RegisterDataNodePlan(int dataNodeID, Endpoint endpoint) {
     this();
-    this.info = new DataNodeInfo(dataNodeID, endpoint);
+    this.info = new DataNodeLocation(dataNodeID, endpoint);
   }
 
-  public DataNodeInfo getInfo() {
+  public DataNodeLocation getInfo() {
     return info;
   }
 
@@ -60,6 +60,6 @@ public class RegisterDataNodePlan extends PhysicalPlan {
     String ip = new String(byteIp, 0, ipLength);
     int port = buffer.getInt();
 
-    this.info = new DataNodeInfo(dataNodeID, new Endpoint(ip, port));
+    this.info = new DataNodeLocation(dataNodeID, new Endpoint(ip, port));
   }
 }

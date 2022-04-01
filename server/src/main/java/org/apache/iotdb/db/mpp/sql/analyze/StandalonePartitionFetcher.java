@@ -21,7 +21,7 @@ package org.apache.iotdb.db.mpp.sql.analyze;
 import org.apache.iotdb.commons.partition.DataPartitionInfo;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.PartitionInfo;
-import org.apache.iotdb.commons.partition.SchemaPartitionInfo;
+import org.apache.iotdb.commons.partition.SchemaPartition;
 
 import java.util.List;
 
@@ -45,12 +45,12 @@ public class StandalonePartitionFetcher implements IPartitionFetcher {
   }
 
   @Override
-  public SchemaPartitionInfo fetchSchemaPartitionInfo(String devicePath) {
+  public SchemaPartition fetchSchemaPartitionInfo(String devicePath) {
     return null;
   }
 
   @Override
-  public SchemaPartitionInfo fetchSchemaPartitionInfos(List<String> devicePath) {
+  public SchemaPartition fetchSchemaPartitionInfos(List<String> devicePath) {
     return null;
   }
 

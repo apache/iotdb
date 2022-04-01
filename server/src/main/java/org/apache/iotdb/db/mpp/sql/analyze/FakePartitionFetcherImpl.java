@@ -36,9 +36,9 @@ public class FakePartitionFetcherImpl implements IPartitionFetcher {
     String device3 = "root.sg.d333";
 
     DataPartitionInfo dataPartitionInfo = new DataPartitionInfo();
-    Map<String, Map<DeviceGroupId, Map<TimePartitionId, List<RegionReplicaSet>>>> dataPartitionMap =
+    Map<String, Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>> dataPartitionMap =
         new HashMap<>();
-    Map<DeviceGroupId, Map<TimePartitionId, List<RegionReplicaSet>>> sgPartitionMap =
+    Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>> sgPartitionMap =
         new HashMap<>();
 
     List<RegionReplicaSet> d1DataRegions = new ArrayList<>();
@@ -50,16 +50,16 @@ public class FakePartitionFetcherImpl implements IPartitionFetcher {
         new RegionReplicaSet(
             new ConsensusGroupId(GroupType.DataRegion, 2),
             Arrays.asList(new Endpoint("192.0.2.1", 9000), new Endpoint("192.0.2.2", 9000))));
-    Map<TimePartitionId, List<RegionReplicaSet>> d1DataRegionMap = new HashMap<>();
-    d1DataRegionMap.put(new TimePartitionId(), d1DataRegions);
+    Map<TimePartitionSlot, List<RegionReplicaSet>> d1DataRegionMap = new HashMap<>();
+    d1DataRegionMap.put(new TimePartitionSlot(), d1DataRegions);
 
     List<RegionReplicaSet> d2DataRegions = new ArrayList<>();
     d2DataRegions.add(
         new RegionReplicaSet(
             new ConsensusGroupId(GroupType.DataRegion, 3),
             Arrays.asList(new Endpoint("192.0.3.1", 9000), new Endpoint("192.0.3.2", 9000))));
-    Map<TimePartitionId, List<RegionReplicaSet>> d2DataRegionMap = new HashMap<>();
-    d2DataRegionMap.put(new TimePartitionId(), d2DataRegions);
+    Map<TimePartitionSlot, List<RegionReplicaSet>> d2DataRegionMap = new HashMap<>();
+    d2DataRegionMap.put(new TimePartitionSlot(), d2DataRegions);
 
     List<RegionReplicaSet> d3DataRegions = new ArrayList<>();
     d3DataRegions.add(
@@ -70,12 +70,12 @@ public class FakePartitionFetcherImpl implements IPartitionFetcher {
         new RegionReplicaSet(
             new ConsensusGroupId(GroupType.DataRegion, 4),
             Arrays.asList(new Endpoint("192.0.4.1", 9000), new Endpoint("192.0.4.2", 9000))));
-    Map<TimePartitionId, List<RegionReplicaSet>> d3DataRegionMap = new HashMap<>();
-    d3DataRegionMap.put(new TimePartitionId(), d3DataRegions);
+    Map<TimePartitionSlot, List<RegionReplicaSet>> d3DataRegionMap = new HashMap<>();
+    d3DataRegionMap.put(new TimePartitionSlot(), d3DataRegions);
 
-    sgPartitionMap.put(new DeviceGroupId(device1.length()), d1DataRegionMap);
-    sgPartitionMap.put(new DeviceGroupId(device2.length()), d2DataRegionMap);
-    sgPartitionMap.put(new DeviceGroupId(device3.length()), d3DataRegionMap);
+    sgPartitionMap.put(new SeriesPartitionSlot(device1.length()), d1DataRegionMap);
+    sgPartitionMap.put(new SeriesPartitionSlot(device2.length()), d2DataRegionMap);
+    sgPartitionMap.put(new SeriesPartitionSlot(device3.length()), d3DataRegionMap);
 
     dataPartitionMap.put("root.sg", sgPartitionMap);
 
@@ -85,12 +85,12 @@ public class FakePartitionFetcherImpl implements IPartitionFetcher {
   }
 
   @Override
-  public SchemaPartitionInfo fetchSchemaPartitionInfo(String devicePath) {
+  public SchemaPartition fetchSchemaPartitionInfo(String devicePath) {
     return null;
   }
 
   @Override
-  public SchemaPartitionInfo fetchSchemaPartitionInfos(List<String> devicePath) {
+  public SchemaPartition fetchSchemaPartitionInfos(List<String> devicePath) {
     return null;
   }
 

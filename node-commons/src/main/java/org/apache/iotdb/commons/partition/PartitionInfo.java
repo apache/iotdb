@@ -21,7 +21,7 @@ package org.apache.iotdb.commons.partition;
 public class PartitionInfo {
 
   private DataPartitionInfo dataPartitionInfo;
-  private SchemaPartitionInfo schemaPartitionInfo;
+  private SchemaPartition schemaPartition;
 
   public DataPartitionInfo getDataPartitionInfo() {
     return dataPartitionInfo;
@@ -31,11 +31,11 @@ public class PartitionInfo {
     this.dataPartitionInfo = dataPartitionInfo;
   }
 
-  public SchemaPartitionInfo getSchemaPartitionInfo() {
-    return schemaPartitionInfo;
+  public SchemaPartition getSchemaPartitionInfo() {
+    return schemaPartition;
   }
 
-  public void setSchemaPartitionInfo(SchemaPartitionInfo schemaPartitionInfo) {
-    this.schemaPartitionInfo = schemaPartitionInfo;
+  public void setSchemaPartitionInfo(SchemaPartition schemaPartition) {
+    this.schemaPartition = schemaPartition;
   }
 }

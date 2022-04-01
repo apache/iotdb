@@ -16,14 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.partition;
-
-import org.apache.iotdb.commons.partition.Endpoint;
+package org.apache.iotdb.commons.partition;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class DataNodeInfo {
+public class DataNodeLocation {
 
   private int dataNodeID;
   private final Endpoint endPoint;
@@ -31,7 +29,7 @@ public class DataNodeInfo {
   private List<Integer> schemaRegionGroupIDs;
   private List<Integer> dataRegionGroupIDs;
 
-  public DataNodeInfo(int dataNodeID, Endpoint endPoint) {
+  public DataNodeLocation(int dataNodeID, Endpoint endPoint) {
     this.dataNodeID = dataNodeID;
     this.endPoint = endPoint;
   }
@@ -78,7 +76,7 @@ public class DataNodeInfo {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    return endPoint.equals(((DataNodeInfo) o).getEndPoint());
+    return endPoint.equals(((DataNodeLocation) o).getEndPoint());
   }
 
   @Override

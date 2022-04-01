@@ -18,24 +18,24 @@
  */
 package org.apache.iotdb.confignode.consensus.response;
 
-import org.apache.iotdb.confignode.partition.DataNodeInfo;
+import org.apache.iotdb.commons.partition.DataNodeLocation;
 import org.apache.iotdb.consensus.common.DataSet;
 
 import java.util.List;
 
 public class DataNodesInfoDataSet implements DataSet {
 
-  private List<DataNodeInfo> infoList;
+  private List<DataNodeLocation> infoList;
 
   public DataNodesInfoDataSet() {
     // empty constructor
   }
 
-  public void setInfoList(List<DataNodeInfo> infoList) {
+  public void setInfoList(List<DataNodeLocation> infoList) {
     this.infoList = infoList;
   }
 
-  public List<DataNodeInfo> getInfoList() {
+  public List<DataNodeLocation> getInfoList() {
     return this.infoList;
   }
 }

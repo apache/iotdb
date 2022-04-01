@@ -20,17 +20,17 @@ package org.apache.iotdb.commons.partition;
 
 import java.util.Map;
 
-public class SchemaPartitionInfo {
+public class SchemaPartition {
 
   // Map<StorageGroup, Map<DeviceGroupID, SchemaRegionPlaceInfo>>
-  private Map<String, Map<DeviceGroupId, SchemaRegionReplicaSet>> schemaPartitionInfo;
+  private Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> schemaPartition;
 
-  public Map<String, Map<DeviceGroupId, SchemaRegionReplicaSet>> getSchemaPartitionInfo() {
-    return schemaPartitionInfo;
+  public Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> getSchemaPartition() {
+    return schemaPartition;
   }
 
-  public void setSchemaPartitionInfo(
-      Map<String, Map<DeviceGroupId, SchemaRegionReplicaSet>> schemaPartitionInfo) {
-    this.schemaPartitionInfo = schemaPartitionInfo;
+  public void setSchemaPartition(
+      Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> schemaPartition) {
+    this.schemaPartition = schemaPartition;
   }
 }

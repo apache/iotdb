@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.confignode.partition;
 
+import org.apache.iotdb.commons.partition.DataNodeLocation;
 import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.response.DataNodesInfoDataSet;
@@ -57,7 +58,7 @@ public class PartitionTable {
   // TODO: Serialize and Deserialize
   private int nextDataRegionGroup = 0;
   // TODO: Serialize and Deserialize
-  private final Map<Integer, DataNodeInfo> dataNodesMap; // Map<DataNodeID, DataNodeInfo>
+  private final Map<Integer, DataNodeLocation> dataNodesMap; // Map<DataNodeID, DataNodeInfo>
 
   // TODO: Serialize and Deserialize
   private final SchemaPartitionInfo schemaPartition;
@@ -75,13 +76,13 @@ public class PartitionTable {
 
   public TSStatus registerDataNode(RegisterDataNodePlan plan) {
     TSStatus result;
-    DataNodeInfo info = plan.getInfo();
+    DataNodeLocation info = plan.getInfo();
     lock.writeLock().lock();
 
     if (dataNodesMap.containsValue(info)) {
       // TODO: optimize
       result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-      for (Map.Entry<Integer, DataNodeInfo> entry : dataNodesMap.entrySet()) {
+      for (Map.Entry<Integer, DataNodeLocation> entry : dataNodesMap.entrySet()) {
         if (entry.getValue().equals(info)) {
           result.setMessage(String.valueOf(entry.getKey()));
           break;

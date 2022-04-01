@@ -22,19 +22,19 @@ import java.util.List;
 
 public class RegionReplicaSet {
   private ConsensusGroupId Id;
-  private List<Endpoint> endPointList;
+  private List<DataNodeLocation> dataNodeList;
 
-  public RegionReplicaSet(ConsensusGroupId Id, List<Endpoint> endPointList) {
+  public RegionReplicaSet(ConsensusGroupId Id, List<DataNodeLocation> dataNodeList) {
     this.Id = Id;
-    this.endPointList = endPointList;
+    this.dataNodeList = dataNodeList;
   }
 
-  public List<Endpoint> getEndPointList() {
-    return endPointList;
+  public List<DataNodeLocation> getDataNodeList() {
+    return dataNodeList;
   }
 
-  public void setEndPointList(List<Endpoint> endPointList) {
-    this.endPointList = endPointList;
+  public void setDataNodeList(List<DataNodeLocation> dataNodeList) {
+    this.dataNodeList = dataNodeList;
   }
 
   public ConsensusGroupId getId() {
@@ -46,7 +46,7 @@ public class RegionReplicaSet {
   }
 
   public String toString() {
-    return String.format("%s:%s", Id, endPointList);
+    return String.format("%s:%s", Id, dataNodeList);
   }
 
   public int hashCode() {

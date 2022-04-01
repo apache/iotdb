@@ -21,7 +21,7 @@ package org.apache.iotdb.db.mpp.sql.analyze;
 
 import org.apache.iotdb.commons.partition.DataPartitionInfo;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
-import org.apache.iotdb.commons.partition.SchemaPartitionInfo;
+import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
@@ -47,7 +47,7 @@ public class Analysis {
 
   private DataPartitionInfo dataPartitionInfo;
 
-  private SchemaPartitionInfo schemaPartitionInfo;
+  private SchemaPartition schemaPartition;
 
   private SchemaTree schemaTree;
 
@@ -74,12 +74,12 @@ public class Analysis {
     this.dataPartitionInfo = dataPartitionInfo;
   }
 
-  public SchemaPartitionInfo getSchemaPartitionInfo() {
-    return schemaPartitionInfo;
+  public SchemaPartition getSchemaPartitionInfo() {
+    return schemaPartition;
   }
 
-  public void setSchemaPartitionInfo(SchemaPartitionInfo schemaPartitionInfo) {
-    this.schemaPartitionInfo = schemaPartitionInfo;
+  public void setSchemaPartitionInfo(SchemaPartition schemaPartition) {
+    this.schemaPartition = schemaPartition;
   }
 
   public SchemaTree getSchemaTree() {
