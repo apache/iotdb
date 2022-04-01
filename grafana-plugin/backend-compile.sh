@@ -24,5 +24,5 @@ check_results=`go env |grep GOPATH= | sed 's/\"//g'`
 go_path=${check_results/GOPATH=/}
 cd $go_path/pkg/mod/github.com/
 chmod 755 ./magefile/*
-go run ./magefile/mage@v1.12.1/bootstrap.go
+go run ./magefile/mage@v1.13.0/bootstrap.go
 $go_path/bin/mage -v
