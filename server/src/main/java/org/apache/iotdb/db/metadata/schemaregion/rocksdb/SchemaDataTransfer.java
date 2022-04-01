@@ -398,7 +398,7 @@ public class SchemaDataTransfer {
                     .forEach(
                         mNode -> {
                           try {
-                            rocksDBManager.createTimeSeries(
+                            rocksDBManager.createTimeseries(
                                 mNode.getPartialPath(),
                                 mNode.getSchema(),
                                 mNode.getAlias(),
@@ -425,7 +425,7 @@ public class SchemaDataTransfer {
           .forEach(
               mNode -> {
                 try {
-                  rocksDBManager.createTimeSeries(
+                  rocksDBManager.createTimeseries(
                       mNode.getPartialPath(), mNode.getSchema(), mNode.getAlias(), null, null);
                   createdNodeCnt.incrementAndGet();
                 } catch (Exception e) {

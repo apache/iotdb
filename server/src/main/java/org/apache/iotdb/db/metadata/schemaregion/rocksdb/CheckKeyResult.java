@@ -49,9 +49,6 @@ public class CheckKeyResult {
   }
 
   public boolean getResult(RMNodeType type) {
-    if (type == nodeType) {
-      return true;
-    }
-    return false;
+    return type == nodeType;
   }
 }
