@@ -50,12 +50,16 @@ public class DataPartitionInfo {
 
   public List<DataRegionReplicaSet> getDataRegionReplicaSetForWriting(
       String deviceName, List<TimePartitionId> timePartitionIdList) {
+    // A list of data region replica sets will store data in a same time partition.
+    // We will insert data to the last set in the list.
     // TODO return the latest dataRegionReplicaSet for each time partition
     return Collections.emptyList();
   }
 
   public DataRegionReplicaSet getDataRegionReplicaSetForWriting(
       String deviceName, TimePartitionId timePartitionIdList) {
+    // A list of data region replica sets will store data in a same time partition.
+    // We will insert data to the last set in the list.
     // TODO return the latest dataRegionReplicaSet for each time partition
     return null;
   }

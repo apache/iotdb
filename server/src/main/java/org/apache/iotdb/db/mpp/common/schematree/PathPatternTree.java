@@ -25,7 +25,6 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 
 import java.io.IOException;
-import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -55,8 +54,6 @@ public class PathPatternTree {
     this.root = new PathPatternNode(SQLConstant.ROOT);
     this.pathList = new ArrayList<>();
   };
-
-  public void serialize(OutputStream baos) throws IOException {}
 
   public PathPatternTree() {
     this.root = new PathPatternNode(SQLConstant.ROOT);

@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.db.mpp.sql.analyze;
 
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class FakeSchemaFetcherImpl implements ISchemaFetcher {
   @Override
@@ -29,7 +31,8 @@ public class FakeSchemaFetcherImpl implements ISchemaFetcher {
   }
 
   @Override
-  public SchemaTree fetchSchemaWithAutoCreate(PathPatternTree patternTree) {
+  public SchemaTree fetchSchemaWithAutoCreate(
+      PartialPath devicePath, String[] measurements, TSDataType[] tsDataTypes) {
     return null;
   }
 }

@@ -201,9 +201,9 @@ public class Analyzer {
       SchemaTree schemaTree =
           IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()
               ? schemaFetcher.fetchSchemaWithAutoCreate(
-                  new PathPatternTree(
-                      insertTabletStatement.getDevicePath(),
-                      insertTabletStatement.getMeasurements()))
+                  insertTabletStatement.getDevicePath(),
+                  insertTabletStatement.getMeasurements(),
+                  insertTabletStatement.getDataTypes())
               : schemaFetcher.fetchSchema(
                   new PathPatternTree(
                       insertTabletStatement.getDevicePath(),
@@ -230,8 +230,9 @@ public class Analyzer {
       SchemaTree schemaTree =
           IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()
               ? schemaFetcher.fetchSchemaWithAutoCreate(
-                  new PathPatternTree(
-                      insertRowStatement.getDevicePath(), insertRowStatement.getMeasurements()))
+                  insertRowStatement.getDevicePath(),
+                  insertRowStatement.getMeasurements(),
+                  insertRowStatement.getDataTypes())
               : schemaFetcher.fetchSchema(
                   new PathPatternTree(
                       insertRowStatement.getDevicePath(), insertRowStatement.getMeasurements()));
