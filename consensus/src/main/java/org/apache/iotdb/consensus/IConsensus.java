@@ -56,4 +56,6 @@ public interface IConsensus {
   ConsensusGenericResponse transferLeader(ConsensusGroupId groupId, Peer newLeader);
 
   ConsensusGenericResponse triggerSnapshot(ConsensusGroupId groupId);
+
+  boolean isLeader(ConsensusGroupId groupId);
 }
