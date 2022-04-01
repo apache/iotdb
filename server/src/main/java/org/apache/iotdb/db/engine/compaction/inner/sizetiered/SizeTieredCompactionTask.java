@@ -20,8 +20,8 @@ package org.apache.iotdb.db.engine.compaction.inner.sizetiered;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.compaction.CompactionExceptionHandler;
+import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionTask;
-import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.compaction.log.CompactionLogger;
 import org.apache.iotdb.db.engine.compaction.performer.AbstractCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.performer.ReadChunkCompactionPerformer;
@@ -130,10 +130,11 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
       }
       performer.perform();
 
-      InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource, fullStorageGroupName);
+      CompactionUtils.moveTargetFile(
+          Collections.singletonList(targetTsFileResource), true, fullStorageGroupName);
 
       LOGGER.info("{} [SizeTiredCompactionTask] start to rename mods file", fullStorageGroupName);
-      InnerSpaceCompactionUtils.combineModsInCompaction(
+      CompactionUtils.combineModsInInnerCompaction(
           selectedTsFileResourceList, targetTsFileResource);
 
       if (Thread.currentThread().isInterrupted()) {
@@ -182,9 +183,8 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
       LOGGER.info(
           "{} [Compaction] compaction finish, start to delete old files", fullStorageGroupName);
       // delete the old files
-      InnerSpaceCompactionUtils.deleteTsFilesInDisk(
-          selectedTsFileResourceList, fullStorageGroupName);
-      InnerSpaceCompactionUtils.deleteModificationForSourceFile(
+      CompactionUtils.deleteTsFilesInDisk(selectedTsFileResourceList, fullStorageGroupName);
+      CompactionUtils.deleteModificationForSourceFile(
           selectedTsFileResourceList, fullStorageGroupName);
 
       long costTime = System.currentTimeMillis() - startTime;

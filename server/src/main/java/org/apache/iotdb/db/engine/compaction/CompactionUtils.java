@@ -19,10 +19,17 @@
 package org.apache.iotdb.db.engine.compaction;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.compaction.constant.CrossCompactionStrategy;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.manage.CrossSpaceCompactionResource;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.ICrossSpaceMergeFileSelector;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.RewriteCompactionFileSelector;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
+import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -32,15 +39,15 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 /**
  * This tool can be used to perform inner space or cross space compaction of aligned and non aligned
- * timeseries . Currently, we use {@link
- * org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils} to speed up if it is
- * an inner space compaction.
+ * timeseries.
  */
 public class CompactionUtils {
   private static final Logger logger =
@@ -92,7 +99,7 @@ public class CompactionUtils {
    * Collect all the compaction modification files of source files, and combines them as the
    * modification file of target file.
    */
-  public static void combineModsInCompaction(
+  public static void combineModsInCrossCompaction(
       List<TsFileResource> seqResources,
       List<TsFileResource> unseqResources,
       List<TsFileResource> targetResources)
@@ -109,6 +116,31 @@ public class CompactionUtils {
     for (TsFileResource tsFileResource : targetResources) {
       updateOneTargetMods(
           tsFileResource, seqFileInfoMap.get(tsFileResource.getTsFile().getName()), unseqResources);
+    }
+  }
+
+  /**
+   * Collect all the compaction modification files of source files, and combines them as the
+   * modification file of target file.
+   */
+  public static void combineModsInInnerCompaction(
+      Collection<TsFileResource> sourceFiles, TsFileResource targetTsFile) throws IOException {
+    List<Modification> modifications = new ArrayList<>();
+    for (TsFileResource mergeTsFile : sourceFiles) {
+      try (ModificationFile sourceCompactionModificationFile =
+          ModificationFile.getCompactionMods(mergeTsFile)) {
+        modifications.addAll(sourceCompactionModificationFile.getModifications());
+      }
+    }
+    if (!modifications.isEmpty()) {
+      try (ModificationFile modificationFile = ModificationFile.getNormalMods(targetTsFile)) {
+        for (Modification modification : modifications) {
+          // we have to set modification offset to MAX_VALUE, as the offset of source chunk may
+          // change after compaction
+          modification.setFileOffset(Long.MAX_VALUE);
+          modificationFile.write(modification);
+        }
+      }
     }
   }
 
@@ -148,6 +180,62 @@ public class CompactionUtils {
       if (modificationFile.exists()) {
         modificationFile.remove();
       }
+    }
+  }
+
+  public static boolean deleteTsFilesInDisk(
+      Collection<TsFileResource> mergeTsFiles, String storageGroupName) {
+    logger.info("{} [Compaction] Compaction starts to delete real file ", storageGroupName);
+    boolean result = true;
+    for (TsFileResource mergeTsFile : mergeTsFiles) {
+      if (!deleteTsFile(mergeTsFile)) {
+        result = false;
+      }
+      logger.info(
+          "{} [Compaction] delete TsFile {}", storageGroupName, mergeTsFile.getTsFilePath());
+    }
+    return result;
+  }
+
+  public static boolean deleteTsFile(TsFileResource seqFile) {
+    try {
+      FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getTsFilePath());
+      seqFile.setStatus(TsFileResourceStatus.DELETED);
+      seqFile.delete();
+    } catch (IOException e) {
+      logger.error(e.getMessage(), e);
+      return false;
+    }
+    return true;
+  }
+
+  /** Delete all modification files for source files */
+  public static void deleteModificationForSourceFile(
+      Collection<TsFileResource> sourceFiles, String storageGroupName) throws IOException {
+    logger.info("{} [Compaction] Start to delete modifications of source files", storageGroupName);
+    for (TsFileResource tsFileResource : sourceFiles) {
+      ModificationFile compactionModificationFile =
+          ModificationFile.getCompactionMods(tsFileResource);
+      if (compactionModificationFile.exists()) {
+        compactionModificationFile.remove();
+      }
+
+      ModificationFile normalModification = ModificationFile.getNormalMods(tsFileResource);
+      if (normalModification.exists()) {
+        normalModification.remove();
+      }
+    }
+  }
+
+  public static ICrossSpaceMergeFileSelector getCrossSpaceFileSelector(
+      long budget, CrossSpaceCompactionResource resource) {
+    CrossCompactionStrategy strategy =
+        IoTDBDescriptor.getInstance().getConfig().getCrossCompactionStrategy();
+    switch (strategy) {
+      case REWRITE_COMPACTION:
+        return new RewriteCompactionFileSelector(resource, budget);
+      default:
+        throw new UnsupportedOperationException("Unknown CrossSpaceFileStrategy " + strategy);
     }
   }
 }

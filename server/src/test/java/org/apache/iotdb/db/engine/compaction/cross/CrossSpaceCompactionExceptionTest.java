@@ -335,7 +335,7 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
       CompactionFileGeneratorUtils.generateMods(deleteMap, unseqResources.get(i), true);
       CompactionFileGeneratorUtils.generateMods(deleteMap, unseqResources.get(i), false);
     }
-    CompactionUtils.combineModsInCompaction(seqResources, unseqResources, targetResources);
+    CompactionUtils.combineModsInCrossCompaction(seqResources, unseqResources, targetResources);
     for (TsFileResource resource : seqResources) {
       tsFileManager.getSequenceListByTimePartition(0).remove(resource);
     }
@@ -449,7 +449,7 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
       CompactionFileGeneratorUtils.generateMods(deleteMap, unseqResources.get(i), true);
       CompactionFileGeneratorUtils.generateMods(deleteMap, unseqResources.get(i), false);
     }
-    CompactionUtils.combineModsInCompaction(seqResources, unseqResources, targetResources);
+    CompactionUtils.combineModsInCrossCompaction(seqResources, unseqResources, targetResources);
 
     CompactionExceptionHandler.handleException(
         COMPACTION_TEST_SG,

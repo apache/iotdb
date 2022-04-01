@@ -155,7 +155,7 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
       performer.perform();
 
       CompactionUtils.moveTargetFile(targetTsfileResourceList, false, fullStorageGroupName);
-      CompactionUtils.combineModsInCompaction(
+      CompactionUtils.combineModsInCrossCompaction(
           selectedSeqTsFileResourceList, selectedUnSeqTsFileResourceList, targetTsfileResourceList);
 
       // update tsfile resource in memory

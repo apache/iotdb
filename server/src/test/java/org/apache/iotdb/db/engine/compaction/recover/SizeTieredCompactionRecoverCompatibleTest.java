@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.engine.compaction.recover;
 
 import org.apache.iotdb.db.engine.compaction.AbstractCompactionTest;
-import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
+import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.log.CompactionLogger;
 import org.apache.iotdb.db.engine.compaction.performer.ReadChunkCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.task.CompactionRecoverTask;
@@ -43,6 +43,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -126,7 +127,8 @@ public class SizeTieredCompactionRecoverCompatibleTest extends AbstractCompactio
     TsFileResource targetResource =
         TsFileNameGenerator.getInnerCompactionTargetFileResource(seqResources, true);
     new ReadChunkCompactionPerformer(seqResources, targetResource).perform();
-    InnerSpaceCompactionUtils.moveTargetFile(targetResource, "root.compactionTest");
+    CompactionUtils.moveTargetFile(
+        Collections.singletonList(targetResource), true, "root.compactionTest");
 
     // first source file does not exist
     seqResources.get(0).delete();
@@ -219,7 +221,8 @@ public class SizeTieredCompactionRecoverCompatibleTest extends AbstractCompactio
     TsFileResource targetResource =
         TsFileNameGenerator.getInnerCompactionTargetFileResource(unseqResources, true);
     new ReadChunkCompactionPerformer(unseqResources, targetResource).perform();
-    InnerSpaceCompactionUtils.moveTargetFile(targetResource, "root.compactionTest");
+    CompactionUtils.moveTargetFile(
+        Collections.singletonList(targetResource), true, "root.compactionTest");
 
     // first source file does not exist
     unseqResources.get(0).delete();

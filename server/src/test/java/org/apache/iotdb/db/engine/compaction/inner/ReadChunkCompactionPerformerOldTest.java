@@ -21,12 +21,13 @@ package org.apache.iotdb.db.engine.compaction.inner;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.constant.TestConstant;
-import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
+import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.log.CompactionLogger;
 import org.apache.iotdb.db.engine.compaction.performer.ReadChunkCompactionPerformer;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.read.TsFileReader;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -74,7 +75,8 @@ public class ReadChunkCompactionPerformerOldTest extends InnerCompactionTest {
 
   @Test
   public void testCompact()
-      throws IOException, MetadataException, InterruptedException, StorageEngineException {
+      throws IOException, MetadataException, InterruptedException, StorageEngineException,
+          WriteProcessException {
     TsFileResource targetTsFileResource =
         new TsFileResource(
             new File(
@@ -108,7 +110,8 @@ public class ReadChunkCompactionPerformerOldTest extends InnerCompactionTest {
             new File(targetTsFileResource.getTsFilePath().concat(".compaction.log")));
     sizeTieredCompactionLogger.logFiles(seqResources, CompactionLogger.STR_SOURCE_FILES);
     new ReadChunkCompactionPerformer(seqResources, targetTsFileResource).perform();
-    InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(
+        Collections.singletonList(targetTsFileResource), true, COMPACTION_TEST_SG);
     sizeTieredCompactionLogger.close();
     Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId());
     try (TsFileSequenceReader reader =

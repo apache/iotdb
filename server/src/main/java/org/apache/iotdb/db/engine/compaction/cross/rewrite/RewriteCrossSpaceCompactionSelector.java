@@ -22,10 +22,10 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
+import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionSelector;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.manage.CrossSpaceCompactionResource;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.ICrossSpaceMergeFileSelector;
-import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -91,7 +91,7 @@ public class RewriteCrossSpaceCompactionSelector extends AbstractCrossSpaceCompa
         new CrossSpaceCompactionResource(seqFileList, unSeqFileList, timeLowerBound);
 
     ICrossSpaceMergeFileSelector fileSelector =
-        InnerSpaceCompactionUtils.getCrossSpaceFileSelector(budget, mergeResource);
+        CompactionUtils.getCrossSpaceFileSelector(budget, mergeResource);
     try {
       List[] mergeFiles = fileSelector.select();
       // avoid pending tasks holds the metadata and streams

@@ -358,7 +358,7 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
       CompactionFileGeneratorUtils.generateMods(deleteMap, unseqResources.get(i), true);
       CompactionFileGeneratorUtils.generateMods(deleteMap, unseqResources.get(i), false);
     }
-    CompactionUtils.combineModsInCompaction(seqResources, unseqResources, targetResources);
+    CompactionUtils.combineModsInCrossCompaction(seqResources, unseqResources, targetResources);
     seqResources.get(0).remove();
 
     new CompactionRecoverTask(COMPACTION_TEST_SG, "0", tsFileManager, compactionLogFile, false)
@@ -453,7 +453,7 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
       CompactionFileGeneratorUtils.generateMods(deleteMap, unseqResources.get(i), true);
       CompactionFileGeneratorUtils.generateMods(deleteMap, unseqResources.get(i), false);
     }
-    CompactionUtils.combineModsInCompaction(seqResources, unseqResources, targetResources);
+    CompactionUtils.combineModsInCrossCompaction(seqResources, unseqResources, targetResources);
 
     new CompactionRecoverTask(COMPACTION_TEST_SG, "0", tsFileManager, compactionLogFile, false)
         .doCompaction();
