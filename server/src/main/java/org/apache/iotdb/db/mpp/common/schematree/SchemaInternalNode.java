@@ -19,9 +19,37 @@
 
 package org.apache.iotdb.db.mpp.common.schematree;
 
-import java.util.List;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
 
 public class SchemaInternalNode extends SchemaNode {
 
-  private List<SchemaNode> children;
+  private Map<String, SchemaNode> children;
+
+  public SchemaInternalNode(String name) {
+    super(name);
+  }
+
+  @Override
+  public SchemaNode getChild(String name) {
+    return children == null ? null : children.get(name);
+  }
+
+  public void addChild(String name, SchemaNode child) {
+    if (children == null) {
+      children = new HashMap<>();
+    }
+    children.put(name, child);
+  }
+
+  @Override
+  public Map<String, SchemaNode> getChildren() {
+    return children;
+  }
+
+  @Override
+  public Iterator<SchemaNode> getChildrenIterator() {
+    return children.values().iterator();
+  }
 }

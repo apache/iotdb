@@ -104,7 +104,7 @@ public class Analyzer {
         List<DataPartitionQueryParam> dataPartitionQueryParams = new ArrayList<>();
         for (String deviceId : deviceIdToPathsMap.keySet()) {
           DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
-          dataPartitionQueryParam.setDeviceId(deviceId);
+          dataPartitionQueryParam.setDevicePath(deviceId);
           dataPartitionQueryParams.add(dataPartitionQueryParam);
         }
         DataPartitionInfo dataPartitionInfo =
@@ -194,8 +194,10 @@ public class Analyzer {
     public Analysis visitInsertTablet(
         InsertTabletStatement insertTabletStatement, MPPQueryContext context) {
       DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
-      dataPartitionQueryParam.setDeviceId(insertTabletStatement.getDevicePath().getFullPath());
       dataPartitionQueryParam.setTimePartitionIdList(insertTabletStatement.getTimePartitionIds());
+      dataPartitionQueryParam.setDevicePath(insertTabletStatement.getDevicePath().getFullPath());
+      // TODO(INSERT) calculate the time partition id list
+      //      dataPartitionQueryParam.setTimePartitionIdList();
       PartitionInfo partitionInfo = partitionFetcher.fetchPartitionInfo(dataPartitionQueryParam);
 
       SchemaTree schemaTree =

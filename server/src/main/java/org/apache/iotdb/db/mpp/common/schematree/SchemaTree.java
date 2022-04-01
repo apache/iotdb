@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.mpp.common.schematree;
 
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -44,43 +43,9 @@ public class SchemaTree {
    */
   public Pair<List<MeasurementPath>, Integer> searchMeasurementPaths(
       PartialPath pathPattern, int slimit, int soffset, boolean isPrefixMatch) {
-    // TODO: (xingtanzjr) we mock some results here to test the whole procedure
-    try {
-      String[] paths =
-          new String[] {
-            "root.sg.d1.s1",
-            "root.sg.d1.s2",
-            "root.sg.d22.s1",
-            "root.sg.d22.s2",
-            "root.sg.d333.s1",
-            "root.sg.d333.s2",
-          };
-
-      List<MeasurementPath> result = new ArrayList<>();
-      String target = pathPattern.getFullPath();
-      StringBuilder noStar = new StringBuilder();
-      boolean lastCharIsStar = false;
-      for (int i = 0; i < target.length(); i++) {
-        char c = target.charAt(i);
-        if (c == '*' || (lastCharIsStar && c == '.')) {
-          lastCharIsStar = c == '*';
-          continue;
-        }
-        lastCharIsStar = false;
-        noStar.append(String.valueOf(c));
-      }
-
-      for (String path : paths) {
-        if (path.contains(noStar)) {
-          result.add(new MeasurementPath(path));
-        }
-      }
-      return new Pair<>(result, 0);
-
-    } catch (IllegalPathException e) {
-      e.printStackTrace();
-    }
-    return new Pair<>(new ArrayList<>(), 0);
+    SchemaTreeVisitor visitor =
+        new SchemaTreeVisitor(root, pathPattern, slimit, soffset, isPrefixMatch);
+    return new Pair<>(visitor.getAllResult(), visitor.getNextOffset());
   }
 
   public List<MeasurementSchema> searchMeasurementSchema(
