@@ -60,7 +60,7 @@ import java.util.Set;
  * This class is used to test InnerSpaceCompactionUtils.compact. Notice, it just tests not aligned
  * timeseries.
  */
-public class InnerSpaceCompactionUtilsNoAlignedTest {
+public class ReadChunkCompactionPerformerNoAlignedTest {
   private final String storageGroup = "root.compactionTest";
   private final String[] devices = new String[] {"device0", "device1", "device2", "device3"};
   private PartialPath[] devicePath = new PartialPath[devices.length];

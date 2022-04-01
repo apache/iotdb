@@ -51,7 +51,7 @@ import static org.junit.Assert.assertTrue;
  * current compaction. However, due to this test's strong coupling with an older version of
  * compaction, we may remove it in the future.
  */
-public class InnerSpaceCompactionUtilsOldTest extends InnerCompactionTest {
+public class ReadChunkCompactionPerformerOldTest extends InnerCompactionTest {
 
   File tempSGDir;
 
