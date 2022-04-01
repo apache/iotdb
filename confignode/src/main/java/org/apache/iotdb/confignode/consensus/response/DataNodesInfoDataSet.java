@@ -25,17 +25,17 @@ import java.util.List;
 
 public class DataNodesInfoDataSet implements DataSet {
 
-  private List<DataNodeLocation> infoList;
+  private List<DataNodeLocation> dataNodeList;
 
   public DataNodesInfoDataSet() {
     // empty constructor
   }
 
-  public void setInfoList(List<DataNodeLocation> infoList) {
-    this.infoList = infoList;
+  public void setDataNodeList(List<DataNodeLocation> dataNodeList) {
+    this.dataNodeList = dataNodeList;
   }
 
-  public List<DataNodeLocation> getInfoList() {
-    return this.infoList;
+  public List<DataNodeLocation> getDataNodeList() {
+    return this.dataNodeList;
   }
 }

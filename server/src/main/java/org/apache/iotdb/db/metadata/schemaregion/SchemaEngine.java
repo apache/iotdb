@@ -65,7 +65,9 @@ public class SchemaEngine {
   }
 
   public synchronized SchemaRegion createSchemaRegion(
-      PartialPath storageGroup, ConsensusGroupId schemaRegionId, IStorageGroupMNode storageGroupMNode)
+      PartialPath storageGroup,
+      ConsensusGroupId schemaRegionId,
+      IStorageGroupMNode storageGroupMNode)
       throws MetadataException {
     SchemaRegion schemaRegion = schemaRegionMap.get(schemaRegionId);
     if (schemaRegion != null) {

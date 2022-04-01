@@ -22,10 +22,10 @@ package org.apache.iotdb.db.mpp.sql.plan;
 import org.apache.iotdb.commons.partition.ConsensusGroupId;
 import org.apache.iotdb.commons.partition.DataNodeLocation;
 import org.apache.iotdb.commons.partition.DataPartition;
-import org.apache.iotdb.commons.partition.SeriesPartitionSlot;
 import org.apache.iotdb.commons.partition.Endpoint;
 import org.apache.iotdb.commons.partition.GroupType;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
+import org.apache.iotdb.commons.partition.SeriesPartitionSlot;
 import org.apache.iotdb.commons.partition.TimePartitionSlot;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -163,8 +163,8 @@ public class DistributionPlannerTest {
     String device3 = "root.sg.d333";
 
     DataPartition dataPartition = new DataPartition();
-    Map<String, Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>> dataPartitionMap =
-        new HashMap<>();
+    Map<String, Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>>
+        dataPartitionMap = new HashMap<>();
     Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>> sgPartitionMap =
         new HashMap<>();
 
@@ -172,11 +172,15 @@ public class DistributionPlannerTest {
     d1DataRegions.add(
         new RegionReplicaSet(
             new ConsensusGroupId(GroupType.DataRegion, 1),
-            Arrays.asList(new DataNodeLocation(11, new Endpoint("192.0.1.1", 9000)), new DataNodeLocation(12, new Endpoint("192.0.1.2", 9000)))));
+            Arrays.asList(
+                new DataNodeLocation(11, new Endpoint("192.0.1.1", 9000)),
+                new DataNodeLocation(12, new Endpoint("192.0.1.2", 9000)))));
     d1DataRegions.add(
         new RegionReplicaSet(
             new ConsensusGroupId(GroupType.DataRegion, 2),
-            Arrays.asList(new DataNodeLocation(21, new Endpoint("192.0.2.1", 9000)), new DataNodeLocation(22, new Endpoint("192.0.2.2", 9000)))));
+            Arrays.asList(
+                new DataNodeLocation(21, new Endpoint("192.0.2.1", 9000)),
+                new DataNodeLocation(22, new Endpoint("192.0.2.2", 9000)))));
     Map<TimePartitionSlot, List<RegionReplicaSet>> d1DataRegionMap = new HashMap<>();
     d1DataRegionMap.put(new TimePartitionSlot(), d1DataRegions);
 
@@ -184,7 +188,9 @@ public class DistributionPlannerTest {
     d2DataRegions.add(
         new RegionReplicaSet(
             new ConsensusGroupId(GroupType.DataRegion, 3),
-            Arrays.asList(new DataNodeLocation(31, new Endpoint("192.0.3.1", 9000)), new DataNodeLocation(32, new Endpoint("192.0.3.2", 9000)))));
+            Arrays.asList(
+                new DataNodeLocation(31, new Endpoint("192.0.3.1", 9000)),
+                new DataNodeLocation(32, new Endpoint("192.0.3.2", 9000)))));
     Map<TimePartitionSlot, List<RegionReplicaSet>> d2DataRegionMap = new HashMap<>();
     d2DataRegionMap.put(new TimePartitionSlot(), d2DataRegions);
 
@@ -192,11 +198,15 @@ public class DistributionPlannerTest {
     d3DataRegions.add(
         new RegionReplicaSet(
             new ConsensusGroupId(GroupType.DataRegion, 1),
-            Arrays.asList(new DataNodeLocation(11, new Endpoint("192.0.1.1", 9000)), new DataNodeLocation(12, new Endpoint("192.0.1.2", 9000)))));
+            Arrays.asList(
+                new DataNodeLocation(11, new Endpoint("192.0.1.1", 9000)),
+                new DataNodeLocation(12, new Endpoint("192.0.1.2", 9000)))));
     d3DataRegions.add(
         new RegionReplicaSet(
             new ConsensusGroupId(GroupType.DataRegion, 4),
-            Arrays.asList(new DataNodeLocation(41, new Endpoint("192.0.4.1", 9000)), new DataNodeLocation(42, new Endpoint("192.0.4.2", 9000)))));
+            Arrays.asList(
+                new DataNodeLocation(41, new Endpoint("192.0.4.1", 9000)),
+                new DataNodeLocation(42, new Endpoint("192.0.4.2", 9000)))));
     Map<TimePartitionSlot, List<RegionReplicaSet>> d3DataRegionMap = new HashMap<>();
     d3DataRegionMap.put(new TimePartitionSlot(), d3DataRegions);
 

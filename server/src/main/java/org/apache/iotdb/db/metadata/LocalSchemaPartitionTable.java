@@ -70,7 +70,8 @@ public class LocalSchemaPartitionTable {
   }
 
   public synchronized ConsensusGroupId allocateSchemaRegionId(PartialPath storageGroup) {
-    ConsensusGroupId schemaRegionId = new ConsensusGroupId(GroupType.SchemaRegion, schemaRegionIdGenerator.getAndIncrement());
+    ConsensusGroupId schemaRegionId =
+        new ConsensusGroupId(GroupType.SchemaRegion, schemaRegionIdGenerator.getAndIncrement());
     table.get(storageGroup).add(schemaRegionId);
     return schemaRegionId;
   }

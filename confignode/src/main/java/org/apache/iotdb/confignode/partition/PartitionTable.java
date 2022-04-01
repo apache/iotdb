@@ -110,10 +110,10 @@ public class PartitionTable {
       result = new DataNodesInfoDataSet();
 
       if (plan.getDataNodeID() == -1) {
-        result.setInfoList(new ArrayList<>(dataNodesMap.values()));
+        result.setDataNodeList(new ArrayList<>(dataNodesMap.values()));
       } else {
         if (dataNodesMap.containsKey(plan.getDataNodeID())) {
-          result.setInfoList(Collections.singletonList(dataNodesMap.get(plan.getDataNodeID())));
+          result.setDataNodeList(Collections.singletonList(dataNodesMap.get(plan.getDataNodeID())));
         } else {
           result = null;
         }

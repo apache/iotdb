@@ -164,7 +164,8 @@ public class LocalConfigManager {
 
       for (File schemaRegionDir : schemaRegionDirs) {
         ConsensusGroupId schemaRegionId =
-            new ConsensusGroupId(GroupType.SchemaRegion, Integer.parseInt(schemaRegionDir.getName()));
+            new ConsensusGroupId(
+                GroupType.SchemaRegion, Integer.parseInt(schemaRegionDir.getName()));
         localCreateSchemaRegion(storageGroup, schemaRegionId);
         partitionTable.putSchemaRegionId(storageGroup, schemaRegionId);
       }

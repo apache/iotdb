@@ -168,7 +168,9 @@ public class SchemaRegion {
 
   // region Interfaces and Implementation of initialization、snapshot、recover and clear
   public SchemaRegion(
-      PartialPath storageGroup, ConsensusGroupId schemaRegionId, IStorageGroupMNode storageGroupMNode)
+      PartialPath storageGroup,
+      ConsensusGroupId schemaRegionId,
+      IStorageGroupMNode storageGroupMNode)
       throws MetadataException {
 
     storageGroupFullPath = storageGroup.getFullPath();
