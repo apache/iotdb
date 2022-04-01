@@ -64,7 +64,6 @@ public class CompactionTaskManager implements IService {
   // logicalStorageGroup
   private Map<String, Set<Future<Void>>> storageGroupTasks = new ConcurrentHashMap<>();
   private List<Pair<AbstractCompactionTask, Future<Void>>> futureList = new ArrayList<>();
-  private List<AbstractCompactionTask> runningCompactionTaskList = new ArrayList<>();
 
   // The thread pool that periodically fetches and executes the compaction task from
   // candidateCompactionTaskQueue to taskExecutionPool. The default number of threads for this pool
@@ -209,8 +208,7 @@ public class CompactionTaskManager implements IService {
    */
   public synchronized boolean addTaskToWaitingQueue(AbstractCompactionTask compactionTask)
       throws InterruptedException {
-    if (!candidateCompactionTaskQueue.contains(compactionTask)
-        && !runningCompactionTaskList.contains(compactionTask)) {
+    if (!candidateCompactionTaskQueue.contains(compactionTask) && !isTaskRunning(compactionTask)) {
       compactionTask.setSourceFilesToCompactionCandidate();
       candidateCompactionTaskQueue.put(compactionTask);
 
@@ -219,6 +217,15 @@ public class CompactionTaskManager implements IService {
           compactionTask, CompactionTaskStatus.ADD_TO_QUEUE, candidateCompactionTaskQueue.size());
 
       return true;
+    }
+    return false;
+  }
+
+  private boolean isTaskRunning(AbstractCompactionTask task) {
+    for (Pair<AbstractCompactionTask, Future<Void>> futurePair : futureList) {
+      if (futurePair.left.equals(task)) {
+        return true;
+      }
     }
     return false;
   }
@@ -241,7 +248,7 @@ public class CompactionTaskManager implements IService {
         if (task != null && task.checkValidAndSetMerging()) {
           submitTask(task);
           CompactionMetricsManager.recordTaskInfo(
-              task, CompactionTaskStatus.READY_TO_EXECUTE, runningCompactionTaskList.size());
+              task, CompactionTaskStatus.READY_TO_EXECUTE, futureList.size());
         }
       }
     } catch (InterruptedException e) {
@@ -277,14 +284,19 @@ public class CompactionTaskManager implements IService {
   }
 
   public synchronized void removeRunningTaskFromList(AbstractCompactionTask task) {
-    int idx = runningCompactionTaskList.indexOf(task);
+    int idx = -1;
+    for (int i = 0; i < futureList.size(); ++i) {
+      Pair<AbstractCompactionTask, Future<Void>> futurePair = futureList.get(i);
+      if (futurePair.left.equals(task)) {
+        idx = i;
+        break;
+      }
+    }
     if (idx != -1) {
-      runningCompactionTaskList.remove(idx);
       futureList.remove(idx);
     }
     // add metrics
-    CompactionMetricsManager.recordTaskInfo(
-        task, CompactionTaskStatus.FINISHED, runningCompactionTaskList.size());
+    CompactionMetricsManager.recordTaskInfo(task, CompactionTaskStatus.FINISHED, futureList.size());
   }
 
   /**
@@ -296,7 +308,6 @@ public class CompactionTaskManager implements IService {
       throws RejectedExecutionException {
     if (taskExecutionPool != null && !taskExecutionPool.isTerminated()) {
       Future<Void> future = taskExecutionPool.submit(compactionTask);
-      runningCompactionTaskList.add(compactionTask);
       futureList.add(new Pair<>(compactionTask, future));
       return future;
     }
@@ -329,11 +340,14 @@ public class CompactionTaskManager implements IService {
 
   public synchronized boolean isAnyTaskInListStillRunning(
       List<AbstractCompactionTask> compactionTasks) {
-    boolean anyTaskRunning = false;
     for (AbstractCompactionTask task : compactionTasks) {
-      anyTaskRunning = anyTaskRunning || runningCompactionTaskList.contains(task);
+      for (Pair<AbstractCompactionTask, Future<Void>> futurePair : futureList) {
+        if (futurePair.left.equals(task)) {
+          return true;
+        }
+      }
     }
-    return anyTaskRunning;
+    return false;
   }
 
   public int getExecutingTaskCount() {
@@ -345,7 +359,11 @@ public class CompactionTaskManager implements IService {
   }
 
   public synchronized List<AbstractCompactionTask> getRunningCompactionTaskList() {
-    return new ArrayList<>(runningCompactionTaskList);
+    List<AbstractCompactionTask> tasks = new ArrayList<>(futureList.size());
+    for (Pair<AbstractCompactionTask, Future<Void>> futurePair : futureList) {
+      tasks.add(futurePair.left);
+    }
+    return tasks;
   }
 
   public long getFinishTaskNum() {
