@@ -114,7 +114,7 @@ public class SourceHandle implements ISourceHandle {
           .getQueryPool()
           .free(localFragmentInstanceId.getQueryId(), tsBlock.getRetainedSizeInBytes());
     }
-    if (bufferedTsBlocks.isEmpty() && !isFinished() && blocked.isDone()) {
+    if (bufferedTsBlocks.isEmpty() && !isFinished()) {
       blocked = SettableFuture.create();
     }
     if (isFinished()) {

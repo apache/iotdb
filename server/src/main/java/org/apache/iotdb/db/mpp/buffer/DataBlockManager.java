@@ -62,6 +62,7 @@ public class DataBlockManager implements IDataBlockManager {
   /** Handle thrift communications. */
   class DataBlockServiceImpl implements DataBlockService.Iface {
 
+    @Override
     public GetDataBlockResponse getDataBlock(GetDataBlockRequest req) throws TException {
       logger.debug(
           "Get data block request received. Asking for data block [{}, {}) from {}.",
@@ -75,11 +76,9 @@ public class DataBlockManager implements IDataBlockManager {
                 + ".");
       }
       GetDataBlockResponse resp = new GetDataBlockResponse();
+      SinkHandle sinkHandle = sinkHandles.get(req.getSourceFragnemtInstanceId());
       for (int i = req.getStartSequenceId(); i < req.getEndSequenceId(); i++) {
-        ByteBuffer serializedTsBlock =
-            sinkHandles
-                .get(req.getSourceFragnemtInstanceId())
-                .getSerializedTsBlock(i);
+        ByteBuffer serializedTsBlock = sinkHandle.getSerializedTsBlock(i);
         resp.addToTsBlocks(serializedTsBlock);
       }
       return resp;
@@ -100,8 +99,10 @@ public class DataBlockManager implements IDataBlockManager {
               .get(e.getTargetFragmentInstanceId())
               .get(e.getTargetOperatorId())
               .isClosed()) {
-        logger.info("{} is ignored because the source handle does not exist or has been closed", e);
-        return;
+        throw new TException(
+            "Target fragment instance not found. Fragment instance ID: "
+                + e.getTargetFragmentInstanceId()
+                + ".");
       }
 
       SourceHandle sourceHandle =
@@ -124,8 +125,10 @@ public class DataBlockManager implements IDataBlockManager {
               .get(e.getTargetFragmentInstanceId())
               .get(e.getTargetOperatorId())
               .isClosed()) {
-        logger.info("{} is ignored because the source handle does not exist or has been closed", e);
-        return;
+        throw new TException(
+            "Target fragment instance not found. Fragment instance ID: "
+                + e.getTargetFragmentInstanceId()
+                + ".");
       }
       SourceHandle sourceHandle =
           sourceHandles
