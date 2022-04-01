@@ -101,7 +101,8 @@ public class LRUCacheManager extends CacheManager {
   }
 
   private int getCacheListLoc(LRUCacheEntry lruCacheEntry) {
-    return lruCacheEntry.getNode().hashCode() % NUM_OF_LIST;
+    int hash = lruCacheEntry.getNode().getName().hashCode() % NUM_OF_LIST;
+    return hash < 0 ? hash + NUM_OF_LIST : hash;
   }
 
   private static class LRUCacheEntry extends CacheEntry {
