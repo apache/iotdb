@@ -26,9 +26,8 @@ import org.apache.iotdb.confignode.physical.sys.AuthorPlan;
 import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
 import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.auth.AuthException;
-import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
-import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
@@ -146,23 +145,7 @@ public class PartitionTable {
         result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       }
     }
-
     lock.writeLock().unlock();
-    return result;
-  }
-
-  public TSStatus createUser(AuthorPlan plan) {
-    TSStatus result;
-    IAuthorizer iAuthorizer = null;
-    try {
-      iAuthorizer = BasicAuthorizer.getInstance();
-      iAuthorizer.createUser(plan.getUserName(), plan.getPassword());
-      result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    } catch (AuthException e) {
-      result = new TSStatus();
-      result.setMessage(e.getMessage());
-      result.setCode(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
-    }
     return result;
   }
 
@@ -204,5 +187,29 @@ public class PartitionTable {
 
     lock.readLock().unlock();
     return result;
+  }
+
+  public DataSet executeListRole(AuthorPlan plan) throws AuthException {
+    return null;
+  }
+
+  public DataSet executeListUser(AuthorPlan plan) throws AuthException {
+    return null;
+  }
+
+  public DataSet executeListRoleUsers(AuthorPlan plan) throws AuthException {
+    return null;
+  }
+
+  public DataSet executeListUserRoles(AuthorPlan plan) throws AuthException {
+    return null;
+  }
+
+  public DataSet executeListRolePrivileges(AuthorPlan plan) throws AuthException {
+    return null;
+  }
+
+  public DataSet executeListUserPrivileges(AuthorPlan plan) throws AuthException {
+    return null;
   }
 }

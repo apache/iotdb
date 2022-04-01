@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner;
 
+import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
@@ -389,15 +390,19 @@ public class LogicalPlanner {
     }
 
     public AuthorNode getNewAuthorNode(AuthorStatement authorStatement, MPPQueryContext context) {
-      return new AuthorNode(
-          PlanNodeIdAllocator.generateId(),
-          authorStatement.getAuthorType(),
-          authorStatement.getUserName(),
-          authorStatement.getRoleName(),
-          authorStatement.getPassWord(),
-          authorStatement.getNewPassword(),
-          authorStatement.getPrivilegeList(),
-          authorStatement.getNodeName());
+      try {
+        return new AuthorNode(
+            PlanNodeIdAllocator.generateId(),
+            authorStatement.getAuthorType(),
+            authorStatement.getUserName(),
+            authorStatement.getRoleName(),
+            authorStatement.getPassWord(),
+            authorStatement.getNewPassword(),
+            authorStatement.getPrivilegeList(),
+            authorStatement.getNodeName());
+      } catch (AuthException e) {
+        return null;
+      }
     }
   }
 

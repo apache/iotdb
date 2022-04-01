@@ -1361,8 +1361,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   /** Data Control Language (DCL) */
 
-  // Create User
-
+  /** Create User */
   @Override
   public Statement visitCreateUser(IoTDBSqlParser.CreateUserContext ctx) {
     AuthorStatement authorStatement = new AuthorStatement(AuthorStatement.AuthorType.CREATE_USER);
@@ -1371,8 +1370,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return authorStatement;
   }
 
-  // Create Role
-
+  /** Create Role */
   @Override
   public Statement visitCreateRole(IoTDBSqlParser.CreateRoleContext ctx) {
     AuthorStatement authorStatement = new AuthorStatement(AuthorStatement.AuthorType.CREATE_ROLE);
@@ -1380,8 +1378,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return authorStatement;
   }
 
-  // Alter Password
-
+  /** Alter Password */
   @Override
   public Statement visitAlterUser(IoTDBSqlParser.AlterUserContext ctx) {
     AuthorStatement authorStatement = new AuthorStatement(AuthorStatement.AuthorType.UPDATE_USER);
@@ -1390,8 +1387,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return authorStatement;
   }
 
-  // Grant User Privileges
-
+  /** Grant User Privileges */
   @Override
   public Statement visitGrantUser(IoTDBSqlParser.GrantUserContext ctx) {
     AuthorStatement authorStatement = new AuthorStatement(AuthorStatement.AuthorType.GRANT_USER);
@@ -1401,8 +1397,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return authorStatement;
   }
 
-  // Grant Role Privileges
-
+  /** Grant Role Privileges */
   @Override
   public Statement visitGrantRole(IoTDBSqlParser.GrantRoleContext ctx) {
     AuthorStatement authorStatement = new AuthorStatement(AuthorStatement.AuthorType.GRANT_ROLE);
@@ -1412,8 +1407,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return authorStatement;
   }
 
-  // Grant User Role
-
+  /** Grant User Role */
   @Override
   public Statement visitGrantRoleToUser(IoTDBSqlParser.GrantRoleToUserContext ctx) {
     AuthorStatement authorStatement =
@@ -1423,8 +1417,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return authorStatement;
   }
 
-  // Revoke User Privileges
-
+  /** Revoke User Privileges */
   @Override
   public Statement visitRevokeUser(IoTDBSqlParser.RevokeUserContext ctx) {
     AuthorStatement authorStatement = new AuthorStatement(AuthorStatement.AuthorType.REVOKE_USER);
@@ -1434,8 +1427,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return authorStatement;
   }
 
-  // Revoke Role Privileges
-
+  /** Revoke Role Privileges */
   @Override
   public Statement visitRevokeRole(IoTDBSqlParser.RevokeRoleContext ctx) {
     AuthorStatement authorStatement = new AuthorStatement(AuthorStatement.AuthorType.REVOKE_ROLE);
@@ -1445,8 +1437,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return authorStatement;
   }
 
-  // Revoke Role From User
-
+  /** Revoke Role From User */
   @Override
   public Statement visitRevokeRoleFromUser(IoTDBSqlParser.RevokeRoleFromUserContext ctx) {
     AuthorStatement authorStatement =
@@ -1456,8 +1447,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return authorStatement;
   }
 
-  // Drop User
-
+  /** Drop User */
   @Override
   public Statement visitDropUser(IoTDBSqlParser.DropUserContext ctx) {
     AuthorStatement authorStatement = new AuthorStatement(AuthorStatement.AuthorType.DROP_USER);
@@ -1465,8 +1455,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return authorStatement;
   }
 
-  // Drop Role
-
+  /** Drop Role */
   @Override
   public Statement visitDropRole(IoTDBSqlParser.DropRoleContext ctx) {
     AuthorStatement authorStatement = new AuthorStatement(AuthorStatement.AuthorType.DROP_ROLE);
@@ -1474,22 +1463,19 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return authorStatement;
   }
 
-  // List Users
-
+  /** List Users */
   @Override
   public Statement visitListUser(IoTDBSqlParser.ListUserContext ctx) {
     return new AuthorStatement(AuthorStatement.AuthorType.LIST_USER);
   }
 
-  // List Roles
-
+  /** List Roles */
   @Override
   public Statement visitListRole(IoTDBSqlParser.ListRoleContext ctx) {
     return new AuthorStatement(AuthorStatement.AuthorType.LIST_ROLE);
   }
 
-  // List Privileges
-
+  /** List Privileges */
   @Override
   public Statement visitListPrivilegesUser(IoTDBSqlParser.ListPrivilegesUserContext ctx) {
     AuthorStatement authorStatement =
@@ -1499,8 +1485,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return authorStatement;
   }
 
-  // List Privileges of Roles On Specific Path
-
+  /** List Privileges of Roles On Specific Path */
   @Override
   public Statement visitListPrivilegesRole(IoTDBSqlParser.ListPrivilegesRoleContext ctx) {
     AuthorStatement authorStatement =
@@ -1510,8 +1495,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return authorStatement;
   }
 
-  // List Privileges of Users
-
+  /** List Privileges of Users */
   @Override
   public Statement visitListUserPrivileges(IoTDBSqlParser.ListUserPrivilegesContext ctx) {
     AuthorStatement authorStatement =
@@ -1520,8 +1504,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return authorStatement;
   }
 
-  // List Privileges of Roles
-
+  /** List Privileges of Roles */
   @Override
   public Statement visitListRolePrivileges(IoTDBSqlParser.ListRolePrivilegesContext ctx) {
     AuthorStatement authorStatement =
@@ -1530,8 +1513,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return authorStatement;
   }
 
-  // List Roles of Users
-
+  /** List Roles of Users */
   @Override
   public Statement visitListAllRoleOfUser(IoTDBSqlParser.ListAllRoleOfUserContext ctx) {
     AuthorStatement authorStatement =
@@ -1540,8 +1522,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return authorStatement;
   }
 
-  // List Users of Role
-
+  /** List Users of Role */
   @Override
   public Statement visitListAllUserOfRole(IoTDBSqlParser.ListAllUserOfRoleContext ctx) {
     AuthorStatement authorStatement =
