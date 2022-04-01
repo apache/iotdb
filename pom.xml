@@ -170,7 +170,7 @@
         <enforcer.skip>true</enforcer.skip>
         <spotless.version>2.4.2</spotless.version>
         <httpclient.version>4.5.13</httpclient.version>
-        <httpcore.version>4.4.13</httpcore.version>
+        <httpcore.version>4.4.15</httpcore.version>
         <!-- for REST service -->
         <swagger.core.version>1.5.18</swagger.core.version>
         <servlet.api.version>2.5</servlet.api.version>
