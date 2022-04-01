@@ -105,7 +105,7 @@ public class TransportClient implements ITransportClient {
     this.port = port;
   }
 
-  public TransportClient(Pipe pipe, String ipAddress, int port) throws IOException {
+  public TransportClient(Pipe pipe, String ipAddress, int port) {
     RpcTransportFactory.setThriftMaxFrameSize(config.getThriftMaxFrameSize());
 
     this.pipe = pipe;

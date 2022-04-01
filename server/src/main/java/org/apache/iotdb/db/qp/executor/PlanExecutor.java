@@ -2462,14 +2462,15 @@ public class PlanExecutor implements IPlanExecutor {
     } catch (PipeSinkException e) {
       throw new QueryProcessException("Create pipeSink error.", e); // e will override the message
     } catch (IllegalArgumentException e) {
-      throw new QueryProcessException("Not support for type " + plan.getPipeSinkType() + ".");
+      throw new QueryProcessException(
+          "Do not support pipeSink type " + plan.getPipeSinkType() + ".");
     }
   }
 
   private void dropPipeSink(DropPipeSinkPlan plan) throws QueryProcessException {
     try {
       SenderService.getInstance().dropPipeSink(plan.getPipeSinkName());
-    } catch (Exception e) {
+    } catch (PipeSinkException e) {
       throw new QueryProcessException("Can not drop pipeSink.", e);
     }
   }
@@ -2477,7 +2478,6 @@ public class PlanExecutor implements IPlanExecutor {
   private void createPipe(CreatePipePlan plan) throws QueryProcessException {
     try {
       SenderService.getInstance().addPipe(plan);
-      //      SenderService.getInstance().startPipe(plan.getPipeName());
     } catch (PipeException e) {
       throw new QueryProcessException("Create pipe error.", e);
     }
@@ -2493,11 +2493,12 @@ public class PlanExecutor implements IPlanExecutor {
         SenderService.getInstance().dropPipe(plan.getPipeName());
       } else {
         throw new QueryProcessException(
-            String.format("Error operator type %s", plan.getOperatorType()),
+            String.format("Error operator type %s.", plan.getOperatorType()),
             INTERNAL_SERVER_ERROR.getStatusCode());
       }
     } catch (PipeException e) {
-      throw new QueryProcessException("Operate pipe error.", e);
+      throw new QueryProcessException(
+          String.format("%s pipe error.", plan.getOperatorType().name()), e);
     }
   }
 }

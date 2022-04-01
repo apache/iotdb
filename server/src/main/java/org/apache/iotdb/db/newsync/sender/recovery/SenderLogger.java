@@ -56,7 +56,7 @@ public class SenderLogger {
 
       bw = new BufferedWriter(new FileWriter(senderLog, true));
     } catch (IOException e) {
-      logger.error(String.format("Can not init sender logger. because of %s", e.getMessage()));
+      logger.warn("Can not init sender logger.", e);
     }
   }
 
@@ -69,7 +69,7 @@ public class SenderLogger {
       bw.newLine();
       bw.flush();
     } catch (IOException e) {
-      logger.warn(String.format("Can not record add pipesink %s.", plan.getPipeSinkName()));
+      logger.warn(String.format("Can not record add pipeSink %s.", plan.getPipeSinkName()), e);
     }
   }
 
@@ -82,7 +82,7 @@ public class SenderLogger {
       bw.newLine();
       bw.flush();
     } catch (IOException e) {
-      logger.warn(String.format("Can not record drop pipeSink %s.", pipeSinkName));
+      logger.warn(String.format("Can not record drop pipeSink %s.", pipeSinkName), e);
     }
   }
 
@@ -97,7 +97,7 @@ public class SenderLogger {
       bw.newLine();
       bw.flush();
     } catch (IOException e) {
-      logger.warn(String.format("Can not record add pipe %s.", plan.getPipeName()));
+      logger.warn(String.format("Can not record add pipe %s.", plan.getPipeName()), e);
     }
   }
 
@@ -110,7 +110,7 @@ public class SenderLogger {
       bw.newLine();
       bw.flush();
     } catch (IOException e) {
-      logger.warn(String.format("Can not record %s %s.", type.name(), pipeName));
+      logger.warn(String.format("Can not record %s %s.", type.name(), pipeName), e);
     }
   }
 
@@ -125,7 +125,7 @@ public class SenderLogger {
       bw.newLine();
       bw.flush();
     } catch (IOException e) {
-      logger.warn(String.format("Record msg %s error, because %s.", msg, e));
+      logger.warn(String.format("Record msg %s error.", msg), e);
     }
   }
 
@@ -135,7 +135,7 @@ public class SenderLogger {
         bw.close();
       }
     } catch (IOException e) {
-      logger.warn("Can not close sender log.");
+      logger.warn("Can not close sender log.", e);
     }
   }
 }

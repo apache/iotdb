@@ -156,7 +156,7 @@ public class SenderService implements IService {
     if (plan.getDataStartTimestamp() > currentTime) {
       throw new PipeException(
           String.format(
-              "start time %s is later than current time %s, this is not supported yet.",
+              "Start time %s is later than current time %s, this is not supported yet.",
               DatetimeUtils.convertLongToDate(plan.getDataStartTimestamp()),
               DatetimeUtils.convertLongToDate(currentTime)));
     }
@@ -170,7 +170,7 @@ public class SenderService implements IService {
       throws PipeException {
     boolean syncDelOp = true;
     for (Pair<String, String> pair : plan.getPipeAttributes()) {
-      pair.right = pair.right.toLowerCase();
+      pair.left = pair.left.toLowerCase();
       if ("syncdelop".equals(pair.left)) {
         syncDelOp = Boolean.parseBoolean(pair.right);
       } else {
@@ -192,8 +192,7 @@ public class SenderService implements IService {
               pipe, ((IoTDBPipeSink) pipeSink).getIp(), ((IoTDBPipeSink) pipeSink).getPort());
       pipe.setTransportHandler(
           new TransportHandler(transportClient, pipe.getName(), pipe.getCreateTime()));
-    } catch (IOException | SyncConnectionException e) {
-      e.printStackTrace();
+    } catch (SyncConnectionException e) {
       throw new PipeException(
           String.format(
               "Create transport for pipe %s error, because %s.", pipe.getName(), e.getMessage()));

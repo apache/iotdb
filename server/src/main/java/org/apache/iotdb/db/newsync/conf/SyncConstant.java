@@ -45,6 +45,7 @@ public class SyncConstant {
   public static final String SENDER_LOG_NAME = "senderService.log";
   public static final String PLAN_SERIALIZE_SPLIT_CHARACTER = ",";
   public static final String SENDER_LOG_SPLIT_CHARACTER = " ";
+  public static final int MESSAGE_LENGTH_LIMIT = 200;
 
   public static String getPipeLogName(long serialNumber) {
     return serialNumber + PIPE_LOG_NAME_SUFFIX;
