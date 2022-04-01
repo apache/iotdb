@@ -23,7 +23,7 @@ import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.TestUtilsForAlignedSeries;
-import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
+import org.apache.iotdb.db.engine.compaction.performer.ReadChunkCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionCheckerUtils;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
@@ -133,7 +133,7 @@ public class InnerSpaceCompactionUtilsAlignedTest {
     Map<PartialPath, List<TimeValuePair>> originData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
-    InnerSpaceCompactionUtils.compact(targetResource, resources);
+    new ReadChunkCompactionPerformer(resources, targetResource).perform();
     Map<PartialPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths,
@@ -201,7 +201,7 @@ public class InnerSpaceCompactionUtilsAlignedTest {
     Map<PartialPath, List<TimeValuePair>> originData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
-    InnerSpaceCompactionUtils.compact(targetResource, resources);
+    new ReadChunkCompactionPerformer(resources, targetResource).perform();
     Map<PartialPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths,
@@ -263,7 +263,7 @@ public class InnerSpaceCompactionUtilsAlignedTest {
     Map<PartialPath, List<TimeValuePair>> originData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
-    InnerSpaceCompactionUtils.compact(targetResource, resources);
+    new ReadChunkCompactionPerformer(resources, targetResource).perform();
     Map<PartialPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths,
@@ -328,7 +328,7 @@ public class InnerSpaceCompactionUtilsAlignedTest {
     Map<PartialPath, List<TimeValuePair>> originData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
-    InnerSpaceCompactionUtils.compact(targetResource, resources);
+    new ReadChunkCompactionPerformer(resources, targetResource).perform();
     Map<PartialPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths,
@@ -391,7 +391,7 @@ public class InnerSpaceCompactionUtilsAlignedTest {
     Map<PartialPath, List<TimeValuePair>> originData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
-    InnerSpaceCompactionUtils.compact(targetResource, resources);
+    new ReadChunkCompactionPerformer(resources, targetResource).perform();
     Map<PartialPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths,
@@ -456,7 +456,7 @@ public class InnerSpaceCompactionUtilsAlignedTest {
     Map<PartialPath, List<TimeValuePair>> originData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
-    InnerSpaceCompactionUtils.compact(targetResource, resources);
+    new ReadChunkCompactionPerformer(resources, targetResource).perform();
     Map<PartialPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths,
@@ -522,7 +522,7 @@ public class InnerSpaceCompactionUtilsAlignedTest {
     Map<PartialPath, List<TimeValuePair>> originData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
-    InnerSpaceCompactionUtils.compact(targetResource, resources);
+    new ReadChunkCompactionPerformer(resources, targetResource).perform();
     Map<PartialPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths,

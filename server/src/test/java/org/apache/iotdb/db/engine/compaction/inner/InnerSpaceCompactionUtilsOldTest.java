@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.compaction.log.CompactionLogger;
+import org.apache.iotdb.db.engine.compaction.performer.ReadChunkCompactionPerformer;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -105,7 +106,7 @@ public class InnerSpaceCompactionUtilsOldTest extends InnerCompactionTest {
         new CompactionLogger(
             new File(targetTsFileResource.getTsFilePath().concat(".compaction.log")));
     sizeTieredCompactionLogger.logFiles(seqResources, CompactionLogger.STR_SOURCE_FILES);
-    InnerSpaceCompactionUtils.compact(targetTsFileResource, seqResources);
+    new ReadChunkCompactionPerformer(seqResources, targetTsFileResource).perform();
     InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource, COMPACTION_TEST_SG);
     sizeTieredCompactionLogger.close();
     Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId());

@@ -23,6 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
+import org.apache.iotdb.db.engine.compaction.performer.ReadChunkCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionCheckerUtils;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionClearUtils;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
@@ -227,7 +228,7 @@ public class InnerSeqCompactionTest {
                         timeValuePair.getTimestamp() >= 250L
                             && timeValuePair.getTimestamp() <= 300L);
               }
-              InnerSpaceCompactionUtils.compact(targetTsFileResource, sourceResources);
+              new ReadChunkCompactionPerformer(sourceResources, targetTsFileResource).perform();
               InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource, COMPACTION_TEST_SG);
               InnerSpaceCompactionUtils.combineModsInCompaction(
                   sourceResources, targetTsFileResource);
@@ -452,7 +453,7 @@ public class InnerSeqCompactionTest {
                   timeValuePair ->
                       timeValuePair.getTimestamp() >= 250L && timeValuePair.getTimestamp() <= 300L);
             }
-            InnerSpaceCompactionUtils.compact(targetTsFileResource, toMergeResources);
+            new ReadChunkCompactionPerformer(toMergeResources, targetTsFileResource).perform();
             InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource, COMPACTION_TEST_SG);
             InnerSpaceCompactionUtils.combineModsInCompaction(
                 toMergeResources, targetTsFileResource);
@@ -727,7 +728,7 @@ public class InnerSeqCompactionTest {
                         timeValuePair.getTimestamp() >= 250L
                             && timeValuePair.getTimestamp() <= 300L);
               }
-              InnerSpaceCompactionUtils.compact(targetTsFileResource, toMergeResources);
+              new ReadChunkCompactionPerformer(toMergeResources, targetTsFileResource).perform();
               InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource, COMPACTION_TEST_SG);
               InnerSpaceCompactionUtils.combineModsInCompaction(
                   toMergeResources, targetTsFileResource);

@@ -24,6 +24,8 @@ import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.compaction.log.CompactionLogger;
+import org.apache.iotdb.db.engine.compaction.performer.AbstractCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.performer.ReadChunkCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
@@ -51,6 +53,7 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
   protected TsFileResourceList tsFileResourceList;
   protected boolean[] isHoldingReadLock;
   protected boolean[] isHoldingWriteLock;
+  protected AbstractCompactionPerformer performer;
 
   public SizeTieredCompactionTask(
       String logicalStorageGroupName,
@@ -116,7 +119,9 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
 
       // carry out the compaction
       if (sequence) {
-        InnerSpaceCompactionUtils.compact(targetTsFileResource, selectedTsFileResourceList);
+        performer =
+            new ReadChunkCompactionPerformer(selectedTsFileResourceList, targetTsFileResource);
+        performer.perform();
       } else {
         CompactionUtils.compact(
             Collections.emptyList(),
