@@ -115,7 +115,7 @@ public class RatisConsensusTest {
 
   @Before
   public void setUp() throws IOException {
-    gid = new ConsensusGroupId(GroupType.DataRegion, 1L);
+    gid = new ConsensusGroupId(GroupType.DataRegion, 1);
     peers = new ArrayList<>();
     peer0 = new Peer(gid, new Endpoint("127.0.0.1", 6000));
     peer1 = new Peer(gid, new Endpoint("127.0.0.1", 6001));

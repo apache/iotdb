@@ -128,7 +128,7 @@ public class Utils {
           break;
         }
     }
-    return new ConsensusGroupId(groupType, Long.parseLong(items[1]));
+    return new ConsensusGroupId(groupType, Integer.parseInt(items[1]));
   }
 
   public static ByteBuffer serializeTSStatus(TSStatus status) throws TException {

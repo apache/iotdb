@@ -87,7 +87,7 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
 
     // TODO: (xingtanzjr) We select the first Endpoint as the default target host for current
     // instance
-    fragmentInstance.setHostEndpoint(dataRegion.getDataNodeList().get(0));
+    fragmentInstance.setHostEndpoint(dataRegion.getDataNodeList().get(0).getEndPoint());
     instanceMap.putIfAbsent(fragment.getId(), fragmentInstance);
     fragmentInstanceList.add(fragmentInstance);
   }

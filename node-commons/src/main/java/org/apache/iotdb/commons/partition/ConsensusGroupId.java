@@ -25,9 +25,9 @@ import java.util.Objects;
 public class ConsensusGroupId {
 
   private final GroupType type;
-  private final long id;
+  private final int id;
 
-  public ConsensusGroupId(GroupType type, long id) {
+  public ConsensusGroupId(GroupType type, int id) {
     this.type = type;
     this.id = id;
   }
@@ -36,7 +36,7 @@ public class ConsensusGroupId {
     return type;
   }
 
-  public long getId() {
+  public int getId() {
     return id;
   }
 

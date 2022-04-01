@@ -20,15 +20,15 @@ package org.apache.iotdb.commons.partition;
 
 public class PartitionInfo {
 
-  private DataPartitionInfo dataPartitionInfo;
+  private DataPartition dataPartition;
   private SchemaPartition schemaPartition;
 
-  public DataPartitionInfo getDataPartitionInfo() {
-    return dataPartitionInfo;
+  public DataPartition getDataPartitionInfo() {
+    return dataPartition;
   }
 
-  public void setDataPartitionInfo(DataPartitionInfo dataPartitionInfo) {
-    this.dataPartitionInfo = dataPartitionInfo;
+  public void setDataPartitionInfo(DataPartition dataPartition) {
+    this.dataPartition = dataPartition;
   }
 
   public SchemaPartition getSchemaPartitionInfo() {

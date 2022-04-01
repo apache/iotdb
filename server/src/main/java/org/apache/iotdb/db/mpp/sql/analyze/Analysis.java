@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.mpp.sql.analyze;
 
-import org.apache.iotdb.commons.partition.DataPartitionInfo;
+import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -45,7 +45,7 @@ public class Analysis {
   // indicate whether this statement is write or read
   private QueryType queryType;
 
-  private DataPartitionInfo dataPartitionInfo;
+  private DataPartition dataPartition;
 
   private SchemaPartition schemaPartition;
 
@@ -55,7 +55,7 @@ public class Analysis {
 
   public List<RegionReplicaSet> getPartitionInfo(PartialPath seriesPath, Filter timefilter) {
     // TODO: (xingtanzjr) implement the calculation of timePartitionIdList
-    return dataPartitionInfo.getDataRegionReplicaSet(seriesPath.getDevice(), null);
+    return dataPartition.getDataRegionReplicaSet(seriesPath.getDevice(), null);
   }
 
   public Statement getStatement() {
@@ -66,12 +66,12 @@ public class Analysis {
     this.statement = statement;
   }
 
-  public DataPartitionInfo getDataPartitionInfo() {
-    return dataPartitionInfo;
+  public DataPartition getDataPartitionInfo() {
+    return dataPartition;
   }
 
-  public void setDataPartitionInfo(DataPartitionInfo dataPartitionInfo) {
-    this.dataPartitionInfo = dataPartitionInfo;
+  public void setDataPartitionInfo(DataPartition dataPartition) {
+    this.dataPartition = dataPartition;
   }
 
   public SchemaPartition getSchemaPartitionInfo() {
