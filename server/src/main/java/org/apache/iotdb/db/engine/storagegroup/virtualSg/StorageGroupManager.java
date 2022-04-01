@@ -513,6 +513,12 @@ public class StorageGroupManager {
     }
   }
 
+  public void abortCompaction() {
+    for (VirtualStorageGroupProcessor processor : virtualStorageGroupProcessor) {
+      processor.abortCompaction();
+    }
+  }
+
   public AtomicBoolean getIsSettling() {
     return isSettling;
   }

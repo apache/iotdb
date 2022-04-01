@@ -145,6 +145,11 @@ public abstract class AbstractInnerSpaceCompactionTask extends AbstractCompactio
   }
 
   @Override
+  public int hashCode() {
+    return toString().hashCode();
+  }
+
+  @Override
   public void resetCompactionCandidateStatusForAllSourceFiles() {
     selectedTsFileResourceList.forEach(x -> x.setStatus(TsFileResourceStatus.CLOSED));
   }

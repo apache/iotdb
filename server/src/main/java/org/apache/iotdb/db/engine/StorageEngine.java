@@ -27,8 +27,6 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.ServerConfigConsistent;
-import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
-import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.CloseFileListener;
 import org.apache.iotdb.db.engine.flush.FlushListener;
@@ -874,17 +872,7 @@ public class StorageEngine implements IService {
 
     StorageGroupManager manager = processorMap.get(storageGroupPath);
     manager.setAllowCompaction(false);
-
-    List<AbstractCompactionTask> runningTasks =
-        CompactionTaskManager.getInstance().abortCompaction(storageGroupPath.getFullPath());
-    while (CompactionTaskManager.getInstance().isAnyTaskInListStillRunning(runningTasks)) {
-      try {
-        Thread.sleep(10);
-      } catch (InterruptedException e) {
-        logger.error("Thread get interrupted while waiting for running compaction task to finish");
-        break;
-      }
-    }
+    manager.abortCompaction();
   }
 
   public void loadNewTsFileForSync(TsFileResource newTsFileResource)

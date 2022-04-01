@@ -30,17 +30,15 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionTaskStatus;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.utils.datastructure.FixedPriorityBlockingQueue;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import com.google.common.util.concurrent.RateLimiter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.RejectedExecutionException;
@@ -62,8 +60,8 @@ public class CompactionTaskManager implements IService {
       new FixedPriorityBlockingQueue<>(1024, new CompactionTaskComparator());
   // <logicalStorageGroupName,futureSet>, it is used to terminate all compaction tasks under the
   // logicalStorageGroup
-  private Map<String, Set<Future<Void>>> storageGroupTasks = new ConcurrentHashMap<>();
-  private List<Pair<AbstractCompactionTask, Future<Void>>> futureList = new ArrayList<>();
+  private Map<String, Map<AbstractCompactionTask, Future<Void>>> storageGroupTasks =
+      new HashMap<>();
 
   // The thread pool that periodically fetches and executes the compaction task from
   // candidateCompactionTaskQueue to taskExecutionPool. The default number of threads for this pool
@@ -222,12 +220,10 @@ public class CompactionTaskManager implements IService {
   }
 
   private boolean isTaskRunning(AbstractCompactionTask task) {
-    for (Pair<AbstractCompactionTask, Future<Void>> futurePair : futureList) {
-      if (futurePair.left.equals(task)) {
-        return true;
-      }
-    }
-    return false;
+    String storageGroupName = task.getFullStorageGroupName();
+    return storageGroupTasks
+        .computeIfAbsent(storageGroupName, x -> new HashMap<>())
+        .containsKey(task);
   }
 
   /**
@@ -248,7 +244,7 @@ public class CompactionTaskManager implements IService {
         if (task != null && task.checkValidAndSetMerging()) {
           submitTask(task);
           CompactionMetricsManager.recordTaskInfo(
-              task, CompactionTaskStatus.READY_TO_EXECUTE, futureList.size());
+              task, CompactionTaskStatus.READY_TO_EXECUTE, currentTaskNum.get());
         }
       }
     } catch (InterruptedException e) {
@@ -284,19 +280,13 @@ public class CompactionTaskManager implements IService {
   }
 
   public synchronized void removeRunningTaskFromList(AbstractCompactionTask task) {
-    int idx = -1;
-    for (int i = 0; i < futureList.size(); ++i) {
-      Pair<AbstractCompactionTask, Future<Void>> futurePair = futureList.get(i);
-      if (futurePair.left.equals(task)) {
-        idx = i;
-        break;
-      }
-    }
-    if (idx != -1) {
-      futureList.remove(idx);
+    String storageGroupName = task.getFullStorageGroupName();
+    if (storageGroupTasks.containsKey(storageGroupName)) {
+      storageGroupTasks.get(storageGroupName).remove(task);
     }
     // add metrics
-    CompactionMetricsManager.recordTaskInfo(task, CompactionTaskStatus.FINISHED, futureList.size());
+    CompactionMetricsManager.recordTaskInfo(
+        task, CompactionTaskStatus.FINISHED, currentTaskNum.get() - 1);
   }
 
   /**
@@ -308,7 +298,9 @@ public class CompactionTaskManager implements IService {
       throws RejectedExecutionException {
     if (taskExecutionPool != null && !taskExecutionPool.isTerminated()) {
       Future<Void> future = taskExecutionPool.submit(compactionTask);
-      futureList.add(new Pair<>(compactionTask, future));
+      storageGroupTasks
+          .computeIfAbsent(compactionTask.getFullStorageGroupName(), x -> new HashMap<>())
+          .put(compactionTask, future);
       return future;
     }
     logger.warn(
@@ -327,10 +319,11 @@ public class CompactionTaskManager implements IService {
    */
   public synchronized List<AbstractCompactionTask> abortCompaction(String storageGroupName) {
     List<AbstractCompactionTask> compactionTaskOfCurSG = new ArrayList<>();
-    for (Pair<AbstractCompactionTask, Future<Void>> futurePair : futureList) {
-      if (futurePair.left.getFullStorageGroupName().contains(storageGroupName)) {
-        futurePair.right.cancel(true);
-        compactionTaskOfCurSG.add(futurePair.left);
+    if (storageGroupTasks.containsKey(storageGroupName)) {
+      for (Map.Entry<AbstractCompactionTask, Future<Void>> taskFutureEntry :
+          storageGroupTasks.get(storageGroupName).entrySet()) {
+        taskFutureEntry.getValue().cancel(true);
+        compactionTaskOfCurSG.add(taskFutureEntry.getKey());
       }
     }
 
@@ -339,12 +332,16 @@ public class CompactionTaskManager implements IService {
   }
 
   public synchronized boolean isAnyTaskInListStillRunning(
-      List<AbstractCompactionTask> compactionTasks) {
+      String storageGroupName, List<AbstractCompactionTask> compactionTasks) {
+    if (!storageGroupTasks.containsKey(storageGroupName)) {
+      return false;
+    }
+
+    Map<AbstractCompactionTask, Future<Void>> taskFutureMap =
+        storageGroupTasks.get(storageGroupName);
     for (AbstractCompactionTask task : compactionTasks) {
-      for (Pair<AbstractCompactionTask, Future<Void>> futurePair : futureList) {
-        if (futurePair.left.equals(task)) {
-          return true;
-        }
+      if (taskFutureMap.containsKey(task)) {
+        return true;
       }
     }
     return false;
@@ -359,9 +356,9 @@ public class CompactionTaskManager implements IService {
   }
 
   public synchronized List<AbstractCompactionTask> getRunningCompactionTaskList() {
-    List<AbstractCompactionTask> tasks = new ArrayList<>(futureList.size());
-    for (Pair<AbstractCompactionTask, Future<Void>> futurePair : futureList) {
-      tasks.add(futurePair.left);
+    List<AbstractCompactionTask> tasks = new ArrayList<>();
+    for (Map<AbstractCompactionTask, Future<Void>> taskFutureMap : storageGroupTasks.values()) {
+      tasks.addAll(taskFutureMap.keySet());
     }
     return tasks;
   }

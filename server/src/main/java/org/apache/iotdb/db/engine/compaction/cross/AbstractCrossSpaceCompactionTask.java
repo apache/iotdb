@@ -97,6 +97,11 @@ public abstract class AbstractCrossSpaceCompactionTask extends AbstractCompactio
   }
 
   @Override
+  public int hashCode() {
+    return toString().hashCode();
+  }
+
+  @Override
   public void resetCompactionCandidateStatusForAllSourceFiles() {
     selectedSequenceFiles.forEach(x -> x.setStatus(TsFileResourceStatus.CLOSED));
     selectedUnsequenceFiles.forEach(x -> x.setStatus(TsFileResourceStatus.CLOSED));

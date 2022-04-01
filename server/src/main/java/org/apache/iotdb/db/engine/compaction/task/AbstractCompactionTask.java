@@ -66,6 +66,7 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
     try {
       doCompaction();
     } catch (Exception e) {
+      Thread.sleep(1000);
       LOGGER.error(e.getMessage(), e);
     } finally {
       CompactionTaskManager.getInstance().removeRunningTaskFromList(this);

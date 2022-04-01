@@ -2995,12 +2995,14 @@ public class VirtualStorageGroupProcessor {
     }
   }
 
-  private void abortCompaction() {
+  public void abortCompaction() {
     tsFileManager.setAllowCompaction(false);
     List<AbstractCompactionTask> runningTasks =
         CompactionTaskManager.getInstance()
             .abortCompaction(logicalStorageGroupName + "-" + virtualStorageGroupId);
-    while (CompactionTaskManager.getInstance().isAnyTaskInListStillRunning(runningTasks)) {
+    while (CompactionTaskManager.getInstance()
+        .isAnyTaskInListStillRunning(
+            logicalStorageGroupName + "-" + virtualStorageGroupId, runningTasks)) {
       try {
         Thread.sleep(10);
       } catch (InterruptedException e) {
