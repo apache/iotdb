@@ -38,6 +38,7 @@ import org.apache.iotdb.db.mpp.sql.statement.sys.AuthorStatement;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Ignore;
