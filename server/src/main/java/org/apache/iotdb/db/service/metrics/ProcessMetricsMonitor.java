@@ -21,9 +21,7 @@ package org.apache.iotdb.db.service.metrics;
 
 import org.apache.iotdb.metrics.MetricManager;
 import org.apache.iotdb.metrics.utils.MetricLevel;
-import org.eclipse.collections.impl.block.procedure.SumOfShortProcedure;
 
-import javax.management.MXBean;
 import java.lang.management.ManagementFactory;
 import java.lang.management.OperatingSystemMXBean;
 import java.lang.management.ThreadMXBean;
@@ -38,15 +36,13 @@ public class ProcessMetricsMonitor {
     private ThreadMXBean threadMXBean;
     private OperatingSystemMXBean osMXBean;
     private static com.sun.management.OperatingSystemMXBean sunOsMXBean;
-    private long preTime = System.nanoTime();
-    private long preUsedTime = 0;
 
-    public void collectCPUInfo() {
+    public void collectProcessCPUInfo() {
         metricManager.getOrCreateAutoGauge(
                 Metric.PROCESS_CPU_LOAD.toString(),
                 MetricLevel.IMPORTANT,
                 sunOsMXBean,
-                a -> (long)(sunOsMXBean.getProcessCpuLoad()*100),
+                a -> (long) (sunOsMXBean.getProcessCpuLoad() * 100),
                 Tag.NAME.toString(),
                 "process");
         metricManager.getOrCreateAutoGauge(
@@ -58,24 +54,24 @@ public class ProcessMetricsMonitor {
                 "process");
     }
 
-    public void collectMemoryInfo() {
+    public void collectProcessMemInfo() {
         Runtime runtime = Runtime.getRuntime();
         metricManager.getOrCreateAutoGauge(
-                    Metric.PROCESS_MAX_MEM.toString(),
+                Metric.PROCESS_MAX_MEM.toString(),
                 MetricLevel.IMPORTANT,
                 runtime,
                 a -> runtime.maxMemory(),
                 Tag.NAME.toString(),
                 "process");
         metricManager.getOrCreateAutoGauge(
-                    Metric.PROCESS_TOTAL_MEM.toString(),
+                Metric.PROCESS_TOTAL_MEM.toString(),
                 MetricLevel.IMPORTANT,
                 runtime,
                 a -> runtime.totalMemory(),
                 Tag.NAME.toString(),
                 "process");
         metricManager.getOrCreateAutoGauge(
-                    Metric.PROCESS_FREE_MEM.toString(),
+                Metric.PROCESS_FREE_MEM.toString(),
                 MetricLevel.IMPORTANT,
                 runtime,
                 a -> runtime.freeMemory(),

@@ -171,8 +171,8 @@ public class MetricsService extends MetricService implements MetricsServiceMBean
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
       logger.info("start collecting information of metric service's process");
       ProcessMetricsMonitor processMetricsMonitor = ProcessMetricsMonitor.getInstance();
-      processMetricsMonitor.collectCPUInfo();
-      processMetricsMonitor.collectMemoryInfo();
+      processMetricsMonitor.collectProcessCPUInfo();
+      processMetricsMonitor.collectProcessMemInfo();
     }
   }
 
