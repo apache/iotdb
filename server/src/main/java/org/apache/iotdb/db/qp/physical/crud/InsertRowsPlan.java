@@ -24,10 +24,8 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.BatchPlan;
 import org.apache.iotdb.db.utils.StatusUtils;
-import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
-import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -170,18 +168,6 @@ public class InsertRowsPlan extends InsertPlan implements BatchPlan {
   }
 
   @Override
-  public int serializedSize() {
-    int size = 0;
-    size += Byte.BYTES;
-    size += Integer.BYTES;
-    for (InsertRowPlan insertRowPlan : insertRowPlanList) {
-      size += insertRowPlan.subSerializeSize();
-    }
-    size += Integer.BYTES * insertRowPlanIndexList.size();
-    return size;
-  }
-
-  @Override
   public void serializeImpl(ByteBuffer buffer) {
     int type = PhysicalPlanType.BATCH_INSERT_ROWS.ordinal();
     buffer.put((byte) type);
@@ -204,35 +190,6 @@ public class InsertRowsPlan extends InsertPlan implements BatchPlan {
     }
     for (Integer index : insertRowPlanIndexList) {
       stream.writeInt(index);
-    }
-  }
-
-  @Override
-  public void serializeToWAL(IWALByteBufferView buffer) {
-    int type = PhysicalPlanType.BATCH_INSERT_ROWS.ordinal();
-    buffer.put((byte) type);
-    buffer.putInt(insertRowPlanList.size());
-    for (InsertRowPlan insertRowPlan : insertRowPlanList) {
-      insertRowPlan.subSerialize(buffer);
-    }
-    for (Integer index : insertRowPlanIndexList) {
-      buffer.putInt(index);
-    }
-  }
-
-  @Override
-  public void deserialize(DataInputStream stream) throws IOException, IllegalPathException {
-    int size = stream.readInt();
-    this.insertRowPlanList = new ArrayList<>(size);
-    this.insertRowPlanIndexList = new ArrayList<>(size);
-    for (int i = 0; i < size; i++) {
-      InsertRowPlan insertRowPlan = new InsertRowPlan();
-      insertRowPlan.deserialize(stream);
-      insertRowPlanList.add(insertRowPlan);
-    }
-
-    for (int i = 0; i < size; i++) {
-      insertRowPlanIndexList.add(stream.readInt());
     }
   }
 

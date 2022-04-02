@@ -19,10 +19,7 @@
 package org.apache.iotdb.db.wal.node;
 
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.wal.utils.listener.WALFlushListener;
 
@@ -42,10 +39,7 @@ public class WALFakeNodeTest {
     // log something
     List<WALFlushListener> walFlushListeners = new ArrayList<>();
     walFlushListeners.add(walNode.log(1, new InsertRowPlan()));
-    walFlushListeners.add(walNode.log(1, new InsertRowsPlan()));
-    walFlushListeners.add(walNode.log(1, new InsertRowsOfOneDevicePlan()));
-    walFlushListeners.add(walNode.log(1, new InsertTabletPlan()));
-    walFlushListeners.add(walNode.log(1, new InsertMultiTabletPlan()));
+    walFlushListeners.add(walNode.log(1, new InsertTabletPlan(), 0, 0));
     walFlushListeners.add(walNode.log(1, new DeletePlan()));
     // check flush listeners
     for (WALFlushListener walFlushListener : walFlushListeners) {
@@ -60,10 +54,7 @@ public class WALFakeNodeTest {
     // log something
     List<WALFlushListener> walFlushListeners = new ArrayList<>();
     walFlushListeners.add(walNode.log(1, new InsertRowPlan()));
-    walFlushListeners.add(walNode.log(1, new InsertRowsPlan()));
-    walFlushListeners.add(walNode.log(1, new InsertRowsOfOneDevicePlan()));
-    walFlushListeners.add(walNode.log(1, new InsertTabletPlan()));
-    walFlushListeners.add(walNode.log(1, new InsertMultiTabletPlan()));
+    walFlushListeners.add(walNode.log(1, new InsertTabletPlan(), 0, 0));
     walFlushListeners.add(walNode.log(1, new DeletePlan()));
     // check flush listeners
     for (WALFlushListener walFlushListener : walFlushListeners) {

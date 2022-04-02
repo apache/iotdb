@@ -21,10 +21,7 @@ package org.apache.iotdb.db.wal.io;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.wal.buffer.WALEntry;
 import org.apache.iotdb.db.wal.buffer.WALEntryType;
@@ -69,10 +66,7 @@ public class WALFileTest {
     int fakeMemTableId = 1;
     List<WALEntry> expectedWALEntries = new ArrayList<>();
     expectedWALEntries.add(new WALEntry(fakeMemTableId, getInsertRowPlan(devicePath)));
-    expectedWALEntries.add(new WALEntry(fakeMemTableId, getInsertRowsOfOneDevicePlan(devicePath)));
-    expectedWALEntries.add(new WALEntry(fakeMemTableId, getInsertRowsPlan(devicePath)));
     expectedWALEntries.add(new WALEntry(fakeMemTableId, getInsertTabletPlan(devicePath)));
-    expectedWALEntries.add(new WALEntry(fakeMemTableId, getInsertMultiTabletPlan(devicePath)));
     expectedWALEntries.add(new WALEntry(fakeMemTableId, getDeletePlan(devicePath)));
     // test WALEntry.serializedSize
     int size = 0;
@@ -117,10 +111,7 @@ public class WALFileTest {
     int fakeMemTableId = 1;
     List<WALEntry> expectedWALEntries = new ArrayList<>();
     expectedWALEntries.add(new WALEntry(fakeMemTableId, getInsertRowPlan(devicePath)));
-    expectedWALEntries.add(new WALEntry(fakeMemTableId, getInsertRowsOfOneDevicePlan(devicePath)));
-    expectedWALEntries.add(new WALEntry(fakeMemTableId, getInsertRowsPlan(devicePath)));
     expectedWALEntries.add(new WALEntry(fakeMemTableId, getInsertTabletPlan(devicePath)));
-    expectedWALEntries.add(new WALEntry(fakeMemTableId, getInsertMultiTabletPlan(devicePath)));
     expectedWALEntries.add(new WALEntry(fakeMemTableId, getDeletePlan(devicePath)));
     // test WALEntry.serializedSize
     int size = Byte.BYTES;
@@ -177,26 +168,6 @@ public class WALFileTest {
         columns);
   }
 
-  public static InsertRowsOfOneDevicePlan getInsertRowsOfOneDevicePlan(String devicePath)
-      throws IllegalPathException {
-    InsertRowPlan insertRowPlan1 = getInsertRowPlan(devicePath);
-    InsertRowPlan insertRowPlan2 = getInsertRowPlan(devicePath);
-    insertRowPlan2.setTime(200L);
-    InsertRowPlan[] rowPlans = {insertRowPlan1, insertRowPlan2};
-    return new InsertRowsOfOneDevicePlan(
-        insertRowPlan1.getDevicePath(), rowPlans, new int[] {0, 1});
-  }
-
-  public static InsertRowsPlan getInsertRowsPlan(String devicePath) throws IllegalPathException {
-    InsertRowsPlan insertRowsPlan = new InsertRowsPlan();
-    InsertRowPlan insertRowPlan1 = getInsertRowPlan(devicePath);
-    insertRowsPlan.addOneInsertRowPlan(insertRowPlan1, 0);
-    InsertRowPlan insertRowPlan2 = getInsertRowPlan(devicePath);
-    insertRowPlan2.setTime(200L);
-    insertRowsPlan.addOneInsertRowPlan(insertRowPlan2, 1);
-    return insertRowsPlan;
-  }
-
   public static InsertTabletPlan getInsertTabletPlan(String devicePath)
       throws IllegalPathException {
     long[] times = new long[] {110L, 111L, 112L, 113L};
@@ -243,17 +214,6 @@ public class WALFileTest {
     insertTabletPlan.setRowCount(times.length);
     insertTabletPlan.setBitMaps(bitMaps);
     return insertTabletPlan;
-  }
-
-  public static InsertMultiTabletPlan getInsertMultiTabletPlan(String devicePath)
-      throws IllegalPathException {
-    List<InsertTabletPlan> insertTabletPlans = new ArrayList<>();
-    InsertTabletPlan insertTabletPlan1 = getInsertTabletPlan(devicePath);
-    insertTabletPlans.add(insertTabletPlan1);
-    InsertTabletPlan insertTabletPlan2 = getInsertTabletPlan(devicePath);
-    insertTabletPlan2.setTimes(new long[] {114L, 115L, 116L, 117L});
-    insertTabletPlans.add(insertTabletPlan2);
-    return new InsertMultiTabletPlan(insertTabletPlans);
   }
 
   public static DeletePlan getDeletePlan(String devicePath) throws IllegalPathException {

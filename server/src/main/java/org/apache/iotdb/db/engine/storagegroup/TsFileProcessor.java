@@ -290,10 +290,8 @@ public class TsFileProcessor {
     }
 
     try {
-      insertTabletPlan.setStart(start);
-      insertTabletPlan.setEnd(end);
       WALFlushListener walFlushListener =
-          walNode.log(workMemTable.getMemTableId(), insertTabletPlan);
+          walNode.log(workMemTable.getMemTableId(), insertTabletPlan, start, end);
       if (walFlushListener.waitForResult() == WALFlushListener.Status.FAILURE) {
         throw walFlushListener.getCause();
       }

@@ -136,7 +136,8 @@ public class WALNodeTest {
       InsertTabletPlan insertTabletPlan =
           getInsertTabletPlan(devicePath + memTableId, new long[] {i});
       expectedInsertTabletPlans.add(insertTabletPlan);
-      WALFlushListener walFlushListener = walNode.log(memTableId, insertTabletPlan);
+      WALFlushListener walFlushListener =
+          walNode.log(memTableId, insertTabletPlan, 0, insertTabletPlan.getRowCount());
       walFlushListeners.add(walFlushListener);
     }
   }
@@ -241,7 +242,8 @@ public class WALNodeTest {
       ++time;
       InsertTabletPlan insertTabletPlan =
           getInsertTabletPlan(devicePath + memTableId, new long[] {time});
-      WALFlushListener walFlushListener = walNode.log(memTableId, insertTabletPlan);
+      WALFlushListener walFlushListener =
+          walNode.log(memTableId, insertTabletPlan, 0, insertTabletPlan.getRowCount());
       walFlushListeners.add(walFlushListener);
     }
     walNode.onMemTableFlushed(memTable);

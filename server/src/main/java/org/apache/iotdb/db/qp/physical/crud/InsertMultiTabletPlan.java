@@ -26,10 +26,8 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.BatchPlan;
 import org.apache.iotdb.db.utils.StatusUtils;
-import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
-import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -268,35 +266,7 @@ public class InsertMultiTabletPlan extends InsertPlan implements BatchPlan {
   }
 
   @Override
-  public int serializedSize() {
-    int size = 0;
-    size += Byte.BYTES;
-    size += Integer.BYTES;
-    for (InsertTabletPlan insertTabletPlan : insertTabletPlanList) {
-      size += insertTabletPlan.subSerializeSize();
-    }
-    size += Integer.BYTES;
-    size += Integer.BYTES * parentInsertTabletPlanIndexList.size();
-    return size;
-  }
-
-  @Override
   public void serializeImpl(ByteBuffer buffer) {
-    int type = PhysicalPlanType.MULTI_BATCH_INSERT.ordinal();
-    buffer.put((byte) type);
-    buffer.putInt(insertTabletPlanList.size());
-    for (InsertTabletPlan insertTabletPlan : insertTabletPlanList) {
-      insertTabletPlan.subSerialize(buffer);
-    }
-
-    buffer.putInt(parentInsertTabletPlanIndexList.size());
-    for (Integer index : parentInsertTabletPlanIndexList) {
-      buffer.putInt(index);
-    }
-  }
-
-  @Override
-  public void serializeToWAL(IWALByteBufferView buffer) {
     int type = PhysicalPlanType.MULTI_BATCH_INSERT.ordinal();
     buffer.put((byte) type);
     buffer.putInt(insertTabletPlanList.size());
@@ -322,23 +292,6 @@ public class InsertMultiTabletPlan extends InsertPlan implements BatchPlan {
     stream.writeInt(parentInsertTabletPlanIndexList.size());
     for (Integer index : parentInsertTabletPlanIndexList) {
       stream.writeInt(index);
-    }
-  }
-
-  @Override
-  public void deserialize(DataInputStream stream) throws IOException, IllegalPathException {
-    int tmpInsertTabletPlanListSize = stream.readInt();
-    this.insertTabletPlanList = new ArrayList<>(tmpInsertTabletPlanListSize);
-    for (int i = 0; i < tmpInsertTabletPlanListSize; i++) {
-      InsertTabletPlan tmpPlan = new InsertTabletPlan();
-      tmpPlan.deserialize(stream);
-      this.insertTabletPlanList.add(tmpPlan);
-    }
-
-    int tmpParentInsetTablePlanIndexListSize = stream.readInt();
-    this.parentInsertTabletPlanIndexList = new ArrayList<>(tmpParentInsetTablePlanIndexListSize);
-    for (int i = 0; i < tmpParentInsetTablePlanIndexListSize; i++) {
-      this.parentInsertTabletPlanIndexList.add(stream.readInt());
     }
   }
 

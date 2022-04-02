@@ -185,7 +185,8 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
     }
     try {
       switch (walEntry.getType()) {
-        case INSERT_PLAN:
+        case INSERT_ROW_PLAN:
+        case INSERT_TABLET_PLAN:
           walRedoer.redoInsert((InsertPlan) walEntry.getValue());
           break;
         case DELETE_PLAN:

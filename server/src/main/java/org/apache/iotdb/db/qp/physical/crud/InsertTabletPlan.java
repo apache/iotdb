@@ -24,6 +24,7 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
+import org.apache.iotdb.db.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.wal.utils.WALWriteUtils;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -50,7 +51,7 @@ import java.util.List;
 import java.util.Objects;
 
 @SuppressWarnings("java:S1135") // ignore todos
-public class InsertTabletPlan extends InsertPlan {
+public class InsertTabletPlan extends InsertPlan implements WALEntryValue {
   private static final String DATATYPE_UNSUPPORTED = "Data type %s is not supported.";
 
   private long[] times; // times should be sorted. It is done in the session API.
@@ -553,18 +554,22 @@ public class InsertTabletPlan extends InsertPlan {
 
   @Override
   public void serializeToWAL(IWALByteBufferView buffer) {
-    int type = PhysicalPlanType.BATCHINSERT.ordinal();
-    buffer.put((byte) type);
-    subSerialize(buffer);
+    serializeToWAL(buffer, 0, rowCount);
   }
 
-  void subSerialize(IWALByteBufferView buffer) {
+  public void serializeToWAL(IWALByteBufferView buffer, int start, int end) {
+    int type = PhysicalPlanType.BATCHINSERT.ordinal();
+    buffer.put((byte) type);
+    subSerialize(buffer, start, end);
+  }
+
+  void subSerialize(IWALByteBufferView buffer, int start, int end) {
     WALWriteUtils.write(devicePath.getFullPath(), buffer);
     writeMeasurements(buffer);
     writeDataTypes(buffer);
-    writeTimes(buffer);
-    writeBitMaps(buffer);
-    writeValues(buffer);
+    writeTimes(buffer, start, end);
+    writeBitMaps(buffer, start, end);
+    writeValues(buffer, start, end);
     buffer.put((byte) (isAligned ? 1 : 0));
   }
 
@@ -589,7 +594,7 @@ public class InsertTabletPlan extends InsertPlan {
     }
   }
 
-  private void writeTimes(IWALByteBufferView buffer) {
+  private void writeTimes(IWALByteBufferView buffer, int start, int end) {
     if (isExecuting) {
       buffer.putInt(end - start);
     } else {
@@ -612,7 +617,7 @@ public class InsertTabletPlan extends InsertPlan {
     }
   }
 
-  private void writeBitMaps(IWALByteBufferView buffer) {
+  private void writeBitMaps(IWALByteBufferView buffer, int start, int end) {
     buffer.put(BytesUtils.boolToByte(bitMaps != null));
     if (bitMaps != null) {
       for (BitMap bitMap : bitMaps) {
@@ -633,9 +638,9 @@ public class InsertTabletPlan extends InsertPlan {
     }
   }
 
-  private void writeValues(IWALByteBufferView buffer) {
+  private void writeValues(IWALByteBufferView buffer, int start, int end) {
     if (valueBuffer == null) {
-      serializeValues(buffer);
+      serializeValues(buffer, start, end);
     } else {
       buffer.put(valueBuffer.array());
       valueBuffer = null;
@@ -644,7 +649,7 @@ public class InsertTabletPlan extends InsertPlan {
     buffer.putLong(index);
   }
 
-  private void serializeValues(IWALByteBufferView buffer) {
+  private void serializeValues(IWALByteBufferView buffer, int start, int end) {
     for (int i = 0; i < dataTypes.length; i++) {
       if (columns[i] == null) {
         continue;

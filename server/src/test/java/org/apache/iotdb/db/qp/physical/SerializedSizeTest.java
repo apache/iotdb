@@ -20,10 +20,7 @@ package org.apache.iotdb.db.qp.physical;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -45,34 +42,6 @@ public class SerializedSizeTest {
     InsertRowPlan insertRowPlan = getInsertRowPlan();
     ByteBuffer buffer = ByteBuffer.allocate(insertRowPlan.serializedSize());
     insertRowPlan.serialize(buffer);
-    assertEquals(0, buffer.remaining());
-  }
-
-  @Test
-  public void testInsertRowsOfOneDevicePlan() throws IllegalPathException {
-    InsertRowPlan insertRowPlan1 = getInsertRowPlan();
-    InsertRowPlan insertRowPlan2 = getInsertRowPlan();
-    insertRowPlan2.setTime(200L);
-    InsertRowPlan[] rowPlans = {insertRowPlan1, insertRowPlan2};
-
-    InsertRowsOfOneDevicePlan insertRowsOfOneDevicePlan =
-        new InsertRowsOfOneDevicePlan(insertRowPlan1.getDevicePath(), rowPlans, new int[] {0, 1});
-    ByteBuffer buffer = ByteBuffer.allocate(insertRowsOfOneDevicePlan.serializedSize());
-    insertRowsOfOneDevicePlan.serialize(buffer);
-    assertEquals(0, buffer.remaining());
-  }
-
-  @Test
-  public void testInsertRowsPlan() throws IllegalPathException {
-    InsertRowPlan insertRowPlan1 = getInsertRowPlan();
-    InsertRowPlan insertRowPlan2 = getInsertRowPlan();
-    insertRowPlan2.setTime(200L);
-
-    InsertRowsPlan insertRowsPlan = new InsertRowsPlan();
-    insertRowsPlan.addOneInsertRowPlan(insertRowPlan1, 0);
-    insertRowsPlan.addOneInsertRowPlan(insertRowPlan2, 1);
-    ByteBuffer buffer = ByteBuffer.allocate(insertRowsPlan.serializedSize());
-    insertRowsPlan.serialize(buffer);
     assertEquals(0, buffer.remaining());
   }
 
@@ -109,21 +78,6 @@ public class SerializedSizeTest {
     InsertTabletPlan insertTabletPlan = getInsertTabletPlan();
     ByteBuffer buffer = ByteBuffer.allocate(insertTabletPlan.serializedSize());
     insertTabletPlan.serialize(buffer);
-    assertEquals(0, buffer.remaining());
-  }
-
-  @Test
-  public void testInsertMultiTabletPlan() throws IllegalPathException {
-    List<InsertTabletPlan> insertTabletPlans = new ArrayList<>();
-    InsertTabletPlan insertTabletPlan1 = getInsertTabletPlan();
-    insertTabletPlans.add(insertTabletPlan1);
-    InsertTabletPlan insertTabletPlan2 = getInsertTabletPlan();
-    insertTabletPlan2.setTimes(new long[] {114L, 115L, 116L, 117L});
-    insertTabletPlans.add(insertTabletPlan2);
-
-    InsertMultiTabletPlan insertMultiTabletPlan = new InsertMultiTabletPlan(insertTabletPlans);
-    ByteBuffer buffer = ByteBuffer.allocate(insertMultiTabletPlan.serializedSize());
-    insertMultiTabletPlan.serialize(buffer);
     assertEquals(0, buffer.remaining());
   }
 

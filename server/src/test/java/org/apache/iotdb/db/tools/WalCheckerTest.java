@@ -85,12 +85,7 @@ public class WalCheckerTest {
         int fakeMemTableId = 1;
         List<WALEntry> walEntries = new ArrayList<>();
         walEntries.add(new WALEntry(fakeMemTableId, WALFileTest.getInsertRowPlan(DEVICE_ID)));
-        walEntries.add(
-            new WALEntry(fakeMemTableId, WALFileTest.getInsertRowsOfOneDevicePlan(DEVICE_ID)));
-        walEntries.add(new WALEntry(fakeMemTableId, WALFileTest.getInsertRowsPlan(DEVICE_ID)));
         walEntries.add(new WALEntry(fakeMemTableId, WALFileTest.getInsertTabletPlan(DEVICE_ID)));
-        walEntries.add(
-            new WALEntry(fakeMemTableId, WALFileTest.getInsertMultiTabletPlan(DEVICE_ID)));
         walEntries.add(new WALEntry(fakeMemTableId, WALFileTest.getDeletePlan(DEVICE_ID)));
         int size = 0;
         for (WALEntry walEntry : walEntries) {
@@ -126,12 +121,7 @@ public class WalCheckerTest {
         int fakeMemTableId = 1;
         List<WALEntry> walEntries = new ArrayList<>();
         walEntries.add(new WALEntry(fakeMemTableId, WALFileTest.getInsertRowPlan(DEVICE_ID)));
-        walEntries.add(
-            new WALEntry(fakeMemTableId, WALFileTest.getInsertRowsOfOneDevicePlan(DEVICE_ID)));
-        walEntries.add(new WALEntry(fakeMemTableId, WALFileTest.getInsertRowsPlan(DEVICE_ID)));
         walEntries.add(new WALEntry(fakeMemTableId, WALFileTest.getInsertTabletPlan(DEVICE_ID)));
-        walEntries.add(
-            new WALEntry(fakeMemTableId, WALFileTest.getInsertMultiTabletPlan(DEVICE_ID)));
         walEntries.add(new WALEntry(fakeMemTableId, WALFileTest.getDeletePlan(DEVICE_ID)));
         int size = 0;
         for (WALEntry walEntry : walEntries) {

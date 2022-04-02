@@ -25,7 +25,8 @@ import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.utils.SerializedSize;
 import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.db.wal.utils.listener.WALFlushListener;
@@ -50,6 +51,8 @@ public class WALEntry implements SerializedSize {
   private final int memTableId;
   /** value(physical plan or memTable snapshot) */
   private final WALEntryValue value;
+  /** extra info for InsertTabletPlan type value */
+  private TabletInfo tabletInfo;
 
   /**
    * listen whether this WALEntry has been written to the filesystem, null iff this WALEntry is
@@ -59,13 +62,23 @@ public class WALEntry implements SerializedSize {
 
   public WALEntry(int memTableId, WALEntryValue value) {
     this(memTableId, value, config.getWalMode() == WALMode.SYNC);
+    if (value instanceof InsertTabletPlan) {
+      tabletInfo = new TabletInfo(0, ((InsertTabletPlan) value).getRowCount());
+    }
+  }
+
+  public WALEntry(int memTableId, InsertTabletPlan value, int tabletStart, int tabletEnd) {
+    this(memTableId, value, config.getWalMode() == WALMode.SYNC);
+    tabletInfo = new TabletInfo(tabletStart, tabletEnd);
   }
 
   public WALEntry(int memTableId, WALEntryValue value, boolean wait) {
     this.memTableId = memTableId;
     this.value = value;
-    if (value instanceof InsertPlan) {
-      this.type = WALEntryType.INSERT_PLAN;
+    if (value instanceof InsertRowPlan) {
+      this.type = WALEntryType.INSERT_ROW_PLAN;
+    } else if (value instanceof InsertTabletPlan) {
+      this.type = WALEntryType.INSERT_TABLET_PLAN;
     } else if (value instanceof DeletePlan) {
       this.type = WALEntryType.DELETE_PLAN;
     } else if (value instanceof IMemTable) {
@@ -91,7 +104,17 @@ public class WALEntry implements SerializedSize {
   public void serialize(IWALByteBufferView buffer) {
     buffer.put(type.getCode());
     buffer.putInt(memTableId);
-    value.serializeToWAL(buffer);
+    switch (type) {
+      case INSERT_TABLET_PLAN:
+        ((InsertTabletPlan) value)
+            .serializeToWAL(buffer, tabletInfo.tabletStart, tabletInfo.tabletEnd);
+        break;
+      case INSERT_ROW_PLAN:
+      case DELETE_PLAN:
+      case MEMORY_TABLE_SNAPSHOT:
+        value.serializeToWAL(buffer);
+        break;
+    }
   }
 
   public static WALEntry deserialize(DataInputStream stream)
@@ -105,8 +128,11 @@ public class WALEntry implements SerializedSize {
     int memTableId = stream.readInt();
     WALEntryValue value = null;
     switch (type) {
-      case INSERT_PLAN:
-        value = (InsertPlan) PhysicalPlan.Factory.create(stream);
+      case INSERT_ROW_PLAN:
+        value = (InsertRowPlan) PhysicalPlan.Factory.create(stream);
+        break;
+      case INSERT_TABLET_PLAN:
+        value = (InsertTabletPlan) PhysicalPlan.Factory.create(stream);
         break;
       case DELETE_PLAN:
         value = (DeletePlan) PhysicalPlan.Factory.create(stream);
@@ -149,5 +175,17 @@ public class WALEntry implements SerializedSize {
 
   public WALFlushListener getWalFlushListener() {
     return walFlushListener;
+  }
+
+  private static class TabletInfo {
+    /** start row of InsertTabletPlan */
+    private final int tabletStart;
+    /** end row of InsertTabletPlan */
+    private final int tabletEnd;
+
+    public TabletInfo(int tabletStart, int tabletEnd) {
+      this.tabletStart = tabletStart;
+      this.tabletEnd = tabletEnd;
+    }
   }
 }

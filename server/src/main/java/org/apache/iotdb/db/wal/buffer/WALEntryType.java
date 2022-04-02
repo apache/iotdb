@@ -20,12 +20,14 @@ package org.apache.iotdb.db.wal.buffer;
 
 /** Type of {@link WALEntry} */
 public enum WALEntryType {
-  /** {@link org.apache.iotdb.db.qp.physical.crud.InsertPlan} */
-  INSERT_PLAN((byte) 0),
+  /** {@link org.apache.iotdb.db.qp.physical.crud.InsertRowPlan} */
+  INSERT_ROW_PLAN((byte) 0),
+  /** {@link org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan} */
+  INSERT_TABLET_PLAN((byte) 1),
   /** {@link org.apache.iotdb.db.qp.physical.crud.DeletePlan} */
-  DELETE_PLAN((byte) 1),
+  DELETE_PLAN((byte) 2),
   /** snapshot of {@link org.apache.iotdb.db.engine.memtable.IMemTable} */
-  MEMORY_TABLE_SNAPSHOT((byte) 2),
+  MEMORY_TABLE_SNAPSHOT((byte) 3),
   ;
 
   private final byte code;

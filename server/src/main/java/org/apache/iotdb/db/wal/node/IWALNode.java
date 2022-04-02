@@ -21,13 +21,17 @@ package org.apache.iotdb.db.wal.node;
 import org.apache.iotdb.db.engine.flush.FlushListener;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.wal.utils.listener.WALFlushListener;
 
 /** This interface provides uniform interface for writing wal and making checkpoints. */
 public interface IWALNode extends FlushListener, AutoCloseable {
+  /** Log InsertRowPlan */
+  WALFlushListener log(int memTableId, InsertRowPlan insertRowPlan);
+
   /** Log InsertPlan */
-  WALFlushListener log(int memTableId, InsertPlan insertPlan);
+  WALFlushListener log(int memTableId, InsertTabletPlan insertTabletPlan, int start, int end);
 
   /** Log DeletePlan */
   WALFlushListener log(int memTableId, DeletePlan deletePlan);
