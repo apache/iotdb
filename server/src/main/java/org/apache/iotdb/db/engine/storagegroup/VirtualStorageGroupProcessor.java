@@ -406,7 +406,9 @@ public class VirtualStorageGroupProcessor {
         // tsFiles without resource file are unsealed
         while (!value.isEmpty()) {
           TsFileResource tsFileResource = value.get(value.size() - 1);
-          if (!tsFileResource.resourceFileExists()) {
+          if (tsFileResource.resourceFileExists()) {
+            break;
+          } else {
             value.remove(value.size() - 1);
             WALRecoverListener recoverListener =
                 recoverUnsealedTsFile(tsFileResource, VSGRecoveryContext, true);
@@ -418,7 +420,9 @@ public class VirtualStorageGroupProcessor {
         // tsFiles without resource file are unsealed
         while (!value.isEmpty()) {
           TsFileResource tsFileResource = value.get(value.size() - 1);
-          if (!tsFileResource.resourceFileExists()) {
+          if (tsFileResource.resourceFileExists()) {
+            break;
+          } else {
             value.remove(value.size() - 1);
             WALRecoverListener recoverListener =
                 recoverUnsealedTsFile(tsFileResource, VSGRecoveryContext, false);
