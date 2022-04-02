@@ -298,9 +298,16 @@ public class CompactionTaskManager implements IService {
       throws RejectedExecutionException {
     if (taskExecutionPool != null && !taskExecutionPool.isTerminated()) {
       Future<Void> future = taskExecutionPool.submit(compactionTask);
-      storageGroupTasks
-          .computeIfAbsent(compactionTask.getFullStorageGroupName(), x -> new HashMap<>())
-          .put(compactionTask, future);
+      // sleep 50 milliseconds to make sure that the task has started to execute
+      try {
+        TimeUnit.MILLISECONDS.sleep(50);
+      } catch (InterruptedException e) {
+      }
+      if (!future.isCancelled()) {
+        storageGroupTasks
+            .computeIfAbsent(compactionTask.getFullStorageGroupName(), x -> new HashMap<>())
+            .put(compactionTask, future);
+      }
       return future;
     }
     logger.warn(
