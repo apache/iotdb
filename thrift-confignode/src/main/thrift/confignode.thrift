@@ -156,6 +156,6 @@ service ConfigIService {
 
   PartitionInfoResp fetchPartitionInfo(FetchPartitionReq req)
 
-   rpc.TSStatus AuthorierNonQuerty(AuthorizerReq req)
+   rpc.TSStatus operatePermission(AuthorizerReq req)
 
 }

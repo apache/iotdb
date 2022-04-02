@@ -156,7 +156,7 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
   }
 
   @Override
-  public TSStatus AuthorierNonQuerty(AuthorizerReq req) throws TException {
+  public TSStatus operatePermission(AuthorizerReq req) throws TException {
     PhysicalPlanType authorType = null;
     switch (req.getAuthorType()) {
       case "CREATE_USER":
@@ -192,6 +192,8 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
       case "UPDATE_USER":
         authorType = PhysicalPlanType.UPDATE_USER;
         break;
+      default:
+        throw new TException("authorType is null");
     }
     AuthorPlan plan = null;
     try {
@@ -207,7 +209,7 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
     } catch (AuthException e) {
       LOGGER.error(e.getMessage());
     }
-    return null;
+    return configManager.operatePermission(plan);
   }
 
   @Override

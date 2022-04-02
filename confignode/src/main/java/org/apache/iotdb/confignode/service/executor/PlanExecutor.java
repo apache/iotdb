@@ -24,7 +24,6 @@ import org.apache.iotdb.confignode.persistence.DataNodeInfoPersistence;
 import org.apache.iotdb.confignode.persistence.PartitionInfoPersistence;
 import org.apache.iotdb.confignode.persistence.RegionInfoPersistence;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
-import org.apache.iotdb.confignode.physical.PhysicalPlanType;
 import org.apache.iotdb.confignode.physical.sys.AuthorPlan;
 import org.apache.iotdb.confignode.physical.sys.DataPartitionPlan;
 import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
@@ -33,19 +32,9 @@ import org.apache.iotdb.confignode.physical.sys.SchemaPartitionPlan;
 import org.apache.iotdb.confignode.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.auth.AuthException;
-import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
-import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
-import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.util.Set;
-
 public class PlanExecutor {
-
-  private static final Logger logger = LoggerFactory.getLogger(PlanExecutor.class);
 
   private final DataNodeInfoPersistence dataNodeInfoPersistence;
 
@@ -55,18 +44,11 @@ public class PlanExecutor {
 
   private final AuthorInfoPersistence authorInfoPersistence;
 
-  private IAuthorizer authorizer;
-
   public PlanExecutor() {
     this.dataNodeInfoPersistence = DataNodeInfoPersistence.getInstance();
     this.regionInfoPersistence = RegionInfoPersistence.getInstance();
     this.partitionInfoPersistence = PartitionInfoPersistence.getInstance();
     this.authorInfoPersistence = AuthorInfoPersistence.getInstance();
-    try {
-      this.authorizer = BasicAuthorizer.getInstance();
-    } catch (AuthException e) {
-      logger.error("get user or role info failed", e);
-    }
   }
 
   public DataSet executorQueryPlan(PhysicalPlan plan)
@@ -108,6 +90,7 @@ public class PlanExecutor {
         return dataNodeInfoPersistence.registerDataNode((RegisterDataNodePlan) plan);
       case SetStorageGroup:
         return regionInfoPersistence.setStorageGroup((SetStorageGroupPlan) plan);
+      case CREATE_USER:
       case CREATE_ROLE:
       case DROP_USER:
       case DROP_ROLE:
@@ -118,69 +101,9 @@ public class PlanExecutor {
       case REVOKE_ROLE:
       case REVOKE_ROLE_FROM_USER:
       case UPDATE_USER:
-        return authorNonQuery((AuthorPlan) plan);
+        return authorInfoPersistence.authorNonQuery((AuthorPlan) plan);
       default:
         throw new UnknownPhysicalPlanTypeException(plan.getType());
     }
-  }
-
-  private TSStatus authorNonQuery(AuthorPlan authorPlan) throws AuthException {
-    PhysicalPlanType authorType = authorPlan.getAuthorType();
-    String userName = authorPlan.getUserName();
-    String roleName = authorPlan.getRoleName();
-    String password = authorPlan.getPassword();
-    String newPassword = authorPlan.getNewPassword();
-    Set<Integer> permissions = authorPlan.getPermissions();
-    String nodeName = authorPlan.getNodeName();
-    try {
-      switch (authorType) {
-        case UPDATE_USER:
-          authorizer.updateUserPassword(userName, newPassword);
-          break;
-        case CREATE_USER:
-          authorizer.createUser(userName, password);
-          break;
-        case CREATE_ROLE:
-          authorizer.createRole(roleName);
-          break;
-        case DROP_USER:
-          authorizer.deleteUser(userName);
-          break;
-        case DROP_ROLE:
-          authorizer.deleteRole(roleName);
-          break;
-        case GRANT_ROLE:
-          for (int i : permissions) {
-            authorizer.grantPrivilegeToRole(roleName, nodeName, i);
-          }
-          break;
-        case GRANT_USER:
-          for (int i : permissions) {
-            authorizer.grantPrivilegeToUser(userName, nodeName, i);
-          }
-          break;
-        case GRANT_ROLE_TO_USER:
-          authorizer.grantRoleToUser(roleName, userName);
-          break;
-        case REVOKE_USER:
-          for (int i : permissions) {
-            authorizer.revokePrivilegeFromUser(userName, nodeName, i);
-          }
-          break;
-        case REVOKE_ROLE:
-          for (int i : permissions) {
-            authorizer.revokePrivilegeFromRole(roleName, nodeName, i);
-          }
-          break;
-        case REVOKE_ROLE_FROM_USER:
-          authorizer.revokeRoleFromUser(roleName, userName);
-          break;
-        default:
-          throw new AuthException("execute " + authorPlan + " failed");
-      }
-    } catch (AuthException e) {
-      throw new AuthException("execute " + authorPlan + " failed: ", e);
-    }
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 }
