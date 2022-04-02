@@ -16,28 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.consensus.response;
 
-import org.apache.iotdb.confignode.partition.StorageGroupSchema;
+import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.consensus.common.DataSet;
 
-import java.util.List;
+public class DataPartitionDataSet implements DataSet {
+  private DataPartition dataPartitionInfo;
 
-public class StorageGroupSchemaDataSet implements DataSet {
-
-  private List<StorageGroupSchema> schemaList;
-
-  public StorageGroupSchemaDataSet() {}
-
-  public StorageGroupSchemaDataSet(List<StorageGroupSchema> schemaList) {
-    this.schemaList = schemaList;
+  public DataPartition getDataPartitionInfo() {
+    return dataPartitionInfo;
   }
 
-  public List<StorageGroupSchema> getSchemaList() {
-    return schemaList;
-  }
-
-  public void setSchemaList(List<StorageGroupSchema> schemaList) {
-    this.schemaList = schemaList;
+  public void setDataPartitionInfos(DataPartition dataPartitionInfo) {
+    this.dataPartitionInfo = dataPartitionInfo;
   }
 }

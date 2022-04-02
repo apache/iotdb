@@ -19,13 +19,18 @@
 
 package org.apache.iotdb.commons.consensus;
 
+import java.nio.ByteBuffer;
 import java.util.Objects;
 
 // TODO Use a mature IDL framework such as Protobuf to manage this structure
 public class ConsensusGroupId {
 
-  private final GroupType type;
-  private final int id;
+  private GroupType type;
+  private int id;
+
+  public ConsensusGroupId() {
+
+  }
 
   public ConsensusGroupId(GroupType type, int id) {
     this.type = type;
@@ -52,6 +57,18 @@ public class ConsensusGroupId {
     return id == that.id && Objects.equals(type, that.type);
   }
 
+  public void serializeImpl(ByteBuffer buffer) {
+    buffer.putInt(type.ordinal());
+    buffer.putInt(id);
+  }
+
+  public void deserializeImpl(ByteBuffer buffer) {
+    int ordinal = buffer.getInt();
+    // TODO: (xingtanzjr) should we add validation for the ordinal ?
+    type = GroupType.values()[ordinal];
+    id = buffer.getInt();
+  }
+
   @Override
   public int hashCode() {
     return Objects.hash(type, id);
@@ -59,6 +76,6 @@ public class ConsensusGroupId {
 
   @Override
   public String toString() {
-    return "ConsensusGroupId{" + "type=" + type + ", id=" + id + '}';
+    return String.format("ConsensusGroupId[%s]-%s", type, id);
   }
 }

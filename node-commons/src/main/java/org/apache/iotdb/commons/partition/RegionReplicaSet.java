@@ -20,11 +20,17 @@ package org.apache.iotdb.commons.partition;
 
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 
 public class RegionReplicaSet {
   private ConsensusGroupId Id;
   private List<DataNodeLocation> dataNodeList;
+
+  public RegionReplicaSet() {
+
+  }
 
   public RegionReplicaSet(ConsensusGroupId Id, List<DataNodeLocation> dataNodeList) {
     this.Id = Id;
@@ -48,7 +54,31 @@ public class RegionReplicaSet {
   }
 
   public String toString() {
-    return String.format("%s:%s", Id, dataNodeList);
+    return String.format("RegionReplicaSet[%s-%d]: %s", Id.getType(), Id.getId(), dataNodeList);
+  }
+
+  public void serializeImpl(ByteBuffer buffer) {
+    Id.serializeImpl(buffer);
+    buffer.putInt(dataNodeList.size());
+    dataNodeList.forEach(
+        dataNode -> {
+          dataNode.serializeImpl(buffer);
+        });
+  }
+
+  public void deserializeImpl(ByteBuffer buffer) {
+    Id = new ConsensusGroupId();
+    Id.deserializeImpl(buffer);
+
+    int size = buffer.getInt();
+    // We should always make dataNodeList as a new Object when deserialization
+    dataNodeList = new ArrayList<>();
+
+    for (int i = 0; i < size; i++) {
+      DataNodeLocation dataNode = new DataNodeLocation();
+      dataNode.deserializeImpl(buffer);
+      dataNodeList.add(dataNode);
+    }
   }
 
   public int hashCode() {
