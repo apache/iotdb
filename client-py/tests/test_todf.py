@@ -65,7 +65,7 @@ def create_ts(session):
 
 
 def test_simple_query():
-    with IoTDBContainer() as db:
+    with IoTDBContainer("iotdb:latest") as db:
         db: IoTDBContainer
         session = Session(db.get_container_host_ip(), db.get_exposed_port(6667))
         session.open(False)
@@ -101,7 +101,7 @@ def test_simple_query():
 
 
 def test_with_null_query():
-    with IoTDBContainer() as db:
+    with IoTDBContainer("iotdb:latest") as db:
         db: IoTDBContainer
         session = Session(db.get_container_host_ip(), db.get_exposed_port(6667))
         session.open(False)
@@ -180,7 +180,7 @@ def test_with_null_query():
 
 
 def test_multi_fetch():
-    with IoTDBContainer() as db:
+    with IoTDBContainer("iotdb:latest") as db:
         db: IoTDBContainer
         session = Session(db.get_container_host_ip(), db.get_exposed_port(6667))
         session.open(False)

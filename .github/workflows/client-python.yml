@@ -49,6 +49,12 @@ jobs:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-
+      - name: Build IoTDB Server Distribution Zip
+        run: mvn -B clean install -pl distribution -am -DskipTests
+      - name: Build IoTDB Server Docker Image
+        run: |
+          docker build . -f docker/src/main/Dockerfile-single -t "iotdb:latest"
+          docker images
       - name: Compile IoTDB Python Client
         run: mvn -B package -Dmaven.test.skip=true  -am -pl client-py
       - name: Install requirements

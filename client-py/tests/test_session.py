@@ -44,7 +44,7 @@ def print_message(message):
 
 
 def test_session():
-    with IoTDBContainer("apache/iotdb:latest") as db:
+    with IoTDBContainer("iotdb:latest") as db:
         db: IoTDBContainer
         session = Session(db.get_container_host_ip(), db.get_exposed_port(6667))
         session.open(False)
