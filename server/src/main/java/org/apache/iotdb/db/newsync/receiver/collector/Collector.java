@@ -21,14 +21,14 @@ package org.apache.iotdb.db.newsync.receiver.collector;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
-import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
+import org.apache.iotdb.db.exception.sync.PipeDataLoadBearableException;
+import org.apache.iotdb.db.exception.sync.PipeDataLoadException;
 import org.apache.iotdb.db.newsync.conf.SyncPathUtil;
 import org.apache.iotdb.db.newsync.pipedata.PipeData;
 import org.apache.iotdb.db.newsync.pipedata.queue.PipeDataQueue;
 import org.apache.iotdb.db.newsync.pipedata.queue.PipeDataQueueFactory;
 import org.apache.iotdb.db.newsync.receiver.manager.PipeMessage;
 import org.apache.iotdb.db.newsync.receiver.manager.ReceiverManager;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.newsync.receiver;
 
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
@@ -43,9 +45,6 @@ import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
-
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,10 +53,7 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_CREATED_TIME;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPE_NAME;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPE_REMOTE_IP;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPE_STATUS;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPESERVER_STATUS;
 
 public class ReceiverService implements IService {
   private static final Logger logger = LoggerFactory.getLogger(ReceiverService.class);

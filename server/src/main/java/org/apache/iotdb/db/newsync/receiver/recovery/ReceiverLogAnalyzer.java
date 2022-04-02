@@ -25,8 +25,6 @@ import org.apache.iotdb.db.newsync.conf.SyncPathUtil;
 import org.apache.iotdb.db.newsync.receiver.manager.PipeInfo;
 import org.apache.iotdb.db.newsync.receiver.manager.PipeMessage;
 import org.apache.iotdb.db.newsync.sender.pipe.Pipe.PipeStatus;
-import org.apache.iotdb.db.service.ServiceType;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
