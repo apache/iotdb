@@ -44,7 +44,7 @@ public class WildcardsRemover {
   private int currentLimit =
       IoTDBDescriptor.getInstance().getConfig().getMaxQueryDeduplicatedPathNum() + 1;
 
-  /** Records the path number that the SchemaEngine totally returned. */
+  /** Records the path number that the SchemaProcessor totally returned. */
   private int consumed = 0;
 
   /**
@@ -71,7 +71,7 @@ public class WildcardsRemover {
       throws LogicalOptimizeException {
     try {
       Pair<List<MeasurementPath>, Integer> pair =
-          IoTDB.schemaEngine.getMeasurementPathsWithAlias(
+          IoTDB.schemaProcessor.getMeasurementPathsWithAlias(
               path, currentLimit, currentOffset, isPrefixMatch);
       consumed += pair.right;
       currentOffset -= Math.min(currentOffset, pair.right);

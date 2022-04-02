@@ -19,8 +19,10 @@
 package org.apache.iotdb.confignode.service;
 
 import org.apache.iotdb.commons.ServerCommandLine;
+import org.apache.iotdb.commons.exception.ConfigurationException;
+import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.service.StartupChecks;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfCheck;
-import org.apache.iotdb.confignode.exception.ConfigNodeException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,18 +54,25 @@ public class ConfigNodeCommandLine extends ServerCommandLine {
 
   @Override
   protected int run(String[] args) {
+    String mode;
     if (args.length < 1) {
-      usage(null);
-      return -1;
+      mode = MODE_START;
+      LOGGER.warn(
+          "ConfigNode does not specify a startup mode. The default startup mode {} will be used",
+          MODE_START);
+    } else {
+      mode = args[0];
     }
 
-    String mode = args[0];
     LOGGER.info("Running mode {}", mode);
     if (MODE_START.equals(mode)) {
       try {
-        // Check parameters
+        // Startup environment check
+        StartupChecks checks = new StartupChecks().withDefaultTest();
+        checks.verify();
+        // Check special parameters
         ConfigNodeConfCheck.getInstance().checkConfig();
-      } catch (ConfigNodeException | IOException e) {
+      } catch (IOException | ConfigurationException | StartupException e) {
         LOGGER.error("Meet error when doing start checking", e);
         return -1;
       }

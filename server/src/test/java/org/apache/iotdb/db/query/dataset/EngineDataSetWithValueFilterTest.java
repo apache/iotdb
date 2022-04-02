@@ -80,7 +80,7 @@ public class EngineDataSetWithValueFilterTest {
   };
 
   static {
-    IoTDB.schemaEngine.init();
+    IoTDB.configManager.init();
   }
 
   public EngineDataSetWithValueFilterTest() throws QueryProcessException {}

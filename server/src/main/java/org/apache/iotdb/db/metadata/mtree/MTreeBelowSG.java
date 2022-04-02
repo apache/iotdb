@@ -27,8 +27,8 @@ import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.TemplateImcompatibeException;
 import org.apache.iotdb.db.exception.metadata.TemplateIsInUseException;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor.StorageGroupFilter;
 import org.apache.iotdb.db.metadata.MetadataConstant;
-import org.apache.iotdb.db.metadata.SchemaEngine.StorageGroupFilter;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
@@ -36,6 +36,7 @@ import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MNodeUtils;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.CollectorTraverser;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.EntityCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MNodeCollector;
@@ -64,7 +65,6 @@ import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.gson.JsonObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -86,7 +86,7 @@ import java.util.TreeSet;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
-import static org.apache.iotdb.db.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_RESULT_NODES;
 import static org.apache.iotdb.db.metadata.lastCache.LastCacheManager.getLastTimeStamp;
 
@@ -127,7 +127,11 @@ public class MTreeBelowSG implements Serializable {
 
   // region MTree initialization, clear and serialization
   public MTreeBelowSG(IStorageGroupMNode storageGroupMNode) throws IOException {
-    this.storageGroupMNode = storageGroupMNode;
+    this.storageGroupMNode =
+        new StorageGroupMNode(
+            storageGroupMNode.getParent(),
+            storageGroupMNode.getName(),
+            storageGroupMNode.getDataTTL());
     levelOfSG = storageGroupMNode.getPartialPath().getNodeLength() - 1;
   }
 
@@ -137,36 +141,6 @@ public class MTreeBelowSG implements Serializable {
 
   public void clear() {
     storageGroupMNode = null;
-  }
-
-  public JsonObject toJson() {
-    JsonObject jsonObject = new JsonObject();
-    jsonObject.add(
-        storageGroupMNode.getFullPath(),
-        mNodeToJSON(storageGroupMNode, storageGroupMNode.getName()));
-    return jsonObject;
-  }
-
-  private JsonObject mNodeToJSON(IMNode node, String storageGroupName) {
-    JsonObject jsonObject = new JsonObject();
-    if (node.getChildren().size() > 0) {
-      if (node.isStorageGroup()) {
-        storageGroupName = node.getFullPath();
-      }
-      for (IMNode child : node.getChildren().values()) {
-        jsonObject.add(child.getName(), mNodeToJSON(child, storageGroupName));
-      }
-    } else if (node.isMeasurement()) {
-      IMeasurementMNode leafMNode = node.getAsMeasurementMNode();
-      jsonObject.add("DataType", GSON.toJsonTree(leafMNode.getSchema().getType()));
-      jsonObject.add("Encoding", GSON.toJsonTree(leafMNode.getSchema().getEncodingType()));
-      jsonObject.add("Compressor", GSON.toJsonTree(leafMNode.getSchema().getCompressor()));
-      if (leafMNode.getSchema().getProps() != null) {
-        jsonObject.addProperty("args", leafMNode.getSchema().getProps().toString());
-      }
-      jsonObject.addProperty("StorageGroup", storageGroupName);
-    }
-    return jsonObject;
   }
   // endregion
 
@@ -501,7 +475,8 @@ public class MTreeBelowSG implements Serializable {
     return result;
   }
 
-  public List<ShowDevicesResult> getDevices(ShowDevicesPlan plan) throws MetadataException {
+  public Pair<List<ShowDevicesResult>, Integer> getDevices(ShowDevicesPlan plan)
+      throws MetadataException {
     List<ShowDevicesResult> res = new ArrayList<>();
     EntityCollector<List<ShowDevicesResult>> collector =
         new EntityCollector<List<ShowDevicesResult>>(
@@ -523,12 +498,7 @@ public class MTreeBelowSG implements Serializable {
     collector.setPrefixMatch(plan.isPrefixMatch());
     collector.traverse();
 
-    if (plan.getLimit() != 0) {
-      plan.setLimit(plan.getLimit() - res.size());
-      plan.setOffset(Math.max(plan.getOffset() - collector.getCurOffset() - 1, 0));
-    }
-
-    return res;
+    return new Pair<>(res, collector.getCurOffset() + 1);
   }
 
   public Set<PartialPath> getDevicesByTimeseries(PartialPath timeseries) throws MetadataException {
@@ -586,7 +556,7 @@ public class MTreeBelowSG implements Serializable {
     MeasurementCollector<List<PartialPath>> collector =
         new MeasurementCollector<List<PartialPath>>(storageGroupMNode, pathPattern, limit, offset) {
           @Override
-          protected void collectMeasurement(IMeasurementMNode node) throws MetadataException {
+          protected void collectMeasurement(IMeasurementMNode node) {
             MeasurementPath path = getCurrentMeasurementPathInTraverse(node);
             if (nodes[nodes.length - 1].equals(node.getAlias())) {
               // only when user query with alias, the alias in path will be set
@@ -604,9 +574,10 @@ public class MTreeBelowSG implements Serializable {
   /**
    * Get all measurement schema matching the given path pattern
    *
-   * <p>result: [name, alias, storage group, dataType, encoding, compression, offset]
+   * <p>result: [name, alias, storage group, dataType, encoding, compression, offset] and the
+   * current offset
    */
-  public List<Pair<PartialPath, String[]>> getAllMeasurementSchema(
+  public Pair<List<Pair<PartialPath, String[]>>, Integer> getAllMeasurementSchema(
       ShowTimeSeriesPlan plan, QueryContext queryContext) throws MetadataException {
     /*
      There are two conditions and 4 cases.
@@ -644,12 +615,13 @@ public class MTreeBelowSG implements Serializable {
     collector.traverse();
 
     List<Pair<PartialPath, String[]>> result = collector.getResult();
-    Stream<Pair<PartialPath, String[]>> stream = result.stream();
-
-    limit = plan.getLimit();
-    offset = plan.getOffset();
 
     if (needLast) {
+      Stream<Pair<PartialPath, String[]>> stream = result.stream();
+
+      limit = plan.getLimit();
+      offset = plan.getOffset();
+
       stream =
           stream.sorted(
               Comparator.comparingLong(
@@ -657,19 +629,14 @@ public class MTreeBelowSG implements Serializable {
                   .reversed()
                   .thenComparing((Pair<PartialPath, String[]> p) -> p.left));
 
-      // no limit
       if (limit != 0) {
         stream = stream.skip(offset).limit(limit);
       }
 
-    } else if (limit != 0) {
-      plan.setLimit(limit - result.size());
-      plan.setOffset(Math.max(offset - collector.getCurOffset() - 1, 0));
+      result = stream.collect(toList());
     }
 
-    result = stream.collect(toList());
-
-    return result;
+    return new Pair<>(result, collector.getCurOffset() + 1);
   }
 
   /**
@@ -780,7 +747,8 @@ public class MTreeBelowSG implements Serializable {
 
   /** Get all paths from root to the given level */
   public List<PartialPath> getNodesListInGivenLevel(
-      PartialPath pathPattern, int nodeLevel, StorageGroupFilter filter) throws MetadataException {
+      PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch, StorageGroupFilter filter)
+      throws MetadataException {
     MNodeCollector<List<PartialPath>> collector =
         new MNodeCollector<List<PartialPath>>(storageGroupMNode, pathPattern) {
           @Override
@@ -790,6 +758,7 @@ public class MTreeBelowSG implements Serializable {
         };
     collector.setResultSet(new LinkedList<>());
     collector.setTargetLevel(nodeLevel);
+    collector.setPrefixMatch(isPrefixMatch);
     collector.setStorageGroupFilter(filter);
     collector.traverse();
     return collector.getResult();

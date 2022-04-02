@@ -81,6 +81,23 @@ struct TSCreateDatabaseReq{
   2: required string database
 }
 
+// query()
+// query in influxdb
+struct TSQueryReq{
+  // The session to execute the statement against
+  1: required i64 sessionId
+
+  2: required string command
+  3: required string database
+}
+
+struct TSQueryResultRsp{
+  1: required TSStatus status
+
+  2: optional string resultJsonString
+
+}
+
 service InfluxDBService {
   TSOpenSessionResp openSession(1:TSOpenSessionReq req);
 
@@ -89,4 +106,6 @@ service InfluxDBService {
   TSStatus writePoints(1:TSWritePointsReq req);
 
   TSStatus createDatabase(1:TSCreateDatabaseReq req);
+
+  TSQueryResultRsp query(1:TSQueryReq req);
 }

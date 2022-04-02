@@ -196,15 +196,6 @@ public abstract class PhysicalPlan implements IConsensusRequest {
     serialize(buffer);
   }
 
-  @Override
-  public void deserializeRequest(ByteBuffer buffer) throws Exception {
-    try {
-      deserialize(buffer);
-    } catch (IllegalPathException | IOException e) {
-      throw new Exception(e);
-    }
-  }
-
   /**
    * Serialize the plan into the given buffer. This is provided for WAL, so fields that can be
    * recovered will not be serialized. If error occurs when serializing this plan, the buffer will
@@ -586,6 +577,7 @@ public abstract class PhysicalPlan implements IConsensusRequest {
    *
    * @throws QueryProcessException when the check fails
    */
+  // TODO(INSERT) move this check into analyze
   public void checkIntegrity() throws QueryProcessException {}
 
   public boolean isPrefixMatch() {

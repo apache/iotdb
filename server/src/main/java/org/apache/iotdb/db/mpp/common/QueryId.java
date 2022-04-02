@@ -18,14 +18,103 @@
  */
 package org.apache.iotdb.db.mpp.common;
 
-public class QueryId {
-  private String Id;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-  public String getId() {
-    return Id;
+import java.nio.ByteBuffer;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
+
+import static java.lang.String.format;
+import static java.util.Objects.requireNonNull;
+
+public class QueryId {
+
+  private final String id;
+
+  public static QueryId valueOf(String queryId) {
+    // ID is verified in the constructor
+    return new QueryId(queryId);
   }
 
-  public void setId(String id) {
-    Id = id;
+  public QueryId(String id) {
+    this.id = validateId(id);
+  }
+
+  public String getId() {
+    return id;
+  }
+
+  @Override
+  public String toString() {
+    return id;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(id);
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null || getClass() != obj.getClass()) {
+      return false;
+    }
+    QueryId other = (QueryId) obj;
+    return Objects.equals(this.id, other.id);
+  }
+
+  public static List<String> parseDottedId(String id, int expectedParts, String name) {
+    requireNonNull(id, "id is null");
+    checkArgument(expectedParts > 0, "expectedParts must be at least 1");
+    requireNonNull(name, "name is null");
+
+    List<String> ids = Arrays.asList(id.split("\\."));
+    checkArgument(ids.size() == expectedParts, "Invalid %s %s", name, id);
+
+    for (String part : ids) {
+      checkArgument(!part.isEmpty(), "Invalid id %s", id);
+      checkArgument(isValidId(part), "Invalid id %s", id);
+    }
+    return ids;
+  }
+
+  private static void checkArgument(boolean condition, String message, Object... messageArgs) {
+    if (!condition) {
+      throw new IllegalArgumentException(format(message, messageArgs));
+    }
+  }
+
+  //
+  // Id helper methods
+  //
+
+  // Check if the string matches [_a-z0-9]+ , but without the overhead of regex
+  private static boolean isValidId(String id) {
+    if (id.length() == 0) {
+      return false;
+    }
+
+    for (int i = 0; i < id.length(); i++) {
+      char c = id.charAt(i);
+      if (!(c == '_' || c >= 'a' && c <= 'z' || c >= '0' && c <= '9')) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  public static String validateId(String id) {
+    requireNonNull(id, "id is null");
+    checkArgument(!id.isEmpty(), "id is empty");
+    checkArgument(isValidId(id), "Invalid id %s", id);
+    return id;
+  }
+
+  public static QueryId deserialize(ByteBuffer byteBuffer) {
+    return new QueryId(ReadWriteIOUtils.readString(byteBuffer));
   }
 }

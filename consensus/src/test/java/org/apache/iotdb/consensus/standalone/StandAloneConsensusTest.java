@@ -25,6 +25,7 @@ import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Endpoint;
 import org.apache.iotdb.consensus.common.GroupType;
 import org.apache.iotdb.consensus.common.Peer;
+import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
@@ -52,14 +53,16 @@ import static org.junit.Assert.assertTrue;
 public class StandAloneConsensusTest {
 
   private IConsensus consensusImpl;
-  private final TestEntry entry = new TestEntry(0);
+  private final TestEntry entry1 = new TestEntry(0);
+  private final ByteBufferConsensusRequest entry2 =
+      new ByteBufferConsensusRequest(ByteBuffer.wrap(new byte[4]));
   private final ConsensusGroupId dataRegionId = new ConsensusGroupId(GroupType.DataRegion, 0);
   private final ConsensusGroupId schemaRegionId = new ConsensusGroupId(GroupType.SchemaRegion, 1);
-  private final ConsensusGroupId configId = new ConsensusGroupId(GroupType.Config, 2);
+  private final ConsensusGroupId configId = new ConsensusGroupId(GroupType.PartitionRegion, 2);
 
   private static class TestEntry implements IConsensusRequest {
 
-    private int num;
+    private final int num;
 
     public TestEntry(int num) {
       this.num = num;
@@ -68,11 +71,6 @@ public class StandAloneConsensusTest {
     @Override
     public void serializeRequest(ByteBuffer buffer) {
       buffer.putInt(num);
-    }
-
-    @Override
-    public void deserializeRequest(ByteBuffer buffer) throws Exception {
-      num = buffer.getInt();
     }
   }
 
@@ -92,7 +90,9 @@ public class StandAloneConsensusTest {
 
     @Override
     public TSStatus write(IConsensusRequest request) {
-      if (request instanceof TestEntry) {
+      if (request instanceof ByteBufferConsensusRequest) {
+        return new TSStatus(((ByteBufferConsensusRequest) request).getContent().getInt());
+      } else if (request instanceof TestEntry) {
         return new TSStatus(
             direction ? ((TestEntry) request).num + 1 : ((TestEntry) request).num - 1);
       }
@@ -237,18 +237,26 @@ public class StandAloneConsensusTest {
     assertTrue(response3.isSuccess());
     assertNull(response3.getException());
 
-    ConsensusWriteResponse response4 = consensusImpl.write(dataRegionId, entry);
+    // test new TestStateMachine(true), should return 1;
+    ConsensusWriteResponse response4 = consensusImpl.write(dataRegionId, entry1);
     assertNull(response4.getException());
     assertNotNull(response4.getStatus());
     assertEquals(-1, response4.getStatus().getCode());
 
-    ConsensusWriteResponse response5 = consensusImpl.write(schemaRegionId, entry);
+    // test new TestStateMachine(false), should return -1;
+    ConsensusWriteResponse response5 = consensusImpl.write(schemaRegionId, entry1);
     assertNull(response5.getException());
     assertNotNull(response5.getStatus());
     assertEquals(1, response5.getStatus().getCode());
 
-    ConsensusWriteResponse response6 = consensusImpl.write(configId, entry);
+    // test new EmptyStateMachine(), should return 0;
+    ConsensusWriteResponse response6 = consensusImpl.write(configId, entry1);
     assertNull(response6.getException());
     assertEquals(0, response6.getStatus().getCode());
+
+    // test ByteBufferConsensusRequest, should return 0;
+    ConsensusWriteResponse response7 = consensusImpl.write(dataRegionId, entry2);
+    assertNull(response7.getException());
+    assertEquals(0, response7.getStatus().getCode());
   }
 }
