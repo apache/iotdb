@@ -294,7 +294,7 @@ public abstract class PhysicalPlan implements IConsensusRequest {
     }
 
     private static PhysicalPlan createByTypeNum(int typeNum) throws IOException {
-      if (typeNum >= PhysicalPlanType.values().length) {
+      if (typeNum < 0 || typeNum >= PhysicalPlanType.values().length) {
         throw new IOException("unrecognized log type " + typeNum);
       }
       PhysicalPlanType type = PhysicalPlanType.values()[typeNum];

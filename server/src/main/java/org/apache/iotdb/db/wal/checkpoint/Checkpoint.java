@@ -63,7 +63,11 @@ public class Checkpoint implements SerializedSize {
   }
 
   public static Checkpoint deserialize(DataInputStream stream) throws IOException {
-    CheckpointType type = CheckpointType.valueOf(stream.readByte());
+    byte typeNum = stream.readByte();
+    CheckpointType type = CheckpointType.valueOf(typeNum);
+    if (type == null) {
+      throw new IOException("unrecognized checkpoint type " + typeNum);
+    }
     int cnt = stream.readInt();
     List<MemTableInfo> memTableInfos = new ArrayList<>(cnt);
     for (int i = 0; i < cnt; ++i) {

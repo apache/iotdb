@@ -96,10 +96,15 @@ public class WALEdit implements SerializedSize {
 
   public static WALEdit deserialize(DataInputStream stream)
       throws IllegalPathException, IOException {
-    WALEditType type = WALEditType.valueOf(stream.readByte());
+    byte typeNum = stream.readByte();
+    WALEditType type = WALEditType.valueOf(typeNum);
+    if (type == null) {
+      throw new IOException("unrecognized wal edit type " + typeNum);
+    }
+
     int memTableId = stream.readInt();
     WALEditValue value = null;
-    switch (Objects.requireNonNull(type)) {
+    switch (type) {
       case INSERT_PLAN:
         value = (InsertPlan) PhysicalPlan.Factory.create(stream);
         break;

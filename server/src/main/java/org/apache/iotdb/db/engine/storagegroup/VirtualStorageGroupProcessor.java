@@ -432,10 +432,13 @@ public class VirtualStorageGroupProcessor {
           recoverSealedTsFiles(tsFileResource, VSGRecoveryContext, false);
         }
       }
-      // wait until all unsealed TsFiles are recovered
+      // wait until all unsealed TsFiles have been recovered
       for (WALRecoverListener recoverListener : recoverListeners) {
         if (recoverListener.waitForResult() == WALRecoverListener.Status.FAILURE) {
-          logger.error("Fail to recover unsealed TsFile, skip it.", recoverListener.getCause());
+          logger.error(
+              "Fail to recover unsealed TsFile {}, skip it.",
+              recoverListener.getFilePath(),
+              recoverListener.getCause());
         }
         // update VSGRecoveryContext
         VSGRecoveryContext.incrementRecoveredFilesNum();

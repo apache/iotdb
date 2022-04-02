@@ -80,14 +80,15 @@ public class WALReader implements Closeable {
         totalSize += availableBytes - logStream.available();
       }
     } catch (EOFException e) {
+      // reach end of wal file
       fileCorrupted = true;
-      logger.info("Reach end of wal file {}.", logFile, e);
     } catch (IllegalPathException e) {
       fileCorrupted = true;
-      logger.error("WALEdit of wal file {} contains illegal path.", logFile, e);
-    } catch (IOException e) {
+      logger.warn(
+          "WALEdit of wal file {} contains illegal path, skip illegal WALEdits.", logFile, e);
+    } catch (Exception e) {
       fileCorrupted = true;
-      logger.error("Fail to read WALEdit from wal file {}.", logFile, e);
+      logger.warn("Fail to read WALEdit from wal file {}, skip broken WALEdits.", logFile, e);
     }
 
     if (walEdits.size() != 0) {

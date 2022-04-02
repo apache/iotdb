@@ -135,11 +135,11 @@ public class WALNode implements IWALNode {
 
     @Override
     public void run() {
-      deleteOldFiles();
+      File[] filesToDelete = deleteOldFiles();
 
       // exceed storage space limit, to delete old .wal files,
       // should update first valid version id by snapshotting or flushing memTable
-      if (FileUtils.getDirSize(logDirectory) > MAX_STORAGE_SPACE_IN_BYTE) {
+      if (filesToDelete == null && FileUtils.getDirSize(logDirectory) > MAX_STORAGE_SPACE_IN_BYTE) {
         // find oldest memTable
         MemTableInfo oldestMemTableInfo = checkpointManager.getOldestMemTableInfo();
         if (oldestMemTableInfo == null) {
@@ -191,7 +191,7 @@ public class WALNode implements IWALNode {
       }
     }
 
-    private void deleteOldFiles() {
+    private File[] deleteOldFiles() {
       firstValidVersionId = checkpointManager.getFirstValidWALVersionId();
       if (firstValidVersionId == Integer.MIN_VALUE) {
         firstValidVersionId = buffer.getCurrentWALFileVersion();
@@ -205,6 +205,7 @@ public class WALNode implements IWALNode {
           }
         }
       }
+      return filesToDelete;
     }
 
     private boolean filterFilesToDelete(File dir, String name) {

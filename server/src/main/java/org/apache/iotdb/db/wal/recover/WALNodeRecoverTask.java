@@ -29,7 +29,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -134,7 +133,7 @@ public class WALNodeRecoverTask implements Runnable {
             logger.warn("Fail to find TsFile recover performer for wal edit in TsFile {}", walFile);
           }
         }
-      } catch (IOException e) {
+      } catch (Exception e) {
         logger.error("Fail to read wal logs from {}", walFile, e);
       }
     }

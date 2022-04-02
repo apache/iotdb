@@ -27,7 +27,6 @@ import java.io.BufferedInputStream;
 import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
@@ -55,10 +54,9 @@ public class CheckpointReader {
         Checkpoint checkpoint = Checkpoint.deserialize(logStream);
         checkpoints.add(checkpoint);
       }
-    } catch (FileNotFoundException e) {
-      logger.warn("Checkpoint file {} doesn't exist.", logFile, e);
     } catch (IOException e) {
-      logger.warn("Meet error when deserializing checkpoint file {}", logFile, e);
+      logger.warn(
+          "Meet error when reading checkpoint file {}, skip broken checkpoints", logFile, e);
     }
     return checkpoints;
   }
