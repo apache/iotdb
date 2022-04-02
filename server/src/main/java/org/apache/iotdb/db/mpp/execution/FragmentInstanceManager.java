@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.execution;
 
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaRegion;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
@@ -26,18 +27,30 @@ import org.apache.iotdb.db.mpp.schedule.IFragmentInstanceScheduler;
 import org.apache.iotdb.db.mpp.sql.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
 
+import io.airlift.units.Duration;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static java.util.Objects.requireNonNull;
 
 public class FragmentInstanceManager {
 
+  private static final Logger logger = LoggerFactory.getLogger(FragmentInstanceManager.class);
+
   private final Map<FragmentInstanceId, FragmentInstanceContext> instanceContext;
   private final Map<FragmentInstanceId, FragmentInstanceExecution> instanceExecution;
   private final LocalExecutionPlanner planner = LocalExecutionPlanner.getInstance();
   private final IFragmentInstanceScheduler scheduler = FragmentInstanceScheduler.getInstance();
+
+  private final ScheduledExecutorService instanceManagementExecutor;
+
+  private final Duration infoCacheTime;
 
   public static FragmentInstanceManager getInstance() {
     return FragmentInstanceManager.InstanceHolder.INSTANCE;
@@ -46,6 +59,22 @@ public class FragmentInstanceManager {
   private FragmentInstanceManager() {
     this.instanceContext = new ConcurrentHashMap<>();
     this.instanceExecution = new ConcurrentHashMap<>();
+    this.instanceManagementExecutor =
+        IoTDBThreadPoolFactory.newScheduledThreadPool(5, "instance-management");
+
+    this.infoCacheTime = new Duration(15, TimeUnit.MINUTES);
+
+    instanceManagementExecutor.scheduleWithFixedDelay(
+        () -> {
+          try {
+            removeOldTasks();
+          } catch (Throwable e) {
+            logger.warn("Error removing old tasks", e);
+          }
+        },
+        200,
+        200,
+        TimeUnit.MILLISECONDS);
   }
 
   public FragmentInstanceInfo execDataQueryFragmentInstance(
@@ -123,6 +152,24 @@ public class FragmentInstanceManager {
       return null;
     }
     return execution.getInstanceInfo();
+  }
+
+  private void removeOldTasks() {
+    long oldestAllowedInstance = System.currentTimeMillis() - infoCacheTime.toMillis();
+    instanceExecution
+        .entrySet()
+        .removeIf(
+            entry -> {
+              FragmentInstanceId instanceId = entry.getKey();
+              FragmentInstanceExecution execution = entry.getValue();
+              long endTime = execution.getInstanceInfo().getEndTime();
+              if (endTime != -1 && endTime <= oldestAllowedInstance) {
+                instanceContext.remove(instanceId);
+                return true;
+              } else {
+                return false;
+              }
+            });
   }
 
   private static class InstanceHolder {

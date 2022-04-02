@@ -103,6 +103,7 @@ public class DataDriver implements Driver {
   @Override
   public ListenableFuture<Void> processFor(Duration duration) {
 
+    SettableFuture<Void> blockedFuture = driverBlockedFuture.get();
     // initialization may be time-consuming, so we keep it in the processFor method
     // in normal case, it won't cause deadlock and should finish soon, otherwise it will be a
     // critical bug
@@ -114,12 +115,12 @@ public class DataDriver implements Driver {
             "Failed to do the initialization for fragment instance {} ", driverContext.getId(), t);
         driverContext.failed(t);
         close();
-        return NOT_BLOCKED;
+        blockedFuture.setException(t);
+        return blockedFuture;
       }
     }
 
     // if the driver is blocked we don't need to continue
-    SettableFuture<Void> blockedFuture = driverBlockedFuture.get();
     if (!blockedFuture.isDone()) {
       return blockedFuture;
     }
@@ -138,6 +139,8 @@ public class DataDriver implements Driver {
       logger.error("Failed to execute fragment instance {}", driverContext.getId(), t);
       driverContext.failed(t);
       close();
+      blockedFuture.setException(t);
+      return blockedFuture;
     }
     return NOT_BLOCKED;
   }

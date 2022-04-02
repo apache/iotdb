@@ -43,6 +43,8 @@ public class FragmentInstanceContext extends QueryContext {
   // TODO we may use StateMachine<FragmentInstanceState> to replace it
   private final AtomicReference<FragmentInstanceState> state;
 
+  private long endTime = -1;
+
   //    private final GcMonitor gcMonitor;
   //    private final AtomicLong startNanos = new AtomicLong();
   //    private final AtomicLong startFullGcCount = new AtomicLong(-1);
@@ -96,10 +98,12 @@ public class FragmentInstanceContext extends QueryContext {
 
   public void cancel() {
     state.set(FragmentInstanceState.CANCELED);
+    this.endTime = System.currentTimeMillis();
   }
 
   public void abort() {
     state.set(FragmentInstanceState.ABORTED);
+    this.endTime = System.currentTimeMillis();
   }
 
   public void finish() {
@@ -107,5 +111,14 @@ public class FragmentInstanceContext extends QueryContext {
       return;
     }
     state.set(FragmentInstanceState.FINISHED);
+    this.endTime = System.currentTimeMillis();
+  }
+
+  public long getEndTime() {
+    return endTime;
+  }
+
+  public void setEndTime(long endTime) {
+    this.endTime = endTime;
   }
 }

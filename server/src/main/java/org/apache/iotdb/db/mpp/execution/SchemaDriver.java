@@ -97,6 +97,8 @@ public class SchemaDriver implements Driver {
       logger.error("Failed to execute fragment instance {}", driverContext.getId(), t);
       driverContext.failed(t);
       close();
+      blockedFuture.setException(t);
+      return blockedFuture;
     }
     return NOT_BLOCKED;
   }

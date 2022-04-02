@@ -58,8 +58,7 @@ public class FragmentInstanceTask implements IDIndexedAccessible {
     this(new StubFragmentInstance(), 0L, null);
   }
 
-  public FragmentInstanceTask(
-      Driver instance, long timeoutMs, FragmentInstanceTaskStatus status) {
+  public FragmentInstanceTask(Driver instance, long timeoutMs, FragmentInstanceTaskStatus status) {
     this.fragmentInstance = instance;
     this.id = new FragmentInstanceTaskID(instance.getInfo());
     this.setStatus(status);

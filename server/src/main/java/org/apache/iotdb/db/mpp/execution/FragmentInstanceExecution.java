@@ -69,7 +69,7 @@ public class FragmentInstanceExecution {
   }
 
   public FragmentInstanceInfo getInstanceInfo() {
-    return new FragmentInstanceInfo(state.get());
+    return new FragmentInstanceInfo(state.get(), context.getEndTime());
   }
 
   public void failed(Throwable cause) {

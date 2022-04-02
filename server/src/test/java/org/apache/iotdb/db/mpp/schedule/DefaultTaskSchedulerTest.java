@@ -66,8 +66,7 @@ public class DefaultTaskSchedulerTest {
           FragmentInstanceTaskStatus.RUNNING,
         };
     for (FragmentInstanceTaskStatus status : invalidStates) {
-      FragmentInstanceTask testTask =
-          new FragmentInstanceTask(mockDriver, 100L, status);
+      FragmentInstanceTask testTask = new FragmentInstanceTask(mockDriver, 100L, status);
       manager.getBlockedTasks().add(testTask);
       Set<FragmentInstanceTask> taskSet = new HashSet<>();
       taskSet.add(testTask);
@@ -83,8 +82,7 @@ public class DefaultTaskSchedulerTest {
       clear();
     }
     FragmentInstanceTask testTask =
-        new FragmentInstanceTask(
-            mockDriver, 100L, FragmentInstanceTaskStatus.BLOCKED);
+        new FragmentInstanceTask(mockDriver, 100L, FragmentInstanceTaskStatus.BLOCKED);
     manager.getBlockedTasks().add(testTask);
     Set<FragmentInstanceTask> taskSet = new HashSet<>();
     taskSet.add(testTask);
@@ -119,8 +117,7 @@ public class DefaultTaskSchedulerTest {
           FragmentInstanceTaskStatus.RUNNING,
         };
     for (FragmentInstanceTaskStatus status : invalidStates) {
-      FragmentInstanceTask testTask =
-          new FragmentInstanceTask(mockDriver, 100L, status);
+      FragmentInstanceTask testTask = new FragmentInstanceTask(mockDriver, 100L, status);
       Set<FragmentInstanceTask> taskSet = new HashSet<>();
       taskSet.add(testTask);
       manager.getQueryMap().put(queryId, taskSet);
@@ -166,8 +163,7 @@ public class DefaultTaskSchedulerTest {
           FragmentInstanceTaskStatus.READY,
         };
     for (FragmentInstanceTaskStatus status : invalidStates) {
-      FragmentInstanceTask testTask =
-          new FragmentInstanceTask(mockDriver, 100L, status);
+      FragmentInstanceTask testTask = new FragmentInstanceTask(mockDriver, 100L, status);
       Set<FragmentInstanceTask> taskSet = new HashSet<>();
       taskSet.add(testTask);
       manager.getQueryMap().put(queryId, taskSet);
@@ -182,8 +178,7 @@ public class DefaultTaskSchedulerTest {
       clear();
     }
     FragmentInstanceTask testTask =
-        new FragmentInstanceTask(
-            mockDriver, 100L, FragmentInstanceTaskStatus.RUNNING);
+        new FragmentInstanceTask(mockDriver, 100L, FragmentInstanceTaskStatus.RUNNING);
     Set<FragmentInstanceTask> taskSet = new HashSet<>();
     taskSet.add(testTask);
     manager.getQueryMap().put(queryId, taskSet);
@@ -220,8 +215,7 @@ public class DefaultTaskSchedulerTest {
           FragmentInstanceTaskStatus.READY,
         };
     for (FragmentInstanceTaskStatus status : invalidStates) {
-      FragmentInstanceTask testTask =
-          new FragmentInstanceTask(mockDriver, 100L, status);
+      FragmentInstanceTask testTask = new FragmentInstanceTask(mockDriver, 100L, status);
       Set<FragmentInstanceTask> taskSet = new HashSet<>();
       taskSet.add(testTask);
       manager.getQueryMap().put(queryId, taskSet);
@@ -236,8 +230,7 @@ public class DefaultTaskSchedulerTest {
       clear();
     }
     FragmentInstanceTask testTask =
-        new FragmentInstanceTask(
-            mockDriver, 100L, FragmentInstanceTaskStatus.RUNNING);
+        new FragmentInstanceTask(mockDriver, 100L, FragmentInstanceTaskStatus.RUNNING);
     Set<FragmentInstanceTask> taskSet = new HashSet<>();
     taskSet.add(testTask);
     manager.getQueryMap().put(queryId, taskSet);
@@ -274,8 +267,7 @@ public class DefaultTaskSchedulerTest {
           FragmentInstanceTaskStatus.READY,
         };
     for (FragmentInstanceTaskStatus status : invalidStates) {
-      FragmentInstanceTask testTask =
-          new FragmentInstanceTask(mockDriver, 100L, status);
+      FragmentInstanceTask testTask = new FragmentInstanceTask(mockDriver, 100L, status);
       Set<FragmentInstanceTask> taskSet = new HashSet<>();
       taskSet.add(testTask);
       manager.getQueryMap().put(queryId, taskSet);
@@ -290,8 +282,7 @@ public class DefaultTaskSchedulerTest {
       clear();
     }
     FragmentInstanceTask testTask =
-        new FragmentInstanceTask(
-            mockDriver, 100L, FragmentInstanceTaskStatus.RUNNING);
+        new FragmentInstanceTask(mockDriver, 100L, FragmentInstanceTaskStatus.RUNNING);
     Set<FragmentInstanceTask> taskSet = new HashSet<>();
     taskSet.add(testTask);
     manager.getQueryMap().put(queryId, taskSet);
@@ -330,11 +321,9 @@ public class DefaultTaskSchedulerTest {
           FragmentInstanceTaskStatus.FINISHED, FragmentInstanceTaskStatus.ABORTED,
         };
     for (FragmentInstanceTaskStatus status : invalidStates) {
-      FragmentInstanceTask testTask1 =
-          new FragmentInstanceTask(mockDriver1, 100L, status);
+      FragmentInstanceTask testTask1 = new FragmentInstanceTask(mockDriver1, 100L, status);
       FragmentInstanceTask testTask2 =
-          new FragmentInstanceTask(
-              mockDriver2, 100L, FragmentInstanceTaskStatus.BLOCKED);
+          new FragmentInstanceTask(mockDriver2, 100L, FragmentInstanceTaskStatus.BLOCKED);
       Set<FragmentInstanceTask> taskSet = new HashSet<>();
       taskSet.add(testTask1);
       taskSet.add(testTask2);
@@ -364,12 +353,10 @@ public class DefaultTaskSchedulerTest {
           FragmentInstanceTaskStatus.BLOCKED,
         };
     for (FragmentInstanceTaskStatus status : validStates) {
-      FragmentInstanceTask testTask1 =
-          new FragmentInstanceTask(mockDriver1, 100L, status);
+      FragmentInstanceTask testTask1 = new FragmentInstanceTask(mockDriver1, 100L, status);
 
       FragmentInstanceTask testTask2 =
-          new FragmentInstanceTask(
-              mockDriver2, 100L, FragmentInstanceTaskStatus.BLOCKED);
+          new FragmentInstanceTask(mockDriver2, 100L, FragmentInstanceTaskStatus.BLOCKED);
       Set<FragmentInstanceTask> taskSet = new HashSet<>();
       taskSet.add(testTask1);
       taskSet.add(testTask2);

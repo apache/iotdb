@@ -61,8 +61,7 @@ public class FragmentInstanceSchedulerTest {
     FragmentInstanceId instanceId2 = new FragmentInstanceId(fragmentId, "inst-1");
     Driver mockDriver2 = Mockito.mock(Driver.class);
     Mockito.when(mockDriver2.getInfo()).thenReturn(instanceId2);
-    List<Driver> instances =
-        Arrays.asList(mockDriver1, mockDriver2);
+    List<Driver> instances = Arrays.asList(mockDriver1, mockDriver2);
     manager.submitFragmentInstances(queryId, instances);
     Assert.assertTrue(manager.getBlockedTasks().isEmpty());
     Assert.assertEquals(1, manager.getQueryMap().size());

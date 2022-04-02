@@ -66,32 +66,25 @@ public class FragmentInstanceTimeoutSentinelTest {
 
     // FINISHED status test
     FragmentInstanceTask testTask =
-        new FragmentInstanceTask(
-            mockDriver, 100L, FragmentInstanceTaskStatus.FINISHED);
+        new FragmentInstanceTask(mockDriver, 100L, FragmentInstanceTaskStatus.FINISHED);
     executor.execute(testTask);
     Assert.assertEquals(FragmentInstanceTaskStatus.FINISHED, testTask.getStatus());
     Mockito.verify(mockDriver, Mockito.times(0)).processFor(Mockito.any());
 
     // ABORTED status test
-    testTask =
-        new FragmentInstanceTask(
-            mockDriver, 100L, FragmentInstanceTaskStatus.ABORTED);
+    testTask = new FragmentInstanceTask(mockDriver, 100L, FragmentInstanceTaskStatus.ABORTED);
     executor.execute(testTask);
     Assert.assertEquals(FragmentInstanceTaskStatus.ABORTED, testTask.getStatus());
     Mockito.verify(mockDriver, Mockito.times(0)).processFor(Mockito.any());
 
     // RUNNING status test
-    testTask =
-        new FragmentInstanceTask(
-            mockDriver, 100L, FragmentInstanceTaskStatus.RUNNING);
+    testTask = new FragmentInstanceTask(mockDriver, 100L, FragmentInstanceTaskStatus.RUNNING);
     executor.execute(testTask);
     Assert.assertEquals(FragmentInstanceTaskStatus.RUNNING, testTask.getStatus());
     Mockito.verify(mockDriver, Mockito.times(0)).processFor(Mockito.any());
 
     // BLOCKED status test
-    testTask =
-        new FragmentInstanceTask(
-            mockDriver, 100L, FragmentInstanceTaskStatus.BLOCKED);
+    testTask = new FragmentInstanceTask(mockDriver, 100L, FragmentInstanceTaskStatus.BLOCKED);
     executor.execute(testTask);
     Assert.assertEquals(FragmentInstanceTaskStatus.BLOCKED, testTask.getStatus());
     Mockito.verify(mockDriver, Mockito.times(0)).processFor(Mockito.any());
@@ -164,8 +157,7 @@ public class FragmentInstanceTimeoutSentinelTest {
     PlanFragmentId fragmentId = new PlanFragmentId(queryId, 0);
     FragmentInstanceId instanceId = new FragmentInstanceId(fragmentId, "inst-0");
     Mockito.when(mockDriver.getInfo()).thenReturn(instanceId);
-    Mockito.when(mockDriver.processFor(Mockito.any()))
-        .thenReturn(Futures.immediateVoidFuture());
+    Mockito.when(mockDriver.processFor(Mockito.any())).thenReturn(Futures.immediateVoidFuture());
     Mockito.when(mockDriver.isFinished()).thenReturn(true);
     AbstractExecutor executor =
         new FragmentInstanceTaskExecutor(

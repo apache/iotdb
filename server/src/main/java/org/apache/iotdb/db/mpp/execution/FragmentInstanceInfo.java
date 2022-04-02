@@ -22,11 +22,18 @@ public class FragmentInstanceInfo {
 
   private final FragmentInstanceState state;
 
-  public FragmentInstanceInfo(FragmentInstanceState state) {
+  private final long endTime;
+
+  public FragmentInstanceInfo(FragmentInstanceState state, long endTime) {
     this.state = state;
+    this.endTime = endTime;
   }
 
   public FragmentInstanceState getState() {
     return state;
+  }
+
+  public long getEndTime() {
+    return endTime;
   }
 }

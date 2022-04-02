@@ -28,7 +28,8 @@ import java.util.List;
 public interface IFragmentInstanceScheduler {
 
   /**
-   * Submit one or more {@link org.apache.iotdb.db.mpp.execution.Driver} in one query for later scheduling.
+   * Submit one or more {@link org.apache.iotdb.db.mpp.execution.Driver} in one query for later
+   * scheduling.
    *
    * @param queryId the queryId these instances belong to.
    * @param instances the submitted instances.
