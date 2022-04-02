@@ -17,30 +17,47 @@
  * under the License.
  */
 
-package org.apache.iotdb.consensus.common;
+package org.apache.iotdb.commons.cluster;
 
-import org.apache.iotdb.commons.consensus.ConsensusGroupId;
-
-import java.util.List;
+import java.nio.ByteBuffer;
 import java.util.Objects;
 
 // TODO Use a mature IDL framework such as Protobuf to manage this structure
-public class ConsensusGroup {
+public class Endpoint {
 
-  private final ConsensusGroupId groupId;
-  private final List<Peer> peers;
+  private String ip;
+  private int port;
 
-  public ConsensusGroup(ConsensusGroupId groupId, List<Peer> peers) {
-    this.groupId = groupId;
-    this.peers = peers;
+  public Endpoint() {}
+
+  public Endpoint(String ip, int port) {
+    this.ip = ip;
+    this.port = port;
   }
 
-  public ConsensusGroupId getGroupId() {
-    return groupId;
+  public String getIp() {
+    return ip;
   }
 
-  public List<Peer> getPeers() {
-    return peers;
+  public int getPort() {
+    return port;
+  }
+
+  public void serializeImpl(ByteBuffer buffer) {
+    byte[] bytes = ip.getBytes();
+    buffer.putInt(bytes.length);
+    buffer.put(bytes);
+
+    buffer.putInt(port);
+  }
+
+  public void deserializeImpl(ByteBuffer buffer) {
+    int length = buffer.getInt();
+    byte[] bytes = new byte[length];
+    buffer.get(bytes, 0, length);
+    ip = new String(bytes, 0, length);
+
+    port = buffer.getInt();
   }
 
   @Override
@@ -51,12 +68,17 @@ public class ConsensusGroup {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    ConsensusGroup that = (ConsensusGroup) o;
-    return Objects.equals(groupId, that.groupId) && Objects.equals(peers, that.peers);
+    Endpoint endpoint = (Endpoint) o;
+    return port == endpoint.port && Objects.equals(ip, endpoint.ip);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(groupId, peers);
+    return Objects.hash(ip, port);
+  }
+
+  @Override
+  public String toString() {
+    return String.format("%s:%d", ip, port);
   }
 }

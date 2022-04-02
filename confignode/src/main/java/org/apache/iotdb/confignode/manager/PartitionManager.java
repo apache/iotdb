@@ -16,12 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.iotdb.commons.partition.DataPartition;
+import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionDataSet;
-import org.apache.iotdb.confignode.partition.DataPartitionInfo;
-import org.apache.iotdb.confignode.partition.SchemaRegionReplicaSet;
 import org.apache.iotdb.confignode.persistence.PartitionInfoPersistence;
 import org.apache.iotdb.confignode.persistence.RegionInfoPersistence;
 import org.apache.iotdb.confignode.physical.sys.DataPartitionPlan;
@@ -49,7 +48,7 @@ public class PartitionManager {
   private final ReentrantReadWriteLock dataPartitionReadWriteLock;
 
   // TODO: Serialize and Deserialize
-  private final DataPartitionInfo dataPartition;
+  private final DataPartition dataPartition;
 
   private final Manager configNodeManager;
 
@@ -57,7 +56,7 @@ public class PartitionManager {
     this.schemaPartitionReadWriteLock = new ReentrantReadWriteLock();
     this.dataPartitionReadWriteLock = new ReentrantReadWriteLock();
     this.configNodeManager = configNodeManager;
-    this.dataPartition = new DataPartitionInfo();
+    this.dataPartition = new DataPartition();
   }
 
   /**
@@ -94,7 +93,7 @@ public class PartitionManager {
     // allocate partition by storage group and device group id
     schemaPartitionReadWriteLock.writeLock().lock();
     try {
-      Map<Integer, SchemaRegionReplicaSet> deviceGroupIdReplicaSets =
+      Map<Integer, RegionReplicaSet> deviceGroupIdReplicaSets =
           allocateSchemaPartition(storageGroup, noAssignDeviceGroupId);
       physicalPlan.setDeviceGroupIdReplicaSet(deviceGroupIdReplicaSets);
       getConsensusManager().write(physicalPlan);
@@ -112,14 +111,14 @@ public class PartitionManager {
    * @param storageGroup storage group
    * @param deviceGroupIDs device group id list
    */
-  private Map<Integer, SchemaRegionReplicaSet> allocateSchemaPartition(
+  private Map<Integer, RegionReplicaSet> allocateSchemaPartition(
       String storageGroup, List<Integer> deviceGroupIDs) {
-    List<SchemaRegionReplicaSet> schemaRegionEndPoints =
+    List<RegionReplicaSet> schemaRegionEndPoints =
         RegionInfoPersistence.getInstance().getSchemaRegionEndPoint();
     Random random = new Random();
-    Map<Integer, SchemaRegionReplicaSet> deviceGroupIdReplicaSets = new HashMap<>();
+    Map<Integer, RegionReplicaSet> deviceGroupIdReplicaSets = new HashMap<>();
     for (int i = 0; i < deviceGroupIDs.size(); i++) {
-      SchemaRegionReplicaSet schemaRegionReplicaSet =
+      RegionReplicaSet schemaRegionReplicaSet =
           schemaRegionEndPoints.get(random.nextInt(schemaRegionEndPoints.size()));
       deviceGroupIdReplicaSets.put(deviceGroupIDs.get(i), schemaRegionReplicaSet);
     }

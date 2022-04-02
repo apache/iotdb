@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.iotdb.commons.partition.DataNodeLocation;
 import org.apache.iotdb.confignode.consensus.response.DataNodesInfoDataSet;
-import org.apache.iotdb.confignode.partition.DataNodeInfo;
 import org.apache.iotdb.confignode.persistence.DataNodeInfoPersistence;
 import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
 import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
@@ -64,7 +64,7 @@ public class DataNodeManager {
    */
   public TSStatus registerDataNode(RegisterDataNodePlan plan) {
     TSStatus result;
-    DataNodeInfo info = plan.getInfo();
+    DataNodeLocation info = plan.getInfo();
     dataNodeInfoReadWriteLock.writeLock().lock();
     try {
       if (dataNodeInfo.containsValue(info)) {
@@ -114,7 +114,7 @@ public class DataNodeManager {
     listeners.stream().forEach(serverListener -> serverListener.waiting());
   }
 
-  public Map<Integer, DataNodeInfo> getOnlineDataNodes() {
+  public Map<Integer, DataNodeLocation> getOnlineDataNodes() {
     return dataNodeInfo.getOnlineDataNodes();
   }
 
@@ -126,12 +126,12 @@ public class DataNodeManager {
     }
 
     @Override
-    public void addDataNode(DataNodeInfo DataNodeInfo) {
+    public void addDataNode(DataNodeLocation DataNodeInfo) {
       serverChanged();
     }
 
     @Override
-    public void removeDataNode(DataNodeInfo dataNodeInfo) {
+    public void removeDataNode(DataNodeLocation dataNodeInfo) {
       serverChanged();
     }
 
@@ -157,13 +157,13 @@ public class DataNodeManager {
      *
      * @param dataNodeInfo datanode info
      */
-    void addDataNode(final DataNodeInfo dataNodeInfo);
+    void addDataNode(final DataNodeLocation dataNodeInfo);
 
     /**
      * remove data node
      *
      * @param dataNodeInfo data node info
      */
-    void removeDataNode(final DataNodeInfo dataNodeInfo);
+    void removeDataNode(final DataNodeLocation dataNodeInfo);
   }
 }

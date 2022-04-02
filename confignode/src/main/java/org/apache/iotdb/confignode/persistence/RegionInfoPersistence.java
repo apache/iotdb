@@ -19,14 +19,17 @@
 
 package org.apache.iotdb.confignode.persistence;
 
+import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.GroupType;
+import org.apache.iotdb.commons.partition.DataNodeLocation;
+import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaDataSet;
 import org.apache.iotdb.confignode.partition.DataRegionInfo;
 import org.apache.iotdb.confignode.partition.SchemaRegionInfo;
-import org.apache.iotdb.confignode.partition.SchemaRegionReplicaSet;
 import org.apache.iotdb.confignode.partition.StorageGroupSchema;
 import org.apache.iotdb.confignode.physical.sys.SetStorageGroupPlan;
-import org.apache.iotdb.consensus.common.Endpoint;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
@@ -35,6 +38,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.stream.Collectors;
 
 /** manage data partition and schema partition */
 public class RegionInfoPersistence {
@@ -132,15 +136,15 @@ public class RegionInfoPersistence {
   }
 
   /** @return key is schema region id, value is endpoint list */
-  public List<SchemaRegionReplicaSet> getSchemaRegionEndPoint() {
-    List<SchemaRegionReplicaSet> schemaRegionEndPoints = new ArrayList<>();
+  public List<RegionReplicaSet> getSchemaRegionEndPoint() {
+    List<RegionReplicaSet> schemaRegionEndPoints = new ArrayList<>();
 
     schemaRegion
         .getSchemaRegionDataNodesMap()
         .entrySet()
         .forEach(
             entity -> {
-              SchemaRegionReplicaSet schemaRegionReplicaSet = new SchemaRegionReplicaSet();
+              RegionReplicaSet schemaRegionReplicaSet = new RegionReplicaSet();
               List<Endpoint> endPoints = new ArrayList<>();
               entity
                   .getValue()
@@ -156,8 +160,13 @@ public class RegionInfoPersistence {
                                   .getEndPoint());
                         }
                       });
-              schemaRegionReplicaSet.setSchemaRegionId(entity.getKey());
-              schemaRegionReplicaSet.setEndPointList(endPoints);
+              schemaRegionReplicaSet.setId(
+                  new ConsensusGroupId(GroupType.SchemaRegion, entity.getKey()));
+              // TODO: (xingtanzjr) We cannot get the dataNodeId here, use 0 as the placeholder
+              schemaRegionReplicaSet.setDataNodeList(
+                  endPoints.stream()
+                      .map(endpoint -> new DataNodeLocation(0, endpoint))
+                      .collect(Collectors.toList()));
               schemaRegionEndPoints.add(schemaRegionReplicaSet);
             });
     return schemaRegionEndPoints;
