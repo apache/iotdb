@@ -54,6 +54,6 @@ public class CacheEntry implements Comparable<CacheEntry> {
 
   @Override
   public int compareTo(@NotNull CacheEntry o) {
-    return hashCode() > o.hashCode() ? 1 : 0;
+    return Integer.compare(hashCode(), o.hashCode());
   }
 }
