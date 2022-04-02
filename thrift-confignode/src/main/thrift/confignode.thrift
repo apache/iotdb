@@ -56,19 +56,22 @@ struct GetSchemaPartitionReq {
     2: required list<i32> deviceGroupIDs
 }
 
+struct RegionReplicaSet {
+    1: required i32 regionId
+    2: required list<rpc.EndPoint> endpoint
+}
+
 struct SchemaPartitionInfo {
-    1: required map<i32, i32> deviceGroupSchemaRegionGroupMap
-    2: required map<i32, list<i32>> SchemaRegionGroupDataNodeMap
+    1: required map<string, map<i32, RegionReplicaSet>> schemaRegionDataNodesMap
+}
+
+struct DataPartitionInfo {
+    1: required map<string, map<i64, map<i32, list<RegionReplicaSet>>>> deviceGroupStartTimeDataRegionGroupMap
 }
 
 struct GetDataPartitionReq {
     1: required string storageGroup
     2: required map<i32, list<i64>> deviceGroupStartTimeMap
-}
-
-struct DataPartitionInfo {
-    1: required map<i32, map<i64, list<i32>>> deviceGroupStartTimeDataRegionGroupMap
-    2: required map<i32, list<i32>> dataRegionGroupDataNodeMap
 }
 
 struct DeviceGroupHashInfo {
@@ -130,6 +133,12 @@ service ConfigIService {
   DataPartitionInfo getDataPartition(GetDataPartitionReq req)
 
   DeviceGroupHashInfo getDeviceGroupHashInfo()
+
+  // apply data partition when write data
+  DataPartitionInfo applyDataPartition(GetDataPartitionReq req)
+
+  // apply schema partition when create schema
+  SchemaPartitionInfo applySchemaPartition(GetSchemaPartitionReq req)
 
   DataPartitionInfoResp fetchDataPartitionInfo(FetchDataPartitionReq req)
 
