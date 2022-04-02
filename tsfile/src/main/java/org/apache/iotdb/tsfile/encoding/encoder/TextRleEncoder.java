@@ -21,27 +21,31 @@ package org.apache.iotdb.tsfile.encoding.encoder;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.encoding.bitpacking.IntPacker;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
 
 /** Encoder for String value using rle or bit-packing. */
-public class TextRleEncoder extends RleEncoder<String> {
-
+public class TextRleEncoder extends RleEncoder<Binary> {
     /** Packer for packing int values. */
     private IntPacker packer;
 
     public TextRleEncoder() {
         super();
-        bufferedValues = new String[TSFileConfig.RLE_MIN_REPEATED_NUM];
-        preValue = "";
+        bufferedValues = new Binary[TSFileConfig.RLE_MIN_REPEATED_NUM];
+        preValue = new Binary("");
         values = new ArrayList<>();
     }
 
     @Override
-    public void encode(String value, ByteArrayOutputStream out) {
+    public void encode(Binary value, ByteArrayOutputStream out) {
         values.add(value);
     }
 
@@ -63,9 +67,9 @@ public class TextRleEncoder extends RleEncoder<String> {
     @Override
     public void flush(ByteArrayOutputStream out) throws IOException {
         // we get bit width after receiving all data
-        this.bitWidth = ReadWriteForEncodingUtils.getIntMaxBitWidth(values);
-        packer = new IntPacker(bitWidth);
-        for (String value : values) {
+//        this.bitWidth = ReadWriteForEncodingUtils.getIntMaxBitWidth(values);
+//        packer = new IntPacker(bitWidth);
+        for (Binary value : values) {
             encodeValue(value);
         }
         super.flush(out);
@@ -74,24 +78,24 @@ public class TextRleEncoder extends RleEncoder<String> {
     @Override
     protected void reset() {
         super.reset();
-        preValue = 0;
+        preValue = new Binary("");
     }
 
     /** write bytes to an outputStream using rle format: [header][value]. */
     @Override
     protected void writeRleRun() throws IOException {
-        endPreviousBitPackedRun(TSFileConfig.RLE_MIN_REPEATED_NUM);
-        ReadWriteForEncodingUtils.writeUnsignedVarInt(repeatCount << 1, byteCache);
-        ReadWriteForEncodingUtils.writeIntLittleEndianPaddedOnBitWidth(preValue, byteCache, bitWidth);
-        repeatCount = 0;
-        numBufferedValues = 0;
+//        endPreviousBitPackedRun(TSFileConfig.RLE_MIN_REPEATED_NUM);
+//        ReadWriteForEncodingUtils.writeUnsignedVarInt(repeatCount << 1, byteCache);
+//        ReadWriteForEncodingUtils.writeIntLittleEndianPaddedOnBitWidth(preValue, byteCache, bitWidth);
+//        repeatCount = 0;
+//        numBufferedValues = 0;
     }
 
     @Override
     protected void clearBuffer() {
 
         for (int i = numBufferedValues; i < TSFileConfig.RLE_MIN_REPEATED_NUM; i++) {
-            bufferedValues[i] = "";
+            bufferedValues[i] = new Binary("");;
         }
     }
 
@@ -99,14 +103,15 @@ public class TextRleEncoder extends RleEncoder<String> {
     protected void convertBuffer() {
         byte[] bytes = new byte[bitWidth];
 
-        int[] tmpBuffer = new int[TSFileConfig.RLE_MIN_REPEATED_NUM];
+        Binary[] tmpBuffer = new Binary[TSFileConfig.RLE_MIN_REPEATED_NUM];
         for (int i = 0; i < TSFileConfig.RLE_MIN_REPEATED_NUM; i++) {
-            tmpBuffer[i] = (int) bufferedValues[i];
+            tmpBuffer[i] = (Binary) bufferedValues[i];
         }
-        packer.pack8Values(tmpBuffer, 0, bytes);
-        // we'll not write bit-packing group to OutputStream immediately
-        // we buffer them in list
-        bytesBuffer.add(bytes);
+
+//        packer.pack8Values(tmpBuffer, 0, bytes);
+//        // we'll not write bit-packing group to OutputStream immediately
+//        // we buffer them in list
+//        bytesBuffer.add(bytes);
     }
 
     @Override
@@ -127,3 +132,25 @@ public class TextRleEncoder extends RleEncoder<String> {
         return (long) 8 + groupNum * 5 + values.size() * 4;
     }
 }
+
+
+
+//    private static final Logger logger = LoggerFactory.getLogger(TextRleEncoder.class);
+//    protected List<Binary> values;
+//
+//
+//
+//    public TextRleEncoder() {
+//        super(TSEncoding.TEXTRLE);
+//    }
+//
+//    @Override
+//    public void flush(ByteArrayOutputStream out) throws IOException {
+//        try {
+////            writeMap(out);
+////            writeEncodedData(out);
+//        } catch (IOException e) {
+//            logger.error("tsfile-encoding TEXTRLEEncoder: error occurs when flushing", e);
+//        }
+//        reset();
+//    }

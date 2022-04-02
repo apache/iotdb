@@ -30,7 +30,8 @@ public enum TSEncoding {
   GORILLA((byte) 8),
   SPRINTZ((byte) 9),
   RAKE((byte) 10),
-  RLBE((byte) 11);
+  RLBE((byte) 11),
+  TEXTRLE((byte) 12);
 
   private final byte type;
 
@@ -74,6 +75,8 @@ public enum TSEncoding {
         return TSEncoding.RAKE;
       case 11:
         return TSEncoding.RLBE;
+      case 12:
+        return TSEncoding.TEXTRLE;
       default:
         throw new IllegalArgumentException("Invalid input: " + encoding);
     }
