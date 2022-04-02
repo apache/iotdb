@@ -626,6 +626,10 @@ public class TsFileResource {
     }
   }
 
+  public TsFileResourceStatus getStatus() {
+    return this.status;
+  }
+
   /**
    * check if any of the device lives over the given time bound. If the file is not closed, then
    * return true.

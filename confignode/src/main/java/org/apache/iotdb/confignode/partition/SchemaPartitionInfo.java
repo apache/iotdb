@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -21,42 +21,69 @@ package org.apache.iotdb.confignode.partition;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class SchemaPartitionInfo {
 
-  // TODO: Serialize and Deserialize
-  // Map<StorageGroup, Map<DeviceGroupID, SchemaRegionID>>
-  private final Map<String, Map<Integer, Integer>> schemaPartitionTable;
-  // TODO: Serialize and Deserialize
-  // Map<SchemaRegionID, List<DataNodeID>>
-  private final Map<Integer, List<Integer>> schemaRegionDataNodesMap;
+  // Map<StorageGroup, Map<DeviceGroupID, SchemaRegionPlaceInfo>>
+  private Map<String, Map<Integer, SchemaRegionReplicaSet>> schemaPartitionInfo;
 
   public SchemaPartitionInfo() {
-    this.schemaPartitionTable = new HashMap<>();
-    this.schemaRegionDataNodesMap = new HashMap<>();
+    schemaPartitionInfo = new HashMap<>();
   }
 
-  public void createSchemaPartition(String storageGroup, int deviceGroup, int schemaRegion) {
-    if (!schemaPartitionTable.containsKey(storageGroup)) {
-      schemaPartitionTable.put(storageGroup, new HashMap<>());
+  public Map<String, Map<Integer, SchemaRegionReplicaSet>> getSchemaPartitionInfo() {
+    return schemaPartitionInfo;
+  }
+
+  public void setSchemaPartitionInfo(
+      Map<String, Map<Integer, SchemaRegionReplicaSet>> schemaPartitionInfo) {
+    this.schemaPartitionInfo = schemaPartitionInfo;
+  }
+
+  public Map<String, Map<Integer, SchemaRegionReplicaSet>> getSchemaPartition(
+      String storageGroup, List<Integer> deviceGroupIDs) {
+    Map<String, Map<Integer, SchemaRegionReplicaSet>> storageGroupMap = new HashMap<>();
+    Map<Integer, SchemaRegionReplicaSet> deviceGroupMap = new HashMap<>();
+    deviceGroupIDs.forEach(
+        deviceGroupID -> {
+          if (schemaPartitionInfo.get(storageGroup) != null
+              && schemaPartitionInfo.get(storageGroup).containsKey(deviceGroupID)) {
+            deviceGroupMap.put(
+                deviceGroupID, schemaPartitionInfo.get(storageGroup).get(deviceGroupID));
+          }
+        });
+    storageGroupMap.put(storageGroup, deviceGroupMap);
+    return storageGroupMap;
+  }
+
+  /**
+   * Filter out unassigned device groups
+   *
+   * @param storageGroup storage group name
+   * @param deviceGroupIDs device group id list
+   * @return deviceGroupIDs does not assigned
+   */
+  public List<Integer> filterNoAssignDeviceGroupId(
+      String storageGroup, List<Integer> deviceGroupIDs) {
+    if (!schemaPartitionInfo.containsKey(storageGroup)) {
+      return deviceGroupIDs;
     }
-    schemaPartitionTable.get(storageGroup).put(deviceGroup, schemaRegion);
+    return deviceGroupIDs.stream()
+        .filter(
+            id -> {
+              if (schemaPartitionInfo.get(storageGroup).containsKey(deviceGroupIDs)) {
+                return false;
+              }
+              return true;
+            })
+        .collect(Collectors.toList());
   }
 
-  public Integer getSchemaPartition(String storageGroup, int deviceGroup) {
-    if (schemaPartitionTable.containsKey(storageGroup)) {
-      return schemaPartitionTable.get(storageGroup).get(deviceGroup);
-    }
-    return null;
-  }
-
-  public void createSchemaRegion(int schemaRegion, List<Integer> dataNode) {
-    if (!schemaRegionDataNodesMap.containsKey(schemaRegion)) {
-      schemaRegionDataNodesMap.put(schemaRegion, dataNode);
-    }
-  }
-
-  public List<Integer> getSchemaRegionLocation(int schemaRegionGroup) {
-    return schemaRegionDataNodesMap.get(schemaRegionGroup);
+  public void setSchemaRegionReplicaSet(
+      String storageGroup, int deviceGroupId, SchemaRegionReplicaSet schemaRegionReplicaSet) {
+    schemaPartitionInfo
+        .computeIfAbsent(storageGroup, value -> new HashMap<>())
+        .put(deviceGroupId, schemaRegionReplicaSet);
   }
 }
