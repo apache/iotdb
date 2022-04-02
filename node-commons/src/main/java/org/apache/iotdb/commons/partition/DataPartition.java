@@ -18,41 +18,55 @@
  */
 package org.apache.iotdb.commons.partition;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
-public class DataPartitionInfo {
+public class DataPartition {
 
   // Map<StorageGroup, Map<DeviceGroupID, Map<TimePartitionId, List<DataRegionPlaceInfo>>>>
-  private Map<String, Map<DeviceGroupId, Map<TimePartitionId, List<DataRegionReplicaSet>>>>
+  private Map<String, Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>>
       dataPartitionMap;
 
-  public Map<String, Map<DeviceGroupId, Map<TimePartitionId, List<DataRegionReplicaSet>>>>
+  public Map<String, Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>>
       getDataPartitionMap() {
     return dataPartitionMap;
   }
 
   public void setDataPartitionMap(
-      Map<String, Map<DeviceGroupId, Map<TimePartitionId, List<DataRegionReplicaSet>>>>
+      Map<String, Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>>
           dataPartitionMap) {
     this.dataPartitionMap = dataPartitionMap;
   }
 
-  public List<DataRegionReplicaSet> getDataRegionReplicaSet(
-      String deviceName, List<TimePartitionId> timePartitionIdList) {
+  public List<RegionReplicaSet> getDataRegionReplicaSet(
+      String deviceName, List<TimePartitionSlot> timePartitionSlotList) {
     String storageGroup = getStorageGroupByDevice(deviceName);
-    DeviceGroupId deviceGroupId = calculateDeviceGroupId(deviceName);
+    SeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceName);
     // TODO: (xingtanzjr) the timePartitionIdList is ignored
-    return dataPartitionMap.get(storageGroup).get(deviceGroupId).values().stream()
+    return dataPartitionMap.get(storageGroup).get(seriesPartitionSlot).values().stream()
         .flatMap(Collection::stream)
         .collect(Collectors.toList());
   }
 
-  private DeviceGroupId calculateDeviceGroupId(String deviceName) {
+  public List<RegionReplicaSet> getDataRegionReplicaSetForWriting(
+      String deviceName, List<TimePartitionSlot> timePartitionIdList) {
+    // A list of data region replica sets will store data in a same time partition.
+    // We will insert data to the last set in the list.
+    // TODO return the latest dataRegionReplicaSet for each time partition
+    return Collections.emptyList();
+  }
+
+  public RegionReplicaSet getDataRegionReplicaSetForWriting(
+      String deviceName, TimePartitionSlot timePartitionIdList) {
+    // A list of data region replica sets will store data in a same time partition.
+    // We will insert data to the last set in the list.
+    // TODO return the latest dataRegionReplicaSet for each time partition
+    return null;
+  }
+
+  private SeriesPartitionSlot calculateDeviceGroupId(String deviceName) {
     // TODO: (xingtanzjr) implement the real algorithm for calculation of DeviceGroupId
-    return new DeviceGroupId(deviceName.length());
+    return new SeriesPartitionSlot(deviceName.length());
   }
 
   private String getStorageGroupByDevice(String deviceName) {

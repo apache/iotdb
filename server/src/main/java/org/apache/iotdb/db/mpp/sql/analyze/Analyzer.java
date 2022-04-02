@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.db.mpp.sql.analyze;
 
-import org.apache.iotdb.commons.partition.DataPartitionInfo;
+import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.PartitionInfo;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SQLParserException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
@@ -39,6 +41,7 @@ import org.apache.iotdb.db.mpp.sql.rewriter.WildcardsRemover;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.component.WhereCondition;
+import org.apache.iotdb.db.mpp.sql.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.QueryStatement;
@@ -47,13 +50,7 @@ import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesSta
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.sys.AuthorStatement;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 /** Analyze the statement and generate Analysis. */
 public class Analyzer {
@@ -111,7 +108,7 @@ public class Analyzer {
           dataPartitionQueryParam.setDevicePath(deviceId);
           dataPartitionQueryParams.add(dataPartitionQueryParam);
         }
-        DataPartitionInfo dataPartitionInfo =
+        DataPartition dataPartition =
             partitionFetcher.fetchDataPartitionInfos(dataPartitionQueryParams);
 
         // optimize expressions in whereCondition
@@ -126,7 +123,7 @@ public class Analyzer {
         analysis.setStatement(rewrittenStatement);
         analysis.setSchemaTree(schemaTree);
         analysis.setDeviceIdToPathsMap(deviceIdToPathsMap);
-        analysis.setDataPartitionInfo(dataPartitionInfo);
+        analysis.setDataPartitionInfo(dataPartition);
       } catch (StatementAnalyzeException | PathNumOverLimitException e) {
         e.printStackTrace();
       }
@@ -197,23 +194,29 @@ public class Analyzer {
     @Override
     public Analysis visitInsertTablet(
         InsertTabletStatement insertTabletStatement, MPPQueryContext context) {
-      // TODO(INSERT) device + time range -> PartitionInfo
       DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
+      dataPartitionQueryParam.setTimePartitionSlotList(
+          insertTabletStatement.getTimePartitionSlots());
       dataPartitionQueryParam.setDevicePath(insertTabletStatement.getDevicePath().getFullPath());
-      // TODO(INSERT) calculate the time partition id list
-      //      dataPartitionQueryParam.setTimePartitionIdList();
       PartitionInfo partitionInfo = partitionFetcher.fetchPartitionInfo(dataPartitionQueryParam);
 
-      // TODO(INSERT) get each time series schema according to SchemaPartitionInfo in PartitionInfo
-      PathPatternTree patternTree = new PathPatternTree();
-      patternTree.appendPaths(
-          insertTabletStatement.getDevicePath(),
-          Arrays.asList(insertTabletStatement.getMeasurements()));
-      SchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree);
+      SchemaTree schemaTree =
+          IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()
+              ? schemaFetcher.fetchSchemaWithAutoCreate(
+                  insertTabletStatement.getDevicePath(),
+                  insertTabletStatement.getMeasurements(),
+                  insertTabletStatement.getDataTypes())
+              : schemaFetcher.fetchSchema(
+                  new PathPatternTree(
+                      insertTabletStatement.getDevicePath(),
+                      insertTabletStatement.getMeasurements()));
 
       Analysis analysis = new Analysis();
       analysis.setSchemaTree(schemaTree);
-      // TODO(INSERT) do type check here
+
+      if (!insertTabletStatement.checkDataType(schemaTree)) {
+        throw new SemanticException("Data type mismatch");
+      }
       analysis.setStatement(insertTabletStatement);
       analysis.setDataPartitionInfo(partitionInfo.getDataPartitionInfo());
       analysis.setSchemaPartitionInfo(partitionInfo.getSchemaPartitionInfo());
@@ -357,6 +360,42 @@ public class Analyzer {
         AuthorStatement authorStatement, MPPQueryContext context) {
       Analysis analysis = new Analysis();
       analysis.setStatement(authorStatement);
+      return analysis;
+    }
+    
+    public Analysis visitInsertRow(InsertRowStatement insertRowStatement, MPPQueryContext context) {
+      DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
+      dataPartitionQueryParam.setDevicePath(insertRowStatement.getDevicePath().getFullPath());
+      dataPartitionQueryParam.setTimePartitionSlotList(insertRowStatement.getTimePartitionSlots());
+      PartitionInfo partitionInfo = partitionFetcher.fetchPartitionInfo(dataPartitionQueryParam);
+
+      SchemaTree schemaTree =
+          IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()
+              ? schemaFetcher.fetchSchemaWithAutoCreate(
+                  insertRowStatement.getDevicePath(),
+                  insertRowStatement.getMeasurements(),
+                  insertRowStatement.getDataTypes())
+              : schemaFetcher.fetchSchema(
+                  new PathPatternTree(
+                      insertRowStatement.getDevicePath(), insertRowStatement.getMeasurements()));
+
+      Analysis analysis = new Analysis();
+      analysis.setSchemaTree(schemaTree);
+
+      try {
+        insertRowStatement.transferType(schemaTree);
+      } catch (QueryProcessException e) {
+        throw new SemanticException(e.getMessage());
+      }
+
+      if (!insertRowStatement.checkDataType(schemaTree)) {
+        throw new SemanticException("Data type mismatch");
+      }
+
+      analysis.setStatement(insertRowStatement);
+      analysis.setDataPartitionInfo(partitionInfo.getDataPartitionInfo());
+      analysis.setSchemaPartitionInfo(partitionInfo.getSchemaPartitionInfo());
+
       return analysis;
     }
   }

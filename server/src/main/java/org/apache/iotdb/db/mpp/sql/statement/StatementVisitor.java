@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.sql.statement;
 
+import org.apache.iotdb.db.mpp.sql.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.QueryStatement;
@@ -28,8 +29,9 @@ import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.sys.AuthorStatement;
 
 /**
- * This class provides a visitor of {@link StatementNode}, which can be extended to create a visitor
- * which only needs to handle a subset of the available methods.
+ * This class provides a visitor of {@link org.apache.iotdb.db.mpp.sql.statement.StatementNode},
+ * which can be extended to create a visitor which only needs to handle a subset of the available
+ * methods.
  *
  * @param <R> The return type of the visit operation.
  * @param <C> The context information during visiting.
@@ -182,5 +184,8 @@ public abstract class StatementVisitor<R, C> {
   // List Users of Role
   public R visitListAllUserOfRole(AuthorStatement authorStatement, C context) {
     return visitStatement(authorStatement, context);
+  }
+  public R visitInsertRow(InsertRowStatement insertRowStatement, C context) {
+    return visitStatement(insertRowStatement, context);
   }
 }

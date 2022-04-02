@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.mpp.sql.analyze;
 
-import org.apache.iotdb.commons.partition.DataPartitionInfo;
-import org.apache.iotdb.commons.partition.DataRegionReplicaSet;
-import org.apache.iotdb.commons.partition.SchemaPartitionInfo;
+import org.apache.iotdb.commons.partition.DataPartition;
+import org.apache.iotdb.commons.partition.RegionReplicaSet;
+import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
@@ -45,17 +45,17 @@ public class Analysis {
   // indicate whether this statement is write or read
   private QueryType queryType;
 
-  private DataPartitionInfo dataPartitionInfo;
+  private DataPartition dataPartition;
 
-  private SchemaPartitionInfo schemaPartitionInfo;
+  private SchemaPartition schemaPartition;
 
   private SchemaTree schemaTree;
 
   private Map<String, Set<PartialPath>> deviceIdToPathsMap;
 
-  public List<DataRegionReplicaSet> getPartitionInfo(PartialPath seriesPath, Filter timefilter) {
+  public List<RegionReplicaSet> getPartitionInfo(PartialPath seriesPath, Filter timefilter) {
     // TODO: (xingtanzjr) implement the calculation of timePartitionIdList
-    return dataPartitionInfo.getDataRegionReplicaSet(seriesPath.getDevice(), null);
+    return dataPartition.getDataRegionReplicaSet(seriesPath.getDevice(), null);
   }
 
   public Statement getStatement() {
@@ -66,28 +66,20 @@ public class Analysis {
     this.statement = statement;
   }
 
-  public DataPartitionInfo getDataPartitionInfo() {
-    return dataPartitionInfo;
+  public DataPartition getDataPartitionInfo() {
+    return dataPartition;
   }
 
-  public void setDataPartitionInfo(DataPartitionInfo dataPartitionInfo) {
-    this.dataPartitionInfo = dataPartitionInfo;
+  public void setDataPartitionInfo(DataPartition dataPartition) {
+    this.dataPartition = dataPartition;
   }
 
-  public SchemaPartitionInfo getSchemaPartitionInfo() {
-    return schemaPartitionInfo;
+  public SchemaPartition getSchemaPartitionInfo() {
+    return schemaPartition;
   }
 
-  public void setSchemaPartitionInfo(SchemaPartitionInfo schemaPartitionInfo) {
-    this.schemaPartitionInfo = schemaPartitionInfo;
-  }
-
-  public SchemaTree getSchemaTree() {
-    return schemaTree;
-  }
-
-  public void setSchemaTree(SchemaTree schemaTree) {
-    this.schemaTree = schemaTree;
+  public void setSchemaPartitionInfo(SchemaPartition schemaPartition) {
+    this.schemaPartition = schemaPartition;
   }
 
   public Map<String, Set<PartialPath>> getDeviceIdToPathsMap() {
@@ -96,5 +88,13 @@ public class Analysis {
 
   public void setDeviceIdToPathsMap(Map<String, Set<PartialPath>> deviceIdToPathsMap) {
     this.deviceIdToPathsMap = deviceIdToPathsMap;
+  }
+
+  public SchemaTree getSchemaTree() {
+    return schemaTree;
+  }
+
+  public void setSchemaTree(SchemaTree schemaTree) {
+    this.schemaTree = schemaTree;
   }
 }

@@ -18,11 +18,12 @@
  */
 package org.apache.iotdb.confignode.service.thrift.server;
 
+import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.commons.partition.DataNodeLocation;
 import org.apache.iotdb.confignode.consensus.response.DataNodesInfoDataSet;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionDataSet;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaDataSet;
 import org.apache.iotdb.confignode.manager.ConfigManager;
-import org.apache.iotdb.confignode.partition.DataNodeInfo;
 import org.apache.iotdb.confignode.partition.StorageGroupSchema;
 import org.apache.iotdb.confignode.physical.PhysicalPlanType;
 import org.apache.iotdb.confignode.physical.sys.AuthorPlan;
@@ -104,7 +105,7 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
       return new HashMap<>();
     } else {
       Map<Integer, DataNodeMessage> result = new HashMap<>();
-      for (DataNodeInfo info : ((DataNodesInfoDataSet) dataSet).getInfoList()) {
+      for (DataNodeLocation info : ((DataNodesInfoDataSet) dataSet).getDataNodeList()) {
         result.put(
             info.getDataNodeID(),
             new DataNodeMessage(

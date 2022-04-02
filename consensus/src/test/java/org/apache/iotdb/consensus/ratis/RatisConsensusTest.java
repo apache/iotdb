@@ -18,12 +18,12 @@
  */
 package org.apache.iotdb.consensus.ratis;
 
+import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.GroupType;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.ConsensusGroup;
-import org.apache.iotdb.consensus.common.ConsensusGroupId;
 import org.apache.iotdb.consensus.common.DataSet;
-import org.apache.iotdb.consensus.common.Endpoint;
-import org.apache.iotdb.consensus.common.GroupType;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
@@ -117,7 +117,7 @@ public class RatisConsensusTest {
 
   @Before
   public void setUp() throws IOException {
-    gid = new ConsensusGroupId(GroupType.DataRegion, 1L);
+    gid = new ConsensusGroupId(GroupType.DataRegion, 1);
     peers = new ArrayList<>();
     peer0 = new Peer(gid, new Endpoint("127.0.0.1", 6000));
     peer1 = new Peer(gid, new Endpoint("127.0.0.1", 6001));
