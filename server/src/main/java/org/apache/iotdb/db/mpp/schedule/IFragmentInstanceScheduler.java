@@ -42,6 +42,13 @@ public interface IFragmentInstanceScheduler {
    */
   void abortQuery(QueryId queryId);
 
+  /**
+   * Abort the fragment instance.
+   *
+   * @param instanceId the id of the fragment instance to be aborted.
+   */
+  void abortFragmentInstance(FragmentInstanceId instanceId);
+
   /** Fetch an {@link ExecFragmentInstance}. */
   void fetchFragmentInstance(ExecFragmentInstance instance);
 

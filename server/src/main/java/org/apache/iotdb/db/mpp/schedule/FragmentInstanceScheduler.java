@@ -165,6 +165,11 @@ public class FragmentInstanceScheduler implements IFragmentInstanceScheduler, IS
   }
 
   @Override
+  public void abortFragmentInstance(FragmentInstanceId instanceId) {
+    // TODO(EricPai)
+  }
+
+  @Override
   public void fetchFragmentInstance(ExecFragmentInstance instance) {}
 
   @Override

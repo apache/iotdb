@@ -100,6 +100,16 @@ public class FragmentInstanceManager {
     return execution.getInstanceInfo();
   }
 
+  public FragmentInstanceInfo abortFragmentInstance(FragmentInstanceId fragmentInstanceId) {
+    FragmentInstanceExecution execution = instanceExecution.remove(fragmentInstanceId);
+    if (execution != null) {
+      instanceContext.remove(fragmentInstanceId);
+      execution.abort();
+      return execution.getInstanceInfo();
+    }
+    return null;
+  }
+
   /**
    * Gets the info for the specified fragment instance.
    *

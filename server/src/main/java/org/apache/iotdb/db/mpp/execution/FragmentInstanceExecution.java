@@ -82,6 +82,7 @@ public class FragmentInstanceExecution {
   }
 
   public void abort() {
+    scheduler.abortFragmentInstance(instanceId);
     context.abort();
   }
 }
