@@ -44,9 +44,11 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Timer;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class RatisConsensusTest {
@@ -223,21 +225,30 @@ public class RatisConsensusTest {
     }
 
     executorService.shutdown();
-    latch.await();
+
+    // wait at most 60s for write to complete, otherwise fail the test
+    Assert.assertTrue(latch.await(60, TimeUnit.SECONDS));
 
     ByteBuffer get = ByteBuffer.allocate(4);
     get.putInt(2);
     get.flip();
     ByteBufferConsensusRequest getReq = new ByteBufferConsensusRequest(get);
 
+    // wait at most 60s to discover a valid leader
+    long start = System.currentTimeMillis();
     IConsensus leader = null;
     while (leader == null) {
+      long current = System.currentTimeMillis();
+      if ((current - start) > 60 * 1000 * 1000) {
+        break;
+      }
       for (int i = 0; i < 3; i++) {
         if (servers.get(i).isLeader(gid)) {
           leader = servers.get(i);
         }
       }
     }
+    Assert.assertNotNull(leader);
 
     // Check we reached a consensus
     ConsensusReadResponse response = leader.read(gid, getReq);
