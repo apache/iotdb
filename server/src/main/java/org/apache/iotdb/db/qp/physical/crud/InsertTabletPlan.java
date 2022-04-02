@@ -729,11 +729,11 @@ public class InsertTabletPlan extends InsertPlan {
     int rows = stream.readInt();
     rowCount = rows;
     this.times = new long[rows];
-    times = QueryDataSetUtils.readTimesFromBuffer(stream, rows);
+    times = QueryDataSetUtils.readTimesFromStream(stream, rows);
 
     boolean hasBitMaps = BytesUtils.byteToBool(stream.readByte());
     if (hasBitMaps) {
-      bitMaps = QueryDataSetUtils.readBitMapsFromBuffer(stream, dataTypeSize, rows);
+      bitMaps = QueryDataSetUtils.readBitMapsFromStream(stream, dataTypeSize, rows);
     }
     columns = QueryDataSetUtils.readTabletValuesFromStream(stream, dataTypes, dataTypeSize, rows);
     this.index = stream.readLong();

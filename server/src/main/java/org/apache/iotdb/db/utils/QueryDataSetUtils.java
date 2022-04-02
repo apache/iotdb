@@ -181,7 +181,7 @@ public class QueryDataSetUtils {
     return times;
   }
 
-  public static long[] readTimesFromBuffer(DataInputStream stream, int size) throws IOException {
+  public static long[] readTimesFromStream(DataInputStream stream, int size) throws IOException {
     long[] times = new long[size];
     for (int i = 0; i < size; i++) {
       times[i] = stream.readLong();
@@ -207,7 +207,7 @@ public class QueryDataSetUtils {
     return bitMaps;
   }
 
-  public static BitMap[] readBitMapsFromBuffer(DataInputStream stream, int columns, int size)
+  public static BitMap[] readBitMapsFromStream(DataInputStream stream, int columns, int size)
       throws IOException {
     if (stream.available() <= 0) {
       return null;
