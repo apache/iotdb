@@ -40,8 +40,9 @@ User application can create a `ConsensusGroup` with k `Peer` to store data,
 i.e. that there will be k copies of data.
 
 When write data into a `ConsensusGroup` using `IConsensus::write`, it will be sent to the group leader's `IStateMachine::write` . 
-The leader makes decision about this write operation, 
-and forward the result to other members' `IStateMachine::write` in the same group
+The leader makes decision about this write operation first, 
+then applies write-operation to the local statemachine using `IStateMachine::write`,
+and forward this operation to other members' `IStateMachine::write` in the same group
 
 ### How to use
 1. Define the  `IStateMachine` to manage local copy of data.
