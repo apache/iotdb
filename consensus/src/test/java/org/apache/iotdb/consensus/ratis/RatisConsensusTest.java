@@ -44,9 +44,9 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class RatisConsensusTest {
@@ -112,6 +112,7 @@ public class RatisConsensusTest {
   private Peer peer0;
   private Peer peer1;
   private Peer peer2;
+  CountDownLatch latch;
 
   @Before
   public void setUp() throws IOException {
@@ -201,8 +202,9 @@ public class RatisConsensusTest {
   private void doConsensus(IConsensus consensus, ConsensusGroupId gid, int count, int target)
       throws Exception {
 
+    latch = new CountDownLatch(count);
     // do write
-    ExecutorService executorService = Executors.newFixedThreadPool(4);
+    ExecutorService executorService = Executors.newFixedThreadPool(2);
     for (int i = 0; i < count; i++) {
       executorService.submit(
           () -> {
@@ -215,23 +217,30 @@ public class RatisConsensusTest {
             if (response.getException() != null) {
               response.getException().printStackTrace(System.out);
             }
-            Assert.assertEquals(response.getStatus(), new TSStatus(200));
+            Assert.assertEquals(response.getStatus().getCode(), 200);
+            latch.countDown();
           });
     }
 
     executorService.shutdown();
-    executorService.awaitTermination(count * 500L, TimeUnit.MILLISECONDS);
+    latch.await();
 
     ByteBuffer get = ByteBuffer.allocate(4);
     get.putInt(2);
     get.flip();
     ByteBufferConsensusRequest getReq = new ByteBufferConsensusRequest(get);
 
-    // Sleep Long enough to followers to catch up with the leader
-    Thread.sleep(1000);
+    IConsensus leader = null;
+    while (leader == null) {
+      for (int i = 0; i < 3; i++) {
+        if (servers.get(i).isLeader(gid)) {
+          leader = servers.get(i);
+        }
+      }
+    }
 
     // Check we reached a consensus
-    ConsensusReadResponse response = consensus.read(gid, getReq);
+    ConsensusReadResponse response = leader.read(gid, getReq);
     TestDataSet result = (TestDataSet) response.getDataset();
     Assert.assertEquals(target, result.getNumber());
   }
