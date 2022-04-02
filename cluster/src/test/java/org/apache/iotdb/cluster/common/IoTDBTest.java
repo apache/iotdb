@@ -20,9 +20,9 @@
 package org.apache.iotdb.cluster.common;
 
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -68,7 +68,6 @@ public abstract class IoTDBTest {
     ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(true);
     prevEnableAutoSchema = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
     IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(false);
-    EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
     planExecutor = new PlanExecutor();
     prepareSchema();

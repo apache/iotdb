@@ -43,6 +43,9 @@ import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -53,6 +56,8 @@ import java.util.Map;
  * s3 < 0 and time > 100", this class can iterate back to every timestamp of the query.
  */
 public class ServerTimeGenerator extends TimeGenerator {
+
+  private static final Logger logger = LoggerFactory.getLogger(ServerTimeGenerator.class);
 
   protected QueryContext context;
   protected RawDataQueryPlan queryPlan;
@@ -90,11 +95,13 @@ public class ServerTimeGenerator extends TimeGenerator {
       // init QueryDataSource Cache
       QueryResourceManager.getInstance()
           .initQueryDataSourceCache(processorToSeriesMap, context, timeFilter);
-
-      operatorNode = construct(expression);
+    } catch (Exception e) {
+      logger.error("Meet error when init QueryDataSource ", e);
+      throw new QueryProcessException("Meet error when init QueryDataSource.", e);
     } finally {
       StorageEngine.getInstance().mergeUnLock(lockList);
     }
+    operatorNode = construct(expression);
   }
 
   /**
@@ -146,7 +153,8 @@ public class ServerTimeGenerator extends TimeGenerator {
     QueryDataSource queryDataSource;
     try {
       queryDataSource =
-          QueryResourceManager.getInstance().getQueryDataSource(path, context, valueFilter);
+          QueryResourceManager.getInstance()
+              .getQueryDataSource(path, context, valueFilter, queryPlan.isAscending());
       // update valueFilter by TTL
       valueFilter = queryDataSource.updateFilterUsingTTL(valueFilter);
     } catch (Exception e) {

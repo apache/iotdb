@@ -84,7 +84,6 @@ public class IoTDBLoadExternalTsFileWithTimePartitionIT {
   public void setUp() throws Exception {
     originalIsEnablePartition = config.isEnablePartition();
     originalPartitionInterval = config.getPartitionInterval();
-    EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
 

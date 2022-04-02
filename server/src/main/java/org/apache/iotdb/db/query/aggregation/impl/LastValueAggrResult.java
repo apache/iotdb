@@ -34,9 +34,6 @@ import java.nio.ByteBuffer;
 
 public class LastValueAggrResult extends AggregateResult {
 
-  // timestamp of current value
-  protected long timestamp = Long.MIN_VALUE;
-
   public LastValueAggrResult(TSDataType dataType) {
     super(dataType, AggregationType.LAST_VALUE);
     reset();

@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.qp.logical.sys;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.runtime.SQLParserException;
+import org.apache.iotdb.db.exception.sql.SQLParserException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -32,6 +32,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class CreateAlignedTimeSeriesOperator extends Operator {
@@ -41,7 +42,10 @@ public class CreateAlignedTimeSeriesOperator extends Operator {
   private List<TSDataType> dataTypes = new ArrayList<>();
   private List<TSEncoding> encodings = new ArrayList<>();
   private List<CompressionType> compressors = new ArrayList<>();
-  private List<String> aliasList = null;
+  private List<String> aliasList = new ArrayList<>();
+  private List<Map<String, String>> tagsList = new ArrayList<>();
+  private List<Map<String, String>> attributesList = new ArrayList<>();
+  private List<Long> tagOffsets = null;
 
   public CreateAlignedTimeSeriesOperator(int tokenIntType) {
     super(tokenIntType);
@@ -116,6 +120,48 @@ public class CreateAlignedTimeSeriesOperator extends Operator {
     this.aliasList.add(alias);
   }
 
+  public List<Map<String, String>> getTagsList() {
+    return tagsList;
+  }
+
+  public void setTagsList(List<Map<String, String>> tagsList) {
+    this.tagsList = tagsList;
+  }
+
+  public void addTagsList(Map<String, String> tags) {
+    this.tagsList.add(tags);
+  }
+
+  public List<Map<String, String>> getAttributesList() {
+    return attributesList;
+  }
+
+  public void setAttributesList(List<Map<String, String>> attributesList) {
+    this.attributesList = attributesList;
+  }
+
+  public void addAttributesList(Map<String, String> attributes) {
+    this.attributesList.add(attributes);
+  }
+
+  public List<Long> getTagOffsets() {
+    if (tagOffsets == null) {
+      tagOffsets = new ArrayList<>();
+      for (int i = 0; i < measurements.size(); i++) {
+        tagOffsets.add(Long.parseLong("-1"));
+      }
+    }
+    return tagOffsets;
+  }
+
+  public void setTagOffsets(List<Long> tagOffsets) {
+    this.tagOffsets = tagOffsets;
+  }
+
+  public void addTagOffsets(Long tagsOffset) {
+    this.tagOffsets.add(tagsOffset);
+  }
+
   @Override
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
@@ -126,6 +172,13 @@ public class CreateAlignedTimeSeriesOperator extends Operator {
     }
 
     return new CreateAlignedTimeSeriesPlan(
-        prefixPath, measurements, dataTypes, encodings, compressors, aliasList);
+        prefixPath,
+        measurements,
+        dataTypes,
+        encodings,
+        compressors,
+        aliasList,
+        tagsList,
+        attributesList);
   }
 }

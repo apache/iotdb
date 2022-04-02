@@ -21,7 +21,10 @@ package org.apache.iotdb.metrics;
 
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.metrics.config.ReloadLevel;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
+import org.apache.iotdb.metrics.reporter.CompositeReporter;
+import org.apache.iotdb.metrics.reporter.Reporter;
 import org.apache.iotdb.metrics.utils.PredefinedMetric;
 import org.apache.iotdb.metrics.utils.ReporterType;
 
@@ -29,40 +32,57 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ServiceLoader;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * MetricService is the entry to manage all Metric system, include MetricManager and MetricReporter.
  */
-public class MetricService {
+public abstract class MetricService {
 
   private static final Logger logger = LoggerFactory.getLogger(MetricService.class);
-  private static final MetricConfig metricConfig =
-      MetricConfigDescriptor.getInstance().getMetricConfig();
+  private final MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
 
-  private static final MetricService INSTANCE = new MetricService();
+  protected MetricManager metricManager = new DoNothingMetricManager();
 
-  private static MetricManager metricManager;
+  protected CompositeReporter compositeReporter = new CompositeReporter();
 
-  private static CompositeReporter compositeReporter;
+  protected boolean isEnableMetric = metricConfig.getEnableMetric();
 
-  public static MetricService getInstance() {
-    return INSTANCE;
-  }
+  private AtomicBoolean firstInit = new AtomicBoolean(true);
 
-  private MetricService() {}
+  public MetricService() {}
 
-  /** init config, manager and reporter */
-  public static void init() {
-    logger.info("Init metric service");
+  /** Start metric service without start reporter. if is disabled, do nothing */
+  public void startService() {
     // load manager
     loadManager();
     // load reporter
     loadReporter();
     // do some init work
     metricManager.init();
+    // do start all reporter without first time
+    if (!firstInit.getAndSet(false)) {
+      startAllReporter();
+    }
+
+    logger.info("Start predefined metric:" + metricConfig.getPredefinedMetrics());
+    for (PredefinedMetric predefinedMetric : metricConfig.getPredefinedMetrics()) {
+      enablePredefinedMetric(predefinedMetric);
+    }
+    logger.info("Start metric at level: " + metricConfig.getMetricLevel().name());
+
+    collectFileSystemInfo();
   }
 
-  public static void loadManager() {
+  /** Stop metric service. if is disabled, do nothing */
+  public void stopService() {
+    metricManager.stop();
+    compositeReporter.stopAll();
+    metricManager = new DoNothingMetricManager();
+    compositeReporter = new CompositeReporter();
+  }
+
+  protected void loadManager() {
     logger.info("Load metricManager, type: {}", metricConfig.getMonitorType());
     ServiceLoader<MetricManager> metricManagers = ServiceLoader.load(MetricManager.class);
     int size = 0;
@@ -71,7 +91,7 @@ public class MetricService {
       if (mf.getClass()
           .getName()
           .toLowerCase()
-          .contains(metricConfig.getMonitorType().getName().toLowerCase())) {
+          .contains(metricConfig.getMonitorType().name().toLowerCase())) {
         metricManager = mf;
         break;
       }
@@ -86,10 +106,9 @@ public class MetricService {
     }
   }
 
-  public static void loadReporter() {
+  protected void loadReporter() {
     logger.info("Load metric reporter, reporters: {}", metricConfig.getMetricReporterList());
-    compositeReporter = new CompositeReporter();
-
+    compositeReporter.clearReporter();
     ServiceLoader<Reporter> reporters = ServiceLoader.load(Reporter.class);
     for (Reporter reporter : reporters) {
       if (metricConfig.getMetricReporterList() != null
@@ -98,15 +117,20 @@ public class MetricService {
               .getClass()
               .getName()
               .toLowerCase()
-              .contains(metricConfig.getMonitorType().getName().toLowerCase())) {
+              .contains(metricConfig.getMonitorType().name().toLowerCase())) {
         reporter.setMetricManager(metricManager);
         compositeReporter.addReporter(reporter);
       }
     }
   }
 
+  public void startAllReporter() {
+    // start reporter
+    compositeReporter.startAll();
+  }
+
   /** start reporter by name, values in jmx, prometheus, internal. if is disabled, do nothing */
-  public static void start(ReporterType reporter) {
+  public void start(ReporterType reporter) {
     if (!isEnable()) {
       return;
     }
@@ -114,39 +138,36 @@ public class MetricService {
   }
 
   /** stop reporter by name, values in jmx, prometheus, internal. if is disabled, do nothing */
-  public static void stop(ReporterType reporter) {
+  public void stop(ReporterType reporter) {
     if (!isEnable()) {
       return;
     }
     compositeReporter.stop(reporter);
   }
 
-  /** Start all reporter. if is disabled, do nothing */
-  public static void startAll() {
-    if (!isEnable()) {
-      return;
-    }
-    compositeReporter.startAll();
-  }
-
-  /** Stop metric service. if is disabled, do nothing */
-  public static void stopAll() {
-    if (!isEnable()) {
-      return;
-    }
-    compositeReporter.stopAll();
-  }
-
-  /** Enable some predefined metric, now support jvm */
-  public static void enablePredefinedMetric(PredefinedMetric metric) {
+  /**
+   * Enable some predefined metric, now support jvm, logback. Notice: In dropwizard mode, logback
+   * metrics are not supported
+   */
+  public void enablePredefinedMetric(PredefinedMetric metric) {
     metricManager.enablePredefinedMetric(metric);
   }
 
-  public static MetricManager getMetricManager() {
+  /** collect file system info in metric way */
+  protected abstract void collectFileSystemInfo();
+
+  /**
+   * support hot load of some properties
+   *
+   * @param reloadLevel
+   */
+  protected abstract void reloadProperties(ReloadLevel reloadLevel);
+
+  public MetricManager getMetricManager() {
     return metricManager;
   }
 
-  public static boolean isEnable() {
-    return metricConfig.getEnableMetric();
+  public boolean isEnable() {
+    return isEnableMetric;
   }
 }

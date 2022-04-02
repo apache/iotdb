@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.rpc;
 
-import org.apache.iotdb.protocol.influxdb.rpc.thrift.*;
 import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxDBService;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
@@ -137,11 +136,12 @@ public class RpcUtils {
   }
 
   public static void verifySuccess(List<TSStatus> statuses) throws BatchExecutionException {
-    StringBuilder errMsgs = new StringBuilder();
+    StringBuilder errMsgs =
+        new StringBuilder().append(TSStatusCode.MULTIPLE_ERROR.getStatusCode()).append(": ");
     for (TSStatus status : statuses) {
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && status.getCode() != TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
-        errMsgs.append(status.getMessage()).append(";");
+        errMsgs.append(status.getMessage()).append("; ");
       }
     }
     if (errMsgs.length() > 0) {

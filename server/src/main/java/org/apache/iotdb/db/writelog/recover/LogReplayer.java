@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.writelog.recover;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
@@ -146,7 +146,7 @@ public class LogReplayer {
   private void replayDelete(DeletePlan deletePlan) throws IOException, MetadataException {
     List<PartialPath> paths = deletePlan.getPaths();
     for (PartialPath path : paths) {
-      for (PartialPath device : IoTDB.metaManager.getBelongedDevices(path)) {
+      for (PartialPath device : IoTDB.schemaProcessor.getBelongedDevices(path)) {
         recoverMemTable.delete(
             path, device, deletePlan.getDeleteStartTime(), deletePlan.getDeleteEndTime());
       }
@@ -196,7 +196,7 @@ public class LogReplayer {
       if (IoTDBDescriptor.getInstance().getConfig().isEnableIDTable()) {
         virtualStorageGroupProcessor.getIdTable().getSeriesSchemas(plan);
       } else {
-        IoTDB.metaManager.getSeriesSchemasAndReadLockDevice(plan);
+        IoTDB.schemaProcessor.getSeriesSchemasAndReadLockDevice(plan);
         plan.setDeviceID(DeviceIDFactory.getInstance().getDeviceID(plan.getDevicePath()));
       }
     } catch (IOException | MetadataException e) {

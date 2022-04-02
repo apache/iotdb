@@ -63,7 +63,7 @@ public class MetaSingleSnapshotLogManager extends RaftLogManager {
     // TODO-cluster https://issues.apache.org/jira/browse/IOTDB-820
     super.takeSnapshot();
     synchronized (this) {
-      storageGroupTTLMap = IoTDB.metaManager.getStorageGroupsTTL();
+      storageGroupTTLMap = IoTDB.schemaProcessor.getStorageGroupsTTL();
       try {
         IAuthorizer authorizer = BasicAuthorizer.getInstance();
         userMap = authorizer.getAllUsers();

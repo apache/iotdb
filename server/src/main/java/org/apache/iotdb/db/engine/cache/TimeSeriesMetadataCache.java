@@ -19,15 +19,16 @@
 
 package org.apache.iotdb.db.engine.cache;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.service.metrics.Metric;
 import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.service.metrics.Tag;
-import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -97,9 +98,11 @@ public class TimeSeriesMetadataCache {
                                 + RamUsageEstimator.shallowSizeOf(value)
                                 + RamUsageEstimator.sizeOf(value.getMeasurementId())
                                 + RamUsageEstimator.shallowSizeOf(value.getStatistics())
-                                + (((ChunkMetadata) value.getChunkMetadataList().get(0))
-                                            .calculateRamSize()
-                                        + RamUsageEstimator.NUM_BYTES_OBJECT_REF)
+                                + (value.getChunkMetadataList().get(0) == null
+                                        ? 0
+                                        : ((ChunkMetadata) value.getChunkMetadataList().get(0))
+                                                .calculateRamSize()
+                                            + RamUsageEstimator.NUM_BYTES_OBJECT_REF)
                                     * value.getChunkMetadataList().size()
                                 + RamUsageEstimator.shallowSizeOf(value.getChunkMetadataList())))
             .recordStats()
@@ -111,6 +114,7 @@ public class TimeSeriesMetadataCache {
           .getMetricManager()
           .getOrCreateAutoGauge(
               Metric.CACHE_HIT.toString(),
+              MetricLevel.IMPORTANT,
               lruCache,
               l -> (long) (l.stats().hitRate() * 100),
               Tag.NAME.toString(),
@@ -120,6 +124,7 @@ public class TimeSeriesMetadataCache {
           .getMetricManager()
           .getOrCreateAutoGauge(
               Metric.CACHE_HIT.toString(),
+              MetricLevel.IMPORTANT,
               bloomFilterPreventCount,
               prevent -> {
                 if (bloomFilterRequestCount.get() == 0L) {
@@ -137,14 +142,13 @@ public class TimeSeriesMetadataCache {
     return TimeSeriesMetadataCache.TimeSeriesMetadataCacheHolder.INSTANCE;
   }
 
-  public TimeseriesMetadata get(TimeSeriesMetadataCacheKey key, Set<String> allSensors)
-      throws IOException {
-    return get(key, allSensors, false);
-  }
-
   @SuppressWarnings("squid:S1860") // Suppress synchronize warning
   public TimeseriesMetadata get(
-      TimeSeriesMetadataCacheKey key, Set<String> allSensors, boolean debug) throws IOException {
+      TimeSeriesMetadataCacheKey key,
+      Set<String> allSensors,
+      boolean ignoreNotExists,
+      boolean debug)
+      throws IOException {
     if (!CACHE_ENABLE) {
       // bloom filter part
       TsFileSequenceReader reader = FileReaderManager.getInstance().get(key.filePath, true);
@@ -153,7 +157,11 @@ public class TimeSeriesMetadataCache {
           && !bloomFilter.contains(key.device + IoTDBConstant.PATH_SEPARATOR + key.measurement)) {
         return null;
       }
-      return reader.readTimeseriesMetadata(new Path(key.device, key.measurement), false);
+      TimeseriesMetadata timeseriesMetadata =
+          reader.readTimeseriesMetadata(new Path(key.device, key.measurement), ignoreNotExists);
+      return (timeseriesMetadata == null || timeseriesMetadata.getStatistics().getCount() == 0)
+          ? null
+          : timeseriesMetadata;
     }
 
     TimeseriesMetadata timeseriesMetadata = lruCache.getIfPresent(key);
@@ -193,9 +201,11 @@ public class TimeSeriesMetadataCache {
             TimeSeriesMetadataCacheKey k =
                 new TimeSeriesMetadataCacheKey(
                     key.filePath, key.device, metadata.getMeasurementId());
-            lruCache.put(k, metadata);
+            if (metadata.getStatistics().getCount() != 0) {
+              lruCache.put(k, metadata);
+            }
             if (metadata.getMeasurementId().equals(key.measurement)) {
-              timeseriesMetadata = metadata;
+              timeseriesMetadata = metadata.getStatistics().getCount() == 0 ? null : metadata;
             }
           }
         }

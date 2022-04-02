@@ -20,14 +20,11 @@
 package org.apache.iotdb.db.engine.compaction.inner;
 
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
-import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompactionRecoverTask;
 import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompactionSelector;
 import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 
-import java.io.File;
 import java.util.List;
 
 public enum InnerCompactionStrategy {
@@ -45,7 +42,6 @@ public enum InnerCompactionStrategy {
       String virtualStorageGroup,
       long timePartition,
       TsFileManager tsFileManager,
-      TsFileResourceList tsFileResourceList,
       List<TsFileResource> selectedTsFileResourceList,
       boolean sequence) {
     switch (this) {
@@ -56,29 +52,7 @@ public enum InnerCompactionStrategy {
             virtualStorageGroup,
             timePartition,
             tsFileManager,
-            tsFileResourceList,
             selectedTsFileResourceList,
-            sequence,
-            CompactionTaskManager.currentTaskNum);
-    }
-  }
-
-  public AbstractInnerSpaceCompactionTask getCompactionRecoverTask(
-      String logicalStorageGroupName,
-      String virtualStorageGroup,
-      long timePartition,
-      File compactionLogFile,
-      String dataDir,
-      boolean sequence) {
-    switch (this) {
-      case SIZE_TIERED_COMPACTION:
-      default:
-        return new SizeTieredCompactionRecoverTask(
-            logicalStorageGroupName,
-            virtualStorageGroup,
-            timePartition,
-            compactionLogFile,
-            dataDir,
             sequence,
             CompactionTaskManager.currentTaskNum);
     }
@@ -89,7 +63,6 @@ public enum InnerCompactionStrategy {
       String virtualStorageGroupName,
       long timePartition,
       TsFileManager tsFileManager,
-      TsFileResourceList tsFileResources,
       boolean sequence,
       InnerSpaceCompactionTaskFactory taskFactory) {
     switch (this) {
@@ -100,7 +73,6 @@ public enum InnerCompactionStrategy {
             virtualStorageGroupName,
             timePartition,
             tsFileManager,
-            tsFileResources,
             sequence,
             taskFactory);
     }

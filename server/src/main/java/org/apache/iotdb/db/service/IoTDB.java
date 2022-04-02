@@ -18,29 +18,35 @@
  */
 package org.apache.iotdb.db.service;
 
-import org.apache.iotdb.db.concurrent.IoTDBDefaultThreadExceptionHandler;
+import org.apache.iotdb.commons.concurrent.IoTDBDefaultThreadExceptionHandler;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.ConfigurationException;
+import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.service.JMXService;
+import org.apache.iotdb.commons.service.RegisterManager;
+import org.apache.iotdb.commons.service.StartupChecks;
 import org.apache.iotdb.db.conf.IoTDBConfigCheck;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceCheck;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
-import org.apache.iotdb.db.cq.ContinuousQueryService;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.CacheHitRatioMonitor;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.MergeManager;
+import org.apache.iotdb.db.engine.cq.ContinuousQueryService;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
-import org.apache.iotdb.db.exception.ConfigurationException;
-import org.apache.iotdb.db.exception.StartupException;
-import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.monitor.StatMonitor;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.LocalConfigManager;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
+import org.apache.iotdb.db.protocol.influxdb.meta.InfluxDBMetaManager;
 import org.apache.iotdb.db.protocol.rest.RestService;
 import org.apache.iotdb.db.query.udf.service.TemporaryQueryDataFileService;
 import org.apache.iotdb.db.query.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
+import org.apache.iotdb.db.service.basic.ServiceProvider;
+import org.apache.iotdb.db.service.basic.StandaloneServiceProvider;
 import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.sync.receiver.SyncServerManager;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
@@ -55,8 +61,10 @@ public class IoTDB implements IoTDBMBean {
   private static final Logger logger = LoggerFactory.getLogger(IoTDB.class);
   private final String mbeanName =
       String.format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, "IoTDB");
-  private final RegisterManager registerManager = new RegisterManager();
-  public static MManager metaManager = MManager.getInstance();
+  private static final RegisterManager registerManager = new RegisterManager();
+  public static LocalSchemaProcessor schemaProcessor = LocalSchemaProcessor.getInstance();
+  public static LocalConfigManager configManager = LocalConfigManager.getInstance();
+  public static ServiceProvider serviceProvider;
   private static boolean clusterMode = false;
 
   public static IoTDB getInstance() {
@@ -75,8 +83,12 @@ public class IoTDB implements IoTDBMBean {
     daemon.active();
   }
 
-  public static void setMetaManager(MManager metaManager) {
-    IoTDB.metaManager = metaManager;
+  public static void setSchemaProcessor(LocalSchemaProcessor schemaProcessor) {
+    IoTDB.schemaProcessor = schemaProcessor;
+  }
+
+  public static void setServiceProvider(ServiceProvider serviceProvider) {
+    IoTDB.serviceProvider = serviceProvider;
   }
 
   public static void setClusterMode() {
@@ -99,7 +111,7 @@ public class IoTDB implements IoTDBMBean {
     }
     try {
       setUp();
-    } catch (StartupException e) {
+    } catch (StartupException | QueryProcessException e) {
       logger.error("meet error while starting up.", e);
       deactivate();
       logger.error("{} exit", IoTDBConstant.GLOBAL_DB_NAME);
@@ -108,43 +120,39 @@ public class IoTDB implements IoTDBMBean {
     logger.info("{} has started.", IoTDBConstant.GLOBAL_DB_NAME);
   }
 
-  private void setUp() throws StartupException {
+  private void setUp() throws StartupException, QueryProcessException {
     logger.info("Setting up IoTDB...");
 
     Runtime.getRuntime().addShutdownHook(new IoTDBShutdownHook());
     setUncaughtExceptionHandler();
+    initServiceProvider();
     registerManager.register(MetricsService.getInstance());
     logger.info("recover the schema...");
-    initMManager();
+    initConfigManager();
     registerManager.register(JMXService.getInstance());
     registerManager.register(FlushManager.getInstance());
     registerManager.register(MultiFileLogNodeManager.getInstance());
     registerManager.register(CacheHitRatioMonitor.getInstance());
-    registerManager.register(MergeManager.getINSTANCE());
     registerManager.register(CompactionTaskManager.getInstance());
     JMXService.registerMBean(getInstance(), mbeanName);
     registerManager.register(StorageEngine.getInstance());
     registerManager.register(TemporaryQueryDataFileService.getInstance());
     registerManager.register(UDFClassLoaderManager.getInstance());
     registerManager.register(UDFRegistrationService.getInstance());
-    registerManager.register(TriggerRegistrationService.getInstance());
-    registerManager.register(ContinuousQueryService.getInstance());
 
     // in cluster mode, RPC service is not enabled.
     if (IoTDBDescriptor.getInstance().getConfig().isEnableRpcService()) {
       registerManager.register(RPCService.getInstance());
     }
 
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableInfluxDBRpcService()) {
-      registerManager.register(InfluxDBRPCService.getInstance());
+    initProtocols();
+    // in cluster mode, InfluxDBMManager has been initialized, so there is no need to init again to
+    // avoid wasting time.
+    if (!isClusterMode()
+        && IoTDBDescriptor.getInstance().getConfig().isEnableInfluxDBRpcService()) {
+      initInfluxDBMManager();
     }
 
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableMQTTService()) {
-      registerManager.register(MQTTService.getInstance());
-    }
-    if (IoTDBRestServiceDescriptor.getInstance().getConfig().isEnableRestService()) {
-      registerManager.register(RestService.getInstance());
-    }
     logger.info("IoTDB is set up, now may some sgs are not ready, please wait several seconds...");
 
     while (!StorageEngine.getInstance().isAllSgReady()) {
@@ -157,13 +165,38 @@ public class IoTDB implements IoTDBMBean {
       }
     }
 
-    // Warn: registMonitor() method should be called after systemDataRecovery()
-    registerManager.register(StatMonitor.getInstance());
     registerManager.register(SyncServerManager.getInstance());
     registerManager.register(UpgradeSevice.getINSTANCE());
     registerManager.register(SettleService.getINSTANCE());
+    registerManager.register(TriggerRegistrationService.getInstance());
+    registerManager.register(ContinuousQueryService.getInstance());
+
+    // start reporter
+    MetricsService.getInstance().startAllReporter();
 
     logger.info("Congratulation, IoTDB is set up successfully. Now, enjoy yourself!");
+  }
+
+  public static void initInfluxDBMManager() {
+    InfluxDBMetaManager.getInstance().recover();
+  }
+
+  private void initServiceProvider() throws QueryProcessException {
+    if (!clusterMode) {
+      serviceProvider = new StandaloneServiceProvider();
+    }
+  }
+
+  public static void initProtocols() throws StartupException {
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableInfluxDBRpcService()) {
+      registerManager.register(InfluxDBRPCService.getInstance());
+    }
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableMQTTService()) {
+      registerManager.register(MQTTService.getInstance());
+    }
+    if (IoTDBRestServiceDescriptor.getInstance().getConfig().isEnableRestService()) {
+      registerManager.register(RestService.getInstance());
+    }
   }
 
   private void deactivate() {
@@ -173,9 +206,9 @@ public class IoTDB implements IoTDBMBean {
     logger.info("IoTDB is deactivated.");
   }
 
-  private void initMManager() {
+  private void initConfigManager() {
     long time = System.currentTimeMillis();
-    IoTDB.metaManager.init();
+    IoTDB.configManager.init();
     long end = System.currentTimeMillis() - time;
     logger.info("spend {}ms to recover schema.", end);
     logger.info(

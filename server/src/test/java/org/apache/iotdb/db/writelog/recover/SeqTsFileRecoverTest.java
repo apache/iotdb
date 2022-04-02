@@ -122,10 +122,10 @@ public class SeqTsFileRecoverTest {
   }
 
   private void prepareData() throws IOException, MetadataException, WriteProcessException {
-    IoTDB.metaManager.setStorageGroup(new PartialPath("root.sg"));
+    IoTDB.schemaProcessor.setStorageGroup(new PartialPath("root.sg"));
     for (int i = 0; i < 10; i++) {
       for (int j = 0; j < 10; j++) {
-        IoTDB.metaManager.createTimeseries(
+        IoTDB.schemaProcessor.createTimeseries(
             new PartialPath("root.sg.device" + i + ".sensor" + j),
             TSDataType.INT64,
             TSEncoding.PLAIN,
@@ -206,9 +206,9 @@ public class SeqTsFileRecoverTest {
 
   private void prepareDataWithDeletion()
       throws IOException, MetadataException, WriteProcessException {
-    IoTDB.metaManager.setStorageGroup(new PartialPath("root.sg"));
+    IoTDB.schemaProcessor.setStorageGroup(new PartialPath("root.sg"));
     for (int i = 0; i < 4; i++) {
-      IoTDB.metaManager.createTimeseries(
+      IoTDB.schemaProcessor.createTimeseries(
           new PartialPath("root.sg.device" + i + ".sensor1"),
           TSDataType.INT64,
           TSEncoding.PLAIN,
