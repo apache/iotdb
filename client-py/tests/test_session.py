@@ -59,7 +59,7 @@ def test_session():
         session.set_storage_group("root.sg_test_03")
         session.set_storage_group("root.sg_test_04")
 
-        if session.delete_storage_group("root.sg_test_05") < 0:
+        if session.delete_storage_group("root.sg_test_02") < 0:
             test_fail()
             print_message("delete storage group failed")
 

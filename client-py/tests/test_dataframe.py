@@ -32,7 +32,7 @@ def test_simple_query():
         session.insert_str_record("root.device", 123, "pressure", "15.0")
 
         # Read
-        session_data_set = session.execute_query_statement("SELECT * FROM root.*")
+        session_data_set = session.execute_query_statement("SELECT ** FROM root")
         df = session_data_set.todf()
 
         session.close()
