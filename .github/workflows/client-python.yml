@@ -8,7 +8,6 @@ on:
       - master
       - 'rel/*'
       - "new_*"
-      - add_py_test_ci
     paths-ignore:
       - 'docs/**'
   pull_request:
@@ -54,7 +53,7 @@ jobs:
         run: mvn -B clean install -pl distribution -am -DskipTests
       - name: Build IoTDB Server Docker Image
         run: |
-          docker build . -f docker/src/main/Dockerfile-single -t "iotdb:latest"
+          docker build . -f docker/src/main/Dockerfile-single -t "iotdb:dev"
           docker images
       - name: Compile IoTDB Python Client
         run: mvn -B package -Dmaven.test.skip=true  -am -pl client-py
