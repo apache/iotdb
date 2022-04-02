@@ -62,9 +62,9 @@ public abstract class MetricService {
     metricManager.init();
     // do start all reporter without first time
 
-        if (!firstInit.getAndSet(false)) {
+//        if (!firstInit.getAndSet(false)) {
     startAllReporter();
-        }
+//        }
 
     logger.info("Start predefined metric:" + metricConfig.getPredefinedMetrics());
     for (PredefinedMetric predefinedMetric : metricConfig.getPredefinedMetrics()) {
