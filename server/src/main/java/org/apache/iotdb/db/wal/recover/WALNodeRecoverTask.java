@@ -58,7 +58,7 @@ public class WALNodeRecoverTask implements Runnable {
   @Override
   public void run() {
     try {
-      recoverCheckpointInfo();
+      recoverInfoFromCheckpoints();
       recoverTsFiles();
     } catch (Exception e) {
       for (UnsealedTsFileRecoverPerformer recoverPerformer : memTableId2RecoverPerformer.values()) {
@@ -80,7 +80,7 @@ public class WALNodeRecoverTask implements Runnable {
     FileUtils.deleteDirectory(logDirectory);
   }
 
-  private void recoverCheckpointInfo() {
+  private void recoverInfoFromCheckpoints() {
     // parse memTables information
     memTableId2Info = CheckpointRecoverUtils.recoverMemTableInfo(logDirectory);
     memTableId2RecoverPerformer = new HashMap<>();
@@ -134,7 +134,7 @@ public class WALNodeRecoverTask implements Runnable {
           }
         }
       } catch (Exception e) {
-        logger.error("Fail to read wal logs from {}", walFile, e);
+        logger.warn("Fail to read wal logs from {}, skip them", walFile, e);
       }
     }
     // end recovering all recover performers

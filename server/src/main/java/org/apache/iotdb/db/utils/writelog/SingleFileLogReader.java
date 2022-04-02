@@ -114,7 +114,7 @@ public class SingleFileLogReader implements ILogReader {
       fileCorrupted = true;
       return false;
     }
-    return true;
+    return batchLogReader != null && batchLogReader.hasNext();
   }
 
   @Override

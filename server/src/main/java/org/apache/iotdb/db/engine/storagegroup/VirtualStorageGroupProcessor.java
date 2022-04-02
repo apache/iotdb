@@ -403,21 +403,27 @@ public class VirtualStorageGroupProcessor {
       // recover unsealed TsFiles
       List<WALRecoverListener> recoverListeners = new ArrayList<>();
       for (List<TsFileResource> value : partitionTmpSeqTsFiles.values()) {
-        if (!value.isEmpty()) {
-          TsFileResource unsealedTsFileResource = value.get(value.size() - 1);
-          value.remove(value.size() - 1);
-          WALRecoverListener recoverListener =
-              recoverUnsealedTsFile(unsealedTsFileResource, VSGRecoveryContext, true);
-          recoverListeners.add(recoverListener);
+        // tsFiles without resource file are unsealed
+        while (!value.isEmpty()) {
+          TsFileResource tsFileResource = value.get(value.size() - 1);
+          if (!tsFileResource.resourceFileExists()) {
+            value.remove(value.size() - 1);
+            WALRecoverListener recoverListener =
+                recoverUnsealedTsFile(tsFileResource, VSGRecoveryContext, true);
+            recoverListeners.add(recoverListener);
+          }
         }
       }
       for (List<TsFileResource> value : partitionTmpUnseqTsFiles.values()) {
-        if (!value.isEmpty()) {
-          TsFileResource unsealedTsFileResource = value.get(value.size() - 1);
-          value.remove(value.size() - 1);
-          WALRecoverListener recoverListener =
-              recoverUnsealedTsFile(unsealedTsFileResource, VSGRecoveryContext, false);
-          recoverListeners.add(recoverListener);
+        // tsFiles without resource file are unsealed
+        while (!value.isEmpty()) {
+          TsFileResource tsFileResource = value.get(value.size() - 1);
+          if (!tsFileResource.resourceFileExists()) {
+            value.remove(value.size() - 1);
+            WALRecoverListener recoverListener =
+                recoverUnsealedTsFile(tsFileResource, VSGRecoveryContext, false);
+            recoverListeners.add(recoverListener);
+          }
         }
       }
       WALRecoverManager.getInstance().getAllVsgScannedLatch().countDown();
