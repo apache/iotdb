@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.consensus.ratis;
 
-import org.apache.iotdb.consensus.common.ConsensusGroupId;
-import org.apache.iotdb.consensus.common.Endpoint;
-import org.apache.iotdb.consensus.common.GroupType;
+import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.GroupType;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
@@ -83,7 +83,7 @@ public class Utils {
     return toRaftPeer(peer.getEndpoint(), priority);
   }
 
-  public static Endpoint getEndPoint(RaftPeer raftPeer) {
+  public static Endpoint getEndpoint(RaftPeer raftPeer) {
     String address = raftPeer.getAddress(); // ip:port
     String[] split = address.split(":");
     return new Endpoint(split[0], Integer.parseInt(split[1]));
@@ -128,7 +128,7 @@ public class Utils {
           break;
         }
     }
-    return new ConsensusGroupId(groupType, Long.parseLong(items[1]));
+    return new ConsensusGroupId(groupType, Integer.parseInt(items[1]));
   }
 
   public static ByteBuffer serializeTSStatus(TSStatus status) throws TException {
