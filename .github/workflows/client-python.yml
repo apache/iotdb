@@ -1,4 +1,4 @@
-# This workflow is just for checking whether modifications works for the Go client.
+# This workflow is just for checking whether modifications works for the Pythob client.
 
 name: Python Client
 
@@ -52,8 +52,10 @@ jobs:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-
-      - name: Compile IoTDB Server
-        run: mvn -B package -Dmaven.test.skip=true  -am -pl server
+      - name: Compile IoTDB Python Client
+        run: mvn -B package -Dmaven.test.skip=true  -am -pl client-py
+      - name: Install pytest
+        run: pip3 install pytest
       - name: Integration test
         shell: bash
         run: |
