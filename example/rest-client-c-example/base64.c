@@ -24,10 +24,10 @@ unsigned char *base64_encode(unsigned char *str) {
     long str_len;
     unsigned char *res;
     int i,j;
-    //定义base64编码表
+    // define the base64 table
     unsigned char *base64_table = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-    //计算经过base64编码后的字符串长度
+    // calculate the length of the base64 encoded str
     str_len = strlen(str);
     if (str_len % 3 == 0)
         len = str_len/3*4;
@@ -37,12 +37,12 @@ unsigned char *base64_encode(unsigned char *str) {
     res = malloc(sizeof(unsigned char)*len+1);
     res[len] = '\0';
 
-    //以3个8位字符为一组进行编码
+    // encode in groups of three 8-bit characters
     for(i=0,j=0;i<len-2;j+=3,i+=4) {
-        res[i] = base64_table[str[j]>>2]; //取出第一个字符的前6位并找出对应的结果字符
-        res[i+1] = base64_table[(str[j]&0x3)<<4 | (str[j+1]>>4)]; //将第一个字符的后位与第二个字符的前4位进行组合并找到对应的结果字符
-        res[i+2] = base64_table[(str[j+1]&0xf)<<2 | (str[j+2]>>6)]; //将第二个字符的后4位与第三个字符的前2位组合并找出对应的结果字符
-        res[i+3] = base64_table[str[j+2]&0x3f]; //取出第三个字符的后6位并找出结果字符
+        res[i] = base64_table[str[j]>>2]; // take out the first 6 digits of the first character and find the corresponding character
+        res[i+1] = base64_table[(str[j]&0x3)<<4 | (str[j+1]>>4)]; // combine the last four digits of the first character with the first four digits of the second character and find the corresponding character
+        res[i+2] = base64_table[(str[j+1]&0xf)<<2 | (str[j+2]>>6)]; // combine the last 4 digits of the second character with the first 2 digits of the third character and find the corresponding character
+        res[i+3] = base64_table[str[j+2]&0x3f]; // take out the last 6 digits of the third character and find the corresponding character
     }
 
     switch(str_len % 3){
@@ -59,7 +59,7 @@ unsigned char *base64_encode(unsigned char *str) {
 }
 
 unsigned char *base64_decode(unsigned char *code) {
-    //根据base64表，以字符找到对应的十进制数据
+    // according to the base64 table, find the corresponding decimal data in characters
     int table[] = {0,0,0,0,0,0,0,0,0,0,0,0,
                    0,0,0,0,0,0,0,0,0,0,0,0,
                    0,0,0,0,0,0,0,0,0,0,0,0,
@@ -78,9 +78,9 @@ unsigned char *base64_decode(unsigned char *code) {
     unsigned char *res;
     int i,j;
 
-    // 计算解码后的字符串长度
+    // calculates the length of the decoded str
     len = strlen(code);
-    // 判断编码后的字符串后是否有=
+    // judge whether the encoded str contains '='
     if(strstr(code,"=="))
         str_len = len/4*3-2;
     else if(strstr(code,"="))
@@ -91,11 +91,10 @@ unsigned char *base64_decode(unsigned char *code) {
     res = malloc(sizeof(unsigned char)*str_len+1);
     res[str_len] = '\0';
 
-    //以4个字符为一位进行解码
     for(i=0,j=0;i < len-2;j+=3,i+=4) {
-        res[j] = ((unsigned char)table[code[i]])<<2 | (((unsigned char)table[code[i+1]])>>4); //取出第一个字符对应base64表的十进制数的前6位与第二个字符对应base64表的十进制数的后2位进行组合
-        res[j+1] = (((unsigned char)table[code[i+1]])<<4) | (((unsigned char)table[code[i+2]])>>2); //取出第二个字符对应base64表的十进制数的后4位与第三个字符对应bas464表的十进制数的后4位进行组合
-        res[j+2] = (((unsigned char)table[code[i+2]])<<6) | ((unsigned char)table[code[i+3]]); //取出第三个字符对应base64表的十进制数的后2位与第4个字符进行组合
+        res[j] = ((unsigned char)table[code[i]])<<2 | (((unsigned char)table[code[i+1]])>>4);
+        res[j+1] = (((unsigned char)table[code[i+1]])<<4) | (((unsigned char)table[code[i+2]])>>2);
+        res[j+2] = (((unsigned char)table[code[i+2]])<<6) | ((unsigned char)table[code[i+3]]);
     }
     return res;
 }

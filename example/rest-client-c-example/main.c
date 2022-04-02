@@ -26,8 +26,8 @@ char authorization1[100] = "Authorization:Basic ";
 char authorization2[100] = "Authorization:Basic ";
 char authorization3[100] = "Authorization:Basic ";
 
-// 除了检活接口 /ping，
-// RESTful 服务使用了基础（basic）鉴权，每次 URL 请求都需要在 header 中携带 'Authorization': 'Basic ' + base64.encode(username + ':' + password)
+// In addition to the check live interface '/ping'，
+// RESTful service use the basic authorization，every URL request needs to carry 'Authorization': 'Basic ' + base64.encode(username + ':' + password) in the header.
 void ping() {
     // curl http://127.0.0.1:18080/ping
     CURL *curl_handle = curl_easy_init();
