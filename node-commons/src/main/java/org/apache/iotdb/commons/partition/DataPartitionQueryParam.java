@@ -22,22 +22,22 @@ import java.util.List;
 
 public class DataPartitionQueryParam {
 
-  private String deviceId;
-  private List<TimePartitionId> timePartitionIdList;
+  private String devicePath;
+  private List<TimePartitionSlot> timePartitionSlotList;
 
-  public String getDeviceId() {
-    return deviceId;
+  public String getDevicePath() {
+    return devicePath;
   }
 
-  public void setDeviceId(String deviceId) {
-    this.deviceId = deviceId;
+  public void setDevicePath(String devicePath) {
+    this.devicePath = devicePath;
   }
 
-  public List<TimePartitionId> getTimePartitionIdList() {
-    return timePartitionIdList;
+  public List<TimePartitionSlot> getTimePartitionIdList() {
+    return timePartitionSlotList;
   }
 
-  public void setTimePartitionIdList(List<TimePartitionId> timePartitionIdList) {
-    this.timePartitionIdList = timePartitionIdList;
+  public void setTimePartitionIdList(List<TimePartitionSlot> timePartitionSlotList) {
+    this.timePartitionSlotList = timePartitionSlotList;
   }
 }

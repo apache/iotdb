@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.consensus.statemachine;
 
-import org.apache.iotdb.consensus.common.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;

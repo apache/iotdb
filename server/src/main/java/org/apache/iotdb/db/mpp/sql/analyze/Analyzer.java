@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.mpp.sql.analyze;
 
-import org.apache.iotdb.commons.partition.DataPartitionInfo;
+import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.PartitionInfo;
 import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
@@ -107,10 +107,10 @@ public class Analyzer {
         List<DataPartitionQueryParam> dataPartitionQueryParams = new ArrayList<>();
         for (String deviceId : deviceIdToPathsMap.keySet()) {
           DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
-          dataPartitionQueryParam.setDeviceId(deviceId);
+          dataPartitionQueryParam.setDevicePath(deviceId);
           dataPartitionQueryParams.add(dataPartitionQueryParam);
         }
-        DataPartitionInfo dataPartitionInfo =
+        DataPartition dataPartition =
             partitionFetcher.fetchDataPartitionInfos(dataPartitionQueryParams);
 
         // optimize expressions in whereCondition
@@ -125,7 +125,7 @@ public class Analyzer {
         analysis.setStatement(rewrittenStatement);
         analysis.setSchemaTree(schemaTree);
         analysis.setDeviceIdToPathsMap(deviceIdToPathsMap);
-        analysis.setDataPartitionInfo(dataPartitionInfo);
+        analysis.setDataPartitionInfo(dataPartition);
       } catch (StatementAnalyzeException | PathNumOverLimitException e) {
         e.printStackTrace();
       }
@@ -198,7 +198,7 @@ public class Analyzer {
         InsertTabletStatement insertTabletStatement, MPPQueryContext context) {
       // TODO(INSERT) device + time range -> PartitionInfo
       DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
-      dataPartitionQueryParam.setDeviceId(insertTabletStatement.getDevicePath().getFullPath());
+      dataPartitionQueryParam.setDevicePath(insertTabletStatement.getDevicePath().getFullPath());
       // TODO(INSERT) calculate the time partition id list
       //      dataPartitionQueryParam.setTimePartitionIdList();
       PartitionInfo partitionInfo = partitionFetcher.fetchPartitionInfo(dataPartitionQueryParam);

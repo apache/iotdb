@@ -24,5 +24,32 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 public class SchemaMeasurementNode extends SchemaNode {
 
   private String alias;
-  private MeasurementSchema schema;
+  private final MeasurementSchema schema;
+
+  public SchemaMeasurementNode(String name, MeasurementSchema schema) {
+    super(name);
+    this.schema = schema;
+  }
+
+  public String getAlias() {
+    return alias;
+  }
+
+  public void setAlias(String alias) {
+    this.alias = alias;
+  }
+
+  public MeasurementSchema getSchema() {
+    return schema;
+  }
+
+  @Override
+  public boolean isMeasurement() {
+    return true;
+  }
+
+  @Override
+  public SchemaMeasurementNode getAsMeasurementNode() {
+    return this;
+  }
 }
