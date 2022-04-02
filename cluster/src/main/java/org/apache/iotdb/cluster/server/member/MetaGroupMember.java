@@ -87,7 +87,7 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.TimeValuePairUtils;
 import org.apache.iotdb.db.utils.TimeValuePairUtils.Intervals;
-import org.apache.iotdb.service.rpc.thrift.TEndpoint;
+import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
@@ -1382,7 +1382,7 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
       if (!StatusUtils.NO_LEADER.equals(result)) {
         result =
             StatusUtils.getStatus(
-                result, new TEndpoint(leader.get().getInternalIp(), leader.get().getClientPort()));
+                result, new EndPoint(leader.get().getInternalIp(), leader.get().getClientPort()));
         return result;
       }
     }
@@ -1398,7 +1398,7 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
     TSStatus result = forwardPlan(plan, leader.get(), null);
     if (!StatusUtils.NO_LEADER.equals(result)) {
       result.setRedirectNode(
-          new TEndpoint(leader.get().getClientIp(), leader.get().getClientPort()));
+          new EndPoint(leader.get().getClientIp(), leader.get().getClientPort()));
     }
     return result;
   }

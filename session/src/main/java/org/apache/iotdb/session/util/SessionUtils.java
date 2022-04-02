@@ -19,7 +19,7 @@
 package org.apache.iotdb.session.util;
 
 import org.apache.iotdb.rpc.IoTDBConnectionException;
-import org.apache.iotdb.service.rpc.thrift.TEndpoint;
+import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -237,20 +237,20 @@ public class SessionUtils {
     }
   }
 
-  public static List<TEndpoint> parseSeedNodeUrls(List<String> nodeUrls) {
+  public static List<EndPoint> parseSeedNodeUrls(List<String> nodeUrls) {
     if (nodeUrls == null) {
       throw new NumberFormatException("nodeUrls is null");
     }
-    List<TEndpoint> endPointsList = new ArrayList<>();
+    List<EndPoint> endPointsList = new ArrayList<>();
     for (String nodeUrl : nodeUrls) {
-      TEndpoint endPoint = parseNodeUrl(nodeUrl);
+      EndPoint endPoint = parseNodeUrl(nodeUrl);
       endPointsList.add(endPoint);
     }
     return endPointsList;
   }
 
-  private static TEndpoint parseNodeUrl(String nodeUrl) {
-    TEndpoint endPoint = new TEndpoint();
+  private static EndPoint parseNodeUrl(String nodeUrl) {
+    EndPoint endPoint = new EndPoint();
     String[] split = nodeUrl.split(":");
     if (split.length != 2) {
       throw new NumberFormatException("NodeUrl Incorrect format");

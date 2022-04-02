@@ -26,7 +26,7 @@ import org.apache.iotdb.confignode.rpc.thrift.SetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.StorageGroupMessage;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.TEndpoint;
+import org.apache.iotdb.service.rpc.thrift.EndPoint;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -84,7 +84,7 @@ public class RatisConsensusDemo {
   private void registerDataNodes() throws TException, InterruptedException {
     // DataNodes can connect to any ConfigNode and send write requests
     for (int i = 0; i < 10; i++) {
-      TEndpoint endPoint = new TEndpoint("0.0.0.0", 6667 + i);
+      EndPoint endPoint = new EndPoint("0.0.0.0", 6667 + i);
       DataNodeRegisterReq req = new DataNodeRegisterReq(endPoint);
       DataNodeRegisterResp resp = clients[0].registerDataNode(req);
       Assert.assertEquals(

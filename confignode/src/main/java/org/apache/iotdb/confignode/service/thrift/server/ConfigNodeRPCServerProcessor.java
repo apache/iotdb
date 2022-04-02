@@ -50,7 +50,7 @@ import org.apache.iotdb.confignode.rpc.thrift.SetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.StorageGroupMessage;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.TEndpoint;
+import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import org.apache.thrift.TException;
@@ -106,7 +106,7 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
             info.getDataNodeID(),
             new DataNodeMessage(
                 info.getDataNodeID(),
-                new TEndpoint(info.getEndPoint().getIp(), info.getEndPoint().getPort())));
+                new EndPoint(info.getEndPoint().getIp(), info.getEndPoint().getPort())));
       }
       return result;
     }

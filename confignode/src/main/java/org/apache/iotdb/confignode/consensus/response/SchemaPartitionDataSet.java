@@ -22,7 +22,7 @@ package org.apache.iotdb.confignode.consensus.response;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.confignode.rpc.thrift.RegionReplicaSet;
 import org.apache.iotdb.consensus.common.DataSet;
-import org.apache.iotdb.service.rpc.thrift.TEndpoint;
+import org.apache.iotdb.service.rpc.thrift.EndPoint;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -58,14 +58,14 @@ public class SchemaPartitionDataSet implements DataSet {
                       replica -> {
                         RegionReplicaSet regionReplicaSet = new RegionReplicaSet();
                         regionReplicaSet.setRegionId(replica.getValue().getId().getId());
-                        List<TEndpoint> endPoints = new ArrayList<>();
+                        List<EndPoint> endPoints = new ArrayList<>();
                         replica
                             .getValue()
                             .getDataNodeList()
                             .forEach(
                                 dataNode -> {
-                                  TEndpoint endPoint =
-                                      new TEndpoint(
+                                  EndPoint endPoint =
+                                      new EndPoint(
                                           dataNode.getEndPoint().getIp(),
                                           dataNode.getEndPoint().getPort());
                                   endPoints.add(endPoint);

@@ -93,7 +93,7 @@ import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.LogPlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.TEndpoint;
+import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -837,7 +837,7 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
       Timer.Statistic.DATA_GROUP_MEMBER_FORWARD_PLAN.calOperationCostTimeFromStart(startTime);
       if (!StatusUtils.NO_LEADER.equals(result)) {
         result.setRedirectNode(
-            new TEndpoint(leader.get().getClientIp(), leader.get().getClientPort()));
+            new EndPoint(leader.get().getClientIp(), leader.get().getClientPort()));
         return result;
       }
     }

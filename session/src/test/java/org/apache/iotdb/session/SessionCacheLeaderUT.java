@@ -22,7 +22,7 @@ package org.apache.iotdb.session;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.service.rpc.thrift.TEndpoint;
+import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsOfOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsReq;
@@ -51,20 +51,20 @@ import static org.junit.Assert.fail;
 
 public class SessionCacheLeaderUT {
 
-  private static final List<TEndpoint> endpoints =
-      new ArrayList<TEndpoint>() {
+  private static final List<EndPoint> endpoints =
+      new ArrayList<EndPoint>() {
         {
-          add(new TEndpoint("127.0.0.1", 55560)); // default endpoint
-          add(new TEndpoint("127.0.0.1", 55561)); // meta leader endpoint
-          add(new TEndpoint("127.0.0.1", 55562));
-          add(new TEndpoint("127.0.0.1", 55563));
+          add(new EndPoint("127.0.0.1", 55560)); // default endpoint
+          add(new EndPoint("127.0.0.1", 55561)); // meta leader endpoint
+          add(new EndPoint("127.0.0.1", 55562));
+          add(new EndPoint("127.0.0.1", 55563));
         }
       };
 
   private Session session;
 
   // just for simulation
-  public static TEndpoint getDeviceIdBelongedEndpoint(String deviceId) {
+  public static EndPoint getDeviceIdBelongedEndpoint(String deviceId) {
     if (deviceId.startsWith("root.sg1")) {
       return endpoints.get(0);
     } else if (deviceId.startsWith("root.sg2")) {
@@ -765,7 +765,7 @@ public class SessionCacheLeaderUT {
           session.insertRecords(deviceIds, timestamps, measurementsList, typesList, valuesList);
         } catch (IoTDBConnectionException e) {
           Assert.assertEquals(
-              "the session connection = TEndpoint(ip:127.0.0.1, port:55560) is broken",
+              "the session connection = EndPoint(ip:127.0.0.1, port:55560) is broken",
               e.getMessage());
         }
         deviceIds.clear();
@@ -779,7 +779,7 @@ public class SessionCacheLeaderUT {
       session.insertRecords(deviceIds, timestamps, measurementsList, typesList, valuesList);
     } catch (IoTDBConnectionException e) {
       Assert.assertEquals(
-          "the session connection = TEndpoint(ip:127.0.0.1, port:55560) is broken", e.getMessage());
+          "the session connection = EndPoint(ip:127.0.0.1, port:55560) is broken", e.getMessage());
     }
     deviceIds.clear();
     measurementsList.clear();
@@ -793,7 +793,7 @@ public class SessionCacheLeaderUT {
       session.close();
     } catch (IoTDBConnectionException e) {
       Assert.assertEquals(
-          "the session connection = TEndpoint(ip:127.0.0.1, port:55560) is broken", e.getMessage());
+          "the session connection = EndPoint(ip:127.0.0.1, port:55560) is broken", e.getMessage());
     }
 
     // with leader cache
@@ -836,20 +836,20 @@ public class SessionCacheLeaderUT {
 
     // set connection as broken, due to we enable the cache leader, when we called
     // ((MockSession) session).getLastConstructedSessionConnection(), the session's endpoint has
-    // been changed to TEndpoint(ip:127.0.0.1, port:55562)
+    // been changed to EndPoint(ip:127.0.0.1, port:55562)
     Assert.assertEquals(
-        "MockSessionConnection{ endPoint=TEndpoint(ip:127.0.0.1, port:55562)}",
+        "MockSessionConnection{ endPoint=EndPoint(ip:127.0.0.1, port:55562)}",
         ((MockSession) session).getLastConstructedSessionConnection().toString());
     ((MockSession) session).getLastConstructedSessionConnection().setConnectionBroken(true);
     try {
       session.insertRecords(deviceIds, timestamps, measurementsList, typesList, valuesList);
     } catch (IoTDBConnectionException e) {
       Assert.assertEquals(
-          "the session connection = TEndpoint(ip:127.0.0.1, port:55562) is broken", e.getMessage());
+          "the session connection = EndPoint(ip:127.0.0.1, port:55562) is broken", e.getMessage());
     }
     assertEquals(session.metaSessionConnection, session.defaultSessionConnection);
     assertEquals(3, session.deviceIdToEndpoint.size());
-    for (Map.Entry<String, TEndpoint> endPointMap : session.deviceIdToEndpoint.entrySet()) {
+    for (Map.Entry<String, EndPoint> endPointMap : session.deviceIdToEndpoint.entrySet()) {
       assertEquals(getDeviceIdBelongedEndpoint(endPointMap.getKey()), endPointMap.getValue());
     }
     assertEquals(3, session.endPointToSessionConnection.size());
@@ -917,7 +917,7 @@ public class SessionCacheLeaderUT {
           session.insertTablets(tabletMap, true);
         } catch (IoTDBConnectionException e) {
           assertEquals(
-              "the session connection = TEndpoint(ip:127.0.0.1, port:55560) is broken",
+              "the session connection = EndPoint(ip:127.0.0.1, port:55560) is broken",
               e.getMessage());
         }
         tablet1.reset();
@@ -990,9 +990,9 @@ public class SessionCacheLeaderUT {
     ((MockSession) session).getLastConstructedSessionConnection().setConnectionBroken(true);
     // set connection as broken, due to we enable the cache leader, when we called
     // ((MockSession) session).getLastConstructedSessionConnection(), the session's endpoint has
-    // been changed to TEndpoint(ip:127.0.0.1, port:55562)
+    // been changed to EndPoint(ip:127.0.0.1, port:55562)
     Assert.assertEquals(
-        "MockSessionConnection{ endPoint=TEndpoint(ip:127.0.0.1, port:55562)}",
+        "MockSessionConnection{ endPoint=EndPoint(ip:127.0.0.1, port:55562)}",
         ((MockSession) session).getLastConstructedSessionConnection().toString());
 
     for (long row = 0; row < 10; row++) {
@@ -1024,7 +1024,7 @@ public class SessionCacheLeaderUT {
       session.insertTablets(tabletMap, true);
     } catch (IoTDBConnectionException e) {
       Assert.assertEquals(
-          "the session connection = TEndpoint(ip:127.0.0.1, port:55562) is broken", e.getMessage());
+          "the session connection = EndPoint(ip:127.0.0.1, port:55562) is broken", e.getMessage());
     }
     tablet1.reset();
     tablet2.reset();
@@ -1032,7 +1032,7 @@ public class SessionCacheLeaderUT {
 
     assertEquals(session.metaSessionConnection, session.defaultSessionConnection);
     assertEquals(2, session.deviceIdToEndpoint.size());
-    for (Map.Entry<String, TEndpoint> endPointEntry : session.deviceIdToEndpoint.entrySet()) {
+    for (Map.Entry<String, EndPoint> endPointEntry : session.deviceIdToEndpoint.entrySet()) {
       assertEquals(getDeviceIdBelongedEndpoint(endPointEntry.getKey()), endPointEntry.getValue());
     }
     assertEquals(3, session.endPointToSessionConnection.size());
@@ -1090,7 +1090,7 @@ public class SessionCacheLeaderUT {
 
     @Override
     public SessionConnection constructSessionConnection(
-        Session session, TEndpoint endpoint, ZoneId zoneId) {
+        Session session, EndPoint endpoint, ZoneId zoneId) {
       lastConstructedSessionConnection = new MockSessionConnection(session, endpoint, zoneId);
       return lastConstructedSessionConnection;
     }
@@ -1102,11 +1102,11 @@ public class SessionCacheLeaderUT {
 
   static class MockSessionConnection extends SessionConnection {
 
-    private TEndpoint endPoint;
+    private EndPoint endPoint;
     private boolean connectionBroken;
     private IoTDBConnectionException ioTDBConnectionException;
 
-    public MockSessionConnection(Session session, TEndpoint endPoint, ZoneId zoneId) {
+    public MockSessionConnection(Session session, EndPoint endPoint, ZoneId zoneId) {
       super();
       this.endPoint = endPoint;
       ioTDBConnectionException =
@@ -1199,11 +1199,11 @@ public class SessionCacheLeaderUT {
     }
 
     private RedirectException getRedirectException(List<String> deviceIds) {
-      Map<String, TEndpoint> deviceTEndpointMap = new HashMap<>();
+      Map<String, EndPoint> deviceEndPointMap = new HashMap<>();
       for (String deviceId : deviceIds) {
-        deviceTEndpointMap.put(deviceId, getDeviceIdBelongedEndpoint(deviceId));
+        deviceEndPointMap.put(deviceId, getDeviceIdBelongedEndpoint(deviceId));
       }
-      return new RedirectException(deviceTEndpointMap);
+      return new RedirectException(deviceEndPointMap);
     }
 
     public boolean isConnectionBroken() {

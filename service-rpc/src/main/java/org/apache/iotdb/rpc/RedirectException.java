@@ -19,34 +19,34 @@
 
 package org.apache.iotdb.rpc;
 
-import org.apache.iotdb.service.rpc.thrift.TEndpoint;
+import org.apache.iotdb.service.rpc.thrift.EndPoint;
 
 import java.io.IOException;
 import java.util.Map;
 
 public class RedirectException extends IOException {
 
-  private final TEndpoint TEndpoint;
+  private final EndPoint endPoint;
 
-  private final Map<String, TEndpoint> deviceTEndpointMap;
+  private final Map<String, EndPoint> deviceEndPointMap;
 
-  public RedirectException(TEndpoint TEndpoint) {
-    super("later request in same group will be redirected to " + TEndpoint.toString());
-    this.TEndpoint = TEndpoint;
-    this.deviceTEndpointMap = null;
+  public RedirectException(EndPoint endPoint) {
+    super("later request in same group will be redirected to " + endPoint.toString());
+    this.endPoint = endPoint;
+    this.deviceEndPointMap = null;
   }
 
-  public RedirectException(Map<String, TEndpoint> deviceTEndpointMap) {
-    super("later request in same group will be redirected to " + deviceTEndpointMap);
-    this.TEndpoint = null;
-    this.deviceTEndpointMap = deviceTEndpointMap;
+  public RedirectException(Map<String, EndPoint> deviceEndPointMap) {
+    super("later request in same group will be redirected to " + deviceEndPointMap);
+    this.endPoint = null;
+    this.deviceEndPointMap = deviceEndPointMap;
   }
 
-  public TEndpoint getTEndpoint() {
-    return this.TEndpoint;
+  public EndPoint getEndPoint() {
+    return this.endPoint;
   }
 
-  public Map<String, TEndpoint> getDeviceTEndpointMap() {
-    return deviceTEndpointMap;
+  public Map<String, EndPoint> getDeviceEndPointMap() {
+    return deviceEndPointMap;
   }
 }

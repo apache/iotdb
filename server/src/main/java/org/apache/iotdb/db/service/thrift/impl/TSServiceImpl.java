@@ -83,8 +83,8 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
-import org.apache.iotdb.service.rpc.thrift.TEndpoint;
 import org.apache.iotdb.service.rpc.thrift.TSAppendSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSCancelOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
@@ -868,7 +868,7 @@ public class TSServiceImpl implements TSIService.Iface {
         resp.setQueryDataSet(tsQueryDataSet);
       } catch (RedirectException e) {
         if (plan.isEnableRedirect()) {
-          TEndpoint endPoint = e.getTEndpoint();
+          EndPoint endPoint = e.getEndPoint();
           return redirectQueryToAnotherNode(resp, context, endPoint.ip, endPoint.port);
         } else {
           LOGGER.error(
@@ -928,7 +928,7 @@ public class TSServiceImpl implements TSIService.Iface {
         ip,
         port);
     TSStatus status = new TSStatus();
-    status.setRedirectNode(new TEndpoint(ip, port));
+    status.setRedirectNode(new EndPoint(ip, port));
     status.setCode(TSStatusCode.NEED_REDIRECTION.getStatusCode());
     resp.setStatus(status);
     resp.setQueryId(context.getQueryId());

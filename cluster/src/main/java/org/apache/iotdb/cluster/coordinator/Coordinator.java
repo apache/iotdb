@@ -60,7 +60,7 @@ import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.TEndpoint;
+import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import org.slf4j.Logger;
@@ -512,7 +512,7 @@ public class Coordinator {
     List<String> errorCodePartitionGroups = new ArrayList<>();
     TSStatus tmpStatus;
     boolean allRedirect = true;
-    TEndpoint endPoint = null;
+    EndPoint endPoint = null;
     for (Map.Entry<PhysicalPlan, PartitionGroup> entry : planGroupMap.entrySet()) {
       tmpStatus = forwardToSingleGroup(entry);
       if (tmpStatus.isSetRedirectNode()) {
@@ -767,7 +767,7 @@ public class Coordinator {
       }
       if (!StatusUtils.TIME_OUT.equals(status)) {
         if (!status.isSetRedirectNode()) {
-          status.setRedirectNode(new TEndpoint(node.getClientIp(), node.getClientPort()));
+          status.setRedirectNode(new EndPoint(node.getClientIp(), node.getClientPort()));
         }
         return status;
       } else {

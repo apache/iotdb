@@ -34,7 +34,7 @@ import org.apache.iotdb.consensus.exception.PeerAlreadyInConsensusGroupException
 import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
 import org.apache.iotdb.consensus.exception.RatisRequestFailedException;
 import org.apache.iotdb.consensus.statemachine.IStateMachine;
-import org.apache.iotdb.service.rpc.thrift.TEndpoint;
+import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import org.apache.ratis.client.RaftClient;
@@ -185,9 +185,8 @@ public class RatisConsensus implements IConsensus {
     }
 
     if (suggestedLeader != null) {
-      Endpoint leaderTEndpoint = Utils.getEndpoint(suggestedLeader);
-      writeResult.setRedirectNode(
-          new TEndpoint(leaderTEndpoint.getIp(), leaderTEndpoint.getPort()));
+      Endpoint leaderEndPoint = Utils.getEndpoint(suggestedLeader);
+      writeResult.setRedirectNode(new EndPoint(leaderEndPoint.getIp(), leaderEndPoint.getPort()));
     }
 
     return ConsensusWriteResponse.newBuilder().setStatus(writeResult).build();

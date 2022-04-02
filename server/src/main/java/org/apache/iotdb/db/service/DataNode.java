@@ -35,7 +35,7 @@ import org.apache.iotdb.db.service.thrift.impl.DataNodeManagementServiceImpl;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.TEndpoint;
+import org.apache.iotdb.service.rpc.thrift.EndPoint;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -62,7 +62,7 @@ public class DataNode implements DataNodeMBean {
    */
   private static final int DEFAULT_JOIN_RETRY = 10;
 
-  private TEndpoint thisNode = new TEndpoint();
+  private EndPoint thisNode = new EndPoint();
 
   private int dataNodeID;
 
@@ -122,7 +122,7 @@ public class DataNode implements DataNodeMBean {
   }
 
   public void joinCluster() throws StartupException {
-    List<TEndpoint> configNodes;
+    List<EndPoint> configNodes;
     try {
       configNodes =
           CommonUtils.parseNodeUrls(IoTDBDescriptor.getInstance().getConfig().getConfigNodeUrls());
@@ -134,7 +134,7 @@ public class DataNode implements DataNodeMBean {
     while (retry > 0) {
       // randomly pick up a config node to try
       Random random = new Random();
-      TEndpoint configNode = configNodes.get(random.nextInt(configNodes.size()));
+      EndPoint configNode = configNodes.get(random.nextInt(configNodes.size()));
       logger.info("start joining the cluster with the help of {}", configNode);
       try {
         ConfigIService.Client client = createClient(configNode);
@@ -199,7 +199,7 @@ public class DataNode implements DataNodeMBean {
     private DataNodeHolder() {}
   }
 
-  private ConfigIService.Client createClient(TEndpoint endPoint) throws IoTDBConnectionException {
+  private ConfigIService.Client createClient(EndPoint endPoint) throws IoTDBConnectionException {
     TTransport transport;
     try {
       transport =

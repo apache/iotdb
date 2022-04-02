@@ -24,7 +24,7 @@ import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.service.rpc.thrift.TEndpoint;
+import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSAppendSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateAlignedTimeseriesReq;
@@ -81,14 +81,14 @@ public class SessionConnection {
   private long sessionId;
   private long statementId;
   private ZoneId zoneId;
-  private TEndpoint endPoint;
-  private List<TEndpoint> endPointList = new ArrayList<>();
+  private EndPoint endPoint;
+  private List<EndPoint> endPointList = new ArrayList<>();
   private boolean enableRedirect = false;
 
   // TestOnly
   public SessionConnection() {}
 
-  public SessionConnection(Session session, TEndpoint endPoint, ZoneId zoneId)
+  public SessionConnection(Session session, EndPoint endPoint, ZoneId zoneId)
       throws IoTDBConnectionException {
     this.session = session;
     this.endPoint = endPoint;
@@ -104,7 +104,7 @@ public class SessionConnection {
     initClusterConn();
   }
 
-  private void init(TEndpoint endPoint) throws IoTDBConnectionException {
+  private void init(EndPoint endPoint) throws IoTDBConnectionException {
     RpcTransportFactory.setDefaultBufferCapacity(session.thriftDefaultBufferSize);
     RpcTransportFactory.setThriftMaxFrameSize(session.thriftMaxFrameSize);
     try {
@@ -160,9 +160,9 @@ public class SessionConnection {
   }
 
   private void initClusterConn() throws IoTDBConnectionException {
-    for (TEndpoint endPoint : endPointList) {
+    for (EndPoint endPoint : endPointList) {
       try {
-        session.defaultTEndpoint = endPoint;
+        session.defaultEndPoint = endPoint;
         init(endPoint);
       } catch (IoTDBConnectionException e) {
         if (!reconnect()) {
@@ -783,7 +783,7 @@ public class SessionConnection {
           if (tryHostNum == endPointList.size()) {
             break;
           }
-          session.defaultTEndpoint = endPointList.get(j);
+          session.defaultEndPoint = endPointList.get(j);
           this.endPoint = endPointList.get(j);
           if (j == endPointList.size() - 1) {
             j = -1;
@@ -950,11 +950,11 @@ public class SessionConnection {
     this.enableRedirect = enableRedirect;
   }
 
-  public TEndpoint getTEndpoint() {
+  public EndPoint getEndPoint() {
     return endPoint;
   }
 
-  public void setTEndpoint(TEndpoint endPoint) {
+  public void setEndPoint(EndPoint endPoint) {
     this.endPoint = endPoint;
   }
 
