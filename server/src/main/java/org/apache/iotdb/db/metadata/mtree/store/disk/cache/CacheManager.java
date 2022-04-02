@@ -481,7 +481,7 @@ public abstract class CacheManager implements ICacheManager {
 
   private static class NodeBuffer {
 
-    private static final int MAP_NUM = 11;
+    private static final int MAP_NUM = 17;
 
     private Map<CacheEntry, IMNode>[] maps = new Map[MAP_NUM];
 

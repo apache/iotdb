@@ -18,11 +18,9 @@
  */
 package org.apache.iotdb.db.metadata.mtree.store.disk.cache;
 
-import org.jetbrains.annotations.NotNull;
-
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class CacheEntry implements Comparable<CacheEntry> {
+public class CacheEntry {
 
   private volatile boolean isVolatile = false;
 
@@ -50,10 +48,5 @@ public class CacheEntry implements Comparable<CacheEntry> {
 
   public int getPinNumber() {
     return semaphore.get();
-  }
-
-  @Override
-  public int compareTo(@NotNull CacheEntry o) {
-    return Integer.compare(hashCode(), o.hashCode());
   }
 }

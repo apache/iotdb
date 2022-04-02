@@ -20,8 +20,6 @@ package org.apache.iotdb.db.metadata.mtree.store.disk.cache;
 
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 
-import org.jetbrains.annotations.NotNull;
-
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -147,14 +145,6 @@ public class LRUCacheManager extends CacheManager {
     @Override
     public int hashCode() {
       return node.getName().hashCode();
-    }
-
-    @Override
-    public int compareTo(@NotNull CacheEntry o) {
-      if (getClass() != o.getClass()) {
-        return super.compareTo(o);
-      }
-      return node.getName().compareTo(((LRUCacheEntry) o).getNode().getName());
     }
   }
 
