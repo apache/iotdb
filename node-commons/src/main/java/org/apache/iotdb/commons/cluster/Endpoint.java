@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.consensus.common;
+package org.apache.iotdb.commons.cluster;
 
 import java.nio.ByteBuffer;
 import java.util.Objects;

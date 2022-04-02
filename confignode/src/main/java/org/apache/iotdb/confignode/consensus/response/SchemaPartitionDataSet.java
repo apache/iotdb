@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.confignode.consensus.response;
 
-import org.apache.iotdb.confignode.partition.SchemaPartitionInfo;
+import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.confignode.rpc.thrift.RegionReplicaSet;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
@@ -30,50 +30,53 @@ import java.util.List;
 import java.util.Map;
 
 public class SchemaPartitionDataSet implements DataSet {
-  private SchemaPartitionInfo schemaPartitionInfo;
+  private SchemaPartition schemaPartitionInfo;
 
-  public SchemaPartitionInfo getSchemaPartitionInfo() {
+  public SchemaPartition getSchemaPartitionInfo() {
     return schemaPartitionInfo;
   }
 
-  public void setSchemaPartitionInfo(SchemaPartitionInfo schemaPartitionInfos) {
+  public void setSchemaPartitionInfo(SchemaPartition schemaPartitionInfos) {
     this.schemaPartitionInfo = schemaPartitionInfos;
   }
 
   public static org.apache.iotdb.confignode.rpc.thrift.SchemaPartitionInfo
-      convertRpcSchemaPartition(SchemaPartitionInfo schemaPartitionInfo) {
+      convertRpcSchemaPartition(SchemaPartition schemaPartitionInfo) {
     org.apache.iotdb.confignode.rpc.thrift.SchemaPartitionInfo rpcSchemaPartitionInfo =
         new org.apache.iotdb.confignode.rpc.thrift.SchemaPartitionInfo();
 
-    Map<String, Map<Integer, RegionReplicaSet>> schemaRegionRelicatSets = new HashMap<>();
+    Map<String, Map<Integer, RegionReplicaSet>> schemaRegionReplicaSets = new HashMap<>();
 
-    schemaPartitionInfo.getSchemaPartitionInfo().entrySet().stream()
+    schemaPartitionInfo.getSchemaPartition().entrySet().stream()
         .forEach(
             entity -> {
-              schemaRegionRelicatSets.putIfAbsent(entity.getKey(), new HashMap<>());
+              schemaRegionReplicaSets.putIfAbsent(entity.getKey(), new HashMap<>());
               entity
                   .getValue()
                   .entrySet()
                   .forEach(
                       replica -> {
                         RegionReplicaSet regionReplicaSet = new RegionReplicaSet();
-                        regionReplicaSet.setRegionId(replica.getKey());
+                        regionReplicaSet.setRegionId(replica.getValue().getId().getId());
                         List<EndPoint> endPoints = new ArrayList<>();
                         replica
                             .getValue()
-                            .getEndPointList()
+                            .getDataNodeList()
                             .forEach(
-                                point -> {
-                                  EndPoint endPoint = new EndPoint(point.getIp(), point.getPort());
+                                dataNode -> {
+                                  EndPoint endPoint =
+                                      new EndPoint(
+                                          dataNode.getEndPoint().getIp(),
+                                          dataNode.getEndPoint().getPort());
                                   endPoints.add(endPoint);
                                 });
                         regionReplicaSet.setEndpoint(endPoints);
-                        schemaRegionRelicatSets
+                        schemaRegionReplicaSets
                             .get(entity.getKey())
-                            .put(replica.getKey(), regionReplicaSet);
+                            .put(replica.getKey().getDeviceGroupId(), regionReplicaSet);
                       });
             });
-    rpcSchemaPartitionInfo.setSchemaRegionDataNodesMap(schemaRegionRelicatSets);
+    rpcSchemaPartitionInfo.setSchemaRegionDataNodesMap(schemaRegionReplicaSets);
     return rpcSchemaPartitionInfo;
   }
 }

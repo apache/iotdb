@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.consensus.common;
+package org.apache.iotdb.commons.consensus;
 
 import java.nio.ByteBuffer;
 import java.util.Objects;
@@ -25,10 +25,12 @@ import java.util.Objects;
 // TODO Use a mature IDL framework such as Protobuf to manage this structure
 public class ConsensusGroupId {
 
-  private final GroupType type;
-  private final long id;
+  private GroupType type;
+  private int id;
 
-  public ConsensusGroupId(GroupType type, long id) {
+  public ConsensusGroupId() {}
+
+  public ConsensusGroupId(GroupType type, int id) {
     this.type = type;
     this.id = id;
   }
@@ -37,7 +39,7 @@ public class ConsensusGroupId {
     return type;
   }
 
-  public long getId() {
+  public int getId() {
     return id;
   }
 
@@ -53,6 +55,18 @@ public class ConsensusGroupId {
     return id == that.id && Objects.equals(type, that.type);
   }
 
+  public void serializeImpl(ByteBuffer buffer) {
+    buffer.putInt(type.ordinal());
+    buffer.putInt(id);
+  }
+
+  public void deserializeImpl(ByteBuffer buffer) {
+    int ordinal = buffer.getInt();
+    // TODO: (xingtanzjr) should we add validation for the ordinal ?
+    type = GroupType.values()[ordinal];
+    id = buffer.getInt();
+  }
+
   @Override
   public int hashCode() {
     return Objects.hash(type, id);
@@ -60,7 +74,7 @@ public class ConsensusGroupId {
 
   @Override
   public String toString() {
-    return "ConsensusGroupId{" + "type=" + type + ", id=" + id + '}';
+    return String.format("ConsensusGroupId[%s]-%s", type, id);
   }
 
   public void serialize(ByteBuffer byteBuffer) {
