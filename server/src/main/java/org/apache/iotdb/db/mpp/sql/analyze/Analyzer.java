@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.mpp.sql.analyze;
 
-import org.apache.iotdb.commons.partition.DataPartitionInfo;
+import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.PartitionInfo;
 import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
@@ -110,7 +110,7 @@ public class Analyzer {
           dataPartitionQueryParam.setDevicePath(deviceId);
           dataPartitionQueryParams.add(dataPartitionQueryParam);
         }
-        DataPartitionInfo dataPartitionInfo =
+        DataPartition dataPartition =
             partitionFetcher.fetchDataPartitionInfos(dataPartitionQueryParams);
 
         // optimize expressions in whereCondition
@@ -125,7 +125,7 @@ public class Analyzer {
         analysis.setStatement(rewrittenStatement);
         analysis.setSchemaTree(schemaTree);
         analysis.setDeviceIdToPathsMap(deviceIdToPathsMap);
-        analysis.setDataPartitionInfo(dataPartitionInfo);
+        analysis.setDataPartitionInfo(dataPartition);
       } catch (StatementAnalyzeException | PathNumOverLimitException e) {
         e.printStackTrace();
       }

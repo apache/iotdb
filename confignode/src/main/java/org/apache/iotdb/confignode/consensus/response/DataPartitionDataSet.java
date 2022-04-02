@@ -19,17 +19,17 @@
 
 package org.apache.iotdb.confignode.consensus.response;
 
-import org.apache.iotdb.commons.partition.DataPartitionInfo;
+import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.consensus.common.DataSet;
 
 public class DataPartitionDataSet implements DataSet {
-  private DataPartitionInfo dataPartitionInfo;
+  private DataPartition dataPartitionInfo;
 
-  public DataPartitionInfo getDataPartitionInfo() {
+  public DataPartition getDataPartitionInfo() {
     return dataPartitionInfo;
   }
 
-  public void setDataPartitionInfos(DataPartitionInfo dataPartitionInfo) {
+  public void setDataPartitionInfos(DataPartition dataPartitionInfo) {
     this.dataPartitionInfo = dataPartitionInfo;
   }
 }

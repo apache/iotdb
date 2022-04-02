@@ -16,41 +16,44 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.partition;
+package org.apache.iotdb.commons.partition;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class SchemaPartitionInfo {
+public class SchemaPartition {
 
   // Map<StorageGroup, Map<DeviceGroupID, SchemaRegionPlaceInfo>>
-  private Map<String, Map<Integer, SchemaRegionReplicaSet>> schemaPartitionInfo;
+  private Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> schemaPartition;
 
-  public SchemaPartitionInfo() {
-    schemaPartitionInfo = new HashMap<>();
+  public SchemaPartition() {
+    schemaPartition = new HashMap<>();
   }
 
-  public Map<String, Map<Integer, SchemaRegionReplicaSet>> getSchemaPartitionInfo() {
-    return schemaPartitionInfo;
+  public Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> getSchemaPartition() {
+    return schemaPartition;
   }
 
-  public void setSchemaPartitionInfo(
-      Map<String, Map<Integer, SchemaRegionReplicaSet>> schemaPartitionInfo) {
-    this.schemaPartitionInfo = schemaPartitionInfo;
+  public void setSchemaPartition(
+      Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> schemaPartition) {
+    this.schemaPartition = schemaPartition;
   }
 
-  public Map<String, Map<Integer, SchemaRegionReplicaSet>> getSchemaPartition(
+  public Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> getSchemaPartition(
       String storageGroup, List<Integer> deviceGroupIDs) {
-    Map<String, Map<Integer, SchemaRegionReplicaSet>> storageGroupMap = new HashMap<>();
-    Map<Integer, SchemaRegionReplicaSet> deviceGroupMap = new HashMap<>();
+    Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> storageGroupMap = new HashMap<>();
+    Map<SeriesPartitionSlot, RegionReplicaSet> deviceGroupMap = new HashMap<>();
     deviceGroupIDs.forEach(
         deviceGroupID -> {
-          if (schemaPartitionInfo.get(storageGroup) != null
-              && schemaPartitionInfo.get(storageGroup).containsKey(deviceGroupID)) {
+          if (schemaPartition.get(storageGroup) != null
+              && schemaPartition
+                  .get(storageGroup)
+                  .containsKey(new SeriesPartitionSlot(deviceGroupID))) {
             deviceGroupMap.put(
-                deviceGroupID, schemaPartitionInfo.get(storageGroup).get(deviceGroupID));
+                new SeriesPartitionSlot(deviceGroupID),
+                schemaPartition.get(storageGroup).get(new SeriesPartitionSlot(deviceGroupID)));
           }
         });
     storageGroupMap.put(storageGroup, deviceGroupMap);
@@ -66,13 +69,13 @@ public class SchemaPartitionInfo {
    */
   public List<Integer> filterNoAssignDeviceGroupId(
       String storageGroup, List<Integer> deviceGroupIDs) {
-    if (!schemaPartitionInfo.containsKey(storageGroup)) {
+    if (!schemaPartition.containsKey(storageGroup)) {
       return deviceGroupIDs;
     }
     return deviceGroupIDs.stream()
         .filter(
             id -> {
-              if (schemaPartitionInfo.get(storageGroup).containsKey(deviceGroupIDs)) {
+              if (schemaPartition.get(storageGroup).containsKey(deviceGroupIDs)) {
                 return false;
               }
               return true;
@@ -81,9 +84,9 @@ public class SchemaPartitionInfo {
   }
 
   public void setSchemaRegionReplicaSet(
-      String storageGroup, int deviceGroupId, SchemaRegionReplicaSet schemaRegionReplicaSet) {
-    schemaPartitionInfo
+      String storageGroup, int deviceGroupId, RegionReplicaSet regionReplicaSet) {
+    schemaPartition
         .computeIfAbsent(storageGroup, value -> new HashMap<>())
-        .put(deviceGroupId, schemaRegionReplicaSet);
+        .put(new SeriesPartitionSlot(deviceGroupId), regionReplicaSet);
   }
 }
