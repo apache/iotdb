@@ -30,17 +30,20 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateAligne
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.*;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SourceNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.component.*;
 import org.apache.iotdb.db.mpp.sql.statement.crud.AggregationQueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.FillQueryStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -278,10 +281,44 @@ public class LogicalPlanner {
     @Override
     public PlanNode visitInsertTablet(
         InsertTabletStatement insertTabletStatement, MPPQueryContext context) {
-      // TODO(INSERT) change the InsertTabletStatement to InsertTabletNode
-      InsertTabletNode node = new InsertTabletNode(PlanNodeIdAllocator.generateId());
+      // set schema in insert node
+      // convert insert statement to insert node
+      List<MeasurementSchema> measurementSchemas =
+          analysis
+              .getSchemaTree()
+              .searchMeasurementSchema(
+                  insertTabletStatement.getDevicePath(),
+                  Arrays.asList(insertTabletStatement.getMeasurements()));
+      return new InsertTabletNode(
+          PlanNodeIdAllocator.generateId(),
+          insertTabletStatement.getDevicePath(),
+          insertTabletStatement.isAligned(),
+          measurementSchemas.toArray(new MeasurementSchema[0]),
+          insertTabletStatement.getDataTypes(),
+          insertTabletStatement.getTimes(),
+          insertTabletStatement.getBitMaps(),
+          insertTabletStatement.getColumns(),
+          insertTabletStatement.getRowCount());
+    }
 
-      return node;
+    @Override
+    public PlanNode visitInsertRow(InsertRowStatement insertRowStatement, MPPQueryContext context) {
+      // set schema in insert node
+      // convert insert statement to insert node
+      List<MeasurementSchema> measurementSchemas =
+          analysis
+              .getSchemaTree()
+              .searchMeasurementSchema(
+                  insertRowStatement.getDevicePath(),
+                  Arrays.asList(insertRowStatement.getMeasurements()));
+      return new InsertRowNode(
+          PlanNodeIdAllocator.generateId(),
+          insertRowStatement.getDevicePath(),
+          insertRowStatement.isAligned(),
+          measurementSchemas.toArray(new MeasurementSchema[0]),
+          insertRowStatement.getDataTypes(),
+          insertRowStatement.getTime(),
+          insertRowStatement.getValues());
     }
   }
 

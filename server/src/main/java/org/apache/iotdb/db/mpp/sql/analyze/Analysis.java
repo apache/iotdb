@@ -82,19 +82,19 @@ public class Analysis {
     this.schemaPartition = schemaPartition;
   }
 
-  public SchemaTree getSchemaTree() {
-    return schemaTree;
-  }
-
-  public void setSchemaTree(SchemaTree schemaTree) {
-    this.schemaTree = schemaTree;
-  }
-
   public Map<String, Set<PartialPath>> getDeviceIdToPathsMap() {
     return deviceIdToPathsMap;
   }
 
   public void setDeviceIdToPathsMap(Map<String, Set<PartialPath>> deviceIdToPathsMap) {
     this.deviceIdToPathsMap = deviceIdToPathsMap;
+  }
+
+  public SchemaTree getSchemaTree() {
+    return schemaTree;
+  }
+
+  public void setSchemaTree(SchemaTree schemaTree) {
+    this.schemaTree = schemaTree;
   }
 }
