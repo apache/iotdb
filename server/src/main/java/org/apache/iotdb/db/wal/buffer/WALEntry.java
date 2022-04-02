@@ -35,48 +35,48 @@ import java.io.IOException;
 import java.util.Objects;
 
 /**
- * WALEdit is the basic element of .wal file, including type, memTable id, and specific
+ * WALEntry is the basic element of .wal file, including type, memTable id, and specific
  * value(physical plan or memTable snapshot).
  */
-public class WALEdit implements SerializedSize {
+public class WALEntry implements SerializedSize {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  /** wal edit type 1 byte, memTable id 4 bytes */
+  /** wal entry type 1 byte, memTable id 4 bytes */
   private static final int FIXED_SERIALIZED_SIZE = Byte.BYTES + Integer.BYTES;
 
   /** type of value */
-  private final WALEditType type;
+  private final WALEntryType type;
   /** memTable id */
   private final int memTableId;
   /** value(physical plan or memTable snapshot) */
-  private final WALEditValue value;
+  private final WALEntryValue value;
 
   /**
-   * listen whether this WALEdit has been written to the filesystem, null iff this WALEdit is
+   * listen whether this WALEntry has been written to the filesystem, null iff this WALEntry is
    * deserialized from .wal file
    */
   private final WALFlushListener walFlushListener;
 
-  public WALEdit(int memTableId, WALEditValue value) {
+  public WALEntry(int memTableId, WALEntryValue value) {
     this(memTableId, value, config.getWalMode() == WALMode.SYNC);
   }
 
-  public WALEdit(int memTableId, WALEditValue value, boolean wait) {
+  public WALEntry(int memTableId, WALEntryValue value, boolean wait) {
     this.memTableId = memTableId;
     this.value = value;
     if (value instanceof InsertPlan) {
-      this.type = WALEditType.INSERT_PLAN;
+      this.type = WALEntryType.INSERT_PLAN;
     } else if (value instanceof DeletePlan) {
-      this.type = WALEditType.DELETE_PLAN;
+      this.type = WALEntryType.DELETE_PLAN;
     } else if (value instanceof IMemTable) {
-      this.type = WALEditType.MEMORY_TABLE_SNAPSHOT;
+      this.type = WALEntryType.MEMORY_TABLE_SNAPSHOT;
     } else {
-      throw new RuntimeException("Unknown WALEdit type");
+      throw new RuntimeException("Unknown WALEntry type");
     }
     walFlushListener = new WALFlushListener(wait);
   }
 
-  private WALEdit(WALEditType type, int memTableId, WALEditValue value) {
+  private WALEntry(WALEntryType type, int memTableId, WALEntryValue value) {
     this.type = type;
     this.memTableId = memTableId;
     this.value = value;
@@ -94,16 +94,16 @@ public class WALEdit implements SerializedSize {
     value.serializeToWAL(buffer);
   }
 
-  public static WALEdit deserialize(DataInputStream stream)
+  public static WALEntry deserialize(DataInputStream stream)
       throws IllegalPathException, IOException {
     byte typeNum = stream.readByte();
-    WALEditType type = WALEditType.valueOf(typeNum);
+    WALEntryType type = WALEntryType.valueOf(typeNum);
     if (type == null) {
-      throw new IOException("unrecognized wal edit type " + typeNum);
+      throw new IOException("unrecognized wal entry type " + typeNum);
     }
 
     int memTableId = stream.readInt();
-    WALEditValue value = null;
+    WALEntryValue value = null;
     switch (type) {
       case INSERT_PLAN:
         value = (InsertPlan) PhysicalPlan.Factory.create(stream);
@@ -115,7 +115,7 @@ public class WALEdit implements SerializedSize {
         value = AbstractMemTable.Factory.create(stream);
         break;
     }
-    return new WALEdit(type, memTableId, value);
+    return new WALEntry(type, memTableId, value);
   }
 
   @Override
@@ -126,16 +126,16 @@ public class WALEdit implements SerializedSize {
     if (obj == null) {
       return false;
     }
-    if (!(obj instanceof WALEdit)) {
+    if (!(obj instanceof WALEntry)) {
       return false;
     }
-    WALEdit other = (WALEdit) obj;
+    WALEntry other = (WALEntry) obj;
     return this.type == other.type
         && this.memTableId == other.memTableId
         && Objects.equals(this.value, other.value);
   }
 
-  public WALEditType getType() {
+  public WALEntryType getType() {
     return type;
   }
 
@@ -143,7 +143,7 @@ public class WALEdit implements SerializedSize {
     return memTableId;
   }
 
-  public WALEditValue getValue() {
+  public WALEntryValue getValue() {
     return value;
   }
 

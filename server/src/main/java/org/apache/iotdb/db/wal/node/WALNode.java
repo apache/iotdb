@@ -33,7 +33,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.utils.FileUtils;
 import org.apache.iotdb.db.wal.buffer.IWALBuffer;
 import org.apache.iotdb.db.wal.buffer.WALBuffer;
-import org.apache.iotdb.db.wal.buffer.WALEdit;
+import org.apache.iotdb.db.wal.buffer.WALEntry;
 import org.apache.iotdb.db.wal.checkpoint.CheckpointManager;
 import org.apache.iotdb.db.wal.checkpoint.MemTableInfo;
 import org.apache.iotdb.db.wal.io.WALWriter;
@@ -87,19 +87,19 @@ public class WALNode implements IWALNode {
 
   @Override
   public WALFlushListener log(int memTableId, InsertPlan insertPlan) {
-    WALEdit walEdit = new WALEdit(memTableId, insertPlan);
-    return log(walEdit);
+    WALEntry walEntry = new WALEntry(memTableId, insertPlan);
+    return log(walEntry);
   }
 
   @Override
   public WALFlushListener log(int memTableId, DeletePlan deletePlan) {
-    WALEdit walEdit = new WALEdit(memTableId, deletePlan);
-    return log(walEdit);
+    WALEntry walEntry = new WALEntry(memTableId, deletePlan);
+    return log(walEntry);
   }
 
-  private WALFlushListener log(WALEdit walEdit) {
-    buffer.write(walEdit);
-    return walEdit.getWalFlushListener();
+  private WALFlushListener log(WALEntry walEntry) {
+    buffer.write(walEntry);
+    return walEntry.getWalFlushListener();
   }
 
   @Override
@@ -174,10 +174,10 @@ public class WALNode implements IWALNode {
             // version
             oldestMemTableInfo.setFirstFileVersionId(buffer.getCurrentWALFileVersion());
             // log snapshot in .wal file
-            WALEdit walEdit =
-                new WALEdit(
+            WALEntry walEntry =
+                new WALEntry(
                     oldestMemTableInfo.getMemTableId(), oldestMemTableInfo.getMemTable(), true);
-            WALFlushListener flushListener = log(walEdit);
+            WALFlushListener flushListener = log(walEntry);
             // wait until getting the result
             // it's low-risk to block writes awhile because this memTable accumulates slowly
             if (flushListener.waitForResult() == WALFlushListener.Status.FAILURE) {
@@ -228,8 +228,8 @@ public class WALNode implements IWALNode {
   }
 
   @TestOnly
-  boolean isAllWALEditConsumed() {
-    return buffer.isAllWALEditConsumed();
+  boolean isAllWALEntriesConsumed() {
+    return buffer.isAllWALEntriesConsumed();
   }
 
   @TestOnly

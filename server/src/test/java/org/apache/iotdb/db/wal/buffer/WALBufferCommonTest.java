@@ -87,7 +87,7 @@ public abstract class WALBufferCommonTest {
       future.get();
     }
     // wait a moment
-    while (!walBuffer.isAllWALEditConsumed()) {
+    while (!walBuffer.isAllWALEntriesConsumed()) {
       Thread.sleep(1_000);
     }
     Thread.sleep(1_000);
@@ -112,8 +112,8 @@ public abstract class WALBufferCommonTest {
       InsertRowPlan insertRowPlan = getInsertRowPlan(devicePath + memTableId, i);
       expectedInsertRowPlans.add(insertRowPlan);
 
-      WALEdit walEdit = new WALEdit(memTableId, insertRowPlan);
-      walBuffer.write(walEdit);
+      WALEntry walEntry = new WALEntry(memTableId, insertRowPlan);
+      walBuffer.write(walEntry);
     }
   }
 

@@ -20,7 +20,7 @@ package org.apache.iotdb.db.wal.checkpoint;
 
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.utils.SerializedSize;
-import org.apache.iotdb.db.wal.buffer.WALEdit;
+import org.apache.iotdb.db.wal.buffer.WALEntry;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataInputStream;
@@ -30,7 +30,7 @@ import java.util.Objects;
 
 /**
  * MemTableInfo records brief info of one memtable, including memTable id, tsFile path, and .wal
- * file version id of its first {@link WALEdit}.
+ * file version id of its first {@link WALEntry}.
  */
 public class MemTableInfo implements SerializedSize {
   /** memTable id 4 bytes, first version id 4 bytes */
@@ -42,7 +42,7 @@ public class MemTableInfo implements SerializedSize {
   private int memTableId;
   /** path of the tsFile which this memTable will be flushed to */
   private String tsFilePath;
-  /** version id of the file where this memTable's first WALEdit is located */
+  /** version id of the file where this memTable's first WALEntry is located */
   private volatile int firstFileVersionId;
 
   private MemTableInfo() {}

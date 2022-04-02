@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.wal.io;
 
-import org.apache.iotdb.db.wal.buffer.WALEdit;
+import org.apache.iotdb.db.wal.buffer.WALEntry;
 import org.apache.iotdb.db.wal.checkpoint.Checkpoint;
 
 import org.slf4j.Logger;
@@ -33,7 +33,7 @@ import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileChannel;
 
 /**
- * LogWriter writes the binary logs into a file, including writing {@link WALEdit} into .wal file
+ * LogWriter writes the binary logs into a file, including writing {@link WALEntry} into .wal file
  * and writing {@link Checkpoint} into .checkpoint file.
  */
 public abstract class LogWriter implements ILogWriter {

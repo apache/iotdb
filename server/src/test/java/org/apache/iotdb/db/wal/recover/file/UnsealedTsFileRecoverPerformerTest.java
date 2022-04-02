@@ -25,7 +25,7 @@ import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.db.wal.buffer.WALEdit;
+import org.apache.iotdb.db.wal.buffer.WALEntry;
 import org.apache.iotdb.db.wal.utils.TsFileUtilsForRecoverTest;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -120,7 +120,7 @@ public class UnsealedTsFileRecoverPerformerTest {
         new InsertRowPlan(
             new PartialPath(DEVICE2_NAME), time, new String[] {"s1", "s2"}, dataTypes, columns);
     int fakeMemTableId = 1;
-    WALEdit walEdit = new WALEdit(fakeMemTableId, insertRowPlan);
+    WALEntry walEntry = new WALEntry(fakeMemTableId, insertRowPlan);
     // recover
     tsFileResource = new TsFileResource(file);
     // vsg processor is used to test IdTable, don't test IdTable here
@@ -132,7 +132,7 @@ public class UnsealedTsFileRecoverPerformerTest {
       assertTrue(recoverPerformer.canWrite());
       assertEquals(3, tsFileResource.getEndTime(DEVICE2_NAME));
 
-      recoverPerformer.redoLog(walEdit);
+      recoverPerformer.redoLog(walEntry);
 
       recoverPerformer.endRecovery();
     }
@@ -175,7 +175,7 @@ public class UnsealedTsFileRecoverPerformerTest {
     DeletePlan deletePlan =
         new DeletePlan(Long.MIN_VALUE, Long.MAX_VALUE, new PartialPath(DEVICE2_NAME));
     int fakeMemTableId = 1;
-    WALEdit walEdit = new WALEdit(fakeMemTableId, deletePlan);
+    WALEntry walEntry = new WALEntry(fakeMemTableId, deletePlan);
     // recover
     tsFileResource = new TsFileResource(file);
     // vsg processor is used to test IdTable, don't test IdTable here
@@ -187,7 +187,7 @@ public class UnsealedTsFileRecoverPerformerTest {
       assertTrue(recoverPerformer.canWrite());
       assertEquals(3, tsFileResource.getEndTime(DEVICE2_NAME));
 
-      recoverPerformer.redoLog(walEdit);
+      recoverPerformer.redoLog(walEntry);
 
       recoverPerformer.endRecovery();
     }

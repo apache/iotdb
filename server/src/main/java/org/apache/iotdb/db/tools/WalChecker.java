@@ -21,7 +21,7 @@ package org.apache.iotdb.db.tools;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.SystemCheckException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.wal.buffer.WALEdit;
+import org.apache.iotdb.db.wal.buffer.WALEntry;
 import org.apache.iotdb.db.wal.io.WALWriter;
 import org.apache.iotdb.db.wal.node.WALNode;
 
@@ -98,8 +98,8 @@ public class WalChecker {
     try (DataInputStream logStream =
         new DataInputStream(new BufferedInputStream(new FileInputStream(walFile)))) {
       while (logStream.available() > 0) {
-        WALEdit walEdit = WALEdit.deserialize(logStream);
-        totalSize += walEdit.serializedSize();
+        WALEntry walEntry = WALEntry.deserialize(logStream);
+        totalSize += walEntry.serializedSize();
       }
     } catch (EOFException e) {
       if (totalSize == walFile.length()) {

@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.wal.io;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.wal.buffer.WALEdit;
+import org.apache.iotdb.db.wal.buffer.WALEntry;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,15 +48,15 @@ public class WALReader implements Closeable {
 
   private final File logFile;
   private final DataInputStream logStream;
-  private final List<WALEdit> walEdits;
+  private final List<WALEntry> walEntries;
 
-  private Iterator<WALEdit> itr = null;
+  private Iterator<WALEntry> itr = null;
   private boolean fileCorrupted = false;
 
   public WALReader(File logFile) throws FileNotFoundException {
     this.logFile = logFile;
     this.logStream = new DataInputStream(new BufferedInputStream(new FileInputStream(logFile)));
-    this.walEdits = new LinkedList<>();
+    this.walEntries = new LinkedList<>();
   }
 
   /** Like {@link Iterator#hasNext()} */
@@ -64,18 +64,18 @@ public class WALReader implements Closeable {
     if (itr != null && itr.hasNext()) {
       return true;
     }
-    // read WALEdits from log stream
+    // read WALEntries from log stream
     try {
       if (fileCorrupted || logStream.available() <= 0) {
         return false;
       }
-      walEdits.clear();
+      walEntries.clear();
       int totalSize = 0;
       while (totalSize < MEMORY_LIMIT_IN_BYTES) {
         int availableBytes = logStream.available();
-        WALEdit walEdit = WALEdit.deserialize(logStream);
+        WALEntry walEntry = WALEntry.deserialize(logStream);
 
-        walEdits.add(walEdit);
+        walEntries.add(walEntry);
 
         totalSize += availableBytes - logStream.available();
       }
@@ -85,21 +85,21 @@ public class WALReader implements Closeable {
     } catch (IllegalPathException e) {
       fileCorrupted = true;
       logger.warn(
-          "WALEdit of wal file {} contains illegal path, skip illegal WALEdits.", logFile, e);
+          "WALEntry of wal file {} contains illegal path, skip illegal WALEntries.", logFile, e);
     } catch (Exception e) {
       fileCorrupted = true;
-      logger.warn("Fail to read WALEdit from wal file {}, skip broken WALEdits.", logFile, e);
+      logger.warn("Fail to read WALEntry from wal file {}, skip broken WALEntries.", logFile, e);
     }
 
-    if (walEdits.size() != 0) {
-      itr = walEdits.iterator();
+    if (walEntries.size() != 0) {
+      itr = walEntries.iterator();
       return true;
     }
     return false;
   }
 
   /** Like {@link Iterator#next()} */
-  public WALEdit next() {
+  public WALEntry next() {
     if (itr == null) {
       throw new NoSuchElementException();
     }

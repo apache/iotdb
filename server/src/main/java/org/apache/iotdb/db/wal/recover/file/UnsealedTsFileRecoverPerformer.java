@@ -31,7 +31,7 @@ import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.wal.buffer.WALEdit;
+import org.apache.iotdb.db.wal.buffer.WALEntry;
 import org.apache.iotdb.db.wal.exception.WALRecoverException;
 import org.apache.iotdb.db.wal.utils.listener.WALRecoverListener;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -176,7 +176,7 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
   }
 
   /** Redo log */
-  public void redoLog(WALEdit walEdit) {
+  public void redoLog(WALEntry walEntry) {
     // skip redo wal log when this TsFile is not crashed
     if (!hasCrashed()) {
       logger.info(
@@ -184,15 +184,15 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
       return;
     }
     try {
-      switch (walEdit.getType()) {
+      switch (walEntry.getType()) {
         case INSERT_PLAN:
-          walRedoer.redoInsert((InsertPlan) walEdit.getValue());
+          walRedoer.redoInsert((InsertPlan) walEntry.getValue());
           break;
         case DELETE_PLAN:
-          walRedoer.redoDelete((DeletePlan) walEdit.getValue());
+          walRedoer.redoDelete((DeletePlan) walEntry.getValue());
           break;
         case MEMORY_TABLE_SNAPSHOT:
-          IMemTable memTable = (IMemTable) walEdit.getValue();
+          IMemTable memTable = (IMemTable) walEntry.getValue();
           if (!memTable.isSignalMemTable()) {
             walRedoer.resetRecoveryMemTable(memTable);
           }

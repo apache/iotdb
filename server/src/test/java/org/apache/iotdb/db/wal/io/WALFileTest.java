@@ -26,8 +26,8 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.db.wal.buffer.WALEdit;
-import org.apache.iotdb.db.wal.buffer.WALEditType;
+import org.apache.iotdb.db.wal.buffer.WALEntry;
+import org.apache.iotdb.db.wal.buffer.WALEntryType;
 import org.apache.iotdb.db.wal.utils.WALByteBufferForTest;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -67,86 +67,86 @@ public class WALFileTest {
   @Test
   public void testReadNormalFile() throws IOException, IllegalPathException {
     int fakeMemTableId = 1;
-    List<WALEdit> expectedWALEdits = new ArrayList<>();
-    expectedWALEdits.add(new WALEdit(fakeMemTableId, getInsertRowPlan(devicePath)));
-    expectedWALEdits.add(new WALEdit(fakeMemTableId, getInsertRowsOfOneDevicePlan(devicePath)));
-    expectedWALEdits.add(new WALEdit(fakeMemTableId, getInsertRowsPlan(devicePath)));
-    expectedWALEdits.add(new WALEdit(fakeMemTableId, getInsertTabletPlan(devicePath)));
-    expectedWALEdits.add(new WALEdit(fakeMemTableId, getInsertMultiTabletPlan(devicePath)));
-    expectedWALEdits.add(new WALEdit(fakeMemTableId, getDeletePlan(devicePath)));
-    // test WALEdit.serializedSize
+    List<WALEntry> expectedWALEntries = new ArrayList<>();
+    expectedWALEntries.add(new WALEntry(fakeMemTableId, getInsertRowPlan(devicePath)));
+    expectedWALEntries.add(new WALEntry(fakeMemTableId, getInsertRowsOfOneDevicePlan(devicePath)));
+    expectedWALEntries.add(new WALEntry(fakeMemTableId, getInsertRowsPlan(devicePath)));
+    expectedWALEntries.add(new WALEntry(fakeMemTableId, getInsertTabletPlan(devicePath)));
+    expectedWALEntries.add(new WALEntry(fakeMemTableId, getInsertMultiTabletPlan(devicePath)));
+    expectedWALEntries.add(new WALEntry(fakeMemTableId, getDeletePlan(devicePath)));
+    // test WALEntry.serializedSize
     int size = 0;
-    for (WALEdit walEdit : expectedWALEdits) {
-      size += walEdit.serializedSize();
+    for (WALEntry walEntry : expectedWALEntries) {
+      size += walEntry.serializedSize();
     }
     WALByteBufferForTest buffer = new WALByteBufferForTest(ByteBuffer.allocate(size));
-    // test WALEdit.serialize
-    for (WALEdit walEdit : expectedWALEdits) {
-      walEdit.serialize(buffer);
+    // test WALEntry.serialize
+    for (WALEntry walEntry : expectedWALEntries) {
+      walEntry.serialize(buffer);
     }
     assertEquals(0, buffer.getBuffer().remaining());
-    // test WALEdit.write
+    // test WALEntry.write
     try (ILogWriter walWriter = new WALWriter(walFile)) {
       walWriter.write(buffer.getBuffer());
     }
     // test WALReader.readAll
-    List<WALEdit> actualWALEdits = new ArrayList<>();
+    List<WALEntry> actualWALEntries = new ArrayList<>();
     try (WALReader walReader = new WALReader(walFile)) {
       while (walReader.hasNext()) {
-        actualWALEdits.add(walReader.next());
+        actualWALEntries.add(walReader.next());
       }
     }
-    assertEquals(expectedWALEdits, actualWALEdits);
+    assertEquals(expectedWALEntries, actualWALEntries);
   }
 
   @Test
   public void testReadNotExistFile() throws IOException {
     if (walFile.createNewFile()) {
-      List<WALEdit> actualWALEdits = new ArrayList<>();
+      List<WALEntry> actualWALEntries = new ArrayList<>();
       try (WALReader walReader = new WALReader(walFile)) {
         while (walReader.hasNext()) {
-          actualWALEdits.add(walReader.next());
+          actualWALEntries.add(walReader.next());
         }
       }
-      assertEquals(0, actualWALEdits.size());
+      assertEquals(0, actualWALEntries.size());
     }
   }
 
   @Test
   public void testReadBrokenFile() throws IOException, IllegalPathException {
     int fakeMemTableId = 1;
-    List<WALEdit> expectedWALEdits = new ArrayList<>();
-    expectedWALEdits.add(new WALEdit(fakeMemTableId, getInsertRowPlan(devicePath)));
-    expectedWALEdits.add(new WALEdit(fakeMemTableId, getInsertRowsOfOneDevicePlan(devicePath)));
-    expectedWALEdits.add(new WALEdit(fakeMemTableId, getInsertRowsPlan(devicePath)));
-    expectedWALEdits.add(new WALEdit(fakeMemTableId, getInsertTabletPlan(devicePath)));
-    expectedWALEdits.add(new WALEdit(fakeMemTableId, getInsertMultiTabletPlan(devicePath)));
-    expectedWALEdits.add(new WALEdit(fakeMemTableId, getDeletePlan(devicePath)));
-    // test WALEdit.serializedSize
+    List<WALEntry> expectedWALEntries = new ArrayList<>();
+    expectedWALEntries.add(new WALEntry(fakeMemTableId, getInsertRowPlan(devicePath)));
+    expectedWALEntries.add(new WALEntry(fakeMemTableId, getInsertRowsOfOneDevicePlan(devicePath)));
+    expectedWALEntries.add(new WALEntry(fakeMemTableId, getInsertRowsPlan(devicePath)));
+    expectedWALEntries.add(new WALEntry(fakeMemTableId, getInsertTabletPlan(devicePath)));
+    expectedWALEntries.add(new WALEntry(fakeMemTableId, getInsertMultiTabletPlan(devicePath)));
+    expectedWALEntries.add(new WALEntry(fakeMemTableId, getDeletePlan(devicePath)));
+    // test WALEntry.serializedSize
     int size = Byte.BYTES;
-    for (WALEdit walEdit : expectedWALEdits) {
-      size += walEdit.serializedSize();
+    for (WALEntry walEntry : expectedWALEntries) {
+      size += walEntry.serializedSize();
     }
     WALByteBufferForTest buffer = new WALByteBufferForTest(ByteBuffer.allocate(size));
-    // test WALEdit.serialize
-    for (WALEdit walEdit : expectedWALEdits) {
-      walEdit.serialize(buffer);
+    // test WALEntry.serialize
+    for (WALEntry walEntry : expectedWALEntries) {
+      walEntry.serialize(buffer);
     }
     // add broken part
-    buffer.put(WALEditType.DELETE_PLAN.getCode());
+    buffer.put(WALEntryType.DELETE_PLAN.getCode());
     assertEquals(0, buffer.getBuffer().remaining());
-    // test WALEdit.write
+    // test WALEntry.write
     try (ILogWriter walWriter = new WALWriter(walFile)) {
       walWriter.write(buffer.getBuffer());
     }
     // test WALReader.readAll
-    List<WALEdit> actualWALEdits = new ArrayList<>();
+    List<WALEntry> actualWALEntries = new ArrayList<>();
     try (WALReader walReader = new WALReader(walFile)) {
       while (walReader.hasNext()) {
-        actualWALEdits.add(walReader.next());
+        actualWALEntries.add(walReader.next());
       }
     }
-    assertEquals(expectedWALEdits, actualWALEdits);
+    assertEquals(expectedWALEntries, actualWALEntries);
   }
 
   public static InsertRowPlan getInsertRowPlan(String devicePath) throws IllegalPathException {

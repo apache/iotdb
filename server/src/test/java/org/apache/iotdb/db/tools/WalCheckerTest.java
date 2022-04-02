@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.exception.SystemCheckException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.wal.buffer.WALEdit;
+import org.apache.iotdb.db.wal.buffer.WALEntry;
 import org.apache.iotdb.db.wal.io.ILogWriter;
 import org.apache.iotdb.db.wal.io.WALFileTest;
 import org.apache.iotdb.db.wal.io.WALWriter;
@@ -83,21 +83,22 @@ public class WalCheckerTest {
         File walFile =
             new File(walNodeDir, WALWriter.FILE_PREFIX + i + IoTDBConstant.WAL_FILE_SUFFIX);
         int fakeMemTableId = 1;
-        List<WALEdit> walEdits = new ArrayList<>();
-        walEdits.add(new WALEdit(fakeMemTableId, WALFileTest.getInsertRowPlan(DEVICE_ID)));
-        walEdits.add(
-            new WALEdit(fakeMemTableId, WALFileTest.getInsertRowsOfOneDevicePlan(DEVICE_ID)));
-        walEdits.add(new WALEdit(fakeMemTableId, WALFileTest.getInsertRowsPlan(DEVICE_ID)));
-        walEdits.add(new WALEdit(fakeMemTableId, WALFileTest.getInsertTabletPlan(DEVICE_ID)));
-        walEdits.add(new WALEdit(fakeMemTableId, WALFileTest.getInsertMultiTabletPlan(DEVICE_ID)));
-        walEdits.add(new WALEdit(fakeMemTableId, WALFileTest.getDeletePlan(DEVICE_ID)));
+        List<WALEntry> walEntries = new ArrayList<>();
+        walEntries.add(new WALEntry(fakeMemTableId, WALFileTest.getInsertRowPlan(DEVICE_ID)));
+        walEntries.add(
+            new WALEntry(fakeMemTableId, WALFileTest.getInsertRowsOfOneDevicePlan(DEVICE_ID)));
+        walEntries.add(new WALEntry(fakeMemTableId, WALFileTest.getInsertRowsPlan(DEVICE_ID)));
+        walEntries.add(new WALEntry(fakeMemTableId, WALFileTest.getInsertTabletPlan(DEVICE_ID)));
+        walEntries.add(
+            new WALEntry(fakeMemTableId, WALFileTest.getInsertMultiTabletPlan(DEVICE_ID)));
+        walEntries.add(new WALEntry(fakeMemTableId, WALFileTest.getDeletePlan(DEVICE_ID)));
         int size = 0;
-        for (WALEdit walEdit : walEdits) {
-          size += walEdit.serializedSize();
+        for (WALEntry walEntry : walEntries) {
+          size += walEntry.serializedSize();
         }
         WALByteBufferForTest buffer = new WALByteBufferForTest(ByteBuffer.allocate(size));
-        for (WALEdit walEdit : walEdits) {
-          walEdit.serialize(buffer);
+        for (WALEntry walEntry : walEntries) {
+          walEntry.serialize(buffer);
         }
         try (ILogWriter walWriter = new WALWriter(walFile)) {
           walWriter.write(buffer.getBuffer());
@@ -123,21 +124,22 @@ public class WalCheckerTest {
 
         File walFile = new File(walNodeDir, "_" + i + IoTDBConstant.WAL_FILE_SUFFIX);
         int fakeMemTableId = 1;
-        List<WALEdit> walEdits = new ArrayList<>();
-        walEdits.add(new WALEdit(fakeMemTableId, WALFileTest.getInsertRowPlan(DEVICE_ID)));
-        walEdits.add(
-            new WALEdit(fakeMemTableId, WALFileTest.getInsertRowsOfOneDevicePlan(DEVICE_ID)));
-        walEdits.add(new WALEdit(fakeMemTableId, WALFileTest.getInsertRowsPlan(DEVICE_ID)));
-        walEdits.add(new WALEdit(fakeMemTableId, WALFileTest.getInsertTabletPlan(DEVICE_ID)));
-        walEdits.add(new WALEdit(fakeMemTableId, WALFileTest.getInsertMultiTabletPlan(DEVICE_ID)));
-        walEdits.add(new WALEdit(fakeMemTableId, WALFileTest.getDeletePlan(DEVICE_ID)));
+        List<WALEntry> walEntries = new ArrayList<>();
+        walEntries.add(new WALEntry(fakeMemTableId, WALFileTest.getInsertRowPlan(DEVICE_ID)));
+        walEntries.add(
+            new WALEntry(fakeMemTableId, WALFileTest.getInsertRowsOfOneDevicePlan(DEVICE_ID)));
+        walEntries.add(new WALEntry(fakeMemTableId, WALFileTest.getInsertRowsPlan(DEVICE_ID)));
+        walEntries.add(new WALEntry(fakeMemTableId, WALFileTest.getInsertTabletPlan(DEVICE_ID)));
+        walEntries.add(
+            new WALEntry(fakeMemTableId, WALFileTest.getInsertMultiTabletPlan(DEVICE_ID)));
+        walEntries.add(new WALEntry(fakeMemTableId, WALFileTest.getDeletePlan(DEVICE_ID)));
         int size = 0;
-        for (WALEdit walEdit : walEdits) {
-          size += walEdit.serializedSize();
+        for (WALEntry walEntry : walEntries) {
+          size += walEntry.serializedSize();
         }
         WALByteBufferForTest buffer = new WALByteBufferForTest(ByteBuffer.allocate(size));
-        for (WALEdit walEdit : walEdits) {
-          walEdit.serialize(buffer);
+        for (WALEntry walEntry : walEntries) {
+          walEntry.serialize(buffer);
         }
         try (ILogWriter walWriter = new WALWriter(walFile)) {
           walWriter.write(buffer.getBuffer());

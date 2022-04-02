@@ -35,7 +35,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public abstract class AbstractWALBuffer implements IWALBuffer {
   private static final Logger logger = LoggerFactory.getLogger(AbstractWALBuffer.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  /** use size limit to control WALEdit number in each file */
+  /** use size limit to control WALEntry number in each file */
   protected static final long FILE_SIZE_THRESHOLD = config.getWalFileSizeThresholdInByte();
 
   /** WALNode identifier of this buffer */

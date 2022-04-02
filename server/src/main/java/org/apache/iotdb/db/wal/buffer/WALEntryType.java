@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.wal.buffer;
 
-/** Type of {@link WALEdit} */
-public enum WALEditType {
+/** Type of {@link WALEntry} */
+public enum WALEntryType {
   /** {@link org.apache.iotdb.db.qp.physical.crud.InsertPlan} */
   INSERT_PLAN((byte) 0),
   /** {@link org.apache.iotdb.db.qp.physical.crud.DeletePlan} */
@@ -30,7 +30,7 @@ public enum WALEditType {
 
   private final byte code;
 
-  WALEditType(byte code) {
+  WALEntryType(byte code) {
     this.code = code;
   }
 
@@ -38,8 +38,8 @@ public enum WALEditType {
     return code;
   }
 
-  public static WALEditType valueOf(byte code) {
-    for (WALEditType type : WALEditType.values()) {
+  public static WALEntryType valueOf(byte code) {
+    for (WALEntryType type : WALEntryType.values()) {
       if (type.code == code) {
         return type;
       }

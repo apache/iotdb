@@ -57,12 +57,12 @@ public class WALBuffer extends AbstractWALBuffer {
   public static final int QUEUE_CAPACITY = config.getWalBufferQueueCapacity();
 
   /** notify serializeThread to stop */
-  private static final WALEdit CLOSE_SIGNAL = new WALEdit(-1, new DeletePlan());
+  private static final WALEntry CLOSE_SIGNAL = new WALEntry(-1, new DeletePlan());
 
   /** whether close method is called */
   private volatile boolean isClosed = false;
-  /** WALEdits */
-  private final BlockingQueue<WALEdit> walEdits = new ArrayBlockingQueue<>(QUEUE_CAPACITY);
+  /** WALEntries */
+  private final BlockingQueue<WALEntry> walEntries = new ArrayBlockingQueue<>(QUEUE_CAPACITY);
   /** lock to provide synchronization for double buffers mechanism, protecting buffers status */
   private final Lock buffersLock = new ReentrantLock();
   /** condition to guarantee correctness of switching buffers */
@@ -76,7 +76,7 @@ public class WALBuffer extends AbstractWALBuffer {
   // buffer in syncing status, serializeThread makes sure no more writes to syncingBuffer
   private volatile ByteBuffer syncingBuffer;
   // endregion
-  /** single thread to serialize WALEdit to workingBuffer */
+  /** single thread to serialize WALEntry to workingBuffer */
   private final ExecutorService serializeThread;
   /** single thread to sync syncingBuffer to disk */
   private final ExecutorService syncBufferThread;
@@ -106,24 +106,24 @@ public class WALBuffer extends AbstractWALBuffer {
   }
 
   @Override
-  public void write(WALEdit edit) {
+  public void write(WALEntry walEntry) {
     if (isClosed) {
       logger.error(
-          "Fail to write WALEdit into wal node-{} because this node is closed.", identifier);
-      edit.getWalFlushListener().fail(new WALNodeClosedException(identifier));
+          "Fail to write WALEntry into wal node-{} because this node is closed.", identifier);
+      walEntry.getWalFlushListener().fail(new WALNodeClosedException(identifier));
       return;
     }
-    // only add this WALEdit to queue
+    // just add this WALEntry to queue
     try {
-      walEdits.put(edit);
+      walEntries.put(walEntry);
     } catch (InterruptedException e) {
-      logger.warn("Interrupted when waiting for adding WalEdit to buffer.");
+      logger.warn("Interrupted when waiting for adding WALEntry to buffer.");
       Thread.currentThread().interrupt();
     }
   }
 
   // region Task of serializeThread
-  /** This task serializes WALEdit to workingBuffer and will call fsync at last. */
+  /** This task serializes WALEntry to workingBuffer and will call fsync at last. */
   private class SerializeTask implements Runnable {
     private final IWALByteBufferView byteBufferVew = new ByteBufferView();
     private final List<WALFlushListener> fsyncListeners = new LinkedList<>();
@@ -139,24 +139,24 @@ public class WALBuffer extends AbstractWALBuffer {
 
     /** In order to control memory usage of blocking queue, get 1 and then serialize 1 */
     private void serialize() {
-      // try to get first WALEdit with blocking interface
+      // try to get first WALEntry with blocking interface
       int batchSize = 0;
       try {
-        WALEdit edit = walEdits.take();
+        WALEntry firstWALEntry = walEntries.take();
         try {
-          if (edit != CLOSE_SIGNAL) {
-            edit.serialize(byteBufferVew);
+          if (firstWALEntry != CLOSE_SIGNAL) {
+            firstWALEntry.serialize(byteBufferVew);
             ++batchSize;
-            fsyncListeners.add(edit.getWalFlushListener());
+            fsyncListeners.add(firstWALEntry.getWalFlushListener());
           }
         } catch (Exception e) {
           logger.error(
-              "Fail to serialize WALEdit to wal node-{}'s buffer, discard it.", identifier, e);
-          edit.getWalFlushListener().fail(e);
+              "Fail to serialize WALEntry to wal node-{}'s buffer, discard it.", identifier, e);
+          firstWALEntry.getWalFlushListener().fail(e);
         }
       } catch (InterruptedException e) {
         logger.warn(
-            "Interrupted when waiting for taking WALEdit from blocking queue to serialize.");
+            "Interrupted when waiting for taking WALEntry from blocking queue to serialize.");
         Thread.currentThread().interrupt();
       }
       // for better fsync performance, sleep a while to enlarge write batch
@@ -168,22 +168,22 @@ public class WALBuffer extends AbstractWALBuffer {
           Thread.currentThread().interrupt();
         }
       }
-      // try to get more WALEdits with non-blocking interface to enlarge write batch
-      while (walEdits.peek() != null && batchSize < QUEUE_CAPACITY) {
-        WALEdit edit = walEdits.poll();
-        if (edit == null || edit == CLOSE_SIGNAL) {
+      // try to get more WALEntries with non-blocking interface to enlarge write batch
+      while (walEntries.peek() != null && batchSize < QUEUE_CAPACITY) {
+        WALEntry walEntry = walEntries.poll();
+        if (walEntry == null || walEntry == CLOSE_SIGNAL) {
           break;
         } else {
           try {
-            edit.serialize(byteBufferVew);
+            walEntry.serialize(byteBufferVew);
           } catch (Exception e) {
             logger.error(
-                "Fail to serialize WALEdit to wal node-{}'s buffer, discard it.", identifier, e);
-            edit.getWalFlushListener().fail(e);
+                "Fail to serialize WALEntry to wal node-{}'s buffer, discard it.", identifier, e);
+            walEntry.getWalFlushListener().fail(e);
             continue;
           }
           ++batchSize;
-          fsyncListeners.add(edit.getWalFlushListener());
+          fsyncListeners.add(walEntry.getWalFlushListener());
         }
       }
       // call fsync at last and set fsyncListeners
@@ -381,8 +381,8 @@ public class WALBuffer extends AbstractWALBuffer {
     isClosed = true;
     // first waiting serialize and sync tasks finished, then release all resources
     if (serializeThread != null) {
-      // add close signal WALEdit to notify serializeThread
-      walEdits.add(CLOSE_SIGNAL);
+      // add close signal WALEntry to notify serializeThread
+      walEntries.add(CLOSE_SIGNAL);
       shutdownThread(serializeThread, ThreadName.WAL_SERIALIZE);
     }
     if (syncBufferThread != null) {
@@ -421,7 +421,7 @@ public class WALBuffer extends AbstractWALBuffer {
   }
 
   @Override
-  public boolean isAllWALEditConsumed() {
-    return walEdits.isEmpty();
+  public boolean isAllWALEntriesConsumed() {
+    return walEntries.isEmpty();
   }
 }

@@ -20,14 +20,14 @@
 package org.apache.iotdb.db.engine.memtable;
 
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.wal.buffer.WALEditValue;
+import org.apache.iotdb.db.wal.buffer.WALEntryValue;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.List;
 import java.util.Map;
 
-public interface IWritableMemChunkGroup extends WALEditValue {
+public interface IWritableMemChunkGroup extends WALEntryValue {
 
   void writeValues(
       long[] times,

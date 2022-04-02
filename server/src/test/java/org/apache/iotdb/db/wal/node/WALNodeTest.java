@@ -104,7 +104,7 @@ public class WALNodeTest {
       future.get();
     }
     // wait a moment
-    while (!walNode.isAllWALEditConsumed()) {
+    while (!walNode.isAllWALEntriesConsumed()) {
       Thread.sleep(1_000);
     }
     Thread.sleep(1_000);

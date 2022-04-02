@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.wal.recover;
 
 import org.apache.iotdb.db.utils.FileUtils;
-import org.apache.iotdb.db.wal.buffer.WALEdit;
+import org.apache.iotdb.db.wal.buffer.WALEntry;
 import org.apache.iotdb.db.wal.checkpoint.MemTableInfo;
 import org.apache.iotdb.db.wal.io.WALReader;
 import org.apache.iotdb.db.wal.io.WALWriter;
@@ -120,17 +120,18 @@ public class WALNodeRecoverTask implements Runnable {
     for (File walFile : walFiles) {
       try (WALReader walReader = new WALReader(walFile)) {
         while (walReader.hasNext()) {
-          WALEdit walEdit = walReader.next();
-          if (!memTableId2Info.containsKey(walEdit.getMemTableId())) {
+          WALEntry walEntry = walReader.next();
+          if (!memTableId2Info.containsKey(walEntry.getMemTableId())) {
             continue;
           }
 
           UnsealedTsFileRecoverPerformer recoverPerformer =
-              memTableId2RecoverPerformer.get(walEdit.getMemTableId());
+              memTableId2RecoverPerformer.get(walEntry.getMemTableId());
           if (recoverPerformer != null) {
-            recoverPerformer.redoLog(walEdit);
+            recoverPerformer.redoLog(walEntry);
           } else {
-            logger.warn("Fail to find TsFile recover performer for wal edit in TsFile {}", walFile);
+            logger.warn(
+                "Fail to find TsFile recover performer for wal entry in TsFile {}", walFile);
           }
         }
       } catch (Exception e) {
