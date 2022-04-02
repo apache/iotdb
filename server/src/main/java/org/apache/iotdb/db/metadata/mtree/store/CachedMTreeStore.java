@@ -380,7 +380,7 @@ public class CachedMTreeStore implements IMTreeStore {
         }
         cacheManager.updateCacheStatusAfterPersist(volatileNode);
       }
-      ensureMemoryStatus();
+      executeMemoryRelease();
       hasFlushTask = false;
       flushCount++;
     } catch (Throwable e) {
