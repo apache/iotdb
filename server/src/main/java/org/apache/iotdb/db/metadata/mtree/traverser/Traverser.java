@@ -84,6 +84,7 @@ public abstract class Traverser {
     }
     this.startNode = startNode;
     this.nodes = nodes;
+    this.store = store;
     this.traverseContext = new ArrayDeque<>();
     initStartIndexAndLevel(path);
   }

@@ -22,7 +22,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class CacheEntry implements Comparable<CacheEntry>{
+public class CacheEntry implements Comparable<CacheEntry> {
 
   private volatile boolean isVolatile = false;
 
