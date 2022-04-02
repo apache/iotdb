@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -18,63 +18,26 @@
  */
 package org.apache.iotdb.confignode.partition;
 
-import java.util.ArrayList;
-import java.util.HashMap;
+import org.apache.iotdb.commons.partition.DataRegionReplicaSet;
+import org.apache.iotdb.commons.partition.TimePartitionId;
+
 import java.util.List;
 import java.util.Map;
 
 public class DataPartitionInfo {
 
-  // TODO: Serialize and Deserialize
-  // Map<StorageGroup, Map<DeviceGroupID, Map<TimeInterval, List<DataRegionID>>>>
-  private final Map<String, Map<Integer, Map<Long, List<Integer>>>> dataPartitionTable;
-  // TODO: Serialize and Deserialize
-  // Map<DataRegionID, List<DataNodeID>>
-  private final Map<Integer, List<Integer>> dataRegionDataNodesMap;
+  // Map<StorageGroup, Map<DeviceGroupID, Map<TimePartitionId, List<DataRegionPlaceInfo>>>>
+  private Map<String, Map<Integer, Map<TimePartitionId, List<DataRegionReplicaSet>>>>
+      dataPartitionMap;
 
-  // Map<StorageGroup, Map<DeviceGroupID, DataPartitionRule>>
-  private final Map<String, Map<Integer, DataPartitionRule>> dataPartitionRuleTable;
-
-  public DataPartitionInfo() {
-    this.dataPartitionTable = new HashMap<>();
-    this.dataRegionDataNodesMap = new HashMap<>();
-
-    this.dataPartitionRuleTable = new HashMap<>();
+  public Map<String, Map<Integer, Map<TimePartitionId, List<DataRegionReplicaSet>>>>
+      getDataPartitionMap() {
+    return dataPartitionMap;
   }
 
-  public void createDataPartition(
-      String storageGroup, int deviceGroup, long timeInterval, int dataRegionGroup) {
-    if (!dataPartitionTable.containsKey(storageGroup)) {
-      dataPartitionTable.put(storageGroup, new HashMap<>());
-    }
-    if (!dataPartitionTable.get(storageGroup).containsKey(deviceGroup)) {
-      dataPartitionTable.get(storageGroup).put(deviceGroup, new HashMap<>());
-    }
-    if (!dataPartitionTable.get(storageGroup).get(deviceGroup).containsKey(timeInterval)) {
-      dataPartitionTable.get(storageGroup).get(deviceGroup).put(timeInterval, new ArrayList<>());
-    }
-    dataPartitionTable.get(storageGroup).get(deviceGroup).get(timeInterval).add(dataRegionGroup);
-  }
-
-  public List<Integer> getDataPartition(String storageGroup, int deviceGroup, long timeInterval) {
-    if (dataPartitionTable.containsKey(storageGroup)) {
-      if (dataPartitionTable.get(storageGroup).containsKey(deviceGroup)) {
-        return dataPartitionTable.get(storageGroup).get(deviceGroup).get(timeInterval);
-      }
-    }
-    return null;
-  }
-
-  public void createDataRegion(int dataRegionGroup, List<Integer> dataNodeList) {
-    dataRegionDataNodesMap.put(dataRegionGroup, dataNodeList);
-  }
-
-  public List<Integer> getDataRegionLocation(int dataRegionGroup) {
-    return dataRegionDataNodesMap.get(dataRegionGroup);
-  }
-
-  public void updateDataPartitionRule(
-      String StorageGroup, int deviceGroup, DataPartitionRule rule) {
-    // TODO: Data partition policy by @YongzaoDan
+  public void setDataPartitionMap(
+      Map<String, Map<Integer, Map<TimePartitionId, List<DataRegionReplicaSet>>>>
+          dataPartitionMap) {
+    this.dataPartitionMap = dataPartitionMap;
   }
 }

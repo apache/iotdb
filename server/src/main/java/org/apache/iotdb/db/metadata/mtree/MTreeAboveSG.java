@@ -38,7 +38,6 @@ import org.apache.iotdb.db.metadata.mtree.store.MemMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MNodeAboveSGCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.StorageGroupCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.CounterTraverser;
-import org.apache.iotdb.db.metadata.mtree.traverser.counter.MNodeAboveSGLevelCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.StorageGroupCounter;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -422,22 +421,14 @@ public class MTreeAboveSG {
   }
 
   /**
-   * Get the count of nodes in the given level matching the given path. If using prefix match, the
-   * path pattern is used to match prefix path. All timeseries start with the matched prefix path
-   * will be counted.
+   * Get all paths of nodes in the given level matching the given path. If using prefix match, the
+   * path pattern is used to match prefix path.
    */
-  public Pair<Integer, Set<PartialPath>> getNodesCountInGivenLevel(
-      PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException {
-    MNodeAboveSGLevelCounter counter =
-        new MNodeAboveSGLevelCounter(root, pathPattern, store, level);
-    counter.setPrefixMatch(isPrefixMatch);
-    counter.traverse();
-    return new Pair<>(counter.getCount(), counter.getInvolvedStorageGroupMNodes());
-  }
-
-  /** Get all paths from root to the given level */
   public Pair<List<PartialPath>, Set<PartialPath>> getNodesListInGivenLevel(
-      PartialPath pathPattern, int nodeLevel, LocalSchemaProcessor.StorageGroupFilter filter)
+      PartialPath pathPattern,
+      int nodeLevel,
+      boolean isPrefixMatch,
+      LocalSchemaProcessor.StorageGroupFilter filter)
       throws MetadataException {
     MNodeAboveSGCollector<List<PartialPath>> collector =
         new MNodeAboveSGCollector<List<PartialPath>>(root, pathPattern, store) {
@@ -448,6 +439,7 @@ public class MTreeAboveSG {
         };
     collector.setResultSet(new LinkedList<>());
     collector.setTargetLevel(nodeLevel);
+    collector.setPrefixMatch(isPrefixMatch);
     collector.setStorageGroupFilter(filter);
     collector.traverse();
 

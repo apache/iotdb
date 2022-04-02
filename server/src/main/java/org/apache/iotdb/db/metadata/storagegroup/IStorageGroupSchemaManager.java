@@ -159,21 +159,21 @@ public interface IStorageGroupSchemaManager {
   boolean isStorageGroupAlreadySet(PartialPath path);
 
   /**
-   * To calculate the count of nodes in the given level for given path pattern. If using prefix
-   * match, the path pattern is used to match prefix path. All nodes start with the matched prefix
-   * path will be counted. This method only count in nodes above storage group. Nodes below storage
-   * group, including storage group node will be counted by certain Storage Group. The involved
-   * storage groups will be collected to count nodes below storage group.
+   * To collect nodes in the given level for given path pattern. If using prefix match, the path
+   * pattern is used to match prefix path. All nodes start with the matched prefix path will be
+   * collected. This method only count in nodes above storage group. Nodes below storage group,
+   * including storage group node will be collected by certain SchemaRegion. The involved storage
+   * groups will be collected to fetch schemaRegion.
    *
    * @param pathPattern a path pattern or a full path
-   * @param level the level should match the level of the path
+   * @param nodeLevel the level should match the level of the path
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
    */
-  Pair<Integer, Set<PartialPath>> getNodesCountInGivenLevel(
-      PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException;
-
   Pair<List<PartialPath>, Set<PartialPath>> getNodesListInGivenLevel(
-      PartialPath pathPattern, int nodeLevel, LocalSchemaProcessor.StorageGroupFilter filter)
+      PartialPath pathPattern,
+      int nodeLevel,
+      boolean isPrefixMatch,
+      LocalSchemaProcessor.StorageGroupFilter filter)
       throws MetadataException;
 
   /**

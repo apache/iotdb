@@ -168,4 +168,9 @@ public class StandAloneConsensus implements IConsensus {
   public ConsensusGenericResponse triggerSnapshot(ConsensusGroupId groupId) {
     return ConsensusGenericResponse.newBuilder().setSuccess(false).build();
   }
+
+  @Override
+  public boolean isLeader(ConsensusGroupId groupId) {
+    return true;
+  }
 }

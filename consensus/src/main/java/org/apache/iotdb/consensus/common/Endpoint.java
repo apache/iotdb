@@ -19,13 +19,16 @@
 
 package org.apache.iotdb.consensus.common;
 
+import java.nio.ByteBuffer;
 import java.util.Objects;
 
 // TODO Use a mature IDL framework such as Protobuf to manage this structure
 public class Endpoint {
 
-  private final String ip;
-  private final int port;
+  private String ip;
+  private int port;
+
+  public Endpoint() {}
 
   public Endpoint(String ip, int port) {
     this.ip = ip;
@@ -38,6 +41,23 @@ public class Endpoint {
 
   public int getPort() {
     return port;
+  }
+
+  public void serializeImpl(ByteBuffer buffer) {
+    byte[] bytes = ip.getBytes();
+    buffer.putInt(bytes.length);
+    buffer.put(bytes);
+
+    buffer.putInt(port);
+  }
+
+  public void deserializeImpl(ByteBuffer buffer) {
+    int length = buffer.getInt();
+    byte[] bytes = new byte[length];
+    buffer.get(bytes, 0, length);
+    ip = new String(bytes, 0, length);
+
+    port = buffer.getInt();
   }
 
   @Override
