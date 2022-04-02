@@ -19,13 +19,32 @@
 
 package org.apache.iotdb.metrics.micrometer.reporter;
 
-import io.micrometer.jmx.JmxConfig;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 
-public interface IoTDBJmxConfig extends JmxConfig {
-  IoTDBJmxConfig DEFAULT = k -> null;
+import io.micrometer.core.instrument.step.StepRegistryConfig;
+
+import java.time.Duration;
+
+public interface IoTDBRegistryConfig extends StepRegistryConfig {
+  IoTDBRegistryConfig DEFAULT =
+      new IoTDBRegistryConfig() {
+        @Override
+        public String get(String key) {
+          return null;
+        }
+
+        @Override
+        public Duration step() {
+          return Duration.ofSeconds(
+              MetricConfigDescriptor.getInstance()
+                  .getMetricConfig()
+                  .getIoTDBReporterConfig()
+                  .getPushPeriodInSecond());
+        }
+      };
 
   @Override
-  default String domain() {
-    return "org.apache.iotdb.metrics";
+  default String prefix() {
+    return "iotdb";
   }
 }

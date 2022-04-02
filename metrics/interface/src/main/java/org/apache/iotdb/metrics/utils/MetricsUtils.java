@@ -16,22 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metrics;
 
-import java.util.Collections;
-import java.util.HashMap;
+package org.apache.iotdb.metrics.utils;
+
+import org.apache.iotdb.metrics.config.MetricConfig;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+
 import java.util.Map;
 
-public class metricsUtils {
+public class MetricsUtils {
+  private static final MetricConfig metricConfig =
+      MetricConfigDescriptor.getInstance().getMetricConfig();
 
-  public static String generatePath(
-      String address, int rpcPort, String name, Map<String, String> labels) {
+  public static String generatePath(String name, Map<String, String> labels) {
     StringBuilder stringBuilder = new StringBuilder();
     stringBuilder
-        .append("root._metric.\"")
-        .append(address)
+        .append("root.")
+        .append(metricConfig.getIoTDBReporterConfig().getDatabase())
+        .append(".\"")
+        .append(metricConfig.getInstanceHost())
         .append(":")
-        .append(rpcPort)
+        .append(metricConfig.getInstancePort())
         .append("\"")
         .append(".")
         .append("\"")
@@ -47,15 +52,5 @@ public class metricsUtils {
           .append("\"");
     }
     return stringBuilder.toString();
-  }
-
-  public static Map<String, String> emptyMap() {
-    return Collections.emptyMap();
-  }
-
-  public static Map<String, String> mapOf(String key, String value) {
-    HashMap<String, String> result = new HashMap<>();
-    result.put(key, value);
-    return result;
   }
 }
