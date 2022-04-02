@@ -160,9 +160,13 @@ public class RegionInfoPersistence {
                                   .getEndPoint());
                         }
                       });
-              schemaRegionReplicaSet.setId(new ConsensusGroupId(GroupType.SchemaRegion, entity.getKey()));
+              schemaRegionReplicaSet.setId(
+                  new ConsensusGroupId(GroupType.SchemaRegion, entity.getKey()));
               // TODO: (xingtanzjr) We cannot get the dataNodeId here, use 0 as the placeholder
-              schemaRegionReplicaSet.setDataNodeList(endPoints.stream().map(endpoint -> new DataNodeLocation(0, endpoint)).collect(Collectors.toList()));
+              schemaRegionReplicaSet.setDataNodeList(
+                  endPoints.stream()
+                      .map(endpoint -> new DataNodeLocation(0, endpoint))
+                      .collect(Collectors.toList()));
               schemaRegionEndPoints.add(schemaRegionReplicaSet);
             });
     return schemaRegionEndPoints;

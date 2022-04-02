@@ -64,7 +64,10 @@ public class SchemaPartitionDataSet implements DataSet {
                             .getDataNodeList()
                             .forEach(
                                 dataNode -> {
-                                  TEndpoint endPoint = new TEndpoint(dataNode.getEndPoint().getIp(), dataNode.getEndPoint().getPort());
+                                  TEndpoint endPoint =
+                                      new TEndpoint(
+                                          dataNode.getEndPoint().getIp(),
+                                          dataNode.getEndPoint().getPort());
                                   endPoints.add(endPoint);
                                 });
                         regionReplicaSet.setEndpoint(endPoints);

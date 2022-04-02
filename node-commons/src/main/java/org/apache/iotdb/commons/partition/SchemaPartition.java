@@ -28,6 +28,10 @@ public class SchemaPartition {
   // Map<StorageGroup, Map<DeviceGroupID, SchemaRegionPlaceInfo>>
   private Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> schemaPartition;
 
+  public SchemaPartition() {
+    schemaPartition = new HashMap<>();
+  }
+
   public Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> getSchemaPartition() {
     return schemaPartition;
   }
@@ -43,9 +47,13 @@ public class SchemaPartition {
     Map<SeriesPartitionSlot, RegionReplicaSet> deviceGroupMap = new HashMap<>();
     deviceGroupIDs.forEach(
         deviceGroupID -> {
-          if (schemaPartition.get(storageGroup) != null && schemaPartition.get(storageGroup).containsKey(new SeriesPartitionSlot(deviceGroupID))) {
+          if (schemaPartition.get(storageGroup) != null
+              && schemaPartition
+                  .get(storageGroup)
+                  .containsKey(new SeriesPartitionSlot(deviceGroupID))) {
             deviceGroupMap.put(
-                new SeriesPartitionSlot(deviceGroupID), schemaPartition.get(storageGroup).get(new SeriesPartitionSlot(deviceGroupID)));
+                new SeriesPartitionSlot(deviceGroupID),
+                schemaPartition.get(storageGroup).get(new SeriesPartitionSlot(deviceGroupID)));
           }
         });
     storageGroupMap.put(storageGroup, deviceGroupMap);
@@ -81,5 +89,4 @@ public class SchemaPartition {
         .computeIfAbsent(storageGroup, value -> new HashMap<>())
         .put(new SeriesPartitionSlot(deviceGroupId), regionReplicaSet);
   }
-
 }

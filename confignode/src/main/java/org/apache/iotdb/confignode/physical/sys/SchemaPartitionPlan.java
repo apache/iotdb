@@ -45,8 +45,7 @@ public class SchemaPartitionPlan extends PhysicalPlan {
     this.deviceGroupIDs = deviceGroupIDs;
   }
 
-  public void setDeviceGroupIdReplicaSet(
-      Map<Integer, RegionReplicaSet> deviceGroupIdReplicaSets) {
+  public void setDeviceGroupIdReplicaSet(Map<Integer, RegionReplicaSet> deviceGroupIdReplicaSets) {
     this.deviceGroupIdReplicaSets = deviceGroupIdReplicaSets;
   }
 

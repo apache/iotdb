@@ -28,9 +28,7 @@ public class ConsensusGroupId {
   private GroupType type;
   private int id;
 
-  public ConsensusGroupId() {
-
-  }
+  public ConsensusGroupId() {}
 
   public ConsensusGroupId(GroupType type, int id) {
     this.type = type;

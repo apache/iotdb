@@ -28,9 +28,7 @@ public class RegionReplicaSet {
   private ConsensusGroupId Id;
   private List<DataNodeLocation> dataNodeList;
 
-  public RegionReplicaSet() {
-
-  }
+  public RegionReplicaSet() {}
 
   public RegionReplicaSet(ConsensusGroupId Id, List<DataNodeLocation> dataNodeList) {
     this.Id = Id;

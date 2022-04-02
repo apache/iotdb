@@ -32,9 +32,7 @@ public class DataNodeLocation {
   private List<Integer> schemaRegionGroupIDs;
   private List<Integer> dataRegionGroupIDs;
 
-  public DataNodeLocation() {
-
-  }
+  public DataNodeLocation() {}
 
   public DataNodeLocation(int dataNodeID, Endpoint endPoint) {
     this.dataNodeID = dataNodeID;
@@ -101,5 +99,4 @@ public class DataNodeLocation {
   public String toString() {
     return String.format("DataNode[%d, %s]", dataNodeID, endPoint);
   }
-
 }
