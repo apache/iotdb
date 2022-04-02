@@ -40,6 +40,7 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.concurrent.NotThreadSafe;
 
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
@@ -57,7 +58,7 @@ public class DataDriver implements ExecFragmentInstance {
 
   private final Operator root;
   private final ISinkHandle sinkHandle;
-  private final DataDriverContext dataDriverContext;
+  private final DataDriverContext driverContext;
 
   private boolean init;
   private boolean closed;
@@ -69,10 +70,12 @@ public class DataDriver implements ExecFragmentInstance {
 
   private final AtomicReference<SettableFuture<Void>> driverBlockedFuture = new AtomicReference<>();
 
-  public DataDriver(Operator root, ISinkHandle sinkHandle, DataDriverContext dataDriverContext) {
+  public DataDriver(Operator root, ISinkHandle sinkHandle, DataDriverContext driverContext) {
     this.root = root;
     this.sinkHandle = sinkHandle;
-    this.dataDriverContext = dataDriverContext;
+    this.driverContext = driverContext;
+    this.closedFilePaths = new HashSet<>();
+    this.unClosedFilePaths = new HashSet<>();
     // initially the driverBlockedFuture is not blocked (it is completed)
     SettableFuture<Void> future = SettableFuture.create();
     future.set(null);
@@ -81,14 +84,17 @@ public class DataDriver implements ExecFragmentInstance {
 
   @Override
   public boolean isFinished() {
-    if (closed) {
-      return true;
-    }
     try {
-      return root != null && root.isFinished();
+      boolean isFinished =
+          closed || (driverBlockedFuture.get().isDone() && root != null && root.isFinished());
+      if (isFinished) {
+        driverContext.finish();
+      }
+      return isFinished;
     } catch (Throwable t) {
       logger.error(
-          "Failed to query whether the data driver {} is finished", dataDriverContext.getId(), t);
+          "Failed to query whether the data driver {} is finished", driverContext.getId(), t);
+      driverContext.failed(t);
       close();
       return true;
     }
@@ -105,9 +111,8 @@ public class DataDriver implements ExecFragmentInstance {
         initialize();
       } catch (Throwable t) {
         logger.error(
-            "Failed to do the initialization for fragment instance {} ",
-            dataDriverContext.getId(),
-            t);
+            "Failed to do the initialization for fragment instance {} ", driverContext.getId(), t);
+        driverContext.failed(t);
         close();
         return NOT_BLOCKED;
       }
@@ -130,7 +135,8 @@ public class DataDriver implements ExecFragmentInstance {
         }
       } while (System.nanoTime() - start < maxRuntime && !root.isFinished());
     } catch (Throwable t) {
-      logger.error("Failed to execute fragment instance {}", dataDriverContext.getId(), t);
+      logger.error("Failed to execute fragment instance {}", driverContext.getId(), t);
+      driverContext.failed(t);
       close();
     }
     return NOT_BLOCKED;
@@ -138,7 +144,7 @@ public class DataDriver implements ExecFragmentInstance {
 
   @Override
   public FragmentInstanceId getInfo() {
-    return dataDriverContext.getId();
+    return driverContext.getId();
   }
 
   @Override
@@ -159,7 +165,8 @@ public class DataDriver implements ExecFragmentInstance {
         sinkHandle.close();
       }
     } catch (Throwable t) {
-      logger.error("Failed to closed driver {}", dataDriverContext.getId(), t);
+      logger.error("Failed to closed driver {}", driverContext.getId(), t);
+      driverContext.failed(t);
     } finally {
       removeUsedFilesForQuery();
     }
@@ -170,7 +177,7 @@ public class DataDriver implements ExecFragmentInstance {
    * we should change all the blocked lock operation into tryLock
    */
   private void initialize() throws QueryProcessException {
-    List<SourceOperator> sourceOperators = dataDriverContext.getSourceOperators();
+    List<SourceOperator> sourceOperators = driverContext.getSourceOperators();
     if (sourceOperators != null && !sourceOperators.isEmpty()) {
       QueryDataSource dataSource = initQueryDataSourceCache();
       sourceOperators.forEach(
@@ -193,11 +200,11 @@ public class DataDriver implements ExecFragmentInstance {
    * QueryDataSource needed for this query
    */
   public QueryDataSource initQueryDataSourceCache() throws QueryProcessException {
-    VirtualStorageGroupProcessor dataRegion = dataDriverContext.getDataRegion();
+    VirtualStorageGroupProcessor dataRegion = driverContext.getDataRegion();
     dataRegion.readLock();
     try {
       List<PartialPath> pathList =
-          dataDriverContext.getPaths().stream()
+          driverContext.getPaths().stream()
               .map(IDTable::translateQueryPath)
               .collect(Collectors.toList());
       // when all the selected series are under the same device, the QueryDataSource will be
@@ -209,8 +216,8 @@ public class DataDriver implements ExecFragmentInstance {
           dataRegion.query(
               pathList,
               selectedDeviceIdSet.size() == 1 ? selectedDeviceIdSet.iterator().next() : null,
-              dataDriverContext.getFragmentInstanceContext(),
-              dataDriverContext.getTimeFilter());
+              driverContext.getFragmentInstanceContext(),
+              driverContext.getTimeFilter());
 
       // used files should be added before mergeLock is unlocked, or they may be deleted by
       // running merge
@@ -218,7 +225,7 @@ public class DataDriver implements ExecFragmentInstance {
 
       return dataSource;
     } finally {
-      dataDriverContext.getDataRegion().readUnlock();
+      dataRegion.readUnlock();
     }
   }
 

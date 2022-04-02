@@ -25,12 +25,13 @@ import org.apache.iotdb.db.query.context.QueryContext;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
 public class FragmentInstanceContext extends QueryContext {
 
-  private FragmentInstanceId id;
+  private final FragmentInstanceId id;
 
   // TODO if we split one fragment instance into multiple pipelines to run, we need to replace it
   // with CopyOnWriteArrayList or some other thread safe data structure
@@ -38,6 +39,9 @@ public class FragmentInstanceContext extends QueryContext {
   private final long createNanos = System.nanoTime();
 
   private DriverContext driverContext;
+
+  // TODO we may use StateMachine<FragmentInstanceState> to replace it
+  private final AtomicReference<FragmentInstanceState> state;
 
   //    private final GcMonitor gcMonitor;
   //    private final AtomicLong startNanos = new AtomicLong();
@@ -47,8 +51,10 @@ public class FragmentInstanceContext extends QueryContext {
   //    private final AtomicLong endFullGcCount = new AtomicLong(-1);
   //    private final AtomicLong endFullGcTimeNanos = new AtomicLong(-1);
 
-  public FragmentInstanceContext(FragmentInstanceId id) {
+  public FragmentInstanceContext(
+      FragmentInstanceId id, AtomicReference<FragmentInstanceState> state) {
     this.id = id;
+    this.state = state;
   }
 
   public OperatorContext addOperatorContext(
@@ -82,5 +88,24 @@ public class FragmentInstanceContext extends QueryContext {
 
   public void setDriverContext(DriverContext driverContext) {
     this.driverContext = driverContext;
+  }
+
+  public void failed(Throwable cause) {
+    state.set(FragmentInstanceState.FAILED);
+  }
+
+  public void cancel() {
+    state.set(FragmentInstanceState.CANCELED);
+  }
+
+  public void abort() {
+    state.set(FragmentInstanceState.ABORTED);
+  }
+
+  public void finish() {
+    if (state.get().isDone()) {
+      return;
+    }
+    state.set(FragmentInstanceState.FINISHED);
   }
 }

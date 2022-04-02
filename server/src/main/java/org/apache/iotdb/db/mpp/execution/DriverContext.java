@@ -35,4 +35,12 @@ public class DriverContext {
   public FragmentInstanceContext getFragmentInstanceContext() {
     return fragmentInstanceContext;
   }
+
+  public void failed(Throwable cause) {
+    fragmentInstanceContext.failed(cause);
+  }
+
+  public void finish() {
+    fragmentInstanceContext.finish();
+  }
 }

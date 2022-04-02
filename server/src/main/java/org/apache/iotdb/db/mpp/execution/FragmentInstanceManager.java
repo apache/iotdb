@@ -28,6 +28,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static java.util.Objects.requireNonNull;
 
@@ -55,8 +56,13 @@ public class FragmentInstanceManager {
         instanceExecution.computeIfAbsent(
             instanceId,
             id -> {
+              AtomicReference<FragmentInstanceState> state = new AtomicReference<>();
+              state.set(FragmentInstanceState.PLANNED);
+
               FragmentInstanceContext context =
-                  instanceContext.computeIfAbsent(instanceId, FragmentInstanceContext::new);
+                  instanceContext.computeIfAbsent(
+                      instanceId,
+                      fragmentInstanceId -> new FragmentInstanceContext(fragmentInstanceId, state));
 
               DataDriver driver =
                   planner.plan(
@@ -64,7 +70,7 @@ public class FragmentInstanceManager {
                       context,
                       instance.getTimeFilter(),
                       dataRegion);
-              return new FragmentInstanceExecution(scheduler, instanceId, context, driver);
+              return new FragmentInstanceExecution(scheduler, instanceId, context, driver, state);
             });
 
     return execution.getInstanceInfo();
@@ -78,12 +84,17 @@ public class FragmentInstanceManager {
         instanceExecution.computeIfAbsent(
             instanceId,
             id -> {
+              AtomicReference<FragmentInstanceState> state = new AtomicReference<>();
+              state.set(FragmentInstanceState.PLANNED);
+
               FragmentInstanceContext context =
-                  instanceContext.computeIfAbsent(instanceId, FragmentInstanceContext::new);
+                  instanceContext.computeIfAbsent(
+                      instanceId,
+                      fragmentInstanceId -> new FragmentInstanceContext(fragmentInstanceId, state));
 
               SchemaDriver driver =
                   planner.plan(instance.getFragment().getRoot(), context, schemaRegion);
-              return new FragmentInstanceExecution(scheduler, instanceId, context, driver);
+              return new FragmentInstanceExecution(scheduler, instanceId, context, driver, state);
             });
 
     return execution.getInstanceInfo();

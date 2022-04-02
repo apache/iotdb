@@ -27,6 +27,7 @@ import java.io.IOException;
 import static com.google.common.util.concurrent.Futures.immediateVoidFuture;
 
 public interface Operator extends AutoCloseable {
+
   ListenableFuture<Void> NOT_BLOCKED = immediateVoidFuture();
 
   OperatorContext getOperatorContext();

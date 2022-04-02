@@ -27,6 +27,7 @@ import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.FragmentInstanceContext;
+import org.apache.iotdb.db.mpp.execution.FragmentInstanceState;
 import org.apache.iotdb.db.mpp.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderTestUtil;
@@ -45,6 +46,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -77,9 +79,11 @@ public class SeriesScanOperatorTest {
       Set<String> allSensors = new HashSet<>();
       allSensors.add("sensor0");
       QueryId queryId = new QueryId("stub_query");
+      AtomicReference<FragmentInstanceState> state =
+          new AtomicReference<>(FragmentInstanceState.RUNNING);
       FragmentInstanceContext fragmentInstanceContext =
           new FragmentInstanceContext(
-              new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance"));
+              new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance"), state);
       fragmentInstanceContext.addOperatorContext(
           1, new PlanNodeId("1"), SeriesScanOperator.class.getSimpleName());
       SeriesScanOperator seriesScanOperator =

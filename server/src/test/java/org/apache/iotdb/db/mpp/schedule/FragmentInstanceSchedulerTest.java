@@ -36,7 +36,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-public class FragmentInstanceManagerTest {
+public class FragmentInstanceSchedulerTest {
 
   private final FragmentInstanceScheduler manager = FragmentInstanceScheduler.getInstance();
 

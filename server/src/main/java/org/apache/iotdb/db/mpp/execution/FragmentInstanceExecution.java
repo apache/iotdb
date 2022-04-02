@@ -23,6 +23,8 @@ import org.apache.iotdb.db.mpp.schedule.IFragmentInstanceScheduler;
 
 import com.google.common.collect.ImmutableList;
 
+import java.util.concurrent.atomic.AtomicReference;
+
 import static java.util.Objects.requireNonNull;
 
 public class FragmentInstanceExecution {
@@ -34,7 +36,8 @@ public class FragmentInstanceExecution {
 
   private final ExecFragmentInstance driver;
 
-  private FragmentInstanceState state;
+  // TODO we may use StateMachine<FragmentInstanceState> to replace it
+  private final AtomicReference<FragmentInstanceState> state;
 
   private long lastHeartbeat;
 
@@ -42,11 +45,14 @@ public class FragmentInstanceExecution {
       IFragmentInstanceScheduler scheduler,
       FragmentInstanceId instanceId,
       FragmentInstanceContext context,
-      ExecFragmentInstance driver) {
+      ExecFragmentInstance driver,
+      AtomicReference<FragmentInstanceState> state) {
     this.scheduler = scheduler;
     this.instanceId = instanceId;
     this.context = context;
     this.driver = driver;
+    this.state = state;
+    state.set(FragmentInstanceState.RUNNING);
     scheduler.submitFragmentInstances(instanceId.getQueryId(), ImmutableList.of(driver));
   }
 
@@ -59,27 +65,23 @@ public class FragmentInstanceExecution {
   }
 
   public FragmentInstanceState getInstanceState() {
-    return state;
-  }
-
-  public void setState(FragmentInstanceState state) {
-    this.state = state;
+    return state.get();
   }
 
   public FragmentInstanceInfo getInstanceInfo() {
-    return new FragmentInstanceInfo(state);
+    return new FragmentInstanceInfo(state.get());
   }
 
   public void failed(Throwable cause) {
     requireNonNull(cause, "cause is null");
-    // TODO
+    context.failed(cause);
   }
 
   public void cancel() {
-    // TODO
+    context.cancel();
   }
 
   public void abort() {
-    // TODO
+    context.abort();
   }
 }

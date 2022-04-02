@@ -62,10 +62,15 @@ public class SchemaDriver implements ExecFragmentInstance {
   @Override
   public boolean isFinished() {
     try {
-      return root != null && root.isFinished();
+      boolean isFinished = driverBlockedFuture.get().isDone() && root != null && root.isFinished();
+      if (isFinished) {
+        driverContext.finish();
+      }
+      return isFinished;
     } catch (Throwable t) {
       logger.error(
           "Failed to query whether the schema driver {} is finished", driverContext.getId(), t);
+      driverContext.failed(t);
       return true;
     }
   }
@@ -90,6 +95,7 @@ public class SchemaDriver implements ExecFragmentInstance {
       } while (System.nanoTime() - start < maxRuntime && !root.isFinished());
     } catch (Throwable t) {
       logger.error("Failed to execute fragment instance {}", driverContext.getId(), t);
+      driverContext.failed(t);
       close();
     }
     return NOT_BLOCKED;
