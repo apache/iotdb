@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.consensus.common.ConsensusType;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionPriority;
 import org.apache.iotdb.db.engine.compaction.cross.CrossCompactionStrategy;
@@ -825,6 +826,14 @@ public class IoTDBConfig {
 
   /** The max time of data node waiting to join into the cluster */
   private long joinClusterTimeOutMs = TimeUnit.SECONDS.toMillis(60);
+
+  // TODO Temporarily put it in the iotdb-engine.properties, later move to cluster properties
+  /** DataNode consensus protocal */
+  private ConsensusType consensusType = ConsensusType.STANDALONE;
+
+  /** Consensus directory, storage consensus protocol logs */
+  private String consensusDir =
+      DEFAULT_BASE_DIR + File.separator + IoTDBConstant.CONSENSUS_FOLDER_NAME;
 
   public IoTDBConfig() {
     try {
@@ -2585,5 +2594,21 @@ public class IoTDBConfig {
 
   public void setJoinClusterTimeOutMs(long joinClusterTimeOutMs) {
     this.joinClusterTimeOutMs = joinClusterTimeOutMs;
+  }
+
+  public ConsensusType getConsensusType() {
+    return consensusType;
+  }
+
+  public void setConsensusType(ConsensusType consensusType) {
+    this.consensusType = consensusType;
+  }
+
+  public String getConsensusDir() {
+    return consensusDir;
+  }
+
+  public void setConsensusDir(String consensusDir) {
+    this.consensusDir = consensusDir;
   }
 }

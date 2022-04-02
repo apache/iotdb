@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.consensus.common;
 
+import java.nio.ByteBuffer;
 import java.util.Objects;
 
 // TODO Use a mature IDL framework such as Protobuf to manage this structure
@@ -60,5 +61,14 @@ public class ConsensusGroupId {
   @Override
   public String toString() {
     return "ConsensusGroupId{" + "type=" + type + ", id=" + id + '}';
+  }
+
+  public void serialize(ByteBuffer byteBuffer) {
+    byteBuffer.putInt(type.ordinal());
+    byteBuffer.putLong(id);
+  }
+
+  public static ConsensusGroupId deserialize(ByteBuffer byteBuffer) {
+    return new ConsensusGroupId(GroupType.values()[byteBuffer.getInt()], byteBuffer.getLong());
   }
 }

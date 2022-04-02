@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node;
 
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+
 import org.apache.commons.lang.Validate;
 
 import java.nio.ByteBuffer;
@@ -77,4 +79,8 @@ public abstract class PlanNode {
   }
 
   public abstract void serialize(ByteBuffer byteBuffer);
+
+  public PhysicalPlan transferToPhysicalPlan() {
+    return null;
+  }
 }

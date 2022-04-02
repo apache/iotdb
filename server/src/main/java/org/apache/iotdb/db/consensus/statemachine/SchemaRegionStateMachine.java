@@ -19,8 +19,16 @@
 
 package org.apache.iotdb.db.consensus.statemachine;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.consensus.common.DataSet;
+import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.qp.executor.PlanExecutor;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
@@ -31,6 +39,20 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
 
   private static final Logger logger = LoggerFactory.getLogger(SchemaRegionStateMachine.class);
 
+  private PlanExecutor executor;
+
+  public SchemaRegionStateMachine() {
+    try {
+      executor = new PlanExecutor();
+    } catch (QueryProcessException e) {
+      if (e.getErrorCode() != TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()) {
+        logger.debug("Meet error while processing non-query.", e);
+      } else {
+        logger.warn("Meet error while processing non-query. ", e);
+      }
+    }
+  }
+
   @Override
   public void start() {}
 
@@ -40,7 +62,26 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
   @Override
   protected TSStatus write(FragmentInstance fragmentInstance) {
     logger.info("Execute write plan in SchemaRegionStateMachine : {}", fragmentInstance);
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    // Take create Timeseries as an example
+    PlanNode planNode = fragmentInstance.getFragment().getRoot();
+    // TODO transfer to physicalplan as a tentative plan
+    PhysicalPlan physicalPlan = planNode.transferToPhysicalPlan();
+    return write(physicalPlan);
+  }
+
+  protected TSStatus write(PhysicalPlan plan) {
+    boolean isSuccessful;
+    try {
+      isSuccessful = executor.processNonQuery(plan);
+    } catch (QueryProcessException e) {
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    } catch (StorageEngineException | MetadataException e) {
+      logger.error("{}: server Internal Error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
+      return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+    }
+    return isSuccessful
+        ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully")
+        : RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
   }
 
   @Override

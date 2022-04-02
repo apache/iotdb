@@ -18,13 +18,13 @@
  */
 package org.apache.iotdb.commons.partition;
 
-import org.apache.iotdb.service.rpc.thrift.EndPoint;
+import org.apache.iotdb.consensus.common.Endpoint;
 
 import java.util.List;
 
 public class SchemaRegionReplicaSet {
   private SchemaRegionId schemaRegionId;
-  private List<EndPoint> endPointList;
+  private List<Endpoint> endPointList;
 
   public SchemaRegionId getSchemaRegionId() {
     return schemaRegionId;
@@ -34,11 +34,11 @@ public class SchemaRegionReplicaSet {
     this.schemaRegionId = schemaRegionId;
   }
 
-  public List<EndPoint> getEndPointList() {
+  public List<Endpoint> getEndPointList() {
     return endPointList;
   }
 
-  public void setEndPointList(List<EndPoint> endPointList) {
+  public void setEndPointList(List<Endpoint> endPointList) {
     this.endPointList = endPointList;
   }
 }

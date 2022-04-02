@@ -18,13 +18,18 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write;
 
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
 import java.util.List;
@@ -161,10 +166,110 @@ public class CreateTimeSeriesNode extends PlanNode {
     return null;
   }
 
-  public static CreateTimeSeriesNode deserialize(ByteBuffer byteBuffer) {
-    return null;
+  @Override
+  public PhysicalPlan transferToPhysicalPlan() {
+    return new CreateTimeSeriesPlan(
+        getPath(),
+        getDataType(),
+        getEncoding(),
+        getCompressor(),
+        getProps(),
+        getTags(),
+        getAttributes(),
+        getAlias());
+  }
+
+  public static CreateTimeSeriesNode deserialize(ByteBuffer byteBuffer)
+      throws IllegalPathException {
+    String id;
+    PartialPath path = null;
+    TSDataType dataType;
+    TSEncoding encoding;
+    CompressionType compressor;
+    long tagOffset;
+    String alias = null;
+    Map<String, String> props = null;
+    Map<String, String> tags = null;
+    Map<String, String> attributes = null;
+
+    id = ReadWriteIOUtils.readString(byteBuffer);
+    int length = byteBuffer.getInt();
+    byte[] bytes = new byte[length];
+    byteBuffer.get(bytes);
+    path = new PartialPath(new String(bytes));
+    dataType = TSDataType.values()[byteBuffer.get()];
+    encoding = TSEncoding.values()[byteBuffer.get()];
+    compressor = CompressionType.values()[byteBuffer.get()];
+    tagOffset = byteBuffer.getLong();
+
+    // alias
+    if (byteBuffer.get() == 1) {
+      alias = ReadWriteIOUtils.readString(byteBuffer);
+    }
+
+    // props
+    if (byteBuffer.get() == 1) {
+      props = ReadWriteIOUtils.readMap(byteBuffer);
+    }
+
+    // tags
+    if (byteBuffer.get() == 1) {
+      tags = ReadWriteIOUtils.readMap(byteBuffer);
+    }
+
+    // attributes
+    if (byteBuffer.get() == 1) {
+      attributes = ReadWriteIOUtils.readMap(byteBuffer);
+    }
+    return new CreateTimeSeriesNode(
+        new PlanNodeId(id), path, dataType, encoding, compressor, props, tags, attributes, alias);
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {}
+  public void serialize(ByteBuffer byteBuffer) {
+    byteBuffer.putShort((short) PlanNodeType.CREATE_TIME_SERIES.ordinal());
+    ReadWriteIOUtils.write(this.getId().getId(), byteBuffer);
+    byte[] bytes = path.getFullPath().getBytes();
+    byteBuffer.putInt(bytes.length);
+    byteBuffer.put(bytes);
+    byteBuffer.put((byte) dataType.ordinal());
+    byteBuffer.put((byte) encoding.ordinal());
+    byteBuffer.put((byte) compressor.ordinal());
+    byteBuffer.putLong(tagOffset);
+
+    // alias
+    if (alias != null) {
+      byteBuffer.put((byte) 1);
+      ReadWriteIOUtils.write(alias, byteBuffer);
+    } else {
+      byteBuffer.put((byte) 0);
+    }
+
+    // props
+    if (props != null && !props.isEmpty()) {
+      byteBuffer.put((byte) 1);
+      ReadWriteIOUtils.write(props, byteBuffer);
+    } else {
+      byteBuffer.put((byte) 0);
+    }
+
+    // tags
+    if (tags != null && !tags.isEmpty()) {
+      byteBuffer.put((byte) 1);
+      ReadWriteIOUtils.write(tags, byteBuffer);
+    } else {
+      byteBuffer.put((byte) 0);
+    }
+
+    // attributes
+    if (attributes != null && !attributes.isEmpty()) {
+      byteBuffer.put((byte) 1);
+      ReadWriteIOUtils.write(attributes, byteBuffer);
+    } else {
+      byteBuffer.put((byte) 0);
+    }
+
+    // no children node, need to set 0
+    byteBuffer.putInt(0);
+  }
 }

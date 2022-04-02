@@ -142,6 +142,7 @@ public class IoTDBConstant {
   public static final String UNSEQUENCE_FLODER_NAME = "unsequence";
   public static final String FILE_NAME_SEPARATOR = "-";
   public static final String UPGRADE_FOLDER_NAME = "upgrade";
+  public static final String CONSENSUS_FOLDER_NAME = "consensus";
 
   // system folder name
   public static final String SYSTEM_FOLDER_NAME = "system";

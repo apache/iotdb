@@ -23,6 +23,7 @@ import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.statemachine.IStateMachine;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
@@ -38,7 +39,8 @@ public abstract class BaseStateMachine implements IStateMachine {
   public TSStatus write(IConsensusRequest request) {
     try {
       return write(getFragmentInstance(request));
-    } catch (IllegalArgumentException e) {
+    } catch (IllegalArgumentException | IllegalPathException e) {
+      logger.error(e.getMessage());
       return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
   }
@@ -51,12 +53,16 @@ public abstract class BaseStateMachine implements IStateMachine {
       return read(getFragmentInstance(request));
     } catch (IllegalArgumentException e) {
       return null;
+    } catch (IllegalPathException e) {
+      logger.error(e.getMessage());
+      return null;
     }
   }
 
   protected abstract DataSet read(FragmentInstance fragmentInstance);
 
-  private FragmentInstance getFragmentInstance(IConsensusRequest request) {
+  private FragmentInstance getFragmentInstance(IConsensusRequest request)
+      throws IllegalPathException {
     FragmentInstance instance;
     if (request instanceof ByteBufferConsensusRequest) {
       instance =

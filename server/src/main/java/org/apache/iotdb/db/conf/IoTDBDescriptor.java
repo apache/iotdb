@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.consensus.common.ConsensusType;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionPriority;
@@ -1472,6 +1473,14 @@ public class IoTDBDescriptor {
     conf.setInternalPort(
         Integer.parseInt(
             properties.getProperty("internal_port", Integer.toString(conf.getInternalPort()))));
+
+    conf.setConsensusDir(
+        FilePathUtils.regularizePath(
+            properties.getProperty("consensus_dir", conf.getConsensusDir())));
+
+    conf.setConsensusType(
+        ConsensusType.getConsensusType(
+            properties.getProperty("consensus_type", String.valueOf(conf.getConsensusType()))));
   }
 
   /** Get default encode algorithm by data type */

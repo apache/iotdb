@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.service;
 
+import org.apache.iotdb.db.consensus.ConsensusLayerManager;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
 import org.apache.iotdb.mpp.rpc.thrift.InternalService;
 import org.apache.iotdb.mpp.rpc.thrift.SchemaFetchRequest;
 import org.apache.iotdb.mpp.rpc.thrift.SchemaFetchResponse;
@@ -30,10 +33,17 @@ import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceStateResp;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceResp;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import org.apache.thrift.TException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
 
 public class InternalServiceImpl implements InternalService.Iface {
+  private static final Logger LOGGER = LoggerFactory.getLogger(InternalServiceImpl.class);
 
   public InternalServiceImpl() {
     super();
@@ -42,7 +52,46 @@ public class InternalServiceImpl implements InternalService.Iface {
   @Override
   public TSendFragmentInstanceResp sendFragmentInstance(TSendFragmentInstanceReq req)
       throws TException {
-    return null;
+    TSendFragmentInstanceResp response = new TSendFragmentInstanceResp();
+    FragmentInstance fragmentInstance = null;
+    try {
+      fragmentInstance = FragmentInstance.deserializeFrom(req.fragmentInstance.body);
+    } catch (IllegalPathException e) {
+      LOGGER.error(e.getMessage());
+      response.setAccepted(false);
+      response.setMessage(e.getMessage());
+      return response;
+    }
+    ConsensusLayerManager consensusLayerManager;
+    try {
+      if (fragmentInstance.getRegionReplicaSet() != null) {
+        consensusLayerManager =
+            new ConsensusLayerManager(fragmentInstance.getConsensusGroupId().getType())
+                .setRegionReplicaSet(fragmentInstance.getRegionReplicaSet());
+      } else {
+        LOGGER.error("Unknown regions to write.");
+        response.setAccepted(false);
+        response.setMessage("Unknown regions to write.");
+        return response;
+      }
+    } catch (IOException e) {
+      LOGGER.error("IOException occurs. ", e);
+      response.setAccepted(false);
+      response.setMessage("IOException occurs. " + e.getMessage());
+      return response;
+    }
+    consensusLayerManager
+        .setConsensusGroupId(fragmentInstance.getConsensusGroupId())
+        .addConsensusGroup();
+    TSStatus status = consensusLayerManager.write(fragmentInstance).getStatus();
+    // TODO need consider more status
+    if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == status.getCode()) {
+      response.setAccepted(true);
+    } else {
+      response.setAccepted(false);
+    }
+    response.setMessage(status.message);
+    return response;
   }
 
   @Override

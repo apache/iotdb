@@ -19,14 +19,15 @@
 package org.apache.iotdb.db.mpp.sql.planner.plan;
 
 import org.apache.iotdb.commons.partition.DataRegionReplicaSet;
+import org.apache.iotdb.commons.partition.RegionReplicaSet;
+import org.apache.iotdb.consensus.common.ConsensusGroupId;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.sink.FragmentSinkNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 
 import java.nio.ByteBuffer;
@@ -36,15 +37,25 @@ public class FragmentInstance implements IConsensusRequest {
 
   // The reference of PlanFragment which this instance is generated from
   private PlanFragment fragment;
+
+  // The Region where the FragmentInstance should run
+  private RegionReplicaSet regionReplicaSet;
+
   // The DataRegion where the FragmentInstance should run
   private DataRegionReplicaSet dataRegion;
+
   private EndPoint hostEndpoint;
+
+  private ConsensusGroupId consensusGroupId;
+
+  private int index;
 
   // We can add some more params for a specific FragmentInstance
   // So that we can make different FragmentInstance owns different data range.
 
   public FragmentInstance(PlanFragment fragment, int index) {
     this.fragment = fragment;
+    this.index = index;
     this.id = generateId(fragment.getId(), index);
   }
 
@@ -58,6 +69,23 @@ public class FragmentInstance implements IConsensusRequest {
 
   public void setDataRegionId(DataRegionReplicaSet dataRegion) {
     this.dataRegion = dataRegion;
+  }
+
+  public ConsensusGroupId getConsensusGroupId() {
+    return consensusGroupId;
+  }
+
+  public void setConsensusGroupId(ConsensusGroupId consensusGroupId) {
+    this.consensusGroupId = consensusGroupId;
+  }
+
+  public RegionReplicaSet getRegionReplicaSet() {
+    return regionReplicaSet;
+  }
+
+  public void setRegionReplicaSet(RegionReplicaSet regionReplicaSet) {
+    this.regionReplicaSet = regionReplicaSet;
+    this.consensusGroupId = regionReplicaSet.getConsensusGroupId();
   }
 
   public EndPoint getHostEndpoint() {
@@ -92,22 +120,30 @@ public class FragmentInstance implements IConsensusRequest {
     ret.append(
         String.format(
             "FragmentInstance-%s:[Host: %s/%s]\n",
-            getId(), getHostEndpoint().getIp(), getDataRegionId().getId()));
+            getId(), getHostEndpoint().getIp(), getConsensusGroupId()));
     ret.append("---- Plan Node Tree ----\n");
     ret.append(PlanNodeUtil.nodeToString(getFragment().getRoot()));
     return ret.toString();
   }
 
   /** TODO need to be implemented */
-  public static FragmentInstance deserializeFrom(ByteBuffer buffer) {
-    return new FragmentInstance(
-        new PlanFragment(
-            new PlanFragmentId("null", -1), new InsertTabletNode(new PlanNodeId("-1"))),
-        -1);
+  public static FragmentInstance deserializeFrom(ByteBuffer byteBuffer)
+      throws IllegalPathException {
+    FragmentInstance fragmentInstance =
+        new FragmentInstance(PlanFragment.deserialize(byteBuffer), byteBuffer.getInt());
+    fragmentInstance.setRegionReplicaSet(RegionReplicaSet.deserialize(byteBuffer));
+    return fragmentInstance;
   }
 
   @Override
-  public void serializeRequest(ByteBuffer buffer) {
-    // TODO serialize itself to a ByteBuffer
+  public void serializeRequest(ByteBuffer byteBuffer) {
+    // PlanFragment
+    fragment.serialize(byteBuffer);
+
+    // index
+    byteBuffer.putInt(index);
+
+    // RegionReplicaSet
+    regionReplicaSet.serialize(byteBuffer);
   }
 }
