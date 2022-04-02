@@ -93,25 +93,106 @@ public class SyncIT {
     receiverConnection.close();
   }
 
+  private void prepareSchema() throws Exception {
+    senderStatement.execute("set storage group to root.sg1");
+    senderStatement.execute("set storage group to root.sg2");
+    senderStatement.execute("create timeseries root.sg1.d1.s1 with datatype=int32, encoding=PLAIN");
+    senderStatement.execute("create timeseries root.sg1.d1.s2 with datatype=float, encoding=RLE");
+    senderStatement.execute("create timeseries root.sg1.d1.s3 with datatype=TEXT, encoding=PLAIN");
+    senderStatement.execute("create timeseries root.sg1.d2.s4 with datatype=int64, encoding=PLAIN");
+    senderStatement.execute("create timeseries root.sg2.d1.s0 with datatype=int32, encoding=PLAIN");
+    senderStatement.execute(
+        "create timeseries root.sg2.d2.s1 with datatype=boolean, encoding=PLAIN");
+  }
+
+  private void prepareIns1() throws Exception { // add one seq tsfile in sg1
+    senderStatement.execute(
+        "insert into root.sg1.d1(timestamp, s1, s2, s3) values(1, 1, 16.0, 'a')");
+    senderStatement.execute(
+        "insert into root.sg1.d1(timestamp, s1, s2, s3) values(2, 2, 25.16, 'b')");
+    senderStatement.execute(
+        "insert into root.sg1.d1(timestamp, s1, s2, s3) values(3, 3, 65.25, 'c')");
+    senderStatement.execute(
+        "insert into root.sg1.d1(timestamp, s1, s2, s3) values(16, 25, 100.0, 'd')");
+    senderStatement.execute("insert into root.sg1.d2(timestamp, s4) values(1, 1)");
+    senderStatement.execute("flush");
+  }
+
+  private void prepareIns2() throws Exception { // add one seq tsfile in sg1
+    senderStatement.execute(
+        "insert into root.sg1.d1(timestamp, s1, s2, s3) values(100, 65, 16.25, 'e')");
+    senderStatement.execute(
+        "insert into root.sg1.d1(timestamp, s1, s2, s3) values(65, 100, 25.0, 'f')");
+    senderStatement.execute("insert into root.sg1.d2(timestamp, s4) values(200, 100)");
+    senderStatement.execute("flush");
+  }
+
+  private void prepareIns3()
+      throws
+          Exception { // add one seq tsfile in sg1, one unseq tsfile in sg1, one seq tsfile in sg2
+    senderStatement.execute("insert into root.sg2.d1(timestamp, s0) values(100, 100)");
+    senderStatement.execute("insert into root.sg2.d1(timestamp, s0) values(65, 65)");
+    senderStatement.execute("insert into root.sg2.d2(timestamp, s1) values(1, true)");
+    senderStatement.execute(
+        "insert into root.sg1.d1(timestamp, s1, s2, s3) values(25, 16, 65.16, 'g')");
+    senderStatement.execute(
+        "insert into root.sg1.d1(timestamp, s1, s2, s3) values(200, 100, 16.65, 'h')");
+    senderStatement.execute("flush");
+  }
+
+  private void preparePipe() throws Exception {
+    receiverStatement.execute("start pipeserver");
+    senderStatement.execute(
+        "create pipesink my_iotdb as iotdb(ip='sync_iotdb-receiver_1',port=6670)");
+    senderStatement.execute("create pipe p to my_iotdb");
+  }
+
+  private void startPipe() throws Exception {
+    senderStatement.execute("start pipe p");
+  }
+
+  private void stopPipe() throws Exception {
+    senderStatement.execute("stop pipe p");
+  }
+
+  private void dropPipe() throws Exception {
+    senderStatement.execute("drop pipe p");
+  }
+
+  private void checkResult() throws Exception {
+    String[] columnNames =
+        new String[] {
+          "root.sg1.d1.s3",
+          "root.sg1.d1.s1",
+          "root.sg1.d1.s2",
+          "root.sg1.d2.s4",
+          "root.sg2.d1.s0",
+          "root.sg2.d2.s1"
+        };
+    String[] results =
+        new String[] {
+          "1,a,1,16.0,1,null,true",
+          "2,b,2,25.16,null,null,null",
+          "3,c,3,65.25,null,null,null",
+          "16,d,25,100.0,null,null,null",
+          "25,g,16,65.16,null,null,null",
+          "65,f,100,25.0,null,65,null",
+          "100,e,65,16.25,null,100,null",
+          "200,h,100,16.65,100,null,null"
+        };
+    checkResult(receiverStatement, "select ** from root", columnNames, results, true);
+  }
+
   @Test
   public void testCreatePipe() throws Exception {
-    receiverStatement.execute("start pipeserver");
-    checkResult(
-        receiverStatement,
-        "show pipeserver",
-        new String[] {"enable"},
-        new String[] {"true"},
-        false);
-    senderStatement.execute(
-        String.format("create pipesink my_iotdb as iotdb(ip='sync_iotdb-receiver_1',port=6670)"));
-    senderStatement.execute("create pipe p to my_iotdb");
+    preparePipe();
     checkResult(
         receiverStatement,
         "show pipe",
         new String[] {"name", "role", "status"},
         new String[] {"p,receiver,STOP"},
         false);
-    senderStatement.execute("drop pipe p");
+    dropPipe();
     checkResult(
         senderStatement,
         "show pipe",
@@ -120,7 +201,74 @@ public class SyncIT {
         false);
   }
 
-  public static void checkResult(
+  @Test
+  public void testHistoryInsert() {
+    try {
+      prepareSchema();
+      prepareIns1();
+      prepareIns2();
+      prepareIns3();
+      preparePipe();
+      startPipe();
+      // TODO: 模拟弱网环境，这里改为限时轮询
+      Thread.sleep(1000L);
+      checkResult();
+    } catch (Exception e) {
+      e.printStackTrace();
+      Assert.fail();
+    }
+  }
+
+  @Test
+  public void testHistoryAndRealTimeInsert() {
+    try {
+      prepareSchema();
+      prepareIns1();
+      prepareIns2();
+      preparePipe();
+      startPipe();
+      prepareIns3();
+      // TODO: 模拟弱网环境，这里改为限时轮询
+      Thread.sleep(1000L);
+      checkResult();
+    } catch (Exception e) {
+      e.printStackTrace();
+      Assert.fail();
+    }
+  }
+
+  @Test
+  public void testStopAndStart() {
+    try {
+      prepareSchema();
+      prepareIns1();
+      preparePipe();
+      startPipe();
+      prepareIns2();
+      stopPipe();
+      prepareIns3();
+      startPipe();
+      // TODO: 模拟弱网环境，这里改为限时轮询
+      Thread.sleep(1000L);
+      checkResult();
+    } catch (Exception e) {
+      e.printStackTrace();
+      Assert.fail();
+    }
+  }
+
+  /**
+   * Execute sql in IoTDB and compare resultSet with expected result. This method only check columns
+   * that is explicitly declared in columnNames.
+   *
+   * @param statement Statement of IoTDB.
+   * @param sql SQL to be executed.
+   * @param columnNames Columns to be compared with.
+   * @param retArray Expected result set. Order of columns is as same as columnNames.
+   * @param hasTimeColumn If result set contains time column (e.g. timeserires query), set
+   *     hasTimeColumn = true.
+   */
+  private static void checkResult(
       Statement statement,
       String sql,
       String[] columnNames,
@@ -135,9 +283,6 @@ public class SyncIT {
     for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
       map.put(resultSetMetaData.getColumnName(i), i);
     }
-    //      assertEquals(
-    //              hasTimeColumn ? columnNames.length + 1 : columnNames.length,
-    //              resultSetMetaData.getColumnCount());
     int cnt = 0;
     while (resultSet.next()) {
       StringBuilder builder = new StringBuilder();
