@@ -117,6 +117,10 @@ public abstract class AbstractInnerSpaceCompactionTask extends AbstractCompactio
 
   @Override
   public boolean checkValidAndSetMerging() {
+    if (!tsFileManager.isAllowCompaction()) {
+      return false;
+    }
+
     for (TsFileResource resource : selectedTsFileResourceList) {
       if (resource.isCompacting() | !resource.isClosed() || !resource.getTsFile().exists()) {
         return false;

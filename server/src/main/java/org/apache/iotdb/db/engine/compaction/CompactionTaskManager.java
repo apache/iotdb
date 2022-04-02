@@ -78,7 +78,7 @@ public class CompactionTaskManager implements IService {
   }
 
   @Override
-  public void start() {
+  public synchronized void start() {
     if (taskExecutionPool == null
         && IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread() > 0) {
       this.taskExecutionPool =
@@ -110,7 +110,7 @@ public class CompactionTaskManager implements IService {
   }
 
   @Override
-  public void stop() {
+  public synchronized void stop() {
     if (taskExecutionPool != null) {
       taskExecutionPool.shutdownNow();
       compactionTaskSubmissionThreadPool.shutdownNow();
@@ -122,7 +122,7 @@ public class CompactionTaskManager implements IService {
   }
 
   @Override
-  public void waitAndStop(long milliseconds) {
+  public synchronized void waitAndStop(long milliseconds) {
     if (taskExecutionPool != null) {
       awaitTermination(taskExecutionPool, milliseconds);
       awaitTermination(compactionTaskSubmissionThreadPool, milliseconds);
@@ -133,7 +133,7 @@ public class CompactionTaskManager implements IService {
   }
 
   @TestOnly
-  public void waitAllCompactionFinish() {
+  public synchronized void waitAllCompactionFinish() {
     long sleepingStartTime = 0;
     long MAX_WAITING_TIME = 120_000L;
     if (taskExecutionPool != null) {
@@ -159,7 +159,7 @@ public class CompactionTaskManager implements IService {
     }
   }
 
-  private void waitTermination() {
+  private synchronized void waitTermination() {
     long startTime = System.currentTimeMillis();
     while (!taskExecutionPool.isTerminated()) {
       int timeMillis = 0;
@@ -183,7 +183,7 @@ public class CompactionTaskManager implements IService {
     logger.info("CompactionManager stopped");
   }
 
-  private void awaitTermination(ExecutorService service, long milliseconds) {
+  private synchronized void awaitTermination(ExecutorService service, long milliseconds) {
     try {
       service.shutdown();
       service.awaitTermination(milliseconds, TimeUnit.MILLISECONDS);

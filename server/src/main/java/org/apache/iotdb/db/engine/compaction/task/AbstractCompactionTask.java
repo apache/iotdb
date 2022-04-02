@@ -107,4 +107,10 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
   public long getTimeCost() {
     return timeCost;
   }
+
+  protected void checkInterrupted() throws InterruptedException {
+    if (Thread.currentThread().isInterrupted()) {
+      throw new InterruptedException(String.format("%s [Compaction] abort", fullStorageGroupName));
+    }
+  }
 }
