@@ -85,7 +85,7 @@ public abstract class MNode implements IMNode {
   @Override
   public String getFullPath() {
     if (fullPath == null) {
-      fullPath = concatFullPath().intern();
+      fullPath = concatFullPath();
     }
     return fullPath;
   }

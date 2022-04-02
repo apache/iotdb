@@ -50,9 +50,8 @@ public class LRUCacheManager extends CacheManager {
 
   @Override
   protected void initCacheEntryForNode(IMNode node) {
-    LRUCacheEntry cacheEntry = new LRUCacheEntry();
+    LRUCacheEntry cacheEntry = new LRUCacheEntry(node);
     node.setCacheEntry(cacheEntry);
-    cacheEntry.setNode(node);
   }
 
   @Override
@@ -101,17 +100,23 @@ public class LRUCacheManager extends CacheManager {
   }
 
   private int getCacheListLoc(LRUCacheEntry lruCacheEntry) {
-    int hash = lruCacheEntry.getNode().getName().hashCode() % NUM_OF_LIST;
+    int hash = lruCacheEntry.hashCode() % NUM_OF_LIST;
     return hash < 0 ? hash + NUM_OF_LIST : hash;
   }
 
   private static class LRUCacheEntry extends CacheEntry {
 
+    // although the node instance may be replaced, the name and full path of the node won't be
+    // changed, which means the cacheEntry always map to only one logic node
     protected volatile IMNode node;
 
     private volatile LRUCacheEntry pre = null;
 
     private volatile LRUCacheEntry next = null;
+
+    public LRUCacheEntry(IMNode node) {
+      this.node = node;
+    }
 
     public IMNode getNode() {
       return node;
@@ -135,6 +140,11 @@ public class LRUCacheManager extends CacheManager {
 
     void setNext(LRUCacheEntry next) {
       this.next = next;
+    }
+
+    @Override
+    public int hashCode() {
+      return node.getName().hashCode();
     }
   }
 
