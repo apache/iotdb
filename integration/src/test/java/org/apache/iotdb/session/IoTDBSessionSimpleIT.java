@@ -476,7 +476,7 @@ public class IoTDBSessionSimpleIT {
 
   @Test
   public void testInsertTabletWithStringValues()
-          throws IoTDBConnectionException, StatementExecutionException {
+      throws IoTDBConnectionException, StatementExecutionException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
     List<MeasurementSchema> schemaList = new ArrayList<>();
@@ -498,9 +498,8 @@ public class IoTDBSessionSimpleIT {
       tablet.addValue(schemaList.get(2).getMeasurementId(), rowIndex, time);
       tablet.addValue(schemaList.get(3).getMeasurementId(), rowIndex, (int) time);
       tablet.addValue(schemaList.get(4).getMeasurementId(), rowIndex, time % 2 == 0);
-      tablet.addValue(schemaList.get(5).getMeasurementId(), rowIndex, new Binary("Text"+time));
-      tablet.addValue(schemaList.get(6).getMeasurementId(), rowIndex, "Text"+time);
-
+      tablet.addValue(schemaList.get(5).getMeasurementId(), rowIndex, new Binary("Text" + time));
+      tablet.addValue(schemaList.get(6).getMeasurementId(), rowIndex, "Text" + time);
     }
 
     if (tablet.rowSize != 0) {
