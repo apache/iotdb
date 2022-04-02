@@ -48,24 +48,23 @@ public class DataPartition {
         .collect(Collectors.toList());
   }
 
-  private SeriesPartitionSlot calculateDeviceGroupId(String deviceName) {
-  public List<DataRegionReplicaSet> getDataRegionReplicaSetForWriting(
-      String deviceName, List<TimePartitionId> timePartitionIdList) {
+  public List<RegionReplicaSet> getDataRegionReplicaSetForWriting(
+      String deviceName, List<TimePartitionSlot> timePartitionIdList) {
     // A list of data region replica sets will store data in a same time partition.
     // We will insert data to the last set in the list.
     // TODO return the latest dataRegionReplicaSet for each time partition
     return Collections.emptyList();
   }
 
-  public DataRegionReplicaSet getDataRegionReplicaSetForWriting(
-      String deviceName, TimePartitionId timePartitionIdList) {
+  public RegionReplicaSet getDataRegionReplicaSetForWriting(
+      String deviceName, TimePartitionSlot timePartitionIdList) {
     // A list of data region replica sets will store data in a same time partition.
     // We will insert data to the last set in the list.
     // TODO return the latest dataRegionReplicaSet for each time partition
     return null;
   }
 
-  private DeviceGroupId calculateDeviceGroupId(String deviceName) {
+  private SeriesPartitionSlot calculateDeviceGroupId(String deviceName) {
     // TODO: (xingtanzjr) implement the real algorithm for calculation of DeviceGroupId
     return new SeriesPartitionSlot(deviceName.length());
   }

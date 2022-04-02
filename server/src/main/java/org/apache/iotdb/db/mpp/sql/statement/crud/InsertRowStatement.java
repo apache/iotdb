@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.mpp.sql.statement.crud;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.partition.TimePartitionId;
+import org.apache.iotdb.commons.partition.TimePartitionSlot;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
@@ -175,8 +175,8 @@ public class InsertRowStatement extends InsertBaseStatement {
   }
 
   @Override
-  public List<TimePartitionId> getTimePartitionIds() {
-    return Collections.singletonList(StorageEngine.getTimePartitionId(time));
+  public List<TimePartitionSlot> getTimePartitionSlots() {
+    return Collections.singletonList(StorageEngine.getTimePartitionSlot(time));
   }
 
   public boolean checkDataType(SchemaTree schemaTree) {

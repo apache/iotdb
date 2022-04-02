@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.write;
 
-import org.apache.iotdb.commons.partition.DataRegionReplicaSet;
-import org.apache.iotdb.commons.partition.TimePartitionId;
+import org.apache.iotdb.commons.partition.RegionReplicaSet;
+import org.apache.iotdb.commons.partition.TimePartitionSlot;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
@@ -156,10 +156,10 @@ public class InsertTabletNode extends InsertNode {
         (times[0] / StorageEngine.getTimePartitionInterval())
             * StorageEngine.getTimePartitionInterval(); // included
     long endTime = startTime + StorageEngine.getTimePartitionInterval(); // excluded
-    TimePartitionId timePartitionId = StorageEngine.getTimePartitionId(times[0]);
+    TimePartitionSlot timePartitionSlot = StorageEngine.getTimePartitionSlot(times[0]);
     int startLoc = 0; // included
 
-    List<TimePartitionId> timePartitionIdList = new ArrayList<>();
+    List<TimePartitionSlot> timePartitionSlots = new ArrayList<>();
     // for each List in split, they are range1.start, range1.end, range2.start, range2.end, ...
     List<Integer> ranges = new ArrayList<>();
     for (int i = 1; i < times.length; i++) { // times are sorted in session API.
@@ -167,29 +167,29 @@ public class InsertTabletNode extends InsertNode {
         // a new range.
         ranges.add(startLoc); // included
         ranges.add(i); // excluded
-        timePartitionIdList.add(timePartitionId);
+        timePartitionSlots.add(timePartitionSlot);
         // next init
         startLoc = i;
         startTime = endTime;
         endTime =
             (times[i] / StorageEngine.getTimePartitionInterval() + 1)
                 * StorageEngine.getTimePartitionInterval();
-        timePartitionId = StorageEngine.getTimePartitionId(times[i]);
+        timePartitionSlot = StorageEngine.getTimePartitionSlot(times[i]);
       }
     }
 
     // the final range
     ranges.add(startLoc); // included
     ranges.add(times.length); // excluded
-    timePartitionIdList.add(timePartitionId);
+    timePartitionSlots.add(timePartitionSlot);
 
     // data region for each time partition
-    List<DataRegionReplicaSet> dataRegionReplicaSets =
+    List<RegionReplicaSet> dataRegionReplicaSets =
         analysis
             .getDataPartitionInfo()
-            .getDataRegionReplicaSetForWriting(devicePath.getFullPath(), timePartitionIdList);
+            .getDataRegionReplicaSetForWriting(devicePath.getFullPath(), timePartitionSlots);
 
-    Map<DataRegionReplicaSet, List<Integer>> splitMap = new HashMap<>();
+    Map<RegionReplicaSet, List<Integer>> splitMap = new HashMap<>();
     for (int i = 0; i < dataRegionReplicaSets.size(); i++) {
       List<Integer> sub_ranges =
           splitMap.computeIfAbsent(dataRegionReplicaSets.get(i), x -> new ArrayList<>());
@@ -198,7 +198,7 @@ public class InsertTabletNode extends InsertNode {
     }
 
     List<Integer> locs;
-    for (Map.Entry<DataRegionReplicaSet, List<Integer>> entry : splitMap.entrySet()) {
+    for (Map.Entry<RegionReplicaSet, List<Integer>> entry : splitMap.entrySet()) {
       // generate a new times and values
       locs = entry.getValue();
       int count = 0;

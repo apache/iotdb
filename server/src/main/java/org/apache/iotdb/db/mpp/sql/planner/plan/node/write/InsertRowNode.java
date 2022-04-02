@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.write;
 
-import org.apache.iotdb.commons.partition.TimePartitionId;
+import org.apache.iotdb.commons.partition.TimePartitionSlot;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
@@ -56,11 +56,11 @@ public class InsertRowNode extends InsertNode {
 
   @Override
   public List<InsertNode> splitByPartition(Analysis analysis) {
-    TimePartitionId timePartitionId = StorageEngine.getTimePartitionId(time);
+    TimePartitionSlot timePartitionSlot = StorageEngine.getTimePartitionSlot(time);
     this.dataRegionReplicaSet =
         analysis
             .getDataPartitionInfo()
-            .getDataRegionReplicaSetForWriting(devicePath.getFullPath(), timePartitionId);
+            .getDataRegionReplicaSetForWriting(devicePath.getFullPath(), timePartitionSlot);
     return Collections.singletonList(this);
   }
 

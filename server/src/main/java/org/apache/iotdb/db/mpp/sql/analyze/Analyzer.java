@@ -194,7 +194,8 @@ public class Analyzer {
     public Analysis visitInsertTablet(
         InsertTabletStatement insertTabletStatement, MPPQueryContext context) {
       DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
-      dataPartitionQueryParam.setTimePartitionIdList(insertTabletStatement.getTimePartitionIds());
+      dataPartitionQueryParam.setTimePartitionSlotList(
+          insertTabletStatement.getTimePartitionSlots());
       dataPartitionQueryParam.setDevicePath(insertTabletStatement.getDevicePath().getFullPath());
       PartitionInfo partitionInfo = partitionFetcher.fetchPartitionInfo(dataPartitionQueryParam);
 
@@ -224,7 +225,7 @@ public class Analyzer {
     public Analysis visitInsertRow(InsertRowStatement insertRowStatement, MPPQueryContext context) {
       DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
       dataPartitionQueryParam.setDevicePath(insertRowStatement.getDevicePath().getFullPath());
-      dataPartitionQueryParam.setTimePartitionIdList(insertRowStatement.getTimePartitionIds());
+      dataPartitionQueryParam.setTimePartitionSlotList(insertRowStatement.getTimePartitionSlots());
       PartitionInfo partitionInfo = partitionFetcher.fetchPartitionInfo(dataPartitionQueryParam);
 
       SchemaTree schemaTree =
