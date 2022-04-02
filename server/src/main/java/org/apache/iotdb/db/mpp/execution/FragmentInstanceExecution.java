@@ -34,7 +34,7 @@ public class FragmentInstanceExecution {
   private final FragmentInstanceId instanceId;
   private final FragmentInstanceContext context;
 
-  private final ExecFragmentInstance driver;
+  private final Driver driver;
 
   // TODO we may use StateMachine<FragmentInstanceState> to replace it
   private final AtomicReference<FragmentInstanceState> state;
@@ -45,7 +45,7 @@ public class FragmentInstanceExecution {
       IFragmentInstanceScheduler scheduler,
       FragmentInstanceId instanceId,
       FragmentInstanceContext context,
-      ExecFragmentInstance driver,
+      Driver driver,
       AtomicReference<FragmentInstanceState> state) {
     this.scheduler = scheduler;
     this.instanceId = instanceId;

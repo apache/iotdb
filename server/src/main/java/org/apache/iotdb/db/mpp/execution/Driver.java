@@ -29,7 +29,7 @@ import java.io.Closeable;
  * ExecutableFragmentInstance encapsulates some methods which are necessary for execution scheduler
  * to run a fragment instance
  */
-public interface ExecFragmentInstance extends Closeable {
+public interface Driver extends Closeable {
 
   /**
    * Used to judge whether this fragment instance has any more data to process

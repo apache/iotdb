@@ -39,7 +39,7 @@ import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 import static org.apache.iotdb.db.mpp.operator.Operator.NOT_BLOCKED;
 
 @NotThreadSafe
-public class SchemaDriver implements ExecFragmentInstance {
+public class SchemaDriver implements Driver {
 
   private static final Logger logger = LoggerFactory.getLogger(DataDriver.class);
 

@@ -156,7 +156,7 @@ public class DataDriverTest {
 
       StubSinkHandle sinkHandle = new StubSinkHandle();
 
-      try (ExecFragmentInstance dataDriver =
+      try (Driver dataDriver =
           new DataDriver(limitOperator, sinkHandle, driverContext)) {
         assertEquals(fragmentInstanceContext.getId(), dataDriver.getInfo());
 

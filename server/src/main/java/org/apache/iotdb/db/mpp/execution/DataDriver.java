@@ -52,7 +52,7 @@ import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 import static org.apache.iotdb.db.mpp.operator.Operator.NOT_BLOCKED;
 
 @NotThreadSafe
-public class DataDriver implements ExecFragmentInstance {
+public class DataDriver implements Driver {
 
   private static final Logger logger = LoggerFactory.getLogger(DataDriver.class);
 
@@ -149,14 +149,7 @@ public class DataDriver implements ExecFragmentInstance {
 
   @Override
   public void close() {
-    Operator root;
-    ISinkHandle sinkHandle;
-    synchronized (this) {
-      closed = true;
-      root = this.root;
-      sinkHandle = this.sinkHandle;
-    }
-
+    closed = true;
     try {
       if (root != null) {
         root.close();

@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.buffer.IDataBlockManager;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.QueryId;
-import org.apache.iotdb.db.mpp.execution.ExecFragmentInstance;
+import org.apache.iotdb.db.mpp.execution.Driver;
 import org.apache.iotdb.db.mpp.schedule.queue.IndexedBlockingQueue;
 import org.apache.iotdb.db.mpp.schedule.queue.L1PriorityQueue;
 import org.apache.iotdb.db.mpp.schedule.queue.L2PriorityQueue;
@@ -125,7 +125,7 @@ public class FragmentInstanceScheduler implements IFragmentInstanceScheduler, IS
   }
 
   @Override
-  public void submitFragmentInstances(QueryId queryId, List<ExecFragmentInstance> instances) {
+  public void submitFragmentInstances(QueryId queryId, List<Driver> instances) {
     List<FragmentInstanceTask> tasks =
         instances.stream()
             .map(
@@ -170,7 +170,7 @@ public class FragmentInstanceScheduler implements IFragmentInstanceScheduler, IS
   }
 
   @Override
-  public void fetchFragmentInstance(ExecFragmentInstance instance) {}
+  public void fetchFragmentInstance(Driver instance) {}
 
   @Override
   public double getSchedulePriority(FragmentInstanceId instanceId) {

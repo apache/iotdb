@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.schedule;
 
-import org.apache.iotdb.db.mpp.execution.ExecFragmentInstance;
+import org.apache.iotdb.db.mpp.execution.Driver;
 import org.apache.iotdb.db.mpp.schedule.queue.IndexedBlockingQueue;
 import org.apache.iotdb.db.mpp.schedule.task.FragmentInstanceTask;
 import org.apache.iotdb.db.utils.stats.CpuTimer;
@@ -52,7 +52,7 @@ public class FragmentInstanceTaskExecutor extends AbstractExecutor {
     if (!scheduler.readyToRunning(task)) {
       return;
     }
-    ExecFragmentInstance instance = task.getFragmentInstance();
+    Driver instance = task.getFragmentInstance();
     CpuTimer timer = new CpuTimer();
     ListenableFuture<Void> future = instance.processFor(EXECUTION_TIME_SLICE);
     CpuTimer.CpuDuration duration = timer.elapsedTime();

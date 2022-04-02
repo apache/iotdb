@@ -21,7 +21,7 @@ package org.apache.iotdb.db.mpp.schedule.task;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
-import org.apache.iotdb.db.mpp.execution.ExecFragmentInstance;
+import org.apache.iotdb.db.mpp.execution.Driver;
 import org.apache.iotdb.db.mpp.schedule.ExecutionContext;
 import org.apache.iotdb.db.mpp.schedule.FragmentInstanceTaskExecutor;
 import org.apache.iotdb.db.mpp.schedule.queue.ID;
@@ -43,7 +43,7 @@ public class FragmentInstanceTask implements IDIndexedAccessible {
 
   private FragmentInstanceTaskID id;
   private FragmentInstanceTaskStatus status;
-  private final ExecFragmentInstance fragmentInstance;
+  private final Driver fragmentInstance;
 
   // the higher this field is, the higher probability it will be scheduled.
   private volatile double schedulePriority;
@@ -59,7 +59,7 @@ public class FragmentInstanceTask implements IDIndexedAccessible {
   }
 
   public FragmentInstanceTask(
-      ExecFragmentInstance instance, long timeoutMs, FragmentInstanceTaskStatus status) {
+      Driver instance, long timeoutMs, FragmentInstanceTaskStatus status) {
     this.fragmentInstance = instance;
     this.id = new FragmentInstanceTaskID(instance.getInfo());
     this.setStatus(status);
@@ -86,7 +86,7 @@ public class FragmentInstanceTask implements IDIndexedAccessible {
         || status == FragmentInstanceTaskStatus.FINISHED;
   }
 
-  public ExecFragmentInstance getFragmentInstance() {
+  public Driver getFragmentInstance() {
     return fragmentInstance;
   }
 
@@ -176,7 +176,7 @@ public class FragmentInstanceTask implements IDIndexedAccessible {
     }
   }
 
-  private static class StubFragmentInstance implements ExecFragmentInstance {
+  private static class StubFragmentInstance implements Driver {
 
     private static final QueryId stubQueryId = new QueryId("stub_query");
     private static final FragmentInstanceId stubInstance =
