@@ -74,6 +74,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -497,15 +498,7 @@ public class LocalSchemaProcessor {
    */
   public int getNodesCountInGivenLevel(PartialPath pathPattern, int level, boolean isPrefixMatch)
       throws MetadataException {
-    Pair<Integer, Set<PartialPath>> pair =
-        configManager.getNodesCountInGivenLevel(pathPattern, level, isPrefixMatch);
-    int count = pair.left;
-    for (PartialPath storageGroup : pair.right) {
-      for (SchemaRegion schemaRegion : getInvolvedSchemaRegions(storageGroup, isPrefixMatch)) {
-        count += schemaRegion.getNodesCountInGivenLevel(pathPattern, level, isPrefixMatch);
-      }
-    }
-    return count;
+    return getNodesListInGivenLevel(pathPattern, level, isPrefixMatch).size();
   }
 
   /**
@@ -556,15 +549,27 @@ public class LocalSchemaProcessor {
 
   public List<PartialPath> getNodesListInGivenLevel(
       PartialPath pathPattern, int nodeLevel, StorageGroupFilter filter) throws MetadataException {
+    return getNodesListInGivenLevel(pathPattern, nodeLevel, false, filter);
+  }
+
+  private List<PartialPath> getNodesListInGivenLevel(
+      PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch) throws MetadataException {
+    return getNodesListInGivenLevel(pathPattern, nodeLevel, isPrefixMatch, null);
+  }
+
+  private List<PartialPath> getNodesListInGivenLevel(
+      PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch, StorageGroupFilter filter)
+      throws MetadataException {
     Pair<List<PartialPath>, Set<PartialPath>> pair =
-        configManager.getNodesListInGivenLevel(pathPattern, nodeLevel, filter);
-    List<PartialPath> result = pair.left;
+        configManager.getNodesListInGivenLevel(pathPattern, nodeLevel, isPrefixMatch, filter);
+    Set<PartialPath> result = new TreeSet<>(pair.left);
     for (PartialPath storageGroup : pair.right) {
       for (SchemaRegion schemaRegion : getSchemaRegionsByStorageGroup(storageGroup)) {
-        result.addAll(schemaRegion.getNodesListInGivenLevel(pathPattern, nodeLevel, filter));
+        result.addAll(
+            schemaRegion.getNodesListInGivenLevel(pathPattern, nodeLevel, isPrefixMatch, filter));
       }
     }
-    return result;
+    return new ArrayList<>(result);
   }
 
   /**

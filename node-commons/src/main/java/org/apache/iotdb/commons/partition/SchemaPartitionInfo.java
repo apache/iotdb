@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.commons.partition;
 
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class SchemaPartitionInfo {
@@ -32,5 +34,20 @@ public class SchemaPartitionInfo {
   public void setSchemaPartitionMap(
       Map<String, Map<DeviceGroupId, SchemaRegionReplicaSet>> schemaPartitionMap) {
     this.schemaPartitionMap = schemaPartitionMap;
+  }
+
+  public Map<String, Map<Integer, SchemaRegionReplicaSet>> getSchemaPartition(
+      String storageGroup, List<Integer> deviceGroupIDs) {
+    Map<String, Map<Integer, SchemaRegionReplicaSet>> storageGroupMap = new HashMap<>();
+    Map<Integer, SchemaRegionReplicaSet> deviceGroupMap = new HashMap<>();
+    deviceGroupIDs.forEach(
+        deviceGroupID -> {
+          if (schemaPartitionInfo.get(storageGroup).containsKey(new DeviceGroupId(deviceGroupID))) {
+            deviceGroupMap.put(
+                deviceGroupID, schemaPartitionInfo.get(storageGroup).get(deviceGroupID));
+          }
+        });
+    storageGroupMap.put(storageGroup, deviceGroupMap);
+    return storageGroupMap;
   }
 }

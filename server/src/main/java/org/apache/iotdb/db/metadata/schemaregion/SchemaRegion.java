@@ -825,9 +825,12 @@ public class SchemaRegion {
 
   // region Interfaces for level Node info Query
   public List<PartialPath> getNodesListInGivenLevel(
-      PartialPath pathPattern, int nodeLevel, LocalSchemaProcessor.StorageGroupFilter filter)
+      PartialPath pathPattern,
+      int nodeLevel,
+      boolean isPrefixMatch,
+      LocalSchemaProcessor.StorageGroupFilter filter)
       throws MetadataException {
-    return mtree.getNodesListInGivenLevel(pathPattern, nodeLevel, filter);
+    return mtree.getNodesListInGivenLevel(pathPattern, nodeLevel, isPrefixMatch, filter);
   }
 
   /**

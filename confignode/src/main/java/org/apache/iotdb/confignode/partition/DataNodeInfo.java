@@ -34,6 +34,8 @@ public class DataNodeInfo {
   public DataNodeInfo(int dataNodeID, Endpoint endPoint) {
     this.dataNodeID = dataNodeID;
     this.endPoint = endPoint;
+    dataRegionGroupIDs = new ArrayList<>();
+    schemaRegionGroupIDs = new ArrayList<>();
   }
 
   public int getDataNodeID() {
@@ -49,9 +51,6 @@ public class DataNodeInfo {
   }
 
   public void addSchemaRegionGroup(int id) {
-    if (schemaRegionGroupIDs == null) {
-      schemaRegionGroupIDs = new ArrayList<>();
-    }
     schemaRegionGroupIDs.add(id);
   }
 
@@ -60,9 +59,6 @@ public class DataNodeInfo {
   }
 
   public void addDataRegionGroup(int id) {
-    if (dataRegionGroupIDs == null) {
-      dataRegionGroupIDs = new ArrayList<>();
-    }
     dataRegionGroupIDs.add(id);
   }
 

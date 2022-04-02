@@ -814,7 +814,8 @@ public class MTreeBelowSG implements Serializable {
 
   /** Get all paths from root to the given level */
   public List<PartialPath> getNodesListInGivenLevel(
-      PartialPath pathPattern, int nodeLevel, StorageGroupFilter filter) throws MetadataException {
+      PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch, StorageGroupFilter filter)
+      throws MetadataException {
     MNodeCollector<List<PartialPath>> collector =
         new MNodeCollector<List<PartialPath>>(storageGroupMNode, pathPattern) {
           @Override
@@ -824,6 +825,7 @@ public class MTreeBelowSG implements Serializable {
         };
     collector.setResultSet(new LinkedList<>());
     collector.setTargetLevel(nodeLevel);
+    collector.setPrefixMatch(isPrefixMatch);
     collector.setStorageGroupFilter(filter);
     collector.traverse();
     return collector.getResult();
