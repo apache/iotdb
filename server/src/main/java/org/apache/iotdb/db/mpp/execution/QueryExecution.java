@@ -35,6 +35,7 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
@@ -61,6 +62,7 @@ public class QueryExecution {
 
   public QueryExecution(Statement statement, MPPQueryContext context) {
     this.context = context;
+    this.planOptimizers = new ArrayList<>();
     this.analysis = analyze(statement, context);
     this.stateMachine = new QueryStateMachine(context.getQueryId());
 
@@ -94,13 +96,13 @@ public class QueryExecution {
   }
 
   // Use LogicalPlanner to do the logical query plan and logical optimization
-  private void doLogicalPlan() {
+  public void doLogicalPlan() {
     LogicalPlanner planner = new LogicalPlanner(this.context, this.planOptimizers);
     this.logicalPlan = planner.plan(this.analysis);
   }
 
   // Generate the distributed plan and split it into fragments
-  private void doDistributedPlan() {
+  public void doDistributedPlan() {
     DistributionPlanner planner = new DistributionPlanner(this.analysis, this.logicalPlan);
     this.distributedPlan = planner.planFragments();
   }
@@ -152,5 +154,17 @@ public class QueryExecution {
       // TODO: (xingtanzjr) use more accurate error handling
       return new ExecutionStatus(context.getQueryId(), RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR));
     }
+  }
+
+  public DistributedQueryPlan getDistributedPlan() {
+    return distributedPlan;
+  }
+
+  public LogicalQueryPlan getLogicalPlan() {
+    return logicalPlan;
+  }
+
+  public List<FragmentInstance> getFragmentInstances() {
+    return fragmentInstances;
   }
 }

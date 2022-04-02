@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.mpp.execution.scheduler;
 
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.metadata.SchemaEngine;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.execution.FragmentInfo;
@@ -30,7 +30,7 @@ public class StandaloneScheduler implements IScheduler {
 
   private static final StorageEngine STORAGE_ENGINE = StorageEngine.getInstance();
 
-  private static final SchemaEngine SCHEMA_ENGINE = SchemaEngine.getInstance();
+  private static final LocalSchemaProcessor SCHEMA_ENGINE = LocalSchemaProcessor.getInstance();
 
   @Override
   public void start() {}

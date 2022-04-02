@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.consensus.ratis;
 
-import org.apache.iotdb.consensus.common.ConsensusGroupId;
-import org.apache.iotdb.consensus.common.Endpoint;
-import org.apache.iotdb.consensus.common.GroupType;
+import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.GroupType;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
@@ -38,25 +38,52 @@ import java.util.Arrays;
 public class Utils {
   private static final int tempBufferSize = 1024;
   private static final byte PADDING_MAGIC = 0x47;
+  private static final String DataRegionAbbr = "DR";
+  private static final String SchemaRegionAbbr = "SR";
+  private static final String PartitionRegionAbbr = "PR";
 
-  public static String IP_PORT(Endpoint endpoint) {
+  public static String IPAddress(Endpoint endpoint) {
     return String.format("%s:%d", endpoint.getIp(), endpoint.getPort());
   }
 
   public static String groupFullName(ConsensusGroupId consensusGroupId) {
-    return String.format("%s-%d", consensusGroupId.getType().toString(), consensusGroupId.getId());
+    // use abbreviations to prevent overflow
+    String groupTypeAbbr = null;
+    switch (consensusGroupId.getType()) {
+      case DataRegion:
+        {
+          groupTypeAbbr = DataRegionAbbr;
+          break;
+        }
+      case SchemaRegion:
+        {
+          groupTypeAbbr = SchemaRegionAbbr;
+          break;
+        }
+      case PartitionRegion:
+        {
+          groupTypeAbbr = PartitionRegionAbbr;
+          break;
+        }
+    }
+    return String.format("%s-%d", groupTypeAbbr, consensusGroupId.getId());
   }
 
-  public static RaftPeer toRaftPeer(Endpoint endpoint) {
+  // priority is used as ordinal of leader election
+  public static RaftPeer toRaftPeer(Endpoint endpoint, int priority) {
     String Id = String.format("%s-%d", endpoint.getIp(), endpoint.getPort());
-    return RaftPeer.newBuilder().setId(Id).setAddress(IP_PORT(endpoint)).build();
+    return RaftPeer.newBuilder()
+        .setId(Id)
+        .setAddress(IPAddress(endpoint))
+        .setPriority(priority)
+        .build();
   }
 
-  public static RaftPeer toRaftPeer(Peer peer) {
-    return toRaftPeer(peer.getEndpoint());
+  public static RaftPeer toRaftPeer(Peer peer, int priority) {
+    return toRaftPeer(peer.getEndpoint(), priority);
   }
 
-  public static Endpoint getEndPoint(RaftPeer raftPeer) {
+  public static Endpoint getEndpoint(RaftPeer raftPeer) {
     String address = raftPeer.getAddress(); // ip:port
     String[] split = address.split(":");
     return new Endpoint(split[0], Integer.parseInt(split[1]));
@@ -83,7 +110,25 @@ public class Utils {
     }
     String consensusGroupString = new String(padded, 0, validOffset + 1);
     String[] items = consensusGroupString.split("-");
-    return new ConsensusGroupId(GroupType.valueOf(items[0]), Long.parseLong(items[1]));
+    GroupType groupType = null;
+    switch (items[0]) {
+      case DataRegionAbbr:
+        {
+          groupType = GroupType.DataRegion;
+          break;
+        }
+      case PartitionRegionAbbr:
+        {
+          groupType = GroupType.PartitionRegion;
+          break;
+        }
+      case SchemaRegionAbbr:
+        {
+          groupType = GroupType.SchemaRegion;
+          break;
+        }
+    }
+    return new ConsensusGroupId(groupType, Integer.parseInt(items[1]));
   }
 
   public static ByteBuffer serializeTSStatus(TSStatus status) throws TException {

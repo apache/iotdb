@@ -45,7 +45,7 @@ public class MicrometerJmxReporter implements Reporter {
               .filter(reporter -> reporter instanceof JmxMeterRegistry)
               .collect(Collectors.toSet());
       if (meterRegistrySet.size() == 0) {
-        Metrics.addRegistry(new JmxMeterRegistry(IoTDBJmxConfig.DEFAULT, Clock.SYSTEM));
+        Metrics.addRegistry(new JmxMeterRegistry(JmxConfig.DEFAULT, Clock.SYSTEM));
       }
     } catch (Exception e) {
       LOGGER.error("Failed to start Micrometer JmxReporter, because {}", e.getMessage());

@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner;
 
-import org.apache.iotdb.commons.partition.DataRegionReplicaSet;
+import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
 import org.apache.iotdb.db.mpp.sql.planner.plan.*;
@@ -29,7 +29,10 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.sink.FragmentSinkNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregateScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
@@ -62,7 +65,11 @@ public class DistributionPlanner {
 
   public DistributedQueryPlan planFragments() {
     PlanNode rootAfterRewrite = rewriteSource();
+    System.out.println("===== Step 2: Partition SourceNode =====");
+    System.out.println(PlanNodeUtil.nodeToString(rootAfterRewrite));
     PlanNode rootWithExchange = addExchangeNode(rootAfterRewrite);
+    System.out.println("===== Step 3: Add ExchangeNode =====");
+    System.out.println(PlanNodeUtil.nodeToString(rootWithExchange));
     SubPlan subPlan = splitFragment(rootWithExchange);
     List<FragmentInstance> fragmentInstances = planFragmentInstances(subPlan);
     return new DistributedQueryPlan(
@@ -98,11 +105,11 @@ public class DistributionPlanner {
           // If the child is SeriesScanNode, we need to check whether this node should be seperated
           // into several splits.
           SeriesScanNode handle = (SeriesScanNode) child;
-          List<DataRegionReplicaSet> dataDistribution =
+          List<RegionReplicaSet> dataDistribution =
               analysis.getPartitionInfo(handle.getSeriesPath(), handle.getTimeFilter());
           // If the size of dataDistribution is m, this SeriesScanNode should be seperated into m
           // SeriesScanNode.
-          for (DataRegionReplicaSet dataRegion : dataDistribution) {
+          for (RegionReplicaSet dataRegion : dataDistribution) {
             SeriesScanNode split = (SeriesScanNode) handle.clone();
             split.setDataRegionReplicaSet(dataRegion);
             sources.add(split);
@@ -121,7 +128,7 @@ public class DistributionPlanner {
       }
 
       // Step 2: For the source nodes, group them by the DataRegion.
-      Map<DataRegionReplicaSet, List<SeriesScanNode>> sourceGroup =
+      Map<RegionReplicaSet, List<SeriesScanNode>> sourceGroup =
           sources.stream().collect(Collectors.groupingBy(SeriesScanNode::getDataRegionReplicaSet));
       // Step 3: For the source nodes which belong to same data region, add a TimeJoinNode for them
       // and make the
@@ -193,7 +200,7 @@ public class DistributionPlanner {
                 visitedChildren.add(visit(child, context));
               });
 
-      DataRegionReplicaSet dataRegion = calculateDataRegionByChildren(visitedChildren, context);
+      RegionReplicaSet dataRegion = calculateDataRegionByChildren(visitedChildren, context);
       NodeDistributionType distributionType =
           nodeDistributionIsSame(visitedChildren, context)
               ? NodeDistributionType.SAME_WITH_ALL_CHILDREN
@@ -222,7 +229,7 @@ public class DistributionPlanner {
       return newNode;
     }
 
-    private DataRegionReplicaSet calculateDataRegionByChildren(
+    private RegionReplicaSet calculateDataRegionByChildren(
         List<PlanNode> children, NodeGroupContext context) {
       // We always make the dataRegion of TimeJoinNode to be the same as its first child.
       // TODO: (xingtanzjr) We need to implement more suitable policies here
@@ -271,9 +278,9 @@ public class DistributionPlanner {
 
   private class NodeDistribution {
     private NodeDistributionType type;
-    private DataRegionReplicaSet dataRegion;
+    private RegionReplicaSet dataRegion;
 
-    private NodeDistribution(NodeDistributionType type, DataRegionReplicaSet dataRegion) {
+    private NodeDistribution(NodeDistributionType type, RegionReplicaSet dataRegion) {
       this.type = type;
       this.dataRegion = dataRegion;
     }

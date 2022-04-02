@@ -50,7 +50,8 @@ public class FilterConstant {
   }
 
   static {
-    lexerToFilterType.put(SqlLexer.OPERATOR_EQ, FilterType.EQUAL);
+    lexerToFilterType.put(SqlLexer.OPERATOR_DEQ, FilterType.EQUAL);
+    lexerToFilterType.put(SqlLexer.OPERATOR_SEQ, FilterType.EQUAL);
     lexerToFilterType.put(SqlLexer.OPERATOR_NEQ, FilterType.NOTEQUAL);
     lexerToFilterType.put(SqlLexer.OPERATOR_LTE, FilterType.LESSTHANOREQUALTO);
     lexerToFilterType.put(SqlLexer.OPERATOR_LT, FilterType.LESSTHAN);

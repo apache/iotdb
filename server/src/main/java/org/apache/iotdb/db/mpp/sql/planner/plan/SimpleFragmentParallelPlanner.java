@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan;
 
-import org.apache.iotdb.commons.partition.DataRegionReplicaSet;
+import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
@@ -72,11 +72,12 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
     // one by one
     int instanceIdx = 0;
     PlanNode rootCopy = PlanNodeUtil.deepCopy(fragment.getRoot());
-    FragmentInstance fragmentInstance = new FragmentInstance(new PlanFragment(fragment.getId(), rootCopy), instanceIdx);
+    FragmentInstance fragmentInstance =
+        new FragmentInstance(new PlanFragment(fragment.getId(), rootCopy), instanceIdx);
 
     // Get the target DataRegion for origin PlanFragment, then its instance will be distributed one
     // of them.
-    DataRegionReplicaSet dataRegion = fragment.getTargetDataRegion();
+    RegionReplicaSet dataRegion = fragment.getTargetDataRegion();
 
     // Set DataRegion and target host for the instance
     // We need to store all the replica host in case of the scenario that the instance need to be
@@ -86,7 +87,7 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
 
     // TODO: (xingtanzjr) We select the first Endpoint as the default target host for current
     // instance
-    fragmentInstance.setHostEndpoint(dataRegion.getEndPointList().get(0));
+    fragmentInstance.setHostEndpoint(dataRegion.getDataNodeList().get(0).getEndPoint());
     instanceMap.putIfAbsent(fragment.getId(), fragmentInstance);
     fragmentInstanceList.add(fragmentInstance);
   }

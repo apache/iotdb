@@ -81,7 +81,7 @@ public class ResourceManagerTest {
 
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
-    IoTDB.schemaEngine.init();
+    IoTDB.configManager.init();
     prevTimeIndexMemoryProportion = CONFIG.getTimeIndexMemoryProportion();
     timeIndexLevel = CONFIG.getTimeIndexLevel();
     prepareSeries();
@@ -99,7 +99,7 @@ public class ResourceManagerTest {
     tsFileResourceManager.setTimeIndexMemoryThreshold(prevTimeIndexMemoryThreshold);
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
-    IoTDB.schemaEngine.clear();
+    IoTDB.configManager.clear();
     TsFileResourceManager.getInstance().clear();
     EnvironmentUtils.cleanAllDir();
   }
@@ -115,11 +115,11 @@ public class ResourceManagerTest {
     for (int i = 0; i < deviceNum; i++) {
       deviceIds[i] = RESOURCE_MANAGER_TEST_SG + PATH_SEPARATOR + "device" + i;
     }
-    IoTDB.schemaEngine.setStorageGroup(new PartialPath(RESOURCE_MANAGER_TEST_SG));
+    IoTDB.schemaProcessor.setStorageGroup(new PartialPath(RESOURCE_MANAGER_TEST_SG));
     for (String device : deviceIds) {
       for (MeasurementSchema measurementSchema : measurementSchemas) {
         PartialPath devicePath = new PartialPath(device);
-        IoTDB.schemaEngine.createTimeseries(
+        IoTDB.schemaProcessor.createTimeseries(
             devicePath.concatNode(measurementSchema.getMeasurementId()),
             measurementSchema.getType(),
             measurementSchema.getEncodingType(),

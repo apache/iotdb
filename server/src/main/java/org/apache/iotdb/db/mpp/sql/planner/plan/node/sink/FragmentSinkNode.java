@@ -19,11 +19,11 @@
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.sink;
 
 import org.apache.commons.lang.Validate;
+import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ExchangeNode;
-import org.apache.iotdb.service.rpc.thrift.EndPoint;
 
 import com.google.common.collect.ImmutableList;
 
@@ -34,7 +34,7 @@ public class FragmentSinkNode extends SinkNode {
   private PlanNode child;
   private ExchangeNode downStreamNode;
 
-  private EndPoint downStreamEndpoint;
+  private Endpoint downStreamEndpoint;
   private FragmentInstanceId downStreamInstanceId;
   private PlanNodeId downStreamPlanNodeId;
 
@@ -46,9 +46,6 @@ public class FragmentSinkNode extends SinkNode {
   public List<PlanNode> getChildren() {
     return ImmutableList.of(child);
   }
-
-  @Override
-  public void addChildren(PlanNode child) {}
 
   @Override
   public PlanNode clone() {
@@ -66,6 +63,15 @@ public class FragmentSinkNode extends SinkNode {
       sinkNode.setChild(children.get(0));
     }
     return sinkNode;
+  }
+
+  public void addChild(PlanNode child) {
+    this.child = child;
+  }
+
+  @Override
+  public int allowedChildCount() {
+    return ONE_CHILD;
   }
 
   @Override
@@ -115,13 +121,13 @@ public class FragmentSinkNode extends SinkNode {
     this.downStreamNode = downStreamNode;
   }
 
-  public void setDownStream(EndPoint endPoint, FragmentInstanceId instanceId, PlanNodeId nodeId) {
+  public void setDownStream(Endpoint endPoint, FragmentInstanceId instanceId, PlanNodeId nodeId) {
     this.downStreamEndpoint = endPoint;
     this.downStreamInstanceId = instanceId;
     this.downStreamPlanNodeId = nodeId;
   }
 
-  public EndPoint getDownStreamEndpoint() {
+  public Endpoint getDownStreamEndpoint() {
     return downStreamEndpoint;
   }
 
