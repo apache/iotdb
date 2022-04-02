@@ -44,7 +44,7 @@ public interface IMemManager {
 
   void clear();
 
-  int getPinnedSize();
+  double getPinnedSize();
 
-  int getCachedSize();
+  double getCachedSize();
 }

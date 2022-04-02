@@ -35,7 +35,7 @@ public class TimeseriesStatistics {
   private static final Logger logger = LoggerFactory.getLogger(TimeseriesStatistics.class);
 
   /** threshold total size of MTree */
-  private static final long MTREE_SIZE_THRESHOLD =
+  private static final long MEMORY_FOR_SCHEMA =
       IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForSchema();
 
   private static final int ESTIMATED_SERIES_SIZE =
@@ -82,7 +82,7 @@ public class TimeseriesStatistics {
 
   public void addTimeseries(int addedNum) {
     totalSeriesNumber.addAndGet(addedNum);
-    if (totalSeriesNumber.get() * ESTIMATED_SERIES_SIZE >= MTREE_SIZE_THRESHOLD) {
+    if (totalSeriesNumber.get() * ESTIMATED_SERIES_SIZE >= MEMORY_FOR_SCHEMA) {
       logger.warn("Current series number {} is too large...", totalSeriesNumber);
       allowToCreateNewSeries = false;
     }
@@ -91,7 +91,7 @@ public class TimeseriesStatistics {
   public void deleteTimeseries(int deletedNum) {
     totalSeriesNumber.addAndGet(-deletedNum);
     if (!allowToCreateNewSeries
-        && totalSeriesNumber.get() * ESTIMATED_SERIES_SIZE < MTREE_SIZE_THRESHOLD) {
+        && totalSeriesNumber.get() * ESTIMATED_SERIES_SIZE < MEMORY_FOR_SCHEMA) {
       logger.info("Current series number {} come back to normal level", totalSeriesNumber);
       allowToCreateNewSeries = true;
     }

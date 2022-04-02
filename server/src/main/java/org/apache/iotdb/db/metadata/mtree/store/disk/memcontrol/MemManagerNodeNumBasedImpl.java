@@ -88,12 +88,12 @@ public class MemManagerNodeNumBasedImpl implements IMemManager {
   }
 
   @Override
-  public int getPinnedSize() {
+  public double getPinnedSize() {
     return pinnedSize.get();
   }
 
   @Override
-  public int getCachedSize() {
+  public double getCachedSize() {
     return size.get();
   }
 }
