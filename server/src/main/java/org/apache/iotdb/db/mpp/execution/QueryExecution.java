@@ -163,8 +163,4 @@ public class QueryExecution {
   public LogicalQueryPlan getLogicalPlan() {
     return logicalPlan;
   }
-
-  public List<FragmentInstance> getFragmentInstances() {
-    return fragmentInstances;
-  }
 }

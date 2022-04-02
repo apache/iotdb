@@ -47,7 +47,7 @@ public abstract class AbstractFragInsStateFetcher implements IFragInstanceStateF
 
     protected FragmentInstanceState fetchState(FragmentInstance instance) throws TException {
         InternalService.Client client = InternalServiceClientFactory
-                .getInternalServiceClient(instance.getHostEndpoint().ip, instance.getHostEndpoint().port);
+                .getInternalServiceClient(instance.getHostEndpoint().getIp(), instance.getHostEndpoint().getPort());
         TFragmentInstanceStateResp resp = client.fetchFragmentInstanceState(new TFetchFragmentInstanceStateReq(getTId(instance)));
         return FragmentInstanceState.valueOf(resp.state);
     }

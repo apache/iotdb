@@ -35,7 +35,7 @@ public class SimpleFragInstanceDispatcher implements IFragInstanceDispatcher {
             try {
                 for (FragmentInstance instance : instances) {
                     InternalService.Client client = InternalServiceClientFactory.
-                            getInternalServiceClient(instance.getHostEndpoint().ip, instance.getHostEndpoint().port);
+                            getInternalServiceClient(instance.getHostEndpoint().getIp(), instance.getHostEndpoint().getPort());
                     client.sendFragmentInstance(null);
                 }
             } catch (TException e) {
