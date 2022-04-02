@@ -23,6 +23,7 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Set;
 
 //
@@ -47,7 +48,7 @@ public class MNodeLevelCounter extends CounterTraverser {
 
   @Override
   protected boolean processInternalMatchedMNode(IMNode node, int idx, int level) {
-    return processLevelMatchedMNode(node, level);
+    return false;
   }
 
   @Override
@@ -61,10 +62,21 @@ public class MNodeLevelCounter extends CounterTraverser {
       return false;
     }
     // record processed node so they will not be processed twice
-    if (!processedNodes.contains(node)) {
-      processedNodes.add(node);
+    IMNode levelMatchedAncestor = getLevelMatchedAncestor(node, level);
+    if (!processedNodes.contains(levelMatchedAncestor)) {
+      processedNodes.add(levelMatchedAncestor);
       count++;
     }
     return true;
+  }
+
+  private IMNode getLevelMatchedAncestor(IMNode node, int level) {
+    Iterator<IMNode> iterator = traverseContext.iterator();
+    while (level > targetLevel && iterator.hasNext()) {
+      node = iterator.next();
+      level--;
+    }
+
+    return node;
   }
 }
