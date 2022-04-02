@@ -49,11 +49,15 @@ public class DoubleWriteProducer {
 
   public void put(ByteBuffer planBuffer) {
     // It's better to go through producer-consumer module
-    if (doubleWriteQueue.size() == doubleWriteCacheSize) {
-      try {
-        TimeUnit.SECONDS.sleep(1);
-      } catch (InterruptedException e) {
-        LOGGER.warn("DoubleWriteProducer is interrupted", e);
+    for (int retry = 0; retry < 3; retry++) {
+      if (doubleWriteQueue.size() == doubleWriteCacheSize) {
+        try {
+          TimeUnit.SECONDS.sleep(1);
+        } catch (InterruptedException e) {
+          LOGGER.warn("DoubleWriteProducer is interrupted", e);
+        }
+      } else {
+        break;
       }
     }
 

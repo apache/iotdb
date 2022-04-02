@@ -18,115 +18,86 @@
  */
 package org.apache.iotdb.db.doublewrite;
 
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.writelog.io.SingleFileLogReader;
-import org.apache.iotdb.rpc.IoTDBConnectionException;
-import org.apache.iotdb.session.pool.SessionPool;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
-/** DoubleWriteProtector is used for transmit data in a DoubleWriteLog */
-public class DoubleWriteProtector implements Runnable {
+public abstract class DoubleWriteProtector implements Runnable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DoubleWriteProtector.class);
+  private static final int logFileValidity;
 
-  private final SessionPool doubleWriteSessionPool;
+  // For transmit log files
+  protected final Lock logFileListLock;
+  protected List<String> registeredLogFiles;
+  protected List<String> processingLogFiles;
 
-  private final File logFile;
-  private SingleFileLogReader doubleWriteLogReader;
-
+  // For serialize PhysicalPlan
   private static final int MAX_PHYSICALPLAN_SIZE = 16 * 1024 * 1024;
-  private final ByteArrayOutputStream doubleWriteByteStream;
-  private final DataOutputStream doubleWriteSerializeStream;
+  protected final ByteArrayOutputStream protectorByteStream;
+  protected final DataOutputStream protectorSerializeStream;
 
-  DoubleWriteProtector(File logFile, SessionPool doubleWriteSessionPool) {
-    this.doubleWriteSessionPool = doubleWriteSessionPool;
-    this.logFile = logFile;
+  // Working state
+  protected final Lock atWorkLock;
+  protected boolean isProtectorAtWork;
 
-    // For serialize PhysicalPlan
-    doubleWriteByteStream = new ByteArrayOutputStream(MAX_PHYSICALPLAN_SIZE);
-    doubleWriteSerializeStream = new DataOutputStream(doubleWriteByteStream);
+  protected DoubleWriteProtector() {
+    logFileListLock = new ReentrantLock();
+    registeredLogFiles = new ArrayList<>();
 
-    // init DoubleWriteLog reader
-    try {
-      doubleWriteLogReader = new SingleFileLogReader(logFile);
-    } catch (FileNotFoundException ignore) {
-      doubleWriteLogReader = null;
-    }
+    protectorByteStream = new ByteArrayOutputStream(MAX_PHYSICALPLAN_SIZE);
+    protectorSerializeStream = new DataOutputStream(protectorByteStream);
+
+    atWorkLock = new ReentrantLock();
+    isProtectorAtWork = false;
+  }
+
+  protected void registerLogFile(String logFile) {
+    logFileListLock.lock();
+    registeredLogFiles.add(logFile);
+    logFileListLock.unlock();
+  }
+
+  protected void wrapLogFiles() {
+    processingLogFiles = new ArrayList<>(registeredLogFiles);
+    registeredLogFiles = new ArrayList<>();
   }
 
   @Override
   public void run() {
-    if (doubleWriteLogReader == null) {
-      return;
-    }
+    while (true) {
+      boolean startWork = false;
+      atWorkLock.lock();
+      if (!isProtectorAtWork) {
+        logFileListLock.lock();
+        if (registeredLogFiles.size() > 0) {
+          isProtectorAtWork = true;
+          startWork = true;
+          wrapLogFiles();
+        }
+        logFileListLock.unlock();
+      }
+      atWorkLock.unlock();
 
-    while (doubleWriteLogReader.hasNext()) {
-      // read and re-serialize the PhysicalPlan
-      PhysicalPlan nextPlan = doubleWriteLogReader.next();
+      if (startWork) {
+        transmitLogFiles();
+      }
+
       try {
-        nextPlan.serialize(doubleWriteSerializeStream);
-      } catch (IOException e) {
-        LOGGER.error("DoubleWriteProtector can't serialize PhysicalPlan", e);
-        continue;
-      }
-      ByteBuffer nextBuffer = ByteBuffer.wrap(doubleWriteByteStream.toByteArray());
-      doubleWriteByteStream.reset();
-
-      while (true) {
-        // transmit DoubleWriteRequest until it's been received
-        boolean transmitStatus = false;
-
-        try {
-          // try double write
-          nextBuffer.position(0);
-          transmitStatus = doubleWriteSessionPool.doubleWriteTransmit(nextBuffer);
-        } catch (IoTDBConnectionException connectionException) {
-          // warn IoTDBConnectionException and retry
-          LOGGER.warn("DoubleWriteProtector can't transmit, retrying...", connectionException);
-        } catch (Exception e) {
-          // error exception and break
-          LOGGER.error("DoubleWriteProtector can't transmit", e);
-          break;
-        }
-
-        if (transmitStatus) {
-          break;
-        } else {
-          try {
-            TimeUnit.SECONDS.sleep(1);
-          } catch (InterruptedException e) {
-            LOGGER.warn("DoubleWriteProtector is interrupted", e);
-          }
-        }
+        // Sleep a while before next check
+        TimeUnit.SECONDS.sleep(logFileValidity);
+      } catch (InterruptedException e) {
+        LOGGER.warn("DoubleWriteProtector been interrupted", e);
       }
     }
-
-    doubleWriteLogReader.close();
-    try {
-      // sleep one second then delete DoubleWriteLog file
-      TimeUnit.SECONDS.sleep(1);
-    } catch (InterruptedException e) {
-      LOGGER.warn("DoubleWriteProtector is interrupted", e);
-    }
-
-    for (int retryCnt = 0; retryCnt < 5; retryCnt++) {
-      if (logFile.delete()) {
-        LOGGER.info("DoubleWrite log file {} is deleted.", logFile.getName());
-        break;
-      } else {
-        LOGGER.warn("delete DoubleWrite log file {} failed. Retrying", logFile.getName());
-      }
-    }
-    LOGGER.error("Couldn't delete DoubleWrite log file {}", logFile.getName());
   }
+
+  protected abstract void transmitLogFiles();
 }
