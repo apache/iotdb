@@ -7,6 +7,7 @@ on:
   push:
     branches: 
       - test/e2e
+      - newsync_testcontainer
     paths-ignore:
       - 'docs/**'
   pull_request:
