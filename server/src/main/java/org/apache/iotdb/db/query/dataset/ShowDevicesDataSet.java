@@ -31,9 +31,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_DEVICES;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_IS_ALIGNED;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_STORAGE_GROUP;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_DEVICES;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_IS_ALIGNED;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_STORAGE_GROUP;
 
 public class ShowDevicesDataSet extends ShowDataSet {
 
@@ -69,7 +69,7 @@ public class ShowDevicesDataSet extends ShowDataSet {
   @Override
   public List<RowRecord> getQueryDataSet() throws MetadataException {
     List<ShowDevicesResult> devicesList =
-        IoTDB.schemaEngine.getMatchedDevices((ShowDevicesPlan) plan);
+        IoTDB.schemaProcessor.getMatchedDevices((ShowDevicesPlan) plan);
     List<RowRecord> records = new ArrayList<>();
     for (ShowDevicesResult result : devicesList) {
       RowRecord record = new RowRecord(0);

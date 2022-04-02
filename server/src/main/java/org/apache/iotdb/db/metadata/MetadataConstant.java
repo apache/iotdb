@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.metadata;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 
 public class MetadataConstant {
 
@@ -40,6 +40,7 @@ public class MetadataConstant {
   public static final String MTREE_SNAPSHOT_TMP =
       MTREE_PREFIX + IoTDBConstant.FILE_NAME_SEPARATOR + MTREE_VERSION + ".snapshot.bin.tmp";
   public static final String TEMPLATE_FILE = "template_log.bin";
+  public static final String STORAGE_GROUP_LOG = "storage_group_log.bin";
 
   public static final String[] ALL_RESULT_NODES = new String[] {"root", "**"};
 

@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.cluster.server;
 
-import org.apache.iotdb.db.exception.StartupException;
+import org.apache.iotdb.commons.exception.StartupException;
 
 public interface ClusterRPCServiceMBean {
 

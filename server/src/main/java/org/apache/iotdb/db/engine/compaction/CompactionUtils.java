@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.engine.compaction;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.inner.utils.MultiTsFileDeviceIterator;
 import org.apache.iotdb.db.engine.compaction.writer.AbstractCompactionWriter;
@@ -131,7 +131,7 @@ public class CompactionUtils {
           measurementSchemas.add(IDTableManager.getInstance().getSeriesSchema(device, measurement));
         } else {
           measurementSchemas.add(
-              IoTDB.schemaEngine.getSeriesSchema(new PartialPath(device, measurement)));
+              IoTDB.schemaProcessor.getSeriesSchema(new PartialPath(device, measurement)));
         }
       } catch (PathNotExistException e) {
         logger.info("A deleted path is skipped: {}", e.getMessage());
@@ -182,7 +182,7 @@ public class CompactionUtils {
           measurementSchemas.add(IDTableManager.getInstance().getSeriesSchema(device, measurement));
         } else {
           measurementSchemas.add(
-              IoTDB.schemaEngine.getSeriesSchema(new PartialPath(device, measurement)));
+              IoTDB.schemaProcessor.getSeriesSchema(new PartialPath(device, measurement)));
         }
       } catch (PathNotExistException e) {
         logger.info("A deleted path is skipped: {}", e.getMessage());

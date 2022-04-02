@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.conf;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;

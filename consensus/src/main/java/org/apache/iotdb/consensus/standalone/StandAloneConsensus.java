@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.consensus.standalone;
 
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.consensus.IConsensus;
-import org.apache.iotdb.consensus.common.ConsensusGroupId;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
@@ -33,6 +33,7 @@ import org.apache.iotdb.consensus.exception.IllegalPeerNumException;
 import org.apache.iotdb.consensus.statemachine.IStateMachine;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -56,10 +57,10 @@ public class StandAloneConsensus implements IConsensus {
   }
 
   @Override
-  public void start() {}
+  public void start() throws IOException {}
 
   @Override
-  public void stop() {}
+  public void stop() throws IOException {}
 
   @Override
   public ConsensusWriteResponse write(ConsensusGroupId groupId, IConsensusRequest request) {
@@ -166,5 +167,10 @@ public class StandAloneConsensus implements IConsensus {
   @Override
   public ConsensusGenericResponse triggerSnapshot(ConsensusGroupId groupId) {
     return ConsensusGenericResponse.newBuilder().setSuccess(false).build();
+  }
+
+  @Override
+  public boolean isLeader(ConsensusGroupId groupId) {
+    return true;
   }
 }

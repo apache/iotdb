@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.cache;
 
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -53,7 +54,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -82,7 +83,7 @@ public class ChunkCacheTest {
     if (!tempSGDir.exists()) {
       Assert.assertTrue(tempSGDir.mkdirs());
     }
-    IoTDB.schemaEngine.init();
+    IoTDB.configManager.init();
     prepareSeries();
     prepareFiles(seqFileNum, unseqFileNum);
   }
@@ -94,7 +95,7 @@ public class ChunkCacheTest {
     unseqResources.clear();
     chunkCache.clear();
     TimeSeriesMetadataCache.getInstance().clear();
-    IoTDB.schemaEngine.clear();
+    IoTDB.configManager.clear();
     EnvironmentUtils.cleanAllDir();
   }
 
@@ -145,11 +146,11 @@ public class ChunkCacheTest {
     for (int i = 0; i < deviceNum; i++) {
       deviceIds[i] = TEST_SG + PATH_SEPARATOR + "device" + i;
     }
-    IoTDB.schemaEngine.setStorageGroup(new PartialPath(TEST_SG));
+    IoTDB.schemaProcessor.setStorageGroup(new PartialPath(TEST_SG));
     for (String device : deviceIds) {
       for (MeasurementSchema measurementSchema : measurementSchemas) {
         PartialPath devicePath = new PartialPath(device);
-        IoTDB.schemaEngine.createTimeseries(
+        IoTDB.schemaProcessor.createTimeseries(
             devicePath.concatNode(measurementSchema.getMeasurementId()),
             measurementSchema.getType(),
             measurementSchema.getEncodingType(),
@@ -166,7 +167,7 @@ public class ChunkCacheTest {
         Assert.assertTrue(file.getParentFile().mkdirs());
       }
       TsFileResource tsFileResource = new TsFileResource(file);
-      tsFileResource.setClosed(true);
+      tsFileResource.setStatus(TsFileResourceStatus.CLOSED);
       tsFileResource.updatePlanIndexes(i);
       seqResources.add(tsFileResource);
       prepareFile(tsFileResource, i * ptNum, ptNum, 0);
@@ -177,7 +178,7 @@ public class ChunkCacheTest {
         Assert.assertTrue(file.getParentFile().mkdirs());
       }
       TsFileResource tsFileResource = new TsFileResource(file);
-      tsFileResource.setClosed(true);
+      tsFileResource.setStatus(TsFileResourceStatus.CLOSED);
       tsFileResource.updatePlanIndexes(i + seqFileNum);
       unseqResources.add(tsFileResource);
       prepareFile(tsFileResource, i * ptNum, ptNum * (i + 1) / unseqFileNum, 10000);

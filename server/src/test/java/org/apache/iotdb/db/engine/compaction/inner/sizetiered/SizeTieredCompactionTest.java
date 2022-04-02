@@ -19,12 +19,13 @@
 
 package org.apache.iotdb.db.engine.compaction.inner.sizetiered;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -51,7 +52,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 
 public class SizeTieredCompactionTest {
   static final String COMPACTION_TEST_SG = "root.compactionTest";
@@ -73,7 +74,7 @@ public class SizeTieredCompactionTest {
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
     EnvironmentUtils.envSetUp();
-    IoTDB.schemaEngine.init();
+    IoTDB.configManager.init();
     prepareSeries();
     prepareFiles(seqFileNum, unseqFileNum);
   }
@@ -86,7 +87,7 @@ public class SizeTieredCompactionTest {
     unseqResources.clear();
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
-    IoTDB.schemaEngine.clear();
+    IoTDB.configManager.clear();
     EnvironmentUtils.cleanEnv();
   }
 
@@ -101,11 +102,11 @@ public class SizeTieredCompactionTest {
     for (int i = 0; i < deviceNum; i++) {
       deviceIds[i] = COMPACTION_TEST_SG + PATH_SEPARATOR + "device" + i;
     }
-    IoTDB.schemaEngine.setStorageGroup(new PartialPath(COMPACTION_TEST_SG));
+    IoTDB.schemaProcessor.setStorageGroup(new PartialPath(COMPACTION_TEST_SG));
     for (String device : deviceIds) {
       for (MeasurementSchema measurementSchema : measurementSchemas) {
         PartialPath devicePath = new PartialPath(device);
-        IoTDB.schemaEngine.createTimeseries(
+        IoTDB.schemaProcessor.createTimeseries(
             devicePath.concatNode(measurementSchema.getMeasurementId()),
             measurementSchema.getType(),
             measurementSchema.getEncodingType(),
@@ -130,7 +131,7 @@ public class SizeTieredCompactionTest {
                           + 0
                           + ".tsfile"));
       TsFileResource tsFileResource = new TsFileResource(file);
-      tsFileResource.setClosed(true);
+      tsFileResource.setStatus(TsFileResourceStatus.CLOSED);
       tsFileResource.updatePlanIndexes((long) i);
       seqResources.add(tsFileResource);
       prepareFile(tsFileResource, i * ptNum, ptNum, 0);
@@ -149,7 +150,7 @@ public class SizeTieredCompactionTest {
                           + 0
                           + ".tsfile"));
       TsFileResource tsFileResource = new TsFileResource(file);
-      tsFileResource.setClosed(true);
+      tsFileResource.setStatus(TsFileResourceStatus.CLOSED);
       tsFileResource.updatePlanIndexes(i + seqFileNum);
       unseqResources.add(tsFileResource);
       prepareFile(tsFileResource, i * ptNum, ptNum * (i + 1) / unseqFileNum, 10000);
@@ -168,7 +169,7 @@ public class SizeTieredCompactionTest {
                         + 0
                         + ".tsfile"));
     TsFileResource tsFileResource = new TsFileResource(file);
-    tsFileResource.setClosed(true);
+    tsFileResource.setStatus(TsFileResourceStatus.CLOSED);
     tsFileResource.updatePlanIndexes(seqFileNum + unseqFileNum);
     unseqResources.add(tsFileResource);
     prepareFile(tsFileResource, 0, ptNum * unseqFileNum, 20000);
@@ -243,7 +244,7 @@ public class SizeTieredCompactionTest {
                         + 0
                         + ".tsfile"));
     TsFileResource tsFileResource1 = new TsFileResource(file1);
-    tsFileResource1.setClosed(true);
+    tsFileResource1.setStatus(TsFileResourceStatus.CLOSED);
     tsFileResource1.updatePlanIndexes((long) 0);
     TsFileWriter fileWriter1 = new TsFileWriter(tsFileResource1.getTsFile());
     fileWriter1.registerTimeseries(
@@ -270,7 +271,7 @@ public class SizeTieredCompactionTest {
                         + 0
                         + ".tsfile"));
     TsFileResource tsFileResource2 = new TsFileResource(file2);
-    tsFileResource2.setClosed(true);
+    tsFileResource2.setStatus(TsFileResourceStatus.CLOSED);
     tsFileResource2.updatePlanIndexes((long) 1);
     TsFileWriter fileWriter2 = new TsFileWriter(tsFileResource2.getTsFile());
     fileWriter2.registerTimeseries(
