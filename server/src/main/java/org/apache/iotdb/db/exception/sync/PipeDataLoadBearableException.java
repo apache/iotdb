@@ -16,10 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.newsync.receiver.manager;
+package org.apache.iotdb.db.exception.sync;
 
-public enum PipeStatus {
-  RUNNING,
-  STOP,
-  DROP
+public class PipeDataLoadBearableException extends PipeDataLoadException {
+  public PipeDataLoadBearableException(String message) {
+    super(message);
+  }
 }

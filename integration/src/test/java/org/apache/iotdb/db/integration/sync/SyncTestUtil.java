@@ -154,7 +154,8 @@ public class SyncTestUtil {
     }
   }
 
-  public static void checkResult(String sql, String[] columnNames, String[] retArray)
+  public static void checkResult(
+      String sql, String[] columnNames, String[] retArray, boolean hasTimeColumn)
       throws ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =
@@ -169,14 +170,21 @@ public class SyncTestUtil {
       for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
         map.put(resultSetMetaData.getColumnName(i), i);
       }
-      assertEquals(columnNames.length + 1, resultSetMetaData.getColumnCount());
+      assertEquals(
+          hasTimeColumn ? columnNames.length + 1 : columnNames.length,
+          resultSetMetaData.getColumnCount());
       int cnt = 0;
       while (resultSet.next()) {
         StringBuilder builder = new StringBuilder();
-        builder.append(resultSet.getString(1));
+        if (hasTimeColumn) {
+          builder.append(resultSet.getString(1)).append(",");
+        }
         for (String columnName : columnNames) {
           int index = map.get(columnName);
-          builder.append(",").append(resultSet.getString(index));
+          builder.append(resultSet.getString(index)).append(",");
+        }
+        if (builder.length() > 0) {
+          builder.deleteCharAt(builder.length() - 1);
         }
         assertEquals(retArray[cnt], builder.toString());
         cnt++;
@@ -186,5 +194,10 @@ public class SyncTestUtil {
       e.printStackTrace();
       fail(e.getMessage());
     }
+  }
+
+  public static void checkResult(String sql, String[] columnNames, String[] retArray)
+      throws ClassNotFoundException {
+    checkResult(sql, columnNames, retArray, true);
   }
 }

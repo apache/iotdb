@@ -26,9 +26,10 @@ import org.apache.iotdb.db.newsync.pipedata.queue.PipeDataQueueFactory;
 import org.apache.iotdb.db.newsync.receiver.collector.Collector;
 import org.apache.iotdb.db.newsync.receiver.manager.PipeInfo;
 import org.apache.iotdb.db.newsync.receiver.manager.PipeMessage;
-import org.apache.iotdb.db.newsync.receiver.manager.PipeStatus;
 import org.apache.iotdb.db.newsync.receiver.manager.ReceiverManager;
+import org.apache.iotdb.db.newsync.sender.pipe.Pipe.PipeStatus;
 import org.apache.iotdb.db.newsync.transport.server.TransportServerManager;
+import org.apache.iotdb.db.qp.physical.sys.ShowPipePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPipeServerPlan;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
@@ -50,7 +51,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.*;
@@ -104,17 +105,9 @@ public class ReceiverService implements IService {
     try {
       switch (request.getType()) {
         case HEARTBEAT:
-          List<PipeMessage> messageList =
-              receiverManager.getPipeMessages(
-                  request.getPipeName(), request.getRemoteIp(), request.getCreateTime());
-          PipeMessage message = new PipeMessage(PipeMessage.MsgType.INFO, "");
-          if (!messageList.isEmpty()) {
-            for (PipeMessage pipeMessage : messageList) {
-              if (pipeMessage.getType().getValue() > message.getType().getValue()) {
-                message = pipeMessage;
-              }
-            }
-          }
+          PipeMessage message =
+              receiverManager.getPipeMessage(
+                  request.getPipeName(), request.getRemoteIp(), request.getCreateTime(), true);
           switch (message.getType()) {
             case INFO:
               break;
@@ -191,22 +184,25 @@ public class ReceiverService implements IService {
   }
 
   /**
-   * query by sql SHOW PIPE
+   * query by sql SHOW PIPESERVER STATUS
    *
-   * @return QueryDataSet contained three columns: pipe name, status and start time
+   * @return QueryDataSet contained one column: enable
    */
-  public QueryDataSet showPipe(ShowPipeServerPlan plan) throws PipeServerException {
-    if (!receiverManager.isPipeServerEnable()) {
-      throw new PipeServerException("Pipe server is not started.");
-    }
+  public QueryDataSet showPipeServer(ShowPipeServerPlan plan) {
     ListDataSet dataSet =
         new ListDataSet(
-            Arrays.asList(
-                new PartialPath(COLUMN_PIPE_NAME, false),
-                new PartialPath(COLUMN_PIPE_REMOTE_IP, false),
-                new PartialPath(COLUMN_PIPE_STATUS, false),
-                new PartialPath(COLUMN_CREATED_TIME, false)),
-            Arrays.asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT));
+            Collections.singletonList(new PartialPath(COLUMN_PIPESERVER_STATUS, false)),
+            Collections.singletonList(TSDataType.BOOLEAN));
+    RowRecord rowRecord = new RowRecord(0);
+    Field status = new Field(TSDataType.BOOLEAN);
+    status.setBoolV(receiverManager.isPipeServerEnable());
+    rowRecord.addField(status);
+    dataSet.putRecord(rowRecord);
+    return dataSet;
+  }
+
+  /** query by sql SHOW PIPE */
+  public QueryDataSet showPipe(ShowPipePlan plan, ListDataSet dataSet) {
     List<PipeInfo> pipeInfos;
     if (!StringUtils.isEmpty(plan.getPipeName())) {
       pipeInfos = receiverManager.getPipeInfos(plan.getPipeName());
@@ -220,21 +216,21 @@ public class ReceiverService implements IService {
   }
 
   private void putPipeRecord(ListDataSet dataSet, PipeInfo pipeInfo) {
-    RowRecord rowRecord = new RowRecord(0);
-    Field pipeNameField = new Field(TSDataType.TEXT);
-    Field pipeRemoteIp = new Field(TSDataType.TEXT);
-    Field pipeStatusField = new Field(TSDataType.TEXT);
-    Field pipeCreateTimeField = new Field(TSDataType.TEXT);
-    pipeNameField.setBinaryV(new Binary(pipeInfo.getPipeName()));
-    pipeRemoteIp.setBinaryV(new Binary(pipeInfo.getRemoteIp()));
-    pipeStatusField.setBinaryV(new Binary(pipeInfo.getStatus().name()));
-    pipeCreateTimeField.setBinaryV(
-        new Binary(DatetimeUtils.convertLongToDate(pipeInfo.getCreateTime())));
-    rowRecord.addField(pipeNameField);
-    rowRecord.addField(pipeRemoteIp);
-    rowRecord.addField(pipeStatusField);
-    rowRecord.addField(pipeCreateTimeField);
-    dataSet.putRecord(rowRecord);
+    RowRecord record = new RowRecord(0);
+    record.addField(
+        Binary.valueOf(DatetimeUtils.convertLongToDate(pipeInfo.getCreateTime())), TSDataType.TEXT);
+    record.addField(Binary.valueOf(pipeInfo.getPipeName()), TSDataType.TEXT);
+    record.addField(Binary.valueOf("receiver"), TSDataType.TEXT);
+    record.addField(Binary.valueOf(pipeInfo.getRemoteIp()), TSDataType.TEXT);
+    record.addField(Binary.valueOf(pipeInfo.getStatus().name()), TSDataType.TEXT);
+    record.addField(
+        Binary.valueOf(
+            receiverManager
+                .getPipeMessage(
+                    pipeInfo.getPipeName(), pipeInfo.getRemoteIp(), pipeInfo.getCreateTime(), false)
+                .getMsg()),
+        TSDataType.TEXT);
+    dataSet.putRecord(record);
   }
 
   private ReceiverService() {

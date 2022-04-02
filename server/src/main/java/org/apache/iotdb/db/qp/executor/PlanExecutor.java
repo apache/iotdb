@@ -216,13 +216,14 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_FUNCTION_NAME;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_FUNCTION_TYPE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ITEM;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_LOCK_INFO;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PIPE2PIPESINK_NAME;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PIPESINK_ATTRIBUTES;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PIPESINK_NAME;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PIPESINK_TYPE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PIPE_CREATE_TIME;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PIPE_MSG;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PIPE_NAME;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PIPE_REMOTE;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PIPE_ROLE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PIPE_STATUS;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PRIVILEGE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ROLE;
@@ -753,12 +754,8 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
-  private QueryDataSet processShowPipeServer(ShowPipeServerPlan plan) throws QueryProcessException {
-    try {
-      return ReceiverService.getInstance().showPipe(plan);
-    } catch (PipeServerException e) {
-      throw new QueryProcessException(e);
-    }
+  private QueryDataSet processShowPipeServer(ShowPipeServerPlan plan) {
+    return ReceiverService.getInstance().showPipeServer(plan);
   }
 
   private QueryDataSet processCountNodes(CountPlan countPlan) throws MetadataException {
@@ -1215,10 +1212,12 @@ public class PlanExecutor implements IPlanExecutor {
             Arrays.asList(
                 new PartialPath(COLUMN_PIPE_CREATE_TIME, false),
                 new PartialPath(COLUMN_PIPE_NAME, false),
-                new PartialPath(COLUMN_PIPE2PIPESINK_NAME, false),
+                new PartialPath(COLUMN_PIPE_ROLE, false),
+                new PartialPath(COLUMN_PIPE_REMOTE, false),
                 new PartialPath(COLUMN_PIPE_STATUS, false),
                 new PartialPath(COLUMN_PIPE_MSG, false)),
             Arrays.asList(
+                TSDataType.TEXT,
                 TSDataType.TEXT,
                 TSDataType.TEXT,
                 TSDataType.TEXT,
@@ -1231,12 +1230,14 @@ public class PlanExecutor implements IPlanExecutor {
         record.addField(
             Binary.valueOf(DatetimeUtils.convertLongToDate(pipe.getCreateTime())), TSDataType.TEXT);
         record.addField(Binary.valueOf(pipe.getName()), TSDataType.TEXT);
+        record.addField(Binary.valueOf("sender"), TSDataType.TEXT);
         record.addField(Binary.valueOf(pipe.getPipeSink().getName()), TSDataType.TEXT);
         record.addField(Binary.valueOf(pipe.getStatus().name()), TSDataType.TEXT);
         record.addField(
             Binary.valueOf(SenderService.getInstance().getPipeMsg(pipe)), TSDataType.TEXT);
         listDataSet.putRecord(record);
       }
+    ReceiverService.getInstance().showPipe(plan, listDataSet);
     return listDataSet;
   }
 

@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.newsync.receiver.manager;
 
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.newsync.sender.pipe.Pipe.PipeStatus;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
 import org.junit.After;
@@ -80,12 +81,12 @@ public class ReceiverManagerTest {
       PipeMessage error = new PipeMessage(PipeMessage.MsgType.ERROR, "error");
       manager.writePipeMessage(pipe1, ip1, createdTime1, info);
       manager.writePipeMessage(pipe1, ip1, createdTime1, warn);
-      List<PipeMessage> messages = manager.getPipeMessages(pipe1, ip1, createdTime1);
+      List<PipeMessage> messages = manager.getPipeMessages(pipe1, ip1, createdTime1, true);
       Assert.assertEquals(2, messages.size());
       Assert.assertEquals(info, messages.get(0));
       Assert.assertEquals(warn, messages.get(1));
       manager.writePipeMessage(pipe1, ip1, createdTime1, error);
-      messages = manager.getPipeMessages(pipe1, ip1, createdTime1);
+      messages = manager.getPipeMessages(pipe1, ip1, createdTime1, true);
       Assert.assertEquals(1, messages.size());
       Assert.assertEquals(error, messages.get(0));
       manager.close();

@@ -20,15 +20,12 @@ package org.apache.iotdb.db.newsync.receiver.load;
 
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.LoadFileException;
-import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.sync.PipeDataLoadException;
+import org.apache.iotdb.db.exception.sync.PipeDataLoadUnbearableException;
 import org.apache.iotdb.db.tools.TsFileRewriteTool;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
-import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -42,26 +39,28 @@ public class TsFileLoader implements ILoader {
   }
 
   @Override
-  public void load()
-      throws IOException, MetadataException, WriteProcessException, StorageEngineException,
-          LoadFileException {
-    TsFileResource tsFileResource = new TsFileResource(tsFile);
-    tsFileResource.setClosed(true);
-    FileLoaderUtils.checkTsFileResource(tsFileResource);
-    List<TsFileResource> splitResources = new ArrayList();
-    if (tsFileResource.isSpanMultiTimePartitions()) {
-      TsFileRewriteTool.rewriteTsFile(tsFileResource, splitResources);
-      tsFileResource.writeLock();
-      tsFileResource.removeModFile();
-      tsFileResource.writeUnlock();
-    }
+  public void load() throws PipeDataLoadException {
+    try {
+      TsFileResource tsFileResource = new TsFileResource(tsFile);
+      tsFileResource.setClosed(true);
+      FileLoaderUtils.checkTsFileResource(tsFileResource);
+      List<TsFileResource> splitResources = new ArrayList();
+      if (tsFileResource.isSpanMultiTimePartitions()) {
+        TsFileRewriteTool.rewriteTsFile(tsFileResource, splitResources);
+        tsFileResource.writeLock();
+        tsFileResource.removeModFile();
+        tsFileResource.writeUnlock();
+      }
 
-    if (splitResources.isEmpty()) {
-      splitResources.add(tsFileResource);
-    }
+      if (splitResources.isEmpty()) {
+        splitResources.add(tsFileResource);
+      }
 
-    for (TsFileResource resource : splitResources) {
-      StorageEngine.getInstance().loadNewTsFile(resource);
+      for (TsFileResource resource : splitResources) {
+        StorageEngine.getInstance().loadNewTsFile(resource);
+      }
+    } catch (Exception e) {
+      throw new PipeDataLoadUnbearableException(e.getMessage());
     }
   }
 }

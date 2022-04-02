@@ -18,19 +18,12 @@
  */
 package org.apache.iotdb.db.newsync.receiver.load;
 
-import org.apache.iotdb.db.exception.LoadFileException;
-import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-
-import java.io.IOException;
+import org.apache.iotdb.db.exception.sync.PipeDataLoadException;
 
 /**
  * This interface is used to load files, including tsFile, syncTask, schema, modsFile and
  * deletePlan.
  */
 public interface ILoader {
-  void load()
-      throws StorageEngineException, IOException, MetadataException, WriteProcessException,
-          LoadFileException;
+  void load() throws PipeDataLoadException;
 }
