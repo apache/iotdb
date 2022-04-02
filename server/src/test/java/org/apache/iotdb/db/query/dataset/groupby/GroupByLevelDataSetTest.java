@@ -84,7 +84,7 @@ public class GroupByLevelDataSetTest {
   };
 
   static {
-    IoTDB.metaManager.init();
+    IoTDB.configManager.init();
   }
 
   public GroupByLevelDataSetTest() throws QueryProcessException {}
@@ -143,10 +143,19 @@ public class GroupByLevelDataSetTest {
     queryPlan =
         (QueryPlan)
             processor.parseSQLToPhysicalPlan(
-                "select count(\"s3+xy\") from root.test.* group by level=2");
+                "select count(`\"s3+xy\"`) from root.test.* group by level=2");
     dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
 
     assertTrue(dataSet.hasNext());
     assertEquals("0\t1", dataSet.next().toString());
+
+    // with value filter
+    queryPlan =
+        (QueryPlan)
+            processor.parseSQLToPhysicalPlan(
+                "select count(s1),sum(s0),last_value(s0),first_value(s0) from root.** where s0!=0 or time<10 group by level=3");
+    dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+    assertTrue(dataSet.hasNext());
+    assertEquals("0\t590.0\t106\t120\t4", dataSet.next().toString());
   }
 }

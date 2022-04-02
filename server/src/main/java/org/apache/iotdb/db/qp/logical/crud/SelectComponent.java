@@ -30,7 +30,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /** this class maintains information from select clause. */
-public final class SelectComponent {
+public class SelectComponent {
 
   private final ZoneId zoneId;
 
@@ -38,7 +38,7 @@ public final class SelectComponent {
   private boolean hasTimeSeriesGeneratingFunction = false;
   private boolean hasUserDefinedAggregationFunction = false;
 
-  private List<ResultColumn> resultColumns = new ArrayList<>();
+  protected List<ResultColumn> resultColumns = new ArrayList<>();
 
   private List<PartialPath> pathsCache;
   private List<String> aggregationFunctionsCache;
@@ -50,9 +50,15 @@ public final class SelectComponent {
 
   public SelectComponent(SelectComponent selectComponent) {
     zoneId = selectComponent.zoneId;
+
     hasPlainAggregationFunction = selectComponent.hasPlainAggregationFunction;
     hasTimeSeriesGeneratingFunction = selectComponent.hasTimeSeriesGeneratingFunction;
+    hasUserDefinedAggregationFunction = selectComponent.hasUserDefinedAggregationFunction;
+
     resultColumns.addAll(selectComponent.resultColumns);
+
+    pathsCache = null;
+    aggregationFunctionsCache = null;
   }
 
   public ZoneId getZoneId() {
@@ -80,7 +86,7 @@ public final class SelectComponent {
     if (resultColumn.getExpression().isUserDefinedAggregationFunctionExpression()) {
       hasUserDefinedAggregationFunction = true;
     }
-    if (resultColumn.getExpression().isPlainAggregationFunctionExpression()) {
+    if (resultColumn.getExpression().isBuiltInAggregationFunctionExpression()) {
       hasPlainAggregationFunction = true;
     }
     if (resultColumn.getExpression().isTimeSeriesGeneratingFunctionExpression()) {
@@ -107,7 +113,7 @@ public final class SelectComponent {
         if (expression instanceof TimeSeriesOperand) {
           pathsCache.add(((TimeSeriesOperand) expression).getPath());
         } else if (expression instanceof FunctionExpression
-            && expression.isPlainAggregationFunctionExpression()) {
+            && expression.isBuiltInAggregationFunctionExpression()) {
           pathsCache.add(
               ((TimeSeriesOperand) ((FunctionExpression) expression).getExpressions().get(0))
                   .getPath());

@@ -20,7 +20,7 @@
 package org.apache.iotdb.cluster.config;
 
 import org.apache.iotdb.cluster.exception.BadSeedUrlFormatException;
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 
@@ -215,11 +215,11 @@ public class ClusterDescriptor {
             properties.getProperty(
                 "max_num_of_logs_in_mem", String.valueOf(config.getMaxNumOfLogsInMem()))));
 
-    config.setMaxMemorySizeForRaftLog(
-        Long.parseLong(
+    config.setRaftLogMemoryProportion(
+        Double.parseDouble(
             properties.getProperty(
-                "max_memory_size_for_raft_log",
-                String.valueOf(config.getMaxMemorySizeForRaftLog()))));
+                "raft_log_memory_proportion",
+                String.valueOf(config.getRaftLogMemoryProportion()))));
 
     config.setLogDeleteCheckIntervalSecond(
         Integer.parseInt(
@@ -269,6 +269,18 @@ public class ClusterDescriptor {
                 "max_raft_log_index_size_in_memory",
                 String.valueOf(config.getMaxRaftLogIndexSizeInMemory()))));
 
+    config.setUnCommittedRaftLogNumForRejectThreshold(
+        Integer.parseInt(
+            properties.getProperty(
+                "uncommitted_raft_log_num_for_reject_threshold",
+                String.valueOf(config.getUnCommittedRaftLogNumForRejectThreshold()))));
+
+    config.setUnAppliedRaftLogNumForRejectThreshold(
+        Integer.parseInt(
+            properties.getProperty(
+                "unapplied_raft_log_num_for_reject_threshold",
+                String.valueOf(config.getUnAppliedRaftLogNumForRejectThreshold()))));
+
     config.setMaxRaftLogPersistDataSizePerFile(
         Integer.parseInt(
             properties.getProperty(
@@ -312,6 +324,12 @@ public class ClusterDescriptor {
             properties.getProperty(
                 "max_client_pernode_permember_number",
                 String.valueOf(config.getMaxClientPerNodePerMember()))));
+
+    config.setMaxIdleClientPerNodePerMember(
+        Integer.parseInt(
+            properties.getProperty(
+                "max_idle_client_pernode_permember_number",
+                String.valueOf(config.getMaxIdleClientPerNodePerMember()))));
 
     config.setWaitClientTimeoutMS(
         Long.parseLong(

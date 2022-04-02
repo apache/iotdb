@@ -18,7 +18,8 @@
  */
 package org.apache.iotdb.db.metadata.path;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
 import org.apache.iotdb.db.engine.memtable.IWritableMemChunkGroup;
@@ -37,7 +38,6 @@ import org.apache.iotdb.db.query.executor.fill.LastPointReader;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.query.reader.series.SeriesReader;
 import org.apache.iotdb.db.utils.QueryUtils;
-import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
@@ -94,6 +94,11 @@ public class MeasurementPath extends PartialPath {
     this.measurementSchema = measurementSchema;
   }
 
+  public MeasurementPath(String[] nodes, MeasurementSchema schema) {
+    super(nodes);
+    this.measurementSchema = schema;
+  }
+
   public IMeasurementSchema getMeasurementSchema() {
     return measurementSchema;
   }
@@ -137,12 +142,15 @@ public class MeasurementPath extends PartialPath {
     isUnderAlignedEntity = underAlignedEntity;
   }
 
+  @Override
   public PartialPath copy() {
     MeasurementPath result = new MeasurementPath();
     result.nodes = nodes;
     result.fullPath = fullPath;
     result.device = device;
     result.measurementAlias = measurementAlias;
+    result.measurementSchema = measurementSchema;
+    result.isUnderAlignedEntity = isUnderAlignedEntity;
     return result;
   }
 
@@ -266,7 +274,7 @@ public class MeasurementPath extends PartialPath {
     IWritableMemChunk memChunk = memTableMap.get(deviceID).getMemChunkMap().get(getMeasurement());
     // get sorted tv list is synchronized so different query can get right sorted list reference
     TVList chunkCopy = memChunk.getSortedTvListForQuery();
-    int curSize = chunkCopy.size();
+    int curSize = chunkCopy.rowCount();
     List<TimeRange> deletionList = null;
     if (modsToMemtable != null) {
       deletionList = constructDeletionList(memTable, modsToMemtable, timeLowerBound);

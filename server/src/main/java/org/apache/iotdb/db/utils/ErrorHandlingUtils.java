@@ -18,14 +18,14 @@
  */
 package org.apache.iotdb.db.utils;
 
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.conf.OperationType;
 import org.apache.iotdb.db.exception.BatchProcessException;
-import org.apache.iotdb.db.exception.IoTDBException;
 import org.apache.iotdb.db.exception.QueryInBatchStatementException;
 import org.apache.iotdb.db.exception.StorageGroupNotReadyException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
-import org.apache.iotdb.db.exception.runtime.SQLParserException;
+import org.apache.iotdb.db.exception.sql.SQLParserException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
@@ -35,7 +35,9 @@ import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.Arrays;
+import java.util.concurrent.ExecutionException;
 
 public class ErrorHandlingUtils {
 
@@ -53,10 +55,10 @@ public class ErrorHandlingUtils {
   public static TSStatus onNPEOrUnexpectedException(
       Exception e, String operation, TSStatusCode statusCode) {
     String message = String.format("[%s] Exception occurred: %s failed. ", statusCode, operation);
-    if (e instanceof NullPointerException) {
-      LOGGER.error("Status code: {}, operation: {} failed", statusCode, operation, e);
+    if (e instanceof IOException || e instanceof NullPointerException) {
+      LOGGER.error("Status code: " + statusCode + ", operation: " + operation + " failed", e);
     } else {
-      LOGGER.warn("Status code: {}, operation: {} failed", statusCode, operation, e);
+      LOGGER.warn("Status code: " + statusCode + ", operation: " + operation + " failed", e);
     }
     return RpcUtils.getStatus(statusCode, message + e.getMessage());
   }
@@ -66,18 +68,25 @@ public class ErrorHandlingUtils {
     return onNPEOrUnexpectedException(e, operation.getName(), statusCode);
   }
 
-  public static String getRootCause(Throwable e) {
+  public static Throwable getRootCause(Throwable e) {
     while (e.getCause() != null) {
       e = e.getCause();
     }
-    return e.getMessage();
+    return e;
   }
 
   public static TSStatus onQueryException(Exception e, String operation) {
     TSStatus status = tryCatchQueryException(e);
-    return status != null
-        ? status
-        : onNPEOrUnexpectedException(e, operation, TSStatusCode.INTERNAL_SERVER_ERROR);
+    if (status != null) {
+      // ignore logging sg not ready exception
+      if (status.getCode() != TSStatusCode.STORAGE_GROUP_NOT_READY.getStatusCode()) {
+        LOGGER.error(
+            "Status code: " + status.getCode() + ", Query Statement: " + operation + " failed", e);
+      }
+      return status;
+    } else {
+      return onNPEOrUnexpectedException(e, operation, TSStatusCode.INTERNAL_SERVER_ERROR);
+    }
   }
 
   public static TSStatus onQueryException(Exception e, OperationType operation) {
@@ -85,31 +94,31 @@ public class ErrorHandlingUtils {
   }
 
   public static TSStatus tryCatchQueryException(Exception e) {
-    if (e instanceof QueryTimeoutRuntimeException) {
-      DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(e.getMessage(), e);
-      return RpcUtils.getStatus(TSStatusCode.TIME_OUT, getRootCause(e));
-    } else if (e instanceof ParseCancellationException) {
-      DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(INFO_PARSING_SQL_ERROR, e);
+    Throwable rootCause = getRootCause(e);
+    // ignore logging sg not ready exception
+    if (rootCause instanceof StorageGroupNotReadyException) {
+      return RpcUtils.getStatus(TSStatusCode.STORAGE_GROUP_NOT_READY, rootCause.getMessage());
+    }
+
+    Throwable t = e instanceof ExecutionException ? e.getCause() : e;
+    if (t instanceof QueryTimeoutRuntimeException) {
+      return RpcUtils.getStatus(TSStatusCode.TIME_OUT, rootCause.getMessage());
+    } else if (t instanceof ParseCancellationException) {
       return RpcUtils.getStatus(
-          TSStatusCode.SQL_PARSE_ERROR, INFO_PARSING_SQL_ERROR + getRootCause(e));
-    } else if (e instanceof SQLParserException) {
-      DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(INFO_CHECK_METADATA_ERROR, e);
+          TSStatusCode.SQL_PARSE_ERROR, INFO_PARSING_SQL_ERROR + rootCause.getMessage());
+    } else if (t instanceof SQLParserException) {
       return RpcUtils.getStatus(
-          TSStatusCode.METADATA_ERROR, INFO_CHECK_METADATA_ERROR + getRootCause(e));
-    } else if (e instanceof QueryProcessException) {
-      DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(INFO_QUERY_PROCESS_ERROR, e);
+          TSStatusCode.METADATA_ERROR, INFO_CHECK_METADATA_ERROR + rootCause.getMessage());
+    } else if (t instanceof QueryProcessException) {
       return RpcUtils.getStatus(
-          TSStatusCode.QUERY_PROCESS_ERROR, INFO_QUERY_PROCESS_ERROR + getRootCause(e));
-    } else if (e instanceof QueryInBatchStatementException) {
-      DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(INFO_NOT_ALLOWED_IN_BATCH_ERROR, e);
+          TSStatusCode.QUERY_PROCESS_ERROR, INFO_QUERY_PROCESS_ERROR + rootCause.getMessage());
+    } else if (t instanceof QueryInBatchStatementException) {
       return RpcUtils.getStatus(
-          TSStatusCode.QUERY_NOT_ALLOWED, INFO_NOT_ALLOWED_IN_BATCH_ERROR + getRootCause(e));
-    } else if (e instanceof IoTDBException && !(e instanceof StorageGroupNotReadyException)) {
-      DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(INFO_QUERY_PROCESS_ERROR, e);
-      return RpcUtils.getStatus(((IoTDBException) e).getErrorCode(), getRootCause(e));
-    } else if (e instanceof TsFileRuntimeException) {
-      DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(INFO_QUERY_PROCESS_ERROR, e);
-      return RpcUtils.getStatus(TSStatusCode.TSFILE_PROCESSOR_ERROR, getRootCause(e));
+          TSStatusCode.QUERY_NOT_ALLOWED, INFO_NOT_ALLOWED_IN_BATCH_ERROR + rootCause.getMessage());
+    } else if (t instanceof IoTDBException) {
+      return RpcUtils.getStatus(((IoTDBException) t).getErrorCode(), rootCause.getMessage());
+    } else if (t instanceof TsFileRuntimeException) {
+      return RpcUtils.getStatus(TSStatusCode.TSFILE_PROCESSOR_ERROR, rootCause.getMessage());
     }
     return null;
   }
@@ -128,15 +137,22 @@ public class ErrorHandlingUtils {
   public static TSStatus tryCatchNonQueryException(Exception e) {
     String message = "Exception occurred while processing non-query. ";
     if (e instanceof BatchProcessException) {
+      BatchProcessException batchException = (BatchProcessException) e;
+      // ignore logging sg not ready exception
+      for (TSStatus status : batchException.getFailingStatus()) {
+        if (status.getCode() == TSStatusCode.STORAGE_GROUP_NOT_READY.getStatusCode()) {
+          return RpcUtils.getStatus(Arrays.asList(batchException.getFailingStatus()));
+        }
+      }
       LOGGER.warn(message, e);
-      return RpcUtils.getStatus(Arrays.asList(((BatchProcessException) e).getFailingStatus()));
-    } else if (e instanceof IoTDBException && !(e instanceof StorageGroupNotReadyException)) {
-      if (((IoTDBException) e).isUserException()) {
-        LOGGER.warn(message + e.getMessage());
-      } else {
+      return RpcUtils.getStatus(Arrays.asList(batchException.getFailingStatus()));
+    } else if (e instanceof IoTDBException) {
+      Throwable rootCause = getRootCause(e);
+      // ignore logging sg not ready exception
+      if (!(rootCause instanceof StorageGroupNotReadyException)) {
         LOGGER.warn(message, e);
       }
-      return RpcUtils.getStatus(((IoTDBException) e).getErrorCode(), getRootCause(e));
+      return RpcUtils.getStatus(((IoTDBException) e).getErrorCode(), rootCause.getMessage());
     }
     return null;
   }
@@ -146,7 +162,7 @@ public class ErrorHandlingUtils {
     String message =
         String.format(
             "[%s] Exception occurred: %s failed. %s", statusCode, operation, e.getMessage());
-    LOGGER.warn("Status code: {}, operation: {} failed", statusCode, operation, e);
+    LOGGER.warn("Status code: " + statusCode + ", operation: " + operation + " failed", e);
     return RpcUtils.getStatus(errorCode, message);
   }
 

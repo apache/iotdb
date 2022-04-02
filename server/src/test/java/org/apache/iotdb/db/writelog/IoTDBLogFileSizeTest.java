@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.writelog;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.MmapUtil;
@@ -67,7 +67,6 @@ public class IoTDBLogFileSizeTest {
     groupSize = TSFileDescriptor.getInstance().getConfig().getGroupSizeInByte();
     TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(8 * 1024 * 1024);
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(8 * 1024 * 1024);
-    EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
     executeSQL(setUpSqls);
   }

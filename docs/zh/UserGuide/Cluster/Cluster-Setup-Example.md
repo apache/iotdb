@@ -32,7 +32,7 @@ under the License.
 ```
 mvn clean package -DskipTests
 chmod -R 777 ./cluster/target/
-nohup ./cluster/target/iotdb-cluster-0.13.0-SNAPSHOT/sbin/start-node.sh >/dev/null 2>&1 &
+nohup ./cluster/target/iotdb-cluster-0.14.0-SNAPSHOT/sbin/start-node.sh >/dev/null 2>&1 &
 ```
 
 ### 使用官网发布版本：
@@ -108,9 +108,9 @@ rpc_port=6671
 ```
 mvn clean package -DskipTests
 chmod -R 777 ./cluster/target/
-nohup ./cluster/target/iotdb-cluster-0.13.0-SNAPSHOT/sbin/start-node.sh ./cluster/target/test-classes/node1conf/ >/dev/null 2>&1 &
-nohup ./cluster/target/iotdb-cluster-0.13.0-SNAPSHOT/sbin/start-node.sh ./cluster/target/test-classes/node2conf/ >/dev/null 2>&1 &
-nohup ./cluster/target/iotdb-cluster-0.13.0-SNAPSHOT/sbin/start-node.sh ./cluster/target/test-classes/node3conf/ >/dev/null 2>&1 &
+nohup ./cluster/target/iotdb-cluster-0.14.0-SNAPSHOT/sbin/start-node.sh ./cluster/target/test-classes/node1conf/ >/dev/null 2>&1 &
+nohup ./cluster/target/iotdb-cluster-0.14.0-SNAPSHOT/sbin/start-node.sh ./cluster/target/test-classes/node2conf/ >/dev/null 2>&1 &
+nohup ./cluster/target/iotdb-cluster-0.14.0-SNAPSHOT/sbin/start-node.sh ./cluster/target/test-classes/node3conf/ >/dev/null 2>&1 &
 ```
 
 ### 使用官网发布版本:
@@ -251,7 +251,7 @@ rpc_address = C_public_ip
 ```
 mvn clean package -DskipTests
 chmod -R 777 ./cluster/target/
-cd cluster/target/iotdb-cluster-0.13.0-SNAPSHOT/
+cd cluster/target/iotdb-cluster-0.14.0-SNAPSHOT/
 ```
 
 ### 使用官网发布版本:

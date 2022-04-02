@@ -21,5 +21,10 @@ package org.apache.iotdb.metrics.utils;
 
 public enum PredefinedMetric {
   JVM,
-  LOGBACK
+  LOGBACK;
+
+  @Override
+  public String toString() {
+    return name();
+  }
 }
