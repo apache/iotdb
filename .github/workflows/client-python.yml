@@ -52,7 +52,7 @@ jobs:
           restore-keys: ${{ runner.os }}-m2-
       - name: Compile IoTDB Python Client
         run: mvn -B package -Dmaven.test.skip=true  -am -pl client-py
-      - name: Install python packages
+      - name: Install requirements
         run: pip3 install -r client-py/requirements_dev.txt
       - name: Integration test
         shell: bash
