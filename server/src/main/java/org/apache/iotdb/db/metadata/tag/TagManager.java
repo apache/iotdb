@@ -30,6 +30,7 @@ import org.apache.iotdb.db.metadata.lastCache.LastCacheManager;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.operator.meta.TimeSeriesMetaScanOperator;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -100,6 +101,91 @@ public class TagManager {
     if (tagIndex.get(tagKey).get(tagValue).isEmpty()) {
       tagIndex.get(tagKey).remove(tagValue);
     }
+  }
+
+  public List<IMeasurementMNode> getMatchedTimeSeriesWithTag(
+      TimeSeriesMetaScanOperator operator, QueryContext context) throws MetadataException {
+    if (!tagIndex.containsKey(operator.getKey())) {
+      return Collections.emptyList();
+    }
+    Map<String, Set<IMeasurementMNode>> value2Node = tagIndex.get(operator.getKey());
+    if (value2Node.isEmpty()) {
+      return Collections.emptyList();
+    }
+
+    List<IMeasurementMNode> allMatchedNodes = new ArrayList<>();
+    if (operator.isContains()) {
+      for (Map.Entry<String, Set<IMeasurementMNode>> entry : value2Node.entrySet()) {
+        if (entry.getKey() == null || entry.getValue() == null) {
+          continue;
+        }
+        String tagValue = entry.getKey();
+        if (tagValue.contains(operator.getValue())) {
+          allMatchedNodes.addAll(entry.getValue());
+        }
+      }
+    } else {
+      for (Map.Entry<String, Set<IMeasurementMNode>> entry : value2Node.entrySet()) {
+        if (entry.getKey() == null || entry.getValue() == null) {
+          continue;
+        }
+        String tagValue = entry.getKey();
+        if (operator.getValue().equals(tagValue)) {
+          allMatchedNodes.addAll(entry.getValue());
+        }
+      }
+    }
+
+    // if ordered by heat, we sort all the timeseries by the descending order of the last insert
+    // timestamp
+    if (operator.isOrderByHeat()) {
+      List<VirtualStorageGroupProcessor> list;
+      try {
+        Pair<
+            List<VirtualStorageGroupProcessor>,
+            Map<VirtualStorageGroupProcessor, List<PartialPath>>>
+            lockListAndProcessorToSeriesMapPair =
+            StorageEngine.getInstance()
+                .mergeLock(
+                    allMatchedNodes.stream()
+                        .map(IMeasurementMNode::getMeasurementPath)
+                        .collect(toList()));
+        list = lockListAndProcessorToSeriesMapPair.left;
+        Map<VirtualStorageGroupProcessor, List<PartialPath>> processorToSeriesMap =
+            lockListAndProcessorToSeriesMapPair.right;
+
+        try {
+          // init QueryDataSource cache
+          QueryResourceManager.getInstance()
+              .initQueryDataSourceCache(processorToSeriesMap, context, null);
+        } catch (Exception e) {
+          logger.error("Meet error when init QueryDataSource ", e);
+          throw new QueryProcessException("Meet error when init QueryDataSource.", e);
+        } finally {
+          StorageEngine.getInstance().mergeUnLock(list);
+        }
+
+        allMatchedNodes =
+            allMatchedNodes.stream()
+                .sorted(
+                    Comparator.comparingLong(
+                        (IMeasurementMNode mNode) ->
+                            LastCacheManager.getLastTimeStamp(mNode, context))
+                        .reversed()
+                        .thenComparing(IMNode::getFullPath))
+                .collect(toList());
+      } catch (StorageEngineException | QueryProcessException e) {
+        throw new MetadataException(e);
+      }
+    } else {
+      // otherwise, we just sort them by the alphabetical order
+      allMatchedNodes =
+          allMatchedNodes.stream()
+              .sorted(Comparator.comparing(IMNode::getFullPath))
+              .collect(toList());
+    }
+
+    return allMatchedNodes;
   }
 
   public List<IMeasurementMNode> getMatchedTimeseriesInIndex(

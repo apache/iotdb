@@ -33,10 +33,12 @@ public class DataRegion {
     this.endpoint = endpoint;
   }
 
+  @Override
   public int hashCode() {
     return dataRegionId.hashCode();
   }
 
+  @Override
   public boolean equals(Object obj) {
     if (obj instanceof DataRegion) {
       return this.dataRegionId.equals(((DataRegion) obj).dataRegionId);
@@ -44,6 +46,7 @@ public class DataRegion {
     return false;
   }
 
+  @Override
   public String toString() {
     return String.format("%s/%d", this.endpoint, this.dataRegionId);
   }

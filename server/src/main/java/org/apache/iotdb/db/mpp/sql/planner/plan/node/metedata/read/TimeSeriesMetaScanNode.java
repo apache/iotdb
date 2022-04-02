@@ -23,13 +23,11 @@ public class TimeSeriesMetaScanNode extends MetaScanNode {
       int limit,
       int offset,
       boolean orderByHeat,
-      boolean isContains) {
-    super(id);
-    super.setLimit(limit);
-    this.path = partialPath;
+      boolean isContains,
+      boolean isPrefixPath) {
+    super(id, partialPath, limit, offset, isPrefixPath);
     this.key = key;
     this.value = value;
-    this.offset = offset;
     this.orderByHeat = orderByHeat;
     this.isContains = isContains;
   }

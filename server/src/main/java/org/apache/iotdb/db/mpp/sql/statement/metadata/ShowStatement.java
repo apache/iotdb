@@ -27,7 +27,7 @@ public class ShowStatement extends Statement {
   int limit = 0;
   int offset = 0;
 
-  protected boolean isPrefixPath = false;
+  protected boolean isPrefixPath;
 
   public ShowStatement() {
     super();

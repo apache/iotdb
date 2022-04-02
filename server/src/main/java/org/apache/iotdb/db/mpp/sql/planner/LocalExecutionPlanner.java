@@ -18,16 +18,19 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner;
 
+import java.util.List;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
 import org.apache.iotdb.db.mpp.execution.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.operator.Operator;
 import org.apache.iotdb.db.mpp.operator.OperatorContext;
+import org.apache.iotdb.db.mpp.operator.meta.TimeSeriesMetaScanOperator;
 import org.apache.iotdb.db.mpp.operator.process.LimitOperator;
 import org.apache.iotdb.db.mpp.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesMetaScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.AggregateNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.DeviceMergeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.FillNode;
@@ -41,8 +44,6 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregateScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
-
-import java.util.List;
 
 /**
  * used to plan a fragment instance. Currently, we simply change it from PlanNode to executable
@@ -77,6 +78,27 @@ public class LocalExecutionPlanner {
           node.getTimeFilter(),
           node.getValueFilter(),
           ascending);
+    }
+
+    @Override
+    public Operator visitTimeSeriesMetaScan(
+        TimeSeriesMetaScanNode node, LocalExecutionPlanContext context) {
+      OperatorContext operatorContext =
+          context.taskContext.addOperatorContext(
+              context.getNextOperatorId(),
+              node.getId(),
+              TimeSeriesMetaScanOperator.class.getSimpleName());
+      return new TimeSeriesMetaScanOperator(
+          operatorContext,
+          node.getSchemaRegionReplicaSet().getSchemaRegionId(),
+          node.getLimit(),
+          node.getOffset(),
+          node.getPath(),
+          node.getKey(),
+          node.getValue(),
+          node.isContains(),
+          node.isOrderByHeat(),
+          node.isPrefixPath());
     }
 
     @Override

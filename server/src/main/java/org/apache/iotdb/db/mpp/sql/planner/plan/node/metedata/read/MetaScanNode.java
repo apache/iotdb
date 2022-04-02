@@ -31,11 +31,20 @@ public abstract class MetaScanNode extends PlanNode {
   protected int offset = 0;
   protected PartialPath path;
   private boolean hasLimit;
+  private boolean isPrefixPath;
 
   private SchemaRegionReplicaSet schemaRegionReplicaSet;
 
-  protected MetaScanNode(PlanNodeId id) {
+  protected MetaScanNode(PlanNodeId id, PartialPath partialPath, int limit, int offset, boolean isPrefixPath) {
     super(id);
+    this.path = partialPath;
+    setLimit(limit);
+    this.offset = offset;
+    this.isPrefixPath = isPrefixPath;
+  }
+
+  public boolean isPrefixPath() {
+    return isPrefixPath;
   }
 
   public int getLimit() {

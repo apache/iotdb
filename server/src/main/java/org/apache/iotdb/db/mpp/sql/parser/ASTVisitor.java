@@ -48,6 +48,7 @@ import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowDevicesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
@@ -117,6 +118,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     Statement statement = visit(ctx.statement());
     if (ctx.DEBUG() != null) {
       statement.setDebug(true);
+    }
+    if (statement instanceof ShowStatement) {
+      ((ShowStatement) statement)
+          .setPrefixPath(IoTDBConstant.ClientVersion.V_0_12.equals(clientVersion));
     }
     return statement;
   }

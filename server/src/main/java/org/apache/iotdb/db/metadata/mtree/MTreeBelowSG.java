@@ -18,6 +18,26 @@
  */
 package org.apache.iotdb.db.metadata.mtree;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import java.io.IOException;
+import java.io.Serializable;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.Deque;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Queue;
+import java.util.Set;
+import java.util.TreeSet;
+import static java.util.stream.Collectors.toList;
+import java.util.stream.Stream;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -29,6 +49,8 @@ import org.apache.iotdb.db.exception.metadata.TemplateImcompatibeException;
 import org.apache.iotdb.db.exception.metadata.TemplateIsInUseException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor.StorageGroupFilter;
 import org.apache.iotdb.db.metadata.MetadataConstant;
+import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_RESULT_NODES;
+import static org.apache.iotdb.db.metadata.lastCache.LastCacheManager.getLastTimeStamp;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
@@ -51,6 +73,7 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
+import org.apache.iotdb.db.mpp.operator.meta.TimeSeriesMetaScanOperator;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -62,33 +85,8 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
-
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.io.Serializable;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.Deque;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Queue;
-import java.util.Set;
-import java.util.TreeSet;
-import java.util.stream.Stream;
-
-import static java.util.stream.Collectors.toList;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
-import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_RESULT_NODES;
-import static org.apache.iotdb.db.metadata.lastCache.LastCacheManager.getLastTimeStamp;
 
 /**
  * The hierarchical struct of the Metadata Tree is implemented in this class.
@@ -569,6 +567,75 @@ public class MTreeBelowSG implements Serializable {
     collector.traverse();
     offset = collector.getCurOffset() + 1;
     return new Pair<>(result, offset);
+  }
+
+
+  /**
+   * Get all measurement schema matching the given path pattern
+   *
+   * <p>result: [name, alias, storage group, dataType, encoding, compression, offset] and the
+   * current offset
+   */
+  public Pair<List<Pair<PartialPath, String[]>>, Integer> getAllMeasurementSchema(
+      TimeSeriesMetaScanOperator operator, QueryContext queryContext) throws MetadataException {
+    /*
+     There are two conditions and 4 cases.
+     1. isOrderByHeat = false && limit = 0 : just collect all results from each storage group
+     2. isOrderByHeat = false && limit != 0 : the offset and limit should be updated by each sg after traverse, thus the final result will satisfy the constraints of limit and offset
+     3. isOrderByHeat = true && limit = 0 : collect all result from each storage group and then sort
+     4. isOrderByHeat = true && limit != 0 : collect top limit result from each sg and then sort them and collect the top limit results start from offset.
+     The offset must be 0, since each sg should collect top limit results. The current limit is the sum of origin limit and offset when passed into metadata module
+    */
+
+    boolean needLast = operator.isOrderByHeat();
+    int limit = needLast ? 0 : operator.getLimit();
+    int offset = needLast ? 0 : operator.getOffset();
+
+    MeasurementCollector<List<Pair<PartialPath, String[]>>> collector =
+        new MeasurementCollector<List<Pair<PartialPath, String[]>>>(
+            storageGroupMNode, operator.getPartialPath(), limit, offset) {
+          @Override
+          protected void collectMeasurement(IMeasurementMNode node) {
+            IMeasurementSchema measurementSchema = node.getSchema();
+            String[] tsRow = new String[7];
+            tsRow[0] = node.getAlias();
+            tsRow[1] = getStorageGroupNodeInTraversePath(node).getFullPath();
+            tsRow[2] = measurementSchema.getType().toString();
+            tsRow[3] = measurementSchema.getEncodingType().toString();
+            tsRow[4] = measurementSchema.getCompressor().toString();
+            tsRow[5] = String.valueOf(node.getOffset());
+            tsRow[6] = needLast ? String.valueOf(getLastTimeStamp(node, queryContext)) : null;
+            Pair<PartialPath, String[]> temp = new Pair<>(getCurrentPartialPath(node), tsRow);
+            resultSet.add(temp);
+          }
+        };
+    collector.setPrefixMatch(operator.isPrefixPath());
+    collector.setResultSet(new LinkedList<>());
+    collector.traverse();
+
+    List<Pair<PartialPath, String[]>> result = collector.getResult();
+
+    if (needLast) {
+      Stream<Pair<PartialPath, String[]>> stream = result.stream();
+
+      limit = operator.getLimit();
+      offset = operator.getOffset();
+
+      stream =
+          stream.sorted(
+              Comparator.comparingLong(
+                  (Pair<PartialPath, String[]> p) -> Long.parseLong(p.right[6]))
+                  .reversed()
+                  .thenComparing((Pair<PartialPath, String[]> p) -> p.left));
+
+      if (limit != 0) {
+        stream = stream.skip(offset).limit(limit);
+      }
+
+      result = stream.collect(toList());
+    }
+
+    return new Pair<>(result, collector.getCurOffset() + 1);
   }
 
   /**

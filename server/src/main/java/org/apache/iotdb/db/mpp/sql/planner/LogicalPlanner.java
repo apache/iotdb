@@ -317,7 +317,8 @@ public class LogicalPlanner {
                   showTimeSeriesStatement.getLimit(),
                   showTimeSeriesStatement.getOffset(),
                   showTimeSeriesStatement.isOrderByHeat(),
-                  showTimeSeriesStatement.isContains()));
+                  showTimeSeriesStatement.isContains(),
+                  showTimeSeriesStatement.isPrefixPath()));
       MetaMergeNode metaMergeNode =
           new MetaMergeNode(
               PlanNodeIdAllocator.generateId(), showTimeSeriesStatement.isOrderByHeat());
