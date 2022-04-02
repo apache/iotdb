@@ -18,11 +18,11 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.sink;
 
+import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ExchangeNode;
-import org.apache.iotdb.service.rpc.thrift.EndPoint;
 
 import com.google.common.collect.ImmutableList;
 
@@ -33,7 +33,7 @@ public class FragmentSinkNode extends SinkNode {
   private PlanNode child;
   private ExchangeNode downStreamNode;
 
-  private EndPoint downStreamEndpoint;
+  private Endpoint downStreamEndpoint;
   private FragmentInstanceId downStreamInstanceId;
   private PlanNodeId downStreamPlanNodeId;
 
@@ -47,16 +47,21 @@ public class FragmentSinkNode extends SinkNode {
   }
 
   @Override
-  public void addChildren(PlanNode child) {}
-
-  @Override
-  public PlanNode clone() {
-    return null;
+  public void addChild(PlanNode child) {
+    this.child = child;
   }
 
   @Override
-  public PlanNode cloneWithChildren(List<PlanNode> children) {
-    return null;
+  public PlanNode clone() {
+    FragmentSinkNode sinkNode = new FragmentSinkNode(getId());
+    sinkNode.setDownStream(downStreamEndpoint, downStreamInstanceId, downStreamPlanNodeId);
+    sinkNode.setDownStreamNode(downStreamNode);
+    return sinkNode;
+  }
+
+  @Override
+  public int allowedChildCount() {
+    return ONE_CHILD;
   }
 
   @Override
@@ -106,13 +111,13 @@ public class FragmentSinkNode extends SinkNode {
     this.downStreamNode = downStreamNode;
   }
 
-  public void setDownStream(EndPoint endPoint, FragmentInstanceId instanceId, PlanNodeId nodeId) {
+  public void setDownStream(Endpoint endPoint, FragmentInstanceId instanceId, PlanNodeId nodeId) {
     this.downStreamEndpoint = endPoint;
     this.downStreamInstanceId = instanceId;
     this.downStreamPlanNodeId = nodeId;
   }
 
-  public EndPoint getDownStreamEndpoint() {
+  public Endpoint getDownStreamEndpoint() {
     return downStreamEndpoint;
   }
 

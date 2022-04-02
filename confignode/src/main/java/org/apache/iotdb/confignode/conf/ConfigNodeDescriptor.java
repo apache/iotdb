@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.confignode.conf;
 
-import org.apache.iotdb.confignode.consensus.ConsensusType;
-import org.apache.iotdb.consensus.common.Endpoint;
+import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.consensus.common.ConsensusType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -18,13 +18,16 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
-import org.apache.iotdb.db.mpp.common.FilterNullPolicy;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullPolicy;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -57,6 +60,12 @@ public class DeviceMergeNode extends ProcessNode {
 
   public DeviceMergeNode(PlanNodeId id) {
     super(id);
+    this.children = new ArrayList<>();
+  }
+
+  public DeviceMergeNode(PlanNodeId id, OrderBy mergeOrder) {
+    this(id);
+    this.mergeOrder = mergeOrder;
   }
 
   @Override
@@ -65,21 +74,27 @@ public class DeviceMergeNode extends ProcessNode {
   }
 
   @Override
-  public void addChildren(PlanNode child) {}
-
-  @Override
-  public PlanNode clone() {
-    return null;
+  public void addChild(PlanNode child) {
+    this.children.add(child);
   }
 
   @Override
-  public PlanNode cloneWithChildren(List<PlanNode> children) {
-    return null;
+  public PlanNode clone() {
+    return new DeviceMergeNode(getId(), mergeOrder);
+  }
+
+  @Override
+  public int allowedChildCount() {
+    return CHILD_COUNT_NO_LIMIT;
   }
 
   @Override
   public List<String> getOutputColumnNames() {
     return columnNames;
+  }
+
+  public OrderBy getMergeOrder() {
+    return mergeOrder;
   }
 
   @Override
@@ -103,5 +118,17 @@ public class DeviceMergeNode extends ProcessNode {
   public void addChildDeviceNode(String deviceName, PlanNode childNode) {
     this.childDeviceNodeMap.put(deviceName, childNode);
     this.children.add(childNode);
+  }
+
+  @TestOnly
+  public Pair<String, List<String>> print() {
+    String title = String.format("[DeviceMergeNode (%s)]", this.getId());
+    List<String> attributes = new ArrayList<>();
+    attributes.add("MergeOrder: " + (this.getMergeOrder() == null ? "null" : this.getMergeOrder()));
+    return new Pair<>(title, attributes);
+  }
+
+  public void setChildren(List<PlanNode> children) {
+    this.children = children;
   }
 }

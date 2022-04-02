@@ -42,7 +42,9 @@ public class SchemaTree {
    */
   public Pair<List<MeasurementPath>, Integer> searchMeasurementPaths(
       PartialPath pathPattern, int slimit, int soffset, boolean isPrefixMatch) {
-    return new Pair<>(new ArrayList<>(), 0);
+    SchemaTreeVisitor visitor =
+        new SchemaTreeVisitor(root, pathPattern, slimit, soffset, isPrefixMatch);
+    return new Pair<>(visitor.getAllResult(), visitor.getNextOffset());
   }
 
   public void serialize(ByteBuffer buffer) throws IOException {

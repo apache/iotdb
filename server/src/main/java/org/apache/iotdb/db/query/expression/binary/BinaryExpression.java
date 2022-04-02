@@ -24,6 +24,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SourceNode;
 import org.apache.iotdb.db.mpp.sql.rewriter.WildcardsRemover;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.expression.Expression;
@@ -76,8 +77,8 @@ public abstract class BinaryExpression extends Expression {
 
   @Override
   public boolean isUserDefinedAggregationFunctionExpression() {
-    return leftExpression.isPlainAggregationFunctionExpression()
-        || rightExpression.isPlainAggregationFunctionExpression()
+    return leftExpression.isBuiltInAggregationFunctionExpression()
+        || rightExpression.isBuiltInAggregationFunctionExpression()
         || leftExpression.isUserDefinedAggregationFunctionExpression()
         || rightExpression.isUserDefinedAggregationFunctionExpression();
   }
@@ -196,6 +197,11 @@ public abstract class BinaryExpression extends Expression {
   public void collectPaths(Set<PartialPath> pathSet) {
     leftExpression.collectPaths(pathSet);
     rightExpression.collectPaths(pathSet);
+  }
+
+  @Override
+  public void collectPlanNode(Set<SourceNode> planNodeSet) {
+    // TODO: support nested expressions
   }
 
   @Override

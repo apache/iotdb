@@ -28,7 +28,7 @@ import java.util.List;
 /** This class maintains information of {@code WITHOUT NULL} clause. */
 public class FilterNullComponent extends StatementNode {
 
-  FilterNullPolicy filterNullPolicy = FilterNullPolicy.NULL;
+  FilterNullPolicy filterNullPolicy = FilterNullPolicy.NO_FILTER;
 
   List<Expression> withoutNullColumns = new ArrayList<>();
 
@@ -50,11 +50,5 @@ public class FilterNullComponent extends StatementNode {
 
   public void setWithoutNullColumns(List<Expression> withoutNullColumns) {
     this.withoutNullColumns = withoutNullColumns;
-  }
-
-  public enum FilterNullPolicy {
-    NULL,
-    CONTAINS_NULL,
-    ALL_NULL
   }
 }
