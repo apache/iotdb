@@ -8,7 +8,6 @@ on:
       - master
       - 'rel/*'
       - "new_*"
-      - add_py_test_ci
     paths-ignore:
       - 'docs/**'
   pull_request:
