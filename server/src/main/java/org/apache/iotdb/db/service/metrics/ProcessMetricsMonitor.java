@@ -19,12 +19,11 @@
 
 package org.apache.iotdb.db.service.metrics;
 
+import com.sun.management.OperatingSystemMXBean;
 import org.apache.iotdb.metrics.MetricManager;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import java.lang.management.ManagementFactory;
-import java.lang.management.OperatingSystemMXBean;
-import java.lang.management.ThreadMXBean;
 
 /**
  * @author Erickin
@@ -33,9 +32,7 @@ import java.lang.management.ThreadMXBean;
 public class ProcessMetricsMonitor {
 
     private MetricManager metricManager = MetricsService.getInstance().getMetricManager();
-    private ThreadMXBean threadMXBean;
-    private OperatingSystemMXBean osMXBean;
-    private static com.sun.management.OperatingSystemMXBean sunOsMXBean;
+    private static OperatingSystemMXBean sunOsMXBean;
 
     public void collectProcessCPUInfo() {
         metricManager.getOrCreateAutoGauge(
@@ -77,12 +74,9 @@ public class ProcessMetricsMonitor {
                 a -> runtime.freeMemory(),
                 Tag.NAME.toString(),
                 "process");
-
     }
 
     private ProcessMetricsMonitor() {
-        threadMXBean = ManagementFactory.getThreadMXBean();
-        osMXBean = ManagementFactory.getOperatingSystemMXBean();
         sunOsMXBean = (com.sun.management.OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
     }
 
