@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.commons.partition;
 
+import org.apache.iotdb.commons.cluster.Endpoint;
+
 import java.util.ArrayList;
 import java.util.List;
 

@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.consensus.exception;
 
-import org.apache.iotdb.commons.partition.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 
 import org.apache.ratis.protocol.RaftPeer;
 

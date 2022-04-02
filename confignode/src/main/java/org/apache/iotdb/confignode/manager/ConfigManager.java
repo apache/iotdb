@@ -19,9 +19,9 @@
 package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.commons.hash.DeviceGroupHashExecutor;
-import org.apache.iotdb.commons.partition.ConsensusGroupId;
-import org.apache.iotdb.commons.partition.Endpoint;
-import org.apache.iotdb.commons.partition.GroupType;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.commons.consensus.GroupType;
 import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.statemachine.PartitionRegionStateMachine;

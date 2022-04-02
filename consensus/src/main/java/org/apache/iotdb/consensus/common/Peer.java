@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.consensus.common;
 
-import org.apache.iotdb.commons.partition.ConsensusGroupId;
-import org.apache.iotdb.commons.partition.Endpoint;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.cluster.Endpoint;
 
 import java.util.Objects;
 

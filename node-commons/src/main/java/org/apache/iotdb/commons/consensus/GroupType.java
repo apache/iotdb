@@ -17,48 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.partition;
-
-import java.util.Objects;
+package org.apache.iotdb.commons.consensus;
 
 // TODO Use a mature IDL framework such as Protobuf to manage this structure
-public class Endpoint {
-
-  private final String ip;
-  private final int port;
-
-  public Endpoint(String ip, int port) {
-    this.ip = ip;
-    this.port = port;
-  }
-
-  public String getIp() {
-    return ip;
-  }
-
-  public int getPort() {
-    return port;
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    Endpoint endpoint = (Endpoint) o;
-    return port == endpoint.port && Objects.equals(ip, endpoint.ip);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(ip, port);
-  }
-
-  @Override
-  public String toString() {
-    return String.format("%s:%d", ip, port);
-  }
+public enum GroupType {
+  PartitionRegion,
+  DataRegion,
+  SchemaRegion
 }

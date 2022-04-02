@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.consensus.common;
 
-import org.apache.iotdb.commons.partition.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 
 import java.util.List;
 import java.util.Objects;

@@ -19,7 +19,7 @@
 package org.apache.iotdb.confignode.service.thrift.server;
 
 import org.apache.iotdb.commons.partition.DataNodeLocation;
-import org.apache.iotdb.commons.partition.Endpoint;
+import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.confignode.consensus.response.DataNodesInfoDataSet;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaDataSet;
 import org.apache.iotdb.confignode.manager.ConfigManager;

@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.db.mpp.sql.plan;
 
-import org.apache.iotdb.commons.partition.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.partition.DataNodeLocation;
 import org.apache.iotdb.commons.partition.DataPartition;
-import org.apache.iotdb.commons.partition.Endpoint;
-import org.apache.iotdb.commons.partition.GroupType;
+import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.commons.consensus.GroupType;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.commons.partition.SeriesPartitionSlot;
 import org.apache.iotdb.commons.partition.TimePartitionSlot;

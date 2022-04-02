@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.consensus;
 
-import org.apache.iotdb.commons.partition.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.partition;
+package org.apache.iotdb.commons.consensus;
 
 import java.util.Objects;
 

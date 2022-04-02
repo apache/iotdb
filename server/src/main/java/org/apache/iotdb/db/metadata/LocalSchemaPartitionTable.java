@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.metadata;
 
-import org.apache.iotdb.commons.partition.ConsensusGroupId;
-import org.apache.iotdb.commons.partition.GroupType;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.GroupType;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 

@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.schemaregion;
 
-import org.apache.iotdb.commons.partition.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;

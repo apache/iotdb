@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.consensus.ratis;
 
-import org.apache.iotdb.commons.partition.ConsensusGroupId;
-import org.apache.iotdb.commons.partition.GroupType;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.GroupType;
 
 import org.apache.ratis.protocol.RaftGroupId;
 import org.junit.Assert;
