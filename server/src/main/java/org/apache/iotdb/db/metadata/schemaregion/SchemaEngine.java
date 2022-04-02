@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.metadata.schemaregion;
 
-import org.apache.iotdb.commons.partition.SchemaRegionId;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -31,7 +31,7 @@ import java.util.concurrent.ConcurrentHashMap;
 // manage all the schemaRegion in this dataNode
 public class SchemaEngine {
 
-  private Map<SchemaRegionId, SchemaRegion> schemaRegionMap;
+  private Map<ConsensusGroupId, SchemaRegion> schemaRegionMap;
 
   private static class SchemaEngineManagerHolder {
     private static final SchemaEngine INSTANCE = new SchemaEngine();
@@ -56,7 +56,7 @@ public class SchemaEngine {
     }
   }
 
-  public SchemaRegion getSchemaRegion(SchemaRegionId schemaRegionId) {
+  public SchemaRegion getSchemaRegion(ConsensusGroupId schemaRegionId) {
     return schemaRegionMap.get(schemaRegionId);
   }
 
@@ -65,7 +65,9 @@ public class SchemaEngine {
   }
 
   public synchronized SchemaRegion createSchemaRegion(
-      PartialPath storageGroup, SchemaRegionId schemaRegionId, IStorageGroupMNode storageGroupMNode)
+      PartialPath storageGroup,
+      ConsensusGroupId schemaRegionId,
+      IStorageGroupMNode storageGroupMNode)
       throws MetadataException {
     SchemaRegion schemaRegion = schemaRegionMap.get(schemaRegionId);
     if (schemaRegion != null) {
@@ -76,7 +78,7 @@ public class SchemaEngine {
     return schemaRegion;
   }
 
-  public void deleteSchemaRegion(SchemaRegionId schemaRegionId) throws MetadataException {
+  public void deleteSchemaRegion(ConsensusGroupId schemaRegionId) throws MetadataException {
     schemaRegionMap.remove(schemaRegionId).deleteSchemaRegion();
   }
 }

@@ -17,47 +17,30 @@
  * under the License.
  */
 
-package org.apache.iotdb.consensus.common;
+package org.apache.iotdb.commons.consensus;
 
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
 // TODO Use a mature IDL framework such as Protobuf to manage this structure
-public class Endpoint {
+public class ConsensusGroupId {
 
-  private String ip;
-  private int port;
+  private GroupType type;
+  private int id;
 
-  public Endpoint() {}
+  public ConsensusGroupId() {}
 
-  public Endpoint(String ip, int port) {
-    this.ip = ip;
-    this.port = port;
+  public ConsensusGroupId(GroupType type, int id) {
+    this.type = type;
+    this.id = id;
   }
 
-  public String getIp() {
-    return ip;
+  public GroupType getType() {
+    return type;
   }
 
-  public int getPort() {
-    return port;
-  }
-
-  public void serializeImpl(ByteBuffer buffer) {
-    byte[] bytes = ip.getBytes();
-    buffer.putInt(bytes.length);
-    buffer.put(bytes);
-
-    buffer.putInt(port);
-  }
-
-  public void deserializeImpl(ByteBuffer buffer) {
-    int length = buffer.getInt();
-    byte[] bytes = new byte[length];
-    buffer.get(bytes, 0, length);
-    ip = new String(bytes, 0, length);
-
-    port = buffer.getInt();
+  public int getId() {
+    return id;
   }
 
   @Override
@@ -68,17 +51,29 @@ public class Endpoint {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    Endpoint endpoint = (Endpoint) o;
-    return port == endpoint.port && Objects.equals(ip, endpoint.ip);
+    ConsensusGroupId that = (ConsensusGroupId) o;
+    return id == that.id && Objects.equals(type, that.type);
+  }
+
+  public void serializeImpl(ByteBuffer buffer) {
+    buffer.putInt(type.ordinal());
+    buffer.putInt(id);
+  }
+
+  public void deserializeImpl(ByteBuffer buffer) {
+    int ordinal = buffer.getInt();
+    // TODO: (xingtanzjr) should we add validation for the ordinal ?
+    type = GroupType.values()[ordinal];
+    id = buffer.getInt();
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(ip, port);
+    return Objects.hash(type, id);
   }
 
   @Override
   public String toString() {
-    return String.format("%s:%d", ip, port);
+    return String.format("ConsensusGroupId[%s]-%s", type, id);
   }
 }

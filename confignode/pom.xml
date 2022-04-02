@@ -47,7 +47,7 @@
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-commons</artifactId>
+            <artifactId>node-commons</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
