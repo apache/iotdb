@@ -48,7 +48,6 @@ def test_session():
         db: IoTDBContainer
         session = Session(db.get_container_host_ip(), db.get_exposed_port(6667))
         session.open(False)
-        session.close()
 
         if not session.is_open():
             print("can't open session")
@@ -60,7 +59,7 @@ def test_session():
         session.set_storage_group("root.sg_test_03")
         session.set_storage_group("root.sg_test_04")
 
-        if session.delete_storage_group("root.sg_test_02") < 0:
+        if session.delete_storage_group("root.sg_test_05") < 0:
             test_fail()
             print_message("delete storage group failed")
 
