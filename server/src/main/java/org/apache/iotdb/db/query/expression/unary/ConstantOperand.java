@@ -21,8 +21,10 @@ package org.apache.iotdb.db.query.expression.unary;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SourceNode;
+import org.apache.iotdb.db.mpp.sql.rewriter.WildcardsRemover;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
-import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
 import org.apache.iotdb.db.query.udf.core.layer.ConstantIntermediateLayer;
@@ -60,6 +62,14 @@ public class ConstantOperand extends Expression {
   }
 
   @Override
+  public void concat(
+      List<PartialPath> prefixPaths,
+      List<Expression> resultExpressions,
+      PathPatternTree patternTree) {
+    resultExpressions.add(this);
+  }
+
+  @Override
   public void concat(List<PartialPath> prefixPaths, List<Expression> resultExpressions) {
     resultExpressions.add(this);
   }
@@ -67,6 +77,13 @@ public class ConstantOperand extends Expression {
   @Override
   public void removeWildcards(
       WildcardsRemover wildcardsRemover, List<Expression> resultExpressions) {
+    resultExpressions.add(this);
+  }
+
+  @Override
+  public void removeWildcards(
+      org.apache.iotdb.db.qp.utils.WildcardsRemover wildcardsRemover,
+      List<Expression> resultExpressions) {
     resultExpressions.add(this);
   }
 
@@ -83,6 +100,11 @@ public class ConstantOperand extends Expression {
   @Override
   public void constructUdfExecutors(
       Map<String, UDTFExecutor> expressionName2Executor, ZoneId zoneId) {
+    // Do nothing
+  }
+
+  @Override
+  public void collectPlanNode(Set<SourceNode> planNodeSet) {
     // Do nothing
   }
 

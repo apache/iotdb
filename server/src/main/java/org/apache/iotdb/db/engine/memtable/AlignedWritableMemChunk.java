@@ -33,6 +33,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -167,9 +168,9 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   }
 
   private int[] checkColumnsInInsertPlan(List<IMeasurementSchema> schemaListInInsertPlan) {
-    List<String> measurementIdsInInsertPlan = new ArrayList<>();
+    Map<String, Integer> measurementIdsInInsertPlan = new HashMap<>();
     for (int i = 0; i < schemaListInInsertPlan.size(); i++) {
-      measurementIdsInInsertPlan.add(schemaListInInsertPlan.get(i).getMeasurementId());
+      measurementIdsInInsertPlan.put(schemaListInInsertPlan.get(i).getMeasurementId(), i);
       if (!containsMeasurement(schemaListInInsertPlan.get(i).getMeasurementId())) {
         this.measurementIndexMap.put(
             schemaListInInsertPlan.get(i).getMeasurementId(), measurementIndexMap.size());
@@ -180,7 +181,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
     int[] columnIndexArray = new int[measurementIndexMap.size()];
     measurementIndexMap.forEach(
         (measurementId, i) -> {
-          columnIndexArray[i] = measurementIdsInInsertPlan.indexOf(measurementId);
+          columnIndexArray[i] = measurementIdsInInsertPlan.getOrDefault(measurementId, -1);
         });
     return columnIndexArray;
   }
@@ -192,11 +193,11 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
 
   @Override
   public long count() {
-    return (long) list.size() * measurementIndexMap.size();
+    return (long) list.rowCount() * measurementIndexMap.size();
   }
 
   public long alignedListSize() {
-    return list.size();
+    return list.rowCount();
   }
 
   @Override
@@ -205,7 +206,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public TVList getSortedTvListForQuery() {
+  public synchronized TVList getSortedTvListForQuery() {
     sortTVList();
     // increase reference count
     list.increaseReferenceCount();
@@ -213,7 +214,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public TVList getSortedTvListForQuery(List<IMeasurementSchema> schemaList) {
+  public synchronized TVList getSortedTvListForQuery(List<IMeasurementSchema> schemaList) {
     sortTVList();
     // increase reference count
     list.increaseReferenceCount();
@@ -237,7 +238,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public void sortTvListForFlush() {
+  public synchronized void sortTvListForFlush() {
     sortTVList();
   }
 
@@ -270,11 +271,11 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   public void encode(IChunkWriter chunkWriter) {
     AlignedChunkWriterImpl alignedChunkWriter = (AlignedChunkWriterImpl) chunkWriter;
     List<Integer> timeDuplicateAlignedRowIndexList = null;
-    for (int sortedRowIndex = 0; sortedRowIndex < list.size(); sortedRowIndex++) {
+    for (int sortedRowIndex = 0; sortedRowIndex < list.rowCount(); sortedRowIndex++) {
       long time = list.getTime(sortedRowIndex);
 
       // skip duplicated data
-      if ((sortedRowIndex + 1 < list.size() && (time == list.getTime(sortedRowIndex + 1)))) {
+      if ((sortedRowIndex + 1 < list.rowCount() && (time == list.getTime(sortedRowIndex + 1)))) {
         // record the time duplicated row index list for vector type
         if (timeDuplicateAlignedRowIndexList == null) {
           timeDuplicateAlignedRowIndexList = new ArrayList<>();
@@ -340,7 +341,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
 
   @Override
   public long getFirstPoint() {
-    if (list.size() == 0) {
+    if (list.rowCount() == 0) {
       return Long.MAX_VALUE;
     }
     return getSortedTvListForQuery().getTimeValuePair(0).getTimestamp();
@@ -348,11 +349,11 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
 
   @Override
   public long getLastPoint() {
-    if (list.size() == 0) {
+    if (list.rowCount() == 0) {
       return Long.MIN_VALUE;
     }
     return getSortedTvListForQuery()
-        .getTimeValuePair(getSortedTvListForQuery().size() - 1)
+        .getTimeValuePair(getSortedTvListForQuery().rowCount() - 1)
         .getTimestamp();
   }
 }

@@ -29,6 +29,7 @@ import org.junit.Test;
 import java.util.Properties;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class UtilsTest {
@@ -124,5 +125,12 @@ public class UtilsTest {
       return;
     }
     fail();
+  }
+
+  @Test
+  public void testRpcCompress() throws IoTDBURLException {
+    Properties properties = new Properties();
+    Utils.parseUrl("jdbc:iotdb://127.0.0.1:6667?rpc_compress=true", properties);
+    assertTrue(Config.rpcThriftCompressionEnable);
   }
 }

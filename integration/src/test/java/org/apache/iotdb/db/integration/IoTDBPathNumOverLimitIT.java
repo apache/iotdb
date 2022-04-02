@@ -41,7 +41,6 @@ public class IoTDBPathNumOverLimitIT {
 
   @Before
   public void setUp() throws Exception {
-    EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
     IoTDBDescriptor.getInstance().getConfig().setMaxQueryDeduplicatedPathNum(2);

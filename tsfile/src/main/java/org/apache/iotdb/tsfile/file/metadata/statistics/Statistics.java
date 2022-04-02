@@ -58,6 +58,8 @@ public abstract class Statistics<T extends Serializable> {
   private long startTime = Long.MAX_VALUE;
   private long endTime = Long.MIN_VALUE;
 
+  static final String STATS_UNSUPPORTED_MSG = "%s statistics does not support: %s";
+
   /**
    * static method providing statistic instance for respective data type.
    *
@@ -133,8 +135,6 @@ public abstract class Statistics<T extends Serializable> {
 
   public abstract void deserialize(ByteBuffer byteBuffer);
 
-  public abstract void setMinMaxFromBytes(byte[] minBytes, byte[] maxBytes);
-
   public abstract T getMinValue();
 
   public abstract T getMaxValue();
@@ -146,26 +146,6 @@ public abstract class Statistics<T extends Serializable> {
   public abstract double getSumDoubleValue();
 
   public abstract long getSumLongValue();
-
-  public abstract byte[] getMinValueBytes();
-
-  public abstract byte[] getMaxValueBytes();
-
-  public abstract byte[] getFirstValueBytes();
-
-  public abstract byte[] getLastValueBytes();
-
-  public abstract byte[] getSumValueBytes();
-
-  public abstract ByteBuffer getMinValueBuffer();
-
-  public abstract ByteBuffer getMaxValueBuffer();
-
-  public abstract ByteBuffer getFirstValueBuffer();
-
-  public abstract ByteBuffer getLastValueBuffer();
-
-  public abstract ByteBuffer getSumValueBuffer();
 
   /**
    * merge parameter to this statistic

@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.writelog.io;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
-import org.apache.iotdb.db.utils.TestOnly;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.session;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -47,7 +47,6 @@ public class IoTDBSessionIteratorIT {
   @Before
   public void setUp() throws Exception {
     System.setProperty(IoTDBConstant.IOTDB_CONF, "src/test/resources/");
-    EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
     prepareData();
   }

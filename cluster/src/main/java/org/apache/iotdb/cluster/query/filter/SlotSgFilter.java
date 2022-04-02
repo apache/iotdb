@@ -21,7 +21,7 @@ package org.apache.iotdb.cluster.query.filter;
 
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
-import org.apache.iotdb.db.metadata.MManager.StorageGroupFilter;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor.StorageGroupFilter;
 
 import java.util.List;
 

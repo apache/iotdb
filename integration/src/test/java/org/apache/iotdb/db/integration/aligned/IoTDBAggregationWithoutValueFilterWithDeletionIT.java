@@ -45,7 +45,6 @@ public class IoTDBAggregationWithoutValueFilterWithDeletionIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
 
     enableSeqSpaceCompaction =

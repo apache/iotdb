@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.db.service.basic;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.OperationType;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -70,13 +70,13 @@ public abstract class ServiceProvider {
 
   public static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
+  public static SessionManager SESSION_MANAGER = SessionManager.getInstance();
+
+  // MPP: The following fields will be moved to Coordinator
   public static final QueryTimeManager QUERY_TIME_MANAGER = QueryTimeManager.getInstance();
   public static final TracingManager TRACING_MANAGER = TracingManager.getInstance();
   public static final QueryFrequencyRecorder QUERY_FREQUENCY_RECORDER =
       new QueryFrequencyRecorder(CONFIG);
-
-  public static SessionManager SESSION_MANAGER = SessionManager.getInstance();
-
   private final Planner planner;
   protected final IPlanExecutor executor;
 
@@ -145,7 +145,11 @@ public abstract class ServiceProvider {
   }
 
   public BasicOpenSessionResp openSession(
-      String username, String password, String zoneId, TSProtocolVersion tsProtocolVersion)
+      String username,
+      String password,
+      String zoneId,
+      TSProtocolVersion tsProtocolVersion,
+      IoTDBConstant.ClientVersion clientVersion)
       throws TException {
     BasicOpenSessionResp openSessionResp = new BasicOpenSessionResp();
 
@@ -179,7 +183,8 @@ public abstract class ServiceProvider {
       openSessionResp.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       openSessionResp.setMessage("Login successfully");
 
-      sessionId = SESSION_MANAGER.requestSessionId(username, zoneId);
+      sessionId = SESSION_MANAGER.requestSessionId(username, zoneId, clientVersion);
+
       LOGGER.info(
           "{}: Login status: {}. User : {}, opens Session-{}",
           IoTDBConstant.GLOBAL_DB_NAME,
@@ -190,12 +195,19 @@ public abstract class ServiceProvider {
       openSessionResp.setMessage(loginMessage != null ? loginMessage : "Authentication failed.");
       openSessionResp.setCode(TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR.getStatusCode());
 
-      sessionId = SESSION_MANAGER.requestSessionId(username, zoneId);
+      sessionId = SESSION_MANAGER.requestSessionId(username, zoneId, clientVersion);
       AUDIT_LOGGER.info("User {} opens Session failed with an incorrect password", username);
     }
 
     SessionTimeoutManager.getInstance().register(sessionId);
     return openSessionResp.sessionId(sessionId);
+  }
+
+  public BasicOpenSessionResp openSession(
+      String username, String password, String zoneId, TSProtocolVersion tsProtocolVersion)
+      throws TException {
+    return openSession(
+        username, password, zoneId, tsProtocolVersion, IoTDBConstant.ClientVersion.V_0_12);
   }
 
   public boolean closeSession(long sessionId) {

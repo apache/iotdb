@@ -19,28 +19,146 @@
 
 package org.apache.iotdb.metrics.config;
 
+import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MonitorType;
+import org.apache.iotdb.metrics.utils.PredefinedMetric;
 import org.apache.iotdb.metrics.utils.ReporterType;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 public class MetricConfig {
   /** enable publishing data. */
   private Boolean enableMetric = false;
 
-  /** The period of data pushed by the reporter to the remote monitoring system. */
-  private Integer pushPeriodInSecond = 5;
-
   /** The of monitor frame */
-  private MonitorType monitorType = MonitorType.micrometer;
+  private MonitorType monitorType = MonitorType.MICROMETER;
 
   /** provide or push metric data to remote system, could be jmx, prometheus, iotdb, etc. */
   private List<ReporterType> metricReporterList =
-      Arrays.asList(ReporterType.jmx, ReporterType.prometheus);
+      Arrays.asList(ReporterType.JMX, ReporterType.PROMETHEUS);
 
-  /** the config of prometheus reporter */
-  private PrometheusReporterConfig prometheusReporterConfig = new PrometheusReporterConfig();
+  private MetricLevel metricLevel = MetricLevel.IMPORTANT;
+
+  private List<PredefinedMetric> predefinedMetrics =
+      Collections.singletonList(PredefinedMetric.JVM);
+
+  /** the http server's port for prometheus exporter to get metric data. */
+  private String prometheusExporterPort = "9091";
+
+  private IoTDBReporterConfig ioTDBReporterConfig = new IoTDBReporterConfig();
+
+  public static class IoTDBReporterConfig {
+    /** The host of iotdb */
+    private String host = "127.0.0.1";
+    /** The port of iotdb */
+    private Integer port = 6667;
+    /** The username of iotdb */
+    private String username = "root";
+    /** The password of iotdb */
+    private String password = "root";
+    /** The max number of connection */
+    private Integer maxConnectionNumber = 3;
+    /** The monitor database of iotdb */
+    private String database = "_metric";
+    /** The period of data pushed by the reporter to the remote monitoring system. */
+    private Integer pushPeriodInSecond = 15;
+
+    public String getHost() {
+      return host;
+    }
+
+    public void setHost(String host) {
+      this.host = host;
+    }
+
+    public Integer getPort() {
+      return port;
+    }
+
+    public void setPort(Integer port) {
+      this.port = port;
+    }
+
+    public String getUsername() {
+      return username;
+    }
+
+    public void setUsername(String username) {
+      this.username = username;
+    }
+
+    public String getPassword() {
+      return password;
+    }
+
+    public void setPassword(String password) {
+      this.password = password;
+    }
+
+    public Integer getMaxConnectionNumber() {
+      return maxConnectionNumber;
+    }
+
+    public void setMaxConnectionNumber(Integer maxConnectionNumber) {
+      this.maxConnectionNumber = maxConnectionNumber;
+    }
+
+    public String getDatabase() {
+      return database;
+    }
+
+    public void setDatabase(String database) {
+      this.database = database;
+    }
+
+    public Integer getPushPeriodInSecond() {
+      return pushPeriodInSecond;
+    }
+
+    public void setPushPeriodInSecond(Integer pushPeriodInSecond) {
+      this.pushPeriodInSecond = pushPeriodInSecond;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+      IoTDBReporterConfig that = (IoTDBReporterConfig) o;
+      return Objects.equals(host, that.host)
+          && Objects.equals(port, that.port)
+          && Objects.equals(username, that.username)
+          && Objects.equals(password, that.password)
+          && Objects.equals(database, that.database)
+          && Objects.equals(pushPeriodInSecond, that.pushPeriodInSecond);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(host, port, username, password, database, pushPeriodInSecond);
+    }
+  }
+
+  /** the host of Instance */
+  private String InstanceHost = "127.0.0.1";
+  /** the port of Instance */
+  private Integer InstancePort = 8086;
+
+  public void copy(MetricConfig newMetricConfig) {
+    enableMetric = newMetricConfig.getEnableMetric();
+    monitorType = newMetricConfig.getMonitorType();
+    metricReporterList = newMetricConfig.getMetricReporterList();
+    metricLevel = newMetricConfig.getMetricLevel();
+    predefinedMetrics = newMetricConfig.getPredefinedMetrics();
+    prometheusExporterPort = newMetricConfig.getPrometheusExporterPort();
+    ioTDBReporterConfig = newMetricConfig.ioTDBReporterConfig;
+  }
 
   public Boolean getEnableMetric() {
     return enableMetric;
@@ -48,14 +166,6 @@ public class MetricConfig {
 
   public void setEnableMetric(Boolean enableMetric) {
     this.enableMetric = enableMetric;
-  }
-
-  public Integer getPushPeriodInSecond() {
-    return pushPeriodInSecond;
-  }
-
-  public void setPushPeriodInSecond(Integer pushPeriodInSecond) {
-    this.pushPeriodInSecond = pushPeriodInSecond;
   }
 
   public MonitorType getMonitorType() {
@@ -74,34 +184,66 @@ public class MetricConfig {
     this.metricReporterList = metricReporterList;
   }
 
-  public PrometheusReporterConfig getPrometheusReporterConfig() {
-    return prometheusReporterConfig;
+  public MetricLevel getMetricLevel() {
+    return metricLevel;
   }
 
-  public void setPrometheusReporterConfig(PrometheusReporterConfig prometheusReporterConfig) {
-    this.prometheusReporterConfig = prometheusReporterConfig;
+  public void setMetricLevel(MetricLevel metricLevel) {
+    this.metricLevel = metricLevel;
   }
 
-  /** the following is prometheus related config. */
-  public static class PrometheusReporterConfig {
-    private String prometheusExporterUrl = "http://localhost";
-    /** the http server's port for prometheus exporter to get metric data. */
-    private String prometheusExporterPort = "9091";
+  public List<PredefinedMetric> getPredefinedMetrics() {
+    return predefinedMetrics;
+  }
 
-    public String getPrometheusExporterUrl() {
-      return prometheusExporterUrl;
-    }
+  public void setPredefinedMetrics(List<PredefinedMetric> predefinedMetrics) {
+    this.predefinedMetrics = predefinedMetrics;
+  }
 
-    public void setPrometheusExporterUrl(String prometheusExporterUrl) {
-      this.prometheusExporterUrl = prometheusExporterUrl;
-    }
+  public String getPrometheusExporterPort() {
+    return prometheusExporterPort;
+  }
 
-    public String getPrometheusExporterPort() {
-      return prometheusExporterPort;
-    }
+  public void setPrometheusExporterPort(String prometheusExporterPort) {
+    this.prometheusExporterPort = prometheusExporterPort;
+  }
 
-    public void setPrometheusExporterPort(String prometheusExporterPort) {
-      this.prometheusExporterPort = prometheusExporterPort;
+  public IoTDBReporterConfig getIoTDBReporterConfig() {
+    return ioTDBReporterConfig;
+  }
+
+  public void setIoTDBReporterConfig(IoTDBReporterConfig ioTDBReporterConfig) {
+    this.ioTDBReporterConfig = ioTDBReporterConfig;
+  }
+
+  public String getInstanceHost() {
+    return InstanceHost;
+  }
+
+  public void setInstanceHost(String instanceHost) {
+    InstanceHost = instanceHost;
+  }
+
+  public Integer getInstancePort() {
+    return InstancePort;
+  }
+
+  public void setInstancePort(Integer instancePort) {
+    InstancePort = instancePort;
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (!(obj instanceof MetricConfig)) {
+      return false;
     }
+    MetricConfig anotherMetricConfig = (MetricConfig) obj;
+    return enableMetric.equals(anotherMetricConfig.getEnableMetric())
+        && monitorType.equals(anotherMetricConfig.getMonitorType())
+        && metricReporterList.equals(anotherMetricConfig.getMetricReporterList())
+        && metricLevel.equals(anotherMetricConfig.getMetricLevel())
+        && predefinedMetrics.equals(anotherMetricConfig.getPredefinedMetrics())
+        && prometheusExporterPort.equals(anotherMetricConfig.getPrometheusExporterPort())
+        && ioTDBReporterConfig.equals(anotherMetricConfig.getIoTDBReporterConfig());
   }
 }

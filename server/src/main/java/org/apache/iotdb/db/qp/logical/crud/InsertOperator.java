@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.qp.logical.crud;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.runtime.SQLParserException;
+import org.apache.iotdb.db.exception.sql.SQLParserException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -110,7 +110,7 @@ public class InsertOperator extends Operator {
                 measurementsNum, valueLists.get(i).length));
       }
       InsertRowPlan insertRowPlan =
-          new InsertRowPlan(device, times[i], measurementList, valueLists.get(i));
+          new InsertRowPlan(device, times[i], measurementList.clone(), valueLists.get(i));
       insertRowPlan.setAligned(isAligned);
       insertRowsPlan.addOneInsertRowPlan(insertRowPlan, i);
     }

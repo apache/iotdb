@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.db.service;
 
-import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.db.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.service.IService;
+import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.settle.SettleLog;
@@ -46,7 +48,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class SettleService implements IService {
   private static final Logger logger = LoggerFactory.getLogger(SettleService.class);
 
-  private AtomicInteger threadCnt = new AtomicInteger();
   private ExecutorService settleThreadPool;
   private boolean isRecoverFinish;
 

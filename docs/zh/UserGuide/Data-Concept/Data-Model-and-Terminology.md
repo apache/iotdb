@@ -27,6 +27,8 @@
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/123542457-5f511d00-d77c-11eb-8006-562d83069baa.png">
 
+在上图所描述的实际场景中，有许多实体所采集的物理量相同，即具有相同的工况名称和类型，因此，可以声明一个**元数据模板**来定义可采集的物理量集合。在实践中，元数据模板的使用可帮助减少元数据的资源占用，详细内容参见 [元数据模板文档](./Schema-Template.md)。
+
 IoTDB 模型结构涉及的基本概念在下文将做详细叙述。
 
 ## 物理量、实体、存储组、路径
@@ -73,7 +75,7 @@ wildcard
     ;
 ```
 
-其中，对 `id` 的定义可以参考[语法约定](../IoTDB-SQL-Language/Syntax-Conventions.md)。
+其中，对 `id` 的定义可以参考[语法约定](../Reference/Syntax-Conventions.md)。
 
 我们称一个路径中由 `'.'` 分割的部分叫做层级（`layer_name`）。例如：`root.a.b.c`为一个层级为 4 的路径。
 
@@ -142,7 +144,3 @@ wildcard
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/114125919-f4850800-9929-11eb-8211-81d4c04af1ec.png">
 
 在后续数据定义语言、数据操作语言和 Java 原生接口章节，将对涉及到对齐时间序列的各种操作进行逐一介绍。
-
-## 元数据模板（Schema Template）
-
-实际应用中有许多实体所采集的物理量相同，即具有相同的工况名称和类型，可以声明一个**元数据模板**来定义可采集的物理量集合。在实践中，元数据模板的使用可帮助减少元数据的资源占用，详细内容参见 [元数据模板文档](./Schema-Template.md)。

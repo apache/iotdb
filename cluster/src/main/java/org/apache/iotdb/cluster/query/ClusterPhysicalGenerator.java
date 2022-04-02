@@ -20,7 +20,7 @@
 package org.apache.iotdb.cluster.query;
 
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
-import org.apache.iotdb.cluster.metadata.CMManager;
+import org.apache.iotdb.cluster.metadata.CSchemaProcessor;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -50,8 +50,8 @@ public class ClusterPhysicalGenerator extends PhysicalGenerator {
 
   private static final Logger logger = LoggerFactory.getLogger(ClusterPhysicalGenerator.class);
 
-  private CMManager getCMManager() {
-    return ((CMManager) IoTDB.metaManager);
+  private CSchemaProcessor getCSchemaProcessor() {
+    return ((CSchemaProcessor) IoTDB.schemaProcessor);
   }
 
   @Override
@@ -64,7 +64,7 @@ public class ClusterPhysicalGenerator extends PhysicalGenerator {
     // update storage groups before parsing query plans
     if (operator instanceof QueryOperator) {
       try {
-        getCMManager().syncMetaLeader();
+        getCSchemaProcessor().syncMetaLeader();
       } catch (MetadataException e) {
         throw new QueryProcessException(e);
       }
