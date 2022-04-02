@@ -1,4 +1,4 @@
-# This workflow is just for checking whether modifications works for the Pythob client.
+# This workflow is just for checking whether modifications works for the Python client.
 
 name: Python Client
 
@@ -40,9 +40,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-        with:
-          token: ${{secrets.GITHUB_TOKEN}}
-          submodules: recursive
       - name: Set up JDK ${{ matrix.java }}
         uses: actions/setup-java@v1
         with:
@@ -55,8 +52,8 @@ jobs:
           restore-keys: ${{ runner.os }}-m2-
       - name: Compile IoTDB Python Client
         run: mvn -B package -Dmaven.test.skip=true  -am -pl client-py
-      - name: Install pytest
-        run: pip3 install pytest
+      - name: Install python packages
+        run: pip3 install -r client-py/requirements.txt
       - name: Integration test
         shell: bash
         run: |
