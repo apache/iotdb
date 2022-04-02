@@ -185,6 +185,7 @@ public abstract class StatementVisitor<R, C> {
   public R visitListAllUserOfRole(AuthorStatement authorStatement, C context) {
     return visitStatement(authorStatement, context);
   }
+
   public R visitInsertRow(InsertRowStatement insertRowStatement, C context) {
     return visitStatement(insertRowStatement, context);
   }

@@ -362,7 +362,7 @@ public class Analyzer {
       analysis.setStatement(authorStatement);
       return analysis;
     }
-    
+
     public Analysis visitInsertRow(InsertRowStatement insertRowStatement, MPPQueryContext context) {
       DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
       dataPartitionQueryParam.setDevicePath(insertRowStatement.getDevicePath().getFullPath());
