@@ -2348,12 +2348,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   @Override
   public Operator visitShowPipeServer(IoTDBSqlParser.ShowPipeServerContext ctx) {
-    if (ctx.pipeName != null) {
-      return new ShowPipeServerOperator(
-          StringEscapeUtils.unescapeJava(ctx.pipeName.getText()), SQLConstant.TOK_SHOW_PIPE_SERVER);
-    } else {
-      return new ShowPipeServerOperator(SQLConstant.TOK_SHOW_PIPE_SERVER);
-    }
+    return new ShowPipeServerOperator(SQLConstant.TOK_SHOW_PIPE_SERVER);
   }
 
   /** 7. Common Clauses */

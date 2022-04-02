@@ -135,18 +135,17 @@ public class Collector {
           logger.warn("Be interrupted when waiting for pipe data, because {}", e.getMessage());
           Thread.currentThread().interrupt();
           break;
-        } catch (StorageGroupAlreadySetException e) {
+        } catch (PipeDataLoadBearableException e) {
           // bearable exception
-          String msg =
-              String.format(
-                  "Sync receiver try to set storage group %s that has already been set",
-                  e.getStorageGroupPath());
-          logger.warn(msg);
+          logger.warn(e.getMessage());
           ReceiverManager.getInstance()
               .writePipeMessage(
-                  pipeName, remoteIp, createTime, new PipeMessage(PipeMessage.MsgType.WARN, msg));
+                  pipeName,
+                  remoteIp,
+                  createTime,
+                  new PipeMessage(PipeMessage.MsgType.WARN, e.getMessage()));
           pipeDataQueue.commit();
-        } catch (Exception e) {
+        } catch (PipeDataLoadException e) {
           // unbearable exception
           // TODO: should drop this pipe?
           String msg;

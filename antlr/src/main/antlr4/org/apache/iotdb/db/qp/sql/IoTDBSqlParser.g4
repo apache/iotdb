@@ -738,7 +738,7 @@ stopPipeServer
     ;
 
 showPipeServer
-    : SHOW PIPESERVER (pipeName=ID)?
+    : SHOW PIPESERVER
     ;
 
 /**

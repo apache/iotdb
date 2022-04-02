@@ -19,8 +19,12 @@
 package org.apache.iotdb.db.newsync.receiver.load;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
+import org.apache.iotdb.db.exception.sync.PipeDataLoadBearableException;
+import org.apache.iotdb.db.exception.sync.PipeDataLoadException;
+import org.apache.iotdb.db.exception.sync.PipeDataLoadUnbearableException;
+import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.service.IoTDB;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,7 +45,16 @@ public class SchemaLoader implements ILoader {
   }
 
   @Override
-  public void load() throws IOException, MetadataException {
-    IoTDB.schemaProcessor.operation(plan);
+  public void load() throws PipeDataLoadException {
+    try {
+      MManager.getInstance().operation(plan);
+    } catch (StorageGroupAlreadySetException e) {
+      throw new PipeDataLoadBearableException(
+          "Sync receiver try to set storage group "
+              + e.getStorageGroupPath()
+              + " that has already been set");
+    } catch (IOException | MetadataException e) {
+      throw new PipeDataLoadUnbearableException(e.getMessage());
+    }
   }
 }

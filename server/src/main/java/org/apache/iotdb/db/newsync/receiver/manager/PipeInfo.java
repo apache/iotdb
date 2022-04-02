@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.newsync.receiver.manager;
 
+import org.apache.iotdb.db.newsync.sender.pipe.Pipe.PipeStatus;
+
 import java.util.Objects;
 
 public class PipeInfo {
