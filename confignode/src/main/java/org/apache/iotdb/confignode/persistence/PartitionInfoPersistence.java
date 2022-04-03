@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.confignode.persistence;
 
+import org.apache.iotdb.commons.partition.DataPartition;
+import org.apache.iotdb.commons.partition.RegionReplicaSet;
+import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionDataSet;
-import org.apache.iotdb.confignode.partition.DataPartitionInfo;
-import org.apache.iotdb.confignode.partition.SchemaPartitionInfo;
-import org.apache.iotdb.confignode.partition.SchemaRegionReplicaSet;
 import org.apache.iotdb.confignode.physical.sys.DataPartitionPlan;
 import org.apache.iotdb.confignode.physical.sys.SchemaPartitionPlan;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -46,16 +46,16 @@ public class PartitionInfoPersistence {
   private final ReentrantReadWriteLock dataPartitionReadWriteLock;
 
   // TODO: Serialize and Deserialize
-  private final SchemaPartitionInfo schemaPartition;
+  private final SchemaPartition schemaPartition;
 
   // TODO: Serialize and Deserialize
-  private final DataPartitionInfo dataPartition;
+  private final DataPartition dataPartition;
 
   public PartitionInfoPersistence() {
     this.schemaPartitionReadWriteLock = new ReentrantReadWriteLock();
     this.dataPartitionReadWriteLock = new ReentrantReadWriteLock();
-    this.schemaPartition = new SchemaPartitionInfo();
-    this.dataPartition = new DataPartitionInfo();
+    this.schemaPartition = new SchemaPartition();
+    this.dataPartition = new DataPartition();
   }
 
   /**
@@ -70,8 +70,8 @@ public class PartitionInfoPersistence {
     try {
       String storageGroup = physicalPlan.getStorageGroup();
       List<Integer> deviceGroupIDs = physicalPlan.getDeviceGroupIDs();
-      SchemaPartitionInfo schemaPartitionInfo = new SchemaPartitionInfo();
-      schemaPartitionInfo.setSchemaPartitionInfo(
+      SchemaPartition schemaPartitionInfo = new SchemaPartition();
+      schemaPartitionInfo.setSchemaPartition(
           schemaPartition.getSchemaPartition(storageGroup, deviceGroupIDs));
       schemaPartitionDataSet.setSchemaPartitionInfo(schemaPartitionInfo);
     } finally {
@@ -93,7 +93,7 @@ public class PartitionInfoPersistence {
         schemaPartition.filterNoAssignDeviceGroupId(storageGroup, deviceGroupIDs);
 
     // allocate partition by storage group and device group id
-    Map<Integer, SchemaRegionReplicaSet> deviceGroupIdReplicaSets =
+    Map<Integer, RegionReplicaSet> deviceGroupIdReplicaSets =
         physicalPlan.getDeviceGroupIdReplicaSets();
     schemaPartitionReadWriteLock.writeLock().lock();
     try {
@@ -133,8 +133,8 @@ public class PartitionInfoPersistence {
 
   @TestOnly
   public void clear() {
-    if (schemaPartition.getSchemaPartitionInfo() != null) {
-      schemaPartition.getSchemaPartitionInfo().clear();
+    if (schemaPartition.getSchemaPartition() != null) {
+      schemaPartition.getSchemaPartition().clear();
     }
 
     if (dataPartition.getDataPartitionMap() != null) {

@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.confignode.physical.sys;
 
-import org.apache.iotdb.confignode.partition.SchemaRegionReplicaSet;
+import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
 import org.apache.iotdb.confignode.physical.PhysicalPlanType;
 import org.apache.iotdb.confignode.util.SerializeDeserializeUtil;
@@ -32,7 +32,7 @@ import java.util.Map;
 public class SchemaPartitionPlan extends PhysicalPlan {
   private String storageGroup;
   private List<Integer> deviceGroupIDs;
-  private Map<Integer, SchemaRegionReplicaSet> deviceGroupIdReplicaSets;
+  private Map<Integer, RegionReplicaSet> deviceGroupIdReplicaSets;
 
   public SchemaPartitionPlan(PhysicalPlanType physicalPlanType) {
     super(physicalPlanType);
@@ -45,12 +45,11 @@ public class SchemaPartitionPlan extends PhysicalPlan {
     this.deviceGroupIDs = deviceGroupIDs;
   }
 
-  public void setDeviceGroupIdReplicaSet(
-      Map<Integer, SchemaRegionReplicaSet> deviceGroupIdReplicaSets) {
+  public void setDeviceGroupIdReplicaSet(Map<Integer, RegionReplicaSet> deviceGroupIdReplicaSets) {
     this.deviceGroupIdReplicaSets = deviceGroupIdReplicaSets;
   }
 
-  public Map<Integer, SchemaRegionReplicaSet> getDeviceGroupIdReplicaSets() {
+  public Map<Integer, RegionReplicaSet> getDeviceGroupIdReplicaSets() {
     return deviceGroupIdReplicaSets;
   }
 
@@ -62,7 +61,7 @@ public class SchemaPartitionPlan extends PhysicalPlan {
     deviceGroupIDs.forEach(id -> SerializeDeserializeUtil.write(id, buffer));
 
     buffer.putInt(deviceGroupIdReplicaSets.size());
-    for (Map.Entry<Integer, SchemaRegionReplicaSet> entry : deviceGroupIdReplicaSets.entrySet()) {
+    for (Map.Entry<Integer, RegionReplicaSet> entry : deviceGroupIdReplicaSets.entrySet()) {
       buffer.putInt(entry.getKey());
       entry.getValue().serializeImpl(buffer);
     }
@@ -82,7 +81,7 @@ public class SchemaPartitionPlan extends PhysicalPlan {
     int size = buffer.getInt();
 
     for (int i = 0; i < size; i++) {
-      SchemaRegionReplicaSet schemaRegionReplicaSet = new SchemaRegionReplicaSet();
+      RegionReplicaSet schemaRegionReplicaSet = new RegionReplicaSet();
       schemaRegionReplicaSet.deserializeImpl(buffer);
       deviceGroupIdReplicaSets.put(buffer.getInt(), schemaRegionReplicaSet);
     }
