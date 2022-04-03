@@ -58,8 +58,8 @@ public class CompactionTaskManager implements IService {
   public static volatile AtomicInteger currentTaskNum = new AtomicInteger(0);
   private FixedPriorityBlockingQueue<AbstractCompactionTask> candidateCompactionTaskQueue =
       new FixedPriorityBlockingQueue<>(1024, new CompactionTaskComparator());
-  // <logicalStorageGroupName,futureSet>, it is used to terminate all compaction tasks under the
-  // logicalStorageGroup
+  // <fullStorageGroupName,futureSet>, it is used to store all compaction tasks under each
+  // virtualStorageGroup
   private Map<String, Map<AbstractCompactionTask, Future<Void>>> storageGroupTasks =
       new HashMap<>();
 
