@@ -286,7 +286,7 @@ public class CompactionTaskManager implements IService {
     }
     // add metrics
     CompactionMetricsManager.recordTaskInfo(
-        task, CompactionTaskStatus.FINISHED, currentTaskNum.get() - 1);
+        task, CompactionTaskStatus.FINISHED, currentTaskNum.get());
   }
 
   /**
@@ -298,16 +298,9 @@ public class CompactionTaskManager implements IService {
       throws RejectedExecutionException {
     if (taskExecutionPool != null && !taskExecutionPool.isTerminated()) {
       Future<Void> future = taskExecutionPool.submit(compactionTask);
-      // sleep 50 milliseconds to make sure that the task has started to execute
-      try {
-        TimeUnit.MILLISECONDS.sleep(50);
-      } catch (InterruptedException e) {
-      }
-      if (!future.isCancelled()) {
-        storageGroupTasks
-            .computeIfAbsent(compactionTask.getFullStorageGroupName(), x -> new HashMap<>())
-            .put(compactionTask, future);
-      }
+      storageGroupTasks
+          .computeIfAbsent(compactionTask.getFullStorageGroupName(), x -> new HashMap<>())
+          .put(compactionTask, future);
       return future;
     }
     logger.warn(
@@ -334,24 +327,18 @@ public class CompactionTaskManager implements IService {
       }
     }
 
+    storageGroupTasks.remove(storageGroupName);
+
     candidateCompactionTaskQueue.clear();
     return compactionTaskOfCurSG;
   }
 
-  public synchronized boolean isAnyTaskInListStillRunning(
-      String storageGroupName, List<AbstractCompactionTask> compactionTasks) {
-    if (!storageGroupTasks.containsKey(storageGroupName)) {
-      return false;
-    }
-
-    Map<AbstractCompactionTask, Future<Void>> taskFutureMap =
-        storageGroupTasks.get(storageGroupName);
+  public boolean isAnyTaskInListStillRunning(List<AbstractCompactionTask> compactionTasks) {
+    boolean anyTaskRunning = false;
     for (AbstractCompactionTask task : compactionTasks) {
-      if (taskFutureMap.containsKey(task)) {
-        return true;
-      }
+      anyTaskRunning = anyTaskRunning || (task.isTaskRan() && !task.isTaskFinished());
     }
-    return false;
+    return anyTaskRunning;
   }
 
   public int getExecutingTaskCount() {

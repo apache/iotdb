@@ -3000,11 +3000,9 @@ public class VirtualStorageGroupProcessor {
     List<AbstractCompactionTask> runningTasks =
         CompactionTaskManager.getInstance()
             .abortCompaction(logicalStorageGroupName + "-" + virtualStorageGroupId);
-    while (CompactionTaskManager.getInstance()
-        .isAnyTaskInListStillRunning(
-            logicalStorageGroupName + "-" + virtualStorageGroupId, runningTasks)) {
+    while (CompactionTaskManager.getInstance().isAnyTaskInListStillRunning(runningTasks)) {
       try {
-        Thread.sleep(10);
+        TimeUnit.MILLISECONDS.sleep(10);
       } catch (InterruptedException e) {
         logger.error("Thread get interrupted when waiting compaction to finish", e);
         break;
