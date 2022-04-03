@@ -147,10 +147,12 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
       CompactionUtils.compact(
           selectedSeqTsFileResourceList, selectedUnSeqTsFileResourceList, targetTsfileResourceList);
 
+      checkInterrupted();
       CompactionUtils.moveTargetFile(targetTsfileResourceList, false, fullStorageGroupName);
       CompactionUtils.combineModsInCompaction(
           selectedSeqTsFileResourceList, selectedUnSeqTsFileResourceList, targetTsfileResourceList);
 
+      checkInterrupted();
       // update tsfile resource in memory
       tsFileManager.replace(
           selectedSeqTsFileResourceList,
@@ -160,7 +162,9 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
           true);
 
       releaseReadAndLockWrite(selectedSeqTsFileResourceList);
+      checkInterrupted();
       releaseReadAndLockWrite(selectedUnSeqTsFileResourceList);
+      checkInterrupted();
 
       deleteOldFiles(selectedSeqTsFileResourceList);
       deleteOldFiles(selectedUnSeqTsFileResourceList);
