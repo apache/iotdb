@@ -27,6 +27,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -39,10 +40,14 @@ public class DoubleWriteLogService implements Runnable {
 
   private static final String logFileDir =
       IoTDBDescriptor.getInstance().getConfig().getDoubleWriteLogDir();
-  private static final int logFileValidity =
-      IoTDBDescriptor.getInstance().getConfig().getDoubleWriteLogValidity();
+  private static final long logFileValidity =
+      IoTDBDescriptor.getInstance().getConfig().getDoubleWriteLogValidity() * 1000L;
   private static final int maxLogFileNum =
       IoTDBDescriptor.getInstance().getConfig().getDoubleWriteLogNum();
+  private static final long maxLogFileSize =
+      IoTDBDescriptor.getInstance().getConfig().getDoubleWriteMaxLogSize();
+
+  private static long currentLogFileSize = 0;
 
   private final DoubleWriteProtector protector;
   private final Lock logWriterLock;
@@ -127,6 +132,13 @@ public class DoubleWriteLogService implements Runnable {
   }
 
   private void submitLogFile() {
+    try {
+      logWriter.force();
+    } catch (IOException e) {
+      LOGGER.error("Can't force logWrite", e);
+    }
+    incLogFileSize(logFile.length());
+
     for (int retry = 0; retry < 5; retry++) {
       try {
         logWriter.close();
@@ -178,13 +190,22 @@ public class DoubleWriteLogService implements Runnable {
     logFileID = (logFileID + 1) % maxLogFileNum;
   }
 
-  public LogWriter acquireLogWriter() {
+  public static synchronized void incLogFileSize(long size) {
+    currentLogFileSize = currentLogFileSize + size;
+  }
+
+  public void acquireLogWriter() {
     logWriterLock.lock();
-    if (logWriter == null) {
-      // Create logFile when there are no valid
-      createLogFile();
+  }
+
+  public void write(ByteBuffer buffer) throws IOException {
+    if (currentLogFileSize < maxLogFileSize) {
+      if (logWriter == null) {
+        // Create logFile when there are no valid
+        createLogFile();
+      }
+      logWriter.write(buffer);
     }
-    return logWriter;
   }
 
   public void releaseLogWriter() {

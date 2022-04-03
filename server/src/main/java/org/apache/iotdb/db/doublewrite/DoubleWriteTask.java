@@ -75,7 +75,8 @@ public class DoubleWriteTask implements Runnable {
     try {
       // must set buffer position to limit() before serialization
       physicalPlanBuffer.position(physicalPlanBuffer.limit());
-      eLogService.acquireLogWriter().write(physicalPlanBuffer);
+      eLogService.acquireLogWriter();
+      eLogService.write(physicalPlanBuffer);
     } catch (IOException e) {
       LOGGER.error("can't serialize current PhysicalPlan", e);
     }

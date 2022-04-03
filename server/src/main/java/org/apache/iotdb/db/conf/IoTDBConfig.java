@@ -829,12 +829,12 @@ public class IoTDBConfig {
   // DoubleWriteLog dir
   private String doubleWriteLogDir =
       DEFAULT_BASE_DIR + File.separator + IoTDBConstant.DOUBLEWRITE_FOLDER_NAME;
-  // The max size per file in double write persistence. Default is 64MB
-  private int doubleWriteMaxLogSize = 1073741824;
   // The validity of each DoubleWriteLog
   private int doubleWriteLogValidity = 30;
   // The maximum id of DoubleWriteLog
   private int doubleWriteLogNum = 32767;
+  // The max size of all the DoubleWriteLog. Default is 100GB
+  private long doubleWriteMaxLogSize = 107374182400L;
 
   // DoubleWrite InsertPlan cache size
   private int doubleWriteProducerCacheSize = 1024;
@@ -2636,14 +2636,6 @@ public class IoTDBConfig {
     this.doubleWriteLogDir = doubleWriteLogDir;
   }
 
-  public int getDoubleWriteMaxLogSize() {
-    return doubleWriteMaxLogSize;
-  }
-
-  public void setDoubleWriteMaxLogSize(int doubleWriteMaxLogSize) {
-    this.doubleWriteMaxLogSize = doubleWriteMaxLogSize;
-  }
-
   public int getDoubleWriteLogValidity() {
     return doubleWriteLogValidity;
   }
@@ -2658,6 +2650,14 @@ public class IoTDBConfig {
 
   public void setDoubleWriteLogNum(int doubleWriteLogNum) {
     this.doubleWriteLogNum = doubleWriteLogNum;
+  }
+
+  public long getDoubleWriteMaxLogSize() {
+    return doubleWriteMaxLogSize;
+  }
+
+  public void setDoubleWriteMaxLogSize(long doubleWriteMaxLogSize) {
+    this.doubleWriteMaxLogSize = doubleWriteMaxLogSize;
   }
 
   public int getDoubleWriteProducerCacheSize() {

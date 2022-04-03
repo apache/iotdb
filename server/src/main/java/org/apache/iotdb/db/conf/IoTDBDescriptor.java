@@ -810,11 +810,6 @@ public class IoTDBDescriptor {
       conf.setDoubleWriteLogDir(
           properties.getProperty("double_write_log_dir", conf.getDoubleWriteLogDir()));
 
-      conf.setDoubleWriteMaxLogSize(
-          Integer.parseInt(
-              properties.getProperty(
-                  "double_write_max_log_size", String.valueOf(conf.getDoubleWriteMaxLogSize()))));
-
       conf.setDoubleWriteLogValidity(
           Integer.parseInt(
               properties.getProperty(
@@ -825,6 +820,11 @@ public class IoTDBDescriptor {
           Integer.parseInt(
               properties.getProperty(
                   "double_write_log_file_num", String.valueOf(conf.getDoubleWriteLogNum()))));
+
+      conf.setDoubleWriteMaxLogSize(
+          Long.parseLong(
+              properties.getProperty(
+                  "double_write_max_log_size", String.valueOf(conf.getDoubleWriteMaxLogSize()))));
 
       conf.setDoubleWriteProducerCacheSize(
           Integer.parseInt(

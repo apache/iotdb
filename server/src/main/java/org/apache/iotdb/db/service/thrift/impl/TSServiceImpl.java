@@ -2155,7 +2155,7 @@ public class TSServiceImpl implements TSIService.Iface {
           "DoubleWrite receive unsupported PhysicalPlan type: {}", physicalPlan.getOperatorName());
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
     }
-    LOGGER.info("DoubleWrite receive:{}", physicalPlan.getPaths().toString());
+    // LOGGER.info("DoubleWrite receive:{}", physicalPlan.getPaths().toString());
 
     try {
       return serviceProvider.executeNonQuery(physicalPlan)
@@ -2175,7 +2175,7 @@ public class TSServiceImpl implements TSIService.Iface {
       return;
     }
 
-    LOGGER.info("DoubleWrite transmit: {}", physicalPlan.getPaths().toString());
+    // LOGGER.info("DoubleWrite transmit: {}", physicalPlan.getPaths().toString());
 
     // serialize physical plan
     ByteBuffer buffer;

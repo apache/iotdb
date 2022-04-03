@@ -18,18 +18,13 @@
  */
 package org.apache.iotdb.db.doublewrite;
 
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.writelog.io.SingleFileLogReader;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.session.pool.SessionPool;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.TimeUnit;
 
@@ -45,86 +40,42 @@ public class DoubleWriteEProtector extends DoubleWriteProtector {
   }
 
   @Override
-  protected void transmitLogFiles() {
-    for (String logFileName : processingLogFiles) {
-      File logFile = SystemFileFactory.INSTANCE.getFile(logFileName);
-      SingleFileLogReader logReader;
+  protected void preCheck() {
+    // do nothing
+  }
+
+  @Override
+  protected void transmitPhysicalPlan(ByteBuffer planBuffer, PhysicalPlan physicalPlan) {
+    while (true) {
+      // transmit E-Plan until it's been received
+      boolean transmitStatus = false;
+
       try {
-        logReader = new SingleFileLogReader(logFile);
-      } catch (FileNotFoundException e) {
-        LOGGER.error(
-            "DoubleWriteEProtector can't open DoubleWriteELog: {}, discarded",
-            logFile.getAbsolutePath(),
-            e);
-        continue;
+        // try double write
+        planBuffer.position(0);
+        transmitStatus = doubleWriteSessionPool.doubleWriteTransmit(planBuffer);
+      } catch (IoTDBConnectionException connectionException) {
+        // warn IoTDBConnectionException and retry
+        LOGGER.warn("DoubleWriteEProtector can't transmit, retrying...", connectionException);
+      } catch (Exception e) {
+        // error exception and break
+        LOGGER.error("DoubleWriteEProtector can't transmit", e);
+        break;
       }
 
-      while (logReader.hasNext()) {
-        // read and re-serialize the PhysicalPlan
-        PhysicalPlan nextPlan = logReader.next();
+      if (transmitStatus) {
+        break;
+      } else {
         try {
-          nextPlan.serialize(protectorSerializeStream);
-        } catch (IOException e) {
-          LOGGER.error("DoubleWriteEProtector can't serialize PhysicalPlan", e);
-          continue;
-        }
-        ByteBuffer nextBuffer = ByteBuffer.wrap(protectorByteStream.toByteArray());
-        protectorByteStream.reset();
-
-        while (true) {
-          // transmit E-Plan until it's been received
-          boolean transmitStatus = false;
-
-          try {
-            // try double write
-            nextBuffer.position(0);
-            transmitStatus = doubleWriteSessionPool.doubleWriteTransmit(nextBuffer);
-          } catch (IoTDBConnectionException connectionException) {
-            // warn IoTDBConnectionException and retry
-            LOGGER.warn("DoubleWriteEProtector can't transmit, retrying...", connectionException);
-          } catch (Exception e) {
-            // error exception and break
-            LOGGER.error("DoubleWriteEProtector can't transmit", e);
-            break;
-          }
-
-          if (transmitStatus) {
-            break;
-          } else {
-            try {
-              TimeUnit.SECONDS.sleep(1);
-            } catch (InterruptedException e) {
-              LOGGER.warn("DoubleWriteEProtector is interrupted", e);
-            }
-          }
+          TimeUnit.SECONDS.sleep(1);
+        } catch (InterruptedException e) {
+          LOGGER.warn("DoubleWriteEProtector is interrupted", e);
         }
       }
-
-      logReader.close();
-      try {
-        // sleep one second then delete DoubleWriteLog
-        TimeUnit.SECONDS.sleep(1);
-      } catch (InterruptedException e) {
-        LOGGER.warn("DoubleWriteEProtector is interrupted", e);
-      }
-
-      for (int retryCnt = 0; retryCnt < 5; retryCnt++) {
-        if (logFile.delete()) {
-          LOGGER.info("DoubleWriteELog: {} is deleted.", logFile.getAbsolutePath());
-          break;
-        } else {
-          LOGGER.warn("Delete DoubleWriteELog: {} failed. Retrying", logFile.getAbsolutePath());
-        }
-      }
-      LOGGER.error("Couldn't delete DoubleWriteELog: {}", logFile.getAbsolutePath());
     }
   }
 
   public boolean isAtWork() {
-    boolean result;
-    atWorkLock.lock();
-    result = isProtectorAtWork;
-    atWorkLock.unlock();
-    return result;
+    return isProtectorAtWork;
   }
 }

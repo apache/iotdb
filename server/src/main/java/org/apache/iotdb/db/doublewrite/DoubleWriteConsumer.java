@@ -91,7 +91,8 @@ public class DoubleWriteConsumer implements Runnable {
         try {
           // must set buffer position to limit() before serialization
           headBuffer.position(headBuffer.limit());
-          niLogService.acquireLogWriter().write(headBuffer);
+          niLogService.acquireLogWriter();
+          niLogService.write(headBuffer);
         } catch (IOException e) {
           LOGGER.error("DoubleWriteConsumer can't serialize physicalPlan", e);
         }
