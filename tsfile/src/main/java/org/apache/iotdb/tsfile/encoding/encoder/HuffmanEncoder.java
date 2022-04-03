@@ -45,6 +45,9 @@ public class HuffmanEncoder extends Encoder{
     private int numberLeftInBuffer = 0;
     private boolean[] used;
     private int usednum;
+    private int maxRecordLength;
+    private int totLength;
+    private int recordnum;
 
     public HuffmanEncoder() {
         super(TSEncoding.HUFFMAN);
@@ -58,6 +61,8 @@ public class HuffmanEncoder extends Encoder{
 
     @Override
     public void encode(Binary value, ByteArrayOutputStream out) {
+        recordnum++;
+        maxRecordLength = Math.max(maxRecordLength, value.getLength());
         records.add(value);
         for(int i = 0; i < value.getLength(); i++) {
             byte cur = value.getValues()[i];
@@ -74,18 +79,18 @@ public class HuffmanEncoder extends Encoder{
         flushHeader(out);
         for (Binary rec: records)
             flushRecord(rec, out);
+        reset();
+        clearBuffer(out);
     }
 
     @Override
     public int getOneItemMaxSize() {
-        //TODO
-        return 1;
+        return maxRecordLength;
     }
 
     @Override
     public long getMaxByteSize() {
-        //TODO
-        throw new UnsupportedOperationException();
+        return totLength;
     }
 
     private void buildHuffmanTree() {
@@ -126,14 +131,20 @@ public class HuffmanEncoder extends Encoder{
     }
 
     private void flushHeader(ByteArrayOutputStream out) {
+        out.write(recordnum);//write the number of records
+        totLength += 4;
         out.write(huffmanCodes[256].huffmanCode.size()); //Write the length of huffman code of end-of-record sign
+        totLength += 4;
         for(boolean b : huffmanCodes[256].huffmanCode) { //Write the end-of-record sign
             writeBit(b, out);
         }
         out.write(usednum); //Write how many character have been used in this section
+        totLength += 4;
         for(int i = 0; i < 256; i++) {
             if(used[i]) {
+                out.write((byte)i);
                 out.write(huffmanCodes[i].huffmanCode.size()); //First we store the length of huffman code
+                totLength += 8;
                 for(boolean b : huffmanCodes[i].huffmanCode) //Then we store the huffman code
                     writeBit(b, out);
             }
@@ -164,6 +175,10 @@ public class HuffmanEncoder extends Encoder{
         records.clear();
         huffmanQueue.clear();
         usednum = 0;
+        maxRecordLength = 0;
+        totLength = 0;
+        recordnum = 0;
+        treeTop.clear();
     }
 
 
@@ -190,6 +205,7 @@ public class HuffmanEncoder extends Encoder{
         if (numberLeftInBuffer == 0) return;
         if (numberLeftInBuffer > 0) byteBuffer <<= (8 - numberLeftInBuffer);
         out.write(byteBuffer);
+        totLength++;
         numberLeftInBuffer = 0;
         byteBuffer = 0;
     }
