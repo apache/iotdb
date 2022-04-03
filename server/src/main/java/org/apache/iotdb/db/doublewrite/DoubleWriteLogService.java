@@ -18,8 +18,10 @@
  */
 package org.apache.iotdb.db.doublewrite;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.writelog.io.LogWriter;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,9 +37,12 @@ public class DoubleWriteLogService implements Runnable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DoubleWriteLogService.class);
 
-  private static final String logFileDir;
-  private static final int logFileValidity;
-  private static final int maxLogFileNum;
+  private static final String logFileDir =
+      IoTDBDescriptor.getInstance().getConfig().getDoubleWriteLogDir();
+  private static final int logFileValidity =
+      IoTDBDescriptor.getInstance().getConfig().getDoubleWriteLogValidity();
+  private static final int maxLogFileNum =
+      IoTDBDescriptor.getInstance().getConfig().getDoubleWriteLogNum();
 
   private final DoubleWriteProtector protector;
   private final Lock logWriterLock;
@@ -54,6 +59,13 @@ public class DoubleWriteLogService implements Runnable {
     this.logWriterLock = new ReentrantLock();
     this.logFile = null;
     this.logWriter = null;
+
+    File logDir = new File(logFileDir);
+    if (!logDir.exists()) {
+      if (!logDir.mkdirs()) {
+        LOGGER.error("Can't make DoubleWriteLog file dir: {}", logDir.getAbsolutePath());
+      }
+    }
   }
 
   @Override
@@ -62,7 +74,7 @@ public class DoubleWriteLogService implements Runnable {
     List<Integer> logFileIDList = new ArrayList<>();
     for (int ID = 0; ID < maxLogFileNum; ID++) {
       File file =
-        SystemFileFactory.INSTANCE.getFile(logFileDir + File.separator + logFileName + ID);
+          SystemFileFactory.INSTANCE.getFile(logFileDir + File.separator + logFileName + ID);
       if (file.exists()) {
         logFileIDList.add(ID);
       }
@@ -133,14 +145,19 @@ public class DoubleWriteLogService implements Runnable {
       break;
     }
 
-    protector.registerLogFile(logFileDir + File.separator + logFileName + (logFileID - 1 + maxLogFileNum) % maxLogFileNum);
+    protector.registerLogFile(
+        logFileDir
+            + File.separator
+            + logFileName
+            + (logFileID - 1 + maxLogFileNum) % maxLogFileNum);
 
     logWriter = null;
     logFile = null;
   }
 
   private void createLogFile() {
-    logFile = SystemFileFactory.INSTANCE.getFile(logFileDir + File.separator + logFileName + logFileID);
+    logFile =
+        SystemFileFactory.INSTANCE.getFile(logFileDir + File.separator + logFileName + logFileID);
     while (true) {
       try {
         if (logFile.createNewFile()) {

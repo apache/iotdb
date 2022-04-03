@@ -789,11 +789,6 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "enable_double_write", String.valueOf(conf.isEnableDoubleWrite()))));
 
-      conf.setSyncDoubleWrite(
-          Boolean.parseBoolean(
-              properties.getProperty(
-                  "sync_double_write", String.valueOf(conf.isSyncDoubleWrite()))));
-
       conf.setSecondaryAddress(
           properties.getProperty("secondary_address", conf.getSecondaryAddress()));
 
@@ -812,52 +807,24 @@ public class IoTDBDescriptor {
                   "double_write_session_concurrency_size",
                   String.valueOf(conf.getDoubleWriteSessionConcurrencySize()))));
 
+      conf.setDoubleWriteLogDir(
+          properties.getProperty("double_write_log_dir", conf.getDoubleWriteLogDir()));
+
       conf.setDoubleWriteMaxLogSize(
           Integer.parseInt(
               properties.getProperty(
                   "double_write_max_log_size", String.valueOf(conf.getDoubleWriteMaxLogSize()))));
 
-      conf.setDoubleWriteProtectorCorePoolSize(
+      conf.setDoubleWriteLogValidity(
           Integer.parseInt(
               properties.getProperty(
-                  "double_write_protector_core_pool_size",
-                  String.valueOf(conf.getDoubleWriteProtectorCorePoolSize()))));
+                  "double_write_log_file_validity",
+                  String.valueOf(conf.getDoubleWriteLogValidity()))));
 
-      conf.setDoubleWriteProtectorMaxPoolSize(
+      conf.setDoubleWriteLogNum(
           Integer.parseInt(
               properties.getProperty(
-                  "double_write_protector_max_pool_size",
-                  String.valueOf(conf.getDoubleWriteProtectorMaxPoolSize()))));
-
-      conf.setDoubleWriteProtectorMaxWaitingTime(
-          Integer.parseInt(
-              properties.getProperty(
-                  "double_write_protector_max_waiting_time",
-                  String.valueOf(conf.getDoubleWriteProtectorMaxWaitingTime()))));
-
-      conf.setDoubleWriteProtectorKeepAliveTime(
-          Integer.parseInt(
-              properties.getProperty(
-                  "double_write_protector_keep_alive_time",
-                  String.valueOf(conf.getDoubleWriteProtectorKeepAliveTime()))));
-
-      conf.setDoubleWriteTaskCorePoolSize(
-          Integer.parseInt(
-              properties.getProperty(
-                  "double_write_task_core_pool_size",
-                  String.valueOf(conf.getDoubleWriteTaskCorePoolSize()))));
-
-      conf.setDoubleWriteTaskMaxPoolSize(
-          Integer.parseInt(
-              properties.getProperty(
-                  "double_write_task_max_pool_size",
-                  String.valueOf(conf.getDoubleWriteTaskMaxPoolSize()))));
-
-      conf.setDoubleWriteTaskKeepAliveTime(
-          Integer.parseInt(
-              properties.getProperty(
-                  "double_write_task_keep_alive_time",
-                  String.valueOf(conf.getDoubleWriteTaskKeepAliveTime()))));
+                  "double_write_log_file_num", String.valueOf(conf.getDoubleWriteLogNum()))));
 
       conf.setDoubleWriteProducerCacheSize(
           Integer.parseInt(

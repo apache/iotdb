@@ -18,64 +18,35 @@
  */
 package org.apache.iotdb.db.doublewrite;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.TimeUnit;
 
 /**
  * DoubleWriteProducer using BlockingQueue to cache PhysicalPlan. And persist some PhysicalPlan when
  * they are too many to transmit
  */
 public class DoubleWriteProducer {
+
   private static final Logger LOGGER = LoggerFactory.getLogger(DoubleWriteProducer.class);
 
-  private final BlockingQueue<ByteBuffer> doubleWriteQueue;
-  private final int doubleWriteCacheSize;
-  private final DoubleWriteProtectorService service;
+  private final BlockingQueue<Pair<ByteBuffer, DoubleWritePlanTypeUtils.DoubleWritePlanType>>
+      doubleWriteQueue;
 
   public DoubleWriteProducer(
-      BlockingQueue<ByteBuffer> doubleWriteQueue, DoubleWriteProtectorService service) {
+      BlockingQueue<Pair<ByteBuffer, DoubleWritePlanTypeUtils.DoubleWritePlanType>>
+          doubleWriteQueue) {
     this.doubleWriteQueue = doubleWriteQueue;
-    this.service = service;
-    doubleWriteCacheSize =
-        IoTDBDescriptor.getInstance().getConfig().getDoubleWriteProducerCacheSize();
   }
 
-  public void put(ByteBuffer planBuffer) {
-    // It's better to go through producer-consumer module
-    for (int retry = 0; retry < 3; retry++) {
-      if (doubleWriteQueue.size() == doubleWriteCacheSize) {
-        try {
-          TimeUnit.SECONDS.sleep(1);
-        } catch (InterruptedException e) {
-          LOGGER.warn("DoubleWriteProducer is interrupted", e);
-        }
-      } else {
-        break;
-      }
-    }
-
-    // Persist when there are too many PhysicalPlan to transmit
-    if (doubleWriteQueue.size() == doubleWriteCacheSize) {
-      try {
-        planBuffer.position(planBuffer.limit());
-        service.acquireLogWriter().write(planBuffer);
-      } catch (IOException e) {
-        LOGGER.error("DoubleWriteProducer can't serialize physicalPlan", e);
-      }
-      service.releaseLogWriter();
-      return;
-    }
-
+  public void put(Pair<ByteBuffer, DoubleWritePlanTypeUtils.DoubleWritePlanType> planPair) {
     try {
-      planBuffer.position(0);
-      doubleWriteQueue.put(planBuffer);
+      planPair.left.position(0);
+      doubleWriteQueue.put(planPair);
     } catch (InterruptedException e) {
       LOGGER.error("double write cache failed.", e);
     }

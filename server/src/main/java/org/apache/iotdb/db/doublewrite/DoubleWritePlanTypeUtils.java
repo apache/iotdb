@@ -31,12 +31,16 @@ import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 public class DoubleWritePlanTypeUtils {
 
   public static DoubleWritePlanType getDoubleWritePlanType(PhysicalPlan plan) {
-    if (plan instanceof SetStorageGroupPlan || plan instanceof DeleteStorageGroupPlan || plan instanceof CreateTimeSeriesPlan
-    || plan instanceof CreateMultiTimeSeriesPlan || plan instanceof CreateAlignedTimeSeriesPlan || plan instanceof DeleteTimeSeriesPlan) {
+    if (plan instanceof SetStorageGroupPlan
+        || plan instanceof DeleteStorageGroupPlan
+        || plan instanceof CreateTimeSeriesPlan
+        || plan instanceof CreateMultiTimeSeriesPlan
+        || plan instanceof CreateAlignedTimeSeriesPlan
+        || plan instanceof DeleteTimeSeriesPlan) {
       return DoubleWritePlanType.EPlan;
     } else if (plan instanceof DeletePlan) {
       return DoubleWritePlanType.IPlan;
-    } else if (plan instanceof InsertPlan){
+    } else if (plan instanceof InsertPlan) {
       return DoubleWritePlanType.NPlan;
     }
     return null;

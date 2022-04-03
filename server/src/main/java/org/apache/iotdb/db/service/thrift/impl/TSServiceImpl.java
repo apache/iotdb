@@ -26,8 +26,11 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.OperationType;
 import org.apache.iotdb.db.doublewrite.DoubleWriteConsumer;
+import org.apache.iotdb.db.doublewrite.DoubleWriteEProtector;
+import org.apache.iotdb.db.doublewrite.DoubleWriteLogService;
+import org.apache.iotdb.db.doublewrite.DoubleWriteNIProtector;
+import org.apache.iotdb.db.doublewrite.DoubleWritePlanTypeUtils;
 import org.apache.iotdb.db.doublewrite.DoubleWriteProducer;
-import org.apache.iotdb.db.doublewrite.DoubleWriteProtectorService;
 import org.apache.iotdb.db.doublewrite.DoubleWriteTask;
 import org.apache.iotdb.db.engine.selectinto.InsertTabletPlansIterator;
 import org.apache.iotdb.db.exception.IoTDBException;
@@ -43,7 +46,6 @@ import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
@@ -134,6 +136,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -154,15 +157,7 @@ import java.util.Map.Entry;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.service.basic.ServiceProvider.AUDIT_LOGGER;
@@ -321,31 +316,21 @@ public class TSServiceImpl implements TSIService.Iface {
 
   protected final ServiceProvider serviceProvider;
 
-  /* Double write module, temporary use */
-  // DOUBLEWRITE GENERAL
-  private final boolean isEnableDoubleWrite;
-  private final boolean isSyncDoubleWrite;
+  /* Double write module */
+  private static final boolean isEnableDoubleWrite =
+      IoTDBDescriptor.getInstance().getConfig().isEnableDoubleWrite();
   private final SessionPool doubleWriteSessionPool;
-  private final DoubleWriteProtectorService doubleWriteProtectorService;
-
-  // DOUBLEWRITE SYNC
-  private final ExecutorService doubleWriteTaskThreadPool;
-
-  // DOUBLEWRITE ASYNC
   private final DoubleWriteProducer doubleWriteProducer;
+  private final DoubleWriteEProtector doubleWriteEProtector;
+  private final DoubleWriteLogService doubleWriteELogService;
 
   public TSServiceImpl() {
     super();
     serviceProvider = IoTDB.serviceProvider;
 
-    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-    if (config.isEnableDoubleWrite()) {
+    if (isEnableDoubleWrite) {
       /* Open double write */
-
-      // basic config
-      isEnableDoubleWrite = config.isEnableDoubleWrite();
-      isSyncDoubleWrite = config.isSyncDoubleWrite();
-
+      IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
       // create SessionPool for double write
       doubleWriteSessionPool =
           new SessionPool(
@@ -355,51 +340,36 @@ public class TSServiceImpl implements TSIService.Iface {
               config.getSecondaryPassword(),
               5);
 
-      // create DoubleWriteProtectorService
-      Lock firstLogLock = new ReentrantLock();
-      Condition firstLogCondition = firstLogLock.newCondition();
-      doubleWriteProtectorService =
-          new DoubleWriteProtectorService(firstLogLock, firstLogCondition, doubleWriteSessionPool);
-      new Thread(doubleWriteProtectorService).start();
-      try {
-        firstLogLock.lock();
-        firstLogCondition.await();
-        firstLogLock.unlock();
-      } catch (InterruptedException e) {
-        LOGGER.error("There is an exception during start DoubleWrite", e);
-      }
+      // create DoubleWriteEProtector and DoubleWriteELogService
+      doubleWriteEProtector = new DoubleWriteEProtector(doubleWriteSessionPool);
+      new Thread(doubleWriteEProtector).start();
+      doubleWriteELogService = new DoubleWriteLogService("ELog", doubleWriteEProtector);
+      new Thread(doubleWriteELogService).start();
 
-      // create DoubleWriteTaskThreadPool
-      doubleWriteTaskThreadPool =
-          new ThreadPoolExecutor(
-              config.getDoubleWriteTaskCorePoolSize(),
-              config.getDoubleWriteTaskMaxPoolSize(),
-              config.getDoubleWriteTaskKeepAliveTime(),
-              TimeUnit.HOURS,
-              new ArrayBlockingQueue<>(config.getDoubleWriteTaskMaxPoolSize()),
-              Executors.defaultThreadFactory(),
-              new ThreadPoolExecutor.DiscardOldestPolicy());
+      // create DoubleWriteProducer
+      BlockingQueue<Pair<ByteBuffer, DoubleWritePlanTypeUtils.DoubleWritePlanType>> blockingQueue =
+          new ArrayBlockingQueue<>(config.getDoubleWriteProducerCacheSize());
+      doubleWriteProducer = new DoubleWriteProducer(blockingQueue);
 
-      if (isSyncDoubleWrite) {
-        doubleWriteProducer = null;
-      } else {
-        // create DoubleWriteProducer and DoubleWriteConsumer
-        BlockingQueue<ByteBuffer> blockingQueue =
-            new ArrayBlockingQueue<>(config.getDoubleWriteProducerCacheSize());
-        doubleWriteProducer = new DoubleWriteProducer(blockingQueue, doubleWriteProtectorService);
-        for (int i = 0; i < config.getDoubleWriteConsumerConcurrencySize(); i++) {
-          DoubleWriteConsumer consumer =
-              new DoubleWriteConsumer(blockingQueue, doubleWriteSessionPool);
-          new Thread(consumer).start();
-        }
+      // create DoubleWriteNIProtector and DoubleWriteNILogService
+      DoubleWriteNIProtector doubleWriteNIProtector =
+          new DoubleWriteNIProtector(doubleWriteEProtector, doubleWriteProducer);
+      new Thread(doubleWriteNIProtector).start();
+      DoubleWriteLogService doubleWriteNILogService =
+          new DoubleWriteLogService("NILog", doubleWriteNIProtector);
+      new Thread(doubleWriteNILogService).start();
+
+      // create DoubleWriteConsumer
+      for (int i = 0; i < config.getDoubleWriteConsumerConcurrencySize(); i++) {
+        DoubleWriteConsumer consumer =
+            new DoubleWriteConsumer(blockingQueue, doubleWriteSessionPool, doubleWriteNILogService);
+        new Thread(consumer).start();
       }
     } else {
-      isEnableDoubleWrite = false;
-      isSyncDoubleWrite = true;
       doubleWriteSessionPool = null;
-      doubleWriteProtectorService = null;
-      doubleWriteTaskThreadPool = null;
       doubleWriteProducer = null;
+      doubleWriteEProtector = null;
+      doubleWriteELogService = null;
     }
   }
 
@@ -2178,32 +2148,14 @@ public class TSServiceImpl implements TSIService.Iface {
       LOGGER.error("double write deserialization failed.", e);
     }
 
-    if (physicalPlan instanceof SetStorageGroupPlan) {
-      LOGGER.info(
-          "DoubleWrite receive SetStorageGroupPlan: {}",
-          ((SetStorageGroupPlan) physicalPlan).getPath().toString());
-    } else if (physicalPlan instanceof DeleteStorageGroupPlan) {
-      LOGGER.info(
-          "DoubleWrite receive DeleteStorageGroupPlan: {}", physicalPlan.getPaths().toString());
-    } else if (physicalPlan instanceof CreateTimeSeriesPlan) {
-      LOGGER.info(
-          "DoubleWrite receive CreateTimeSeriesPlan: {}", physicalPlan.getPaths().toString());
-    } else if (physicalPlan instanceof CreateMultiTimeSeriesPlan) {
-      LOGGER.info(
-          "DoubleWrite receive CreateMultiTimeSeriesPlan: {}", physicalPlan.getPaths().toString());
-    } else if (physicalPlan instanceof CreateAlignedTimeSeriesPlan) {
-      LOGGER.info(
-          "DoubleWrite receive CreateAlignedTimeSeriesPlan: {}",
-          physicalPlan.getPaths().toString());
-    } else if (physicalPlan instanceof DeleteTimeSeriesPlan) {
-      LOGGER.info("DoubleWrite receive: {}", physicalPlan.getPaths().toString());
-    } else if (physicalPlan instanceof InsertPlan) {
-      LOGGER.info("DoubleWrite receive: {}", physicalPlan.getPaths().toString());
-    } else {
+    DoubleWritePlanTypeUtils.DoubleWritePlanType planType =
+        DoubleWritePlanTypeUtils.getDoubleWritePlanType(physicalPlan);
+    if (planType == null) {
       LOGGER.error(
           "DoubleWrite receive unsupported PhysicalPlan type: {}", physicalPlan.getOperatorName());
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
     }
+    LOGGER.info("DoubleWrite receive:{}", physicalPlan.getPaths().toString());
 
     try {
       return serviceProvider.executeNonQuery(physicalPlan)
@@ -2216,30 +2168,14 @@ public class TSServiceImpl implements TSIService.Iface {
 
   private void transmitDoubleWrite(PhysicalPlan physicalPlan) {
 
-    if (physicalPlan instanceof SetStorageGroupPlan) {
-      LOGGER.info(
-          "DoubleWrite transmit SetStorageGroupPlan: {}",
-          ((SetStorageGroupPlan) physicalPlan).getPath().toString());
-    } else if (physicalPlan instanceof DeleteStorageGroupPlan) {
-      LOGGER.info(
-          "DoubleWrite transmit DeleteStorageGroupPlan: {}", physicalPlan.getPaths().toString());
-    } else if (physicalPlan instanceof CreateTimeSeriesPlan) {
-      LOGGER.info(
-          "DoubleWrite transmit CreateTimeSeriesPlan: {}", physicalPlan.getPaths().toString());
-    } else if (physicalPlan instanceof CreateMultiTimeSeriesPlan) {
-      LOGGER.info(
-          "DoubleWrite transmit CreateMultiTimeSeriesPlan: {}", physicalPlan.getPaths().toString());
-    } else if (physicalPlan instanceof CreateAlignedTimeSeriesPlan) {
-      LOGGER.info(
-          "DoubleWrite transmit CreateAlignedTimeSeriesPlan: {}",
-          physicalPlan.getPaths().toString());
-    } else if (physicalPlan instanceof DeleteTimeSeriesPlan) {
-      LOGGER.info("DoubleWrite transmit: {}", physicalPlan.getPaths().toString());
-    } else if (physicalPlan instanceof InsertPlan) {
-      LOGGER.info("DoubleWrite transmit: {}", physicalPlan.getPaths().toString());
-    } else {
+    DoubleWritePlanTypeUtils.DoubleWritePlanType planType =
+        DoubleWritePlanTypeUtils.getDoubleWritePlanType(physicalPlan);
+    if (planType == null) {
+      // Don't need DoubleWrite
       return;
     }
+
+    LOGGER.info("DoubleWrite transmit: {}", physicalPlan.getPaths().toString());
 
     // serialize physical plan
     ByteBuffer buffer;
@@ -2254,19 +2190,24 @@ public class TSServiceImpl implements TSIService.Iface {
       return;
     }
 
-    // Sync transmit when is sync DoubleWrite mode or the PhysicalPlan is DDL
-    if (isSyncDoubleWrite || !(physicalPlan instanceof InsertPlan)) {
-      // create and wait DoubleWriteTask
-      DoubleWriteTask doubleWriteTask =
-          new DoubleWriteTask(doubleWriteProtectorService, buffer, doubleWriteSessionPool);
-      Future<?> future = doubleWriteTaskThreadPool.submit(doubleWriteTask);
-      try {
-        future.get();
-      } catch (InterruptedException | ExecutionException e) {
-        LOGGER.error("SyncDoubleWrite error", e);
-      }
-    } else {
-      doubleWriteProducer.put(buffer);
+    switch (planType) {
+      case EPlan:
+        // Create DoubleWriteTask and wait
+        Thread taskThread =
+            new Thread(
+                new DoubleWriteTask(
+                    buffer, doubleWriteSessionPool, doubleWriteEProtector, doubleWriteELogService));
+        taskThread.start();
+        try {
+          taskThread.join();
+        } catch (InterruptedException e) {
+          LOGGER.error("DoubleWriteTask been interrupted", e);
+        }
+        break;
+      case IPlan:
+      case NPlan:
+        // Put into DoubleWriteProducer
+        doubleWriteProducer.put(new Pair<>(buffer, planType));
     }
   }
 

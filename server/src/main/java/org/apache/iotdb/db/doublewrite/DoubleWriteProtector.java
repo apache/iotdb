@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.doublewrite;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,7 +34,8 @@ import java.util.concurrent.locks.ReentrantLock;
 public abstract class DoubleWriteProtector implements Runnable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DoubleWriteProtector.class);
-  private static final int logFileValidity;
+  private static final int logFileValidity =
+      IoTDBDescriptor.getInstance().getConfig().getDoubleWriteLogValidity();
 
   // For transmit log files
   protected final Lock logFileListLock;

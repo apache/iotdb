@@ -21,7 +21,8 @@ package org.apache.iotdb.db.doublewrite;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.writelog.io.SingleFileLogReader;
-import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.tsfile.utils.Pair;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,7 +56,10 @@ public class DoubleWriteNIProtector extends DoubleWriteProtector {
       try {
         logReader = new SingleFileLogReader(logFile);
       } catch (FileNotFoundException e) {
-        LOGGER.error("DoubleWriteNIProtector can't open DoubleWriteNILog: {}, discarded", logFile.getAbsolutePath(), e);
+        LOGGER.error(
+            "DoubleWriteNIProtector can't open DoubleWriteNILog: {}, discarded",
+            logFile.getAbsolutePath(),
+            e);
         continue;
       }
 
@@ -71,7 +75,8 @@ public class DoubleWriteNIProtector extends DoubleWriteProtector {
         ByteBuffer nextBuffer = ByteBuffer.wrap(protectorByteStream.toByteArray());
         protectorByteStream.reset();
 
-        producer.put(nextBuffer);
+        producer.put(
+            new Pair<>(nextBuffer, DoubleWritePlanTypeUtils.getDoubleWritePlanType(nextPlan)));
       }
 
       logReader.close();
@@ -82,15 +87,19 @@ public class DoubleWriteNIProtector extends DoubleWriteProtector {
         LOGGER.warn("DoubleWriteNIProtector is interrupted", e);
       }
 
+      boolean deleted = false;
       for (int retryCnt = 0; retryCnt < 5; retryCnt++) {
         if (logFile.delete()) {
+          deleted = true;
           LOGGER.info("DoubleWriteNILog: {} is deleted.", logFile.getAbsolutePath());
           break;
         } else {
           LOGGER.warn("Delete DoubleWriteNILog: {} failed. Retrying", logFile.getAbsolutePath());
         }
       }
-      LOGGER.error("Couldn't delete DoubleWriteNILog: {}", logFile.getAbsolutePath());
+      if (!deleted) {
+        LOGGER.error("Couldn't delete DoubleWriteNILog: {}", logFile.getAbsolutePath());
+      }
     }
   }
 

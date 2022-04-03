@@ -27,48 +27,58 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-/** DoubleWriteTask is used for transmit one InsertPlan sending by a client */
+/** DoubleWriteTask is used for transmit one E-Plan sending by a client */
 public class DoubleWriteTask implements Runnable {
   private static final Logger LOGGER = LoggerFactory.getLogger(DoubleWriteTask.class);
 
-  private final DoubleWriteProtectorService protectorService;
   private final ByteBuffer physicalPlanBuffer;
   private final SessionPool doubleWriteSessionPool;
+  private final DoubleWriteEProtector eProtector;
+  private final DoubleWriteLogService eLogService;
 
   public DoubleWriteTask(
-      DoubleWriteProtectorService protectorService,
       ByteBuffer physicalPlanBuffer,
-      SessionPool doubleWriteSessionPool) {
-    this.protectorService = protectorService;
+      SessionPool doubleWriteSessionPool,
+      DoubleWriteEProtector eProtector,
+      DoubleWriteLogService eLogService) {
     this.physicalPlanBuffer = physicalPlanBuffer;
     this.doubleWriteSessionPool = doubleWriteSessionPool;
+    this.eProtector = eProtector;
+    this.eLogService = eLogService;
   }
 
   @Override
   public void run() {
-    boolean transmitStatus = false;
-    try {
-      physicalPlanBuffer.position(0);
-      transmitStatus = doubleWriteSessionPool.doubleWriteTransmit(physicalPlanBuffer);
-    } catch (IoTDBConnectionException connectionException) {
-      // warn IoTDBConnectionException and do serialization
-      LOGGER.warn("DoubleWriteTask can't transmit", connectionException);
-    } catch (Exception e) {
-      // error exception and return
-      LOGGER.error("DoubleWriteTask can't transmit", e);
-      return;
-    }
-
-    // serialize the PhysicalPlan if transition failed
-    if (!transmitStatus) {
+    if (eProtector.isAtWork()) {
+      serializeEPlan();
+    } else {
+      boolean transmitStatus = false;
       try {
-        // must set buffer position to limit() before serialization
-        physicalPlanBuffer.position(physicalPlanBuffer.limit());
-        protectorService.acquireLogWriter().write(physicalPlanBuffer);
-      } catch (IOException e) {
-        LOGGER.error("can't serialize current PhysicalPlan", e);
+        physicalPlanBuffer.position(0);
+        transmitStatus = doubleWriteSessionPool.doubleWriteTransmit(physicalPlanBuffer);
+      } catch (IoTDBConnectionException connectionException) {
+        // warn IoTDBConnectionException and do serialization
+        LOGGER.warn("DoubleWriteTask can't transmit because network failure", connectionException);
+      } catch (Exception e) {
+        // The PhysicalPlan has internal error, reject transmit
+        LOGGER.error("DoubleWriteTask can't transmit", e);
+        return;
       }
-      protectorService.releaseLogWriter();
+      if (!transmitStatus) {
+        serializeEPlan();
+      }
     }
+  }
+
+  private void serializeEPlan() {
+    // serialize the E-Plan if necessary
+    try {
+      // must set buffer position to limit() before serialization
+      physicalPlanBuffer.position(physicalPlanBuffer.limit());
+      eLogService.acquireLogWriter().write(physicalPlanBuffer);
+    } catch (IOException e) {
+      LOGGER.error("can't serialize current PhysicalPlan", e);
+    }
+    eLogService.releaseLogWriter();
   }
 }

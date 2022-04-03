@@ -20,10 +20,12 @@ package org.apache.iotdb.db.doublewrite;
 
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.session.pool.SessionPool;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -31,51 +33,69 @@ import java.util.concurrent.TimeUnit;
 public class DoubleWriteConsumer implements Runnable {
   private static final Logger LOGGER = LoggerFactory.getLogger(DoubleWriteConsumer.class);
 
-  private final BlockingQueue<ByteBuffer> doubleWriteQueue;
+  private final BlockingQueue<Pair<ByteBuffer, DoubleWritePlanTypeUtils.DoubleWritePlanType>>
+      doubleWriteQueue;
   private final SessionPool doubleWriteSessionPool;
+  private final DoubleWriteLogService niLogService;
 
   public DoubleWriteConsumer(
-      BlockingQueue<ByteBuffer> doubleWriteQueue, SessionPool doubleWriteSessionPool) {
+      BlockingQueue<Pair<ByteBuffer, DoubleWritePlanTypeUtils.DoubleWritePlanType>>
+          doubleWriteQueue,
+      SessionPool doubleWriteSessionPool,
+      DoubleWriteLogService niLogService) {
     this.doubleWriteQueue = doubleWriteQueue;
     this.doubleWriteSessionPool = doubleWriteSessionPool;
+    this.niLogService = niLogService;
   }
 
   @Override
   public void run() {
     while (true) {
-      ByteBuffer head;
+      Pair<ByteBuffer, DoubleWritePlanTypeUtils.DoubleWritePlanType> head;
+      ByteBuffer headBuffer;
+      DoubleWritePlanTypeUtils.DoubleWritePlanType headType;
       try {
         head = doubleWriteQueue.take();
+        headBuffer = head.left;
+        headType = head.right;
       } catch (InterruptedException e) {
-        LOGGER.error("There is an exception in DoubleWriteConsumer: ", e);
+        LOGGER.error("DoubleWriteConsumer been interrupted: ", e);
         continue;
       }
 
-      // transmit PhysicalPlan until it has been received
-      while (true) {
-        boolean transmitStatus = false;
-
+      if (headType == DoubleWritePlanTypeUtils.DoubleWritePlanType.IPlan) {
         try {
-          head.position(0);
-          transmitStatus = doubleWriteSessionPool.doubleWriteTransmit(head);
-        } catch (IoTDBConnectionException connectionException) {
-          // warn IoTDBConnectionException and retry
-          LOGGER.warn("DoubleWriteProtector can't transmit, retrying...", connectionException);
-        } catch (Exception e) {
-          // error exception and break
-          LOGGER.error("DoubleWriteProtector can't transmit", e);
-          break;
+          // Sleep 10ms when it's I-Plan
+          TimeUnit.MILLISECONDS.sleep(10);
+        } catch (InterruptedException ignore) {
+          // Ignored
         }
+      }
 
-        if (transmitStatus) {
-          break;
-        } else {
-          try {
-            TimeUnit.SECONDS.sleep(1);
-          } catch (InterruptedException e) {
-            LOGGER.warn("DoubleWriteConsumer is interrupted", e);
-          }
+      headBuffer.position(0);
+      boolean transmitStatus = false;
+      try {
+        headBuffer.position(0);
+        transmitStatus = doubleWriteSessionPool.doubleWriteTransmit(headBuffer);
+      } catch (IoTDBConnectionException connectionException) {
+        // warn IoTDBConnectionException and do serialization
+        LOGGER.warn(
+            "DoubleWriteConsumer can't transmit because network failure", connectionException);
+      } catch (Exception e) {
+        // The PhysicalPlan has internal error, reject transmit
+        LOGGER.error("DoubleWriteConsumer can't transmit", e);
+        continue;
+      }
+
+      if (!transmitStatus) {
+        try {
+          // must set buffer position to limit() before serialization
+          headBuffer.position(headBuffer.limit());
+          niLogService.acquireLogWriter().write(headBuffer);
+        } catch (IOException e) {
+          LOGGER.error("DoubleWriteConsumer can't serialize physicalPlan", e);
         }
+        niLogService.releaseLogWriter();
       }
     }
   }

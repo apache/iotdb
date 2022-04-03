@@ -23,6 +23,7 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.writelog.io.SingleFileLogReader;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.session.pool.SessionPool;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,7 +52,10 @@ public class DoubleWriteEProtector extends DoubleWriteProtector {
       try {
         logReader = new SingleFileLogReader(logFile);
       } catch (FileNotFoundException e) {
-        LOGGER.error("DoubleWriteEProtector can't open DoubleWriteELog: {}, discarded", logFile.getAbsolutePath(), e);
+        LOGGER.error(
+            "DoubleWriteEProtector can't open DoubleWriteELog: {}, discarded",
+            logFile.getAbsolutePath(),
+            e);
         continue;
       }
 
