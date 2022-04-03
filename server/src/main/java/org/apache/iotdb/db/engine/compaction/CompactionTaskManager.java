@@ -294,21 +294,20 @@ public class CompactionTaskManager implements IService {
    *
    * @throws RejectedExecutionException
    */
-  public synchronized Future<Void> submitTask(AbstractCompactionTask compactionTask)
+  public synchronized void submitTask(AbstractCompactionTask compactionTask)
       throws RejectedExecutionException {
     if (taskExecutionPool != null && !taskExecutionPool.isTerminated()) {
       Future<Void> future = taskExecutionPool.submit(compactionTask);
       storageGroupTasks
           .computeIfAbsent(compactionTask.getFullStorageGroupName(), x -> new HashMap<>())
           .put(compactionTask, future);
-      return future;
+      return;
     }
     logger.warn(
         "A CompactionTask failed to be submitted to CompactionTaskManager because {}",
         taskExecutionPool == null
             ? "taskExecutionPool is null"
             : "taskExecutionPool is terminated");
-    return null;
   }
 
   /**

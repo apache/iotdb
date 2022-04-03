@@ -68,7 +68,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class StorageGroupProcessorTest {
@@ -731,7 +730,7 @@ public class StorageGroupProcessorTest {
               processor.getSequenceFileList(),
               true,
               new AtomicInteger(0));
-      Future<Void> future = CompactionTaskManager.getInstance().submitTask(task);
+      CompactionTaskManager.getInstance().submitTask(task);
       Thread.sleep(20);
       StorageEngine.getInstance().deleteStorageGroup(new PartialPath(storageGroup));
       Thread.sleep(500);
