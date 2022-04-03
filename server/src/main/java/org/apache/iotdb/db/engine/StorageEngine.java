@@ -867,13 +867,23 @@ public class StorageEngine implements IService {
     if (!processorMap.containsKey(storageGroupPath)) {
       return;
     }
-
+    abortCompactionTaskForStorageGroup(storageGroupPath);
     deleteAllDataFilesInOneStorageGroup(storageGroupPath);
     releaseWalDirectByteBufferPoolInOneStorageGroup(storageGroupPath);
     StorageGroupManager storageGroupManager = processorMap.remove(storageGroupPath);
     storageGroupManager.deleteStorageGroupSystemFolder(
         systemDir + File.pathSeparator + storageGroupPath);
     storageGroupManager.stopSchedulerPool();
+  }
+
+  private void abortCompactionTaskForStorageGroup(PartialPath storageGroupPath) {
+    if (!processorMap.containsKey(storageGroupPath)) {
+      return;
+    }
+
+    StorageGroupManager manager = processorMap.get(storageGroupPath);
+    manager.setAllowCompaction(false);
+    manager.abortCompaction();
   }
 
   public void loadNewTsFileForSync(TsFileResource newTsFileResource)

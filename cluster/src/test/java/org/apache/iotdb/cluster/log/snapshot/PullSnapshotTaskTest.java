@@ -295,7 +295,7 @@ public class PullSnapshotTaskTest extends DataSnapshotTest {
     VirtualStorageGroupProcessor processor =
         StorageEngine.getInstance().getProcessor(new PartialPath(TestUtils.getTestSg(0)));
     assertEquals(9, processor.getPartitionMaxFileVersions(0));
-    List<TsFileResource> loadedFiles = processor.getSequenceFileTreeSet();
+    List<TsFileResource> loadedFiles = processor.getSequenceFileList();
     assertEquals(tsFileResources.size(), loadedFiles.size());
     for (int i = 0; i < 9; i++) {
       if (i != loadedFiles.get(i).getMaxPlanIndex()) {
