@@ -39,7 +39,8 @@ public class TextRleEncoder extends RleEncoder<Binary> {
 
     private Integer preValueInt;
 
-    private List<Integer> valuesInt;
+    //调试时用public，后面改为private
+    public List<Integer> valuesInt;
 
     public TextRleEncoder() {
         super();
@@ -62,14 +63,6 @@ public class TextRleEncoder extends RleEncoder<Binary> {
         valuesInt.add(valueInt);
     }
 
-    @Override
-    public void encode(boolean value, ByteArrayOutputStream out) {
-        if (value) {
-            this.encode(1, out);
-        } else {
-            this.encode(0, out);
-        }
-    }
 
     /**
      * write all values buffered in the cache to an OutputStream.
