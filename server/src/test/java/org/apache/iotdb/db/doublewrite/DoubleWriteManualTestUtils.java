@@ -7,8 +7,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
-import org.junit.Test;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -26,21 +24,18 @@ public class DoubleWriteManualTestUtils {
   private static final int sCnt = 100;
   private static final int dataCnt = 1000;
 
-  @Test
   public void setStorageGroups() throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < sgCnt; i++) {
       sessionPool.setStorageGroup(sg + i);
     }
   }
 
-  @Test
   public void deleteStorageGroups() throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < sgCnt; i++) {
       sessionPool.deleteStorageGroups(Collections.singletonList(sg + i));
     }
   }
 
-  @Test
   public void createTimeSeries() throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < sgCnt; i++) {
       String SG = sg + i;
@@ -55,7 +50,6 @@ public class DoubleWriteManualTestUtils {
     }
   }
 
-  @Test
   public void deleteTimeSeries() throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < sgCnt; i++) {
       String SG = sg + i;
@@ -69,7 +63,6 @@ public class DoubleWriteManualTestUtils {
     }
   }
 
-  @Test
   public void insertData() throws IoTDBConnectionException, StatementExecutionException {
     long startTime = System.currentTimeMillis();
     for (int i = 0; i < sgCnt; i++) {
@@ -99,7 +92,6 @@ public class DoubleWriteManualTestUtils {
             + "ms");
   }
 
-  @Test
   public void deleteData() throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < sgCnt; i++) {
       String SG = sg + i;
