@@ -16,9 +16,9 @@ public class TextRleDecoder extends RleDecoder{
     private static final Logger logger = LoggerFactory.getLogger(IntRleDecoder.class);
 
     /** current value for rle repeated value. */
-    private Binary currentValue;
+    private int currentValue;
 
-    private Binary 
+    private Binary  currentBinaryValue;
 
     /** buffer to save all values in group using bit-packing. */
     private int[] currentBuffer;
@@ -28,7 +28,8 @@ public class TextRleDecoder extends RleDecoder{
 
     public TextRleDecoder(){
         super();
-        currentValue = new Binary("");
+        currentValue = 0;
+        currentBinaryValue = new Binary("");
     }
 
     @Override
@@ -72,31 +73,37 @@ public class TextRleDecoder extends RleDecoder{
         if (!hasNextPackage()) {
             isLengthAndBitWidthReaded = false;
         }
+        byte[] tmp_bytes = new byte[4];
+        for (int i = 0; i < 4; i++) {
+            int offset = 24 - i * 8;
+            tmp_bytes[i] = (byte) ((result >>> offset) & 0xFF);
+        }
 
-        return result;
+        Binary result_binary = new Binary(tmp_bytes);
+        return result_binary;
     }
 
 
     @Override
     protected void initPacker() {
-//        packer = new IntPacker(bitWidth);
+        packer = new IntPacker(bitWidth);
     }
 
     @Override
     protected void readNumberInRle() throws IOException {
-//        currentValue =
-//                ReadWriteForEncodingUtils.readIntLittleEndianPaddedOnBitWidth(byteCache, bitWidth);
+        currentValue =
+                ReadWriteForEncodingUtils.readIntLittleEndianPaddedOnBitWidth(byteCache, bitWidth);
     }
 
     @Override
     protected void readBitPackingBuffer(int bitPackedGroupCount, int lastBitPackedNum) throws IOException {
-//        currentBuffer = new int[bitPackedGroupCount * TSFileConfig.RLE_MIN_REPEATED_NUM];
-//        byte[] bytes = new byte[bitPackedGroupCount * bitWidth];
-//        int bytesToRead = bitPackedGroupCount * bitWidth;
-//        bytesToRead = Math.min(bytesToRead, byteCache.remaining());
-//        byteCache.get(bytes, 0, bytesToRead);
-//
-//        // save all int values in currentBuffer
-//        packer.unpackAllValues(bytes, bytesToRead, currentBuffer);
+        currentBuffer = new int[bitPackedGroupCount * TSFileConfig.RLE_MIN_REPEATED_NUM];
+        byte[] bytes = new byte[bitPackedGroupCount * bitWidth];
+        int bytesToRead = bitPackedGroupCount * bitWidth;
+        bytesToRead = Math.min(bytesToRead, byteCache.remaining());
+        byteCache.get(bytes, 0, bytesToRead);
+
+        // save all int values in currentBuffer
+        packer.unpackAllValues(bytes, bytesToRead, currentBuffer);
     }
 }

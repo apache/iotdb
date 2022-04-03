@@ -37,26 +37,32 @@ public class TextRleEncoder extends RleEncoder<Binary> {
     /** Packer for packing int values. */
     private IntPacker packer;
 
+    private Integer preValueInt;
+
+    //调试时用public，后面改为private
+    public List<Integer> valuesInt;
+
     public TextRleEncoder() {
         super();
         bufferedValues = new Binary[TSFileConfig.RLE_MIN_REPEATED_NUM];
         preValue = new Binary("");
+        preValueInt = 0;
         values = new ArrayList<>();
+        valuesInt = new ArrayList<>();
     }
 
     @Override
     public void encode(Binary value, ByteArrayOutputStream out) {
         values.add(value);
+        int valueInt=0;
+        byte[] bytes = value.getValues();
+        for(int i = 0; i < 4; i++) {
+            int shift= (3-i) * 8;
+            valueInt +=(bytes[i] & 0xFF) << shift;
+        }
+        valuesInt.add(valueInt);
     }
 
-    @Override
-    public void encode(boolean value, ByteArrayOutputStream out) {
-        if (value) {
-            this.encode(1, out);
-        } else {
-            this.encode(0, out);
-        }
-    }
 
     /**
      * write all values buffered in the cache to an OutputStream.
@@ -67,8 +73,8 @@ public class TextRleEncoder extends RleEncoder<Binary> {
     @Override
     public void flush(ByteArrayOutputStream out) throws IOException {
         // we get bit width after receiving all data
-//        this.bitWidth = ReadWriteForEncodingUtils.getIntMaxBitWidth(values);
-//        packer = new IntPacker(bitWidth);
+        this.bitWidth = ReadWriteForEncodingUtils.getIntMaxBitWidth(valuesInt);
+        packer = new IntPacker(bitWidth);
         for (Binary value : values) {
             encodeValue(value);
         }
@@ -79,16 +85,23 @@ public class TextRleEncoder extends RleEncoder<Binary> {
     protected void reset() {
         super.reset();
         preValue = new Binary("");
+        preValueInt = 0;
     }
 
     /** write bytes to an outputStream using rle format: [header][value]. */
     @Override
     protected void writeRleRun() throws IOException {
-//        endPreviousBitPackedRun(TSFileConfig.RLE_MIN_REPEATED_NUM);
-//        ReadWriteForEncodingUtils.writeUnsignedVarInt(repeatCount << 1, byteCache);
-//        ReadWriteForEncodingUtils.writeIntLittleEndianPaddedOnBitWidth(preValue, byteCache, bitWidth);
-//        repeatCount = 0;
-//        numBufferedValues = 0;
+        preValueInt = 0;
+        byte[] bytesPreValue = preValue.getValues();
+        for(int i = 0; i < 4; i++) {
+            int shift= (3-i) * 8;
+            preValueInt +=(bytesPreValue[i] & 0xFF) << shift;
+        }
+        endPreviousBitPackedRun(TSFileConfig.RLE_MIN_REPEATED_NUM);
+        ReadWriteForEncodingUtils.writeUnsignedVarInt(repeatCount << 1, byteCache);
+        ReadWriteForEncodingUtils.writeIntLittleEndianPaddedOnBitWidth(preValueInt, byteCache, bitWidth);
+        repeatCount = 0;
+        numBufferedValues = 0;
     }
 
     @Override
@@ -103,15 +116,21 @@ public class TextRleEncoder extends RleEncoder<Binary> {
     protected void convertBuffer() {
         byte[] bytes = new byte[bitWidth];
 
-        Binary[] tmpBuffer = new Binary[TSFileConfig.RLE_MIN_REPEATED_NUM];
+        int[] tmpBuffer = new int[TSFileConfig.RLE_MIN_REPEATED_NUM];
         for (int i = 0; i < TSFileConfig.RLE_MIN_REPEATED_NUM; i++) {
-            tmpBuffer[i] = (Binary) bufferedValues[i];
+            int valueInt=0;
+            byte[] bytesBufferedValues = bufferedValues[i].getValues();
+            for(int j = 0; j < 4; j++) {
+                int shift= (3-j) * 8;
+                valueInt +=(bytesBufferedValues[j] & 0xFF) << shift;
+            }
+            tmpBuffer[i] = (int) valueInt;
         }
 
-//        packer.pack8Values(tmpBuffer, 0, bytes);
-//        // we'll not write bit-packing group to OutputStream immediately
-//        // we buffer them in list
-//        bytesBuffer.add(bytes);
+        packer.pack8Values(tmpBuffer, 0, bytes);
+        // we'll not write bit-packing group to OutputStream immediately
+        // we buffer them in list
+        bytesBuffer.add(bytes);
     }
 
     @Override
