@@ -952,7 +952,7 @@ public class SchemaRegion {
     }
   }
 
-  public Pair<List<ShowTimeSeriesResult>, Integer> showTimeSeries(
+  public List<ShowTimeSeriesResult> showTimeSeries(
       TimeSeriesMetaScanOperator operator, QueryContext context) throws MetadataException {
     // scan time series with tag
     if (operator.getKey() != null && operator.getValue() != null) {
@@ -962,10 +962,11 @@ public class SchemaRegion {
     }
   }
 
-  private Pair<List<ShowTimeSeriesResult>, Integer> showTimeSeriesWithTag(
+  private List<ShowTimeSeriesResult> showTimeSeriesWithTag(
       TimeSeriesMetaScanOperator operator, QueryContext context) throws MetadataException {
 
-    List<IMeasurementMNode> allMatchedNodes = tagManager.getMatchedTimeSeriesWithTag(operator, context);
+    List<IMeasurementMNode> allMatchedNodes =
+        tagManager.getMatchedTimeSeriesWithTag(operator, context);
 
     List<ShowTimeSeriesResult> res = new LinkedList<>();
     PartialPath pathPattern = operator.getPartialPath();
@@ -981,8 +982,11 @@ public class SchemaRegion {
           : pathPattern.matchFullPath(leaf.getPartialPath())) {
         if (limit != 0 || offset != 0) {
           curOffset++;
-          if (curOffset < offset || count == limit) {
+          if (curOffset < offset) {
             continue;
+          }
+          if (count == limit) {
+            break;
           }
         }
         try {
@@ -1031,7 +1035,7 @@ public class SchemaRegion {
       res = stream.collect(toList());
     }
 
-    return new Pair<>(res, curOffset + 1);
+    return res;
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
@@ -1145,7 +1149,7 @@ public class SchemaRegion {
     return new Pair<>(res, ans.right);
   }
 
-  private Pair<List<ShowTimeSeriesResult>, Integer> showTimeSeriesWithoutTag(
+  private List<ShowTimeSeriesResult> showTimeSeriesWithoutTag(
       TimeSeriesMetaScanOperator operator, QueryContext context) throws MetadataException {
     Pair<List<Pair<PartialPath, String[]>>, Integer> ans =
         mtree.getAllMeasurementSchema(operator, context);
@@ -1175,7 +1179,7 @@ public class SchemaRegion {
             e);
       }
     }
-    return new Pair<>(res, ans.right);
+    return res;
   }
 
   /**

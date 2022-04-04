@@ -18,13 +18,6 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
@@ -64,6 +57,14 @@ import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.query.expression.Expression;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /** Generate a logical plan for the statement. */
 public class LogicalPlanner {
@@ -339,6 +340,7 @@ public class LogicalPlanner {
                   showDevicesStatement.getPathPattern(),
                   showDevicesStatement.getLimit(),
                   showDevicesStatement.getOffset(),
+                  showDevicesStatement.isPrefixPath(),
                   showDevicesStatement.hasSgCol()));
       MetaMergeNode metaMergeNode = new MetaMergeNode(PlanNodeIdAllocator.generateId());
       metaMergeNode.addChild(planBuilder.getRoot());

@@ -1,6 +1,5 @@
 package org.apache.iotdb.db.mpp.operator.meta;
 
-import java.io.IOException;
 import org.apache.iotdb.commons.partition.SchemaRegionId;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -10,25 +9,37 @@ import org.apache.iotdb.db.mpp.operator.Operator;
 import org.apache.iotdb.db.mpp.operator.OperatorContext;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
+import java.io.IOException;
+import java.util.List;
+
 public class MetaScanOperator implements Operator {
 
   protected OperatorContext operatorContext;
   protected TsBlock tsBlock;
+  private boolean hasCachedTsBlock;
 
   protected SchemaRegion schemaRegion;
   protected int limit;
   protected int offset;
   protected PartialPath partialPath;
   protected boolean isPrefixPath;
+  protected List<String> columns;
 
-  public MetaScanOperator(OperatorContext operatorContext, SchemaRegionId schemaRegionId,
-      int limit, int offset, PartialPath partialPath, boolean isPrefixPath) {
+  public MetaScanOperator(
+      OperatorContext operatorContext,
+      SchemaRegionId schemaRegionId,
+      int limit,
+      int offset,
+      PartialPath partialPath,
+      boolean isPrefixPath,
+      List<String> columns) {
     this.operatorContext = operatorContext;
     this.schemaRegion = SchemaEngine.getInstance().getSchemaRegion(schemaRegionId);
     this.limit = limit;
     this.offset = offset;
     this.partialPath = partialPath;
     this.isPrefixPath = isPrefixPath;
+    this.columns = columns;
   }
 
   protected TsBlock createTsBlock() throws MetadataException {
@@ -37,6 +48,10 @@ public class MetaScanOperator implements Operator {
 
   public PartialPath getPartialPath() {
     return partialPath;
+  }
+
+  public SchemaRegion getSchemaRegion() {
+    return schemaRegion;
   }
 
   public int getLimit() {
@@ -66,11 +81,20 @@ public class MetaScanOperator implements Operator {
 
   @Override
   public TsBlock next() throws IOException {
-    return null;
+    hasCachedTsBlock = false;
+    return tsBlock;
   }
 
   @Override
   public boolean hasNext() throws IOException {
-    return false;
+    try {
+      if (tsBlock == null && !hasCachedTsBlock) {
+        tsBlock = createTsBlock();
+        hasCachedTsBlock = true;
+      }
+      return tsBlock != null && tsBlock.getPositionCount() > 0;
+    } catch (MetadataException e) {
+      throw new IOException(e);
+    }
   }
 }

@@ -1,7 +1,20 @@
 package org.apache.iotdb.db.mpp.operator.meta;
 
-import java.io.IOException;
+import org.apache.iotdb.commons.partition.SchemaRegionId;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.operator.OperatorContext;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.iotdb.tsfile.utils.Binary;
+
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_ATTRIBUTES;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_STORAGE_GROUP;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TAGS;
@@ -10,16 +23,6 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_ALIA
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_DATATYPE;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_ENCODING;
-import org.apache.iotdb.commons.partition.SchemaRegionId;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.mpp.operator.OperatorContext;
-import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
-import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
 
 public class TimeSeriesMetaScanOperator extends MetaScanOperator {
   private String key;
@@ -28,8 +31,6 @@ public class TimeSeriesMetaScanOperator extends MetaScanOperator {
 
   // if is true, the result will be sorted according to the inserting frequency of the timeseries
   private boolean orderByHeat;
-
-  private boolean hasNext;
 
   private static final Path[] resourcePaths = {
     new PartialPath(COLUMN_TIMESERIES, false),
@@ -62,8 +63,9 @@ public class TimeSeriesMetaScanOperator extends MetaScanOperator {
       String value,
       boolean isContains,
       boolean orderByHeat,
-      boolean isPrefixPath) {
-    super(operatorContext, schemaRegionId, limit, offset, partialPath, isPrefixPath);
+      boolean isPrefixPath,
+      List<String> columns) {
+    super(operatorContext, schemaRegionId, limit, offset, partialPath, isPrefixPath, columns);
     this.isContains = isContains;
     this.key = key;
     this.value = value;
@@ -88,34 +90,36 @@ public class TimeSeriesMetaScanOperator extends MetaScanOperator {
 
   @Override
   protected TsBlock createTsBlock() throws MetadataException {
-    List<ShowTimeSeriesResult> showTimeSeriesResults =
-        IoTDB.schemaProcessor.showTimeSeries(this, operatorContext.getInstanceContext());
-    Column[] valueColums = new Column[resourcePaths.length];
-    showTimeSeriesResults.forEach(series -> {
-
-    });
-    return tsBlock;
-  }
-
-  @Override
-  public TsBlock next() throws IOException {
-
-    hasNext = false;
-    return tsBlock;
-  }
-
-  @Override
-  public boolean hasNext() throws IOException {
-    try {
-      if (tsBlock == null) {
-        tsBlock = createTsBlock();
-        if (tsBlock != null) {
-          return true;
-        }
-      }
-      return false;
-    } catch (MetadataException e) {
-      throw new IOException(e);
+    if (isOrderByHeat() && limit != 0) {
+      limit += offset;
+      offset = 0;
     }
+    TsBlockBuilder builder = new TsBlockBuilder(Arrays.asList(resourceTypes));
+    schemaRegion
+        .showTimeSeries(this, operatorContext.getInstanceContext())
+        .forEach(
+            series -> {
+              builder.getTimeColumnBuilder().writeLong(series.getLastTime());
+              builder.getColumnBuilder(0).writeBinary(new Binary(series.getName()));
+              builder.getColumnBuilder(1).writeBinary(new Binary(series.getAlias()));
+              builder.getColumnBuilder(2).writeBinary(new Binary(series.getSgName()));
+              builder.getColumnBuilder(3).writeBinary(new Binary(series.getDataType().toString()));
+              builder.getColumnBuilder(4).writeBinary(new Binary(series.getEncoding().toString()));
+              builder
+                  .getColumnBuilder(5)
+                  .writeBinary(new Binary(series.getCompressor().toString()));
+              builder.getColumnBuilder(6).writeBinary(new Binary(mapToString(series.getTag())));
+              builder
+                  .getColumnBuilder(7)
+                  .writeBinary(new Binary(mapToString(series.getAttribute())));
+              builder.declarePosition();
+            });
+    return builder.build();
+  }
+
+  private String mapToString(Map<String, String> map) {
+    return map.entrySet().stream()
+        .map(e -> "\"" + e.getKey() + "\"" + ":" + "\"" + e.getValue() + "\"")
+        .collect(Collectors.joining(","));
   }
 }

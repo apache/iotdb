@@ -42,9 +42,9 @@ public class SchemaPartitionInfo {
     Map<Integer, SchemaRegionReplicaSet> deviceGroupMap = new HashMap<>();
     deviceGroupIDs.forEach(
         deviceGroupID -> {
-          if (schemaPartitionInfo.get(storageGroup).containsKey(new DeviceGroupId(deviceGroupID))) {
+          if (schemaPartitionMap.get(storageGroup).containsKey(new DeviceGroupId(deviceGroupID))) {
             deviceGroupMap.put(
-                deviceGroupID, schemaPartitionInfo.get(storageGroup).get(deviceGroupID));
+                deviceGroupID, schemaPartitionMap.get(storageGroup).get(deviceGroupID));
           }
         });
     storageGroupMap.put(storageGroup, deviceGroupMap);

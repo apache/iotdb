@@ -30,8 +30,14 @@ public class DevicesMetaScanNode extends MetaScanNode {
 
   private boolean hasSgCol;
 
-  public DevicesMetaScanNode(PlanNodeId id, PartialPath path, int limit, int offset, boolean hasSgCol) {
-    super(id, path, limit, offset);
+  public DevicesMetaScanNode(
+      PlanNodeId id,
+      PartialPath path,
+      int limit,
+      int offset,
+      boolean isPrefixPath,
+      boolean hasSgCol) {
+    super(id, path, limit, offset, isPrefixPath);
     this.hasSgCol = hasSgCol;
   }
 

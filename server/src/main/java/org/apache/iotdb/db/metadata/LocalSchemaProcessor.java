@@ -37,7 +37,6 @@ import org.apache.iotdb.db.metadata.rescon.TimeseriesStatistics;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaRegion;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
-import org.apache.iotdb.db.mpp.operator.meta.TimeSeriesMetaScanOperator;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -872,63 +871,6 @@ public class LocalSchemaProcessor {
     // reset limit and offset with the initial value
     plan.setLimit(limit);
     plan.setOffset(offset);
-
-    return stream.collect(toList());
-  }
-
-  public List<ShowTimeSeriesResult> showTimeSeries(TimeSeriesMetaScanOperator operator, QueryContext context)
-      throws MetadataException {
-    List<ShowTimeSeriesResult> result = new LinkedList<>();
-
-    /*
-     There are two conditions and 4 cases.
-     1. isOrderByHeat = false && limit = 0 : just collect all results from each storage group
-     2. isOrderByHeat = false && limit != 0 : when finish the collection on one sg, the offset and limit should be decreased by the result taken from the current sg
-     3. isOrderByHeat = true && limit = 0 : collect all result from each storage group and then sort
-     4. isOrderByHeat = true && limit != 0 : set the limit' = offset + limit and offset' = 0,
-     which means collect top limit' result from each sg and then sort them and collect the top limit results start from offset.
-     It is ensured that the target result could be extracted from the top limit' results of each sg.
-    */
-
-    int limit = operator.getLimit();
-    int offset = operator.getOffset();
-
-    if (operator.isOrderByHeat() && limit != 0) {
-      operator.setOffset(0);
-      operator.setLimit(offset + limit);
-    }
-
-    Pair<List<ShowTimeSeriesResult>, Integer> regionResult;
-    for (SchemaRegion schemaRegion :
-        getInvolvedSchemaRegions(operator.getPartialPath(), operator.isPrefixPath())) {
-      if (limit != 0 && operator.getLimit() == 0) {
-        break;
-      }
-      regionResult = schemaRegion.showTimeSeries(operator, context);
-      result.addAll(regionResult.left);
-
-      if (limit != 0) {
-        operator.setLimit(operator.getLimit() - regionResult.left.size());
-        operator.setOffset(Math.max(operator.getOffset() - regionResult.right, 0));
-      }
-    }
-
-    Stream<ShowTimeSeriesResult> stream = result.stream();
-
-    if (operator.isOrderByHeat()) {
-      stream =
-          stream.sorted(
-              Comparator.comparingLong(ShowTimeSeriesResult::getLastTime)
-                  .reversed()
-                  .thenComparing(ShowResult::getName));
-      if (limit != 0) {
-        stream = stream.skip(offset).limit(limit);
-      }
-    }
-
-    // reset limit and offset with the initial value
-    operator.setLimit(limit);
-    operator.setOffset(offset);
 
     return stream.collect(toList());
   }

@@ -4,7 +4,17 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 
+import java.util.Arrays;
 import java.util.List;
+
+import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_ATTRIBUTES;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_STORAGE_GROUP;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TAGS;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_ALIAS;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_DATATYPE;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_ENCODING;
 
 public class TimeSeriesMetaScanNode extends MetaScanNode {
 
@@ -70,9 +80,7 @@ public class TimeSeriesMetaScanNode extends MetaScanNode {
   }
 
   @Override
-  public void addChild(PlanNode child) {
-
-  }
+  public void addChild(PlanNode child) {}
 
   @Override
   public PlanNode clone() {
@@ -91,6 +99,14 @@ public class TimeSeriesMetaScanNode extends MetaScanNode {
 
   @Override
   public List<String> getOutputColumnNames() {
-    return null;
+    return Arrays.asList(
+        COLUMN_TIMESERIES,
+        COLUMN_TIMESERIES_ALIAS,
+        COLUMN_STORAGE_GROUP,
+        COLUMN_TIMESERIES_DATATYPE,
+        COLUMN_TIMESERIES_ENCODING,
+        COLUMN_TIMESERIES_COMPRESSION,
+        COLUMN_TAGS,
+        COLUMN_ATTRIBUTES);
   }
 }
