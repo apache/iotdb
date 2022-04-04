@@ -45,8 +45,8 @@ public class HuffmanDecoderTest {
 
     @Test
     public void testAllUnique() {
-        //testAll("a", "b", "c");
-        //testAll("x", "o", "q");
+        testAll("a", "b", "c");
+        testAll("x", "o", "q");
         testAll(",", ".", "c", "b", "e");
     }
 
@@ -54,6 +54,20 @@ public class HuffmanDecoderTest {
     public void testAllSame() {
         testAll("a", "a", "a");
         testAll("b", "b", "b");
+    }
+
+    @Test
+    public void testConcatenated() {
+        testAll("aaa","bbbb","ccaeffsrhha");
+    }
+
+    @Test
+    public void testMinus() {
+        // all characters
+        String[] allChars = new String[1];
+        allChars[0] = "" + (char) ('a' + 1);
+        allChars[0] = "" + (char) (213);
+        testAll(allChars);
     }
 
     @Test
@@ -69,7 +83,8 @@ public class HuffmanDecoderTest {
 
     private void testAll(String... all) {
         for (String s : all) {
-            encoder.encode(new Binary(s), baos);
+            Binary temp = new Binary(s);
+            encoder.encode(temp, baos);
         }
         encoder.flush(baos);
 
@@ -77,7 +92,8 @@ public class HuffmanDecoderTest {
 
         for (String s : all) {
             assertTrue(decoder.hasNext(out));
-            assertEquals(s, decoder.readBinary(out).getStringValue());
+            Binary b = decoder.readBinary(out);
+            assertEquals(s, b.getStringValue());
         }
 
         decoder.reset();

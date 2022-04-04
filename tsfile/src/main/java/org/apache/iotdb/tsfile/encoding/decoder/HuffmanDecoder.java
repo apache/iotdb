@@ -24,7 +24,9 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Queue;
 
 public class HuffmanDecoder extends Decoder {
@@ -101,7 +103,7 @@ public class HuffmanDecoder extends Decoder {
   private void loadRecords(ByteBuffer buffer) {
     for (int i = 0; i < recordnum; i++) {
       HuffmanTree tempTree = tree;
-      String cur = new String();
+      List<Byte> rec = new ArrayList<>();
       while (true) {
         tempTree = tree;
         while (!tempTree.isLeaf) {
@@ -109,12 +111,12 @@ public class HuffmanDecoder extends Decoder {
           else tempTree = tempTree.rightNode;
         }
         if (tempTree.isRecordEnd) break;
-        byte[] originalbyte = new byte[1];
-        originalbyte[0] = tempTree.originalbyte;
-        cur += new String(originalbyte);
+        rec.add(tempTree.originalbyte);
       }
-      Binary currec = new Binary(cur);
-      records.add(currec);
+      byte[] currec = new byte[rec.size()];
+      for(int j = 0; j < rec.size(); j++)
+        currec[j] = rec.get(j);
+      records.add(new Binary(currec));
     }
   }
 

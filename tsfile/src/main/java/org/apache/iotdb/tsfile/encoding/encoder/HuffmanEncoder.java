@@ -65,7 +65,9 @@ public class HuffmanEncoder extends Encoder {
     records.add(value);
     for (int i = 0; i < value.getLength(); i++) {
       byte cur = value.getValues()[i];
-      byteFrequency[cur].frequency++;
+      int curr = (int)cur;
+      if(curr<0)  curr += (1<<8);
+      byteFrequency[curr].frequency++;
     }
     byteFrequency[256].frequency++;
   }
@@ -118,8 +120,11 @@ public class HuffmanEncoder extends Encoder {
         for(int i = 0; i < code.size(); i++)
           huffmanCodes[256].huffmanCode.add(code.get(i));
       } else {
-        for(int i = 0; i < code.size(); i++)
-          huffmanCodes[cur.originalbyte].huffmanCode.add(code.get(i));
+        for(int i = 0; i < code.size(); i++) {
+          int idx = (int) cur.originalbyte;
+          if(idx<0) idx += (1<<8);
+          huffmanCodes[idx].huffmanCode.add(code.get(i));
+        }
       }
       return;
     }
@@ -128,6 +133,7 @@ public class HuffmanEncoder extends Encoder {
     code.remove(code.size()-1);
     code.add(true);
     getHuffmanCode(cur.rightNode, code);
+    code.remove(code.size()-1);
   }
 
   private void flushHeader(ByteArrayOutputStream out) {
@@ -152,7 +158,12 @@ public class HuffmanEncoder extends Encoder {
   }
 
   private void flushRecord(Binary rec, ByteArrayOutputStream out) {
-    for (byte r : rec.getValues()) for (boolean b : huffmanCodes[r].huffmanCode) writeBit(b, out);
+    for (byte r : rec.getValues()) {
+      int idx = (int) r;
+      if(idx<0) idx += (1<<8);
+      for (boolean b : huffmanCodes[idx].huffmanCode)
+        writeBit(b, out);
+    }
     for (boolean b : huffmanCodes[256].huffmanCode) writeBit(b, out);
   }
 
