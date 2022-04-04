@@ -20,6 +20,7 @@ package org.apache.iotdb.db.newsync.receiver.load;
 
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.sync.PipeDataLoadException;
 import org.apache.iotdb.db.exception.sync.PipeDataLoadUnbearableException;
 import org.apache.iotdb.db.tools.TsFileRewriteTool;
@@ -42,7 +43,7 @@ public class TsFileLoader implements ILoader {
   public void load() throws PipeDataLoadException {
     try {
       TsFileResource tsFileResource = new TsFileResource(tsFile);
-      tsFileResource.setClosed(true);
+      tsFileResource.setStatus(TsFileResourceStatus.CLOSED);
       FileLoaderUtils.checkTsFileResource(tsFileResource);
       List<TsFileResource> splitResources = new ArrayList();
       if (tsFileResource.isSpanMultiTimePartitions()) {

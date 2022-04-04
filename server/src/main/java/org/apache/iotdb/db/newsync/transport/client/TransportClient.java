@@ -131,7 +131,7 @@ public class TransportClient implements ITransportClient {
                 handshakeCounter, config.getMaxNumberOfSyncFileRetry()));
       }
     } catch (SyncConnectionException e) {
-      logger.error(String.format("Handshake failed and can not retry, because %s.", e));
+      logger.error(String.format("Handshake failed and can not retry, because %s.", e), e);
       return false;
     }
     return true;
@@ -173,7 +173,7 @@ public class TransportClient implements ITransportClient {
       return false;
     } catch (UnknownHostException e) {
       logger.warn("Cannot confirm identity with the receiver. ", e);
-      throw new SyncConnectionException(String.format("Get local host error, because %s.", e));
+      throw new SyncConnectionException(String.format("Get local host error, because %s.", e), e);
     }
     return true;
   }
@@ -185,10 +185,10 @@ public class TransportClient implements ITransportClient {
           transportSingleFile(file);
         }
       } catch (IOException e) {
-        logger.error(String.format("Get tsfiles error, because %s.", e));
+        logger.error(String.format("Get tsfiles error, because %s.", e), e);
         return false;
       } catch (NoSuchAlgorithmException e) {
-        logger.error(String.format("Wrong message digest, because %s.", e));
+        logger.error(String.format("Wrong message digest, because %s.", e), e);
         return false;
       }
     }
@@ -206,7 +206,7 @@ public class TransportClient implements ITransportClient {
 
       try {
         transportPipeData(pipeData);
-        logger.info("Finish current pipeData transport!");
+        logger.info(String.format("Finish pipeData %s transport.", pipeData));
         break;
       } catch (SyncConnectionException e) {
         // handshake and retry
@@ -527,8 +527,7 @@ public class TransportClient implements ITransportClient {
           heartbeatTransport.open();
         }
 
-        SyncResponse response = heartbeatClient.heartbeat(identityInfo, syncRequest);
-        return response;
+        return heartbeatClient.heartbeat(identityInfo, syncRequest);
       } catch (TException e) {
         logger.info(
             String.format(

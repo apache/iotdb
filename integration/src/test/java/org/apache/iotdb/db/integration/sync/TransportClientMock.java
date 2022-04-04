@@ -58,6 +58,8 @@ public class TransportClientMock implements ITransportClient {
         pipe.commit();
       }
     } catch (InterruptedException e) {
+    } catch (Exception e) {
+      e.printStackTrace();
     }
   }
 

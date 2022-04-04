@@ -23,9 +23,8 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.sync.PipeDataLoadBearableException;
 import org.apache.iotdb.db.exception.sync.PipeDataLoadException;
 import org.apache.iotdb.db.exception.sync.PipeDataLoadUnbearableException;
-import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,7 +46,7 @@ public class SchemaLoader implements ILoader {
   @Override
   public void load() throws PipeDataLoadException {
     try {
-      MManager.getInstance().operation(plan);
+      LocalSchemaProcessor.getInstance().operation(plan);
     } catch (StorageGroupAlreadySetException e) {
       throw new PipeDataLoadBearableException(
           "Sync receiver try to set storage group "

@@ -17,17 +17,16 @@
  * under the License.
  *
  */
-package org.apache.iotdb.db.newsync.sender.pipe;
+package org.apache.iotdb.db.newsync.sender.service;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.db.exception.SyncConnectionException;
 import org.apache.iotdb.db.newsync.conf.SyncConstant;
-import org.apache.iotdb.db.newsync.sender.service.SenderService;
 import org.apache.iotdb.db.newsync.transport.client.ITransportClient;
 import org.apache.iotdb.service.transport.thrift.RequestType;
 import org.apache.iotdb.service.transport.thrift.SyncRequest;
-
+import org.apache.iotdb.service.transport.thrift.SyncResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,8 +51,7 @@ public class TransportHandler {
   private final ScheduledExecutorService heartbeatExecutorService;
   private Future heartbeatFuture;
 
-  public TransportHandler(ITransportClient transportClient, String pipeName, long createTime)
-      throws SyncConnectionException {
+  public TransportHandler(ITransportClient transportClient, String pipeName, long createTime) {
     this.pipeName = pipeName;
     this.createTime = createTime;
     this.transportClient = transportClient;
@@ -74,17 +72,9 @@ public class TransportHandler {
       localIp1 = SyncConstant.UNKNOWN_IP;
     }
     this.localIp = localIp1;
-
-    create();
   }
 
-  private void create() throws SyncConnectionException {
-    transportClient.heartbeat(new SyncRequest(RequestType.CREATE, pipeName, localIp, createTime));
-  }
-
-  public void start() throws SyncConnectionException {
-    transportClient.heartbeat(new SyncRequest(RequestType.START, pipeName, localIp, createTime));
-
+  public void start() {
     transportFuture = transportExecutorService.submit(transportClient);
     heartbeatFuture =
         heartbeatExecutorService.scheduleWithFixedDelay(
@@ -94,8 +84,7 @@ public class TransportHandler {
             TimeUnit.SECONDS);
   }
 
-  public void stop() throws SyncConnectionException {
-    transportClient.heartbeat(new SyncRequest(RequestType.STOP, pipeName, localIp, createTime));
+  public void stop() {
     if (transportFuture != null) {
       transportFuture.cancel(true);
     }
@@ -104,7 +93,7 @@ public class TransportHandler {
     }
   }
 
-  public boolean close() throws InterruptedException, SyncConnectionException {
+  public boolean close() throws InterruptedException {
     boolean isClosed;
     transportExecutorService.shutdownNow();
     isClosed =
@@ -114,10 +103,12 @@ public class TransportHandler {
     isClosed &=
         heartbeatExecutorService.awaitTermination(
             SyncConstant.DEFAULT_WAITTING_FOR_STOP_MILLISECONDS, TimeUnit.MILLISECONDS);
-    if (isClosed) {
-      transportClient.heartbeat(new SyncRequest(RequestType.DROP, pipeName, localIp, createTime));
-    }
     return isClosed;
+  }
+
+  public SyncResponse sendMsg(RequestType type)
+      throws SyncConnectionException {
+    return transportClient.heartbeat(new SyncRequest(type, pipeName, localIp, createTime));
   }
 
   private void sendHeartbeat() {
