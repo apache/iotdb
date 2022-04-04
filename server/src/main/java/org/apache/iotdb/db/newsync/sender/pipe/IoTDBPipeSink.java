@@ -81,11 +81,17 @@ public class IoTDBPipeSink implements PipeSink {
 
   @Override
   public String toString() {
-    return "IoTDBPipeSink{" +
-            "type=" + type +
-            ", name='" + name + '\'' +
-            ", ip='" + ip + '\'' +
-            ", port=" + port +
-            '}';
+    return "IoTDBPipeSink{"
+        + "type="
+        + type
+        + ", name='"
+        + name
+        + '\''
+        + ", ip='"
+        + ip
+        + '\''
+        + ", port="
+        + port
+        + '}';
   }
 }

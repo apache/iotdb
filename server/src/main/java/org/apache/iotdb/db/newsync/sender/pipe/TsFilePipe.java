@@ -22,12 +22,10 @@ package org.apache.iotdb.db.newsync.sender.pipe;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.storagegroup.virtualSg.StorageGroupManager;
-import org.apache.iotdb.db.exception.SyncConnectionException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.sync.PipeException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.sync.MetadataSyncManager;
-import org.apache.iotdb.db.newsync.conf.SyncConstant;
 import org.apache.iotdb.db.newsync.conf.SyncPathUtil;
 import org.apache.iotdb.db.newsync.pipedata.DeletionPipeData;
 import org.apache.iotdb.db.newsync.pipedata.PipeData;
@@ -35,7 +33,6 @@ import org.apache.iotdb.db.newsync.pipedata.SchemaPipeData;
 import org.apache.iotdb.db.newsync.pipedata.TsFilePipeData;
 import org.apache.iotdb.db.newsync.pipedata.queue.BufferedPipeDataQueue;
 import org.apache.iotdb.db.newsync.sender.recovery.TsFilePipeLogger;
-import org.apache.iotdb.db.newsync.sender.service.TransportHandler;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -48,7 +45,6 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class TsFilePipe implements Pipe {

@@ -27,6 +27,7 @@ import org.apache.iotdb.db.newsync.transport.client.ITransportClient;
 import org.apache.iotdb.service.transport.thrift.RequestType;
 import org.apache.iotdb.service.transport.thrift.SyncRequest;
 import org.apache.iotdb.service.transport.thrift.SyncResponse;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -106,8 +107,7 @@ public class TransportHandler {
     return isClosed;
   }
 
-  public SyncResponse sendMsg(RequestType type)
-      throws SyncConnectionException {
+  public SyncResponse sendMsg(RequestType type) throws SyncConnectionException {
     return transportClient.heartbeat(new SyncRequest(type, pipeName, localIp, createTime));
   }
 
