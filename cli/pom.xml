@@ -69,7 +69,8 @@
             <groupId>org.jline</groupId>
             <artifactId>jline</artifactId>
         </dependency>
-        <!-- Not for importing class, used for windows CLI -->
+        <!-- Not for importing class, used for windows CLI,
+        refer to https://github.com/apache/iotdb/pull/4458 -->
         <dependency>
             <groupId>net.java.dev.jna</groupId>
             <artifactId>jna</artifactId>
