@@ -77,4 +77,14 @@ public class IoTDBPipeSink implements PipeSink {
   public String showAllAttributes() {
     return String.format("ip='%s',port=%d", ip, port);
   }
+
+  @Override
+  public String toString() {
+    return "IoTDBPipeSink{" +
+            "type=" + type +
+            ", name='" + name + '\'' +
+            ", ip='" + ip + '\'' +
+            ", port=" + port +
+            '}';
+  }
 }
