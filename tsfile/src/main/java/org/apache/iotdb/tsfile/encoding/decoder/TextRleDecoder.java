@@ -24,15 +24,22 @@ public class TextRleDecoder extends Decoder {
 
     @Override
     public Binary readBinary(ByteBuffer buffer) {
-        int size = ReadWriteForEncodingUtils.readVarInt(buffer);
-        byte[] values = new byte[size * 4];
+        int length = ReadWriteForEncodingUtils.readVarInt(buffer);
+        byte[] values = new byte[length];
         Decoder decoder = Decoder.getDecoderByType(TSEncoding.RLE, TSDataType.INT32);
-        for (int i = 0; i < size; i++) {
+        int upper = length - length % 4;
+        for (int i = 0; i < upper; i += 4) {
             int val = decoder.readInt(buffer);
-            values[4 * i] = (byte) ((val >> 24) & 0xFF);
-            values[4 * i + 1] = (byte) ((val >> 16) & 0xFF);
-            values[4 * i + 2] = (byte) ((val >> 8) & 0xFF);
-            values[4 * i + 3] = (byte) ((val) & 0xFF);
+            values[i] = (byte) ((val >> 24) & 0xFF);
+            values[i + 1] = (byte) ((val >> 16) & 0xFF);
+            values[i + 2] = (byte) ((val >> 8) & 0xFF);
+            values[i + 3] = (byte) ((val) & 0xFF);
+        }
+        if (upper != length) {
+            int val = decoder.readInt(buffer);
+            for (int i = 0; i < length % 4; i++) {
+                values[i + upper] = (byte) ((val >> (3 - i) * 8) & 0xFF);
+            }
         }
         return new Binary(values);
     }

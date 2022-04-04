@@ -41,6 +41,7 @@ public class TextRleEncoder extends Encoder {
     public void encode(Binary value, ByteArrayOutputStream out) {
         byte[] values = value.getValues();
         int length = values.length;
+        ReadWriteForEncodingUtils.writeVarInt(length, out);
         ArrayList<Integer> buffer = new ArrayList<>();
         int idx = length - length % 4;
         for (int i = 0; i < idx; i += 4) {
@@ -60,7 +61,6 @@ public class TextRleEncoder extends Encoder {
             buffer.add(tmp);
         }
         int size = buffer.size();
-        ReadWriteForEncodingUtils.writeVarInt(size, out);
         Encoder encoder = TSEncodingBuilder.getEncodingBuilder(TSEncoding.RLE).getEncoder(TSDataType.INT32);
         for (int val : buffer) {
             encoder.encode(val, out);
