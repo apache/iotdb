@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,23 +16,48 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.partition;
 
+package org.apache.iotdb.commons.cluster;
+
+import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class SchemaRegionId implements Comparable<SchemaRegionId> {
-  private int schemaRegionId;
+// TODO Use a mature IDL framework such as Protobuf to manage this structure
+public class Endpoint {
 
-  public SchemaRegionId(int schemaRegionId) {
-    this.schemaRegionId = schemaRegionId;
+  private String ip;
+  private int port;
+
+  public Endpoint() {}
+
+  public Endpoint(String ip, int port) {
+    this.ip = ip;
+    this.port = port;
   }
 
-  public int getSchemaRegionId() {
-    return schemaRegionId;
+  public String getIp() {
+    return ip;
   }
 
-  public void setSchemaRegionId(int schemaRegionId) {
-    this.schemaRegionId = schemaRegionId;
+  public int getPort() {
+    return port;
+  }
+
+  public void serializeImpl(ByteBuffer buffer) {
+    byte[] bytes = ip.getBytes();
+    buffer.putInt(bytes.length);
+    buffer.put(bytes);
+
+    buffer.putInt(port);
+  }
+
+  public void deserializeImpl(ByteBuffer buffer) {
+    int length = buffer.getInt();
+    byte[] bytes = new byte[length];
+    buffer.get(bytes, 0, length);
+    ip = new String(bytes, 0, length);
+
+    port = buffer.getInt();
   }
 
   @Override
@@ -43,22 +68,17 @@ public class SchemaRegionId implements Comparable<SchemaRegionId> {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    SchemaRegionId that = (SchemaRegionId) o;
-    return schemaRegionId == that.schemaRegionId;
+    Endpoint endpoint = (Endpoint) o;
+    return port == endpoint.port && Objects.equals(ip, endpoint.ip);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(schemaRegionId);
+    return Objects.hash(ip, port);
   }
 
   @Override
   public String toString() {
-    return String.format("SchemaRegion-%d", schemaRegionId);
-  }
-
-  @Override
-  public int compareTo(SchemaRegionId o) {
-    return this.getSchemaRegionId() - o.getSchemaRegionId();
+    return String.format("%s:%d", ip, port);
   }
 }

@@ -19,11 +19,14 @@
 
 package org.apache.iotdb.db.mpp.sql.plan;
 
-import org.apache.iotdb.commons.partition.DataPartitionInfo;
-import org.apache.iotdb.commons.partition.DataRegionId;
-import org.apache.iotdb.commons.partition.DataRegionReplicaSet;
-import org.apache.iotdb.commons.partition.DeviceGroupId;
-import org.apache.iotdb.commons.partition.TimePartitionId;
+import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.GroupType;
+import org.apache.iotdb.commons.partition.DataNodeLocation;
+import org.apache.iotdb.commons.partition.DataPartition;
+import org.apache.iotdb.commons.partition.RegionReplicaSet;
+import org.apache.iotdb.commons.partition.SeriesPartitionSlot;
+import org.apache.iotdb.commons.partition.TimePartitionSlot;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
@@ -42,7 +45,6 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullPolicy;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
-import org.apache.iotdb.service.rpc.thrift.EndPoint;
 
 import org.junit.Test;
 
@@ -160,53 +162,63 @@ public class DistributionPlannerTest {
     String device2 = "root.sg.d22";
     String device3 = "root.sg.d333";
 
-    DataPartitionInfo dataPartitionInfo = new DataPartitionInfo();
-    Map<String, Map<DeviceGroupId, Map<TimePartitionId, List<DataRegionReplicaSet>>>>
+    DataPartition dataPartition = new DataPartition();
+    Map<String, Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>>
         dataPartitionMap = new HashMap<>();
-    Map<DeviceGroupId, Map<TimePartitionId, List<DataRegionReplicaSet>>> sgPartitionMap =
+    Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>> sgPartitionMap =
         new HashMap<>();
 
-    List<DataRegionReplicaSet> d1DataRegions = new ArrayList<>();
+    List<RegionReplicaSet> d1DataRegions = new ArrayList<>();
     d1DataRegions.add(
-        new DataRegionReplicaSet(
-            new DataRegionId(1),
-            Arrays.asList(new EndPoint("192.0.1.1", 9000), new EndPoint("192.0.1.2", 9000))));
+        new RegionReplicaSet(
+            new ConsensusGroupId(GroupType.DataRegion, 1),
+            Arrays.asList(
+                new DataNodeLocation(11, new Endpoint("192.0.1.1", 9000)),
+                new DataNodeLocation(12, new Endpoint("192.0.1.2", 9000)))));
     d1DataRegions.add(
-        new DataRegionReplicaSet(
-            new DataRegionId(2),
-            Arrays.asList(new EndPoint("192.0.2.1", 9000), new EndPoint("192.0.2.2", 9000))));
-    Map<TimePartitionId, List<DataRegionReplicaSet>> d1DataRegionMap = new HashMap<>();
-    d1DataRegionMap.put(new TimePartitionId(), d1DataRegions);
+        new RegionReplicaSet(
+            new ConsensusGroupId(GroupType.DataRegion, 2),
+            Arrays.asList(
+                new DataNodeLocation(21, new Endpoint("192.0.2.1", 9000)),
+                new DataNodeLocation(22, new Endpoint("192.0.2.2", 9000)))));
+    Map<TimePartitionSlot, List<RegionReplicaSet>> d1DataRegionMap = new HashMap<>();
+    d1DataRegionMap.put(new TimePartitionSlot(), d1DataRegions);
 
-    List<DataRegionReplicaSet> d2DataRegions = new ArrayList<>();
+    List<RegionReplicaSet> d2DataRegions = new ArrayList<>();
     d2DataRegions.add(
-        new DataRegionReplicaSet(
-            new DataRegionId(3),
-            Arrays.asList(new EndPoint("192.0.3.1", 9000), new EndPoint("192.0.3.2", 9000))));
-    Map<TimePartitionId, List<DataRegionReplicaSet>> d2DataRegionMap = new HashMap<>();
-    d2DataRegionMap.put(new TimePartitionId(), d2DataRegions);
+        new RegionReplicaSet(
+            new ConsensusGroupId(GroupType.DataRegion, 3),
+            Arrays.asList(
+                new DataNodeLocation(31, new Endpoint("192.0.3.1", 9000)),
+                new DataNodeLocation(32, new Endpoint("192.0.3.2", 9000)))));
+    Map<TimePartitionSlot, List<RegionReplicaSet>> d2DataRegionMap = new HashMap<>();
+    d2DataRegionMap.put(new TimePartitionSlot(), d2DataRegions);
 
-    List<DataRegionReplicaSet> d3DataRegions = new ArrayList<>();
+    List<RegionReplicaSet> d3DataRegions = new ArrayList<>();
     d3DataRegions.add(
-        new DataRegionReplicaSet(
-            new DataRegionId(1),
-            Arrays.asList(new EndPoint("192.0.1.1", 9000), new EndPoint("192.0.1.2", 9000))));
+        new RegionReplicaSet(
+            new ConsensusGroupId(GroupType.DataRegion, 1),
+            Arrays.asList(
+                new DataNodeLocation(11, new Endpoint("192.0.1.1", 9000)),
+                new DataNodeLocation(12, new Endpoint("192.0.1.2", 9000)))));
     d3DataRegions.add(
-        new DataRegionReplicaSet(
-            new DataRegionId(4),
-            Arrays.asList(new EndPoint("192.0.4.1", 9000), new EndPoint("192.0.4.2", 9000))));
-    Map<TimePartitionId, List<DataRegionReplicaSet>> d3DataRegionMap = new HashMap<>();
-    d3DataRegionMap.put(new TimePartitionId(), d3DataRegions);
+        new RegionReplicaSet(
+            new ConsensusGroupId(GroupType.DataRegion, 4),
+            Arrays.asList(
+                new DataNodeLocation(41, new Endpoint("192.0.4.1", 9000)),
+                new DataNodeLocation(42, new Endpoint("192.0.4.2", 9000)))));
+    Map<TimePartitionSlot, List<RegionReplicaSet>> d3DataRegionMap = new HashMap<>();
+    d3DataRegionMap.put(new TimePartitionSlot(), d3DataRegions);
 
-    sgPartitionMap.put(new DeviceGroupId(device1.length()), d1DataRegionMap);
-    sgPartitionMap.put(new DeviceGroupId(device2.length()), d2DataRegionMap);
-    sgPartitionMap.put(new DeviceGroupId(device3.length()), d3DataRegionMap);
+    sgPartitionMap.put(new SeriesPartitionSlot(device1.length()), d1DataRegionMap);
+    sgPartitionMap.put(new SeriesPartitionSlot(device2.length()), d2DataRegionMap);
+    sgPartitionMap.put(new SeriesPartitionSlot(device3.length()), d3DataRegionMap);
 
     dataPartitionMap.put("root.sg", sgPartitionMap);
 
-    dataPartitionInfo.setDataPartitionMap(dataPartitionMap);
+    dataPartition.setDataPartitionMap(dataPartitionMap);
 
-    analysis.setDataPartitionInfo(dataPartitionInfo);
+    analysis.setDataPartitionInfo(dataPartition);
     return analysis;
   }
 }
