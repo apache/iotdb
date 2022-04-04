@@ -46,17 +46,19 @@ public class TextRleEncoder extends Encoder {
         for (int i = 0; i < idx; i += 4) {
             int tmp = 0;
             tmp += (values[i] & 0xFF) << 24;
-            tmp += (values[i+1] & 0xFF) << 16;
-            tmp += (values[i+2] & 0xFF) << 8;
-            tmp += values[i+3] & 0xFF;
+            tmp += (values[i + 1] & 0xFF) << 16;
+            tmp += (values[i + 2] & 0xFF) << 8;
+            tmp += values[i + 3] & 0xFF;
             buffer.add(tmp);
         }
-        int tmp = 0;
-        for (int i = 0; i < length % 4; i++) {
-            int shift = (3 - i)*8;
-            tmp += (values[i + idx] & 0xFF) << shift;
+        if (length % 4 != 0) {
+            int tmp = 0;
+            for (int i = 0; i < length % 4; i++) {
+                int shift = (3 - i) * 8;
+                tmp += (values[i + idx] & 0xFF) << shift;
+            }
+            buffer.add(tmp);
         }
-        buffer.add(tmp);
         int size = buffer.size();
         ReadWriteForEncodingUtils.writeVarInt(size, out);
         Encoder encoder = TSEncodingBuilder.getEncodingBuilder(TSEncoding.RLE).getEncoder(TSDataType.INT32);
