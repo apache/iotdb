@@ -24,6 +24,8 @@ services:
     image: apache/iotdb:maven-development
     networks:
       - iotdb
+    cap_add:
+      - NET_ADMIN
     healthcheck:
       test: [ "CMD", "bash", "-c", "cat < /dev/null > /dev/tcp/127.0.0.1/6667" ]
       interval: 5s
@@ -35,6 +37,8 @@ services:
     image: apache/iotdb:maven-development
     networks:
       - iotdb
+    cap_add:
+      - NET_ADMIN
     healthcheck:
       test: [ "CMD", "bash", "-c", "cat < /dev/null > /dev/tcp/127.0.0.1/6667" ]
       interval: 5s
