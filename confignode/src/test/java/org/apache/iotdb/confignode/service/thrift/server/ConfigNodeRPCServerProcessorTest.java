@@ -18,9 +18,16 @@
  */
 package org.apache.iotdb.confignode.service.thrift.server;
 
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.persistence.DataNodeInfoPersistence;
+import org.apache.iotdb.confignode.persistence.PartitionInfoPersistence;
+import org.apache.iotdb.confignode.persistence.RegionInfoPersistence;
 import org.apache.iotdb.confignode.rpc.thrift.DataNodeMessage;
 import org.apache.iotdb.confignode.rpc.thrift.DataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.DataNodeRegisterResp;
+import org.apache.iotdb.confignode.rpc.thrift.DeviceGroupHashInfo;
+import org.apache.iotdb.confignode.rpc.thrift.GetSchemaPartitionReq;
+import org.apache.iotdb.confignode.rpc.thrift.SchemaPartitionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.SetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.StorageGroupMessage;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -28,7 +35,9 @@ import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import org.apache.thrift.TException;
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -38,6 +47,16 @@ import java.util.List;
 import java.util.Map;
 
 public class ConfigNodeRPCServerProcessorTest {
+
+  @Before
+  public void before() {}
+
+  @After
+  public void after() {
+    DataNodeInfoPersistence.getInstance().clear();
+    PartitionInfoPersistence.getInstance().clear();
+    RegionInfoPersistence.getInstance().clear();
+  }
 
   @Test
   public void registerDataNodeTest() throws TException, IOException {
@@ -113,5 +132,137 @@ public class ConfigNodeRPCServerProcessorTest {
     Assert.assertEquals(1, messageMap.size());
     Assert.assertNotNull(messageMap.get(sg));
     Assert.assertEquals(sg, messageMap.get(sg).getStorageGroup());
+  }
+
+  @Test
+  public void getDeviceGroupHashInfoTest() throws TException, IOException {
+    ConfigNodeRPCServerProcessor processor = new ConfigNodeRPCServerProcessor();
+    // get Device Group hash
+    DeviceGroupHashInfo deviceGroupHashInfo = new DeviceGroupHashInfo();
+    deviceGroupHashInfo = processor.getDeviceGroupHashInfo();
+    Assert.assertEquals(
+        deviceGroupHashInfo.getDeviceGroupCount(),
+        ConfigNodeDescriptor.getInstance().getConf().getDeviceGroupCount());
+    Assert.assertEquals(
+        deviceGroupHashInfo.getHashClass(),
+        ConfigNodeDescriptor.getInstance().getConf().getDeviceGroupHashExecutorClass());
+  }
+
+  @Test
+  public void applySchemaPartitionTest() throws TException, IOException {
+    ConfigNodeRPCServerProcessor processor = new ConfigNodeRPCServerProcessor();
+
+    TSStatus status;
+    final String sg = "root.sg0";
+
+    // failed because there are not enough DataNodes
+    SetStorageGroupReq setReq = new SetStorageGroupReq(sg);
+    status = processor.setStorageGroup(setReq);
+    Assert.assertEquals(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode(), status.getCode());
+    Assert.assertEquals("DataNode is not enough, please register more.", status.getMessage());
+
+    // register DataNodes
+    DataNodeRegisterReq registerReq0 = new DataNodeRegisterReq(new EndPoint("0.0.0.0", 6667));
+    DataNodeRegisterReq registerReq1 = new DataNodeRegisterReq(new EndPoint("0.0.0.0", 6668));
+    DataNodeRegisterReq registerReq2 = new DataNodeRegisterReq(new EndPoint("0.0.0.0", 6669));
+    status = processor.registerDataNode(registerReq0).getRegisterResult();
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    status = processor.registerDataNode(registerReq1).getRegisterResult();
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    status = processor.registerDataNode(registerReq2).getRegisterResult();
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+    // set StorageGroup
+    status = processor.setStorageGroup(setReq);
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+    // applySchemaPartition
+    GetSchemaPartitionReq getSchemaPartitionReq = new GetSchemaPartitionReq();
+    List<Integer> deviceGroupIds = new ArrayList<>();
+    Integer deviceGroupId = 1000;
+    deviceGroupIds.add(deviceGroupId);
+    getSchemaPartitionReq.setStorageGroup(sg).setDeviceGroupIDs(deviceGroupIds);
+    SchemaPartitionInfo schemaPartitionInfo = processor.applySchemaPartition(getSchemaPartitionReq);
+    Assert.assertTrue(schemaPartitionInfo != null);
+    Assert.assertTrue(schemaPartitionInfo.getSchemaRegionDataNodesMap().get(sg) != null);
+    schemaPartitionInfo
+        .getSchemaRegionDataNodesMap()
+        .get(sg)
+        .entrySet()
+        .forEach(
+            entity -> {
+              Assert.assertEquals(deviceGroupId, entity.getKey());
+            });
+  }
+
+  @Test
+  public void getSchemaPartitionTest() throws TException, IOException {
+    ConfigNodeRPCServerProcessor processor = new ConfigNodeRPCServerProcessor();
+
+    TSStatus status;
+    final String sg = "root.sg0";
+
+    // failed because there are not enough DataNodes
+    SetStorageGroupReq setReq = new SetStorageGroupReq(sg);
+    status = processor.setStorageGroup(setReq);
+    Assert.assertEquals(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode(), status.getCode());
+    Assert.assertEquals("DataNode is not enough, please register more.", status.getMessage());
+
+    // register DataNodes
+    DataNodeRegisterReq registerReq0 = new DataNodeRegisterReq(new EndPoint("0.0.0.0", 6667));
+    DataNodeRegisterReq registerReq1 = new DataNodeRegisterReq(new EndPoint("0.0.0.0", 6668));
+    DataNodeRegisterReq registerReq2 = new DataNodeRegisterReq(new EndPoint("0.0.0.0", 6669));
+    status = processor.registerDataNode(registerReq0).getRegisterResult();
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    status = processor.registerDataNode(registerReq1).getRegisterResult();
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    status = processor.registerDataNode(registerReq2).getRegisterResult();
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+    // set StorageGroup
+    status = processor.setStorageGroup(setReq);
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+    // getSchemaPartition
+    GetSchemaPartitionReq getSchemaPartitionReq = new GetSchemaPartitionReq();
+    List<Integer> deviceGroupIds = new ArrayList<>();
+    Integer deviceGroupId = 1000;
+    deviceGroupIds.add(deviceGroupId);
+    getSchemaPartitionReq.setStorageGroup(sg).setDeviceGroupIDs(deviceGroupIds);
+    SchemaPartitionInfo schemaPartitionInfo = processor.getSchemaPartition(getSchemaPartitionReq);
+    Assert.assertTrue(schemaPartitionInfo != null);
+    Assert.assertTrue(schemaPartitionInfo.getSchemaRegionDataNodesMap().get(sg) != null);
+
+    // because does not apply schema partition, so schema partition is null
+    Assert.assertEquals(
+        null, schemaPartitionInfo.getSchemaRegionDataNodesMap().get(sg).get(deviceGroupId));
+
+    // applySchemaPartition
+    deviceGroupIds.add(deviceGroupId);
+    getSchemaPartitionReq.setStorageGroup(sg).setDeviceGroupIDs(deviceGroupIds);
+    schemaPartitionInfo = processor.applySchemaPartition(getSchemaPartitionReq);
+    Assert.assertTrue(schemaPartitionInfo != null);
+    Assert.assertTrue(schemaPartitionInfo.getSchemaRegionDataNodesMap().get(sg) != null);
+    schemaPartitionInfo
+        .getSchemaRegionDataNodesMap()
+        .get(sg)
+        .entrySet()
+        .forEach(
+            entity -> {
+              Assert.assertEquals(deviceGroupId, entity.getKey());
+            });
+
+    // getSchemaPartition twice
+    getSchemaPartitionReq = new GetSchemaPartitionReq();
+    deviceGroupIds = new ArrayList<>();
+    deviceGroupIds.add(deviceGroupId);
+    getSchemaPartitionReq.setStorageGroup(sg).setDeviceGroupIDs(deviceGroupIds);
+    schemaPartitionInfo = processor.getSchemaPartition(getSchemaPartitionReq);
+    Assert.assertTrue(schemaPartitionInfo != null);
+    Assert.assertTrue(schemaPartitionInfo.getSchemaRegionDataNodesMap().get(sg) != null);
+
+    // because apply schema partition, so schema partition is not null
+    Assert.assertTrue(
+        schemaPartitionInfo.getSchemaRegionDataNodesMap().get(sg).get(deviceGroupId) != null);
   }
 }

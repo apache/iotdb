@@ -18,51 +18,29 @@
  */
 package org.apache.iotdb.confignode.partition;
 
-import java.util.ArrayList;
+import org.apache.iotdb.confignode.util.SerializeDeserializeUtil;
+
+import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class DataPartitionInfo {
+public class DataRegionInfo {
 
   // TODO: Serialize and Deserialize
-  // Map<StorageGroup, Map<DeviceGroupID, Map<TimeInterval, List<DataRegionID>>>>
-  private final Map<String, Map<Integer, Map<Long, List<Integer>>>> dataPartitionTable;
-  // TODO: Serialize and Deserialize
   // Map<DataRegionID, List<DataNodeID>>
-  private final Map<Integer, List<Integer>> dataRegionDataNodesMap;
+  private Map<Integer, List<Integer>> dataRegionDataNodesMap;
 
   // Map<StorageGroup, Map<DeviceGroupID, DataPartitionRule>>
   private final Map<String, Map<Integer, DataPartitionRule>> dataPartitionRuleTable;
 
-  public DataPartitionInfo() {
-    this.dataPartitionTable = new HashMap<>();
+  public DataRegionInfo() {
     this.dataRegionDataNodesMap = new HashMap<>();
-
     this.dataPartitionRuleTable = new HashMap<>();
   }
 
-  public void createDataPartition(
-      String storageGroup, int deviceGroup, long timeInterval, int dataRegionGroup) {
-    if (!dataPartitionTable.containsKey(storageGroup)) {
-      dataPartitionTable.put(storageGroup, new HashMap<>());
-    }
-    if (!dataPartitionTable.get(storageGroup).containsKey(deviceGroup)) {
-      dataPartitionTable.get(storageGroup).put(deviceGroup, new HashMap<>());
-    }
-    if (!dataPartitionTable.get(storageGroup).get(deviceGroup).containsKey(timeInterval)) {
-      dataPartitionTable.get(storageGroup).get(deviceGroup).put(timeInterval, new ArrayList<>());
-    }
-    dataPartitionTable.get(storageGroup).get(deviceGroup).get(timeInterval).add(dataRegionGroup);
-  }
-
-  public List<Integer> getDataPartition(String storageGroup, int deviceGroup, long timeInterval) {
-    if (dataPartitionTable.containsKey(storageGroup)) {
-      if (dataPartitionTable.get(storageGroup).containsKey(deviceGroup)) {
-        return dataPartitionTable.get(storageGroup).get(deviceGroup).get(timeInterval);
-      }
-    }
-    return null;
+  public Map<Integer, List<Integer>> getDataRegionDataNodesMap() {
+    return dataRegionDataNodesMap;
   }
 
   public void createDataRegion(int dataRegionGroup, List<Integer> dataNodeList) {
@@ -76,5 +54,13 @@ public class DataPartitionInfo {
   public void updateDataPartitionRule(
       String StorageGroup, int deviceGroup, DataPartitionRule rule) {
     // TODO: Data partition policy by @YongzaoDan
+  }
+
+  public void serializeImpl(ByteBuffer buffer) {
+    SerializeDeserializeUtil.writeIntMapLists(dataRegionDataNodesMap, buffer);
+  }
+
+  public void deserializeImpl(ByteBuffer buffer) {
+    dataRegionDataNodesMap = SerializeDeserializeUtil.readIntMapLists(buffer);
   }
 }

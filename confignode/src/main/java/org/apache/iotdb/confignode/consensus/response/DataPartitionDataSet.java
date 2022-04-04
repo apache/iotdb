@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,29 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.partition;
 
-import org.apache.iotdb.service.rpc.thrift.EndPoint;
+package org.apache.iotdb.confignode.consensus.response;
 
-import java.util.List;
+import org.apache.iotdb.commons.partition.DataPartition;
+import org.apache.iotdb.consensus.common.DataSet;
 
-public class SchemaRegionReplicaSet {
-  private SchemaRegionId schemaRegionId;
-  private List<EndPoint> endPointList;
+public class DataPartitionDataSet implements DataSet {
+  private DataPartition dataPartitionInfo;
 
-  public SchemaRegionId getSchemaRegionId() {
-    return schemaRegionId;
+  public DataPartition getDataPartitionInfo() {
+    return dataPartitionInfo;
   }
 
-  public void setSchemaRegionId(SchemaRegionId schemaRegionId) {
-    this.schemaRegionId = schemaRegionId;
-  }
-
-  public List<EndPoint> getEndPointList() {
-    return endPointList;
-  }
-
-  public void setEndPointList(List<EndPoint> endPointList) {
-    this.endPointList = endPointList;
+  public void setDataPartitionInfos(DataPartition dataPartitionInfo) {
+    this.dataPartitionInfo = dataPartitionInfo;
   }
 }

@@ -240,6 +240,7 @@ ioTDBReporterConfig:
   port: 6667
   username: root
   password: root
+  maxConnectionNumber: 3
   database: _metric
   pushPeriodInSecond: 15
 ```
