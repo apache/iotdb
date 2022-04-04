@@ -2,12 +2,11 @@ package org.apache.iotdb.tsfile.encoding.decoder;
 
 import org.apache.iotdb.tsfile.encoding.encoder.TextRleEncoder;
 import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -25,7 +24,7 @@ public class TextRleDecoderTest {
         rleList = new ArrayList<>();
         int rleCount = 11;
         int rleNum = 38;
-        String textStr1 = "Thisisatext.";
+        String textStr1 = "This is a string";
         Binary rleStart = new Binary(textStr1);
         for (int i = 0; i < rleNum; i++) {
             for (int j = 0; j < rleCount; j++) {
@@ -55,15 +54,16 @@ public class TextRleDecoderTest {
     }
 
     @Test
-    public void testRleReadBigText() throws IOException {
-        List<Binary> list = new ArrayList<>();
-        for (long i = 8000000; i < 8400000; i++) {
-            list.add(new Binary(String.valueOf(i)));
-        }
-        testLength(list, false, 1);
-        for (int i = 1; i < 10; i++) {
-            testLength(list, false, i);
-        }
+    public void testSingleText() throws IOException {
+        Binary text = new Binary("123456789101");
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        TextRleEncoder encoder = new TextRleEncoder();
+        encoder.encode(text,baos);
+        encoder.flush(baos);
+        ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
+        TextRleDecoder decoder = new TextRleDecoder();
+        Binary text2 = decoder.readBinary(buffer);
+        assertEquals(text,text2);
     }
 
     @Test
@@ -98,42 +98,6 @@ public class TextRleDecoderTest {
     public void testBitPackingReadLong() throws IOException {
         for (int i = 1; i < 10; i++) {
             testLength(bpList, false, i);
-        }
-    }
-
-
-    @Test
-    public void testBitPackingReadHeader() throws IOException {
-        for (int i = 1; i < 505; i++) {
-            testBitPackedReadHeader(i);
-        }
-    }
-
-    private void testBitPackedReadHeader(int num) throws IOException {
-        List<Binary> list = new ArrayList<>();
-
-        for (long i = 0; i < num; i++) {
-            list.add(new Binary(String.valueOf(i)));
-        }
-
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        TextRleEncoder encoder = new TextRleEncoder();
-        for (Binary value : list) {
-            encoder.encode(value, baos);
-        }
-        encoder.flush(baos);
-        ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
-        ReadWriteForEncodingUtils.readUnsignedVarInt(bais);
-        int bitWidth = ReadWriteForEncodingUtils.getIntMaxBitWidth(encoder.valuesInt);
-        assertEquals(bitWidth, bais.read());
-        int header = ReadWriteForEncodingUtils.readUnsignedVarInt(bais);
-        int group = header >> 1;
-        assertEquals(group, (num + 7) / 8);
-        int lastBitPackedNum = bais.read();
-        if (num % 8 == 0) {
-            assertEquals(lastBitPackedNum, 8);
-        } else {
-            assertEquals(lastBitPackedNum, num % 8);
         }
     }
 

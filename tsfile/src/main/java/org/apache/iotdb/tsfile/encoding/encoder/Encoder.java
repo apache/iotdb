@@ -77,7 +77,7 @@ public abstract class Encoder {
     throw new TsFileEncodingException("Method encode double is not supported by Encoder");
   }
 
-  public void encode(Binary value, ByteArrayOutputStream out) {
+  public void encode(Binary value, ByteArrayOutputStream out){
     throw new TsFileEncodingException("Method encode Binary is not supported by Encoder");
   }
 

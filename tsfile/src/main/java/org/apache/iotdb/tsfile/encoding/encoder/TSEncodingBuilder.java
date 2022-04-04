@@ -147,6 +147,8 @@ public abstract class TSEncodingBuilder {
         case FLOAT:
         case DOUBLE:
           return new FloatEncoder(TSEncoding.RLE, type, maxPointNumber);
+        case TEXT:
+          return new TextRleEncoder();
         default:
           throw new UnSupportedDataTypeException("RLE doesn't support data type: " + type);
       }
