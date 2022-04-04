@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.metadata.mtree.store;
 
-import org.apache.iotdb.commons.partition.SchemaRegionId;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.cache.MNodeNotCachedException;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
@@ -69,7 +68,7 @@ public class CachedMTreeStore implements IMTreeStore {
   private Lock readLock = readWriteLock.readLock();
   private Lock writeLock = readWriteLock.writeLock();
 
-  public CachedMTreeStore(PartialPath rootPath, SchemaRegionId schemaRegionId)
+  public CachedMTreeStore(PartialPath rootPath, int schemaRegionId)
       throws MetadataException, IOException {
     file = SchemaFile.initSchemaFile(rootPath.getFullPath(), schemaRegionId);
     root = file.init();

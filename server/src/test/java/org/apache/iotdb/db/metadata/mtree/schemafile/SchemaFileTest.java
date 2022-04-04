@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.metadata.mtree.schemafile;
 
-import org.apache.iotdb.commons.partition.SchemaRegionId;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.EntityMNode;
@@ -58,7 +57,7 @@ import java.util.Set;
 
 public class SchemaFileTest {
 
-  private static final SchemaRegionId TEST_SCHEMA_REGION_ID = new SchemaRegionId(0);
+  private static final int TEST_SCHEMA_REGION_ID = 0;
 
   @Before
   public void setUp() {

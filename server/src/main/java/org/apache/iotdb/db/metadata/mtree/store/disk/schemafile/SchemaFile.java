@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile;
 
-import org.apache.iotdb.commons.partition.SchemaRegionId;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -111,7 +110,7 @@ public class SchemaFile implements ISchemaFile {
   FileChannel channel;
 
   private SchemaFile(
-      String sgName, SchemaRegionId schemaRegionId, boolean override, long ttl, boolean isEntity)
+      String sgName, int schemaRegionId, boolean override, long ttl, boolean isEntity)
       throws IOException, MetadataException {
     this.storageGroupName = sgName;
     filePath =
@@ -119,7 +118,7 @@ public class SchemaFile implements ISchemaFile {
             + File.separator
             + sgName
             + File.separator
-            + schemaRegionId.getSchemaRegionId()
+            + schemaRegionId
             + File.separator
             + MetadataConstant.SCHEMA_FILE_NAME;
 
@@ -138,11 +137,7 @@ public class SchemaFile implements ISchemaFile {
     if (!pmtFile.exists() || !pmtFile.isFile()) {
       File folder =
           SystemFileFactory.INSTANCE.getFile(
-              SchemaFile.SCHEMA_FOLDER
-                  + File.separator
-                  + sgName
-                  + File.separator
-                  + schemaRegionId.getSchemaRegionId());
+              SchemaFile.SCHEMA_FOLDER + File.separator + sgName + File.separator + schemaRegionId);
       folder.mkdirs();
       pmtFile.createNewFile();
     }
@@ -159,7 +154,7 @@ public class SchemaFile implements ISchemaFile {
     initFileHeader();
   }
 
-  public static ISchemaFile initSchemaFile(String sgName, SchemaRegionId schemaRegionId)
+  public static ISchemaFile initSchemaFile(String sgName, int schemaRegionId)
       throws IOException, MetadataException {
     return new SchemaFile(
         sgName,
@@ -169,7 +164,7 @@ public class SchemaFile implements ISchemaFile {
         false);
   }
 
-  public static ISchemaFile loadSchemaFile(String sgName, SchemaRegionId schemaRegionId)
+  public static ISchemaFile loadSchemaFile(String sgName, int schemaRegionId)
       throws IOException, MetadataException {
     return new SchemaFile(sgName, schemaRegionId, false, -1L, false);
   }

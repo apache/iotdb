@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.metadata.mtree;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.partition.SchemaRegionId;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
@@ -132,7 +131,7 @@ public class MTreeBelowSG implements Serializable {
   private int levelOfSG;
 
   // region MTree initialization, clear and serialization
-  public MTreeBelowSG(IStorageGroupMNode storageGroupMNode, SchemaRegionId schemaRegionId)
+  public MTreeBelowSG(IStorageGroupMNode storageGroupMNode, int schemaRegionId)
       throws MetadataException, IOException {
     PartialPath storageGroup = storageGroupMNode.getPartialPath();
     if (IoTDBDescriptor.getInstance().getConfig().isEnablePersistentSchema()) {
