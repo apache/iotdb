@@ -76,6 +76,8 @@ public abstract class TSEncodingBuilder {
         return new Sprintz();
       case RLBE:
         return new RLBE();
+      case HUFFMAN:
+        return new HUFFMAN();
       default:
         throw new UnsupportedOperationException(type.toString());
     }
@@ -382,6 +384,27 @@ public abstract class TSEncodingBuilder {
           return new FloatRLBE();
         case DOUBLE:
           return new DoubleRLBE();
+        default:
+          throw new UnSupportedDataTypeException("RLBE doesn't support data type: " + type);
+      }
+    }
+
+    @Override
+    public void initFromProps(Map<String, String> props) {
+      // do nothing
+    }
+  }
+
+  public static class HUFFMAN extends TSEncodingBuilder {
+    @Override
+    public Encoder getEncoder(TSDataType type) {
+      switch (type) {
+        case TEXT:
+          return new HuffmanEncoder();
+        case INT32:
+        case INT64:
+        case FLOAT:
+        case DOUBLE:
         default:
           throw new UnSupportedDataTypeException("RLBE doesn't support data type: " + type);
       }

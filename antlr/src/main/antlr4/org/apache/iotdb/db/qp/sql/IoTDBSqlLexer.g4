@@ -633,7 +633,7 @@ TEXT
 // Encoding Type Keywords
 
 ENCODING_VALUE
-    : DICTIONARY | DIFF | GORILLA | PLAIN | REGULAR | RLE | TS_2DIFF | RLBE | RAKE | SPRINTZ
+    : DICTIONARY | DIFF | GORILLA | PLAIN | REGULAR | RLE | TS_2DIFF | RLBE | RAKE | SPRINTZ | HUFFMAN
     ;
 
 DICTIONARY
@@ -674,6 +674,10 @@ RAKE
 
 SPRINTZ
     : S P R I N T Z
+    ;
+
+HUFFMAN
+    : H U F F M A N
     ;
 
 // Compressor Type Keywords
