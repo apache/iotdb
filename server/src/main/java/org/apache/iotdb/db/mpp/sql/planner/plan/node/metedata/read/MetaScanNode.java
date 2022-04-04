@@ -22,9 +22,9 @@ import org.apache.iotdb.commons.partition.SchemaRegionReplicaSet;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 
 import java.nio.ByteBuffer;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 
 public abstract class MetaScanNode extends PlanNode {
   protected int limit = 0;
@@ -35,7 +35,8 @@ public abstract class MetaScanNode extends PlanNode {
 
   private SchemaRegionReplicaSet schemaRegionReplicaSet;
 
-  protected MetaScanNode(PlanNodeId id, PartialPath partialPath, int limit, int offset, boolean isPrefixPath) {
+  protected MetaScanNode(
+      PlanNodeId id, PartialPath partialPath, int limit, int offset, boolean isPrefixPath) {
     super(id);
     this.path = partialPath;
     setLimit(limit);
@@ -64,8 +65,7 @@ public abstract class MetaScanNode extends PlanNode {
     return schemaRegionReplicaSet;
   }
 
-  public void setSchemaRegionReplicaSet(
-      SchemaRegionReplicaSet schemaRegionReplicaSet) {
+  public void setSchemaRegionReplicaSet(SchemaRegionReplicaSet schemaRegionReplicaSet) {
     this.schemaRegionReplicaSet = schemaRegionReplicaSet;
   }
 

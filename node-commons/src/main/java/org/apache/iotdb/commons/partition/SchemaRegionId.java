@@ -20,7 +20,7 @@ package org.apache.iotdb.commons.partition;
 
 import java.util.Objects;
 
-public class SchemaRegionId implements Comparable<SchemaRegionId>{
+public class SchemaRegionId implements Comparable<SchemaRegionId> {
   private int schemaRegionId;
 
   public SchemaRegionId(int schemaRegionId) {

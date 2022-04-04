@@ -142,14 +142,14 @@ public class TagManager {
       List<VirtualStorageGroupProcessor> list;
       try {
         Pair<
-            List<VirtualStorageGroupProcessor>,
-            Map<VirtualStorageGroupProcessor, List<PartialPath>>>
+                List<VirtualStorageGroupProcessor>,
+                Map<VirtualStorageGroupProcessor, List<PartialPath>>>
             lockListAndProcessorToSeriesMapPair =
-            StorageEngine.getInstance()
-                .mergeLock(
-                    allMatchedNodes.stream()
-                        .map(IMeasurementMNode::getMeasurementPath)
-                        .collect(toList()));
+                StorageEngine.getInstance()
+                    .mergeLock(
+                        allMatchedNodes.stream()
+                            .map(IMeasurementMNode::getMeasurementPath)
+                            .collect(toList()));
         list = lockListAndProcessorToSeriesMapPair.left;
         Map<VirtualStorageGroupProcessor, List<PartialPath>> processorToSeriesMap =
             lockListAndProcessorToSeriesMapPair.right;
@@ -169,8 +169,8 @@ public class TagManager {
             allMatchedNodes.stream()
                 .sorted(
                     Comparator.comparingLong(
-                        (IMeasurementMNode mNode) ->
-                            LastCacheManager.getLastTimeStamp(mNode, context))
+                            (IMeasurementMNode mNode) ->
+                                LastCacheManager.getLastTimeStamp(mNode, context))
                         .reversed()
                         .thenComparing(IMNode::getFullPath))
                 .collect(toList());

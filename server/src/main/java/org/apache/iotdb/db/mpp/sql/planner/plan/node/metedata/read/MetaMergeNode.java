@@ -1,13 +1,14 @@
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read;
 
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeIdAllocator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ProcessNode;
+
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 
 public class MetaMergeNode extends ProcessNode {
 
@@ -51,9 +52,7 @@ public class MetaMergeNode extends ProcessNode {
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {
-
-  }
+  public void serialize(ByteBuffer byteBuffer) {}
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
