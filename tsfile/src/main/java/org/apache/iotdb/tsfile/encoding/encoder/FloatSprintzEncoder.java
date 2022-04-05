@@ -127,7 +127,6 @@ public class FloatSprintzEncoder extends SprintzEncoder {
       encoder.flush(out);
     }
     reset();
-
   }
 
   @Override
@@ -156,6 +155,5 @@ public class FloatSprintzEncoder extends SprintzEncoder {
         logger.error("Error occured when encoding Float Type value with with Sprintz", e);
       }
     }
-
   }
 }

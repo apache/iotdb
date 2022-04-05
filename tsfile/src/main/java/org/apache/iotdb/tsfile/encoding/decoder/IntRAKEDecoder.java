@@ -26,7 +26,7 @@ public class IntRAKEDecoder extends RAKEDecoder {
   @Override
   public int readInt(ByteBuffer buffer) {
     parseBuffer(buffer, 32);
-    String subNumBuffer = numBuffer.substring(0, Math.min(32,numBuffer.length()));
+    String subNumBuffer = numBuffer.substring(0, Math.min(32, numBuffer.length()));
     this.numBuffer = "";
     if (subNumBuffer.charAt(0) == '0') {
       int r = Integer.parseInt(subNumBuffer, 2);

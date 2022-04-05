@@ -5,6 +5,7 @@ import java.util.List;
 
 public class HuffmanCode {
   public List<Boolean> huffmanCode;
+
   public HuffmanCode() {
     huffmanCode = new ArrayList<>();
   }

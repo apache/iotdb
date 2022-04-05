@@ -23,20 +23,20 @@ import java.io.ByteArrayOutputStream;
 
 public class FloatRAKEEncoder extends RAKEEncoder {
 
-    @Override
-    public void encode(float value, ByteArrayOutputStream out) {
-        isReadFinish = false;
-        String bit_value = Integer.toBinaryString(Float.floatToRawIntBits(value));
-        encodeNumber(bit_value, 32, out);
-    }
+  @Override
+  public void encode(float value, ByteArrayOutputStream out) {
+    isReadFinish = false;
+    String bit_value = Integer.toBinaryString(Float.floatToRawIntBits(value));
+    encodeNumber(bit_value, 32, out);
+  }
 
-    @Override
-    public int getOneItemMaxSize() {
-        return 1 + (1 + 1) * Float.BYTES;
-    }
+  @Override
+  public int getOneItemMaxSize() {
+    return 1 + (1 + 1) * Float.BYTES;
+  }
 
-    @Override
-    public long getMaxByteSize() {
-        return 1 + (long) (1 + groupNum) * Float.BYTES;
-    }
+  @Override
+  public long getMaxByteSize() {
+    return 1 + (long) (1 + groupNum) * Float.BYTES;
+  }
 }

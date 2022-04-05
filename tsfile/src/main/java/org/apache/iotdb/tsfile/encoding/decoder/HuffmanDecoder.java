@@ -114,8 +114,7 @@ public class HuffmanDecoder extends Decoder {
         rec.add(tempTree.originalbyte);
       }
       byte[] currec = new byte[rec.size()];
-      for(int j = 0; j < rec.size(); j++)
-        currec[j] = rec.get(j);
+      for (int j = 0; j < rec.size(); j++) currec[j] = rec.get(j);
       records.add(new Binary(currec));
     }
   }
@@ -128,16 +127,16 @@ public class HuffmanDecoder extends Decoder {
 
   private int getInt(ByteBuffer buffer) {
     int val = 0;
-    for(int i = 31; i >= 0; i--) {
-      val |= (readbit(buffer)<<i);
+    for (int i = 31; i >= 0; i--) {
+      val |= (readbit(buffer) << i);
     }
     return val;
   }
 
   private byte getByte(ByteBuffer buffer) {
     byte val = 0;
-    for(int i = 7; i >= 0; i--) {
-      val |= (readbit(buffer)<<i);
+    for (int i = 7; i >= 0; i--) {
+      val |= (readbit(buffer) << i);
     }
     return val;
   }

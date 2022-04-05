@@ -155,6 +155,5 @@ public class LongSprintzEncoder extends SprintzEncoder {
         logger.error("Error occured when encoding INT64 Type value with with Sprintz", e);
       }
     }
-
   }
 }

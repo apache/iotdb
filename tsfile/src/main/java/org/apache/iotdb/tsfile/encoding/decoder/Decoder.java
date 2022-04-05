@@ -187,7 +187,7 @@ public abstract class Decoder {
     throw new TsFileDecodingException("Method readDouble is not supported by Decoder");
   }
 
-  public Binary readBinary(ByteBuffer buffer){
+  public Binary readBinary(ByteBuffer buffer) {
     throw new TsFileDecodingException("Method readBinary is not supported by Decoder");
   }
 

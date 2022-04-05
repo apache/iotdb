@@ -8,9 +8,7 @@ public class HuffmanTree {
   public HuffmanTree leftNode;
   public HuffmanTree rightNode;
 
-  public void HuffmanTree() {
-
-  }
+  public void HuffmanTree() {}
 
   public void clear() {
     isLeaf = false;

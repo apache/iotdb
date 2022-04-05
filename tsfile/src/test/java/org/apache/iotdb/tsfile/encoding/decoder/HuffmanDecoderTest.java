@@ -20,7 +20,6 @@
 package org.apache.iotdb.tsfile.encoding.decoder;
 
 import org.apache.iotdb.tsfile.encoding.encoder.HuffmanEncoder;
-import org.apache.iotdb.tsfile.encoding.decoder.HuffmanDecoder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 import org.junit.Test;
@@ -32,71 +31,71 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class HuffmanDecoderTest {
-    private HuffmanEncoder encoder = new HuffmanEncoder();
-    private HuffmanDecoder decoder = new HuffmanDecoder();
-    private ByteArrayOutputStream baos = new ByteArrayOutputStream();
+  private HuffmanEncoder encoder = new HuffmanEncoder();
+  private HuffmanDecoder decoder = new HuffmanDecoder();
+  private ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
-    @Test
-    public void testSingle() {
-        testAll("a");
-        testAll("b");
-        testAll("c");
+  @Test
+  public void testSingle() {
+    testAll("a");
+    testAll("b");
+    testAll("c");
+  }
+
+  @Test
+  public void testAllUnique() {
+    testAll("a", "b", "c");
+    testAll("x", "o", "q");
+    testAll(",", ".", "c", "b", "e");
+  }
+
+  @Test
+  public void testAllSame() {
+    testAll("a", "a", "a");
+    testAll("b", "b", "b");
+  }
+
+  @Test
+  public void testConcatenated() {
+    testAll("aaa", "bbbb", "ccaeffsrhha");
+  }
+
+  @Test
+  public void testMinus() {
+    // all characters
+    String[] allChars = new String[1];
+    allChars[0] = "" + (char) ('a' + 1);
+    allChars[0] = "" + (char) (213);
+    testAll(allChars);
+  }
+
+  @Test
+  public void testMixed() {
+    // all characters
+    String[] allChars = new String[256];
+    allChars[0] = "" + (char) ('a' + 1);
+    for (int i = 0; i < 256; i++) {
+      allChars[i] = "" + (char) (i) + (char) (i) + (char) (i);
+    }
+    testAll(allChars);
+  }
+
+  private void testAll(String... all) {
+    for (String s : all) {
+      Binary temp = new Binary(s);
+      encoder.encode(temp, baos);
+    }
+    encoder.flush(baos);
+
+    ByteBuffer out = ByteBuffer.wrap(baos.toByteArray());
+
+    for (String s : all) {
+      assertTrue(decoder.hasNext(out));
+      Binary b = decoder.readBinary(out);
+      assertEquals(s, b.getStringValue());
     }
 
-    @Test
-    public void testAllUnique() {
-        testAll("a", "b", "c");
-        testAll("x", "o", "q");
-        testAll(",", ".", "c", "b", "e");
-    }
-
-    @Test
-    public void testAllSame() {
-        testAll("a", "a", "a");
-        testAll("b", "b", "b");
-    }
-
-    @Test
-    public void testConcatenated() {
-        testAll("aaa","bbbb","ccaeffsrhha");
-    }
-
-    @Test
-    public void testMinus() {
-        // all characters
-        String[] allChars = new String[1];
-        allChars[0] = "" + (char) ('a' + 1);
-        allChars[0] = "" + (char) (213);
-        testAll(allChars);
-    }
-
-    @Test
-    public void testMixed() {
-        // all characters
-        String[] allChars = new String[256];
-        allChars[0] = "" + (char) ('a' + 1);
-        for (int i = 0; i < 256; i++) {
-            allChars[i] = "" + (char) (i) + (char) (i) + (char) (i);
-        }
-        testAll(allChars);
-    }
-
-    private void testAll(String... all) {
-        for (String s : all) {
-            Binary temp = new Binary(s);
-            encoder.encode(temp, baos);
-        }
-        encoder.flush(baos);
-
-        ByteBuffer out = ByteBuffer.wrap(baos.toByteArray());
-
-        for (String s : all) {
-            assertTrue(decoder.hasNext(out));
-            Binary b = decoder.readBinary(out);
-            assertEquals(s, b.getStringValue());
-        }
-
-        decoder.reset();
-        baos.reset();
-    }
+    decoder.reset();
+    baos.reset();
+  }
 }

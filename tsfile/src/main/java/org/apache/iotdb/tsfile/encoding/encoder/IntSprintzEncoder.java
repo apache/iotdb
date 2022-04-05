@@ -154,6 +154,5 @@ public class IntSprintzEncoder extends SprintzEncoder {
         logger.error("Error occured when encoding INT32 Type value with with Sprintz", e);
       }
     }
-
   }
 }
