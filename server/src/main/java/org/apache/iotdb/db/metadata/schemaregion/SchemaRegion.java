@@ -390,7 +390,7 @@ public class SchemaRegion {
     return storageGroupFullPath;
   }
 
-  public SchemaRegionId getSchemaRegionId() {
+  public ConsensusGroupId getSchemaRegionId() {
     return schemaRegionId;
   }
 
