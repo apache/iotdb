@@ -89,7 +89,11 @@ public class ReceiverManager {
   }
 
   public List<PipeInfo> getPipeInfos(String pipeName) {
-    return new ArrayList<>(pipeInfoMap.get(pipeName).values());
+    if (pipeInfoMap.containsKey(pipeName)) {
+      return new ArrayList<>(pipeInfoMap.get(pipeName).values());
+    } else {
+      return new ArrayList<>();
+    }
   }
 
   public List<PipeInfo> getAllPipeInfos() {
