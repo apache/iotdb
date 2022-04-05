@@ -158,6 +158,28 @@ public abstract class Decoder {
           default:
             throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
         }
+      case TEXTRLE:
+        switch (dataType) {
+          case TEXT:
+            return new TextRleDecoder();
+          case INT32:
+          case INT64:
+          case FLOAT:
+          case DOUBLE:
+          default:
+            throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
+        }
+      case HUFFMAN:
+        switch (dataType) {
+          case TEXT:
+            return new HuffmanDecoder();
+          case INT32:
+          case INT64:
+          case FLOAT:
+          case DOUBLE:
+          default:
+            throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
+        }
       default:
         throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
     }
