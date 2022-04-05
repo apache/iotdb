@@ -45,7 +45,7 @@ import java.util.concurrent.Callable;
  * parallel in the compaction. Currently, it only works for nonAligned data in cross space
  * compaction and unseq inner space compaction.
  */
-public class SubCompactionTask implements Callable {
+public class SubCompactionTask implements Callable<Void> {
   private static final Logger logger =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private final String device;
