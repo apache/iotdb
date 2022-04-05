@@ -37,7 +37,7 @@ public class FragmentInstance implements IConsensusRequest {
   // The reference of PlanFragment which this instance is generated from
   private PlanFragment fragment;
   // The DataRegion where the FragmentInstance should run
-  private RegionReplicaSet dataRegion;
+  private RegionReplicaSet regionReplicaSet;
   private Endpoint hostEndpoint;
 
   // We can add some more params for a specific FragmentInstance
@@ -52,12 +52,12 @@ public class FragmentInstance implements IConsensusRequest {
     return new FragmentInstanceId(id, String.valueOf(index));
   }
 
-  public RegionReplicaSet getDataRegionId() {
-    return dataRegion;
+  public RegionReplicaSet getRegionReplicaSet() {
+    return regionReplicaSet;
   }
 
-  public void setDataRegionId(RegionReplicaSet dataRegion) {
-    this.dataRegion = dataRegion;
+  public void setRegionReplicaSet(RegionReplicaSet dataRegion) {
+    this.regionReplicaSet = dataRegion;
   }
 
   public Endpoint getHostEndpoint() {
@@ -92,7 +92,7 @@ public class FragmentInstance implements IConsensusRequest {
     ret.append(
         String.format(
             "FragmentInstance-%s:[Host: %s/%s]\n",
-            getId(), getHostEndpoint().getIp(), getDataRegionId().getId()));
+            getId(), getHostEndpoint().getIp(), getRegionReplicaSet().getId()));
     ret.append("---- Plan Node Tree ----\n");
     ret.append(PlanNodeUtil.nodeToString(getFragment().getRoot()));
     return ret.toString();

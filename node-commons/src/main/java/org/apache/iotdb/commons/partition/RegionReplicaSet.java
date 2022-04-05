@@ -51,6 +51,7 @@ public class RegionReplicaSet {
     this.Id = id;
   }
 
+  @Override
   public String toString() {
     return String.format("RegionReplicaSet[%s-%d]: %s", Id.getType(), Id.getId(), dataNodeList);
   }
@@ -79,10 +80,12 @@ public class RegionReplicaSet {
     }
   }
 
+  @Override
   public int hashCode() {
     return toString().hashCode();
   }
 
+  @Override
   public boolean equals(Object obj) {
     return obj instanceof RegionReplicaSet && obj.toString().equals(toString());
   }

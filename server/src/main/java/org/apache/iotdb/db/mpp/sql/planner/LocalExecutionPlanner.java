@@ -94,7 +94,7 @@ public class LocalExecutionPlanner {
               TimeSeriesMetaScanOperator.class.getSimpleName());
       return new TimeSeriesMetaScanOperator(
           operatorContext,
-          node.getSchemaRegionReplicaSet().getSchemaRegionId(),
+          node.getRegionReplicaSet().getId(),
           node.getLimit(),
           node.getOffset(),
           node.getPath(),

@@ -18,7 +18,9 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node;
 
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.DevicesMetaScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesMetaScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.AggregateNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.DeviceMergeNode;
@@ -61,9 +63,10 @@ public enum PlanNodeType {
   INSERT_ROWS((short) 15),
   INSERT_ROWS_OF_ONE_DEVICE((short) 16),
   INSERT_MULTI_TABLET((short) 17),
-  SHOW_DEVICES((short) 18),
+  DEVICES_META_SCAN((short) 18),
   CREATE_TIME_SERIES((short) 19),
-  EXCHANGE((short) 20);
+  EXCHANGE((short) 20),
+  TIME_SERIES_META_SCAN((short) 21);
 
   private final short nodeType;
 
@@ -75,7 +78,7 @@ public enum PlanNodeType {
     buffer.putShort(nodeType);
   }
 
-  public static PlanNode deserialize(ByteBuffer buffer) {
+  public static PlanNode deserialize(ByteBuffer buffer) throws IllegalPathException {
     short nodeType = buffer.getShort();
     switch (nodeType) {
       case 0:
@@ -120,6 +123,8 @@ public enum PlanNodeType {
         return CreateTimeSeriesNode.deserialize(buffer);
       case 20:
         return ExchangeNode.deserialize(buffer);
+      case 21:
+        return TimeSeriesMetaScanNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }

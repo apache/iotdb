@@ -62,6 +62,7 @@ import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -345,25 +346,28 @@ public class LogicalPlanner {
     @Override
     public PlanNode visitShowTimeSeries(
         ShowTimeSeriesStatement showTimeSeriesStatement, MPPQueryContext context) {
-      PlanBuilder planBuilder =
-          new PlanBuilder(
-              new TimeSeriesMetaScanNode(
-                  PlanNodeIdAllocator.generateId(),
-                  showTimeSeriesStatement.getPathPattern(),
-                  showTimeSeriesStatement.getKey(),
-                  showTimeSeriesStatement.getValue(),
-                  showTimeSeriesStatement.getLimit(),
-                  showTimeSeriesStatement.getOffset(),
-                  showTimeSeriesStatement.isOrderByHeat(),
-                  showTimeSeriesStatement.isContains(),
-                  showTimeSeriesStatement.isPrefixPath()));
+      TimeSeriesMetaScanNode timeSeriesMetaScanNode =
+          new TimeSeriesMetaScanNode(
+              PlanNodeIdAllocator.generateId(),
+              showTimeSeriesStatement.getPathPattern(),
+              showTimeSeriesStatement.getKey(),
+              showTimeSeriesStatement.getValue(),
+              showTimeSeriesStatement.getLimit(),
+              showTimeSeriesStatement.getOffset(),
+              showTimeSeriesStatement.isOrderByHeat(),
+              showTimeSeriesStatement.isContains(),
+              showTimeSeriesStatement.isPrefixPath());
+      PlanBuilder planBuilder = new PlanBuilder(timeSeriesMetaScanNode);
+
       MetaMergeNode metaMergeNode =
           new MetaMergeNode(
               PlanNodeIdAllocator.generateId(), showTimeSeriesStatement.isOrderByHeat());
       metaMergeNode.addChild(planBuilder.getRoot());
       planBuilder = planBuilder.withNewRoot(metaMergeNode);
-      planBuilder = planOffset(planBuilder, showTimeSeriesStatement.getOffset());
-      planBuilder = planLimit(planBuilder, showTimeSeriesStatement.getLimit());
+      if (timeSeriesMetaScanNode.isHasLimit()) {
+        planBuilder = planOffset(planBuilder, showTimeSeriesStatement.getOffset());
+        planBuilder = planLimit(planBuilder, showTimeSeriesStatement.getLimit());
+      }
       return planBuilder.getRoot();
     }
 

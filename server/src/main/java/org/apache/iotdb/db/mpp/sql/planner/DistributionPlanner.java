@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner;
 
-import org.apache.iotdb.commons.partition.DataRegionReplicaSet;
-import org.apache.iotdb.commons.partition.SchemaRegionReplicaSet;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
@@ -45,9 +43,11 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregateScanN
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
@@ -113,18 +113,23 @@ public class DistributionPlanner {
     public PlanNode visitMetaMerge(MetaMergeNode node, DistributionPlanContext context) {
       MetaMergeNode root = (MetaMergeNode) node.clone();
       MetaScanNode seed = (MetaScanNode) root.getChildren().get(0);
+      TreeSet<RegionReplicaSet> schemaRegions =
+          new TreeSet<>(Comparator.comparingInt(region -> region.getId().getId()));
       analysis
           .getSchemaPartitionInfo()
-          .getSchemaPartitionMap()
+          .getSchemaPartition()
           .forEach(
               (storageGroup, deviceGroup) -> {
                 deviceGroup.forEach(
-                    (deviceGroupId, schemaRegionReplicaSet) -> {
-                      MetaScanNode metaScanNode = (MetaScanNode) seed.clone();
-                      metaScanNode.setSchemaRegionReplicaSet(schemaRegionReplicaSet);
-                      root.addChild(metaScanNode);
-                    });
+                    (deviceGroupId, schemaRegionReplicaSet) ->
+                        schemaRegions.add(schemaRegionReplicaSet));
               });
+      schemaRegions.forEach(
+          region -> {
+            MetaScanNode metaScanNode = (MetaScanNode) seed.clone();
+            metaScanNode.setRegionReplicaSet(region);
+            root.addChild(metaScanNode);
+          });
       return root;
     }
 
@@ -146,7 +151,7 @@ public class DistributionPlanner {
           // SeriesScanNode.
           for (RegionReplicaSet dataRegion : dataDistribution) {
             SeriesScanNode split = (SeriesScanNode) handle.clone();
-            split.setDataRegionReplicaSet(dataRegion);
+            split.setRegionReplicaSet(dataRegion);
             sources.add(split);
           }
         } else if (child instanceof SeriesAggregateScanNode) {
@@ -164,7 +169,7 @@ public class DistributionPlanner {
 
       // Step 2: For the source nodes, group them by the DataRegion.
       Map<RegionReplicaSet, List<SeriesScanNode>> sourceGroup =
-          sources.stream().collect(Collectors.groupingBy(SeriesScanNode::getDataRegionReplicaSet));
+          sources.stream().collect(Collectors.groupingBy(SeriesScanNode::getRegionReplicaSet));
       // Step 3: For the source nodes which belong to same data region, add a TimeJoinNode for them
       // and make the
       // new TimeJoinNode as the child of current TimeJoinNode
@@ -222,13 +227,13 @@ public class DistributionPlanner {
       NodeDistribution nodeDistribution =
           new NodeDistribution(NodeDistributionType.DIFFERENT_FROM_ALL_CHILDREN);
       PlanNode newNode = node.clone();
-      nodeDistribution.schemaRegion = calculateSchemaRegionByChildren(node.getChildren(), context);
+      nodeDistribution.region = calculateSchemaRegionByChildren(node.getChildren(), context);
       context.putNodeDistribution(newNode.getId(), nodeDistribution);
       node.getChildren()
           .forEach(
               child -> {
-                if (!nodeDistribution.schemaRegion.equals(
-                    context.getNodeDistribution(child.getId()).schemaRegion)) {
+                if (!nodeDistribution.region.equals(
+                    context.getNodeDistribution(child.getId()).region)) {
                   ExchangeNode exchangeNode = new ExchangeNode(PlanNodeIdAllocator.generateId());
                   exchangeNode.addChild(child);
                   newNode.addChild(exchangeNode);
@@ -242,7 +247,7 @@ public class DistributionPlanner {
     @Override
     public PlanNode visitMetaScan(MetaScanNode node, NodeGroupContext context) {
       NodeDistribution nodeDistribution = new NodeDistribution(NodeDistributionType.NO_CHILD);
-      nodeDistribution.schemaRegion = node.getSchemaRegionReplicaSet();
+      nodeDistribution.region = node.getRegionReplicaSet();
       context.putNodeDistribution(node.getId(), nodeDistribution);
       return node;
     }
@@ -251,7 +256,7 @@ public class DistributionPlanner {
     public PlanNode visitSeriesScan(SeriesScanNode node, NodeGroupContext context) {
       context.putNodeDistribution(
           node.getId(),
-          new NodeDistribution(NodeDistributionType.NO_CHILD, node.getDataRegionReplicaSet()));
+          new NodeDistribution(NodeDistributionType.NO_CHILD, node.getRegionReplicaSet()));
       return node.clone();
     }
 
@@ -259,7 +264,7 @@ public class DistributionPlanner {
     public PlanNode visitSeriesAggregate(SeriesAggregateScanNode node, NodeGroupContext context) {
       context.putNodeDistribution(
           node.getId(),
-          new NodeDistribution(NodeDistributionType.NO_CHILD, node.getDataRegionReplicaSet()));
+          new NodeDistribution(NodeDistributionType.NO_CHILD, node.getRegionReplicaSet()));
       return node.clone();
     }
 
@@ -291,7 +296,7 @@ public class DistributionPlanner {
       // parent.
       visitedChildren.forEach(
           child -> {
-            if (!dataRegion.equals(context.getNodeDistribution(child.getId()).dataRegion)) {
+            if (!dataRegion.equals(context.getNodeDistribution(child.getId()).region)) {
               ExchangeNode exchangeNode = new ExchangeNode(PlanNodeIdAllocator.generateId());
               exchangeNode.setChild(child);
               newNode.addChild(exchangeNode);
@@ -306,13 +311,13 @@ public class DistributionPlanner {
         List<PlanNode> children, NodeGroupContext context) {
       // We always make the dataRegion of TimeJoinNode to be the same as its first child.
       // TODO: (xingtanzjr) We need to implement more suitable policies here
-      return context.getNodeDistribution(children.get(0).getId()).dataRegion;
+      return context.getNodeDistribution(children.get(0).getId()).region;
     }
 
-    private SchemaRegionReplicaSet calculateSchemaRegionByChildren(
+    private RegionReplicaSet calculateSchemaRegionByChildren(
         List<PlanNode> children, NodeGroupContext context) {
       // We always make the schemaRegion of MetaMergeNode to be the same as its first child.
-      return context.getNodeDistribution(children.get(0).getId()).schemaRegion;
+      return context.getNodeDistribution(children.get(0).getId()).region;
     }
 
     private boolean nodeDistributionIsSame(List<PlanNode> children, NodeGroupContext context) {
@@ -320,7 +325,7 @@ public class DistributionPlanner {
       NodeDistribution first = context.getNodeDistribution(children.get(0).getId());
       for (int i = 1; i < children.size(); i++) {
         NodeDistribution next = context.getNodeDistribution(children.get(i).getId());
-        if (first.dataRegion == null || !first.dataRegion.equals(next.dataRegion)) {
+        if (first.region == null || !first.region.equals(next.region)) {
           return false;
         }
       }
@@ -357,11 +362,11 @@ public class DistributionPlanner {
 
   private class NodeDistribution {
     private NodeDistributionType type;
-    private RegionReplicaSet dataRegion;
+    private RegionReplicaSet region;
 
     private NodeDistribution(NodeDistributionType type, RegionReplicaSet dataRegion) {
       this.type = type;
-      this.dataRegion = dataRegion;
+      this.region = dataRegion;
     }
 
     private NodeDistribution(NodeDistributionType type) {

@@ -63,11 +63,6 @@ public class DevicesMetaScanNode extends MetaScanNode {
   }
 
   @Override
-  public int allowedChildCount() {
-    return NO_CHILD_ALLOWED;
-  }
-
-  @Override
   public List<String> getOutputColumnNames() {
     return null;
   }

@@ -18,22 +18,20 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read;
 
-import org.apache.iotdb.commons.partition.SchemaRegionReplicaSet;
+import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SourceNode;
 
-import java.nio.ByteBuffer;
-
-public abstract class MetaScanNode extends PlanNode {
-  protected int limit = 0;
-  protected int offset = 0;
+public abstract class MetaScanNode extends SourceNode {
+  protected int limit;
+  protected int offset;
   protected PartialPath path;
   private boolean hasLimit;
   private boolean isPrefixPath;
 
-  private SchemaRegionReplicaSet schemaRegionReplicaSet;
+  private RegionReplicaSet schemaRegionReplicaSet;
 
   protected MetaScanNode(
       PlanNodeId id, PartialPath partialPath, int limit, int offset, boolean isPrefixPath) {
@@ -43,6 +41,27 @@ public abstract class MetaScanNode extends PlanNode {
     this.offset = offset;
     this.isPrefixPath = isPrefixPath;
   }
+
+  @Override
+  public void open() throws Exception {}
+
+  @Override
+  public int allowedChildCount() {
+    return NO_CHILD_ALLOWED;
+  }
+
+  @Override
+  public String getDeviceName() {
+    return null;
+  }
+
+  @Override
+  protected String getExpressionString() {
+    return path.getFullPath();
+  }
+
+  @Override
+  public void close() throws Exception {}
 
   public boolean isPrefixPath() {
     return isPrefixPath;
@@ -61,11 +80,13 @@ public abstract class MetaScanNode extends PlanNode {
     }
   }
 
-  public SchemaRegionReplicaSet getSchemaRegionReplicaSet() {
+  @Override
+  public RegionReplicaSet getRegionReplicaSet() {
     return schemaRegionReplicaSet;
   }
 
-  public void setSchemaRegionReplicaSet(SchemaRegionReplicaSet schemaRegionReplicaSet) {
+  @Override
+  public void setRegionReplicaSet(RegionReplicaSet schemaRegionReplicaSet) {
     this.schemaRegionReplicaSet = schemaRegionReplicaSet;
   }
 
@@ -92,9 +113,6 @@ public abstract class MetaScanNode extends PlanNode {
   public void setHasLimit(boolean hasLimit) {
     this.hasLimit = hasLimit;
   }
-
-  @Override
-  public void serialize(ByteBuffer byteBuffer) {}
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {

@@ -22,8 +22,8 @@ package org.apache.iotdb.db.mpp.sql.analyze;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.PartitionInfo;
+import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.commons.partition.SchemaPartitionInfo;
 import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SQLParserException;
@@ -52,7 +52,12 @@ import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowTimeSeriesStatement;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /** Analyze the statement and generate Analysis. */
 public class Analyzer {
@@ -228,7 +233,7 @@ public class Analyzer {
     @Override
     public Analysis visitShowTimeSeries(
         ShowTimeSeriesStatement showTimeSeriesStatement, MPPQueryContext context) {
-      SchemaPartitionInfo schemaPartitionInfo =
+      SchemaPartition schemaPartitionInfo =
           partitionFetcher.fetchSchemaPartitionInfo(
               showTimeSeriesStatement.getPathPattern().getDevice());
       Analysis analysis = new Analysis();
@@ -240,7 +245,7 @@ public class Analyzer {
     @Override
     public Analysis visitShowDevices(
         ShowDevicesStatement showDevicesStatement, MPPQueryContext context) {
-      SchemaPartitionInfo schemaPartitionInfo =
+      SchemaPartition schemaPartitionInfo =
           partitionFetcher.fetchSchemaPartitionInfo(
               showDevicesStatement.getPathPattern().getFullPath());
       Analysis analysis = new Analysis();
@@ -249,6 +254,7 @@ public class Analyzer {
       return analysis;
     }
 
+    @Override
     public Analysis visitInsertRow(InsertRowStatement insertRowStatement, MPPQueryContext context) {
       DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
       dataPartitionQueryParam.setDevicePath(insertRowStatement.getDevicePath().getFullPath());

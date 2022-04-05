@@ -1,6 +1,6 @@
 package org.apache.iotdb.db.mpp.operator.meta;
 
-import org.apache.iotdb.commons.partition.SchemaRegionId;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
@@ -25,9 +25,9 @@ public class MetaScanOperator implements Operator {
   protected boolean isPrefixPath;
   protected List<String> columns;
 
-  public MetaScanOperator(
+  protected MetaScanOperator(
       OperatorContext operatorContext,
-      SchemaRegionId schemaRegionId,
+      ConsensusGroupId schemaRegionId,
       int limit,
       int offset,
       PartialPath partialPath,
@@ -88,11 +88,13 @@ public class MetaScanOperator implements Operator {
   @Override
   public boolean hasNext() throws IOException {
     try {
-      if (tsBlock == null && !hasCachedTsBlock) {
+      if (tsBlock == null) {
         tsBlock = createTsBlock();
-        hasCachedTsBlock = true;
+        if (tsBlock.getPositionCount() > 0) {
+          hasCachedTsBlock = true;
+        }
       }
-      return tsBlock != null && tsBlock.getPositionCount() > 0;
+      return hasCachedTsBlock;
     } catch (MetadataException e) {
       throw new IOException(e);
     }
