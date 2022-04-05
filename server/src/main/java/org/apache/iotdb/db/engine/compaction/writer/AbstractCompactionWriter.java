@@ -37,8 +37,11 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public abstract class AbstractCompactionWriter implements AutoCloseable {
+  protected static final int subTaskNum =
+      IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum();
 
   // subTaskId -> IChunkWriter
   protected Map<Integer, IChunkWriter> chunkWriterMap = new ConcurrentHashMap<>();
@@ -51,15 +54,21 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
   private final boolean enableMetrics =
       MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric();
 
-  // point count in current measurment, which is used to check size
-  private Map<Integer, Integer> measurementPointCountMap = new ConcurrentHashMap<>();
+  // point count of current measurment in each sub task, which is used to check size
+  private final AtomicInteger[] measurementPointCountMap = new AtomicInteger[subTaskNum];
+
+  public AbstractCompactionWriter() {
+    for (int i = 0; i < measurementPointCountMap.length; i++) {
+      measurementPointCountMap[i] = new AtomicInteger(0);
+    }
+  }
 
   public abstract void startChunkGroup(String deviceId, boolean isAlign) throws IOException;
 
   public abstract void endChunkGroup() throws IOException;
 
   public void startMeasurement(List<IMeasurementSchema> measurementSchemaList, int subTaskId) {
-    measurementPointCountMap.put(subTaskId, 0);
+    measurementPointCountMap[subTaskId].set(0);
     if (isAlign) {
       chunkWriterMap.put(subTaskId, new AlignedChunkWriterImpl(measurementSchemaList));
     } else {
@@ -136,12 +145,12 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
       }
       chunkWriter.write(timestamp);
     }
-    measurementPointCountMap.put(subTaskId, measurementPointCountMap.get(subTaskId) + 1);
+    measurementPointCountMap[subTaskId].getAndAdd(1);
   }
 
   protected void checkChunkSizeAndMayOpenANewChunk(TsFileIOWriter fileWriter, int subTaskId)
       throws IOException {
-    if (measurementPointCountMap.get(subTaskId) % 10 == 0 && checkChunkSize(subTaskId)) {
+    if (measurementPointCountMap[subTaskId].get() % 10 == 0 && checkChunkSize(subTaskId)) {
       writeRateLimit(chunkWriterMap.get(subTaskId).estimateMaxSeriesMemSize());
       CompactionMetricsManager.recordWriteInfo(
           this instanceof CrossSpaceCompactionWriter

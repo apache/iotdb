@@ -53,7 +53,6 @@ public class InnerSpaceCompactionWriter extends AbstractCompactionWriter {
     synchronized (fileWriter) {
       chunkWriterMap.get(subTaskId).writeToFileWriter(fileWriter);
     }
-    // chunkWriter = null;
   }
 
   @Override
@@ -79,7 +78,6 @@ public class InnerSpaceCompactionWriter extends AbstractCompactionWriter {
     if (fileWriter != null && fileWriter.canWrite()) {
       fileWriter.close();
     }
-    // chunkWriter = null;
     chunkWriterMap.clear();
     fileWriter = null;
   }

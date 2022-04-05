@@ -73,7 +73,7 @@ import java.util.stream.Collectors;
  * This tool can be used to perform inner space or cross space compaction of aligned and non aligned
  * timeseries . Currently, we use {@link
  * org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils} to speed up if it is
- * an inner space compaction.
+ * an seq inner space compaction.
  */
 public class CompactionUtils {
   private static final Logger logger =
@@ -216,6 +216,7 @@ public class CompactionUtils {
         futures.get(i).get();
       } catch (InterruptedException | ExecutionException e) {
         logger.error("SubCompactionTask meet errors ", e);
+        Thread.currentThread().interrupt();
         throw new IOException(e);
       }
     }
@@ -280,7 +281,9 @@ public class CompactionUtils {
     for (int i = 0; i < targetFileWriters.size(); i++) {
       TsFileIOWriter fileIOWriter = targetFileWriters.get(i);
       TsFileResource fileResource = targetResources.get(i);
-      // skip the target file that has been deleted
+      // The tmp target file may does not have any data points written due to the existence of the
+      // mods file, and it will be deleted after compaction. So skip the target file that has been
+      // deleted.
       if (!fileResource.getTsFile().exists()) {
         continue;
       }
