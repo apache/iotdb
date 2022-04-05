@@ -6,11 +6,9 @@ name: E2E Tests
 on:
   push:
     branches:
-      - master
       - new_sync
     paths-ignore:
-      - master
-      - new_sync
+      - 'docs/**'
   pull_request:
     branches: 
       - cluster_new
