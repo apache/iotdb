@@ -435,13 +435,13 @@ public class TTLTest {
     prepareData();
     virtualStorageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
 
-    assertEquals(4, virtualStorageGroupProcessor.getSequenceFileTreeSet().size());
+    assertEquals(4, virtualStorageGroupProcessor.getSequenceFileList().size());
     assertEquals(4, virtualStorageGroupProcessor.getUnSequenceFileList().size());
 
     virtualStorageGroupProcessor.setDataTTL(0);
     virtualStorageGroupProcessor.checkFilesTTL();
 
-    assertEquals(0, virtualStorageGroupProcessor.getSequenceFileTreeSet().size());
+    assertEquals(0, virtualStorageGroupProcessor.getSequenceFileList().size());
     assertEquals(0, virtualStorageGroupProcessor.getUnSequenceFileList().size());
   }
 }

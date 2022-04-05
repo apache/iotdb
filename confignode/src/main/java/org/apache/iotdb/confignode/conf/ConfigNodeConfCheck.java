@@ -52,16 +52,11 @@ public class ConfigNodeConfCheck {
   public void checkConfig() throws ConfigurationException, IOException, StartupException {
     // If systemDir does not exist, create systemDir
     File systemDir = new File(conf.getSystemDir());
-    if (!systemDir.exists()) {
-      if (systemDir.mkdirs()) {
-        LOGGER.info("Make system dirs: {}", systemDir);
-      } else {
-        throw new IOException(
-            String.format(
-                "Start ConfigNode failed, because couldn't make system dirs: %s.",
-                systemDir.getAbsolutePath()));
-      }
-    }
+    createDir(systemDir);
+
+    // If consensusDir does not exist, create consensusDir
+    File consensusDir = new File(conf.getConsensusDir());
+    createDir(consensusDir);
 
     File specialPropertiesFile =
         new File(conf.getSystemDir() + File.separator + ConfigNodeConstant.SPECIAL_CONF_NAME);
@@ -87,6 +82,19 @@ public class ConfigNodeConfCheck {
       // properties file.
       specialProperties.load(inputStream);
       checkSpecialProperties();
+    }
+  }
+
+  private void createDir(File dir) throws IOException {
+    if (!dir.exists()) {
+      if (dir.mkdirs()) {
+        LOGGER.info("Make dirs: {}", dir);
+      } else {
+        throw new IOException(
+            String.format(
+                "Start ConfigNode failed, because couldn't make system dirs: %s.",
+                dir.getAbsolutePath()));
+      }
     }
   }
 

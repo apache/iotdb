@@ -18,12 +18,12 @@
  */
 package org.apache.iotdb.consensus.ratis;
 
+import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.GroupType;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.ConsensusGroup;
-import org.apache.iotdb.consensus.common.ConsensusGroupId;
 import org.apache.iotdb.consensus.common.DataSet;
-import org.apache.iotdb.consensus.common.Endpoint;
-import org.apache.iotdb.consensus.common.GroupType;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
@@ -44,6 +44,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -112,10 +113,11 @@ public class RatisConsensusTest {
   private Peer peer0;
   private Peer peer1;
   private Peer peer2;
+  CountDownLatch latch;
 
   @Before
   public void setUp() throws IOException {
-    gid = new ConsensusGroupId(GroupType.DataRegion, 1L);
+    gid = new ConsensusGroupId(GroupType.DataRegion, 1);
     peers = new ArrayList<>();
     peer0 = new Peer(gid, new Endpoint("127.0.0.1", 6000));
     peer1 = new Peer(gid, new Endpoint("127.0.0.1", 6001));
@@ -165,7 +167,9 @@ public class RatisConsensusTest {
     doConsensus(servers.get(0), group.getGroupId(), 10, 10);
 
     // 6. Remove two Peers from Group (peer 0 and peer 2)
+    // transfer the leader to peer1
     servers.get(0).transferLeader(gid, peer1);
+    Assert.assertTrue(servers.get(1).isLeader(gid));
     // first use removePeer to inform the group leader of configuration change
     servers.get(1).removePeer(gid, peer0);
     servers.get(1).removePeer(gid, peer2);
@@ -199,8 +203,9 @@ public class RatisConsensusTest {
   private void doConsensus(IConsensus consensus, ConsensusGroupId gid, int count, int target)
       throws Exception {
 
+    latch = new CountDownLatch(count);
     // do write
-    ExecutorService executorService = Executors.newFixedThreadPool(4);
+    ExecutorService executorService = Executors.newFixedThreadPool(2);
     for (int i = 0; i < count; i++) {
       executorService.submit(
           () -> {
@@ -213,23 +218,39 @@ public class RatisConsensusTest {
             if (response.getException() != null) {
               response.getException().printStackTrace(System.out);
             }
-            Assert.assertEquals(response.getStatus(), new TSStatus(200));
+            Assert.assertEquals(response.getStatus().getCode(), 200);
+            latch.countDown();
           });
     }
 
     executorService.shutdown();
-    executorService.awaitTermination(count * 500L, TimeUnit.MILLISECONDS);
+
+    // wait at most 60s for write to complete, otherwise fail the test
+    Assert.assertTrue(latch.await(60, TimeUnit.SECONDS));
 
     ByteBuffer get = ByteBuffer.allocate(4);
     get.putInt(2);
     get.flip();
     ByteBufferConsensusRequest getReq = new ByteBufferConsensusRequest(get);
 
-    // Sleep Long enough to followers to catch up with the leader
-    Thread.sleep(1000);
+    // wait at most 60s to discover a valid leader
+    long start = System.currentTimeMillis();
+    IConsensus leader = null;
+    while (leader == null) {
+      long current = System.currentTimeMillis();
+      if ((current - start) > 60 * 1000 * 1000) {
+        break;
+      }
+      for (int i = 0; i < 3; i++) {
+        if (servers.get(i).isLeader(gid)) {
+          leader = servers.get(i);
+        }
+      }
+    }
+    Assert.assertNotNull(leader);
 
     // Check we reached a consensus
-    ConsensusReadResponse response = consensus.read(gid, getReq);
+    ConsensusReadResponse response = leader.read(gid, getReq);
     TestDataSet result = (TestDataSet) response.getDataset();
     Assert.assertEquals(target, result.getNumber());
   }

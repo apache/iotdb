@@ -18,39 +18,24 @@
  */
 package org.apache.iotdb.confignode.partition;
 
+import org.apache.iotdb.confignode.util.SerializeDeserializeUtil;
+
+import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class SchemaPartitionInfo {
+public class SchemaRegionInfo {
 
-  // TODO: Serialize and Deserialize
-  // Map<StorageGroup, Map<DeviceGroupID, SchemaRegionID>>
-  private final Map<String, Map<Integer, Integer>> schemaPartitionTable;
   // TODO: Serialize and Deserialize
   // Map<SchemaRegionID, List<DataNodeID>>
-  private final Map<Integer, List<Integer>> schemaRegionDataNodesMap;
+  private Map<Integer, List<Integer>> schemaRegionDataNodesMap;
 
-  public SchemaPartitionInfo() {
-    this.schemaPartitionTable = new HashMap<>();
+  public SchemaRegionInfo() {
     this.schemaRegionDataNodesMap = new HashMap<>();
   }
 
-  public void createSchemaPartition(String storageGroup, int deviceGroup, int schemaRegion) {
-    if (!schemaPartitionTable.containsKey(storageGroup)) {
-      schemaPartitionTable.put(storageGroup, new HashMap<>());
-    }
-    schemaPartitionTable.get(storageGroup).put(deviceGroup, schemaRegion);
-  }
-
-  public Integer getSchemaPartition(String storageGroup, int deviceGroup) {
-    if (schemaPartitionTable.containsKey(storageGroup)) {
-      return schemaPartitionTable.get(storageGroup).get(deviceGroup);
-    }
-    return null;
-  }
-
-  public void createSchemaRegion(int schemaRegion, List<Integer> dataNode) {
+  public void addSchemaRegion(int schemaRegion, List<Integer> dataNode) {
     if (!schemaRegionDataNodesMap.containsKey(schemaRegion)) {
       schemaRegionDataNodesMap.put(schemaRegion, dataNode);
     }
@@ -58,5 +43,17 @@ public class SchemaPartitionInfo {
 
   public List<Integer> getSchemaRegionLocation(int schemaRegionGroup) {
     return schemaRegionDataNodesMap.get(schemaRegionGroup);
+  }
+
+  public Map<Integer, List<Integer>> getSchemaRegionDataNodesMap() {
+    return schemaRegionDataNodesMap;
+  }
+
+  public void serializeImpl(ByteBuffer buffer) {
+    SerializeDeserializeUtil.writeIntMapLists(schemaRegionDataNodesMap, buffer);
+  }
+
+  public void deserializeImpl(ByteBuffer buffer) {
+    schemaRegionDataNodesMap = SerializeDeserializeUtil.readIntMapLists(buffer);
   }
 }
