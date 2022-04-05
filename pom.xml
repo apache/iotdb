@@ -109,7 +109,6 @@
         <module>client-cpp</module>
         <module>metrics</module>
         <module>integration</module>
-        <!--        <module>testcontainere</module>-->
         <!--        <module>library-udf</module>-->
     </modules>
     <!-- Properties Management -->
@@ -578,7 +577,7 @@
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>testcontainers</artifactId>
-            <version>1.15.3</version>
+            <version>1.15.2</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

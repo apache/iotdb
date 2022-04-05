@@ -41,12 +41,6 @@
     <dependencies>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
-            <artifactId>tsfile</artifactId>
-            <version>${project.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-jdbc</artifactId>
             <version>${project.version}</version>
             <scope>test</scope>
