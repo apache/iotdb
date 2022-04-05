@@ -876,6 +876,7 @@ var config = {
 							['API/Programming-MQTT','MQTT'],
 							['API/RestService','REST API'],
 							['API/Programming-TsFile-API','TsFile API'],
+							['API/InfluxDB-Protocol','InfluxDB Protocol'],
 							['API/Status-Codes','Status Codes']
 						]
 					},

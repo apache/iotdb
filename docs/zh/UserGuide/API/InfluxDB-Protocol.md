@@ -37,7 +37,7 @@ InfluxDB influxDB = IoTDBInfluxDBFactory.connect(openurl, username, password);
 
 ### 2.1 InfluxDB-Protocol适配器
 
-该适配器以 IoTDB Java Session 接口为底层基础，实现了 InfluxDB 的 Java 接口 `interface InfluxDB`，对用户提供了所有 InfluxDB 的接口方法，最终用户可以无感知地使用 InfluxDB 协议向 IoTDB 发起写入和读取请求。
+该适配器以 IoTDB Java ServiceProvider 接口为底层基础，实现了 InfluxDB 的 Java 接口 `interface InfluxDB`，对用户提供了所有 InfluxDB 的接口方法，最终用户可以无感知地使用 InfluxDB 协议向 IoTDB 发起写入和读取请求。
 
 ![architecture-design](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/API/IoTDB-InfluxDB/architecture-design.png?raw=true)
 
@@ -117,7 +117,7 @@ storage group 和 measurement 之间的每一层都代表一个 tag。如果 tag
 
 **tag key 对应顺序关系的持久化方案**
 
-存储组为`root.TAG_INFO`，分别用存储组下的 `database_name`, `measurement_name`, `tag_name` 和 `tag_order` 测点来存储 tag key 极其对应的顺序关系。
+存储组为`root.TAG_INFO`，分别用存储组下的 `database_name`, `measurement_name`, `tag_name` 和 `tag_order` 测点来存储 tag key及其对应的顺序关系。
 
 ```
 +-----------------------------+---------------------------+------------------------------+----------------------+-----------------------+
