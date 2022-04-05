@@ -35,6 +35,8 @@
         <docker.clean.single.argument>image rm apache/iotdb:maven-development</docker.clean.single.argument>
         <docker.build.cluster.argument>build -t apache/iotdb:cluster-maven-development -f ${basedir}/../docker/src/main/Dockerfile-cluster ${basedir}/../.</docker.build.cluster.argument>
         <docker.clean.cluster.argument>image rm apache/iotdb:cluster-maven-development</docker.clean.cluster.argument>
+        <docker.build.sync.argument>build -t apache/iotdb:sync-maven-development -f ${basedir}/../docker/src/main/Dockerfile-single-tc ${basedir}/../.</docker.build.sync.argument>
+        <docker.clean.sync.argument>image rm apache/iotdb:sync-maven-development</docker.clean.sync.argument>
     </properties>
     <dependencies>
         <dependency>
@@ -107,6 +109,18 @@
                                 </configuration>
                             </execution>
                             <execution>
+                                <id>build-sync-docker-image</id>
+                                <phase>pre-integration-test</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <skip>${docker.test.skip}</skip>
+                                    <executable>${docker.build.executable}</executable>
+                                    <commandlineArgs>${docker.build.sync.argument}</commandlineArgs>
+                                </configuration>
+                            </execution>
+                            <execution>
                                 <id>clean-docker-image</id>
                                 <phase>post-integration-test</phase>
                                 <goals>
@@ -128,6 +142,18 @@
                                     <skip>${docker.test.skip}</skip>
                                     <executable>${docker.build.executable}</executable>
                                     <commandlineArgs>${docker.clean.cluster.argument}</commandlineArgs>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>clean-sync-docker-image</id>
+                                <phase>post-integration-test</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <skip>${docker.test.skip}</skip>
+                                    <executable>${docker.build.executable}</executable>
+                                    <commandlineArgs>${docker.clean.sync.argument}</commandlineArgs>
                                 </configuration>
                             </execution>
                         </executions>

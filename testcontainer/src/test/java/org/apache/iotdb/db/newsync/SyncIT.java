@@ -38,6 +38,7 @@ import static org.junit.Assert.assertEquals;
 public class SyncIT {
   private static Logger receiverLogger = LoggerFactory.getLogger("iotdb-receiver_1");
   private static Logger senderLogger = LoggerFactory.getLogger("iotdb-sender_1");
+  private static int RETRY_TIME = 10;
 
   protected Statement senderStatement;
   protected Connection senderConnection;
@@ -159,6 +160,7 @@ public class SyncIT {
     senderStatement.execute("drop pipe p");
   }
 
+  // check result in 1min
   private void checkResult() throws Exception {
     String[] columnNames =
         new String[] {
@@ -210,8 +212,6 @@ public class SyncIT {
       prepareIns3();
       preparePipe();
       startPipe();
-      // TODO: 模拟弱网环境，这里改为限时轮询
-      Thread.sleep(1000L);
       checkResult();
     } catch (Exception e) {
       e.printStackTrace();
@@ -228,8 +228,6 @@ public class SyncIT {
       preparePipe();
       startPipe();
       prepareIns3();
-      // TODO: 模拟弱网环境，这里改为限时轮询
-      Thread.sleep(1000L);
       checkResult();
     } catch (Exception e) {
       e.printStackTrace();
@@ -248,8 +246,6 @@ public class SyncIT {
       stopPipe();
       prepareIns3();
       startPipe();
-      // TODO: 模拟弱网环境，这里改为限时轮询
-      Thread.sleep(1000L);
       checkResult();
     } catch (Exception e) {
       e.printStackTrace();
@@ -259,7 +255,8 @@ public class SyncIT {
 
   /**
    * Execute sql in IoTDB and compare resultSet with expected result. This method only check columns
-   * that is explicitly declared in columnNames.
+   * that is explicitly declared in columnNames. This method will compare expected result with
+   * actual result RETRY_TIME times. Interval of each run is 1000ms.
    *
    * @param statement Statement of IoTDB.
    * @param sql SQL to be executed.
@@ -275,30 +272,51 @@ public class SyncIT {
       String[] retArray,
       boolean hasTimeColumn)
       throws Exception {
-    boolean hasResultSet = statement.execute(sql);
-    Assert.assertTrue(hasResultSet);
-    ResultSet resultSet = statement.getResultSet();
-    ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-    Map<String, Integer> map = new HashMap<>();
-    for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-      map.put(resultSetMetaData.getColumnName(i), i);
+    loop:
+    for (int loop = 0; loop < RETRY_TIME; loop++) {
+      Thread.sleep(1000);
+      boolean hasResultSet = statement.execute(sql);
+      if (!assertOrCompareEqual(true, hasResultSet, loop)) {
+        continue;
+      }
+      ResultSet resultSet = statement.getResultSet();
+      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+      Map<String, Integer> map = new HashMap<>();
+      for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+        map.put(resultSetMetaData.getColumnName(i), i);
+      }
+      int cnt = 0;
+      while (resultSet.next()) {
+        StringBuilder builder = new StringBuilder();
+        if (hasTimeColumn) {
+          builder.append(resultSet.getString(1)).append(",");
+        }
+        for (String columnName : columnNames) {
+          int index = map.get(columnName);
+          builder.append(resultSet.getString(index)).append(",");
+        }
+        if (builder.length() > 0) {
+          builder.deleteCharAt(builder.length() - 1);
+        }
+        if (!assertOrCompareEqual(retArray[cnt], builder.toString(), loop)) {
+          continue loop;
+        }
+        cnt++;
+      }
+      if (!assertOrCompareEqual(retArray.length, cnt, loop)) {
+        continue;
+      }
+      return;
     }
-    int cnt = 0;
-    while (resultSet.next()) {
-      StringBuilder builder = new StringBuilder();
-      if (hasTimeColumn) {
-        builder.append(resultSet.getString(1)).append(",");
-      }
-      for (String columnName : columnNames) {
-        int index = map.get(columnName);
-        builder.append(resultSet.getString(index)).append(",");
-      }
-      if (builder.length() > 0) {
-        builder.deleteCharAt(builder.length() - 1);
-      }
-      assertEquals(retArray[cnt], builder.toString());
-      cnt++;
+    Assert.fail();
+  }
+
+  private static boolean assertOrCompareEqual(Object expected, Object actual, int loop) {
+    if (loop == RETRY_TIME - 1) {
+      assertEquals(expected, actual);
+      return true;
+    } else {
+      return expected.equals(actual);
     }
-    assertEquals(retArray.length, cnt);
   }
 }
