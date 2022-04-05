@@ -16,29 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.partition;
-
-import org.apache.iotdb.commons.cluster.Endpoint;
+package org.apache.iotdb.commons.cluster;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
 
 public class DataNodeLocation {
 
   private int dataNodeID;
   private Endpoint endPoint;
 
-  private List<Integer> schemaRegionGroupIDs;
-  private List<Integer> dataRegionGroupIDs;
-
   public DataNodeLocation() {}
 
   public DataNodeLocation(int dataNodeID, Endpoint endPoint) {
     this.dataNodeID = dataNodeID;
     this.endPoint = endPoint;
-    dataRegionGroupIDs = new ArrayList<>();
-    schemaRegionGroupIDs = new ArrayList<>();
   }
 
   public int getDataNodeID() {
@@ -51,22 +42,6 @@ public class DataNodeLocation {
 
   public Endpoint getEndPoint() {
     return endPoint;
-  }
-
-  public void addSchemaRegionGroup(int id) {
-    schemaRegionGroupIDs.add(id);
-  }
-
-  public List<Integer> getSchemaRegionGroupIDs() {
-    return schemaRegionGroupIDs;
-  }
-
-  public void addDataRegionGroup(int id) {
-    dataRegionGroupIDs.add(id);
-  }
-
-  public List<Integer> getDataRegionGroupIDs() {
-    return dataRegionGroupIDs;
   }
 
   public void serializeImpl(ByteBuffer buffer) {

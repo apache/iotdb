@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.confignode.consensus.response;
 
-import org.apache.iotdb.commons.partition.DataNodeLocation;
+import org.apache.iotdb.commons.cluster.DataNodeLocation;
 import org.apache.iotdb.consensus.common.DataSet;
 
 import java.util.List;
