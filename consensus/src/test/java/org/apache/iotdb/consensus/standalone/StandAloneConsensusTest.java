@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.GroupType;
 import org.apache.iotdb.consensus.IConsensus;
+import org.apache.iotdb.consensus.IConsensusFactory;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
@@ -40,6 +41,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.File;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collections;
@@ -52,6 +54,8 @@ import static org.junit.Assert.assertTrue;
 
 public class StandAloneConsensusTest {
 
+  private static final String STANDALONE_CONSENSUS_CLASS_NAME =
+      "org.apache.iotdb.consensus.standalone.StandAloneConsensus";
   private IConsensus consensusImpl;
   private final TestEntry entry1 = new TestEntry(0);
   private final ByteBufferConsensusRequest entry2 =
@@ -108,16 +112,25 @@ public class StandAloneConsensusTest {
   @Before
   public void setUp() throws Exception {
     consensusImpl =
-        new StandAloneConsensus(
-            gid -> {
-              switch (gid.getType()) {
-                case SchemaRegion:
-                  return new TestStateMachine(true);
-                case DataRegion:
-                  return new TestStateMachine(false);
-              }
-              return new EmptyStateMachine();
-            });
+        IConsensusFactory.getConsensusImpl(
+                STANDALONE_CONSENSUS_CLASS_NAME,
+                new Endpoint("localhost", 6667),
+                new File("./"),
+                gid -> {
+                  switch (gid.getType()) {
+                    case SchemaRegion:
+                      return new TestStateMachine(true);
+                    case DataRegion:
+                      return new TestStateMachine(false);
+                  }
+                  return new EmptyStateMachine();
+                })
+            .orElseThrow(
+                () ->
+                    new IllegalArgumentException(
+                        String.format(
+                            IConsensusFactory.CONSTRUCT_FAILED_MSG,
+                            STANDALONE_CONSENSUS_CLASS_NAME)));
     consensusImpl.start();
   }
 

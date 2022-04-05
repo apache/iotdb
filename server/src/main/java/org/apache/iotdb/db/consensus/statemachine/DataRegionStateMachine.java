@@ -39,13 +39,13 @@ public class DataRegionStateMachine extends BaseStateMachine {
 
   @Override
   protected TSStatus write(FragmentInstance fragmentInstance) {
-    logger.info("Execute write plan in DataRegionStateMachine : {}", fragmentInstance);
+    logger.info("Execute write plan in DataRegionStateMachine");
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   @Override
   protected DataSet read(FragmentInstance fragmentInstance) {
-    logger.info("Execute read plan in DataRegionStateMachine: {}", fragmentInstance);
+    logger.info("Execute read plan in DataRegionStateMachine");
     return null;
   }
 }

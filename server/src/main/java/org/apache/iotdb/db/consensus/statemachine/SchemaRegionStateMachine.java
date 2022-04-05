@@ -39,13 +39,13 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
 
   @Override
   protected TSStatus write(FragmentInstance fragmentInstance) {
-    logger.info("Execute write plan in SchemaRegionStateMachine : {}", fragmentInstance);
+    logger.info("Execute write plan in SchemaRegionStateMachine");
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   @Override
   protected DataSet read(FragmentInstance fragmentInstance) {
-    logger.info("Execute read plan in SchemaRegionStateMachine: {}", fragmentInstance);
+    logger.info("Execute read plan in SchemaRegionStateMachine");
     return null;
   }
 }

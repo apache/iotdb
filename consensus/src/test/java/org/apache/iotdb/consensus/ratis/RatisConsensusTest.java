@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.GroupType;
 import org.apache.iotdb.consensus.IConsensus;
+import org.apache.iotdb.consensus.IConsensusFactory;
 import org.apache.iotdb.consensus.common.ConsensusGroup;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
@@ -52,6 +53,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class RatisConsensusTest {
 
+  private static final String RATIS_CLASS_NAME = "org.apache.iotdb.consensus.ratis.RatisConsensus";
+
   private static class TestDataSet implements DataSet {
     private int number;
 
@@ -65,7 +68,7 @@ public class RatisConsensusTest {
   }
 
   private static class TestRequest {
-    private int cmd;
+    private final int cmd;
 
     public TestRequest(ByteBuffer buffer) {
       cmd = buffer.getInt();
@@ -136,11 +139,16 @@ public class RatisConsensusTest {
     servers = new ArrayList<>();
     for (int i = 0; i < 3; i++) {
       servers.add(
-          RatisConsensus.newBuilder()
-              .setEndpoint(peers.get(i).getEndpoint())
-              .setStateMachineRegistry(groupId -> new IntegerCounter())
-              .setStorageDir(peersStorage.get(i))
-              .build());
+          IConsensusFactory.getConsensusImpl(
+                  RATIS_CLASS_NAME,
+                  peers.get(i).getEndpoint(),
+                  peersStorage.get(i),
+                  groupId -> new IntegerCounter())
+              .orElseThrow(
+                  () ->
+                      new IllegalArgumentException(
+                          String.format(
+                              IConsensusFactory.CONSTRUCT_FAILED_MSG, RATIS_CLASS_NAME))));
       servers.get(i).start();
     }
   }

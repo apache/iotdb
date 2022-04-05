@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.metadata.schemaregion;
 
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.db.consensus.statemachine.SchemaRegionStateMachine;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -32,6 +33,9 @@ import java.util.concurrent.ConcurrentHashMap;
 public class SchemaEngine {
 
   private Map<ConsensusGroupId, SchemaRegion> schemaRegionMap;
+
+  private final Map<ConsensusGroupId, SchemaRegionStateMachine> stateMachineMap =
+      new ConcurrentHashMap<>();
 
   private static class SchemaEngineManagerHolder {
     private static final SchemaEngine INSTANCE = new SchemaEngine();
@@ -58,6 +62,10 @@ public class SchemaEngine {
 
   public SchemaRegion getSchemaRegion(ConsensusGroupId schemaRegionId) {
     return schemaRegionMap.get(schemaRegionId);
+  }
+
+  public SchemaRegionStateMachine getOrCreateDataRegionStateMachine(ConsensusGroupId gid) {
+    return stateMachineMap.computeIfAbsent(gid, id -> new SchemaRegionStateMachine());
   }
 
   public Collection<SchemaRegion> getAllSchemaRegions() {

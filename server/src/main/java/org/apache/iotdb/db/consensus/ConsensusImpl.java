@@ -1,0 +1,67 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.db.consensus;
+
+import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.consensus.IConsensus;
+import org.apache.iotdb.consensus.IConsensusFactory;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
+
+import java.io.File;
+
+public class ConsensusImpl {
+
+  private ConsensusImpl() {}
+
+  public IConsensus getInstance() {
+    return ConsensusImplHolder.INSTANCE;
+  }
+
+  private static class ConsensusImplHolder {
+
+    private static final IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
+    private static final IConsensus INSTANCE =
+        IConsensusFactory.getConsensusImpl(
+                conf.getConsensusProtocolClass(),
+                new Endpoint(conf.getInternalIp(), conf.getConsensusPort()),
+                new File(conf.getConsensusDir()),
+                gid -> {
+                  switch (gid.getType()) {
+                    case SchemaRegion:
+                      return SchemaEngine.getInstance().getOrCreateDataRegionStateMachine(gid);
+                    case DataRegion:
+                      return StorageEngine.getInstance().getOrCreateDataRegionStateMachine(gid);
+                  }
+                  throw new IllegalArgumentException(
+                      String.format("Unexpected consensusGroup %s", gid));
+                })
+            .orElseThrow(
+                () ->
+                    new IllegalArgumentException(
+                        String.format(
+                            IConsensusFactory.CONSTRUCT_FAILED_MSG,
+                            conf.getConsensusProtocolClass())));
+
+    private ConsensusImplHolder() {}
+  }
+}

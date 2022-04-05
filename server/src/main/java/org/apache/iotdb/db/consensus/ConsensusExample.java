@@ -23,10 +23,9 @@ import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.GroupType;
 import org.apache.iotdb.consensus.IConsensus;
+import org.apache.iotdb.consensus.IConsensusFactory;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
-import org.apache.iotdb.consensus.standalone.StandAloneConsensus;
-import org.apache.iotdb.consensus.statemachine.EmptyStateMachine;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.statemachine.DataRegionStateMachine;
 import org.apache.iotdb.db.consensus.statemachine.SchemaRegionStateMachine;
@@ -35,6 +34,7 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Collections;
@@ -43,16 +43,22 @@ public class ConsensusExample {
 
   public static void main(String[] args) throws IllegalPathException, IOException {
     IConsensus consensusImpl =
-        new StandAloneConsensus(
-            id -> {
-              switch (id.getType()) {
-                case SchemaRegion:
-                  return new SchemaRegionStateMachine();
-                case DataRegion:
-                  return new DataRegionStateMachine();
-              }
-              return new EmptyStateMachine();
-            });
+        IConsensusFactory.getConsensusImpl(
+                "org.apache.iotdb.consensus.standalone.StandAloneConsensus",
+                new Endpoint("localhost", 6667),
+                new File("./"),
+                gid -> {
+                  switch (gid.getType()) {
+                    case SchemaRegion:
+                      return new SchemaRegionStateMachine();
+                    case DataRegion:
+                      return new DataRegionStateMachine();
+                  }
+                  throw new IllegalArgumentException(
+                      String.format("Unexpected consensusGroup %s", gid));
+                })
+            .orElseThrow(
+                () -> new IllegalArgumentException(IConsensusFactory.CONSTRUCT_FAILED_MSG));
     consensusImpl.start();
     InsertRowPlan plan = getInsertRowPlan();
 
