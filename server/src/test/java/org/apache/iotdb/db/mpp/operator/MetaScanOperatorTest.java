@@ -18,12 +18,26 @@
  */
 package org.apache.iotdb.db.mpp.operator;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import org.apache.commons.lang.StringUtils;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_ATTRIBUTES;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_STORAGE_GROUP;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TAGS;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_ALIAS;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_DATATYPE;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_ENCODING;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.GroupType;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
@@ -37,32 +51,17 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-
-import org.apache.commons.lang.StringUtils;
 import org.junit.After;
 import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_ATTRIBUTES;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_STORAGE_GROUP;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TAGS;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_ALIAS;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_DATATYPE;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_ENCODING;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import org.junit.Before;
+import org.junit.Test;
 
 public class MetaScanOperatorTest {
   private static final String META_SCAN_OPERATOR_TEST_SG = "root.MetaScanOperatorTest";
@@ -110,7 +109,7 @@ public class MetaScanOperatorTest {
               new ConsensusGroupId(GroupType.SchemaRegion, 0),
               10,
               0,
-              measurementPath,
+              new PartialPath(META_SCAN_OPERATOR_TEST_SG + ".device0.*"),
               null,
               null,
               false,
@@ -121,15 +120,16 @@ public class MetaScanOperatorTest {
         TsBlock tsBlock = timeSeriesMetaScanOperator.next();
         assertEquals(8, tsBlock.getValueColumnCount());
         assertTrue(tsBlock.getColumn(0) instanceof BinaryColumn);
-        assertEquals(1, tsBlock.getPositionCount());
+        assertEquals(10, tsBlock.getPositionCount());
         for (int i = 0; i < tsBlock.getPositionCount(); i++) {
           Assert.assertEquals(0, tsBlock.getTimeByIndex(i));
           for (int j = 0; j < columns.size(); j++) {
-            Binary binary = tsBlock.getColumn(j).getBinary(i);
+            Binary binary =
+                tsBlock.getColumn(j).isNull(i) ? null : tsBlock.getColumn(j).getBinary(i);
             String value = binary == null ? "null" : binary.toString();
             switch (j) {
               case 0:
-                assertEquals(measurementPath.getFullPath(), value);
+                Assert.assertTrue(value.startsWith(META_SCAN_OPERATOR_TEST_SG + ".device0"));
                 break;
               case 1:
                 assertEquals("null", value);
@@ -159,5 +159,19 @@ public class MetaScanOperatorTest {
       e.printStackTrace();
       fail();
     }
+  }
+
+  @Test
+  public void testTsBlock() {
+    TsBlockBuilder tsBlockBuilder =
+        new TsBlockBuilder(Arrays.asList(TSDataType.TEXT, TSDataType.INT32));
+    for (int i = 0; i < 2; i++) {
+      tsBlockBuilder.getTimeColumnBuilder().writeLong(i);
+      tsBlockBuilder.getColumnBuilder(0).appendNull();
+      tsBlockBuilder.getColumnBuilder(1).writeInt(i);
+      tsBlockBuilder.declarePosition();
+    }
+    TsBlock tsBlock = tsBlockBuilder.build();
+    System.out.println(tsBlock.getColumn(0).isNull(0));
   }
 }
