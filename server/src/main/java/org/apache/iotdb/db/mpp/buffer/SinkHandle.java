@@ -36,8 +36,10 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.LinkedList;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map.Entry;
 import java.util.StringJoiner;
 import java.util.concurrent.ExecutorService;
 
@@ -60,11 +62,13 @@ public class SinkHandle implements ISinkHandle {
   private final TsBlockSerde serde;
   private final SinkHandleListener sinkHandleListener;
 
-  // TODO: a better data structure to hold tsblocks
-  private final List<TsBlock> bufferedTsBlocks = new LinkedList<>();
+  // Use LinkedHashMap to meet 2 needs,
+  //   1. Predictable iteration order so that removing buffered tsblocks can be efficient.
+  //   2. Fast lookup.
+  private final LinkedHashMap<Integer, TsBlock> sequenceIdToTsBlock = new LinkedHashMap<>();
 
   private volatile ListenableFuture<Void> blocked = immediateFuture(null);
-  private NewDataBlockEvent savedNewDataBlockEvent;
+  private int nextSequenceId = 0;
   private int numOfBufferedTsBlocks = 0;
   private long bufferRetainedSizeInBytes;
   private boolean closed;
@@ -124,23 +128,25 @@ public class SinkHandle implements ISinkHandle {
     for (TsBlock tsBlock : tsBlocks) {
       retainedSizeInBytes += tsBlock.getRetainedSizeInBytes();
     }
-    int currentEndSequenceId;
+    int startSequenceId;
     List<Long> tsBlockSizes = new ArrayList<>();
     synchronized (this) {
-      currentEndSequenceId = bufferedTsBlocks.size();
+      startSequenceId = nextSequenceId;
       blocked =
           localMemoryManager
               .getQueryPool()
               .reserve(localFragmentInstanceId.getQueryId(), retainedSizeInBytes);
       bufferRetainedSizeInBytes += retainedSizeInBytes;
-      bufferedTsBlocks.addAll(tsBlocks);
+      for (TsBlock tsBlock : tsBlocks) {
+        sequenceIdToTsBlock.put(nextSequenceId, tsBlock);
+        nextSequenceId += 1;
+      }
       numOfBufferedTsBlocks += tsBlocks.size();
-      for (int i = currentEndSequenceId; i < currentEndSequenceId + tsBlocks.size(); i++) {
-        tsBlockSizes.add(bufferedTsBlocks.get(i).getRetainedSizeInBytes());
+      for (int i = startSequenceId; i < nextSequenceId; i++) {
+        tsBlockSizes.add(sequenceIdToTsBlock.get(i).getRetainedSizeInBytes());
       }
     }
-
-    submitSendNewDataBlockEventTask(currentEndSequenceId, tsBlockSizes);
+    submitSendNewDataBlockEventTask(startSequenceId, tsBlockSizes);
   }
 
   @Override
@@ -159,7 +165,7 @@ public class SinkHandle implements ISinkHandle {
             remoteFragmentInstanceId,
             remoteOperatorId,
             localFragmentInstanceId,
-            bufferedTsBlocks.size() - 1);
+            nextSequenceId - 1);
     while (attempt < MAX_ATTEMPT_TIMES) {
       attempt += 1;
       try {
@@ -205,7 +211,7 @@ public class SinkHandle implements ISinkHandle {
   public void abort() {
     logger.info("Sink handle {} is being aborted.", this);
     synchronized (this) {
-      bufferedTsBlocks.clear();
+      sequenceIdToTsBlock.clear();
       numOfBufferedTsBlocks = 0;
       closed = true;
       localMemoryManager
@@ -248,22 +254,35 @@ public class SinkHandle implements ISinkHandle {
 
   ByteBuffer getSerializedTsBlock(int sequenceId) {
     TsBlock tsBlock;
+    tsBlock = sequenceIdToTsBlock.get(sequenceId);
+    if (tsBlock == null) {
+      throw new IllegalStateException("The data block doesn't exist. Sequence ID: " + sequenceId);
+    }
+    return serde.serialized(tsBlock);
+  }
+
+  void acknowledgeTsBlock(int startSequenceId, int endSequenceId) {
+    long freedBytes = 0L;
     synchronized (this) {
-      tsBlock = bufferedTsBlocks.get(sequenceId);
-      if (tsBlock == null) {
-        throw new IllegalStateException("The data block doesn't exist. Sequence ID: " + sequenceId);
+      Iterator<Entry<Integer, TsBlock>> iterator = sequenceIdToTsBlock.entrySet().iterator();
+      while (iterator.hasNext()) {
+        Entry<Integer, TsBlock> entry = iterator.next();
+        if (entry.getKey() < startSequenceId) {
+          continue;
+        }
+        if (entry.getKey() >= endSequenceId) {
+          break;
+        }
+        freedBytes += entry.getValue().getRetainedSizeInBytes();
+        numOfBufferedTsBlocks -= 1;
+        bufferRetainedSizeInBytes -= entry.getValue().getRetainedSizeInBytes();
+        iterator.remove();
       }
-      bufferedTsBlocks.set(sequenceId, null);
-      numOfBufferedTsBlocks -= 1;
-      localMemoryManager
-          .getQueryPool()
-          .free(localFragmentInstanceId.getQueryId(), tsBlock.getRetainedSizeInBytes());
-      bufferRetainedSizeInBytes -= tsBlock.getRetainedSizeInBytes();
     }
     if (isFinished()) {
       sinkHandleListener.onFinish(this);
     }
-    return serde.serialized(tsBlock);
+    localMemoryManager.getQueryPool().free(localFragmentInstanceId.getQueryId(), freedBytes);
   }
 
   String getRemoteHostname() {
@@ -337,7 +356,9 @@ public class SinkHandle implements ISinkHandle {
               e.getMessage(),
               attempt);
           if (attempt == MAX_ATTEMPT_TIMES) {
-            throwable = e;
+            synchronized (this) {
+              throwable = e;
+            }
           }
         }
       }

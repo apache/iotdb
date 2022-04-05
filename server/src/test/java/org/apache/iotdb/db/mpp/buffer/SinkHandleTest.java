@@ -115,7 +115,7 @@ public class SinkHandleTest {
                   e ->
                       remoteFragmentInstanceId.equals(e.getTargetFragmentInstanceId())
                           && remoteOperatorId.equals(e.getTargetOperatorId())
-                          && localFragmentInstanceId.equals(e.getSourceFragnemtInstanceId())
+                          && localFragmentInstanceId.equals(e.getSourceFragmentInstanceId())
                           && e.getStartSequenceId() == 0
                           && e.getBlockSizes().size() == numOfMockTsBlock));
     } catch (InterruptedException | TException e) {
@@ -127,17 +127,18 @@ public class SinkHandleTest {
     for (int i = 0; i < numOfMockTsBlock; i++) {
       sinkHandle.getSerializedTsBlock(i);
       Assert.assertTrue(sinkHandle.isFull().isDone());
-      if (i < numOfMockTsBlock - 1) {
-        Assert.assertFalse(sinkHandle.isFinished());
-      } else {
-        Assert.assertTrue(sinkHandle.isFinished());
-      }
-      Assert.assertFalse(sinkHandle.isClosed());
-      Assert.assertEquals(
-          mockTsBlockSize * (numOfMockTsBlock - 1 - i), sinkHandle.getBufferRetainedSizeInBytes());
     }
-    Mockito.verify(mockMemoryPool, Mockito.times(numOfMockTsBlock)).free(queryId, mockTsBlockSize);
+    Assert.assertFalse(sinkHandle.isFinished());
+
+    // Ack tsblocks.
+    sinkHandle.acknowledgeTsBlock(0, numOfMockTsBlock);
+    Assert.assertTrue(sinkHandle.isFull().isDone());
     Assert.assertTrue(sinkHandle.isFinished());
+    Assert.assertFalse(sinkHandle.isClosed());
+    Assert.assertEquals(0L, sinkHandle.getBufferRetainedSizeInBytes());
+    Mockito.verify(mockMemoryPool, Mockito.times(1))
+        .free(queryId, numOfMockTsBlock * mockTsBlockSize);
+    Mockito.verify(mockSinkHandleListener, Mockito.times(1)).onFinish(sinkHandle);
 
     // Close the SinkHandle.
     try {
@@ -146,7 +147,6 @@ public class SinkHandleTest {
       e.printStackTrace();
       Assert.fail();
     }
-
     Assert.assertTrue(sinkHandle.isClosed());
     Mockito.verify(mockSinkHandleListener, Mockito.times(1)).onClosed(sinkHandle);
     try {
@@ -157,7 +157,8 @@ public class SinkHandleTest {
                   e ->
                       remoteFragmentInstanceId.equals(e.getTargetFragmentInstanceId())
                           && remoteOperatorId.equals(e.getTargetOperatorId())
-                          && localFragmentInstanceId.equals(e.getSourceFragnemtInstanceId())));
+                          && localFragmentInstanceId.equals(e.getSourceFragmentInstanceId())
+                          && numOfMockTsBlock - 1 == e.getLastSequenceId()));
     } catch (InterruptedException | TException e) {
       e.printStackTrace();
       Assert.fail();
@@ -240,7 +241,7 @@ public class SinkHandleTest {
                   e ->
                       remoteFragmentInstanceId.equals(e.getTargetFragmentInstanceId())
                           && remoteOperatorId.equals(e.getTargetOperatorId())
-                          && localFragmentInstanceId.equals(e.getSourceFragnemtInstanceId())
+                          && localFragmentInstanceId.equals(e.getSourceFragmentInstanceId())
                           && e.getStartSequenceId() == 0
                           && e.getBlockSizes().size() == numOfMockTsBlock));
     } catch (TException | InterruptedException e) {
@@ -251,19 +252,18 @@ public class SinkHandleTest {
     // Get tsblocks.
     for (int i = 0; i < numOfMockTsBlock; i++) {
       sinkHandle.getSerializedTsBlock(i);
-      if (i < numOfMockTsBlock - 1) {
-        Assert.assertFalse(sinkHandle.isFull().isDone());
-      } else {
-        Assert.assertTrue(sinkHandle.isFull().isDone());
-      }
-      Assert.assertFalse(sinkHandle.isFinished());
-      Assert.assertFalse(sinkHandle.isClosed());
-      Assert.assertEquals(
-          mockTsBlockSize * (numOfMockTsBlock - 1 - i), sinkHandle.getBufferRetainedSizeInBytes());
+      Assert.assertFalse(sinkHandle.isFull().isDone());
     }
-    Mockito.verify(mockMemoryPool, Mockito.times(numOfMockTsBlock)).free(queryId, mockTsBlockSize);
+    Assert.assertFalse(sinkHandle.isFinished());
+
+    // Ack tsblocks.
+    sinkHandle.acknowledgeTsBlock(0, numOfMockTsBlock);
     Assert.assertTrue(sinkHandle.isFull().isDone());
     Assert.assertFalse(sinkHandle.isFinished());
+    Assert.assertFalse(sinkHandle.isClosed());
+    Assert.assertEquals(0L, sinkHandle.getBufferRetainedSizeInBytes());
+    Mockito.verify(mockMemoryPool, Mockito.times(1))
+        .free(queryId, numOfMockTsBlock * mockTsBlockSize);
 
     // Send tsblocks.
     try {
@@ -288,7 +288,7 @@ public class SinkHandleTest {
                   e ->
                       remoteFragmentInstanceId.equals(e.getTargetFragmentInstanceId())
                           && remoteOperatorId.equals(e.getTargetOperatorId())
-                          && localFragmentInstanceId.equals(e.getSourceFragnemtInstanceId())
+                          && localFragmentInstanceId.equals(e.getSourceFragmentInstanceId())
                           && e.getStartSequenceId() == numOfMockTsBlock
                           && e.getBlockSizes().size() == numOfMockTsBlock));
     } catch (InterruptedException | TException e) {
@@ -299,7 +299,6 @@ public class SinkHandleTest {
     // Close the SinkHandle.
     sinkHandle.setNoMoreTsBlocks();
     Assert.assertFalse(sinkHandle.isFinished());
-
     try {
       sinkHandle.close();
     } catch (IOException e) {
@@ -308,24 +307,34 @@ public class SinkHandleTest {
     }
     Assert.assertTrue(sinkHandle.isClosed());
     Mockito.verify(mockSinkHandleListener, Mockito.times(1)).onClosed(sinkHandle);
-    Mockito.verify(mockMemoryPool, Mockito.times(numOfMockTsBlock)).free(queryId, mockTsBlockSize);
+    try {
+      Thread.sleep(100L);
+      Mockito.verify(mockClient, Mockito.times(1))
+          .onEndOfDataBlockEvent(
+              Mockito.argThat(
+                  e ->
+                      remoteFragmentInstanceId.equals(e.getTargetFragmentInstanceId())
+                          && remoteOperatorId.equals(e.getTargetOperatorId())
+                          && localFragmentInstanceId.equals(e.getSourceFragmentInstanceId())
+                          && numOfMockTsBlock * 2 - 1 == e.getLastSequenceId()));
+    } catch (InterruptedException | TException e) {
+      e.printStackTrace();
+      Assert.fail();
+    }
 
     // Get tsblocks after the SinkHandle is closed.
     for (int i = numOfMockTsBlock; i < numOfMockTsBlock * 2; i++) {
       sinkHandle.getSerializedTsBlock(i);
-      if (i < numOfMockTsBlock * 2 - 1) {
-        Assert.assertFalse(sinkHandle.isFinished());
-      } else {
-        Assert.assertTrue(sinkHandle.isFinished());
-      }
-      Assert.assertTrue(sinkHandle.isClosed());
-      Assert.assertEquals(
-          mockTsBlockSize * (numOfMockTsBlock * 2 - 1 - i),
-          sinkHandle.getBufferRetainedSizeInBytes());
     }
-    Mockito.verify(mockMemoryPool, Mockito.times(numOfMockTsBlock * 2))
-        .free(queryId, mockTsBlockSize);
+    Assert.assertFalse(sinkHandle.isFinished());
+
+    // Ack tsblocks.
+    sinkHandle.acknowledgeTsBlock(numOfMockTsBlock, numOfMockTsBlock * 2);
     Assert.assertTrue(sinkHandle.isFinished());
+    Assert.assertTrue(sinkHandle.isClosed());
+    Assert.assertEquals(0L, sinkHandle.getBufferRetainedSizeInBytes());
+    Mockito.verify(mockMemoryPool, Mockito.times(2))
+        .free(queryId, numOfMockTsBlock * mockTsBlockSize);
     Mockito.verify(mockSinkHandleListener, Mockito.times(1)).onFinish(sinkHandle);
   }
 
@@ -405,7 +414,7 @@ public class SinkHandleTest {
                   e ->
                       remoteFragmentInstanceId.equals(e.getTargetFragmentInstanceId())
                           && remoteOperatorId.equals(e.getTargetOperatorId())
-                          && localFragmentInstanceId.equals(e.getSourceFragnemtInstanceId())
+                          && localFragmentInstanceId.equals(e.getSourceFragmentInstanceId())
                           && e.getStartSequenceId() == 0
                           && e.getBlockSizes().size() == numOfMockTsBlock));
     } catch (InterruptedException | TException e) {

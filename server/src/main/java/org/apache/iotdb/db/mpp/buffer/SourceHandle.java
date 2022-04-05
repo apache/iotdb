@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.buffer;
 
 import org.apache.iotdb.db.mpp.buffer.DataBlockManager.SourceHandleListener;
 import org.apache.iotdb.db.mpp.memory.LocalMemoryManager;
+import org.apache.iotdb.mpp.rpc.thrift.AcknowledgeDataBlockEvent;
 import org.apache.iotdb.mpp.rpc.thrift.DataBlockService;
 import org.apache.iotdb.mpp.rpc.thrift.GetDataBlockRequest;
 import org.apache.iotdb.mpp.rpc.thrift.GetDataBlockResponse;
@@ -51,6 +52,8 @@ import static com.google.common.util.concurrent.Futures.nonCancellationPropagati
 public class SourceHandle implements ISourceHandle {
 
   private static final Logger logger = LoggerFactory.getLogger(SourceHandle.class);
+
+  public static final int MAX_ATTEMPT_TIMES = 3;
 
   private final String remoteHostname;
   private final TFragmentInstanceId remoteFragmentInstanceId;
@@ -271,34 +274,91 @@ public class SourceHandle implements ISourceHandle {
           remoteFragmentInstanceId,
           localOperatorId,
           localOperatorId);
-      try {
-        GetDataBlockRequest req =
-            new GetDataBlockRequest(remoteFragmentInstanceId, startSequenceId, endSequenceId);
-        GetDataBlockResponse resp = client.getDataBlock(req);
-        List<TsBlock> tsBlocks = new ArrayList<>(resp.getTsBlocks().size());
-        for (ByteBuffer byteBuffer : resp.getTsBlocks()) {
-          TsBlock tsBlock = serde.deserialize(byteBuffer);
-          tsBlocks.add(tsBlock);
-        }
-        synchronized (SourceHandle.this) {
-          if (closed) {
-            return;
+      GetDataBlockRequest req =
+          new GetDataBlockRequest(remoteFragmentInstanceId, startSequenceId, endSequenceId);
+      int attempt = 0;
+      while (attempt < MAX_ATTEMPT_TIMES) {
+        attempt += 1;
+        try {
+          GetDataBlockResponse resp = client.getDataBlock(req);
+          List<TsBlock> tsBlocks = new ArrayList<>(resp.getTsBlocks().size());
+          for (ByteBuffer byteBuffer : resp.getTsBlocks()) {
+            TsBlock tsBlock = serde.deserialize(byteBuffer);
+            tsBlocks.add(tsBlock);
           }
-          bufferedTsBlocks.addAll(tsBlocks);
-          if (!blocked.isDone()) {
-            blocked.set(null);
+          synchronized (SourceHandle.this) {
+            if (closed) {
+              return;
+            }
+            bufferedTsBlocks.addAll(tsBlocks);
+            if (!blocked.isDone()) {
+              blocked.set(null);
+            }
           }
-        }
-      } catch (TException e) {
-        synchronized (SourceHandle.this) {
-          throwable = e;
-          bufferRetainedSizeInBytes -= reservedBytes;
-          localMemoryManager
-              .getQueryPool()
-              .free(localFragmentInstanceId.getQueryId(), reservedBytes);
+          executorService.submit(
+              new SendAcknowledgeDataBlockEventTask(startSequenceId, endSequenceId));
+          break;
+        } catch (TException e) {
+          logger.error(
+              "Failed to get data block from {} due to {}, attempt times: {}",
+              remoteFragmentInstanceId,
+              e.getMessage(),
+              attempt);
+          if (attempt == MAX_ATTEMPT_TIMES) {
+            synchronized (SourceHandle.this) {
+              throwable = e;
+              bufferRetainedSizeInBytes -= reservedBytes;
+              localMemoryManager
+                  .getQueryPool()
+                  .free(localFragmentInstanceId.getQueryId(), reservedBytes);
+            }
+          }
         }
       }
-      // TODO: try submit another GetDataBlocksTask to make the query run faster.
+      // TODO: try to issue another GetDataBlocksTask to make the query run faster.
+    }
+  }
+
+  class SendAcknowledgeDataBlockEventTask implements Runnable {
+
+    private int startSequenceId;
+    private int endSequenceId;
+
+    public SendAcknowledgeDataBlockEventTask(int startSequenceId, int endSequenceId) {
+      this.startSequenceId = startSequenceId;
+      this.endSequenceId = endSequenceId;
+    }
+
+    @Override
+    public void run() {
+      logger.debug(
+          "Send ack data block event [{}, {}) to {}.",
+          startSequenceId,
+          endSequenceId,
+          remoteFragmentInstanceId);
+      int attempt = 0;
+      AcknowledgeDataBlockEvent acknowledgeDataBlockEvent =
+          new AcknowledgeDataBlockEvent(remoteFragmentInstanceId, startSequenceId, endSequenceId);
+      while (attempt < MAX_ATTEMPT_TIMES) {
+        attempt += 1;
+        try {
+          client.onAcknowledgeDataBlockEvent(acknowledgeDataBlockEvent);
+          break;
+        } catch (TException e) {
+          logger.error(
+              "Failed to send ack data block event [{}, {}) to {} due to {}, attempt times: {}",
+              startSequenceId,
+              endSequenceId,
+              remoteFragmentInstanceId,
+              e.getMessage(),
+              attempt);
+          if (attempt == MAX_ATTEMPT_TIMES) {
+            synchronized (this) {
+              throwable = e;
+            }
+          }
+        }
+      }
     }
   }
 }

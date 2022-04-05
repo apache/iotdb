@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.buffer;
 
 import org.apache.iotdb.db.mpp.memory.LocalMemoryManager;
+import org.apache.iotdb.mpp.rpc.thrift.AcknowledgeDataBlockEvent;
 import org.apache.iotdb.mpp.rpc.thrift.DataBlockService;
 import org.apache.iotdb.mpp.rpc.thrift.EndOfDataBlockEvent;
 import org.apache.iotdb.mpp.rpc.thrift.GetDataBlockRequest;
@@ -65,18 +66,18 @@ public class DataBlockManager implements IDataBlockManager {
     @Override
     public GetDataBlockResponse getDataBlock(GetDataBlockRequest req) throws TException {
       logger.debug(
-          "Get data block request received. Asking for data block [{}, {}) from {}.",
+          "Get data block request received, for data blocks whose sequence ID in [{}, {}) from {}.",
           req.getStartSequenceId(),
           req.getEndSequenceId(),
-          req.getSourceFragnemtInstanceId());
-      if (!sinkHandles.containsKey(req.getSourceFragnemtInstanceId())) {
+          req.getSourceFragmentInstanceId());
+      if (!sinkHandles.containsKey(req.getSourceFragmentInstanceId())) {
         throw new TException(
             "Source fragment instance not found. Fragment instance ID: "
-                + req.getSourceFragnemtInstanceId()
+                + req.getSourceFragmentInstanceId()
                 + ".");
       }
       GetDataBlockResponse resp = new GetDataBlockResponse();
-      SinkHandle sinkHandle = sinkHandles.get(req.getSourceFragnemtInstanceId());
+      SinkHandle sinkHandle = sinkHandles.get(req.getSourceFragmentInstanceId());
       for (int i = req.getStartSequenceId(); i < req.getEndSequenceId(); i++) {
         ByteBuffer serializedTsBlock = sinkHandle.getSerializedTsBlock(i);
         resp.addToTsBlocks(serializedTsBlock);
@@ -85,12 +86,30 @@ public class DataBlockManager implements IDataBlockManager {
     }
 
     @Override
+    public void onAcknowledgeDataBlockEvent(AcknowledgeDataBlockEvent e) throws TException {
+      logger.debug(
+          "Acknowledge data block event received, for data blocks whose sequence ID in [{}, {}) from {}.",
+          e.getStartSequenceId(),
+          e.getEndSequenceId(),
+          e.getSourceFragmentInstanceId());
+      if (!sinkHandles.containsKey(e.getSourceFragmentInstanceId())) {
+        throw new TException(
+            "Source fragment instance not found. Fragment instance ID: "
+                + e.getSourceFragmentInstanceId()
+                + ".");
+      }
+      sinkHandles
+          .get(e.getSourceFragmentInstanceId())
+          .acknowledgeTsBlock(e.getStartSequenceId(), e.getEndSequenceId());
+    }
+
+    @Override
     public void onNewDataBlockEvent(NewDataBlockEvent e) throws TException {
       logger.debug(
           "New data block event received, for operator {} of {} from {}.",
           e.getTargetOperatorId(),
           e.getTargetFragmentInstanceId(),
-          e.getSourceFragnemtInstanceId());
+          e.getSourceFragmentInstanceId());
       if (!sourceHandles.containsKey(e.getTargetFragmentInstanceId())
           || !sourceHandles
               .get(e.getTargetFragmentInstanceId())
@@ -116,7 +135,7 @@ public class DataBlockManager implements IDataBlockManager {
           "End of data block event received, for operator {} of {} from {}.",
           e.getTargetOperatorId(),
           e.getTargetFragmentInstanceId(),
-          e.getSourceFragnemtInstanceId());
+          e.getSourceFragmentInstanceId());
       if (!sourceHandles.containsKey(e.getTargetFragmentInstanceId())
           || !sourceHandles
               .get(e.getTargetFragmentInstanceId())
