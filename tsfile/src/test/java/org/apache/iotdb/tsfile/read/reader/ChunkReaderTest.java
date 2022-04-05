@@ -68,7 +68,7 @@ public class ChunkReaderTest {
       Assert.assertTrue(SEQ_DIRS.mkdirs());
     }
     String fileName =
-        System.currentTimeMillis() + FilePathUtils.FILE_NAME_SEPARATOR + "0-0-0.tsfile";
+        System.currentTimeMillis() + FilePathUtils.FILE_NAME_SEPARATOR + "1-0-0.tsfile";
     String filePath = SEQ_DIRS.getPath() + File.separator + fileName;
     file =
         TsFileGeneratorUtils.generateNonAlignedTsFile(
