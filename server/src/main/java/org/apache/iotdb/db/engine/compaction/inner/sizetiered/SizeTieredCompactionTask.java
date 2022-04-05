@@ -130,10 +130,7 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
       InnerSpaceCompactionUtils.combineModsInCompaction(
           selectedTsFileResourceList, targetTsFileResource);
 
-      if (Thread.currentThread().isInterrupted()) {
-        throw new InterruptedException(
-            String.format("%s [Compaction] abort", fullStorageGroupName));
-      }
+      checkInterrupted();
 
       // replace the old files with new file, the new is in same position as the old
       if (sequence) {
@@ -162,6 +159,7 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
         isHoldingReadLock[i] = false;
         selectedTsFileResourceList.get(i).writeLock();
         isHoldingWriteLock[i] = true;
+        checkInterrupted();
       }
 
       if (targetTsFileResource.getTsFile().length()
