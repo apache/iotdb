@@ -146,6 +146,8 @@ public class SinkHandle implements ISinkHandle {
         tsBlockSizes.add(sequenceIdToTsBlock.get(i).getRetainedSizeInBytes());
       }
     }
+
+    // TODO: consider merge multiple NewDataBlockEvent for less network traffic.
     submitSendNewDataBlockEventTask(startSequenceId, tsBlockSizes);
   }
 

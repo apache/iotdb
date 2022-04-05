@@ -20,17 +20,22 @@
 package org.apache.iotdb.db.mpp.buffer;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.IoTThreadFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.exception.runtime.RPCServiceException;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.service.ThriftService;
 import org.apache.iotdb.commons.service.ThriftServiceThread;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.memory.LocalMemoryManager;
 import org.apache.iotdb.mpp.rpc.thrift.DataBlockService.Processor;
 
 import org.apache.commons.lang3.Validate;
 
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 public class DataBlockService extends ThriftService {
 
@@ -50,8 +55,17 @@ public class DataBlockService extends ThriftService {
   @Override
   public void initTProcessor()
       throws ClassNotFoundException, IllegalAccessException, InstantiationException {
+    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     executorService =
-        IoTDBThreadPoolFactory.newCachedThreadPoolWithDaemon("data-block-manager-task-executors");
+        IoTDBThreadPoolFactory.newThreadPool(
+            config.getDataBlockManagerCorePoolSize(),
+            config.getDataBlockManagerMaxPoolSize(),
+            config.getDataBlockManagerKeepAliveTimeInMs(),
+            TimeUnit.MILLISECONDS,
+            // TODO: Use a priority queue.
+            new LinkedBlockingQueue<>(),
+            new IoTThreadFactory("data-block-manager-task-executors"),
+            "data-block-manager-task-executors");
     clientFactory = new DataBlockServiceClientFactory();
     this.dataBlockManager =
         new DataBlockManager(
@@ -75,6 +89,7 @@ public class DataBlockService extends ThriftService {
   public void initThriftServiceThread()
       throws IllegalAccessException, InstantiationException, ClassNotFoundException {
     try {
+      IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
       thriftServiceThread =
           new ThriftServiceThread(
               processor,
@@ -82,9 +97,8 @@ public class DataBlockService extends ThriftService {
               ThreadName.DATA_BLOCK_MANAGER_CLIENT.getName(),
               getBindIP(),
               getBindPort(),
-              // TODO: hard coded maxWorkerThreads & timeoutSecond
-              32,
-              60,
+              config.getRpcMaxConcurrentClientNum(),
+              config.getThriftServerAwaitTimeForStopService(),
               new DataBlockServiceThriftHandler(),
               // TODO: hard coded compress strategy
               true);
@@ -96,14 +110,12 @@ public class DataBlockService extends ThriftService {
 
   @Override
   public String getBindIP() {
-    // TODO: hard coded bind IP.
-    return "0.0.0.0";
+    return IoTDBDescriptor.getInstance().getConfig().getRpcAddress();
   }
 
   @Override
   public int getBindPort() {
-    // TODO: hard coded bind port.
-    return 7777;
+    return IoTDBDescriptor.getInstance().getConfig().getDataBlockManagerPort();
   }
 
   @Override
