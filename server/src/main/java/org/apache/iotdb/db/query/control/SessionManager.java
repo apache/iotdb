@@ -162,6 +162,21 @@ public class SessionManager {
     return SessionTimeoutManager.getInstance().unregister(sessionId);
   }
 
+  /**
+   * Check whether current user has logged in.
+   *
+   * @return true: If logged in; false: If not logged in
+   */
+  public boolean checkLogin(long sessionId) {
+    boolean isLoggedIn = getUsername(sessionId) != null;
+    if (!isLoggedIn) {
+      LOGGER.info("{}: Not login. ", IoTDBConstant.GLOBAL_DB_NAME);
+    } else {
+      SessionTimeoutManager.getInstance().refresh(sessionId);
+    }
+    return isLoggedIn;
+  }
+
   public long requestSessionId(
       String username, String zoneId, IoTDBConstant.ClientVersion clientVersion) {
     long sessionId = sessionIdGenerator.incrementAndGet();
