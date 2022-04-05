@@ -78,6 +78,8 @@ public enum TSEncoding {
         return TSEncoding.RLBE;
       case 12:
         return TSEncoding.TEXTRLE;
+      case 13:
+        return TSEncoding.HUFFMAN;
       default:
         throw new IllegalArgumentException("Invalid input: " + encoding);
     }
