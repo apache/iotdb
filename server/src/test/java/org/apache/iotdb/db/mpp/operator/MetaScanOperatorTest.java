@@ -38,7 +38,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -162,19 +161,5 @@ public class MetaScanOperatorTest {
       e.printStackTrace();
       fail();
     }
-  }
-
-  @Test
-  public void testTsBlock() {
-    TsBlockBuilder tsBlockBuilder =
-        new TsBlockBuilder(Arrays.asList(TSDataType.TEXT, TSDataType.INT32));
-    for (int i = 0; i < 2; i++) {
-      tsBlockBuilder.getTimeColumnBuilder().writeLong(i);
-      tsBlockBuilder.getColumnBuilder(0).appendNull();
-      tsBlockBuilder.getColumnBuilder(1).writeInt(i);
-      tsBlockBuilder.declarePosition();
-    }
-    TsBlock tsBlock = tsBlockBuilder.build();
-    System.out.println(tsBlock.getColumn(0).isNull(0));
   }
 }
