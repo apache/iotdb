@@ -57,7 +57,8 @@ public class SchemaPartitionDataSet implements DataSet {
                   .forEach(
                       replica -> {
                         RegionReplicaSet regionReplicaSet = new RegionReplicaSet();
-                        regionReplicaSet.setRegionId(replica.getValue().getId().getId());
+                        regionReplicaSet.setRegionId(
+                            replica.getValue().getConsensusGroupId().getId());
                         List<EndPoint> endPoints = new ArrayList<>();
                         replica
                             .getValue()

@@ -160,7 +160,7 @@ public class RegionInfoPersistence {
                                   .getEndPoint());
                         }
                       });
-              schemaRegionReplicaSet.setId(
+              schemaRegionReplicaSet.setConsensusGroupId(
                   new ConsensusGroupId(GroupType.SchemaRegion, entity.getKey()));
               // TODO: (xingtanzjr) We cannot get the dataNodeId here, use 0 as the placeholder
               schemaRegionReplicaSet.setDataNodeList(

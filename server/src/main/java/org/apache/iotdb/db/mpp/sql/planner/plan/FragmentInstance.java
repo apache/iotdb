@@ -27,7 +27,6 @@ import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.sink.FragmentSinkNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
 
 import java.nio.ByteBuffer;
 
@@ -40,9 +39,10 @@ public class FragmentInstance implements IConsensusRequest {
   // The Region where the FragmentInstance should run
   private RegionReplicaSet regionReplicaSet;
 
-  // The DataRegion where the FragmentInstance should run
-  private RegionReplicaSet dataRegion;
   private Endpoint hostEndpoint;
+
+  // The index to generate this FragmentInstanceId
+  private int index;
 
   // We can add some more params for a specific FragmentInstance
   // So that we can make different FragmentInstance owns different data range.
@@ -57,12 +57,12 @@ public class FragmentInstance implements IConsensusRequest {
     return new FragmentInstanceId(id, String.valueOf(index));
   }
 
-  public RegionReplicaSet getDataRegionId() {
-    return dataRegion;
+  public RegionReplicaSet getRegionReplicaSet() {
+    return regionReplicaSet;
   }
 
-  public void setDataRegionId(RegionReplicaSet dataRegion) {
-    this.dataRegion = dataRegion;
+  public void setRegionReplicaSet(RegionReplicaSet regionReplicaSet) {
+    this.regionReplicaSet = regionReplicaSet;
   }
 
   public Endpoint getHostEndpoint() {
@@ -97,7 +97,7 @@ public class FragmentInstance implements IConsensusRequest {
     ret.append(
         String.format(
             "FragmentInstance-%s:[Host: %s/%s]\n",
-            getId(), getHostEndpoint().getIp(), getDataRegionId().getId()));
+            getId(), getHostEndpoint().getIp(), getRegionReplicaSet().getConsensusGroupId()));
     ret.append("---- Plan Node Tree ----\n");
     ret.append(PlanNodeUtil.nodeToString(getFragment().getRoot()));
     return ret.toString();
@@ -108,7 +108,7 @@ public class FragmentInstance implements IConsensusRequest {
       throws IllegalPathException {
     FragmentInstance fragmentInstance =
         new FragmentInstance(PlanFragment.deserialize(byteBuffer), byteBuffer.getInt());
-    fragmentInstance.setRegionReplicaSet(RegionReplicaSet.deserialize(byteBuffer));
+    fragmentInstance.setRegionReplicaSet(RegionReplicaSet.deserializeImpl(byteBuffer));
     return fragmentInstance;
   }
 
@@ -121,6 +121,6 @@ public class FragmentInstance implements IConsensusRequest {
     byteBuffer.putInt(index);
 
     // RegionReplicaSet
-    regionReplicaSet.serialize(byteBuffer);
+    regionReplicaSet.serializeImpl(byteBuffer);
   }
 }

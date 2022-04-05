@@ -19,12 +19,13 @@
 
 package org.apache.iotdb.db.consensus;
 
+import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.GroupType;
+import org.apache.iotdb.commons.partition.DataNodeLocation;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.consensus.IConsensus;
-import org.apache.iotdb.consensus.common.ConsensusGroupId;
 import org.apache.iotdb.consensus.common.ConsensusType;
-import org.apache.iotdb.consensus.common.Endpoint;
-import org.apache.iotdb.consensus.common.GroupType;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
@@ -117,11 +118,9 @@ public class ConsensusLayerManager {
                 new Peer(consensusGroupId, new Endpoint(rpcAddress, rpcPort))));
         break;
       case RATIS:
-        LOGGER.info(
-            "Set DataNode consensus group {}.", regionReplicaSet.getEndPointList().toString());
         List<Peer> peerList = new ArrayList<>();
-        for (Endpoint endpoint : regionReplicaSet.getEndPointList()) {
-          peerList.add(new Peer(consensusGroupId, endpoint));
+        for (DataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeList()) {
+          peerList.add(new Peer(consensusGroupId, dataNodeLocation.getEndPoint()));
         }
         consensusImpl.addConsensusGroup(consensusGroupId, peerList);
         break;

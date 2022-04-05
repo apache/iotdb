@@ -19,10 +19,11 @@
 
 package org.apache.iotdb.db.service;
 
+import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.GroupType;
+import org.apache.iotdb.commons.partition.DataNodeLocation;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
-import org.apache.iotdb.consensus.common.ConsensusGroupId;
-import org.apache.iotdb.consensus.common.Endpoint;
-import org.apache.iotdb.consensus.common.GroupType;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
@@ -90,14 +91,15 @@ public class InternalServiceImplTest {
             },
             "meter1");
 
-    List<Endpoint> endpointList = new ArrayList<>();
-    endpointList.add(new Endpoint("0.0.0.0", 6667));
-    endpointList.add(new Endpoint("0.0.0.0", 6668));
-    endpointList.add(new Endpoint("0.0.0.0", 6669));
+    List<DataNodeLocation> dataNodeList = new ArrayList<>();
+
+    dataNodeList.add(new DataNodeLocation(6667, new Endpoint("0.0.0.0", 6667)));
+    dataNodeList.add(new DataNodeLocation(6668, new Endpoint("0.0.0.0", 6668)));
+    dataNodeList.add(new DataNodeLocation(6669, new Endpoint("0.0.0.0", 6669)));
 
     // construct fragmentInstance
-    ConsensusGroupId consensusGroupId = new ConsensusGroupId(GroupType.SchemaRegion, 1L);
-    RegionReplicaSet regionReplicaSet = new RegionReplicaSet(consensusGroupId, endpointList);
+    ConsensusGroupId consensusGroupId = new ConsensusGroupId(GroupType.SchemaRegion, 1);
+    RegionReplicaSet regionReplicaSet = new RegionReplicaSet(consensusGroupId, dataNodeList);
     PlanFragment planFragment = new PlanFragment(new PlanFragmentId("2", 3), createTimeSeriesNode);
     FragmentInstance fragmentInstance = new FragmentInstance(planFragment, 4);
     fragmentInstance.setRegionReplicaSet(regionReplicaSet);

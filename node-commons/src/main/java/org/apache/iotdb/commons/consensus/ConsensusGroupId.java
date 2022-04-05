@@ -24,11 +24,8 @@ import java.util.Objects;
 
 // TODO Use a mature IDL framework such as Protobuf to manage this structure
 public class ConsensusGroupId {
-
   private GroupType type;
   private int id;
-
-  public ConsensusGroupId() {}
 
   public ConsensusGroupId(GroupType type, int id) {
     this.type = type;
@@ -60,11 +57,9 @@ public class ConsensusGroupId {
     buffer.putInt(id);
   }
 
-  public void deserializeImpl(ByteBuffer buffer) {
-    int ordinal = buffer.getInt();
+  public static ConsensusGroupId deserializeImpl(ByteBuffer buffer) {
     // TODO: (xingtanzjr) should we add validation for the ordinal ?
-    type = GroupType.values()[ordinal];
-    id = buffer.getInt();
+    return new ConsensusGroupId(GroupType.values()[buffer.getInt()], buffer.getInt());
   }
 
   @Override
@@ -74,15 +69,6 @@ public class ConsensusGroupId {
 
   @Override
   public String toString() {
-    return String.format("ConsensusGroupId[%s]-%s", type, id);
-  }
-
-  public void serialize(ByteBuffer byteBuffer) {
-    byteBuffer.putInt(type.ordinal());
-    byteBuffer.putLong(id);
-  }
-
-  public static ConsensusGroupId deserialize(ByteBuffer byteBuffer) {
-    return new ConsensusGroupId(GroupType.values()[byteBuffer.getInt()], byteBuffer.getLong());
+    return String.format("ConsensusGroupId:[%s]-%s", type, id);
   }
 }

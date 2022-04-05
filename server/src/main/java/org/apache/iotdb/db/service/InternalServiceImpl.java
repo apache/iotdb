@@ -66,7 +66,8 @@ public class InternalServiceImpl implements InternalService.Iface {
     try {
       if (fragmentInstance.getRegionReplicaSet() != null) {
         consensusLayerManager =
-            new ConsensusLayerManager(fragmentInstance.getConsensusGroupId().getType())
+            new ConsensusLayerManager(
+                    fragmentInstance.getRegionReplicaSet().getConsensusGroupId().getType())
                 .setRegionReplicaSet(fragmentInstance.getRegionReplicaSet());
       } else {
         LOGGER.error("Unknown regions to write.");
@@ -81,7 +82,7 @@ public class InternalServiceImpl implements InternalService.Iface {
       return response;
     }
     consensusLayerManager
-        .setConsensusGroupId(fragmentInstance.getConsensusGroupId())
+        .setConsensusGroupId(fragmentInstance.getRegionReplicaSet().getConsensusGroupId())
         .addConsensusGroup();
     TSStatus status = consensusLayerManager.write(fragmentInstance).getStatus();
     // TODO need consider more status

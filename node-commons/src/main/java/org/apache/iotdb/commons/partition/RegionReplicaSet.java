@@ -25,13 +25,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class RegionReplicaSet {
-  private ConsensusGroupId Id;
+  private ConsensusGroupId consensusGroupId;
   private List<DataNodeLocation> dataNodeList;
 
   public RegionReplicaSet() {}
 
-  public RegionReplicaSet(ConsensusGroupId Id, List<DataNodeLocation> dataNodeList) {
-    this.Id = Id;
+  public RegionReplicaSet(ConsensusGroupId consensusGroupId, List<DataNodeLocation> dataNodeList) {
+    this.consensusGroupId = consensusGroupId;
     this.dataNodeList = dataNodeList;
   }
 
@@ -43,20 +43,22 @@ public class RegionReplicaSet {
     this.dataNodeList = dataNodeList;
   }
 
-  public ConsensusGroupId getId() {
-    return Id;
+  public ConsensusGroupId getConsensusGroupId() {
+    return consensusGroupId;
   }
 
-  public void setId(ConsensusGroupId id) {
-    this.Id = id;
+  public void setConsensusGroupId(ConsensusGroupId consensusGroupId) {
+    this.consensusGroupId = consensusGroupId;
   }
 
   public String toString() {
-    return String.format("RegionReplicaSet[%s-%d]: %s", Id.getType(), Id.getId(), dataNodeList);
+    return String.format(
+        "RegionReplicaSet[%s-%d]: %s",
+        consensusGroupId.getType(), consensusGroupId.getId(), dataNodeList);
   }
 
   public void serializeImpl(ByteBuffer buffer) {
-    Id.serializeImpl(buffer);
+    consensusGroupId.serializeImpl(buffer);
     buffer.putInt(dataNodeList.size());
     dataNodeList.forEach(
         dataNode -> {
@@ -64,19 +66,16 @@ public class RegionReplicaSet {
         });
   }
 
-  public void deserializeImpl(ByteBuffer buffer) {
-    Id = new ConsensusGroupId();
-    Id.deserializeImpl(buffer);
+  public static RegionReplicaSet deserializeImpl(ByteBuffer buffer) {
+    ConsensusGroupId consensusGroupId = ConsensusGroupId.deserializeImpl(buffer);
 
     int size = buffer.getInt();
     // We should always make dataNodeList as a new Object when deserialization
-    dataNodeList = new ArrayList<>();
-
+    List<DataNodeLocation> dataNodeList = new ArrayList<>();
     for (int i = 0; i < size; i++) {
-      DataNodeLocation dataNode = new DataNodeLocation();
-      dataNode.deserializeImpl(buffer);
-      dataNodeList.add(dataNode);
+      dataNodeList.add(DataNodeLocation.deserializeImpl(buffer));
     }
+    return new RegionReplicaSet(consensusGroupId, dataNodeList);
   }
 
   public int hashCode() {

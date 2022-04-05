@@ -83,7 +83,7 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
     // We need to store all the replica host in case of the scenario that the instance need to be
     // redirected
     // to another host when scheduling
-    fragmentInstance.setDataRegionId(dataRegion);
+    fragmentInstance.setRegionReplicaSet(dataRegion);
 
     // TODO: (xingtanzjr) We select the first Endpoint as the default target host for current
     // instance
