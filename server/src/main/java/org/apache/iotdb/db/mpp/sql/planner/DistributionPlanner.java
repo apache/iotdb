@@ -112,7 +112,7 @@ public class DistributionPlanner {
     @Override
     public PlanNode visitMetaMerge(MetaMergeNode node, DistributionPlanContext context) {
       MetaMergeNode root = (MetaMergeNode) node.clone();
-      MetaScanNode seed = (MetaScanNode) root.getChildren().get(0);
+      MetaScanNode seed = (MetaScanNode) node.getChildren().get(0);
       TreeSet<RegionReplicaSet> schemaRegions =
           new TreeSet<>(Comparator.comparingInt(region -> region.getId().getId()));
       analysis
@@ -124,10 +124,15 @@ public class DistributionPlanner {
                     (deviceGroupId, schemaRegionReplicaSet) ->
                         schemaRegions.add(schemaRegionReplicaSet));
               });
+      int count = schemaRegions.size();
       schemaRegions.forEach(
           region -> {
             MetaScanNode metaScanNode = (MetaScanNode) seed.clone();
             metaScanNode.setRegionReplicaSet(region);
+            if (count > 1) {
+              metaScanNode.setLimit(metaScanNode.getOffset() + metaScanNode.getLimit());
+              metaScanNode.setOffset(0);
+            }
             root.addChild(metaScanNode);
           });
       return root;

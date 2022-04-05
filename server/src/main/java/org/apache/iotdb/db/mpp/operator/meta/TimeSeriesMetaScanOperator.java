@@ -71,10 +71,6 @@ public class TimeSeriesMetaScanOperator extends MetaScanOperator {
 
   @Override
   protected TsBlock createTsBlock() throws MetadataException {
-    if (isOrderByHeat() && limit != 0) {
-      limit += offset;
-      offset = 0;
-    }
     TsBlockBuilder builder = new TsBlockBuilder(Arrays.asList(resourceTypes));
     schemaRegion
         .showTimeSeries(this, operatorContext.getInstanceContext())

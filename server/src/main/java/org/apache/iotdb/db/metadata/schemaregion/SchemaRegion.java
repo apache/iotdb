@@ -946,7 +946,7 @@ public class SchemaRegion {
 
   public Pair<List<ShowTimeSeriesResult>, Integer> showTimeseries(
       ShowTimeSeriesPlan plan, QueryContext context) throws MetadataException {
-    // show timeseries with indexTime
+    // show timeseries with index
     if (plan.getKey() != null && plan.getValue() != null) {
       return showTimeseriesWithIndex(plan, context);
     } else {

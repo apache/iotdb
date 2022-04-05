@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.consensus.GroupType;
 import org.apache.iotdb.commons.partition.DataNodeLocation;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
+import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.partition.SeriesPartitionSlot;
 import org.apache.iotdb.commons.partition.TimePartitionSlot;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -40,6 +41,8 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.SubPlan;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeIdAllocator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeUtil;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.MetaMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesMetaScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
@@ -48,7 +51,11 @@ import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 
 import org.junit.Test;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 
@@ -77,6 +84,47 @@ public class DistributionPlannerTest {
 
     System.out.println(PlanNodeUtil.nodeToString(newRoot));
     assertEquals(newRoot.getChildren().get(0).getChildren().size(), 3);
+
+    MetaMergeNode metaMergeNode = new MetaMergeNode(PlanNodeIdAllocator.generateId(), false);
+    metaMergeNode.addChild(
+        new TimeSeriesMetaScanNode(
+            PlanNodeIdAllocator.generateId(),
+            new PartialPath("root.sg.d1.s1"),
+            null,
+            null,
+            10,
+            0,
+            false,
+            false,
+            false));
+    metaMergeNode.addChild(
+        new TimeSeriesMetaScanNode(
+            PlanNodeIdAllocator.generateId(),
+            new PartialPath("root.sg.d1.s2"),
+            null,
+            null,
+            10,
+            0,
+            false,
+            false,
+            false));
+    metaMergeNode.addChild(
+        new TimeSeriesMetaScanNode(
+            PlanNodeIdAllocator.generateId(),
+            new PartialPath("root.sg.d22.s1"),
+            null,
+            null,
+            10,
+            0,
+            false,
+            false,
+            false));
+    LimitNode root2 = new LimitNode(PlanNodeIdAllocator.generateId(), 10, metaMergeNode);
+    DistributionPlanner planner2 =
+        new DistributionPlanner(analysis, new LogicalQueryPlan(new MPPQueryContext(), root2));
+    PlanNode newRoot2 = planner2.rewriteSource();
+    System.out.println(PlanNodeUtil.nodeToString(newRoot2));
+    assertEquals(newRoot2.getChildren().get(0).getChildren().size(), 2);
   }
 
   @Test
@@ -219,6 +267,33 @@ public class DistributionPlannerTest {
     dataPartition.setDataPartitionMap(dataPartitionMap);
 
     analysis.setDataPartitionInfo(dataPartition);
+
+    // construct schema partition
+    SchemaPartition schemaPartition = new SchemaPartition();
+    Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> schemaPartitionMap = new HashMap<>();
+
+    RegionReplicaSet schemaRegion1 =
+        new RegionReplicaSet(
+            new ConsensusGroupId(GroupType.SchemaRegion, 11),
+            Arrays.asList(
+                new DataNodeLocation(11, new Endpoint("192.0.1.1", 9000)),
+                new DataNodeLocation(12, new Endpoint("192.0.1.2", 9000))));
+    Map<SeriesPartitionSlot, RegionReplicaSet> schemaRegionMap = new HashMap<>();
+
+    RegionReplicaSet schemaRegion2 =
+        new RegionReplicaSet(
+            new ConsensusGroupId(GroupType.SchemaRegion, 21),
+            Arrays.asList(
+                new DataNodeLocation(21, new Endpoint("192.0.1.1", 9000)),
+                new DataNodeLocation(22, new Endpoint("192.0.1.2", 9000))));
+
+    schemaRegionMap.put(new SeriesPartitionSlot(1), schemaRegion1);
+    schemaRegionMap.put(new SeriesPartitionSlot(2), schemaRegion2);
+    schemaPartitionMap.put("root.sg", schemaRegionMap);
+    schemaPartition.setSchemaPartition(schemaPartitionMap);
+
+    analysis.setDataPartitionInfo(dataPartition);
+    analysis.setSchemaPartitionInfo(schemaPartition);
     return analysis;
   }
 }
