@@ -216,7 +216,7 @@ public class CompactionUtils {
         futures.get(i).get();
       } catch (InterruptedException | ExecutionException e) {
         logger.error("SubCompactionTask meet errors ", e);
-        Thread.currentThread().interrupt();
+        Thread.interrupted();
         throw new IOException(e);
       }
     }
