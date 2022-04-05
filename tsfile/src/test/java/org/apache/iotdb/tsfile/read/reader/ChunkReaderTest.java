@@ -35,6 +35,7 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.List;
 
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
@@ -74,13 +75,13 @@ public class ChunkReaderTest {
   }
 
   @After
-  public void tearDown() {
+  public void tearDown() throws IOException {
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(oldMaxPointNumInPage);
     if (file.exists()) {
-      file.delete();
+      Files.delete(file.toPath());
     }
     if (SEQ_DIRS.exists()) {
-      SEQ_DIRS.delete();
+      Files.delete(SEQ_DIRS.toPath());
     }
   }
 
