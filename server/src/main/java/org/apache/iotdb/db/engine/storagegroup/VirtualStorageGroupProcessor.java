@@ -269,7 +269,7 @@ public class VirtualStorageGroupProcessor {
   private IDTable idTable;
 
   /** for sync collecting data */
-  private TsFilePipe syncDataCollector;
+  private TsFilePipe tsFilePipe;
 
   /**
    * get the direct byte buffer from pool, each fetch contains two ByteBuffer, return null if fetch
@@ -1278,8 +1278,8 @@ public class VirtualStorageGroupProcessor {
               this::unsequenceFlushCallback,
               false);
     }
-    if (syncDataCollector != null) {
-      tsFileProcessor.registerSyncDataCollector(syncDataCollector);
+    if (tsFilePipe != null) {
+      tsFileProcessor.registerSyncDataCollector(tsFilePipe);
     }
 
     if (enableMemControl) {
@@ -2000,8 +2000,8 @@ public class VirtualStorageGroupProcessor {
       if (!tsFileResource.isClosed()) {
         TsFileProcessor tsfileProcessor = tsFileResource.getProcessor();
         tsfileProcessor.deleteDataInMemory(deletion, devicePaths);
-      } else if (syncDataCollector != null) {
-        syncDataCollector.collectRealTimeDeletion(deletion);
+      } else if (tsFilePipe != null) {
+        tsFilePipe.collectRealTimeDeletion(deletion);
       }
 
       // add a record in case of rollback
@@ -3170,7 +3170,7 @@ public class VirtualStorageGroupProcessor {
   public void registerSyncDataCollector(TsFilePipe tsFilePipe) {
     writeLock("Register collector for sync");
     try {
-      this.syncDataCollector = tsFilePipe;
+      this.tsFilePipe = tsFilePipe;
       registerTsFileResourceList(tsFileManager.getTsFileList(true), tsFilePipe);
       registerTsFileResourceList(tsFileManager.getTsFileList(false), tsFilePipe);
     } finally {
@@ -3200,7 +3200,7 @@ public class VirtualStorageGroupProcessor {
     List<Pair<File, Long>> historyTsFiles = new ArrayList<>();
     writeLock("Collect data for sync");
     try {
-      this.syncDataCollector = tsFilePipe;
+      this.tsFilePipe = tsFilePipe;
       List<TsFileResource> seqTsFileResource = tsFileManager.getTsFileList(true);
       List<TsFileResource> unseqTsFileResource = tsFileManager.getTsFileList(false);
       collectTsFiles(seqTsFileResource, historyTsFiles, dataStartTime);
@@ -3226,7 +3226,7 @@ public class VirtualStorageGroupProcessor {
         isRealTimeTsFile =
             tsFileResource
                 .getProcessor()
-                .registerSyncDataCollector(syncDataCollector); // register to collect real time data
+                .registerSyncDataCollector(tsFilePipe); // register to collect real time data
       }
       if (!isRealTimeTsFile) {
         File mods = new File(tsFileResource.getModFile().getFilePath());

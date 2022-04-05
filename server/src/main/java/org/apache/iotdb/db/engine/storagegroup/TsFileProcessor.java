@@ -161,7 +161,7 @@ public class TsFileProcessor {
   private List<FlushListener> flushListeners = new ArrayList<>();
 
   /** for sync collecting data */
-  private TsFilePipe syncDataCollector;
+  private TsFilePipe tsFilePipe;
 
   @SuppressWarnings("squid:S107")
   TsFileProcessor(
@@ -659,8 +659,8 @@ public class TsFileProcessor {
       if (!flushingMemTables.isEmpty()) {
         modsToMemtable.add(new Pair<>(deletion, flushingMemTables.getLast()));
       }
-      if (syncDataCollector != null) {
-        syncDataCollector.collectRealTimeDeletion(deletion);
+      if (tsFilePipe != null) {
+        tsFilePipe.collectRealTimeDeletion(deletion);
       }
     } finally {
       flushQueryLock.writeLock().unlock();
@@ -808,8 +808,8 @@ public class TsFileProcessor {
         // When invoke closing TsFile after insert data to memTable, we shouldn't flush until invoke
         // flushing memTable in System module.
         addAMemtableIntoFlushingList(tmpMemTable);
-        if (syncDataCollector != null) {
-          syncDataCollector.collectRealTimeTsFile(tsFileResource.getTsFile());
+        if (tsFilePipe != null) {
+          tsFilePipe.collectRealTimeTsFile(tsFileResource.getTsFile());
         }
         logger.info("Memtable {} has been added to flushing list", tmpMemTable);
         shouldClose = true;
@@ -1195,8 +1195,8 @@ public class TsFileProcessor {
     long closeStartTime = System.currentTimeMillis();
     writer.endFile();
     tsFileResource.serialize();
-    if (syncDataCollector != null) {
-      syncDataCollector.collectRealTimeTsFileResource(tsFileResource.getTsFile());
+    if (tsFilePipe != null) {
+      tsFilePipe.collectRealTimeTsFileResource(tsFileResource.getTsFile());
     }
     logger.info("Ended file {}", tsFileResource);
 
@@ -1259,10 +1259,12 @@ public class TsFileProcessor {
    */
   public boolean registerSyncDataCollector(TsFilePipe tsFilePipe) {
     flushQueryLock.writeLock().lock();
-    this.syncDataCollector = tsFilePipe;
-    boolean isWorkingMemTableExist = (workMemTable != null);
-    flushQueryLock.writeLock().unlock();
-    return isWorkingMemTableExist;
+    try {
+      this.tsFilePipe = tsFilePipe;
+      return (workMemTable != null);
+    } finally {
+      flushQueryLock.writeLock().unlock();
+    }
   }
 
   /** close this tsfile */

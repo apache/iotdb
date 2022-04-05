@@ -138,7 +138,7 @@ public class StorageEngine implements IService {
   private List<FlushListener> customFlushListeners = new ArrayList<>();
 
   /** collector for sync */
-  private TsFilePipe syncDataCollector;
+  private TsFilePipe tsFilePipe;
 
   private StorageEngine() {}
 
@@ -569,8 +569,8 @@ public class StorageEngine implements IService {
     processor.setDataTTL(storageGroupMNode.getDataTTL());
     processor.setCustomFlushListeners(customFlushListeners);
     processor.setCustomCloseFileListeners(customCloseFileListeners);
-    if (syncDataCollector != null) {
-      processor.registerSyncDataCollector(syncDataCollector);
+    if (tsFilePipe != null) {
+      processor.registerSyncDataCollector(tsFilePipe);
     }
     return processor;
   }
@@ -1092,7 +1092,7 @@ public class StorageEngine implements IService {
 
   /** sync methods */
   public void registerSyncDataCollector(TsFilePipe tsFilePipe) {
-    this.syncDataCollector = tsFilePipe;
+    this.tsFilePipe = tsFilePipe;
   }
 
   static class InstanceHolder {
