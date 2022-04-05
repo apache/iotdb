@@ -122,8 +122,7 @@ public class MetadataSyncManager {
         logger.warn(
             String.format(
                 "Collect history schema from schemaRegion: %s of sg %s error. Skip this schemaRegion.",
-                schemaRegion.getSchemaRegionId(),
-                schemaRegion.getStorageGroupFullPath()));
+                schemaRegion.getSchemaRegionId(), schemaRegion.getStorageGroupFullPath()));
       }
     }
 
