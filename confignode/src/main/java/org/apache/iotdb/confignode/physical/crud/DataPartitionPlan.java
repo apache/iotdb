@@ -16,23 +16,24 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.physical.sys;
+package org.apache.iotdb.confignode.physical.crud;
 
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
 import org.apache.iotdb.confignode.physical.PhysicalPlanType;
 import org.apache.iotdb.confignode.util.SerializeDeserializeUtil;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 /**
- * query DataPartition or apply DataPartition by the specific storageGroup and
- * deviceGroupStartTimeMap.
+ * Query or apply DataPartition by the specific storageGroup and the deviceGroupStartTimeMap.
  */
 public class DataPartitionPlan extends PhysicalPlan {
   private String storageGroup;
-  private Map<Integer, List<Integer>> deviceGroupStartTimeMap;
+  private Map<Integer, List<Long>> deviceGroupStartTimeMap;
 
   public DataPartitionPlan(PhysicalPlanType physicalPlanType) {
     super(physicalPlanType);
@@ -41,7 +42,7 @@ public class DataPartitionPlan extends PhysicalPlan {
   public DataPartitionPlan(
       PhysicalPlanType physicalPlanType,
       String storageGroup,
-      Map<Integer, List<Integer>> deviceGroupStartTimeMap) {
+      Map<Integer, List<Long>> deviceGroupStartTimeMap) {
     this(physicalPlanType);
     this.storageGroup = storageGroup;
     this.deviceGroupStartTimeMap = deviceGroupStartTimeMap;
@@ -55,11 +56,11 @@ public class DataPartitionPlan extends PhysicalPlan {
     this.storageGroup = storageGroup;
   }
 
-  public Map<Integer, List<Integer>> getDeviceGroupIDs() {
+  public Map<Integer, List<Long>> getDeviceGroupIDs() {
     return deviceGroupStartTimeMap;
   }
 
-  public void setDeviceGroupIDs(Map<Integer, List<Integer>> deviceGroupIDs) {
+  public void setDeviceGroupIDs(Map<Integer, List<Long>> deviceGroupIDs) {
     this.deviceGroupStartTimeMap = deviceGroupIDs;
   }
 
@@ -67,12 +68,31 @@ public class DataPartitionPlan extends PhysicalPlan {
   protected void serializeImpl(ByteBuffer buffer) {
     buffer.putInt(PhysicalPlanType.QueryDataPartition.ordinal());
     SerializeDeserializeUtil.write(storageGroup, buffer);
-    SerializeDeserializeUtil.writeIntMapLists(deviceGroupStartTimeMap, buffer);
+
+    buffer.putInt(deviceGroupStartTimeMap.size());
+    for (Map.Entry<Integer, List<Long>> entry : deviceGroupStartTimeMap.entrySet()) {
+      buffer.putInt(entry.getKey());
+      buffer.putInt(entry.getValue().size());
+      for (Long startTime : entry.getValue()) {
+        buffer.putLong(startTime);
+      }
+    }
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) {
     storageGroup = SerializeDeserializeUtil.readString(buffer);
-    deviceGroupStartTimeMap = SerializeDeserializeUtil.readIntMapLists(buffer);
+
+    int mapLength = buffer.getInt();
+    deviceGroupStartTimeMap = new HashMap<>(mapLength);
+    for (int i = 0; i < mapLength; i++) {
+      int deviceGroupId = buffer.getInt();
+      int listLength = buffer.getInt();
+      List<Long> startTimeList = new ArrayList<>(listLength);
+      for (int j = 0; j < listLength; j++) {
+        startTimeList.set(j, buffer.getLong());
+      }
+      deviceGroupStartTimeMap.put(deviceGroupId, startTimeList);
+    }
   }
 }

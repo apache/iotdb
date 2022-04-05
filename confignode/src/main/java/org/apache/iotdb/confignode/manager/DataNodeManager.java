@@ -38,22 +38,18 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /** Manager server info of data node, add node or remove node */
 public class DataNodeManager {
+
   private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeManager.class);
 
-  private DataNodeInfoPersistence dataNodeInfo = DataNodeInfoPersistence.getInstance();
+  private static final DataNodeInfoPersistence dataNodeInfo = DataNodeInfoPersistence.getInstance();
 
-  private Manager configManager;
+  private final Manager configManager;
 
   /** TODO:do some operate after add node or remove node */
-  private List<ChangeServerListener> listeners = new CopyOnWriteArrayList<>();
-
-  private final ReentrantReadWriteLock dataNodeInfoReadWriteLock;
-
-  private int nextDataNodeId;
+  private final List<ChangeServerListener> listeners = new CopyOnWriteArrayList<>();
 
   public DataNodeManager(Manager configManager) {
     this.configManager = configManager;
-    this.dataNodeInfoReadWriteLock = new ReentrantReadWriteLock();
   }
 
   /**
@@ -65,20 +61,15 @@ public class DataNodeManager {
   public TSStatus registerDataNode(RegisterDataNodePlan plan) {
     TSStatus result;
     DataNodeLocation info = plan.getInfo();
-    dataNodeInfoReadWriteLock.writeLock().lock();
-    try {
-      if (dataNodeInfo.containsValue(info)) {
-        // TODO: optimize
-        result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-        result.setMessage(String.valueOf(dataNodeInfo.getDataNodeInfo(info)));
-      } else {
-        info.setDataNodeID(nextDataNodeId);
-        ConsensusWriteResponse consensusWriteResponse = getConsensusManager().write(plan);
-        nextDataNodeId += 1;
-        return consensusWriteResponse.getStatus();
-      }
-    } finally {
-      dataNodeInfoReadWriteLock.writeLock().unlock();
+    if (dataNodeInfo.containsValue(info)) {
+      // TODO: optimize
+      result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      result.setMessage(String.valueOf(dataNodeInfo.getDataNodeInfo(info)));
+    } else {
+      info.setDataNodeID(nextDataNodeId);
+      ConsensusWriteResponse consensusWriteResponse = getConsensusManager().write(plan);
+      nextDataNodeId += 1;
+      return consensusWriteResponse.getStatus();
     }
     return result;
   }

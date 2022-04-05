@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.physical.sys;
+package org.apache.iotdb.confignode.physical.crud;
 
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
@@ -28,7 +28,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/** Get DataNodeInfo by the specific DataNode's id. And return all when dataNodeID is set to -1. */
+/**
+ * Query or apply SchemaPartition by the specific storageGroup and the deviceGroupStartTimeMap.
+ */
 public class SchemaPartitionPlan extends PhysicalPlan {
   private String storageGroup;
   private List<Integer> deviceGroupIDs;

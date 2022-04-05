@@ -20,11 +20,12 @@ package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
+import org.apache.iotdb.confignode.consensus.response.DataPartitionDataSet;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionDataSet;
 import org.apache.iotdb.confignode.persistence.PartitionInfoPersistence;
 import org.apache.iotdb.confignode.persistence.RegionInfoPersistence;
-import org.apache.iotdb.confignode.physical.sys.DataPartitionPlan;
-import org.apache.iotdb.confignode.physical.sys.SchemaPartitionPlan;
+import org.apache.iotdb.confignode.physical.crud.DataPartitionPlan;
+import org.apache.iotdb.confignode.physical.crud.SchemaPartitionPlan;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 
@@ -41,47 +42,30 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 public class PartitionManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(PartitionManager.class);
 
-  /** schema partition read write lock */
-  private final ReentrantReadWriteLock schemaPartitionReadWriteLock;
-
-  /** data partition read write lock */
-  private final ReentrantReadWriteLock dataPartitionReadWriteLock;
-
-  // TODO: Serialize and Deserialize
-  private final DataPartition dataPartition;
-
   private final Manager configNodeManager;
 
   public PartitionManager(Manager configNodeManager) {
-    this.schemaPartitionReadWriteLock = new ReentrantReadWriteLock();
-    this.dataPartitionReadWriteLock = new ReentrantReadWriteLock();
     this.configNodeManager = configNodeManager;
-    this.dataPartition = new DataPartition();
   }
 
   /**
-   * Get schema partition
+   * Get SchemaPartition
    *
-   * @param physicalPlan storageGroup and deviceGroupIDs
-   * @return Empty Data Set if does not exist
+   * @param physicalPlan SchemaPartitionPlan with StorageGroup and DeviceGroupIds
+   * @return Empty DataSet if the specific SchemaPartition does not exist
    */
   public DataSet getSchemaPartition(SchemaPartitionPlan physicalPlan) {
     SchemaPartitionDataSet schemaPartitionDataSet;
-    schemaPartitionReadWriteLock.readLock().lock();
-    try {
-      ConsensusReadResponse consensusReadResponse = getConsensusManager().read(physicalPlan);
-      schemaPartitionDataSet = (SchemaPartitionDataSet) consensusReadResponse.getDataset();
-    } finally {
-      schemaPartitionReadWriteLock.readLock().unlock();
-    }
+    ConsensusReadResponse consensusReadResponse = getConsensusManager().read(physicalPlan);
+    schemaPartitionDataSet = (SchemaPartitionDataSet) consensusReadResponse.getDataset();
     return schemaPartitionDataSet;
   }
 
   /**
-   * If does not exist, apply a new schema partition
+   * Get SchemaPartition and apply a new one if it does not exist
    *
-   * @param physicalPlan storage group and device group id
-   * @return Schema Partition data set
+   * @param physicalPlan SchemaPartitionPlan with StorageGroup and DeviceGroupIds
+   * @return SchemaPartitionDataSet
    */
   public DataSet applySchemaPartition(SchemaPartitionPlan physicalPlan) {
     String storageGroup = physicalPlan.getStorageGroup();
@@ -90,17 +74,18 @@ public class PartitionManager {
         PartitionInfoPersistence.getInstance()
             .filterSchemaRegionNoAssignDeviceGroupId(storageGroup, deviceGroupIDs);
 
+    if (noAssignDeviceGroupId.size() == 0 && !getConsensusManager().isLeader()) {
+      // Reject apply if there exists not assigned SchemaPartition and the local ConfigNode is not the leader
+      // TODO: Tell DataNode to re-transmit
+      return new SchemaPartitionDataSet();
+    }
+
     // allocate partition by storage group and device group id
-    schemaPartitionReadWriteLock.writeLock().lock();
-    try {
       Map<Integer, RegionReplicaSet> deviceGroupIdReplicaSets =
           allocateSchemaPartition(storageGroup, noAssignDeviceGroupId);
       physicalPlan.setDeviceGroupIdReplicaSet(deviceGroupIdReplicaSets);
       getConsensusManager().write(physicalPlan);
       LOGGER.info("Allocate schema partition to {}.", deviceGroupIdReplicaSets);
-    } finally {
-      schemaPartitionReadWriteLock.writeLock().unlock();
-    }
 
     return getSchemaPartition(physicalPlan);
   }
@@ -117,10 +102,10 @@ public class PartitionManager {
         RegionInfoPersistence.getInstance().getSchemaRegionEndPoint();
     Random random = new Random();
     Map<Integer, RegionReplicaSet> deviceGroupIdReplicaSets = new HashMap<>();
-    for (int i = 0; i < deviceGroupIDs.size(); i++) {
+    for (Integer deviceGroupID : deviceGroupIDs) {
       RegionReplicaSet schemaRegionReplicaSet =
-          schemaRegionEndPoints.get(random.nextInt(schemaRegionEndPoints.size()));
-      deviceGroupIdReplicaSets.put(deviceGroupIDs.get(i), schemaRegionReplicaSet);
+              schemaRegionEndPoints.get(random.nextInt(schemaRegionEndPoints.size()));
+      deviceGroupIdReplicaSets.put(deviceGroupID, schemaRegionReplicaSet);
     }
     return deviceGroupIdReplicaSets;
   }
@@ -130,16 +115,26 @@ public class PartitionManager {
   }
 
   /**
-   * TODO:allocate schema partition by balancer
+   * Get DataPartition and apply a new one if it does not exist
    *
-   * @param physicalPlan physical plan
-   * @return data set
+   * @param physicalPlan DataPartitionPlan with StorageGroup, DeviceGroupIds and StartTimes
+   * @return DataPartitionDataSet
    */
   public DataSet applyDataPartition(DataPartitionPlan physicalPlan) {
     return null;
   }
 
+  /**
+   * Get DataPartition
+   *
+   * @param physicalPlan DataPartitionPlan with StorageGroup, DeviceGroupIds and StartTimes
+   * @return Empty DataSet if the specific DataPartition does not exist
+   */
   public DataSet getDataPartition(DataPartitionPlan physicalPlan) {
-    return null;
+    DataPartitionDataSet dataPartitionDataSet;
+      ConsensusReadResponse consensusReadResponse = getConsensusManager().read(physicalPlan);
+      dataPartitionDataSet = (DataPartitionDataSet) consensusReadResponse.getDataset();
+
+    return dataPartitionDataSet;
   }
 }

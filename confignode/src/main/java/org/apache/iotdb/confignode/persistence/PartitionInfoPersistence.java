@@ -24,8 +24,8 @@ import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionDataSet;
-import org.apache.iotdb.confignode.physical.sys.DataPartitionPlan;
-import org.apache.iotdb.confignode.physical.sys.SchemaPartitionPlan;
+import org.apache.iotdb.confignode.physical.crud.DataPartitionPlan;
+import org.apache.iotdb.confignode.physical.crud.SchemaPartitionPlan;
 import org.apache.iotdb.consensus.common.DataSet;
 
 import org.slf4j.Logger;
@@ -71,9 +71,9 @@ public class PartitionInfoPersistence {
       String storageGroup = physicalPlan.getStorageGroup();
       List<Integer> deviceGroupIDs = physicalPlan.getDeviceGroupIDs();
       SchemaPartition schemaPartitionInfo = new SchemaPartition();
-      schemaPartitionInfo.setSchemaPartition(
+      schemaPartitionInfo.setSchemaPartitionMap(
           schemaPartition.getSchemaPartition(storageGroup, deviceGroupIDs));
-      schemaPartitionDataSet.setSchemaPartitionInfo(schemaPartitionInfo);
+      schemaPartitionDataSet.setSchemaPartition(schemaPartitionInfo);
     } finally {
       schemaPartitionReadWriteLock.readLock().unlock();
     }
@@ -87,6 +87,8 @@ public class PartitionInfoPersistence {
    * @return Schema Partition data set
    */
   public DataSet applySchemaPartition(SchemaPartitionPlan physicalPlan) {
+    schemaPartitionReadWriteLock.writeLock().lock();
+
     String storageGroup = physicalPlan.getStorageGroup();
     List<Integer> deviceGroupIDs = physicalPlan.getDeviceGroupIDs();
     List<Integer> noAssignDeviceGroupId =
@@ -95,16 +97,11 @@ public class PartitionInfoPersistence {
     // allocate partition by storage group and device group id
     Map<Integer, RegionReplicaSet> deviceGroupIdReplicaSets =
         physicalPlan.getDeviceGroupIdReplicaSets();
-    schemaPartitionReadWriteLock.writeLock().lock();
     try {
 
       deviceGroupIdReplicaSets
-          .entrySet()
-          .forEach(
-              entity -> {
-                schemaPartition.setSchemaRegionReplicaSet(
-                    storageGroup, entity.getKey(), entity.getValue());
-              });
+              .forEach((key, value) -> schemaPartition.setSchemaRegionReplicaSet(
+                      storageGroup, key, value));
     } finally {
       schemaPartitionReadWriteLock.writeLock().unlock();
     }
@@ -133,8 +130,8 @@ public class PartitionInfoPersistence {
 
   @TestOnly
   public void clear() {
-    if (schemaPartition.getSchemaPartition() != null) {
-      schemaPartition.getSchemaPartition().clear();
+    if (schemaPartition.getSchemaPartitionMap() != null) {
+      schemaPartition.getSchemaPartitionMap().clear();
     }
 
     if (dataPartition.getDataPartitionMap() != null) {

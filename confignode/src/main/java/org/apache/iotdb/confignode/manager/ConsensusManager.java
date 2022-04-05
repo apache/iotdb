@@ -50,9 +50,8 @@ public class ConsensusManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(ConsensusManager.class);
   private static final ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();
 
-  private IConsensus consensusImpl;
-
   private ConsensusGroupId consensusGroupId;
+  private IConsensus consensusImpl;
 
   private DeviceGroupHashExecutor hashExecutor;
 
@@ -147,6 +146,10 @@ public class ConsensusManager {
   /** Transmit PhysicalPlan to confignode.consensus.statemachine */
   public ConsensusReadResponse read(PhysicalPlan plan) {
     return consensusImpl.read(consensusGroupId, plan);
+  }
+
+  public boolean isLeader() {
+    return consensusImpl.isLeader(consensusGroupId);
   }
 
   // TODO: Interfaces for LoadBalancer control

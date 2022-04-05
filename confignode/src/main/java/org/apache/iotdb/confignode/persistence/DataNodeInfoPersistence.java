@@ -46,7 +46,7 @@ public class DataNodeInfoPersistence {
       new ConcurrentSkipListMap();
 
   /** For remove node or draining node */
-  private Set<DataNodeLocation> drainingDataNodes = new HashSet<>();
+  private final Set<DataNodeLocation> drainingDataNodes = new HashSet<>();
 
   private final ReentrantReadWriteLock dataNodeInfoReadWriteLock;
 
@@ -129,40 +129,6 @@ public class DataNodeInfoPersistence {
 
   public Set<Integer> getDataNodeIds() {
     return onlineDataNodes.keySet();
-  }
-
-  /**
-   * Add schema region group
-   *
-   * @param dataNodeId data node id
-   * @param schemaRegionGroup schema region group
-   */
-  public void addSchemaRegionGroup(int dataNodeId, int schemaRegionGroup) {
-    dataNodeInfoReadWriteLock.writeLock().lock();
-    try {
-      if (onlineDataNodes.containsKey(dataNodeId)) {
-        onlineDataNodes.get(dataNodeId).addSchemaRegionGroup(schemaRegionGroup);
-      }
-    } finally {
-      dataNodeInfoReadWriteLock.writeLock().unlock();
-    }
-  }
-
-  /**
-   * Add data region group
-   *
-   * @param dataNodeId data node id
-   * @param dataRegionGroup data region group
-   */
-  public void addDataRegionGroup(int dataNodeId, int dataRegionGroup) {
-    dataNodeInfoReadWriteLock.writeLock().lock();
-    try {
-      if (onlineDataNodes.containsKey(dataNodeId)) {
-        onlineDataNodes.get(dataNodeId).addSchemaRegionGroup(dataRegionGroup);
-      }
-    } finally {
-      dataNodeInfoReadWriteLock.writeLock().unlock();
-    }
   }
 
   @TestOnly

@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.consensus.response;
 
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.confignode.rpc.thrift.RegionReplicaSet;
+import org.apache.iotdb.confignode.rpc.thrift.SchemaPartitionInfo;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 
@@ -30,53 +31,35 @@ import java.util.List;
 import java.util.Map;
 
 public class SchemaPartitionDataSet implements DataSet {
-  private SchemaPartition schemaPartitionInfo;
+  private SchemaPartition schemaPartition;
 
-  public SchemaPartition getSchemaPartitionInfo() {
-    return schemaPartitionInfo;
+  public SchemaPartition getSchemaPartition() {
+    return schemaPartition;
   }
 
-  public void setSchemaPartitionInfo(SchemaPartition schemaPartitionInfos) {
-    this.schemaPartitionInfo = schemaPartitionInfos;
+  public void setSchemaPartition(SchemaPartition schemaPartition) {
+    this.schemaPartition = schemaPartition;
   }
 
-  public static org.apache.iotdb.confignode.rpc.thrift.SchemaPartitionInfo
-      convertRpcSchemaPartition(SchemaPartition schemaPartitionInfo) {
-    org.apache.iotdb.confignode.rpc.thrift.SchemaPartitionInfo rpcSchemaPartitionInfo =
-        new org.apache.iotdb.confignode.rpc.thrift.SchemaPartitionInfo();
+  public SchemaPartitionInfo convertRpcSchemaPartitionInfo() {
+    SchemaPartitionInfo rpcSchemaPartitionInfo = new SchemaPartitionInfo();
+    Map<String, Map<Integer, RegionReplicaSet>> schemaRegionDataNodesMap = new HashMap<>();
 
-    Map<String, Map<Integer, RegionReplicaSet>> schemaRegionReplicaSets = new HashMap<>();
+    schemaPartition.getSchemaPartitionMap().forEach((storageGroup, seriesPartitionSlotRegionReplicaSetMap) -> {
+      schemaRegionDataNodesMap.putIfAbsent(storageGroup, new HashMap<>());
+      seriesPartitionSlotRegionReplicaSetMap.forEach(((seriesPartitionSlot, regionReplicaSet) -> {
+        RegionReplicaSet rpcRegionReplicaSet = new RegionReplicaSet();
+        rpcRegionReplicaSet.setRegionId(regionReplicaSet.getId().getId());
+        List<EndPoint> endPointList = new ArrayList<>();
+        regionReplicaSet.getDataNodeList().forEach(
+                dataNodeLocation -> endPointList.add(new EndPoint(dataNodeLocation.getEndPoint().getIp(), dataNodeLocation.getEndPoint().getPort()))
+        );
+        rpcRegionReplicaSet.setEndpoint(endPointList);
+        schemaRegionDataNodesMap.get(storageGroup).put(seriesPartitionSlot.getDeviceGroupId(), rpcRegionReplicaSet);
+      }));
+    });
 
-    schemaPartitionInfo.getSchemaPartition().entrySet().stream()
-        .forEach(
-            entity -> {
-              schemaRegionReplicaSets.putIfAbsent(entity.getKey(), new HashMap<>());
-              entity
-                  .getValue()
-                  .entrySet()
-                  .forEach(
-                      replica -> {
-                        RegionReplicaSet regionReplicaSet = new RegionReplicaSet();
-                        regionReplicaSet.setRegionId(replica.getValue().getId().getId());
-                        List<EndPoint> endPoints = new ArrayList<>();
-                        replica
-                            .getValue()
-                            .getDataNodeList()
-                            .forEach(
-                                dataNode -> {
-                                  EndPoint endPoint =
-                                      new EndPoint(
-                                          dataNode.getEndPoint().getIp(),
-                                          dataNode.getEndPoint().getPort());
-                                  endPoints.add(endPoint);
-                                });
-                        regionReplicaSet.setEndpoint(endPoints);
-                        schemaRegionReplicaSets
-                            .get(entity.getKey())
-                            .put(replica.getKey().getDeviceGroupId(), regionReplicaSet);
-                      });
-            });
-    rpcSchemaPartitionInfo.setSchemaRegionDataNodesMap(schemaRegionReplicaSets);
+    rpcSchemaPartitionInfo.setSchemaRegionDataNodesMap(schemaRegionDataNodesMap);
     return rpcSchemaPartitionInfo;
   }
 }

@@ -31,12 +31,8 @@ public class DataRegionInfo {
   // Map<DataRegionID, List<DataNodeID>>
   private Map<Integer, List<Integer>> dataRegionDataNodesMap;
 
-  // Map<StorageGroup, Map<DeviceGroupID, DataPartitionRule>>
-  private final Map<String, Map<Integer, DataPartitionRule>> dataPartitionRuleTable;
-
   public DataRegionInfo() {
     this.dataRegionDataNodesMap = new HashMap<>();
-    this.dataPartitionRuleTable = new HashMap<>();
   }
 
   public Map<Integer, List<Integer>> getDataRegionDataNodesMap() {
@@ -49,11 +45,6 @@ public class DataRegionInfo {
 
   public List<Integer> getDataRegionLocation(int dataRegionGroup) {
     return dataRegionDataNodesMap.get(dataRegionGroup);
-  }
-
-  public void updateDataPartitionRule(
-      String StorageGroup, int deviceGroup, DataPartitionRule rule) {
-    // TODO: Data partition policy by @YongzaoDan
   }
 
   public void serializeImpl(ByteBuffer buffer) {
