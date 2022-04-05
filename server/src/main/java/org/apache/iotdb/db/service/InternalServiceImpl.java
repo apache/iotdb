@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.service;
 
-import org.apache.iotdb.db.consensus.ConsensusLayerManager;
+import org.apache.iotdb.db.consensus.ConsensusManager;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
 import org.apache.iotdb.mpp.rpc.thrift.InternalService;
@@ -62,11 +62,11 @@ public class InternalServiceImpl implements InternalService.Iface {
       response.setMessage(e.getMessage());
       return response;
     }
-    ConsensusLayerManager consensusLayerManager;
+    ConsensusManager consensusManager;
     try {
       if (fragmentInstance.getRegionReplicaSet() != null) {
-        consensusLayerManager =
-            new ConsensusLayerManager(
+        consensusManager =
+            new ConsensusManager(
                     fragmentInstance.getRegionReplicaSet().getConsensusGroupId().getType())
                 .setRegionReplicaSet(fragmentInstance.getRegionReplicaSet());
       } else {
@@ -81,10 +81,10 @@ public class InternalServiceImpl implements InternalService.Iface {
       response.setMessage("IOException occurs. " + e.getMessage());
       return response;
     }
-    consensusLayerManager
+    consensusManager
         .setConsensusGroupId(fragmentInstance.getRegionReplicaSet().getConsensusGroupId())
         .addConsensusGroup();
-    TSStatus status = consensusLayerManager.write(fragmentInstance).getStatus();
+    TSStatus status = consensusManager.write(fragmentInstance).getStatus();
     // TODO need consider more status
     if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == status.getCode()) {
       response.setAccepted(true);

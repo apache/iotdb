@@ -47,8 +47,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class ConsensusLayerManager {
-  private static final Logger LOGGER = LoggerFactory.getLogger(ConsensusLayerManager.class);
+/** DataNode Consensus layer manager */
+public class ConsensusManager {
+  private static final Logger LOGGER = LoggerFactory.getLogger(ConsensusManager.class);
 
   private static final IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
 
@@ -66,7 +67,7 @@ public class ConsensusLayerManager {
 
   private RegionReplicaSet regionReplicaSet;
 
-  public ConsensusLayerManager(GroupType groupType) throws IOException {
+  public ConsensusManager(GroupType groupType) throws IOException {
     // either GroupType.DataRegion or GroupType.SchemaRegion
     BaseStateMachine stateMachine =
         groupType == GroupType.DataRegion
@@ -95,7 +96,7 @@ public class ConsensusLayerManager {
     return consensusGroupId;
   }
 
-  public ConsensusLayerManager setConsensusGroupId(ConsensusGroupId consensusGroupId) {
+  public ConsensusManager setConsensusGroupId(ConsensusGroupId consensusGroupId) {
     this.consensusGroupId = consensusGroupId;
     return this;
   }
@@ -104,7 +105,7 @@ public class ConsensusLayerManager {
     return regionReplicaSet;
   }
 
-  public ConsensusLayerManager setRegionReplicaSet(RegionReplicaSet regionReplicaSet) {
+  public ConsensusManager setRegionReplicaSet(RegionReplicaSet regionReplicaSet) {
     this.regionReplicaSet = regionReplicaSet;
     return this;
   }

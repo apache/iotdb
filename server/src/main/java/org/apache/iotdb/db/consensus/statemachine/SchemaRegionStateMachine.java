@@ -74,6 +74,7 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
     try {
       isSuccessful = executor.processNonQuery(plan);
     } catch (QueryProcessException e) {
+      logger.error("{}: query process Error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     } catch (StorageEngineException | MetadataException e) {
       logger.error("{}: server Internal Error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
