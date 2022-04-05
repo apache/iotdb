@@ -22,18 +22,17 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import java.io.IOException;
+import java.util.Collections;
+import java.util.List;
 
 public class InnerSpaceCompactionWriter extends AbstractCompactionWriter {
   private TsFileIOWriter fileWriter;
 
   private boolean isEmptyFile;
 
-  private final TsFileResource targetTsFileResource;
-
-  public InnerSpaceCompactionWriter(TsFileResource targetFileResource, TsFileIOWriter fileWriter) {
-    this.fileWriter = fileWriter;
+  public InnerSpaceCompactionWriter(TsFileResource targetFileResource) throws IOException {
+    this.fileWriter = new TsFileIOWriter(targetFileResource.getTsFile());
     isEmptyFile = true;
-    this.targetTsFileResource = targetFileResource;
   }
 
   @Override
@@ -60,7 +59,6 @@ public class InnerSpaceCompactionWriter extends AbstractCompactionWriter {
   @Override
   public void write(long timestamp, Object value, int subTaskId) throws IOException {
     writeDataPoint(timestamp, value, subTaskId);
-    updateDeviceStartAndEndTime(targetTsFileResource, timestamp);
     checkChunkSizeAndMayOpenANewChunk(fileWriter, subTaskId);
     isEmptyFile = false;
   }
@@ -84,5 +82,10 @@ public class InnerSpaceCompactionWriter extends AbstractCompactionWriter {
     // chunkWriter = null;
     chunkWriterMap.clear();
     fileWriter = null;
+  }
+
+  @Override
+  public List<TsFileIOWriter> getFileIOWriter() {
+    return Collections.singletonList(fileWriter);
   }
 }

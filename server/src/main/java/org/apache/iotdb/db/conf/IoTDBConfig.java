@@ -35,6 +35,7 @@ import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -437,7 +438,7 @@ public class IoTDBConfig {
 
   /**
    * The number of sub compaction threads to be set up to perform compaction. Currently only works
-   * for cross space compaction and unseq inner space compaction.
+   * for nonAligned data in cross space compaction and unseq inner space compaction.
    */
   private int subCompactionTaskNum = 4;
 

@@ -23,7 +23,6 @@ import org.apache.iotdb.db.engine.compaction.CompactionMetricsManager;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionType;
 import org.apache.iotdb.db.engine.compaction.constant.ProcessChunkType;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -53,19 +52,17 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
       MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric();
 
   // point count in current measurment, which is used to check size
-  private Map<Integer, Integer> measurementPointCount = new ConcurrentHashMap<>();
+  private Map<Integer, Integer> measurementPointCountMap = new ConcurrentHashMap<>();
 
   public abstract void startChunkGroup(String deviceId, boolean isAlign) throws IOException;
 
   public abstract void endChunkGroup() throws IOException;
 
   public void startMeasurement(List<IMeasurementSchema> measurementSchemaList, int subTaskId) {
-    measurementPointCount.computeIfAbsent(subTaskId, id -> 0);
+    measurementPointCountMap.put(subTaskId, 0);
     if (isAlign) {
-      // chunkWriter = new AlignedChunkWriterImpl(measurementSchemaList);
       chunkWriterMap.put(subTaskId, new AlignedChunkWriterImpl(measurementSchemaList));
     } else {
-      // chunkWriter = new ChunkWriterImpl(measurementSchemaList.get(0), true);
       chunkWriterMap.put(subTaskId, new ChunkWriterImpl(measurementSchemaList.get(0), true));
     }
   }
@@ -139,12 +136,12 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
       }
       chunkWriter.write(timestamp);
     }
-    measurementPointCount.put(subTaskId, measurementPointCount.get(subTaskId) + 1);
+    measurementPointCountMap.put(subTaskId, measurementPointCountMap.get(subTaskId) + 1);
   }
 
   protected void checkChunkSizeAndMayOpenANewChunk(TsFileIOWriter fileWriter, int subTaskId)
       throws IOException {
-    if (measurementPointCount.get(subTaskId) % 10 == 0 && checkChunkSize(subTaskId)) {
+    if (measurementPointCountMap.get(subTaskId) % 10 == 0 && checkChunkSize(subTaskId)) {
       writeRateLimit(chunkWriterMap.get(subTaskId).estimateMaxSeriesMemSize());
       CompactionMetricsManager.recordWriteInfo(
           this instanceof CrossSpaceCompactionWriter
@@ -173,8 +170,5 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
         CompactionTaskManager.getInstance().getMergeWriteRateLimiter(), bytesLength);
   }
 
-  protected void updateDeviceStartAndEndTime(TsFileResource targetResource, long timestamp) {
-    targetResource.updateStartTime(deviceId, timestamp);
-    targetResource.updateEndTime(deviceId, timestamp);
-  }
+  public abstract List<TsFileIOWriter> getFileIOWriter();
 }

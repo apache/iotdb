@@ -202,6 +202,20 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
         CompactionFileGeneratorUtils.getInnerCompactionTargetTsFileResources(seqResources, true);
     CompactionUtils.compact(seqResources, unseqResources, targetResources);
     CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
+    assertEquals(
+        0, targetResources.get(0).getStartTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
+    assertEquals(
+        0, targetResources.get(0).getStartTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
+    assertEquals(
+        250, targetResources.get(0).getStartTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
+    assertEquals(
+        600, targetResources.get(0).getStartTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
+    assertEquals(
+        600, targetResources.get(0).getStartTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d4"));
+    for (int i = 0; i < 5; i++) {
+      assertEquals(
+          749, targetResources.get(0).getEndTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i));
+    }
 
     for (int i = 0; i < 5; i++) {
       for (int j = 0; j < 5; j++) {

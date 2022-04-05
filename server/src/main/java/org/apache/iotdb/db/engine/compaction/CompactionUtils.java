@@ -45,6 +45,7 @@ import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -52,6 +53,7 @@ import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -91,11 +93,8 @@ public class CompactionUtils {
         .getQueryFileManager()
         .addUsedFilesForQuery(queryId, queryDataSource);
 
-    List<TsFileIOWriter> targetFileWriters =
-        getTsFileIOWriter(seqFileResources, unseqFileResources, targetFileResources);
     try (AbstractCompactionWriter compactionWriter =
-        getCompactionWriter(
-            seqFileResources, unseqFileResources, targetFileResources, targetFileWriters)) {
+        getCompactionWriter(seqFileResources, unseqFileResources, targetFileResources)) {
       // Do not close device iterator, because tsfile reader is managed by FileReaderManager.
       MultiTsFileDeviceIterator deviceIterator =
           new MultiTsFileDeviceIterator(seqFileResources, unseqFileResources);
@@ -116,6 +115,7 @@ public class CompactionUtils {
       }
 
       compactionWriter.endFile();
+      updateDeviceStartTimeAndEndTime(targetFileResources, compactionWriter);
       updatePlanIndexes(targetFileResources, seqFileResources, unseqFileResources);
     } finally {
       QueryResourceManager.getInstance().endQuery(queryId);
@@ -183,6 +183,8 @@ public class CompactionUtils {
         deviceIterator.iterateNotAlignedSeries(device, false);
     Set<String> allMeasurements = measurementIterator.getAllMeasurements();
     int subTaskNums = Math.min(allMeasurements.size(), subTaskNum);
+
+    // assign all measurements to different sub tasks
     Set<String>[] measurementsForEachSubTask = new HashSet[subTaskNums];
     int idx = 0;
     for (String measurement : allMeasurements) {
@@ -191,6 +193,8 @@ public class CompactionUtils {
       }
       measurementsForEachSubTask[idx++ % subTaskNums].add(measurement);
     }
+
+    // construct sub tasks and start compacting measurements in parallel
     List<Future<Void>> futures = new ArrayList<>();
     compactionWriter.startChunkGroup(device, false);
     for (int i = 0; i < subTaskNums; i++) {
@@ -205,13 +209,13 @@ public class CompactionUtils {
                       compactionWriter,
                       i)));
     }
+
+    // wait for all sub tasks finish
     for (int i = 0; i < subTaskNums; i++) {
       try {
         futures.get(i).get();
-      } catch (InterruptedException e) {
-        logger.error("SubCompactionTask interrupted", e);
-        Thread.currentThread().interrupt();
-      } catch (ExecutionException e) {
+      } catch (InterruptedException | ExecutionException e) {
+        logger.error("SubCompactionTask meet errors ", e);
         throw new IOException(e);
       }
     }
@@ -256,37 +260,38 @@ public class CompactionUtils {
         seriesPath, allSensors, tsDataType, queryContext, queryDataSource, null, null, null, true);
   }
 
-  private static List<TsFileIOWriter> getTsFileIOWriter(
+  private static AbstractCompactionWriter getCompactionWriter(
       List<TsFileResource> seqFileResources,
       List<TsFileResource> unseqFileResources,
       List<TsFileResource> targetFileResources)
       throws IOException {
-    List<TsFileIOWriter> targetFileWriters = new ArrayList<>();
     if (!seqFileResources.isEmpty() && !unseqFileResources.isEmpty()) {
       // cross space
-      for (TsFileResource targetFileResource : targetFileResources) {
-        targetFileWriters.add(new TsFileIOWriter(targetFileResource.getTsFile()));
-      }
+      return new CrossSpaceCompactionWriter(targetFileResources, seqFileResources);
     } else {
       // inner space
-      targetFileWriters.add(new TsFileIOWriter(targetFileResources.get(0).getTsFile()));
+      return new InnerSpaceCompactionWriter(targetFileResources.get(0));
     }
-    return targetFileWriters;
   }
 
-  private static AbstractCompactionWriter getCompactionWriter(
-      List<TsFileResource> seqFileResources,
-      List<TsFileResource> unseqFileResources,
-      List<TsFileResource> targetFileResources,
-      List<TsFileIOWriter> targetFileWriters)
-      throws IOException {
-    if (!seqFileResources.isEmpty() && !unseqFileResources.isEmpty()) {
-      // cross space
-      return new CrossSpaceCompactionWriter(
-          targetFileResources, seqFileResources, targetFileWriters);
-    } else {
-      // inner space
-      return new InnerSpaceCompactionWriter(targetFileResources.get(0), targetFileWriters.get(0));
+  private static void updateDeviceStartTimeAndEndTime(
+      List<TsFileResource> targetResources, AbstractCompactionWriter compactionWriter) {
+    List<TsFileIOWriter> targetFileWriters = compactionWriter.getFileIOWriter();
+    for (int i = 0; i < targetFileWriters.size(); i++) {
+      TsFileIOWriter fileIOWriter = targetFileWriters.get(i);
+      TsFileResource fileResource = targetResources.get(i);
+      // skip the target file that has been deleted
+      if (!fileResource.getTsFile().exists()) {
+        continue;
+      }
+      for (Map.Entry<String, List<TimeseriesMetadata>> entry :
+          fileIOWriter.getDeviceTimeseriesMetadataMap().entrySet()) {
+        String device = entry.getKey();
+        for (TimeseriesMetadata timeseriesMetadata : entry.getValue()) {
+          fileResource.updateStartTime(device, timeseriesMetadata.getStatistics().getStartTime());
+          fileResource.updateEndTime(device, timeseriesMetadata.getStatistics().getEndTime());
+        }
+      }
     }
   }
 
@@ -302,7 +307,7 @@ public class CompactionUtils {
     // in the new file
     for (int i = 0; i < targetResources.size(); i++) {
       TsFileResource targetResource = targetResources.get(i);
-      // remove the target file been deleted from list
+      // remove the target file that has been deleted from list
       if (!targetResource.getTsFile().exists()) {
         targetResources.remove(i--);
         continue;
