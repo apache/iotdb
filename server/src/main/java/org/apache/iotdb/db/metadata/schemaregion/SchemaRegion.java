@@ -53,7 +53,6 @@ import org.apache.iotdb.db.metadata.storagegroup.StorageGroupSchemaManager;
 import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
-import org.apache.iotdb.db.mpp.operator.meta.TimeSeriesMetaScanOperator;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -954,92 +953,6 @@ public class SchemaRegion {
     }
   }
 
-  public List<ShowTimeSeriesResult> showTimeSeries(
-      TimeSeriesMetaScanOperator operator, QueryContext context) throws MetadataException {
-    // scan time series with tag
-    if (operator.getKey() != null && operator.getValue() != null) {
-      return showTimeSeriesWithTag(operator, context);
-    } else {
-      return showTimeSeriesWithoutTag(operator, context);
-    }
-  }
-
-  private List<ShowTimeSeriesResult> showTimeSeriesWithTag(
-      TimeSeriesMetaScanOperator operator, QueryContext context) throws MetadataException {
-
-    List<IMeasurementMNode> allMatchedNodes =
-        tagManager.getMatchedTimeSeriesWithTag(operator, context);
-
-    List<ShowTimeSeriesResult> res = new LinkedList<>();
-    PartialPath pathPattern = operator.getPartialPath();
-    boolean needLast = operator.isOrderByHeat();
-    int curOffset = -1;
-    int count = 0;
-    int limit = needLast ? 0 : operator.getLimit();
-    int offset = needLast ? 0 : operator.getOffset();
-
-    for (IMeasurementMNode leaf : allMatchedNodes) {
-      if (operator.isPrefixPath()
-          ? pathPattern.matchPrefixPath(leaf.getPartialPath())
-          : pathPattern.matchFullPath(leaf.getPartialPath())) {
-        if (limit != 0 || offset != 0) {
-          curOffset++;
-          if (curOffset < offset) {
-            continue;
-          }
-          if (count == limit) {
-            break;
-          }
-        }
-        try {
-          Pair<Map<String, String>, Map<String, String>> tagAndAttributePair =
-              tagManager.readTagFile(leaf.getOffset());
-          IMeasurementSchema measurementSchema = leaf.getSchema();
-          res.add(
-              new ShowTimeSeriesResult(
-                  leaf.getFullPath(),
-                  leaf.getAlias(),
-                  storageGroupFullPath,
-                  measurementSchema.getType(),
-                  measurementSchema.getEncodingType(),
-                  measurementSchema.getCompressor(),
-                  leaf.getLastCacheContainer().getCachedLast() != null
-                      ? leaf.getLastCacheContainer().getCachedLast().getTimestamp()
-                      : 0,
-                  tagAndAttributePair.left,
-                  tagAndAttributePair.right));
-          if (limit != 0) {
-            count++;
-          }
-        } catch (IOException e) {
-          throw new MetadataException(
-              "Something went wrong while deserialize tag info of " + leaf.getFullPath(), e);
-        }
-      }
-    }
-
-    if (needLast) {
-      Stream<ShowTimeSeriesResult> stream = res.stream();
-
-      limit = operator.getLimit();
-      offset = operator.getOffset();
-
-      stream =
-          stream.sorted(
-              Comparator.comparingLong(ShowTimeSeriesResult::getLastTime)
-                  .reversed()
-                  .thenComparing(ShowTimeSeriesResult::getName));
-
-      if (limit != 0) {
-        stream = stream.skip(offset).limit(limit);
-      }
-
-      res = stream.collect(toList());
-    }
-
-    return res;
-  }
-
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private Pair<List<ShowTimeSeriesResult>, Integer> showTimeseriesWithIndex(
       ShowTimeSeriesPlan plan, QueryContext context) throws MetadataException {
@@ -1149,39 +1062,6 @@ public class SchemaRegion {
       }
     }
     return new Pair<>(res, ans.right);
-  }
-
-  private List<ShowTimeSeriesResult> showTimeSeriesWithoutTag(
-      TimeSeriesMetaScanOperator operator, QueryContext context) throws MetadataException {
-    Pair<List<Pair<PartialPath, String[]>>, Integer> ans =
-        mtree.getAllMeasurementSchema(operator, context);
-    List<ShowTimeSeriesResult> res = new LinkedList<>();
-    for (Pair<PartialPath, String[]> ansString : ans.left) {
-      long tagFileOffset = Long.parseLong(ansString.right[5]);
-      try {
-        Pair<Map<String, String>, Map<String, String>> tagAndAttributePair =
-            new Pair<>(Collections.emptyMap(), Collections.emptyMap());
-        if (tagFileOffset >= 0) {
-          tagAndAttributePair = tagManager.readTagFile(tagFileOffset);
-        }
-        res.add(
-            new ShowTimeSeriesResult(
-                ansString.left.getFullPath(),
-                ansString.right[0],
-                ansString.right[1],
-                TSDataType.valueOf(ansString.right[2]),
-                TSEncoding.valueOf(ansString.right[3]),
-                CompressionType.valueOf(ansString.right[4]),
-                ansString.right[6] != null ? Long.parseLong(ansString.right[6]) : 0,
-                tagAndAttributePair.left,
-                tagAndAttributePair.right));
-      } catch (IOException e) {
-        throw new MetadataException(
-            "Something went wrong while deserialize tag info of " + ansString.left.getFullPath(),
-            e);
-      }
-    }
-    return res;
   }
 
   /**
