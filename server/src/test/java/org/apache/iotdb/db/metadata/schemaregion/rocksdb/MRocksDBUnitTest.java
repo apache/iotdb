@@ -19,7 +19,8 @@
 package org.apache.iotdb.db.metadata.schemaregion.rocksdb;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.partition.SchemaRegionId;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.GroupType;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
@@ -51,7 +52,8 @@ public class MRocksDBUnitTest {
   public void setUp() throws MetadataException {
 
     PartialPath storageGroup = new PartialPath("root.test.sg");
-    SchemaRegionId schemaRegionId = new SchemaRegionId((int) (Math.random() * 10));
+    ConsensusGroupId schemaRegionId =
+        new ConsensusGroupId(GroupType.SchemaRegion, (int) (Math.random() * 10));
     MNode root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
     IStorageGroupMNode storageGroupMNode = new StorageGroupMNode(root, "test", -1);
     rSchemaRegion = new RSchemaRegion(storageGroup, schemaRegionId, storageGroupMNode);

@@ -19,10 +19,14 @@
 package org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
+import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaReadWriteHandler;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaUtils;
+
+import org.rocksdb.RocksDBException;
 
 import java.io.IOException;
 
@@ -49,6 +53,20 @@ public class RStorageGroupMNode extends RInternalMNode implements IStorageGroupM
       ttl = IoTDBDescriptor.getInstance().getConfig().getDefaultTTL();
     }
     this.dataTTL = (long) ttl;
+  }
+
+  @Override
+  void updateChildNode(String childName, int childNameMaxLevel) throws MetadataException {
+    String innerName =
+        RSchemaUtils.convertPartialPathToInner(
+            childName, childNameMaxLevel, RMNodeType.STORAGE_GROUP.getValue());
+    long ttl = getDataTTL();
+    try {
+      readWriteHandler.updateNode(
+          innerName.getBytes(), RSchemaUtils.updateTTL(RSchemaConstants.DEFAULT_NODE_VALUE, ttl));
+    } catch (RocksDBException e) {
+      throw new MetadataException(e);
+    }
   }
 
   @Override

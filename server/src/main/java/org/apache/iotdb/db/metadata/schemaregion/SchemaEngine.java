@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.metadata.schemaregion;
 
-import org.apache.iotdb.commons.partition.SchemaRegionId;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.MetadataManagerType;
+import org.apache.iotdb.db.metadata.SchemaEngineType;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaRegion;
@@ -34,8 +34,8 @@ import java.util.concurrent.ConcurrentHashMap;
 // manage all the schemaRegion in this dataNode
 public class SchemaEngine {
 
-  private Map<SchemaRegionId, ISchemaRegion> schemaRegionMap;
-  private MetadataManagerType schemaRegionStoredType;
+  private Map<ConsensusGroupId, ISchemaRegion> schemaRegionMap;
+  private SchemaEngineType schemaRegionStoredType;
 
   private static class SchemaEngineManagerHolder {
     private static final SchemaEngine INSTANCE = new SchemaEngine();
@@ -61,7 +61,7 @@ public class SchemaEngine {
     }
   }
 
-  public ISchemaRegion getSchemaRegion(SchemaRegionId schemaRegionId) {
+  public ISchemaRegion getSchemaRegion(ConsensusGroupId schemaRegionId) {
     return schemaRegionMap.get(schemaRegionId);
   }
 
@@ -70,17 +70,19 @@ public class SchemaEngine {
   }
 
   public synchronized ISchemaRegion createSchemaRegion(
-      PartialPath storageGroup, SchemaRegionId schemaRegionId, IStorageGroupMNode storageGroupMNode)
+      PartialPath storageGroup,
+      ConsensusGroupId schemaRegionId,
+      IStorageGroupMNode storageGroupMNode)
       throws MetadataException {
     ISchemaRegion schemaRegion = schemaRegionMap.get(schemaRegionId);
     if (schemaRegion != null) {
       return schemaRegion;
     }
     switch (schemaRegionStoredType) {
-      case MEMORY_MANAGER:
+      case MEMORY_BASED:
         schemaRegion = new SchemaRegion(storageGroup, schemaRegionId, storageGroupMNode);
         break;
-      case ROCKSDB_MANAGER:
+      case ROCKSDB_BASED:
         schemaRegion = new RSchemaRegion(storageGroup, schemaRegionId, storageGroupMNode);
         break;
       default:
@@ -93,7 +95,7 @@ public class SchemaEngine {
     return schemaRegion;
   }
 
-  public void deleteSchemaRegion(SchemaRegionId schemaRegionId) throws MetadataException {
+  public void deleteSchemaRegion(ConsensusGroupId schemaRegionId) throws MetadataException {
     schemaRegionMap.remove(schemaRegionId).deleteSchemaRegion();
   }
 }

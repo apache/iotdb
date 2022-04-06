@@ -91,6 +91,9 @@ public class RSchemaReadWriteHandler {
 
   public static final String ROCKSDB_PATH = config.getSystemDir() + File.separator + ROCKSDB_FOLDER;
 
+  private static final long BLOCK_CACHE = 20L * 1024 * 1024 * 1024;
+  private static final long BLOCK_CACHE_COMPRESSED = 10L * 1024 * 1024 * 1024;
+
   private RocksDB rocksDB;
 
   ConcurrentMap<String, ColumnFamilyHandle> columnFamilyHandleMap = new ConcurrentHashMap<>();
@@ -126,14 +129,14 @@ public class RSchemaReadWriteHandler {
       final Filter bloomFilter = new BloomFilter(64);
 
       final BlockBasedTableConfig tableOptions = new BlockBasedTableConfig();
-      Cache cache = new LRUCache(20L * 1024 * 1024 * 1024, 6);
+      Cache cache = new LRUCache(BLOCK_CACHE, 6);
       tableOptions
           .setBlockCache(cache)
           .setFilterPolicy(bloomFilter)
           .setBlockSizeDeviation(5)
           .setBlockRestartInterval(10)
           .setCacheIndexAndFilterBlocks(true)
-          .setBlockCacheCompressed(new LRUCache(10L * 1024 * 1024 * 1024, 6));
+          .setBlockCacheCompressed(new LRUCache(BLOCK_CACHE_COMPRESSED, 6));
 
       options.setTableFormatConfig(tableOptions);
 

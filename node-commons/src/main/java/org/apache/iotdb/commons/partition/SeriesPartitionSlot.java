@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -18,19 +18,27 @@
  */
 package org.apache.iotdb.commons.partition;
 
-import java.util.Map;
+public class SeriesPartitionSlot {
+  private int deviceGroupId;
 
-public class SchemaPartitionInfo {
-
-  // Map<StorageGroup, Map<DeviceGroupID, SchemaRegionPlaceInfo>>
-  private Map<String, Map<DeviceGroupId, SchemaRegionReplicaSet>> schemaPartitionInfo;
-
-  public Map<String, Map<DeviceGroupId, SchemaRegionReplicaSet>> getSchemaPartitionInfo() {
-    return schemaPartitionInfo;
+  public SeriesPartitionSlot(int deviceGroupId) {
+    this.deviceGroupId = deviceGroupId;
   }
 
-  public void setSchemaPartitionInfo(
-      Map<String, Map<DeviceGroupId, SchemaRegionReplicaSet>> schemaPartitionInfo) {
-    this.schemaPartitionInfo = schemaPartitionInfo;
+  public int getDeviceGroupId() {
+    return deviceGroupId;
+  }
+
+  public void setDeviceGroupId(int deviceGroupId) {
+    this.deviceGroupId = deviceGroupId;
+  }
+
+  public int hashCode() {
+    return new Integer(deviceGroupId).hashCode();
+  }
+
+  public boolean equals(Object obj) {
+    return obj instanceof SeriesPartitionSlot
+        && this.deviceGroupId == ((SeriesPartitionSlot) obj).deviceGroupId;
   }
 }

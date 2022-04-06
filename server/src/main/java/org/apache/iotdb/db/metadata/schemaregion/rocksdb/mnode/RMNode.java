@@ -20,6 +20,7 @@ package org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
@@ -53,6 +54,8 @@ public abstract class RMNode implements IMNode {
     this.name = fullPath.substring(fullPath.lastIndexOf(RSchemaConstants.PATH_SEPARATOR) + 1);
     this.readWriteHandler = readWriteHandler;
   }
+
+  abstract void updateChildNode(String childName, int childNameMaxLevel) throws MetadataException;
 
   @Override
   public String getName() {

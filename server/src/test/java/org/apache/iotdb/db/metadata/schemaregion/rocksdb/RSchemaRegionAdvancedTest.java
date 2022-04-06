@@ -18,7 +18,8 @@
  */
 package org.apache.iotdb.db.metadata.schemaregion.rocksdb;
 
-import org.apache.iotdb.commons.partition.SchemaRegionId;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.GroupType;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -45,7 +46,7 @@ public class RSchemaRegionAdvancedTest {
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
     PartialPath storageGroupPath = new PartialPath("root.vehicle.s0");
-    SchemaRegionId schemaRegionId = new SchemaRegionId(1);
+    ConsensusGroupId schemaRegionId = new ConsensusGroupId(GroupType.SchemaRegion, 1);
     RSchemaReadWriteHandler readWriteHandler = new RSchemaReadWriteHandler();
     RStorageGroupMNode storageGroupMNode =
         new RStorageGroupMNode(storageGroupPath.getFullPath(), -1, readWriteHandler);

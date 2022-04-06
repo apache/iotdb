@@ -18,13 +18,17 @@
  */
 package org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode;
 
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.lastCache.container.ILastCacheContainer;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaReadWriteHandler;
+import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import org.rocksdb.RocksDBException;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -43,6 +47,18 @@ public class REntityMNode extends RInternalMNode implements IEntityMNode {
     super(fullPath, readWriteHandler);
   }
 
+  @Override
+  void updateChildNode(String childName, int childNameMaxLevel) throws MetadataException {
+    String innerName =
+        RSchemaUtils.convertPartialPathToInner(
+            childName, childNameMaxLevel, RMNodeType.ENTITY.getValue());
+    try {
+      readWriteHandler.updateNode(innerName.getBytes(), new byte[] {});
+    } catch (RocksDBException e) {
+      throw new MetadataException(e);
+    }
+  }
+
   public REntityMNode(String fullPath, byte[] value, RSchemaReadWriteHandler readWriteHandler) {
     super(fullPath, readWriteHandler);
     deserialize(value);
@@ -50,8 +66,7 @@ public class REntityMNode extends RInternalMNode implements IEntityMNode {
 
   @Override
   public boolean addAlias(String alias, IMeasurementMNode child) {
-
-    // todo add alias
+    // In rocksdb-based mode, there is no need to update in memory
     return true;
   }
 

@@ -26,7 +26,7 @@ import org.apache.iotdb.db.engine.compaction.inner.InnerCompactionStrategy;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
-import org.apache.iotdb.db.metadata.MetadataManagerType;
+import org.apache.iotdb.db.metadata.SchemaEngineType;
 import org.apache.iotdb.db.service.thrift.impl.InfluxDBServiceImpl;
 import org.apache.iotdb.db.service.thrift.impl.TSServiceImpl;
 import org.apache.iotdb.rpc.RpcTransportFactory;
@@ -813,7 +813,7 @@ public class IoTDBConfig {
   /** Encryption provided class parameter */
   private String encryptDecryptProviderParameter;
 
-  private MetadataManagerType metadataManagerType = MetadataManagerType.MEMORY_MANAGER;
+  private SchemaEngineType schemaEngineType = SchemaEngineType.MEMORY_BASED;
 
   /**
    * Ip and port of config nodes. each one is a {internalIp | domain name}:{meta port} string tuple.
@@ -2558,8 +2558,8 @@ public class IoTDBConfig {
     this.encryptDecryptProviderParameter = encryptDecryptProviderParameter;
   }
 
-  public MetadataManagerType getMetadataManagerType() {
-    return metadataManagerType;
+  public SchemaEngineType getMetadataManagerType() {
+    return schemaEngineType;
   }
 
   public List<String> getConfigNodeUrls() {
@@ -2567,7 +2567,7 @@ public class IoTDBConfig {
   }
 
   public void setMetadataManagerType(String metadataManagerType) {
-    this.metadataManagerType = MetadataManagerType.of(metadataManagerType);
+    this.schemaEngineType = SchemaEngineType.of(metadataManagerType);
   }
 
   public void setConfigNodeUrls(List<String> configNodeUrls) {

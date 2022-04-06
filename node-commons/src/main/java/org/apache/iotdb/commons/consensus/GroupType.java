@@ -16,17 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata;
 
-public enum MetadataManagerType {
-  MEMORY_MANAGER,
-  ROCKSDB_MANAGER;
+package org.apache.iotdb.commons.consensus;
 
-  public static MetadataManagerType of(String value) {
-    try {
-      return Enum.valueOf(MetadataManagerType.class, value);
-    } catch (Exception e) {
-      return MEMORY_MANAGER;
-    }
-  }
+// TODO Use a mature IDL framework such as Protobuf to manage this structure
+public enum GroupType {
+  PartitionRegion,
+  DataRegion,
+  SchemaRegion
 }

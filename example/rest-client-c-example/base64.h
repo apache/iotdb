@@ -17,11 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.consensus.common;
+#ifndef C_REST_IOTDB_BASE64_H
+#define C_REST_IOTDB_BASE64_H
 
-// TODO Use a mature IDL framework such as Protobuf to manage this structure
-public enum GroupType {
-  PartitionRegion,
-  DataRegion,
-  SchemaRegion
-}
+#include <stdlib.h>
+#include <string.h>
+
+unsigned char *base64_encode(unsigned char *str);
+
+unsigned char *base64_decode(unsigned char *code);
+
+#endif//C_REST_IOTDB_BASE64_H

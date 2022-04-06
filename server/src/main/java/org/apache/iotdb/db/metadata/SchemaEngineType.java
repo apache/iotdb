@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,16 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.partition;
+package org.apache.iotdb.db.metadata;
 
-public class TimePartitionId {
-  private long startTime;
+public enum SchemaEngineType {
+  MEMORY_BASED,
+  ROCKSDB_BASED,
+  SCHEMA_FILE_BASED;
 
-  public long getStartTime() {
-    return startTime;
-  }
-
-  public void setStartTime(long startTime) {
-    this.startTime = startTime;
+  public static SchemaEngineType of(String value) {
+    try {
+      return Enum.valueOf(SchemaEngineType.class, value);
+    } catch (Exception e) {
+      return MEMORY_BASED;
+    }
   }
 }
