@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.source;
 
-import org.apache.iotdb.commons.partition.DataRegionReplicaSet;
+import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 
@@ -30,7 +30,29 @@ public abstract class SourceNode extends PlanNode implements AutoCloseable {
 
   public abstract void open() throws Exception;
 
-  public abstract DataRegionReplicaSet getDataRegionReplicaSet();
+  public abstract RegionReplicaSet getDataRegionReplicaSet();
 
-  public abstract void setDataRegionReplicaSet(DataRegionReplicaSet dataRegionReplicaSet);
+  public abstract void setDataRegionReplicaSet(RegionReplicaSet regionReplicaSet);
+
+  public abstract String getDeviceName();
+
+  protected abstract String getExpressionString();
+
+  @Override
+  public final int hashCode() {
+    return getExpressionString().hashCode();
+  }
+
+  @Override
+  public final boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+
+    if (!(o instanceof SourceNode)) {
+      return false;
+    }
+
+    return getExpressionString().equals(o.toString());
+  }
 }

@@ -22,7 +22,7 @@ import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
-import org.apache.iotdb.db.metadata.SchemaEngine;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
@@ -618,7 +618,7 @@ public class MTreeBelowSGTest {
 
   @Test
   public void testGetNodeListInLevel() throws MetadataException {
-    SchemaEngine.StorageGroupFilter filter = sg -> sg.equals("root.sg1");
+    LocalSchemaProcessor.StorageGroupFilter filter = sg -> sg.equals("root.sg1");
 
     MTreeBelowSG storageGroup = getStorageGroup(new PartialPath("root.sg1"));
     storageGroup.createTimeseries(
@@ -637,19 +637,29 @@ public class MTreeBelowSGTest {
         null);
 
     Assert.assertEquals(
-        2, storageGroup.getNodesListInGivenLevel(new PartialPath("root.**"), 3, null).size());
+        2,
+        storageGroup.getNodesListInGivenLevel(new PartialPath("root.**"), 3, false, null).size());
 
     Assert.assertEquals(
-        1, storageGroup.getNodesListInGivenLevel(new PartialPath("root.*.*"), 2, null).size());
+        1,
+        storageGroup.getNodesListInGivenLevel(new PartialPath("root.*.*"), 2, false, null).size());
     Assert.assertEquals(
-        1, storageGroup.getNodesListInGivenLevel(new PartialPath("root.*.*"), 1, null).size());
+        1,
+        storageGroup.getNodesListInGivenLevel(new PartialPath("root.*.*"), 1, false, null).size());
     Assert.assertEquals(
-        1, storageGroup.getNodesListInGivenLevel(new PartialPath("root.*.*.s1"), 2, null).size());
+        1,
+        storageGroup
+            .getNodesListInGivenLevel(new PartialPath("root.*.*.s1"), 2, false, null)
+            .size());
 
     Assert.assertEquals(
-        2, storageGroup.getNodesListInGivenLevel(new PartialPath("root.**"), 3, filter).size());
+        2,
+        storageGroup.getNodesListInGivenLevel(new PartialPath("root.**"), 3, false, filter).size());
     Assert.assertEquals(
-        1, storageGroup.getNodesListInGivenLevel(new PartialPath("root.*.**"), 2, filter).size());
+        1,
+        storageGroup
+            .getNodesListInGivenLevel(new PartialPath("root.*.**"), 2, false, filter)
+            .size());
 
     storageGroup = getStorageGroup(new PartialPath("root.sg2"));
     storageGroup.createTimeseries(
@@ -668,19 +678,29 @@ public class MTreeBelowSGTest {
         null);
 
     Assert.assertEquals(
-        2, storageGroup.getNodesListInGivenLevel(new PartialPath("root.**"), 3, null).size());
+        2,
+        storageGroup.getNodesListInGivenLevel(new PartialPath("root.**"), 3, false, null).size());
 
     Assert.assertEquals(
-        2, storageGroup.getNodesListInGivenLevel(new PartialPath("root.*.*"), 2, null).size());
+        2,
+        storageGroup.getNodesListInGivenLevel(new PartialPath("root.*.*"), 2, false, null).size());
     Assert.assertEquals(
-        1, storageGroup.getNodesListInGivenLevel(new PartialPath("root.*.*"), 1, null).size());
+        1,
+        storageGroup.getNodesListInGivenLevel(new PartialPath("root.*.*"), 1, false, null).size());
     Assert.assertEquals(
-        2, storageGroup.getNodesListInGivenLevel(new PartialPath("root.*.*.s1"), 2, null).size());
+        2,
+        storageGroup
+            .getNodesListInGivenLevel(new PartialPath("root.*.*.s1"), 2, false, null)
+            .size());
 
     Assert.assertEquals(
-        0, storageGroup.getNodesListInGivenLevel(new PartialPath("root.**"), 3, filter).size());
+        0,
+        storageGroup.getNodesListInGivenLevel(new PartialPath("root.**"), 3, false, filter).size());
     Assert.assertEquals(
-        0, storageGroup.getNodesListInGivenLevel(new PartialPath("root.*.**"), 2, filter).size());
+        0,
+        storageGroup
+            .getNodesListInGivenLevel(new PartialPath("root.*.**"), 2, false, filter)
+            .size());
   }
 
   @Test

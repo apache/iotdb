@@ -16,105 +16,134 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.manager;
 
-import org.apache.iotdb.commons.hash.DeviceGroupHashExecutor;
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.consensus.statemachine.PartitionRegionStateMachine;
+import org.apache.iotdb.confignode.consensus.response.DataNodesInfoDataSet;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
-import org.apache.iotdb.consensus.IConsensus;
-import org.apache.iotdb.consensus.common.ConsensusGroupId;
-import org.apache.iotdb.consensus.common.Endpoint;
-import org.apache.iotdb.consensus.common.GroupType;
-import org.apache.iotdb.consensus.common.Peer;
-import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
-import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
-import org.apache.iotdb.consensus.standalone.StandAloneConsensus;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.iotdb.confignode.physical.sys.DataPartitionPlan;
+import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
+import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
+import org.apache.iotdb.confignode.physical.sys.SchemaPartitionPlan;
+import org.apache.iotdb.confignode.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.confignode.rpc.thrift.DeviceGroupHashInfo;
+import org.apache.iotdb.consensus.common.DataSet;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import java.io.IOException;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
-import java.util.Collections;
 
-/**
- * ConfigManager maintains consistency between PartitionTables in the ConfigNodeGroup. Expose the
- * query interface for the PartitionTable
- */
-public class ConfigManager {
+/** Entry of all management, AssignPartitionManager,AssignRegionManager. */
+public class ConfigManager implements Manager {
+  private static final ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();
+  private static final TSStatus ERROR_TSSTATUS =
+      new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(ConfigManager.class);
+  /** manage consensus, write or read consensus */
+  private final ConsensusManager consensusManager;
 
-  private IConsensus consensusImpl;
-  private ConsensusGroupId consensusGroupId;
+  /** manage data node */
+  private final DataNodeManager dataNodeManager;
 
-  private DeviceGroupHashExecutor hashExecutor;
+  /** manage assign data partition and schema partition */
+  private final PartitionManager partitionManager;
 
-  @TestOnly
-  public ConfigManager(String hashExecutorClass, int deviceGroupCount) {
-    setHashExecutor(hashExecutorClass, deviceGroupCount);
+  /** manager assign schema region and data region */
+  private final RegionManager regionManager;
+
+  public ConfigManager() throws IOException {
+    this.dataNodeManager = new DataNodeManager(this);
+    this.partitionManager = new PartitionManager(this);
+    this.regionManager = new RegionManager(this);
+    this.consensusManager = new ConsensusManager();
   }
 
-  public ConfigManager() {
-    ConfigNodeConf config = ConfigNodeDescriptor.getInstance().getConf();
-
-    setHashExecutor(config.getDeviceGroupHashExecutorClass(), config.getDeviceGroupCount());
-    setConsensusLayer(config);
+  @Override
+  public boolean isStopped() {
+    return false;
   }
 
-  /** Build DeviceGroupHashExecutor */
-  private void setHashExecutor(String hashExecutorClass, int deviceGroupCount) {
-    try {
-      Class<?> executor = Class.forName(hashExecutorClass);
-      Constructor<?> executorConstructor = executor.getConstructor(int.class);
-      hashExecutor = (DeviceGroupHashExecutor) executorConstructor.newInstance(deviceGroupCount);
-    } catch (ClassNotFoundException
-        | NoSuchMethodException
-        | InstantiationException
-        | IllegalAccessException
-        | InvocationTargetException e) {
-      LOGGER.error("Couldn't Constructor DeviceGroupHashExecutor class: {}", hashExecutorClass, e);
-      hashExecutor = null;
+  @Override
+  public TSStatus registerDataNode(PhysicalPlan physicalPlan) {
+    if (physicalPlan instanceof RegisterDataNodePlan) {
+      return dataNodeManager.registerDataNode((RegisterDataNodePlan) physicalPlan);
     }
+    return ERROR_TSSTATUS;
   }
 
-  public int getDeviceGroupID(String device) {
-    return hashExecutor.getDeviceGroupID(device);
-  }
-
-  /** Build ConfigNodeGroup ConsensusLayer */
-  private void setConsensusLayer(ConfigNodeConf config) {
-    // TODO: Support other consensus protocol
-    this.consensusImpl = new StandAloneConsensus(id -> new PartitionRegionStateMachine());
-    // TODO: handle the possible exception that cause the Consensus fail
-    try {
-      this.consensusImpl.start();
-    } catch (IOException e) {
-      e.printStackTrace();
+  @Override
+  public DataSet getDataNodeInfo(PhysicalPlan physicalPlan) {
+    if (physicalPlan instanceof QueryDataNodeInfoPlan) {
+      return dataNodeManager.getDataNodeInfo((QueryDataNodeInfoPlan) physicalPlan);
     }
-
-    this.consensusGroupId = new ConsensusGroupId(GroupType.PartitionRegion, 0);
-    this.consensusImpl.addConsensusGroup(
-        this.consensusGroupId,
-        Collections.singletonList(
-            new Peer(
-                this.consensusGroupId,
-                new Endpoint(config.getRpcAddress(), config.getInternalPort()))));
+    return new DataNodesInfoDataSet();
   }
 
-  /** Transmit PhysicalPlan to confignode.consensus.statemachine */
-  public ConsensusWriteResponse write(PhysicalPlan plan) {
-    return this.consensusImpl.write(this.consensusGroupId, plan);
+  @Override
+  public DataSet getStorageGroupSchema() {
+    return regionManager.getStorageGroupSchema();
   }
 
-  /** Transmit PhysicalPlan to confignode.consensus.statemachine */
-  public ConsensusReadResponse read(PhysicalPlan plan) {
-    return this.consensusImpl.read(this.consensusGroupId, plan);
+  @Override
+  public TSStatus setStorageGroup(PhysicalPlan physicalPlan) {
+    if (physicalPlan instanceof SetStorageGroupPlan) {
+      return regionManager.setStorageGroup((SetStorageGroupPlan) physicalPlan);
+    }
+    return ERROR_TSSTATUS;
   }
 
-  // TODO: Interfaces for LoadBalancer control
+  @Override
+  public DataNodeManager getDataNodeManager() {
+    return dataNodeManager;
+  }
+
+  @Override
+  public DataSet getDataPartition(PhysicalPlan physicalPlan) {
+    if (physicalPlan instanceof DataPartitionPlan) {
+      return partitionManager.getDataPartition((DataPartitionPlan) physicalPlan);
+    }
+    return new DataNodesInfoDataSet();
+  }
+
+  @Override
+  public DataSet getSchemaPartition(PhysicalPlan physicalPlan) {
+    if (physicalPlan instanceof SchemaPartitionPlan) {
+      return partitionManager.getSchemaPartition((SchemaPartitionPlan) physicalPlan);
+    }
+    return new DataNodesInfoDataSet();
+  }
+
+  @Override
+  public RegionManager getRegionManager() {
+    return regionManager;
+  }
+
+  @Override
+  public DataSet applySchemaPartition(PhysicalPlan physicalPlan) {
+    if (physicalPlan instanceof SchemaPartitionPlan) {
+      return partitionManager.applySchemaPartition((SchemaPartitionPlan) physicalPlan);
+    }
+    return new DataNodesInfoDataSet();
+  }
+
+  @Override
+  public DataSet applyDataPartition(PhysicalPlan physicalPlan) {
+    if (physicalPlan instanceof DataPartitionPlan) {
+      return partitionManager.applyDataPartition((DataPartitionPlan) physicalPlan);
+    }
+    return new DataNodesInfoDataSet();
+  }
+
+  @Override
+  public DeviceGroupHashInfo getDeviceGroupHashInfo() {
+    return new DeviceGroupHashInfo(
+        conf.getDeviceGroupCount(), conf.getDeviceGroupHashExecutorClass());
+  }
+
+  @Override
+  public ConsensusManager getConsensusManager() {
+    return consensusManager;
+  }
 }

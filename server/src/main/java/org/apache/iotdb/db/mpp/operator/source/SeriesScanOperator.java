@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -18,41 +18,129 @@
  */
 package org.apache.iotdb.db.mpp.operator.source;
 
-import org.apache.iotdb.db.mpp.common.TsBlock;
+import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
-import com.google.common.util.concurrent.ListenableFuture;
+import java.io.IOException;
+import java.util.Set;
 
 public class SeriesScanOperator implements SourceOperator {
 
+  private final OperatorContext operatorContext;
+  private final SeriesScanUtil seriesScanUtil;
+  private TsBlock tsBlock;
+  private boolean hasCachedTsBlock = false;
+  private boolean finished = false;
+
+  public SeriesScanOperator(
+      PartialPath seriesPath,
+      Set<String> allSensors,
+      TSDataType dataType,
+      OperatorContext context,
+      Filter timeFilter,
+      Filter valueFilter,
+      boolean ascending) {
+    this.operatorContext = context;
+    this.seriesScanUtil =
+        new SeriesScanUtil(
+            seriesPath,
+            allSensors,
+            dataType,
+            context.getInstanceContext(),
+            timeFilter,
+            valueFilter,
+            ascending);
+  }
+
   @Override
   public OperatorContext getOperatorContext() {
-    return null;
+    return operatorContext;
   }
 
   @Override
-  public ListenableFuture<Void> isBlocked() {
-    return SourceOperator.super.isBlocked();
+  public TsBlock next() throws IOException {
+    if (hasCachedTsBlock || hasNext()) {
+      hasCachedTsBlock = false;
+      return tsBlock;
+    }
+    throw new IOException("no next batch");
   }
 
   @Override
-  public TsBlock next() {
-    return null;
+  public boolean hasNext() throws IOException {
+
+    if (hasCachedTsBlock) {
+      return true;
+    }
+
+    /*
+     * consume page data firstly
+     */
+    if (readPageData()) {
+      hasCachedTsBlock = true;
+      return true;
+    }
+
+    /*
+     * consume chunk data secondly
+     */
+    if (readChunkData()) {
+      hasCachedTsBlock = true;
+      return true;
+    }
+
+    /*
+     * consume next file finally
+     */
+    while (seriesScanUtil.hasNextFile()) {
+      if (readChunkData()) {
+        hasCachedTsBlock = true;
+        return true;
+      }
+    }
+    return hasCachedTsBlock;
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean isFinished() throws IOException {
+    return finished || (finished = hasNext());
+  }
+
+  private boolean readChunkData() throws IOException {
+    while (seriesScanUtil.hasNextChunk()) {
+      if (readPageData()) {
+        return true;
+      }
+    }
     return false;
   }
 
-  @Override
-  public void close() throws Exception {
-    SourceOperator.super.close();
+  private boolean readPageData() throws IOException {
+    while (seriesScanUtil.hasNextPage()) {
+      tsBlock = seriesScanUtil.nextPage();
+      if (!isEmpty(tsBlock)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private boolean isEmpty(TsBlock tsBlock) {
+    return tsBlock == null || tsBlock.isEmpty();
   }
 
   @Override
   public PlanNodeId getSourceId() {
     return null;
+  }
+
+  @Override
+  public void initQueryDataSource(QueryDataSource dataSource) {
+    seriesScanUtil.initQueryDataSource(dataSource);
   }
 }

@@ -18,9 +18,10 @@
  */
 package org.apache.iotdb.db.mpp.operator.source;
 
-import org.apache.iotdb.db.mpp.common.TsBlock;
+import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.mpp.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
@@ -51,7 +52,15 @@ public class SeriesAggregateScanOperator implements SourceOperator {
   }
 
   @Override
+  public boolean isFinished() {
+    return false;
+  }
+
+  @Override
   public PlanNodeId getSourceId() {
     return null;
   }
+
+  @Override
+  public void initQueryDataSource(QueryDataSource dataSource) {}
 }

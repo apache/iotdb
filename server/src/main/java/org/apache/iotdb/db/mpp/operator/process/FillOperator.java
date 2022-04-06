@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.mpp.operator.process;
 
-import org.apache.iotdb.db.mpp.common.TsBlock;
 import org.apache.iotdb.db.mpp.operator.OperatorContext;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
@@ -47,5 +47,10 @@ public class FillOperator implements ProcessOperator {
   @Override
   public void close() throws Exception {
     ProcessOperator.super.close();
+  }
+
+  @Override
+  public boolean isFinished() {
+    return false;
   }
 }

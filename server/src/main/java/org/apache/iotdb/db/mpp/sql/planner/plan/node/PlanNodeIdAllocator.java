@@ -19,11 +19,18 @@
 
 package org.apache.iotdb.db.mpp.sql.planner.plan.node;
 
+import org.apache.iotdb.commons.utils.TestOnly;
+
 public class PlanNodeIdAllocator {
   public static int initialId = 0;
 
   public static synchronized PlanNodeId generateId() {
     initialId++;
     return new PlanNodeId(String.valueOf(initialId));
+  }
+
+  @TestOnly
+  public static synchronized void reset() {
+    initialId = 0;
   }
 }

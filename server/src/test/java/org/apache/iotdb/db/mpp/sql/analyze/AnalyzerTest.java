@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.mpp.sql.analyze;
 
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.sql.parser.StatementGenerator;
 
@@ -39,12 +38,19 @@ public class AnalyzerTest {
         "Tag and attribute shouldn't have the same property key");
   }
 
+  @Test
+  public void sameMeasurementsInAlignedTest() {
+    assertAnalyzeSemanticException(
+        "CREATE ALIGNED TIMESERIES root.ln.wf01.GPS(latitude FLOAT encoding=PLAIN  compressor=SNAPPY, latitude FLOAT encoding=PLAIN compressor=SNAPPY)",
+        "Measurement under an aligned device is not allowed to have the same measurement name");
+  }
+
   private void assertAnalyzeSemanticException(String sql, String message) {
     try {
       Analyzer analyzer = new Analyzer(new MPPQueryContext());
       analyzer.analyze(StatementGenerator.createStatement(sql, ZonedDateTime.now().getOffset()));
       fail();
-    } catch (SemanticException e) {
+    } catch (RuntimeException e) {
       Assert.assertTrue(e.getMessage().contains(message));
     }
   }

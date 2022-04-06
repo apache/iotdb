@@ -176,10 +176,10 @@ public class LogicalPlanSmallTest {
         "select s1 from root.vehicle.d1 where s1 < 20 and time <= now() slimit 2 soffset 1";
     QueryOperator operator =
         (QueryOperator) LogicalGenerator.generate(sqlStr, ZoneId.systemDefault());
-    IoTDB.schemaEngine.init();
+    IoTDB.configManager.init();
     ConcatPathOptimizer concatPathOptimizer = new ConcatPathOptimizer();
     concatPathOptimizer.transform(operator);
-    IoTDB.schemaEngine.clear();
+    IoTDB.configManager.clear();
     // expected to throw LogicalOptimizeException: The value of SOFFSET (%d) is equal to or exceeds
     // the number of sequences (%d) that can actually be returned.
   }
