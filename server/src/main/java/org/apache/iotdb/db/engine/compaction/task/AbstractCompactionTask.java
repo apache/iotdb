@@ -59,6 +59,8 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
 
   protected abstract void doCompaction() throws Exception;
 
+  protected abstract void performCompaction() throws Exception;
+
   @Override
   public Void call() throws Exception {
     long startTime = System.currentTimeMillis();

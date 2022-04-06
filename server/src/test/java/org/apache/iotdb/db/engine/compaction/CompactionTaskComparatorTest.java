@@ -284,6 +284,9 @@ public class CompactionTaskComparatorTest {
     protected void doCompaction() throws Exception {}
 
     @Override
+    protected void performCompaction() throws Exception {}
+
+    @Override
     public boolean equalsOtherTask(AbstractCompactionTask other) {
       return false;
     }
@@ -314,6 +317,9 @@ public class CompactionTaskComparatorTest {
 
     @Override
     protected void doCompaction() throws Exception {}
+
+    @Override
+    protected void performCompaction() throws Exception {}
 
     @Override
     public boolean equalsOtherTask(AbstractCompactionTask other) {
