@@ -269,7 +269,7 @@ public class EnvironmentUtils {
     MetricConfigDescriptor.getInstance().getMetricConfig().setEnableMetric(false);
     IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(Integer.MAX_VALUE);
     // the default wal buffer size may cause ci failed
-    IoTDBDescriptor.getInstance().getConfig().setWalBufferSize(1024 * 1024);
+    IoTDBDescriptor.getInstance().getConfig().setWalBufferSize(4 * 1024 * 1024);
     if (daemon == null) {
       daemon = new IoTDB();
     }
