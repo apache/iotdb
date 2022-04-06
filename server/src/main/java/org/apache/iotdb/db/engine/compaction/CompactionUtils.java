@@ -21,7 +21,7 @@ package org.apache.iotdb.db.engine.compaction;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.constant.CrossCompactionStrategy;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.manage.CrossSpaceCompactionResource;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.RewriteCrossSpaceCompactionResource;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.ICrossSpaceMergeFileSelector;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.RewriteCompactionFileSelector;
 import org.apache.iotdb.db.engine.modification.Modification;
@@ -228,7 +228,7 @@ public class CompactionUtils {
   }
 
   public static ICrossSpaceMergeFileSelector getCrossSpaceFileSelector(
-      long budget, CrossSpaceCompactionResource resource) {
+      long budget, RewriteCrossSpaceCompactionResource resource) {
     CrossCompactionStrategy strategy =
         IoTDBDescriptor.getInstance().getConfig().getCrossCompactionStrategy();
     switch (strategy) {

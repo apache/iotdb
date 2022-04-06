@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.compaction.cross.rewrite.manage;
+package org.apache.iotdb.db.engine.compaction.cross.rewrite;
 
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -45,7 +45,7 @@ import java.util.stream.Collectors;
  * CrossSpaceMergeResource manages files and caches of readers, writers, MeasurementSchemas and
  * modifications to avoid unnecessary object creations and file openings.
  */
-public class CrossSpaceCompactionResource {
+public class RewriteCrossSpaceCompactionResource {
 
   private List<TsFileResource> seqFiles;
   private List<TsFileResource> unseqFiles = new ArrayList<>();
@@ -61,7 +61,7 @@ public class CrossSpaceCompactionResource {
 
   private boolean cacheDeviceMeta = false;
 
-  public CrossSpaceCompactionResource(
+  public RewriteCrossSpaceCompactionResource(
       List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
     this.seqFiles = seqFiles.stream().filter(this::filterSeqResource).collect(Collectors.toList());
     filterUnseqResource(unseqFiles);
@@ -88,7 +88,7 @@ public class CrossSpaceCompactionResource {
     }
   }
 
-  public CrossSpaceCompactionResource(
+  public RewriteCrossSpaceCompactionResource(
       Collection<TsFileResource> seqFiles, List<TsFileResource> unseqFiles, long ttlLowerBound) {
     this.ttlLowerBound = ttlLowerBound;
     this.seqFiles = seqFiles.stream().filter(this::filterSeqResource).collect(Collectors.toList());

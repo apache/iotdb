@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.engine.compaction;
 
 import org.apache.iotdb.db.constant.TestConstant;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.task.RewriteCrossSpaceCompactionTask;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.RewriteCrossSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.inner.InnerCompactionTest;
 import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompactionTask;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;

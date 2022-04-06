@@ -24,7 +24,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionSelector;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.manage.CrossSpaceCompactionResource;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.ICrossSpaceMergeFileSelector;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
@@ -87,8 +86,8 @@ public class RewriteCrossSpaceCompactionSelector extends AbstractCrossSpaceCompa
     }
     long budget = config.getCrossCompactionMemoryBudget();
     long timeLowerBound = System.currentTimeMillis() - Long.MAX_VALUE;
-    CrossSpaceCompactionResource mergeResource =
-        new CrossSpaceCompactionResource(seqFileList, unSeqFileList, timeLowerBound);
+    RewriteCrossSpaceCompactionResource mergeResource =
+        new RewriteCrossSpaceCompactionResource(seqFileList, unSeqFileList, timeLowerBound);
 
     ICrossSpaceMergeFileSelector fileSelector =
         CompactionUtils.getCrossSpaceFileSelector(budget, mergeResource);

@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.compaction.cross.rewrite.task;
+package org.apache.iotdb.db.engine.compaction.cross.rewrite;
 
 import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.performer.AbstractCompactionPerformer;
