@@ -18,9 +18,11 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
+import java.util.HashMap;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -30,6 +32,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /**
  * This node is responsible for the final aggregation merge operation. It will process the data from
@@ -67,7 +70,7 @@ public class GroupByLevelNode extends ProcessNode {
 
   @Override
   public void addChild(PlanNode child) {
-    throw new NotImplementedException("addChild of GroupByLevelNode is not implemented");
+    this.child = child;
   }
 
   @Override
@@ -90,12 +93,37 @@ public class GroupByLevelNode extends ProcessNode {
     return visitor.visitGroupByLevel(this, context);
   }
 
-  public static GroupByLevelNode deserialize(ByteBuffer byteBuffer) {
-    return null;
+  @Override
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    PlanNodeType.GROUP_BY_LEVEL.serialize(byteBuffer);
+    ReadWriteIOUtils.write(groupByLevels.length, byteBuffer);
+    for (int i = 0; i < groupByLevels.length; i ++) {
+      ReadWriteIOUtils.write(groupByLevels[i], byteBuffer);
+    }
+    ReadWriteIOUtils.write(columnNames.size(), byteBuffer);
+    for (int i = 0; i < columnNames.size(); i ++) {
+      ReadWriteIOUtils.write(columnNames.get(i), byteBuffer);
+    }
+    ReadWriteIOUtils.write(groupedPathMap, byteBuffer);
   }
 
-  @Override
-  public void serialize(ByteBuffer byteBuffer) {}
+  public static GroupByLevelNode deserialize(ByteBuffer byteBuffer) {
+    int groupByLevelSize = ReadWriteIOUtils.readInt(byteBuffer);
+    int[] groupByLevels = new int[groupByLevelSize];
+    for (int i = 0; i < groupByLevelSize; i ++) {
+      groupByLevels[i] = ReadWriteIOUtils.readInt(byteBuffer);
+    }
+    int columnNameSize = ReadWriteIOUtils.readInt(byteBuffer);
+    List<String> columnNames = new ArrayList<>();
+    for (int i = 0; i < columnNameSize; i ++) {
+      columnNames.add(ReadWriteIOUtils.readString(byteBuffer));
+    }
+    Map<String, String> mp = ReadWriteIOUtils.readMap(byteBuffer);
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+    GroupByLevelNode groupByLevelNode = new GroupByLevelNode(planNodeId, null, groupByLevels, mp);
+    groupByLevelNode.setColumnNames(columnNames);
+    return groupByLevelNode;
+  }
 
   public int[] getGroupByLevels() {
     return groupByLevels;

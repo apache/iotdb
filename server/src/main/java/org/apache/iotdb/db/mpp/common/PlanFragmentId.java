@@ -66,4 +66,9 @@ public class PlanFragmentId {
     return new PlanFragmentId(
         QueryId.deserialize(byteBuffer), ReadWriteIOUtils.readInt(byteBuffer));
   }
+
+  public void serialize(ByteBuffer byteBuffer) {
+    queryId.serialize(byteBuffer);
+    ReadWriteIOUtils.write(id, byteBuffer);
+  }
 }

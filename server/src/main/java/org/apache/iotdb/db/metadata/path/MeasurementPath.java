@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.path;
 
+import java.nio.ByteBuffer;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
@@ -44,11 +45,14 @@ import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 import org.slf4j.Logger;
@@ -337,5 +341,30 @@ public class MeasurementPath extends PartialPath {
     QueryUtils.modifyChunkMetaData(chunkMetadataList, modifications);
     chunkMetadataList.removeIf(context::chunkNotSatisfy);
     return chunkMetadataList;
+  }
+
+  public void serialize(ByteBuffer byteBuffer) {
+    super.serialize(byteBuffer);
+    if (measurementSchema instanceof MeasurementSchema) {
+      ReadWriteIOUtils.write((byte) 0, byteBuffer);
+    } else if (measurementSchema instanceof VectorMeasurementSchema) {
+      ReadWriteIOUtils.write((byte) 1, byteBuffer);
+    }
+    measurementSchema.serializeTo(byteBuffer);
+    ReadWriteIOUtils.write(isUnderAlignedEntity, byteBuffer);
+    ReadWriteIOUtils.write(measurementAlias, byteBuffer);
+  }
+
+  public static MeasurementPath deserialize(ByteBuffer byteBuffer) {
+    MeasurementPath measurementPath = (MeasurementPath) PartialPath.deserialize(byteBuffer);
+    byte type = ReadWriteIOUtils.readByte(byteBuffer);
+    if (type == 0) {
+      measurementPath.measurementSchema = MeasurementSchema.deserializeFrom(byteBuffer);
+    } else if (type == 1) {
+      measurementPath.measurementSchema = VectorMeasurementSchema.deserializeFrom(byteBuffer);
+    }
+    measurementPath.isUnderAlignedEntity = ReadWriteIOUtils.readBool(byteBuffer);
+    measurementPath.measurementAlias = ReadWriteIOUtils.readString(byteBuffer);
+    return measurementPath;
   }
 }

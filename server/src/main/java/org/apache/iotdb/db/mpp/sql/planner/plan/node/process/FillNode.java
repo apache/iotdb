@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.component.FillPolicy;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -30,6 +31,7 @@ import com.google.common.collect.ImmutableList;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /** FillNode is used to fill the empty field in one row. */
 public class FillNode extends ProcessNode {
@@ -82,12 +84,17 @@ public class FillNode extends ProcessNode {
     return visitor.visitFill(this, context);
   }
 
-  public static FillNode deserialize(ByteBuffer byteBuffer) {
-    return null;
+  @Override
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    PlanNodeType.FILL.serialize(byteBuffer);
+    ReadWriteIOUtils.write(fillPolicy.ordinal(), byteBuffer);
   }
 
-  @Override
-  public void serialize(ByteBuffer byteBuffer) {}
+  public static FillNode deserialize(ByteBuffer byteBuffer) {
+    int fillIndex = ReadWriteIOUtils.readInt(byteBuffer);
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+    return new FillNode(planNodeId, FillPolicy.values()[fillIndex]);
+  }
 
   public FillNode(PlanNodeId id, PlanNode child, FillPolicy fillPolicy) {
     this(id);

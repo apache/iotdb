@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.db.mpp.common;
 
+import java.nio.ByteBuffer;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 /** The fragment instance ID class. */
 public class FragmentInstanceId {
 
@@ -52,5 +55,15 @@ public class FragmentInstanceId {
 
   public String toString() {
     return fullId;
+  }
+
+  public static FragmentInstanceId deserialize(ByteBuffer byteBuffer) {
+    return new FragmentInstanceId(
+        PlanFragmentId.deserialize(byteBuffer), ReadWriteIOUtils.readString(byteBuffer));
+  }
+
+  public void serialize(ByteBuffer byteBuffer) {
+    fragmentId.serialize(byteBuffer);
+    ReadWriteIOUtils.write(instanceId, byteBuffer);
   }
 }

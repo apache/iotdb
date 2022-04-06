@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.sink;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 
@@ -28,6 +29,7 @@ import com.google.common.collect.ImmutableList;
 
 import java.nio.ByteBuffer;
 import java.util.List;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class FragmentSinkNode extends SinkNode {
   private PlanNode child;
@@ -70,11 +72,29 @@ public class FragmentSinkNode extends SinkNode {
   }
 
   public static FragmentSinkNode deserialize(ByteBuffer byteBuffer) {
-    return null;
+    ExchangeNode downStreamNode = ExchangeNode.deserialize(byteBuffer);
+    EndPoint downStreamEndpoint = new EndPoint(ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readInt(byteBuffer));
+    FragmentInstanceId downStreamInstanceId = FragmentInstanceId.deserialize(byteBuffer);
+    PlanNodeId downStreamPlanNodeId = PlanNodeId.deserialize(byteBuffer);
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+
+    FragmentSinkNode fragmentSinkNode = new FragmentSinkNode(planNodeId);
+    fragmentSinkNode.downStreamEndpoint = downStreamEndpoint;
+    fragmentSinkNode.downStreamInstanceId = downStreamInstanceId;
+    fragmentSinkNode.downStreamPlanNodeId = downStreamPlanNodeId;
+    fragmentSinkNode.downStreamNode = downStreamNode;
+    return fragmentSinkNode;
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {}
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    PlanNodeType.FRAGMENT_SINK.serialize(byteBuffer);
+    downStreamNode.serialize(byteBuffer);
+    ReadWriteIOUtils.write(downStreamEndpoint.ip, byteBuffer);
+    ReadWriteIOUtils.write(downStreamEndpoint.port, byteBuffer);
+    downStreamInstanceId.serialize(byteBuffer);
+    downStreamPlanNodeId.serialize(byteBuffer);
+  }
 
   @Override
   public void send() {}

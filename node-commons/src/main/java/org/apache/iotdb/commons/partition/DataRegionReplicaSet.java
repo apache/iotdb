@@ -18,9 +18,12 @@
  */
 package org.apache.iotdb.commons.partition;
 
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 
 import java.util.List;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class DataRegionReplicaSet {
   private DataRegionId Id;
@@ -57,5 +60,24 @@ public class DataRegionReplicaSet {
 
   public boolean equals(Object obj) {
     return obj instanceof DataRegionReplicaSet && obj.toString().equals(toString());
+  }
+
+  public static DataRegionReplicaSet deserialize(ByteBuffer byteBuffer) {
+    DataRegionId dataRegionId = DataRegionId.deserialize(byteBuffer);
+    int size = ReadWriteIOUtils.readInt(byteBuffer);
+    List<EndPoint> endPoints = new ArrayList<>();
+    for (int i = 0; i < size; i ++) {
+      endPoints.add(new EndPoint(ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readInt(byteBuffer)));
+    }
+    return new DataRegionReplicaSet(dataRegionId, endPoints);
+  }
+
+  public void serialize(ByteBuffer byteBuffer) {
+    Id.serialize(byteBuffer);
+    ReadWriteIOUtils.write(endPointList.size(), byteBuffer);
+    for (int i = 0; i < endPointList.size(); i ++) {
+      ReadWriteIOUtils.write(endPointList.get(i).ip, byteBuffer);
+      ReadWriteIOUtils.write(endPointList.get(i).port, byteBuffer);
+    }
   }
 }

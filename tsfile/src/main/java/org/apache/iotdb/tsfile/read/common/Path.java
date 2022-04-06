@@ -18,9 +18,11 @@
  */
 package org.apache.iotdb.tsfile.read.common;
 
+import java.nio.ByteBuffer;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
 import java.io.Serializable;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /**
  * This class represent a time series in TsFile, which is usually defined by a device and a
@@ -169,5 +171,19 @@ public class Path implements Serializable, Comparable<Path> {
   /** return the column contained by this path */
   public int getColumnNum() {
     return 1;
+  }
+
+  public void serialize(ByteBuffer byteBuffer) {
+    ReadWriteIOUtils.write(measurement, byteBuffer);
+    ReadWriteIOUtils.write(device, byteBuffer);
+    ReadWriteIOUtils.write(fullPath, byteBuffer);
+  }
+
+  public static Path deserialize(ByteBuffer byteBuffer) {
+    Path path = new Path();
+    path.measurement = ReadWriteIOUtils.readString(byteBuffer);
+    path.device = ReadWriteIOUtils.readString(byteBuffer);
+    path.fullPath = ReadWriteIOUtils.readString(byteBuffer);
+    return path;
   }
 }

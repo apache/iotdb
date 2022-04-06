@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
+import javax.print.DocFlavor.BYTE_ARRAY;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.sink.FragmentSinkNode;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 
@@ -29,6 +31,7 @@ import com.google.common.collect.ImmutableList;
 
 import java.nio.ByteBuffer;
 import java.util.List;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class ExchangeNode extends PlanNode {
   private PlanNode child;
@@ -88,11 +91,26 @@ public class ExchangeNode extends PlanNode {
   }
 
   public static ExchangeNode deserialize(ByteBuffer byteBuffer) {
-    return null;
+    FragmentSinkNode fragmentSinkNode = FragmentSinkNode.deserialize(byteBuffer);
+    EndPoint endPoint = new EndPoint(ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readInt(byteBuffer));
+    FragmentInstanceId fragmentInstanceId = FragmentInstanceId.deserialize(byteBuffer);
+    PlanNodeId upstreamPlanNodeId = PlanNodeId.deserialize(byteBuffer);
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+    ExchangeNode exchangeNode = new ExchangeNode(planNodeId);
+    exchangeNode.setUpstream(endPoint, fragmentInstanceId, upstreamPlanNodeId);
+    exchangeNode.setRemoteSourceNode(fragmentSinkNode);
+    return exchangeNode;
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {}
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    PlanNodeType.EXCHANGE.serialize(byteBuffer);
+    remoteSourceNode.serialize(byteBuffer);
+    ReadWriteIOUtils.write(upstreamEndpoint.port, byteBuffer);
+    ReadWriteIOUtils.write(upstreamEndpoint.ip, byteBuffer);
+    upstreamInstanceId.serialize(byteBuffer);
+    upstreamPlanNodeId.serialize(byteBuffer);
+  }
 
   public PlanNode getChild() {
     return child;

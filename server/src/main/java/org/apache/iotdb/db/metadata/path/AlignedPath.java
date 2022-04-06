@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.metadata.path;
 
+import java.nio.ByteBuffer;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.engine.memtable.AlignedWritableMemChunk;
 import org.apache.iotdb.db.engine.memtable.AlignedWritableMemChunkGroup;
@@ -49,10 +50,13 @@ import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
@@ -498,6 +502,44 @@ public class AlignedPath extends PartialPath {
     } catch (IllegalPathException e) {
       logger.warn("path is illegal: {}", this.getFullPath(), e);
     }
+    return alignedPath;
+  }
+
+  public void serialize(ByteBuffer byteBuffer) {
+    ReadWriteIOUtils.write(measurementList.size(), byteBuffer);
+    for (String measurement : measurementList) {
+      ReadWriteIOUtils.write(measurement, byteBuffer);
+    }
+    ReadWriteIOUtils.write(schemaList.size(), byteBuffer);
+    for (IMeasurementSchema measurementSchema : schemaList) {
+      if (measurementSchema instanceof MeasurementSchema) {
+        ReadWriteIOUtils.write((byte) 0, byteBuffer);
+      } else if (measurementSchema instanceof VectorMeasurementSchema) {
+        ReadWriteIOUtils.write((byte) 1, byteBuffer);
+      }
+      measurementSchema.serializeTo(byteBuffer);
+    }
+  }
+
+  public static AlignedPath deserialize(ByteBuffer byteBuffer) {
+    AlignedPath alignedPath = (AlignedPath) PartialPath.deserialize(byteBuffer);
+    int measurementSize = ReadWriteIOUtils.readInt(byteBuffer);
+    List<String> measurements = new ArrayList<>();
+    for (int i = 0; i < measurementSize; i ++) {
+      measurements.add(ReadWriteIOUtils.readString(byteBuffer));
+    }
+    int measurementSchemaSize = ReadWriteIOUtils.readInt(byteBuffer);
+    List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
+    for (int i = 0; i < measurementSchemaSize; i ++) {
+      byte type = ReadWriteIOUtils.readByte(byteBuffer);
+      if (type == 0) {
+        measurementSchemas.add(MeasurementSchema.deserializeFrom(byteBuffer));
+      } else if (type == 1) {
+        measurementSchemas.add(VectorMeasurementSchema.deserializeFrom(byteBuffer));
+      }
+    }
+    alignedPath.measurementList = measurements;
+    alignedPath.schemaList = measurementSchemas;
     return alignedPath;
   }
 }

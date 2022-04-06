@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.db.mpp.common.filter;
 
+import java.nio.ByteBuffer;
+import java.util.HashSet;
+import java.util.Set;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -28,6 +31,7 @@ import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.utils.StringContainer;
 
 import java.util.Map;
@@ -130,5 +134,16 @@ public class LikeFilter extends FunctionFilter {
 
   public String getValue() {
     return value;
+  }
+
+  public void serialize(ByteBuffer byteBuffer) {
+    super.serialize(byteBuffer);
+    ReadWriteIOUtils.write(value, byteBuffer);
+  }
+
+  public static LikeFilter deserialize(ByteBuffer byteBuffer) {
+    LikeFilter queryFilter = (LikeFilter) QueryFilter.deserialize(byteBuffer);
+    queryFilter.value = ReadWriteIOUtils.readString(byteBuffer);
+    return queryFilter;
   }
 }

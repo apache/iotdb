@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeIdAllocator;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -30,6 +31,7 @@ import com.google.common.collect.ImmutableList;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /** LimitNode is used to select top n result. It uses the default order of upstream nodes */
 public class LimitNode extends ProcessNode {
@@ -78,12 +80,17 @@ public class LimitNode extends ProcessNode {
     return visitor.visitLimit(this, context);
   }
 
-  public static LimitNode deserialize(ByteBuffer byteBuffer) {
-    return null;
+  @Override
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    PlanNodeType.LIMIT.serialize(byteBuffer);
+    ReadWriteIOUtils.write(limit, byteBuffer);
   }
 
-  @Override
-  public void serialize(ByteBuffer byteBuffer) {}
+  public static LimitNode deserialize(ByteBuffer byteBuffer) {
+    int limit = ReadWriteIOUtils.readInt(byteBuffer);
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+    return new LimitNode(planNodeId, limit);
+  }
 
   public int getLimit() {
     return limit;

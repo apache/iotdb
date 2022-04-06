@@ -16,21 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.mpp.sql.plan.node.metadata.read;
 
-package org.apache.iotdb.db.metadata.idtable.entry;
 
-import java.nio.ByteBuffer;
-import org.apache.iotdb.db.query.udf.datastructure.tv.SerializableTVList;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.ShowDevicesNode;
+import org.junit.Test;
 
-/** device id interface */
-public interface IDeviceID {
+public class ShowDevicesNodeSerdeTest {
 
-  /**
-   * to string format
-   *
-   * @return string format device id
-   */
-  public String toStringID();
-
-  public void serialize(ByteBuffer byteBuffer);
+  @Test
+  public void TestSerializeAndDeserialize() {
+    ShowDevicesNode showDevicesNode = new ShowDevicesNode(new PlanNodeId("TestShowDevicesNode"));
+  }
 }

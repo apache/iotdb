@@ -18,6 +18,11 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node;
 
+import java.nio.ByteBuffer;
+import org.apache.iotdb.db.mpp.common.PlanFragmentId;
+import org.apache.iotdb.db.mpp.common.QueryId;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 public class PlanNodeId {
   private String id;
 
@@ -43,5 +48,13 @@ public class PlanNodeId {
       return this.id.equals(((PlanNodeId) obj).getId());
     }
     return false;
+  }
+
+  public static PlanNodeId deserialize(ByteBuffer byteBuffer) {
+    return new PlanNodeId(ReadWriteIOUtils.readString(byteBuffer));
+  }
+
+  public void serialize(ByteBuffer byteBuffer) {
+    ReadWriteIOUtils.write(id, byteBuffer);
   }
 }

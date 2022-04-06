@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeIdAllocator;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullPolicy;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
@@ -31,6 +32,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /**
  * TimeJoinOperator is responsible for join two or more TsBlock. The join algorithm is like outer
@@ -95,12 +97,21 @@ public class TimeJoinNode extends ProcessNode {
     return visitor.visitTimeJoin(this, context);
   }
 
-  public static TimeJoinNode deserialize(ByteBuffer byteBuffer) {
-    return null;
+  @Override
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    PlanNodeType.TIME_JOIN.serialize(byteBuffer);
+    ReadWriteIOUtils.write(mergeOrder.ordinal(), byteBuffer);
+    ReadWriteIOUtils.write(filterNullPolicy.ordinal(), byteBuffer);
   }
 
-  @Override
-  public void serialize(ByteBuffer byteBuffer) {}
+  public static TimeJoinNode deserialize(ByteBuffer byteBuffer) {
+    OrderBy orderBy = OrderBy.values()[ReadWriteIOUtils.readInt(byteBuffer)];
+    FilterNullPolicy filterNullPolicy = FilterNullPolicy.values()[ReadWriteIOUtils.readInt(byteBuffer)];
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+    return new TimeJoinNode(planNodeId, orderBy, filterNullPolicy);
+  }
+
+
 
   @Override
   public void addChild(PlanNode child) {

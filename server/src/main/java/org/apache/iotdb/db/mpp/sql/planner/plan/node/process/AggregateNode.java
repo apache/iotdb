@@ -18,16 +18,21 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import org.apache.iotdb.db.mpp.common.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /**
  * This node is used to aggregate required series from multiple sources. The source data will be
@@ -66,7 +71,7 @@ public class AggregateNode extends ProcessNode {
 
   @Override
   public void addChild(PlanNode child) {
-    throw new NotImplementedException("addChild of AggregateNode is not implemented");
+    children.add(child);
   }
 
   @Override
@@ -89,10 +94,25 @@ public class AggregateNode extends ProcessNode {
     return visitor.visitRowBasedSeriesAggregate(this, context);
   }
 
-  public static AggregateNode deserialize(ByteBuffer byteBuffer) {
-    return null;
+  @Override
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    PlanNodeType.AGGREGATE.serialize(byteBuffer);
+    // TODO serialize aggregateFuncMap，because it is unsure
+    ReadWriteIOUtils.write(columnNames.size(), byteBuffer);
+    for (String columnName : columnNames) {
+      ReadWriteIOUtils.write(columnName, byteBuffer);
+    }
   }
 
-  @Override
-  public void serialize(ByteBuffer byteBuffer) {}
+  public static AggregateNode deserialize(ByteBuffer byteBuffer) {
+    // TODO deserialize aggregateFuncMap， because it is unsure
+    // Map<String, FunctionExpression> aggregateFuncMap = new HashMap<>();
+    int columnSize = ReadWriteIOUtils.readInt(byteBuffer);
+    List<String> columnNames = new ArrayList<>(columnSize);
+    for (int i = 0; i < columnSize; i ++) {
+      columnNames.add(ReadWriteIOUtils.readString(byteBuffer));
+    }
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+    return new AggregateNode(planNodeId, new HashMap<>(), new ArrayList<>(), columnNames);
+  }
 }

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.common.filter;
 
+import java.nio.ByteBuffer;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -32,6 +33,7 @@ import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.utils.StringContainer;
 
 import java.util.*;
@@ -197,5 +199,26 @@ public class InFilter extends FunctionFilter {
     public <T extends Comparable<T>> Filter getValueFilter(T value) {
       return ValueFilter.notEq(value);
     }
+  }
+
+  public void serialize(ByteBuffer byteBuffer) {
+    super.serialize(byteBuffer);
+    ReadWriteIOUtils.write(not, byteBuffer);
+    ReadWriteIOUtils.write(values.size(), byteBuffer);
+    for (String value : values) {
+      ReadWriteIOUtils.write(value, byteBuffer);
+    }
+  }
+
+  public static InFilter deserialize(ByteBuffer byteBuffer) {
+    InFilter queryFilter = (InFilter) QueryFilter.deserialize(byteBuffer);
+    queryFilter.not = ReadWriteIOUtils.readBool(byteBuffer);
+    int size = ReadWriteIOUtils.readInt(byteBuffer);
+    Set<String> values = new HashSet<>();
+    for (int i = 0; i < size; i ++) {
+      values.add(ReadWriteIOUtils.readString(byteBuffer));
+    }
+    queryFilter.values = values;
+    return queryFilter;
   }
 }

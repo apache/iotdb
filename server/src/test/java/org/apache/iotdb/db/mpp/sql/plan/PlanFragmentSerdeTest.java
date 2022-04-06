@@ -16,21 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.mpp.sql.plan;
 
-package org.apache.iotdb.db.metadata.idtable.entry;
+public class PlanFragmentSerdeTest {
 
-import java.nio.ByteBuffer;
-import org.apache.iotdb.db.query.udf.datastructure.tv.SerializableTVList;
-
-/** device id interface */
-public interface IDeviceID {
-
-  /**
-   * to string format
-   *
-   * @return string format device id
-   */
-  public String toStringID();
-
-  public void serialize(ByteBuffer byteBuffer);
 }

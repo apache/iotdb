@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.write;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
 import java.nio.ByteBuffer;
@@ -61,9 +62,18 @@ public class InsertMultiTabletNode extends InsertNode {
   }
 
   public static InsertMultiTabletNode deserialize(ByteBuffer byteBuffer) {
-    return null;
+    InsertMultiTabletNode tempNode = new InsertMultiTabletNode(null);
+    deserializeAttributes(tempNode, byteBuffer);
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+    InsertMultiTabletNode ansNode = new InsertMultiTabletNode(planNodeId);
+    copyAttributes(ansNode, tempNode);
+    tempNode = null;
+    return ansNode;
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {}
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    PlanNodeType.INSERT_MULTI_TABLET.serialize(byteBuffer);
+    super.serializeAttributes(byteBuffer);
+  }
 }

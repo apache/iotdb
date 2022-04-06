@@ -18,6 +18,11 @@
  */
 package org.apache.iotdb.db.mpp.common.filter;
 
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.sql.SQLParserException;
@@ -28,6 +33,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.IUnaryExpression;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.utils.StringContainer;
 
 import org.slf4j.Logger;
@@ -167,5 +173,18 @@ public class BasicFunctionFilter extends FunctionFilter {
   @Override
   public int hashCode() {
     return Objects.hash(super.hashCode(), singlePath, value, funcToken);
+  }
+
+  public void serialize(ByteBuffer byteBuffer) {
+    super.serialize(byteBuffer);
+    ReadWriteIOUtils.write(value, byteBuffer);
+    ReadWriteIOUtils.write(funcToken.ordinal(), byteBuffer);
+  }
+
+  public static BasicFunctionFilter deserialize(ByteBuffer byteBuffer) {
+    BasicFunctionFilter queryFilter = (BasicFunctionFilter) QueryFilter.deserialize(byteBuffer);
+    queryFilter.value = ReadWriteIOUtils.readString(byteBuffer);
+    queryFilter.funcToken = BasicFilterType.values()[ReadWriteIOUtils.readInt(byteBuffer)];
+    return queryFilter;
   }
 }

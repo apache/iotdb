@@ -18,6 +18,10 @@
  */
 package org.apache.iotdb.commons.partition;
 
+import java.nio.ByteBuffer;
+import org.apache.iotdb.service.rpc.thrift.EndPoint;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 public class DataRegionId {
   private int dataRegionId;
 
@@ -35,5 +39,13 @@ public class DataRegionId {
 
   public String toString() {
     return String.format("DataRegion-%d", dataRegionId);
+  }
+
+  public static DataRegionId deserialize(ByteBuffer byteBuffer) {
+    return new DataRegionId(ReadWriteIOUtils.readInt(byteBuffer));
+  }
+
+  public void serialize(ByteBuffer byteBuffer) {
+    ReadWriteIOUtils.write(dataRegionId, byteBuffer);
   }
 }

@@ -18,9 +18,14 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.source;
 
+import java.nio.ByteBuffer;
 import org.apache.iotdb.commons.partition.DataRegionReplicaSet;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
+import org.apache.iotdb.tsfile.read.filter.operator.OrFilter;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public abstract class SourceNode extends PlanNode implements AutoCloseable {
 

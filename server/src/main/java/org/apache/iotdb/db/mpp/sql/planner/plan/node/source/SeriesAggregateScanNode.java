@@ -23,10 +23,14 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.common.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
+import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
+import org.apache.iotdb.tsfile.read.filter.operator.OrFilter;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import com.google.common.collect.ImmutableList;
@@ -34,6 +38,7 @@ import com.google.common.collect.ImmutableList;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /**
  * SeriesAggregateOperator is responsible to do the aggregation calculation for one series. It will
@@ -137,12 +142,27 @@ public class SeriesAggregateScanNode extends SourceNode {
     return visitor.visitSeriesAggregate(this, context);
   }
 
-  public static SeriesAggregateScanNode deserialize(ByteBuffer byteBuffer) {
-    return null;
+  @Override
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    PlanNodeType.SERIES_AGGREGATE_SCAN.serialize(byteBuffer);
+    // TODO groupByTimeParameter has no field
+    // TODO aggregateFunc to be consider
+    filter.serialize(byteBuffer);
+    ReadWriteIOUtils.write(columnName, byteBuffer);
+    dataRegionReplicaSet.serialize(byteBuffer);
   }
 
-  @Override
-  public void serialize(ByteBuffer byteBuffer) {}
+  public static SeriesAggregateScanNode deserialize(ByteBuffer byteBuffer) {
+    Filter filter = FilterFactory.deserialize(byteBuffer);
+    String columnName = ReadWriteIOUtils.readString(byteBuffer);
+    DataRegionReplicaSet dataRegionReplicaSet = DataRegionReplicaSet.deserialize(byteBuffer);
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+    SeriesAggregateScanNode seriesAggregateScanNode = new SeriesAggregateScanNode(planNodeId);
+    seriesAggregateScanNode.columnName = columnName;
+    seriesAggregateScanNode.dataRegionReplicaSet = dataRegionReplicaSet;
+    seriesAggregateScanNode.filter = filter;
+    return seriesAggregateScanNode;
+  }
 
   // This method is used when do the PredicatePushDown.
   // The filter is not put in the constructor because the filter is only clear in the predicate

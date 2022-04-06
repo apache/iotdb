@@ -22,6 +22,7 @@ import org.apache.commons.lang.Validate;
 
 import java.nio.ByteBuffer;
 import java.util.List;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import static java.util.Objects.requireNonNull;
 
@@ -76,5 +77,15 @@ public abstract class PlanNode {
     return visitor.visitPlan(this, context);
   }
 
-  public abstract void serialize(ByteBuffer byteBuffer);
+  public void serialize(ByteBuffer byteBuffer) {
+    serializeAttributes(byteBuffer);
+    id.serialize(byteBuffer);
+    List<PlanNode> planNodes = getChildren();
+    ReadWriteIOUtils.write(planNodes.size(), byteBuffer);
+    for (PlanNode planNode : planNodes) {
+      planNode.serialize(byteBuffer);
+    }
+  }
+
+  protected abstract void serializeAttributes(ByteBuffer byteBuffer);
 }

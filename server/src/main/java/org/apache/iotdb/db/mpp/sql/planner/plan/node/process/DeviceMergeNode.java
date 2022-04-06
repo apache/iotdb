@@ -18,9 +18,11 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
+import java.util.HashMap;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullPolicy;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
@@ -30,6 +32,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /**
  * DeviceMergeOperator is responsible for constructing a device-based view of a set of series. And
@@ -93,6 +96,10 @@ public class DeviceMergeNode extends ProcessNode {
     return columnNames;
   }
 
+  public void setColumnNames(List<String> columnNames) {
+    this.columnNames = columnNames;
+  }
+
   public OrderBy getMergeOrder() {
     return mergeOrder;
   }
@@ -102,12 +109,34 @@ public class DeviceMergeNode extends ProcessNode {
     return visitor.visitDeviceMerge(this, context);
   }
 
-  public static DeviceMergeNode deserialize(ByteBuffer byteBuffer) {
-    return null;
+  @Override
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    PlanNodeType.DEVICE_MERGE.serialize(byteBuffer);
+    ReadWriteIOUtils.write(mergeOrder.ordinal(), byteBuffer);
+    ReadWriteIOUtils.write(filterNullPolicy.ordinal(), byteBuffer);
+    // TODO childDeviceNodeMap
+    ReadWriteIOUtils.write(columnNames.size(), byteBuffer);
+    for (String column : columnNames) {
+      ReadWriteIOUtils.write(column, byteBuffer);
+    }
   }
 
-  @Override
-  public void serialize(ByteBuffer byteBuffer) {}
+  public static DeviceMergeNode deserialize(ByteBuffer byteBuffer) {
+    int orderByIndex = ReadWriteIOUtils.readInt(byteBuffer);
+    OrderBy orderBy = OrderBy.values()[orderByIndex];
+    int filterNullPolicyIndex = ReadWriteIOUtils.readInt(byteBuffer);
+    FilterNullPolicy filterNullPolicy = FilterNullPolicy.values()[filterNullPolicyIndex];
+    // TODO deserialize childDeviceNodeMap
+    int columnSize = ReadWriteIOUtils.readInt(byteBuffer);
+    List<String> columnNames = new ArrayList<>(columnSize);
+    for (int i = 0; i < columnSize; i ++) {
+      columnNames.add(ReadWriteIOUtils.readString(byteBuffer));
+    }
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+    DeviceMergeNode deviceMergeNode = new DeviceMergeNode(planNodeId, orderBy);
+    deviceMergeNode.setColumnNames(columnNames);
+    return deviceMergeNode;
+  }
 
   public DeviceMergeNode(PlanNodeId id, Map<String, PlanNode> deviceNodeMap) {
     this(id);

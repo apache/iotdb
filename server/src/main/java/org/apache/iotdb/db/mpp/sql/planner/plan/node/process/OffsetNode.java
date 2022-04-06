@@ -21,12 +21,14 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /**
  * OffsetNode is used to skip top n result from upstream nodes. It uses the default order of
@@ -78,12 +80,17 @@ public class OffsetNode extends ProcessNode {
     return visitor.visitOffset(this, context);
   }
 
-  public static OffsetNode deserialize(ByteBuffer byteBuffer) {
-    return null;
+  @Override
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    PlanNodeType.OFFSET.serialize(byteBuffer);
+    ReadWriteIOUtils.write(offset, byteBuffer);
   }
 
-  @Override
-  public void serialize(ByteBuffer byteBuffer) {}
+  public static OffsetNode deserialize(ByteBuffer byteBuffer) {
+    int offset = ReadWriteIOUtils.readInt(byteBuffer);
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+    return new OffsetNode(planNodeId, offset);
+  }
 
   public PlanNode getChild() {
     return child;

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.path;
 
+import java.nio.ByteBuffer;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.modification.Modification;
@@ -39,6 +40,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
@@ -564,5 +566,24 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   public List<IChunkMetadata> getVisibleMetadataListFromWriter(
       RestorableTsFileIOWriter writer, TsFileResource tsFileResource, QueryContext context) {
     throw new UnsupportedOperationException("Should call exact sub class!");
+  }
+
+  public void serialize(ByteBuffer byteBuffer) {
+    super.serialize(byteBuffer);
+    ReadWriteIOUtils.write(nodes.length, byteBuffer);
+    for (String node : nodes) {
+      ReadWriteIOUtils.write(node, byteBuffer);
+    }
+  }
+
+  public static PartialPath deserialize(ByteBuffer byteBuffer) {
+    PartialPath partialPath = (PartialPath) Path.deserialize(byteBuffer);
+    int nodeSize = ReadWriteIOUtils.readInt(byteBuffer);
+    String[] nodes = new String[nodeSize];
+    for (int i = 0; i < nodeSize; i ++) {
+      nodes[i] = ReadWriteIOUtils.readString(byteBuffer);
+    }
+    partialPath.nodes = nodes;
+    return partialPath;
   }
 }

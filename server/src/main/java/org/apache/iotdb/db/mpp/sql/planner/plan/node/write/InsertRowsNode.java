@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.write;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
 import java.nio.ByteBuffer;
@@ -56,11 +57,19 @@ public class InsertRowsNode extends InsertNode {
   }
 
   public static InsertRowsNode deserialize(ByteBuffer byteBuffer) {
-    return null;
+    InsertRowsNode tempNode = new InsertRowsNode(null);
+    deserializeAttributes(tempNode, byteBuffer);
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+    InsertRowsNode ansNode = new InsertRowsNode(planNodeId);
+    copyAttributes(ansNode, tempNode);
+    return ansNode;
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {}
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    PlanNodeType.INSERT_ROWS.serialize(byteBuffer);
+    super.serializeAttributes(byteBuffer);
+  }
 
   @Override
   public List<InsertNode> splitByPartition(Analysis analysis) {

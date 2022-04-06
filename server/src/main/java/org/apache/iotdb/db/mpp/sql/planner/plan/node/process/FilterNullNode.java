@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullPolicy;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -30,6 +31,7 @@ import com.google.common.collect.ImmutableList;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /** WithoutNode is used to discard specific rows from upstream node. */
 public class FilterNullNode extends ProcessNode {
@@ -99,12 +101,28 @@ public class FilterNullNode extends ProcessNode {
     return visitor.visitFilterNull(this, context);
   }
 
-  public static FilterNullNode deserialize(ByteBuffer byteBuffer) {
-    return null;
+  @Override
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    PlanNodeType.FILTER_NULL.serialize(byteBuffer);
+    ReadWriteIOUtils.write(discardPolicy.ordinal(), byteBuffer);
+    ReadWriteIOUtils.write(filterNullColumnNames.size(), byteBuffer);
+    for (String filterNullColumnName : filterNullColumnNames) {
+      ReadWriteIOUtils.write(filterNullColumnName, byteBuffer);
+    }
   }
 
-  @Override
-  public void serialize(ByteBuffer byteBuffer) {}
+  public static FilterNullNode deserialize(ByteBuffer byteBuffer) {
+    FilterNullPolicy filterNullPolicy = FilterNullPolicy.values()[ReadWriteIOUtils.readInt(byteBuffer)];
+    int size = ReadWriteIOUtils.readInt(byteBuffer);
+    List<String> filterNullColumnNames = new ArrayList<>();
+    for (int i = 0; i < size; i ++) {
+      filterNullColumnNames.add(ReadWriteIOUtils.readString(byteBuffer));
+    }
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+    FilterNullNode filterNullNode = new FilterNullNode(planNodeId, filterNullPolicy);
+    filterNullNode.setFilterNullColumnNames(filterNullColumnNames);
+    return filterNullNode;
+  }
 
   public void setFilterNullColumnNames(List<String> filterNullColumnNames) {
     this.filterNullColumnNames = filterNullColumnNames;
