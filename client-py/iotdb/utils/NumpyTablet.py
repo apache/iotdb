@@ -23,9 +23,7 @@ from iotdb.utils.BitMap import BitMap
 
 
 class NumpyTablet(object):
-    def __init__(
-        self, device_id, measurements, data_types, values, timestamps
-    ):
+    def __init__(self, device_id, measurements, data_types, values, timestamps):
         """
         creating a numpy tablet for insertion
           for example, considering device: root.sg1.d1
@@ -113,7 +111,7 @@ class NumpyTablet(object):
         offset = 0
         for bs in bs_list:
             _l = len(bs)
-            ret[offset: offset + _l] = bs
+            ret[offset : offset + _l] = bs
             offset += _l
         return ret
 

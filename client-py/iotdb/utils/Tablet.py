@@ -23,9 +23,7 @@ from iotdb.utils.BitMap import BitMap
 
 
 class Tablet(object):
-    def __init__(
-        self, device_id, measurements, data_types, values, timestamps
-    ):
+    def __init__(self, device_id, measurements, data_types, values, timestamps):
         """
         creating a tablet for insertion
           for example, considering device: root.sg1.d1
@@ -172,9 +170,7 @@ class Tablet(object):
                         has_none = True
 
             else:
-                raise RuntimeError(
-                    "Unsupported data type:" + str(self.__data_types[i])
-                )
+                raise RuntimeError("Unsupported data type:" + str(self.__data_types[i]))
 
         if has_none:
             for i in range(self.__column_number):
