@@ -18,23 +18,11 @@
  */
 package org.apache.iotdb.confignode.service.balancer;
 
-import org.apache.iotdb.confignode.partition.PartitionTable;
-
-import java.util.concurrent.locks.Lock;
-
 /**
  * The LoadBalancer at ConfigNodeGroup-Leader is active for cluster dynamic load balancing
  * scheduling
  */
 public class LoadBalancer implements Runnable {
-
-  private final Lock partitionTableLock;
-  private final PartitionTable partitionTable;
-
-  public LoadBalancer(Lock partitionTableLock, PartitionTable partitionTable) {
-    this.partitionTableLock = partitionTableLock;
-    this.partitionTable = partitionTable;
-  }
 
   @Override
   public void run() {}

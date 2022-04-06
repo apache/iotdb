@@ -348,7 +348,7 @@ public class AlertingExample implements Trigger {
 类定义的触发器。
 
 ``` sql
-  CREATE TRIGGER root-ln-wf01-wt01-alert
+  CREATE TRIGGER `root-ln-wf01-wt01-alert`
   AFTER INSERT
   ON root.ln.wf01.wt01.temperature
   AS "org.apache.iotdb.trigger.AlertingExample"
