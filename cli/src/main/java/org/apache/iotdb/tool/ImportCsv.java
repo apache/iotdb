@@ -607,7 +607,11 @@ public class ImportCsv extends AbstractCsvTool {
       List<List<String>> measurementsList,
       int retryTime) {
     try {
-      session.insertAlignedRecords(deviceIds, times, measurementsList, typesList, valuesList);
+      if (!aligned) {
+        session.insertRecords(deviceIds, times, measurementsList, typesList, valuesList);
+      } else {
+        session.insertAlignedRecords(deviceIds, times, measurementsList, typesList, valuesList);
+      }
     } catch (IoTDBConnectionException e) {
       if (retryTime > 0) {
         try {
