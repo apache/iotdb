@@ -25,7 +25,9 @@ import java.util.List;
 
 public class StorageGroupSchemaDataSet implements DataSet {
 
-  private final List<StorageGroupSchema> schemaList;
+  private List<StorageGroupSchema> schemaList;
+
+  public StorageGroupSchemaDataSet() {}
 
   public StorageGroupSchemaDataSet(List<StorageGroupSchema> schemaList) {
     this.schemaList = schemaList;
@@ -33,5 +35,9 @@ public class StorageGroupSchemaDataSet implements DataSet {
 
   public List<StorageGroupSchema> getSchemaList() {
     return schemaList;
+  }
+
+  public void setSchemaList(List<StorageGroupSchema> schemaList) {
+    this.schemaList = schemaList;
   }
 }

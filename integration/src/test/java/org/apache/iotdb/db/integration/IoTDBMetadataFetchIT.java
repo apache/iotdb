@@ -24,8 +24,6 @@ import org.apache.iotdb.itbase.category.ClusterTest;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.itbase.category.RemoteTest;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -45,7 +43,6 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
-import static org.apache.iotdb.db.metadata.SchemaEngine.TIME_SERIES_TREE_HEADER;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
@@ -219,19 +216,6 @@ public class IoTDBMetadataFetchIT {
           fail(e.getMessage());
         }
       }
-    }
-  }
-
-  @Test
-  @Category({LocalStandaloneTest.class})
-  public void databaseMetaDataTest() throws SQLException {
-    try (Connection connection = EnvFactory.getEnv().getConnection()) {
-      databaseMetaData = connection.getMetaData();
-      showTimeseriesInJson();
-
-    } catch (Exception e) {
-      logger.error("databaseMetaDataTest() failed", e);
-      fail(e.getMessage());
     }
   }
 
@@ -603,25 +587,6 @@ public class IoTDBMetadataFetchIT {
         }
       }
     }
-  }
-
-  /** show metadata in json */
-  private void showTimeseriesInJson() {
-    String metadataInJson = databaseMetaData.toString();
-    String standard =
-        "===  Timeseries Tree  ===\n"
-            + "\n"
-            + "{\"root\":{\"ln2\":{\"wf01\":{\"wt01\":{\"temperature\":{\"DataType\":\"FLOAT\",\"Encoding\":\"RLE\",\"Compressor\":\"SNAPPY\",\"args\":\"{max_point_number=3}\",\"StorageGroup\":\"root.ln2.wf01.wt01\"},\"status\":{\"DataType\":\"BOOLEAN\",\"Encoding\":\"PLAIN\",\"Compressor\":\"SNAPPY\",\"StorageGroup\":\"root.ln2.wf01.wt01\"}}}},\"ln\":{\"wf01\":{\"wt02\":{\"s1\":{\"DataType\":\"INT32\",\"Encoding\":\"RLE\",\"Compressor\":\"SNAPPY\",\"StorageGroup\":\"root.ln.wf01.wt02\"},\"s2\":{\"DataType\":\"DOUBLE\",\"Encoding\":\"GORILLA\",\"Compressor\":\"SNAPPY\",\"StorageGroup\":\"root.ln.wf01.wt02\"}},\"wt01\":{\"temperature\":{\"DataType\":\"FLOAT\",\"Encoding\":\"RLE\",\"Compressor\":\"SNAPPY\",\"args\":\"{max_point_number=3}\",\"StorageGroup\":\"root.ln.wf01.wt01\"},\"status\":{\"DataType\":\"BOOLEAN\",\"Encoding\":\"PLAIN\",\"Compressor\":\"SNAPPY\",\"StorageGroup\":\"root.ln.wf01.wt01\"}}}},\"ln1\":{\"wf01\":{\"wt01\":{\"temperature\":{\"DataType\":\"FLOAT\",\"Encoding\":\"RLE\",\"Compressor\":\"SNAPPY\",\"args\":\"{max_point_number=3}\",\"StorageGroup\":\"root.ln1.wf01.wt01\"},\"status\":{\"DataType\":\"BOOLEAN\",\"Encoding\":\"PLAIN\",\"Compressor\":\"SNAPPY\",\"StorageGroup\":\"root.ln1.wf01.wt01\"}}}}}}";
-    // TODO Remove the constant json String.
-    // Do not depends on the sequence of property in json string if you do not
-    // explictly mark the sequence, when we use jackson, the json result may change again
-    String rawJsonString = metadataInJson.substring(TIME_SERIES_TREE_HEADER.length());
-    Gson gson = new Gson();
-    JsonObject actual = gson.fromJson(rawJsonString, JsonObject.class);
-    JsonObject expected =
-        gson.fromJson(standard.substring(TIME_SERIES_TREE_HEADER.length()), JsonObject.class);
-
-    Assert.assertEquals(expected, actual);
   }
 
   @Test

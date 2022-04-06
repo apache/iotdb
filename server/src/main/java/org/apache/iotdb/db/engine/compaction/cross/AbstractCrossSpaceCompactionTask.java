@@ -60,6 +60,10 @@ public abstract class AbstractCrossSpaceCompactionTask extends AbstractCompactio
 
   @Override
   public boolean checkValidAndSetMerging() {
+    if (!tsFileManager.isAllowCompaction()) {
+      return false;
+    }
+
     for (TsFileResource resource : selectedSequenceFiles) {
       if (resource.isCompacting() || !resource.isClosed() || !resource.getTsFile().exists()) {
         return false;
@@ -94,6 +98,11 @@ public abstract class AbstractCrossSpaceCompactionTask extends AbstractCompactio
         .append(" , unseq files are ")
         .append(selectedUnsequenceFiles.toString())
         .toString();
+  }
+
+  @Override
+  public int hashCode() {
+    return toString().hashCode();
   }
 
   @Override

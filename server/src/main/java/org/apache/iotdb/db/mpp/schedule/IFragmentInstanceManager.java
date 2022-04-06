@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.schedule;
 
+import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.ExecFragmentInstance;
 
@@ -35,7 +36,7 @@ public interface IFragmentInstanceManager {
   void submitFragmentInstances(QueryId queryId, List<ExecFragmentInstance> instances);
 
   /**
-   * abort all the instances in this query
+   * Abort all the instances in this query.
    *
    * @param queryId the id of the query to be aborted.
    */
@@ -43,4 +44,13 @@ public interface IFragmentInstanceManager {
 
   /** Fetch an {@link ExecFragmentInstance}. */
   void fetchFragmentInstance(ExecFragmentInstance instance);
+
+  /**
+   * Return the schedule priority of a fragment.
+   *
+   * @param instanceId the fragment instance id.
+   * @return the schedule priority.
+   * @throws IllegalStateException if the instance has already been cleared.
+   */
+  double getSchedulePriority(FragmentInstanceId instanceId);
 }

@@ -289,12 +289,13 @@ public class PullSnapshotTaskTest extends DataSnapshotTest {
     task.call();
 
     for (TimeseriesSchema timeseriesSchema : timeseriesSchemas) {
-      assertTrue(IoTDB.schemaEngine.isPathExist(new PartialPath(timeseriesSchema.getFullPath())));
+      assertTrue(
+          IoTDB.schemaProcessor.isPathExist(new PartialPath(timeseriesSchema.getFullPath())));
     }
     VirtualStorageGroupProcessor processor =
         StorageEngine.getInstance().getProcessor(new PartialPath(TestUtils.getTestSg(0)));
     assertEquals(9, processor.getPartitionMaxFileVersions(0));
-    List<TsFileResource> loadedFiles = processor.getSequenceFileTreeSet();
+    List<TsFileResource> loadedFiles = processor.getSequenceFileList();
     assertEquals(tsFileResources.size(), loadedFiles.size());
     for (int i = 0; i < 9; i++) {
       if (i != loadedFiles.get(i).getMaxPlanIndex()) {

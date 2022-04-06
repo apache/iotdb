@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.consensus;
 
-import org.apache.iotdb.consensus.common.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
@@ -56,4 +56,6 @@ public interface IConsensus {
   ConsensusGenericResponse transferLeader(ConsensusGroupId groupId, Peer newLeader);
 
   ConsensusGenericResponse triggerSnapshot(ConsensusGroupId groupId);
+
+  boolean isLeader(ConsensusGroupId groupId);
 }

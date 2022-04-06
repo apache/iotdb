@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.confignode.conf;
 
+import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.consensus.common.ConsensusType;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,7 +52,7 @@ public class ConfigNodeDescriptor {
   public URL getPropsUrl() {
     // Check if a config-directory was specified first.
     String urlString = System.getProperty(ConfigNodeConstant.CONFIGNODE_CONF, null);
-    // If it wasn't, check if a home directory was provided (This usually contains a config)
+    // If it wasn't, check if a home directory was provided
     if (urlString == null) {
       urlString = System.getProperty(ConfigNodeConstant.CONFIGNODE_HOME, null);
       if (urlString != null) {
@@ -60,15 +63,9 @@ public class ConfigNodeDescriptor {
                 + File.separatorChar
                 + ConfigNodeConstant.CONF_NAME;
       } else {
-        // If this too wasn't provided, try to find a default config in the root of the classpath.
-        URL uri = ConfigNodeConf.class.getResource("/" + ConfigNodeConstant.CONF_NAME);
-        if (uri != null) {
-          return uri;
-        }
-        LOGGER.warn(
-            "Cannot find IOTDB_HOME or IOTDB_CONF environment variable when loading "
-                + "config file {}, use default configuration",
-            ConfigNodeConstant.CONF_NAME);
+        // When start ConfigNode with the script, the environment variables CONFIGNODE_CONF
+        // and CONFIGNODE_HOME will be set. But we didn't set these two in developer mode.
+        // Thus, just return null and use default Configuration in developer mode.
         return null;
       }
     }
@@ -125,8 +122,9 @@ public class ConfigNodeDescriptor {
               properties.getProperty(
                   "config_node_internal_port", String.valueOf(conf.getInternalPort()))));
 
-      conf.setAddressLists(
-          properties.getProperty("config_node_address_lists", conf.getAddressLists()));
+      conf.setConsensusType(
+          ConsensusType.getConsensusType(
+              properties.getProperty("consensus_type", String.valueOf(conf.getConsensusType()))));
 
       conf.setRpcAdvancedCompressionEnable(
           Boolean.parseBoolean(
@@ -160,6 +158,8 @@ public class ConfigNodeDescriptor {
 
       conf.setDataDirs(properties.getProperty("data_dirs", conf.getDataDirs()[0]).split(","));
 
+      conf.setConsensusDir(properties.getProperty("consensus_dir", conf.getConsensusDir()));
+
       conf.setRegionReplicaCount(
           Integer.parseInt(
               properties.getProperty(
@@ -174,6 +174,24 @@ public class ConfigNodeDescriptor {
           Integer.parseInt(
               properties.getProperty(
                   "data_region_count", String.valueOf(conf.getDataRegionCount()))));
+
+      String addresses = properties.getProperty("config_node_group_address_list", null);
+      if (addresses != null) {
+        String[] addressList = addresses.split(",");
+        Endpoint[] endpointList = new Endpoint[addressList.length];
+        for (int i = 0; i < addressList.length; i++) {
+          String[] ipPort = addressList[i].split(":");
+          if (ipPort.length != 2) {
+            throw new IOException(
+                String.format(
+                    "Parsing parameter config_node_group_address_list error. "
+                        + "The %d-th address must format to ip:port, but currently is %s",
+                    i, addressList[i]));
+          }
+          endpointList[i] = new Endpoint(ipPort[0], Integer.parseInt(ipPort[1]));
+        }
+        conf.setConfigNodeGroupAddressList(endpointList);
+      }
 
     } catch (IOException e) {
       LOGGER.warn("Couldn't load ConfigNode conf file, use default config", e);

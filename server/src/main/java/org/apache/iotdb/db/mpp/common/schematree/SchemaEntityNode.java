@@ -19,7 +19,50 @@
 
 package org.apache.iotdb.db.mpp.common.schematree;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public class SchemaEntityNode extends SchemaInternalNode {
 
   private boolean isAligned;
+
+  private Map<String, SchemaMeasurementNode> aliasChildren;
+
+  public SchemaEntityNode(String name) {
+    super(name);
+  }
+
+  @Override
+  public SchemaNode getChild(String name) {
+    SchemaNode node = super.getChild(name);
+    if (node != null) {
+      return node;
+    }
+    return aliasChildren == null ? null : aliasChildren.get(name);
+  }
+
+  public void addAliasChild(String alias, SchemaMeasurementNode measurementNode) {
+    if (aliasChildren == null) {
+      aliasChildren = new HashMap<>();
+    }
+    aliasChildren.put(alias, measurementNode);
+  }
+
+  public boolean isAligned() {
+    return isAligned;
+  }
+
+  public void setAligned(boolean aligned) {
+    isAligned = aligned;
+  }
+
+  @Override
+  public boolean isEntity() {
+    return true;
+  }
+
+  @Override
+  public SchemaEntityNode getAsEntityNode() {
+    return this;
+  }
 }

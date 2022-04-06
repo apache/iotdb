@@ -18,18 +18,22 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.source;
 
-import org.apache.iotdb.commons.partition.DataRegionReplicaSet;
+import org.apache.iotdb.commons.partition.RegionReplicaSet;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import com.google.common.collect.ImmutableList;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 /**
  * SeriesScanOperator is responsible for read data a specific series. When reading data, the
@@ -42,6 +46,9 @@ public class SeriesScanNode extends SourceNode {
 
   // The path of the target series which will be scanned.
   private PartialPath seriesPath;
+
+  // all the sensors in seriesPath's device of current query
+  private Set<String> allSensors;
 
   // The order to traverse the data.
   // Currently, we only support TIMESTAMP_ASC and TIMESTAMP_DESC here.
@@ -63,17 +70,16 @@ public class SeriesScanNode extends SourceNode {
   private String columnName;
 
   // The id of DataRegion where the node will run
-  private DataRegionReplicaSet dataRegionReplicaSet;
+  private RegionReplicaSet regionReplicaSet;
 
   public SeriesScanNode(PlanNodeId id, PartialPath seriesPath) {
     super(id);
     this.seriesPath = seriesPath;
   }
 
-  public SeriesScanNode(
-      PlanNodeId id, PartialPath seriesPath, DataRegionReplicaSet dataRegionReplicaSet) {
+  public SeriesScanNode(PlanNodeId id, PartialPath seriesPath, RegionReplicaSet regionReplicaSet) {
     this(id, seriesPath);
-    this.dataRegionReplicaSet = dataRegionReplicaSet;
+    this.regionReplicaSet = regionReplicaSet;
   }
 
   public void setTimeFilter(Filter timeFilter) {
@@ -91,12 +97,30 @@ public class SeriesScanNode extends SourceNode {
   public void open() throws Exception {}
 
   @Override
-  public DataRegionReplicaSet getDataRegionReplicaSet() {
-    return dataRegionReplicaSet;
+  public RegionReplicaSet getDataRegionReplicaSet() {
+    return regionReplicaSet;
   }
 
-  public void setDataRegionReplicaSet(DataRegionReplicaSet dataRegion) {
-    this.dataRegionReplicaSet = dataRegion;
+  public void setDataRegionReplicaSet(RegionReplicaSet dataRegion) {
+    this.regionReplicaSet = dataRegion;
+  }
+
+  @Override
+  public String getDeviceName() {
+    return seriesPath.getDevice();
+  }
+
+  @Override
+  protected String getExpressionString() {
+    return seriesPath.getFullPath();
+  }
+
+  public int getLimit() {
+    return limit;
+  }
+
+  public int getOffset() {
+    return offset;
   }
 
   public void setScanOrder(OrderBy scanOrder) {
@@ -117,21 +141,29 @@ public class SeriesScanNode extends SourceNode {
   }
 
   @Override
-  public void addChildren(PlanNode child) {}
+  public void addChild(PlanNode child) {}
 
   @Override
   public PlanNode clone() {
-    return new SeriesScanNode(getId(), getSeriesPath(), this.dataRegionReplicaSet);
+    return new SeriesScanNode(getId(), getSeriesPath(), this.regionReplicaSet);
   }
 
   @Override
-  public PlanNode cloneWithChildren(List<PlanNode> children) {
-    return this.clone();
+  public int allowedChildCount() {
+    return NO_CHILD_ALLOWED;
   }
 
   @Override
   public List<String> getOutputColumnNames() {
     return ImmutableList.of(columnName);
+  }
+
+  public Set<String> getAllSensors() {
+    return allSensors;
+  }
+
+  public OrderBy getScanOrder() {
+    return scanOrder;
   }
 
   @Override
@@ -154,9 +186,22 @@ public class SeriesScanNode extends SourceNode {
     return timeFilter;
   }
 
+  public Filter getValueFilter() {
+    return valueFilter;
+  }
+
   public String toString() {
     return String.format(
         "SeriesScanNode-%s:[SeriesPath: %s, DataRegion: %s]",
         this.getId(), this.getSeriesPath(), this.getDataRegionReplicaSet());
+  }
+
+  @TestOnly
+  public Pair<String, List<String>> print() {
+    String title = String.format("[SeriesScanNode (%s)]", this.getId());
+    List<String> attributes = new ArrayList<>();
+    attributes.add("SeriesPath: " + this.getSeriesPath());
+    attributes.add("scanOrder: " + this.getScanOrder());
+    return new Pair<>(title, attributes);
   }
 }

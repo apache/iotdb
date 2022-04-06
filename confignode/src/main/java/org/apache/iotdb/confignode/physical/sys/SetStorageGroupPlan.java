@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.confignode.physical.sys;
 
+import org.apache.iotdb.confignode.partition.DataRegionInfo;
+import org.apache.iotdb.confignode.partition.SchemaRegionInfo;
 import org.apache.iotdb.confignode.partition.StorageGroupSchema;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
 import org.apache.iotdb.confignode.physical.PhysicalPlanType;
@@ -27,6 +29,10 @@ import java.nio.ByteBuffer;
 public class SetStorageGroupPlan extends PhysicalPlan {
 
   private StorageGroupSchema schema;
+
+  private SchemaRegionInfo schemaRegionInfo;
+
+  private DataRegionInfo dataRegionInfo;
 
   public SetStorageGroupPlan() {
     super(PhysicalPlanType.SetStorageGroup);
@@ -42,14 +48,38 @@ public class SetStorageGroupPlan extends PhysicalPlan {
     return schema;
   }
 
+  public void setSchema(StorageGroupSchema schema) {
+    this.schema = schema;
+  }
+
+  public SchemaRegionInfo getSchemaRegionInfo() {
+    return schemaRegionInfo;
+  }
+
+  public void setSchemaRegionInfo(SchemaRegionInfo schemaRegionInfo) {
+    this.schemaRegionInfo = schemaRegionInfo;
+  }
+
+  public DataRegionInfo getDataRegionInfo() {
+    return dataRegionInfo;
+  }
+
+  public void setDataRegionInfo(DataRegionInfo dataRegionInfo) {
+    this.dataRegionInfo = dataRegionInfo;
+  }
+
   @Override
   protected void serializeImpl(ByteBuffer buffer) {
     buffer.putInt(PhysicalPlanType.SetStorageGroup.ordinal());
     schema.serialize(buffer);
+    schemaRegionInfo.serializeImpl(buffer);
+    dataRegionInfo.serializeImpl(buffer);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) {
     schema.deserialize(buffer);
+    schemaRegionInfo.deserializeImpl(buffer);
+    dataRegionInfo.deserializeImpl(buffer);
   }
 }

@@ -30,6 +30,7 @@ import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
+import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.compaction.task.CompactionRecoverManager;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.CloseFileListener;
@@ -1105,7 +1106,7 @@ public class VirtualStorageGroupProcessor {
       }
       // Update cached last value with high priority
       if (mNodes[i] == null) {
-        IoTDB.schemaEngine.updateLastCache(
+        IoTDB.schemaProcessor.updateLastCache(
             plan.getDevicePath().concatNode(plan.getMeasurements()[i]),
             plan.composeLastTimeValuePair(i),
             true,
@@ -1113,7 +1114,7 @@ public class VirtualStorageGroupProcessor {
       } else {
         // in stand alone version, the seriesPath is not needed, just use measurementMNodes[i] to
         // update last cache
-        IoTDB.schemaEngine.updateLastCache(
+        IoTDB.schemaProcessor.updateLastCache(
             mNodes[i], plan.composeLastTimeValuePair(i), true, latestFlushedTime);
       }
     }
@@ -1155,7 +1156,7 @@ public class VirtualStorageGroupProcessor {
       }
       // Update cached last value with high priority
       if (mNodes[i] == null) {
-        IoTDB.schemaEngine.updateLastCache(
+        IoTDB.schemaProcessor.updateLastCache(
             plan.getDevicePath().concatNode(plan.getMeasurements()[i]),
             plan.composeTimeValuePair(i),
             true,
@@ -1163,7 +1164,7 @@ public class VirtualStorageGroupProcessor {
       } else {
         // in stand alone version, the seriesPath is not needed, just use measurementMNodes[i] to
         // update last cache
-        IoTDB.schemaEngine.updateLastCache(
+        IoTDB.schemaProcessor.updateLastCache(
             mNodes[i], plan.composeTimeValuePair(i), true, latestFlushedTime);
       }
     }
@@ -1851,7 +1852,7 @@ public class VirtualStorageGroupProcessor {
     List<ModificationFile> updatedModFiles = new ArrayList<>();
 
     try {
-      Set<PartialPath> devicePaths = IoTDB.schemaEngine.getBelongedDevices(path);
+      Set<PartialPath> devicePaths = IoTDB.schemaProcessor.getBelongedDevices(path);
       for (PartialPath device : devicePaths) {
         // delete Last cache record if necessary
         tryToDeleteLastCache(device, path, startTime, endTime);
@@ -2006,7 +2007,7 @@ public class VirtualStorageGroupProcessor {
       return;
     }
     try {
-      IoTDB.schemaEngine.deleteLastCacheByDevice(deviceId, originalPath, startTime, endTime);
+      IoTDB.schemaProcessor.deleteLastCacheByDevice(deviceId, originalPath, startTime, endTime);
     } catch (MetadataException e) {
       throw new WriteProcessException(e);
     }
@@ -2290,7 +2291,7 @@ public class VirtualStorageGroupProcessor {
       return;
     }
     try {
-      IoTDB.schemaEngine.deleteLastCacheByDevice(deviceId);
+      IoTDB.schemaProcessor.deleteLastCacheByDevice(deviceId);
     } catch (MetadataException e) {
       // the path doesn't cache in cluster mode now, ignore
     }
@@ -2887,7 +2888,7 @@ public class VirtualStorageGroupProcessor {
     this.dataTTL = dataTTL;
   }
 
-  public List<TsFileResource> getSequenceFileTreeSet() {
+  public List<TsFileResource> getSequenceFileList() {
     return tsFileManager.getTsFileList(true);
   }
 
@@ -2922,7 +2923,7 @@ public class VirtualStorageGroupProcessor {
             tsFileResource, partitionNum, getWorkSequenceTsFileProcessors())
         || isFileAlreadyExistInWorking(
             tsFileResource, partitionNum, getWorkUnsequenceTsFileProcessors())
-        || isFileAlreadyExistInClosed(tsFileResource, partitionNum, getSequenceFileTreeSet())
+        || isFileAlreadyExistInClosed(tsFileResource, partitionNum, getSequenceFileList())
         || isFileAlreadyExistInClosed(tsFileResource, partitionNum, getUnSequenceFileList());
   }
 
@@ -2974,10 +2975,13 @@ public class VirtualStorageGroupProcessor {
     // this requires blocking all other activities
     writeLock("removePartitions");
     try {
-      tsFileManager.setAllowCompaction(false);
-      // abort ongoing comapctions and merges
-      CompactionTaskManager.getInstance()
-          .abortCompaction(logicalStorageGroupName + "-" + virtualStorageGroupId);
+      // abort ongoing compaction
+      abortCompaction();
+      try {
+        Thread.sleep(2000);
+      } catch (InterruptedException e) {
+        // Wait two seconds for the compaction thread to terminate
+      }
       // close all working files that should be removed
       removePartitions(filter, workSequenceTsFileProcessors.entrySet(), true);
       removePartitions(filter, workUnsequenceTsFileProcessors.entrySet(), false);
@@ -2988,6 +2992,21 @@ public class VirtualStorageGroupProcessor {
 
     } finally {
       writeUnlock();
+    }
+  }
+
+  public void abortCompaction() {
+    tsFileManager.setAllowCompaction(false);
+    List<AbstractCompactionTask> runningTasks =
+        CompactionTaskManager.getInstance()
+            .abortCompaction(logicalStorageGroupName + "-" + virtualStorageGroupId);
+    while (CompactionTaskManager.getInstance().isAnyTaskInListStillRunning(runningTasks)) {
+      try {
+        TimeUnit.MILLISECONDS.sleep(10);
+      } catch (InterruptedException e) {
+        logger.error("Thread get interrupted when waiting compaction to finish", e);
+        break;
+      }
     }
   }
 
@@ -3146,6 +3165,10 @@ public class VirtualStorageGroupProcessor {
     this.customFlushListeners = customFlushListeners;
   }
 
+  public void setAllowCompaction(boolean allowCompaction) {
+    this.tsFileManager.setAllowCompaction(allowCompaction);
+  }
+
   private enum LoadTsFileType {
     LOAD_SEQUENCE,
     LOAD_UNSEQUENCE
@@ -3206,5 +3229,10 @@ public class VirtualStorageGroupProcessor {
   @TestOnly
   public ILastFlushTimeManager getLastFlushTimeManager() {
     return lastFlushTimeManager;
+  }
+
+  @TestOnly
+  public TsFileManager getTsFileManager() {
+    return tsFileManager;
   }
 }
