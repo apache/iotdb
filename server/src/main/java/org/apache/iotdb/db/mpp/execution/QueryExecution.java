@@ -89,7 +89,7 @@ public class QueryExecution {
           if (!state.isDone()) {
             return;
           }
-          this.cleanup();
+          this.abort();
         });
   }
 
@@ -109,6 +109,7 @@ public class QueryExecution {
     // TODO: (xingtanzjr) initialize the query scheduler according to configuration
     this.scheduler =
         new ClusterScheduler(
+            context,
             stateMachine,
             distributedPlan.getInstances(),
             context.getQueryType(),
@@ -131,10 +132,9 @@ public class QueryExecution {
   }
 
   /**
-   * Do cleanup work for current QueryExecution including QuerySchedule aborting and resource
-   * releasing
+   * Abort the query and do cleanup work including QuerySchedule aborting and resource releasing
    */
-  private void cleanup() {
+  private void abort() {
     if (this.scheduler != null) {
       this.scheduler.abort();
     }

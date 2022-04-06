@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.mpp.execution.scheduler;
 
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
+import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.execution.FragmentInfo;
 import org.apache.iotdb.db.mpp.execution.FragmentInstanceState;
@@ -42,32 +43,37 @@ import java.util.concurrent.ScheduledExecutorService;
  * this scheduler.
  */
 public class ClusterScheduler implements IScheduler {
+  private MPPQueryContext queryContext;
   // The stateMachine of the QueryExecution owned by this QueryScheduler
   private QueryStateMachine stateMachine;
   private QueryType queryType;
   // The fragment instances which should be sent to corresponding Nodes.
   private List<FragmentInstance> instances;
-  private IFragInstanceDispatcher dispatcher;
 
   private ExecutorService executor;
   private ScheduledExecutorService scheduledExecutor;
 
+  private IFragInstanceDispatcher dispatcher;
   private IFragInstanceStateTracker stateTracker;
+  private IQueryTerminator queryTerminator;
 
   public ClusterScheduler(
+      MPPQueryContext queryContext,
       QueryStateMachine stateMachine,
       List<FragmentInstance> instances,
       QueryType queryType,
       ExecutorService executor,
       ScheduledExecutorService scheduledExecutor) {
+    this.queryContext = queryContext;
     this.stateMachine = stateMachine;
     this.instances = instances;
     this.queryType = queryType;
     this.executor = executor;
     this.scheduledExecutor = scheduledExecutor;
-    this.dispatcher = new SimpleFragInstanceDispatcher();
+    this.dispatcher = new SimpleFragInstanceDispatcher(executor);
     this.stateTracker =
         new FixedRateFragInsStateTracker(stateMachine, executor, scheduledExecutor, instances);
+    this.queryTerminator = new SimpleQueryTerminator(executor, queryContext.getQueryId(), instances);
   }
 
   @Override
@@ -121,6 +127,8 @@ public class ClusterScheduler implements IScheduler {
     // practice ?
     dispatcher.abort();
     stateTracker.abort();
+    // TODO: (xingtanzjr) handle the exception when the termination cannot succeed
+    queryTerminator.terminate();
   }
 
   @Override

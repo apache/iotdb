@@ -25,10 +25,17 @@ import org.apache.iotdb.mpp.rpc.thrift.InternalService;
 import org.apache.thrift.TException;
 
 import java.util.List;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
 
 public class SimpleFragInstanceDispatcher implements IFragInstanceDispatcher {
+
+  private final ExecutorService executor;
+
+  public SimpleFragInstanceDispatcher(ExecutorService exeutor) {
+    this.executor = exeutor;
+  }
 
   @Override
   public Future<FragInstanceDispatchResult> dispatch(List<FragmentInstance> instances) {
@@ -48,7 +55,7 @@ public class SimpleFragInstanceDispatcher implements IFragInstanceDispatcher {
               }
               return new FragInstanceDispatchResult(true);
             });
-    new Thread(dispatchTask).start();
+    executor.submit(dispatchTask);
     return dispatchTask;
   }
 
