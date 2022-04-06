@@ -18,9 +18,7 @@
  */
 package org.apache.iotdb.commons.partition;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class DataPartition {
@@ -48,6 +46,22 @@ public class DataPartition {
     return dataPartitionMap.get(storageGroup).get(seriesPartitionSlot).values().stream()
         .flatMap(Collection::stream)
         .collect(Collectors.toList());
+  }
+
+  public List<RegionReplicaSet> getDataRegionReplicaSetForWriting(
+      String deviceName, List<TimePartitionSlot> timePartitionIdList) {
+    // A list of data region replica sets will store data in a same time partition.
+    // We will insert data to the last set in the list.
+    // TODO return the latest dataRegionReplicaSet for each time partition
+    return Collections.emptyList();
+  }
+
+  public RegionReplicaSet getDataRegionReplicaSetForWriting(
+      String deviceName, TimePartitionSlot timePartitionIdList) {
+    // A list of data region replica sets will store data in a same time partition.
+    // We will insert data to the last set in the list.
+    // TODO return the latest dataRegionReplicaSet for each time partition
+    return null;
   }
 
   private SeriesPartitionSlot calculateDeviceGroupId(String deviceName) {

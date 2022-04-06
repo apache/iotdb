@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -45,6 +46,11 @@ public class SchemaTree {
     SchemaTreeVisitor visitor =
         new SchemaTreeVisitor(root, pathPattern, slimit, soffset, isPrefixMatch);
     return new Pair<>(visitor.getAllResult(), visitor.getNextOffset());
+  }
+
+  public List<MeasurementSchema> searchMeasurementSchema(
+      PartialPath devicePath, List<String> measurements) {
+    return new ArrayList<>();
   }
 
   public void serialize(ByteBuffer buffer) throws IOException {

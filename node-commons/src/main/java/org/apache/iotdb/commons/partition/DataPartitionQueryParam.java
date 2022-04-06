@@ -33,11 +33,11 @@ public class DataPartitionQueryParam {
     this.devicePath = devicePath;
   }
 
-  public List<TimePartitionSlot> getTimePartitionIdList() {
+  public List<TimePartitionSlot> getTimePartitionSlotList() {
     return timePartitionSlotList;
   }
 
-  public void setTimePartitionIdList(List<TimePartitionSlot> timePartitionSlotList) {
+  public void setTimePartitionSlotList(List<TimePartitionSlot> timePartitionSlotList) {
     this.timePartitionSlotList = timePartitionSlotList;
   }
 }

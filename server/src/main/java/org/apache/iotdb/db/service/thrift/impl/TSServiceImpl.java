@@ -39,6 +39,8 @@ import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.Coordinator;
 import org.apache.iotdb.db.mpp.execution.ExecutionStatus;
 import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
+import org.apache.iotdb.db.mpp.sql.parser.StatementGenerator;
+import org.apache.iotdb.db.mpp.sql.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -1519,6 +1521,43 @@ public class TSServiceImpl implements TSIService.Iface {
     }
   }
 
+  public TSStatus insertRecordV2(TSInsertRecordReq req) {
+    long t1 = System.currentTimeMillis();
+    try {
+      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+        return getNotLoggedInStatus();
+      }
+
+      AUDIT_LOGGER.debug(
+          "Session {} insertRecord, device {}, time {}",
+          SESSION_MANAGER.getCurrSessionId(),
+          req.getPrefixPath(),
+          req.getTimestamp());
+
+      InsertRowStatement statement = (InsertRowStatement) StatementGenerator.createStatement(req);
+
+      // Step 2: call the coordinator
+      long queryId = SESSION_MANAGER.requestQueryId(false);
+      ExecutionResult result =
+          coordinator.execute(
+              statement,
+              new QueryId(String.valueOf(queryId)),
+              QueryType.WRITE,
+              SESSION_MANAGER.getSessionInfo(req.sessionId),
+              "");
+
+      // TODO(INSERT) do this check in analyze
+      //      TSStatus status = serviceProvider.checkAuthority(insertTabletPlan,
+      // req.getSessionId());
+      return result.status;
+    } catch (Exception e) {
+      return onNPEOrUnexpectedException(
+          e, OperationType.INSERT_TABLET, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+    } finally {
+      addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
+    }
+  }
+
   @Override
   public TSStatus insertStringRecord(TSInsertStringRecordReq req) {
     try {
@@ -1611,25 +1650,13 @@ public class TSServiceImpl implements TSIService.Iface {
   public TSStatus insertTabletV2(TSInsertTabletReq req) {
     long t1 = System.currentTimeMillis();
     try {
-      // TODO (xingtanzjr) move this method to SESSION_MANAGER
-      if (!serviceProvider.checkLogin(req.getSessionId())) {
+      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
         return getNotLoggedInStatus();
       }
 
       // Step 1: TODO(INSERT) transfer from TSInsertTabletReq to Statement
-      InsertTabletStatement statement = new InsertTabletStatement();
-      //      InsertTabletPlan insertTabletPlan =
-      //          new InsertTabletPlan(new PartialPath(req.getPrefixPath()), req.measurements);
-      //      insertTabletPlan.setTimes(QueryDataSetUtils.readTimesFromBuffer(req.timestamps,
-      // req.size));
-      //      insertTabletPlan.setColumns(
-      //          QueryDataSetUtils.readValuesFromBuffer(
-      //              req.values, req.types, req.types.size(), req.size));
-      //      insertTabletPlan.setBitMaps(
-      //          QueryDataSetUtils.readBitMapsFromBuffer(req.values, req.types.size(), req.size));
-      //      insertTabletPlan.setRowCount(req.size);
-      //      insertTabletPlan.setDataTypes(req.types);
-      //      insertTabletPlan.setAligned(req.isAligned);
+      InsertTabletStatement statement =
+          (InsertTabletStatement) StatementGenerator.createStatement(req);
 
       // Step 2: call the coordinator
       long queryId = SESSION_MANAGER.requestQueryId(false);

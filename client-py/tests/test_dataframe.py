@@ -23,7 +23,7 @@ from numpy.testing import assert_array_equal
 
 
 def test_simple_query():
-    with IoTDBContainer("apache/iotdb:0.11.2") as db:
+    with IoTDBContainer("iotdb:dev") as db:
         db: IoTDBContainer
         session = Session(db.get_container_host_ip(), db.get_exposed_port(6667))
         session.open(False)
@@ -32,7 +32,7 @@ def test_simple_query():
         session.insert_str_record("root.device", 123, "pressure", "15.0")
 
         # Read
-        session_data_set = session.execute_query_statement("SELECT * FROM root.*")
+        session_data_set = session.execute_query_statement("SELECT ** FROM root")
         df = session_data_set.todf()
 
         session.close()
@@ -42,7 +42,7 @@ def test_simple_query():
 
 
 def test_non_time_query():
-    with IoTDBContainer("apache/iotdb:0.11.2") as db:
+    with IoTDBContainer("iotdb:dev") as db:
         db: IoTDBContainer
         session = Session(db.get_container_host_ip(), db.get_exposed_port(6667))
         session.open(False)
