@@ -20,8 +20,10 @@ package org.apache.iotdb.db.engine;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.GroupType;
 import org.apache.iotdb.commons.exception.ShutdownException;
-import org.apache.iotdb.commons.partition.DataRegionId;
+import org.apache.iotdb.commons.partition.TimePartitionSlot;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -119,8 +121,8 @@ public class StorageEngine implements IService {
   private final ConcurrentHashMap<PartialPath, StorageGroupManager> processorMap =
       new ConcurrentHashMap<>();
 
-  /** DataRegionId -> DataRegion */
-  private final ConcurrentHashMap<DataRegionId, VirtualStorageGroupProcessor> dataRegionMap =
+  /** ConsensusGroupId -> DataRegion */
+  private final ConcurrentHashMap<ConsensusGroupId, VirtualStorageGroupProcessor> dataRegionMap =
       new ConcurrentHashMap<>();
 
   private AtomicBoolean isAllSgReady = new AtomicBoolean(false);
@@ -180,6 +182,16 @@ public class StorageEngine implements IService {
     return enablePartition ? time / timePartitionInterval : 0;
   }
 
+  public static TimePartitionSlot getTimePartitionSlot(long time) {
+    TimePartitionSlot timePartitionSlot = new TimePartitionSlot();
+    if (enablePartition) {
+      timePartitionSlot.setStartTime(time - time % timePartitionInterval);
+    } else {
+      timePartitionSlot.setStartTime(0);
+    }
+    return timePartitionSlot;
+  }
+
   public static boolean isEnablePartition() {
     return enablePartition;
   }
@@ -224,7 +236,7 @@ public class StorageEngine implements IService {
             Runtime.getRuntime().availableProcessors(), "Recovery-Thread-Pool");
 
     // recover all logic storage group processors
-    List<IStorageGroupMNode> sgNodes = IoTDB.schemaEngine.getAllStorageGroupNodes();
+    List<IStorageGroupMNode> sgNodes = IoTDB.schemaProcessor.getAllStorageGroupNodes();
     List<Future<Void>> futures = new LinkedList<>();
     for (IStorageGroupMNode storageGroup : sgNodes) {
       StorageGroupManager storageGroupManager =
@@ -297,12 +309,13 @@ public class StorageEngine implements IService {
       }
       PartialPath sg = new PartialPath(sgDir.getName());
       // TODO: need to get TTL Info from config node
-      IStorageGroupMNode storageGroupMNode = IoTDB.schemaEngine.getStorageGroupNodeByPath(sg);
+      IStorageGroupMNode storageGroupMNode = IoTDB.schemaProcessor.getStorageGroupNodeByPath(sg);
       for (File dataRegionDir : sgDir.listFiles()) {
         if (!dataRegionDir.isDirectory()) {
           continue;
         }
-        DataRegionId dataRegionId = new DataRegionId(Integer.parseInt(dataRegionDir.getName()));
+        ConsensusGroupId dataRegionId =
+            new ConsensusGroupId(GroupType.DataRegion, Integer.parseInt(dataRegionDir.getName()));
         VirtualStorageGroupProcessor dataRegion =
             buildNewStorageGroupProcessorV2(sg, storageGroupMNode, dataRegionDir.getName());
         dataRegionMap.putIfAbsent(dataRegionId, dataRegion);
@@ -495,7 +508,7 @@ public class StorageEngine implements IService {
         unseqMemtableTimedFlushCheckThread, ThreadName.TIMED_FlUSH_UNSEQ_MEMTABLE);
     ThreadUtils.stopThreadPool(tsFileTimedCloseCheckThread, ThreadName.TIMED_CLOSE_TSFILE);
     recoveryThreadPool.shutdownNow();
-    for (PartialPath storageGroup : IoTDB.schemaEngine.getAllStorageGroupPaths()) {
+    for (PartialPath storageGroup : IoTDB.schemaProcessor.getAllStorageGroupPaths()) {
       this.releaseWalDirectByteBufferPoolInOneStorageGroup(storageGroup);
     }
     processorMap.clear();
@@ -621,7 +634,7 @@ public class StorageEngine implements IService {
       throws StorageEngineException {
     PartialPath storageGroupPath;
     try {
-      IStorageGroupMNode storageGroupMNode = IoTDB.schemaEngine.getStorageGroupNodeByPath(path);
+      IStorageGroupMNode storageGroupMNode = IoTDB.schemaProcessor.getStorageGroupNodeByPath(path);
       storageGroupPath = storageGroupMNode.getPartialPath();
       return getStorageGroupProcessorByPath(storageGroupPath, storageGroupMNode);
     } catch (StorageGroupProcessorException | MetadataException e) {
@@ -637,7 +650,7 @@ public class StorageEngine implements IService {
    */
   public VirtualStorageGroupProcessor getProcessor(PartialPath path) throws StorageEngineException {
     try {
-      IStorageGroupMNode storageGroupMNode = IoTDB.schemaEngine.getStorageGroupNodeByPath(path);
+      IStorageGroupMNode storageGroupMNode = IoTDB.schemaProcessor.getStorageGroupNodeByPath(path);
       return getStorageGroupProcessorByPath(path, storageGroupMNode);
     } catch (StorageGroupProcessorException | MetadataException e) {
       throw new StorageEngineException(e);
@@ -653,7 +666,8 @@ public class StorageEngine implements IService {
     try {
       List<String> lockHolderList = new ArrayList<>(pathList.size());
       for (PartialPath path : pathList) {
-        IStorageGroupMNode storageGroupMNode = IoTDB.schemaEngine.getStorageGroupNodeByPath(path);
+        IStorageGroupMNode storageGroupMNode =
+            IoTDB.schemaProcessor.getStorageGroupNodeByPath(path);
         VirtualStorageGroupProcessor virtualStorageGroupProcessor =
             getStorageGroupProcessorByPath(path, storageGroupMNode);
         lockHolderList.add(virtualStorageGroupProcessor.getInsertWriteLockHolder());
@@ -664,10 +678,10 @@ public class StorageEngine implements IService {
     }
   }
 
-  public List<String> getLockInfoV2(List<DataRegionId> dataRegionIdList)
+  public List<String> getLockInfoV2(List<ConsensusGroupId> dataRegionIdList)
       throws StorageEngineException {
     List<String> lockHolderList = new ArrayList<>(dataRegionIdList.size());
-    for (DataRegionId dataRegionId : dataRegionIdList) {
+    for (ConsensusGroupId dataRegionId : dataRegionIdList) {
       VirtualStorageGroupProcessor virtualStorageGroupProcessor = dataRegionMap.get(dataRegionId);
       lockHolderList.add(virtualStorageGroupProcessor.getInsertWriteLockHolder());
     }
@@ -868,7 +882,7 @@ public class StorageEngine implements IService {
 
   /** insert an InsertTabletNode to a storage group */
   // TODO:(New insert)
-  public void insertTabletV2(DataRegionId dataRegionId, InsertTabletNode insertTabletNode)
+  public void insertTabletV2(ConsensusGroupId dataRegionId, InsertTabletNode insertTabletNode)
       throws StorageEngineException, BatchProcessException {
     if (enableMemControl) {
       try {
@@ -927,9 +941,9 @@ public class StorageEngine implements IService {
   }
 
   public void closeStorageGroupProcessorV2(
-      List<DataRegionId> dataRegionIdList, boolean isSeq, boolean isSync) {
+      List<ConsensusGroupId> dataRegionIdList, boolean isSeq, boolean isSync) {
 
-    for (DataRegionId dataRegionId : dataRegionIdList) {
+    for (ConsensusGroupId dataRegionId : dataRegionIdList) {
       VirtualStorageGroupProcessor processor = dataRegionMap.get(dataRegionId);
       if (processor == null) {
         continue;
@@ -991,9 +1005,9 @@ public class StorageEngine implements IService {
   }
 
   public void closeStorageGroupProcessorV2(
-      List<DataRegionId> dataRegionIdList, long partitionId, boolean isSeq, boolean isSync) {
+      List<ConsensusGroupId> dataRegionIdList, long partitionId, boolean isSeq, boolean isSync) {
 
-    for (DataRegionId dataRegionId : dataRegionIdList) {
+    for (ConsensusGroupId dataRegionId : dataRegionIdList) {
       VirtualStorageGroupProcessor processor = dataRegionMap.get(dataRegionId);
 
       if (processor != null) {
@@ -1034,7 +1048,7 @@ public class StorageEngine implements IService {
       TimePartitionFilter timePartitionFilter)
       throws StorageEngineException {
     try {
-      List<PartialPath> sgPaths = IoTDB.schemaEngine.getBelongedStorageGroups(path);
+      List<PartialPath> sgPaths = IoTDB.schemaProcessor.getBelongedStorageGroups(path);
       for (PartialPath storageGroupPath : sgPaths) {
         // storage group has no data
         if (!processorMap.containsKey(storageGroupPath)) {
@@ -1054,7 +1068,7 @@ public class StorageEngine implements IService {
   }
 
   public void deleteV2(
-      List<DataRegionId> dataRegionIdList,
+      List<ConsensusGroupId> dataRegionIdList,
       PartialPath path,
       long startTime,
       long endTime,
@@ -1062,7 +1076,7 @@ public class StorageEngine implements IService {
       TimePartitionFilter timePartitionFilter)
       throws StorageEngineException {
     try {
-      for (DataRegionId dataRegionId : dataRegionIdList) {
+      for (ConsensusGroupId dataRegionId : dataRegionIdList) {
         VirtualStorageGroupProcessor processor = dataRegionMap.get(dataRegionId);
         if (processor != null) {
           processor.delete(path, startTime, endTime, planIndex, timePartitionFilter);
@@ -1078,7 +1092,7 @@ public class StorageEngine implements IService {
       PartialPath path, long planIndex, TimePartitionFilter timePartitionFilter)
       throws StorageEngineException {
     try {
-      List<PartialPath> sgPaths = IoTDB.schemaEngine.getBelongedStorageGroups(path);
+      List<PartialPath> sgPaths = IoTDB.schemaProcessor.getBelongedStorageGroups(path);
       for (PartialPath storageGroupPath : sgPaths) {
         // storage group has no data
         if (!processorMap.containsKey(storageGroupPath)) {
@@ -1098,13 +1112,13 @@ public class StorageEngine implements IService {
   }
 
   public void deleteTimeseriesV2(
-      List<DataRegionId> dataRegionIdList,
+      List<ConsensusGroupId> dataRegionIdList,
       PartialPath path,
       long planIndex,
       TimePartitionFilter timePartitionFilter)
       throws StorageEngineException {
     try {
-      for (DataRegionId dataRegionId : dataRegionIdList) {
+      for (ConsensusGroupId dataRegionId : dataRegionIdList) {
         // storage group has no data
         if (!dataRegionMap.containsKey(dataRegionId)) {
           continue;
@@ -1189,13 +1203,13 @@ public class StorageEngine implements IService {
   }
 
   public void getResourcesToBeSettledV2(
-      List<DataRegionId> dataRegionIdList,
+      List<ConsensusGroupId> dataRegionIdList,
       List<TsFileResource> seqResourcesToBeSettled,
       List<TsFileResource> unseqResourcesToBeSettled,
       List<String> tsFilePaths)
       throws StorageEngineException {
 
-    for (DataRegionId dataRegionId : dataRegionIdList) {
+    for (ConsensusGroupId dataRegionId : dataRegionIdList) {
       VirtualStorageGroupProcessor virtualStorageGroupProcessor = dataRegionMap.get(dataRegionId);
       if (virtualStorageGroupProcessor != null) {
         if (!virtualStorageGroupProcessor.getIsSettling().compareAndSet(false, true)) {
@@ -1217,8 +1231,8 @@ public class StorageEngine implements IService {
     processorMap.get(sgPath).setSettling(isSettling);
   }
 
-  public void setSettlingV2(List<DataRegionId> dataRegionIdList, boolean isSettling) {
-    for (DataRegionId dataRegionId : dataRegionIdList) {
+  public void setSettlingV2(List<ConsensusGroupId> dataRegionIdList, boolean isSettling) {
+    for (ConsensusGroupId dataRegionId : dataRegionIdList) {
       VirtualStorageGroupProcessor virtualStorageGroupProcessor = dataRegionMap.get(dataRegionId);
       if (virtualStorageGroupProcessor != null) {
         virtualStorageGroupProcessor.setSettling(isSettling);
@@ -1262,7 +1276,7 @@ public class StorageEngine implements IService {
     }
   }
 
-  public void deleteAllDataFilesInOneDataRegion(DataRegionId dataRegionId) {
+  public void deleteAllDataFilesInOneDataRegion(ConsensusGroupId dataRegionId) {
     if (dataRegionMap.containsKey(dataRegionId)) {
       syncDeleteDataFilesV2(dataRegionId);
     }
@@ -1273,7 +1287,7 @@ public class StorageEngine implements IService {
     processorMap.get(storageGroupPath).syncDeleteDataFiles();
   }
 
-  private void syncDeleteDataFilesV2(DataRegionId dataRegionId) {
+  private void syncDeleteDataFilesV2(ConsensusGroupId dataRegionId) {
     logger.info("Force to delete the data in data region {}", dataRegionId);
     VirtualStorageGroupProcessor dataRegion = dataRegionMap.get(dataRegionId);
     if (dataRegion != null) {
@@ -1292,7 +1306,7 @@ public class StorageEngine implements IService {
   public synchronized boolean deleteAll() {
     logger.info("Start deleting all storage groups' timeseries");
     syncCloseAllProcessor();
-    for (PartialPath storageGroup : IoTDB.schemaEngine.getAllStorageGroupPaths()) {
+    for (PartialPath storageGroup : IoTDB.schemaProcessor.getAllStorageGroupPaths()) {
       this.deleteAllDataFilesInOneStorageGroup(storageGroup);
     }
     return true;
@@ -1301,7 +1315,7 @@ public class StorageEngine implements IService {
   public synchronized boolean deleteAllV2() {
     logger.info("Start deleting all storage groups' timeseries");
     syncCloseAllProcessor();
-    for (DataRegionId dataRegionId : dataRegionMap.keySet()) {
+    for (ConsensusGroupId dataRegionId : dataRegionMap.keySet()) {
       this.deleteAllDataFilesInOneDataRegion(dataRegionId);
     }
     return true;
@@ -1316,8 +1330,8 @@ public class StorageEngine implements IService {
     processorMap.get(storageGroup).setTTL(dataTTL);
   }
 
-  public void setTTLV2(List<DataRegionId> dataRegionIdList, long dataTTL) {
-    for (DataRegionId dataRegionId : dataRegionIdList) {
+  public void setTTLV2(List<ConsensusGroupId> dataRegionIdList, long dataTTL) {
+    for (ConsensusGroupId dataRegionId : dataRegionIdList) {
       VirtualStorageGroupProcessor dataRegion = dataRegionMap.get(dataRegionId);
       if (dataRegion != null) {
         dataRegion.setDataTTL(dataTTL);
@@ -1329,7 +1343,7 @@ public class StorageEngine implements IService {
     if (!processorMap.containsKey(storageGroupPath)) {
       return;
     }
-
+    abortCompactionTaskForStorageGroup(storageGroupPath);
     deleteAllDataFilesInOneStorageGroup(storageGroupPath);
     releaseWalDirectByteBufferPoolInOneStorageGroup(storageGroupPath);
     StorageGroupManager storageGroupManager = processorMap.remove(storageGroupPath);
@@ -1338,10 +1352,10 @@ public class StorageEngine implements IService {
     storageGroupManager.stopSchedulerPool();
   }
 
-  public void deleteStorageGroupV2(List<DataRegionId> dataRegionIdList) {
+  public void deleteStorageGroupV2(List<ConsensusGroupId> dataRegionIdList) {
     // TODO:should be removed by new wal
     // releaseWalDirectByteBufferPoolInOneStorageGroup(storageGroupPath);
-    for (DataRegionId dataRegionId : dataRegionIdList) {
+    for (ConsensusGroupId dataRegionId : dataRegionIdList) {
       deleteAllDataFilesInOneDataRegion(dataRegionId);
       VirtualStorageGroupProcessor dataRegion = dataRegionMap.remove(dataRegionId);
       dataRegion.deleteFolder(systemDir + File.pathSeparator + dataRegion.getStorageGroupPath());
@@ -1349,6 +1363,16 @@ public class StorageEngine implements IService {
           dataRegion.getTimedCompactionScheduleTask(), ThreadName.COMPACTION_SCHEDULE);
       ThreadUtils.stopThreadPool(dataRegion.getWALTrimScheduleTask(), ThreadName.WAL_TRIM);
     }
+  }
+
+  private void abortCompactionTaskForStorageGroup(PartialPath storageGroupPath) {
+    if (!processorMap.containsKey(storageGroupPath)) {
+      return;
+    }
+
+    StorageGroupManager manager = processorMap.get(storageGroupPath);
+    manager.setAllowCompaction(false);
+    manager.abortCompaction();
   }
 
   public void loadNewTsFileForSync(TsFileResource newTsFileResource)
@@ -1365,7 +1389,7 @@ public class StorageEngine implements IService {
     }
     String device = deviceSet.iterator().next();
     PartialPath devicePath = new PartialPath(device);
-    PartialPath storageGroupPath = IoTDB.schemaEngine.getBelongedStorageGroup(devicePath);
+    PartialPath storageGroupPath = IoTDB.schemaProcessor.getBelongedStorageGroup(devicePath);
     getProcessorDirectly(storageGroupPath).loadNewTsFile(newTsFileResource);
   }
 
@@ -1459,8 +1483,8 @@ public class StorageEngine implements IService {
   }
 
   public void setPartitionVersionToMaxV2(
-      List<DataRegionId> dataRegionIdList, long partitionId, long newMaxVersion) {
-    for (DataRegionId dataRegionId : dataRegionIdList) {
+      List<ConsensusGroupId> dataRegionIdList, long partitionId, long newMaxVersion) {
+    for (ConsensusGroupId dataRegionId : dataRegionIdList) {
       dataRegionMap.get(dataRegionId).setPartitionFileVersionToMax(partitionId, newMaxVersion);
     }
   }
@@ -1471,8 +1495,9 @@ public class StorageEngine implements IService {
     }
   }
 
-  public void removePartitionsV2(List<DataRegionId> dataRegionIdList, TimePartitionFilter filter) {
-    for (DataRegionId dataRegionId : dataRegionIdList) {
+  public void removePartitionsV2(
+      List<ConsensusGroupId> dataRegionIdList, TimePartitionFilter filter) {
+    for (ConsensusGroupId dataRegionId : dataRegionIdList) {
       dataRegionMap.get(dataRegionId).removePartitions(filter);
     }
   }
@@ -1497,7 +1522,7 @@ public class StorageEngine implements IService {
 
   public Map<String, List<Pair<Long, Boolean>>> getWorkingStorageGroupPartitionsV2() {
     Map<String, List<Pair<Long, Boolean>>> res = new ConcurrentHashMap<>();
-    for (Entry<DataRegionId, VirtualStorageGroupProcessor> entry : dataRegionMap.entrySet()) {
+    for (Entry<ConsensusGroupId, VirtualStorageGroupProcessor> entry : dataRegionMap.entrySet()) {
       VirtualStorageGroupProcessor virtualStorageGroupProcessor = entry.getValue();
       if (virtualStorageGroupProcessor != null) {
         List<Pair<Long, Boolean>> partitionIdList = new ArrayList<>();
@@ -1578,7 +1603,7 @@ public class StorageEngine implements IService {
       if (config.isEnableIDTable()) {
         processor.getIdTable().getSeriesSchemas(insertPlan);
       } else {
-        IoTDB.schemaEngine.getSeriesSchemasAndReadLockDevice(insertPlan);
+        IoTDB.schemaProcessor.getSeriesSchemasAndReadLockDevice(insertPlan);
         insertPlan.setDeviceID(
             DeviceIDFactory.getInstance().getDeviceID(insertPlan.getDevicePath()));
       }

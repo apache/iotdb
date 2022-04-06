@@ -19,28 +19,46 @@
 package org.apache.iotdb.confignode.service.executor;
 
 import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeException;
-import org.apache.iotdb.confignode.partition.PartitionTable;
+import org.apache.iotdb.confignode.persistence.DataNodeInfoPersistence;
+import org.apache.iotdb.confignode.persistence.PartitionInfoPersistence;
+import org.apache.iotdb.confignode.persistence.RegionInfoPersistence;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
+import org.apache.iotdb.confignode.physical.sys.DataPartitionPlan;
 import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
 import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
+import org.apache.iotdb.confignode.physical.sys.SchemaPartitionPlan;
 import org.apache.iotdb.confignode.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 public class PlanExecutor {
 
-  private final PartitionTable partitionTable;
+  private final DataNodeInfoPersistence dataNodeInfoPersistence;
+
+  private final RegionInfoPersistence regionInfoPersistence;
+
+  private final PartitionInfoPersistence partitionInfoPersistence;
 
   public PlanExecutor() {
-    this.partitionTable = new PartitionTable();
+    this.dataNodeInfoPersistence = DataNodeInfoPersistence.getInstance();
+    this.regionInfoPersistence = RegionInfoPersistence.getInstance();
+    this.partitionInfoPersistence = PartitionInfoPersistence.getInstance();
   }
 
   public DataSet executorQueryPlan(PhysicalPlan plan) throws UnknownPhysicalPlanTypeException {
     switch (plan.getType()) {
       case QueryDataNodeInfo:
-        return partitionTable.getDataNodeInfo((QueryDataNodeInfoPlan) plan);
+        return dataNodeInfoPersistence.getDataNodeInfo((QueryDataNodeInfoPlan) plan);
       case QueryStorageGroupSchema:
-        return partitionTable.getStorageGroupSchema();
+        return regionInfoPersistence.getStorageGroupSchema();
+      case QueryDataPartition:
+        return partitionInfoPersistence.getDataPartition((DataPartitionPlan) plan);
+      case QuerySchemaPartition:
+        return partitionInfoPersistence.getSchemaPartition((SchemaPartitionPlan) plan);
+      case ApplySchemaPartition:
+        return partitionInfoPersistence.applySchemaPartition((SchemaPartitionPlan) plan);
+      case ApplyDataPartition:
+        return partitionInfoPersistence.applyDataPartition((DataPartitionPlan) plan);
       default:
         throw new UnknownPhysicalPlanTypeException(plan.getType());
     }
@@ -49,9 +67,9 @@ public class PlanExecutor {
   public TSStatus executorNonQueryPlan(PhysicalPlan plan) throws UnknownPhysicalPlanTypeException {
     switch (plan.getType()) {
       case RegisterDataNode:
-        return partitionTable.registerDataNode((RegisterDataNodePlan) plan);
+        return dataNodeInfoPersistence.registerDataNode((RegisterDataNodePlan) plan);
       case SetStorageGroup:
-        return partitionTable.setStorageGroup((SetStorageGroupPlan) plan);
+        return regionInfoPersistence.setStorageGroup((SetStorageGroupPlan) plan);
       default:
         throw new UnknownPhysicalPlanTypeException(plan.getType());
     }

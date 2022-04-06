@@ -18,14 +18,17 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import com.google.common.collect.ImmutableList;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -34,17 +37,21 @@ import java.util.List;
  */
 public class SortNode extends ProcessNode {
 
-  private final PlanNode child;
+  private PlanNode child;
 
   private final List<String> orderBy;
 
   private OrderBy sortOrder;
 
-  public SortNode(PlanNodeId id, PlanNode child, List<String> orderBy, OrderBy sortOrder) {
+  public SortNode(PlanNodeId id, List<String> orderBy, OrderBy sortOrder) {
     super(id);
-    this.child = child;
     this.orderBy = orderBy;
     this.sortOrder = sortOrder;
+  }
+
+  public SortNode(PlanNodeId id, PlanNode child, List<String> orderBy, OrderBy sortOrder) {
+    this(id, orderBy, sortOrder);
+    this.child = child;
   }
 
   @Override
@@ -53,21 +60,27 @@ public class SortNode extends ProcessNode {
   }
 
   @Override
-  public void addChildren(PlanNode child) {}
-
-  @Override
-  public PlanNode clone() {
-    return null;
+  public void addChild(PlanNode child) {
+    this.child = child;
   }
 
   @Override
-  public PlanNode cloneWithChildren(List<PlanNode> children) {
-    return null;
+  public PlanNode clone() {
+    return new SortNode(getId(), orderBy, sortOrder);
+  }
+
+  @Override
+  public int allowedChildCount() {
+    return ONE_CHILD;
   }
 
   @Override
   public List<String> getOutputColumnNames() {
     return child.getOutputColumnNames();
+  }
+
+  public OrderBy getSortOrder() {
+    return sortOrder;
   }
 
   @Override
@@ -81,4 +94,12 @@ public class SortNode extends ProcessNode {
 
   @Override
   public void serialize(ByteBuffer byteBuffer) {}
+
+  @TestOnly
+  public Pair<String, List<String>> print() {
+    String title = String.format("[SortNode (%s)]", this.getId());
+    List<String> attributes = new ArrayList<>();
+    attributes.add("SortOrder: " + (this.getSortOrder() == null ? "null" : this.getSortOrder()));
+    return new Pair<>(title, attributes);
+  }
 }

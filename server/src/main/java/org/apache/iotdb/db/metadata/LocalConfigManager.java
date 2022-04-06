@@ -21,7 +21,8 @@ package org.apache.iotdb.db.metadata;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.partition.SchemaRegionId;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.GroupType;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -33,8 +34,8 @@ import org.apache.iotdb.db.exception.metadata.UndefinedTemplateException;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.rescon.TimeseriesStatistics;
+import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaRegion;
-import org.apache.iotdb.db.metadata.schemaregion.SchemaRegionManager;
 import org.apache.iotdb.db.metadata.storagegroup.IStorageGroupSchemaManager;
 import org.apache.iotdb.db.metadata.storagegroup.StorageGroupSchemaManager;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -84,7 +85,7 @@ public class LocalConfigManager {
   private IStorageGroupSchemaManager storageGroupSchemaManager =
       StorageGroupSchemaManager.getInstance();
   private TemplateManager templateManager = TemplateManager.getInstance();
-  private SchemaRegionManager schemaRegionManager = SchemaRegionManager.getInstance();
+  private SchemaEngine schemaEngine = SchemaEngine.getInstance();
   private LocalSchemaPartitionTable partitionTable = LocalSchemaPartitionTable.getInstance();
 
   private LocalConfigManager() {
@@ -124,7 +125,7 @@ public class LocalConfigManager {
       templateManager.init();
       storageGroupSchemaManager.init();
       partitionTable.init();
-      schemaRegionManager.init();
+      schemaEngine.init();
 
       initSchemaRegion();
 
@@ -162,8 +163,9 @@ public class LocalConfigManager {
       }
 
       for (File schemaRegionDir : schemaRegionDirs) {
-        SchemaRegionId schemaRegionId =
-            new SchemaRegionId(Integer.parseInt(schemaRegionDir.getName()));
+        ConsensusGroupId schemaRegionId =
+            new ConsensusGroupId(
+                GroupType.SchemaRegion, Integer.parseInt(schemaRegionDir.getName()));
         localCreateSchemaRegion(storageGroup, schemaRegionId);
         partitionTable.putSchemaRegionId(storageGroup, schemaRegionId);
       }
@@ -180,10 +182,10 @@ public class LocalConfigManager {
 
       partitionTable.clear();
 
-      for (SchemaRegion schemaRegion : schemaRegionManager.getAllSchemaRegions()) {
+      for (SchemaRegion schemaRegion : schemaEngine.getAllSchemaRegions()) {
         schemaRegion.clear();
       }
-      schemaRegionManager.clear();
+      schemaEngine.clear();
 
       storageGroupSchemaManager.clear();
       templateManager.clear();
@@ -193,7 +195,7 @@ public class LocalConfigManager {
         timedForceMLogThread = null;
       }
     } catch (IOException e) {
-      logger.error("Error occurred when clearing SchemaEngine:", e);
+      logger.error("Error occurred when clearing LocalConfigManager:", e);
     }
 
     initialized = false;
@@ -207,7 +209,7 @@ public class LocalConfigManager {
     storageGroupSchemaManager.forceLog();
     templateManager.forceLog();
 
-    for (SchemaRegion schemaRegion : schemaRegionManager.getAllSchemaRegions()) {
+    for (SchemaRegion schemaRegion : schemaEngine.getAllSchemaRegions()) {
       schemaRegion.forceMlog();
     }
   }
@@ -424,25 +426,24 @@ public class LocalConfigManager {
   }
 
   /**
-   * To calculate the count of nodes in the given level for given path pattern. If using prefix
-   * match, the path pattern is used to match prefix path. All nodes start with the matched prefix
-   * path will be counted. This method only count in nodes above storage group. Nodes below storage
-   * group, including storage group node will be counted by certain Storage Group. The involved
-   * storage groups will be collected to count nodes below storage group.
+   * To collect nodes in the given level for given path pattern. If using prefix match, the path
+   * pattern is used to match prefix path. All nodes start with the matched prefix path will be
+   * collected. This method only count in nodes above storage group. Nodes below storage group,
+   * including storage group node will be collected by certain SchemaRegion. The involved storage
+   * groups will be collected to fetch schemaRegion.
    *
    * @param pathPattern a path pattern or a full path
-   * @param level the level should match the level of the path
+   * @param nodeLevel the level should match the level of the path
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
    */
-  public Pair<Integer, Set<PartialPath>> getNodesCountInGivenLevel(
-      PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException {
-    return storageGroupSchemaManager.getNodesCountInGivenLevel(pathPattern, level, isPrefixMatch);
-  }
-
   public Pair<List<PartialPath>, Set<PartialPath>> getNodesListInGivenLevel(
-      PartialPath pathPattern, int nodeLevel, SchemaEngine.StorageGroupFilter filter)
+      PartialPath pathPattern,
+      int nodeLevel,
+      boolean isPrefixMatch,
+      LocalSchemaProcessor.StorageGroupFilter filter)
       throws MetadataException {
-    return storageGroupSchemaManager.getNodesListInGivenLevel(pathPattern, nodeLevel, filter);
+    return storageGroupSchemaManager.getNodesListInGivenLevel(
+        pathPattern, nodeLevel, isPrefixMatch, filter);
   }
 
   /**
@@ -503,28 +504,28 @@ public class LocalConfigManager {
 
   // region Interfaces for SchemaRegion Management
 
-  public void createSchemaRegion(PartialPath storageGroup, SchemaRegionId schemaRegionId)
+  public void createSchemaRegion(PartialPath storageGroup, ConsensusGroupId schemaRegionId)
       throws MetadataException {
     ensureStorageGroup(storageGroup, false);
     localCreateSchemaRegion(storageGroup, schemaRegionId);
     partitionTable.putSchemaRegionId(storageGroup, schemaRegionId);
   }
 
-  public SchemaRegion getSchemaRegion(PartialPath storageGroup, SchemaRegionId schemaRegionId)
+  public SchemaRegion getSchemaRegion(PartialPath storageGroup, ConsensusGroupId schemaRegionId)
       throws MetadataException {
-    return schemaRegionManager.getSchemaRegion(schemaRegionId);
+    return schemaEngine.getSchemaRegion(schemaRegionId);
   }
 
-  public void deleteSchemaRegion(PartialPath storageGroup, SchemaRegionId schemaRegionId)
+  public void deleteSchemaRegion(PartialPath storageGroup, ConsensusGroupId schemaRegionId)
       throws MetadataException {
     partitionTable.removeSchemaRegionId(storageGroup, schemaRegionId);
-    schemaRegionManager.deleteSchemaRegion(schemaRegionId);
+    schemaEngine.deleteSchemaRegion(schemaRegionId);
   }
 
   private void deleteSchemaRegionsInStorageGroup(
-      PartialPath storageGroup, Set<SchemaRegionId> schemaRegionIdSet) throws MetadataException {
-    for (SchemaRegionId schemaRegionId : schemaRegionIdSet) {
-      schemaRegionManager.deleteSchemaRegion(schemaRegionId);
+      PartialPath storageGroup, Set<ConsensusGroupId> schemaRegionIdSet) throws MetadataException {
+    for (ConsensusGroupId schemaRegionId : schemaRegionIdSet) {
+      schemaEngine.deleteSchemaRegion(schemaRegionId);
     }
 
     File sgDir = new File(config.getSchemaDir() + File.separator + storageGroup.getFullPath());
@@ -540,8 +541,8 @@ public class LocalConfigManager {
   }
 
   private SchemaRegion localCreateSchemaRegion(
-      PartialPath storageGroup, SchemaRegionId schemaRegionId) throws MetadataException {
-    return schemaRegionManager.createSchemaRegion(
+      PartialPath storageGroup, ConsensusGroupId schemaRegionId) throws MetadataException {
+    return schemaEngine.createSchemaRegion(
         storageGroup,
         schemaRegionId,
         storageGroupSchemaManager.getStorageGroupNodeByStorageGroupPath(storageGroup));
@@ -556,8 +557,8 @@ public class LocalConfigManager {
    */
   public SchemaRegion getBelongedSchemaRegion(PartialPath path) throws MetadataException {
     PartialPath storageGroup = storageGroupSchemaManager.getBelongedStorageGroup(path);
-    SchemaRegionId schemaRegionId = partitionTable.getSchemaRegionId(storageGroup, path);
-    SchemaRegion schemaRegion = schemaRegionManager.getSchemaRegion(schemaRegionId);
+    ConsensusGroupId schemaRegionId = partitionTable.getSchemaRegionId(storageGroup, path);
+    SchemaRegion schemaRegion = schemaEngine.getSchemaRegion(schemaRegionId);
     if (schemaRegion == null) {
       schemaRegion = localCreateSchemaRegion(storageGroup, schemaRegionId);
       partitionTable.putSchemaRegionId(storageGroup, schemaRegionId);
@@ -583,9 +584,9 @@ public class LocalConfigManager {
     List<SchemaRegion> result = new ArrayList<>();
     for (PartialPath storageGroup :
         storageGroupSchemaManager.getInvolvedStorageGroups(pathPattern, isPrefixMatch)) {
-      for (SchemaRegionId schemaRegionId :
+      for (ConsensusGroupId schemaRegionId :
           partitionTable.getInvolvedSchemaRegionIds(storageGroup, pathPattern, isPrefixMatch)) {
-        result.add(schemaRegionManager.getSchemaRegion(schemaRegionId));
+        result.add(schemaEngine.getSchemaRegion(schemaRegionId));
       }
     }
 
@@ -595,9 +596,9 @@ public class LocalConfigManager {
   public List<SchemaRegion> getSchemaRegionsByStorageGroup(PartialPath storageGroup)
       throws MetadataException {
     List<SchemaRegion> result = new ArrayList<>();
-    for (SchemaRegionId schemaRegionId :
+    for (ConsensusGroupId schemaRegionId :
         partitionTable.getSchemaRegionIdsByStorageGroup(storageGroup)) {
-      result.add(schemaRegionManager.getSchemaRegion(schemaRegionId));
+      result.add(schemaEngine.getSchemaRegion(schemaRegionId));
     }
     return result;
   }
@@ -618,8 +619,8 @@ public class LocalConfigManager {
 
     Template template = templateManager.getTemplate(plan.getName());
 
-    for (SchemaRegionId schemaRegionId : template.getRelatedSchemaRegion()) {
-      if (!schemaRegionManager
+    for (ConsensusGroupId schemaRegionId : template.getRelatedSchemaRegion()) {
+      if (!schemaEngine
           .getSchemaRegion(schemaRegionId)
           .isTemplateAppendable(template, plan.getMeasurements())) {
         isTemplateAppendable = false;
@@ -704,14 +705,14 @@ public class LocalConfigManager {
   public Set<String> getPathsSetTemplate(String templateName) throws MetadataException {
     Set<String> result = new HashSet<>();
     if (templateName.equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
-      for (SchemaRegion schemaRegion : schemaRegionManager.getAllSchemaRegions()) {
+      for (SchemaRegion schemaRegion : schemaEngine.getAllSchemaRegions()) {
         result.addAll(schemaRegion.getPathsSetTemplate(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
       }
     } else {
-      for (SchemaRegionId schemaRegionId :
+      for (ConsensusGroupId schemaRegionId :
           templateManager.getTemplate(templateName).getRelatedSchemaRegion()) {
         result.addAll(
-            schemaRegionManager.getSchemaRegion(schemaRegionId).getPathsSetTemplate(templateName));
+            schemaEngine.getSchemaRegion(schemaRegionId).getPathsSetTemplate(templateName));
       }
     }
 
@@ -721,16 +722,14 @@ public class LocalConfigManager {
   public Set<String> getPathsUsingTemplate(String templateName) throws MetadataException {
     Set<String> result = new HashSet<>();
     if (templateName.equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
-      for (SchemaRegion schemaRegion : schemaRegionManager.getAllSchemaRegions()) {
+      for (SchemaRegion schemaRegion : schemaEngine.getAllSchemaRegions()) {
         result.addAll(schemaRegion.getPathsUsingTemplate(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
       }
     } else {
-      for (SchemaRegionId schemaRegionId :
+      for (ConsensusGroupId schemaRegionId :
           templateManager.getTemplate(templateName).getRelatedSchemaRegion()) {
         result.addAll(
-            schemaRegionManager
-                .getSchemaRegion(schemaRegionId)
-                .getPathsUsingTemplate(templateName));
+            schemaEngine.getSchemaRegion(schemaRegionId).getPathsUsingTemplate(templateName));
       }
     }
 

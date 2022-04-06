@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.schemaregion;
 
-import org.apache.iotdb.commons.partition.SchemaRegionId;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -35,8 +35,8 @@ import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
 import org.apache.iotdb.db.exception.metadata.TemplateIsInUseException;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.MetadataConstant;
-import org.apache.iotdb.db.metadata.SchemaEngine;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.IDTableManager;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
@@ -153,7 +153,7 @@ public class SchemaRegion {
 
   private String schemaRegionDirPath;
   private String storageGroupFullPath;
-  private SchemaRegionId schemaRegionId;
+  private ConsensusGroupId schemaRegionId;
 
   // the log file seriesPath
   private String logFilePath;
@@ -168,7 +168,9 @@ public class SchemaRegion {
 
   // region Interfaces and Implementation of initialization、snapshot、recover and clear
   public SchemaRegion(
-      PartialPath storageGroup, SchemaRegionId schemaRegionId, IStorageGroupMNode storageGroupMNode)
+      PartialPath storageGroup,
+      ConsensusGroupId schemaRegionId,
+      IStorageGroupMNode storageGroupMNode)
       throws MetadataException {
 
     storageGroupFullPath = storageGroup.getFullPath();
@@ -216,7 +218,7 @@ public class SchemaRegion {
             + File.separator
             + storageGroupFullPath
             + File.separator
-            + schemaRegionId.getSchemaRegionId();
+            + schemaRegionId.getId();
     File schemaRegionFolder = SystemFileFactory.INSTANCE.getFile(schemaRegionDirPath);
     if (!schemaRegionFolder.exists()) {
       if (schemaRegionFolder.mkdirs()) {
@@ -824,9 +826,12 @@ public class SchemaRegion {
 
   // region Interfaces for level Node info Query
   public List<PartialPath> getNodesListInGivenLevel(
-      PartialPath pathPattern, int nodeLevel, SchemaEngine.StorageGroupFilter filter)
+      PartialPath pathPattern,
+      int nodeLevel,
+      boolean isPrefixMatch,
+      LocalSchemaProcessor.StorageGroupFilter filter)
       throws MetadataException {
-    return mtree.getNodesListInGivenLevel(pathPattern, nodeLevel, filter);
+    return mtree.getNodesListInGivenLevel(pathPattern, nodeLevel, isPrefixMatch, filter);
   }
 
   /**

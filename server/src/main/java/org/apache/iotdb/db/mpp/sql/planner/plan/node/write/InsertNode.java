@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.write;
 
+import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
@@ -50,45 +51,77 @@ public abstract class InsertNode extends PlanNode {
    */
   protected IDeviceID deviceID;
 
+  /** Physical address of data region after splitting */
+  RegionReplicaSet dataRegionReplicaSet;
+
   protected InsertNode(PlanNodeId id) {
     super(id);
   }
 
-  // TODO(INSERT) split this insert node into multiple InsertNode according to the data partition
-  // info
-  public abstract List<InsertNode> splitByPartition(Analysis analysis);
+  protected InsertNode(
+      PlanNodeId id,
+      PartialPath devicePath,
+      boolean isAligned,
+      MeasurementSchema[] measurementSchemas,
+      TSDataType[] dataTypes) {
+    super(id);
+    this.devicePath = devicePath;
+    this.isAligned = isAligned;
+    this.measurementSchemas = measurementSchemas;
+    this.dataTypes = dataTypes;
+  }
 
-  public boolean needSplit() {
-    return true;
+  public RegionReplicaSet getDataRegionReplicaSet() {
+    return dataRegionReplicaSet;
+  }
+
+  public void setDataRegionReplicaSet(RegionReplicaSet dataRegionReplicaSet) {
+    this.dataRegionReplicaSet = dataRegionReplicaSet;
   }
 
   public PartialPath getDevicePath() {
     return devicePath;
   }
 
+  public void setDevicePath(PartialPath devicePath) {
+    this.devicePath = devicePath;
+  }
+
   public boolean isAligned() {
     return isAligned;
   }
 
-  public IDeviceID getDeviceID() {
-    return deviceID;
+  public void setAligned(boolean aligned) {
+    isAligned = aligned;
+  }
+
+  public MeasurementSchema[] getMeasurementSchemas() {
+    return measurementSchemas;
+  }
+
+  public void setMeasurementSchemas(MeasurementSchema[] measurementSchemas) {
+    this.measurementSchemas = measurementSchemas;
   }
 
   public TSDataType[] getDataTypes() {
     return dataTypes;
   }
 
-  public String[] getMeasurements() {
-    return measurements;
+  public void setDataTypes(TSDataType[] dataTypes) {
+    this.dataTypes = dataTypes;
+  }
+
+  public IDeviceID getDeviceID() {
+    return deviceID;
   }
 
   public void setDeviceID(IDeviceID deviceID) {
     this.deviceID = deviceID;
   }
 
-  public MeasurementSchema[] getMeasurementSchemas() {
-    return measurementSchemas;
-  }
+  // TODO(INSERT) split this insert node into multiple InsertNode according to the data partition
+  // info
+  public abstract List<InsertNode> splitByPartition(Analysis analysis);
 
   @Override
   public void serialize(ByteBuffer byteBuffer) {}

@@ -100,4 +100,10 @@ public class L2PriorityQueue<E extends IDIndexedAccessible> extends IndexedBlock
     }
     return idleElements.get(element);
   }
+
+  @Override
+  protected void clearAllElements() {
+    workingElements.clear();
+    idleElements.clear();
+  }
 }

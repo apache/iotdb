@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
+import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.sink.FragmentSinkNode;
-import org.apache.iotdb.service.rpc.thrift.EndPoint;
 
 import com.google.common.collect.ImmutableList;
 
@@ -32,12 +32,14 @@ import java.util.List;
 
 public class ExchangeNode extends PlanNode {
   private PlanNode child;
+  // The remoteSourceNode is used to record the remote source info for current ExchangeNode
+  // It is not the child of current ExchangeNode
   private FragmentSinkNode remoteSourceNode;
 
   // In current version, one ExchangeNode will only have one source.
   // And the fragment which the sourceNode belongs to will only have one instance.
   // Thus, by nodeId and endpoint, the ExchangeNode can know where its source from.
-  private EndPoint upstreamEndpoint;
+  private Endpoint upstreamEndpoint;
   private FragmentInstanceId upstreamInstanceId;
   private PlanNodeId upstreamPlanNodeId;
 
@@ -54,27 +56,27 @@ public class ExchangeNode extends PlanNode {
   }
 
   @Override
-  public void addChildren(PlanNode child) {}
+  public void addChild(PlanNode child) {
+    this.child = child;
+  }
 
   @Override
   public PlanNode clone() {
     ExchangeNode node = new ExchangeNode(getId());
     if (remoteSourceNode != null) {
-      node.setRemoteSourceNode((FragmentSinkNode) remoteSourceNode.clone());
+      FragmentSinkNode remoteSourceNodeClone = (FragmentSinkNode) remoteSourceNode.clone();
+      remoteSourceNodeClone.setDownStreamNode(node);
+      node.setRemoteSourceNode(remoteSourceNode);
     }
     return node;
   }
 
   @Override
-  public PlanNode cloneWithChildren(List<PlanNode> children) {
-    ExchangeNode node = (ExchangeNode) clone();
-    if (children != null && children.size() > 0) {
-      node.setChild(children.get(0));
-    }
-    return node;
+  public int allowedChildCount() {
+    return CHILD_COUNT_NO_LIMIT;
   }
 
-  public void setUpstream(EndPoint endPoint, FragmentInstanceId instanceId, PlanNodeId nodeId) {
+  public void setUpstream(Endpoint endPoint, FragmentInstanceId instanceId, PlanNodeId nodeId) {
     this.upstreamEndpoint = endPoint;
     this.upstreamInstanceId = instanceId;
     this.upstreamPlanNodeId = nodeId;
@@ -101,9 +103,7 @@ public class ExchangeNode extends PlanNode {
   }
 
   public String toString() {
-    return String.format(
-        "ExchangeNode-%s: [SourceNodeId: %s, SourceAddress:%s]",
-        getId(), remoteSourceNode.getId(), getSourceAddress());
+    return String.format("ExchangeNode-%s: [SourceAddress:%s]", getId(), getSourceAddress());
   }
 
   public String getSourceAddress() {
@@ -127,7 +127,7 @@ public class ExchangeNode extends PlanNode {
     this.child = null;
   }
 
-  public EndPoint getUpstreamEndpoint() {
+  public Endpoint getUpstreamEndpoint() {
     return upstreamEndpoint;
   }
 

@@ -20,7 +20,7 @@ package org.apache.iotdb.db.metadata.mtree;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.SchemaEngine;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -265,26 +265,27 @@ public class MTreeAboveSGTest {
     root.setStorageGroup(new PartialPath("root.sg1"));
 
     root.setStorageGroup(new PartialPath("root.sg2"));
-    SchemaEngine.StorageGroupFilter filter = storageGroup -> storageGroup.equals("root.sg1");
+    LocalSchemaProcessor.StorageGroupFilter filter =
+        storageGroup -> storageGroup.equals("root.sg1");
 
     Pair<List<PartialPath>, Set<PartialPath>> result =
-        root.getNodesListInGivenLevel(new PartialPath("root.**"), 3, null);
+        root.getNodesListInGivenLevel(new PartialPath("root.**"), 3, false, null);
     Assert.assertEquals(0, result.left.size());
     Assert.assertEquals(2, result.right.size());
 
-    result = root.getNodesListInGivenLevel(new PartialPath("root.*.*"), 2, null);
+    result = root.getNodesListInGivenLevel(new PartialPath("root.*.*"), 2, false, null);
     Assert.assertEquals(0, result.left.size());
     Assert.assertEquals(2, result.right.size());
 
-    result = root.getNodesListInGivenLevel(new PartialPath("root.*.*"), 1, null);
+    result = root.getNodesListInGivenLevel(new PartialPath("root.*.*"), 1, false, null);
     Assert.assertEquals(0, result.left.size());
     Assert.assertEquals(2, result.right.size());
 
-    result = root.getNodesListInGivenLevel(new PartialPath("root.**"), 3, filter);
+    result = root.getNodesListInGivenLevel(new PartialPath("root.**"), 3, false, filter);
     Assert.assertEquals(0, result.left.size());
     Assert.assertEquals(1, result.right.size());
 
-    result = root.getNodesListInGivenLevel(new PartialPath("root.*.**"), 2, filter);
+    result = root.getNodesListInGivenLevel(new PartialPath("root.*.**"), 2, false, filter);
     Assert.assertEquals(0, result.left.size());
     Assert.assertEquals(1, result.right.size());
   }
