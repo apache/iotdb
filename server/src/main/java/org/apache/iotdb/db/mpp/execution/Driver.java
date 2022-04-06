@@ -32,9 +32,9 @@ import java.io.Closeable;
 public interface Driver extends Closeable {
 
   /**
-   * Used to judge whether this fragment instance has any more data to process
+   * Used to judge whether this fragment instance should be scheduled for execution anymore
    *
-   * @return true if the FragmentInstance is done, otherwise false.
+   * @return true if the FragmentInstance is done or terminated due to failure, otherwise false.
    */
   boolean isFinished();
 
