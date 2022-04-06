@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.sql.plan;
 
+import java.nio.ByteBuffer;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
@@ -27,6 +28,7 @@ import org.apache.iotdb.db.mpp.sql.parser.StatementGenerator;
 import org.apache.iotdb.db.mpp.sql.planner.LogicalPlanner;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeIdAllocator;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.DevicesMetaScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.MetaMergeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesMetaScanNode;
@@ -380,6 +382,23 @@ public class LogicalPlannerTest {
       Assert.assertEquals(20, showTimeSeriesNode.getLimit());
       Assert.assertEquals(10, showTimeSeriesNode.getOffset());
       Assert.assertTrue(showTimeSeriesNode.isHasLimit());
+
+      //test serialize and deserialize
+      ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
+      showTimeSeriesNode.serialize(byteBuffer);
+      byteBuffer.flip();
+      TimeSeriesMetaScanNode showTimeSeriesNode2 = (TimeSeriesMetaScanNode) PlanNodeType.deserialize(byteBuffer);
+      Assert.assertNotNull(showTimeSeriesNode2);
+      Assert.assertEquals(
+          new PartialPath("root.ln.wf01.wt01.status"), showTimeSeriesNode2.getPath());
+      Assert.assertEquals("root.ln.wf01.wt01", showTimeSeriesNode2.getPath().getDevice());
+      Assert.assertTrue(showTimeSeriesNode2.isOrderByHeat());
+      Assert.assertFalse(showTimeSeriesNode2.isContains());
+      Assert.assertEquals("tagK", showTimeSeriesNode2.getKey());
+      Assert.assertEquals("tagV", showTimeSeriesNode2.getValue());
+      Assert.assertEquals(20, showTimeSeriesNode2.getLimit());
+      Assert.assertEquals(10, showTimeSeriesNode2.getOffset());
+      Assert.assertTrue(showTimeSeriesNode2.isHasLimit());
     } catch (Exception e) {
       e.printStackTrace();
       fail();
