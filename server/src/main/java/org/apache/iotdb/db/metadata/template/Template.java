@@ -421,6 +421,10 @@ public class Template {
     return relatedStorageGroup.removeAll(getSGPaths(unsetNode));
   }
 
+  public boolean unmarkStorageGroups(Collection<PartialPath> sgPaths) {
+    return relatedStorageGroup.removeAll(sgPaths);
+  }
+
   // endregion
 
   // region inner utils

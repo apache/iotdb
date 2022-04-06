@@ -417,6 +417,24 @@ public class TemplateTest {
   }
 
   @Test
+  public void testDropTemplateWithStorageGroupDeleted() throws MetadataException {
+    MManager mManager = IoTDB.metaManager;
+    mManager.createSchemaTemplate(getTreeTemplatePlan());
+    mManager.setSchemaTemplate(new SetTemplatePlan("treeTemplate", "root.sg1.d1"));
+    try {
+      mManager.dropSchemaTemplate(new DropTemplatePlan("treeTemplate"));
+      fail();
+    } catch (MetadataException e) {
+      assertEquals(
+          "Template [treeTemplate] has been set on MTree, cannot be dropped now.", e.getMessage());
+    }
+
+    mManager.deleteStorageGroups(Arrays.asList(new PartialPath("root.sg1")));
+    mManager.dropSchemaTemplate(new DropTemplatePlan("treeTemplate"));
+    assertEquals(0, mManager.getAllTemplates().size());
+  }
+
+  @Test
   public void testTemplateAlignment() throws MetadataException {
     MManager manager = IoTDB.metaManager;
     manager.createTimeseries(

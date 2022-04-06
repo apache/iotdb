@@ -869,6 +869,11 @@ public class MManager {
           removeFromTagInvertedIndex(leafMNode);
         }
 
+        // unmark all storage group from related templates
+        for (Template template : templateManager.getTemplateMap().values()) {
+          template.unmarkStorageGroups(storageGroups);
+        }
+
         // drop triggers with no exceptions
         TriggerEngine.drop(leafMNodes);
 
