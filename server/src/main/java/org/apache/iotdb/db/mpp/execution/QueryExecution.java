@@ -34,10 +34,14 @@ import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import com.google.common.util.concurrent.SettableFuture;
+
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ScheduledExecutorService;
 
 /**
  * QueryExecution stores all the status of a query which is being prepared or running inside the MPP
@@ -56,24 +60,37 @@ public class QueryExecution {
   private LogicalQueryPlan logicalPlan;
   private DistributedQueryPlan distributedPlan;
 
+  private ExecutorService executor;
+  private ScheduledExecutorService scheduledExecutor;
+
   // The result of QueryExecution will be written to the DataBlockManager in current Node.
   // We use this SourceHandle to fetch the TsBlock from it.
   private ISourceHandle resultHandle;
 
-  public QueryExecution(Statement statement, MPPQueryContext context) {
+  public QueryExecution(
+      Statement statement,
+      MPPQueryContext context,
+      ExecutorService executor,
+      ScheduledExecutorService scheduledExecutor) {
+    this.executor = executor;
+    this.scheduledExecutor = scheduledExecutor;
     this.context = context;
     this.planOptimizers = new ArrayList<>();
     this.analysis = analyze(statement, context);
-    this.stateMachine = new QueryStateMachine(context.getQueryId());
+    this.stateMachine = new QueryStateMachine(context.getQueryId(), executor);
+
+    //TODO: (xingtanzjr) Initialize the result handle after the DataBlockManager is merged.
+//    resultHandle = xxxx
 
     // We add the abort logic inside the QueryExecution.
     // So that the other components can only focus on the state change.
-    stateMachine.addStateChangeListener(state -> {
-      if (!state.isDone()) {
-        return;
-      }
-      this.cleanup();
-    });
+    stateMachine.addStateChangeListener(
+        state -> {
+          if (!state.isDone()) {
+            return;
+          }
+          this.cleanup();
+        });
   }
 
   public void start() {
@@ -90,7 +107,13 @@ public class QueryExecution {
 
   private void schedule() {
     // TODO: (xingtanzjr) initialize the query scheduler according to configuration
-    this.scheduler = new ClusterScheduler(stateMachine, distributedPlan.getInstances(), context.getQueryType());
+    this.scheduler =
+        new ClusterScheduler(
+            stateMachine,
+            distributedPlan.getInstances(),
+            context.getQueryType(),
+            executor,
+            scheduledExecutor);
     // TODO: (xingtanzjr) how to make the schedule running asynchronously
     this.scheduler.start();
   }
@@ -108,7 +131,8 @@ public class QueryExecution {
   }
 
   /**
-   * Do cleanup work for current QueryExecution including QuerySchedule aborting and resource releasing
+   * Do cleanup work for current QueryExecution including QuerySchedule aborting and resource
+   * releasing
    */
   private void cleanup() {
     if (this.scheduler != null) {
@@ -117,42 +141,65 @@ public class QueryExecution {
     releaseResource();
   }
 
-  /**
-   * Release the resources that current QueryExecution hold.
-   */
-  private void releaseResource() {
-
-  }
+  /** Release the resources that current QueryExecution hold. */
+  private void releaseResource() {}
 
   /**
    * This method will be called by the request thread from client connection. This method will block
    * until one of these conditions occurs: 1. There is a batch of result 2. There is no more result
-   * 3. The query has been cancelled 4. The query is timeout This method wil
-   * l fetch the result from
+   * 3. The query has been cancelled 4. The query is timeout This method will fetch the result from
    * DataStreamManager use the virtual ResultOperator's ID (This part will be designed and
    * implemented with DataStreamManager)
    */
   public ByteBuffer getBatchResult() {
+    SettableFuture<Boolean> hasData = SettableFuture.create();
+    ListenableFuture<Void> blocked = resultHandle.isBlocked();
+    if (blocked.isDone()) {
+      hasData.set(true);
+    } else {
+      blocked.addListener(() -> {
+        hasData.set(true);
+      }, executor);
+    }
+    try {
+      hasData.get();
+    } catch (InterruptedException | ExecutionException e) {
+      e.printStackTrace();
+    }
+//    return resultHandle.receive();
     return null;
   }
 
   /**
-   * This method is a synchronized method.
-   * For READ, it will block until all the FragmentInstances have been submitted.
-   * For WRITE, it will block until all the FragmentInstances have finished.
+   * This method is a synchronized method. For READ, it will block until all the FragmentInstances
+   * have been submitted. For WRITE, it will block until all the FragmentInstances have finished.
+   *
    * @return ExecutionStatus. Contains the QueryId and the TSStatus.
    */
-  public ExecutionStatus getStatus() {
-    // Although we monitor the state to transition to RUNNING, the future will return if any Terminated state is triggered
-    ListenableFuture<QueryState> future =  stateMachine.getStateChange(QueryState.RUNNING);
+  public ExecutionResult getStatus() {
+    // Although we monitor the state to transition to RUNNING, the future will return if any
+    // Terminated state is triggered
+    SettableFuture<QueryState> future = SettableFuture.create();
+    stateMachine.addStateChangeListener(
+        state -> {
+          if (state == QueryState.RUNNING || state.isDone()) {
+            future.set(state);
+          }
+        });
+
     try {
       QueryState state = future.get();
       // TODO: (xingtanzjr) use more TSStatusCode if the QueryState isn't FINISHED
-      TSStatusCode statusCode = state == QueryState.FINISHED ? TSStatusCode.SUCCESS_STATUS : TSStatusCode.QUERY_PROCESS_ERROR;
-      return new ExecutionStatus(context.getQueryId(), RpcUtils.getStatus(statusCode));
+      TSStatusCode statusCode =
+          // For WRITE, the state should be FINISHED; For READ, the state could be RUNNING
+          state == QueryState.FINISHED || state == QueryState.RUNNING
+              ? TSStatusCode.SUCCESS_STATUS
+              : TSStatusCode.QUERY_PROCESS_ERROR;
+      return new ExecutionResult(context.getQueryId(), RpcUtils.getStatus(statusCode));
     } catch (InterruptedException | ExecutionException e) {
       // TODO: (xingtanzjr) use more accurate error handling
-      return new ExecutionStatus(context.getQueryId(), RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR));
+      return new ExecutionResult(
+          context.getQueryId(), RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR));
     }
   }
 

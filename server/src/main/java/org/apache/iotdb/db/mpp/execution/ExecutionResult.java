@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,21 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.mpp.execution;
 
-package org.apache.iotdb.db.mpp.sql.planner.plan.node;
+import org.apache.iotdb.db.mpp.common.QueryId;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
-import org.apache.iotdb.commons.utils.TestOnly;
+public class ExecutionResult {
+  public QueryId queryId;
+  public TSStatus status;
 
-public class PlanNodeIdAllocator {
-  public static int initialId = 0;
-
-  public static synchronized PlanNodeId generateId() {
-    initialId++;
-    return new PlanNodeId(String.valueOf(initialId));
-  }
-
-  @TestOnly
-  public static synchronized void reset() {
-    initialId = 0;
+  public ExecutionResult(QueryId queryId, TSStatus status) {
+    this.queryId = queryId;
+    this.status = status;
   }
 }

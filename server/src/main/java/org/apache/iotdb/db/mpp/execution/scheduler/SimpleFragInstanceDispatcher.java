@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.execution.scheduler;
 
 import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
 import org.apache.iotdb.mpp.rpc.thrift.InternalService;
+
 import org.apache.thrift.TException;
 
 import java.util.List;
@@ -29,27 +30,28 @@ import java.util.concurrent.FutureTask;
 
 public class SimpleFragInstanceDispatcher implements IFragInstanceDispatcher {
 
-    @Override
-    public Future<FragInstanceDispatchResult> dispatch(List<FragmentInstance> instances) {
-        FutureTask<FragInstanceDispatchResult> dispatchTask = new FutureTask<>(() -> {
-            try {
+  @Override
+  public Future<FragInstanceDispatchResult> dispatch(List<FragmentInstance> instances) {
+    FutureTask<FragInstanceDispatchResult> dispatchTask =
+        new FutureTask<>(
+            () -> {
+              try {
                 for (FragmentInstance instance : instances) {
-                    InternalService.Client client = InternalServiceClientFactory.
-                            getInternalServiceClient(instance.getHostEndpoint().getIp(), instance.getHostEndpoint().getPort());
-                    client.sendFragmentInstance(null);
+                  InternalService.Client client =
+                      InternalServiceClientFactory.getInternalServiceClient(
+                          instance.getHostEndpoint().getIp(), instance.getHostEndpoint().getPort());
+                  client.sendFragmentInstance(null);
                 }
-            } catch (TException e) {
+              } catch (TException e) {
                 // TODO: (xingtanzjr) add more details
                 return new FragInstanceDispatchResult(false);
-            }
-            return new FragInstanceDispatchResult(true);
-        });
-        new Thread(dispatchTask).start();
-        return dispatchTask;
-    }
+              }
+              return new FragInstanceDispatchResult(true);
+            });
+    new Thread(dispatchTask).start();
+    return dispatchTask;
+  }
 
-    @Override
-    public void abort() {
-
-    }
+  @Override
+  public void abort() {}
 }

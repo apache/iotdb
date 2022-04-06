@@ -161,6 +161,10 @@ public class IoTDBDescriptor {
           Integer.parseInt(
               properties.getProperty("rpc_port", Integer.toString(conf.getRpcPort()))));
 
+      conf.setMppPort(
+          Integer.parseInt(
+              properties.getProperty("mpp_port", Integer.toString(conf.getRpcPort()))));
+
       conf.setEnableInfluxDBRpcService(
           Boolean.parseBoolean(
               properties.getProperty(

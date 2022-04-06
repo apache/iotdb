@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.sink;
 
-import org.apache.commons.lang.Validate;
 import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
@@ -26,6 +25,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ExchangeNode;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.commons.lang.Validate;
 
 import java.nio.ByteBuffer;
 import java.util.List;
@@ -57,7 +57,9 @@ public class FragmentSinkNode extends SinkNode {
 
   @Override
   public PlanNode cloneWithChildren(List<PlanNode> children) {
-    Validate.isTrue(children == null || children.size() == 1, "Children size of FragmentSinkNode should be 0 or 1");
+    Validate.isTrue(
+        children == null || children.size() == 1,
+        "Children size of FragmentSinkNode should be 0 or 1");
     FragmentSinkNode sinkNode = (FragmentSinkNode) clone();
     if (children != null) {
       sinkNode.setChild(children.get(0));

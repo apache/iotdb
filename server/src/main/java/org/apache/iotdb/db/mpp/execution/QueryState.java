@@ -25,27 +25,25 @@ import java.util.stream.Stream;
 import static com.google.common.collect.ImmutableSet.toImmutableSet;
 
 public enum QueryState {
-    QUEUED(false),
-    PLANNED(false),
-    DISPATCHING(false),
-    RUNNING(false),
-    FINISHED(true),
-    CANCELED(true),
-    ABORTED(true),
-    FAILED(true);
+  QUEUED(false),
+  PLANNED(false),
+  DISPATCHING(false),
+  RUNNING(false),
+  FINISHED(true),
+  CANCELED(true),
+  ABORTED(true),
+  FAILED(true);
 
-    private final boolean doneState;
+  private final boolean doneState;
 
-    public static final Set<QueryState> TERMINAL_INSTANCE_STATES =
-            Stream.of(QueryState.values())
-                    .filter(QueryState::isDone)
-                    .collect(toImmutableSet());
+  public static final Set<QueryState> TERMINAL_INSTANCE_STATES =
+      Stream.of(QueryState.values()).filter(QueryState::isDone).collect(toImmutableSet());
 
-    QueryState(boolean doneState) {
-        this.doneState = doneState;
-    }
+  QueryState(boolean doneState) {
+    this.doneState = doneState;
+  }
 
-    public boolean isDone() {
-        return doneState;
-    }
+  public boolean isDone() {
+    return doneState;
+  }
 }

@@ -18,88 +18,100 @@
  */
 package org.apache.iotdb.db.mpp.execution;
 
-import com.google.common.util.concurrent.ListenableFuture;
-import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.QueryId;
-import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
 
-import java.util.List;
+import com.google.common.util.concurrent.ListenableFuture;
+
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
 
 /**
  * State machine for a QueryExecution. It stores the states for the QueryExecution. Others can
  * register listeners when the state changes of the QueryExecution.
  */
 public class QueryStateMachine {
-    private String name;
-    private StateMachine<QueryState> queryState;
-    private Map<FragmentInstanceId, FragmentInstanceState> fragInstanceStateMap;
+  private String name;
+  private StateMachine<QueryState> queryState;
+  private Map<FragmentInstanceId, FragmentInstanceState> fragInstanceStateMap;
 
-    // The executor will be used in all the state machines belonged to this query.
-    private Executor stateMachineExecutor;
+  // The executor will be used in all the state machines belonged to this query.
+  private Executor stateMachineExecutor;
 
-    public QueryStateMachine(QueryId queryId) {
-        this.name = String.format("QueryStateMachine[%s]", queryId);
-        this.stateMachineExecutor = getStateMachineExecutor();
-        this.fragInstanceStateMap = new ConcurrentHashMap<>();
-        this.queryState = new StateMachine<>(queryId.toString(), this.stateMachineExecutor ,QueryState.QUEUED, QueryState.TERMINAL_INSTANCE_STATES);
+  public QueryStateMachine(QueryId queryId, ExecutorService executor) {
+    this.name = String.format("QueryStateMachine[%s]", queryId);
+    this.stateMachineExecutor = executor;
+    this.fragInstanceStateMap = new ConcurrentHashMap<>();
+    this.queryState =
+        new StateMachine<>(
+            queryId.toString(),
+            this.stateMachineExecutor,
+            QueryState.QUEUED,
+            QueryState.TERMINAL_INSTANCE_STATES);
+  }
+
+  public void initialFragInstanceState(FragmentInstanceId id, FragmentInstanceState state) {
+    this.fragInstanceStateMap.put(id, state);
+  }
+
+  public void updateFragInstanceState(FragmentInstanceId id, FragmentInstanceState state) {
+    this.fragInstanceStateMap.put(id, state);
+    // TODO: (xingtanzjr) we need to distinguish the Timeout situation
+    if (state.isFailed()) {
+      transitionToFailed();
     }
-
-    public void initialFragInstanceState(FragmentInstanceId id, FragmentInstanceState state) {
-        this.fragInstanceStateMap.put(id, state);
+    boolean allFinished =
+        fragInstanceStateMap.values().stream()
+            .allMatch(currentState -> currentState == FragmentInstanceState.FINISHED);
+    if (allFinished) {
+      transitionToFinished();
     }
+  }
 
-    public void updateFragInstanceState(FragmentInstanceId id, FragmentInstanceState state) {
-        this.fragInstanceStateMap.put(id, state);
-    }
+  public void addStateChangeListener(
+      StateMachine.StateChangeListener<QueryState> stateChangeListener) {
+    queryState.addStateChangeListener(stateChangeListener);
+  }
 
-    // TODO: (xingtanzjr) consider more suitable method for executor initialization
-    private Executor getStateMachineExecutor() {
-        return IoTDBThreadPoolFactory.newSingleThreadExecutor(name);
-    }
+  public ListenableFuture<QueryState> getStateChange(QueryState currentState) {
+    return queryState.getStateChange(currentState);
+  }
 
-    public void addStateChangeListener(StateMachine.StateChangeListener<QueryState> stateChangeListener)
-    {
-        queryState.addStateChangeListener(stateChangeListener);
-    }
+  private String getName() {
+    return name;
+  }
 
-    public ListenableFuture<QueryState> getStateChange(QueryState currentState)
-    {
-        return queryState.getStateChange(currentState);
-    }
+  public QueryState getState() {
+    return queryState.get();
+  }
 
-    private String getName() {
-        return name;
-    }
+  public void transitionToPlanned() {
+    queryState.set(QueryState.PLANNED);
+  }
 
-    public void transitionToPlanned() {
-        queryState.set(QueryState.PLANNED);
-    }
+  public void transitionToDispatching() {
+    queryState.set(QueryState.DISPATCHING);
+  }
 
-    public void transitionToDispatching() {
-        queryState.set(QueryState.DISPATCHING);
-    }
+  public void transitionToRunning() {
+    queryState.set(QueryState.RUNNING);
+  }
 
-    public void transitionToRunning() {
-        queryState.set(QueryState.RUNNING);
-    }
+  public void transitionToFinished() {
+    queryState.set(QueryState.FINISHED);
+  }
 
-    public void transitionToFinished() {
-        queryState.set(QueryState.FINISHED);
-    }
+  public void transitionToCanceled() {
+    queryState.set(QueryState.CANCELED);
+  }
 
-    public void transitionToCanceled() {
-        queryState.set(QueryState.CANCELED);
-    }
+  public void transitionToAborted() {
+    queryState.set(QueryState.ABORTED);
+  }
 
-    public void transitionToAborted() {
-        queryState.set(QueryState.ABORTED);
-    }
-
-    public void transitionToFailed() {
-        queryState.set(QueryState.FAILED);
-    }
+  public void transitionToFailed() {
+    queryState.set(QueryState.FAILED);
+  }
 }

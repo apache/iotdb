@@ -20,13 +20,13 @@
 package org.apache.iotdb.db.mpp.execution.scheduler;
 
 public class FragInstanceDispatchResult {
-    private boolean successful;
+  private boolean successful;
 
-    public FragInstanceDispatchResult(boolean successful) {
-        this.successful = successful;
-    }
+  public FragInstanceDispatchResult(boolean successful) {
+    this.successful = successful;
+  }
 
-    public boolean isSuccessful() {
-        return successful;
-    }
+  public boolean isSuccessful() {
+    return successful;
+  }
 }

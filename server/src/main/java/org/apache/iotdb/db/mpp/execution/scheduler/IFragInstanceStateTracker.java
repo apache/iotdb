@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.mpp.execution.scheduler;
 
-public interface IFragInstanceStateFetcher {
-    void start();
+public interface IFragInstanceStateTracker {
+  void start();
+
+  void abort();
 }

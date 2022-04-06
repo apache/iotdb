@@ -104,6 +104,9 @@ public class IoTDBConfig {
   /** Port which the JDBC server listens to. */
   private int rpcPort = 6667;
 
+  /** Port which is used for node communication in MPP. */
+  private int mppPort = 7777;
+
   /** Port which the influxdb protocol server listens to. */
   private int influxDBRpcPort = 8086;
 
@@ -2585,5 +2588,13 @@ public class IoTDBConfig {
 
   public void setJoinClusterTimeOutMs(long joinClusterTimeOutMs) {
     this.joinClusterTimeOutMs = joinClusterTimeOutMs;
+  }
+
+  public int getMppPort() {
+    return mppPort;
+  }
+
+  public void setMppPort(int mppPort) {
+    this.mppPort = mppPort;
   }
 }

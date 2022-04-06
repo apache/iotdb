@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.mpp.execution.scheduler;
 
-import io.airlift.units.Duration;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.execution.FragmentInfo;
@@ -27,9 +26,13 @@ import org.apache.iotdb.db.mpp.execution.QueryStateMachine;
 import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
 
+import io.airlift.units.Duration;
+
 import java.util.List;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledExecutorService;
 
 /**
  * QueryScheduler is used to dispatch the fragment instances of a query to target nodes. And it will
@@ -46,11 +49,25 @@ public class ClusterScheduler implements IScheduler {
   private List<FragmentInstance> instances;
   private IFragInstanceDispatcher dispatcher;
 
-  public ClusterScheduler(QueryStateMachine stateMachine, List<FragmentInstance> instances, QueryType queryType) {
+  private ExecutorService executor;
+  private ScheduledExecutorService scheduledExecutor;
+
+  private IFragInstanceStateTracker stateTracker;
+
+  public ClusterScheduler(
+      QueryStateMachine stateMachine,
+      List<FragmentInstance> instances,
+      QueryType queryType,
+      ExecutorService executor,
+      ScheduledExecutorService scheduledExecutor) {
     this.stateMachine = stateMachine;
     this.instances = instances;
     this.queryType = queryType;
+    this.executor = executor;
+    this.scheduledExecutor = scheduledExecutor;
     this.dispatcher = new SimpleFragInstanceDispatcher();
+    this.stateTracker =
+        new FixedRateFragInsStateTracker(stateMachine, executor, scheduledExecutor, instances);
   }
 
   @Override
@@ -74,14 +91,16 @@ public class ClusterScheduler implements IScheduler {
       return;
     }
 
-    // The FragmentInstances has been dispatched successfully to corresponding host, we mark the QueryState to Running
+    // The FragmentInstances has been dispatched successfully to corresponding host, we mark the
+    // QueryState to Running
     stateMachine.transitionToRunning();
-    instances.forEach(instance -> {
-      stateMachine.initialFragInstanceState(instance.getId(), FragmentInstanceState.RUNNING);
-    });
+    instances.forEach(
+        instance -> {
+          stateMachine.initialFragInstanceState(instance.getId(), FragmentInstanceState.RUNNING);
+        });
 
     // TODO: (xingtanzjr) start the stateFetcher/heartbeat for each fragment instance
-
+    this.stateTracker.start();
   }
 
   private boolean waitDispatchingFinished(Future<FragInstanceDispatchResult> dispatchResultFuture) {
@@ -98,9 +117,10 @@ public class ClusterScheduler implements IScheduler {
 
   @Override
   public void abort() {
-    if (this.dispatcher != null) {
-      dispatcher.abort();
-    }
+    // TODO: It seems that it is unnecessary to check whether they are null or not. Is it a best
+    // practice ?
+    dispatcher.abort();
+    stateTracker.abort();
   }
 
   @Override

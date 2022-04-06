@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.execution.scheduler;
 
 import org.apache.iotdb.mpp.rpc.thrift.InternalService;
+
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.transport.TSocket;
@@ -27,11 +28,12 @@ import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 
 public class InternalServiceClientFactory {
-    // TODO: (xingtanzjr) consider the best practice to maintain the clients
-    public static InternalService.Client getInternalServiceClient(String endpoint, int port) throws TTransportException {
-        TTransport transport = new TSocket(endpoint, port);
-        transport.open();
-        TProtocol protocol = new TBinaryProtocol(transport);
-        return new InternalService.Client(protocol);
-    }
+  // TODO: (xingtanzjr) consider the best practice to maintain the clients
+  public static InternalService.Client getInternalServiceClient(String endpoint, int port)
+      throws TTransportException {
+    TTransport transport = new TSocket(endpoint, port);
+    transport.open();
+    TProtocol protocol = new TBinaryProtocol(transport);
+    return new InternalService.Client(protocol);
+  }
 }

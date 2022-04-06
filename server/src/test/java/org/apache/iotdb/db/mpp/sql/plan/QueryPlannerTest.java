@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.mpp.sql.plan;
 
+import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.common.SessionInfo;
@@ -48,7 +50,9 @@ public class QueryPlannerTest {
         new QueryExecution(
             stmt,
             new MPPQueryContext(
-                querySql, new QueryId("query1"), new SessionInfo(), QueryType.READ));
+                querySql, new QueryId("query1"), new SessionInfo(), QueryType.READ, new Endpoint()),
+            IoTDBThreadPoolFactory.newSingleThreadExecutor("Test-Query"),
+            IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("Test-Query-Scheduled"));
     queryExecution.doLogicalPlan();
     System.out.printf("SQL: %s%n%n", querySql);
     System.out.println("===== Step 1: Logical Plan =====");

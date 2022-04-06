@@ -25,12 +25,13 @@ import java.util.List;
 import java.util.concurrent.Future;
 
 public interface IFragInstanceDispatcher {
-    /**
-     * Dispatch all Fragment instances asynchronously
-     * @param instances Fragment instance list
-     * @return Boolean.
-     */
-    Future<FragInstanceDispatchResult> dispatch(List<FragmentInstance> instances);
+  /**
+   * Dispatch all Fragment instances asynchronously
+   *
+   * @param instances Fragment instance list
+   * @return Boolean.
+   */
+  Future<FragInstanceDispatchResult> dispatch(List<FragmentInstance> instances);
 
-    void abort();
+  void abort();
 }
