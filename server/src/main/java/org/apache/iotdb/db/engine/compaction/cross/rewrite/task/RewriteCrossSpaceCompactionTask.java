@@ -18,29 +18,17 @@
  */
 package org.apache.iotdb.db.engine.compaction.cross.rewrite.task;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.performer.AbstractCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.performer.ReadPointCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactionTask {
-  private static final Logger logger =
-      LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
-  protected List<TsFileResource> selectedSeqTsFileResourceList;
-  protected List<TsFileResource> selectedUnSeqTsFileResourceList;
-  protected TsFileResourceList seqTsFileResourceList;
-  protected TsFileResourceList unseqTsFileResourceList;
-  private AbstractCompactionPerformer performer;
 
   public RewriteCrossSpaceCompactionTask(
       String logicalStorageGroupName,
@@ -61,7 +49,7 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
 
   @Override
   protected void performCompaction() throws Exception {
-    performer =
+    AbstractCompactionPerformer performer =
         new ReadPointCompactionPerformer(
             selectedSequenceFiles, selectedUnsequenceFiles, targetTsfileResourceList);
     performer.perform();
@@ -71,8 +59,8 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
   public boolean equalsOtherTask(AbstractCompactionTask other) {
     if (other instanceof RewriteCrossSpaceCompactionTask) {
       RewriteCrossSpaceCompactionTask otherTask = (RewriteCrossSpaceCompactionTask) other;
-      return otherTask.selectedSeqTsFileResourceList.equals(selectedSeqTsFileResourceList)
-          && otherTask.selectedUnSeqTsFileResourceList.equals(selectedUnSeqTsFileResourceList);
+      return otherTask.selectedSequenceFiles.equals(selectedSequenceFiles)
+          && otherTask.selectedUnsequenceFiles.equals(selectedUnsequenceFiles);
     }
     return false;
   }
