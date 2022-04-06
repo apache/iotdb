@@ -152,21 +152,13 @@ public class QueryExecution {
    * implemented with DataStreamManager)
    */
   public ByteBuffer getBatchResult() {
-    SettableFuture<Boolean> hasData = SettableFuture.create();
     ListenableFuture<Void> blocked = resultHandle.isBlocked();
-    if (blocked.isDone()) {
-      hasData.set(true);
-    } else {
-      blocked.addListener(() -> {
-        hasData.set(true);
-      }, executor);
-    }
     try {
-      hasData.get();
+      blocked.get();
+      //    return resultHandle.receive();
     } catch (InterruptedException | ExecutionException e) {
       e.printStackTrace();
     }
-//    return resultHandle.receive();
     return null;
   }
 
