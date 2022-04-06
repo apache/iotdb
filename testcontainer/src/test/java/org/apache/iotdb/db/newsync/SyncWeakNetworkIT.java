@@ -22,18 +22,19 @@ import org.junit.Assert;
 import org.testcontainers.containers.Container;
 import org.testcontainers.containers.ContainerState;
 
-/** Simulate network delay and loos. */
+/** Simulate network delay and loss. */
 public class SyncWeakNetworkIT extends SyncIT {
   @Override
   public void init() throws Exception {
     super.init();
-    // set delay is 200±50ms that conform to a normal distribution;  loss rate is 5%
+    // set delay is 200±50ms that conform to a normal distribution;
+    // network packet with 10% loss rate, 10% duplicate rate, 10% reorder rate and 10% corrupt rate;
     Container.ExecResult res =
         ((ContainerState) environment.getContainerByServiceName("iotdb-sender_1").get())
             .execInContainer(
                 "sh",
                 "-c",
-                "tc qdisc add dev eth0 root netem delay 200ms 50ms 25% distribution normal loss random 10%");
+                "tc qdisc add dev eth0 root netem delay 200ms 50ms 25% distribution normal loss random 10% duplicate 10% reorder 10% corrupt 10%");
     Assert.assertEquals(0, res.getExitCode());
   }
 }
