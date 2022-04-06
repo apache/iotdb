@@ -19,6 +19,19 @@
 
 -->
 
+## 0.引入依赖
+
+```xml
+    <dependency>
+        <groupId>org.apache.iotdb</groupId>
+        <artifactId>influxdb-protocol</artifactId>
+        <version>0.14.0-SNAPSHOT</version>
+    </dependency>
+```
+
+这里是一些使用 InfluxDB-Protocol 适配器连接 IoTDB 的示例：https://github.com/apache/iotdb/tree/master/influxdb-protocol/src/main/java/org/apache/iotdb/influxdb/example
+
+
 ## 1.切换方案
 
 假如您原先接入 InfluxDB 的业务代码如下：
@@ -162,7 +175,7 @@ time                address name phone sex socre
    (1)插入第一条数据时，需要将新出现的三个 tag key 更新到 table 中，IoTDB 对应的记录 tag 顺序的 table 为：
 
    | database | measurement | tag_key | Order |
-         | -------- | ----------- | ------- | ----- |
+        | -------- | ----------- | ------- | ----- |
    | monitor | student     | name    | 0     |
    | monitor | student     | phone   | 1     |
    | monitor | student     | sex     | 2     |
@@ -249,7 +262,11 @@ time                address name phone sex socre
 
 ## 3 支持情况
 
-### 3.1 函数接口支持情况
+### 3.1 InfluxDB版本支持情况
+
+目前支持InfluxDB 1.x 版本，暂不支持InfluxDB 2.x 版本。
+
+### 3.2 函数接口支持情况
 
 目前支持的接口函数如下：
 
@@ -295,7 +312,7 @@ public void write(final int udpPort,final String records);
 public void write(final int udpPort,final List<String> records);
 ```
 
-### 3.2 查询语法支持情况
+### 3.3 查询语法支持情况
 
 目前支持的查询sql语法为
 

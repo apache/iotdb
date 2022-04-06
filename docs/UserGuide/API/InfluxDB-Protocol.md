@@ -19,6 +19,18 @@
 
 -->
 
+## 0. Import Dependency
+
+```xml
+    <dependency>
+        <groupId>org.apache.iotdb</groupId>
+        <artifactId>influxdb-protocol</artifactId>
+        <version>0.14.0-SNAPSHOT</version>
+    </dependency>
+```
+
+Here are some examples of connecting IoTDB using the InfluxDB-Protocol adapter : https://github.com/apache/iotdb/tree/master/influxdb-protocol/src/main/java/org/apache/iotdb/influxdb/example
+
 ## 1. Switching Scheme
 
 If your original service code for accessing InfluxDB is as follows:
@@ -207,7 +219,7 @@ time                address name phone sex socre
 
 However, this will not affect the correctness of the query, because once the tag order of InfluxDB is determined, the query will also filter the tag values according to the order recorded in this order table. Therefore, the correctness of the query will not be affected.
 
-####2.3.2 Query Data
+#### 2.3.2 Query Data
 
 1. Query the data of phone = B in student. In database = monitor, measurement = student, the order of tag = phone is 1, and the maximum order is 3. The query corresponding to IoTDB is:
 
@@ -244,11 +256,15 @@ However, this will not affect the correctness of the query, because once the tag
    ```
    Finally, manually combine the results of the above three queries.
 
-##3. Support
+## 3. Support
 
-###3.1 Function Interface Support
+### 3.1 InfluxDB Version Support
 
-Currently, supported interface functions are as follows:
+Currently, supports InfluxDB 1.x version, which does not support InfluxDB 2.x version.
+
+### 3.2 Function Interface Support
+
+Currently, supports interface functions are as follows:
 
 ```java
 public Pong ping();
@@ -292,7 +308,7 @@ public void write(final int udpPort,final String records);
 public void write(final int udpPort,final List<String> records);
 ```
 
-### 3.2 Query Syntax Support
+### 3.3 Query Syntax Support
 
 The currently supported query SQL syntax is:
 
