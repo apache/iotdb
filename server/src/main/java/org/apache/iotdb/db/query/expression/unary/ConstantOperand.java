@@ -104,11 +104,6 @@ public class ConstantOperand extends Expression {
   }
 
   @Override
-  public void collectPlanNode(Set<SourceNode> planNodeSet) {
-    // Do nothing
-  }
-
-  @Override
   public void updateStatisticsForMemoryAssigner(LayerMemoryAssigner memoryAssigner) {
     // Do nothing
   }

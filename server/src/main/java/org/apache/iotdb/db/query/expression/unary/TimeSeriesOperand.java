@@ -114,11 +114,6 @@ public class TimeSeriesOperand extends Expression {
   }
 
   @Override
-  public void collectPlanNode(Set<SourceNode> planNodeSet) {
-    planNodeSet.add(new SeriesScanNode(PlanNodeIdAllocator.generateId(), path));
-  }
-
-  @Override
   public void constructUdfExecutors(
       Map<String, UDTFExecutor> expressionName2Executor, ZoneId zoneId) {
     // nothing to do

@@ -129,11 +129,6 @@ public class LogicNotExpression extends Expression {
   }
 
   @Override
-  public void collectPlanNode(Set<SourceNode> planNodeSet) {
-    // TODO: support LogicNotExpression
-  }
-
-  @Override
   public void updateStatisticsForMemoryAssigner(LayerMemoryAssigner memoryAssigner) {
     expression.updateStatisticsForMemoryAssigner(memoryAssigner);
     memoryAssigner.increaseExpressionReference(this);

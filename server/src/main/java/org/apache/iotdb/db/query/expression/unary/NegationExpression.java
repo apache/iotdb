@@ -128,11 +128,6 @@ public class NegationExpression extends Expression {
   }
 
   @Override
-  public void collectPlanNode(Set<SourceNode> planNodeSet) {
-    // TODO: support nested expressions
-  }
-
-  @Override
   public void constructUdfExecutors(
       Map<String, UDTFExecutor> expressionName2Executor, ZoneId zoneId) {
     expression.constructUdfExecutors(expressionName2Executor, zoneId);

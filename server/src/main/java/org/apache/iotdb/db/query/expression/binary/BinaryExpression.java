@@ -200,11 +200,6 @@ public abstract class BinaryExpression extends Expression {
   }
 
   @Override
-  public void collectPlanNode(Set<SourceNode> planNodeSet) {
-    // TODO: support nested expressions
-  }
-
-  @Override
   public void constructUdfExecutors(
       Map<String, UDTFExecutor> expressionName2Executor, ZoneId zoneId) {
     leftExpression.constructUdfExecutors(expressionName2Executor, zoneId);

@@ -237,18 +237,6 @@ public class FunctionExpression extends Expression {
   }
 
   @Override
-  public void collectPlanNode(Set<SourceNode> planNodeSet) {
-    if (isBuiltInAggregationFunctionExpression) {
-      planNodeSet.add(
-          new SeriesAggregateScanNode(
-              PlanNodeIdAllocator.generateId(),
-              paths.get(0),
-              AggregationType.valueOf(functionName)));
-    }
-    // TODO: support UDF
-  }
-
-  @Override
   public void constructUdfExecutors(
       Map<String, UDTFExecutor> expressionName2Executor, ZoneId zoneId) {
     String expressionString = getExpressionString();
