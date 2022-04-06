@@ -17,9 +17,14 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-go version
+exists_env=`go version|grep -c "go version"`
+if [ $exists_env -eq 0 ];then
+echo "Need to install go environment"
+exit 1
+fi
 go get -u github.com/grafana/grafana-plugin-sdk-go
 go mod tidy
+go env
 check_results=`go env |grep GOPATH= | sed 's/\"//g'`
 go_path=${check_results/GOPATH=/}
 chmod 755 $go_path/pkg/mod/github.com/magefile/*
