@@ -309,7 +309,6 @@ public class StorageEngine implements IService {
       }
       PartialPath sg = new PartialPath(sgDir.getName());
       // TODO: need to get TTL Info from config node
-      IStorageGroupMNode storageGroupMNode = IoTDB.schemaProcessor.getStorageGroupNodeByPath(sg);
       for (File dataRegionDir : sgDir.listFiles()) {
         if (!dataRegionDir.isDirectory()) {
           continue;
@@ -317,7 +316,7 @@ public class StorageEngine implements IService {
         ConsensusGroupId dataRegionId =
             new ConsensusGroupId(GroupType.DataRegion, Integer.parseInt(dataRegionDir.getName()));
         VirtualStorageGroupProcessor dataRegion =
-            buildNewStorageGroupProcessorV2(sg, storageGroupMNode, dataRegionDir.getName());
+            buildNewStorageGroupProcessorV2(sg, dataRegionDir.getName());
         dataRegionMap.putIfAbsent(dataRegionId, dataRegion);
       }
     }
@@ -658,6 +657,24 @@ public class StorageEngine implements IService {
   }
 
   /**
+   * This method is for create new DataRegion in StorageEngine
+   *
+   * @param dataRegionId
+   * @param logicalStorageGroupName
+   */
+  public void createNewDataRegion(
+      ConsensusGroupId dataRegionId, PartialPath logicalStorageGroupName)
+      throws StorageEngineException {
+    try {
+      VirtualStorageGroupProcessor dataRegion =
+          buildNewStorageGroupProcessorV2(logicalStorageGroupName, dataRegionId.toString());
+      dataRegionMap.put(dataRegionId, dataRegion);
+    } catch (StorageGroupProcessorException e) {
+      throw new StorageEngineException(e);
+    }
+  }
+
+  /**
    * get lock holder for each sg
    *
    * @return storage group processor
@@ -743,9 +760,7 @@ public class StorageEngine implements IService {
   }
 
   public VirtualStorageGroupProcessor buildNewStorageGroupProcessorV2(
-      PartialPath logicalStorageGroupName,
-      IStorageGroupMNode storageGroupMNode,
-      String virtualStorageGroupId)
+      PartialPath logicalStorageGroupName, String virtualStorageGroupId)
       throws StorageGroupProcessorException {
     VirtualStorageGroupProcessor processor;
     logger.info(
@@ -757,8 +772,9 @@ public class StorageEngine implements IService {
             systemDir + File.separator + logicalStorageGroupName,
             virtualStorageGroupId,
             fileFlushPolicy,
-            storageGroupMNode.getFullPath());
-    processor.setDataTTL(storageGroupMNode.getDataTTL());
+            logicalStorageGroupName.getFullPath());
+    // TODO: set TTL
+    // processor.setDataTTL(storageGroupMNode.getDataTTL());
     processor.setCustomFlushListeners(customFlushListeners);
     processor.setCustomCloseFileListeners(customCloseFileListeners);
     return processor;
