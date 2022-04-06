@@ -26,8 +26,8 @@ import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.statemachine.PartitionRegionStateMachine;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
-import org.apache.iotdb.consensus.IConsensusFactory;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
@@ -94,7 +94,7 @@ public class ConsensusManager {
 
     // Ratis consensus local implement
     consensusImpl =
-        IConsensusFactory.getConsensusImpl(
+        ConsensusFactory.getConsensusImpl(
                 conf.getConfigNodeConsensusProtocolClass(),
                 new Endpoint(conf.getRpcAddress(), conf.getInternalPort()),
                 new File(conf.getConsensusDir()),
@@ -103,7 +103,7 @@ public class ConsensusManager {
                 () ->
                     new IllegalArgumentException(
                         String.format(
-                            IConsensusFactory.CONSTRUCT_FAILED_MSG,
+                            ConsensusFactory.CONSTRUCT_FAILED_MSG,
                             conf.getConfigNodeConsensusProtocolClass())));
     consensusImpl.start();
 

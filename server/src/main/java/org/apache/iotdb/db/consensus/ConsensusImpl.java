@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.consensus;
 
 import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
-import org.apache.iotdb.consensus.IConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -29,11 +29,15 @@ import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 
 import java.io.File;
 
+/**
+ * We can use ConsensusImpl.getInstance() to obtain a consensus layer reference for reading and
+ * writing
+ */
 public class ConsensusImpl {
 
   private ConsensusImpl() {}
 
-  public IConsensus getInstance() {
+  public static IConsensus getInstance() {
     return ConsensusImplHolder.INSTANCE;
   }
 
@@ -41,7 +45,7 @@ public class ConsensusImpl {
 
     private static final IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
     private static final IConsensus INSTANCE =
-        IConsensusFactory.getConsensusImpl(
+        ConsensusFactory.getConsensusImpl(
                 conf.getConsensusProtocolClass(),
                 new Endpoint(conf.getInternalIp(), conf.getConsensusPort()),
                 new File(conf.getConsensusDir()),
@@ -59,7 +63,7 @@ public class ConsensusImpl {
                 () ->
                     new IllegalArgumentException(
                         String.format(
-                            IConsensusFactory.CONSTRUCT_FAILED_MSG,
+                            ConsensusFactory.CONSTRUCT_FAILED_MSG,
                             conf.getConsensusProtocolClass())));
 
     private ConsensusImplHolder() {}

@@ -30,11 +30,11 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Optional;
 
-public class IConsensusFactory {
+public class ConsensusFactory {
   public static final String CONSTRUCT_FAILED_MSG =
       "Construct consensusImpl failed, Please check your consensus className %s";
 
-  private static final Logger logger = LoggerFactory.getLogger(IConsensusFactory.class);
+  private static final Logger logger = LoggerFactory.getLogger(ConsensusFactory.class);
 
   public static Optional<IConsensus> getConsensusImpl(
       String className, Endpoint endpoint, File storageDir, IStateMachine.Registry registry) {

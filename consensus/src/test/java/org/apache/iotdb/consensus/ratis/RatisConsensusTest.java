@@ -21,8 +21,8 @@ package org.apache.iotdb.consensus.ratis;
 import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.GroupType;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
-import org.apache.iotdb.consensus.IConsensusFactory;
 import org.apache.iotdb.consensus.common.ConsensusGroup;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
@@ -139,7 +139,7 @@ public class RatisConsensusTest {
     servers = new ArrayList<>();
     for (int i = 0; i < 3; i++) {
       servers.add(
-          IConsensusFactory.getConsensusImpl(
+          ConsensusFactory.getConsensusImpl(
                   RATIS_CLASS_NAME,
                   peers.get(i).getEndpoint(),
                   peersStorage.get(i),
@@ -147,8 +147,7 @@ public class RatisConsensusTest {
               .orElseThrow(
                   () ->
                       new IllegalArgumentException(
-                          String.format(
-                              IConsensusFactory.CONSTRUCT_FAILED_MSG, RATIS_CLASS_NAME))));
+                          String.format(ConsensusFactory.CONSTRUCT_FAILED_MSG, RATIS_CLASS_NAME))));
       servers.get(i).start();
     }
   }

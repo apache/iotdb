@@ -40,7 +40,7 @@ consensus algorithms and implementations, providing higher level of abstraction 
   internally.
 * `ConsensusGroup` is a group of `Peer` all managing the same copy of data.
 * `IConsensus` interface defines the basic functionality provided by Consensus Layer.
-* `IConsessusFactory` is the only factory class exposed to other modules to create a consensus layer
+* `ConsensusFactory` is the only factory class exposed to other modules to create a consensus layer
   implementation.
 
 User application can create a `ConsensusGroup` with k `Peer` to store data, i.e. that there will be
@@ -56,7 +56,7 @@ operation to other members' `IStateMachine::write` in the same group
 1. Define the  `IStateMachine` to manage local copy of data.
 2. Define the `IConsensusRequest` to customize request format
 3. Define the `DataSet` to customize the response format
-4. Select a specific "IConsensus" class name and call `IConsensusFactory.getConsensusImpl()` to
+4. Select a specific "IConsensus" class name and call `ConsensusFactory.getConsensusImpl()` to
    instantiate the corresponding consensus protocol
 
 # Ratis Consensus Implementation
@@ -68,7 +68,7 @@ on [Apache Ratis](https://ratis.apache.org/).
 
 ```java
 IConsensus consensusImpl =
-    IConsensusFactory.getConsensusImpl(
+    ConsensusFactory.getConsensusImpl(
         "org.apache.iotdb.consensus.ratis.RatisConsensus",
         new Endpoint(conf.getRpcAddress(), conf.getInternalPort()),
         new File(conf.getConsensusDir()),
@@ -76,7 +76,7 @@ IConsensus consensusImpl =
     .orElseThrow(() ->
         new IllegalArgumentException(
         String.format(
-        IConsensusFactory.CONSTRUCT_FAILED_MSG,
+        ConsensusFactory.CONSTRUCT_FAILED_MSG,
         "org.apache.iotdb.consensus.ratis.RatisConsensus")));
 
 consensusImpl.start();

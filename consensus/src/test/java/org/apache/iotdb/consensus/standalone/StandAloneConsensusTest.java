@@ -22,8 +22,8 @@ package org.apache.iotdb.consensus.standalone;
 import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.GroupType;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
-import org.apache.iotdb.consensus.IConsensusFactory;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
@@ -112,7 +112,7 @@ public class StandAloneConsensusTest {
   @Before
   public void setUp() throws Exception {
     consensusImpl =
-        IConsensusFactory.getConsensusImpl(
+        ConsensusFactory.getConsensusImpl(
                 STANDALONE_CONSENSUS_CLASS_NAME,
                 new Endpoint("localhost", 6667),
                 new File("./"),
@@ -129,7 +129,7 @@ public class StandAloneConsensusTest {
                 () ->
                     new IllegalArgumentException(
                         String.format(
-                            IConsensusFactory.CONSTRUCT_FAILED_MSG,
+                            ConsensusFactory.CONSTRUCT_FAILED_MSG,
                             STANDALONE_CONSENSUS_CLASS_NAME)));
     consensusImpl.start();
   }

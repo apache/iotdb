@@ -22,8 +22,8 @@ package org.apache.iotdb.db.consensus;
 import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.GroupType;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
-import org.apache.iotdb.consensus.IConsensusFactory;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -43,7 +43,7 @@ public class ConsensusExample {
 
   public static void main(String[] args) throws IllegalPathException, IOException {
     IConsensus consensusImpl =
-        IConsensusFactory.getConsensusImpl(
+        ConsensusFactory.getConsensusImpl(
                 "org.apache.iotdb.consensus.standalone.StandAloneConsensus",
                 new Endpoint("localhost", 6667),
                 new File("./"),
@@ -57,8 +57,7 @@ public class ConsensusExample {
                   throw new IllegalArgumentException(
                       String.format("Unexpected consensusGroup %s", gid));
                 })
-            .orElseThrow(
-                () -> new IllegalArgumentException(IConsensusFactory.CONSTRUCT_FAILED_MSG));
+            .orElseThrow(() -> new IllegalArgumentException(ConsensusFactory.CONSTRUCT_FAILED_MSG));
     consensusImpl.start();
     InsertRowPlan plan = getInsertRowPlan();
 
