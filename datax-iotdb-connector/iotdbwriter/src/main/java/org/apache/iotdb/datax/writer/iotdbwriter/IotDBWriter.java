@@ -48,7 +48,7 @@ public class IotDBWriter extends Writer {
 
         private Configuration conf;
 
-        private List<IotDBFieldType> typeList;
+        private List<TSDataType> typeList;
         private List<IotDBColumn> columnList;
         Session session = null;
         private int batchSize;
@@ -69,19 +69,23 @@ public class IotDBWriter extends Writer {
             this.conf = super.getPluginJobConf();
             columnList = JSON.parseObject(this.conf.getString(Key.COLUMN), new TypeReference<List<IotDBColumn>>() {
             });
-            typeList = new ArrayList<IotDBFieldType>();
+            typeList = new ArrayList<TSDataType>();
 
             for (IotDBColumn col : columnList) {
-                typeList.add(IotDBFieldType.getIotDBFieldType(col.getType()));
+                if (!col.getName().toLowerCase().equals(Key.TIME_SERIES)) {
+                    typeList.add(TSDataType.valueOf(col.getType().toUpperCase()));
+                }else {
+                    typeList.add(null);
+                }
             }
-            batchSize = this.conf.getInt(Key.BATCH_SIZE);
+            batchSize = this.conf.getInt(Key.BATCH_SIZE,10000);
             username = this.conf.getString(Key.USERNAME);
             password = this.conf.getString(Key.PASSWORD);
             storageGroup = this.conf.getString(Key.STORAGE_GROUP);
             deviceId = this.conf.getString(Key.DEVICE_ID);
             host = this.conf.getString(Key.HOST);
             port = this.conf.getInt(Key.PORT);
-            // 判断是否包含时间序列字段 judge is have timeseries column
+            //  judge is have timeseries column
             boolean isHaveTimeSeriesColumn = false;
             for (int i = 0; i < columnList.size(); i++) {
                 if (columnList.get(i).getName().equals(Key.TIME_SERIES)) {
@@ -142,7 +146,7 @@ public class IotDBWriter extends Writer {
                 for (int s = 0; s < record.getColumnNumber(); s++) {
                     Column column = record.getColumn(s);
                     String columnName = columnList.get(s).getName();
-                    IotDBFieldType columnType = typeList.get(s);
+                    TSDataType columnType = typeList.get(s);
                     //  if column name timeseries pass switch
                     if (s != TimeSeriesColumnIndex) {
                         //   transform column value according to writer column define
