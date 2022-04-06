@@ -192,13 +192,32 @@ np_values_ = [
     np.array([10011.1, 101.0, 688.25, 6.25], np.dtype(">f8")),
     np.array(["test01", "test02", "test03", "test04"]),
 ]
-np_timestamps_ = np.array([4, 3, 2, 1], np.dtype(">i8"))
+np_timestamps_ = np.array([1, 2, 3, 4], np.dtype(">i8"))
 np_tablet_ = NumpyTablet(
     "root.sg_test_01.d_02", measurements_, data_types_, np_values_, np_timestamps_
 )
 session.insert_tablet(np_tablet_)
-print(np_tablet_.get_timestamps())
-for value in np_tablet_.get_values():
+
+# insert one unsorted numpy tablet into the database.
+np_values_unsorted = [
+    np.array([False, False, False, True, True], np.dtype(">?")),
+    np.array([0, 10, 100, 1000, 10000], np.dtype(">i4")),
+    np.array([1, 11, 111, 1111, 11111], np.dtype(">i8")),
+    np.array([1.1, 1.25, 188.1, 0, 8.999], np.dtype(">f4")),
+    np.array([10011.1, 101.0, 688.25, 6.25, 8, 776], np.dtype(">f8")),
+    np.array(["test09", "test08", "test07", "test06", "test05"]),
+]
+np_timestamps_unsorted = np.array([9, 8, 7, 6, 5], np.dtype(">i8"))
+np_tablet_unsorted = NumpyTablet(
+    "root.sg_test_01.d_02",
+    measurements_,
+    data_types_,
+    np_values_unsorted,
+    np_timestamps_unsorted,
+)
+session.insert_tablet(np_tablet_unsorted)
+print(np_tablet_unsorted.get_timestamps())
+for value in np_tablet_unsorted.get_values():
     print(value)
 
 # insert multiple tablets into database
