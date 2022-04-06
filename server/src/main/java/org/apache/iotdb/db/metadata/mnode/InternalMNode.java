@@ -128,10 +128,11 @@ public class InternalMNode extends MNode {
 
   /** delete a child */
   @Override
-  public void deleteChild(String name) {
+  public IMNode deleteChild(String name) {
     if (children != null) {
-      children.remove(name);
+      return children.remove(name);
     }
+    return null;
   }
 
   /**

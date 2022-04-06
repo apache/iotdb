@@ -16,20 +16,33 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.mtree.multimode;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.metadata.mtree.MTreeBelowSGTest;
-import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
+package org.apache.iotdb.db.metadata.mnode.iterator;
 
-public class MTreeMemoryModeTest extends MTreeBelowSGTest {
-  @Override
-  protected void setConfig() {
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setSchemaEngineMode(SchemaEngineMode.Memory.toString());
+import org.apache.iotdb.db.metadata.mnode.IMNode;
+
+import java.util.Iterator;
+
+public class MNodeIterator implements IMNodeIterator {
+
+  private Iterator<IMNode> iterator;
+
+  public MNodeIterator(Iterator<IMNode> iterator) {
+    this.iterator = iterator;
   }
 
   @Override
-  protected void rollBackConfig() {}
+  public boolean hasNext() {
+    return iterator.hasNext();
+  }
+
+  @Override
+  public IMNode next() {
+    return iterator.next();
+  }
+
+  @Override
+  public void close() {
+    iterator = null;
+  }
 }

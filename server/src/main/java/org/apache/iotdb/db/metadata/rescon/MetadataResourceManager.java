@@ -22,6 +22,7 @@ package org.apache.iotdb.db.metadata.rescon;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.mtree.store.disk.MTreeFlushTaskManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.MemManagerHolder;
+import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
 
 public class MetadataResourceManager {
 
@@ -29,17 +30,34 @@ public class MetadataResourceManager {
 
   public static void initMetadataResource() {
     TimeseriesStatistics.getInstance().init();
-    if (IoTDBDescriptor.getInstance().getConfig().isEnablePersistentSchema()) {
-      MemManagerHolder.getMemManagerInstance().init();
-      MTreeFlushTaskManager.getInstance().init();
+    MemoryStatistics.getInstance().init();
+    if (IoTDBDescriptor.getInstance()
+        .getConfig()
+        .getSchemaEngineMode()
+        .equals(SchemaEngineMode.Schema_File.toString())) {
+      initSchemaFileModeResource();
     }
   }
 
   public static void clearMetadataResource() {
     TimeseriesStatistics.getInstance().clear();
-    if (IoTDBDescriptor.getInstance().getConfig().isEnablePersistentSchema()) {
-      MemManagerHolder.getMemManagerInstance().clear();
-      MTreeFlushTaskManager.getInstance().clear();
+    MemoryStatistics.getInstance().clear();
+    if (IoTDBDescriptor.getInstance()
+        .getConfig()
+        .getSchemaEngineMode()
+        .equals(SchemaEngineMode.Schema_File.toString())) {
+      clearSchemaFileModeResource();
     }
+  }
+
+  private static void initSchemaFileModeResource() {
+    MemManagerHolder.initMemManagerInstance();
+    MemManagerHolder.getMemManagerInstance().init();
+    MTreeFlushTaskManager.getInstance().init();
+  }
+
+  private static void clearSchemaFileModeResource() {
+    MemManagerHolder.getMemManagerInstance().clear();
+    MTreeFlushTaskManager.getInstance().clear();
   }
 }

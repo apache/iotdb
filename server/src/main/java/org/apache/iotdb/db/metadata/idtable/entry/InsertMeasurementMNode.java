@@ -150,7 +150,7 @@ public class InsertMeasurementMNode implements IMeasurementMNode {
   }
 
   @Override
-  public void deleteChild(String name) {
+  public IMNode deleteChild(String name) {
     throw new UnsupportedOperationException("insert measurement mnode doesn't support this method");
   }
 

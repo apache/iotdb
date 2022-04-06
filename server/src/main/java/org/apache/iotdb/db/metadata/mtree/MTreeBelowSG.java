@@ -53,6 +53,7 @@ import org.apache.iotdb.db.metadata.mtree.traverser.counter.MeasurementCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.MeasurementGroupByLevelCounter;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
@@ -134,7 +135,10 @@ public class MTreeBelowSG implements Serializable {
   public MTreeBelowSG(IStorageGroupMNode storageGroupMNode, int schemaRegionId)
       throws MetadataException, IOException {
     PartialPath storageGroup = storageGroupMNode.getPartialPath();
-    if (IoTDBDescriptor.getInstance().getConfig().isEnablePersistentSchema()) {
+    if (IoTDBDescriptor.getInstance()
+        .getConfig()
+        .getSchemaEngineMode()
+        .equals(SchemaEngineMode.Schema_File.toString())) {
       store = new CachedMTreeStore(storageGroup, schemaRegionId);
     } else {
       store = new MemMTreeStore(storageGroup, true);

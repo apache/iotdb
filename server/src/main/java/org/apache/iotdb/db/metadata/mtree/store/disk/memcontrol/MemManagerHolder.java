@@ -19,12 +19,18 @@
 
 package org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+
 public class MemManagerHolder {
 
-  private static final IMemManager memManagerInstance;
+  private static IMemManager memManagerInstance;
 
-  static {
-    memManagerInstance = new MemManagerNodeNumBasedImpl();
+  public static void initMemManagerInstance() {
+    if (IoTDBDescriptor.getInstance().getConfig().getCachedMNodeSizeInSchemaFileMode() >= 0) {
+      memManagerInstance = new MemManagerNodeNumBasedImpl();
+    } else {
+      memManagerInstance = new MemManagerNodeEstimateSizeBasedImpl();
+    }
   }
 
   public static IMemManager getMemManagerInstance() {

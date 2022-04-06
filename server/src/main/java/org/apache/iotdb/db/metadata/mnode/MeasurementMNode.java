@@ -198,8 +198,8 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
   }
 
   @Override
-  public void deleteChild(String name) {
-    // Do nothing
+  public IMNode deleteChild(String name) {
+    return null;
   }
 
   @Override

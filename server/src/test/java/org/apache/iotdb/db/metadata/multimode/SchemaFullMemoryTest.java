@@ -24,6 +24,6 @@ public class SchemaFullMemoryTest extends SchemaDiskModeTest {
 
   @Override
   protected void setMemSize() {
-    IoTDBDescriptor.getInstance().getConfig().setCachedMetadataSizeInPersistentMode(10000);
+    IoTDBDescriptor.getInstance().getConfig().setCachedMNodeSizeInSchemaFileMode(10000);
   }
 }

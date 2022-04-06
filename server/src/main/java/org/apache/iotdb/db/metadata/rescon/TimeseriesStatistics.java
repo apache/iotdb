@@ -18,35 +18,21 @@
  */
 package org.apache.iotdb.db.metadata.rescon;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.Metric;
 import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.service.metrics.Tag;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.concurrent.atomic.AtomicLong;
 
 public class TimeseriesStatistics {
 
-  private static final Logger logger = LoggerFactory.getLogger(TimeseriesStatistics.class);
+  private final AtomicLong totalSeriesNumber = new AtomicLong();
 
-  /** threshold total size of MTree */
-  private static final long MEMORY_FOR_SCHEMA =
-      IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForSchema();
+  private static class TimeseriesStatisticsHolder {
 
-  private static final int ESTIMATED_SERIES_SIZE =
-      IoTDBDescriptor.getInstance().getConfig().getEstimatedSeriesSize();
-
-  private boolean allowToCreateNewSeries = true;
-  private AtomicLong totalSeriesNumber = new AtomicLong();
-
-  private static class TimeseriesManagerHolder {
-
-    private TimeseriesManagerHolder() {
+    private TimeseriesStatisticsHolder() {
       // allowed to do nothing
     }
 
@@ -55,7 +41,7 @@ public class TimeseriesStatistics {
 
   /** we should not use this function in other place, but only in IoTDB class */
   public static TimeseriesStatistics getInstance() {
-    return TimeseriesStatistics.TimeseriesManagerHolder.INSTANCE;
+    return TimeseriesStatisticsHolder.INSTANCE;
   }
 
   public void init() {
@@ -72,33 +58,19 @@ public class TimeseriesStatistics {
     }
   }
 
-  public boolean isAllowToCreateNewSeries() {
-    return allowToCreateNewSeries;
-  }
-
   public long getTotalSeriesNumber() {
     return totalSeriesNumber.get();
   }
 
   public void addTimeseries(int addedNum) {
     totalSeriesNumber.addAndGet(addedNum);
-    if (totalSeriesNumber.get() * ESTIMATED_SERIES_SIZE >= MEMORY_FOR_SCHEMA) {
-      logger.warn("Current series number {} is too large...", totalSeriesNumber);
-      allowToCreateNewSeries = false;
-    }
   }
 
   public void deleteTimeseries(int deletedNum) {
     totalSeriesNumber.addAndGet(-deletedNum);
-    if (!allowToCreateNewSeries
-        && totalSeriesNumber.get() * ESTIMATED_SERIES_SIZE < MEMORY_FOR_SCHEMA) {
-      logger.info("Current series number {} come back to normal level", totalSeriesNumber);
-      allowToCreateNewSeries = true;
-    }
   }
 
   public void clear() {
     this.totalSeriesNumber.set(0);
-    allowToCreateNewSeries = true;
   }
 }

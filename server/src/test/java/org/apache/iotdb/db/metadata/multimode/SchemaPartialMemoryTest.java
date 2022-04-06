@@ -23,6 +23,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 public class SchemaPartialMemoryTest extends SchemaDiskModeTest {
   @Override
   protected void setMemSize() {
-    IoTDBDescriptor.getInstance().getConfig().setCachedMetadataSizeInPersistentMode(5);
+    IoTDBDescriptor.getInstance().getConfig().setCachedMNodeSizeInSchemaFileMode(5);
   }
 }

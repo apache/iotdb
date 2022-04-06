@@ -17,32 +17,17 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.metadata.mnode.iterator;
+package org.apache.iotdb.db.metadata.mnode.estimator;
 
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 
-import java.util.Iterator;
+import static org.apache.iotdb.db.metadata.mnode.estimator.BasicMNodSizeEstimator.ENTITY_NODE_BASE_SIZE;
 
-public class MemMNodeIterator implements IMNodeIterator {
+public interface IMNodeSizeEstimator {
 
-  private Iterator<IMNode> iterator;
+  int estimateSize(IMNode node);
 
-  public MemMNodeIterator(Iterator<IMNode> iterator) {
-    this.iterator = iterator;
-  }
-
-  @Override
-  public boolean hasNext() {
-    return iterator.hasNext();
-  }
-
-  @Override
-  public IMNode next() {
-    return iterator.next();
-  }
-
-  @Override
-  public void close() {
-    iterator = null;
+  static int getEntityNodeBaseSize() {
+    return ENTITY_NODE_BASE_SIZE;
   }
 }

@@ -24,12 +24,18 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
+import org.apache.iotdb.db.metadata.mnode.estimator.BasicMNodSizeEstimator;
+import org.apache.iotdb.db.metadata.mnode.estimator.IMNodeSizeEstimator;
 import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
-import org.apache.iotdb.db.metadata.mnode.iterator.MemMNodeIterator;
+import org.apache.iotdb.db.metadata.mnode.iterator.MNodeIterator;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.rescon.MemoryStatistics;
 
 /** This is a memory-based implementation of IMTreeStore. All MNodes are stored in memory. */
 public class MemMTreeStore implements IMTreeStore {
+
+  private MemoryStatistics memoryStatistics = MemoryStatistics.getInstance();
+  private IMNodeSizeEstimator estimator = new BasicMNodSizeEstimator();
 
   private IMNode root;
 
@@ -62,17 +68,21 @@ public class MemMTreeStore implements IMTreeStore {
 
   @Override
   public IMNodeIterator getChildrenIterator(IMNode parent) {
-    return new MemMNodeIterator(parent.getChildren().values().iterator());
+    return new MNodeIterator(parent.getChildren().values().iterator());
   }
 
   @Override
   public IMNode addChild(IMNode parent, String childName, IMNode child) {
-    return parent.addChild(childName, child);
+    IMNode result = parent.addChild(childName, child);
+    if (result == child) {
+      memoryStatistics.requestMemory(estimator.estimateSize(child));
+    }
+    return result;
   }
 
   @Override
   public void deleteChild(IMNode parent, String childName) {
-    parent.deleteChild(childName);
+    memoryStatistics.releaseMemory(estimator.estimateSize(parent.deleteChild(childName)));
   }
 
   @Override

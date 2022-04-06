@@ -52,7 +52,7 @@ public interface IMNode extends Serializable {
 
   IMNode addChild(IMNode child);
 
-  void deleteChild(String name);
+  IMNode deleteChild(String name);
 
   // this method will replace the oldChild with the newChild, the data of oldChild will be moved to
   // newChild

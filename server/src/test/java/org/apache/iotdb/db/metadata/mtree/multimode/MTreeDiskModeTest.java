@@ -20,17 +20,22 @@ package org.apache.iotdb.db.metadata.mtree.multimode;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.mtree.MTreeBelowSGTest;
+import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
 
 public abstract class MTreeDiskModeTest extends MTreeBelowSGTest {
   @Override
   protected void setConfig() {
-    IoTDBDescriptor.getInstance().getConfig().setEnablePersistentSchema(true);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setSchemaEngineMode(SchemaEngineMode.Schema_File.toString());
     setMemSize();
   }
 
   @Override
   protected void rollBackConfig() {
-    IoTDBDescriptor.getInstance().getConfig().setEnablePersistentSchema(false);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setSchemaEngineMode(SchemaEngineMode.Memory.toString());
   }
 
   protected abstract void setMemSize();

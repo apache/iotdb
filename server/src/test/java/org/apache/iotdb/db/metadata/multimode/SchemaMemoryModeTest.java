@@ -20,11 +20,14 @@ package org.apache.iotdb.db.metadata.multimode;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.SchemaBasicTest;
+import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
 
 public class SchemaMemoryModeTest extends SchemaBasicTest {
   @Override
   protected void setConfig() {
-    IoTDBDescriptor.getInstance().getConfig().setEnablePersistentSchema(false);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setSchemaEngineMode(SchemaEngineMode.Memory.toString());
   }
 
   @Override

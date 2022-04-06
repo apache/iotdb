@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
+import org.apache.iotdb.db.metadata.mnode.estimator.IMNodeSizeEstimator;
+import org.apache.iotdb.db.metadata.rescon.MemoryStatistics;
+
 public class MNodeUtils {
 
   /**
@@ -46,6 +49,7 @@ public class MNodeUtils {
           node.moveDataToNewMNode(entityMNode);
         }
       }
+      MemoryStatistics.getInstance().requestMemory(IMNodeSizeEstimator.getEntityNodeBaseSize());
     }
     return entityMNode;
   }
@@ -68,6 +72,9 @@ public class MNodeUtils {
     } else {
       node = new InternalMNode(parent, entityMNode.getName());
     }
+
+    MemoryStatistics.getInstance().releaseMemory(IMNodeSizeEstimator.getEntityNodeBaseSize());
+
     if (parent != null) {
       parent.replaceChild(entityMNode.getName(), node);
     }

@@ -34,6 +34,7 @@ import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.RecordUtils;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaPage;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.Segment;
+import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -61,14 +62,18 @@ public class SchemaFileTest {
 
   @Before
   public void setUp() {
-    IoTDBDescriptor.getInstance().getConfig().setEnablePersistentSchema(true);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setSchemaEngineMode(SchemaEngineMode.Schema_File.toString());
     EnvironmentUtils.envSetUp();
   }
 
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
-    IoTDBDescriptor.getInstance().getConfig().setEnablePersistentSchema(false);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setSchemaEngineMode(SchemaEngineMode.Memory.toString());
   }
 
   @Test

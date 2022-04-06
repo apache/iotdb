@@ -23,6 +23,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 public class MTreeNonMemoryTest extends MTreeDiskModeTest {
   @Override
   protected void setMemSize() {
-    IoTDBDescriptor.getInstance().getConfig().setCachedMetadataSizeInPersistentMode(0);
+    IoTDBDescriptor.getInstance().getConfig().setCachedMNodeSizeInSchemaFileMode(0);
   }
 }

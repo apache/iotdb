@@ -21,6 +21,7 @@ package org.apache.iotdb.db.metadata.mnode.container;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.CachedMNodeContainer;
+import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
 
 import org.jetbrains.annotations.NotNull;
 
@@ -46,7 +47,10 @@ public class MNodeContainers {
   }
 
   public static IMNodeContainer getNewMNodeContainer() {
-    if (IoTDBDescriptor.getInstance().getConfig().isEnablePersistentSchema()) {
+    if (IoTDBDescriptor.getInstance()
+        .getConfig()
+        .getSchemaEngineMode()
+        .equals(SchemaEngineMode.Schema_File.toString())) {
       return new CachedMNodeContainer();
     } else {
       return new MNodeContainerMapImpl();

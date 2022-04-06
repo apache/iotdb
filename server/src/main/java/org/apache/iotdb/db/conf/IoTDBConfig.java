@@ -185,9 +185,6 @@ public class IoTDBConfig {
   /** if total sleep time exceeds this, system will reject this write. */
   private long registerBufferRejectThresholdInMs = 10_000;
 
-  /** Unit: byte */
-  private int estimatedSeriesSize = 300;
-
   /**
    * Size of log buffer for every MetaData operation. If the size of a MetaData operation plan is
    * larger than this parameter, then the MetaData operation plan will be rejected by SchemaRegion.
@@ -813,10 +810,10 @@ public class IoTDBConfig {
   private String encryptDecryptProviderParameter;
 
   /** whether to use persistent schema mode */
-  private boolean enablePersistentSchema = false;
+  private String schemaEngineMode = "memory";
 
   /** the memory used for metadata cache when using persistent schema */
-  private int cachedMetadataSizeInPersistentMode = 50000;
+  private int cachedMNodeSizeInSchemaFileMode = -1;
 
   /** the max num of thread used for flushing metadata to schema file */
   private int maxSchemaFlushThreadNum = 15;
@@ -1429,14 +1426,6 @@ public class IoTDBConfig {
 
   public void setRegisterBufferRejectThresholdInMs(long registerBufferRejectThresholdInMs) {
     this.registerBufferRejectThresholdInMs = registerBufferRejectThresholdInMs;
-  }
-
-  public int getEstimatedSeriesSize() {
-    return estimatedSeriesSize;
-  }
-
-  public void setEstimatedSeriesSize(int estimatedSeriesSize) {
-    this.estimatedSeriesSize = estimatedSeriesSize;
   }
 
   public boolean isChunkBufferPoolEnable() {
@@ -2570,20 +2559,20 @@ public class IoTDBConfig {
     this.encryptDecryptProviderParameter = encryptDecryptProviderParameter;
   }
 
-  public boolean isEnablePersistentSchema() {
-    return enablePersistentSchema;
+  public String getSchemaEngineMode() {
+    return schemaEngineMode;
   }
 
-  public void setEnablePersistentSchema(boolean enablePersistentSchema) {
-    this.enablePersistentSchema = enablePersistentSchema;
+  public void setSchemaEngineMode(String schemaEngineMode) {
+    this.schemaEngineMode = schemaEngineMode;
   }
 
-  public int getCachedMetadataSizeInPersistentMode() {
-    return cachedMetadataSizeInPersistentMode;
+  public int getCachedMNodeSizeInSchemaFileMode() {
+    return cachedMNodeSizeInSchemaFileMode;
   }
 
-  public void setCachedMetadataSizeInPersistentMode(int cachedMetadataSizeInPersistentMode) {
-    this.cachedMetadataSizeInPersistentMode = cachedMetadataSizeInPersistentMode;
+  public void setCachedMNodeSizeInSchemaFileMode(int cachedMNodeSizeInSchemaFileMode) {
+    this.cachedMNodeSizeInSchemaFileMode = cachedMNodeSizeInSchemaFileMode;
   }
 
   public int getMaxSchemaFlushThreadNum() {
