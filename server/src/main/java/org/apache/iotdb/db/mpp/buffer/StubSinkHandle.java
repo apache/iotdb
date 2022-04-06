@@ -50,10 +50,14 @@ public class StubSinkHandle implements ISinkHandle {
   }
 
   @Override
-  public void send(List<TsBlock> tsBlocks) throws IOException {}
+  public void send(List<TsBlock> tsBlocks) throws IOException {
+    this.tsBlocks.addAll(tsBlocks);
+  }
 
   @Override
-  public void send(int partition, List<TsBlock> tsBlocks) throws IOException {}
+  public void send(int partition, List<TsBlock> tsBlocks) throws IOException {
+    this.tsBlocks.addAll(tsBlocks);
+  }
 
   @Override
   public void setNoMoreTsBlocks() {}
