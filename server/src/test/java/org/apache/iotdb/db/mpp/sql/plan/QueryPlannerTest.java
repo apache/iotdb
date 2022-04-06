@@ -51,8 +51,8 @@ public class QueryPlannerTest {
             stmt,
             new MPPQueryContext(
                 querySql, new QueryId("query1"), new SessionInfo(), QueryType.READ, new Endpoint()),
-            IoTDBThreadPoolFactory.newSingleThreadExecutor("Test-Query"),
-            IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("Test-Query-Scheduled"));
+            IoTDBThreadPoolFactory.newSingleThreadExecutor("test_query"),
+            IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("test_query_scheduled"));
     queryExecution.doLogicalPlan();
     System.out.printf("SQL: %s%n%n", querySql);
     System.out.println("===== Step 1: Logical Plan =====");
