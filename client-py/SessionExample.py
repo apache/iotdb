@@ -185,11 +185,14 @@ np_values_ = [
     np.array([10011.1, 101.0, 688.25, 6.25], np.dtype('>f8')),
     np.array(["test01", "test02", "test03", "test04"]),
 ]
-np_timestamps_ = np.array([1, 2, 3, 4], np.dtype('>i8'))
+np_timestamps_ = np.array([4, 3, 2, 1], np.dtype('>i8'))
 np_tablet_ = NumpyTablet(
     "root.sg_test_01.d_02", measurements_, data_types_, np_values_, np_timestamps_
 )
 session.insert_tablet(np_tablet_)
+print(np_tablet_.get_timestamps())
+for value in np_tablet_.get_values():
+    print(value)
 
 # insert multiple tablets into database
 tablet_01 = Tablet(
@@ -238,18 +241,21 @@ session.execute_non_query_statement(
 
 # execute sql query statement
 with session.execute_query_statement(
-    "select * from root.sg_test_01.d_01"
+        "select * from root.sg_test_01.d_01"
 ) as session_data_set:
     session_data_set.set_fetch_size(1024)
     while session_data_set.has_next():
         print(session_data_set.next())
 # execute sql query statement
 with session.execute_query_statement(
-    "select s_01, s_02, s_03, s_04, s_05, s_06 from root.sg_test_01.d_02"
+        "select s_01, s_02, s_03, s_04, s_05, s_06 from root.sg_test_01.d_02"
 ) as session_data_set:
     session_data_set.set_fetch_size(1024)
     while session_data_set.has_next():
         print(session_data_set.next())
+
+# delete storage group
+session.delete_storage_group("root.sg_test_01")
 
 # close session connection.
 session.close()
