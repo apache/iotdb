@@ -104,12 +104,13 @@ var config = {
 				  {
 					text: 'Community',
 					items: [
+					  { text: 'About', link: '/Community/About'},
 					  { text: 'Wiki', link: 'https://cwiki.apache.org/confluence/display/iotdb'},
 					  { text: 'People', link: '/Community/Community-Project Committers'},
 					  { text: 'Powered By', link: '/Community/Community-Powered By'},
 					  { text: 'Resources', link: '/Community/Materials'},
-						{ text: 'Feedback', link: '/Community/Feedback'},
-					]
+					  { text: 'Feedback', link: '/Community/Feedback'},
+				]
 				  },
 				  {
 					text: 'Development',
@@ -1040,11 +1041,12 @@ var config = {
 				  {
 					text: '社区',
 					items: [
+						{ text: '关于社区', link: '/zh/Community/About'},
 						{ text: 'Wiki', link: 'https://cwiki.apache.org/confluence/display/iotdb'},
 					    { text: '开发人员', link: '/zh/Community/Community-Project Committers'},
 					    { text: '技术支持', link: '/zh/Community/Community-Powered By'},
-							{ text: '活动与报告', link: '/Community/Materials'},
-							{ text: '交流与反馈', link: '/zh/Community/Feedback'},
+						{ text: '活动与报告', link: '/Community/Materials'},
+						{ text: '交流与反馈', link: '/zh/Community/Feedback'},
 					]
 				  },
 				  {
