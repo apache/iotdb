@@ -103,6 +103,16 @@ public abstract class InsertNode extends PlanNode {
     this.measurementSchemas = measurementSchemas;
   }
 
+  public String[] getMeasurements() {
+    if (measurements == null) {
+      measurements = new String[measurementSchemas.length];
+      for (int i = 0; i < measurementSchemas.length; i++) {
+        measurements[i] = measurementSchemas[i].getMeasurementId();
+      }
+    }
+    return measurements;
+  }
+
   public TSDataType[] getDataTypes() {
     return dataTypes;
   }

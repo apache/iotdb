@@ -382,9 +382,10 @@ public class TsFileProcessor {
 
     try {
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
-        insertTabletNode.setStart(start);
-        insertTabletNode.setEnd(end);
         // TODO(WAL)
+        // Start and end should be removed from new WAL
+        // insertTabletNode.setStart(start);
+        // insertTabletNode.setEnd(end);
         getLogNode().write(insertTabletNode);
       }
     } catch (Exception e) {
@@ -576,7 +577,7 @@ public class TsFileProcessor {
     for (int i = 0; i < insertTabletNode.getDataTypes().length; i++) {
       // skip failed Measurements
       TSDataType dataType = insertTabletNode.getDataTypes()[i];
-      String measurement = insertTabletNode.getMeasurements()[i];
+      String measurement = insertTabletNode.getMeasurementSchemas()[i].getMeasurementId();
       Object column = insertTabletNode.getColumns()[i];
       if (dataType == null || column == null || measurement == null) {
         continue;
