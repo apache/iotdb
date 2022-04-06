@@ -114,6 +114,7 @@
         <module>metrics</module>
         <module>integration</module>
         <module>consensus</module>
+        <module>operator</module>
         <!--        <module>library-udf</module>-->
     </modules>
     <!-- Properties Management -->
