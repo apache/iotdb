@@ -785,6 +785,7 @@ var config = {
 							['Ecosystem Integration/Hive TsFile','Hive TsFile'],
 							['Ecosystem Integration/Flink IoTDB','Flink IoTDB'],
 							['Ecosystem Integration/Flink TsFile','Flink TsFile'],
+							['Ecosystem Integration/DataX IoTDB','DataX IoTDB'],
 							['Ecosystem Integration/Writing Data on HDFS','Writing Data on HDFS']
 						]
 					},
@@ -1702,6 +1703,7 @@ var config = {
 							['Ecosystem Integration/Hive TsFile','Hive-TsFile'],
 							['Ecosystem Integration/Flink TsFile','Flink-TsFile'],
 							['Ecosystem Integration/Flink IoTDB','Flink-IoTDB'],
+							['Ecosystem Integration/DataX IoTDB','DataX IoTDB'],
 							['Ecosystem Integration/Writing Data on HDFS','HDFS集成'],
 						]
 					},
@@ -1934,4 +1936,4 @@ var config = {
   }
 
   module.exports = config
-  
+
