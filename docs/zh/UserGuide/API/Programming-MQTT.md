@@ -167,7 +167,7 @@ public class CustomizedJsonPayloadFormatter implements PayloadFormatter {
 
 
 在 IoTDB 服务端:
-* 将刚才的 jar 包放入 IoTDB 的 lib 文件夹内
+* 创建 ${IOTDB_HOME}/ext/mqtt/ 文件夹, 将刚才的 jar 包放入此文件夹。
 * 打开 MQTT 服务参数. (`enable_mqtt_service=true` in `conf/iotdb-engine.properties`)
 * 用刚才的实现类中的 getName() 方法的返回值 设置为 `conf/iotdb-engine.properties` 中 `mqtt_payload_formatter` 的值， 
   , 在本例中，为 `CustomizedJson`

@@ -42,13 +42,13 @@ public class TestUtilsForAlignedSeries {
   public static void registerTimeSeries(
       String storageGroup, String[] devices, IMeasurementSchema[] schemas, boolean[] isAligned)
       throws MetadataException {
-    IoTDB.metaManager.setStorageGroup(new PartialPath(storageGroup));
+    IoTDB.schemaProcessor.setStorageGroup(new PartialPath(storageGroup));
     for (int i = 0; i < devices.length; ++i) {
       boolean aligned = isAligned[i];
       String device = devices[i];
       if (!aligned) {
         for (IMeasurementSchema schema : schemas) {
-          IoTDB.metaManager.createTimeseries(
+          IoTDB.schemaProcessor.createTimeseries(
               new PartialPath(device, schema.getMeasurementId()),
               schema.getType(),
               schema.getEncodingType(),
@@ -66,7 +66,7 @@ public class TestUtilsForAlignedSeries {
           compressionTypes[j] = schemas[j].getCompressor();
           measurements[j] = schemas[j].getMeasurementId();
         }
-        IoTDB.metaManager.createAlignedTimeSeries(
+        IoTDB.schemaProcessor.createAlignedTimeSeries(
             new PartialPath(device),
             Arrays.asList(measurements),
             Arrays.asList(dataTypes),

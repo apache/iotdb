@@ -24,6 +24,7 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.reader.chunk.AlignedChunkReader;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import java.io.IOException;
@@ -55,13 +56,14 @@ public class TsFileAlignedSeriesReaderIterator {
     return curIdx < alignedChunkMetadataList.size() - 1;
   }
 
-  public AlignedChunkReader nextReader() throws IOException {
+  public Pair<AlignedChunkReader, Long> nextReader() throws IOException {
     AlignedChunkMetadata alignedChunkMetadata = alignedChunkMetadataList.get(++curIdx);
     IChunkMetadata timeChunkMetadata = alignedChunkMetadata.getTimeChunkMetadata();
     List<IChunkMetadata> valueChunkMetadataList = alignedChunkMetadata.getValueChunkMetadataList();
     int schemaIdx = 0;
     Chunk timeChunk = reader.readMemChunk((ChunkMetadata) timeChunkMetadata);
     Chunk[] valueChunks = new Chunk[schemaList.size()];
+    long totalSize = 0;
     for (IChunkMetadata valueChunkMetadata : valueChunkMetadataList) {
       if (valueChunkMetadata == null) {
         continue;
@@ -71,12 +73,14 @@ public class TsFileAlignedSeriesReaderIterator {
           .equals(schemaList.get(schemaIdx).getMeasurementId())) {
         schemaIdx++;
       }
-      valueChunks[schemaIdx++] = reader.readMemChunk((ChunkMetadata) valueChunkMetadata);
+      Chunk chunk = reader.readMemChunk((ChunkMetadata) valueChunkMetadata);
+      valueChunks[schemaIdx++] = chunk;
+      totalSize += chunk.getHeader().getSerializedSize() + chunk.getHeader().getDataSize();
     }
 
     AlignedChunkReader chunkReader =
         new AlignedChunkReader(timeChunk, Arrays.asList(valueChunks), null);
 
-    return chunkReader;
+    return new Pair<>(chunkReader, totalSize);
   }
 }

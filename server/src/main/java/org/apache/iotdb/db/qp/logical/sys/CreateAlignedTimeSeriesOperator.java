@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.qp.logical.sys;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.runtime.SQLParserException;
+import org.apache.iotdb.db.exception.sql.SQLParserException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -42,7 +42,7 @@ public class CreateAlignedTimeSeriesOperator extends Operator {
   private List<TSDataType> dataTypes = new ArrayList<>();
   private List<TSEncoding> encodings = new ArrayList<>();
   private List<CompressionType> compressors = new ArrayList<>();
-  private List<String> aliasList = null;
+  private List<String> aliasList = new ArrayList<>();
   private List<Map<String, String>> tagsList = new ArrayList<>();
   private List<Map<String, String>> attributesList = new ArrayList<>();
   private List<Long> tagOffsets = null;

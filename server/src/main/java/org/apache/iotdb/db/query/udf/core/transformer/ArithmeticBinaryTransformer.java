@@ -19,109 +19,19 @@
 
 package org.apache.iotdb.db.query.udf.core.transformer;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-import java.io.IOException;
-
-public abstract class ArithmeticBinaryTransformer extends Transformer {
-
-  private final LayerPointReader leftPointReader;
-  private final LayerPointReader rightPointReader;
+public abstract class ArithmeticBinaryTransformer extends BinaryTransformer {
 
   protected ArithmeticBinaryTransformer(
       LayerPointReader leftPointReader, LayerPointReader rightPointReader) {
-    this.leftPointReader = leftPointReader;
-    this.rightPointReader = rightPointReader;
+    super(leftPointReader, rightPointReader);
   }
 
   @Override
-  public boolean isConstantPointReader() {
-    return leftPointReader.isConstantPointReader() && rightPointReader.isConstantPointReader();
-  }
-
-  @Override
-  protected boolean cacheValue() throws QueryProcessException, IOException {
-    if (!leftPointReader.next() || !rightPointReader.next()) {
-      return false;
-    }
-    if (!cacheTime()) {
-      return false;
-    }
-    if (leftPointReader.isCurrentNull() || rightPointReader.isCurrentNull()) {
-      currentNull = true;
-    } else {
-      cachedDouble =
-          evaluate(
-              castCurrentValueToDoubleOperand(leftPointReader),
-              castCurrentValueToDoubleOperand(rightPointReader));
-    }
-    leftPointReader.readyForNext();
-    rightPointReader.readyForNext();
-    return true;
-  }
-
-  /**
-   * finds the smallest, unconsumed timestamp that exists in both {@code leftPointReader} and {@code
-   * rightPointReader} and then caches the timestamp in {@code cachedTime}.
-   *
-   * @return true if there has a timestamp that meets the requirements
-   */
-  private boolean cacheTime() throws IOException, QueryProcessException {
-    if (leftPointReader.isConstantPointReader() && rightPointReader.isConstantPointReader()) {
-      return true;
-    }
-    if (leftPointReader.isConstantPointReader()) {
-      cachedTime = rightPointReader.currentTime();
-      return true;
-    }
-    if (rightPointReader.isConstantPointReader()) {
-      cachedTime = leftPointReader.currentTime();
-      return true;
-    }
-
-    long leftTime = leftPointReader.currentTime();
-    long rightTime = rightPointReader.currentTime();
-
-    while (leftTime != rightTime) {
-      if (leftTime < rightTime) {
-        leftPointReader.readyForNext();
-        if (!leftPointReader.next()) {
-          return false;
-        }
-        leftTime = leftPointReader.currentTime();
-      } else {
-        rightPointReader.readyForNext();
-        if (!rightPointReader.next()) {
-          return false;
-        }
-        rightTime = rightPointReader.currentTime();
-      }
-    }
-
-    // leftTime == rightTime
-    cachedTime = leftTime;
-    return true;
-  }
-
-  protected abstract double evaluate(double leftOperand, double rightOperand);
-
-  private static double castCurrentValueToDoubleOperand(LayerPointReader layerPointReader)
-      throws IOException, QueryProcessException {
-    switch (layerPointReader.getDataType()) {
-      case INT32:
-        return layerPointReader.currentInt();
-      case INT64:
-        return layerPointReader.currentLong();
-      case FLOAT:
-        return layerPointReader.currentFloat();
-      case DOUBLE:
-        return layerPointReader.currentDouble();
-      default:
-        throw new QueryProcessException(
-            "Unsupported data type: " + layerPointReader.getDataType().toString());
-    }
+  protected TransformerType getTransformerType() {
+    return TransformerType.Arithmetic;
   }
 
   @Override

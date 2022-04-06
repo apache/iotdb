@@ -18,7 +18,8 @@
  */
 package org.apache.iotdb.confignode.conf;
 
-import org.apache.iotdb.confignode.exception.conf.RepeatConfigurationException;
+import org.apache.iotdb.commons.exception.ConfigurationException;
+import org.apache.iotdb.commons.exception.StartupException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,20 +43,25 @@ public class ConfigNodeConfCheck {
 
   private static final ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();
 
-  private Properties specialProperties;
+  private final Properties specialProperties;
 
-  public void checkConfig() throws RepeatConfigurationException, IOException {
-
-    String propsDir = ConfigNodeDescriptor.getInstance().getPropsDir();
-    if (propsDir == null) {
-      // Skip configuration check when developer mode or test mode
-      return;
-    }
+  private ConfigNodeConfCheck() {
     specialProperties = new Properties();
+  }
+
+  public void checkConfig() throws ConfigurationException, IOException, StartupException {
+    // If systemDir does not exist, create systemDir
+    File systemDir = new File(conf.getSystemDir());
+    createDir(systemDir);
+
+    // If consensusDir does not exist, create consensusDir
+    File consensusDir = new File(conf.getConsensusDir());
+    createDir(consensusDir);
 
     File specialPropertiesFile =
-        new File(propsDir + File.separator + ConfigNodeConstant.SPECIAL_CONF_NAME);
+        new File(conf.getSystemDir() + File.separator + ConfigNodeConstant.SPECIAL_CONF_NAME);
     if (!specialPropertiesFile.exists()) {
+      // Create and write the special properties file when first start the ConfigNode
       if (specialPropertiesFile.createNewFile()) {
         LOGGER.info(
             "Special configuration file {} for ConfigNode is created.",
@@ -66,14 +72,30 @@ public class ConfigNodeConfCheck {
         LOGGER.error(
             "Can't create special configuration file {} for ConfigNode. IoTDB-ConfigNode is shutdown.",
             specialPropertiesFile.getAbsolutePath());
-        System.exit(-1);
+        throw new StartupException("Can't create special configuration file");
       }
     }
 
-    FileInputStream inputStream = new FileInputStream(specialPropertiesFile);
-    specialProperties.load(inputStream);
-    checkSpecialProperties();
-    inputStream.close();
+    try (FileInputStream inputStream = new FileInputStream(specialPropertiesFile)) {
+      // Check consistency of the special parameters in the special properties file.
+      // Make sure these parameters are the same both in the current properties file and the special
+      // properties file.
+      specialProperties.load(inputStream);
+      checkSpecialProperties();
+    }
+  }
+
+  private void createDir(File dir) throws IOException {
+    if (!dir.exists()) {
+      if (dir.mkdirs()) {
+        LOGGER.info("Make dirs: {}", dir);
+      } else {
+        throw new IOException(
+            String.format(
+                "Start ConfigNode failed, because couldn't make system dirs: %s.",
+                dir.getAbsolutePath()));
+      }
+    }
   }
 
   /**
@@ -93,13 +115,13 @@ public class ConfigNodeConfCheck {
   }
 
   /** Ensure that special parameters are consistent with each startup except the first one */
-  private void checkSpecialProperties() throws RepeatConfigurationException {
+  private void checkSpecialProperties() throws ConfigurationException {
     int specialDeviceGroupCount =
         Integer.parseInt(
             specialProperties.getProperty(
                 "device_group_count", String.valueOf(conf.getDeviceGroupCount())));
     if (specialDeviceGroupCount != conf.getDeviceGroupCount()) {
-      throw new RepeatConfigurationException(
+      throw new ConfigurationException(
           "device_group_count",
           String.valueOf(conf.getDeviceGroupCount()),
           String.valueOf(specialDeviceGroupCount));
@@ -110,7 +132,7 @@ public class ConfigNodeConfCheck {
             "device_group_hash_executor_class", conf.getDeviceGroupHashExecutorClass());
     if (!Objects.equals(
         specialDeviceGroupHashExecutorClass, conf.getDeviceGroupHashExecutorClass())) {
-      throw new RepeatConfigurationException(
+      throw new ConfigurationException(
           "device_group_hash_executor_class",
           conf.getDeviceGroupHashExecutorClass(),
           specialDeviceGroupHashExecutorClass);
@@ -128,9 +150,5 @@ public class ConfigNodeConfCheck {
 
   public static ConfigNodeConfCheck getInstance() {
     return ConfigNodeConfCheckHolder.INSTANCE;
-  }
-
-  private ConfigNodeConfCheck() {
-    LOGGER.info("Starting IoTDB Cluster ConfigNode " + ConfigNodeConstant.VERSION);
   }
 }

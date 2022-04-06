@@ -18,10 +18,10 @@
  */
 package org.apache.iotdb.db.integration;
 
+import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.db.conf.IoTDBConfigCheck;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
-import org.apache.iotdb.db.exception.ConfigurationException;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
@@ -105,7 +105,7 @@ public class IoTDBCheckConfigIT {
   public void testAlterTimeEncoderAfterStartService() throws Exception {
     EnvironmentUtils.shutdownDaemon();
     EnvironmentUtils.stopDaemon();
-    IoTDB.metaManager.clear();
+    IoTDB.configManager.clear();
     systemProperties.put("time_encoder", "REGULAR");
     writeSystemFile();
     EnvironmentUtils.reactiveDaemon();
@@ -123,7 +123,7 @@ public class IoTDBCheckConfigIT {
   public void testSameTimeEncoderAfterStartService() throws Exception {
     EnvironmentUtils.shutdownDaemon();
     EnvironmentUtils.stopDaemon();
-    IoTDB.metaManager.clear();
+    IoTDB.configManager.clear();
     systemProperties.put("time_encoder", "TS_2DIFF");
     writeSystemFile();
     EnvironmentUtils.reactiveDaemon();

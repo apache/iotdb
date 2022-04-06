@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.engine.storagegroup.virtualSg;
 
-import org.apache.iotdb.db.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -417,7 +417,7 @@ public class StorageGroupManager {
     for (VirtualStorageGroupProcessor virtualStorageGroupProcessor :
         this.virtualStorageGroupProcessor) {
       if (virtualStorageGroupProcessor != null) {
-        List<TsFileResource> allResources = virtualStorageGroupProcessor.getSequenceFileTreeSet();
+        List<TsFileResource> allResources = virtualStorageGroupProcessor.getSequenceFileList();
         allResources.addAll(virtualStorageGroupProcessor.getUnSequenceFileList());
         for (TsFileResource tsfile : allResources) {
           if (!tsfile.isClosed()) {
@@ -505,6 +505,18 @@ public class StorageGroupManager {
 
   public void setSettling(boolean settling) {
     isSettling.set(settling);
+  }
+
+  public void setAllowCompaction(boolean allowCompaction) {
+    for (VirtualStorageGroupProcessor processor : virtualStorageGroupProcessor) {
+      processor.setAllowCompaction(allowCompaction);
+    }
+  }
+
+  public void abortCompaction() {
+    for (VirtualStorageGroupProcessor processor : virtualStorageGroupProcessor) {
+      processor.abortCompaction();
+    }
   }
 
   public AtomicBoolean getIsSettling() {

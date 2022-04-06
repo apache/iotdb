@@ -18,11 +18,12 @@
  */
 package org.apache.iotdb.confignode.utils;
 
+import org.apache.iotdb.commons.exception.ShutdownException;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.service.ConfigNode;
 
 import org.apache.commons.io.FileUtils;
-import org.jetbrains.annotations.TestOnly;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,7 +44,7 @@ public class ConfigNodeEnvironmentUtils {
     LOGGER.debug("ConfigNodeEnvironmentUtils setup...");
 
     if (daemon == null) {
-      daemon = new ConfigNode();
+      daemon = ConfigNode.getInstance();
     }
 
     try {
@@ -76,7 +77,7 @@ public class ConfigNodeEnvironmentUtils {
   }
 
   @TestOnly
-  public static void shutdownDaemon() {
+  public static void shutdownDaemon() throws ShutdownException {
     if (daemon != null) {
       daemon.shutdown();
     }
@@ -92,7 +93,7 @@ public class ConfigNodeEnvironmentUtils {
   @TestOnly
   public static void reactiveDaemon() {
     if (daemon == null) {
-      daemon = new ConfigNode();
+      daemon = ConfigNode.getInstance();
       daemon.active();
     } else {
       activeDaemon();
@@ -100,7 +101,7 @@ public class ConfigNodeEnvironmentUtils {
   }
 
   @TestOnly
-  public static void restartDaemon() {
+  public static void restartDaemon() throws ShutdownException {
     shutdownDaemon();
     stopDaemon();
     reactiveDaemon();

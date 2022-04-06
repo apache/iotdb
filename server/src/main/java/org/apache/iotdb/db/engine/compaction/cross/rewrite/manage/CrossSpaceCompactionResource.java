@@ -21,9 +21,8 @@ package org.apache.iotdb.db.engine.compaction.cross.rewrite.manage;
 
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
@@ -82,7 +81,7 @@ public class CrossSpaceCompactionResource {
    */
   private void filterUnseqResource(List<TsFileResource> unseqResources) {
     for (TsFileResource resource : unseqResources) {
-      if (resource.isCompacting() || resource.isCompactionCandidate() || !resource.isClosed()) {
+      if (resource.getStatus() != TsFileResourceStatus.CLOSED) {
         return;
       } else if (!resource.isDeleted() && resource.stillLives(ttlLowerBound)) {
         this.unseqFiles.add(resource);
@@ -109,10 +108,6 @@ public class CrossSpaceCompactionResource {
     fileWriterCache.clear();
     modificationCache.clear();
     chunkWriterCache.clear();
-  }
-
-  public IMeasurementSchema getSchema(PartialPath path) throws MetadataException {
-    return IoTDB.metaManager.getSeriesSchema(path);
   }
 
   /**

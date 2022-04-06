@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.engine.settle;
 
-import org.apache.iotdb.db.concurrent.WrappedRunnable;
+import org.apache.iotdb.commons.concurrent.WrappedRunnable;
 import org.apache.iotdb.db.engine.settle.SettleLog.SettleCheckStatus;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.WriteProcessException;

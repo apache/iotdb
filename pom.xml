@@ -83,6 +83,7 @@
         <module>antlr</module>
         <module>thrift</module>
         <module>thrift-confignode</module>
+        <module>thrift-datanode</module>
         <module>thrift-cluster</module>
         <module>thrift-sync</module>
         <module>thrift-influxdb</module>
@@ -102,7 +103,7 @@
         <module>flink-iotdb-connector</module>
         <module>distribution</module>
         <module>hive-connector</module>
-        <module>iotdb-commons</module>
+        <module>node-commons</module>
         <module>confignode</module>
         <module>cluster</module>
         <module>cross-tests</module>
@@ -169,7 +170,7 @@
         <enforcer.skip>true</enforcer.skip>
         <spotless.version>2.4.2</spotless.version>
         <httpclient.version>4.5.13</httpclient.version>
-        <httpcore.version>4.4.13</httpcore.version>
+        <httpcore.version>4.4.15</httpcore.version>
         <!-- for REST service -->
         <swagger.core.version>1.5.18</swagger.core.version>
         <servlet.api.version>2.5</servlet.api.version>
@@ -505,6 +506,16 @@
                 <version>${airline.version}</version>
             </dependency>
             <dependency>
+                <groupId>io.airlift</groupId>
+                <artifactId>slice</artifactId>
+                <version>0.41</version>
+            </dependency>
+            <dependency>
+                <groupId>org.openjdk.jol</groupId>
+                <artifactId>jol-core</artifactId>
+                <version>0.2</version>
+            </dependency>
+            <dependency>
                 <groupId>org.fusesource.mqtt-client</groupId>
                 <artifactId>mqtt-client</artifactId>
                 <version>1.12</version>
@@ -692,6 +703,8 @@
                             <exclude>.pytest_cache/**</exclude>
                             <exclude>venv/**</exclude>
                             <exclude>apache_iotdb.egg-info/**</exclude>
+                            <exclude>**/iotdb/thrift/__init__.py</exclude>
+                            <exclude>**/iotdb/thrift/rpc/__init__.py</exclude>
                             <!-- Java SPI uses files in resources/META-INF/services-->
                             <exclude>**/resources/META-INF/services/**</exclude>
                             <!-- grafana plugin -->
@@ -745,6 +758,7 @@
                         <sourceDirectory>antlr/target/generated-sources/antlr4</sourceDirectory>
                         <sourceDirectory>thrift/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>thrift-confignode/target/generated-sources/thrift</sourceDirectory>
+                        <sourceDirectory>thrift-datanode/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>thrift-sync/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>thrift-cluster/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>thrift-influxdb/target/generated-sources/thrift</sourceDirectory>
@@ -1064,7 +1078,7 @@
             </activation>
             <properties>
                 <os.classifier>windows-x86_64</os.classifier>
-                <thrift.download-url>http://artfiles.org/apache.org/thrift/${thrift.version}/thrift-${thrift.version}.exe</thrift.download-url>
+                <thrift.download-url>http://archive.apache.org/dist/thrift/${thrift.version}/thrift-${thrift.version}.exe</thrift.download-url>
                 <thrift.executable>thrift-${thrift.version}-win-x86_64.exe</thrift.executable>
                 <thrift.skip-making-executable>true</thrift.skip-making-executable>
                 <thrift.exec-cmd.executable>echo</thrift.exec-cmd.executable>
