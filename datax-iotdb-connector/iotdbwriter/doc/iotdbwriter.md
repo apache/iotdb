@@ -92,3 +92,45 @@ IOTDBWriter 通过IOTDB原生支持Session方式导入数据， IOTDBWriter会�
 
 ### 3.2 参数说明
 
+* **username**
+
+  - 描述：访问IotDB数据库的用户名
+  - 必选：是
+  - 默认值：无
+
+* **password**
+
+  - 描述：访问IotDB数据库的密码
+  - 必选：是
+  - 默认值：无
+
+* **deviceId**
+
+  - 描述：写入IotDB的设备id。
+  - 必选：是
+  - 默认值：无
+
+
+* **host**
+
+  - 描述：访问IotDB数据库的ip地址。
+  - 必选：是
+  - 默认值：无
+
+* **port**
+
+  - 描述：访问IotDB数据库的端口。
+  - 必选：是
+  - 默认值：无
+
+* **column**
+
+  - 描述：**需要写入数据**的字段，字段之间用英文逗号分隔。字段中必须包含名为**timeseries**的字段，且类型为date。字段类型为iotDB支持的写入数据类型，包含：BOOLEAN，INT32，INT64，FLOAT，DOUBLE，TEXT。例如: "column": [{ "name": "s2", "type": "int64"}]。
+  - 必选：是
+  - 默认值：否
+
+* **batchSize**
+
+  - 描述：一次写入数据的批量数目
+  - 必选：否
+  - 默认值：无

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package com.alibaba.datax.plugin.writer.iotdbwriter;
+package org.apache.iotdb.datax.writer.iotdbwriter;
 
 public class Key {
     public static final String COLUMN = "column";

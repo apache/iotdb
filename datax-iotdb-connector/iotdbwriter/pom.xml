@@ -22,14 +22,22 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <parent>
-        <artifactId>datax-all</artifactId>
-        <groupId>com.alibaba.datax</groupId>
-        <version>0.0.1-SNAPSHOT</version>
-    </parent>
-    <modelVersion>4.0.0</modelVersion>
 
+    <modelVersion>4.0.0</modelVersion>
+    <version>0.0.1-SNAPSHOT</version>
+    <groupId>com.alibaba.datax</groupId>
     <artifactId>iotdbwriter</artifactId>
+
+    <properties>
+        <datax-project-version>0.0.1-SNAPSHOT</datax-project-version>
+        <logback-classic-version>1.0.13</logback-classic-version>
+        <slf4j-api-version>1.7.10</slf4j-api-version>
+        <project-sourceEncoding>UTF-8</project-sourceEncoding>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <jdk-version>1.8</jdk-version>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>com.alibaba.datax</groupId>
@@ -45,10 +53,14 @@
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
+            <version>${slf4j-api-version}</version>
+
         </dependency>
         <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
+            <version>${logback-classic-version}</version>
+
         </dependency>
 
         <dependency>

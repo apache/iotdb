@@ -17,22 +17,19 @@
  * under the License.
  */
 
-package com.alibaba.datax.plugin.writer.iotdbwriter;
+package org.apache.iotdb.datax.writer.iotdbwriter;
 
 import com.alibaba.datax.common.element.Column;
 import com.alibaba.datax.common.element.Record;
-import com.alibaba.datax.common.exception.DataXException;
 import com.alibaba.datax.common.spi.Writer;
 
 import com.alibaba.datax.common.plugin.RecordReceiver;
 import com.alibaba.datax.common.util.Configuration;
-import com.alibaba.datax.common.util.StrUtil;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.TypeReference;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.util.Version;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -44,7 +41,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 
 public class IotDBWriter extends Writer {
     public static class Task extends com.alibaba.datax.common.spi.Writer.Task {
@@ -85,7 +81,7 @@ public class IotDBWriter extends Writer {
             deviceId = this.conf.getString(Key.DEVICE_ID);
             host = this.conf.getString(Key.HOST);
             port = this.conf.getInt(Key.PORT);
-            // 判断是否包含时间序列字段
+            // 判断是否包含时间序列字段 judge is have timeseries column
             boolean isHaveTimeSeriesColumn = false;
             for (int i = 0; i < columnList.size(); i++) {
                 if (columnList.get(i).getName().equals(Key.TIME_SERIES)) {
@@ -94,7 +90,7 @@ public class IotDBWriter extends Writer {
                 }
             }
             if (!isHaveTimeSeriesColumn) {
-                throw new IllegalArgumentException("没有时间序列字段");
+                throw new IllegalArgumentException("在writer的column配置中，没有发现命名为 timeseries 的列。 ");
             }
 
 
@@ -125,7 +121,7 @@ public class IotDBWriter extends Writer {
             // only measurementId and data type in MeasurementSchema take effects in Tablet
             List<MeasurementSchema> schemaList = new ArrayList<>();
             for (int i = 0; i < columnList.size(); i++) {
-                //  如果是时间序列字段就跳过
+                //  if column name timeseries pass
                 if (i != TimeSeriesColumnIndex) {
                     final IotDBColumn column = columnList.get(i);
                     schemaList.add(new MeasurementSchema(column.getName(), TSDataType.valueOf(column.getType().toUpperCase())));
@@ -139,7 +135,7 @@ public class IotDBWriter extends Writer {
             Record record = null;
             while ((record = recordReceiver.getFromReader()) != null) {
                 int rowIndex = tablet.rowSize++;
-                //  提取时间戳字段
+                //  get timeseries column
                 final Column timeSeriesColumn = record.getColumn(TimeSeriesColumnIndex);
                 tablet.addTimestamp(rowIndex, timeSeriesColumn.asDate().getTime());
 
@@ -147,9 +143,9 @@ public class IotDBWriter extends Writer {
                     Column column = record.getColumn(s);
                     String columnName = columnList.get(s).getName();
                     IotDBFieldType columnType = typeList.get(s);
-                    //  如果是时间序列字段就跳过 switch
+                    //  if column name timeseries pass switch
                     if (s != TimeSeriesColumnIndex) {
-                        //   根据写入的IotDBFieldType，将读取字段的内容转化
+                        //   transform column value according to writer column define
                         switch (columnType) {
                             case BOOLEAN:
                                 tablet.addValue(columnName, rowIndex, column.asBoolean());
@@ -174,7 +170,7 @@ public class IotDBWriter extends Writer {
 
                         }
                     }
-                    // todo 处理空值情况  mark null value
+                    // todo   mark null value
                     //if (row % 3 == s) {
                     //    tablet.bitMaps[s].mark((int) row);
                     //}
