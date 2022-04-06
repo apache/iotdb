@@ -107,18 +107,18 @@ public class MemManagerNodeEstimateSizeBasedImpl implements IMemManager {
      * The basic memory occupied by any MNode object
      *
      * <ol>
+     *   <li>object header, 8B
      *   <li>node attributes
      *       <ol>
-     *         <li>object header 8B
-     *         <li>name reference 8B
-     *         <li>parent reference 8B
-     *         <li>fullPath reference 8B
-     *         <li>cacheEntry reference 8B
+     *         <li>name reference, name length and name hash code, 8B
+     *         <li>parent reference, 8B
+     *         <li>fullPath reference, 8B
+     *         <li>cacheEntry reference, 8B
      *       </ol>
      *   <li>MapEntry in parent
      *       <ol>
-     *         <li>key reference 8B
-     *         <li>value reference 8B
+     *         <li>key reference, 8B
+     *         <li>value reference, 8B
      *         <li>entry size, see ConcurrentHashMap.Node, 28
      *       </ol>
      * </ol>
@@ -129,44 +129,48 @@ public class MemManagerNodeEstimateSizeBasedImpl implements IMemManager {
      * The basic extra memory occupied by an InternalMNode based on MNode occupation
      *
      * <ol>
-     *   <li>template reference 8B
-     *   <li>boolean useTemplate 1B
+     *   <li>template reference, 8B
+     *   <li>boolean useTemplate, 1B
      *   <li>MNodeContainer occupation
      *       <ol>
-     *         <li>MNodeContainer reference 8B
-     *         <li>address 8B
-     *         <li>three map reference, 1 cache and 2 buffer, 8 * 3 = 24B
-     *         <li>estimate occupation of map implementation, 50 * 3 = 150B
+     *         <li>MNodeContainer reference, 8B
+     *         <li>address, 8B
+     *         <li>three map reference (1 cache and 2 buffer), 8 * 3 = 24B
+     *         <li>estimate occupation of map implementation, 80 * 3 = 240B
      *       </ol>
      * </ol>
      */
-    private static final int INTERNAL_NODE_BASE_SIZE = 200;
+    private static final int INTERNAL_NODE_BASE_SIZE = 289;
 
-    /** dataTTL, 8B */
-    private static final int STORAGE_GROUP_NODE_BASE_SIZE = 8;
     /**
-     *
+     * The basic extra memory occupied by an StorageGroupMNode based on InternalMNode occupation
+     * dataTTL, 8B
+     */
+    private static final int STORAGE_GROUP_NODE_BASE_SIZE = 8;
+
+    /**
+     * The basic extra memory occupied by an EntityMNode based on InternalMNode occupation
      *
      * <ol>
-     *   <li>isAligned 1B
-     *   <li>aliasChildren, reference 8B
+     *   <li>isAligned, 1B
+     *   <li>aliasChildren reference, 8B
      *   <li>lastCacheMap, 8B
      * </ol>
      */
     private static final int ENTITY_NODE_BASE_SIZE = 17;
 
     /**
-     *
+     * The basic extra memory occupied by an MeasurementMNode based on MNode occupation
      *
      * <ol>
      *   <li>alias reference, 8B
      *   <li>tagOffset, 8B
-     *   <li>schema, 32B
-     *   <li>lastCache, 16B
+     *   <li>estimated schema size, 32B
+     *   <li>lastCache, 8B
      *   <li>trigger, 8B
      * </ol>
      */
-    private static final int MEASUREMENT_NODE_BASE_SIZE = 116;
+    private static final int MEASUREMENT_NODE_BASE_SIZE = 64;
     // alias occupation in aliasMap, 44B
     private static final int ALIAS_OCCUPATION = 44;
 
@@ -179,6 +183,7 @@ public class MemManagerNodeEstimateSizeBasedImpl implements IMemManager {
           size += ALIAS_OCCUPATION + getStringSize(measurementMNode.getAlias());
         }
       } else {
+        size += INTERNAL_NODE_BASE_SIZE;
         if (node.isStorageGroup()) {
           size += STORAGE_GROUP_NODE_BASE_SIZE;
           size += getStringSize(node.getAsStorageGroupMNode().getFullPath());
@@ -194,7 +199,7 @@ public class MemManagerNodeEstimateSizeBasedImpl implements IMemManager {
 
     private int getStringSize(String string) {
       // string value size + hashcode + length
-      return string.length() + 4 + 4;
+      return string.length() + 8;
     }
   }
 }

@@ -19,8 +19,8 @@
 package org.apache.iotdb.db.metadata.mtree.store.disk;
 
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.IMNodeContainer;
-import org.apache.iotdb.db.metadata.mnode.MNodeContainers;
+import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
+import org.apache.iotdb.db.metadata.mnode.container.MNodeContainers;
 
 import java.util.Iterator;
 import java.util.Map;

@@ -16,11 +16,33 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.mnode;
+
+package org.apache.iotdb.db.metadata.mnode.iterator;
+
+import org.apache.iotdb.db.metadata.mnode.IMNode;
 
 import java.util.Iterator;
 
-public interface IMNodeIterator extends Iterator<IMNode> {
+public class MemMNodeIterator implements IMNodeIterator {
 
-  void close();
+  private Iterator<IMNode> iterator;
+
+  public MemMNodeIterator(Iterator<IMNode> iterator) {
+    this.iterator = iterator;
+  }
+
+  @Override
+  public boolean hasNext() {
+    return iterator.hasNext();
+  }
+
+  @Override
+  public IMNode next() {
+    return iterator.next();
+  }
+
+  @Override
+  public void close() {
+    iterator = null;
+  }
 }

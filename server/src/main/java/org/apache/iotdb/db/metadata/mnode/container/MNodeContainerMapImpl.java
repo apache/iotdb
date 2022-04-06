@@ -16,31 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.metadata.mnode.container;
 
-package org.apache.iotdb.db.metadata.mnode;
+import org.apache.iotdb.db.metadata.mnode.IMNode;
 
-import java.util.Iterator;
+import java.util.concurrent.ConcurrentHashMap;
 
-public class MemMNodeIterator implements IMNodeIterator {
-
-  private Iterator<IMNode> iterator;
-
-  public MemMNodeIterator(Iterator<IMNode> iterator) {
-    this.iterator = iterator;
-  }
-
-  @Override
-  public boolean hasNext() {
-    return iterator.hasNext();
-  }
-
-  @Override
-  public IMNode next() {
-    return iterator.next();
-  }
-
-  @Override
-  public void close() {
-    iterator = null;
-  }
-}
+public class MNodeContainerMapImpl extends ConcurrentHashMap<String, IMNode>
+    implements IMNodeContainer {}

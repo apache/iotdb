@@ -20,8 +20,8 @@ package org.apache.iotdb.db.metadata.mtree.store;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.IMNodeIterator;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
+import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
 
 /**
  * This interface defines the basic access methods of an MTreeStore.

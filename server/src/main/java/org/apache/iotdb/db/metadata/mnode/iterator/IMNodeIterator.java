@@ -16,8 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.mnode;
+package org.apache.iotdb.db.metadata.mnode.iterator;
 
-import java.util.Map;
+import org.apache.iotdb.db.metadata.mnode.IMNode;
 
-public interface IMNodeContainer extends Map<String, IMNode> {}
+import java.util.Iterator;
+
+public interface IMNodeIterator extends Iterator<IMNode> {
+
+  void close();
+}

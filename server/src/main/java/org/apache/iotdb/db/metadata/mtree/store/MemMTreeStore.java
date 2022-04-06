@@ -21,11 +21,11 @@ package org.apache.iotdb.db.metadata.mtree.store;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.IMNodeIterator;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
-import org.apache.iotdb.db.metadata.mnode.MemMNodeIterator;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
+import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
+import org.apache.iotdb.db.metadata.mnode.iterator.MemMNodeIterator;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 
 /** This is a memory-based implementation of IMTreeStore. All MNodes are stored in memory. */

@@ -16,9 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.mnode;
+package org.apache.iotdb.db.metadata.mnode.container;
 
-import java.util.concurrent.ConcurrentHashMap;
+import org.apache.iotdb.db.metadata.mnode.IMNode;
 
-public class MNodeContainerMapImpl extends ConcurrentHashMap<String, IMNode>
-    implements IMNodeContainer {}
+import java.util.Map;
+
+public interface IMNodeContainer extends Map<String, IMNode> {}
