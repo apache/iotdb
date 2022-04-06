@@ -145,7 +145,37 @@ public class AuthorNode extends PlanNode {
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {}
+  public void serialize(ByteBuffer buffer) {
+    buffer.putInt(getPlanType(authorType));
+    buffer.putInt(userName.length());
+    buffer.put(userName.getBytes());
+    buffer.putInt(roleName.length());
+    buffer.put(roleName.getBytes());
+    buffer.putInt(password.length());
+    buffer.put(password.getBytes());
+    buffer.putInt(newPassword.length());
+    buffer.put(newPassword.getBytes());
+    if (permissions == null && permissions.size() == 0) {
+      buffer.put("false".getBytes());
+    } else {
+      buffer.put("true".getBytes());
+      buffer.putInt(permissions.size());
+      for (Integer permission : permissions) {
+        buffer.putInt(permission);
+      }
+    }
+    if (nodeName == null && nodeName.equals("")) {
+      buffer.put("false".getBytes());
+    } else {
+      buffer.put("true".getBytes());
+      buffer.putInt(nodeName.getFullPath().length());
+      buffer.put(nodeName.getFullPath().getBytes());
+    }
+  }
+
+  public static AuthorNode deserialize(ByteBuffer buffer) {
+    return null;
+  }
 
   public Set<Integer> strToPermissions(String[] authorizationList) throws AuthException {
     Set<Integer> result = new HashSet<>();
@@ -167,5 +197,72 @@ public class AuthorNode extends PlanNode {
       }
     }
     return result;
+  }
+
+  private static String getAuthorInfo(ByteBuffer buffer) {
+    int infoSize = buffer.getInt();
+    byte[] byteInfo = new byte[infoSize];
+    buffer.get(byteInfo, 0, infoSize);
+    return new String(byteInfo, 0, infoSize);
+  }
+
+  private int getPlanType(AuthorStatement.AuthorType physicalPlanType) {
+    int type;
+    switch (physicalPlanType) {
+      case CREATE_USER:
+        type = AuthorStatement.AuthorType.CREATE_USER.ordinal();
+        break;
+      case CREATE_ROLE:
+        type = AuthorStatement.AuthorType.CREATE_ROLE.ordinal();
+        break;
+      case DROP_USER:
+        type = AuthorStatement.AuthorType.DROP_USER.ordinal();
+        break;
+      case DROP_ROLE:
+        type = AuthorStatement.AuthorType.DROP_ROLE.ordinal();
+        break;
+      case GRANT_ROLE:
+        type = AuthorStatement.AuthorType.GRANT_ROLE.ordinal();
+        break;
+      case GRANT_USER:
+        type = AuthorStatement.AuthorType.GRANT_USER.ordinal();
+        break;
+      case GRANT_ROLE_TO_USER:
+        type = AuthorStatement.AuthorType.GRANT_ROLE_TO_USER.ordinal();
+        break;
+      case REVOKE_USER:
+        type = AuthorStatement.AuthorType.REVOKE_USER.ordinal();
+        break;
+      case REVOKE_ROLE:
+        type = AuthorStatement.AuthorType.REVOKE_ROLE.ordinal();
+        break;
+      case REVOKE_ROLE_FROM_USER:
+        type = AuthorStatement.AuthorType.REVOKE_ROLE_FROM_USER.ordinal();
+        break;
+      case UPDATE_USER:
+        type = AuthorStatement.AuthorType.UPDATE_USER.ordinal();
+        break;
+      case LIST_USER:
+        type = AuthorStatement.AuthorType.LIST_USER.ordinal();
+        break;
+      case LIST_ROLE:
+        type = AuthorStatement.AuthorType.LIST_ROLE.ordinal();
+        break;
+      case LIST_USER_PRIVILEGE:
+        type = AuthorStatement.AuthorType.LIST_USER_PRIVILEGE.ordinal();
+        break;
+      case LIST_ROLE_PRIVILEGE:
+        type = AuthorStatement.AuthorType.LIST_ROLE_PRIVILEGE.ordinal();
+        break;
+      case LIST_USER_ROLES:
+        type = AuthorStatement.AuthorType.LIST_USER_ROLES.ordinal();
+        break;
+      case LIST_ROLE_USERS:
+        type = AuthorStatement.AuthorType.LIST_ROLE_USERS.ordinal();
+        break;
+      default:
+        throw new IllegalArgumentException("Unknown operator: " + physicalPlanType);
+    }
+    return type;
   }
 }
