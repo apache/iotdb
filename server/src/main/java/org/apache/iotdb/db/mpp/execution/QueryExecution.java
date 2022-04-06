@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.mpp.execution;
 
-import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.iotdb.db.mpp.buffer.ISourceHandle;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.execution.scheduler.ClusterScheduler;
@@ -34,6 +33,7 @@ import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 
 import java.nio.ByteBuffer;
@@ -79,8 +79,8 @@ public class QueryExecution {
     this.analysis = analyze(statement, context);
     this.stateMachine = new QueryStateMachine(context.getQueryId(), executor);
 
-    //TODO: (xingtanzjr) Initialize the result handle after the DataBlockManager is merged.
-//    resultHandle = xxxx
+    // TODO: (xingtanzjr) Initialize the result handle after the DataBlockManager is merged.
+    //    resultHandle = xxxx
 
     // We add the abort logic inside the QueryExecution.
     // So that the other components can only focus on the state change.
