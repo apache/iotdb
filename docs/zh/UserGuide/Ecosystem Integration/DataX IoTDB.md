@@ -1,6 +1,6 @@
 # DataX IoTDB
 
-[DataX](https://github.com/alibaba/DataX) iotdbwriter 插件，用于通过 DataX 同步其他数据源的数据到 Doris 中。
+[DataX](https://github.com/alibaba/DataX) iotdbwriter 插件，用于通过 DataX 同步其他数据源的数据到 IoTDB 中。
 
 这个插件是利用IotDB session功能进行数据导入的。需要配合 DataX 服务一起使用。
 
