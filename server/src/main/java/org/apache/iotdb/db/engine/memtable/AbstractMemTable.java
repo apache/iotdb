@@ -389,7 +389,7 @@ public abstract class AbstractMemTable implements IMemTable {
     }
 
     List<IMeasurementSchema> schemaList = new ArrayList<>();
-    for (int i = 0; i < insertTabletNode.getMeasurements().length; i++) {
+    for (int i = 0; i < insertTabletNode.getMeasurementSchemas().length; i++) {
       if (insertTabletNode.getColumns()[i] == null) {
         continue;
       }
@@ -445,7 +445,7 @@ public abstract class AbstractMemTable implements IMemTable {
     }
 
     List<IMeasurementSchema> schemaList = new ArrayList<>();
-    for (int i = 0; i < insertTabletNode.getMeasurements().length; i++) {
+    for (int i = 0; i < insertTabletNode.getMeasurementSchemas().length; i++) {
       if (insertTabletNode.getColumns()[i] == null) {
         continue;
       }

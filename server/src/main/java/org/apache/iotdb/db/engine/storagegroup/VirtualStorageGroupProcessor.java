@@ -1134,44 +1134,20 @@ public class VirtualStorageGroupProcessor {
       boolean isSequence = false;
       while (loc < insertTabletNode.getRowCount()) {
         long time = insertTabletNode.getTimes()[loc];
-        long curTimePartition = StorageEngine.getTimePartition(time);
-        // start next partition
-        if (curTimePartition != beforeTimePartition) {
-          // insert last time partition
-          if (isSequence
-              || !IoTDBDescriptor.getInstance().getConfig().isEnableDiscardOutOfOrderData()) {
+        // always in some time partition
+        // judge if we should insert sequence
+        if (!isSequence && time > lastFlushTime) {
+          // insert into unsequence and then start sequence
+          if (!IoTDBDescriptor.getInstance().getConfig().isEnableDiscardOutOfOrderData()) {
             noFailure =
                 insertTabletToTsFileProcessor(
-                        insertTabletNode, before, loc, isSequence, results, beforeTimePartition)
+                        insertTabletNode, before, loc, false, results, beforeTimePartition)
                     && noFailure;
           }
-          // re initialize
           before = loc;
-          beforeTimePartition = curTimePartition;
-          lastFlushTime =
-              lastFlushTimeManager.ensureFlushedTimePartitionAndInit(
-                  beforeTimePartition,
-                  insertTabletNode.getDevicePath().getFullPath(),
-                  Long.MIN_VALUE);
-
-          isSequence = false;
+          isSequence = true;
         }
-        // still in this partition
-        else {
-          // judge if we should insert sequence
-          if (!isSequence && time > lastFlushTime) {
-            // insert into unsequence and then start sequence
-            if (!IoTDBDescriptor.getInstance().getConfig().isEnableDiscardOutOfOrderData()) {
-              noFailure =
-                  insertTabletToTsFileProcessor(
-                          insertTabletNode, before, loc, false, results, beforeTimePartition)
-                      && noFailure;
-            }
-            before = loc;
-            isSequence = true;
-          }
-          loc++;
-        }
+        loc++;
       }
 
       // do not forget last part

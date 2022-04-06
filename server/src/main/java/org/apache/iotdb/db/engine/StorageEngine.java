@@ -121,7 +121,7 @@ public class StorageEngine implements IService {
   private final ConcurrentHashMap<PartialPath, StorageGroupManager> processorMap =
       new ConcurrentHashMap<>();
 
-  /** ConsensusGroupId -> DataRegion */
+  /** DataRegionId -> DataRegion */
   private final ConcurrentHashMap<ConsensusGroupId, VirtualStorageGroupProcessor> dataRegionMap =
       new ConcurrentHashMap<>();
 
