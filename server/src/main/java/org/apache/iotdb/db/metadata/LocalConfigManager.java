@@ -260,6 +260,10 @@ public class LocalConfigManager {
     deleteSchemaRegionsInStorageGroup(
         storageGroup, partitionTable.deleteStorageGroup(storageGroup));
 
+    for (Template template : templateManager.getTemplateMap().values()) {
+      templateManager.unmarkStorageGroup(template, storageGroup.getFullPath());
+    }
+
     if (!config.isEnableMemControl()) {
       MemTableManager.getInstance().addOrDeleteStorageGroup(-1);
     }
