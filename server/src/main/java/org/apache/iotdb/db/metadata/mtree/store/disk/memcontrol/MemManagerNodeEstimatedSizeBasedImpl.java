@@ -25,7 +25,7 @@ import org.apache.iotdb.db.metadata.rescon.MemoryStatistics;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class MemManagerNodeEstimateSizeBasedImpl implements IMemManager {
+public class MemManagerNodeEstimatedSizeBasedImpl implements IMemManager {
 
   private static final double THRESHOLD_RATIO = 0.6;
 
@@ -70,14 +70,16 @@ public class MemManagerNodeEstimateSizeBasedImpl implements IMemManager {
 
   @Override
   public void upgradeMemResource(IMNode node) {
-    pinnedSize.getAndUpdate(v -> v += estimator.estimateSize(node));
-    size.getAndUpdate(v -> v -= estimator.estimateSize(node));
+    int size = estimator.estimateSize(node);
+    pinnedSize.getAndUpdate(v -> v += size);
+    this.size.getAndUpdate(v -> v -= size);
   }
 
   @Override
   public void releasePinnedMemResource(IMNode node) {
-    size.getAndUpdate(v -> v += estimator.estimateSize(node));
-    pinnedSize.getAndUpdate(v -> v -= estimator.estimateSize(node));
+    int size = estimator.estimateSize(node);
+    this.size.getAndUpdate(v -> v += size);
+    pinnedSize.getAndUpdate(v -> v -= size);
   }
 
   @Override
@@ -89,9 +91,23 @@ public class MemManagerNodeEstimateSizeBasedImpl implements IMemManager {
 
   @Override
   public void releaseMemResource(List<IMNode> evictedNodes) {
+    int size = 0;
     for (IMNode node : evictedNodes) {
-      releaseMemResource(node);
+      size += estimator.estimateSize(node);
     }
+    int finalSize = size;
+    this.size.getAndUpdate(v -> v -= finalSize);
+    memoryStatistics.releaseMemory(size);
+  }
+
+  @Override
+  public void updatePinnedSize(int deltaSize) {
+    if (deltaSize > 0) {
+      memoryStatistics.requestMemory(deltaSize);
+    } else {
+      memoryStatistics.releaseMemory(deltaSize);
+    }
+    pinnedSize.getAndUpdate(v -> v += deltaSize);
   }
 
   @Override
@@ -101,12 +117,12 @@ public class MemManagerNodeEstimateSizeBasedImpl implements IMemManager {
   }
 
   @Override
-  public double getPinnedSize() {
+  public long getPinnedSize() {
     return pinnedSize.get();
   }
 
   @Override
-  public double getCachedSize() {
+  public long getCachedSize() {
     return size.get();
   }
 }

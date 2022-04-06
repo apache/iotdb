@@ -181,7 +181,7 @@ public class SchemaRegion {
     storageGroupFullPath = storageGroup.getFullPath();
     this.schemaRegionId = schemaRegionId;
 
-    int cacheSize = config.getSchemaRegionCacheSize();
+    int cacheSize = config.getSchemaRegionDeviceNodeCacheSize();
     mNodeCache =
         Caffeine.newBuilder()
             .maximumSize(cacheSize)

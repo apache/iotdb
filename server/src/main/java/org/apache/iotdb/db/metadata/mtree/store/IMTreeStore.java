@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.metadata.mtree.store;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
@@ -45,6 +46,10 @@ public interface IMTreeStore {
   void updateStorageGroupMNode(IStorageGroupMNode node) throws MetadataException;
 
   void updateMNode(IMNode node);
+
+  IEntityMNode setToEntity(IMNode node);
+
+  IMNode setToInternal(IEntityMNode entityMNode);
 
   void pin(IMNode node) throws MetadataException;
 

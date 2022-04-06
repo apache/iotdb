@@ -82,18 +82,23 @@ public class MemManagerNodeNumBasedImpl implements IMemManager {
   }
 
   @Override
+  public void updatePinnedSize(int deltaSize) {
+    // do nothing
+  }
+
+  @Override
   public void clear() {
     size.getAndSet(0);
     pinnedSize.getAndSet(0);
   }
 
   @Override
-  public double getPinnedSize() {
+  public long getPinnedSize() {
     return pinnedSize.get();
   }
 
   @Override
-  public double getCachedSize() {
+  public long getCachedSize() {
     return size.get();
   }
 }

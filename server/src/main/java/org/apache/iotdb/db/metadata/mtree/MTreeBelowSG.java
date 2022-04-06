@@ -36,7 +36,6 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
-import org.apache.iotdb.db.metadata.mnode.MNodeUtils;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
 import org.apache.iotdb.db.metadata.mtree.store.CachedMTreeStore;
@@ -233,7 +232,7 @@ public class MTreeBelowSG implements Serializable {
         if (device.isEntity()) {
           entityMNode = device.getAsEntityMNode();
         } else {
-          entityMNode = MNodeUtils.setToEntity(device);
+          entityMNode = store.setToEntity(device);
           if (entityMNode.isStorageGroup()) {
             this.storageGroupMNode = entityMNode.getAsStorageGroupMNode();
             store.updateStorageGroupMNode(storageGroupMNode);
@@ -322,7 +321,7 @@ public class MTreeBelowSG implements Serializable {
       if (device.isEntity()) {
         entityMNode = device.getAsEntityMNode();
       } else {
-        entityMNode = MNodeUtils.setToEntity(device);
+        entityMNode = store.setToEntity(device);
         entityMNode.setAligned(true);
         if (entityMNode.isStorageGroup()) {
           this.storageGroupMNode = entityMNode.getAsStorageGroupMNode();
@@ -433,7 +432,7 @@ public class MTreeBelowSG implements Serializable {
 
       if (!hasMeasurement) {
         synchronized (this) {
-          curNode = MNodeUtils.setToInternal(parent);
+          curNode = store.setToInternal(parent);
           if (curNode.isStorageGroup()) {
             this.storageGroupMNode = curNode.getAsStorageGroupMNode();
             store.updateStorageGroupMNode(storageGroupMNode);
@@ -508,7 +507,7 @@ public class MTreeBelowSG implements Serializable {
     // synchronize check and replace, we need replaceChild become atomic operation
     // only write on mtree will be synchronized
     synchronized (this) {
-      IEntityMNode entityMNode = MNodeUtils.setToEntity(node);
+      IEntityMNode entityMNode = store.setToEntity(node);
       if (entityMNode.isStorageGroup()) {
         this.storageGroupMNode = entityMNode.getAsStorageGroupMNode();
         store.updateStorageGroupMNode(entityMNode.getAsStorageGroupMNode());

@@ -455,7 +455,7 @@ public class IoTDBConfig {
   private boolean enableMonitorSeriesWrite = false;
 
   /** Cache size of {@code checkAndGetDataTypeCache} in {@link LocalSchemaProcessor}. */
-  private int schemaRegionCacheSize = 10000;
+  private int schemaRegionDeviceNodeCacheSize = 10000;
 
   /** Cache size of {@code checkAndGetDataTypeCache} in {@link LocalSchemaProcessor}. */
   private int mRemoteSchemaCacheSize = 100000;
@@ -1282,12 +1282,12 @@ public class IoTDBConfig {
     this.rpcMaxConcurrentClientNum = rpcMaxConcurrentClientNum;
   }
 
-  public int getSchemaRegionCacheSize() {
-    return schemaRegionCacheSize;
+  public int getSchemaRegionDeviceNodeCacheSize() {
+    return schemaRegionDeviceNodeCacheSize;
   }
 
-  void setSchemaRegionCacheSize(int schemaRegionCacheSize) {
-    this.schemaRegionCacheSize = schemaRegionCacheSize;
+  void setSchemaRegionDeviceNodeCacheSize(int schemaRegionDeviceNodeCacheSize) {
+    this.schemaRegionDeviceNodeCacheSize = schemaRegionDeviceNodeCacheSize;
   }
 
   public int getmRemoteSchemaCacheSize() {
@@ -1504,7 +1504,7 @@ public class IoTDBConfig {
     return allocateMemoryForSchema;
   }
 
-  void setAllocateMemoryForSchema(long allocateMemoryForSchema) {
+  public void setAllocateMemoryForSchema(long allocateMemoryForSchema) {
     this.allocateMemoryForSchema = allocateMemoryForSchema;
   }
 

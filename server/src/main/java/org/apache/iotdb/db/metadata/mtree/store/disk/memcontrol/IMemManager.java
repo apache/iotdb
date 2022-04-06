@@ -42,9 +42,11 @@ public interface IMemManager {
 
   void releaseMemResource(List<IMNode> evictedNodes);
 
+  void updatePinnedSize(int deltaSize);
+
   void clear();
 
-  double getPinnedSize();
+  long getPinnedSize();
 
-  double getCachedSize();
+  long getCachedSize();
 }

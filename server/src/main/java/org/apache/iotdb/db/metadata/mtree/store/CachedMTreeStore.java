@@ -24,6 +24,8 @@ import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
+import org.apache.iotdb.db.metadata.mnode.MNodeUtils;
+import org.apache.iotdb.db.metadata.mnode.estimator.IMNodeSizeEstimator;
 import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
 import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
 import org.apache.iotdb.db.metadata.mtree.store.disk.MTreeFlushTaskManager;
@@ -258,6 +260,24 @@ public class CachedMTreeStore implements IMTreeStore {
     } finally {
       readLock.unlock();
     }
+  }
+
+  @Override
+  public IEntityMNode setToEntity(IMNode node) {
+    IEntityMNode result = MNodeUtils.setToEntity(node);
+    if (result != node) {
+      memManager.updatePinnedSize(IMNodeSizeEstimator.getEntityNodeBaseSize());
+    }
+    return result;
+  }
+
+  @Override
+  public IMNode setToInternal(IEntityMNode entityMNode) {
+    IMNode result = MNodeUtils.setToInternal(entityMNode);
+    if (result != entityMNode) {
+      memManager.updatePinnedSize(-IMNodeSizeEstimator.getEntityNodeBaseSize());
+    }
+    return result;
   }
 
   /**

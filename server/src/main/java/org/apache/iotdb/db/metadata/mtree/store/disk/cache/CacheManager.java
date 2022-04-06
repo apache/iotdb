@@ -69,8 +69,7 @@ public abstract class CacheManager implements ICacheManager {
   private NodeBuffer nodeBuffer = new NodeBuffer();
 
   public void initRootStatus(IMNode root) {
-    initCacheEntryForNode(root);
-    doPin(root);
+    pinMNodeWithMemStatusUpdate(root);
   }
 
   /**
@@ -441,7 +440,7 @@ public abstract class CacheManager implements ICacheManager {
         if (cacheEntry.isPinned()) {
           break;
         }
-        memManager.releasePinnedMemResource(parent);
+        memManager.releasePinnedMemResource(node);
       }
       return true;
     } else {

@@ -20,9 +20,11 @@ package org.apache.iotdb.db.metadata.mtree.store;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
+import org.apache.iotdb.db.metadata.mnode.MNodeUtils;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.estimator.BasicMNodSizeEstimator;
 import org.apache.iotdb.db.metadata.mnode.estimator.IMNodeSizeEstimator;
@@ -90,6 +92,24 @@ public class MemMTreeStore implements IMTreeStore {
 
   @Override
   public void updateMNode(IMNode node) {}
+
+  @Override
+  public IEntityMNode setToEntity(IMNode node) {
+    IEntityMNode result = MNodeUtils.setToEntity(node);
+    if (result != node) {
+      MemoryStatistics.getInstance().requestMemory(IMNodeSizeEstimator.getEntityNodeBaseSize());
+    }
+    return result;
+  }
+
+  @Override
+  public IMNode setToInternal(IEntityMNode entityMNode) {
+    IMNode result = MNodeUtils.setToInternal(entityMNode);
+    if (result != entityMNode) {
+      MemoryStatistics.getInstance().releaseMemory(IMNodeSizeEstimator.getEntityNodeBaseSize());
+    }
+    return result;
+  }
 
   @Override
   public void pin(IMNode node) {}

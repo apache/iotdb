@@ -454,11 +454,12 @@ public class IoTDBDescriptor {
                   "raw_query_blocking_queue_capacity",
                   Integer.toString(conf.getRawQueryBlockingQueueCapacity()))));
 
-      conf.setSchemaRegionCacheSize(
+      conf.setSchemaRegionDeviceNodeCacheSize(
           Integer.parseInt(
               properties
                   .getProperty(
-                      "metadata_node_cache_size", Integer.toString(conf.getSchemaRegionCacheSize()))
+                      "schema_region_device_node_cache_size",
+                      Integer.toString(conf.getSchemaRegionDeviceNodeCacheSize()))
                   .trim()));
 
       conf.setmRemoteSchemaCacheSize(
