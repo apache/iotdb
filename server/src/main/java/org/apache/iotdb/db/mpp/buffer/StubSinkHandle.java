@@ -22,6 +22,7 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -34,22 +35,38 @@ public class StubSinkHandle implements ISinkHandle {
   private final List<TsBlock> tsBlocks = new ArrayList<>();
 
   @Override
+  public long getBufferRetainedSizeInBytes() {
+    return 0;
+  }
+
+  @Override
+  public int getNumOfBufferedTsBlocks() {
+    return 0;
+  }
+
+  @Override
   public ListenableFuture<Void> isFull() {
     return NOT_BLOCKED;
   }
 
   @Override
-  public void send(TsBlock tsBlock) {
-    tsBlocks.add(tsBlock);
-  }
+  public void send(List<TsBlock> tsBlocks) throws IOException {}
 
   @Override
-  public void send(int partition, TsBlock tsBlock) {
-    tsBlocks.add(tsBlock);
-  }
+  public void send(int partition, List<TsBlock> tsBlocks) throws IOException {}
 
   @Override
   public void setNoMoreTsBlocks() {}
+
+  @Override
+  public boolean isClosed() {
+    return false;
+  }
+
+  @Override
+  public boolean isFinished() {
+    return false;
+  }
 
   @Override
   public void close() {
