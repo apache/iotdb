@@ -596,8 +596,6 @@ public class LocalConfigManager {
   public List<ISchemaRegion> getSchemaRegionsByStorageGroup(PartialPath storageGroup)
       throws MetadataException {
     List<ISchemaRegion> result = new ArrayList<>();
-    for (SchemaRegionId schemaRegionId :
-    List<SchemaRegion> result = new ArrayList<>();
     for (ConsensusGroupId schemaRegionId :
         partitionTable.getSchemaRegionIdsByStorageGroup(storageGroup)) {
       result.add(schemaEngine.getSchemaRegion(schemaRegionId));

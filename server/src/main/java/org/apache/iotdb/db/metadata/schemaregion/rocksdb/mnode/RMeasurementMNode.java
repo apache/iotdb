@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode;
 
 import org.apache.iotdb.db.engine.trigger.executor.TriggerExecutor;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.lastCache.container.ILastCacheContainer;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
@@ -33,6 +34,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
+import org.rocksdb.RocksDBException;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -55,6 +58,19 @@ public class RMeasurementMNode extends RMNode implements IMeasurementMNode {
    */
   public RMeasurementMNode(String fullPath, RSchemaReadWriteHandler readWriteHandler) {
     super(fullPath, readWriteHandler);
+  }
+
+  @Override
+  void updateChildNode(String childName, int childNameMaxLevel) throws MetadataException {
+    String innerName =
+        RSchemaUtils.convertPartialPathToInner(
+            childName, childNameMaxLevel, RMNodeType.MEASUREMENT.getValue());
+    // todo all existing attributes of the measurementNode need to be written
+    try {
+      readWriteHandler.updateNode(innerName.getBytes(), new byte[] {});
+    } catch (RocksDBException e) {
+      throw new MetadataException(e);
+    }
   }
 
   public RMeasurementMNode(

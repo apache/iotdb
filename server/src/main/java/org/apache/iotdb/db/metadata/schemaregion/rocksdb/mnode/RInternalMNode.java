@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode;
 
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaReadWriteHandler;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaUtils;
@@ -45,6 +45,18 @@ public class RInternalMNode extends RMNode {
    */
   public RInternalMNode(String fullPath, RSchemaReadWriteHandler readWriteHandler) {
     super(fullPath, readWriteHandler);
+  }
+
+  @Override
+  void updateChildNode(String childName, int childNameMaxLevel) throws MetadataException {
+    String innerName =
+        RSchemaUtils.convertPartialPathToInner(
+            childName, childNameMaxLevel, RMNodeType.INTERNAL.getValue());
+    try {
+      readWriteHandler.updateNode(innerName.getBytes(), new byte[] {});
+    } catch (RocksDBException e) {
+      throw new MetadataException(e);
+    }
   }
 
   /** check whether the MNode has a child with the name */
@@ -75,31 +87,12 @@ public class RInternalMNode extends RMNode {
     String childName = fullPath.concat(RSchemaConstants.PATH_SEPARATOR).concat(name);
     int childNameMaxLevel = RSchemaUtils.getLevelByPartialPath(childName);
     try {
-      if (child instanceof RStorageGroupMNode) {
-        String innerName =
-            RSchemaUtils.convertPartialPathToInner(
-                childName, childNameMaxLevel, RMNodeType.STORAGE_GROUP.getValue());
-        long ttl = ((RStorageGroupMNode) child).getDataTTL();
-        readWriteHandler.updateNode(
-            innerName.getBytes(), RSchemaUtils.updateTTL(RSchemaConstants.DEFAULT_NODE_VALUE, ttl));
-      } else if (child instanceof REntityMNode) {
-        String innerName =
-            RSchemaUtils.convertPartialPathToInner(
-                childName, childNameMaxLevel, RMNodeType.ENTITY.getValue());
-        readWriteHandler.updateNode(innerName.getBytes(), new byte[] {});
-      } else if (child instanceof RInternalMNode) {
-        String innerName =
-            RSchemaUtils.convertPartialPathToInner(
-                childName, childNameMaxLevel, RMNodeType.INTERNAL.getValue());
-        readWriteHandler.updateNode(innerName.getBytes(), new byte[] {});
-      } else if (child instanceof RMeasurementMNode) {
-        String innerName =
-            RSchemaUtils.convertPartialPathToInner(
-                childName, childNameMaxLevel, RMNodeType.MEASUREMENT.getValue());
-        // todo all existing attributes of the measurementNode need to be written
-        readWriteHandler.updateNode(innerName.getBytes(), new byte[] {});
+      if (child instanceof RMNode) {
+        ((RMNode) child).updateChildNode(childName, childNameMaxLevel);
+      } else {
+        logger.error("Rocksdb-based is currently used, but the node type received is not RMNode!");
       }
-    } catch (RocksDBException e) {
+    } catch (MetadataException e) {
       logger.error(e.getMessage());
     }
     return child;
@@ -150,36 +143,11 @@ public class RInternalMNode extends RMNode {
    */
   @Override
   public void replaceChild(String oldChildName, IMNode newChildNode) {
-    IMNode oldChildNode = this.getChild(oldChildName);
-    if (oldChildNode == null) {
-      return;
+    if (!oldChildName.equals(newChildNode.getName())) {
+      throw new RuntimeException("New child's name must be the same as old child's name!");
     }
-
-    // newChildNode builds parent-child relationship
-    Map<String, IMNode> grandChildren = oldChildNode.getChildren();
-    if (!grandChildren.isEmpty()) {
-      newChildNode.setChildren(grandChildren);
-      grandChildren.forEach(
-          (grandChildName, grandChildNode) -> grandChildNode.setParent(newChildNode));
-    }
-
-    if (newChildNode.isEntity() && oldChildNode.isEntity()) {
-      Map<String, IMeasurementMNode> grandAliasChildren =
-          oldChildNode.getAsEntityMNode().getAliasChildren();
-      if (!grandAliasChildren.isEmpty()) {
-        newChildNode.getAsEntityMNode().setAliasChildren(grandAliasChildren);
-        grandAliasChildren.forEach(
-            (grandAliasChildName, grandAliasChild) -> grandAliasChild.setParent(newChildNode));
-      }
-      newChildNode.getAsEntityMNode().setUseTemplate(oldChildNode.isUseTemplate());
-    }
-
-    newChildNode.setSchemaTemplate(oldChildNode.getSchemaTemplate());
-
-    newChildNode.setParent(this);
-
-    this.deleteChild(oldChildName);
-    this.addChild(newChildNode.getName(), newChildNode);
+    deleteChild(oldChildName);
+    addChild(newChildNode);
   }
 
   @Override

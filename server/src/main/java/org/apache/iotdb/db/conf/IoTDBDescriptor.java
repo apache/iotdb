@@ -1466,7 +1466,7 @@ public class IoTDBDescriptor {
 
   private void loadMetadataConfig(Properties properties) {
     conf.setMetadataManagerType(
-        properties.getProperty("meta_data_manager", conf.getMetadataManagerType().name()));
+        properties.getProperty("schema_engine_type", conf.getMetadataManagerType().name()));
   }
 
   public void loadClusterProps(Properties properties) {

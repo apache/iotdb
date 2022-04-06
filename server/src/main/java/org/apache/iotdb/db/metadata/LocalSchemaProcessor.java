@@ -564,7 +564,8 @@ public class LocalSchemaProcessor {
     Set<PartialPath> result = new TreeSet<>(pair.left);
     for (PartialPath storageGroup : pair.right) {
       for (ISchemaRegion schemaRegion : getSchemaRegionsByStorageGroup(storageGroup)) {
-        result.addAll(schemaRegion.getNodesListInGivenLevel(pathPattern, nodeLevel, isPrefixMatch,filter));
+        result.addAll(
+            schemaRegion.getNodesListInGivenLevel(pathPattern, nodeLevel, isPrefixMatch, filter));
       }
     }
     return new ArrayList<>(result);

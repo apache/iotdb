@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.metadata.schemaregion.rocksdb;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.partition.SchemaRegionId;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -151,7 +151,7 @@ public class RSchemaRegion implements ISchemaRegion {
 
   private String schemaRegionDirPath;
   private String storageGroupFullPath;
-  private SchemaRegionId schemaRegionId;
+  private ConsensusGroupId schemaRegionId;
   private IStorageGroupMNode storageGroupMNode;
   private int storageGroupPathLevel;
 
@@ -165,7 +165,9 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   public RSchemaRegion(
-      PartialPath storageGroup, SchemaRegionId schemaRegionId, IStorageGroupMNode storageGroupMNode)
+      PartialPath storageGroup,
+      ConsensusGroupId schemaRegionId,
+      IStorageGroupMNode storageGroupMNode)
       throws MetadataException {
     this.schemaRegionId = schemaRegionId;
     storageGroupFullPath = storageGroup.getFullPath();
@@ -186,7 +188,7 @@ public class RSchemaRegion implements ISchemaRegion {
             + File.separator
             + storageGroupFullPath
             + File.separator
-            + schemaRegionId.getSchemaRegionId();
+            + schemaRegionId.getId();
     File schemaRegionFolder = SystemFileFactory.INSTANCE.getFile(schemaRegionDirPath);
     if (!schemaRegionFolder.exists()) {
       if (schemaRegionFolder.mkdirs()) {
@@ -953,7 +955,8 @@ public class RSchemaRegion implements ISchemaRegion {
 
   @Override
   public List<PartialPath> getNodesListInGivenLevel(
-      PartialPath pathPattern, int nodeLevel, StorageGroupFilter filter) throws MetadataException {
+      PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch, StorageGroupFilter filter)
+      throws MetadataException {
     return getNodesListInGivenLevel(pathPattern, nodeLevel);
   }
 

@@ -19,11 +19,10 @@
 
 package org.apache.iotdb.db.metadata.schemaregion;
 
-import org.apache.iotdb.commons.partition.SchemaRegionId;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.MetadataManagerType;
+import org.apache.iotdb.db.metadata.SchemaEngineType;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaRegion;
@@ -36,7 +35,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class SchemaEngine {
 
   private Map<ConsensusGroupId, ISchemaRegion> schemaRegionMap;
-  private MetadataManagerType schemaRegionStoredType;
+  private SchemaEngineType schemaRegionStoredType;
 
   private static class SchemaEngineManagerHolder {
     private static final SchemaEngine INSTANCE = new SchemaEngine();
@@ -71,17 +70,19 @@ public class SchemaEngine {
   }
 
   public synchronized ISchemaRegion createSchemaRegion(
-      PartialPath storageGroup, ConsensusGroupId schemaRegionId, IStorageGroupMNode storageGroupMNode)
+      PartialPath storageGroup,
+      ConsensusGroupId schemaRegionId,
+      IStorageGroupMNode storageGroupMNode)
       throws MetadataException {
     ISchemaRegion schemaRegion = schemaRegionMap.get(schemaRegionId);
     if (schemaRegion != null) {
       return schemaRegion;
     }
     switch (schemaRegionStoredType) {
-      case MEMORY_MANAGER:
+      case MEMORY_BASED:
         schemaRegion = new SchemaRegion(storageGroup, schemaRegionId, storageGroupMNode);
         break;
-      case ROCKSDB_MANAGER:
+      case ROCKSDB_BASED:
         schemaRegion = new RSchemaRegion(storageGroup, schemaRegionId, storageGroupMNode);
         break;
       default:

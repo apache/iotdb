@@ -91,7 +91,10 @@ public interface ISchemaRegion {
 
   // region Interfaces for level Node info Query
   List<PartialPath> getNodesListInGivenLevel(
-      PartialPath pathPattern, int nodeLevel, LocalSchemaProcessor.StorageGroupFilter filter)
+      PartialPath pathPattern,
+      int nodeLevel,
+      boolean isPrefixMatch,
+      LocalSchemaProcessor.StorageGroupFilter filter)
       throws MetadataException;
 
   Set<String> getChildNodePathInNextLevel(PartialPath pathPattern) throws MetadataException;

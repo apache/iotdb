@@ -18,15 +18,16 @@
  */
 package org.apache.iotdb.db.metadata;
 
-public enum MetadataManagerType {
-  MEMORY_MANAGER,
-  ROCKSDB_MANAGER;
+public enum SchemaEngineType {
+  MEMORY_BASED,
+  ROCKSDB_BASED,
+  SCHEMA_FILE_BASED;
 
-  public static MetadataManagerType of(String value) {
+  public static SchemaEngineType of(String value) {
     try {
-      return Enum.valueOf(MetadataManagerType.class, value);
+      return Enum.valueOf(SchemaEngineType.class, value);
     } catch (Exception e) {
-      return MEMORY_MANAGER;
+      return MEMORY_BASED;
     }
   }
 }
