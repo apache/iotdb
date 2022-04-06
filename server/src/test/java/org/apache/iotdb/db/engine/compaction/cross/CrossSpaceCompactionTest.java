@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.compaction.cross;
 
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
+import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.manage.CrossSpaceCompactionResource;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.ICrossSpaceMergeFileSelector;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.RewriteCompactionFileSelector;
@@ -45,7 +46,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
-
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -108,6 +108,7 @@ public class CrossSpaceCompactionTest {
           TSFileDescriptor.getInstance().getConfig().getCompressor(),
           Collections.emptyMap());
     }
+    CompactionTaskManager.getInstance().start();
     Thread.currentThread().setName("pool-1-IoTDB-Compaction-1");
   }
 
@@ -118,6 +119,7 @@ public class CrossSpaceCompactionTest {
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
     IoTDB.configManager.clear();
+    CompactionTaskManager.getInstance().stop();
     EnvironmentUtils.cleanAllDir();
     Thread.currentThread().setName(oldThreadName);
     new CompactionConfigRestorer().restoreCompactionConfig();

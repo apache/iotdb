@@ -178,7 +178,7 @@ public class CompactionUtils {
       AbstractCompactionWriter compactionWriter,
       QueryContext queryContext,
       QueryDataSource queryDataSource)
-      throws IOException {
+      throws IOException, InterruptedException {
     MultiTsFileDeviceIterator.MeasurementIterator measurementIterator =
         deviceIterator.iterateNotAlignedSeries(device, false);
     Set<String> allMeasurements = measurementIterator.getAllMeasurements();
@@ -217,7 +217,7 @@ public class CompactionUtils {
       } catch (InterruptedException | ExecutionException e) {
         logger.error("SubCompactionTask meet errors ", e);
         Thread.interrupted();
-        throw new IOException(e);
+        throw new InterruptedException();
       }
     }
 

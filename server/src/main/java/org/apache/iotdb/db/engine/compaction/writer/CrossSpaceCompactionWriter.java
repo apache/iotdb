@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
@@ -43,16 +44,19 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
 
   private final boolean[] isEmptyFile;
 
-  private final boolean[] hasTargetFileStartChunkGroup;
+  // private final boolean[] hasTargetFileStartChunkGroup;
+  private final AtomicBoolean[] hasTargetFileStartChunkGroup;
 
   public CrossSpaceCompactionWriter(
       List<TsFileResource> targetResources, List<TsFileResource> seqFileResources)
       throws IOException {
     currentDeviceEndTime = new long[seqFileResources.size()];
     isEmptyFile = new boolean[seqFileResources.size()];
-    hasTargetFileStartChunkGroup = new boolean[seqFileResources.size()];
+    // hasTargetFileStartChunkGroup = new boolean[seqFileResources.size()];
+    hasTargetFileStartChunkGroup = new AtomicBoolean[seqFileResources.size()];
     for (int i = 0; i < targetResources.size(); i++) {
       this.fileWriterList.add(new TsFileIOWriter(targetResources.get(i).getTsFile()));
+      this.hasTargetFileStartChunkGroup[i] = new AtomicBoolean(false);
       isEmptyFile[i] = true;
     }
     for (int i = 0; i < seqFileIndexArray.length; i++) {
@@ -67,14 +71,15 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
     this.isAlign = isAlign;
     checkIsDeviceExistAndGetDeviceEndTime();
     for (int i = 0; i < seqTsFileResources.size(); i++) {
-      hasTargetFileStartChunkGroup[i] = false;
+      // hasTargetFileStartChunkGroup[i] = false;
+      hasTargetFileStartChunkGroup[i].set(false);
     }
   }
 
   @Override
   public void endChunkGroup() throws IOException {
     for (int i = 0; i < seqTsFileResources.size(); i++) {
-      if (hasTargetFileStartChunkGroup[i]) {
+      if (hasTargetFileStartChunkGroup[i].get()) {
         fileWriterList.get(i).endChunkGroup();
       }
     }
@@ -183,9 +188,8 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
 
   private void checkAndMayStartChunkGroup(int subTaskId) throws IOException {
     int fileIndex = seqFileIndexArray[subTaskId].get();
-    if (!hasTargetFileStartChunkGroup[fileIndex]) {
+    if (hasTargetFileStartChunkGroup[fileIndex].compareAndSet(false, true)) {
       fileWriterList.get(fileIndex).startChunkGroup(deviceId);
-      hasTargetFileStartChunkGroup[fileIndex] = true;
     }
   }
 }
