@@ -22,8 +22,9 @@ package org.apache.iotdb.db.mpp.memory;
 import com.google.common.util.concurrent.AbstractFuture;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
-import javax.annotation.Nullable;
 import org.apache.commons.lang3.Validate;
+
+import javax.annotation.Nullable;
 
 import java.util.HashMap;
 import java.util.Iterator;

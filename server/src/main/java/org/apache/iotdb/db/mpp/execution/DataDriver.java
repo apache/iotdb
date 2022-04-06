@@ -40,6 +40,7 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.concurrent.NotThreadSafe;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -292,12 +293,14 @@ public class DataDriver implements Driver {
     if (!blocked.isDone()) {
       return blocked;
     }
+    List<TsBlock> tsBlocks = new ArrayList<>();
     if (root.hasNext()) {
       TsBlock tsBlock = root.next();
       if (tsBlock != null && !tsBlock.isEmpty()) {
-        sinkHandle.send(tsBlock);
+        tsBlocks.add(tsBlock);
       }
     }
+    sinkHandle.send(tsBlocks);
     return NOT_BLOCKED;
   }
 
