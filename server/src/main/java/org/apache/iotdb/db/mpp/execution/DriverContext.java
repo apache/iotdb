@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,42 +16,31 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.operator.process;
+package org.apache.iotdb.db.mpp.execution;
 
-import org.apache.iotdb.db.mpp.operator.OperatorContext;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 
-import com.google.common.util.concurrent.ListenableFuture;
+public class DriverContext {
 
-public class AggregateOperator implements ProcessOperator {
+  private final FragmentInstanceContext fragmentInstanceContext;
 
-  @Override
-  public OperatorContext getOperatorContext() {
-    return null;
+  public DriverContext(FragmentInstanceContext fragmentInstanceContext) {
+    this.fragmentInstanceContext = fragmentInstanceContext;
   }
 
-  @Override
-  public ListenableFuture<Void> isBlocked() {
-    return ProcessOperator.super.isBlocked();
+  public FragmentInstanceId getId() {
+    return fragmentInstanceContext.getId();
   }
 
-  @Override
-  public TsBlock next() {
-    return null;
+  public FragmentInstanceContext getFragmentInstanceContext() {
+    return fragmentInstanceContext;
   }
 
-  @Override
-  public boolean hasNext() {
-    return false;
+  public void failed(Throwable cause) {
+    fragmentInstanceContext.failed(cause);
   }
 
-  @Override
-  public void close() throws Exception {
-    ProcessOperator.super.close();
-  }
-
-  @Override
-  public boolean isFinished() {
-    return false;
+  public void finish() {
+    fragmentInstanceContext.finish();
   }
 }
