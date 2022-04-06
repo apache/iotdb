@@ -176,8 +176,9 @@ public class SourceHandleTest {
 
     // Construct a mock LocalMemoryManager with capacity 3 * mockTsBlockSize.
     LocalMemoryManager mockLocalMemoryManager = Mockito.mock(LocalMemoryManager.class);
-    MemoryPool mockMemoryPool = Utils.createMockBlockedMemoryPool(queryId, 5, mockTsBlockSize);
-    Mockito.when(mockLocalMemoryManager.getQueryPool()).thenReturn(mockMemoryPool);
+    MemoryPool spyMemoryPool =
+        Mockito.spy(new MemoryPool("test", 10 * mockTsBlockSize, 5 * mockTsBlockSize));
+    Mockito.when(mockLocalMemoryManager.getQueryPool()).thenReturn(spyMemoryPool);
     // Construct a mock client.
     Client mockClient = Mockito.mock(Client.class);
     try {
@@ -226,6 +227,7 @@ public class SourceHandleTest {
             .collect(Collectors.toList()));
     try {
       Thread.sleep(100L);
+      Mockito.verify(spyMemoryPool, Mockito.times(6)).reserve(queryId, mockTsBlockSize);
       Mockito.verify(mockClient, Mockito.times(1))
           .getDataBlock(
               Mockito.argThat(
@@ -251,6 +253,7 @@ public class SourceHandleTest {
 
     // The local fragment instance consumes the data blocks.
     for (int i = 0; i < numOfMockTsBlock; i++) {
+      Mockito.verify(spyMemoryPool, Mockito.times(i)).free(queryId, mockTsBlockSize);
       try {
         sourceHandle.receive();
       } catch (IOException e) {

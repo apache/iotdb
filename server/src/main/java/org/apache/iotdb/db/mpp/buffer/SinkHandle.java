@@ -69,7 +69,6 @@ public class SinkHandle implements ISinkHandle {
 
   private volatile ListenableFuture<Void> blocked = immediateFuture(null);
   private int nextSequenceId = 0;
-  private int numOfBufferedTsBlocks = 0;
   private long bufferRetainedSizeInBytes;
   private boolean closed;
   private boolean noMoreTsBlocks;
@@ -141,7 +140,6 @@ public class SinkHandle implements ISinkHandle {
         sequenceIdToTsBlock.put(nextSequenceId, tsBlock);
         nextSequenceId += 1;
       }
-      numOfBufferedTsBlocks += tsBlocks.size();
       for (int i = startSequenceId; i < nextSequenceId; i++) {
         tsBlockSizes.add(sequenceIdToTsBlock.get(i).getRetainedSizeInBytes());
       }
@@ -214,7 +212,6 @@ public class SinkHandle implements ISinkHandle {
     logger.info("Sink handle {} is being aborted.", this);
     synchronized (this) {
       sequenceIdToTsBlock.clear();
-      numOfBufferedTsBlocks = 0;
       closed = true;
       localMemoryManager
           .getQueryPool()
@@ -237,7 +234,7 @@ public class SinkHandle implements ISinkHandle {
 
   @Override
   public boolean isFinished() {
-    return throwable == null && noMoreTsBlocks && numOfBufferedTsBlocks == 0;
+    return throwable == null && noMoreTsBlocks && sequenceIdToTsBlock.isEmpty();
   }
 
   @Override
@@ -247,7 +244,7 @@ public class SinkHandle implements ISinkHandle {
 
   @Override
   public int getNumOfBufferedTsBlocks() {
-    return numOfBufferedTsBlocks;
+    return sequenceIdToTsBlock.size();
   }
 
   ByteBuffer getSerializedTsBlock(int partition, int sequenceId) {
@@ -276,7 +273,6 @@ public class SinkHandle implements ISinkHandle {
           break;
         }
         freedBytes += entry.getValue().getRetainedSizeInBytes();
-        numOfBufferedTsBlocks -= 1;
         bufferRetainedSizeInBytes -= entry.getValue().getRetainedSizeInBytes();
         iterator.remove();
       }

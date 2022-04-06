@@ -37,15 +37,12 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Queue;
 import java.util.StringJoiner;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
 
 import static com.google.common.util.concurrent.Futures.nonCancellationPropagating;
 
@@ -65,14 +62,15 @@ public class SourceHandle implements ISourceHandle {
   private final TsBlockSerde serde;
   private final SourceHandleListener sourceHandleListener;
 
-  private final Queue<TsBlock> bufferedTsBlocks = new ArrayDeque<>();
+  private final Map<Integer, TsBlock> sequenceIdToTsBlock = new HashMap<>();
   private final Map<Integer, Long> sequenceIdToDataBlockSize = new HashMap<>();
 
   private volatile SettableFuture<Void> blocked = SettableFuture.create();
-  private volatile Future<?> getDataBlocksTaskFuture = null;
   private long bufferRetainedSizeInBytes;
-  private int nextSequenceId;
+  private int currSequenceId = 0;
+  private int nextSequenceId = 0;
   private int lastSequenceId = Integer.MAX_VALUE;
+  private int numActiveGetDataBlocksTask = 0;
   private boolean noMoreTsBlocks;
   private boolean closed;
   private Throwable throwable;
@@ -100,7 +98,7 @@ public class SourceHandle implements ISourceHandle {
   }
 
   @Override
-  public synchronized TsBlock receive() throws IOException {
+  public TsBlock receive() throws IOException {
     if (throwable != null) {
       throw new IOException(throwable);
     }
@@ -110,15 +108,18 @@ public class SourceHandle implements ISourceHandle {
     if (!blocked.isDone()) {
       throw new IllegalStateException("Source handle is blocked.");
     }
-    TsBlock tsBlock = bufferedTsBlocks.poll();
-    if (tsBlock != null) {
+    TsBlock tsBlock;
+    synchronized (this) {
+      tsBlock = sequenceIdToTsBlock.remove(currSequenceId);
+      currSequenceId += 1;
       bufferRetainedSizeInBytes -= tsBlock.getRetainedSizeInBytes();
       localMemoryManager
           .getQueryPool()
           .free(localFragmentInstanceId.getQueryId(), tsBlock.getRetainedSizeInBytes());
-    }
-    if (bufferedTsBlocks.isEmpty() && !isFinished()) {
-      blocked = SettableFuture.create();
+
+      if (sequenceIdToTsBlock.isEmpty() && !isFinished()) {
+        blocked = SettableFuture.create();
+      }
     }
     if (isFinished()) {
       sourceHandleListener.onFinished(this);
@@ -127,24 +128,22 @@ public class SourceHandle implements ISourceHandle {
     return tsBlock;
   }
 
-  private void trySubmitGetDataBlocksTask() {
-    if (getDataBlocksTaskFuture != null && !getDataBlocksTaskFuture.isDone()) {
-      return;
-    }
-    int startSequenceId = nextSequenceId;
-    int currSequenceId = nextSequenceId;
+  private synchronized void trySubmitGetDataBlocksTask() {
+    final int startSequenceId = nextSequenceId;
+    int endSequenceId = nextSequenceId;
     long reservedBytes = 0L;
-    while (sequenceIdToDataBlockSize.containsKey(currSequenceId)) {
-      Long bytesToReserve = sequenceIdToDataBlockSize.get(currSequenceId);
+    ListenableFuture<?> future = null;
+    while (sequenceIdToDataBlockSize.containsKey(endSequenceId)) {
+      Long bytesToReserve = sequenceIdToDataBlockSize.get(endSequenceId);
       if (bytesToReserve == null) {
         throw new IllegalStateException("Data block size is null.");
       }
-      boolean reserved =
+      future =
           localMemoryManager
               .getQueryPool()
-              .tryReserve(localFragmentInstanceId.getQueryId(), bytesToReserve);
-      if (reserved) {
-        currSequenceId += 1;
+              .reserve(localFragmentInstanceId.getQueryId(), bytesToReserve);
+      if (future.isDone()) {
+        endSequenceId += 1;
         reservedBytes += bytesToReserve;
         bufferRetainedSizeInBytes += bytesToReserve;
       } else {
@@ -152,16 +151,54 @@ public class SourceHandle implements ISourceHandle {
       }
     }
 
-    if (currSequenceId > startSequenceId) {
-      getDataBlocksTaskFuture =
-          executorService.submit(
-              new GetDataBlocksTask(startSequenceId, currSequenceId, reservedBytes));
-      nextSequenceId = currSequenceId;
+    if (future == null) {
+      // Next data block not generated yet. Do nothing.
+      return;
+    }
+
+    if (future.isDone()) {
+      nextSequenceId = endSequenceId;
+      executorService.submit(new GetDataBlocksTask(startSequenceId, endSequenceId, reservedBytes));
+      numActiveGetDataBlocksTask += 1;
+    } else {
+      nextSequenceId = endSequenceId + 1;
+      // The future being not completed indicates,
+      //   1. Memory has been reserved for blocks in [startSequenceId, endSequenceId).
+      //   2. Memory reservation for block whose sequence ID equals endSequenceId is blocked.
+      //   3. Have not reserve memory for the rest of blocks.
+      //
+      //  startSequenceId             endSequenceId  endSequenceId + 1
+      //         |-------- reserved --------|--- blocked ---|--- not reserved ---|
+
+      if (endSequenceId > startSequenceId) {
+        // Memory has been reserved. Submit a GetDataBlocksTask for these blocks.
+        executorService.submit(
+            new GetDataBlocksTask(startSequenceId, endSequenceId, reservedBytes));
+        numActiveGetDataBlocksTask += 1;
+      }
+
+      // Submit a GetDataBlocksTask when memory is freed.
+      final int sequenceIdOfUnReservedDataBlock = endSequenceId;
+      final long sizeOfUnReservedDataBlock = sequenceIdToDataBlockSize.get(endSequenceId);
+      future.addListener(
+          () -> {
+            executorService.submit(
+                new GetDataBlocksTask(
+                    sequenceIdOfUnReservedDataBlock,
+                    sequenceIdOfUnReservedDataBlock + 1,
+                    sizeOfUnReservedDataBlock));
+            numActiveGetDataBlocksTask += 1;
+            bufferRetainedSizeInBytes += sizeOfUnReservedDataBlock;
+          },
+          executorService);
+
+      // Schedule another call of trySubmitGetDataBlocksTask for the rest of blocks.
+      future.addListener(SourceHandle.this::trySubmitGetDataBlocksTask, executorService);
     }
   }
 
   @Override
-  public synchronized ListenableFuture<Void> isBlocked() {
+  public ListenableFuture<Void> isBlocked() {
     if (throwable != null) {
       throw new RuntimeException(throwable);
     }
@@ -188,11 +225,13 @@ public class SourceHandle implements ISourceHandle {
     if (closed) {
       return;
     }
-    bufferedTsBlocks.clear();
-    localMemoryManager
-        .getQueryPool()
-        .free(localFragmentInstanceId.getQueryId(), bufferRetainedSizeInBytes);
-    bufferRetainedSizeInBytes = 0;
+    sequenceIdToDataBlockSize.clear();
+    if (bufferRetainedSizeInBytes > 0) {
+      localMemoryManager
+          .getQueryPool()
+          .free(localFragmentInstanceId.getQueryId(), bufferRetainedSizeInBytes);
+      bufferRetainedSizeInBytes = 0;
+    }
     closed = true;
     sourceHandleListener.onClosed(this);
   }
@@ -201,9 +240,9 @@ public class SourceHandle implements ISourceHandle {
   public boolean isFinished() {
     return throwable == null
         && noMoreTsBlocks
-        && (getDataBlocksTaskFuture == null || getDataBlocksTaskFuture.isDone())
+        && numActiveGetDataBlocksTask == 0
         && nextSequenceId - 1 == lastSequenceId
-        && bufferedTsBlocks.isEmpty();
+        && sequenceIdToTsBlock.isEmpty();
   }
 
   String getRemoteHostname() {
@@ -290,7 +329,9 @@ public class SourceHandle implements ISourceHandle {
             if (closed) {
               return;
             }
-            bufferedTsBlocks.addAll(tsBlocks);
+            for (int i = startSequenceId; i < endSequenceId; i++) {
+              sequenceIdToTsBlock.put(i, tsBlocks.get(i - startSequenceId));
+            }
             if (!blocked.isDone()) {
               blocked.set(null);
             }
@@ -313,6 +354,8 @@ public class SourceHandle implements ISourceHandle {
                   .free(localFragmentInstanceId.getQueryId(), reservedBytes);
             }
           }
+        } finally {
+          numActiveGetDataBlocksTask -= 1;
         }
       }
       // TODO: try to issue another GetDataBlocksTask to make the query run faster.
