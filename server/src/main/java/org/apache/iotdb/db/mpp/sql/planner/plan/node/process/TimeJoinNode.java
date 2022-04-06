@@ -51,19 +51,14 @@ public class TimeJoinNode extends ProcessNode {
 
   private List<PlanNode> children;
 
-  public TimeJoinNode(PlanNodeId id, OrderBy mergeOrder, FilterNullPolicy filterNullPolicy) {
+  public TimeJoinNode(PlanNodeId id, OrderBy mergeOrder) {
     super(id);
     this.mergeOrder = mergeOrder;
-    this.filterNullPolicy = filterNullPolicy;
     this.children = new ArrayList<>();
   }
 
-  public TimeJoinNode(
-      PlanNodeId id,
-      OrderBy mergeOrder,
-      FilterNullPolicy filterNullPolicy,
-      List<PlanNode> children) {
-    this(id, mergeOrder, filterNullPolicy);
+  public TimeJoinNode(PlanNodeId id, OrderBy mergeOrder, List<PlanNode> children) {
+    this(id, mergeOrder);
     this.children = children;
   }
 
@@ -74,8 +69,7 @@ public class TimeJoinNode extends ProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new TimeJoinNode(
-        PlanNodeIdAllocator.generateId(), this.mergeOrder, this.filterNullPolicy);
+    return new TimeJoinNode(PlanNodeIdAllocator.generateId(), this.mergeOrder);
   }
 
   @Override

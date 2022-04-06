@@ -48,6 +48,11 @@ import org.apache.iotdb.db.mpp.sql.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.expression.IExpression;
+import org.apache.iotdb.tsfile.read.expression.util.ExpressionOptimizer;
 
 import java.util.*;
 
@@ -119,14 +124,31 @@ public class Analyzer {
           filter = new RemoveNotOptimizer().optimize(filter);
           filter = new DnfFilterOptimizer().optimize(filter);
           filter = new MergeSingleFilterOptimizer().optimize(filter);
-          whereCondition.setQueryFilter(filter);
+
+          // transform QueryFilter to expression
+          List<PartialPath> filterPaths = new ArrayList<>(filter.getPathSet());
+          HashMap<PartialPath, TSDataType> pathTSDataTypeHashMap = new HashMap<>();
+          for (PartialPath filterPath : filterPaths) {
+            pathTSDataTypeHashMap.put(
+                filterPath,
+                SQLConstant.isReservedPath(filterPath)
+                    ? TSDataType.INT64
+                    : filterPath.getSeriesType());
+          }
+          IExpression expression = filter.transformToExpression(pathTSDataTypeHashMap);
+          expression =
+              ExpressionOptimizer.getInstance()
+                  .optimize(expression, queryStatement.getSelectComponent().getDeduplicatedPaths());
+          analysis.setQueryFilter(expression);
         }
         analysis.setStatement(rewrittenStatement);
         analysis.setSchemaTree(schemaTree);
         analysis.setDeviceIdToPathsMap(deviceIdToPathsMap);
         analysis.setOutputColumnNames(outputColumnNames);
         analysis.setDataPartitionInfo(dataPartition);
-      } catch (StatementAnalyzeException | PathNumOverLimitException e) {
+      } catch (StatementAnalyzeException
+          | PathNumOverLimitException
+          | QueryFilterOptimizationException e) {
         e.printStackTrace();
       }
       return analysis;

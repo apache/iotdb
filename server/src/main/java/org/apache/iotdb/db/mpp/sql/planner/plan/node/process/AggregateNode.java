@@ -18,10 +18,12 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
@@ -45,18 +47,21 @@ public class AggregateNode extends ProcessNode {
   // TODO: need consider whether it is suitable the aggregation function using FunctionExpression
   private Map<String, FunctionExpression> aggregateFuncMap;
 
+  private final PartialPath seriesPath;
+  private final List<AggregationType> aggregateFuncList;
+
   private final List<PlanNode> children;
-  private final List<String> columnNames;
+  private List<String> columnNames;
 
   public AggregateNode(
       PlanNodeId id,
-      Map<String, FunctionExpression> aggregateFuncMap,
-      List<PlanNode> children,
-      List<String> columnNames) {
+      PartialPath seriesPath,
+      List<AggregationType> aggregateFuncList,
+      List<PlanNode> children) {
     super(id);
-    this.aggregateFuncMap = aggregateFuncMap;
+    this.seriesPath = seriesPath;
+    this.aggregateFuncList = aggregateFuncList;
     this.children = children;
-    this.columnNames = columnNames;
   }
 
   @Override

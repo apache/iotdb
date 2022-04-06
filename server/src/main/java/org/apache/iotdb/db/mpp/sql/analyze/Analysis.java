@@ -25,6 +25,8 @@ import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
+import org.apache.iotdb.db.query.aggregation.AggregationType;
+import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.util.List;
@@ -51,9 +53,13 @@ public class Analysis {
 
   private SchemaTree schemaTree;
 
+  private IExpression queryFilter;
+
   private Map<String, Set<PartialPath>> deviceIdToPathsMap;
 
   private List<String> outputColumnNames;
+
+  Map<String, Map<PartialPath, Set<AggregationType>>> deviceNameToAggregationsMap;
 
   public List<RegionReplicaSet> getPartitionInfo(PartialPath seriesPath, Filter timefilter) {
     // TODO: (xingtanzjr) implement the calculation of timePartitionIdList
@@ -106,5 +112,22 @@ public class Analysis {
 
   public void setOutputColumnNames(List<String> outputColumnNames) {
     this.outputColumnNames = outputColumnNames;
+  }
+
+  public Map<String, Map<PartialPath, Set<AggregationType>>> getDeviceNameToAggregationsMap() {
+    return deviceNameToAggregationsMap;
+  }
+
+  public void setDeviceNameToAggregationsMap(
+      Map<String, Map<PartialPath, Set<AggregationType>>> deviceNameToAggregationsMap) {
+    this.deviceNameToAggregationsMap = deviceNameToAggregationsMap;
+  }
+
+  public IExpression getQueryFilter() {
+    return queryFilter;
+  }
+
+  public void setQueryFilter(IExpression expression) {
+    this.queryFilter = expression;
   }
 }

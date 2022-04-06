@@ -26,7 +26,6 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeIdAllocator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.*;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregateScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SourceNode;
 import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullComponent;
 import org.apache.iotdb.db.mpp.sql.statement.component.GroupByLevelComponent;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
@@ -42,23 +41,15 @@ public class QueryPlanBuilder {
 
   public QueryPlanBuilder() {}
 
-  public QueryPlanBuilder(PlanNode root) {
-    this.root = root;
-  }
-
   public PlanNode getRoot() {
     return root;
-  }
-
-  public void withNewRoot(PlanNode newRoot) {
-    this.root = newRoot;
   }
 
   public void planRawDataQuerySource(
       Map<String, Set<PartialPath>> deviceNameToPathsMap,
       OrderBy scanOrder,
       boolean isAlignByDevice) {
-    Map<String, List<SourceNode>> deviceNameToSourceNodesMap = new HashMap<>();
+    Map<String, List<PlanNode>> deviceNameToSourceNodesMap = new HashMap<>();
 
     for (Map.Entry<String, Set<PartialPath>> entry : deviceNameToPathsMap.entrySet()) {
       String deviceName = entry.getKey();
@@ -70,27 +61,9 @@ public class QueryPlanBuilder {
     }
 
     if (isAlignByDevice) {
-      DeviceMergeNode deviceMergeNode = new DeviceMergeNode(PlanNodeIdAllocator.generateId());
-      for (Map.Entry<String, List<SourceNode>> entry : deviceNameToSourceNodesMap.entrySet()) {
-        String deviceName = entry.getKey();
-        List<PlanNode> planNodes = new ArrayList<>(entry.getValue());
-        if (planNodes.size() == 1) {
-          deviceMergeNode.addChildDeviceNode(deviceName, planNodes.get(0));
-        } else {
-          TimeJoinNode timeJoinNode =
-              new TimeJoinNode(PlanNodeIdAllocator.generateId(), scanOrder, null, planNodes);
-          deviceMergeNode.addChildDeviceNode(deviceName, timeJoinNode);
-        }
-      }
-      this.withNewRoot(deviceMergeNode);
+      convergeWithDeviceMerge(deviceNameToSourceNodesMap, scanOrder);
     } else {
-      List<PlanNode> planNodes =
-          deviceNameToSourceNodesMap.entrySet().stream()
-              .flatMap(entry -> entry.getValue().stream())
-              .collect(Collectors.toList());
-      TimeJoinNode timeJoinNode =
-          new TimeJoinNode(PlanNodeIdAllocator.generateId(), scanOrder, null, planNodes);
-      this.withNewRoot(timeJoinNode);
+      convergeWithTimeJoin(deviceNameToSourceNodesMap, scanOrder);
     }
   }
 
@@ -102,18 +75,60 @@ public class QueryPlanBuilder {
     for (Map.Entry<String, Map<PartialPath, Set<AggregationType>>> entry :
         deviceNameToAggregationsMap.entrySet()) {
       String deviceName = entry.getKey();
+
       for (PartialPath path : entry.getValue().keySet()) {
-        List<SourceNode> childSourceNodeList = new ArrayList<>();
-        for (AggregationType aggregationType : entry.getValue().get(path)) {
-          childSourceNodeList.add(
-              new SeriesAggregateScanNode(PlanNodeIdAllocator.generateId(), path, aggregationType));
-        }
-        //        deviceNameToSourceNodesMap
-        //                .computeIfAbsent(deviceName, k -> new ArrayList<>())
-        //                .add(new AggregateNode(PlanNodeIdAllocator.generateId(),
-        // childSourceNodeList));
+        SeriesAggregateScanNode aggregateScanNode =
+            new SeriesAggregateScanNode(
+                PlanNodeIdAllocator.generateId(),
+                path,
+                new ArrayList<>(entry.getValue().get(path)),
+                scanOrder);
+        deviceNameToSourceNodesMap
+            .computeIfAbsent(deviceName, k -> new ArrayList<>())
+            .add(
+                new AggregateNode(
+                    PlanNodeIdAllocator.generateId(),
+                    path,
+                    new ArrayList<>(entry.getValue().get(path)),
+                    Collections.singletonList(aggregateScanNode)));
       }
     }
+
+    if (isAlignByDevice) {
+      convergeWithDeviceMerge(deviceNameToSourceNodesMap, scanOrder);
+    } else {
+      convergeWithTimeJoin(deviceNameToSourceNodesMap, scanOrder);
+    }
+  }
+
+  public void convergeWithTimeJoin(
+      Map<String, List<PlanNode>> deviceNameToSourceNodesMap, OrderBy mergeOrder) {
+    List<PlanNode> planNodes =
+        deviceNameToSourceNodesMap.entrySet().stream()
+            .flatMap(entry -> entry.getValue().stream())
+            .collect(Collectors.toList());
+    if (planNodes.size() == 1) {
+      this.root = planNodes.get(0);
+    } else {
+      this.root = new TimeJoinNode(PlanNodeIdAllocator.generateId(), mergeOrder, planNodes);
+    }
+  }
+
+  public void convergeWithDeviceMerge(
+      Map<String, List<PlanNode>> deviceNameToSourceNodesMap, OrderBy mergeOrder) {
+    DeviceMergeNode deviceMergeNode = new DeviceMergeNode(PlanNodeIdAllocator.generateId());
+    for (Map.Entry<String, List<PlanNode>> entry : deviceNameToSourceNodesMap.entrySet()) {
+      String deviceName = entry.getKey();
+      List<PlanNode> planNodes = new ArrayList<>(entry.getValue());
+      if (planNodes.size() == 1) {
+        deviceMergeNode.addChildDeviceNode(deviceName, planNodes.get(0));
+      } else {
+        TimeJoinNode timeJoinNode =
+            new TimeJoinNode(PlanNodeIdAllocator.generateId(), mergeOrder, planNodes);
+        deviceMergeNode.addChildDeviceNode(deviceName, timeJoinNode);
+      }
+    }
+    this.root = deviceMergeNode;
   }
 
   public void planQueryFilter(QueryFilter queryFilter, List<String> outputColumnNames) {
@@ -121,9 +136,9 @@ public class QueryPlanBuilder {
       return;
     }
 
-    this.withNewRoot(
+    this.root =
         new FilterNode(
-            PlanNodeIdAllocator.generateId(), this.getRoot(), queryFilter, outputColumnNames));
+            PlanNodeIdAllocator.generateId(), this.getRoot(), queryFilter, outputColumnNames);
   }
 
   public void planGroupByLevel(GroupByLevelComponent groupByLevelComponent) {
@@ -131,12 +146,12 @@ public class QueryPlanBuilder {
       return;
     }
 
-    this.withNewRoot(
+    this.root =
         new GroupByLevelNode(
             PlanNodeIdAllocator.generateId(),
             this.getRoot(),
             groupByLevelComponent.getLevels(),
-            groupByLevelComponent.getGroupedPathMap()));
+            groupByLevelComponent.getGroupedPathMap());
   }
 
   public void planFilterNull(FilterNullComponent filterNullComponent) {
@@ -144,14 +159,14 @@ public class QueryPlanBuilder {
       return;
     }
 
-    this.withNewRoot(
+    this.root =
         new FilterNullNode(
             PlanNodeIdAllocator.generateId(),
             this.getRoot(),
             filterNullComponent.getWithoutPolicyType(),
             filterNullComponent.getWithoutNullColumns().stream()
                 .map(Expression::getExpressionString)
-                .collect(Collectors.toList())));
+                .collect(Collectors.toList()));
   }
 
   public void planSort(OrderBy resultOrder) {
@@ -159,8 +174,7 @@ public class QueryPlanBuilder {
       return;
     }
 
-    this.withNewRoot(
-        new SortNode(PlanNodeIdAllocator.generateId(), this.getRoot(), null, resultOrder));
+    this.root = new SortNode(PlanNodeIdAllocator.generateId(), this.getRoot(), null, resultOrder);
   }
 
   public void planLimit(int rowLimit) {
@@ -168,7 +182,7 @@ public class QueryPlanBuilder {
       return;
     }
 
-    this.withNewRoot(new LimitNode(PlanNodeIdAllocator.generateId(), rowLimit, this.getRoot()));
+    this.root = new LimitNode(PlanNodeIdAllocator.generateId(), rowLimit, this.getRoot());
   }
 
   public void planOffset(int rowOffset) {
@@ -176,6 +190,6 @@ public class QueryPlanBuilder {
       return;
     }
 
-    this.withNewRoot(new OffsetNode(PlanNodeIdAllocator.generateId(), this.getRoot(), rowOffset));
+    this.root = new OffsetNode(PlanNodeIdAllocator.generateId(), this.getRoot(), rowOffset);
   }
 }

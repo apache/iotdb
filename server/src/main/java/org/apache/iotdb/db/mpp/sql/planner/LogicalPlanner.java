@@ -36,6 +36,7 @@ import org.apache.iotdb.db.mpp.sql.statement.crud.*;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
+import org.apache.iotdb.tsfile.read.expression.ExpressionType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.util.*;
@@ -99,7 +100,28 @@ public class LogicalPlanner {
     @Override
     public PlanNode visitAggregationQuery(
         AggregationQueryStatement queryStatement, MPPQueryContext context) {
-      return null;
+      QueryPlanBuilder planBuilder = new QueryPlanBuilder();
+
+      if (analysis.getQueryFilter() != null
+          && analysis.getQueryFilter().getType() != ExpressionType.GLOBAL_TIME) {
+        // with VF
+        planBuilder.planRawDataQuerySource(
+            analysis.getDeviceIdToPathsMap(),
+            queryStatement.getResultOrder(),
+            queryStatement.isAlignByDevice());
+        // TODO: add AggregateNode
+      } else {
+        planBuilder.planAggregationQuerySource(
+            analysis.getDeviceNameToAggregationsMap(),
+            queryStatement.getResultOrder(),
+            queryStatement.isAlignByDevice());
+      }
+
+      planBuilder.planFilterNull(queryStatement.getFilterNullComponent());
+      planBuilder.planSort(queryStatement.getResultOrder());
+      planBuilder.planLimit(queryStatement.getRowLimit());
+      planBuilder.planOffset(queryStatement.getRowOffset());
+      return planBuilder.getRoot();
     }
 
     @Override

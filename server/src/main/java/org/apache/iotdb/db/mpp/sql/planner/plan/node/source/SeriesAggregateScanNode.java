@@ -25,6 +25,7 @@ import org.apache.iotdb.db.mpp.common.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -61,7 +62,12 @@ public class SeriesAggregateScanNode extends SourceNode {
   // (Currently we only support one series in the aggregation function)
   // TODO: need consider whether it is suitable the aggregation function using FunctionExpression
   private PartialPath seriesPath;
-  private AggregationType aggregateFunc;
+  private List<AggregationType> aggregateFuncList;
+
+  // The order to traverse the data.
+  // Currently, we only support TIMESTAMP_ASC and TIMESTAMP_DESC here.
+  // The default order is TIMESTAMP_ASC, which means "order by timestamp asc"
+  private OrderBy scanOrder = OrderBy.TIMESTAMP_ASC;
 
   private Filter filter;
 
@@ -75,19 +81,14 @@ public class SeriesAggregateScanNode extends SourceNode {
   }
 
   public SeriesAggregateScanNode(
-      PlanNodeId id, PartialPath seriesPath, AggregationType aggregateFunc) {
-    this(id);
-    this.seriesPath = seriesPath;
-    this.aggregateFunc = aggregateFunc;
-  }
-
-  public SeriesAggregateScanNode(
       PlanNodeId id,
       PartialPath seriesPath,
-      AggregationType aggregateFunc,
-      GroupByTimeParameter groupByTimeParameter) {
-    this(id, seriesPath, aggregateFunc);
-    this.groupByTimeParameter = groupByTimeParameter;
+      List<AggregationType> aggregateFuncList,
+      OrderBy scanOrder) {
+    this(id);
+    this.seriesPath = seriesPath;
+    this.aggregateFuncList = aggregateFuncList;
+    this.scanOrder = scanOrder;
   }
 
   @Override
@@ -133,7 +134,7 @@ public class SeriesAggregateScanNode extends SourceNode {
 
   @Override
   protected String getExpressionString() {
-    return aggregateFunc + "(" + seriesPath.getFullPath() + ")";
+    return getAggregateFuncList().toString();
   }
 
   @Override
@@ -158,11 +159,19 @@ public class SeriesAggregateScanNode extends SourceNode {
     this.filter = filter;
   }
 
+  public PartialPath getSeriesPath() {
+    return seriesPath;
+  }
+
+  public List<AggregationType> getAggregateFuncList() {
+    return aggregateFuncList;
+  }
+
   @TestOnly
   public Pair<String, List<String>> print() {
     String title = String.format("[SeriesAggregateScanNode (%s)]", this.getId());
     List<String> attributes = new ArrayList<>();
-    attributes.add("AggregateFunction: " + this.getExpressionString());
+    attributes.add("AggregateFunctions: " + this.getExpressionString());
     return new Pair<>(title, attributes);
   }
 }

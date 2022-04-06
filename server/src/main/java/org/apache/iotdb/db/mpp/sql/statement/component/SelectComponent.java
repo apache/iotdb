@@ -24,6 +24,7 @@ import org.apache.iotdb.db.mpp.sql.statement.StatementNode;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
 import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
+import org.apache.iotdb.tsfile.read.common.Path;
 
 import java.time.ZoneId;
 import java.util.*;
@@ -147,5 +148,13 @@ public class SelectComponent extends StatementNode {
       }
     }
     return deviceIdToPathsCache;
+  }
+
+  public List<Path> getDeduplicatedPaths() {
+    Set<Path> deduplicatedPaths = new HashSet<>();
+    for (ResultColumn resultColumn : resultColumns) {
+      deduplicatedPaths.addAll(resultColumn.collectPaths());
+    }
+    return new ArrayList<>(deduplicatedPaths);
   }
 }
