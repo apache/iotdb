@@ -16,22 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.partition;
+package org.apache.iotdb.commons.partition;
 
-import org.apache.iotdb.consensus.common.Endpoint;
+import org.apache.iotdb.commons.cluster.Endpoint;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-public class DataNodeInfo {
+public class DataNodeLocation {
 
   private int dataNodeID;
-  private final Endpoint endPoint;
+  private Endpoint endPoint;
 
   private List<Integer> schemaRegionGroupIDs;
   private List<Integer> dataRegionGroupIDs;
 
-  public DataNodeInfo(int dataNodeID, Endpoint endPoint) {
+  public DataNodeLocation() {}
+
+  public DataNodeLocation(int dataNodeID, Endpoint endPoint) {
     this.dataNodeID = dataNodeID;
     this.endPoint = endPoint;
     dataRegionGroupIDs = new ArrayList<>();
@@ -66,6 +69,17 @@ public class DataNodeInfo {
     return dataRegionGroupIDs;
   }
 
+  public void serializeImpl(ByteBuffer buffer) {
+    buffer.putInt(dataNodeID);
+    endPoint.serializeImpl(buffer);
+  }
+
+  public void deserializeImpl(ByteBuffer buffer) {
+    dataNodeID = buffer.getInt();
+    endPoint = new Endpoint();
+    endPoint.deserializeImpl(buffer);
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) {
@@ -74,11 +88,15 @@ public class DataNodeInfo {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    return endPoint.equals(((DataNodeInfo) o).getEndPoint());
+    return endPoint.equals(((DataNodeLocation) o).getEndPoint());
   }
 
   @Override
   public int hashCode() {
     return endPoint.hashCode();
+  }
+
+  public String toString() {
+    return String.format("DataNode[%d, %s]", dataNodeID, endPoint);
   }
 }

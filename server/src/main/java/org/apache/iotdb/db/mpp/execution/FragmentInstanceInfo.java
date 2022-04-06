@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,29 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.partition;
+package org.apache.iotdb.db.mpp.execution;
 
-import java.nio.ByteBuffer;
-import org.apache.iotdb.service.rpc.thrift.EndPoint;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+public class FragmentInstanceInfo {
 
-public class DataRegionId {
-  private int dataRegionId;
+  private final FragmentInstanceState state;
 
-  public DataRegionId(int dataRegionId) {
-    this.dataRegionId = dataRegionId;
+  private final long endTime;
+
+  public FragmentInstanceInfo(FragmentInstanceState state, long endTime) {
+    this.state = state;
+    this.endTime = endTime;
   }
 
-  public int getDataRegionId() {
-    return dataRegionId;
+  public FragmentInstanceState getState() {
+    return state;
   }
 
-  public void setDataRegionId(int dataRegionId) {
-    this.dataRegionId = dataRegionId;
-  }
-
-  public String toString() {
-    return String.format("DataRegion-%d", dataRegionId);
+  public long getEndTime() {
+    return endTime;
   }
 
   public static DataRegionId deserialize(ByteBuffer byteBuffer) {

@@ -74,4 +74,9 @@ public class LimitOperator implements ProcessOperator {
   public void close() throws Exception {
     child.close();
   }
+
+  @Override
+  public boolean isFinished() throws IOException {
+    return remainingLimit == 0 || child.isFinished();
+  }
 }

@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,29 +16,31 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.partition;
+package org.apache.iotdb.db.mpp.execution;
 
-import org.apache.iotdb.service.rpc.thrift.EndPoint;
+import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 
-import java.util.List;
+public class DriverContext {
 
-public class SchemaRegionReplicaSet {
-  private SchemaRegionId schemaRegionId;
-  private List<EndPoint> endPointList;
+  private final FragmentInstanceContext fragmentInstanceContext;
 
-  public SchemaRegionId getSchemaRegionId() {
-    return schemaRegionId;
+  public DriverContext(FragmentInstanceContext fragmentInstanceContext) {
+    this.fragmentInstanceContext = fragmentInstanceContext;
   }
 
-  public void setSchemaRegionId(SchemaRegionId schemaRegionId) {
-    this.schemaRegionId = schemaRegionId;
+  public FragmentInstanceId getId() {
+    return fragmentInstanceContext.getId();
   }
 
-  public List<EndPoint> getEndPointList() {
-    return endPointList;
+  public FragmentInstanceContext getFragmentInstanceContext() {
+    return fragmentInstanceContext;
   }
 
-  public void setEndPointList(List<EndPoint> endPointList) {
-    this.endPointList = endPointList;
+  public void failed(Throwable cause) {
+    fragmentInstanceContext.failed(cause);
+  }
+
+  public void finish() {
+    fragmentInstanceContext.finish();
   }
 }

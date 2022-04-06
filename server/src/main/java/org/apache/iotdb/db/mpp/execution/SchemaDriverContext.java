@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,16 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.partition;
+package org.apache.iotdb.db.mpp.execution;
 
-public class TimePartitionId {
-  private long startTime;
+import org.apache.iotdb.db.metadata.schemaregion.SchemaRegion;
 
-  public long getStartTime() {
-    return startTime;
+public class SchemaDriverContext extends DriverContext {
+
+  private final SchemaRegion schemaRegion;
+
+  public SchemaDriverContext(
+      FragmentInstanceContext fragmentInstanceContext, SchemaRegion schemaRegion) {
+    super(fragmentInstanceContext);
+    this.schemaRegion = schemaRegion;
   }
 
-  public void setStartTime(long startTime) {
-    this.startTime = startTime;
+  public SchemaRegion getSchemaRegion() {
+    return schemaRegion;
   }
 }

@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -18,37 +18,27 @@
  */
 package org.apache.iotdb.commons.partition;
 
-import java.util.Objects;
+public class SeriesPartitionSlot {
+  private int deviceGroupId;
 
-public class SchemaRegionId {
-  private int schemaRegionId;
-
-  public SchemaRegionId(int schemaRegionId) {
-    this.schemaRegionId = schemaRegionId;
+  public SeriesPartitionSlot(int deviceGroupId) {
+    this.deviceGroupId = deviceGroupId;
   }
 
-  public int getSchemaRegionId() {
-    return schemaRegionId;
+  public int getDeviceGroupId() {
+    return deviceGroupId;
   }
 
-  public void setSchemaRegionId(int schemaRegionId) {
-    this.schemaRegionId = schemaRegionId;
+  public void setDeviceGroupId(int deviceGroupId) {
+    this.deviceGroupId = deviceGroupId;
   }
 
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    SchemaRegionId that = (SchemaRegionId) o;
-    return schemaRegionId == that.schemaRegionId;
-  }
-
-  @Override
   public int hashCode() {
-    return Objects.hash(schemaRegionId);
+    return new Integer(deviceGroupId).hashCode();
   }
 
-  public String toString() {
-    return String.format("SchemaRegion-%d", schemaRegionId);
+  public boolean equals(Object obj) {
+    return obj instanceof SeriesPartitionSlot
+        && this.deviceGroupId == ((SeriesPartitionSlot) obj).deviceGroupId;
   }
 }

@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.source;
 
-import org.apache.iotdb.commons.partition.DataRegionReplicaSet;
+import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.common.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
@@ -71,7 +71,7 @@ public class SeriesAggregateScanNode extends SourceNode {
   private String columnName;
 
   // The id of DataRegion where the node will run
-  private DataRegionReplicaSet dataRegionReplicaSet;
+  private RegionReplicaSet regionReplicaSet;
 
   public SeriesAggregateScanNode(PlanNodeId id) {
     super(id);
@@ -115,13 +115,13 @@ public class SeriesAggregateScanNode extends SourceNode {
   public void open() throws Exception {}
 
   @Override
-  public DataRegionReplicaSet getDataRegionReplicaSet() {
-    return this.dataRegionReplicaSet;
+  public RegionReplicaSet getDataRegionReplicaSet() {
+    return this.regionReplicaSet;
   }
 
   @Override
-  public void setDataRegionReplicaSet(DataRegionReplicaSet dataRegionReplicaSet) {
-    this.dataRegionReplicaSet = dataRegionReplicaSet;
+  public void setDataRegionReplicaSet(RegionReplicaSet regionReplicaSet) {
+    this.regionReplicaSet = regionReplicaSet;
   }
 
   @Override

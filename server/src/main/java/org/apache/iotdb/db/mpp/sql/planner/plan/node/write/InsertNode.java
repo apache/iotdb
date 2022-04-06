@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.write;
 
+import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.metadata.idtable.entry.PlainDeviceID;
 import org.apache.iotdb.db.metadata.idtable.entry.SHA256DeviceID;
@@ -56,17 +57,77 @@ public abstract class InsertNode extends PlanNode {
    */
   protected IDeviceID deviceID;
 
+  /** Physical address of data region after splitting */
+  RegionReplicaSet dataRegionReplicaSet;
+
   protected InsertNode(PlanNodeId id) {
     super(id);
+  }
+
+  protected InsertNode(
+      PlanNodeId id,
+      PartialPath devicePath,
+      boolean isAligned,
+      MeasurementSchema[] measurements,
+      TSDataType[] dataTypes) {
+    super(id);
+    this.devicePath = devicePath;
+    this.isAligned = isAligned;
+    this.measurements = measurements;
+    this.dataTypes = dataTypes;
+  }
+
+  public RegionReplicaSet getDataRegionReplicaSet() {
+    return dataRegionReplicaSet;
+  }
+
+  public void setDataRegionReplicaSet(RegionReplicaSet dataRegionReplicaSet) {
+    this.dataRegionReplicaSet = dataRegionReplicaSet;
+  }
+
+  public PartialPath getDevicePath() {
+    return devicePath;
+  }
+
+  public void setDevicePath(PartialPath devicePath) {
+    this.devicePath = devicePath;
+  }
+
+  public boolean isAligned() {
+    return isAligned;
+  }
+
+  public void setAligned(boolean aligned) {
+    isAligned = aligned;
+  }
+
+  public MeasurementSchema[] getMeasurements() {
+    return measurements;
+  }
+
+  public void setMeasurements(MeasurementSchema[] measurements) {
+    this.measurements = measurements;
+  }
+
+  public TSDataType[] getDataTypes() {
+    return dataTypes;
+  }
+
+  public void setDataTypes(TSDataType[] dataTypes) {
+    this.dataTypes = dataTypes;
+  }
+
+  public IDeviceID getDeviceID() {
+    return deviceID;
+  }
+
+  public void setDeviceID(IDeviceID deviceID) {
+    this.deviceID = deviceID;
   }
 
   // TODO(INSERT) split this insert node into multiple InsertNode according to the data partition
   // info
   public abstract List<InsertNode> splitByPartition(Analysis analysis);
-
-  public boolean needSplit() {
-    return true;
-  }
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
