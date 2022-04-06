@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.sql.statement.crud;
 
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.component.GroupByLevelComponent;
 import org.apache.iotdb.db.mpp.sql.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.sql.statement.component.SelectComponent;
@@ -86,5 +87,9 @@ public class AggregationQueryStatement extends QueryStatement {
             "The argument of the aggregation function must be a time series.");
       }
     }
+  }
+
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitAggregationQuery(this, context);
   }
 }

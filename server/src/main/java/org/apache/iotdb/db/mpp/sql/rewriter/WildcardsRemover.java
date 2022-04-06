@@ -40,6 +40,7 @@ import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * This rewriter:
@@ -61,7 +62,10 @@ public class WildcardsRemover {
   private boolean isPrefixMatch;
 
   public Statement rewrite(
-      Statement statement, SchemaTree schemaTree, Map<String, Set<PartialPath>> deviceIdToPathsMap)
+      Statement statement,
+      SchemaTree schemaTree,
+      List<String> outputColumnNames,
+      Map<String, Set<PartialPath>> deviceIdToPathsMap)
       throws StatementAnalyzeException, PathNumOverLimitException {
     QueryStatement queryStatement = (QueryStatement) statement;
     this.paginationController =
@@ -74,6 +78,10 @@ public class WildcardsRemover {
       // remove wildcards in SELECT clause
       removeWildcardsInSelectPaths(queryStatement);
       deviceIdToPathsMap.putAll(queryStatement.getSelectComponent().getDeviceIdToPathsMap());
+      outputColumnNames.addAll(
+          queryStatement.getSelectComponent().getResultColumns().stream()
+              .map(ResultColumn::getResultColumnName)
+              .collect(Collectors.toList()));
 
       // remove wildcards in WITHOUT NULL clause
       if (queryStatement.getFilterNullComponent() != null

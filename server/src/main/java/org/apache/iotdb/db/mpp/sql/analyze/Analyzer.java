@@ -96,9 +96,11 @@ public class Analyzer {
 
         // bind metadata, remove wildcards, and apply SLIMIT & SOFFSET
         Map<String, Set<PartialPath>> deviceIdToPathsMap = new HashMap<>();
+        List<String> outputColumnNames = new ArrayList<>();
         rewrittenStatement =
             (QueryStatement)
-                new WildcardsRemover().rewrite(rewrittenStatement, schemaTree, deviceIdToPathsMap);
+                new WildcardsRemover()
+                    .rewrite(rewrittenStatement, schemaTree, outputColumnNames, deviceIdToPathsMap);
 
         // fetch partition information
         List<DataPartitionQueryParam> dataPartitionQueryParams = new ArrayList<>();
@@ -122,6 +124,7 @@ public class Analyzer {
         analysis.setStatement(rewrittenStatement);
         analysis.setSchemaTree(schemaTree);
         analysis.setDeviceIdToPathsMap(deviceIdToPathsMap);
+        analysis.setOutputColumnNames(outputColumnNames);
         analysis.setDataPartitionInfo(dataPartition);
       } catch (StatementAnalyzeException | PathNumOverLimitException e) {
         e.printStackTrace();

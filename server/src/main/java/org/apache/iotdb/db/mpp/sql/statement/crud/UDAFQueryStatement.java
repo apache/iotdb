@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.sql.statement.crud;
 
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.sql.statement.component.SelectComponent;
 import org.apache.iotdb.db.query.expression.Expression;
@@ -87,5 +88,9 @@ public class UDAFQueryStatement extends QueryStatement {
     for (Expression childExp : expression.getExpressions()) {
       checkEachExpression(childExp);
     }
+  }
+
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitUDAFQuery(this, context);
   }
 }

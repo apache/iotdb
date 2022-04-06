@@ -20,11 +20,12 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.source;
 
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
+import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -59,7 +60,8 @@ public class SeriesAggregateScanNode extends SourceNode {
   // The aggregation function, which contains the function name and related series.
   // (Currently we only support one series in the aggregation function)
   // TODO: need consider whether it is suitable the aggregation function using FunctionExpression
-  private FunctionExpression aggregateFunc;
+  private PartialPath seriesPath;
+  private AggregationType aggregateFunc;
 
   private Filter filter;
 
@@ -70,6 +72,22 @@ public class SeriesAggregateScanNode extends SourceNode {
 
   public SeriesAggregateScanNode(PlanNodeId id) {
     super(id);
+  }
+
+  public SeriesAggregateScanNode(
+      PlanNodeId id, PartialPath seriesPath, AggregationType aggregateFunc) {
+    this(id);
+    this.seriesPath = seriesPath;
+    this.aggregateFunc = aggregateFunc;
+  }
+
+  public SeriesAggregateScanNode(
+      PlanNodeId id,
+      PartialPath seriesPath,
+      AggregationType aggregateFunc,
+      GroupByTimeParameter groupByTimeParameter) {
+    this(id, seriesPath, aggregateFunc);
+    this.groupByTimeParameter = groupByTimeParameter;
   }
 
   @Override
@@ -95,17 +113,6 @@ public class SeriesAggregateScanNode extends SourceNode {
     return ImmutableList.of(columnName);
   }
 
-  public SeriesAggregateScanNode(PlanNodeId id, FunctionExpression aggregateFunc) {
-    this(id);
-    this.aggregateFunc = aggregateFunc;
-  }
-
-  public SeriesAggregateScanNode(
-      PlanNodeId id, FunctionExpression aggregateFunc, GroupByTimeParameter groupByTimeParameter) {
-    this(id, aggregateFunc);
-    this.groupByTimeParameter = groupByTimeParameter;
-  }
-
   @Override
   public void open() throws Exception {}
 
@@ -121,12 +128,12 @@ public class SeriesAggregateScanNode extends SourceNode {
 
   @Override
   public String getDeviceName() {
-    return aggregateFunc.getPaths().get(0).getDevice();
+    return seriesPath.getDevice();
   }
 
   @Override
   protected String getExpressionString() {
-    return aggregateFunc.getExpressionString();
+    return aggregateFunc + "(" + seriesPath.getFullPath() + ")";
   }
 
   @Override

@@ -32,6 +32,7 @@ import org.apache.iotdb.db.mpp.sql.rewriter.WildcardsRemover;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
+import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.AccessStrategy;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
@@ -238,7 +239,11 @@ public class FunctionExpression extends Expression {
   @Override
   public void collectPlanNode(Set<SourceNode> planNodeSet) {
     if (isBuiltInAggregationFunctionExpression) {
-      planNodeSet.add(new SeriesAggregateScanNode(PlanNodeIdAllocator.generateId(), this));
+      planNodeSet.add(
+          new SeriesAggregateScanNode(
+              PlanNodeIdAllocator.generateId(),
+              paths.get(0),
+              AggregationType.valueOf(functionName)));
     }
     // TODO: support UDF
   }

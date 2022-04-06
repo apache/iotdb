@@ -38,13 +38,17 @@ public class FilterNode extends ProcessNode {
 
   private final QueryFilter predicate;
 
-  public FilterNode(PlanNodeId id, QueryFilter predicate) {
+  private final List<String> outputColumnNames;
+
+  public FilterNode(PlanNodeId id, QueryFilter predicate, List<String> outputColumnNames) {
     super(id);
     this.predicate = predicate;
+    this.outputColumnNames = outputColumnNames;
   }
 
-  public FilterNode(PlanNodeId id, PlanNode child, QueryFilter predicate) {
-    this(id, predicate);
+  public FilterNode(
+      PlanNodeId id, PlanNode child, QueryFilter predicate, List<String> outputColumnNames) {
+    this(id, predicate, outputColumnNames);
     this.child = child;
   }
 
@@ -60,7 +64,7 @@ public class FilterNode extends ProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new FilterNode(getId(), predicate);
+    return new FilterNode(getId(), predicate, outputColumnNames);
   }
 
   @Override
@@ -70,7 +74,7 @@ public class FilterNode extends ProcessNode {
 
   @Override
   public List<String> getOutputColumnNames() {
-    return child.getOutputColumnNames();
+    return outputColumnNames;
   }
 
   @Override
@@ -98,6 +102,7 @@ public class FilterNode extends ProcessNode {
     String title = String.format("[FilterNode (%s)]", this.getId());
     List<String> attributes = new ArrayList<>();
     attributes.add("QueryFilter: " + this.getPredicate());
+    attributes.add("outputColumnNames: " + this.getOutputColumnNames());
     return new Pair<>(title, attributes);
   }
 }

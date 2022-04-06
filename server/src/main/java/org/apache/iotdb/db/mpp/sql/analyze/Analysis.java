@@ -53,6 +53,8 @@ public class Analysis {
 
   private Map<String, Set<PartialPath>> deviceIdToPathsMap;
 
+  private List<String> outputColumnNames;
+
   public List<RegionReplicaSet> getPartitionInfo(PartialPath seriesPath, Filter timefilter) {
     // TODO: (xingtanzjr) implement the calculation of timePartitionIdList
     return dataPartition.getDataRegionReplicaSet(seriesPath.getDevice(), null);
@@ -96,5 +98,13 @@ public class Analysis {
 
   public void setSchemaTree(SchemaTree schemaTree) {
     this.schemaTree = schemaTree;
+  }
+
+  public List<String> getOutputColumnNames() {
+    return outputColumnNames;
+  }
+
+  public void setOutputColumnNames(List<String> outputColumnNames) {
+    this.outputColumnNames = outputColumnNames;
   }
 }

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.sql.statement.crud;
 
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.component.ResultColumn;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
@@ -52,5 +53,9 @@ public class LastQueryStatement extends QueryStatement {
         throw new SemanticException("Last queries can only be applied on raw time series.");
       }
     }
+  }
+
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitLastQuery(this, context);
   }
 }

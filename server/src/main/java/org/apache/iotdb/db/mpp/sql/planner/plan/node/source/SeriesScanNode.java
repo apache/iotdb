@@ -45,7 +45,7 @@ import java.util.Set;
 public class SeriesScanNode extends SourceNode {
 
   // The path of the target series which will be scanned.
-  private PartialPath seriesPath;
+  private final PartialPath seriesPath;
 
   // all the sensors in seriesPath's device of current query
   private Set<String> allSensors;
@@ -75,6 +75,12 @@ public class SeriesScanNode extends SourceNode {
   public SeriesScanNode(PlanNodeId id, PartialPath seriesPath) {
     super(id);
     this.seriesPath = seriesPath;
+  }
+
+  public SeriesScanNode(PlanNodeId id, PartialPath seriesPath, OrderBy scanOrder) {
+    super(id);
+    this.seriesPath = seriesPath;
+    this.scanOrder = scanOrder;
   }
 
   public SeriesScanNode(PlanNodeId id, PartialPath seriesPath, RegionReplicaSet regionReplicaSet) {
