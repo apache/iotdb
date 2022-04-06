@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,15 +16,24 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.operator.source;
+package org.apache.iotdb.db.mpp.execution;
 
-import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.mpp.operator.Operator;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+public class FragmentInstanceInfo {
 
-public interface SourceOperator extends Operator {
+  private final FragmentInstanceState state;
 
-  PlanNodeId getSourceId();
+  private final long endTime;
 
-  void initQueryDataSource(QueryDataSource dataSource);
+  public FragmentInstanceInfo(FragmentInstanceState state, long endTime) {
+    this.state = state;
+    this.endTime = endTime;
+  }
+
+  public FragmentInstanceState getState() {
+    return state;
+  }
+
+  public long getEndTime() {
+    return endTime;
+  }
 }

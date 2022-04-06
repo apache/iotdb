@@ -330,6 +330,13 @@ public class TemplateManager {
     template.unmarkSchemaRegion(storageGroup, schemaRegionId);
   }
 
+  public void unmarkStorageGroup(Template template, String storageGroup) {
+    synchronized (templateUsageInStorageGroup) {
+      templateUsageInStorageGroup.remove(storageGroup);
+    }
+    template.unmarkStorageGroup(storageGroup);
+  }
+
   public void forceLog() {
     try {
       logWriter.force();
