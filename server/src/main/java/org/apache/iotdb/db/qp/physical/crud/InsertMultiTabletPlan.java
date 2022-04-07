@@ -271,7 +271,7 @@ public class InsertMultiTabletPlan extends InsertPlan implements BatchPlan {
     buffer.put((byte) type);
     buffer.putInt(insertTabletPlanList.size());
     for (InsertTabletPlan insertTabletPlan : insertTabletPlanList) {
-      insertTabletPlan.subSerialize(buffer);
+      insertTabletPlan.subSerialize(buffer, 0, insertTabletPlan.getRowCount());
     }
 
     buffer.putInt(parentInsertTabletPlanIndexList.size());
@@ -286,7 +286,7 @@ public class InsertMultiTabletPlan extends InsertPlan implements BatchPlan {
     stream.writeByte((byte) type);
     stream.writeInt(insertTabletPlanList.size());
     for (InsertTabletPlan insertTabletPlan : insertTabletPlanList) {
-      insertTabletPlan.subSerialize(stream);
+      insertTabletPlan.subSerialize(stream, 0, insertTabletPlan.getRowCount());
     }
 
     stream.writeInt(parentInsertTabletPlanIndexList.size());

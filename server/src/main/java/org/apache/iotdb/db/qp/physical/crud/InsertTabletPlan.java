@@ -55,18 +55,11 @@ public class InsertTabletPlan extends InsertPlan implements WALEntryValue {
   private static final String DATATYPE_UNSUPPORTED = "Data type %s is not supported.";
 
   private long[] times; // times should be sorted. It is done in the session API.
-  private ByteBuffer timeBuffer;
 
   private BitMap[] bitMaps;
   private Object[] columns;
-  private ByteBuffer valueBuffer;
   private int rowCount = 0;
-  // indicate whether this plan has been set 'start' or 'end' in order to support plan transmission
-  // without data loss in cluster version
-  boolean isExecuting = false;
   private List<PartialPath> paths;
-  private int start;
-  private int end;
   // when this plan is sub-plan split from another InsertTabletPlan, this indicates the original
   // positions of values in
   // this plan. For example, if the plan contains 5 timestamps, and range = [1,4,10,12], then it
@@ -116,24 +109,6 @@ public class InsertTabletPlan extends InsertPlan implements WALEntryValue {
     this.isAligned = isAligned;
   }
 
-  public int getStart() {
-    return start;
-  }
-
-  public void setStart(int start) {
-    this.isExecuting = true;
-    this.start = start;
-  }
-
-  public int getEnd() {
-    return end;
-  }
-
-  public void setEnd(int end) {
-    this.isExecuting = true;
-    this.end = end;
-  }
-
   public List<Integer> getRange() {
     return range;
   }
@@ -159,10 +134,15 @@ public class InsertTabletPlan extends InsertPlan implements WALEntryValue {
   @Override
   public int serializedSize() {
     int size = Byte.BYTES;
-    return size + subSerializeSize();
+    return size + subSerializeSize(0, rowCount);
   }
 
-  int subSerializeSize() {
+  public int serializedSize(int start, int end) {
+    int size = Byte.BYTES;
+    return size + subSerializeSize(start, end);
+  }
+
+  int subSerializeSize(int start, int end) {
     int size = 0;
     size += ReadWriteIOUtils.sizeToWrite(devicePath.getFullPath());
     // measurements size
@@ -181,41 +161,25 @@ public class InsertTabletPlan extends InsertPlan implements WALEntryValue {
     }
     // times size
     size += Integer.BYTES;
-    if (timeBuffer == null) {
-      if (isExecuting) {
-        size += Long.BYTES * (end - start);
-      } else {
-        size += Long.BYTES * times.length;
-      }
-    } else {
-      size += timeBuffer.array().length;
-    }
+    size += Long.BYTES * (end - start);
     // bitmaps size
     size += Byte.BYTES;
     if (bitMaps != null) {
       for (BitMap bitMap : bitMaps) {
         size += Byte.BYTES;
         if (bitMap != null) {
-          if (isExecuting) {
-            int len = end - start;
-            BitMap partBitMap = new BitMap(len);
-            BitMap.copyOfRange(bitMap, start, partBitMap, 0, len);
-            size += partBitMap.getByteArray().length;
-          } else {
-            size += bitMap.getByteArray().length;
-          }
+          int len = end - start;
+          BitMap partBitMap = new BitMap(len);
+          BitMap.copyOfRange(bitMap, start, partBitMap, 0, len);
+          size += partBitMap.getByteArray().length;
         }
       }
     }
     // values size
-    if (valueBuffer == null) {
-      for (int i = 0; i < dataTypes.length; i++) {
-        if (columns[i] != null) {
-          size += getColumnSize(dataTypes[i], columns[i], start, end);
-        }
+    for (int i = 0; i < dataTypes.length; i++) {
+      if (columns[i] != null) {
+        size += getColumnSize(dataTypes[i], columns[i], start, end);
       }
-    } else {
-      size += valueBuffer.array().length;
     }
     size += Long.BYTES;
     size += Byte.BYTES;
@@ -224,27 +188,25 @@ public class InsertTabletPlan extends InsertPlan implements WALEntryValue {
 
   private int getColumnSize(TSDataType dataType, Object column, int start, int end) {
     int size = 0;
-    int curStart = isExecuting ? start : 0;
-    int curEnd = isExecuting ? end : rowCount;
     switch (dataType) {
       case INT32:
-        size += Integer.BYTES * (curEnd - curStart);
+        size += Integer.BYTES * (end - start);
         break;
       case INT64:
-        size += Long.BYTES * (curEnd - curStart);
+        size += Long.BYTES * (end - start);
         break;
       case FLOAT:
-        size += Float.BYTES * (curEnd - curStart);
+        size += Float.BYTES * (end - start);
         break;
       case DOUBLE:
-        size += Double.BYTES * (curEnd - curStart);
+        size += Double.BYTES * (end - start);
         break;
       case BOOLEAN:
-        size += Byte.BYTES * (curEnd - curStart);
+        size += Byte.BYTES * (end - start);
         break;
       case TEXT:
         Binary[] binaryValues = (Binary[]) column;
-        for (int j = curStart; j < curEnd; j++) {
+        for (int j = start; j < end; j++) {
           size += ReadWriteIOUtils.sizeToWrite(binaryValues[j]);
         }
         break;
@@ -256,16 +218,16 @@ public class InsertTabletPlan extends InsertPlan implements WALEntryValue {
   public void serialize(DataOutputStream stream) throws IOException {
     int type = PhysicalPlanType.BATCHINSERT.ordinal();
     stream.writeByte((byte) type);
-    subSerialize(stream);
+    subSerialize(stream, 0, rowCount);
   }
 
-  void subSerialize(DataOutputStream stream) throws IOException {
+  void subSerialize(DataOutputStream stream, int start, int end) throws IOException {
     putString(stream, devicePath.getFullPath());
     writeMeasurements(stream);
     writeDataTypes(stream);
-    writeTimes(stream);
-    writeBitMaps(stream);
-    writeValues(stream);
+    writeTimes(stream, start, end);
+    writeBitMaps(stream, start, end);
+    writeValues(stream, start, end);
     stream.write((byte) (isAligned ? 1 : 0));
   }
 
@@ -291,30 +253,14 @@ public class InsertTabletPlan extends InsertPlan implements WALEntryValue {
     }
   }
 
-  private void writeTimes(DataOutputStream stream) throws IOException {
-    if (isExecuting) {
-      stream.writeInt(end - start);
-    } else {
-      stream.writeInt(rowCount);
-    }
-
-    if (timeBuffer == null) {
-      if (isExecuting) {
-        for (int i = start; i < end; i++) {
-          stream.writeLong(times[i]);
-        }
-      } else {
-        for (long time : times) {
-          stream.writeLong(time);
-        }
-      }
-    } else {
-      stream.write(timeBuffer.array());
-      timeBuffer = null;
+  private void writeTimes(DataOutputStream stream, int start, int end) throws IOException {
+    stream.writeInt(end - start);
+    for (int i = start; i < end; i++) {
+      stream.writeLong(times[i]);
     }
   }
 
-  private void writeBitMaps(DataOutputStream stream) throws IOException {
+  private void writeBitMaps(DataOutputStream stream, int start, int end) throws IOException {
     stream.writeBoolean(bitMaps != null);
     if (bitMaps != null) {
       for (BitMap bitMap : bitMaps) {
@@ -322,31 +268,22 @@ public class InsertTabletPlan extends InsertPlan implements WALEntryValue {
           stream.writeBoolean(false);
         } else {
           stream.writeBoolean(true);
-          if (isExecuting) {
-            int len = end - start;
-            BitMap partBitMap = new BitMap(len);
-            BitMap.copyOfRange(bitMap, start, partBitMap, 0, len);
-            stream.write(partBitMap.getByteArray());
-          } else {
-            stream.write(bitMap.getByteArray());
-          }
+          int len = end - start;
+          BitMap partBitMap = new BitMap(len);
+          BitMap.copyOfRange(bitMap, start, partBitMap, 0, len);
+          stream.write(partBitMap.getByteArray());
         }
       }
     }
   }
 
-  private void writeValues(DataOutputStream stream) throws IOException {
-    if (valueBuffer == null) {
-      serializeValues(stream);
-    } else {
-      stream.write(valueBuffer.array());
-      valueBuffer = null;
-    }
-
+  private void writeValues(DataOutputStream stream, int start, int end) throws IOException {
+    serializeValues(stream, start, end);
     stream.writeLong(index);
   }
 
-  private void serializeValues(DataOutputStream outputStream) throws IOException {
+  private void serializeValues(DataOutputStream outputStream, int start, int end)
+      throws IOException {
     for (int i = 0; i < dataTypes.length; i++) {
       if (columns[i] == null) {
         continue;
@@ -358,42 +295,40 @@ public class InsertTabletPlan extends InsertPlan implements WALEntryValue {
   private void serializeColumn(
       TSDataType dataType, Object column, DataOutputStream outputStream, int start, int end)
       throws IOException {
-    int curStart = isExecuting ? start : 0;
-    int curEnd = isExecuting ? end : rowCount;
     switch (dataType) {
       case INT32:
         int[] intValues = (int[]) column;
-        for (int j = curStart; j < curEnd; j++) {
+        for (int j = start; j < end; j++) {
           outputStream.writeInt(intValues[j]);
         }
         break;
       case INT64:
         long[] longValues = (long[]) column;
-        for (int j = curStart; j < curEnd; j++) {
+        for (int j = start; j < end; j++) {
           outputStream.writeLong(longValues[j]);
         }
         break;
       case FLOAT:
         float[] floatValues = (float[]) column;
-        for (int j = curStart; j < curEnd; j++) {
+        for (int j = start; j < end; j++) {
           outputStream.writeFloat(floatValues[j]);
         }
         break;
       case DOUBLE:
         double[] doubleValues = (double[]) column;
-        for (int j = curStart; j < curEnd; j++) {
+        for (int j = start; j < end; j++) {
           outputStream.writeDouble(doubleValues[j]);
         }
         break;
       case BOOLEAN:
         boolean[] boolValues = (boolean[]) column;
-        for (int j = curStart; j < curEnd; j++) {
+        for (int j = start; j < end; j++) {
           outputStream.writeByte(BytesUtils.boolToByte(boolValues[j]));
         }
         break;
       case TEXT:
         Binary[] binaryValues = (Binary[]) column;
-        for (int j = curStart; j < curEnd; j++) {
+        for (int j = start; j < end; j++) {
           outputStream.writeInt(binaryValues[j].getLength());
           outputStream.write(binaryValues[j].getValues());
         }
@@ -407,16 +342,16 @@ public class InsertTabletPlan extends InsertPlan implements WALEntryValue {
   public void serializeImpl(ByteBuffer buffer) {
     int type = PhysicalPlanType.BATCHINSERT.ordinal();
     buffer.put((byte) type);
-    subSerialize(buffer);
+    subSerialize(buffer, 0, rowCount);
   }
 
-  void subSerialize(ByteBuffer buffer) {
+  void subSerialize(ByteBuffer buffer, int start, int end) {
     putString(buffer, devicePath.getFullPath());
     writeMeasurements(buffer);
     writeDataTypes(buffer);
-    writeTimes(buffer);
-    writeBitMaps(buffer);
-    writeValues(buffer);
+    writeTimes(buffer, 0, rowCount);
+    writeBitMaps(buffer, 0, rowCount);
+    writeValues(buffer, 0, rowCount);
     buffer.put((byte) (isAligned ? 1 : 0));
   }
 
@@ -441,30 +376,14 @@ public class InsertTabletPlan extends InsertPlan implements WALEntryValue {
     }
   }
 
-  private void writeTimes(ByteBuffer buffer) {
-    if (isExecuting) {
-      buffer.putInt(end - start);
-    } else {
-      buffer.putInt(rowCount);
-    }
-
-    if (timeBuffer == null) {
-      if (isExecuting) {
-        for (int i = start; i < end; i++) {
-          buffer.putLong(times[i]);
-        }
-      } else {
-        for (long time : times) {
-          buffer.putLong(time);
-        }
-      }
-    } else {
-      buffer.put(timeBuffer.array());
-      timeBuffer = null;
+  private void writeTimes(ByteBuffer buffer, int start, int end) {
+    buffer.putInt(rowCount);
+    for (int i = start; i < end; i++) {
+      buffer.putLong(times[i]);
     }
   }
 
-  private void writeBitMaps(ByteBuffer buffer) {
+  private void writeBitMaps(ByteBuffer buffer, int start, int end) {
     buffer.put(BytesUtils.boolToByte(bitMaps != null));
     if (bitMaps != null) {
       for (BitMap bitMap : bitMaps) {
@@ -472,31 +391,21 @@ public class InsertTabletPlan extends InsertPlan implements WALEntryValue {
           buffer.put(BytesUtils.boolToByte(false));
         } else {
           buffer.put(BytesUtils.boolToByte(true));
-          if (isExecuting) {
-            int len = end - start;
-            BitMap partBitMap = new BitMap(len);
-            BitMap.copyOfRange(bitMap, start, partBitMap, 0, len);
-            buffer.put(partBitMap.getByteArray());
-          } else {
-            buffer.put(bitMap.getByteArray());
-          }
+          int len = end - start;
+          BitMap partBitMap = new BitMap(len);
+          BitMap.copyOfRange(bitMap, start, partBitMap, 0, len);
+          buffer.put(partBitMap.getByteArray());
         }
       }
     }
   }
 
-  private void writeValues(ByteBuffer buffer) {
-    if (valueBuffer == null) {
-      serializeValues(buffer);
-    } else {
-      buffer.put(valueBuffer.array());
-      valueBuffer = null;
-    }
-
+  private void writeValues(ByteBuffer buffer, int start, int end) {
+    serializeValues(buffer, start, end);
     buffer.putLong(index);
   }
 
-  private void serializeValues(ByteBuffer buffer) {
+  private void serializeValues(ByteBuffer buffer, int start, int end) {
     for (int i = 0; i < dataTypes.length; i++) {
       if (columns[i] == null) {
         continue;
@@ -507,42 +416,40 @@ public class InsertTabletPlan extends InsertPlan implements WALEntryValue {
 
   private void serializeColumn(
       TSDataType dataType, Object column, ByteBuffer buffer, int start, int end) {
-    int curStart = isExecuting ? start : 0;
-    int curEnd = isExecuting ? end : rowCount;
     switch (dataType) {
       case INT32:
         int[] intValues = (int[]) column;
-        for (int j = curStart; j < curEnd; j++) {
+        for (int j = start; j < end; j++) {
           buffer.putInt(intValues[j]);
         }
         break;
       case INT64:
         long[] longValues = (long[]) column;
-        for (int j = curStart; j < curEnd; j++) {
+        for (int j = start; j < end; j++) {
           buffer.putLong(longValues[j]);
         }
         break;
       case FLOAT:
         float[] floatValues = (float[]) column;
-        for (int j = curStart; j < curEnd; j++) {
+        for (int j = start; j < end; j++) {
           buffer.putFloat(floatValues[j]);
         }
         break;
       case DOUBLE:
         double[] doubleValues = (double[]) column;
-        for (int j = curStart; j < curEnd; j++) {
+        for (int j = start; j < end; j++) {
           buffer.putDouble(doubleValues[j]);
         }
         break;
       case BOOLEAN:
         boolean[] boolValues = (boolean[]) column;
-        for (int j = curStart; j < curEnd; j++) {
+        for (int j = start; j < end; j++) {
           buffer.put(BytesUtils.boolToByte(boolValues[j]));
         }
         break;
       case TEXT:
         Binary[] binaryValues = (Binary[]) column;
-        for (int j = curStart; j < curEnd; j++) {
+        for (int j = start; j < end; j++) {
           buffer.putInt(binaryValues[j].getLength());
           buffer.put(binaryValues[j].getValues());
         }
@@ -595,25 +502,9 @@ public class InsertTabletPlan extends InsertPlan implements WALEntryValue {
   }
 
   private void writeTimes(IWALByteBufferView buffer, int start, int end) {
-    if (isExecuting) {
-      buffer.putInt(end - start);
-    } else {
-      buffer.putInt(rowCount);
-    }
-
-    if (timeBuffer == null) {
-      if (isExecuting) {
-        for (int i = start; i < end; i++) {
-          buffer.putLong(times[i]);
-        }
-      } else {
-        for (long time : times) {
-          buffer.putLong(time);
-        }
-      }
-    } else {
-      buffer.put(timeBuffer.array());
-      timeBuffer = null;
+    buffer.putInt(end - start);
+    for (int i = start; i < end; i++) {
+      buffer.putLong(times[i]);
     }
   }
 
@@ -625,27 +516,17 @@ public class InsertTabletPlan extends InsertPlan implements WALEntryValue {
           buffer.put(BytesUtils.boolToByte(false));
         } else {
           buffer.put(BytesUtils.boolToByte(true));
-          if (isExecuting) {
-            int len = end - start;
-            BitMap partBitMap = new BitMap(len);
-            BitMap.copyOfRange(bitMap, start, partBitMap, 0, len);
-            buffer.put(partBitMap.getByteArray());
-          } else {
-            buffer.put(bitMap.getByteArray());
-          }
+          int len = end - start;
+          BitMap partBitMap = new BitMap(len);
+          BitMap.copyOfRange(bitMap, start, partBitMap, 0, len);
+          buffer.put(partBitMap.getByteArray());
         }
       }
     }
   }
 
   private void writeValues(IWALByteBufferView buffer, int start, int end) {
-    if (valueBuffer == null) {
-      serializeValues(buffer, start, end);
-    } else {
-      buffer.put(valueBuffer.array());
-      valueBuffer = null;
-    }
-
+    serializeValues(buffer, start, end);
     buffer.putLong(index);
   }
 
@@ -660,42 +541,40 @@ public class InsertTabletPlan extends InsertPlan implements WALEntryValue {
 
   private void serializeColumn(
       TSDataType dataType, Object column, IWALByteBufferView buffer, int start, int end) {
-    int curStart = isExecuting ? start : 0;
-    int curEnd = isExecuting ? end : rowCount;
     switch (dataType) {
       case INT32:
         int[] intValues = (int[]) column;
-        for (int j = curStart; j < curEnd; j++) {
+        for (int j = start; j < end; j++) {
           buffer.putInt(intValues[j]);
         }
         break;
       case INT64:
         long[] longValues = (long[]) column;
-        for (int j = curStart; j < curEnd; j++) {
+        for (int j = start; j < end; j++) {
           buffer.putLong(longValues[j]);
         }
         break;
       case FLOAT:
         float[] floatValues = (float[]) column;
-        for (int j = curStart; j < curEnd; j++) {
+        for (int j = start; j < end; j++) {
           buffer.putFloat(floatValues[j]);
         }
         break;
       case DOUBLE:
         double[] doubleValues = (double[]) column;
-        for (int j = curStart; j < curEnd; j++) {
+        for (int j = start; j < end; j++) {
           buffer.putDouble(doubleValues[j]);
         }
         break;
       case BOOLEAN:
         boolean[] boolValues = (boolean[]) column;
-        for (int j = curStart; j < curEnd; j++) {
+        for (int j = start; j < end; j++) {
           buffer.put(BytesUtils.boolToByte(boolValues[j]));
         }
         break;
       case TEXT:
         Binary[] binaryValues = (Binary[]) column;
-        for (int j = curStart; j < curEnd; j++) {
+        for (int j = start; j < end; j++) {
           buffer.putInt(binaryValues[j].getLength());
           buffer.put(binaryValues[j].getValues());
         }
@@ -703,16 +582,6 @@ public class InsertTabletPlan extends InsertPlan implements WALEntryValue {
       default:
         throw new UnSupportedDataTypeException(String.format(DATATYPE_UNSUPPORTED, dataType));
     }
-  }
-
-  public void setTimeBuffer(ByteBuffer timeBuffer) {
-    this.timeBuffer = timeBuffer;
-    this.timeBuffer.position(0);
-  }
-
-  public void setValueBuffer(ByteBuffer valueBuffer) {
-    this.valueBuffer = valueBuffer;
-    this.timeBuffer.position(0);
   }
 
   @Override
@@ -932,8 +801,6 @@ public class InsertTabletPlan extends InsertPlan implements WALEntryValue {
     return rowCount == that.rowCount
         && Objects.equals(devicePath, that.devicePath)
         && Arrays.equals(times, that.times)
-        && Objects.equals(timeBuffer, that.timeBuffer)
-        && Objects.equals(valueBuffer, that.valueBuffer)
         && Objects.equals(paths, that.paths)
         && Objects.equals(range, that.range)
         && Objects.equals(isAligned, that.isAligned);
@@ -941,7 +808,7 @@ public class InsertTabletPlan extends InsertPlan implements WALEntryValue {
 
   @Override
   public int hashCode() {
-    int result = Objects.hash(timeBuffer, valueBuffer, rowCount, paths, range);
+    int result = Objects.hash(rowCount, paths, range);
     result = 31 * result + Arrays.hashCode(times);
     return result;
   }
