@@ -164,7 +164,7 @@ public class StatementGenerator {
     insertStatement.setTimes(
         QueryDataSetUtils.readTimesFromBuffer(insertTabletReq.timestamps, insertTabletReq.size));
     insertStatement.setColumns(
-        QueryDataSetUtils.readValuesFromBuffer(
+        QueryDataSetUtils.readTabletValuesFromBuffer(
             insertTabletReq.values,
             insertTabletReq.types,
             insertTabletReq.types.size(),

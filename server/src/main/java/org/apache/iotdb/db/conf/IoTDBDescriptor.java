@@ -959,7 +959,7 @@ public class IoTDBDescriptor {
     int maxWalMemTableSnapshotNum =
         Integer.parseInt(
             properties.getProperty(
-                "max_wal_wal_memtable_snapshot_num",
+                "max_wal_memtable_snapshot_num",
                 Integer.toString(conf.getMaxWalMemTableSnapshotNum())));
     if (maxWalMemTableSnapshotNum > 0) {
       conf.setMaxWalMemTableSnapshotNum(maxWalMemTableSnapshotNum);
