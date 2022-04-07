@@ -20,20 +20,21 @@ package org.apache.iotdb.db.mpp.schedule;
 
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.QueryId;
-import org.apache.iotdb.db.mpp.execution.ExecFragmentInstance;
+import org.apache.iotdb.db.mpp.execution.Driver;
 
 import java.util.List;
 
 /** the interface of fragment instance scheduling */
-public interface IFragmentInstanceManager {
+public interface IFragmentInstanceScheduler {
 
   /**
-   * Submit one or more {@link ExecFragmentInstance} in one query for later scheduling.
+   * Submit one or more {@link org.apache.iotdb.db.mpp.execution.Driver} in one query for later
+   * scheduling.
    *
    * @param queryId the queryId these instances belong to.
    * @param instances the submitted instances.
    */
-  void submitFragmentInstances(QueryId queryId, List<ExecFragmentInstance> instances);
+  void submitFragmentInstances(QueryId queryId, List<Driver> instances);
 
   /**
    * Abort all the instances in this query.
@@ -42,8 +43,12 @@ public interface IFragmentInstanceManager {
    */
   void abortQuery(QueryId queryId);
 
-  /** Fetch an {@link ExecFragmentInstance}. */
-  void fetchFragmentInstance(ExecFragmentInstance instance);
+  /**
+   * Abort the fragment instance. If the instance is not existed, nothing will happen.
+   *
+   * @param instanceId the id of the fragment instance to be aborted.
+   */
+  void abortFragmentInstance(FragmentInstanceId instanceId);
 
   /**
    * Return the schedule priority of a fragment.

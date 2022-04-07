@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.buffer.IDataBlockManager;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.QueryId;
-import org.apache.iotdb.db.mpp.execution.ExecFragmentInstance;
+import org.apache.iotdb.db.mpp.execution.Driver;
 import org.apache.iotdb.db.mpp.schedule.queue.IndexedBlockingQueue;
 import org.apache.iotdb.db.mpp.schedule.queue.L1PriorityQueue;
 import org.apache.iotdb.db.mpp.schedule.queue.L2PriorityQueue;
@@ -51,11 +51,11 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /** the manager of fragment instances scheduling */
-public class FragmentInstanceManager implements IFragmentInstanceManager, IService {
+public class FragmentInstanceScheduler implements IFragmentInstanceScheduler, IService {
 
-  private static final Logger logger = LoggerFactory.getLogger(FragmentInstanceManager.class);
+  private static final Logger logger = LoggerFactory.getLogger(FragmentInstanceScheduler.class);
 
-  public static FragmentInstanceManager getInstance() {
+  public static FragmentInstanceScheduler getInstance() {
     return InstanceHolder.instance;
   }
 
@@ -73,7 +73,7 @@ public class FragmentInstanceManager implements IFragmentInstanceManager, IServi
   private InternalService.Client mppServiceClient; // TODO: use from client pool
   private final List<AbstractExecutor> threads;
 
-  public FragmentInstanceManager() {
+  private FragmentInstanceScheduler() {
     this.readyQueue =
         new L2PriorityQueue<>(
             MAX_CAPACITY,
@@ -125,7 +125,7 @@ public class FragmentInstanceManager implements IFragmentInstanceManager, IServi
   }
 
   @Override
-  public void submitFragmentInstances(QueryId queryId, List<ExecFragmentInstance> instances) {
+  public void submitFragmentInstances(QueryId queryId, List<Driver> instances) {
     List<FragmentInstanceTask> tasks =
         instances.stream()
             .map(
@@ -165,7 +165,18 @@ public class FragmentInstanceManager implements IFragmentInstanceManager, IServi
   }
 
   @Override
-  public void fetchFragmentInstance(ExecFragmentInstance instance) {}
+  public void abortFragmentInstance(FragmentInstanceId instanceId) {
+    FragmentInstanceTask task = timeoutQueue.get(new FragmentInstanceTaskID(instanceId));
+    if (task == null) {
+      return;
+    }
+    task.lock();
+    try {
+      clearFragmentInstanceTask(task);
+    } finally {
+      task.unlock();
+    }
+  }
 
   @Override
   public double getSchedulePriority(FragmentInstanceId instanceId) {
@@ -238,7 +249,7 @@ public class FragmentInstanceManager implements IFragmentInstanceManager, IServi
 
     private InstanceHolder() {}
 
-    private static final FragmentInstanceManager instance = new FragmentInstanceManager();
+    private static final FragmentInstanceScheduler instance = new FragmentInstanceScheduler();
   }
   /** the default scheduler implementation */
   private class Scheduler implements ITaskScheduler {
