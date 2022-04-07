@@ -39,7 +39,6 @@ import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.monitor.StatMonitor;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -114,7 +113,6 @@ public class EnvironmentUtils {
     StorageEngine.getInstance().reset();
     IoTDBDescriptor.getInstance().getConfig().setReadOnly(false);
 
-    StatMonitor.getInstance().close();
     // clean wal
     MultiFileLogNodeManager.getInstance().stop();
     // clean cache
@@ -124,7 +122,7 @@ public class EnvironmentUtils {
       BloomFilterCache.getInstance().clear();
     }
     // close metadata
-    IoTDB.metaManager.clear();
+    IoTDB.schemaEngine.clear();
     MetricsService.getInstance().stop();
     // delete all directory
     cleanAllDir();
@@ -157,17 +155,10 @@ public class EnvironmentUtils {
     FileUtils.deleteDirectory(new File(dir));
   }
 
-  /** disable the system monitor</br> this function should be called before all code in the setup */
-  public static void closeStatMonitor() {
-    config.setEnableStatMonitor(false);
-  }
-
   /** disable memory control</br> this function should be called before all code in the setup */
   public static void envSetUp() throws StartupException {
-    IoTDB.metaManager.init();
+    IoTDB.schemaEngine.init();
     createAllDir();
-    // disable the system monitor
-    config.setEnableStatMonitor(false);
     IAuthorizer authorizer;
     try {
       authorizer = BasicAuthorizer.getInstance();

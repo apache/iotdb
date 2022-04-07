@@ -22,7 +22,7 @@ package org.apache.iotdb.db.engine.compaction.inner;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
-import org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger;
+import org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -42,7 +42,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
 
-import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger.SOURCE_INFO;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -73,7 +72,7 @@ public class InnerSpaceCompactionUtilsOldTest extends InnerCompactionTest {
   }
 
   @Test
-  public void testCompact() throws IOException, MetadataException {
+  public void testCompact() throws IOException, MetadataException, InterruptedException {
     TsFileResource targetTsFileResource =
         new TsFileResource(
             new File(
@@ -86,7 +85,7 @@ public class InnerSpaceCompactionUtilsOldTest extends InnerCompactionTest {
                             + 1
                             + IoTDBConstant.FILE_NAME_SEPARATOR
                             + 0
-                            + IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX)));
+                            + IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX)));
     File targetFile =
         new File(
             TestConstant.getTestTsFileDir("root.compactionTest", 0, 0)
@@ -102,14 +101,11 @@ public class InnerSpaceCompactionUtilsOldTest extends InnerCompactionTest {
     if (targetFile.exists()) {
       assertTrue(targetFile.delete());
     }
-    SizeTieredCompactionLogger sizeTieredCompactionLogger =
-        new SizeTieredCompactionLogger(
-            targetTsFileResource.getTsFilePath().concat(".compaction.log"));
-    for (TsFileResource resource : seqResources) {
-      sizeTieredCompactionLogger.logFileInfo(SOURCE_INFO, resource.getTsFile());
-    }
-    sizeTieredCompactionLogger.logSequence(true);
-    InnerSpaceCompactionUtils.compact(targetTsFileResource, seqResources, true);
+    CompactionLogger sizeTieredCompactionLogger =
+        new CompactionLogger(
+            new File(targetTsFileResource.getTsFilePath().concat(".compaction.log")));
+    sizeTieredCompactionLogger.logFiles(seqResources, CompactionLogger.STR_SOURCE_FILES);
+    InnerSpaceCompactionUtils.compact(targetTsFileResource, seqResources);
     InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource, COMPACTION_TEST_SG);
     sizeTieredCompactionLogger.close();
     Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId());

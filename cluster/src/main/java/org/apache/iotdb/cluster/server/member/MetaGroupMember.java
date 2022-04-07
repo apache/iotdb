@@ -74,6 +74,7 @@ import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.cluster.utils.nodetool.function.Status;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -84,7 +85,6 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.ServiceType;
-import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.TimeValuePairUtils;
 import org.apache.iotdb.db.utils.TimeValuePairUtils.Intervals;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
@@ -1430,7 +1430,7 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
     List<PartitionGroup> partitionGroups = new ArrayList<>();
     PartialPath storageGroupName;
     try {
-      storageGroupName = IoTDB.metaManager.getBelongedStorageGroup(path);
+      storageGroupName = IoTDB.schemaEngine.getBelongedStorageGroup(path);
     } catch (MetadataException e) {
       throw new StorageEngineException(e);
     }

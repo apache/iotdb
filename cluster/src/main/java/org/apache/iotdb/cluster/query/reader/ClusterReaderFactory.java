@@ -57,7 +57,7 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.dataset.groupby.GroupByExecutor;
+import org.apache.iotdb.db.query.executor.groupby.GroupByExecutor;
 import org.apache.iotdb.db.query.externalsort.adapter.ByTimestampReaderAdapter;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
@@ -553,7 +553,7 @@ public class ClusterReaderFactory {
     // If requiredSlots is not null, it means that this node should provide partial data as previous
     // holder, in order to assist the new holder to read the complete data.
     QueryDataSource queryDataSource =
-        QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter);
+        QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter, ascending);
     valueFilter = queryDataSource.updateFilterUsingTTL(valueFilter);
     return path.createSeriesReader(
         allSensors,

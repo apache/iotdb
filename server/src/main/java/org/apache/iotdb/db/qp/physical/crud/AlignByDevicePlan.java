@@ -18,11 +18,14 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
+import org.apache.iotdb.db.qp.logical.crud.SpecialClauseComponent;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
+import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
@@ -30,6 +33,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -45,7 +49,8 @@ public class AlignByDevicePlan extends QueryPlan {
   public static final String DATATYPE_ERROR_MESSAGE =
       "The data types of the same measurement column should be the same across devices.";
 
-  // to record result measurement columns, e.g. temperature, status, speed
+  // measurements to record result measurement columns, e.g. temperature, status, speed
+  // no contains alias
   private List<String> measurements;
   private Map<String, MeasurementInfo> measurementInfoMap;
   private List<PartialPath> deduplicatePaths = new ArrayList<>();
@@ -64,13 +69,53 @@ public class AlignByDevicePlan extends QueryPlan {
     super();
   }
 
+  public void calcWithoutNullColumnIndex(List<Expression> withoutNullColumns)
+      throws QueryProcessException {
+    // record specified without null columns, include alias
+    Set<String> withoutNullColumnSet = new HashSet<>();
+    for (Expression expression : withoutNullColumns) {
+      withoutNullColumnSet.add(expression.getExpressionString());
+    }
+
+    if (!withoutNullColumnSet.isEmpty()) {
+      withoutNullColumnsIndex = new HashSet<>();
+    }
+
+    int index = 1; // start 1, because first is device name
+    for (String measurement : this.measurements) {
+      String actualColumn = measurement; // may be alias
+      if (measurementInfoMap.containsKey(measurement)) {
+        String alias = measurementInfoMap.get(measurement).getMeasurementAlias();
+        if (alias != null && !alias.equals("")) {
+          actualColumn = alias;
+        }
+      }
+      if (withoutNullColumnSet.contains(actualColumn)) {
+        withoutNullColumnSet.remove(actualColumn);
+        withoutNullColumnsIndex.add(index);
+      }
+      index++;
+    }
+
+    if (!withoutNullColumnSet.isEmpty()) {
+      throw new QueryProcessException(QueryPlan.WITHOUT_NULL_FILTER_ERROR_MESSAGE);
+    }
+  }
+
   @Override
   public void deduplicate(PhysicalGenerator physicalGenerator) {
     Set<String> pathWithAggregationSet = new LinkedHashSet<>();
     List<String> deduplicatedAggregations = new ArrayList<>();
+    HashSet<String> measurements = new HashSet<>(getMeasurements());
+
     for (int i = 0; i < paths.size(); i++) {
       PartialPath path = paths.get(i);
       String aggregation = aggregations != null ? aggregations.get(i) : null;
+      String measurementWithAggregation = getMeasurementStrWithAggregation(path, aggregation);
+      if (!measurements.contains(measurementWithAggregation)) {
+        continue;
+      }
+
       String pathStrWithAggregation = getPathStrWithAggregation(path, aggregation);
       if (!pathWithAggregationSet.contains(pathStrWithAggregation)) {
         pathWithAggregationSet.add(pathStrWithAggregation);
@@ -85,6 +130,19 @@ public class AlignByDevicePlan extends QueryPlan {
     }
     setAggregations(deduplicatedAggregations);
     this.paths = null;
+  }
+
+  @Override
+  public void convertSpecialClauseValues(SpecialClauseComponent specialClauseComponent)
+      throws QueryProcessException {
+    if (specialClauseComponent != null) {
+      setWithoutAllNull(specialClauseComponent.isWithoutAllNull());
+      setWithoutAnyNull(specialClauseComponent.isWithoutAnyNull());
+      setRowLimit(specialClauseComponent.getRowLimit());
+      setRowOffset(specialClauseComponent.getRowOffset());
+      setAscending(specialClauseComponent.isAscending());
+      setAlignByTime(specialClauseComponent.isAlignByTime());
+    }
   }
 
   public List<PartialPath> getDeduplicatePaths() {
@@ -207,6 +265,14 @@ public class AlignByDevicePlan extends QueryPlan {
   public void setAggregationPlan(AggregationPlan aggregationPlan) {
     this.aggregationPlan = aggregationPlan;
     this.setOperatorType(Operator.OperatorType.AGGREGATION);
+  }
+
+  private String getMeasurementStrWithAggregation(PartialPath path, String aggregation) {
+    String measurement = path.getMeasurement();
+    if (aggregation != null) {
+      measurement = aggregation + "(" + measurement + ")";
+    }
+    return measurement;
   }
 
   private String getPathStrWithAggregation(PartialPath path, String aggregation) {

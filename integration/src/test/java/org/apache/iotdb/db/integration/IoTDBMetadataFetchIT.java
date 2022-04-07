@@ -26,9 +26,9 @@ import org.apache.iotdb.itbase.category.RemoteTest;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
-import org.junit.AfterClass;
+import org.junit.After;
 import org.junit.Assert;
-import org.junit.BeforeClass;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.slf4j.Logger;
@@ -45,7 +45,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
-import static org.apache.iotdb.db.metadata.MManager.TIME_SERIES_TREE_HEADER;
+import static org.apache.iotdb.db.metadata.SchemaEngine.TIME_SERIES_TREE_HEADER;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
@@ -89,15 +89,15 @@ public class IoTDBMetadataFetchIT {
     }
   }
 
-  @BeforeClass
-  public static void setUp() throws Exception {
+  @Before
+  public void setUp() throws Exception {
     EnvFactory.getEnv().initBeforeTest();
 
     insertSQL();
   }
 
-  @AfterClass
-  public static void tearDown() throws Exception {
+  @After
+  public void tearDown() throws Exception {
     EnvFactory.getEnv().cleanAfterTest();
   }
 
@@ -578,7 +578,7 @@ public class IoTDBMetadataFetchIT {
             "COUNT NODES root.ln.wf01.* level=3",
             "COUNT NODES root.ln.wf01.* level=4"
           };
-      String[] standards = new String[] {"3,\n", "1,\n", "0,\n", "0,\n", "2,\n", "0,\n"};
+      String[] standards = new String[] {"3,\n", "1,\n", "1,\n", "1,\n", "2,\n", "0,\n"};
       for (int n = 0; n < sqls.length; n++) {
         String sql = sqls[n];
         String standard = standards[n];
@@ -622,5 +622,36 @@ public class IoTDBMetadataFetchIT {
         gson.fromJson(standard.substring(TIME_SERIES_TREE_HEADER.length()), JsonObject.class);
 
     Assert.assertEquals(expected, actual);
+  }
+
+  @Test
+  @Category({LocalStandaloneTest.class, ClusterTest.class, RemoteTest.class})
+  public void showAlignedTimeseriesWithAliasAndTags() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          "create aligned timeseries root.sg.d(s1(alias1) int32 tags(tag1=v1, tag2=v2), s2 double attributes(attr3=v3))");
+      String[] expected =
+          new String[] {
+            "root.sg.d.s1,alias1,root.sg,INT32,RLE,SNAPPY,{\"tag1\":\"v1\",\"tag2\":\"v2\"},null,",
+            "root.sg.d.s2,null,root.sg,DOUBLE,GORILLA,SNAPPY,null,{\"attr3\":\"v3\"},"
+          };
+
+      int num = 0;
+      boolean hasResultSet = statement.execute("show timeseries root.sg.d.*");
+      if (hasResultSet) {
+        try (ResultSet resultSet = statement.getResultSet()) {
+          ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+          while (resultSet.next()) {
+            StringBuilder builder = new StringBuilder();
+            for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+              builder.append(resultSet.getString(i)).append(",");
+            }
+            Assert.assertEquals(expected[num++], builder.toString());
+          }
+        }
+      }
+      Assert.assertEquals(2, num);
+    }
   }
 }

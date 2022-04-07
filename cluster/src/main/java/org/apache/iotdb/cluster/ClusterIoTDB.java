@@ -32,7 +32,7 @@ import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.coordinator.Coordinator;
 import org.apache.iotdb.cluster.exception.ConfigInconsistentException;
 import org.apache.iotdb.cluster.exception.StartUpCheckFailureException;
-import org.apache.iotdb.cluster.metadata.CMManager;
+import org.apache.iotdb.cluster.metadata.CSchemaEngine;
 import org.apache.iotdb.cluster.metadata.MetaPuller;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.partition.slot.SlotStrategy;
@@ -56,7 +56,9 @@ import org.apache.iotdb.cluster.server.service.MetaAsyncService;
 import org.apache.iotdb.cluster.server.service.MetaSyncService;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.cluster.utils.nodetool.ClusterMonitor;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConfigCheck;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -68,7 +70,6 @@ import org.apache.iotdb.db.service.JMXService;
 import org.apache.iotdb.db.service.RegisterManager;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.db.service.thrift.ThriftServiceThread;
-import org.apache.iotdb.db.utils.TestOnly;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.async.TAsyncClientManager;
@@ -158,9 +159,9 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
             IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable());
     metaGroupMember = new MetaGroupMember(protocolFactory, thisNode, coordinator);
     IoTDB.setClusterMode();
-    IoTDB.setMetaManager(CMManager.getInstance());
-    ((CMManager) IoTDB.metaManager).setMetaGroupMember(metaGroupMember);
-    ((CMManager) IoTDB.metaManager).setCoordinator(coordinator);
+    IoTDB.setSchemaEngine(CSchemaEngine.getInstance());
+    ((CSchemaEngine) IoTDB.schemaEngine).setMetaGroupMember(metaGroupMember);
+    ((CSchemaEngine) IoTDB.schemaEngine).setCoordinator(coordinator);
     MetaPuller.getInstance().init(metaGroupMember);
     // set coordinator for serviceProvider construction
     try {
@@ -228,70 +229,40 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
   }
 
   public static void main(String[] args) {
-    if (args.length < 1) {
-      logger.error(
-          "Usage: <-s|-a|-r> "
-              + "[-D{} <configure folder>] \n"
-              + "-s: start the node as a seed\n"
-              + "-a: start the node as a new node\n"
-              + "-r: remove the node out of the cluster\n",
-          IoTDBConstant.IOTDB_CONF);
-      return;
-    }
-
-    ClusterIoTDB cluster = ClusterIoTDBHolder.INSTANCE;
-    // check config of iotdb,and set some configs in cluster mode
-    try {
-      if (!cluster.serverCheckAndInit()) {
-        return;
-      }
-    } catch (ConfigurationException | IOException e) {
-      logger.error("meet error when doing start checking", e);
-      return;
-    }
-    String mode = args[0];
-    logger.info("Running mode {}", mode);
-
-    // initialize the current node and its services
-    if (!cluster.initLocalEngines()) {
-      logger.error("initLocalEngines error, stop process!");
-      return;
-    }
-
-    // we start IoTDB kernel first. then we start the cluster module.
-    if (MODE_START.equals(mode)) {
-      cluster.activeStartNodeMode();
-    } else if (MODE_ADD.equals(mode)) {
-      cluster.activeAddNodeMode();
-    } else if (MODE_REMOVE.equals(mode)) {
-      try {
-        cluster.doRemoveNode(args);
-      } catch (IOException e) {
-        logger.error("Fail to remove node in cluster", e);
-      }
-    } else {
-      logger.error("Unrecognized mode {}", mode);
-    }
+    new ClusterIoTDBServerCommandLine().doMain(args);
   }
 
-  private boolean serverCheckAndInit() throws ConfigurationException, IOException {
+  protected boolean serverCheckAndInit() throws ConfigurationException, IOException {
     IoTDBConfigCheck.getInstance().checkConfig();
+    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     // init server's configuration first, because the cluster configuration may read settings from
     // the server's configuration.
-    IoTDBDescriptor.getInstance().getConfig().setSyncEnable(false);
+    config.setSyncEnable(false);
     // auto create schema is took over by cluster module, so we disable it in the server module.
-    IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(false);
+    config.setAutoCreateSchemaEnabled(false);
     // check cluster config
     String checkResult = clusterConfigCheck();
     if (checkResult != null) {
       logger.error(checkResult);
       return false;
     }
+    ClusterConfig clusterConfig = ClusterDescriptor.getInstance().getConfig();
     // if client ip is the default address, set it same with internal ip
-    if (IoTDBDescriptor.getInstance().getConfig().getRpcAddress().equals("0.0.0.0")) {
-      IoTDBDescriptor.getInstance()
-          .getConfig()
-          .setRpcAddress(ClusterDescriptor.getInstance().getConfig().getInternalIp());
+    if (config.getRpcAddress().equals("0.0.0.0")) {
+      config.setRpcAddress(clusterConfig.getInternalIp());
+    }
+    // set the memory allocated for raft log of each raft log manager
+    if (clusterConfig.getReplicationNum() > 1) {
+      clusterConfig.setMaxMemorySizeForRaftLog(
+          (long)
+              (config.getAllocateMemoryForWrite()
+                  * clusterConfig.getRaftLogMemoryProportion()
+                  / clusterConfig.getReplicationNum()));
+      // calculate remaining memory allocated for write process
+      config.setAllocateMemoryForWrite(
+          (long)
+              (config.getAllocateMemoryForWrite()
+                  * (1 - clusterConfig.getRaftLogMemoryProportion())));
     }
     return true;
   }
@@ -471,7 +442,7 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     }
   }
 
-  private void doRemoveNode(String[] args) throws IOException {
+  protected void doRemoveNode(String[] args) throws IOException {
     if (args.length != 3) {
       logger.error("Usage: <ip> <metaPort>");
       return;

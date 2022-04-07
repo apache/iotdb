@@ -88,6 +88,9 @@ public class AlignedSeriesCompactionExecutor {
         List<IChunkMetadata> valueChunkMetadataList =
             alignedChunkMetadata.getValueChunkMetadataList();
         for (IChunkMetadata chunkMetadata : valueChunkMetadataList) {
+          if (chunkMetadata == null) {
+            continue;
+          }
           schemaSet.add(
               new MeasurementSchema(
                   chunkMetadata.getMeasurementUid(), chunkMetadata.getDataType()));

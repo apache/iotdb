@@ -19,7 +19,7 @@
 
 -->
 
-## 获取 IoTDB 的途径
+## 下载与安装
 
 IoTDB 为您提供了两种安装方式，您可以参考下面的建议，任选其中一种：
 
@@ -139,7 +139,7 @@ $ /%IOTDB_HOME%/sbin/start-cli.sh -h localhost -p 6667 -u root -pw root
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-jdbc</artifactId>
-            <version>0.13.0-SNAPSHOT</version>
+            <version>0.14.0-SNAPSHOT</version>
         </dependency>
 ```
 这里是一些使用 IoTDB-JDBC 连接 IoTDB 的示例：https://github.com/apache/iotdb/tree/master/example/jdbc/src/main/java/org/apache/iotdb

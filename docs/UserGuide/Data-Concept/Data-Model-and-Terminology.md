@@ -71,7 +71,7 @@ wildcard
     ;
 ```
 
-You can refer to the definition of `id` in [Syntax-Conventions](../IoTDB-SQL-Language/Syntax-Conventions.md).
+You can refer to the definition of `id` in [Syntax-Conventions](../Reference/Syntax-Conventions.md).
 
 We call the part of a path divided by `'.'` as a layer (`layer_name`). For example: `root.a.b.c` is a path with 4 layers.
 
