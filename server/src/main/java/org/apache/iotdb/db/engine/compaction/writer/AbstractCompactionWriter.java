@@ -54,7 +54,14 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
       MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric();
 
   // point count in current measurment, which is used to check size
-  private Map<Integer, Integer> measurementPointCountMap = new ConcurrentHashMap<>();
+  protected Map<Integer, Integer> measurementPointCountMap = new ConcurrentHashMap<>();
+  //   private final AtomicInteger[] measurementPointCountMap = new AtomicInteger[subTaskNum];
+  //
+  //      public AbstractCompactionWriter() {
+  //        for (int i = 0; i < measurementPointCountMap.length; i++) {
+  //          measurementPointCountMap[i] = new AtomicInteger(0);
+  //        }
+  //      }
 
   public abstract void startChunkGroup(String deviceId, boolean isAlign) throws IOException;
 
@@ -62,6 +69,7 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
 
   public void startMeasurement(List<IMeasurementSchema> measurementSchemaList, int subTaskId) {
     measurementPointCountMap.put(subTaskId, 0);
+    // measurementPointCountMap[subTaskId].set(0);
     if (isAlign) {
       chunkWriterMap.put(subTaskId, new AlignedChunkWriterImpl(measurementSchemaList));
     } else {
@@ -139,6 +147,7 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
       chunkWriter.write(timestamp);
     }
     measurementPointCountMap.put(subTaskId, measurementPointCountMap.get(subTaskId) + 1);
+    //    measurementPointCountMap[subTaskId].getAndAdd(1);
   }
 
   protected void checkChunkSizeAndMayOpenANewChunk(TsFileIOWriter fileWriter, int subTaskId)
@@ -158,7 +167,7 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
     }
   }
 
-  private boolean checkChunkSize(int subTaskId) {
+  protected boolean checkChunkSize(int subTaskId) {
     if (chunkWriterMap.get(subTaskId) instanceof AlignedChunkWriterImpl) {
       return ((AlignedChunkWriterImpl) chunkWriterMap.get(subTaskId))
           .checkIsChunkSizeOverThreshold(targetChunkSize);

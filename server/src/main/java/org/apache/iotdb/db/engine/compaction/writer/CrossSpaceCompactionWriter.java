@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.db.engine.compaction.writer;
 
+import org.apache.iotdb.db.engine.compaction.CompactionMetricsManager;
+import org.apache.iotdb.db.engine.compaction.constant.CompactionType;
+import org.apache.iotdb.db.engine.compaction.constant.ProcessChunkType;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
@@ -28,7 +31,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
   // target fileIOWriters
@@ -45,7 +48,11 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
   private final boolean[] isEmptyFile;
 
   // private final boolean[] hasTargetFileStartChunkGroup;
-  private final AtomicBoolean[] hasTargetFileStartChunkGroup;
+  // it has 3 values, which is
+  // 0: has not start chunk group yet
+  // 1: start flushing chunk group header
+  // 2: finish flushing chunk group header
+  private final AtomicInteger[] hasTargetFileStartChunkGroup;
 
   public CrossSpaceCompactionWriter(
       List<TsFileResource> targetResources, List<TsFileResource> seqFileResources)
@@ -53,10 +60,10 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
     currentDeviceEndTime = new long[seqFileResources.size()];
     isEmptyFile = new boolean[seqFileResources.size()];
     // hasTargetFileStartChunkGroup = new boolean[seqFileResources.size()];
-    hasTargetFileStartChunkGroup = new AtomicBoolean[seqFileResources.size()];
+    hasTargetFileStartChunkGroup = new AtomicInteger[seqFileResources.size()];
     for (int i = 0; i < targetResources.size(); i++) {
       this.fileWriterList.add(new TsFileIOWriter(targetResources.get(i).getTsFile()));
-      this.hasTargetFileStartChunkGroup[i] = new AtomicBoolean(false);
+      this.hasTargetFileStartChunkGroup[i] = new AtomicInteger(0);
       isEmptyFile[i] = true;
     }
     this.seqTsFileResources = seqFileResources;
@@ -71,14 +78,14 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
     checkIsDeviceExistAndGetDeviceEndTime();
     for (int i = 0; i < seqTsFileResources.size(); i++) {
       // hasTargetFileStartChunkGroup[i] = false;
-      hasTargetFileStartChunkGroup[i].set(false);
+      hasTargetFileStartChunkGroup[i].set(0);
     }
   }
 
   @Override
   public void endChunkGroup() throws IOException {
     for (int i = 0; i < seqTsFileResources.size(); i++) {
-      if (hasTargetFileStartChunkGroup[i].get()) {
+      if (hasTargetFileStartChunkGroup[i].get() == 2) {
         fileWriterList.get(i).endChunkGroup();
       }
     }
@@ -87,12 +94,7 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
 
   @Override
   public void endMeasurement(int subTaskId) throws IOException {
-    writeRateLimit(chunkWriterMap.get(subTaskId).estimateMaxSeriesMemSize());
-    synchronized (fileWriterList.get(seqFileIndexMap.get(subTaskId))) {
-      chunkWriterMap
-          .get(subTaskId)
-          .writeToFileWriter(fileWriterList.get(seqFileIndexMap.get(subTaskId)));
-    }
+    flushChunkToFileWriter(subTaskId);
     // chunkWriterMap.get(subTaskId)=null;
     seqFileIndexMap.put(subTaskId, 0);
   }
@@ -140,16 +142,12 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
 
   private void checkTimeAndMayFlushChunkToCurrentFile(long timestamp, int subTaskId)
       throws IOException {
+    int fileIndex = seqFileIndexMap.computeIfAbsent(subTaskId, id -> 0);
     // if timestamp is later than the current source seq tsfile, than flush chunk writer
-    while (timestamp > currentDeviceEndTime[seqFileIndexMap.get(subTaskId)]) {
-      if (seqFileIndexMap.get(subTaskId) != seqTsFileResources.size() - 1) {
-        writeRateLimit(chunkWriterMap.get(subTaskId).estimateMaxSeriesMemSize());
-        synchronized (fileWriterList.get(seqFileIndexMap.get(subTaskId))) {
-          chunkWriterMap
-              .get(subTaskId)
-              .writeToFileWriter(fileWriterList.get(seqFileIndexMap.get(subTaskId)));
-        }
-        seqFileIndexMap.put(subTaskId, seqFileIndexMap.get(subTaskId) + 1);
+    while (timestamp > currentDeviceEndTime[fileIndex]) {
+      if (fileIndex != seqTsFileResources.size() - 1) {
+        flushChunkToFileWriter(subTaskId);
+        seqFileIndexMap.put(subTaskId, ++fileIndex);
       } else {
         // If the seq file is deleted for various reasons, the following two situations may occur
         // when selecting the source files: (1) unseq files may have some devices or measurements
@@ -188,8 +186,35 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
 
   private void checkAndMayStartChunkGroup(int subTaskId) throws IOException {
     int fileIndex = seqFileIndexMap.get(subTaskId);
-    if (hasTargetFileStartChunkGroup[fileIndex].compareAndSet(false, true)) {
+    if (hasTargetFileStartChunkGroup[fileIndex].compareAndSet(0, 1)) {
       fileWriterList.get(fileIndex).startChunkGroup(deviceId);
+      hasTargetFileStartChunkGroup[fileIndex].set(2);
+    }
+  }
+
+  private void flushChunkToFileWriter(int subTaskId) throws IOException {
+    writeRateLimit(chunkWriterMap.get(subTaskId).estimateMaxSeriesMemSize());
+    while (hasTargetFileStartChunkGroup[seqFileIndexMap.get(subTaskId)].get() == 1) {
+      // wait until the target file has finished flushing chunk group header
+    }
+    synchronized (fileWriterList.get(seqFileIndexMap.get(subTaskId))) {
+      chunkWriterMap
+          .get(subTaskId)
+          .writeToFileWriter(fileWriterList.get(seqFileIndexMap.get(subTaskId)));
+    }
+  }
+
+  protected void checkChunkSizeAndMayOpenANewChunk(TsFileIOWriter fileWriter, int subTaskId)
+      throws IOException {
+    if (measurementPointCountMap.get(subTaskId) % 10 == 0 && checkChunkSize(subTaskId)) {
+      flushChunkToFileWriter(subTaskId);
+      CompactionMetricsManager.recordWriteInfo(
+          this instanceof CrossSpaceCompactionWriter
+              ? CompactionType.CROSS_COMPACTION
+              : CompactionType.INNER_UNSEQ_COMPACTION,
+          ProcessChunkType.DESERIALIZE_CHUNK,
+          this.isAlign,
+          chunkWriterMap.get(subTaskId).estimateMaxSeriesMemSize());
     }
   }
 }
