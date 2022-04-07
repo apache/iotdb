@@ -233,7 +233,7 @@ class IoTDBRpcDataSet(object):
                         data_array.append(value)
                         j += 1
                         offset += length
-                    data_array = np.array(data_array, dtype=np.object)
+                    data_array = np.array(data_array, dtype=object)
                 else:
                     raise RuntimeError("unsupported data type {}.".format(data_type))
                 if data_array.dtype.byteorder == ">":
