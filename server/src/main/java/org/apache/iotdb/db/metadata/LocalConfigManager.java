@@ -199,7 +199,7 @@ public class LocalConfigManager {
     initialized = false;
   }
 
-  public void forceMlog() {
+  public synchronized void forceMlog() {
     if (!initialized) {
       return;
     }

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.metadata.rescon;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.mtree.store.disk.MTreeFlushTaskManager;
+import org.apache.iotdb.db.metadata.mtree.store.disk.MTreeReleaseTaskManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.MemManagerHolder;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
 
@@ -54,10 +55,12 @@ public class MetadataResourceManager {
     MemManagerHolder.initMemManagerInstance();
     MemManagerHolder.getMemManagerInstance().init();
     MTreeFlushTaskManager.getInstance().init();
+    MTreeReleaseTaskManager.getInstance().init();
   }
 
   private static void clearSchemaFileModeResource() {
     MemManagerHolder.getMemManagerInstance().clear();
     MTreeFlushTaskManager.getInstance().clear();
+    MTreeReleaseTaskManager.getInstance().clear();
   }
 }

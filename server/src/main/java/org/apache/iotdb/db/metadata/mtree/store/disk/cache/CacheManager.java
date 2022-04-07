@@ -26,6 +26,7 @@ import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.IMemManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.MemManagerHolder;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -266,17 +267,15 @@ public abstract class CacheManager implements ICacheManager {
   }
 
   private void collectVolatileNodes(IMNode node, List<IMNode> nodesToPersist) {
-    CacheEntry cacheEntry;
-    boolean isCollected = false;
-    for (IMNode child : node.getChildren().values()) {
-      cacheEntry = getCacheEntry(child);
-      if (cacheEntry == null || !cacheEntry.isVolatile()) {
-        continue;
-      }
-      if (!isCollected) {
-        nodesToPersist.add(node);
-        isCollected = true;
-      }
+    Iterator<IMNode> bufferIterator = getCachedMNodeContainer(node).getChildrenBufferIterator();
+
+    if (bufferIterator.hasNext()) {
+      nodesToPersist.add(node);
+    }
+
+    IMNode child;
+    while (bufferIterator.hasNext()) {
+      child = bufferIterator.next();
       collectVolatileNodes(child, nodesToPersist);
     }
   }

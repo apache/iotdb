@@ -28,6 +28,7 @@ import org.apache.iotdb.db.metadata.mnode.estimator.IMNodeSizeEstimator;
 import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
 import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
 import org.apache.iotdb.db.metadata.mtree.store.disk.MTreeFlushTaskManager;
+import org.apache.iotdb.db.metadata.mtree.store.disk.MTreeReleaseTaskManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.ICacheManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.LRUCacheManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.IMemManager;
@@ -63,7 +64,11 @@ public class CachedMTreeStore implements IMTreeStore {
 
   private MTreeFlushTaskManager flushTaskManager = MTreeFlushTaskManager.getInstance();
   private int flushCount = 0;
-  private volatile boolean hasFlushTask = false;
+  private volatile boolean hasFlushTask;
+
+  private MTreeReleaseTaskManager releaseTaskManager = MTreeReleaseTaskManager.getInstance();
+  private volatile boolean hasReleaseTask;
+  private int releaseCount = 0;
 
   private ReadWriteLock readWriteLock = new ReentrantReadWriteLock(); // default writer preferential
   private Lock readLock = readWriteLock.readLock();
@@ -74,6 +79,9 @@ public class CachedMTreeStore implements IMTreeStore {
     file = SchemaFile.initSchemaFile(rootPath.getFullPath(), schemaRegionId);
     root = file.init();
     cacheManager.initRootStatus(root);
+
+    hasFlushTask = false;
+    hasReleaseTask = false;
   }
 
   @Override
@@ -361,12 +369,25 @@ public class CachedMTreeStore implements IMTreeStore {
       }
     }
     file = null;
+
+    hasFlushTask = false;
+    hasReleaseTask = false;
   }
 
   private void ensureMemoryStatus() {
     if (memManager.isExceedFlushThreshold()) {
-      tryExecuteMemoryRelease();
+      if (!hasReleaseTask) {
+        registerReleaseTask();
+      }
     }
+  }
+
+  private synchronized void registerReleaseTask() {
+    if (hasReleaseTask) {
+      return;
+    }
+    hasReleaseTask = true;
+    releaseTaskManager.submit(this::tryExecuteMemoryRelease);
   }
 
   /**
@@ -375,7 +396,14 @@ public class CachedMTreeStore implements IMTreeStore {
    * added or updated, fire flush task.
    */
   private void tryExecuteMemoryRelease() {
-    executeMemoryRelease();
+    readLock.lock();
+    try {
+      executeMemoryRelease();
+      releaseCount++;
+      hasReleaseTask = false;
+    } finally {
+      readLock.unlock();
+    }
     if (memManager.isExceedFlushThreshold()) {
       if (!hasFlushTask) {
         registerFlushTask();
