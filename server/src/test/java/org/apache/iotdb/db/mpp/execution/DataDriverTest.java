@@ -16,18 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.operator;
+package org.apache.iotdb.db.mpp.execution;
 
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.buffer.StubSinkHandle;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
-import org.apache.iotdb.db.mpp.execution.FragmentInstanceContext;
-import org.apache.iotdb.db.mpp.execution.FragmentInstanceState;
+import org.apache.iotdb.db.mpp.operator.process.LimitOperator;
 import org.apache.iotdb.db.mpp.operator.process.TimeJoinOperator;
 import org.apache.iotdb.db.mpp.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
@@ -39,9 +42,12 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.IntColumn;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.util.concurrent.ListenableFuture;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -51,10 +57,15 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static org.junit.Assert.*;
+import static org.apache.iotdb.db.mpp.schedule.FragmentInstanceTaskExecutor.EXECUTION_TIME_SLICE;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
-public class TimeJoinOperatorTest {
-  private static final String TIME_JOIN_OPERATOR_TEST_SG = "root.TimeJoinOperatorTest";
+public class DataDriverTest {
+
+  private static final String DATA_DRIVER_TEST_SG = "root.DataDriverTest";
   private final List<String> deviceIds = new ArrayList<>();
   private final List<MeasurementSchema> measurementSchemas = new ArrayList<>();
 
@@ -64,7 +75,7 @@ public class TimeJoinOperatorTest {
   @Before
   public void setUp() throws MetadataException, IOException, WriteProcessException {
     SeriesReaderTestUtil.setUp(
-        measurementSchemas, deviceIds, seqResources, unSeqResources, TIME_JOIN_OPERATOR_TEST_SG);
+        measurementSchemas, deviceIds, seqResources, unSeqResources, DATA_DRIVER_TEST_SG);
   }
 
   @After
@@ -76,7 +87,7 @@ public class TimeJoinOperatorTest {
   public void batchTest() {
     try {
       MeasurementPath measurementPath1 =
-          new MeasurementPath(TIME_JOIN_OPERATOR_TEST_SG + ".device0.sensor0", TSDataType.INT32);
+          new MeasurementPath(DATA_DRIVER_TEST_SG + ".device0.sensor0", TSDataType.INT32);
       Set<String> allSensors = new HashSet<>();
       allSensors.add("sensor0");
       allSensors.add("sensor1");
@@ -92,6 +103,8 @@ public class TimeJoinOperatorTest {
           2, new PlanNodeId("2"), SeriesScanOperator.class.getSimpleName());
       fragmentInstanceContext.addOperatorContext(
           3, new PlanNodeId("3"), TimeJoinOperator.class.getSimpleName());
+      fragmentInstanceContext.addOperatorContext(
+          4, new PlanNodeId("4"), LimitOperator.class.getSimpleName());
       SeriesScanOperator seriesScanOperator1 =
           new SeriesScanOperator(
               measurementPath1,
@@ -101,10 +114,9 @@ public class TimeJoinOperatorTest {
               null,
               null,
               true);
-      seriesScanOperator1.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
 
       MeasurementPath measurementPath2 =
-          new MeasurementPath(TIME_JOIN_OPERATOR_TEST_SG + ".device0.sensor1", TSDataType.INT32);
+          new MeasurementPath(DATA_DRIVER_TEST_SG + ".device0.sensor1", TSDataType.INT32);
       SeriesScanOperator seriesScanOperator2 =
           new SeriesScanOperator(
               measurementPath2,
@@ -114,7 +126,6 @@ public class TimeJoinOperatorTest {
               null,
               null,
               true);
-      seriesScanOperator2.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
 
       TimeJoinOperator timeJoinOperator =
           new TimeJoinOperator(
@@ -122,33 +133,75 @@ public class TimeJoinOperatorTest {
               Arrays.asList(seriesScanOperator1, seriesScanOperator2),
               OrderBy.TIMESTAMP_ASC,
               Arrays.asList(TSDataType.INT32, TSDataType.INT32));
-      int count = 0;
-      while (timeJoinOperator.hasNext()) {
-        TsBlock tsBlock = timeJoinOperator.next();
-        assertEquals(2, tsBlock.getValueColumnCount());
-        assertTrue(tsBlock.getColumn(0) instanceof IntColumn);
-        assertTrue(tsBlock.getColumn(1) instanceof IntColumn);
-        assertEquals(20, tsBlock.getPositionCount());
-        for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-          long expectedTime = i + 20L * count;
-          assertEquals(expectedTime, tsBlock.getTimeByIndex(i));
-          if (expectedTime < 200) {
-            assertEquals(20000 + expectedTime, tsBlock.getColumn(0).getInt(i));
-            assertEquals(20000 + expectedTime, tsBlock.getColumn(1).getInt(i));
-          } else if (expectedTime < 260
-              || (expectedTime >= 300 && expectedTime < 380)
-              || expectedTime >= 400) {
-            assertEquals(10000 + expectedTime, tsBlock.getColumn(0).getInt(i));
-            assertEquals(10000 + expectedTime, tsBlock.getColumn(1).getInt(i));
+
+      LimitOperator limitOperator =
+          new LimitOperator(
+              fragmentInstanceContext.getOperatorContexts().get(3), 250, timeJoinOperator);
+
+      VirtualStorageGroupProcessor dataRegion = Mockito.mock(VirtualStorageGroupProcessor.class);
+
+      List<PartialPath> pathList = ImmutableList.of(measurementPath1, measurementPath2);
+      String deviceId = DATA_DRIVER_TEST_SG + ".device0";
+
+      Mockito.when(dataRegion.query(pathList, deviceId, fragmentInstanceContext, null))
+          .thenReturn(new QueryDataSource(seqResources, unSeqResources));
+
+      DataDriverContext driverContext =
+          new DataDriverContext(
+              fragmentInstanceContext,
+              pathList,
+              null,
+              dataRegion,
+              ImmutableList.of(seriesScanOperator1, seriesScanOperator2));
+
+      StubSinkHandle sinkHandle = new StubSinkHandle();
+
+      try (Driver dataDriver = new DataDriver(limitOperator, sinkHandle, driverContext)) {
+        assertEquals(fragmentInstanceContext.getId(), dataDriver.getInfo());
+
+        assertFalse(dataDriver.isFinished());
+
+        while (!dataDriver.isFinished()) {
+          assertEquals(FragmentInstanceState.RUNNING, state.get());
+          ListenableFuture<Void> blocked = dataDriver.processFor(EXECUTION_TIME_SLICE);
+          assertTrue(blocked.isDone());
+        }
+
+        assertEquals(FragmentInstanceState.FINISHED, state.get());
+
+        List<TsBlock> result = sinkHandle.getTsBlocks();
+        assertEquals(13, result.size());
+
+        for (int i = 0; i < 13; i++) {
+          TsBlock tsBlock = result.get(i);
+          assertEquals(2, tsBlock.getValueColumnCount());
+          assertTrue(tsBlock.getColumn(0) instanceof IntColumn);
+          assertTrue(tsBlock.getColumn(1) instanceof IntColumn);
+
+          if (i < 12) {
+            assertEquals(20, tsBlock.getPositionCount());
           } else {
-            assertEquals(expectedTime, tsBlock.getColumn(0).getInt(i));
-            assertEquals(expectedTime, tsBlock.getColumn(1).getInt(i));
+            assertEquals(10, tsBlock.getPositionCount());
+          }
+          for (int j = 0; j < tsBlock.getPositionCount(); j++) {
+            long expectedTime = j + 20L * i;
+            assertEquals(expectedTime, tsBlock.getTimeByIndex(j));
+            if (expectedTime < 200) {
+              assertEquals(20000 + expectedTime, tsBlock.getColumn(0).getInt(j));
+              assertEquals(20000 + expectedTime, tsBlock.getColumn(1).getInt(j));
+            } else if (expectedTime < 260
+                || (expectedTime >= 300 && expectedTime < 380)
+                || expectedTime >= 400) {
+              assertEquals(10000 + expectedTime, tsBlock.getColumn(0).getInt(j));
+              assertEquals(10000 + expectedTime, tsBlock.getColumn(1).getInt(j));
+            } else {
+              assertEquals(expectedTime, tsBlock.getColumn(0).getInt(j));
+              assertEquals(expectedTime, tsBlock.getColumn(1).getInt(j));
+            }
           }
         }
-        count++;
       }
-      assertEquals(25, count);
-    } catch (IOException | IllegalPathException e) {
+    } catch (IllegalPathException | QueryProcessException e) {
       e.printStackTrace();
       fail();
     }
