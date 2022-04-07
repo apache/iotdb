@@ -56,9 +56,9 @@ public class ErrorHandlingUtils {
       Exception e, String operation, TSStatusCode statusCode) {
     String message = String.format("[%s] Exception occurred: %s failed. ", statusCode, operation);
     if (e instanceof IOException || e instanceof NullPointerException) {
-      LOGGER.error("Status code: {}, operation: {} failed", statusCode, operation, e);
+      LOGGER.error("Status code: " + statusCode + ", operation: " + operation + " failed", e);
     } else {
-      LOGGER.warn("Status code: {}, operation: {} failed", statusCode, operation, e);
+      LOGGER.warn("Status code: " + statusCode + ", operation: " + operation + " failed", e);
     }
     return RpcUtils.getStatus(statusCode, message + e.getMessage());
   }
@@ -80,7 +80,8 @@ public class ErrorHandlingUtils {
     if (status != null) {
       // ignore logging sg not ready exception
       if (status.getCode() != TSStatusCode.STORAGE_GROUP_NOT_READY.getStatusCode()) {
-        LOGGER.error("Status code: {}, Query Statement: {} failed", status.getCode(), operation, e);
+        LOGGER.error(
+            "Status code: " + status.getCode() + ", Query Statement: " + operation + " failed", e);
       }
       return status;
     } else {
@@ -149,11 +150,7 @@ public class ErrorHandlingUtils {
       Throwable rootCause = getRootCause(e);
       // ignore logging sg not ready exception
       if (!(rootCause instanceof StorageGroupNotReadyException)) {
-        if (((IoTDBException) e).isUserException()) {
-          LOGGER.warn(message + e.getMessage());
-        } else {
-          LOGGER.warn(message, e);
-        }
+        LOGGER.warn(message, e);
       }
       return RpcUtils.getStatus(((IoTDBException) e).getErrorCode(), rootCause.getMessage());
     }
@@ -165,7 +162,7 @@ public class ErrorHandlingUtils {
     String message =
         String.format(
             "[%s] Exception occurred: %s failed. %s", statusCode, operation, e.getMessage());
-    LOGGER.warn("Status code: {}, operation: {} failed", statusCode, operation, e);
+    LOGGER.warn("Status code: " + statusCode + ", operation: " + operation + " failed", e);
     return RpcUtils.getStatus(errorCode, message);
   }
 

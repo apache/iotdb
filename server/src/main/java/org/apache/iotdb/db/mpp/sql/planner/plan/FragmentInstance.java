@@ -18,7 +18,8 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan;
 
-import org.apache.iotdb.commons.partition.DataRegionReplicaSet;
+import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
@@ -27,7 +28,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.sink.FragmentSinkNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
-import org.apache.iotdb.service.rpc.thrift.EndPoint;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.nio.ByteBuffer;
 
@@ -37,8 +38,10 @@ public class FragmentInstance implements IConsensusRequest {
   // The reference of PlanFragment which this instance is generated from
   private PlanFragment fragment;
   // The DataRegion where the FragmentInstance should run
-  private DataRegionReplicaSet dataRegion;
-  private EndPoint hostEndpoint;
+  private RegionReplicaSet dataRegion;
+  private Endpoint hostEndpoint;
+
+  private Filter timeFilter;
 
   // We can add some more params for a specific FragmentInstance
   // So that we can make different FragmentInstance owns different data range.
@@ -52,19 +55,19 @@ public class FragmentInstance implements IConsensusRequest {
     return new FragmentInstanceId(id, String.valueOf(index));
   }
 
-  public DataRegionReplicaSet getDataRegionId() {
+  public RegionReplicaSet getDataRegionId() {
     return dataRegion;
   }
 
-  public void setDataRegionId(DataRegionReplicaSet dataRegion) {
+  public void setDataRegionId(RegionReplicaSet dataRegion) {
     this.dataRegion = dataRegion;
   }
 
-  public EndPoint getHostEndpoint() {
+  public Endpoint getHostEndpoint() {
     return hostEndpoint;
   }
 
-  public void setHostEndpoint(EndPoint hostEndpoint) {
+  public void setHostEndpoint(Endpoint hostEndpoint) {
     this.hostEndpoint = hostEndpoint;
   }
 
@@ -85,6 +88,10 @@ public class FragmentInstance implements IConsensusRequest {
           sink.getDownStreamEndpoint(), sink.getDownStreamInstanceId(), sink.getDownStreamNode());
     }
     return "<No downstream>";
+  }
+
+  public Filter getTimeFilter() {
+    return timeFilter;
   }
 
   public String toString() {

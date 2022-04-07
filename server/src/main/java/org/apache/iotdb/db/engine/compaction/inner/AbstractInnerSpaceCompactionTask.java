@@ -296,6 +296,11 @@ public abstract class AbstractInnerSpaceCompactionTask extends AbstractCompactio
   }
 
   @Override
+  public int hashCode() {
+    return toString().hashCode();
+  }
+
+  @Override
   public void resetCompactionCandidateStatusForAllSourceFiles() {
     selectedTsFileResourceList.forEach(x -> x.setStatus(TsFileResourceStatus.CLOSED));
   }
@@ -318,6 +323,9 @@ public abstract class AbstractInnerSpaceCompactionTask extends AbstractCompactio
 
   @Override
   public boolean checkValidAndSetMerging() {
+    if (!tsFileManager.isAllowCompaction()) {
+      return false;
+    }
     for (int i = 0; i < selectedTsFileResourceList.size(); ++i) {
       TsFileResource resource = selectedTsFileResourceList.get(i);
       resource.readLock();

@@ -25,6 +25,9 @@ import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
+import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompactionTask;
+import org.apache.iotdb.db.engine.compaction.log.CompactionLogger;
+import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
@@ -60,10 +63,12 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class StorageGroupProcessorTest {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
@@ -706,6 +711,53 @@ public class StorageGroupProcessorTest {
   }
 
   @Test
+  public void testDeleteStorageGroupWhenCompacting() throws Exception {
+    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(10);
+    try {
+      for (int j = 0; j < 10; j++) {
+        TSRecord record = new TSRecord(j, deviceId);
+        record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
+        processor.insert(new InsertRowPlan(record));
+        processor.asyncCloseAllWorkingTsFileProcessors();
+      }
+      processor.syncCloseAllWorkingTsFileProcessors();
+      SizeTieredCompactionTask task =
+          new SizeTieredCompactionTask(
+              storageGroup,
+              "0",
+              0,
+              processor.getTsFileManager(),
+              processor.getSequenceFileList(),
+              true,
+              new AtomicInteger(0));
+      CompactionTaskManager.getInstance().submitTask(task);
+      Thread.sleep(20);
+      StorageEngine.getInstance().deleteStorageGroup(new PartialPath(storageGroup));
+      Thread.sleep(500);
+
+      for (TsFileResource resource : processor.getSequenceFileList()) {
+        Assert.assertFalse(resource.getTsFile().exists());
+      }
+      TsFileResource targetTsFileResource =
+          TsFileNameGenerator.getInnerCompactionTargetFileResource(
+              processor.getSequenceFileList(), true);
+      Assert.assertFalse(targetTsFileResource.getTsFile().exists());
+      String dataDirectory = targetTsFileResource.getTsFile().getParent();
+      File logFile =
+          new File(
+              dataDirectory
+                  + File.separator
+                  + targetTsFileResource.getTsFile().getName()
+                  + CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX);
+      Assert.assertFalse(logFile.exists());
+      Assert.assertFalse(IoTDBDescriptor.getInstance().getConfig().isReadOnly());
+      Assert.assertTrue(processor.getTsFileManager().isAllowCompaction());
+    } finally {
+      new CompactionConfigRestorer().restoreCompactionConfig();
+    }
+  }
+
+  @Test
   public void testTimedFlushSeqMemTable()
       throws IllegalPathException, InterruptedException, WriteProcessException,
           TriggerExecutionException, ShutdownException {
@@ -874,11 +926,7 @@ public class StorageGroupProcessorTest {
   class DummySGP extends VirtualStorageGroupProcessor {
 
     DummySGP(String systemInfoDir, String storageGroupName) throws StorageGroupProcessorException {
-      super(
-          systemInfoDir,
-          storageGroupName,
-          new TsFileFlushPolicy.DirectFlushPolicy(),
-          storageGroupName);
+      super(systemInfoDir, "0", new TsFileFlushPolicy.DirectFlushPolicy(), storageGroupName);
     }
   }
 }

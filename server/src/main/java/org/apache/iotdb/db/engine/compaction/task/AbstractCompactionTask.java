@@ -43,6 +43,8 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
   protected final AtomicInteger currentTaskNum;
   protected final TsFileManager tsFileManager;
   protected long timeCost = 0L;
+  protected volatile boolean ran = false;
+  protected volatile boolean finished = false;
 
   public AbstractCompactionTask(
       String fullStorageGroupName,
@@ -63,6 +65,7 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
 
   @Override
   public Void call() throws Exception {
+    ran = true;
     long startTime = System.currentTimeMillis();
     currentTaskNum.incrementAndGet();
     try {
@@ -70,9 +73,10 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
     } catch (Exception e) {
       LOGGER.error(e.getMessage(), e);
     } finally {
+      this.currentTaskNum.decrementAndGet();
       CompactionTaskManager.getInstance().removeRunningTaskFromList(this);
       timeCost = System.currentTimeMillis() - startTime;
-      this.currentTaskNum.decrementAndGet();
+      finished = true;
     }
 
     return null;
@@ -108,5 +112,19 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
 
   public long getTimeCost() {
     return timeCost;
+  }
+
+  protected void checkInterrupted() throws InterruptedException {
+    if (Thread.currentThread().isInterrupted()) {
+      throw new InterruptedException(String.format("%s [Compaction] abort", fullStorageGroupName));
+    }
+  }
+
+  public boolean isTaskRan() {
+    return ran;
+  }
+
+  public boolean isTaskFinished() {
+    return finished;
   }
 }

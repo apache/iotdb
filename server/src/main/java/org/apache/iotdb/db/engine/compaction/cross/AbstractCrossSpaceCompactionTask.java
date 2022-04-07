@@ -202,6 +202,11 @@ public abstract class AbstractCrossSpaceCompactionTask extends AbstractCompactio
   }
 
   @Override
+  public int hashCode() {
+    return toString().hashCode();
+  }
+
+  @Override
   public void resetCompactionCandidateStatusForAllSourceFiles() {
     selectedSequenceFiles.forEach(x -> x.setStatus(TsFileResourceStatus.CLOSED));
     selectedUnsequenceFiles.forEach(x -> x.setStatus(TsFileResourceStatus.CLOSED));
@@ -233,6 +238,9 @@ public abstract class AbstractCrossSpaceCompactionTask extends AbstractCompactio
   }
 
   private boolean addReadLock(List<TsFileResource> tsFileResourceList) {
+    if (!tsFileManager.isAllowCompaction()) {
+      return false;
+    }
     for (TsFileResource tsFileResource : tsFileResourceList) {
       tsFileResource.readLock();
       holdReadLockList.add(tsFileResource);
