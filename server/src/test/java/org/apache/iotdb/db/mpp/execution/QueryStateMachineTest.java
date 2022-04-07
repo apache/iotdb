@@ -109,10 +109,12 @@ public class QueryStateMachineTest {
     QueryStateMachine stateMachine = genQueryStateMachine();
     SettableFuture<Void> callbackFuture = SettableFuture.create();
     ListenableFuture<QueryState> future = stateMachine.getStateChange(QueryState.QUEUED);
-    future.addListener(() -> {
-      stateChangeCounter.getAndIncrement();
-      callbackFuture.set(null);
-    }, directExecutor());
+    future.addListener(
+        () -> {
+          stateChangeCounter.getAndIncrement();
+          callbackFuture.set(null);
+        },
+        directExecutor());
     Assert.assertEquals(stateChangeCounter.get(), 0);
     stateMachine.transitionToRunning();
     future.get();
