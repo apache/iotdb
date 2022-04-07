@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.execution;
 
+import org.apache.iotdb.db.mpp.buffer.DataBlockService;
 import org.apache.iotdb.db.mpp.buffer.ISourceHandle;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.execution.scheduler.ClusterScheduler;
@@ -82,7 +83,6 @@ public class QueryExecution implements IQueryExecution {
     this.planOptimizers = new ArrayList<>();
     this.analysis = analyze(statement, context);
     this.stateMachine = new QueryStateMachine(context.getQueryId(), executor);
-
     // TODO: (xingtanzjr) Initialize the result handle after the DataBlockManager is merged.
     //    resultHandle = xxxx
 
@@ -154,8 +154,9 @@ public class QueryExecution implements IQueryExecution {
    * implemented with DataStreamManager)
    */
   public TsBlock getBatchResult() {
-    ListenableFuture<Void> blocked = resultHandle.isBlocked();
     try {
+      initialResultHandle();
+      ListenableFuture<Void> blocked = resultHandle.isBlocked();
       blocked.get();
       return resultHandle.receive();
 
@@ -199,6 +200,19 @@ public class QueryExecution implements IQueryExecution {
       // TODO: (xingtanzjr) use more accurate error handling
       return new ExecutionResult(
           context.getQueryId(), RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR));
+    }
+  }
+
+  private synchronized void initialResultHandle() throws IOException {
+    if (this.resultHandle == null) {
+      this.resultHandle =
+          DataBlockService.getInstance()
+              .getDataBlockManager()
+              .createSourceHandle(
+                  context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift(),
+                  context.getResultNodeContext().getVirtualResultNodeId().getId(),
+                  context.getResultNodeContext().getUpStreamEndpoint().getIp(),
+                  context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift());
     }
   }
 

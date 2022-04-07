@@ -19,9 +19,10 @@
 
 package org.apache.iotdb.db.mpp.execution;
 
+import org.apache.iotdb.db.mpp.sql.statement.Statement;
+
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
-import org.apache.iotdb.db.mpp.sql.statement.Statement;
 
 public class SampleConfigTask implements IConfigTask {
 
