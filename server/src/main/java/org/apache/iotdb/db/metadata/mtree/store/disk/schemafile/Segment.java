@@ -46,9 +46,6 @@ import java.util.Queue;
 public class Segment implements ISegment {
   private static final Logger logger = LoggerFactory.getLogger(Segment.class);
 
-  // control concurrency of the segment executing read and write
-  // ReentrantReadWriteLock segWriteLock;
-
   // members load from buffer
   final ByteBuffer buffer;
   short length, freeAddr, recordNum, pairLength;
