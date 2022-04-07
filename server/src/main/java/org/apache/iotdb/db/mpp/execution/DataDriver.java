@@ -40,6 +40,7 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.concurrent.NotThreadSafe;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -295,7 +296,7 @@ public class DataDriver implements Driver {
     if (root.hasNext()) {
       TsBlock tsBlock = root.next();
       if (tsBlock != null && !tsBlock.isEmpty()) {
-        sinkHandle.send(tsBlock);
+        sinkHandle.send(Collections.singletonList(tsBlock));
       }
     }
     return NOT_BLOCKED;
