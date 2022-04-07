@@ -49,7 +49,7 @@ import java.util.concurrent.ScheduledExecutorService;
  * to DistributedQueryPlan with fragment instances. 2. Dispatch all the fragment instances to
  * corresponding physical nodes. 3. Collect and monitor the progress/states of this query.
  */
-public class QueryExecution {
+public class QueryExecution implements IQueryExecution {
   private MPPQueryContext context;
   private IScheduler scheduler;
   private QueryStateMachine stateMachine;
@@ -131,10 +131,8 @@ public class QueryExecution {
     this.distributedPlan = planner.planFragments();
   }
 
-  /**
-   * Abort the query and do cleanup work including QuerySchedule aborting and resource releasing
-   */
-  private void abort() {
+  /** Abort the query and do cleanup work including QuerySchedule aborting and resource releasing */
+  public void abort() {
     if (this.scheduler != null) {
       this.scheduler.abort();
     }

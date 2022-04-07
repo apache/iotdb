@@ -73,7 +73,8 @@ public class ClusterScheduler implements IScheduler {
     this.dispatcher = new SimpleFragInstanceDispatcher(executor);
     this.stateTracker =
         new FixedRateFragInsStateTracker(stateMachine, executor, scheduledExecutor, instances);
-    this.queryTerminator = new SimpleQueryTerminator(executor, queryContext.getQueryId(), instances);
+    this.queryTerminator =
+        new SimpleQueryTerminator(executor, queryContext.getQueryId(), instances);
   }
 
   @Override

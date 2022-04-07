@@ -24,6 +24,7 @@ import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
 import org.apache.iotdb.mpp.rpc.thrift.InternalService;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelQueryReq;
+
 import org.apache.thrift.TException;
 
 import java.util.List;
@@ -32,13 +33,14 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
-public class SimpleQueryTerminator implements IQueryTerminator{
+public class SimpleQueryTerminator implements IQueryTerminator {
 
   private final ExecutorService executor;
   private final QueryId queryId;
   private final List<FragmentInstance> fragmentInstances;
 
-  public SimpleQueryTerminator(ExecutorService executor, QueryId queryId, List<FragmentInstance> fragmentInstances) {
+  public SimpleQueryTerminator(
+      ExecutorService executor, QueryId queryId, List<FragmentInstance> fragmentInstances) {
     this.executor = executor;
     this.queryId = queryId;
     this.fragmentInstances = fragmentInstances;
@@ -47,18 +49,21 @@ public class SimpleQueryTerminator implements IQueryTerminator{
   @Override
   public boolean terminate() {
     List<Endpoint> relatedHost = getRelatedHost(fragmentInstances);
-    Future<Boolean> future = executor.submit(() -> {
-      try {
-        for (Endpoint endpoint : relatedHost) {
-          InternalService.Client client =
-              InternalServiceClientFactory.getInternalServiceClient(endpoint.getIp(), endpoint.getPort());
-          client.cancelQuery(new TCancelQueryReq(queryId.getId()));
-        }
-      } catch (TException e) {
-        return false;
-      }
-      return true;
-    });
+    Future<Boolean> future =
+        executor.submit(
+            () -> {
+              try {
+                for (Endpoint endpoint : relatedHost) {
+                  InternalService.Client client =
+                      InternalServiceClientFactory.getInternalServiceClient(
+                          endpoint.getIp(), endpoint.getPort());
+                  client.cancelQuery(new TCancelQueryReq(queryId.getId()));
+                }
+              } catch (TException e) {
+                return false;
+              }
+              return true;
+            });
     try {
       return future.get();
     } catch (InterruptedException | ExecutionException e) {
@@ -68,6 +73,9 @@ public class SimpleQueryTerminator implements IQueryTerminator{
   }
 
   private List<Endpoint> getRelatedHost(List<FragmentInstance> instances) {
-    return instances.stream().map(FragmentInstance::getHostEndpoint).distinct().collect(Collectors.toList());
+    return instances.stream()
+        .map(FragmentInstance::getHostEndpoint)
+        .distinct()
+        .collect(Collectors.toList());
   }
 }

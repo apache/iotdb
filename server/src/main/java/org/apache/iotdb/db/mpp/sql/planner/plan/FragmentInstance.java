@@ -82,7 +82,9 @@ public class FragmentInstance implements IConsensusRequest {
       FragmentSinkNode sink = (FragmentSinkNode) root;
       return String.format(
           "(%s, %s, %s)",
-          sink.getDownStreamEndpoint(), sink.getDownStreamInstanceId(), sink.getDownStreamPlanNodeId());
+          sink.getDownStreamEndpoint(),
+          sink.getDownStreamInstanceId(),
+          sink.getDownStreamPlanNodeId());
     }
     return "<No downstream>";
   }
