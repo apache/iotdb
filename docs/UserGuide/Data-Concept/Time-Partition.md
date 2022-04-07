@@ -55,10 +55,8 @@ Enable time partition and set partition_interval to 86400 (one day), then the da
 
 ## Suggestions
 
-When enabling time partition, it is better to enable timed flush memtable and timed close tsfile, configuration params are detailed in [Config manual for timed flush and timed close](../Reference/Config-Manual.md).
+When enabling time partition, it is better to enable timed flush memtable, configuration params are detailed in [Config manual for timed flush](../Reference/Config-Manual.md).
 
 * enable_timed_flush_unseq_memtable: Whether to enable timed flush unsequence memtable, enabled by default.
 
-* enable_timed_flush_seq_memtable: Whether to enable timed flush sequence memtable, disabled by default. It should be enabled when time partition is enabled, so inactive time partition's memtable can be flushed regularly to prepare for the timed close of TsFileProcessor.
-
-* enable_timed_close_tsfile: Whether to enable timed close tsfile, disabled by default. It should be enabled when time partition is enabled, so inactive time partition's TsFileProcessor can be closed regularly to reduce memory usage.
+* enable_timed_flush_seq_memtable: Whether to enable timed flush sequence memtable, disabled by default. It should be enabled when time partition is enabled, so inactive time partition's memtable can be flushed regularly.

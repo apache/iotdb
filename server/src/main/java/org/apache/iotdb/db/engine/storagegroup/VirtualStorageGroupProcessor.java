@@ -1472,46 +1472,6 @@ public class VirtualStorageGroupProcessor {
     }
   }
 
-  public void timedCloseTsFileProcessor() {
-    writeLock("timedCloseTsFileProcessor");
-    try {
-      List<TsFileProcessor> seqTsFileProcessors =
-          new ArrayList<>(workSequenceTsFileProcessors.values());
-      long timeLowerBound =
-          System.currentTimeMillis() - config.getCloseTsFileIntervalAfterFlushing();
-      for (TsFileProcessor tsFileProcessor : seqTsFileProcessors) {
-        // working memtable is null(no more write ops) and last flush time exceeds close interval
-        if (tsFileProcessor.getWorkMemTableCreatedTime() == Long.MAX_VALUE
-            && tsFileProcessor.getLastWorkMemtableFlushTime() < timeLowerBound) {
-          logger.info(
-              "Exceed tsfile close interval, so close TsFileProcessor of time partition {} in storage group {}[{}]",
-              tsFileProcessor.getTimeRangeId(),
-              logicalStorageGroupName,
-              virtualStorageGroupId);
-          asyncCloseOneTsFileProcessor(true, tsFileProcessor);
-        }
-      }
-
-      List<TsFileProcessor> unSeqTsFileProcessors =
-          new ArrayList<>(workUnsequenceTsFileProcessors.values());
-      timeLowerBound = System.currentTimeMillis() - config.getCloseTsFileIntervalAfterFlushing();
-      for (TsFileProcessor tsFileProcessor : unSeqTsFileProcessors) {
-        // working memtable is null(no more write ops) and last flush time exceeds close interval
-        if (tsFileProcessor.getWorkMemTableCreatedTime() == Long.MAX_VALUE
-            && tsFileProcessor.getLastWorkMemtableFlushTime() < timeLowerBound) {
-          logger.info(
-              "Exceed tsfile close interval, so close TsFileProcessor of time partition {} in storage group {}[{}]",
-              tsFileProcessor.getTimeRangeId(),
-              logicalStorageGroupName,
-              virtualStorageGroupId);
-          asyncCloseOneTsFileProcessor(false, tsFileProcessor);
-        }
-      }
-    } finally {
-      writeUnlock();
-    }
-  }
-
   /** This method will be blocked until all tsfile processors are closed. */
   public void syncCloseAllWorkingTsFileProcessors() {
     synchronized (closeStorageGroupCondition) {

@@ -808,69 +808,6 @@ public class StorageGroupProcessorTest {
     config.setUnseqMemtableFlushInterval(preFLushInterval);
   }
 
-  @Test
-  public void testTimedCloseTsFile()
-      throws IllegalPathException, InterruptedException, WriteProcessException,
-          TriggerExecutionException, ShutdownException {
-    // create one sequence memtable
-    TSRecord record = new TSRecord(10000, deviceId);
-    record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(1000)));
-    processor.insert(new InsertRowPlan(record));
-    Assert.assertEquals(1, MemTableManager.getInstance().getCurrentMemtableNumber());
-
-    // change config & reboot timed service
-    long prevSeqTsFileSize = config.getSeqTsFileSize();
-    config.setSeqTsFileSize(1);
-    boolean prevEnableTimedFlushSeqMemtable = config.isEnableTimedFlushSeqMemtable();
-    long preFLushInterval = config.getSeqMemtableFlushInterval();
-    config.setEnableTimedFlushSeqMemtable(true);
-    config.setSeqMemtableFlushInterval(5);
-    boolean prevEnableTimedCloseTsFile = config.isEnableTimedCloseTsFile();
-    long prevCloseTsFileInterval = config.getCloseTsFileIntervalAfterFlushing();
-    config.setEnableTimedCloseTsFile(true);
-    config.setCloseTsFileIntervalAfterFlushing(5);
-    StorageEngine.getInstance().rebootTimedService();
-
-    Thread.sleep(500);
-
-    // flush the sequence memtable
-    processor.timedFlushSeqMemTable();
-
-    // wait until memtable flush task is done
-    Assert.assertEquals(1, processor.getWorkSequenceTsFileProcessors().size());
-    TsFileProcessor tsFileProcessor = processor.getWorkSequenceTsFileProcessors().iterator().next();
-    FlushManager flushManager = FlushManager.getInstance();
-    int waitCnt = 0;
-    while (tsFileProcessor.getFlushingMemTableSize() != 0
-        || tsFileProcessor.isManagedByFlushManager()
-        || flushManager.getNumberOfPendingTasks() != 0
-        || flushManager.getNumberOfPendingSubTasks() != 0
-        || flushManager.getNumberOfWorkingTasks() != 0
-        || flushManager.getNumberOfWorkingSubTasks() != 0) {
-      Thread.sleep(500);
-      ++waitCnt;
-      if (waitCnt % 10 == 0) {
-        logger.info("already wait {} s", waitCnt / 2);
-      }
-    }
-
-    Assert.assertEquals(0, MemTableManager.getInstance().getCurrentMemtableNumber());
-    Assert.assertFalse(tsFileProcessor.alreadyMarkedClosing());
-
-    // close the tsfile
-    processor.timedCloseTsFileProcessor();
-
-    Thread.sleep(500);
-
-    Assert.assertTrue(tsFileProcessor.alreadyMarkedClosing());
-
-    config.setSeqTsFileSize(prevSeqTsFileSize);
-    config.setEnableTimedFlushSeqMemtable(prevEnableTimedFlushSeqMemtable);
-    config.setSeqMemtableFlushInterval(preFLushInterval);
-    config.setEnableTimedCloseTsFile(prevEnableTimedCloseTsFile);
-    config.setCloseTsFileIntervalAfterFlushing(prevCloseTsFileInterval);
-  }
-
   class DummySGP extends VirtualStorageGroupProcessor {
 
     DummySGP(String systemInfoDir, String storageGroupName) throws StorageGroupProcessorException {

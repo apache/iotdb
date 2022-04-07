@@ -139,16 +139,6 @@ public class StorageGroupManager {
     }
   }
 
-  /** push check TsFileProcessor close interval down to all sg */
-  public void timedCloseTsFileProcessor() {
-    for (VirtualStorageGroupProcessor virtualStorageGroupProcessor :
-        this.virtualStorageGroupProcessor) {
-      if (virtualStorageGroupProcessor != null) {
-        virtualStorageGroupProcessor.timedCloseTsFileProcessor();
-      }
-    }
-  }
-
   /**
    * get processor from device id
    *

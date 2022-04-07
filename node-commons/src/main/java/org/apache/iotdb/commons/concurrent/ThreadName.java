@@ -55,7 +55,6 @@ public enum ThreadName {
   TTL_CHECK_SERVICE("TTL-CHECK"),
   TIMED_FlUSH_SEQ_MEMTABLE("Timed-Flush-Seq-Memtable"),
   TIMED_FlUSH_UNSEQ_MEMTABLE("Timed-Flush-Unseq-Memtable"),
-  TIMED_CLOSE_TSFILE("Timed-Close-TsFile"),
   SETTLE_SERVICE("Settle"),
   CONTINUOUS_QUERY_SERVICE("ContinuousQueryTaskPoolManager"),
   CLUSTER_INFO_SERVICE("ClusterInfoClient"),

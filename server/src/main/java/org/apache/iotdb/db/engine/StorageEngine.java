@@ -130,7 +130,6 @@ public class StorageEngine implements IService {
   private ScheduledExecutorService ttlCheckThread;
   private ScheduledExecutorService seqMemtableTimedFlushCheckThread;
   private ScheduledExecutorService unseqMemtableTimedFlushCheckThread;
-  private ScheduledExecutorService tsFileTimedCloseCheckThread;
 
   private TsFileFlushPolicy fileFlushPolicy = new DirectFlushPolicy();
   private ExecutorService recoveryThreadPool;
@@ -334,18 +333,6 @@ public class StorageEngine implements IService {
           TimeUnit.MILLISECONDS);
       logger.info("start unsequence memtable timed flush check thread successfully.");
     }
-    // timed close tsfile
-    if (config.isEnableTimedCloseTsFile()) {
-      tsFileTimedCloseCheckThread =
-          IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-              ThreadName.TIMED_CLOSE_TSFILE.getName());
-      tsFileTimedCloseCheckThread.scheduleAtFixedRate(
-          this::timedCloseTsFileProcessor,
-          config.getCloseTsFileCheckInterval(),
-          config.getCloseTsFileCheckInterval(),
-          TimeUnit.MILLISECONDS);
-      logger.info("start tsfile timed close check thread successfully.");
-    }
   }
 
   private void timedFlushSeqMemTable() {
@@ -368,16 +355,6 @@ public class StorageEngine implements IService {
     }
   }
 
-  private void timedCloseTsFileProcessor() {
-    try {
-      for (StorageGroupManager processor : processorMap.values()) {
-        processor.timedCloseTsFileProcessor();
-      }
-    } catch (Exception e) {
-      logger.error("An error occurred when timed closing tsfiles interval", e);
-    }
-  }
-
   @Override
   public void stop() {
     for (StorageGroupManager storageGroupManager : processorMap.values()) {
@@ -389,7 +366,6 @@ public class StorageEngine implements IService {
         seqMemtableTimedFlushCheckThread, ThreadName.TIMED_FlUSH_SEQ_MEMTABLE);
     ThreadUtils.stopThreadPool(
         unseqMemtableTimedFlushCheckThread, ThreadName.TIMED_FlUSH_UNSEQ_MEMTABLE);
-    ThreadUtils.stopThreadPool(tsFileTimedCloseCheckThread, ThreadName.TIMED_CLOSE_TSFILE);
     recoveryThreadPool.shutdownNow();
     processorMap.clear();
   }
@@ -407,7 +383,6 @@ public class StorageEngine implements IService {
     shutdownTimedService(ttlCheckThread, "TTlCheckThread");
     shutdownTimedService(seqMemtableTimedFlushCheckThread, "SeqMemtableTimedFlushCheckThread");
     shutdownTimedService(unseqMemtableTimedFlushCheckThread, "UnseqMemtableTimedFlushCheckThread");
-    shutdownTimedService(tsFileTimedCloseCheckThread, "TsFileTimedCloseCheckThread");
     recoveryThreadPool.shutdownNow();
     processorMap.clear();
   }
@@ -424,7 +399,7 @@ public class StorageEngine implements IService {
     }
   }
 
-  /** reboot timed flush sequence/unsequence memetable thread, timed close tsfile thread */
+  /** reboot timed flush sequence/unsequence memetable thread */
   public void rebootTimedService() throws ShutdownException {
     logger.info("Start rebooting all timed service.");
 
@@ -432,7 +407,6 @@ public class StorageEngine implements IService {
     stopTimedServiceAndThrow(seqMemtableTimedFlushCheckThread, "SeqMemtableTimedFlushCheckThread");
     stopTimedServiceAndThrow(
         unseqMemtableTimedFlushCheckThread, "UnseqMemtableTimedFlushCheckThread");
-    stopTimedServiceAndThrow(tsFileTimedCloseCheckThread, "TsFileTimedCloseCheckThread");
 
     logger.info("Stop all timed service successfully, and now restart them.");
 

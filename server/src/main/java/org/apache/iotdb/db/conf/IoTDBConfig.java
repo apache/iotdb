@@ -186,6 +186,9 @@ public class IoTDBConfig {
    */
   private long walMemTableSnapshotThreshold = 128 * 1024 * 1024;
 
+  /** MemTable's max snapshot number in wal file */
+  private int maxWalMemTableSnapshotNum = 1;
+
   /** The period when outdated wal files are periodically deleted. Unit: millisecond */
   private long deleteWalFilesPeriodInMs = 10 * 60 * 1000;
   // endregion
@@ -352,18 +355,6 @@ public class IoTDBConfig {
 
   /** The interval to check whether unsequence memtables need flushing. Unit: ms */
   private long unseqMemtableFlushCheckInterval = 10 * 60 * 1000L;
-
-  /** Whether to timed close tsfiles. */
-  private boolean enableTimedCloseTsFile = true;
-
-  /**
-   * If a TsfileProcessor's last working memtable flush time is older than current time minus this
-   * and its working memtable is null, the TsfileProcessor will be closed. Unit: ms
-   */
-  private long closeTsFileIntervalAfterFlushing = 60 * 60 * 1000L;
-
-  /** The interval to check whether tsfiles need closing. Unit: ms */
-  private long closeTsFileCheckInterval = 10 * 60 * 1000L;
 
   /** When average series point number reaches this, flush the memtable to disk */
   private int avgSeriesPointNumberThreshold = 10000;
@@ -1418,7 +1409,7 @@ public class IoTDBConfig {
     return walFileTTLInMs;
   }
 
-  public void setWalFileTTLInMs(long walFileTTLInMs) {
+  void setWalFileTTLInMs(long walFileTTLInMs) {
     this.walFileTTLInMs = walFileTTLInMs;
   }
 
@@ -1428,6 +1419,14 @@ public class IoTDBConfig {
 
   void setWalMemTableSnapshotThreshold(long walMemTableSnapshotThreshold) {
     this.walMemTableSnapshotThreshold = walMemTableSnapshotThreshold;
+  }
+
+  public int getMaxWalMemTableSnapshotNum() {
+    return maxWalMemTableSnapshotNum;
+  }
+
+  void setMaxWalMemTableSnapshotNum(int maxWalMemTableSnapshotNum) {
+    this.maxWalMemTableSnapshotNum = maxWalMemTableSnapshotNum;
   }
 
   public long getDeleteWalFilesPeriodInMs() {
@@ -1702,30 +1701,6 @@ public class IoTDBConfig {
 
   public void setUnseqMemtableFlushCheckInterval(long unseqMemtableFlushCheckInterval) {
     this.unseqMemtableFlushCheckInterval = unseqMemtableFlushCheckInterval;
-  }
-
-  public boolean isEnableTimedCloseTsFile() {
-    return enableTimedCloseTsFile;
-  }
-
-  public void setEnableTimedCloseTsFile(boolean enableTimedCloseTsFile) {
-    this.enableTimedCloseTsFile = enableTimedCloseTsFile;
-  }
-
-  public long getCloseTsFileIntervalAfterFlushing() {
-    return closeTsFileIntervalAfterFlushing;
-  }
-
-  public void setCloseTsFileIntervalAfterFlushing(long closeTsFileIntervalAfterFlushing) {
-    this.closeTsFileIntervalAfterFlushing = closeTsFileIntervalAfterFlushing;
-  }
-
-  public long getCloseTsFileCheckInterval() {
-    return closeTsFileCheckInterval;
-  }
-
-  public void setCloseTsFileCheckInterval(long closeTsFileCheckInterval) {
-    this.closeTsFileCheckInterval = closeTsFileCheckInterval;
   }
 
   public int getAvgSeriesPointNumberThreshold() {

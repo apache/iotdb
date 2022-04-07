@@ -49,6 +49,8 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -61,6 +63,7 @@ public class WALNode implements IWALNode {
   private static final long WAL_FILE_TTL_IN_MS = config.getWalFileTTLInMs();
   private static final long MEM_TABLE_SNAPSHOT_THRESHOLD_IN_BYTE =
       config.getWalMemTableSnapshotThreshold();
+  private static final int MAX_WAL_MEM_TABLE_SNAPSHOT_NUM = config.getMaxWalMemTableSnapshotNum();
 
   /** unique identifier of this WALNode */
   private final String identifier;
@@ -70,6 +73,11 @@ public class WALNode implements IWALNode {
   private final IWALBuffer buffer;
   /** manage checkpoints */
   private final CheckpointManager checkpointManager;
+  /**
+   * memTable id -> memTable snapshot count, used to avoid write amplification caused by frequent
+   * snapshot
+   */
+  private final Map<Integer, Integer> memTableSnapshotCount = new ConcurrentHashMap<>();
 
   public WALNode(String identifier, String logDirectory) throws FileNotFoundException {
     this.identifier = identifier;
@@ -121,6 +129,7 @@ public class WALNode implements IWALNode {
     if (memTable.isSignalMemTable()) {
       return;
     }
+    memTableSnapshotCount.remove(memTable.getMemTableId());
     checkpointManager.makeFlushMemTableCP(memTable.getMemTableId());
   }
 
@@ -226,8 +235,10 @@ public class WALNode implements IWALNode {
       }
 
       // snapshot or flush memTable
-      if (oldestMemTableInfo.getMemTable().getTVListsRamCost()
-          > MEM_TABLE_SNAPSHOT_THRESHOLD_IN_BYTE) {
+      int snapshotCount = memTableSnapshotCount.getOrDefault(oldestMemTableInfo.getMemTableId(), 0);
+      if (snapshotCount >= MAX_WAL_MEM_TABLE_SNAPSHOT_NUM
+          || oldestMemTableInfo.getMemTable().getTVListsRamCost()
+              > MEM_TABLE_SNAPSHOT_THRESHOLD_IN_BYTE) {
         vsgProcessor.submitAFlushTask(
             TsFileUtils.getTimePartition(oldestTsFile), TsFileUtils.isSequence(oldestTsFile));
       } else {
@@ -237,6 +248,8 @@ public class WALNode implements IWALNode {
           // update first version id first to make sure snapshot is in the files ≥ current log
           // version
           oldestMemTableInfo.setFirstFileVersionId(buffer.getCurrentWALFileVersion());
+          // update snapshot count
+          memTableSnapshotCount.put(oldestMemTableInfo.getMemTableId(), snapshotCount + 1);
           // log snapshot in .wal file
           WALEntry walEntry =
               new WALEntry(

@@ -818,7 +818,7 @@ public class IoTDBDescriptor {
               properties.getProperty("kerberos_principal", conf.getKerberosPrincipal()));
       TSFileDescriptor.getInstance().getConfig().setBatchSize(conf.getBatchSize());
 
-      // timed flush memtable, timed close tsfile
+      // timed flush memtable
       loadTimedService(properties);
 
       // set tsfile-format config
@@ -954,6 +954,15 @@ public class IoTDBDescriptor {
                 Long.toString(conf.getWalMemTableSnapshotThreshold())));
     if (walMemTableSnapshotThreshold > 0) {
       conf.setWalMemTableSnapshotThreshold(walMemTableSnapshotThreshold);
+    }
+
+    int maxWalMemTableSnapshotNum =
+        Integer.parseInt(
+            properties.getProperty(
+                "max_wal_wal_memtable_snapshot_num",
+                Integer.toString(conf.getMaxWalMemTableSnapshotNum())));
+    if (maxWalMemTableSnapshotNum > 0) {
+      conf.setMaxWalMemTableSnapshotNum(maxWalMemTableSnapshotNum);
     }
 
     long deleteWalFilesPeriod =
@@ -1131,7 +1140,7 @@ public class IoTDBDescriptor {
     }
   }
 
-  // timed flush memtable, timed close tsfile
+  // timed flush memtable
   private void loadTimedService(Properties properties) {
     conf.setEnableTimedFlushSeqMemtable(
         Boolean.parseBoolean(
@@ -1187,33 +1196,6 @@ public class IoTDBDescriptor {
                 .trim());
     if (unseqMemTableFlushCheckInterval > 0) {
       conf.setUnseqMemtableFlushCheckInterval(unseqMemTableFlushCheckInterval);
-    }
-
-    conf.setEnableTimedCloseTsFile(
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "enable_timed_close_tsfile", Boolean.toString(conf.isEnableTimedCloseTsFile()))));
-
-    long closeTsFileIntervalAfterFlushing =
-        Long.parseLong(
-            properties
-                .getProperty(
-                    "close_tsfile_interval_after_flushing_in_ms",
-                    Long.toString(conf.getCloseTsFileIntervalAfterFlushing()))
-                .trim());
-    if (closeTsFileIntervalAfterFlushing > 0) {
-      conf.setCloseTsFileIntervalAfterFlushing(closeTsFileIntervalAfterFlushing);
-    }
-
-    long closeTsFileCheckInterval =
-        Long.parseLong(
-            properties
-                .getProperty(
-                    "close_tsfile_check_interval_in_ms",
-                    Long.toString(conf.getCloseTsFileCheckInterval()))
-                .trim());
-    if (closeTsFileCheckInterval > 0) {
-      conf.setCloseTsFileCheckInterval(closeTsFileCheckInterval);
     }
   }
 
