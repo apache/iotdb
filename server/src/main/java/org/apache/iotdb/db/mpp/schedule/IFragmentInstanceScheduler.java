@@ -44,14 +44,11 @@ public interface IFragmentInstanceScheduler {
   void abortQuery(QueryId queryId);
 
   /**
-   * Abort the fragment instance.
+   * Abort the fragment instance. If the instance is not existed, nothing will happen.
    *
    * @param instanceId the id of the fragment instance to be aborted.
    */
   void abortFragmentInstance(FragmentInstanceId instanceId);
-
-  /** Fetch an {@link org.apache.iotdb.db.mpp.execution.Driver}. */
-  void fetchFragmentInstance(Driver instance);
 
   /**
    * Return the schedule priority of a fragment.
