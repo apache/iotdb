@@ -39,11 +39,10 @@ import java.util.List;
 import java.util.Map;
 
 public class SenderLogAnalyzer {
-  private File senderLog;
-  private BufferedReader br;
+  private final File senderLog;
 
-  private Map<String, PipeSink> pipeSinks;
-  private List<Pipe> pipes;
+  private final Map<String, PipeSink> pipeSinks;
+  private final List<Pipe> pipes;
 
   private Pipe runningPipe;
   private Pipe.PipeStatus runningPipeStatus;
@@ -61,9 +60,9 @@ public class SenderLogAnalyzer {
   }
 
   public void recover() throws IOException {
-    br = new BufferedReader(new FileReader(senderLog));
+    BufferedReader br = new BufferedReader(new FileReader(senderLog));
 
-    int lineNumber = 0; // start from 1
+    int lineNumber = 0; // line index shown in sender log starts from 1, so lineNumber starts from 0.
     String readLine = "";
     String[] parseStrings;
 

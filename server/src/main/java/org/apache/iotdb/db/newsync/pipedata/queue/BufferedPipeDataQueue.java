@@ -329,7 +329,7 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
       commitSerialNumber += 1;
       try {
         PipeData commitData = pullOnePipeData(commitSerialNumber);
-        if (PipeData.Type.TSFILE.equals(commitData.getType())) {
+        if (PipeData.PipeDataType.TSFILE.equals(commitData.getType())) {
           List<File> tsFiles = ((TsFilePipeData) commitData).getTsFiles(false);
           for (File file : tsFiles) {
             Files.deleteIfExists(file.toPath());

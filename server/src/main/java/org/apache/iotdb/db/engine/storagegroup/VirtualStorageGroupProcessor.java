@@ -3215,7 +3215,7 @@ public class VirtualStorageGroupProcessor {
     for (int i = 0; i < size; i++) {
       TsFileProcessor tsFileProcessor = tsFileResources.get(i).getProcessor();
       if (tsFileProcessor != null) {
-        tsFileResources.get(i).getProcessor().registerSyncDataCollector(tsFilePipe);
+        tsFileProcessor.registerSyncDataCollector(tsFilePipe);
       }
     }
   }

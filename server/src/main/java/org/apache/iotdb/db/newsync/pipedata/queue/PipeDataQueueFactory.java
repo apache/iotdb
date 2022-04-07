@@ -27,6 +27,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class PipeDataQueueFactory {
 
   // TODO: try use weakReference to avoid memory leak
+  /** pipe log dir name -> BufferedPipeDataQueue in this dir */
   private static final Map<String, BufferedPipeDataQueue> bufferedPipeDataQueueMap =
       new ConcurrentHashMap<>();
   /**

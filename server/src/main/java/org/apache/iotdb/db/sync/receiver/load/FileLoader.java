@@ -137,7 +137,7 @@ public class FileLoader implements IFileLoader {
       return;
     }
     TsFileResource tsFileResource = new TsFileResource(newTsFile);
-    FileLoaderUtils.checkTsFileResource(tsFileResource);
+    FileLoaderUtils.loadOrGenerateResource(tsFileResource);
     try {
       FileLoaderManager.getInstance().checkAndUpdateDeviceOwner(tsFileResource);
       StorageEngine.getInstance().loadNewTsFileForSync(tsFileResource);

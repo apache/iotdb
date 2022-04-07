@@ -240,7 +240,7 @@ public class SenderService implements IService {
             String.format(
                 "Close pipe %s transport error after %s %s, please try again.",
                 runningPipe.getName(),
-                SyncConstant.DEFAULT_WAITTING_FOR_STOP_MILLISECONDS,
+                SyncConstant.DEFAULT_WAITING_FOR_STOP_MILLISECONDS,
                 TimeUnit.MILLISECONDS.name()));
       }
 
@@ -278,7 +278,7 @@ public class SenderService implements IService {
   /** transport */
   private void sendMsg(RequestType type) throws PipeException {
     try {
-      recMsg(transportHandler.sendMsg(type));
+      receiveMsg(transportHandler.sendMsg(type));
     } catch (SyncConnectionException e) {
       logger.warn(
           String.format(
@@ -291,7 +291,7 @@ public class SenderService implements IService {
     }
   }
 
-  public synchronized void recMsg(SyncResponse response) {
+  public synchronized void receiveMsg(SyncResponse response) {
     if (runningPipe == null || runningPipe.getStatus() == Pipe.PipeStatus.DROP) {
       logger.warn(String.format("No running pipe for receiving msg %s.", response));
       return;

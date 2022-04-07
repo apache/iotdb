@@ -41,8 +41,8 @@ public class SchemaPipeData extends PipeData {
   }
 
   @Override
-  public Type getType() {
-    return Type.PHYSICALPLAN;
+  public PipeDataType getType() {
+    return PipeDataType.SCHEMA;
   }
 
   @Override

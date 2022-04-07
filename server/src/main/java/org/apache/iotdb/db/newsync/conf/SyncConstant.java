@@ -33,14 +33,13 @@ public class SyncConstant {
   public static final Long DEFAULT_HEARTBEAT_DELAY_SECONDS = 10 * 60L;
   public static final Long DEFAULT_WAITING_FOR_TSFILE_CLOSE_MILLISECONDS = 500L;
   public static final Long DEFAULT_WAITING_FOR_TSFILE_RETRY_NUMBER = 10L;
-  public static final Long DEFAULT_WAITING_FOR_DEREGISTER_MILLISECONDS = 100L;
-  public static final Long DEFAULT_WAITTING_FOR_STOP_MILLISECONDS = 100L;
+  public static final Long DEFAULT_WAITING_FOR_STOP_MILLISECONDS = 100L;
   public static final String MODS_OFFSET_FILE_SUFFIX = ".offset";
   public static final String PIPE_LOG_NAME_SUFFIX = "_pipe.log";
   public static final Long DEFAULT_PIPE_LOG_SIZE_IN_BYTE = 10485760L;
   public static final String COMMIT_LOG_NAME = "commit.log";
 
-  public static final String UNKNOWN_IP = "UNKNOWN";
+  public static final String UNKNOWN_IP = "UNKNOWN IP";
 
   public static final String SENDER_LOG_NAME = "senderService.log";
   public static final String PLAN_SERIALIZE_SPLIT_CHARACTER = ",";

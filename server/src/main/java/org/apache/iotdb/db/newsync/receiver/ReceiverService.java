@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.newsync.receiver;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
@@ -99,7 +100,7 @@ public class ReceiverService implements IService {
   }
 
   /** heartbeat RPC handle */
-  public SyncResponse recMsg(SyncRequest request) {
+  public SyncResponse receiveMsg(SyncRequest request) {
     SyncResponse response = new SyncResponse(ResponseType.INFO, "");
     ;
     try {
@@ -220,7 +221,7 @@ public class ReceiverService implements IService {
     record.addField(
         Binary.valueOf(DatetimeUtils.convertLongToDate(pipeInfo.getCreateTime())), TSDataType.TEXT);
     record.addField(Binary.valueOf(pipeInfo.getPipeName()), TSDataType.TEXT);
-    record.addField(Binary.valueOf("receiver"), TSDataType.TEXT);
+    record.addField(Binary.valueOf(IoTDBConstant.SYNC_RECEIVER_ROLE), TSDataType.TEXT);
     record.addField(Binary.valueOf(pipeInfo.getRemoteIp()), TSDataType.TEXT);
     record.addField(Binary.valueOf(pipeInfo.getStatus().name()), TSDataType.TEXT);
     record.addField(

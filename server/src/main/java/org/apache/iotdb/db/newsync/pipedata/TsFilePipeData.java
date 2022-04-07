@@ -77,8 +77,8 @@ public class TsFilePipeData extends PipeData {
   }
 
   @Override
-  public Type getType() {
-    return Type.TSFILE;
+  public PipeDataType getType() {
+    return PipeDataType.TSFILE;
   }
 
   @Override

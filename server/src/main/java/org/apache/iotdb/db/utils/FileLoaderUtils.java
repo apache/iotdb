@@ -51,7 +51,7 @@ public class FileLoaderUtils {
 
   private FileLoaderUtils() {}
 
-  public static void checkTsFileResource(TsFileResource tsFileResource) throws IOException {
+  public static void loadOrGenerateResource(TsFileResource tsFileResource) throws IOException {
     if (!tsFileResource.resourceFileExists()) {
       // .resource file does not exist, read file metadata and recover tsfile resource
       try (TsFileSequenceReader reader =

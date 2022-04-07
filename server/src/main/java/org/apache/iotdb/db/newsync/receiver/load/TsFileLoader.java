@@ -44,7 +44,7 @@ public class TsFileLoader implements ILoader {
     try {
       TsFileResource tsFileResource = new TsFileResource(tsFile);
       tsFileResource.setStatus(TsFileResourceStatus.CLOSED);
-      FileLoaderUtils.checkTsFileResource(tsFileResource);
+      FileLoaderUtils.loadOrGenerateResource(tsFileResource);
       List<TsFileResource> splitResources = new ArrayList();
       if (tsFileResource.isSpanMultiTimePartitions()) {
         TsFileRewriteTool.rewriteTsFile(tsFileResource, splitResources);

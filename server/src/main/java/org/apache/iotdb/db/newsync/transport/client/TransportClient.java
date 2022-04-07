@@ -81,29 +81,13 @@ public class TransportClient implements ITransportClient {
 
   private TransportService.Client serviceClient = null;
 
-  private String ipAddress = null;
+  private String ipAddress;
 
-  private int port = -1;
+  private int port;
 
   private IdentityInfo identityInfo = null;
 
-  private Pipe pipe = null;
-
-  @TestOnly
-  private TransportClient() {
-    Thread.currentThread().setName(ThreadName.SYNC_CLIENT.getName());
-  }
-
-  @TestOnly
-  public static TransportClient getInstance() {
-    return TransportClient.InstanceHolder.INSTANCE;
-  }
-
-  @TestOnly
-  public void setServerConfig(String ipAddress, int port) throws IOException {
-    this.ipAddress = ipAddress;
-    this.port = port;
-  }
+  private Pipe pipe;
 
   public TransportClient(Pipe pipe, String ipAddress, int port) {
     RpcTransportFactory.setThriftMaxFrameSize(config.getThriftMaxFrameSize());
@@ -475,7 +459,7 @@ public class TransportClient implements ITransportClient {
           logger.warn(String.format("Can not transfer pipedata %s, skip it.", pipeData));
           // can do something.
           SenderService.getInstance()
-              .recMsg(
+              .receiveMsg(
                   new SyncResponse(
                       ResponseType.WARN,
                       SyncPathUtil.createMsg(
@@ -490,7 +474,7 @@ public class TransportClient implements ITransportClient {
       logger.error(
           String.format("Connect to receiver %s:%d error, because %s.", ipAddress, port, e));
       SenderService.getInstance()
-          .recMsg(
+          .receiveMsg(
               new SyncResponse(
                   ResponseType.ERROR,
                   SyncPathUtil.createMsg(
@@ -537,40 +521,9 @@ public class TransportClient implements ITransportClient {
     }
   }
 
-  @TestOnly
-  public static void main(String[] args) throws IOException {
-
-    TransportClient.getInstance().setServerConfig("127.0.0.1", 5555);
-
-    if (!TransportClient.getInstance().handshake()) {
-      // Deal with the error here.
-      return;
-    }
-
-    //     Example 1. Send TSFILE.
-    //        List<File> files = new ArrayList<>();
-    //        files.add(new File(System.getProperty(IoTDBConstant.IOTDB_HOME) + "/files/test1"));
-    //        files.add(new File(System.getProperty(IoTDBConstant.IOTDB_HOME) + "/files/test2"));
-    //        files.add(new File(System.getProperty(IoTDBConstant.IOTDB_HOME) + "/files/test3"));
-
-    //     if (!TransportClient.getInstance().senderTransport()) {
-    //     Deal with the error here.
-    //     }
-
-    //     Example 2. Send DELETION
-    //     TsFilePipeData.Type.DELETION.name();
-
-    //     Example 3. Send PHYSICALPLAN
-    //     TsFilePipeData.Type.PHYSICALPLAN.name();
-  }
-
   public void close() {
     if (transport != null) {
       transport.close();
     }
-  }
-
-  private static class InstanceHolder {
-    private static final TransportClient INSTANCE = new TransportClient();
   }
 }

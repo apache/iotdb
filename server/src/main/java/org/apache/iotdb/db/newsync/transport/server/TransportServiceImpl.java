@@ -321,7 +321,7 @@ public class TransportServiceImpl implements TransportService.Iface {
   @Override
   public SyncResponse heartbeat(IdentityInfo identityInfo, SyncRequest syncRequest)
       throws TException {
-    return ReceiverService.getInstance().recMsg(syncRequest);
+    return ReceiverService.getInstance().receiveMsg(syncRequest);
   }
 
   private void writeRecordFile(File recordFile, long position) throws IOException {

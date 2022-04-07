@@ -137,7 +137,7 @@ public class StorageEngine implements IService {
   private List<CloseFileListener> customCloseFileListeners = new ArrayList<>();
   private List<FlushListener> customFlushListeners = new ArrayList<>();
 
-  /** collector for sync */
+  /** collector for sync, used to collect newly closed TsFiles and deletions */
   private TsFilePipe tsFilePipe;
 
   private StorageEngine() {}

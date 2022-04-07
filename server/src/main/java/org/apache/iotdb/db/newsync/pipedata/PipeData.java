@@ -48,7 +48,7 @@ public abstract class PipeData {
     this.serialNumber = serialNumber;
   }
 
-  public abstract Type getType();
+  public abstract PipeDataType getType();
 
   public long serialize(DataOutputStream stream) throws IOException {
     long serializeSize = 0;
@@ -67,13 +67,13 @@ public abstract class PipeData {
 
   public static PipeData deserialize(DataInputStream stream)
       throws IOException, IllegalPathException {
-    Type type = Type.values()[stream.readByte()];
+    PipeDataType type = PipeDataType.values()[stream.readByte()];
     switch (type) {
       case TSFILE:
         return TsFilePipeData.deserialize(stream);
       case DELETION:
         return DeletionPipeData.deserialize(stream);
-      case PHYSICALPLAN:
+      case SCHEMA:
         return SchemaPipeData.deserialize(stream);
       default:
         logger.error("Deserialize PipeData error because Unknown type {}.", type);
@@ -88,9 +88,9 @@ public abstract class PipeData {
 
   public abstract ILoader createLoader();
 
-  public enum Type {
+  public enum PipeDataType {
     TSFILE,
     DELETION,
-    PHYSICALPLAN
+    SCHEMA
   }
 }

@@ -99,11 +99,11 @@ public class TransportHandler {
     transportExecutorService.shutdownNow();
     isClosed =
         transportExecutorService.awaitTermination(
-            SyncConstant.DEFAULT_WAITTING_FOR_STOP_MILLISECONDS, TimeUnit.MILLISECONDS);
+            SyncConstant.DEFAULT_WAITING_FOR_STOP_MILLISECONDS, TimeUnit.MILLISECONDS);
     heartbeatExecutorService.shutdownNow();
     isClosed &=
         heartbeatExecutorService.awaitTermination(
-            SyncConstant.DEFAULT_WAITTING_FOR_STOP_MILLISECONDS, TimeUnit.MILLISECONDS);
+            SyncConstant.DEFAULT_WAITING_FOR_STOP_MILLISECONDS, TimeUnit.MILLISECONDS);
     return isClosed;
   }
 
@@ -114,7 +114,7 @@ public class TransportHandler {
   private void sendHeartbeat() {
     try {
       SenderService.getInstance()
-          .recMsg(
+          .receiveMsg(
               transportClient.heartbeat(
                   new SyncRequest(RequestType.HEARTBEAT, pipeName, localIp, createTime)));
     } catch (SyncConnectionException e) {

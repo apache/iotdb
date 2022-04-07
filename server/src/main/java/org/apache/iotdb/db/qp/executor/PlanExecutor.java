@@ -1325,7 +1325,7 @@ public class PlanExecutor implements IPlanExecutor {
         record.addField(
             Binary.valueOf(DatetimeUtils.convertLongToDate(pipe.getCreateTime())), TSDataType.TEXT);
         record.addField(Binary.valueOf(pipe.getName()), TSDataType.TEXT);
-        record.addField(Binary.valueOf("sender"), TSDataType.TEXT);
+        record.addField(Binary.valueOf(IoTDBConstant.SYNC_SENDER_ROLE), TSDataType.TEXT);
         record.addField(Binary.valueOf(pipe.getPipeSink().getName()), TSDataType.TEXT);
         record.addField(Binary.valueOf(pipe.getStatus().name()), TSDataType.TEXT);
         record.addField(
@@ -1428,7 +1428,7 @@ public class PlanExecutor implements IPlanExecutor {
         throw new QueryProcessException(e.getMessage());
       }
 
-      FileLoaderUtils.checkTsFileResource(tsFileResource);
+      FileLoaderUtils.loadOrGenerateResource(tsFileResource);
       if (UpgradeUtils.isNeedUpgrade(tsFileResource)) {
         throw new QueryProcessException(
             String.format(
