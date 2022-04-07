@@ -135,9 +135,9 @@ select timestamprepair(s1) from root.test.d2
 **备注：** AR 模型采用 AR(1)，时序列需满足自相关条件，否则将输出单个数据点 (0, 0.0).
 
 ### 使用示例
-
 #### 使用 linear 方法进行填补
 
+>>>>>>> master:docs/zh/UserGuide/UDF-Library/Data-Repairing.md
 当`method`缺省或取值为 'linear' 时，本函数将使用线性插值方法进行填补。
 
 输入序列：
@@ -171,6 +171,8 @@ select valuefill(s1) from root.test.d2
 ```
 
 输出序列：
+
+
 
 ```
 +-----------------------------+-----------------------+
