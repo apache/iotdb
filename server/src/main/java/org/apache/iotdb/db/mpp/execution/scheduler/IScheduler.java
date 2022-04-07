@@ -28,7 +28,7 @@ public interface IScheduler {
 
   void start();
 
-  void abort();
+  void stop();
 
   Duration getTotalCpuTime();
 

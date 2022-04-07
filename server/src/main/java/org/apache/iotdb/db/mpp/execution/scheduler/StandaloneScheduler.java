@@ -36,7 +36,7 @@ public class StandaloneScheduler implements IScheduler {
   public void start() {}
 
   @Override
-  public void abort() {}
+  public void stop() {}
 
   @Override
   public Duration getTotalCpuTime() {

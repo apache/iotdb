@@ -32,16 +32,19 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 
-import java.nio.ByteBuffer;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
+
+import static com.google.common.base.Throwables.throwIfUnchecked;
 
 /**
  * QueryExecution stores all the status of a query which is being prepared or running inside the MPP
@@ -89,7 +92,7 @@ public class QueryExecution implements IQueryExecution {
           if (!state.isDone()) {
             return;
           }
-          this.abort();
+          this.stop();
         });
   }
 
@@ -132,9 +135,9 @@ public class QueryExecution implements IQueryExecution {
   }
 
   /** Abort the query and do cleanup work including QuerySchedule aborting and resource releasing */
-  public void abort() {
+  public void stop() {
     if (this.scheduler != null) {
-      this.scheduler.abort();
+      this.scheduler.stop();
     }
     releaseResource();
   }
@@ -149,15 +152,20 @@ public class QueryExecution implements IQueryExecution {
    * DataStreamManager use the virtual ResultOperator's ID (This part will be designed and
    * implemented with DataStreamManager)
    */
-  public ByteBuffer getBatchResult() {
+  public TsBlock getBatchResult() {
     ListenableFuture<Void> blocked = resultHandle.isBlocked();
     try {
       blocked.get();
-      //    return resultHandle.receive();
-    } catch (InterruptedException | ExecutionException e) {
-      e.printStackTrace();
+      return resultHandle.receive();
+
+    } catch (ExecutionException e) {
+      throwIfUnchecked(e.getCause());
+      throw new RuntimeException(e.getCause());
+    } catch (InterruptedException e) {
+      stateMachine.transitionToFailed();
+      Thread.currentThread().interrupt();
+      throw new RuntimeException(new SQLException("ResultSet thread was interrupted", e));
     }
-    return null;
   }
 
   /**

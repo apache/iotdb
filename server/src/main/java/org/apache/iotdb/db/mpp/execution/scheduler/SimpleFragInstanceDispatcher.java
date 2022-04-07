@@ -27,7 +27,6 @@ import org.apache.thrift.TException;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
-import java.util.concurrent.FutureTask;
 
 public class SimpleFragInstanceDispatcher implements IFragInstanceDispatcher {
 
@@ -39,24 +38,22 @@ public class SimpleFragInstanceDispatcher implements IFragInstanceDispatcher {
 
   @Override
   public Future<FragInstanceDispatchResult> dispatch(List<FragmentInstance> instances) {
-    FutureTask<FragInstanceDispatchResult> dispatchTask =
-        new FutureTask<>(
-            () -> {
-              try {
-                for (FragmentInstance instance : instances) {
-                  InternalService.Client client =
-                      InternalServiceClientFactory.getInternalServiceClient(
-                          instance.getHostEndpoint().getIp(), instance.getHostEndpoint().getPort());
-                  client.sendFragmentInstance(null);
-                }
-              } catch (TException e) {
-                // TODO: (xingtanzjr) add more details
-                return new FragInstanceDispatchResult(false);
-              }
-              return new FragInstanceDispatchResult(true);
-            });
-    executor.submit(dispatchTask);
-    return dispatchTask;
+    return executor.submit(
+        () -> {
+          try {
+            for (FragmentInstance instance : instances) {
+              InternalService.Client client =
+                  InternalServiceClientFactory.getInternalServiceClient(
+                      instance.getHostEndpoint().getIp(), instance.getHostEndpoint().getPort());
+              // TODO: (xingtanzjr) add request construction
+              client.sendFragmentInstance(null);
+            }
+          } catch (TException e) {
+            // TODO: (xingtanzjr) add more details
+            return new FragInstanceDispatchResult(false);
+          }
+          return new FragInstanceDispatchResult(true);
+        });
   }
 
   @Override

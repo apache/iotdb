@@ -23,7 +23,7 @@ public interface IQueryExecution {
 
   void start();
 
-  void abort();
+  void stop();
 
   ExecutionResult getStatus();
 }

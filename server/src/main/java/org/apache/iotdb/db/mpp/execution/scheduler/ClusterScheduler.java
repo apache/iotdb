@@ -123,7 +123,7 @@ public class ClusterScheduler implements IScheduler {
   }
 
   @Override
-  public void abort() {
+  public void stop() {
     // TODO: It seems that it is unnecessary to check whether they are null or not. Is it a best
     // practice ?
     dispatcher.abort();

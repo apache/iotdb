@@ -29,10 +29,10 @@ import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import jersey.repackaged.com.google.common.util.concurrent.SettableFuture;
 
-import javax.annotation.Nullable;
-
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
+
+import static com.google.common.base.Throwables.throwIfInstanceOf;
 
 public class ConfigExecution implements IQueryExecution {
 
@@ -54,36 +54,45 @@ public class ConfigExecution implements IQueryExecution {
   @Override
   public void start() {
     IConfigTask task = getTask(statement);
-    ListenableFuture<Boolean> future = task.execute(stateMachine);
-    Futures.addCallback(
-        future,
-        new FutureCallback<Boolean>() {
-          @Override
-          public void onSuccess(@Nullable Boolean success) {
-            stateMachine.transitionToFinished();
-            result.set(success);
-          }
+    try {
+      ListenableFuture<Void> future = task.execute();
+      Futures.addCallback(
+          future,
+          new FutureCallback<Void>() {
+            @Override
+            public void onSuccess(Void success) {
+              stateMachine.transitionToFinished();
+              result.set(true);
+            }
 
-          @Override
-          public void onFailure(Throwable throwable) {
-            // TODO: (xingtanzjr) consider to record the throwable in stateMachine
-            stateMachine.transitionToFailed();
-            result.set(false);
-          }
-        },
-        executor);
+            @Override
+            public void onFailure(Throwable throwable) {
+              fail(throwable);
+            }
+          },
+          executor);
+    } catch (Throwable e) {
+      fail(e);
+      throwIfInstanceOf(e, Error.class);
+    }
+  }
+
+  public void fail(Throwable cause) {
+    stateMachine.transitionToFailed();
+    result.cancel(false);
   }
 
   @Override
-  public void abort() {}
+  public void stop() {}
 
   @Override
   public ExecutionResult getStatus() {
     try {
-      boolean success = result.get();
+      Boolean success = result.get();
       TSStatusCode statusCode =
           success ? TSStatusCode.SUCCESS_STATUS : TSStatusCode.QUERY_PROCESS_ERROR;
       return new ExecutionResult(context.getQueryId(), RpcUtils.getStatus(statusCode));
+
     } catch (InterruptedException | ExecutionException e) {
       e.printStackTrace();
       return new ExecutionResult(

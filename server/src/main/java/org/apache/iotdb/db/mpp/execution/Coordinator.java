@@ -26,6 +26,9 @@ import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.common.SessionInfo;
 import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+
+import org.apache.commons.lang3.Validate;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -41,6 +44,11 @@ public class Coordinator {
   private static final int COORDINATOR_EXECUTOR_SIZE = 10;
   private static final String COORDINATOR_SCHEDULED_EXECUTOR_NAME = "MPPCoordinatorScheduled";
   private static final int COORDINATOR_SCHEDULED_EXECUTOR_SIZE = 10;
+
+  private static final Endpoint LOCAL_HOST =
+      new Endpoint(
+          IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),
+          IoTDBDescriptor.getInstance().getConfig().getMppPort());
 
   private ExecutorService executor;
   private ScheduledExecutorService scheduledExecutor;
@@ -72,6 +80,12 @@ public class Coordinator {
     return execution.getStatus();
   }
 
+  public TsBlock getResultSet(QueryId queryId) {
+    QueryExecution execution = queryExecutionMap.get(queryId);
+    Validate.notNull(execution, "invalid queryId %s", queryId.getId());
+    return execution.getBatchResult();
+  }
+
   // TODO: (xingtanzjr) need to redo once we have a concrete policy for the threadPool management
   private ExecutorService getQueryExecutor() {
     return IoTDBThreadPoolFactory.newFixedThreadPool(
@@ -85,9 +99,7 @@ public class Coordinator {
 
   // Get the hostname of current coordinator
   private Endpoint getHostEndpoint() {
-    return new Endpoint(
-        IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),
-        IoTDBDescriptor.getInstance().getConfig().getMppPort());
+    return LOCAL_HOST;
   }
 
   public static Coordinator getInstance() {

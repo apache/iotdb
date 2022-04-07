@@ -22,5 +22,5 @@ package org.apache.iotdb.db.mpp.execution;
 import com.google.common.util.concurrent.ListenableFuture;
 
 public interface IConfigTask {
-  ListenableFuture<Boolean> execute(QueryStateMachine stateMachine);
+  ListenableFuture<Void> execute();
 }

@@ -100,18 +100,30 @@ public class QueryStateMachine {
   }
 
   public void transitionToFinished() {
+    if (queryState.get().isDone()) {
+      return;
+    }
     queryState.set(QueryState.FINISHED);
   }
 
   public void transitionToCanceled() {
+    if (queryState.get().isDone()) {
+      return;
+    }
     queryState.set(QueryState.CANCELED);
   }
 
   public void transitionToAborted() {
+    if (queryState.get().isDone()) {
+      return;
+    }
     queryState.set(QueryState.ABORTED);
   }
 
   public void transitionToFailed() {
+    if (queryState.get().isDone()) {
+      return;
+    }
     queryState.set(QueryState.FAILED);
   }
 }
