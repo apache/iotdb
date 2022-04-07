@@ -55,14 +55,14 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
 
   // Each sub task has point count in current measurment, which is used to check size.
   // The index of the array corresponds to subTaskId.
-  protected int[] measurementPointCountMap = new int[subTaskNum];
+  protected int[] measurementPointCountArray = new int[subTaskNum];
 
   public abstract void startChunkGroup(String deviceId, boolean isAlign) throws IOException;
 
   public abstract void endChunkGroup() throws IOException;
 
   public void startMeasurement(List<IMeasurementSchema> measurementSchemaList, int subTaskId) {
-    measurementPointCountMap[subTaskId] = 0;
+    measurementPointCountArray[subTaskId] = 0;
     if (isAlign) {
       chunkWriterMap.put(subTaskId, new AlignedChunkWriterImpl(measurementSchemaList));
     } else {
@@ -139,12 +139,12 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
       }
       chunkWriter.write(timestamp);
     }
-    measurementPointCountMap[subTaskId] += 1;
+    measurementPointCountArray[subTaskId] += 1;
   }
 
   protected void checkChunkSizeAndMayOpenANewChunk(TsFileIOWriter fileWriter, int subTaskId)
       throws IOException {
-    if (measurementPointCountMap[subTaskId] % 10 == 0 && checkChunkSize(subTaskId)) {
+    if (measurementPointCountArray[subTaskId] % 10 == 0 && checkChunkSize(subTaskId)) {
       writeRateLimit(chunkWriterMap.get(subTaskId).estimateMaxSeriesMemSize());
       CompactionMetricsManager.recordWriteInfo(
           this instanceof CrossSpaceCompactionWriter
