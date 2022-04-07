@@ -60,7 +60,8 @@ public class MetadataResourceManager {
 
   private static void clearSchemaFileModeResource() {
     MemManagerHolder.getMemManagerInstance().clear();
-    MTreeFlushTaskManager.getInstance().clear();
+    // the release task may submit flush task, thus must be shut down and clear first
     MTreeReleaseTaskManager.getInstance().clear();
+    MTreeFlushTaskManager.getInstance().clear();
   }
 }

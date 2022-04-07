@@ -57,8 +57,6 @@ public class MTreeFlushTaskManager {
   }
 
   public void submit(Runnable task) {
-    if (!flushTaskExecutor.isShutdown()) {
-      flushTaskExecutor.submit(task);
-    }
+    flushTaskExecutor.submit(task);
   }
 }
