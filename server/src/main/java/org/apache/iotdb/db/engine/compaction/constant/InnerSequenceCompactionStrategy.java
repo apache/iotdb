@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.engine.compaction.constant;
 
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
-import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionSelector;
+import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSequenceSpaceCompactionSelector;
 import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompactionSelector;
 import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompactionTask;
@@ -29,10 +29,10 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 
 import java.util.List;
 
-public enum InnerCompactionStrategy {
+public enum InnerSequenceCompactionStrategy {
   SIZE_TIERED_COMPACTION;
 
-  public static InnerCompactionStrategy getInnerCompactionStrategy(String name) {
+  public static InnerSequenceCompactionStrategy getInnerSequenceCompactionStrategy(String name) {
     if ("SIZE_TIERED_COMPACTION".equalsIgnoreCase(name)) {
       return SIZE_TIERED_COMPACTION;
     }
@@ -60,21 +60,16 @@ public enum InnerCompactionStrategy {
     }
   }
 
-  public AbstractInnerSpaceCompactionSelector getCompactionSelector(
+  public AbstractInnerSequenceSpaceCompactionSelector getCompactionSelector(
       String logicalStorageGroupName,
       String virtualStorageGroupName,
       long timePartition,
-      TsFileManager tsFileManager,
-      boolean sequence) {
+      TsFileManager tsFileManager) {
     switch (this) {
       case SIZE_TIERED_COMPACTION:
       default:
         return new SizeTieredCompactionSelector(
-            logicalStorageGroupName,
-            virtualStorageGroupName,
-            timePartition,
-            tsFileManager,
-            sequence);
+            logicalStorageGroupName, virtualStorageGroupName, timePartition, tsFileManager, true);
     }
   }
 }

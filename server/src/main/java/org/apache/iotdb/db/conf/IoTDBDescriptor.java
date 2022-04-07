@@ -23,7 +23,7 @@ import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionPriority;
 import org.apache.iotdb.db.engine.compaction.constant.CrossCompactionStrategy;
-import org.apache.iotdb.db.engine.compaction.constant.InnerCompactionStrategy;
+import org.apache.iotdb.db.engine.compaction.constant.InnerSequenceCompactionStrategy;
 import org.apache.iotdb.db.exception.BadNodeUrlFormatException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
@@ -365,7 +365,7 @@ public class IoTDBDescriptor {
                   "cross_compaction_strategy", conf.getCrossCompactionStrategy().toString())));
 
       conf.setInnerCompactionStrategy(
-          InnerCompactionStrategy.getInnerCompactionStrategy(
+          InnerSequenceCompactionStrategy.getInnerSequenceCompactionStrategy(
               properties.getProperty(
                   "inner_compaction_strategy", conf.getInnerCompactionStrategy().toString())));
 

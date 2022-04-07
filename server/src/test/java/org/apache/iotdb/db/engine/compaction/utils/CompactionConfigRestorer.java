@@ -23,14 +23,14 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionPriority;
 import org.apache.iotdb.db.engine.compaction.constant.CrossCompactionStrategy;
-import org.apache.iotdb.db.engine.compaction.constant.InnerCompactionStrategy;
+import org.apache.iotdb.db.engine.compaction.constant.InnerSequenceCompactionStrategy;
 
 public class CompactionConfigRestorer {
   private boolean enableSeqSpaceCompaction = true;
   private boolean enableUnseqSpaceCompaction = false;
   private boolean enableCrossSpaceCompaction = true;
   private CrossCompactionStrategy crossStrategy = CrossCompactionStrategy.REWRITE_COMPACTION;
-  private InnerCompactionStrategy innerStrategy = InnerCompactionStrategy.SIZE_TIERED_COMPACTION;
+  private InnerSequenceCompactionStrategy innerStrategy = InnerSequenceCompactionStrategy.SIZE_TIERED_COMPACTION;
   private CompactionPriority priority = CompactionPriority.BALANCE;
   private long targetFileSize = 1073741824L;
   private long targetChunkSize = 1048576L;

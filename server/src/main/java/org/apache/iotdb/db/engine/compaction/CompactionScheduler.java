@@ -19,31 +19,39 @@
 
 package org.apache.iotdb.db.engine.compaction;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionSelector;
-import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionSelector;
-import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionSelector;
+import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSequenceSpaceCompactionSelector;
+import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
+import org.apache.iotdb.db.engine.compaction.task.ICompactionSelector;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.List;
 
 /**
  * CompactionScheduler schedules and submits the compaction task periodically, and it counts the
  * total number of running compaction task. There are three compaction strategy: BALANCE,
  * INNER_CROSS, CROSS_INNER. Difference strategies will lead to different compaction preferences.
  * For different types of compaction task(e.g. InnerSpaceCompaction), CompactionScheduler will call
- * the corresponding {@link org.apache.iotdb.db.engine.compaction.task.AbstractCompactionSelector
- * selector} according to the compaction machanism of the task(e.g. LevelCompaction,
- * SizeTiredCompaction), and the selection and submission process is carried out in the {@link
- * AbstractCompactionSelector#selectAndSubmit() selectAndSubmit()} in selector.
+ * the corresponding {@link ICompactionSelector selector} according to the compaction machanism of
+ * the task(e.g. LevelCompaction, SizeTiredCompaction), and the selection and submission process is
+ * carried out in the {@link ICompactionSelector#select() selectAndSubmit()} in selector.
  */
 public class CompactionScheduler {
-
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   public static void scheduleCompaction(TsFileManager tsFileManager, long timePartition) {
     if (!tsFileManager.isAllowCompaction()) {
       return;
     }
+    try {
     tryToSubmitCrossSpaceCompactionTask(
         tsFileManager.getStorageGroupName(),
         tsFileManager.getVirtualStorageGroup(),
@@ -62,6 +70,9 @@ public class CompactionScheduler {
         timePartition,
         tsFileManager,
         false);
+    } catch (InterruptedException e) {
+      LOGGER.error("Exception occurs when selecting compaction tasks", e);
+    }
   }
 
   public static void tryToSubmitInnerSpaceCompactionTask(
@@ -69,22 +80,27 @@ public class CompactionScheduler {
       String virtualStorageGroupName,
       long timePartition,
       TsFileManager tsFileManager,
-      boolean sequence) {
+      boolean sequence)
+      throws InterruptedException {
     if ((!config.isEnableSeqSpaceCompaction() && sequence)
         || (!config.isEnableUnseqSpaceCompaction() && !sequence)) {
       return;
     }
 
-    AbstractInnerSpaceCompactionSelector innerSpaceCompactionSelector =
-        config
-            .getInnerCompactionStrategy()
-            .getCompactionSelector(
-                logicalStorageGroupName,
-                virtualStorageGroupName,
-                timePartition,
-                tsFileManager,
-                sequence);
-    innerSpaceCompactionSelector.selectAndSubmit();
+    List<AbstractCompactionTask> taskList = null;
+    if (sequence) {
+      AbstractInnerSequenceSpaceCompactionSelector innerSpaceCompactionSelector =
+          config
+              .getInnerCompactionStrategy()
+              .getCompactionSelector(
+                  logicalStorageGroupName, virtualStorageGroupName, timePartition, tsFileManager);
+      taskList = innerSpaceCompactionSelector.select();
+    } else {
+
+    }
+    for (AbstractCompactionTask task : taskList) {
+      CompactionTaskManager.getInstance().addTaskToWaitingQueue(task);
+    }
   }
 
   private static void tryToSubmitCrossSpaceCompactionTask(
@@ -92,7 +108,8 @@ public class CompactionScheduler {
       String virtualStorageGroupName,
       String storageGroupDir,
       long timePartition,
-      TsFileManager tsFileManager) {
+      TsFileManager tsFileManager)
+      throws InterruptedException {
     if (!config.isEnableCrossSpaceCompaction()) {
       return;
     }
@@ -105,6 +122,9 @@ public class CompactionScheduler {
                 storageGroupDir,
                 timePartition,
                 tsFileManager);
-    crossSpaceCompactionSelector.selectAndSubmit();
+    List<AbstractCompactionTask> taskList = crossSpaceCompactionSelector.select();
+    for (AbstractCompactionTask task : taskList) {
+      CompactionTaskManager.getInstance().addTaskToWaitingQueue(task);
+    }
   }
 }

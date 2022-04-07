@@ -18,13 +18,14 @@
  */
 package org.apache.iotdb.db.engine.compaction.cross;
 
-import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionSelector;
+import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
+import org.apache.iotdb.db.engine.compaction.task.ICompactionSelector;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 
 import java.util.List;
 
-public abstract class AbstractCrossSpaceCompactionSelector extends AbstractCompactionSelector {
+public abstract class AbstractCrossSpaceCompactionSelector implements ICompactionSelector {
   protected String logicalStorageGroupName;
   protected String virtualGroupId;
   protected String storageGroupDir;
@@ -49,5 +50,5 @@ public abstract class AbstractCrossSpaceCompactionSelector extends AbstractCompa
   }
 
   @Override
-  public abstract void selectAndSubmit();
+  public abstract List<AbstractCompactionTask> select();
 }

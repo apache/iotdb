@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,14 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.compaction.task;
+package org.apache.iotdb.db.engine.compaction.inner;
 
-/**
- * AbstractCompactionSelector is the base class of all CompactionSelector. It runs the file
- * selection process, if there still threads availabe for compaction task, it will submit a
- * compaction task to {@link org.apache.iotdb.db.engine.compaction.CompactionTaskManager} and
- * increase the global compaction task count.
- */
-public abstract class AbstractCompactionSelector {
-  public abstract void selectAndSubmit();
+import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
+import org.apache.iotdb.db.engine.compaction.task.ICompactionSelector;
+
+import java.util.List;
+
+public abstract class AbstractInnerUnsequenceSpaceCompactionSelector
+    implements ICompactionSelector {
+  public abstract List<AbstractCompactionTask> select();
 }

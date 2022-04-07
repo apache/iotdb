@@ -23,7 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.comparator.DefaultCompactionTaskComparatorImpl;
-import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionSelector;
+import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSequenceSpaceCompactionSelector;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
@@ -36,7 +36,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.PriorityQueue;
 
@@ -50,7 +52,7 @@ import java.util.PriorityQueue;
  * file) to higher level files. If a compaction task is found in some level, selector will not
  * search higher level anymore.
  */
-public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSelector {
+public class SizeTieredCompactionSelector extends AbstractInnerSequenceSpaceCompactionSelector {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
@@ -73,7 +75,7 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
    * @return Returns whether the file was found and submits the merge task
    */
   @Override
-  public void selectAndSubmit() {
+  public List<AbstractCompactionTask> select() {
     PriorityQueue<Pair<List<TsFileResource>, Long>> taskPriorityQueue =
         new PriorityQueue<>(new SizeTieredCompactionTaskComparator());
     try {
@@ -83,12 +85,23 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
           break;
         }
       }
+      List<AbstractCompactionTask> taskList = new LinkedList<>();
       while (taskPriorityQueue.size() > 0) {
-        createAndSubmitTask(taskPriorityQueue.poll().left);
+        taskList.add(
+            new SizeTieredCompactionTask(
+                logicalStorageGroupName,
+                virtualStorageGroupName,
+                timePartition,
+                tsFileManager,
+                taskPriorityQueue.poll().left,
+                sequence,
+                CompactionTaskManager.currentTaskNum));
       }
+      return taskList;
     } catch (Exception e) {
       LOGGER.error("Exception occurs while selecting files", e);
     }
+    return Collections.emptyList();
   }
 
   /**

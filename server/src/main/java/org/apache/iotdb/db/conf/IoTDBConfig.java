@@ -22,7 +22,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionPriority;
 import org.apache.iotdb.db.engine.compaction.constant.CrossCompactionStrategy;
-import org.apache.iotdb.db.engine.compaction.constant.InnerCompactionStrategy;
+import org.apache.iotdb.db.engine.compaction.constant.InnerSequenceCompactionStrategy;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
@@ -379,8 +379,8 @@ public class IoTDBConfig {
    * The strategy of inner space compaction task. There are just one inner space compaction strategy
    * SIZE_TIRED_COMPACTION:
    */
-  private InnerCompactionStrategy innerCompactionStrategy =
-      InnerCompactionStrategy.SIZE_TIERED_COMPACTION;
+  private InnerSequenceCompactionStrategy innerCompactionStrategy =
+      InnerSequenceCompactionStrategy.SIZE_TIERED_COMPACTION;
 
   /**
    * The strategy of cross space compaction task. There are just one cross space compaction strategy
@@ -2411,11 +2411,11 @@ public class IoTDBConfig {
     this.enableCrossSpaceCompaction = enableCrossSpaceCompaction;
   }
 
-  public InnerCompactionStrategy getInnerCompactionStrategy() {
+  public InnerSequenceCompactionStrategy getInnerCompactionStrategy() {
     return innerCompactionStrategy;
   }
 
-  public void setInnerCompactionStrategy(InnerCompactionStrategy innerCompactionStrategy) {
+  public void setInnerCompactionStrategy(InnerSequenceCompactionStrategy innerCompactionStrategy) {
     this.innerCompactionStrategy = innerCompactionStrategy;
   }
 
