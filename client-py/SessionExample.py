@@ -58,7 +58,7 @@ session.create_time_series(
     None,
     {"tag1": "v1"},
     {"description": "v1"},
-    "temperature"
+    "temperature",
 )
 
 # setting multiple time series once.
@@ -105,7 +105,14 @@ compressor_lst_ = [Compressor.SNAPPY for _ in range(len(data_type_lst_))]
 tags_lst_ = [{"tag2": "v2"} for _ in range(len(data_type_lst_))]
 attributes_lst_ = [{"description": "v2"} for _ in range(len(data_type_lst_))]
 session.create_multi_time_series(
-    ts_path_lst_, data_type_lst_, encoding_lst_, compressor_lst_, None, tags_lst_, attributes_lst_, None
+    ts_path_lst_,
+    data_type_lst_,
+    encoding_lst_,
+    compressor_lst_,
+    None,
+    tags_lst_,
+    attributes_lst_,
+    None,
 )
 
 # delete time series
@@ -178,18 +185,40 @@ session.insert_tablet(tablet_)
 
 # insert one numpy tablet into the database.
 np_values_ = [
-    np.array([False, True, False, True], np.dtype('>?')),
-    np.array([10, 100, 100, 0], np.dtype('>i4')),
-    np.array([11, 11111, 1, 0], np.dtype('>i8')),
-    np.array([1.1, 1.25, 188.1, 0], np.dtype('>f4')),
-    np.array([10011.1, 101.0, 688.25, 6.25], np.dtype('>f8')),
+    np.array([False, True, False, True], np.dtype(">?")),
+    np.array([10, 100, 100, 0], np.dtype(">i4")),
+    np.array([11, 11111, 1, 0], np.dtype(">i8")),
+    np.array([1.1, 1.25, 188.1, 0], np.dtype(">f4")),
+    np.array([10011.1, 101.0, 688.25, 6.25], np.dtype(">f8")),
     np.array(["test01", "test02", "test03", "test04"]),
 ]
-np_timestamps_ = np.array([1, 2, 3, 4], np.dtype('>i8'))
+np_timestamps_ = np.array([1, 2, 3, 4], np.dtype(">i8"))
 np_tablet_ = NumpyTablet(
     "root.sg_test_01.d_02", measurements_, data_types_, np_values_, np_timestamps_
 )
 session.insert_tablet(np_tablet_)
+
+# insert one unsorted numpy tablet into the database.
+np_values_unsorted = [
+    np.array([False, False, False, True, True], np.dtype(">?")),
+    np.array([0, 10, 100, 1000, 10000], np.dtype(">i4")),
+    np.array([1, 11, 111, 1111, 11111], np.dtype(">i8")),
+    np.array([1.1, 1.25, 188.1, 0, 8.999], np.dtype(">f4")),
+    np.array([10011.1, 101.0, 688.25, 6.25, 8, 776], np.dtype(">f8")),
+    np.array(["test09", "test08", "test07", "test06", "test05"]),
+]
+np_timestamps_unsorted = np.array([9, 8, 7, 6, 5], np.dtype(">i8"))
+np_tablet_unsorted = NumpyTablet(
+    "root.sg_test_01.d_02",
+    measurements_,
+    data_types_,
+    np_values_unsorted,
+    np_timestamps_unsorted,
+)
+session.insert_tablet(np_tablet_unsorted)
+print(np_tablet_unsorted.get_timestamps())
+for value in np_tablet_unsorted.get_values():
+    print(value)
 
 # insert multiple tablets into database
 tablet_01 = Tablet(
@@ -250,6 +279,9 @@ with session.execute_query_statement(
     session_data_set.set_fetch_size(1024)
     while session_data_set.has_next():
         print(session_data_set.next())
+
+# delete storage group
+session.delete_storage_group("root.sg_test_01")
 
 # close session connection.
 session.close()
