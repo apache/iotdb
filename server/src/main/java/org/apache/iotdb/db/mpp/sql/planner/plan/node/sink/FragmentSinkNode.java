@@ -22,7 +22,6 @@ import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ExchangeNode;
 
 import com.google.common.collect.ImmutableList;
 
@@ -31,7 +30,6 @@ import java.util.List;
 
 public class FragmentSinkNode extends SinkNode {
   private PlanNode child;
-  private ExchangeNode downStreamNode;
 
   private Endpoint downStreamEndpoint;
   private FragmentInstanceId downStreamInstanceId;
@@ -55,7 +53,6 @@ public class FragmentSinkNode extends SinkNode {
   public PlanNode clone() {
     FragmentSinkNode sinkNode = new FragmentSinkNode(getId());
     sinkNode.setDownStream(downStreamEndpoint, downStreamInstanceId, downStreamPlanNodeId);
-    sinkNode.setDownStreamNode(downStreamNode);
     return sinkNode;
   }
 
@@ -103,18 +100,14 @@ public class FragmentSinkNode extends SinkNode {
         getDownStreamEndpoint().getIp(), getDownStreamInstanceId(), getDownStreamPlanNodeId());
   }
 
-  public ExchangeNode getDownStreamNode() {
-    return downStreamNode;
-  }
-
-  public void setDownStreamNode(ExchangeNode downStreamNode) {
-    this.downStreamNode = downStreamNode;
-  }
-
   public void setDownStream(Endpoint endPoint, FragmentInstanceId instanceId, PlanNodeId nodeId) {
     this.downStreamEndpoint = endPoint;
     this.downStreamInstanceId = instanceId;
     this.downStreamPlanNodeId = nodeId;
+  }
+
+  public void setDownStreamPlanNodeId(PlanNodeId downStreamPlanNodeId) {
+    this.downStreamPlanNodeId = downStreamPlanNodeId;
   }
 
   public Endpoint getDownStreamEndpoint() {

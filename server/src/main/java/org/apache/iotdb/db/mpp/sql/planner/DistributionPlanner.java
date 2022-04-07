@@ -299,7 +299,7 @@ public class DistributionPlanner {
         ExchangeNode exchangeNode = (ExchangeNode) root;
         FragmentSinkNode sinkNode = new FragmentSinkNode(PlanNodeIdAllocator.generateId());
         sinkNode.setChild(exchangeNode.getChild());
-        sinkNode.setDownStreamNode(exchangeNode);
+        sinkNode.setDownStreamPlanNodeId(exchangeNode.getId());
         // Record the source node info in the ExchangeNode so that we can keep the connection of
         // these nodes/fragments
         exchangeNode.setRemoteSourceNode(sinkNode);
