@@ -28,6 +28,7 @@ import org.apache.iotdb.rpc.RpcTransportFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * A node report collects the current runtime information of the local node, which contains: 1. The
@@ -204,6 +205,7 @@ public class NodeReport {
   public static class DataMemberReport extends RaftMemberReport {
     RaftNode header;
     long headerLatency;
+    private Map<Node, List<Node>> directToIndirectFollowerMap;
 
     public DataMemberReport(
         NodeCharacter character,
@@ -239,40 +241,49 @@ public class NodeReport {
 
     @Override
     public String toString() {
-      return "DataMemberReport{"
-          + "header="
-          + header.getNode()
-          + ", raftId="
-          + header.getRaftId()
-          + ", character="
-          + character
-          + ", Leader="
-          + leader
-          + ", term="
-          + term
-          + ", lastLogTerm="
-          + lastLogTerm
-          + ", lastLogIndex="
-          + lastLogIndex
-          + ", commitIndex="
-          + commitIndex
-          + ", commitTerm="
-          + commitTerm
-          + ", appliedLogIndex="
-          + maxAppliedLogIndex
-          + ", readOnly="
-          + isReadOnly
-          + ", nextToRelay="
-          + nextToRelay
-          + ", headerLatency="
-          + headerLatency
-          + "ns"
-          + ", lastHeartbeat="
-          + (System.currentTimeMillis() - lastHeartbeatReceivedTime)
-          + "ms ago"
-          + ", logIncrement="
-          + (lastLogIndex - prevLastLogIndex)
-          + '}';
+      String s =
+          "DataMemberReport{"
+              + "header="
+              + header.getNode()
+              + ", raftId="
+              + header.getRaftId()
+              + ", character="
+              + character
+              + ", Leader="
+              + leader
+              + ", term="
+              + term
+              + ", lastLogTerm="
+              + lastLogTerm
+              + ", lastLogIndex="
+              + lastLogIndex
+              + ", commitIndex="
+              + commitIndex
+              + ", commitTerm="
+              + commitTerm
+              + ", appliedLogIndex="
+              + maxAppliedLogIndex
+              + ", readOnly="
+              + isReadOnly
+              + ", nextToRelay="
+              + nextToRelay
+              + ", headerLatency="
+              + headerLatency
+              + "ns"
+              + ", lastHeartbeat="
+              + (System.currentTimeMillis() - lastHeartbeatReceivedTime)
+              + "ms ago"
+              + ", logIncrement="
+              + (lastLogIndex - prevLastLogIndex);
+      if (directToIndirectFollowerMap != null) {
+        s = s + ", relayMap=" + directToIndirectFollowerMap;
+      }
+      s = s + '}';
+      return s;
+    }
+
+    public void setDirectToIndirectFollowerMap(Map<Node, List<Node>> directToIndirectFollowerMap) {
+      this.directToIndirectFollowerMap = directToIndirectFollowerMap;
     }
   }
 }

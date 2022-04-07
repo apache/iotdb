@@ -57,8 +57,10 @@ public class LogAckSender {
   public LogAckSender(RaftMember member) {
     this.member = member;
     this.header = member.getHeader();
-    ackSenderPool = IoTDBThreadPoolFactory.newSingleThreadExecutor(member.getName() + "-ACKSender");
-    ackSenderPool.submit(this::appendAckLeaderTask);
+    ackSenderPool = IoTDBThreadPoolFactory.newFixedThreadPool(4, member.getName() + "-ACKSender");
+    for (int i = 0; i < 4; i++) {
+      ackSenderPool.submit(this::appendAckLeaderTask);
+    }
   }
 
   public static class AckRequest {
@@ -93,7 +95,7 @@ public class LogAckSender {
         }
 
         appendAckLeader(ackRequestList);
-        Thread.sleep(10);
+        // Thread.sleep(10);
       }
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();

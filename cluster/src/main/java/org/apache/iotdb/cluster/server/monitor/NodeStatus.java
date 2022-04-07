@@ -20,6 +20,7 @@
 package org.apache.iotdb.cluster.server.monitor;
 
 import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
+import org.apache.iotdb.cluster.utils.WindowStatistic;
 
 import java.util.Date;
 import java.util.Objects;
@@ -57,6 +58,9 @@ public class NodeStatus implements Comparable<NodeStatus> {
 
   private AtomicLong sendEntryNum = new AtomicLong();
   private AtomicLong sendEntryLatencySum = new AtomicLong();
+  private WindowStatistic sendEntryLatencyStatistic = new WindowStatistic();
+
+  private double relayWeight;
 
   // TODO-Cluster: decide what should be contained in NodeStatus and how two compare two NodeStatus
   @Override
@@ -107,6 +111,14 @@ public class NodeStatus implements Comparable<NodeStatus> {
     this.lastResponseLatency = lastResponseLatency;
   }
 
+  public double getRelayWeight() {
+    return relayWeight;
+  }
+
+  public void setRelayWeight(double relayWeight) {
+    this.relayWeight = relayWeight;
+  }
+
   public void activate() {
     isActivated = true;
   }
@@ -129,6 +141,10 @@ public class NodeStatus implements Comparable<NodeStatus> {
     return sendEntryLatencySum;
   }
 
+  public WindowStatistic getSendEntryLatencyStatistic() {
+    return sendEntryLatencyStatistic;
+  }
+
   @Override
   public String toString() {
     return "NodeStatus{"
@@ -148,6 +164,10 @@ public class NodeStatus implements Comparable<NodeStatus> {
         + sendEntryLatencySum
         + ", sendEntryLatencyAvg="
         + (sendEntryLatencySum.get() * 1.0 / sendEntryNum.get())
+        + ", latestSendEntryLatencyAvg="
+        + sendEntryLatencyStatistic.getAvg()
+        + ", nodeRelayWeight="
+        + relayWeight
         + '}';
   }
 }

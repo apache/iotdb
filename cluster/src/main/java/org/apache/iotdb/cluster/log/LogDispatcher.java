@@ -193,7 +193,6 @@ public class LogDispatcher {
 
   public static class SendLogRequest {
 
-    private AppendNodeEntryHandler handler;
     private VotingLog votingLog;
     private AtomicBoolean leaderShipStale;
     private AtomicLong newLeaderTerm;
@@ -469,6 +468,10 @@ public class LogDispatcher {
               logRequest.newLeaderTerm,
               logRequest.quorumSize);
       // TODO add async interface
+      if (syncClient == null) {
+        syncClient = member.getSyncClient(receiver);
+      }
+
       int retries = 5;
       try {
         long operationStartTime = Statistic.RAFT_SENDER_SEND_LOG.getOperationStartTime();
@@ -486,6 +489,7 @@ public class LogDispatcher {
             NodeStatus nodeStatus = NodeStatusManager.getINSTANCE().getNodeStatus(receiver, false);
             nodeStatus.getSendEntryLatencySum().addAndGet(sendLogTime);
             nodeStatus.getSendEntryNum().incrementAndGet();
+            nodeStatus.getSendEntryLatencyStatistic().add(sendLogTime);
 
             long handleStart = Statistic.RAFT_SENDER_HANDLE_SEND_RESULT.getOperationStartTime();
             handler.onComplete(result);

@@ -23,10 +23,16 @@ import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
+import org.apache.iotdb.cluster.server.handlers.forwarder.IndirectAppendHandler;
 import org.apache.iotdb.cluster.server.member.RaftMember;
+import org.apache.iotdb.cluster.server.monitor.NodeStatus;
+import org.apache.iotdb.cluster.server.monitor.NodeStatusManager;
 import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
+import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,6 +41,8 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.ExecutorService;
+
+import static org.apache.iotdb.cluster.log.LogDispatcher.concurrentSenderNum;
 
 /** LogRelay is used by followers to forward entries from the leader to other followers. */
 public class LogRelay {
@@ -51,8 +59,8 @@ public class LogRelay {
     this.raftMember = raftMember;
     relaySenders =
         IoTDBThreadPoolFactory.newFixedThreadPool(
-            RELAY_NUMBER, raftMember.getName() + "-RelaySender");
-    for (int i = 0; i < RELAY_NUMBER; i++) {
+            RELAY_NUMBER + 4, raftMember.getName() + "-RelaySender");
+    for (int i = 0; i < 4; i++) {
       relaySenders.submit(new RelayThread());
     }
   }
@@ -116,7 +124,7 @@ public class LogRelay {
                       + (relayEntry.singleRequest.prevLogIndex + 1)
                       + "-"
                       + relayEntry.receivers);
-          raftMember.sendLogToSubFollowers(relayEntry.singleRequest, relayEntry.receivers);
+          sendLogToSubFollowers(relayEntry.singleRequest, relayEntry.receivers);
         } else if (relayEntry.batchRequest != null) {
           Thread.currentThread()
               .setName(
@@ -125,10 +133,75 @@ public class LogRelay {
                       + (relayEntry.batchRequest.prevLogIndex + 1)
                       + "-"
                       + relayEntry.receivers);
-          raftMember.sendLogsToSubFollowers(relayEntry.batchRequest, relayEntry.receivers);
+          sendLogsToSubFollowers(relayEntry.batchRequest, relayEntry.receivers);
         }
 
         Statistic.RAFT_RELAYED_ENTRY.add(1);
+      }
+    }
+  }
+
+  public void sendLogToSubFollowers(AppendEntryRequest request, List<Node> subFollowers) {
+    request.setIsFromLeader(false);
+    request.setSubReceiversIsSet(false);
+    for (Node subFollower : subFollowers) {
+      relaySenders.submit(
+          () -> {
+            Client syncClient = null;
+            try {
+              if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+                raftMember
+                    .getAsyncClient(subFollower)
+                    .appendEntry(request, new IndirectAppendHandler(subFollower, request));
+              } else {
+                long operationStartTime = Statistic.RAFT_RECEIVER_RELAY_LOG.getOperationStartTime();
+                syncClient = raftMember.getSyncClient(subFollower);
+
+                int concurrentSender = concurrentSenderNum.incrementAndGet();
+                Statistic.RAFT_CONCURRENT_SENDER.add(concurrentSender);
+                syncClient.appendEntry(request);
+                concurrentSenderNum.decrementAndGet();
+
+                long sendLogTime =
+                    Statistic.RAFT_RECEIVER_RELAY_LOG.calOperationCostTimeFromStart(
+                        operationStartTime);
+                NodeStatus nodeStatus =
+                    NodeStatusManager.getINSTANCE().getNodeStatus(subFollower, false);
+                nodeStatus.getSendEntryLatencySum().addAndGet(sendLogTime);
+                nodeStatus.getSendEntryNum().incrementAndGet();
+                nodeStatus.getSendEntryLatencyStatistic().add(sendLogTime);
+              }
+            } catch (TException e) {
+              logger.error("Cannot send {} to {}", request, subFollower, e);
+            } finally {
+              if (syncClient != null) {
+                ClientUtils.putBackSyncClient(syncClient);
+              }
+            }
+          });
+    }
+  }
+
+  public void sendLogsToSubFollowers(AppendEntriesRequest request, List<Node> subFollowers) {
+    request.setIsFromLeader(false);
+    request.setSubReceiversIsSet(false);
+    for (Node subFollower : subFollowers) {
+      Client syncClient = null;
+      try {
+        if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+          raftMember
+              .getAsyncClient(subFollower)
+              .appendEntries(request, new IndirectAppendHandler(subFollower, request));
+        } else {
+          syncClient = raftMember.getSyncClient(subFollower);
+          syncClient.appendEntries(request);
+        }
+      } catch (TException e) {
+        logger.error("Cannot send {} to {}", request, subFollower, e);
+      } finally {
+        if (syncClient != null) {
+          ClientUtils.putBackSyncClient(syncClient);
+        }
       }
     }
   }

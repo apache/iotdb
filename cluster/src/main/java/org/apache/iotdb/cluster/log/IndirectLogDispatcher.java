@@ -24,6 +24,7 @@ import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.RaftMember;
+import org.apache.iotdb.cluster.server.monitor.NodeStatus;
 import org.apache.iotdb.cluster.server.monitor.NodeStatusManager;
 import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
@@ -38,6 +39,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
+
+import static org.apache.iotdb.cluster.server.monitor.Timer.Statistic.RAFT_RELAYED_LEVEL1_NUM;
 
 /**
  * IndirectLogDispatcher sends entries only to a pre-selected subset of followers instead of all
@@ -47,7 +51,9 @@ public class IndirectLogDispatcher extends LogDispatcher {
 
   private static final Logger logger = LoggerFactory.getLogger(IndirectLogDispatcher.class);
 
-  private Map<Node, List<Node>> directToIndirectFollowerMap = new HashMap<>();
+  private Map<Node, List<Node>> directToIndirectFollowerMap = new ConcurrentHashMap<>();
+  private long dispatchedEntryNum;
+  private int recalculateMapInterval = 1;
 
   public IndirectLogDispatcher(RaftMember member) {
     super(member);
@@ -74,7 +80,10 @@ public class IndirectLogDispatcher extends LogDispatcher {
   @Override
   public void offer(SendLogRequest request) {
     super.offer(request);
-    recalculateDirectFollowerMap();
+    dispatchedEntryNum++;
+    if (dispatchedEntryNum % recalculateMapInterval == 0) {
+      recalculateDirectFollowerMap();
+    }
   }
 
   @Override
@@ -87,6 +96,15 @@ public class IndirectLogDispatcher extends LogDispatcher {
     return newRequest;
   }
 
+  private double getNodeWeight(Node node, double maxLatency) {
+    NodeStatus status = NodeStatusManager.getINSTANCE().getNodeStatus(node, false);
+    //    return 1.0
+    //        / (status.getStatus().fanoutRequestNum + 1);
+    double pow = Math.pow(100.0, maxLatency / status.getSendEntryLatencyStatistic().getAvg());
+    status.setRelayWeight(pow);
+    return pow;
+  }
+
   public void recalculateDirectFollowerMap() {
     List<Node> allNodes = new ArrayList<>(member.getAllNodes());
     allNodes.removeIf(n -> ClusterUtils.isNodeEquals(n, member.getThisNode()));
@@ -96,28 +114,31 @@ public class IndirectLogDispatcher extends LogDispatcher {
     nodesEnabled.clear();
     directToIndirectFollowerMap.clear();
 
+    int firstLevelSize = ClusterDescriptor.getInstance().getConfig().getRelayFirstLevelSize();
+    List<Node> firstLevelNodes;
+
     if (ClusterDescriptor.getInstance().getConfig().isOptimizeIndirectBroadcasting()) {
       QueryCoordinator instance = QueryCoordinator.getINSTANCE();
       orderedNodes = instance.reorderNodes(allNodes);
-      long thisLoad =
-          Statistic.RAFT_SENDER_SEND_LOG.getCnt() + Statistic.RAFT_RECEIVER_RELAY_LOG.getCnt() + 1;
-      long minLoad =
+      long thisLoad = Statistic.getTotalFanout() + 1;
+      double maxLatency =
           NodeStatusManager.getINSTANCE()
-                  .getNodeStatus(orderedNodes.get(0), false)
-                  .getStatus()
-                  .fanoutRequestNum
-              + 1;
-      double loadFactor = 1.05;
+              .getNodeStatus(orderedNodes.get(0), false)
+              .getSendEntryLatencyStatistic()
+              .getAvg();
+      for (int i = 1, orderedNodesSize = orderedNodes.size(); i < orderedNodesSize; i++) {
+        maxLatency =
+            Double.max(
+                maxLatency,
+                NodeStatusManager.getINSTANCE()
+                    .getNodeStatus(orderedNodes.get(i), false)
+                    .getSendEntryLatencyStatistic()
+                    .getAvg());
+      }
+
       WeightedList<Node> firstLevelCandidates = new WeightedList<>();
       firstLevelCandidates.insert(
-          orderedNodes.get(0),
-          1.0
-              / (NodeStatusManager.getINSTANCE()
-                      .getNodeStatus(orderedNodes.get(0), false)
-                      .getStatus()
-                      .fanoutRequestNum
-                  + 1));
-      int firstLevelSize = 1;
+          orderedNodes.get(0), getNodeWeight(orderedNodes.get(0), maxLatency));
 
       for (int i = 1, orderedNodesSize = orderedNodes.size(); i < orderedNodesSize; i++) {
         Node orderedNode = orderedNodes.get(i);
@@ -127,9 +148,7 @@ public class IndirectLogDispatcher extends LogDispatcher {
                     .getStatus()
                     .fanoutRequestNum
                 + 1;
-        if (nodeLoad * 1.0 <= minLoad * loadFactor) {
-          firstLevelCandidates.insert(orderedNode, 1.0 / nodeLoad);
-        }
+        firstLevelCandidates.insert(orderedNode, getNodeWeight(orderedNode, maxLatency));
         if (nodeLoad > thisLoad) {
           firstLevelSize = (int) Math.max(firstLevelSize, nodeLoad / thisLoad);
         }
@@ -139,36 +158,34 @@ public class IndirectLogDispatcher extends LogDispatcher {
         firstLevelSize = firstLevelCandidates.size();
       }
 
-      List<Node> firstLevelNodes = firstLevelCandidates.select(firstLevelSize);
-
-      Map<Node, List<Node>> secondLevelNodeMap = new HashMap<>();
-      orderedNodes.removeAll(firstLevelNodes);
-      for (int i = 0; i < orderedNodes.size(); i++) {
-        Node firstLevelNode = firstLevelNodes.get(i % firstLevelSize);
-        secondLevelNodeMap
-            .computeIfAbsent(firstLevelNode, n -> new ArrayList<>())
-            .add(orderedNodes.get(i));
-      }
-
-      for (Node firstLevelNode : firstLevelNodes) {
-        directToIndirectFollowerMap.put(
-            firstLevelNode,
-            secondLevelNodeMap.getOrDefault(firstLevelNode, Collections.emptyList()));
-        nodesEnabled.put(firstLevelNode, true);
-      }
-
+      firstLevelNodes = firstLevelCandidates.select(firstLevelSize);
     } else {
-      for (int i = 0, j = orderedNodes.size() - 1; i <= j; i++, j--) {
-        if (i != j) {
-          directToIndirectFollowerMap.put(
-              orderedNodes.get(i), Collections.singletonList(orderedNodes.get(j)));
-        } else {
-          directToIndirectFollowerMap.put(orderedNodes.get(i), Collections.emptyList());
-        }
-        nodesEnabled.put(orderedNodes.get(i), true);
+      firstLevelNodes = new ArrayList<>(orderedNodes.subList(0, firstLevelSize));
+      if (firstLevelSize > orderedNodes.size()) {
+        firstLevelSize = orderedNodes.size();
       }
     }
 
+    Map<Node, List<Node>> secondLevelNodeMap = new HashMap<>();
+    orderedNodes.removeAll(firstLevelNodes);
+    for (int i = 0; i < orderedNodes.size(); i++) {
+      Node firstLevelNode = firstLevelNodes.get(i % firstLevelSize);
+      secondLevelNodeMap
+          .computeIfAbsent(firstLevelNode, n -> new ArrayList<>())
+          .add(orderedNodes.get(i));
+    }
+
+    for (Node firstLevelNode : firstLevelNodes) {
+      directToIndirectFollowerMap.put(
+          firstLevelNode, secondLevelNodeMap.getOrDefault(firstLevelNode, Collections.emptyList()));
+      nodesEnabled.put(firstLevelNode, true);
+    }
+
+    RAFT_RELAYED_LEVEL1_NUM.add(directToIndirectFollowerMap.size());
     logger.debug("New relay map: {}", directToIndirectFollowerMap);
+  }
+
+  public Map<Node, List<Node>> getDirectToIndirectFollowerMap() {
+    return Collections.unmodifiableMap(directToIndirectFollowerMap);
   }
 }

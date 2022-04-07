@@ -21,6 +21,7 @@ package org.apache.iotdb.cluster.server.monitor;
 
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.server.member.RaftMember;
+import org.apache.iotdb.cluster.utils.WindowStatistic;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -334,6 +335,7 @@ public class Timer {
     RAFT_WINDOW_LENGTH(RAFT_MEMBER_RECEIVER, "window length", 1, true, ROOT),
     RAFT_RELAYED_ENTRY(RAFT_MEMBER_RECEIVER, "number of relayed entries", 1, true, ROOT),
     RAFT_SEND_RELAY_ACK(RAFT_MEMBER_RECEIVER, "send relay ack", 1, true, ROOT),
+    RAFT_RELAYED_LEVEL1_NUM(RAFT_MEMBER_SENDER, "level 1 relay node number", 1, true, ROOT),
     RAFT_RECEIVE_RELAY_ACK(RAFT_MEMBER_SENDER, "receive relay ack", 1, true, ROOT),
     RAFT_WAIT_AFTER_ACCEPTED(RAFT_MEMBER_SENDER, "wait after accepted", TIME_SCALE, true, ROOT),
     RAFT_SENDER_OOW(RAFT_MEMBER_SENDER, "out of window", 1, true, ROOT),
@@ -344,6 +346,7 @@ public class Timer {
     String blockName;
     AtomicLong sum = new AtomicLong(0);
     AtomicLong counter = new AtomicLong(0);
+    private WindowStatistic latestWindow = new WindowStatistic();
     long max;
     double scale;
     boolean valid;
@@ -370,6 +373,7 @@ public class Timer {
         sum.addAndGet(val);
         counter.incrementAndGet();
         max = Math.max(max, val);
+        latestWindow.add(val);
       }
     }
 
@@ -399,6 +403,7 @@ public class Timer {
       sum.set(0);
       counter.set(0);
       max = 0;
+      latestWindow.reset();
     }
 
     /** WARN: no current safety guarantee. */
@@ -413,11 +418,27 @@ public class Timer {
       double s = sum.get() / scale;
       long cnt = counter.get();
       double avg = s / cnt;
-      return String.format("%s - %s: %.2f, %d, %.2f, %d", className, blockName, s, cnt, avg, max);
+      return String.format(
+          "%s - %s: %.2f, %d, %.2f, %d, %.2f",
+          className, blockName, s, cnt, avg, max, latestWindow.getAvg());
     }
 
     public long getCnt() {
       return counter.get();
+    }
+
+    public long getSum() {
+      return sum.get();
+    }
+
+    public static long getTotalFanout() {
+      return Statistic.RAFT_SENDER_SEND_LOG.getCnt() + Statistic.RAFT_RECEIVER_RELAY_LOG.getCnt();
+    }
+
+    public static double getSendLatency() {
+      return (Statistic.RAFT_SENDER_SEND_LOG.getSum() + Statistic.RAFT_RECEIVER_RELAY_LOG.getSum())
+          * 1.0
+          / (Statistic.RAFT_SENDER_SEND_LOG.getCnt() + Statistic.RAFT_RECEIVER_RELAY_LOG.getCnt());
     }
   }
 
@@ -427,6 +448,11 @@ public class Timer {
     }
     StringBuilder result = new StringBuilder();
     printTo(Statistic.ROOT, result);
+    result.append(System.lineSeparator());
+    result.append(
+        String.format(
+            "Total request fanout: %d, send entry latency: %f",
+            Statistic.getTotalFanout(), Statistic.getSendLatency()));
     return result.toString();
   }
 

@@ -268,7 +268,7 @@ public class HeartbeatThread implements Runnable {
 
     if (!ClusterUtils.isNodeEquals(
         localMember.getThisNode(), localMember.getPartitionGroup().getHeader().node)) {
-      long electionWait = getElectionRandomWaitMs();
+      long electionWait = getElectionRandomWaitMs() + 5000;
       logger.info(
           "{}: Sleep {}ms before the first election as this node is not the preferred " + "leader",
           memberName,

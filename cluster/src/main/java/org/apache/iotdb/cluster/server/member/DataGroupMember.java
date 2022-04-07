@@ -26,6 +26,7 @@ import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.SnapshotInstallationException;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
+import org.apache.iotdb.cluster.log.IndirectLogDispatcher;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.LogParser;
@@ -993,21 +994,27 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
   public DataMemberReport genReport() {
     long prevLastLogIndex = lastReportedLogIndex;
     lastReportedLogIndex = logManager.getLastLogIndex();
-    return new DataMemberReport(
-        character,
-        leader.get(),
-        term.get(),
-        logManager.getLastLogTerm(),
-        lastReportedLogIndex,
-        logManager.getCommitLogIndex(),
-        logManager.getCommitLogTerm(),
-        getHeader(),
-        readOnly,
-        NodeStatusManager.getINSTANCE().getLastResponseLatency(getHeader().getNode()),
-        lastHeartbeatReceivedTime,
-        prevLastLogIndex,
-        logManager.getMaxHaveAppliedCommitIndex(),
-        logRelay != null ? logRelay.first() : null);
+    DataMemberReport dataMemberReport =
+        new DataMemberReport(
+            character,
+            leader.get(),
+            term.get(),
+            logManager.getLastLogTerm(),
+            lastReportedLogIndex,
+            logManager.getCommitLogIndex(),
+            logManager.getCommitLogTerm(),
+            getHeader(),
+            readOnly,
+            NodeStatusManager.getINSTANCE().getLastResponseLatency(getHeader().getNode()),
+            lastHeartbeatReceivedTime,
+            prevLastLogIndex,
+            logManager.getMaxHaveAppliedCommitIndex(),
+            logRelay != null ? logRelay.first() : null);
+    if (character == NodeCharacter.LEADER && config.isUseIndirectBroadcasting()) {
+      dataMemberReport.setDirectToIndirectFollowerMap(
+          ((IndirectLogDispatcher) getLogDispatcher()).getDirectToIndirectFollowerMap());
+    }
+    return dataMemberReport;
   }
 
   @TestOnly

@@ -72,8 +72,6 @@ import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.AppendNodeEntryHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
-import org.apache.iotdb.cluster.server.handlers.forwarder.IndirectAppendHandler;
-import org.apache.iotdb.cluster.server.monitor.NodeStatus;
 import org.apache.iotdb.cluster.server.monitor.NodeStatusManager;
 import org.apache.iotdb.cluster.server.monitor.Peer;
 import org.apache.iotdb.cluster.server.monitor.Timer;
@@ -133,7 +131,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.apache.iotdb.cluster.config.ClusterConstant.THREAD_POLL_WAIT_TERMINATION_TIME_S;
-import static org.apache.iotdb.cluster.log.LogDispatcher.concurrentSenderNum;
 
 /**
  * RaftMember process the common raft logic like leader election, log appending, catch-up and so on.
@@ -629,63 +626,6 @@ public abstract class RaftMember implements RaftMemberMBean {
     }
 
     return result;
-  }
-
-  public void sendLogToSubFollowers(AppendEntryRequest request, List<Node> subFollowers) {
-    request.setIsFromLeader(false);
-    request.setSubReceiversIsSet(false);
-    for (Node subFollower : subFollowers) {
-      Client syncClient = null;
-      try {
-        if (config.isUseAsyncServer()) {
-          getAsyncClient(subFollower)
-              .appendEntry(request, new IndirectAppendHandler(subFollower, request));
-        } else {
-          long operationStartTime = Statistic.RAFT_RECEIVER_RELAY_LOG.getOperationStartTime();
-          syncClient = getSyncClient(subFollower);
-
-          int concurrentSender = concurrentSenderNum.incrementAndGet();
-          Statistic.RAFT_CONCURRENT_SENDER.add(concurrentSender);
-          syncClient.appendEntry(request);
-          concurrentSenderNum.decrementAndGet();
-
-          long sendLogTime =
-              Statistic.RAFT_RECEIVER_RELAY_LOG.calOperationCostTimeFromStart(operationStartTime);
-          NodeStatus nodeStatus = NodeStatusManager.getINSTANCE().getNodeStatus(subFollower, false);
-          nodeStatus.getSendEntryLatencySum().addAndGet(sendLogTime);
-          nodeStatus.getSendEntryNum().incrementAndGet();
-        }
-      } catch (TException e) {
-        logger.error("Cannot send {} to {}", request, subFollower, e);
-      } finally {
-        if (syncClient != null) {
-          ClientUtils.putBackSyncClient(syncClient);
-        }
-      }
-    }
-  }
-
-  public void sendLogsToSubFollowers(AppendEntriesRequest request, List<Node> subFollowers) {
-    request.setIsFromLeader(false);
-    request.setSubReceiversIsSet(false);
-    for (Node subFollower : subFollowers) {
-      Client syncClient = null;
-      try {
-        if (config.isUseAsyncServer()) {
-          getAsyncClient(subFollower)
-              .appendEntries(request, new IndirectAppendHandler(subFollower, request));
-        } else {
-          syncClient = getSyncClient(subFollower);
-          syncClient.appendEntries(request);
-        }
-      } catch (TException e) {
-        logger.error("Cannot send {} to {}", request, subFollower, e);
-      } finally {
-        if (syncClient != null) {
-          ClientUtils.putBackSyncClient(syncClient);
-        }
-      }
-    }
   }
 
   /** Similar to appendEntry, while the incoming load is batch of logs instead of a single log. */
@@ -1860,20 +1800,22 @@ public abstract class RaftMember implements RaftMemberMBean {
   @SuppressWarnings("java:S2445")
   protected void commitLog(Log log) throws LogExecutionException {
     long startTime;
-    if (log.getCurrLogIndex() > logManager.getCommitLogIndex()) {
-      startTime = Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_COMMIT.getOperationStartTime();
-      synchronized (logManager) {
-        Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_COMMIT.calOperationCostTimeFromStart(
-            startTime);
-        if (log.getCurrLogIndex() > logManager.getCommitLogIndex()) {
-          startTime = Statistic.RAFT_SENDER_COMMIT_LOG_IN_MANAGER.getOperationStartTime();
-          logManager.commitTo(log.getCurrLogIndex());
-          Statistic.RAFT_SENDER_COMMIT_LOG_IN_MANAGER.calOperationCostTimeFromStart(startTime);
-        }
-        startTime = Statistic.RAFT_SENDER_EXIT_LOG_MANAGER.getOperationStartTime();
-      }
-      Statistic.RAFT_SENDER_EXIT_LOG_MANAGER.calOperationCostTimeFromStart(startTime);
-    }
+    //    if (log.getCurrLogIndex() > logManager.getCommitLogIndex()) {
+    //      startTime =
+    // Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_COMMIT.getOperationStartTime();
+    //      synchronized (logManager) {
+    //        Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_COMMIT.calOperationCostTimeFromStart(
+    //            startTime);
+    //        if (log.getCurrLogIndex() > logManager.getCommitLogIndex()) {
+    //          startTime = Statistic.RAFT_SENDER_COMMIT_LOG_IN_MANAGER.getOperationStartTime();
+    //          logManager.commitTo(log.getCurrLogIndex());
+    //
+    // Statistic.RAFT_SENDER_COMMIT_LOG_IN_MANAGER.calOperationCostTimeFromStart(startTime);
+    //        }
+    //        startTime = Statistic.RAFT_SENDER_EXIT_LOG_MANAGER.getOperationStartTime();
+    //      }
+    //      Statistic.RAFT_SENDER_EXIT_LOG_MANAGER.calOperationCostTimeFromStart(startTime);
+    //    }
 
     // when using async applier, the log here may not be applied. To return the execution
     // result, we must wait until the log is applied.

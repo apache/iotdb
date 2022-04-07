@@ -356,6 +356,11 @@ public class ClusterDescriptor {
             properties.getProperty(
                 "relay_sender_number", String.valueOf(config.getRelaySenderNum()))));
 
+    config.setRelayFirstLevelSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "relay_first_level_size", String.valueOf(config.getRelayFirstLevelSize()))));
+
     String consistencyLevel = properties.getProperty("consistency_level");
     if (consistencyLevel != null) {
       config.setConsistencyLevel(ConsistencyLevel.getConsistencyLevel(consistencyLevel));
