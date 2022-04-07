@@ -48,7 +48,7 @@ public class SinkHandleTest {
     final String remoteHostname = "remote";
     final TFragmentInstanceId remoteFragmentInstanceId =
         new TFragmentInstanceId(queryId, "f0", "0");
-    final String remoteOperatorId = "exchange_0";
+    final String remotePlanNodeId = "exchange_0";
     final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, "f1", "0");
 
     // Construct a mock LocalMemoryManager that returns unblocked futures.
@@ -78,7 +78,7 @@ public class SinkHandleTest {
         new SinkHandle(
             remoteHostname,
             remoteFragmentInstanceId,
-            remoteOperatorId,
+            remotePlanNodeId,
             localFragmentInstanceId,
             mockLocalMemoryManager,
             Executors.newSingleThreadExecutor(),
@@ -114,7 +114,7 @@ public class SinkHandleTest {
               Mockito.argThat(
                   e ->
                       remoteFragmentInstanceId.equals(e.getTargetFragmentInstanceId())
-                          && remoteOperatorId.equals(e.getTargetOperatorId())
+                          && remotePlanNodeId.equals(e.getTargetPlanNodeId())
                           && localFragmentInstanceId.equals(e.getSourceFragmentInstanceId())
                           && e.getStartSequenceId() == 0
                           && e.getBlockSizes().size() == numOfMockTsBlock));
@@ -156,7 +156,7 @@ public class SinkHandleTest {
               Mockito.argThat(
                   e ->
                       remoteFragmentInstanceId.equals(e.getTargetFragmentInstanceId())
-                          && remoteOperatorId.equals(e.getTargetOperatorId())
+                          && remotePlanNodeId.equals(e.getTargetPlanNodeId())
                           && localFragmentInstanceId.equals(e.getSourceFragmentInstanceId())
                           && numOfMockTsBlock - 1 == e.getLastSequenceId()));
     } catch (InterruptedException | TException e) {
@@ -173,7 +173,7 @@ public class SinkHandleTest {
     final String remoteHostname = "remote";
     final TFragmentInstanceId remoteFragmentInstanceId =
         new TFragmentInstanceId(queryId, "f0", "0");
-    final String remoteOperatorId = "exchange_0";
+    final String remotePlanNodeId = "exchange_0";
     final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, "f1", "0");
 
     // Construct a mock LocalMemoryManager that returns blocked futures.
@@ -205,7 +205,7 @@ public class SinkHandleTest {
         new SinkHandle(
             remoteHostname,
             remoteFragmentInstanceId,
-            remoteOperatorId,
+            remotePlanNodeId,
             localFragmentInstanceId,
             mockLocalMemoryManager,
             Executors.newSingleThreadExecutor(),
@@ -240,7 +240,7 @@ public class SinkHandleTest {
               Mockito.argThat(
                   e ->
                       remoteFragmentInstanceId.equals(e.getTargetFragmentInstanceId())
-                          && remoteOperatorId.equals(e.getTargetOperatorId())
+                          && remotePlanNodeId.equals(e.getTargetPlanNodeId())
                           && localFragmentInstanceId.equals(e.getSourceFragmentInstanceId())
                           && e.getStartSequenceId() == 0
                           && e.getBlockSizes().size() == numOfMockTsBlock));
@@ -287,7 +287,7 @@ public class SinkHandleTest {
               Mockito.argThat(
                   e ->
                       remoteFragmentInstanceId.equals(e.getTargetFragmentInstanceId())
-                          && remoteOperatorId.equals(e.getTargetOperatorId())
+                          && remotePlanNodeId.equals(e.getTargetPlanNodeId())
                           && localFragmentInstanceId.equals(e.getSourceFragmentInstanceId())
                           && e.getStartSequenceId() == numOfMockTsBlock
                           && e.getBlockSizes().size() == numOfMockTsBlock));
@@ -314,7 +314,7 @@ public class SinkHandleTest {
               Mockito.argThat(
                   e ->
                       remoteFragmentInstanceId.equals(e.getTargetFragmentInstanceId())
-                          && remoteOperatorId.equals(e.getTargetOperatorId())
+                          && remotePlanNodeId.equals(e.getTargetPlanNodeId())
                           && localFragmentInstanceId.equals(e.getSourceFragmentInstanceId())
                           && numOfMockTsBlock * 2 - 1 == e.getLastSequenceId()));
     } catch (InterruptedException | TException e) {
@@ -346,7 +346,7 @@ public class SinkHandleTest {
     final String remoteHostname = "remote";
     final TFragmentInstanceId remoteFragmentInstanceId =
         new TFragmentInstanceId(queryId, "f0", "0");
-    final String remoteOperatorId = "exchange_0";
+    final String remotePlanNodeId = "exchange_0";
     final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, "f1", "0");
 
     // Construct a mock LocalMemoryManager that returns blocked futures.
@@ -377,7 +377,7 @@ public class SinkHandleTest {
         new SinkHandle(
             remoteHostname,
             remoteFragmentInstanceId,
-            remoteOperatorId,
+            remotePlanNodeId,
             localFragmentInstanceId,
             mockLocalMemoryManager,
             Executors.newSingleThreadExecutor(),
@@ -413,7 +413,7 @@ public class SinkHandleTest {
               Mockito.argThat(
                   e ->
                       remoteFragmentInstanceId.equals(e.getTargetFragmentInstanceId())
-                          && remoteOperatorId.equals(e.getTargetOperatorId())
+                          && remotePlanNodeId.equals(e.getTargetPlanNodeId())
                           && localFragmentInstanceId.equals(e.getSourceFragmentInstanceId())
                           && e.getStartSequenceId() == 0
                           && e.getBlockSizes().size() == numOfMockTsBlock));

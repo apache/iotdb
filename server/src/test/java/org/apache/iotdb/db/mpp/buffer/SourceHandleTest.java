@@ -51,7 +51,7 @@ public class SourceHandleTest {
     final String remoteHostname = "remote";
     final TFragmentInstanceId remoteFragmentInstanceId =
         new TFragmentInstanceId(queryId, "f1", "0");
-    final String localOperatorId = "exchange_0";
+    final String localPlanNodeId = "exchange_0";
     final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, "f0", "0");
 
     // Construct a mock LocalMemoryManager that do not block any reservation.
@@ -87,7 +87,7 @@ public class SourceHandleTest {
             remoteHostname,
             remoteFragmentInstanceId,
             localFragmentInstanceId,
-            localOperatorId,
+            localPlanNodeId,
             mockLocalMemoryManager,
             Executors.newSingleThreadExecutor(),
             mockClient,
@@ -171,7 +171,7 @@ public class SourceHandleTest {
     final String remoteHostname = "remote";
     final TFragmentInstanceId remoteFragmentInstanceId =
         new TFragmentInstanceId(queryId, "f1", "0");
-    final String localOperatorId = "exchange_0";
+    final String localPlanNodeId = "exchange_0";
     final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, "f0", "0");
 
     // Construct a mock LocalMemoryManager with capacity 3 * mockTsBlockSize.
@@ -208,7 +208,7 @@ public class SourceHandleTest {
             remoteHostname,
             remoteFragmentInstanceId,
             localFragmentInstanceId,
-            localOperatorId,
+            localPlanNodeId,
             mockLocalMemoryManager,
             Executors.newSingleThreadExecutor(),
             mockClient,
@@ -317,7 +317,7 @@ public class SourceHandleTest {
     final String remoteHostname = "remote";
     final TFragmentInstanceId remoteFragmentInstanceId =
         new TFragmentInstanceId(queryId, "f1", "0");
-    final String localOperatorId = "exchange_0";
+    final String localPlanNodeId = "exchange_0";
     final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, "f0", "0");
 
     // Construct a mock LocalMemoryManager that returns unblocked futures.
@@ -353,7 +353,7 @@ public class SourceHandleTest {
             remoteHostname,
             remoteFragmentInstanceId,
             localFragmentInstanceId,
-            localOperatorId,
+            localPlanNodeId,
             mockLocalMemoryManager,
             Executors.newSingleThreadExecutor(),
             mockClient,
@@ -509,7 +509,7 @@ public class SourceHandleTest {
     final String remoteHostname = "remote";
     final TFragmentInstanceId remoteFragmentInstanceId =
         new TFragmentInstanceId(queryId, "f1", "0");
-    final String localOperatorId = "exchange_0";
+    final String localPlanNodeId = "exchange_0";
     final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, "f0", "0");
 
     // Construct a mock LocalMemoryManager that returns unblocked futures.
@@ -536,7 +536,7 @@ public class SourceHandleTest {
             remoteHostname,
             remoteFragmentInstanceId,
             localFragmentInstanceId,
-            localOperatorId,
+            localPlanNodeId,
             mockLocalMemoryManager,
             Executors.newSingleThreadExecutor(),
             mockClient,
