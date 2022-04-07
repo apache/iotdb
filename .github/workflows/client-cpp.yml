@@ -3,7 +3,7 @@
 
 # CPP compiling is too slow, so let's do it in parallel with testing other modules.
 # As there is no Java client, we just use one JDK.
-name: Clients_except_Java CI with Maven
+name: C++ Client
 
 on:
   push:

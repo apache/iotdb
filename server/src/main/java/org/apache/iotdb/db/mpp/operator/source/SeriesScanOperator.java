@@ -20,8 +20,8 @@ package org.apache.iotdb.db.mpp.operator.source;
 
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.mpp.operator.Operator;
 import org.apache.iotdb.db.mpp.operator.OperatorContext;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -29,19 +29,19 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import java.io.IOException;
 import java.util.Set;
 
-public class SeriesScanOperator implements Operator {
+public class SeriesScanOperator implements SourceOperator {
 
   private final OperatorContext operatorContext;
   private final SeriesScanUtil seriesScanUtil;
   private TsBlock tsBlock;
   private boolean hasCachedTsBlock = false;
+  private boolean finished = false;
 
   public SeriesScanOperator(
       PartialPath seriesPath,
       Set<String> allSensors,
       TSDataType dataType,
       OperatorContext context,
-      QueryDataSource dataSource,
       Filter timeFilter,
       Filter valueFilter,
       boolean ascending) {
@@ -52,7 +52,6 @@ public class SeriesScanOperator implements Operator {
             allSensors,
             dataType,
             context.getInstanceContext(),
-            dataSource,
             timeFilter,
             valueFilter,
             ascending);
@@ -107,6 +106,11 @@ public class SeriesScanOperator implements Operator {
     return hasCachedTsBlock;
   }
 
+  @Override
+  public boolean isFinished() throws IOException {
+    return finished || (finished = hasNext());
+  }
+
   private boolean readChunkData() throws IOException {
     while (seriesScanUtil.hasNextChunk()) {
       if (readPageData()) {
@@ -128,5 +132,15 @@ public class SeriesScanOperator implements Operator {
 
   private boolean isEmpty(TsBlock tsBlock) {
     return tsBlock == null || tsBlock.isEmpty();
+  }
+
+  @Override
+  public PlanNodeId getSourceId() {
+    return null;
+  }
+
+  @Override
+  public void initQueryDataSource(QueryDataSource dataSource) {
+    seriesScanUtil.initQueryDataSource(dataSource);
   }
 }
