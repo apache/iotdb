@@ -1119,8 +1119,7 @@ public class RSchemaRegion implements ISchemaRegion {
   public Pair<List<MeasurementPath>, Integer> getMeasurementPathsWithAlias(
       PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch)
       throws MetadataException {
-    // TODO: unsupported right now
-    throw new UnsupportedOperationException();
+    return new Pair<>(getMeasurementPaths(pathPattern, false), offset + limit);
   }
 
   @Override
