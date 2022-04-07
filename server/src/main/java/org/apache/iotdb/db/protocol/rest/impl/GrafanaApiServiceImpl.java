@@ -40,10 +40,9 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 import com.google.common.base.Joiner;
-import org.apache.commons.lang3.StringUtils;
-
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
+import org.apache.commons.lang3.StringUtils;
 
 import java.time.ZoneId;
 
@@ -55,7 +54,7 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
   private final long timePrecision; // the default timestamp precision is ms
 
   public GrafanaApiServiceImpl() throws QueryProcessException {
-    authorizationHandler = new AuthorizationHandler(serviceProvider);
+    authorizationHandler = new AuthorizationHandler();
 
     switch (IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision()) {
       case "ns":
