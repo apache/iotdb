@@ -46,9 +46,6 @@ import java.util.Queue;
 public class Segment implements ISegment {
   private static final Logger logger = LoggerFactory.getLogger(Segment.class);
 
-  // control concurrency of the segment executing read and write
-  // ReentrantReadWriteLock segWriteLock;
-
   // members load from buffer
   final ByteBuffer buffer;
   short length, freeAddr, recordNum, pairLength;
@@ -175,12 +172,6 @@ public class Segment implements ISegment {
 
   // region Interface Implementation
 
-  /**
-   * check whether enough space, notice that pairLength including 3 parts: [var length] key string
-   * itself, [int, 4 bytes] length of key string, [short, 2 bytes] key address
-   *
-   * @return -1 for segment overflow, otherwise for spare space
-   */
   @Override
   public int insertRecord(String key, ByteBuffer buf) throws RecordDuplicatedException {
     buf.clear();
@@ -277,12 +268,6 @@ public class Segment implements ISegment {
     return res;
   }
 
-  /**
-   * @param key name of the record, not the alias
-   * @param uBuffer
-   * @return index of keyAddressList, -1 for not found, exception for space run out
-   * @throws SegmentOverflowException if segment runs out of memory
-   */
   @Override
   public int updateRecord(String key, ByteBuffer uBuffer)
       throws SegmentOverflowException, RecordDuplicatedException {
@@ -411,12 +396,6 @@ public class Segment implements ISegment {
     return (short) (freeAddr - pairLength - SEG_HEADER_SIZE);
   }
 
-  /**
-   * This method will write info into a buffer equal or larger to existed one. There is no need to
-   * call sync before this method, since it will flush header and key-offset list directly.
-   *
-   * @param newBuffer target buffer
-   */
   @Override
   public void extendsTo(ByteBuffer newBuffer) {
     short sizeGap = (short) (newBuffer.capacity() - length);

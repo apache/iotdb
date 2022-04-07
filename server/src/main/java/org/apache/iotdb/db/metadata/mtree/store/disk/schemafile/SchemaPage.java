@@ -35,30 +35,34 @@ import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * This class is aimed to manage space inside one page. A segment inside a page has 3
- * representation: index, offset and instance. Index is meant to decouple file-wide indexing with
- * in-page compaction; Offset is meant for in-page indexing, and segment instance is meant for
- * records manipulations.
+ * This class is aimed to manage space inside one page.
+ *
+ * <p>A segment inside a page has 3 representation: index, offset and instance. <br>
+ *
+ * <ul>
+ *   <li>Index is meant to decouple file-wide indexing with in-page compaction
+ *   <li>Offset is meant for in-page indexing
+ *   <li>Segment instance is meant for records manipulations
+ * </ul>
  */
 public class SchemaPage implements ISchemaPage {
 
   // All other attributes are to describe this ByteBuffer
-  final ByteBuffer pageBuffer;
-  transient int pageIndex;
+  private final ByteBuffer pageBuffer;
+  private transient int pageIndex;
 
-  boolean pageDelFlag;
-  short pageSpareOffset; // start offset to allocate new segment
-  short segNum; // amount of the segment, including deleted segments
-  short lastDelSeg; // offset of last deleted segment, will not be wiped out immediately
+  private boolean pageDelFlag;
+  private short pageSpareOffset; // start offset to allocate new segment
+  private short segNum; // amount of the segment, including deleted segments
+  private short lastDelSeg; // offset of last deleted segment, will not be wiped out immediately
 
   // segment address array inside a page, map segmentIndex -> segmentOffset
-  // TODO:
   // if only one full-page segment inside, it still stores the offset
-  List<Short> segOffsetLst;
+  private List<Short> segOffsetLst;
 
   // maintains segment instance inside this page, lazily instantiated, map segmentIndex ->
   // segmentInstance
-  Map<Short, ISegment> segCacheMap;
+  private Map<Short, ISegment> segCacheMap;
 
   /**
    * This method will init page header for a blank page buffer.
@@ -116,21 +120,6 @@ public class SchemaPage implements ISchemaPage {
 
   // region Interface Implementation
 
-  /**
-   * Insert a content directly into specified segment, without considering preallocate and
-   * reallocate segment. <br>
-   * Find the right segment instance which MUST exists, cache the segment and insert the record.
-   * <br>
-   * If not enough, reallocate inside page first, or throw exception for new page then.
-   *
-   * <p>Notice that, since {@link SchemaFile#reEstimateSegSize(int)} may increase segment with very
-   * small extent, which originates from design of {@link SchemaFile#estimateSegmentSize(IMNode)}, a
-   * twice relocate will suffice any nodes smaller than 1024 KiB.<br>
-   * This reason works for {@link #update(short, String, ByteBuffer)} as well.
-   *
-   * @return return 0 if write succeed, a positive for next segment address
-   * @throws SchemaPageOverflowException no next segment, no spare space inside page
-   */
   @Override
   public long write(short segIdx, String key, ByteBuffer buffer) throws MetadataException {
     ISegment tarSeg = getSegment(segIdx);
@@ -197,18 +186,7 @@ public class SchemaPage implements ISchemaPage {
     return pageIndex;
   }
 
-  /**
-   * The record is definitely inside specified segment. This method compare old and new buffer to
-   * decide whether update in place. <br>
-   * If segment not enough, it will reallocate in this page first, and update segment offset list.
-   * <br>
-   * If no more space for reallocation, throw {@link SchemaPageOverflowException} and return a
-   * negative for new page.
-   *
-   * <p>See {@linkplain #write(short, String, ByteBuffer)} for the detail reason of a twice try.
-   *
-   * @return spare space of the segment, negative if not enough
-   */
+  @Override
   public void update(short segIdx, String key, ByteBuffer buffer) throws MetadataException {
     ISegment seg = getSegment(segIdx);
     try {
@@ -234,7 +212,7 @@ public class SchemaPage implements ISchemaPage {
    * Calculated with accurate total segment size by examine segment buffers.<br>
    * This accuracy will save much space for schema file at the cost of more frequent rearrangement.
    *
-   * @return
+   * <p>TODO: improve with a substitute variable rather than calculating on every call
    */
   @Override
   public short getSpareSize() {
@@ -271,10 +249,6 @@ public class SchemaPage implements ISchemaPage {
     dst.put(this.pageBuffer);
   }
 
-  /**
-   * While segments are always synchronized with buffer {@linkplain SchemaPage#pageBuffer}, header
-   * and tail are not. This method will synchronize them with in mem attributes.
-   */
   @Override
   public void syncPageBuffer() {
     pageBuffer.clear();
@@ -294,15 +268,13 @@ public class SchemaPage implements ISchemaPage {
     }
   }
 
-  /**
-   * Allocate space for a new segment inside this page
-   *
-   * @param size expected segment size
-   * @return segment index in this page, negative for not enough space
-   */
   @Override
   public short allocNewSegment(short size) throws IOException, SchemaPageOverflowException {
     ISegment newSeg = Segment.initAsSegment(allocSpareBufferSlice(size));
+
+    if (newSeg == null) {
+      throw new SchemaPageOverflowException(pageIndex);
+    }
 
     short thisIndex = (short) segOffsetLst.size();
     if (segCacheMap.containsKey(thisIndex)) {
@@ -329,14 +301,6 @@ public class SchemaPage implements ISchemaPage {
     segOffsetLst.set(segId, (short) -1);
   }
 
-  /**
-   * Transplant designated segment from srcPage, to spare space of the page
-   *
-   * @param srcPage source page conveys source segment
-   * @param segId id of the target segment
-   * @param newSegSize size of new segment in this page
-   * @throws MetadataException if spare not enough, segment not found or inconsistency
-   */
   @Override
   public long transplantSegment(ISchemaPage srcPage, short segId, short newSegSize)
       throws MetadataException {
@@ -358,11 +322,7 @@ public class SchemaPage implements ISchemaPage {
     return SchemaFile.getGlobalIndex(pageIndex, registerNewSegment(newSeg));
   }
 
-  /**
-   * Invoke all segments, translate into string, concatenate and return.
-   *
-   * @return
-   */
+  /** Invoke all segments, translate into string, concatenate and return. */
   @Override
   public String inspect() throws SegmentNotFoundException {
     syncPageBuffer();
@@ -464,13 +424,15 @@ public class SchemaPage implements ISchemaPage {
    * will not update segLstLen nor segCacheMap, since no segment initiated inside this method.
    *
    * @param size target size of the ByteBuffer
-   * @return ByteBuffer object
+   * @return ByteBuffer return null if {@linkplain SchemaPageOverflowException} to improve
+   *     efficiency
    */
-  private ByteBuffer allocSpareBufferSlice(short size) throws SchemaPageOverflowException {
+  private ByteBuffer allocSpareBufferSlice(short size) {
     // check whether enough space to be directly allocate
     if (SchemaFile.PAGE_LENGTH - pageSpareOffset - segNum * SchemaFile.SEG_OFF_DIG
         < size + SchemaFile.SEG_OFF_DIG) {
-      throw new SchemaPageOverflowException(pageIndex);
+      // since this may occur frequently, throw exception here may be inefficient
+      return null;
     }
 
     pageBuffer.clear();
@@ -487,8 +449,6 @@ public class SchemaPage implements ISchemaPage {
    *
    * <p><b> The new segment could be allocated from spare space or rearranged space.</b>
    *
-   * <p>TODO: maybe relocate in-place first
-   *
    * @param seg original segment instance
    * @param segIdx original segment index
    * @param newSize target segment size
@@ -500,11 +460,9 @@ public class SchemaPage implements ISchemaPage {
     if (seg.size() == SchemaFile.SEG_MAX_SIZ || getSpareSize() + seg.size() < newSize) {
       throw new SchemaPageOverflowException(pageIndex);
     }
-    ByteBuffer newBuffer;
 
-    try {
-      newBuffer = allocSpareBufferSlice(newSize);
-    } catch (SchemaPageOverflowException e) {
+    ByteBuffer newBuffer = allocSpareBufferSlice(newSize);
+    if (newBuffer == null) {
       rearrangeSegments(segIdx);
       return extendSegmentInPlace(segIdx, seg.size(), newSize);
     }

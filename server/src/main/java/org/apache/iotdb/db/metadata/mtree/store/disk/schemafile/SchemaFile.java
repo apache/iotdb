@@ -64,7 +64,6 @@ public class SchemaFile implements ISchemaFile {
   public static int FILE_HEADER_SIZE = 256; // size of file header in bytes
 
   public static int PAGE_LENGTH = 16 * 1024; // 16 kib for default
-  public static int PAGE_LENGTH_DIGIT = 14;
   public static long PAGE_INDEX_MASK = 0xffff_ffffL;
   public static short PAGE_HEADER_SIZE = 16;
   public static int PAGE_CACHE_SIZE =
@@ -90,24 +89,24 @@ public class SchemaFile implements ISchemaFile {
   public static String SCHEMA_FOLDER = IoTDBDescriptor.getInstance().getConfig().getSchemaDir();
 
   // attributes for this schema file
-  String filePath;
-  String storageGroupName;
-  long dataTTL;
+  private String filePath;
+  private String storageGroupName;
+  private long dataTTL;
   boolean isEntity;
-  int templateHash;
+  private int templateHash;
 
-  ByteBuffer headerContent;
-  int lastPageIndex; // last page index of the file, boundary to grow
+  private ByteBuffer headerContent;
+  private int lastPageIndex; // last page index of the file, boundary to grow
 
   // work as a naive (read-only) cache for page instance
-  final Map<Integer, ISchemaPage> pageInstCache;
-  final ReentrantLock evictLock;
-  final PageLocks pageLocks;
-  ISchemaPage rootPage;
+  private final Map<Integer, ISchemaPage> pageInstCache;
+  private final ReentrantLock evictLock;
+  private final PageLocks pageLocks;
+  private ISchemaPage rootPage;
 
   // attributes for file
-  File pmtFile;
-  FileChannel channel;
+  private File pmtFile;
+  private FileChannel channel;
 
   private SchemaFile(
       String sgName, int schemaRegionId, boolean override, long ttl, boolean isEntity)
@@ -403,13 +402,8 @@ public class SchemaFile implements ISchemaFile {
       short sIdx = getSegIndex(actualSegAddr);
       logger.error(
           String.format(
-              "Get child[%s] from parent[%s] failed, actualAddress:%s(%d, %d), segOffLst: %s",
-              childName,
-              parent.getName(),
-              actualSegAddr,
-              pIdx,
-              sIdx,
-              ((SchemaPage) getPageInstance(pIdx)).segOffsetLst));
+              "Get child[%s] from parent[%s] failed, actualAddress:%s(%d, %d)",
+              childName, parent.getName(), actualSegAddr, pIdx, sIdx));
       e.printStackTrace();
       throw e;
     }

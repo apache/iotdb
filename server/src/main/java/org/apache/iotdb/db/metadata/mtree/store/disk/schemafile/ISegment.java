@@ -29,15 +29,21 @@ import java.util.Queue;
 /** This interface interacts with segment bytebuffer. */
 public interface ISegment {
   int SEG_HEADER_SIZE = 25; // in bytes
+
   /**
-   * write a record of node to this segment
+   * check whether enough space, notice that pairLength including 3 parts: [var length] key string
+   * itself, [int, 4 bytes] length of key string, [short, 2 bytes] key address
    *
-   * @param key node name for generally
-   * @param buffer content of the record
-   * @return spare space after insert
+   * @return -1 for segment overflow, otherwise for spare space
    */
   int insertRecord(String key, ByteBuffer buffer) throws RecordDuplicatedException;
 
+  /**
+   * @param key name of the record, not the alias
+   * @param buffer content of the updated record
+   * @return index of keyAddressList, -1 for not found, exception for space run out
+   * @throws SegmentOverflowException if segment runs out of memory
+   */
   int updateRecord(String key, ByteBuffer buffer)
       throws SegmentOverflowException, RecordDuplicatedException;
 
@@ -78,7 +84,8 @@ public interface ISegment {
   void setNextSegAddress(long nextSegAddress);
 
   /**
-   * This method write content to a ByteBuffer, which has larger capacity than itself
+   * This method will write info into a buffer equal or larger to existed one. There is no need to
+   * call sync before this method, since it will flush header and key-offset list directly.
    *
    * @param newBuffer target buffer
    */
