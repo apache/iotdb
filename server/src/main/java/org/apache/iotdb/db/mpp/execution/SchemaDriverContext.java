@@ -16,29 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.mpp.execution;
 
-package org.apache.iotdb.db.mpp.buffer;
+import org.apache.iotdb.db.metadata.schemaregion.SchemaRegion;
 
-import org.apache.thrift.protocol.TProtocol;
-import org.apache.thrift.server.ServerContext;
-import org.apache.thrift.server.TServerEventHandler;
-import org.apache.thrift.transport.TTransport;
+public class SchemaDriverContext extends DriverContext {
 
-public class DataBlockManagerServiceThriftHandler implements TServerEventHandler {
+  private final SchemaRegion schemaRegion;
 
-  @Override
-  public void preServe() {}
-
-  @Override
-  public ServerContext createContext(TProtocol tProtocol, TProtocol tProtocol1) {
-    return null;
+  public SchemaDriverContext(
+      FragmentInstanceContext fragmentInstanceContext, SchemaRegion schemaRegion) {
+    super(fragmentInstanceContext);
+    this.schemaRegion = schemaRegion;
   }
 
-  @Override
-  public void deleteContext(
-      ServerContext serverContext, TProtocol tProtocol, TProtocol tProtocol1) {}
-
-  @Override
-  public void processContext(
-      ServerContext serverContext, TTransport tTransport, TTransport tTransport1) {}
+  public SchemaRegion getSchemaRegion() {
+    return schemaRegion;
+  }
 }
