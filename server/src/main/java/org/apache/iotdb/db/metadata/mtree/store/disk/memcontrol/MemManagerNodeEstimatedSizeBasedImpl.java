@@ -56,12 +56,12 @@ public class MemManagerNodeEstimatedSizeBasedImpl implements IMemManager {
 
   @Override
   public boolean isExceedReleaseThreshold() {
-    return !isEmpty() && memoryStatistics.getMemoryUsage() > releaseThreshold;
+    return memoryStatistics.getMemoryUsage() > releaseThreshold;
   }
 
   @Override
   public boolean isExceedFlushThreshold() {
-    return !isEmpty() && memoryStatistics.getMemoryUsage() > flushThreshold;
+    return memoryStatistics.getMemoryUsage() > flushThreshold;
   }
 
   @Override

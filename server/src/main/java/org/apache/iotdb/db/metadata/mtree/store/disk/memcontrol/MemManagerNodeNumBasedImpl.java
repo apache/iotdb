@@ -46,12 +46,12 @@ public class MemManagerNodeNumBasedImpl implements IMemManager {
 
   @Override
   public boolean isExceedReleaseThreshold() {
-    return !isEmpty() && size.get() + pinnedSize.get() > capacity * 0.6;
+    return size.get() + pinnedSize.get() > capacity * 0.6;
   }
 
   @Override
   public boolean isExceedFlushThreshold() {
-    return !isEmpty() && size.get() + pinnedSize.get() > capacity;
+    return size.get() + pinnedSize.get() > capacity;
   }
 
   @Override

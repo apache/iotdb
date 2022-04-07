@@ -421,7 +421,7 @@ public class CachedMTreeStore implements IMTreeStore {
    * no node could be evicted. Update the memory status after evicting each node.
    */
   private void executeMemoryRelease() {
-    while (memManager.isExceedReleaseThreshold()) {
+    while (memManager.isExceedReleaseThreshold() && !memManager.isEmpty()) {
       if (!cacheManager.evict()) {
         break;
       }
