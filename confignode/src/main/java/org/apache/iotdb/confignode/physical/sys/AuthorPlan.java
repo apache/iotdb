@@ -152,7 +152,7 @@ public class AuthorPlan extends PhysicalPlan {
 
   @Override
   protected void serializeImpl(ByteBuffer buffer) {
-    buffer.putInt(getPlanType(authorType));
+    buffer.putInt(getPlanTypeOrdinal(authorType));
     buffer.putInt(userName.length());
     buffer.put(userName.getBytes());
     buffer.putInt(roleName.length());
@@ -206,7 +206,7 @@ public class AuthorPlan extends PhysicalPlan {
     return new String(byteInfo, 0, infoSize);
   }
 
-  private int getPlanType(PhysicalPlanType physicalPlanType) {
+  private int getPlanTypeOrdinal(PhysicalPlanType physicalPlanType) {
     int type;
     switch (physicalPlanType) {
       case CREATE_USER:

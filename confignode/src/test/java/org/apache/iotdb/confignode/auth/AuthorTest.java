@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.confignode.auth;
 
+import org.apache.iotdb.confignode.physical.PhysicalPlanType;
 import org.apache.iotdb.confignode.rpc.thrift.AuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
 import org.apache.iotdb.confignode.utils.ConfigNodeEnvironmentUtils;
@@ -63,7 +64,8 @@ public class AuthorTest {
     Set<Integer> i = new HashSet<>();
     TSStatus tsStatus =
         client.operatePermission(
-            new AuthorizerReq("CREATE_USER", "root01", "", "root001", "", i, ""));
+            new AuthorizerReq(
+                PhysicalPlanType.CREATE_USER.ordinal(), "root01", "", "root001", "", i, ""));
     Assert.assertEquals(tsStatus.getCode(), TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 }

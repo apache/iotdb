@@ -157,49 +157,14 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
 
   @Override
   public TSStatus operatePermission(AuthorizerReq req) throws TException {
-    PhysicalPlanType authorType = null;
-    switch (req.getAuthorType()) {
-      case "CREATE_USER":
-        authorType = PhysicalPlanType.CREATE_USER;
-        break;
-      case "CREATE_ROLE":
-        authorType = PhysicalPlanType.CREATE_ROLE;
-        break;
-      case "DROP_USER":
-        authorType = PhysicalPlanType.DROP_USER;
-        break;
-      case "DROP_ROLE":
-        authorType = PhysicalPlanType.DROP_ROLE;
-        break;
-      case "GRANT_ROLE":
-        authorType = PhysicalPlanType.GRANT_ROLE;
-        break;
-      case "GRANT_USER":
-        authorType = PhysicalPlanType.GRANT_USER;
-        break;
-      case "GRANT_ROLE_TO_USER":
-        authorType = PhysicalPlanType.GRANT_ROLE_TO_USER;
-        break;
-      case "REVOKE_USER":
-        authorType = PhysicalPlanType.REVOKE_USER;
-        break;
-      case "REVOKE_ROLE":
-        authorType = PhysicalPlanType.REVOKE_ROLE;
-        break;
-      case "REVOKE_ROLE_FROM_USER":
-        authorType = PhysicalPlanType.REVOKE_ROLE_FROM_USER;
-        break;
-      case "UPDATE_USER":
-        authorType = PhysicalPlanType.UPDATE_USER;
-        break;
-      default:
-        throw new TException("authorType is null");
+    if (req.getAuthorType() < 0 || req.getAuthorType() >= PhysicalPlanType.values().length) {
+      throw new IndexOutOfBoundsException("Invalid ordinal");
     }
     AuthorPlan plan = null;
     try {
       plan =
           new AuthorPlan(
-              authorType,
+              PhysicalPlanType.values()[req.getAuthorType()],
               req.getUserName(),
               req.getRoleName(),
               req.getPassword(),

@@ -102,7 +102,7 @@ struct DataPartitionInfoResp {
 }
 
 struct AuthorizerReq{
-    1: required string authorType
+    1: required i32 authorType
     2: required string userName
     3: required string roleName
     4: required string password
