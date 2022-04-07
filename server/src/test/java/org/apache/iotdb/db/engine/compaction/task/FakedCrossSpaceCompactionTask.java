@@ -48,15 +48,15 @@ public class FakedCrossSpaceCompactionTask extends RewriteCrossSpaceCompactionTa
   @Override
   protected void doCompaction() {
     long totalUnseqFileSize = 0;
-    for (TsFileResource resource : selectedUnSeqTsFileResourceList) {
+    for (TsFileResource resource : selectedUnsequenceFiles) {
       totalUnseqFileSize += resource.getTsFileSize();
     }
-    long avgSizeAddToSeqFile = totalUnseqFileSize / selectedSeqTsFileResourceList.size();
-    for (TsFileResource resource : selectedSeqTsFileResourceList) {
+    long avgSizeAddToSeqFile = totalUnseqFileSize / selectedSequenceFiles.size();
+    for (TsFileResource resource : selectedSequenceFiles) {
       ((FakedTsFileResource) resource)
           .setTsFileSize(resource.getTsFileSize() + avgSizeAddToSeqFile);
     }
-    selectedSeqTsFileResourceList.clear();
-    selectedUnSeqTsFileResourceList.clear();
+    selectedSequenceFiles.clear();
+    selectedUnsequenceFiles.clear();
   }
 }
