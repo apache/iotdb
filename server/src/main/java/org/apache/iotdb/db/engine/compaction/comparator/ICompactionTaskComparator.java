@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.engine.compaction.comparator;
 
-import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionTask;
-import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionTask;
+import org.apache.iotdb.db.engine.compaction.cross.CrossSpaceCompactionTask;
+import org.apache.iotdb.db.engine.compaction.inner.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 
 import java.util.Comparator;
@@ -28,8 +28,8 @@ public interface ICompactionTaskComparator extends Comparator<AbstractCompaction
   int compare(AbstractCompactionTask task1, AbstractCompactionTask task2);
 
   int compareInnerSpaceCompactionTask(
-      AbstractInnerSpaceCompactionTask task1, AbstractInnerSpaceCompactionTask task2);
+      InnerSpaceCompactionTask task1, InnerSpaceCompactionTask task2);
 
   int compareCrossSpaceCompactionTask(
-      AbstractCrossSpaceCompactionTask task1, AbstractCrossSpaceCompactionTask task2);
+      CrossSpaceCompactionTask task1, CrossSpaceCompactionTask task2);
 }

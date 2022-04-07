@@ -24,6 +24,7 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionPriority;
 import org.apache.iotdb.db.engine.compaction.constant.CrossCompactionStrategy;
 import org.apache.iotdb.db.engine.compaction.constant.InnerSequenceCompactionStrategy;
+import org.apache.iotdb.db.engine.compaction.constant.InnerUnsequenceCompactionStrategy;
 import org.apache.iotdb.db.exception.BadNodeUrlFormatException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
@@ -364,10 +365,17 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "cross_compaction_strategy", conf.getCrossCompactionStrategy().toString())));
 
-      conf.setInnerCompactionStrategy(
+      conf.setInnerSequenceCompactionStrategy(
           InnerSequenceCompactionStrategy.getInnerSequenceCompactionStrategy(
               properties.getProperty(
-                  "inner_compaction_strategy", conf.getInnerCompactionStrategy().toString())));
+                  "inner_seq_compaction_strategy",
+                  conf.getInnerSequenceCompactionStrategy().toString())));
+
+      conf.setInnerUnsequenceCompactionStrategy(
+          InnerUnsequenceCompactionStrategy.getInnerUnsequenceCompactionStrategy(
+              properties.getProperty(
+                  "inner_unseq_compaction_strategy",
+                  conf.getInnerUnsequenceCompactionStrategy().toString())));
 
       conf.setCompactionPriority(
           CompactionPriority.valueOf(

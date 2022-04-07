@@ -69,6 +69,14 @@ public class ReadPointCompactionPerformer extends AbstractCompactionPerformer {
     this.targetFiles = targetFiles;
   }
 
+  public ReadPointCompactionPerformer(
+      List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
+    this.seqFiles = seqFiles;
+    this.unseqFiles = unseqFiles;
+  }
+
+  public ReadPointCompactionPerformer() {}
+
   @Override
   public void perform()
       throws IOException, MetadataException, StorageEngineException, InterruptedException {
@@ -105,6 +113,11 @@ public class ReadPointCompactionPerformer extends AbstractCompactionPerformer {
     } finally {
       QueryResourceManager.getInstance().endQuery(queryId);
     }
+  }
+
+  @Override
+  public void setTargetFiles(List<TsFileResource> targetFiles) {
+    this.targetFiles = targetFiles;
   }
 
   private void compactAlignedSeries(

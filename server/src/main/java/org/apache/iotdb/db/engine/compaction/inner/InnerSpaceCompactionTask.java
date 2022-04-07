@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.compaction.CompactionExceptionHandler;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.log.CompactionLogger;
+import org.apache.iotdb.db.engine.compaction.performer.AbstractCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
@@ -41,7 +42,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public abstract class AbstractInnerSpaceCompactionTask extends AbstractCompactionTask {
+public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
 
@@ -57,16 +58,23 @@ public abstract class AbstractInnerSpaceCompactionTask extends AbstractCompactio
   protected boolean[] isHoldingReadLock;
   protected boolean[] isHoldingWriteLock;
 
-  public AbstractInnerSpaceCompactionTask(
-      String storageGroupName,
+  public InnerSpaceCompactionTask(
+      String logicalStorageGroupName,
+      String virtualStorageGroupName,
       long timePartition,
-      AtomicInteger currentTaskNum,
-      boolean sequence,
+      TsFileManager tsFileManager,
       List<TsFileResource> selectedTsFileResourceList,
-      TsFileManager tsFileManager) {
-    super(storageGroupName, timePartition, tsFileManager, currentTaskNum);
+      boolean sequence,
+      AbstractCompactionPerformer performer,
+      AtomicInteger currentTaskNum) {
+    super(
+        logicalStorageGroupName + "-" + virtualStorageGroupName,
+        timePartition,
+        tsFileManager,
+        currentTaskNum);
     this.selectedTsFileResourceList = selectedTsFileResourceList;
     this.sequence = sequence;
+    this.performer = performer;
     isHoldingReadLock = new boolean[selectedTsFileResourceList.size()];
     isHoldingWriteLock = new boolean[selectedTsFileResourceList.size()];
     for (int i = 0; i < selectedTsFileResourceList.size(); ++i) {
@@ -109,18 +117,24 @@ public abstract class AbstractInnerSpaceCompactionTask extends AbstractCompactio
       compactionLogger.logFiles(selectedTsFileResourceList, CompactionLogger.STR_SOURCE_FILES);
       compactionLogger.logFiles(
           Collections.singletonList(targetTsFileResource), CompactionLogger.STR_TARGET_FILES);
-      LOGGER.info("{} [SizeTiredCompactionTask] Close the logger", fullStorageGroupName);
+      LOGGER.info("{} [InnerSpaceCompactionTask] Close the logger", fullStorageGroupName);
       compactionLogger.close();
       LOGGER.info(
           "{} [Compaction] compaction with {}", fullStorageGroupName, selectedTsFileResourceList);
 
       // carry out the compaction
-      performCompaction();
+      if (sequence) {
+        performer.setSeqFiles(selectedTsFileResourceList);
+      } else {
+        performer.setUnseqFiles(selectedTsFileResourceList);
+      }
+      performer.setTargetFiles(Collections.singletonList(targetTsFileResource));
+      performer.perform();
 
       CompactionUtils.moveTargetFile(
           Collections.singletonList(targetTsFileResource), true, fullStorageGroupName);
 
-      LOGGER.info("{} [SizeTiredCompactionTask] start to rename mods file", fullStorageGroupName);
+      LOGGER.info("{} [InnerSpaceCompactionTask] start to rename mods file", fullStorageGroupName);
       CompactionUtils.combineModsInInnerCompaction(
           selectedTsFileResourceList, targetTsFileResource);
 
@@ -176,7 +190,7 @@ public abstract class AbstractInnerSpaceCompactionTask extends AbstractCompactio
 
       long costTime = System.currentTimeMillis() - startTime;
       LOGGER.info(
-          "{} [SizeTiredCompactionTask] all compaction task finish, target file is {},"
+          "{} [InnerSpaceCompactionTask] all compaction task finish, target file is {},"
               + "time cost is {} s",
           fullStorageGroupName,
           targetTsFileResource.getTsFile().getName(),
@@ -220,6 +234,16 @@ public abstract class AbstractInnerSpaceCompactionTask extends AbstractCompactio
     } finally {
       releaseFileLocksAndResetMergingStatus();
     }
+  }
+
+  @Override
+  public boolean equalsOtherTask(AbstractCompactionTask otherTask) {
+    if (!(otherTask instanceof InnerSpaceCompactionTask)) {
+      return false;
+    }
+    InnerSpaceCompactionTask task = (InnerSpaceCompactionTask) otherTask;
+    return this.selectedTsFileResourceList.equals(task.selectedTsFileResourceList)
+        && this.performer.getClass().isInstance(task.performer);
   }
 
   @Override

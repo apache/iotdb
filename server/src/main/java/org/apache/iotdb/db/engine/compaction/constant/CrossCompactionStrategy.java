@@ -20,9 +20,9 @@ package org.apache.iotdb.db.engine.compaction.constant;
 
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionSelector;
-import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionTask;
+import org.apache.iotdb.db.engine.compaction.cross.CrossSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.RewriteCrossSpaceCompactionSelector;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.RewriteCrossSpaceCompactionTask;
+import org.apache.iotdb.db.engine.compaction.performer.ReadPointCompactionPerformer;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 
@@ -38,7 +38,7 @@ public enum CrossCompactionStrategy {
     throw new RuntimeException("Illegal Cross Compaction Strategy " + name);
   }
 
-  public AbstractCrossSpaceCompactionTask getCompactionTask(
+  public CrossSpaceCompactionTask getCompactionTask(
       String logicalStorageGroupName,
       String virtualStorageGroupName,
       long timePartitionId,
@@ -48,13 +48,14 @@ public enum CrossCompactionStrategy {
     switch (this) {
       case REWRITE_COMPACTION:
       default:
-        return new RewriteCrossSpaceCompactionTask(
+        return new CrossSpaceCompactionTask(
             logicalStorageGroupName,
             virtualStorageGroupName,
             timePartitionId,
             tsFileManager,
             selectedSeqTsFileResourceList,
             selectedUnSeqTsFileResourceList,
+            new ReadPointCompactionPerformer(),
             CompactionTaskManager.currentTaskNum);
     }
   }

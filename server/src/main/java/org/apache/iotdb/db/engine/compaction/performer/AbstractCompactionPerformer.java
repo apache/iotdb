@@ -37,4 +37,14 @@ public abstract class AbstractCompactionPerformer {
 
   public abstract void perform()
       throws IOException, MetadataException, StorageEngineException, InterruptedException;
+
+  public abstract void setTargetFiles(List<TsFileResource> targetFiles);
+
+  public void setSeqFiles(List<TsFileResource> seqFiles) {
+    this.seqFiles = seqFiles;
+  }
+
+  public void setUnseqFiles(List<TsFileResource> unseqFiles) {
+    this.unseqFiles = unseqFiles;
+  }
 }

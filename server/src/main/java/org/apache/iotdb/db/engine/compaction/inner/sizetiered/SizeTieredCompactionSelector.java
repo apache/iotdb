@@ -22,8 +22,10 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
-import org.apache.iotdb.db.engine.compaction.comparator.DefaultCompactionTaskComparatorImpl;
 import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSequenceSpaceCompactionSelector;
+import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerUnsequenceSpaceCompactionSelector;
+import org.apache.iotdb.db.engine.compaction.inner.InnerSpaceCompactionTask;
+import org.apache.iotdb.db.engine.compaction.performer.ReadChunkCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
@@ -47,15 +49,23 @@ import java.util.PriorityQueue;
  * selector traverses the file list from old to new. If the size of selected files or the number of
  * select files exceed given threshold, a compaction task will be submitted to task queue in
  * CompactionTaskManager. In CompactionTaskManager, tasks are ordered by {@link
- * DefaultCompactionTaskComparatorImpl}. To maximize compaction efficiency, selector searches
- * compaction task from 0 compaction files(that is, file that never been compacted, named level 0
- * file) to higher level files. If a compaction task is found in some level, selector will not
- * search higher level anymore.
+ * org.apache.iotdb.db.engine.compaction.comparator.ICompactionTaskComparator}. To maximize
+ * compaction efficiency, selector searches compaction task from 0 compaction files(that is, file
+ * that never been compacted, named level 0 file) to higher level files. If a compaction task is
+ * found in some level, selector will not search higher level anymore.
  */
-public class SizeTieredCompactionSelector extends AbstractInnerSequenceSpaceCompactionSelector {
+public class SizeTieredCompactionSelector
+    implements AbstractInnerSequenceSpaceCompactionSelector,
+        AbstractInnerUnsequenceSpaceCompactionSelector {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  protected String logicalStorageGroupName;
+  protected String virtualStorageGroupName;
+  protected long timePartition;
+  protected List<TsFileResource> tsFileResources;
+  protected TsFileManager tsFileManager;
+  protected boolean sequence;
 
   public SizeTieredCompactionSelector(
       String logicalStorageGroupName,
@@ -63,7 +73,11 @@ public class SizeTieredCompactionSelector extends AbstractInnerSequenceSpaceComp
       long timePartition,
       TsFileManager tsFileManager,
       boolean sequence) {
-    super(logicalStorageGroupName, virtualStorageGroupName, timePartition, tsFileManager, sequence);
+    this.logicalStorageGroupName = logicalStorageGroupName;
+    this.virtualStorageGroupName = virtualStorageGroupName;
+    this.timePartition = timePartition;
+    this.tsFileManager = tsFileManager;
+    this.sequence = sequence;
   }
 
   /**
@@ -87,14 +101,16 @@ public class SizeTieredCompactionSelector extends AbstractInnerSequenceSpaceComp
       }
       List<AbstractCompactionTask> taskList = new LinkedList<>();
       while (taskPriorityQueue.size() > 0) {
+        List<TsFileResource> resources = taskPriorityQueue.poll().left;
         taskList.add(
-            new SizeTieredCompactionTask(
+            new InnerSpaceCompactionTask(
                 logicalStorageGroupName,
                 virtualStorageGroupName,
                 timePartition,
                 tsFileManager,
-                taskPriorityQueue.poll().left,
+                resources,
                 sequence,
+                new ReadChunkCompactionPerformer(),
                 CompactionTaskManager.currentTaskNum));
       }
       return taskList;
@@ -168,20 +184,6 @@ public class SizeTieredCompactionSelector extends AbstractInnerSequenceSpaceComp
       }
     }
     return maxLevel;
-  }
-
-  private void createAndSubmitTask(List<TsFileResource> selectedFileList)
-      throws InterruptedException {
-    AbstractCompactionTask compactionTask =
-        new SizeTieredCompactionTask(
-            logicalStorageGroupName,
-            virtualStorageGroupName,
-            timePartition,
-            tsFileManager,
-            selectedFileList,
-            sequence,
-            CompactionTaskManager.currentTaskNum);
-    CompactionTaskManager.getInstance().addTaskToWaitingQueue(compactionTask);
   }
 
   private class SizeTieredCompactionTaskComparator

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.compaction.task;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
+import org.apache.iotdb.db.engine.compaction.performer.AbstractCompactionPerformer;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 
 import org.slf4j.Logger;
@@ -45,6 +46,7 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
   protected long timeCost = 0L;
   protected volatile boolean ran = false;
   protected volatile boolean finished = false;
+  protected AbstractCompactionPerformer performer;
 
   public AbstractCompactionTask(
       String fullStorageGroupName,
@@ -60,8 +62,6 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
   public abstract void setSourceFilesToCompactionCandidate();
 
   protected abstract void doCompaction() throws Exception;
-
-  protected abstract void performCompaction() throws Exception;
 
   @Override
   public Void call() throws Exception {

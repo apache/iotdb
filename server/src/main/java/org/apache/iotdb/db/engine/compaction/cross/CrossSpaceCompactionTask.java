@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.compaction.CompactionExceptionHandler;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.log.CompactionLogger;
+import org.apache.iotdb.db.engine.compaction.performer.AbstractCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
@@ -44,7 +45,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.apache.iotdb.db.engine.compaction.log.CompactionLogger.STR_SOURCE_FILES;
 import static org.apache.iotdb.db.engine.compaction.log.CompactionLogger.STR_TARGET_FILES;
 
-public abstract class AbstractCrossSpaceCompactionTask extends AbstractCompactionTask {
+public class CrossSpaceCompactionTask extends AbstractCompactionTask {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   protected List<TsFileResource> selectedSequenceFiles;
@@ -56,18 +57,25 @@ public abstract class AbstractCrossSpaceCompactionTask extends AbstractCompactio
   protected List<TsFileResource> holdReadLockList = new ArrayList<>();
   protected List<TsFileResource> holdWriteLockList = new ArrayList<>();
 
-  public AbstractCrossSpaceCompactionTask(
-      String fullStorageGroupName,
+  public CrossSpaceCompactionTask(
+      String logicalStorageGroup,
+      String virutalStorageGroupName,
       long timePartition,
-      AtomicInteger currentTaskNum,
+      TsFileManager tsFileManager,
       List<TsFileResource> selectedSequenceFiles,
       List<TsFileResource> selectedUnsequenceFiles,
-      TsFileManager tsFileManager) {
-    super(fullStorageGroupName, timePartition, tsFileManager, currentTaskNum);
+      AbstractCompactionPerformer performer,
+      AtomicInteger currentTaskNum) {
+    super(
+        logicalStorageGroup + "-" + virutalStorageGroupName,
+        timePartition,
+        tsFileManager,
+        currentTaskNum);
     this.selectedSequenceFiles = selectedSequenceFiles;
     this.selectedUnsequenceFiles = selectedUnsequenceFiles;
     this.seqTsFileResourceList = tsFileManager.getSequenceListByTimePartition(timePartition);
     this.unseqTsFileResourceList = tsFileManager.getUnsequenceListByTimePartition(timePartition);
+    this.performer = performer;
   }
 
   @Override
@@ -110,7 +118,10 @@ public abstract class AbstractCrossSpaceCompactionTask extends AbstractCompactio
         // restart recovery
         compactionLogger.close();
 
-        performCompaction();
+        performer.setSeqFiles(selectedSequenceFiles);
+        performer.setUnseqFiles(unseqTsFileResourceList);
+        performer.setTargetFiles(targetTsfileResourceList);
+        performer.perform();
 
         CompactionUtils.moveTargetFile(targetTsfileResourceList, false, fullStorageGroupName);
         CompactionUtils.combineModsInCrossCompaction(
@@ -156,6 +167,17 @@ public abstract class AbstractCrossSpaceCompactionTask extends AbstractCompactio
     } finally {
       releaseAllLock();
     }
+  }
+
+  @Override
+  public boolean equalsOtherTask(AbstractCompactionTask otherTask) {
+    if (!(otherTask instanceof CrossSpaceCompactionTask)) {
+      return false;
+    }
+    CrossSpaceCompactionTask otherCrossCompactionTask = (CrossSpaceCompactionTask) otherTask;
+    return this.selectedSequenceFiles.equals(otherCrossCompactionTask.selectedSequenceFiles)
+        && this.selectedUnsequenceFiles.equals(otherCrossCompactionTask.selectedUnsequenceFiles)
+        && this.performer.getClass().isInstance(otherCrossCompactionTask.performer);
   }
 
   private void releaseAllLock() {

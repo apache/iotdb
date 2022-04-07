@@ -24,6 +24,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionSelector;
 import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSequenceSpaceCompactionSelector;
+import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerUnsequenceSpaceCompactionSelector;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.compaction.task.ICompactionSelector;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
@@ -52,24 +53,24 @@ public class CompactionScheduler {
       return;
     }
     try {
-    tryToSubmitCrossSpaceCompactionTask(
-        tsFileManager.getStorageGroupName(),
-        tsFileManager.getVirtualStorageGroup(),
-        tsFileManager.getStorageGroupDir(),
-        timePartition,
-        tsFileManager);
-    tryToSubmitInnerSpaceCompactionTask(
-        tsFileManager.getStorageGroupName(),
-        tsFileManager.getVirtualStorageGroup(),
-        timePartition,
-        tsFileManager,
-        true);
-    tryToSubmitInnerSpaceCompactionTask(
-        tsFileManager.getStorageGroupName(),
-        tsFileManager.getVirtualStorageGroup(),
-        timePartition,
-        tsFileManager,
-        false);
+      tryToSubmitCrossSpaceCompactionTask(
+          tsFileManager.getStorageGroupName(),
+          tsFileManager.getVirtualStorageGroup(),
+          tsFileManager.getStorageGroupDir(),
+          timePartition,
+          tsFileManager);
+      tryToSubmitInnerSpaceCompactionTask(
+          tsFileManager.getStorageGroupName(),
+          tsFileManager.getVirtualStorageGroup(),
+          timePartition,
+          tsFileManager,
+          true);
+      tryToSubmitInnerSpaceCompactionTask(
+          tsFileManager.getStorageGroupName(),
+          tsFileManager.getVirtualStorageGroup(),
+          timePartition,
+          tsFileManager,
+          false);
     } catch (InterruptedException e) {
       LOGGER.error("Exception occurs when selecting compaction tasks", e);
     }
@@ -91,12 +92,17 @@ public class CompactionScheduler {
     if (sequence) {
       AbstractInnerSequenceSpaceCompactionSelector innerSpaceCompactionSelector =
           config
-              .getInnerCompactionStrategy()
+              .getInnerSequenceCompactionStrategy()
               .getCompactionSelector(
                   logicalStorageGroupName, virtualStorageGroupName, timePartition, tsFileManager);
       taskList = innerSpaceCompactionSelector.select();
     } else {
-
+      AbstractInnerUnsequenceSpaceCompactionSelector innerSpaceCompactionSelector =
+          config
+              .getInnerUnsequenceCompactionStrategy()
+              .getCompactionSelector(
+                  logicalStorageGroupName, virtualStorageGroupName, timePartition, tsFileManager);
+      taskList = innerSpaceCompactionSelector.select();
     }
     for (AbstractCompactionTask task : taskList) {
       CompactionTaskManager.getInstance().addTaskToWaitingQueue(task);

@@ -19,15 +19,9 @@
 
 package org.apache.iotdb.db.engine.compaction.constant;
 
-import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSequenceSpaceCompactionSelector;
-import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompactionSelector;
-import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-
-import java.util.List;
 
 public enum InnerSequenceCompactionStrategy {
   SIZE_TIERED_COMPACTION;
@@ -37,27 +31,6 @@ public enum InnerSequenceCompactionStrategy {
       return SIZE_TIERED_COMPACTION;
     }
     throw new RuntimeException("Illegal Compaction Strategy " + name);
-  }
-
-  public AbstractInnerSpaceCompactionTask getCompactionTask(
-      String logicalStorageGroupName,
-      String virtualStorageGroup,
-      long timePartition,
-      TsFileManager tsFileManager,
-      List<TsFileResource> selectedTsFileResourceList,
-      boolean sequence) {
-    switch (this) {
-      case SIZE_TIERED_COMPACTION:
-      default:
-        return new SizeTieredCompactionTask(
-            logicalStorageGroupName,
-            virtualStorageGroup,
-            timePartition,
-            tsFileManager,
-            selectedTsFileResourceList,
-            sequence,
-            CompactionTaskManager.currentTaskNum);
-    }
   }
 
   public AbstractInnerSequenceSpaceCompactionSelector getCompactionSelector(

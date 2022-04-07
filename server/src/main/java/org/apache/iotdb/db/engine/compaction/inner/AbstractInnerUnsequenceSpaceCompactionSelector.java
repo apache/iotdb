@@ -23,7 +23,6 @@ import org.apache.iotdb.db.engine.compaction.task.ICompactionSelector;
 
 import java.util.List;
 
-public abstract class AbstractInnerUnsequenceSpaceCompactionSelector
-    implements ICompactionSelector {
-  public abstract List<AbstractCompactionTask> select();
+public interface AbstractInnerUnsequenceSpaceCompactionSelector extends ICompactionSelector {
+  List<AbstractCompactionTask> select();
 }

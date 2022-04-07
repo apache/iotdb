@@ -21,8 +21,10 @@ package org.apache.iotdb.db.engine.compaction;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.comparator.DefaultCompactionTaskComparatorImpl;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionPriority;
-import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionTask;
-import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionTask;
+import org.apache.iotdb.db.engine.compaction.cross.CrossSpaceCompactionTask;
+import org.apache.iotdb.db.engine.compaction.inner.InnerSpaceCompactionTask;
+import org.apache.iotdb.db.engine.compaction.performer.ReadChunkCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.performer.ReadPointCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
@@ -264,7 +266,7 @@ public class CompactionTaskComparatorTest {
     }
   }
 
-  private static class FakedInnerSpaceCompactionTask extends AbstractInnerSpaceCompactionTask {
+  private static class FakedInnerSpaceCompactionTask extends InnerSpaceCompactionTask {
 
     public FakedInnerSpaceCompactionTask(
         String storageGroupName,
@@ -275,18 +277,17 @@ public class CompactionTaskComparatorTest {
         List<TsFileResource> selectedTsFileResourceList) {
       super(
           storageGroupName,
+          "0",
           timePartition,
-          currentTaskNum,
-          sequence,
+          tsFileManager,
           selectedTsFileResourceList,
-          tsFileManager);
+          sequence,
+          new ReadChunkCompactionPerformer(),
+          currentTaskNum);
     }
 
     @Override
     protected void doCompaction() throws Exception {}
-
-    @Override
-    protected void performCompaction() throws Exception {}
 
     @Override
     public boolean equalsOtherTask(AbstractCompactionTask other) {
@@ -299,7 +300,7 @@ public class CompactionTaskComparatorTest {
     }
   }
 
-  private static class FakeCrossSpaceCompactionTask extends AbstractCrossSpaceCompactionTask {
+  private static class FakeCrossSpaceCompactionTask extends CrossSpaceCompactionTask {
 
     public FakeCrossSpaceCompactionTask(
         String fullStorageGroupName,
@@ -310,18 +311,17 @@ public class CompactionTaskComparatorTest {
         List<TsFileResource> selectedUnsequenceFiles) {
       super(
           fullStorageGroupName,
+          "0",
           timePartition,
-          currentTaskNum,
+          tsFileManager,
           selectedSequenceFiles,
           selectedUnsequenceFiles,
-          tsFileManager);
+          new ReadPointCompactionPerformer(),
+          currentTaskNum);
     }
 
     @Override
     protected void doCompaction() throws Exception {}
-
-    @Override
-    protected void performCompaction() throws Exception {}
 
     @Override
     public boolean equalsOtherTask(AbstractCompactionTask other) {

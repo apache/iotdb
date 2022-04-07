@@ -54,6 +54,12 @@ public class ReadChunkCompactionPerformer extends AbstractCompactionPerformer {
     this.targetResource = targetFile;
   }
 
+  public ReadChunkCompactionPerformer(List<TsFileResource> sourceFiles) {
+    this.seqFiles = sourceFiles;
+  }
+
+  public ReadChunkCompactionPerformer() {}
+
   @Override
   public void perform()
       throws IOException, MetadataException, InterruptedException, StorageEngineException {
@@ -79,6 +85,22 @@ public class ReadChunkCompactionPerformer extends AbstractCompactionPerformer {
       writer.endFile();
       targetResource.close();
     }
+  }
+
+  @Override
+  public void setTargetFiles(List<TsFileResource> targetFiles) {
+    if (targetFiles.size() != 1) {
+      throw new RuntimeException(
+          String.format(
+              "Current performer only supports for one target file while getting %d target files",
+              targetFiles.size()));
+    }
+    this.targetResource = targetFiles.get(0);
+  }
+
+  @Override
+  public void setUnseqFiles(List<TsFileResource> unseqFiles) {
+    throw new RuntimeException("The performer of this class cannot compact with unseq files!");
   }
 
   private void compactAlignedSeries(

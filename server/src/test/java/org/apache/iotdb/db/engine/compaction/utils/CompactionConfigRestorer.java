@@ -30,7 +30,8 @@ public class CompactionConfigRestorer {
   private boolean enableUnseqSpaceCompaction = false;
   private boolean enableCrossSpaceCompaction = true;
   private CrossCompactionStrategy crossStrategy = CrossCompactionStrategy.REWRITE_COMPACTION;
-  private InnerSequenceCompactionStrategy innerStrategy = InnerSequenceCompactionStrategy.SIZE_TIERED_COMPACTION;
+  private InnerSequenceCompactionStrategy innerStrategy =
+      InnerSequenceCompactionStrategy.SIZE_TIERED_COMPACTION;
   private CompactionPriority priority = CompactionPriority.BALANCE;
   private long targetFileSize = 1073741824L;
   private long targetChunkSize = 1048576L;
@@ -52,7 +53,7 @@ public class CompactionConfigRestorer {
     config.setEnableUnseqSpaceCompaction(enableUnseqSpaceCompaction);
     config.setEnableCrossSpaceCompaction(enableCrossSpaceCompaction);
     config.setCrossCompactionStrategy(crossStrategy);
-    config.setInnerCompactionStrategy(innerStrategy);
+    config.setInnerSequenceCompactionStrategy(innerStrategy);
     config.setCompactionPriority(priority);
     config.setTargetCompactionFileSize(targetFileSize);
     config.setTargetChunkSize(targetChunkSize);

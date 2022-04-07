@@ -77,7 +77,8 @@ public class InnerCompactionSchedulerTest extends AbstractCompactionTest {
   }
 
   @Test
-  public void testFileSelector1() throws IOException, MetadataException, WriteProcessException {
+  public void testFileSelector1()
+      throws IOException, MetadataException, WriteProcessException, InterruptedException {
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
     IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(true);
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(50);
@@ -103,7 +104,8 @@ public class InnerCompactionSchedulerTest extends AbstractCompactionTest {
   }
 
   @Test
-  public void testFileSelector2() throws IOException, MetadataException, WriteProcessException {
+  public void testFileSelector2()
+      throws IOException, MetadataException, WriteProcessException, InterruptedException {
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(50);
     IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(50);
     TsFileResourceList tsFileResources = new TsFileResourceList();
@@ -134,7 +136,7 @@ public class InnerCompactionSchedulerTest extends AbstractCompactionTest {
 
   @Test
   public void testFileSelectorWithUnclosedFile()
-      throws IOException, MetadataException, WriteProcessException {
+      throws IOException, MetadataException, WriteProcessException, InterruptedException {
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(50);
     IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(50);
     TsFileResourceList tsFileResources = new TsFileResourceList();

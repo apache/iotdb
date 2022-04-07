@@ -19,9 +19,11 @@
 package org.apache.iotdb.db.engine.compaction;
 
 import org.apache.iotdb.db.constant.TestConstant;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.RewriteCrossSpaceCompactionTask;
+import org.apache.iotdb.db.engine.compaction.cross.CrossSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.inner.InnerCompactionTest;
-import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompactionTask;
+import org.apache.iotdb.db.engine.compaction.inner.InnerSpaceCompactionTask;
+import org.apache.iotdb.db.engine.compaction.performer.ReadChunkCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.performer.ReadPointCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -68,12 +70,26 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
     TsFileManager tsFileManager =
         new TsFileManager("root.compactionTest", "0", tempSGDir.getAbsolutePath());
     tsFileManager.addAll(seqResources, true);
-    SizeTieredCompactionTask task1 =
-        new SizeTieredCompactionTask(
-            "root.compactionTest", "0", 0, tsFileManager, seqResources, true, new AtomicInteger(0));
-    SizeTieredCompactionTask task2 =
-        new SizeTieredCompactionTask(
-            "root.compactionTest", "0", 0, tsFileManager, seqResources, true, new AtomicInteger(0));
+    InnerSpaceCompactionTask task1 =
+        new InnerSpaceCompactionTask(
+            "root.compactionTest",
+            "0",
+            0,
+            tsFileManager,
+            seqResources,
+            true,
+            new ReadChunkCompactionPerformer(seqResources),
+            new AtomicInteger(0));
+    InnerSpaceCompactionTask task2 =
+        new InnerSpaceCompactionTask(
+            "root.compactionTest",
+            "0",
+            0,
+            tsFileManager,
+            seqResources,
+            true,
+            new ReadChunkCompactionPerformer(seqResources),
+            new AtomicInteger(0));
     seqResources.get(0).readLock();
     CompactionTaskManager manager = CompactionTaskManager.getInstance();
     try {
@@ -119,12 +135,26 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
     TsFileManager tsFileManager =
         new TsFileManager("root.compactionTest", "0", tempSGDir.getAbsolutePath());
     tsFileManager.addAll(seqResources, true);
-    SizeTieredCompactionTask task1 =
-        new SizeTieredCompactionTask(
-            "root.compactionTest", "0", 0, tsFileManager, seqResources, true, new AtomicInteger(0));
-    SizeTieredCompactionTask task2 =
-        new SizeTieredCompactionTask(
-            "root.compactionTest", "0", 0, tsFileManager, seqResources, true, new AtomicInteger(0));
+    InnerSpaceCompactionTask task1 =
+        new InnerSpaceCompactionTask(
+            "root.compactionTest",
+            "0",
+            0,
+            tsFileManager,
+            seqResources,
+            true,
+            new ReadChunkCompactionPerformer(seqResources),
+            new AtomicInteger(0));
+    InnerSpaceCompactionTask task2 =
+        new InnerSpaceCompactionTask(
+            "root.compactionTest",
+            "0",
+            0,
+            tsFileManager,
+            seqResources,
+            true,
+            new ReadChunkCompactionPerformer(seqResources),
+            new AtomicInteger(0));
     seqResources.get(0).readLock();
     try {
       CompactionTaskManager manager = CompactionTaskManager.getInstance();
@@ -171,12 +201,26 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
     TsFileManager tsFileManager =
         new TsFileManager("root.compactionTest", "0", tempSGDir.getAbsolutePath());
     tsFileManager.addAll(seqResources, true);
-    SizeTieredCompactionTask task1 =
-        new SizeTieredCompactionTask(
-            "root.compactionTest", "0", 0, tsFileManager, seqResources, true, new AtomicInteger(0));
-    SizeTieredCompactionTask task2 =
-        new SizeTieredCompactionTask(
-            "root.compactionTest", "0", 0, tsFileManager, seqResources, true, new AtomicInteger(0));
+    InnerSpaceCompactionTask task1 =
+        new InnerSpaceCompactionTask(
+            "root.compactionTest",
+            "0",
+            0,
+            tsFileManager,
+            seqResources,
+            true,
+            new ReadChunkCompactionPerformer(seqResources),
+            new AtomicInteger(0));
+    InnerSpaceCompactionTask task2 =
+        new InnerSpaceCompactionTask(
+            "root.compactionTest",
+            "0",
+            0,
+            tsFileManager,
+            seqResources,
+            true,
+            new ReadChunkCompactionPerformer(seqResources),
+            new AtomicInteger(0));
     CompactionTaskManager manager = CompactionTaskManager.getInstance();
     manager.addTaskToWaitingQueue(task1);
     manager.submitTaskFromTaskQueue();
@@ -209,9 +253,16 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
     TsFileManager tsFileManager =
         new TsFileManager("root.compactionTest", "0", tempSGDir.getAbsolutePath());
     tsFileManager.addAll(seqResources, true);
-    SizeTieredCompactionTask task1 =
-        new SizeTieredCompactionTask(
-            "root.compactionTest", "0", 0, tsFileManager, seqResources, true, new AtomicInteger(0));
+    InnerSpaceCompactionTask task1 =
+        new InnerSpaceCompactionTask(
+            "root.compactionTest",
+            "0",
+            0,
+            tsFileManager,
+            seqResources,
+            true,
+            new ReadChunkCompactionPerformer(seqResources),
+            new AtomicInteger(0));
     CompactionTaskManager manager = CompactionTaskManager.getInstance();
     manager.restart();
     seqResources.get(0).readLock();
@@ -248,9 +299,16 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
     TsFileManager tsFileManager =
         new TsFileManager("root.compactionTest", "0", tempSGDir.getAbsolutePath());
     tsFileManager.addAll(seqResources, true);
-    SizeTieredCompactionTask task =
-        new SizeTieredCompactionTask(
-            "root.compactionTest", "0", 0, tsFileManager, seqResources, true, new AtomicInteger(0));
+    InnerSpaceCompactionTask task =
+        new InnerSpaceCompactionTask(
+            "root.compactionTest",
+            "0",
+            0,
+            tsFileManager,
+            seqResources,
+            true,
+            new ReadChunkCompactionPerformer(seqResources),
+            new AtomicInteger(0));
     CompactionTaskManager.getInstance().addTaskToWaitingQueue(task);
 
     for (TsFileResource resource : seqResources) {
@@ -270,14 +328,15 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
         new TsFileManager("root.compactionTest", "0", tempSGDir.getAbsolutePath());
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
-    RewriteCrossSpaceCompactionTask task =
-        new RewriteCrossSpaceCompactionTask(
+    CrossSpaceCompactionTask task =
+        new CrossSpaceCompactionTask(
             COMPACTION_TEST_SG,
             "0",
             0,
             tsFileManager,
             seqResources,
             unseqResources,
+            new ReadPointCompactionPerformer(),
             new AtomicInteger(0));
 
     for (TsFileResource resource : seqResources) {

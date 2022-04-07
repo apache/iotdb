@@ -22,8 +22,8 @@ package org.apache.iotdb.db.engine.compaction.comparator;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionPriority;
-import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionTask;
-import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionTask;
+import org.apache.iotdb.db.engine.compaction.cross.CrossSpaceCompactionTask;
+import org.apache.iotdb.db.engine.compaction.inner.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 
@@ -34,29 +34,28 @@ public class DefaultCompactionTaskComparatorImpl implements ICompactionTaskCompa
 
   @Override
   public int compare(AbstractCompactionTask o1, AbstractCompactionTask o2) {
-    if ((((o1 instanceof AbstractInnerSpaceCompactionTask)
-            && (o2 instanceof AbstractCrossSpaceCompactionTask))
-        || ((o2 instanceof AbstractInnerSpaceCompactionTask)
-            && (o1 instanceof AbstractCrossSpaceCompactionTask)))) {
+    if ((((o1 instanceof InnerSpaceCompactionTask) && (o2 instanceof CrossSpaceCompactionTask))
+        || ((o2 instanceof InnerSpaceCompactionTask)
+            && (o1 instanceof CrossSpaceCompactionTask)))) {
       if (config.getCompactionPriority() == CompactionPriority.BALANCE) {
         return 0;
       } else if (config.getCompactionPriority() == CompactionPriority.INNER_CROSS) {
-        return o1 instanceof AbstractInnerSpaceCompactionTask ? -1 : 1;
+        return o1 instanceof InnerSpaceCompactionTask ? -1 : 1;
       } else {
-        return o1 instanceof AbstractCrossSpaceCompactionTask ? -1 : 1;
+        return o1 instanceof CrossSpaceCompactionTask ? -1 : 1;
       }
     }
-    if (o1 instanceof AbstractInnerSpaceCompactionTask) {
+    if (o1 instanceof InnerSpaceCompactionTask) {
       return compareInnerSpaceCompactionTask(
-          (AbstractInnerSpaceCompactionTask) o1, (AbstractInnerSpaceCompactionTask) o2);
+          (InnerSpaceCompactionTask) o1, (InnerSpaceCompactionTask) o2);
     } else {
       return compareCrossSpaceCompactionTask(
-          (AbstractCrossSpaceCompactionTask) o1, (AbstractCrossSpaceCompactionTask) o2);
+          (CrossSpaceCompactionTask) o1, (CrossSpaceCompactionTask) o2);
     }
   }
 
   public int compareInnerSpaceCompactionTask(
-      AbstractInnerSpaceCompactionTask o1, AbstractInnerSpaceCompactionTask o2) {
+      InnerSpaceCompactionTask o1, InnerSpaceCompactionTask o2) {
     if (o1.isSequence() ^ o2.isSequence()) {
       // prioritize sequence file compaction
       return o1.isSequence() ? -1 : 1;
@@ -98,7 +97,7 @@ public class DefaultCompactionTaskComparatorImpl implements ICompactionTaskCompa
   }
 
   public int compareCrossSpaceCompactionTask(
-      AbstractCrossSpaceCompactionTask o1, AbstractCrossSpaceCompactionTask o2) {
+      CrossSpaceCompactionTask o1, CrossSpaceCompactionTask o2) {
     if (o1.getSelectedSequenceFiles().size() != o2.getSelectedSequenceFiles().size()) {
       // we prefer the task with fewer sequence files
       // because this type of tasks consume fewer memory during execution
