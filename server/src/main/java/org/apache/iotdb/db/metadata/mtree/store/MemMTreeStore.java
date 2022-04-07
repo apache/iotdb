@@ -117,8 +117,27 @@ public class MemMTreeStore implements IMTreeStore {
 
   @Override
   public void setAlias(IMeasurementMNode measurementMNode, String alias) {
+    String existingAlias = measurementMNode.getAlias();
+    if (existingAlias == null && alias == null) {
+      return;
+    }
+
     measurementMNode.setAlias(alias);
-    memoryStatistics.requestMemory(IMNodeSizeEstimator.getAliasOccupation() + alias.length());
+    updateMNode(measurementMNode);
+
+    if (existingAlias != null && alias != null) {
+      int delta = alias.length() - existingAlias.length();
+      if (delta > 0) {
+        memoryStatistics.requestMemory(delta);
+      } else if (delta < 0) {
+        memoryStatistics.releaseMemory(-delta);
+      }
+    } else if (alias == null) {
+      memoryStatistics.releaseMemory(
+          IMNodeSizeEstimator.getAliasOccupation() + existingAlias.length());
+    } else {
+      memoryStatistics.requestMemory(IMNodeSizeEstimator.getAliasOccupation() + alias.length());
+    }
   }
 
   @Override

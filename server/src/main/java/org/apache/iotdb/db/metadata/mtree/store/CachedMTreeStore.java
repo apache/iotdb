@@ -283,9 +283,22 @@ public class CachedMTreeStore implements IMTreeStore {
 
   @Override
   public void setAlias(IMeasurementMNode measurementMNode, String alias) throws MetadataException {
+    String existingAlias = measurementMNode.getAlias();
+    if (existingAlias == null && alias == null) {
+      return;
+    }
+
     measurementMNode.setAlias(alias);
-    memManager.updatePinnedSize(IMNodeSizeEstimator.getAliasOccupation() + alias.length());
     updateMNode(measurementMNode);
+
+    if (existingAlias != null && alias != null) {
+      memManager.updatePinnedSize(alias.length() - existingAlias.length());
+    } else if (alias == null) {
+      memManager.updatePinnedSize(
+          -(IMNodeSizeEstimator.getAliasOccupation() + existingAlias.length()));
+    } else {
+      memManager.updatePinnedSize(IMNodeSizeEstimator.getAliasOccupation() + alias.length());
+    }
   }
 
   /**
