@@ -78,7 +78,11 @@ def test_aligned_timeseries():
         encoding_lst_ = [TSEncoding.PLAIN for _ in range(len(data_type_lst_))]
         compressor_lst_ = [Compressor.SNAPPY for _ in range(len(data_type_lst_))]
         session.create_aligned_time_series(
-            "root.sg_test_01.d_02", measurements_lst_, data_type_lst_, encoding_lst_, compressor_lst_
+            "root.sg_test_01.d_02",
+            measurements_lst_,
+            data_type_lst_,
+            encoding_lst_,
+            compressor_lst_,
         )
 
         # setting more aligned time series once.
@@ -101,19 +105,23 @@ def test_aligned_timeseries():
         encoding_lst_ = [TSEncoding.PLAIN for _ in range(len(data_type_lst_))]
         compressor_lst_ = [Compressor.SNAPPY for _ in range(len(data_type_lst_))]
         session.create_aligned_time_series(
-            "root.sg_test_01.d_02", measurements_lst_, data_type_lst_, encoding_lst_, compressor_lst_
+            "root.sg_test_01.d_02",
+            measurements_lst_,
+            data_type_lst_,
+            encoding_lst_,
+            compressor_lst_,
         )
 
         # delete time series
         if (
-                session.delete_time_series(
-                    [
-                        "root.sg_test_01.d_02.s_07",
-                        "root.sg_test_01.d_02.s_08",
-                        "root.sg_test_01.d_02.s_09",
-                    ]
-                )
-                < 0
+            session.delete_time_series(
+                [
+                    "root.sg_test_01.d_02.s_07",
+                    "root.sg_test_01.d_02.s_08",
+                    "root.sg_test_01.d_02.s_09",
+                ]
+            )
+            < 0
         ):
             test_fail()
             print_message("delete time series failed")
@@ -141,10 +149,10 @@ def test_aligned_timeseries():
             TSDataType.TEXT,
         ]
         if (
-                session.insert_aligned_record(
-                    "root.sg_test_01.d_02", 1, measurements_, data_types_, values_
-                )
-                < 0
+            session.insert_aligned_record(
+                "root.sg_test_01.d_02", 1, measurements_, data_types_, values_
+            )
+            < 0
         ):
             test_fail()
             print_message("insert record failed")
@@ -161,10 +169,10 @@ def test_aligned_timeseries():
         data_type_list_ = [data_types_, data_types_]
         device_ids_ = ["root.sg_test_01.d_02", "root.sg_test_01.d_02"]
         if (
-                session.insert_aligned_records(
-                    device_ids_, [2, 3], measurements_list_, data_type_list_, values_list_
-                )
-                < 0
+            session.insert_aligned_records(
+                device_ids_, [2, 3], measurements_list_, data_type_list_, values_list_
+            )
+            < 0
         ):
             test_fail()
             print_message("insert records failed")
@@ -189,7 +197,11 @@ def test_aligned_timeseries():
             "root.sg_test_01.d_02", measurements_, data_types_, values_, [8, 9, 10, 11]
         )
         tablet_02 = Tablet(
-            "root.sg_test_01.d_02", measurements_, data_types_, values_, [12, 13, 14, 15]
+            "root.sg_test_01.d_02",
+            measurements_,
+            data_types_,
+            values_,
+            [12, 13, 14, 15],
         )
         if session.insert_aligned_tablets([tablet_01, tablet_02]) < 0:
             test_fail()
@@ -225,24 +237,24 @@ def test_aligned_timeseries():
         values_list = [[False, 22, 33], [True, 1, 23], [False, 15, 26]]
 
         if (
-                session.insert_aligned_records_of_one_device(
-                    "root.sg_test_01.d_02",
-                    time_list,
-                    measurements_list,
-                    data_types_list,
-                    values_list,
-                )
-                < 0
+            session.insert_aligned_records_of_one_device(
+                "root.sg_test_01.d_02",
+                time_list,
+                measurements_list,
+                data_types_list,
+                values_list,
+            )
+            < 0
         ):
             test_fail()
             print_message("insert records of one device failed")
 
         # execute non-query sql statement
         if (
-                session.execute_non_query_statement(
-                    "insert into root.sg_test_01.d_02(timestamp, s_02) aligned values(16, 188)"
-                )
-                < 0
+            session.execute_non_query_statement(
+                "insert into root.sg_test_01.d_02(timestamp, s_02) aligned values(16, 188)"
+            )
+            < 0
         ):
             test_fail()
             print_message(
@@ -250,7 +262,9 @@ def test_aligned_timeseries():
             )
 
         # execute sql query statement
-        session_data_set = session.execute_query_statement("select * from root.sg_test_01.d_02")
+        session_data_set = session.execute_query_statement(
+            "select * from root.sg_test_01.d_02"
+        )
         session_data_set.set_fetch_size(1024)
         expect_count = 20
         actual_count = 0
@@ -270,6 +284,7 @@ def test_aligned_timeseries():
 
         # close session connection.
         session.close()
+
 
 if final_flag:
     print("All executions done!!")

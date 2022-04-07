@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,51 +16,52 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.operator.source;
+package org.apache.iotdb.db.mpp.buffer;
 
-import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.mpp.operator.OperatorContext;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
-public class SeriesAggregateScanOperator implements SourceOperator {
+import java.util.ArrayList;
+import java.util.List;
+
+import static com.google.common.util.concurrent.Futures.immediateVoidFuture;
+
+public class StubSinkHandle implements ISinkHandle {
+
+  private final ListenableFuture<Void> NOT_BLOCKED = immediateVoidFuture();
+
+  private final List<TsBlock> tsBlocks = new ArrayList<>();
+
   @Override
-  public OperatorContext getOperatorContext() {
-    return null;
+  public ListenableFuture<Void> isFull() {
+    return NOT_BLOCKED;
   }
 
   @Override
-  public ListenableFuture<Void> isBlocked() {
-    return SourceOperator.super.isBlocked();
+  public void send(TsBlock tsBlock) {
+    tsBlocks.add(tsBlock);
   }
 
   @Override
-  public TsBlock next() {
-    return null;
+  public void send(int partition, TsBlock tsBlock) {
+    tsBlocks.add(tsBlock);
   }
 
   @Override
-  public boolean hasNext() {
-    return false;
+  public void setNoMoreTsBlocks() {}
+
+  @Override
+  public void close() {
+    tsBlocks.clear();
   }
 
   @Override
-  public void close() throws Exception {
-    SourceOperator.super.close();
+  public void abort() {
+    tsBlocks.clear();
   }
 
-  @Override
-  public boolean isFinished() {
-    return false;
+  public List<TsBlock> getTsBlocks() {
+    return tsBlocks;
   }
-
-  @Override
-  public PlanNodeId getSourceId() {
-    return null;
-  }
-
-  @Override
-  public void initQueryDataSource(QueryDataSource dataSource) {}
 }
