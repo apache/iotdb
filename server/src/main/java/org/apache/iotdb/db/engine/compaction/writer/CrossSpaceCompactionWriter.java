@@ -50,7 +50,7 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
   private final boolean[] isEmptyFile;
 
   // This variable has three values, which is
-  // 0: has not start chunk group yet
+  // 0: has not flushed chunk group header yet
   // 1: start flushing chunk group header
   // 2: finish flushing chunk group header
   // The index of the array corresponds to each target file.
