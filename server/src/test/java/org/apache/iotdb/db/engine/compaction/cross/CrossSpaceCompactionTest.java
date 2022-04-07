@@ -34,6 +34,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -96,11 +97,11 @@ public class CrossSpaceCompactionTest {
 
   @Before
   public void setUp() throws MetadataException {
-    IoTDB.schemaEngine.init();
-    IoTDB.schemaEngine.setStorageGroup(new PartialPath(COMPACTION_TEST_SG));
+    IoTDB.configManager.init();
+    IoTDB.schemaProcessor.setStorageGroup(new PartialPath(COMPACTION_TEST_SG));
     for (String fullPath : fullPaths) {
       PartialPath path = new PartialPath(fullPath);
-      IoTDB.schemaEngine.createTimeseries(
+      IoTDB.schemaProcessor.createTimeseries(
           path,
           TSDataType.INT64,
           TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder()),
@@ -116,7 +117,7 @@ public class CrossSpaceCompactionTest {
     CompactionClearUtils.deleteEmptyDir(new File("target"));
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
-    IoTDB.schemaEngine.clear();
+    IoTDB.configManager.clear();
     EnvironmentUtils.cleanAllDir();
     Thread.currentThread().setName(oldThreadName);
     new CompactionConfigRestorer().restoreCompactionConfig();
@@ -442,7 +443,7 @@ public class CrossSpaceCompactionTest {
                   new TsFileResource(
                       TsFileNameGenerator.increaseCrossCompactionCnt(seqResource).getTsFile());
               targetResource.deserialize();
-              targetResource.setClosed(true);
+              targetResource.setStatus(TsFileResourceStatus.CLOSED);
               targetTsfileResourceList.add(targetResource);
             }
             CompactionCheckerUtils.checkDataAndResource(sourceData, targetTsfileResourceList);
@@ -745,7 +746,7 @@ public class CrossSpaceCompactionTest {
                   new TsFileResource(
                       TsFileNameGenerator.increaseCrossCompactionCnt(seqResource).getTsFile());
               targetResource.deserialize();
-              targetResource.setClosed(true);
+              targetResource.setStatus(TsFileResourceStatus.CLOSED);
               targetTsfileResourceList.add(targetResource);
             }
             CompactionCheckerUtils.checkDataAndResource(sourceData, targetTsfileResourceList);
@@ -1047,7 +1048,7 @@ public class CrossSpaceCompactionTest {
                   new TsFileResource(
                       TsFileNameGenerator.increaseCrossCompactionCnt(seqResource).getTsFile());
               targetResource.deserialize();
-              targetResource.setClosed(true);
+              targetResource.setStatus(TsFileResourceStatus.CLOSED);
               targetTsfileResourceList.add(targetResource);
             }
             CompactionCheckerUtils.checkDataAndResource(sourceData, targetTsfileResourceList);

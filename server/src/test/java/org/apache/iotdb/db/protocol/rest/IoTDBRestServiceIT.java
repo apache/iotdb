@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.protocol.rest;
 
-import org.apache.iotdb.db.exception.StartupException;
+import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.db.service.RPCService;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 

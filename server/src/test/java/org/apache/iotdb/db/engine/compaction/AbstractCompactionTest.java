@@ -22,6 +22,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -108,7 +109,7 @@ public class AbstractCompactionTest {
     }
 
     EnvironmentUtils.envSetUp();
-    IoTDB.schemaEngine.init();
+    IoTDB.configManager.init();
   }
 
   /**
@@ -203,7 +204,7 @@ public class AbstractCompactionTest {
       }
     }
     resource.updatePlanIndexes(fileVersion);
-    resource.setClosed(true);
+    resource.setStatus(TsFileResourceStatus.CLOSED);
     // resource.setTimeIndexType((byte) 0);
     resource.serialize();
     if (isSeq) {
@@ -226,14 +227,14 @@ public class AbstractCompactionTest {
           dataTypes.add(TSDataType.INT64);
           encodings.add(TSEncoding.PLAIN);
           compressionTypes.add(CompressionType.UNCOMPRESSED);
-          IoTDB.schemaEngine.createTimeseries(
+          IoTDB.schemaProcessor.createTimeseries(
               new PartialPath(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i, "s" + j),
               TSDataType.INT64,
               TSEncoding.PLAIN,
               CompressionType.UNCOMPRESSED,
               Collections.emptyMap());
         }
-        IoTDB.schemaEngine.createAlignedTimeSeries(
+        IoTDB.schemaProcessor.createAlignedTimeSeries(
             new PartialPath(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + (i + 10000)),
             measurements,
             dataTypes,
@@ -241,7 +242,7 @@ public class AbstractCompactionTest {
             compressionTypes);
       } else {
         for (int j = 0; j < measurementNum; j++) {
-          IoTDB.schemaEngine.createTimeseries(
+          IoTDB.schemaProcessor.createTimeseries(
               new PartialPath(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i, "s" + j),
               TSDataType.INT64,
               TSEncoding.PLAIN,
@@ -257,7 +258,7 @@ public class AbstractCompactionTest {
     removeFiles();
     seqResources.clear();
     unseqResources.clear();
-    IoTDB.schemaEngine.clear();
+    IoTDB.configManager.clear();
     IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(oldTargetChunkSize);
     TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(oldChunkGroupSize);
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(oldPagePointSize);

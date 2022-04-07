@@ -28,7 +28,27 @@
 	    <th colspan="3">IoTDB Sources</th>
 	    <th>release notes</th>  
 	</tr>
-	<tr>
+      <tr>
+            <td rowspan="3">0.13.0</td>
+            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.13.0/apache-iotdb-0.13.0-all-bin.zip">All-in-one</a></td>
+            <td><a href="https://downloads.apache.org/iotdb/0.13.0/apache-iotdb-0.13.0-all-bin.zip.sha512">SHA512</a></td>
+            <td><a href="https://downloads.apache.org/iotdb/0.13.0/apache-iotdb-0.13.0-all-bin.zip.asc">ASC</a></td>
+            <td rowspan="3"><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.13.0/apache-iotdb-0.13.0-source-release.zip">Sources</a></td>
+            <td rowspan="3"><a href="https://downloads.apache.org/iotdb/0.13.0/apache-iotdb-0.13.0-source-release.zip.sha512">SHA512</a></td>
+            <td rowspan="3"><a href="https://downloads.apache.org/iotdb/0.13.0/apache-iotdb-0.13.0-source-release.zip.asc">ASC</a></td>
+            <td rowspan="3"><a href="https://raw.githubusercontent.com/apache/iotdb/v0.13.0/RELEASE_NOTES.md">release notes</a></td>
+      </tr>
+      <tr>
+            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.13.0/apache-iotdb-0.13.0-grafana-plugin-bin.zip">Grafana-plugin</a></td>
+            <td><a href="https://downloads.apache.org/iotdb/0.13.0/apache-iotdb-0.13.0-grafana-plugin-bin.zip.sha512">SHA512</a></td>
+            <td><a href="https://downloads.apache.org/iotdb/0.13.0/apache-iotdb-0.13.0-grafana-plugin-bin.zip.asc">ASC</a></td>
+      </tr>
+      <tr>
+            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.13.0/apache-iotdb-0.13.0-grafana-connector-bin.zip">Grafana-connector</a></td>
+            <td><a href="https://downloads.apache.org/iotdb/0.13.0/apache-iotdb-0.13.0-grafana-connector-bin.zip.sha512">SHA512</a></td>
+            <td><a href="https://downloads.apache.org/iotdb/0.13.0/apache-iotdb-0.13.0-grafana-connector-bin.zip.asc">ASC</a></td>
+      </tr>
+      <tr>
             <td rowspan="4">0.12.5</td>
             <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.12.5/apache-iotdb-0.12.5-all-bin.zip">All-in-one</a></td>
             <td><a href="https://downloads.apache.org/iotdb/0.12.5/apache-iotdb-0.12.5-all-bin.zip.sha512">SHA512</a></td>
@@ -87,6 +107,8 @@ Legacy version are available here: [https://archive.apache.org/dist/iotdb/](http
     directories point to the data folder set in v0.12.x (or the backup folder). You can also modify
     other settings if you want.
   * Stop IoTDB v0.12.x instance, and then start v0.13.x.
+  * **<font color=red>After the steps above, please make sure the `iotdb_version` in `data/system/schema/system.properties` file is `0.13.x`. 
+If not, please change it to `0.13.x` manually.</font>**
   * __NOTICE: V0.13 changes many settings in conf/iotdb-engine.properties, so do not use v0.12's
     configuration file directly.__
 

@@ -104,12 +104,13 @@ var config = {
 				  {
 					text: 'Community',
 					items: [
+					  { text: 'About', link: '/Community/About'},
 					  { text: 'Wiki', link: 'https://cwiki.apache.org/confluence/display/iotdb'},
 					  { text: 'People', link: '/Community/Community-Project Committers'},
 					  { text: 'Powered By', link: '/Community/Community-Powered By'},
 					  { text: 'Resources', link: '/Community/Materials'},
-						{ text: 'Feedback', link: '/Community/Feedback'},
-					]
+					  { text: 'Feedback', link: '/Community/Feedback'},
+				]
 				  },
 				  {
 					text: 'Development',
@@ -699,6 +700,7 @@ var config = {
 							['API/Programming-Go-Native-API','Go Native API'],
 							['API/Programming-JDBC','JDBC (Not Recommend)'],
 							['API/Programming-MQTT','MQTT'],
+							['API/RestService','REST API'],
 							['API/Programming-TsFile-API','TsFile API'],
 							['API/Status-Codes','Status Codes']
 						]
@@ -783,7 +785,8 @@ var config = {
 					{
 						title: 'Ecosystem Integration',
 						children: [
-							['Ecosystem Integration/Grafana Connector','Grafana Connector'],
+							['Ecosystem Integration/Grafana Plugin','Grafana Plugin'],
+							['Ecosystem Integration/Grafana Connector','Grafana Connector (Not Recommended)'],
 							['Ecosystem Integration/Zeppelin-IoTDB','Zeppelin-IoTDB'],
 							['Ecosystem Integration/DBeaver','DBeaver-IoTDB'],
 							['Ecosystem Integration/MapReduce TsFile','MapReduce TsFile'],
@@ -1047,11 +1050,12 @@ var config = {
 				  {
 					text: '社区',
 					items: [
+						{ text: '关于社区', link: '/zh/Community/About'},
 						{ text: 'Wiki', link: 'https://cwiki.apache.org/confluence/display/iotdb'},
 					    { text: '开发人员', link: '/zh/Community/Community-Project Committers'},
 					    { text: '技术支持', link: '/zh/Community/Community-Powered By'},
-							{ text: '活动与报告', link: '/Community/Materials'},
-							{ text: '交流与反馈', link: '/zh/Community/Feedback'},
+						{ text: '活动与报告', link: '/Community/Materials'},
+						{ text: '交流与反馈', link: '/zh/Community/Feedback'},
 					]
 				  },
 				  {
@@ -1623,6 +1627,7 @@ var config = {
 							['API/Programming-Go-Native-API','Go 原生接口'],
 							['API/Programming-JDBC','JDBC (不推荐)'],
 							['API/Programming-MQTT','MQTT'],
+							['API/RestService','REST API'],
 							['API/Programming-TsFile-API','TsFile API'],
 							['API/Status-Codes','状态码']
 						]

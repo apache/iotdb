@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.sync.receiver.load;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -27,7 +27,7 @@ import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.SchemaEngine;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.sync.conf.SyncConstant;
@@ -77,11 +77,10 @@ public class FileLoaderTest {
   }
 
   private void initMetadata() throws MetadataException {
-    SchemaEngine schemaEngine = IoTDB.schemaEngine;
-    schemaEngine.init();
-    schemaEngine.setStorageGroup(new PartialPath("root.sg0"));
-    schemaEngine.setStorageGroup(new PartialPath("root.sg1"));
-    schemaEngine.setStorageGroup(new PartialPath("root.sg2"));
+    LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
+    schemaProcessor.setStorageGroup(new PartialPath("root.sg0"));
+    schemaProcessor.setStorageGroup(new PartialPath("root.sg1"));
+    schemaProcessor.setStorageGroup(new PartialPath("root.sg2"));
   }
 
   @After
@@ -167,7 +166,7 @@ public class FileLoaderTest {
     for (int i = 0; i < 3; i++) {
       VirtualStorageGroupProcessor processor =
           StorageEngine.getInstance().getProcessor(new PartialPath(SG_NAME + i));
-      assertTrue(processor.getSequenceFileTreeSet().isEmpty());
+      assertTrue(processor.getSequenceFileList().isEmpty());
       assertTrue(processor.getUnSequenceFileList().isEmpty());
     }
 
@@ -201,8 +200,8 @@ public class FileLoaderTest {
       VirtualStorageGroupProcessor processor =
           StorageEngine.getInstance().getProcessor(new PartialPath(SG_NAME + i));
       sequenceLoadedFileMap.putIfAbsent(SG_NAME + i, new HashSet<>());
-      assertEquals(10, processor.getSequenceFileTreeSet().size());
-      for (TsFileResource tsFileResource : processor.getSequenceFileTreeSet()) {
+      assertEquals(10, processor.getSequenceFileList().size());
+      for (TsFileResource tsFileResource : processor.getSequenceFileList()) {
         sequenceLoadedFileMap.get(SG_NAME + i).add(tsFileResource.getTsFile().getAbsolutePath());
       }
       assertTrue(processor.getUnSequenceFileList().isEmpty());
@@ -286,7 +285,7 @@ public class FileLoaderTest {
     for (int i = 0; i < 3; i++) {
       VirtualStorageGroupProcessor processor =
           StorageEngine.getInstance().getProcessor(new PartialPath(SG_NAME + i));
-      assertTrue(processor.getSequenceFileTreeSet().isEmpty());
+      assertTrue(processor.getSequenceFileList().isEmpty());
       assertTrue(processor.getUnSequenceFileList().isEmpty());
     }
 
@@ -320,8 +319,8 @@ public class FileLoaderTest {
       VirtualStorageGroupProcessor processor =
           StorageEngine.getInstance().getProcessor(new PartialPath(SG_NAME + i));
       loadedFileMap.putIfAbsent(SG_NAME + i, new HashSet<>());
-      assertEquals(25, processor.getSequenceFileTreeSet().size());
-      for (TsFileResource tsFileResource : processor.getSequenceFileTreeSet()) {
+      assertEquals(25, processor.getSequenceFileList().size());
+      for (TsFileResource tsFileResource : processor.getSequenceFileList()) {
         loadedFileMap.get(SG_NAME + i).add(tsFileResource.getTsFile().getAbsolutePath());
       }
       assertTrue(processor.getUnSequenceFileList().isEmpty());
@@ -378,7 +377,7 @@ public class FileLoaderTest {
       VirtualStorageGroupProcessor processor =
           StorageEngine.getInstance().getProcessor(new PartialPath(SG_NAME + i));
       loadedFileMap.putIfAbsent(SG_NAME + i, new HashSet<>());
-      for (TsFileResource tsFileResource : processor.getSequenceFileTreeSet()) {
+      for (TsFileResource tsFileResource : processor.getSequenceFileList()) {
         loadedFileMap.get(SG_NAME + i).add(tsFileResource.getTsFile().getAbsolutePath());
       }
       assertTrue(processor.getUnSequenceFileList().isEmpty());

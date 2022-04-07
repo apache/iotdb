@@ -153,7 +153,7 @@ public class EnvironmentUtils {
       BloomFilterCache.getInstance().clear();
     }
     // close metadata
-    IoTDB.schemaEngine.clear();
+    IoTDB.configManager.clear();
 
     QueryTimeManager.getInstance().clear();
 
@@ -249,6 +249,8 @@ public class EnvironmentUtils {
     cleanDir(config.getUdfDir());
     // delete tlog
     cleanDir(config.getTriggerDir());
+    // delete mqtt dir
+    cleanDir(config.getMqttDir());
     // delete data files
     for (String dataDir : config.getDataDirs()) {
       cleanDir(dataDir);
@@ -266,6 +268,8 @@ public class EnvironmentUtils {
     // we do not start 9091 port in test.
     MetricConfigDescriptor.getInstance().getMetricConfig().setEnableMetric(false);
     IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(Integer.MAX_VALUE);
+    // the default wal buffer size may cause ci failed
+    IoTDBDescriptor.getInstance().getConfig().setWalBufferSize(4 * 1024 * 1024);
     if (daemon == null) {
       daemon = new IoTDB();
     }
@@ -314,7 +318,7 @@ public class EnvironmentUtils {
   public static void restartDaemon() throws Exception {
     shutdownDaemon();
     stopDaemon();
-    IoTDB.schemaEngine.clear();
+    IoTDB.configManager.clear();
     IDTableManager.getInstance().clear();
     TsFileResourceManager.getInstance().clear();
     reactiveDaemon();

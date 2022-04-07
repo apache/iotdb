@@ -62,7 +62,7 @@ import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator.getTsFileName;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
@@ -99,10 +99,7 @@ public class TsFileResource {
 
   private ModificationFile compactionModFile;
 
-  protected volatile boolean closed = false;
-  private volatile boolean deleted = false;
-  volatile boolean isCompacting = false;
-  volatile boolean compactionCandidate = false;
+  protected volatile TsFileResourceStatus status = TsFileResourceStatus.UNCLOSED;
 
   private TsFileLock tsFileLock = new TsFileLock();
 
@@ -164,9 +161,7 @@ public class TsFileResource {
     this.timeIndex = other.timeIndex;
     this.timeIndexType = other.timeIndexType;
     this.modFile = other.modFile;
-    this.closed = other.closed;
-    this.deleted = other.deleted;
-    this.isCompacting = other.isCompacting;
+    this.status = other.status;
     this.pathToChunkMetadataListMap = other.pathToChunkMetadataListMap;
     this.pathToReadOnlyMemChunkMap = other.pathToReadOnlyMemChunkMap;
     this.pathToTimeSeriesMetadataMap = other.pathToTimeSeriesMetadataMap;
@@ -383,7 +378,7 @@ public class TsFileResource {
   }
 
   public long getTsFileSize() {
-    if (closed) {
+    if (isClosed()) {
       if (tsFileSize == -1) {
         synchronized (this) {
           if (tsFileSize == -1) {
@@ -432,11 +427,11 @@ public class TsFileResource {
   }
 
   public boolean isClosed() {
-    return closed;
+    return this.status != TsFileResourceStatus.UNCLOSED;
   }
 
   public void close() throws IOException {
-    closed = true;
+    this.setStatus(TsFileResourceStatus.CLOSED);
     if (modFile != null) {
       modFile.close();
       modFile = null;
@@ -555,9 +550,7 @@ public class TsFileResource {
 
   @Override
   public String toString() {
-    return String.format(
-        "file is %s, compactionCandidate: %s, compacting: %s",
-        file.toString(), compactionCandidate, isCompacting);
+    return String.format("file is %s, status: ", file.toString(), status);
   }
 
   @Override
@@ -577,32 +570,64 @@ public class TsFileResource {
     return Objects.hash(file);
   }
 
-  public void setClosed(boolean closed) {
-    this.closed = closed;
-  }
-
   public boolean isDeleted() {
-    return deleted;
-  }
-
-  public void setDeleted(boolean deleted) {
-    this.deleted = deleted;
+    return this.status == TsFileResourceStatus.DELETED;
   }
 
   public boolean isCompacting() {
-    return isCompacting;
-  }
-
-  public void setCompacting(boolean compacting) {
-    isCompacting = compacting;
+    return this.status == TsFileResourceStatus.COMPACTING;
   }
 
   public boolean isCompactionCandidate() {
-    return compactionCandidate;
+    return this.status == TsFileResourceStatus.COMPACTION_CANDIDATE;
   }
 
-  public void setCompactionCandidate(boolean compactionCandidate) {
-    this.compactionCandidate = compactionCandidate;
+  public void setStatus(TsFileResourceStatus status) {
+    switch (status) {
+      case CLOSED:
+        if (this.status != TsFileResourceStatus.DELETED) {
+          this.status = TsFileResourceStatus.CLOSED;
+        }
+        break;
+      case UNCLOSED:
+        // Print a stack trace in a warn statement.
+        RuntimeException e = new RuntimeException();
+        LOGGER.error("Setting the status of a TsFileResource to UNCLOSED", e);
+        this.status = TsFileResourceStatus.UNCLOSED;
+        break;
+      case DELETED:
+        if (this.status != TsFileResourceStatus.UNCLOSED) {
+          this.status = TsFileResourceStatus.DELETED;
+        } else {
+          throw new RuntimeException(
+              "Cannot set the status of an unclosed TsFileResource to DELETED");
+        }
+        break;
+      case COMPACTING:
+        if (this.status == TsFileResourceStatus.COMPACTION_CANDIDATE) {
+          this.status = TsFileResourceStatus.COMPACTING;
+        } else {
+          throw new RuntimeException(
+              "Cannot set the status of TsFileResource to COMPACTING while its status is "
+                  + this.status);
+        }
+        break;
+      case COMPACTION_CANDIDATE:
+        if (this.status == TsFileResourceStatus.CLOSED) {
+          this.status = TsFileResourceStatus.COMPACTION_CANDIDATE;
+        } else {
+          throw new RuntimeException(
+              "Cannot set the status of TsFileResource to COMPACTION_CANDIDATE while its status is "
+                  + this.status);
+        }
+        break;
+      default:
+        break;
+    }
+  }
+
+  public TsFileResourceStatus getStatus() {
+    return this.status;
   }
 
   /**
@@ -633,7 +658,7 @@ public class TsFileResource {
     }
 
     long startTime = getStartTime(deviceId);
-    long endTime = closed || !isSeq ? getEndTime(deviceId) : Long.MAX_VALUE;
+    long endTime = isClosed() || !isSeq ? getEndTime(deviceId) : Long.MAX_VALUE;
 
     if (!isAlive(endTime, ttl)) {
       if (debug) {
@@ -656,7 +681,7 @@ public class TsFileResource {
   /** @return true if the TsFile lives beyond TTL */
   private boolean isSatisfied(Filter timeFilter, boolean isSeq, long ttl, boolean debug) {
     long startTime = getFileStartTime();
-    long endTime = closed || !isSeq ? getFileEndTime() : Long.MAX_VALUE;
+    long endTime = isClosed() || !isSeq ? getFileEndTime() : Long.MAX_VALUE;
 
     if (!isAlive(endTime, ttl)) {
       if (debug) {
@@ -695,7 +720,7 @@ public class TsFileResource {
     }
 
     long startTime = getStartTime(deviceId);
-    long endTime = closed || !isSeq ? getEndTime(deviceId) : Long.MAX_VALUE;
+    long endTime = isClosed() || !isSeq ? getEndTime(deviceId) : Long.MAX_VALUE;
 
     if (timeFilter != null) {
       boolean res = timeFilter.satisfyStartEndTime(startTime, endTime);
@@ -853,7 +878,7 @@ public class TsFileResource {
     }
     maxPlanIndex = Math.max(maxPlanIndex, planIndex);
     minPlanIndex = Math.min(minPlanIndex, planIndex);
-    if (closed) {
+    if (isClosed()) {
       try {
         serialize();
       } catch (IOException e) {

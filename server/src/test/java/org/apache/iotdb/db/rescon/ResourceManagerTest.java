@@ -18,13 +18,14 @@
  */
 package org.apache.iotdb.db.rescon;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -53,7 +54,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 import static org.junit.Assert.assertEquals;
 
 public class ResourceManagerTest {
@@ -80,7 +81,7 @@ public class ResourceManagerTest {
 
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
-    IoTDB.schemaEngine.init();
+    IoTDB.configManager.init();
     prevTimeIndexMemoryProportion = CONFIG.getTimeIndexMemoryProportion();
     timeIndexLevel = CONFIG.getTimeIndexLevel();
     prepareSeries();
@@ -98,7 +99,7 @@ public class ResourceManagerTest {
     tsFileResourceManager.setTimeIndexMemoryThreshold(prevTimeIndexMemoryThreshold);
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
-    IoTDB.schemaEngine.clear();
+    IoTDB.configManager.clear();
     TsFileResourceManager.getInstance().clear();
     EnvironmentUtils.cleanAllDir();
   }
@@ -114,11 +115,11 @@ public class ResourceManagerTest {
     for (int i = 0; i < deviceNum; i++) {
       deviceIds[i] = RESOURCE_MANAGER_TEST_SG + PATH_SEPARATOR + "device" + i;
     }
-    IoTDB.schemaEngine.setStorageGroup(new PartialPath(RESOURCE_MANAGER_TEST_SG));
+    IoTDB.schemaProcessor.setStorageGroup(new PartialPath(RESOURCE_MANAGER_TEST_SG));
     for (String device : deviceIds) {
       for (MeasurementSchema measurementSchema : measurementSchemas) {
         PartialPath devicePath = new PartialPath(device);
-        IoTDB.schemaEngine.createTimeseries(
+        IoTDB.schemaProcessor.createTimeseries(
             devicePath.concatNode(measurementSchema.getMeasurementId()),
             measurementSchema.getType(),
             measurementSchema.getEncodingType(),
@@ -194,7 +195,7 @@ public class ResourceManagerTest {
                     + 0
                     + ".tsfile"));
     TsFileResource tsFileResource = new TsFileResource(file);
-    tsFileResource.setClosed(true);
+    tsFileResource.setStatus(TsFileResourceStatus.CLOSED);
     tsFileResource.updatePlanIndexes((long) 0);
     prepareFile(tsFileResource, 0, ptNum, 0);
     long previousRamSize = tsFileResource.calculateRamSize();
@@ -221,7 +222,7 @@ public class ResourceManagerTest {
                     + 0
                     + ".tsfile"));
     TsFileResource tsFileResource = new TsFileResource(file);
-    tsFileResource.setClosed(true);
+    tsFileResource.setStatus(TsFileResourceStatus.CLOSED);
     tsFileResource.updatePlanIndexes((long) 0);
     prepareFile(tsFileResource, 0, ptNum, 0);
     assertEquals(
@@ -248,7 +249,7 @@ public class ResourceManagerTest {
                     + 0
                     + ".tsfile"));
     TsFileResource tsFileResource = new TsFileResource(file);
-    tsFileResource.setClosed(true);
+    tsFileResource.setStatus(TsFileResourceStatus.CLOSED);
     tsFileResource.updatePlanIndexes((long) 0);
     prepareFile(tsFileResource, 0, ptNum, 0);
     assertEquals(
@@ -278,7 +279,7 @@ public class ResourceManagerTest {
                     + 0
                     + ".tsfile"));
     TsFileResource tsFileResource1 = new TsFileResource(file1);
-    tsFileResource1.setClosed(true);
+    tsFileResource1.setStatus(TsFileResourceStatus.CLOSED);
     tsFileResource1.updatePlanIndexes((long) 0);
     prepareFile(tsFileResource1, 0, ptNum, 0);
     assertEquals(
@@ -302,7 +303,7 @@ public class ResourceManagerTest {
                     + 0
                     + ".tsfile"));
     TsFileResource tsFileResource2 = new TsFileResource(file2);
-    tsFileResource2.setClosed(true);
+    tsFileResource2.setStatus(TsFileResourceStatus.CLOSED);
     tsFileResource2.updatePlanIndexes((long) 1);
     prepareFile(tsFileResource2, ptNum, ptNum, 0);
     assertEquals(
@@ -333,7 +334,7 @@ public class ResourceManagerTest {
                       + 0
                       + ".tsfile"));
       TsFileResource tsFileResource = new TsFileResource(file);
-      tsFileResource.setClosed(true);
+      tsFileResource.setStatus(TsFileResourceStatus.CLOSED);
       tsFileResource.updatePlanIndexes((long) i);
       assertEquals(
           TimeIndexLevel.DEVICE_TIME_INDEX,
@@ -376,7 +377,7 @@ public class ResourceManagerTest {
                         + 0
                         + ".tsfile"));
         TsFileResource tsFileResource = new TsFileResource(file);
-        tsFileResource.setClosed(true);
+        tsFileResource.setStatus(TsFileResourceStatus.CLOSED);
         tsFileResource.updatePlanIndexes((long) i);
         seqResources.add(tsFileResource);
         assertEquals(

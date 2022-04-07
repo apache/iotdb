@@ -52,15 +52,15 @@ public class AsyncDataLogApplierTest {
   public void setUp() throws Exception {
     logsToApply = new ArrayList<>();
     appliedLogs = new ConcurrentSkipListSet<>();
-    IoTDB.schemaEngine.init();
+    IoTDB.configManager.init();
     for (int i = 0; i < 10; i++) {
-      IoTDB.schemaEngine.setStorageGroup(new PartialPath(TestUtils.getTestSg(i)));
+      IoTDB.schemaProcessor.setStorageGroup(new PartialPath(TestUtils.getTestSg(i)));
     }
   }
 
   @After
   public void tearDown() throws IOException {
-    IoTDB.schemaEngine.clear();
+    IoTDB.configManager.clear();
     EnvironmentUtils.cleanAllDir();
   }
 
