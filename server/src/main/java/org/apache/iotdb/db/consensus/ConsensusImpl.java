@@ -20,10 +20,14 @@
 package org.apache.iotdb.db.consensus;
 
 import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.consensus.statemachine.DataRegionStateMachine;
+import org.apache.iotdb.db.consensus.statemachine.SchemaRegionStateMachine;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 
@@ -52,9 +56,11 @@ public class ConsensusImpl {
                 gid -> {
                   switch (gid.getType()) {
                     case SchemaRegion:
-                      return SchemaEngine.getInstance().getOrCreateSchemaRegionStateMachine(gid);
+                      return new SchemaRegionStateMachine(
+                          SchemaEngine.getInstance().getSchemaRegion((SchemaRegionId) gid));
                     case DataRegion:
-                      return StorageEngine.getInstance().getOrCreateDataRegionStateMachine(gid);
+                      return new DataRegionStateMachine(
+                          StorageEngine.getInstance().getDataRegion((DataRegionId) gid));
                   }
                   throw new IllegalArgumentException(
                       String.format("Unexpected consensusGroup %s", gid));

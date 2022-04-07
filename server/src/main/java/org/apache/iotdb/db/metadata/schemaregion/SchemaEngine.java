@@ -19,8 +19,7 @@
 
 package org.apache.iotdb.db.metadata.schemaregion;
 
-import org.apache.iotdb.commons.consensus.ConsensusGroupId;
-import org.apache.iotdb.db.consensus.statemachine.SchemaRegionStateMachine;
+import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -32,10 +31,7 @@ import java.util.concurrent.ConcurrentHashMap;
 // manage all the schemaRegion in this dataNode
 public class SchemaEngine {
 
-  private Map<ConsensusGroupId, SchemaRegion> schemaRegionMap;
-
-  private final Map<ConsensusGroupId, SchemaRegionStateMachine> stateMachineMap =
-      new ConcurrentHashMap<>();
+  private Map<SchemaRegionId, SchemaRegion> schemaRegionMap;
 
   private static class SchemaEngineManagerHolder {
     private static final SchemaEngine INSTANCE = new SchemaEngine();
@@ -60,12 +56,8 @@ public class SchemaEngine {
     }
   }
 
-  public SchemaRegion getSchemaRegion(ConsensusGroupId schemaRegionId) {
-    return schemaRegionMap.get(schemaRegionId);
-  }
-
-  public SchemaRegionStateMachine getOrCreateSchemaRegionStateMachine(ConsensusGroupId gid) {
-    return stateMachineMap.computeIfAbsent(gid, id -> new SchemaRegionStateMachine());
+  public SchemaRegion getSchemaRegion(SchemaRegionId regionId) {
+    return schemaRegionMap.get(regionId);
   }
 
   public Collection<SchemaRegion> getAllSchemaRegions() {
@@ -73,9 +65,7 @@ public class SchemaEngine {
   }
 
   public synchronized SchemaRegion createSchemaRegion(
-      PartialPath storageGroup,
-      ConsensusGroupId schemaRegionId,
-      IStorageGroupMNode storageGroupMNode)
+      PartialPath storageGroup, SchemaRegionId schemaRegionId, IStorageGroupMNode storageGroupMNode)
       throws MetadataException {
     SchemaRegion schemaRegion = schemaRegionMap.get(schemaRegionId);
     if (schemaRegion != null) {
@@ -86,7 +76,7 @@ public class SchemaEngine {
     return schemaRegion;
   }
 
-  public void deleteSchemaRegion(ConsensusGroupId schemaRegionId) throws MetadataException {
+  public void deleteSchemaRegion(SchemaRegionId schemaRegionId) throws MetadataException {
     schemaRegionMap.remove(schemaRegionId).deleteSchemaRegion();
   }
 }

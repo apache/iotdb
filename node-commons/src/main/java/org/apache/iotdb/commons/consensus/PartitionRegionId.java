@@ -16,22 +16,40 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.consensus.ratis;
 
-import org.apache.iotdb.commons.consensus.ConsensusGroupId;
-import org.apache.iotdb.commons.consensus.PartitionRegionId;
+package org.apache.iotdb.commons.consensus;
 
-import org.apache.ratis.protocol.RaftGroupId;
-import org.junit.Assert;
-import org.junit.Test;
+import java.nio.ByteBuffer;
 
-public class UtilsTest {
-  @Test
-  public void testEncryption() {
-    ConsensusGroupId raw = new PartitionRegionId(100);
-    RaftGroupId id = Utils.toRatisGroupId(raw);
-    ConsensusGroupId cgid = Utils.toConsensusGroupId(id);
-    Assert.assertEquals(raw.getId(), cgid.getId());
-    Assert.assertEquals(raw.getType(), cgid.getType());
+public class PartitionRegionId implements ConsensusGroupId {
+
+  private int id;
+
+  public PartitionRegionId() {}
+
+  public PartitionRegionId(int id) {
+    this.id = id;
+  }
+
+  @Override
+  public void serializeImpl(ByteBuffer buffer) {
+    buffer.put((byte) GroupType.PartitionRegion.ordinal());
+    buffer.putInt(id);
+  }
+
+  @Override
+  public void deserializeImpl(ByteBuffer buffer) {
+    // TODO: (xingtanzjr) should we add validation for the ordinal ?
+    id = buffer.getInt();
+  }
+
+  @Override
+  public int getId() {
+    return id;
+  }
+
+  @Override
+  public GroupType getType() {
+    return GroupType.PartitionRegion;
   }
 }

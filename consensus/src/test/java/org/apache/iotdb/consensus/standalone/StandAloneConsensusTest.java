@@ -21,7 +21,9 @@ package org.apache.iotdb.consensus.standalone;
 
 import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
-import org.apache.iotdb.commons.consensus.GroupType;
+import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.consensus.PartitionRegionId;
+import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -60,9 +62,9 @@ public class StandAloneConsensusTest {
   private final TestEntry entry1 = new TestEntry(0);
   private final ByteBufferConsensusRequest entry2 =
       new ByteBufferConsensusRequest(ByteBuffer.wrap(new byte[4]));
-  private final ConsensusGroupId dataRegionId = new ConsensusGroupId(GroupType.DataRegion, 0);
-  private final ConsensusGroupId schemaRegionId = new ConsensusGroupId(GroupType.SchemaRegion, 1);
-  private final ConsensusGroupId configId = new ConsensusGroupId(GroupType.PartitionRegion, 2);
+  private final ConsensusGroupId dataRegionId = new DataRegionId(0);
+  private final ConsensusGroupId schemaRegionId = new SchemaRegionId(1);
+  private final ConsensusGroupId configId = new PartitionRegionId(2);
 
   private static class TestEntry implements IConsensusRequest {
 

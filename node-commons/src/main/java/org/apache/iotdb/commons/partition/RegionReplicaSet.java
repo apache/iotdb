@@ -20,6 +20,7 @@ package org.apache.iotdb.commons.partition;
 
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -52,7 +53,7 @@ public class RegionReplicaSet {
   }
 
   public String toString() {
-    return String.format("RegionReplicaSet[%s-%d]: %s", Id.getType(), Id.getId(), dataNodeList);
+    return String.format("RegionReplicaSet[%s-%s]: %s", Id.getType(), Id, dataNodeList);
   }
 
   public void serializeImpl(ByteBuffer buffer) {
@@ -64,9 +65,8 @@ public class RegionReplicaSet {
         });
   }
 
-  public void deserializeImpl(ByteBuffer buffer) {
-    Id = new ConsensusGroupId();
-    Id.deserializeImpl(buffer);
+  public void deserializeImpl(ByteBuffer buffer) throws IOException {
+    Id = ConsensusGroupId.Factory.create(buffer);
 
     int size = buffer.getInt();
     // We should always make dataNodeList as a new Object when deserialization

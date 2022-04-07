@@ -20,7 +20,7 @@ package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
-import org.apache.iotdb.commons.consensus.GroupType;
+import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.commons.hash.DeviceGroupHashExecutor;
 import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -90,7 +90,7 @@ public class ConsensusManager {
   /** Build ConfigNodeGroup ConsensusLayer */
   private void setConsensusLayer() throws IOException {
     // There is only one ConfigNodeGroup
-    consensusGroupId = new ConsensusGroupId(GroupType.PartitionRegion, 0);
+    consensusGroupId = new PartitionRegionId(0);
 
     // Ratis consensus local implement
     consensusImpl =

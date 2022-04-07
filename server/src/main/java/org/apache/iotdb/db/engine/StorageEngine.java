@@ -20,7 +20,7 @@ package org.apache.iotdb.db.engine;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
-import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.ShutdownException;
 import org.apache.iotdb.commons.partition.TimePartitionSlot;
 import org.apache.iotdb.commons.service.IService;
@@ -29,7 +29,6 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.ServerConfigConsistent;
-import org.apache.iotdb.db.consensus.statemachine.DataRegionStateMachine;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.CloseFileListener;
 import org.apache.iotdb.db.engine.flush.FlushListener;
@@ -56,6 +55,7 @@ import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.common.DataRegion;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
@@ -138,8 +138,7 @@ public class StorageEngine implements IService {
   private List<CloseFileListener> customCloseFileListeners = new ArrayList<>();
   private List<FlushListener> customFlushListeners = new ArrayList<>();
 
-  private final Map<ConsensusGroupId, DataRegionStateMachine> stateMachineMap =
-      new ConcurrentHashMap<>();
+  private final Map<DataRegionId, DataRegion> regionMap = new ConcurrentHashMap<>();
 
   private StorageEngine() {}
 
@@ -1078,8 +1077,12 @@ public class StorageEngine implements IService {
     }
   }
 
-  public DataRegionStateMachine getOrCreateDataRegionStateMachine(ConsensusGroupId gid) {
-    return stateMachineMap.computeIfAbsent(gid, id -> new DataRegionStateMachine());
+  public DataRegion createDataRegion(DataRegionId regionId, String sg, long ttl) {
+    return null;
+  }
+
+  public DataRegion getDataRegion(DataRegionId regionId) {
+    return regionMap.get(regionId);
   }
 
   static class InstanceHolder {

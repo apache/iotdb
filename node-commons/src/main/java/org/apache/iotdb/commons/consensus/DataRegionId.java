@@ -16,39 +16,40 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.consensus.common;
 
-import java.util.Arrays;
+package org.apache.iotdb.commons.consensus;
 
-public enum ConsensusType {
-  STANDALONE("standalone"),
-  RATIS("ratis");
+import java.nio.ByteBuffer;
 
-  private final String typeName;
+public class DataRegionId implements ConsensusGroupId {
 
-  ConsensusType(String typeName) {
-    this.typeName = typeName;
-  }
+  private int id;
 
-  public String getTypeName() {
-    return typeName;
+  public DataRegionId() {}
+
+  public DataRegionId(int id) {
+    this.id = id;
   }
 
   @Override
-  public String toString() {
-    return typeName;
+  public void serializeImpl(ByteBuffer buffer) {
+    buffer.put((byte) GroupType.DataRegion.ordinal());
+    buffer.putInt(id);
   }
 
-  public static ConsensusType getConsensusType(String typeName) {
-    for (ConsensusType type : ConsensusType.values()) {
-      if (type.getTypeName().equals(typeName)) {
-        return type;
-      }
-    }
+  @Override
+  public void deserializeImpl(ByteBuffer buffer) {
+    // TODO: (xingtanzjr) should we add validation for the ordinal ?
+    id = buffer.getInt();
+  }
 
-    throw new IllegalArgumentException(
-        String.format(
-            "Unknown consensus type, found: %s expected: %s",
-            typeName, Arrays.toString(ConsensusType.values())));
+  @Override
+  public int getId() {
+    return id;
+  }
+
+  @Override
+  public GroupType getType() {
+    return GroupType.DataRegion;
   }
 }
