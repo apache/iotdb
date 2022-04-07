@@ -50,8 +50,11 @@ def test_tablet_insertion():
         tablet_ = Tablet(
             "root.sg_test_01.d_01", measurements_, data_types_, values_, timestamps_
         )
-        df_input = pd.DataFrame(values_)
         session.insert_tablet(tablet_)
+        columns = []
+        for measurement in measurements_:
+            columns.append("root.sg_test_01.d_01." + measurement)
+        df_input = pd.DataFrame(values_, None, columns)
         df_input.insert(0, "Time", timestamps_)
 
         session_data_set = session.execute_query_statement(
@@ -89,8 +92,11 @@ def test_nullable_tablet_insertion():
         tablet_ = Tablet(
             "root.sg_test_01.d_01", measurements_, data_types_, values_, timestamps_
         )
-        df_input = pd.DataFrame(values_)
         session.insert_tablet(tablet_)
+        columns = []
+        for measurement in measurements_:
+            columns.append("root.sg_test_01.d_01." + measurement)
+        df_input = pd.DataFrame(values_, None, columns)
         df_input.insert(0, "Time", timestamps_)
 
         session_data_set = session.execute_query_statement(
