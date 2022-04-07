@@ -195,7 +195,6 @@ public class AuthorPlan extends PhysicalPlan {
     }
     String nodeNameIsNull = getAuthorInfo(buffer);
     if ("true".equals(nodeNameIsNull)) {
-      int nodeNameSize = buffer.getInt();
       nodeName = getAuthorInfo(buffer);
     }
   }
