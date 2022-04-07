@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.engine.upgrade;
 
-import org.apache.iotdb.db.concurrent.WrappedRunnable;
+import org.apache.iotdb.commons.concurrent.WrappedRunnable;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.service.UpgradeSevice;

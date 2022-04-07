@@ -52,7 +52,7 @@
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-commons</artifactId>
+            <artifactId>node-commons</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
@@ -80,6 +80,16 @@
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>influxdb-thrift</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>iotdb-thrift-datanode</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>iotdb-thrift-confignode</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
@@ -193,7 +203,7 @@
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-jackson</artifactId>
-            <version>0.10.7</version>
+            <version>0.10.8</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>

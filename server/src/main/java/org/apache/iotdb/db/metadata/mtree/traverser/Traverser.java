@@ -32,9 +32,9 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.regex.Pattern;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
-import static org.apache.iotdb.db.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
-import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_ROOT;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 
 /**
  * This class defines the main traversal framework and declares some methods for result process
@@ -78,8 +78,8 @@ public abstract class Traverser {
     }
     this.startNode = startNode;
     this.nodes = nodes;
-    initStartIndexAndLevel(path);
     this.traverseContext = new ArrayDeque<>();
+    initStartIndexAndLevel(path);
   }
 
   /**
@@ -94,6 +94,8 @@ public abstract class Traverser {
     startLevel = 0;
     while (parent != null) {
       startLevel++;
+      traverseContext.addLast(parent);
+
       ancestors.push(parent);
       parent = parent.getParent();
     }
@@ -335,11 +337,7 @@ public abstract class Traverser {
       nodeNames.add(nodes.next().getName());
     }
 
-    if (nodeNames.isEmpty()) {
-      nodeNames.addAll(Arrays.asList(currentNode.getPartialPath().getNodes()));
-    } else {
-      nodeNames.add(currentNode.getName());
-    }
+    nodeNames.add(currentNode.getName());
 
     return nodeNames.toArray(new String[0]);
   }

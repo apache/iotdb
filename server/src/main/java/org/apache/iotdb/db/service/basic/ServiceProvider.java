@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.db.service.basic;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.OperationType;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -70,13 +70,13 @@ public abstract class ServiceProvider {
 
   public static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
+  public static SessionManager SESSION_MANAGER = SessionManager.getInstance();
+
+  // MPP: The following fields will be moved to Coordinator
   public static final QueryTimeManager QUERY_TIME_MANAGER = QueryTimeManager.getInstance();
   public static final TracingManager TRACING_MANAGER = TracingManager.getInstance();
   public static final QueryFrequencyRecorder QUERY_FREQUENCY_RECORDER =
       new QueryFrequencyRecorder(CONFIG);
-
-  public static SessionManager SESSION_MANAGER = SessionManager.getInstance();
-
   private final Planner planner;
   protected final IPlanExecutor executor;
 

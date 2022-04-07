@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.qp.sql;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.runtime.SQLParserException;
+import org.apache.iotdb.db.exception.sql.SQLParserException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 
 import org.junit.After;

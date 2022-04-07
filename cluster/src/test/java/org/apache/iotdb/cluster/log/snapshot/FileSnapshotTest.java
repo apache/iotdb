@@ -114,12 +114,13 @@ public class FileSnapshotTest extends DataSnapshotTest {
     assertEquals(SlotStatus.NULL, dataGroupMember.getSlotManager().getStatus(0));
 
     for (TimeseriesSchema timeseriesSchema : timeseriesSchemas) {
-      assertTrue(IoTDB.schemaEngine.isPathExist(new PartialPath(timeseriesSchema.getFullPath())));
+      assertTrue(
+          IoTDB.schemaProcessor.isPathExist(new PartialPath(timeseriesSchema.getFullPath())));
     }
     VirtualStorageGroupProcessor processor =
         StorageEngine.getInstance().getProcessor(new PartialPath(TestUtils.getTestSg(0)));
     assertEquals(9, processor.getPartitionMaxFileVersions(0));
-    List<TsFileResource> loadedFiles = processor.getSequenceFileTreeSet();
+    List<TsFileResource> loadedFiles = processor.getSequenceFileList();
     assertEquals(tsFileResources.size(), loadedFiles.size());
     for (int i = 0; i < 9; i++) {
       assertEquals(i, loadedFiles.get(i).getMaxPlanIndex());
@@ -157,12 +158,13 @@ public class FileSnapshotTest extends DataSnapshotTest {
       assertEquals(SlotStatus.NULL, dataGroupMember.getSlotManager().getStatus(0));
 
       for (TimeseriesSchema timeseriesSchema : timeseriesSchemas) {
-        assertTrue(IoTDB.schemaEngine.isPathExist(new PartialPath(timeseriesSchema.getFullPath())));
+        assertTrue(
+            IoTDB.schemaProcessor.isPathExist(new PartialPath(timeseriesSchema.getFullPath())));
       }
       VirtualStorageGroupProcessor processor =
           StorageEngine.getInstance().getProcessor(new PartialPath(TestUtils.getTestSg(0)));
       assertEquals(9, processor.getPartitionMaxFileVersions(0));
-      List<TsFileResource> loadedFiles = processor.getSequenceFileTreeSet();
+      List<TsFileResource> loadedFiles = processor.getSequenceFileList();
       assertEquals(tsFileResources.size(), loadedFiles.size());
       for (int i = 0; i < 9; i++) {
         assertEquals(i, loadedFiles.get(i).getMaxPlanIndex());
@@ -206,12 +208,13 @@ public class FileSnapshotTest extends DataSnapshotTest {
     assertEquals(SlotStatus.NULL, dataGroupMember.getSlotManager().getStatus(0));
 
     for (TimeseriesSchema timeseriesSchema : timeseriesSchemas) {
-      assertTrue(IoTDB.schemaEngine.isPathExist(new PartialPath(timeseriesSchema.getFullPath())));
+      assertTrue(
+          IoTDB.schemaProcessor.isPathExist(new PartialPath(timeseriesSchema.getFullPath())));
     }
     VirtualStorageGroupProcessor processor =
         StorageEngine.getInstance().getProcessor(new PartialPath(TestUtils.getTestSg(0)));
     assertEquals(9, processor.getPartitionMaxFileVersions(0));
-    List<TsFileResource> loadedFiles = processor.getSequenceFileTreeSet();
+    List<TsFileResource> loadedFiles = processor.getSequenceFileList();
     assertEquals(tsFileResources.size(), loadedFiles.size());
     for (int i = 0; i < 9; i++) {
       assertEquals(i, loadedFiles.get(i).getMaxPlanIndex());
@@ -251,7 +254,7 @@ public class FileSnapshotTest extends DataSnapshotTest {
       VirtualStorageGroupProcessor processor =
           StorageEngine.getInstance().getProcessor(new PartialPath(TestUtils.getTestSg(j)));
       assertEquals(9, processor.getPartitionMaxFileVersions(0));
-      List<TsFileResource> loadedFiles = processor.getSequenceFileTreeSet();
+      List<TsFileResource> loadedFiles = processor.getSequenceFileList();
       assertEquals(10, loadedFiles.size());
       for (int i = 0; i < 9; i++) {
         assertEquals(i, loadedFiles.get(i).getMaxPlanIndex());
@@ -291,12 +294,13 @@ public class FileSnapshotTest extends DataSnapshotTest {
     defaultInstaller.install(snapshot, 0, false);
 
     for (TimeseriesSchema timeseriesSchema : timeseriesSchemas) {
-      assertTrue(IoTDB.schemaEngine.isPathExist(new PartialPath(timeseriesSchema.getFullPath())));
+      assertTrue(
+          IoTDB.schemaProcessor.isPathExist(new PartialPath(timeseriesSchema.getFullPath())));
     }
     VirtualStorageGroupProcessor processor =
         StorageEngine.getInstance().getProcessor(new PartialPath(TestUtils.getTestSg(0)));
     assertEquals(10, processor.getPartitionMaxFileVersions(0));
-    List<TsFileResource> loadedFiles = processor.getSequenceFileTreeSet();
+    List<TsFileResource> loadedFiles = processor.getSequenceFileList();
     assertEquals(tsFileResources.size(), loadedFiles.size());
     for (int i = 0; i < 9; i++) {
       assertEquals(i, loadedFiles.get(i).getMaxPlanIndex());

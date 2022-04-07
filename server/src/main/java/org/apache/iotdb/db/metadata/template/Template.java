@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.template;
 
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
@@ -56,6 +57,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class Template {
   private String name;
@@ -65,7 +67,7 @@ public class Template {
   private Map<String, IMeasurementSchema> schemaMap;
 
   // accelerate template query and check
-  private Set<PartialPath> relatedStorageGroup;
+  private Map<String, Set<ConsensusGroupId>> relatedSchemaRegion;
 
   public Template() {}
 
@@ -80,7 +82,7 @@ public class Template {
     name = plan.getName();
     isDirectAligned = false;
     directNodes = new HashMap<>();
-    relatedStorageGroup = new HashSet<>();
+    relatedSchemaRegion = new ConcurrentHashMap<>();
 
     for (int i = 0; i < plan.getMeasurements().size(); i++) {
       IMeasurementSchema curSchema;
@@ -409,16 +411,35 @@ public class Template {
     return directNodes.values();
   }
 
-  public Set<PartialPath> getRelatedStorageGroup() {
-    return relatedStorageGroup;
+  public Set<ConsensusGroupId> getRelatedSchemaRegion() {
+    Set<ConsensusGroupId> result = new HashSet<>();
+    for (Set<ConsensusGroupId> schemaRegionIds : relatedSchemaRegion.values()) {
+      result.addAll(schemaRegionIds);
+    }
+    return result;
   }
 
-  public boolean markStorageGroup(IMNode setNode) {
-    return relatedStorageGroup.addAll(getSGPaths(setNode));
+  public Set<ConsensusGroupId> getRelatedSchemaRegionInStorageGroup(String storageGroup) {
+    return relatedSchemaRegion.get(storageGroup);
   }
 
-  public boolean unmarkStorageGroup(IMNode unsetNode) {
-    return relatedStorageGroup.removeAll(getSGPaths(unsetNode));
+  public void markSchemaRegion(String storageGroup, ConsensusGroupId schemaRegionId) {
+    if (!relatedSchemaRegion.containsKey(storageGroup)) {
+      relatedSchemaRegion.putIfAbsent(storageGroup, new HashSet<>());
+    }
+    relatedSchemaRegion.get(storageGroup).add(schemaRegionId);
+  }
+
+  public void unmarkSchemaRegion(String storageGroup, ConsensusGroupId schemaRegionId) {
+    Set<ConsensusGroupId> schemaRegionIds = relatedSchemaRegion.get(storageGroup);
+    schemaRegionIds.remove(schemaRegionId);
+    if (schemaRegionIds.isEmpty()) {
+      relatedSchemaRegion.remove(storageGroup);
+    }
+  }
+
+  public void unmarkStorageGroup(String storageGroup) {
+    relatedSchemaRegion.remove(storageGroup);
   }
 
   // endregion

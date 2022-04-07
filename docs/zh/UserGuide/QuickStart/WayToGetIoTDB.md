@@ -51,7 +51,13 @@ Shell > uzip iotdb-<version>.zip
 
 您可以获取已发布的源码 [https://iotdb.apache.org/Download/](https://iotdb.apache.org/Download/) ，或者从 [https://github.com/apache/iotdb/tree/master](https://github.com/apache/iotdb/tree/master) git 仓库获取
 
-源码克隆后，进入到源码文件夹目录下，使用以下命令进行编译：
+源码克隆后，进入到源码文件夹目录下。如果您想编译已经发布过的版本，可以先用`git checkout -b my_{project.version} v{project.version}`命令新建并切换分支。比如您要编译0.12.4这个版本，您可以用如下命令去切换分支：
+
+```shell
+> git checkout -b my_0.12.4 v0.12.4
+```
+
+切换分支之后就可以使用以下命令进行编译：
 
 ```
 > mvn clean package -pl server -am -Dmaven.test.skip=true
@@ -68,6 +74,15 @@ Shell > uzip iotdb-<version>.zip
 |
 +- tools/      <-- system tools
 ```
+
+如果您想要编译项目中的某个模块，您可以在源码文件夹中使用`mvn clean package -pl {module.name} -am -DskipTests`命令进行编译。如果您需要的是带依赖的 jar 包，您可以在编译命令后面加上`-P get-jar-with-dependencies`参数。比如您想编译带依赖的 jdbc jar 包，您就可以使用以下命令进行编译：  
+
+```shell
+> mvn clean package -pl jdbc -am -DskipTests -P get-jar-with-dependencies
+```
+
+编译完成后就可以在`{module.name}/target`目录中找到需要的包了。
+
 
 ### 通过 Docker 安装 (Dockerfile)
 

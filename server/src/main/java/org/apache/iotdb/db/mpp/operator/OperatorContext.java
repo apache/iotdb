@@ -18,7 +18,8 @@
  */
 package org.apache.iotdb.db.mpp.operator;
 
-import org.apache.iotdb.db.mpp.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.execution.FragmentInstanceContext;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 
 /**
  * Contains information about {@link Operator} execution.
@@ -30,10 +31,24 @@ public class OperatorContext {
   private final int operatorId;
   private final PlanNodeId planNodeId;
   private final String operatorType;
+  private final FragmentInstanceContext instanceContext;
 
-  public OperatorContext(int operatorId, PlanNodeId planNodeId, String operatorType) {
+  public OperatorContext(
+      int operatorId,
+      PlanNodeId planNodeId,
+      String operatorType,
+      FragmentInstanceContext instanceContext) {
     this.operatorId = operatorId;
     this.planNodeId = planNodeId;
     this.operatorType = operatorType;
+    this.instanceContext = instanceContext;
+  }
+
+  public int getOperatorId() {
+    return operatorId;
+  }
+
+  public FragmentInstanceContext getInstanceContext() {
+    return instanceContext;
   }
 }

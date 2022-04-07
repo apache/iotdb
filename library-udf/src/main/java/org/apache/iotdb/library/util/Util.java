@@ -40,23 +40,27 @@ public class Util {
    * @return value of specific column from Row
    * @throws NoNumberException when getting a no number datatype
    */
-  public static double getValueAsDouble(Row row, int index) throws NoNumberException, IOException {
+  public static double getValueAsDouble(Row row, int index) throws Exception {
     double ans = 0;
-    switch (row.getDataType(index)) {
-      case INT32:
-        ans = row.getInt(index);
-        break;
-      case INT64:
-        ans = row.getLong(index);
-        break;
-      case FLOAT:
-        ans = row.getFloat(index);
-        break;
-      case DOUBLE:
-        ans = row.getDouble(index);
-        break;
-      default:
-        throw new NoNumberException();
+    try {
+      switch (row.getDataType(index)) {
+        case INT32:
+          ans = row.getInt(index);
+          break;
+        case INT64:
+          ans = row.getLong(index);
+          break;
+        case FLOAT:
+          ans = row.getFloat(index);
+          break;
+        case DOUBLE:
+          ans = row.getDouble(index);
+          break;
+        default:
+          throw new NoNumberException();
+      }
+    } catch (IOException e) {
+      throw new Exception("Fail to get data type in row " + row.getTime(), e);
     }
     return ans;
   }
@@ -68,7 +72,7 @@ public class Util {
    * @return value from 0th column from Row
    * @throws NoNumberException when getting a no number datatype
    */
-  public static double getValueAsDouble(Row row) throws NoNumberException, IOException {
+  public static double getValueAsDouble(Row row) throws Exception {
     return getValueAsDouble(row, 0);
   }
 

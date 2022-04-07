@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.metadata.path;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
 import org.apache.iotdb.db.engine.memtable.IWritableMemChunkGroup;
@@ -92,6 +92,11 @@ public class MeasurementPath extends PartialPath {
       throws IllegalPathException {
     super(device, measurement);
     this.measurementSchema = measurementSchema;
+  }
+
+  public MeasurementPath(String[] nodes, MeasurementSchema schema) {
+    super(nodes);
+    this.measurementSchema = schema;
   }
 
   public IMeasurementSchema getMeasurementSchema() {
