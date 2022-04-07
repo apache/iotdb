@@ -107,11 +107,16 @@ public class QueryStateMachineTest {
   public void TestGetStateChange() throws ExecutionException, InterruptedException {
     AtomicInteger stateChangeCounter = new AtomicInteger(0);
     QueryStateMachine stateMachine = genQueryStateMachine();
+    SettableFuture<Void> callbackFuture = SettableFuture.create();
     ListenableFuture<QueryState> future = stateMachine.getStateChange(QueryState.QUEUED);
-    future.addListener(stateChangeCounter::getAndIncrement, directExecutor());
+    future.addListener(() -> {
+      stateChangeCounter.getAndIncrement();
+      callbackFuture.set(null);
+    }, directExecutor());
     Assert.assertEquals(stateChangeCounter.get(), 0);
     stateMachine.transitionToRunning();
     future.get();
+    callbackFuture.get();
     Assert.assertEquals(stateChangeCounter.get(), 1);
   }
 
