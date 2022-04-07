@@ -52,7 +52,7 @@ public class ConsensusImpl {
                 gid -> {
                   switch (gid.getType()) {
                     case SchemaRegion:
-                      return SchemaEngine.getInstance().getOrCreateDataRegionStateMachine(gid);
+                      return SchemaEngine.getInstance().getOrCreateSchemaRegionStateMachine(gid);
                     case DataRegion:
                       return StorageEngine.getInstance().getOrCreateDataRegionStateMachine(gid);
                   }

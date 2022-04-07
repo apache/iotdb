@@ -64,7 +64,7 @@ public class SchemaEngine {
     return schemaRegionMap.get(schemaRegionId);
   }
 
-  public SchemaRegionStateMachine getOrCreateDataRegionStateMachine(ConsensusGroupId gid) {
+  public SchemaRegionStateMachine getOrCreateSchemaRegionStateMachine(ConsensusGroupId gid) {
     return stateMachineMap.computeIfAbsent(gid, id -> new SchemaRegionStateMachine());
   }
 
