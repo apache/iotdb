@@ -43,8 +43,10 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
   // The index of the array corresponds to subTaskId.
   private int[] seqFileIndexMap = new int[subTaskNum];
 
+  // device end time in each source seq file
   private final long[] currentDeviceEndTime;
 
+  // whether each target file is empty or not
   private final boolean[] isEmptyFile;
 
   // This variable has three values, which is
@@ -74,7 +76,6 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
     this.seqFileIndexMap = new int[subTaskNum];
     checkIsDeviceExistAndGetDeviceEndTime();
     for (int i = 0; i < seqTsFileResources.size(); i++) {
-      // hasTargetFileStartChunkGroup[i] = false;
       hasTargetFileStartChunkGroup[i].set(0);
     }
   }
@@ -92,7 +93,6 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
   @Override
   public void endMeasurement(int subTaskId) throws IOException {
     flushChunkToFileWriter(subTaskId);
-    // chunkWriterMap.get(subTaskId)=null;
     seqFileIndexMap[subTaskId] = 0;
   }
 

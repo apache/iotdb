@@ -21,7 +21,6 @@ package org.apache.iotdb.db.engine.compaction;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -45,10 +44,8 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -1876,52 +1873,46 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
                 null,
                 true);
         int count = 0;
-        try {
-          while (tsFilesReader.hasNextBatch()) {
-            BatchData batchData = tsFilesReader.nextBatch();
-            while (batchData.hasCurrent()) {
-              if (measurementMaxTime.get(
-                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j)
-                  >= batchData.currentTime()) {
-                Assert.fail();
-              }
-              measurementMaxTime.put(
-                  COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,
-                  batchData.currentTime());
-              if (i == 0
-                  && ((450 <= batchData.currentTime() && batchData.currentTime() < 550)
-                      || (550 <= batchData.currentTime() && batchData.currentTime() < 650))) {
-                assertEquals(batchData.currentTime() + 20000, batchData.currentValue());
-              } else if ((i < 3 && j < 4)
-                  && ((20 <= batchData.currentTime() && batchData.currentTime() < 220)
-                      || (250 <= batchData.currentTime() && batchData.currentTime() < 450)
-                      || (480 <= batchData.currentTime() && batchData.currentTime() < 680))) {
-                assertEquals(batchData.currentTime() + 10000, batchData.currentValue());
-              } else {
-                assertEquals(batchData.currentTime(), batchData.currentValue());
-              }
-              count++;
-              batchData.next();
+        while (tsFilesReader.hasNextBatch()) {
+          BatchData batchData = tsFilesReader.nextBatch();
+          while (batchData.hasCurrent()) {
+            if (measurementMaxTime.get(
+                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j)
+                >= batchData.currentTime()) {
+              Assert.fail();
             }
+            measurementMaxTime.put(
+                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,
+                batchData.currentTime());
+            if (i == 0
+                && ((450 <= batchData.currentTime() && batchData.currentTime() < 550)
+                    || (550 <= batchData.currentTime() && batchData.currentTime() < 650))) {
+              assertEquals(batchData.currentTime() + 20000, batchData.currentValue());
+            } else if ((i < 3 && j < 4)
+                && ((20 <= batchData.currentTime() && batchData.currentTime() < 220)
+                    || (250 <= batchData.currentTime() && batchData.currentTime() < 450)
+                    || (480 <= batchData.currentTime() && batchData.currentTime() < 680))) {
+              assertEquals(batchData.currentTime() + 10000, batchData.currentValue());
+            } else {
+              assertEquals(batchData.currentTime(), batchData.currentValue());
+            }
+            count++;
+            batchData.next();
           }
-          tsFilesReader.close();
-          if (i < 2 && j < 3) {
-            assertEquals(1280, count);
-          } else if (i < 1 && j < 4) {
-            assertEquals(1230, count);
-          } else if (i == 0) {
-            assertEquals(800, count);
-          } else if ((i == 1 && j == 4)) {
-            assertEquals(600, count);
-          } else if (i < 3 && j < 4) {
-            assertEquals(1200, count);
-          } else {
-            assertEquals(600, count);
-          }
-
-        } catch (Throwable e) {
-          e.printStackTrace();
-          Thread.currentThread().stop();
+        }
+        tsFilesReader.close();
+        if (i < 2 && j < 3) {
+          assertEquals(1280, count);
+        } else if (i < 1 && j < 4) {
+          assertEquals(1230, count);
+        } else if (i == 0) {
+          assertEquals(800, count);
+        } else if ((i == 1 && j == 4)) {
+          assertEquals(600, count);
+        } else if (i < 3 && j < 4) {
+          assertEquals(1200, count);
+        } else {
+          assertEquals(600, count);
         }
       }
     }
@@ -2047,57 +2038,48 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
                 null,
                 true);
         int count = 0;
-        try {
-          while (tsFilesReader.hasNextBatch()) {
-            BatchData batchData = tsFilesReader.nextBatch();
-            while (batchData.hasCurrent()) {
-              if (measurementMaxTime.get(
-                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j)
-                  >= batchData.currentTime()) {
-                Assert.fail();
-              }
-              measurementMaxTime.put(
-                  COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,
-                  batchData.currentTime());
-              if (i == 0
-                  && ((450 <= batchData.currentTime() && batchData.currentTime() < 550)
-                      || (550 <= batchData.currentTime() && batchData.currentTime() < 650))) {
-                assertEquals(batchData.currentTime() + 20000, batchData.currentValue());
-              } else if ((i < 3 && j < 4)
-                  && ((20 <= batchData.currentTime() && batchData.currentTime() < 220)
-                      || (250 <= batchData.currentTime() && batchData.currentTime() < 450)
-                      || (480 <= batchData.currentTime() && batchData.currentTime() < 680))) {
-                assertEquals(batchData.currentTime() + 10000, batchData.currentValue());
-              } else {
-                assertEquals(batchData.currentTime(), batchData.currentValue());
-              }
-              count++;
-              batchData.next();
+        while (tsFilesReader.hasNextBatch()) {
+          BatchData batchData = tsFilesReader.nextBatch();
+          while (batchData.hasCurrent()) {
+            if (measurementMaxTime.get(
+                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j)
+                >= batchData.currentTime()) {
+              Assert.fail();
             }
+            measurementMaxTime.put(
+                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,
+                batchData.currentTime());
+            if (i == 0
+                && ((450 <= batchData.currentTime() && batchData.currentTime() < 550)
+                    || (550 <= batchData.currentTime() && batchData.currentTime() < 650))) {
+              assertEquals(batchData.currentTime() + 20000, batchData.currentValue());
+            } else if ((i < 3 && j < 4)
+                && ((20 <= batchData.currentTime() && batchData.currentTime() < 220)
+                    || (250 <= batchData.currentTime() && batchData.currentTime() < 450)
+                    || (480 <= batchData.currentTime() && batchData.currentTime() < 680))) {
+              assertEquals(batchData.currentTime() + 10000, batchData.currentValue());
+            } else {
+              assertEquals(batchData.currentTime(), batchData.currentValue());
+            }
+            count++;
+            batchData.next();
           }
-          tsFilesReader.close();
-          if ((i == 0 && j == 0)
-              || (i == 0 && j == 1)
-              || (i == 2 && j == 4)
-              || (i == 3 && j == 4)) {
-            assertEquals(0, count);
-          } else if (i < 2 && j < 3) {
-            assertEquals(1280, count);
-          } else if (i < 1 && j < 4) {
-            assertEquals(1230, count);
-          } else if (i == 0) {
-            assertEquals(800, count);
-          } else if ((i == 1 && j == 4)) {
-            assertEquals(600, count);
-          } else if (i < 3) {
-            assertEquals(1200, count);
-          } else {
-            assertEquals(600, count);
-          }
-
-        } catch (Throwable e) {
-          e.printStackTrace();
-          Thread.currentThread().stop();
+        }
+        tsFilesReader.close();
+        if ((i == 0 && j == 0) || (i == 0 && j == 1) || (i == 2 && j == 4) || (i == 3 && j == 4)) {
+          assertEquals(0, count);
+        } else if (i < 2 && j < 3) {
+          assertEquals(1280, count);
+        } else if (i < 1 && j < 4) {
+          assertEquals(1230, count);
+        } else if (i == 0) {
+          assertEquals(800, count);
+        } else if ((i == 1 && j == 4)) {
+          assertEquals(600, count);
+        } else if (i < 3) {
+          assertEquals(1200, count);
+        } else {
+          assertEquals(600, count);
         }
       }
     }
@@ -2219,50 +2201,44 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
                 null,
                 true);
         int count = 0;
-        try {
-          while (tsFilesReader.hasNextBatch()) {
-            BatchData batchData = tsFilesReader.nextBatch();
-            while (batchData.hasCurrent()) {
-              if (measurementMaxTime.get(
-                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j)
-                  >= batchData.currentTime()) {
-                Assert.fail();
-              }
-              measurementMaxTime.put(
-                  COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,
-                  batchData.currentTime());
-              if (i == 0
-                  && ((450 <= batchData.currentTime() && batchData.currentTime() < 550)
-                      || (550 <= batchData.currentTime() && batchData.currentTime() < 650))) {
-                assertEquals(batchData.currentTime() + 20000, batchData.currentValue());
-              } else if ((i < 3 && j < 4)
-                  && ((20 <= batchData.currentTime() && batchData.currentTime() < 220)
-                      || (250 <= batchData.currentTime() && batchData.currentTime() < 450)
-                      || (480 <= batchData.currentTime() && batchData.currentTime() < 680))) {
-                assertEquals(batchData.currentTime() + 10000, batchData.currentValue());
-              } else {
-                assertEquals(batchData.currentTime(), batchData.currentValue());
-              }
-              count++;
-              batchData.next();
+        while (tsFilesReader.hasNextBatch()) {
+          BatchData batchData = tsFilesReader.nextBatch();
+          while (batchData.hasCurrent()) {
+            if (measurementMaxTime.get(
+                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j)
+                >= batchData.currentTime()) {
+              Assert.fail();
             }
+            measurementMaxTime.put(
+                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,
+                batchData.currentTime());
+            if (i == 0
+                && ((450 <= batchData.currentTime() && batchData.currentTime() < 550)
+                    || (550 <= batchData.currentTime() && batchData.currentTime() < 650))) {
+              assertEquals(batchData.currentTime() + 20000, batchData.currentValue());
+            } else if ((i < 3 && j < 4)
+                && ((20 <= batchData.currentTime() && batchData.currentTime() < 220)
+                    || (250 <= batchData.currentTime() && batchData.currentTime() < 450)
+                    || (480 <= batchData.currentTime() && batchData.currentTime() < 680))) {
+              assertEquals(batchData.currentTime() + 10000, batchData.currentValue());
+            } else {
+              assertEquals(batchData.currentTime(), batchData.currentValue());
+            }
+            count++;
+            batchData.next();
           }
-          tsFilesReader.close();
-          if (i == 0 || i == 2) {
-            assertEquals(0, count);
-          } else if (i < 2 && j < 3) {
-            assertEquals(1280, count);
-          } else if ((i == 1 && j == 4)) {
-            assertEquals(600, count);
-          } else if (i < 3) {
-            assertEquals(1200, count);
-          } else {
-            assertEquals(600, count);
-          }
-
-        } catch (Throwable e) {
-          e.printStackTrace();
-          Thread.currentThread().stop();
+        }
+        tsFilesReader.close();
+        if (i == 0 || i == 2) {
+          assertEquals(0, count);
+        } else if (i < 2 && j < 3) {
+          assertEquals(1280, count);
+        } else if ((i == 1 && j == 4)) {
+          assertEquals(600, count);
+        } else if (i < 3) {
+          assertEquals(1200, count);
+        } else {
+          assertEquals(600, count);
         }
       }
     }
@@ -2380,44 +2356,38 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
                 null,
                 true);
         int count = 0;
-        try {
-          while (tsFilesReader.hasNextBatch()) {
-            BatchData batchData = tsFilesReader.nextBatch();
-            while (batchData.hasCurrent()) {
-              if (measurementMaxTime.get(
-                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j)
-                  >= batchData.currentTime()) {
-                Assert.fail();
-              }
-              measurementMaxTime.put(
-                  COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,
-                  batchData.currentTime());
-              if (i == 0
-                  && ((450 <= batchData.currentTime() && batchData.currentTime() < 550)
-                      || (550 <= batchData.currentTime() && batchData.currentTime() < 650))) {
-                assertEquals(batchData.currentTime() + 20000, batchData.currentValue());
-              } else if ((i < 3 && j < 4)
-                  && ((20 <= batchData.currentTime() && batchData.currentTime() < 220)
-                      || (250 <= batchData.currentTime() && batchData.currentTime() < 450)
-                      || (480 <= batchData.currentTime() && batchData.currentTime() < 680))) {
-                assertEquals(batchData.currentTime() + 10000, batchData.currentValue());
-              } else {
-                assertEquals(batchData.currentTime(), batchData.currentValue());
-              }
-              count++;
-              batchData.next();
+        while (tsFilesReader.hasNextBatch()) {
+          BatchData batchData = tsFilesReader.nextBatch();
+          while (batchData.hasCurrent()) {
+            if (measurementMaxTime.get(
+                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j)
+                >= batchData.currentTime()) {
+              Assert.fail();
             }
+            measurementMaxTime.put(
+                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,
+                batchData.currentTime());
+            if (i == 0
+                && ((450 <= batchData.currentTime() && batchData.currentTime() < 550)
+                    || (550 <= batchData.currentTime() && batchData.currentTime() < 650))) {
+              assertEquals(batchData.currentTime() + 20000, batchData.currentValue());
+            } else if ((i < 3 && j < 4)
+                && ((20 <= batchData.currentTime() && batchData.currentTime() < 220)
+                    || (250 <= batchData.currentTime() && batchData.currentTime() < 450)
+                    || (480 <= batchData.currentTime() && batchData.currentTime() < 680))) {
+              assertEquals(batchData.currentTime() + 10000, batchData.currentValue());
+            } else {
+              assertEquals(batchData.currentTime(), batchData.currentValue());
+            }
+            count++;
+            batchData.next();
           }
-          tsFilesReader.close();
-          if (i == 0 || i == 1 || i == 2) {
-            assertEquals(0, count);
-          } else {
-            assertEquals(600, count);
-          }
-
-        } catch (Throwable e) {
-          e.printStackTrace();
-          Thread.currentThread().stop();
+        }
+        tsFilesReader.close();
+        if (i == 0 || i == 1 || i == 2) {
+          assertEquals(0, count);
+        } else {
+          assertEquals(600, count);
         }
       }
     }
@@ -2543,54 +2513,48 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
                 null,
                 true);
         int count = 0;
-        try {
-          while (tsFilesReader.hasNextBatch()) {
-            BatchData batchData = tsFilesReader.nextBatch();
-            while (batchData.hasCurrent()) {
-              if (measurementMaxTime.get(
-                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j)
-                  >= batchData.currentTime()) {
-                Assert.fail();
-              }
-              measurementMaxTime.put(
-                  COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,
-                  batchData.currentTime());
-              if (i == 0
-                  && ((450 <= batchData.currentTime() && batchData.currentTime() < 550)
-                      || (550 <= batchData.currentTime() && batchData.currentTime() < 650))) {
-                assertEquals(batchData.currentTime() + 20000, batchData.currentValue());
-              } else if ((i < 3 && j < 4)
-                  && ((20 <= batchData.currentTime() && batchData.currentTime() < 220)
-                      || (250 <= batchData.currentTime() && batchData.currentTime() < 450)
-                      || (480 <= batchData.currentTime() && batchData.currentTime() < 680))) {
-                assertEquals(batchData.currentTime() + 10000, batchData.currentValue());
-              } else {
-                assertEquals(batchData.currentTime(), batchData.currentValue());
-              }
-              count++;
-              batchData.next();
+        while (tsFilesReader.hasNextBatch()) {
+          BatchData batchData = tsFilesReader.nextBatch();
+          while (batchData.hasCurrent()) {
+            if (measurementMaxTime.get(
+                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j)
+                >= batchData.currentTime()) {
+              Assert.fail();
             }
+            measurementMaxTime.put(
+                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,
+                batchData.currentTime());
+            if (i == 0
+                && ((450 <= batchData.currentTime() && batchData.currentTime() < 550)
+                    || (550 <= batchData.currentTime() && batchData.currentTime() < 650))) {
+              assertEquals(batchData.currentTime() + 20000, batchData.currentValue());
+            } else if ((i < 3 && j < 4)
+                && ((20 <= batchData.currentTime() && batchData.currentTime() < 220)
+                    || (250 <= batchData.currentTime() && batchData.currentTime() < 450)
+                    || (480 <= batchData.currentTime() && batchData.currentTime() < 680))) {
+              assertEquals(batchData.currentTime() + 10000, batchData.currentValue());
+            } else {
+              assertEquals(batchData.currentTime(), batchData.currentValue());
+            }
+            count++;
+            batchData.next();
           }
-          tsFilesReader.close();
-          if (i < 1) {
-            if (j < 4) {
-              assertEquals(630, count);
-            } else {
-              assertEquals(200, count);
-            }
-          } else if (i < 3) {
-            if (j < 4) {
-              assertEquals(600, count);
-            } else {
-              assertEquals(0, count);
-            }
+        }
+        tsFilesReader.close();
+        if (i < 1) {
+          if (j < 4) {
+            assertEquals(630, count);
           } else {
-            assertEquals(600, count);
+            assertEquals(200, count);
           }
-
-        } catch (Throwable e) {
-          e.printStackTrace();
-          Thread.currentThread().stop();
+        } else if (i < 3) {
+          if (j < 4) {
+            assertEquals(600, count);
+          } else {
+            assertEquals(0, count);
+          }
+        } else {
+          assertEquals(600, count);
         }
       }
     }
@@ -3551,87 +3515,6 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
         | InterruptedException e) {
       e.printStackTrace();
       Assert.fail();
-    }
-  }
-
-  @Ignore
-  @Test
-  public void testReadWrongFile() throws IllegalPathException, IOException {
-    List<TsFileResource> targetResources = new ArrayList<>();
-    TsFileResource resource =
-        new TsFileResource(
-            new File("C:\\Users\\BensonChou\\Desktop\\TestData\\3\\1649311240699-2-0-1.tsfile"));
-    resource.deserialize();
-    resource.setStatus(TsFileResourceStatus.CLOSED);
-    targetResources.add(resource);
-    resource =
-        new TsFileResource(
-            new File("C:\\Users\\BensonChou\\Desktop\\TestData\\3\\1649311240706-3-0-1.tsfile"));
-    resource.deserialize();
-    resource.setStatus(TsFileResourceStatus.CLOSED);
-    targetResources.add(resource);
-    Map<String, Long> measurementMaxTime = new HashMap<>();
-    for (int i = 0; i < 4; i++) {
-      for (int j = 0; j < 5; j++) {
-        measurementMaxTime.putIfAbsent(
-            COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,
-            Long.MIN_VALUE);
-        PartialPath path =
-            new MeasurementPath(
-                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
-                "s" + j,
-                new MeasurementSchema("s" + j, TSDataType.INT64));
-        IBatchReader tsFilesReader =
-            new SeriesRawDataBatchReader(
-                path,
-                TSDataType.INT64,
-                EnvironmentUtils.TEST_QUERY_CONTEXT,
-                targetResources,
-                new ArrayList<>(),
-                null,
-                null,
-                true);
-        int count = 0;
-        try {
-          while (tsFilesReader.hasNextBatch()) {
-            BatchData batchData = tsFilesReader.nextBatch();
-            while (batchData.hasCurrent()) {
-              if (measurementMaxTime.get(
-                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j)
-                  >= batchData.currentTime()) {
-                Assert.fail();
-              }
-              measurementMaxTime.put(
-                  COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,
-                  batchData.currentTime());
-              if (i == 0
-                  && ((450 <= batchData.currentTime() && batchData.currentTime() < 550)
-                      || (550 <= batchData.currentTime() && batchData.currentTime() < 650))) {
-                assertEquals(batchData.currentTime() + 20000, batchData.currentValue());
-              } else if ((i < 3 && j < 4)
-                  && ((20 <= batchData.currentTime() && batchData.currentTime() < 220)
-                      || (250 <= batchData.currentTime() && batchData.currentTime() < 450)
-                      || (480 <= batchData.currentTime() && batchData.currentTime() < 680))) {
-                assertEquals(batchData.currentTime() + 10000, batchData.currentValue());
-              } else {
-                assertEquals(batchData.currentTime(), batchData.currentValue());
-              }
-              count++;
-              batchData.next();
-            }
-          }
-          tsFilesReader.close();
-          if (i == 0 || i == 1 || i == 2) {
-            assertEquals(0, count);
-          } else {
-            assertEquals(600, count);
-          }
-
-        } catch (Throwable e) {
-          e.printStackTrace();
-          Thread.currentThread().stop();
-        }
-      }
     }
   }
 
