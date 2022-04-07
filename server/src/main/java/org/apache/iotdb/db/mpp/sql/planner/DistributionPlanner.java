@@ -172,21 +172,22 @@ public class DistributionPlanner {
       // PlanNode, we need to process
       // them with special method
       context.putNodeDistribution(
-          node.getId(), new NodeDistribution(NodeDistributionType.SAME_WITH_ALL_CHILDREN, null));
+          node.getPlanNodeId(),
+          new NodeDistribution(NodeDistributionType.SAME_WITH_ALL_CHILDREN, null));
 
       return node.cloneWithChildren(children);
     }
 
     public PlanNode visitSeriesScan(SeriesScanNode node, NodeGroupContext context) {
       context.putNodeDistribution(
-          node.getId(),
+          node.getPlanNodeId(),
           new NodeDistribution(NodeDistributionType.NO_CHILD, node.getDataRegionReplicaSet()));
       return node.clone();
     }
 
     public PlanNode visitSeriesAggregate(SeriesAggregateScanNode node, NodeGroupContext context) {
       context.putNodeDistribution(
-          node.getId(),
+          node.getPlanNodeId(),
           new NodeDistribution(NodeDistributionType.NO_CHILD, node.getDataRegionReplicaSet()));
       return node.clone();
     }
@@ -206,7 +207,7 @@ public class DistributionPlanner {
               ? NodeDistributionType.SAME_WITH_ALL_CHILDREN
               : NodeDistributionType.SAME_WITH_SOME_CHILD;
       context.putNodeDistribution(
-          newNode.getId(), new NodeDistribution(distributionType, dataRegion));
+          newNode.getPlanNodeId(), new NodeDistribution(distributionType, dataRegion));
 
       // If the distributionType of all the children are same, no ExchangeNode need to be added.
       if (distributionType == NodeDistributionType.SAME_WITH_ALL_CHILDREN) {
@@ -218,7 +219,7 @@ public class DistributionPlanner {
       // parent.
       visitedChildren.forEach(
           child -> {
-            if (!dataRegion.equals(context.getNodeDistribution(child.getId()).dataRegion)) {
+            if (!dataRegion.equals(context.getNodeDistribution(child.getPlanNodeId()).dataRegion)) {
               ExchangeNode exchangeNode = new ExchangeNode(PlanNodeIdAllocator.generateId());
               exchangeNode.setChild(child);
               newNode.addChild(exchangeNode);
@@ -233,14 +234,14 @@ public class DistributionPlanner {
         List<PlanNode> children, NodeGroupContext context) {
       // We always make the dataRegion of TimeJoinNode to be the same as its first child.
       // TODO: (xingtanzjr) We need to implement more suitable policies here
-      return context.getNodeDistribution(children.get(0).getId()).dataRegion;
+      return context.getNodeDistribution(children.get(0).getPlanNodeId()).dataRegion;
     }
 
     private boolean nodeDistributionIsSame(List<PlanNode> children, NodeGroupContext context) {
       // The size of children here should always be larger than 0, or our code has Bug.
-      NodeDistribution first = context.getNodeDistribution(children.get(0).getId());
+      NodeDistribution first = context.getNodeDistribution(children.get(0).getPlanNodeId());
       for (int i = 1; i < children.size(); i++) {
-        NodeDistribution next = context.getNodeDistribution(children.get(i).getId());
+        NodeDistribution next = context.getNodeDistribution(children.get(i).getPlanNodeId());
         if (first.dataRegion == null || !first.dataRegion.equals(next.dataRegion)) {
           return false;
         }

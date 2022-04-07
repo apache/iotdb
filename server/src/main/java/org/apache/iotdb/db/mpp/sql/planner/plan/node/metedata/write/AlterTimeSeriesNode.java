@@ -19,15 +19,20 @@
 
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write;
 
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement.AlterType;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class AlterTimeSeriesNode extends PlanNode {
   private PartialPath path;
@@ -136,5 +141,130 @@ public class AlterTimeSeriesNode extends PlanNode {
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {}
+  public void serialize(ByteBuffer byteBuffer) {
+    byteBuffer.putShort((short) PlanNodeType.ALTER_TIME_SERIES.ordinal());
+    ReadWriteIOUtils.write(this.getPlanNodeId().getId(), byteBuffer);
+    byte[] bytes = path.getFullPath().getBytes();
+    byteBuffer.putInt(bytes.length);
+    byteBuffer.put(bytes);
+    byteBuffer.put((byte) alterType.ordinal());
+
+    // alias
+    if (alias != null) {
+      byteBuffer.put((byte) 1);
+      ReadWriteIOUtils.write(alias, byteBuffer);
+    } else {
+      byteBuffer.put((byte) 0);
+    }
+
+    // alterMap
+    if (alterMap == null) {
+      byteBuffer.put((byte) -1);
+    } else if (alterMap.isEmpty()) {
+      byteBuffer.put((byte) 0);
+    } else {
+      byteBuffer.put((byte) 1);
+      ReadWriteIOUtils.write(alterMap, byteBuffer);
+    }
+
+    // tagsMap
+    if (tagsMap == null) {
+      byteBuffer.put((byte) -1);
+    } else if (tagsMap.isEmpty()) {
+      byteBuffer.put((byte) 0);
+    } else {
+      byteBuffer.put((byte) 1);
+      ReadWriteIOUtils.write(tagsMap, byteBuffer);
+    }
+
+    // attributesMap
+    if (attributesMap == null) {
+      byteBuffer.put((byte) -1);
+    } else if (attributesMap.isEmpty()) {
+      byteBuffer.put((byte) 0);
+    } else {
+      byteBuffer.put((byte) 1);
+      ReadWriteIOUtils.write(attributesMap, byteBuffer);
+    }
+
+    // no children node, need to set 0
+    byteBuffer.putInt(0);
+  }
+
+  public static AlterTimeSeriesNode deserialize(ByteBuffer byteBuffer) throws IllegalPathException {
+    String id;
+    PartialPath path = null;
+    AlterType alterType = null;
+    String alias = null;
+    Map<String, String> alterMap = null;
+    Map<String, String> tagsMap = null;
+    Map<String, String> attributesMap = null;
+
+    id = ReadWriteIOUtils.readString(byteBuffer);
+    int length = byteBuffer.getInt();
+    byte[] bytes = new byte[length];
+    byteBuffer.get(bytes);
+    path = new PartialPath(new String(bytes));
+    alterType = AlterType.values()[byteBuffer.get()];
+
+    // alias
+    if (byteBuffer.get() == 1) {
+      alias = ReadWriteIOUtils.readString(byteBuffer);
+    }
+
+    // alterMap
+    byte label = byteBuffer.get();
+    if (label == 0) {
+      alterMap = new HashMap<>();
+    }
+    if (label == 1) {
+      alterMap = ReadWriteIOUtils.readMap(byteBuffer);
+    }
+
+    // tagsMap
+    label = byteBuffer.get();
+    if (label == 0) {
+      tagsMap = new HashMap<>();
+    }
+    if (label == 1) {
+      tagsMap = ReadWriteIOUtils.readMap(byteBuffer);
+    }
+
+    // attributesMap
+    label = byteBuffer.get();
+    if (label == 0) {
+      attributesMap = new HashMap<>();
+    }
+    if (label == 1) {
+      attributesMap = ReadWriteIOUtils.readMap(byteBuffer);
+    }
+    return new AlterTimeSeriesNode(
+        new PlanNodeId(id), path, alterType, alterMap, alias, tagsMap, attributesMap);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+
+    AlterTimeSeriesNode that = (AlterTimeSeriesNode) o;
+
+    return this.getPlanNodeId().equals(that.getPlanNodeId())
+        && Objects.equals(path, that.path)
+        && alterType == that.alterType
+        && Objects.equals(alterMap, that.alterMap)
+        && Objects.equals(alias, that.alias)
+        && Objects.equals(tagsMap, that.tagsMap)
+        && Objects.equals(attributesMap, that.attributesMap);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(
+        this.getPlanNodeId(), path, alias, alterType, alterMap, attributesMap, tagsMap);
+  }
 }
