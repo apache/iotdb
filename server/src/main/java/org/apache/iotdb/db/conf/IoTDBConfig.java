@@ -839,6 +839,18 @@ public class IoTDBConfig {
    */
   private String consensusProtocolClass = "org.apache.iotdb.consensus.ratis.RatisConsensus";
 
+  /** Port that data block manager thrift service listen to. */
+  private int dataBlockManagerPort = 7777;
+
+  /** Core pool size of data block manager. */
+  private int dataBlockManagerCorePoolSize = 1;
+
+  /** Max pool size of data block manager. */
+  private int dataBlockManagerMaxPoolSize = 5;
+
+  /** Thread keep alive time in ms of data block manager. */
+  private int dataBlockManagerKeepAliveTimeInMs = 1000;
+
   public IoTDBConfig() {
     try {
       internalIp = InetAddress.getLocalHost().getHostAddress();
@@ -2623,5 +2635,37 @@ public class IoTDBConfig {
 
   public void setConsensusProtocolClass(String consensusProtocolClass) {
     this.consensusProtocolClass = consensusProtocolClass;
+  }
+
+  public int getDataBlockManagerPort() {
+    return dataBlockManagerPort;
+  }
+
+  public void setDataBlockManagerPort(int dataBlockManagerPort) {
+    this.dataBlockManagerPort = dataBlockManagerPort;
+  }
+
+  public int getDataBlockManagerCorePoolSize() {
+    return dataBlockManagerCorePoolSize;
+  }
+
+  public void setDataBlockManagerCorePoolSize(int dataBlockManagerCorePoolSize) {
+    this.dataBlockManagerCorePoolSize = dataBlockManagerCorePoolSize;
+  }
+
+  public int getDataBlockManagerMaxPoolSize() {
+    return dataBlockManagerMaxPoolSize;
+  }
+
+  public void setDataBlockManagerMaxPoolSize(int dataBlockManagerMaxPoolSize) {
+    this.dataBlockManagerMaxPoolSize = dataBlockManagerMaxPoolSize;
+  }
+
+  public int getDataBlockManagerKeepAliveTimeInMs() {
+    return dataBlockManagerKeepAliveTimeInMs;
+  }
+
+  public void setDataBlockManagerKeepAliveTimeInMs(int dataBlockManagerKeepAliveTimeInMs) {
+    this.dataBlockManagerKeepAliveTimeInMs = dataBlockManagerKeepAliveTimeInMs;
   }
 }

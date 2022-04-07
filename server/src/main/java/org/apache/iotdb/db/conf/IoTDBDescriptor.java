@@ -835,6 +835,9 @@ public class IoTDBDescriptor {
 
       // cluster
       loadClusterProps(properties);
+
+      // shuffle
+      loadShuffleProps(properties);
     } catch (FileNotFoundException e) {
       logger.warn("Fail to find config file {}", url, e);
     } catch (IOException e) {
@@ -1478,6 +1481,28 @@ public class IoTDBDescriptor {
     conf.setConsensusPort(
         Integer.parseInt(
             properties.getProperty("consensus_port", Integer.toString(conf.getConsensusPort()))));
+  }
+
+  public void loadShuffleProps(Properties properties) {
+    conf.setDataBlockManagerPort(
+        Integer.parseInt(
+            properties.getProperty(
+                "data_block_manager_port", Integer.toString(conf.getDataBlockManagerPort()))));
+    conf.setDataBlockManagerCorePoolSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "data_block_manager_core_pool_size",
+                Integer.toString(conf.getDataBlockManagerCorePoolSize()))));
+    conf.setDataBlockManagerMaxPoolSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "data_block_manager_max_pool_size",
+                Integer.toString(conf.getDataBlockManagerMaxPoolSize()))));
+    conf.setDataBlockManagerKeepAliveTimeInMs(
+        Integer.parseInt(
+            properties.getProperty(
+                "data_block_manager_keep_alive_time_in_ms",
+                Integer.toString(conf.getDataBlockManagerKeepAliveTimeInMs()))));
   }
 
   /** Get default encode algorithm by data type */
