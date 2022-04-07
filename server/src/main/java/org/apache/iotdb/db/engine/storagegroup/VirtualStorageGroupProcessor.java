@@ -1735,6 +1735,37 @@ public class VirtualStorageGroupProcessor {
     }
   }
 
+  /** used for mpp */
+  public QueryDataSource query(
+      List<PartialPath> pathList, String singleDeviceId, QueryContext context, Filter timeFilter)
+      throws QueryProcessException {
+    try {
+      List<TsFileResource> seqResources =
+          getFileResourceListForQuery(
+              tsFileManager.getTsFileList(true),
+              upgradeSeqFileList,
+              pathList,
+              singleDeviceId,
+              context,
+              timeFilter,
+              true);
+      List<TsFileResource> unseqResources =
+          getFileResourceListForQuery(
+              tsFileManager.getTsFileList(false),
+              upgradeUnseqFileList,
+              pathList,
+              singleDeviceId,
+              context,
+              timeFilter,
+              false);
+      QueryDataSource dataSource = new QueryDataSource(seqResources, unseqResources);
+      dataSource.setDataTTL(dataTTL);
+      return dataSource;
+    } catch (MetadataException e) {
+      throw new QueryProcessException(e);
+    }
+  }
+
   /** lock the read lock of the insert lock */
   public void readLock() {
     // apply read lock for SG insert lock to prevent inconsistent with concurrently writing memtable

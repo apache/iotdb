@@ -252,6 +252,10 @@ public class LocalConfigManager {
       MetadataSyncManager.getInstance()
           .syncMetadataPlan(new DeleteStorageGroupPlan(Collections.singletonList(storageGroup)));
     }
+    for (Template template : templateManager.getTemplateMap().values()) {
+      templateManager.unmarkStorageGroup(template, storageGroup.getFullPath());
+    }
+
     if (!config.isEnableMemControl()) {
       MemTableManager.getInstance().addOrDeleteStorageGroup(-1);
     }
