@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.confignode.partition;
 
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -26,8 +28,8 @@ public class StorageGroupSchema {
 
   private String name;
 
-  private List<Integer> schemaRegionGroupIDs;
-  private List<Integer> dataRegionGroupIDs;
+  private List<ConsensusGroupId> schemaRegionGroupIds;
+  private List<ConsensusGroupId> dataRegionGroupIds;
 
   public StorageGroupSchema() {
     // empty constructor
@@ -41,26 +43,26 @@ public class StorageGroupSchema {
     return name;
   }
 
-  public List<Integer> getSchemaRegionGroupIDs() {
-    return schemaRegionGroupIDs;
+  public List<ConsensusGroupId> getSchemaRegionGroupIds() {
+    return schemaRegionGroupIds;
   }
 
-  public void addSchemaRegionGroup(int id) {
-    if (schemaRegionGroupIDs == null) {
-      schemaRegionGroupIDs = new ArrayList<>();
+  public void addSchemaRegionGroup(ConsensusGroupId id) {
+    if (schemaRegionGroupIds == null) {
+      schemaRegionGroupIds = new ArrayList<>();
     }
-    schemaRegionGroupIDs.add(id);
+    schemaRegionGroupIds.add(id);
   }
 
-  public List<Integer> getDataRegionGroupIDs() {
-    return dataRegionGroupIDs;
+  public List<ConsensusGroupId> getDataRegionGroupIds() {
+    return dataRegionGroupIds;
   }
 
-  public void addDataRegionGroup(int id) {
-    if (dataRegionGroupIDs == null) {
-      dataRegionGroupIDs = new ArrayList<>();
+  public void addDataRegionGroup(ConsensusGroupId id) {
+    if (dataRegionGroupIds == null) {
+      dataRegionGroupIds = new ArrayList<>();
     }
-    dataRegionGroupIDs.add(id);
+    dataRegionGroupIds.add(id);
   }
 
   public void serialize(ByteBuffer buffer) {

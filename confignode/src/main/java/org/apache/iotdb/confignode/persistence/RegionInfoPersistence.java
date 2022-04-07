@@ -19,15 +19,13 @@
 
 package org.apache.iotdb.confignode.persistence;
 
+import org.apache.iotdb.commons.cluster.DataNodeLocation;
 import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.GroupType;
-import org.apache.iotdb.commons.cluster.DataNodeLocation;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaDataSet;
-import org.apache.iotdb.confignode.partition.DataRegionInfo;
-import org.apache.iotdb.confignode.partition.SchemaRegionInfo;
 import org.apache.iotdb.confignode.partition.StorageGroupSchema;
 import org.apache.iotdb.confignode.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -43,94 +41,64 @@ import java.util.stream.Collectors;
 /** manage data partition and schema partition */
 public class RegionInfoPersistence {
 
-  /** partition read write lock */
-  private final ReentrantReadWriteLock partitionReadWriteLock;
-
   // TODO: Serialize and Deserialize
-  // storageGroupName -> StorageGroupSchema
+  // Map<StorageGroupName, StorageGroupSchema>
   private final Map<String, StorageGroupSchema> storageGroupsMap;
 
+  // Region allocate lock
+  private final ReentrantReadWriteLock regionAllocateLock;
   // TODO: Serialize and Deserialize
-  private int nextSchemaRegionGroup = 0;
-  // TODO: Serialize and Deserialize
-  private int nextDataRegionGroup = 0;
+  private int nextRegionGroupId = 0;
 
-  // TODO: Serialize and Deserialize
-  private final SchemaRegionInfo schemaRegion;
-
-  // TODO: Serialize and Deserialize
-  private final DataRegionInfo dataRegion;
+  // Region read write lock
+  private final ReentrantReadWriteLock regionReadWriteLock;
+  // Map<ConsensusGroupId, RegionReplicaSet>
+  private final Map<ConsensusGroupId, RegionReplicaSet> regionMap;
 
   public RegionInfoPersistence() {
-    this.partitionReadWriteLock = new ReentrantReadWriteLock();
+    this.regionAllocateLock = new ReentrantReadWriteLock();
+    this.regionReadWriteLock = new ReentrantReadWriteLock();
     this.storageGroupsMap = new HashMap<>();
-    this.schemaRegion = new SchemaRegionInfo();
-    this.dataRegion = new DataRegionInfo();
+    this.regionMap = new HashMap<>();
   }
 
   /**
-   * 1. region allocation 2. add to storage group map
+   * StorageGroupSchema and Region allocation result persistence
    *
    * @param plan SetStorageGroupPlan
-   * @return TSStatusCode.SUCCESS_STATUS if region allocate
+   * @return TSStatusCode.SUCCESS_STATUS if success
    */
   public TSStatus setStorageGroup(SetStorageGroupPlan plan) {
     TSStatus result;
-    partitionReadWriteLock.writeLock().lock();
+    regionReadWriteLock.writeLock().lock();
     try {
       if (storageGroupsMap.containsKey(plan.getSchema().getName())) {
         result = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
         result.setMessage(
             String.format("StorageGroup %s is already set.", plan.getSchema().getName()));
       } else {
-        StorageGroupSchema schema = new StorageGroupSchema(plan.getSchema().getName());
+        StorageGroupSchema schema = plan.getSchema();
         storageGroupsMap.put(schema.getName(), schema);
 
-        plan.getSchemaRegionInfo()
-            .getSchemaRegionDataNodesMap()
-            .entrySet()
-            .forEach(
-                entity -> {
-                  schemaRegion.addSchemaRegion(entity.getKey(), entity.getValue());
-                  entity
-                      .getValue()
-                      .forEach(
-                          dataNodeId -> {
-                            DataNodeInfoPersistence.getInstance()
-                                .addSchemaRegionGroup(dataNodeId, entity.getKey());
-                          });
-                });
-
-        plan.getDataRegionInfo()
-            .getDataRegionDataNodesMap()
-            .entrySet()
-            .forEach(
-                entity -> {
-                  dataRegion.createDataRegion(entity.getKey(), entity.getValue());
-                  entity
-                      .getValue()
-                      .forEach(
-                          dataNodeId -> {
-                            DataNodeInfoPersistence.getInstance()
-                                .addDataRegionGroup(dataNodeId, entity.getKey());
-                          });
-                });
+        for (RegionReplicaSet regionReplicaSet : plan.getRegionReplicaSets()) {
+          regionMap.put(regionReplicaSet.getId(), regionReplicaSet);
+        }
 
         result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       }
     } finally {
-      partitionReadWriteLock.writeLock().unlock();
+      regionReadWriteLock.writeLock().unlock();
     }
     return result;
   }
 
   public StorageGroupSchemaDataSet getStorageGroupSchema() {
     StorageGroupSchemaDataSet result = new StorageGroupSchemaDataSet();
-    partitionReadWriteLock.readLock().lock();
+    regionReadWriteLock.readLock().lock();
     try {
       result.setSchemaList(new ArrayList<>(storageGroupsMap.values()));
     } finally {
-      partitionReadWriteLock.readLock().unlock();
+      regionReadWriteLock.readLock().unlock();
     }
     return result;
   }
@@ -170,6 +138,18 @@ public class RegionInfoPersistence {
               schemaRegionEndPoints.add(schemaRegionReplicaSet);
             });
     return schemaRegionEndPoints;
+  }
+
+  public int generateNextRegionGroupId() {
+    int result;
+    regionAllocateLock.writeLock().lock();
+    try {
+      result = nextRegionGroupId;
+      nextRegionGroupId += 1;
+    } finally {
+      regionAllocateLock.writeLock().unlock();
+    }
+    return result;
   }
 
   public boolean containsStorageGroup(String storageName) {

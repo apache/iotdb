@@ -19,11 +19,13 @@
 
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.iotdb.commons.cluster.DataNodeLocation;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.GroupType;
+import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaDataSet;
-import org.apache.iotdb.confignode.partition.DataRegionInfo;
-import org.apache.iotdb.confignode.partition.SchemaRegionInfo;
 import org.apache.iotdb.confignode.partition.StorageGroupSchema;
 import org.apache.iotdb.confignode.persistence.RegionInfoPersistence;
 import org.apache.iotdb.confignode.physical.sys.QueryStorageGroupSchemaPlan;
@@ -39,25 +41,17 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /** manage data partition and schema partition */
 public class RegionManager {
+
   private static final ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();
   private static final int regionReplicaCount = conf.getRegionReplicaCount();
   private static final int schemaRegionCount = conf.getSchemaRegionCount();
   private static final int dataRegionCount = conf.getDataRegionCount();
 
-  /** partition read write lock */
-  private final ReentrantReadWriteLock partitionReadWriteLock;
-
-  // TODO: Serialize and Deserialize
-  private int nextSchemaRegionGroup = 0;
-  // TODO: Serialize and Deserialize
-  private int nextDataRegionGroup = 0;
-
-  private RegionInfoPersistence regionInfoPersistence = RegionInfoPersistence.getInstance();
+  private static final RegionInfoPersistence regionInfoPersistence = RegionInfoPersistence.getInstance();
 
   private final Manager configNodeManager;
 
   public RegionManager(Manager configNodeManager) {
-    this.partitionReadWriteLock = new ReentrantReadWriteLock();
     this.configNodeManager = configNodeManager;
   }
 
@@ -73,9 +67,7 @@ public class RegionManager {
    */
   public TSStatus setStorageGroup(SetStorageGroupPlan plan) {
     TSStatus result;
-    partitionReadWriteLock.writeLock().lock();
-    try {
-      if (configNodeManager.getDataNodeManager().getDataNodeId().size() < regionReplicaCount) {
+      if (configNodeManager.getDataNodeManager().getOnlineDataNodeCount() < regionReplicaCount) {
         result = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
         result.setMessage("DataNode is not enough, please register more.");
       } else {
@@ -84,24 +76,14 @@ public class RegionManager {
           result.setMessage(
               String.format("StorageGroup %s is already set.", plan.getSchema().getName()));
         } else {
-          String storageGroupName = plan.getSchema().getName();
-          StorageGroupSchema storageGroupSchema = new StorageGroupSchema(storageGroupName);
-
           // allocate schema region
-          SchemaRegionInfo schemaRegionInfo = schemaRegionAllocation(storageGroupSchema);
-          plan.setSchemaRegionInfo(schemaRegionInfo);
-
+          allocateRegions(plan, GroupType.SchemaRegion);
           // allocate data region
-          DataRegionInfo dataRegionInfo = dataRegionAllocation(storageGroupSchema);
-          plan.setDataRegionInfo(dataRegionInfo);
-
+          allocateRegions(plan, GroupType.DataRegion);
           // write consensus
           result = getConsensusManager().write(plan).getStatus();
         }
       }
-    } finally {
-      partitionReadWriteLock.writeLock().unlock();
-    }
     return result;
   }
 
@@ -109,38 +91,29 @@ public class RegionManager {
     return configNodeManager.getDataNodeManager();
   }
 
-  private SchemaRegionInfo schemaRegionAllocation(StorageGroupSchema storageGroupSchema) {
+  private void allocateRegions(SetStorageGroupPlan plan, GroupType type) {
 
-    SchemaRegionInfo schemaRegionInfo = new SchemaRegionInfo();
     // TODO: Use CopySet algorithm to optimize region allocation policy
-    for (int i = 0; i < schemaRegionCount; i++) {
-      List<Integer> dataNodeList = new ArrayList<>(getDataNodeInfoManager().getDataNodeId());
-      Collections.shuffle(dataNodeList);
-      schemaRegionInfo.addSchemaRegion(
-          nextSchemaRegionGroup, dataNodeList.subList(0, regionReplicaCount));
-      storageGroupSchema.addSchemaRegionGroup(nextSchemaRegionGroup);
-      nextSchemaRegionGroup += 1;
-    }
-    return schemaRegionInfo;
-  }
 
-  /**
-   * TODO: Only perform in leader node, @rongzhao
-   *
-   * @param storageGroupSchema
-   */
-  private DataRegionInfo dataRegionAllocation(StorageGroupSchema storageGroupSchema) {
-    // TODO: Use CopySet algorithm to optimize region allocation policy
-    DataRegionInfo dataRegionInfo = new DataRegionInfo();
-    for (int i = 0; i < dataRegionCount; i++) {
-      List<Integer> dataNodeList = new ArrayList<>(getDataNodeInfoManager().getDataNodeId());
-      Collections.shuffle(dataNodeList);
-      dataRegionInfo.createDataRegion(
-          nextDataRegionGroup, dataNodeList.subList(0, regionReplicaCount));
-      storageGroupSchema.addDataRegionGroup(nextDataRegionGroup);
-      nextDataRegionGroup += 1;
+    int regionCount = type.equals(GroupType.SchemaRegion) ? schemaRegionCount : dataRegionCount;
+    List<DataNodeLocation> onlineDataNodes = getDataNodeInfoManager().getOnlineDataNodes();
+    for (int i = 0; i < regionCount; i++) {
+      Collections.shuffle(onlineDataNodes);
+
+      RegionReplicaSet regionReplicaSet = new RegionReplicaSet();
+      ConsensusGroupId consensusGroupId = new ConsensusGroupId(type, regionInfoPersistence.generateNextRegionGroupId());
+      regionReplicaSet.setId(consensusGroupId);
+      regionReplicaSet.setDataNodeList(onlineDataNodes.subList(0, regionCount));
+      plan.addRegion(regionReplicaSet);
+
+      switch (type) {
+        case SchemaRegion:
+          plan.getSchema().addSchemaRegionGroup(consensusGroupId);
+          break;
+        case DataRegion:
+          plan.getSchema().addDataRegionGroup(consensusGroupId);
+      }
     }
-    return dataRegionInfo;
   }
 
   public StorageGroupSchemaDataSet getStorageGroupSchema() {

@@ -19,10 +19,10 @@
 package org.apache.iotdb.confignode.physical;
 
 import org.apache.iotdb.confignode.physical.crud.DataPartitionPlan;
+import org.apache.iotdb.confignode.physical.crud.SchemaPartitionPlan;
 import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
 import org.apache.iotdb.confignode.physical.sys.QueryStorageGroupSchemaPlan;
 import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
-import org.apache.iotdb.confignode.physical.crud.SchemaPartitionPlan;
 import org.apache.iotdb.confignode.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 

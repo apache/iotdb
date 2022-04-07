@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.confignode.physical.sys;
 
-import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.cluster.DataNodeLocation;
+import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
 import org.apache.iotdb.confignode.physical.PhysicalPlanType;
 

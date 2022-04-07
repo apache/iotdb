@@ -45,19 +45,30 @@ public class SchemaPartitionDataSet implements DataSet {
     SchemaPartitionInfo rpcSchemaPartitionInfo = new SchemaPartitionInfo();
     Map<String, Map<Integer, RegionReplicaSet>> schemaRegionDataNodesMap = new HashMap<>();
 
-    schemaPartition.getSchemaPartitionMap().forEach((storageGroup, seriesPartitionSlotRegionReplicaSetMap) -> {
-      schemaRegionDataNodesMap.putIfAbsent(storageGroup, new HashMap<>());
-      seriesPartitionSlotRegionReplicaSetMap.forEach(((seriesPartitionSlot, regionReplicaSet) -> {
-        RegionReplicaSet rpcRegionReplicaSet = new RegionReplicaSet();
-        rpcRegionReplicaSet.setRegionId(regionReplicaSet.getId().getId());
-        List<EndPoint> endPointList = new ArrayList<>();
-        regionReplicaSet.getDataNodeList().forEach(
-                dataNodeLocation -> endPointList.add(new EndPoint(dataNodeLocation.getEndPoint().getIp(), dataNodeLocation.getEndPoint().getPort()))
-        );
-        rpcRegionReplicaSet.setEndpoint(endPointList);
-        schemaRegionDataNodesMap.get(storageGroup).put(seriesPartitionSlot.getDeviceGroupId(), rpcRegionReplicaSet);
-      }));
-    });
+    schemaPartition
+        .getSchemaPartitionMap()
+        .forEach(
+            (storageGroup, seriesPartitionSlotRegionReplicaSetMap) -> {
+              schemaRegionDataNodesMap.putIfAbsent(storageGroup, new HashMap<>());
+              seriesPartitionSlotRegionReplicaSetMap.forEach(
+                  ((seriesPartitionSlot, regionReplicaSet) -> {
+                    RegionReplicaSet rpcRegionReplicaSet = new RegionReplicaSet();
+                    rpcRegionReplicaSet.setRegionId(regionReplicaSet.getId().getId());
+                    List<EndPoint> endPointList = new ArrayList<>();
+                    regionReplicaSet
+                        .getDataNodeList()
+                        .forEach(
+                            dataNodeLocation ->
+                                endPointList.add(
+                                    new EndPoint(
+                                        dataNodeLocation.getEndPoint().getIp(),
+                                        dataNodeLocation.getEndPoint().getPort())));
+                    rpcRegionReplicaSet.setEndpoint(endPointList);
+                    schemaRegionDataNodesMap
+                        .get(storageGroup)
+                        .put(seriesPartitionSlot.getDeviceGroupId(), rpcRegionReplicaSet);
+                  }));
+            });
 
     rpcSchemaPartitionInfo.setSchemaRegionDataNodesMap(schemaRegionDataNodesMap);
     return rpcSchemaPartitionInfo;

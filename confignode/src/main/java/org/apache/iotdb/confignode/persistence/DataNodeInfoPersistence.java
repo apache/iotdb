@@ -20,9 +20,11 @@ package org.apache.iotdb.confignode.persistence;
 
 import org.apache.iotdb.commons.cluster.DataNodeLocation;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.response.DataNodesInfoDataSet;
 import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
 import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
+import org.apache.iotdb.consensus.common.ConsensusType;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
@@ -32,6 +34,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentNavigableMap;
@@ -39,27 +42,43 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class DataNodeInfoPersistence {
+
   private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeInfoPersistence.class);
 
+  private final ReentrantReadWriteLock dataNodeInfoReadWriteLock;
+
+  // TODO: serialize and deserialize
+  private int nextDataNodeId = 0;
+
   /** online data nodes */
+  // TODO: serialize and deserialize
   private final ConcurrentNavigableMap<Integer, DataNodeLocation> onlineDataNodes =
       new ConcurrentSkipListMap();
 
   /** For remove node or draining node */
   private final Set<DataNodeLocation> drainingDataNodes = new HashSet<>();
 
-  private final ReentrantReadWriteLock dataNodeInfoReadWriteLock;
-
   private DataNodeInfoPersistence() {
     this.dataNodeInfoReadWriteLock = new ReentrantReadWriteLock();
   }
 
-  public ConcurrentNavigableMap<Integer, DataNodeLocation> getOnlineDataNodes() {
-    return onlineDataNodes;
-  }
-
   public boolean containsValue(DataNodeLocation info) {
-    return onlineDataNodes.containsValue(info);
+    boolean result = false;
+    dataNodeInfoReadWriteLock.readLock().lock();
+
+    try {
+      for (Map.Entry<Integer, DataNodeLocation> entry : onlineDataNodes.entrySet()) {
+        if (entry.getValue().getEndPoint().equals(info.getEndPoint())) {
+          result = true;
+          info.setDataNodeID(entry.getKey());
+          break;
+        }
+      }
+    } finally {
+      dataNodeInfoReadWriteLock.readLock().unlock();
+    }
+
+    return result;
   }
 
   public void put(int dataNodeID, DataNodeLocation info) {
@@ -87,17 +106,9 @@ public class DataNodeInfoPersistence {
     DataNodeLocation info = plan.getInfo();
     dataNodeInfoReadWriteLock.writeLock().lock();
     try {
-      if (onlineDataNodes.containsValue(info)) {
-        result = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
-        result.setMessage(
-            String.format(
-                "DataNode %s is already registered.", plan.getInfo().getEndPoint().toString()));
-      } else {
-        onlineDataNodes.put(info.getDataNodeID(), info);
-        result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-        result.setMessage(String.valueOf(info.getDataNodeID()));
-        LOGGER.info("Register data node success, data node is {}", plan);
-      }
+      onlineDataNodes.put(info.getDataNodeID(), info);
+      result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      setRegisterDataNodeMessages(result, info.getDataNodeID());
     } finally {
       dataNodeInfoReadWriteLock.writeLock().unlock();
     }
@@ -112,6 +123,8 @@ public class DataNodeInfoPersistence {
    */
   public DataNodesInfoDataSet getDataNodeInfo(QueryDataNodeInfoPlan plan) {
     DataNodesInfoDataSet result = new DataNodesInfoDataSet();
+    result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+
     int dataNodeId = plan.getDataNodeID();
     dataNodeInfoReadWriteLock.readLock().lock();
     try {
@@ -127,8 +140,62 @@ public class DataNodeInfoPersistence {
     return result;
   }
 
-  public Set<Integer> getDataNodeIds() {
-    return onlineDataNodes.keySet();
+  public int getOnlineDataNodeCount() {
+    int result;
+    dataNodeInfoReadWriteLock.readLock().lock();
+    try {
+      result = onlineDataNodes.size();
+    } finally {
+      dataNodeInfoReadWriteLock.readLock().unlock();
+    }
+    return result;
+  }
+
+  public List<DataNodeLocation> getOnlineDataNodes() {
+    List<DataNodeLocation> result;
+    dataNodeInfoReadWriteLock.readLock().lock();
+    try {
+      result = new ArrayList<>(onlineDataNodes.values());
+    } finally {
+      dataNodeInfoReadWriteLock.readLock().unlock();
+    }
+    return result;
+  }
+
+  public int generateNextDataNodeId() {
+    int result;
+
+    try {
+      dataNodeInfoReadWriteLock.writeLock().lock();
+      result = nextDataNodeId;
+      nextDataNodeId += 1;
+    } finally {
+      dataNodeInfoReadWriteLock.writeLock().unlock();
+    }
+
+    return result;
+  }
+
+  public static void setRegisterDataNodeMessages(TSStatus status, int dataNodeId) {
+    StringBuilder messageBuilder = new StringBuilder();
+
+    // dataNodeId
+    messageBuilder.append(dataNodeId);
+
+    // consensusType
+    ConsensusType consensusType = ConfigNodeDescriptor.getInstance().getConf().getConsensusType();
+    messageBuilder.append(consensusType.toString().length());
+    messageBuilder.append(consensusType);
+
+    // seriesPartitionSlotNum
+    messageBuilder.append(ConfigNodeDescriptor.getInstance().getConf().getDeviceGroupCount());
+
+    // seriesPartitionSlotExecutorClass
+    String seriesPartitionSlotExecutorClass = ConfigNodeDescriptor.getInstance().getConf().getDeviceGroupHashExecutorClass();
+    messageBuilder.append(seriesPartitionSlotExecutorClass.length());
+    messageBuilder.append(seriesPartitionSlotExecutorClass);
+
+    status.setMessage(messageBuilder.toString());
   }
 
   @TestOnly

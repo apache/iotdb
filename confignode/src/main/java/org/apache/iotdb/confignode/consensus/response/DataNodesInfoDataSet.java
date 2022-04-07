@@ -20,15 +20,25 @@ package org.apache.iotdb.confignode.consensus.response;
 
 import org.apache.iotdb.commons.cluster.DataNodeLocation;
 import org.apache.iotdb.consensus.common.DataSet;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import java.util.List;
 
 public class DataNodesInfoDataSet implements DataSet {
 
+  private TSStatus status;
   private List<DataNodeLocation> dataNodeList;
 
   public DataNodesInfoDataSet() {
     // empty constructor
+  }
+
+  public void setStatus(TSStatus status) {
+    this.status = status;
+  }
+
+  public TSStatus getStatus() {
+    return status;
   }
 
   public void setDataNodeList(List<DataNodeLocation> dataNodeList) {

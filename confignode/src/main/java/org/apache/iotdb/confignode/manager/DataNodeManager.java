@@ -27,6 +27,7 @@ import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
+import org.apache.iotdb.tsfile.read.filter.operator.In;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,14 +35,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /** Manager server info of data node, add node or remove node */
 public class DataNodeManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeManager.class);
 
-  private static final DataNodeInfoPersistence dataNodeInfo = DataNodeInfoPersistence.getInstance();
+  private static final DataNodeInfoPersistence dataNodeInfoPersistence = DataNodeInfoPersistence.getInstance();
 
   private final Manager configManager;
 
@@ -61,17 +61,16 @@ public class DataNodeManager {
   public TSStatus registerDataNode(RegisterDataNodePlan plan) {
     TSStatus result;
     DataNodeLocation info = plan.getInfo();
-    if (dataNodeInfo.containsValue(info)) {
-      // TODO: optimize
+
+    if (dataNodeInfoPersistence.containsValue(info)) {
       result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-      result.setMessage(String.valueOf(dataNodeInfo.getDataNodeInfo(info)));
+      DataNodeInfoPersistence.setRegisterDataNodeMessages(result, info.getDataNodeID());
+      return result;
     } else {
-      info.setDataNodeID(nextDataNodeId);
+      info.setDataNodeID(dataNodeInfoPersistence.generateNextDataNodeId());
       ConsensusWriteResponse consensusWriteResponse = getConsensusManager().write(plan);
-      nextDataNodeId += 1;
       return consensusWriteResponse.getStatus();
     }
-    return result;
   }
 
   /**
@@ -84,8 +83,12 @@ public class DataNodeManager {
     return (DataNodesInfoDataSet) getConsensusManager().read(plan).getDataset();
   }
 
-  public Set<Integer> getDataNodeId() {
-    return dataNodeInfo.getDataNodeIds();
+  public int getOnlineDataNodeCount() {
+    return dataNodeInfoPersistence.getOnlineDataNodeCount();
+  }
+
+  public List<DataNodeLocation> getOnlineDataNodes() {
+    return dataNodeInfoPersistence.getOnlineDataNodes();
   }
 
   private ConsensusManager getConsensusManager() {
@@ -103,10 +106,6 @@ public class DataNodeManager {
   /** TODO: wait data node register, wait */
   public void waitForDataNodes() {
     listeners.stream().forEach(serverListener -> serverListener.waiting());
-  }
-
-  public Map<Integer, DataNodeLocation> getOnlineDataNodes() {
-    return dataNodeInfo.getOnlineDataNodes();
   }
 
   private class ServerStartListenerThread extends Thread implements ChangeServerListener {

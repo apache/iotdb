@@ -24,11 +24,10 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.response.DataNodesInfoDataSet;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
 import org.apache.iotdb.confignode.physical.crud.DataPartitionPlan;
+import org.apache.iotdb.confignode.physical.crud.SchemaPartitionPlan;
 import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
 import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
-import org.apache.iotdb.confignode.physical.crud.SchemaPartitionPlan;
 import org.apache.iotdb.confignode.physical.sys.SetStorageGroupPlan;
-import org.apache.iotdb.confignode.rpc.thrift.DeviceGroupHashInfo;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
@@ -67,6 +66,9 @@ public class ConfigManager implements Manager {
 
   @Override
   public TSStatus registerDataNode(PhysicalPlan physicalPlan) {
+
+    // TODO: Only leader can register DataNode
+
     if (physicalPlan instanceof RegisterDataNodePlan) {
       return dataNodeManager.registerDataNode((RegisterDataNodePlan) physicalPlan);
     }
@@ -75,6 +77,9 @@ public class ConfigManager implements Manager {
 
   @Override
   public DataSet getDataNodeInfo(PhysicalPlan physicalPlan) {
+
+    // TODO: Only leader can get DataNodeInfo
+
     if (physicalPlan instanceof QueryDataNodeInfoPlan) {
       return dataNodeManager.getDataNodeInfo((QueryDataNodeInfoPlan) physicalPlan);
     }
@@ -83,11 +88,17 @@ public class ConfigManager implements Manager {
 
   @Override
   public DataSet getStorageGroupSchema() {
+
+    // TODO: Only leader can get StorageGroupSchema
+
     return regionManager.getStorageGroupSchema();
   }
 
   @Override
   public TSStatus setStorageGroup(PhysicalPlan physicalPlan) {
+
+    // TODO: Only leader can set StorageGroup
+
     if (physicalPlan instanceof SetStorageGroupPlan) {
       return regionManager.setStorageGroup((SetStorageGroupPlan) physicalPlan);
     }
@@ -134,12 +145,6 @@ public class ConfigManager implements Manager {
       return partitionManager.applyDataPartition((DataPartitionPlan) physicalPlan);
     }
     return new DataNodesInfoDataSet();
-  }
-
-  @Override
-  public DeviceGroupHashInfo getDeviceGroupHashInfo() {
-    return new DeviceGroupHashInfo(
-        conf.getDeviceGroupCount(), conf.getDeviceGroupHashExecutorClass());
   }
 
   @Override

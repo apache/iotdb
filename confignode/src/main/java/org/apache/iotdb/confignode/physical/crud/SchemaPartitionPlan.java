@@ -28,9 +28,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Query or apply SchemaPartition by the specific storageGroup and the deviceGroupStartTimeMap.
- */
+/** Query or apply SchemaPartition by the specific storageGroup and the deviceGroupStartTimeMap. */
 public class SchemaPartitionPlan extends PhysicalPlan {
   private String storageGroup;
   private List<Integer> deviceGroupIDs;

@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.confignode.manager;
 
-import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionDataSet;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionDataSet;
@@ -36,7 +35,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /** manage data partition and schema partition */
 public class PartitionManager {
@@ -75,17 +73,18 @@ public class PartitionManager {
             .filterSchemaRegionNoAssignDeviceGroupId(storageGroup, deviceGroupIDs);
 
     if (noAssignDeviceGroupId.size() == 0 && !getConsensusManager().isLeader()) {
-      // Reject apply if there exists not assigned SchemaPartition and the local ConfigNode is not the leader
+      // Reject apply if there exists not assigned SchemaPartition and the local ConfigNode is not
+      // the leader
       // TODO: Tell DataNode to re-transmit
       return new SchemaPartitionDataSet();
     }
 
     // allocate partition by storage group and device group id
-      Map<Integer, RegionReplicaSet> deviceGroupIdReplicaSets =
-          allocateSchemaPartition(storageGroup, noAssignDeviceGroupId);
-      physicalPlan.setDeviceGroupIdReplicaSet(deviceGroupIdReplicaSets);
-      getConsensusManager().write(physicalPlan);
-      LOGGER.info("Allocate schema partition to {}.", deviceGroupIdReplicaSets);
+    Map<Integer, RegionReplicaSet> deviceGroupIdReplicaSets =
+        allocateSchemaPartition(storageGroup, noAssignDeviceGroupId);
+    physicalPlan.setDeviceGroupIdReplicaSet(deviceGroupIdReplicaSets);
+    getConsensusManager().write(physicalPlan);
+    LOGGER.info("Allocate schema partition to {}.", deviceGroupIdReplicaSets);
 
     return getSchemaPartition(physicalPlan);
   }
@@ -104,7 +103,7 @@ public class PartitionManager {
     Map<Integer, RegionReplicaSet> deviceGroupIdReplicaSets = new HashMap<>();
     for (Integer deviceGroupID : deviceGroupIDs) {
       RegionReplicaSet schemaRegionReplicaSet =
-              schemaRegionEndPoints.get(random.nextInt(schemaRegionEndPoints.size()));
+          schemaRegionEndPoints.get(random.nextInt(schemaRegionEndPoints.size()));
       deviceGroupIdReplicaSets.put(deviceGroupID, schemaRegionReplicaSet);
     }
     return deviceGroupIdReplicaSets;
@@ -132,8 +131,8 @@ public class PartitionManager {
    */
   public DataSet getDataPartition(DataPartitionPlan physicalPlan) {
     DataPartitionDataSet dataPartitionDataSet;
-      ConsensusReadResponse consensusReadResponse = getConsensusManager().read(physicalPlan);
-      dataPartitionDataSet = (DataPartitionDataSet) consensusReadResponse.getDataset();
+    ConsensusReadResponse consensusReadResponse = getConsensusManager().read(physicalPlan);
+    dataPartitionDataSet = (DataPartitionDataSet) consensusReadResponse.getDataset();
 
     return dataPartitionDataSet;
   }

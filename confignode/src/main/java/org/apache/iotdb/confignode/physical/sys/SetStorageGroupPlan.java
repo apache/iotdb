@@ -18,21 +18,23 @@
  */
 package org.apache.iotdb.confignode.physical.sys;
 
-import org.apache.iotdb.confignode.partition.DataRegionInfo;
-import org.apache.iotdb.confignode.partition.SchemaRegionInfo;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.confignode.partition.StorageGroupSchema;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
 import org.apache.iotdb.confignode.physical.PhysicalPlanType;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class SetStorageGroupPlan extends PhysicalPlan {
 
   private StorageGroupSchema schema;
 
-  private SchemaRegionInfo schemaRegionInfo;
-
-  private DataRegionInfo dataRegionInfo;
+  private List<RegionReplicaSet> regionReplicaSets;
 
   public SetStorageGroupPlan() {
     super(PhysicalPlanType.SetStorageGroup);
@@ -52,34 +54,38 @@ public class SetStorageGroupPlan extends PhysicalPlan {
     this.schema = schema;
   }
 
-  public SchemaRegionInfo getSchemaRegionInfo() {
-    return schemaRegionInfo;
+  public List<RegionReplicaSet> getRegionReplicaSets() {
+    return regionReplicaSets;
   }
 
-  public void setSchemaRegionInfo(SchemaRegionInfo schemaRegionInfo) {
-    this.schemaRegionInfo = schemaRegionInfo;
-  }
-
-  public DataRegionInfo getDataRegionInfo() {
-    return dataRegionInfo;
-  }
-
-  public void setDataRegionInfo(DataRegionInfo dataRegionInfo) {
-    this.dataRegionInfo = dataRegionInfo;
+  public void addRegion(RegionReplicaSet regionReplicaSet) {
+    if (regionReplicaSets == null) {
+      regionReplicaSets = new ArrayList<>();
+    }
+    regionReplicaSets.add(regionReplicaSet);
   }
 
   @Override
   protected void serializeImpl(ByteBuffer buffer) {
     buffer.putInt(PhysicalPlanType.SetStorageGroup.ordinal());
     schema.serialize(buffer);
-    schemaRegionInfo.serializeImpl(buffer);
-    dataRegionInfo.serializeImpl(buffer);
+
+    buffer.putInt(regionReplicaSets.size());
+    for (RegionReplicaSet regionReplicaSet : regionReplicaSets) {
+      regionReplicaSet.serializeImpl(buffer);
+    }
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) {
     schema.deserialize(buffer);
-    schemaRegionInfo.deserializeImpl(buffer);
-    dataRegionInfo.deserializeImpl(buffer);
+
+    int length = buffer.getInt();
+    regionReplicaSets = new ArrayList<>();
+    for (int i = 0; i < length; i++) {
+      RegionReplicaSet regionReplicaSet = new RegionReplicaSet();
+      regionReplicaSet.deserializeImpl(buffer);
+      regionReplicaSets.add(regionReplicaSet);
+    }
   }
 }

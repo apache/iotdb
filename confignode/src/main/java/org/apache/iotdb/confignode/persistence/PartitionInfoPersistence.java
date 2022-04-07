@@ -99,9 +99,8 @@ public class PartitionInfoPersistence {
         physicalPlan.getDeviceGroupIdReplicaSets();
     try {
 
-      deviceGroupIdReplicaSets
-              .forEach((key, value) -> schemaPartition.setSchemaRegionReplicaSet(
-                      storageGroup, key, value));
+      deviceGroupIdReplicaSets.forEach(
+          (key, value) -> schemaPartition.setSchemaRegionReplicaSet(storageGroup, key, value));
     } finally {
       schemaPartitionReadWriteLock.writeLock().unlock();
     }

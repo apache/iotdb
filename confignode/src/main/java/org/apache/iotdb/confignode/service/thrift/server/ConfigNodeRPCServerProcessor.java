@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.confignode.service.thrift.server;
 
-import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.cluster.DataNodeLocation;
+import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.confignode.consensus.response.DataNodesInfoDataSet;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionDataSet;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionDataSet;
@@ -28,16 +28,20 @@ import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.partition.StorageGroupSchema;
 import org.apache.iotdb.confignode.physical.PhysicalPlanType;
 import org.apache.iotdb.confignode.physical.crud.DataPartitionPlan;
+import org.apache.iotdb.confignode.physical.crud.SchemaPartitionPlan;
 import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
 import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
-import org.apache.iotdb.confignode.physical.crud.SchemaPartitionPlan;
 import org.apache.iotdb.confignode.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.confignode.rpc.thrift.ApplyDataPartitionReq;
+import org.apache.iotdb.confignode.rpc.thrift.ApplySchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
 import org.apache.iotdb.confignode.rpc.thrift.DataNodeMessage;
+import org.apache.iotdb.confignode.rpc.thrift.DataNodeMessageResp;
 import org.apache.iotdb.confignode.rpc.thrift.DataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.DataNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.DataPartitionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.DataPartitionInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.DataPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.DeleteStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.DeviceGroupHashInfo;
 import org.apache.iotdb.confignode.rpc.thrift.FetchDataPartitionReq;
@@ -48,8 +52,11 @@ import org.apache.iotdb.confignode.rpc.thrift.GetSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.PartitionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.SchemaPartitionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.SchemaPartitionInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.SchemaPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.SetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.StorageGroupMessage;
+import org.apache.iotdb.confignode.rpc.thrift.StorageGroupMessageResp;
+import org.apache.iotdb.confignode.util.SerializeDeserializeUtil;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
@@ -60,6 +67,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -75,50 +83,59 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
 
   @Override
   public DataNodeRegisterResp registerDataNode(DataNodeRegisterReq req) throws TException {
-    // TODO: handle exception in consensusLayer
     RegisterDataNodePlan plan =
         new RegisterDataNodePlan(
             -1, new Endpoint(req.getEndPoint().getIp(), req.getEndPoint().getPort()));
     TSStatus status = configManager.registerDataNode(plan);
-    DataNodeRegisterResp result = new DataNodeRegisterResp();
-    result.setRegisterResult(status);
+    DataNodeRegisterResp resp = new DataNodeRegisterResp();
+    resp.setStatus(status);
+
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      result.setDataNodeID(Integer.parseInt(status.getMessage()));
+      ByteBuffer buffer = ByteBuffer.wrap(status.getMessage().getBytes());
+
+      resp.setDataNodeID(buffer.getInt());
+      resp.setConsensusType(SerializeDeserializeUtil.readString(buffer));
+      resp.setSeriesPartitionSlotNum(buffer.getInt());
+      resp.setSeriesPartitionSlotExecutorClass(SerializeDeserializeUtil.readString(buffer));
+
       LOGGER.info(
           "Register DataNode successful. DataNodeID: {}, {}",
-          status.getMessage(),
+          resp.getDataNodeID(),
           req.getEndPoint().toString());
     } else {
       LOGGER.error("Register DataNode failed. {}", status.getMessage());
     }
-    return result;
+
+    return resp;
   }
 
   @Override
-  public Map<Integer, DataNodeMessage> getDataNodesMessage(int dataNodeID) throws TException {
+  public DataNodeMessageResp getDataNodesMessage(int dataNodeID) throws TException {
     QueryDataNodeInfoPlan plan = new QueryDataNodeInfoPlan(dataNodeID);
-    DataSet dataSet = configManager.getDataNodeInfo(plan);
+    DataNodesInfoDataSet dataSet = (DataNodesInfoDataSet) configManager.getDataNodeInfo(plan);
 
-    if (dataSet == null) {
-      return new HashMap<>();
-    } else {
-      Map<Integer, DataNodeMessage> result = new HashMap<>();
-      for (DataNodeLocation info : ((DataNodesInfoDataSet) dataSet).getDataNodeList()) {
-        result.put(
+    DataNodeMessageResp resp = new DataNodeMessageResp();
+    resp.setStatus(dataSet.getStatus());
+    if (dataSet.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      Map<Integer, DataNodeMessage> msgMap = new HashMap<>();
+      for (DataNodeLocation info : dataSet.getDataNodeList()) {
+        msgMap.put(
+          info.getDataNodeID(),
+          new DataNodeMessage(
             info.getDataNodeID(),
-            new DataNodeMessage(
-                info.getDataNodeID(),
-                new EndPoint(info.getEndPoint().getIp(), info.getEndPoint().getPort())));
+            new EndPoint(info.getEndPoint().getIp(), info.getEndPoint().getPort())));
+        resp.setDataNodeMessageMap(msgMap);
       }
-      return result;
     }
+
+    return resp;
   }
 
   @Override
   public TSStatus setStorageGroup(SetStorageGroupReq req) throws TException {
     SetStorageGroupPlan plan =
         new SetStorageGroupPlan(
-            new org.apache.iotdb.confignode.partition.StorageGroupSchema(req.getStorageGroup()));
+            new StorageGroupSchema(req.getStorageGroup()));
 
     TSStatus resp = configManager.setStorageGroup(plan);
     if (resp.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -131,75 +148,67 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
 
   @Override
   public TSStatus deleteStorageGroup(DeleteStorageGroupReq req) throws TException {
+    // TODO: delete StorageGroup
     return null;
   }
 
   @Override
-  public Map<String, StorageGroupMessage> getStorageGroupsMessage() throws TException {
-    DataSet dataSet = configManager.getStorageGroupSchema();
+  public StorageGroupMessageResp getStorageGroupsMessage() throws TException {
+    StorageGroupSchemaDataSet dataSet = (StorageGroupSchemaDataSet) configManager.getStorageGroupSchema();
 
-    if (dataSet == null) {
-      return new HashMap<>();
-    } else {
-      Map<String, StorageGroupMessage> result = new HashMap<>();
-      for (StorageGroupSchema schema : ((StorageGroupSchemaDataSet) dataSet).getSchemaList()) {
-        result.put(schema.getName(), new StorageGroupMessage(schema.getName()));
+    StorageGroupMessageResp resp = new StorageGroupMessageResp();
+    resp.setStatus(dataSet.getStatus());
+    if (dataSet.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      Map<String, StorageGroupMessage> storageGroupMessageMap = new HashMap<>();
+      for (StorageGroupSchema schema : dataSet.getSchemaList()) {
+        storageGroupMessageMap.put(schema.getName(), new StorageGroupMessage(schema.getName()));
       }
-      return result;
+      resp.setStorageGroupMessageMap(storageGroupMessageMap);
     }
+
+    return resp;
   }
 
   @Override
-  public DeviceGroupHashInfo getDeviceGroupHashInfo() throws TException {
-    return configManager.getDeviceGroupHashInfo();
-  }
-
-  @Override
-  public DataPartitionInfo applyDataPartition(GetDataPartitionReq req) throws TException {
-    DataPartitionPlan applyDataPartitionPlan = new DataPartitionPlan(PhysicalPlanType.ApplyDataPartition, req.getStorageGroup(), req.getDeviceGroupStartTimeMap());
-    DataSet dataset = configManager.applyDataPartition(applyDataPartitionPlan);
-    return ((DataPartitionDataSet) dataset).convertRpcDataPartitionInfo();
-  }
-
-  @Override
-  public SchemaPartitionInfo applySchemaPartition(GetSchemaPartitionReq req) throws TException {
-    SchemaPartitionPlan applySchemaPartitionPlan =
-        new SchemaPartitionPlan(
-            PhysicalPlanType.ApplySchemaPartition, req.getStorageGroup(), req.getDeviceGroupIDs());
-    DataSet dataSet = configManager.applySchemaPartition(applySchemaPartitionPlan);
-    return ((SchemaPartitionDataSet) dataSet).convertRpcSchemaPartitionInfo();
-  }
-
-  @Override
-  public SchemaPartitionInfo getSchemaPartition(GetSchemaPartitionReq req) throws TException {
+  public SchemaPartitionResp fetchSchemaPartition(FetchSchemaPartitionReq req) throws TException {
+    // TODO: fetch schema
     SchemaPartitionPlan querySchemaPartitionPlan =
-        new SchemaPartitionPlan(
-            PhysicalPlanType.QuerySchemaPartition, req.getStorageGroup(), req.getDeviceGroupIDs());
+      new SchemaPartitionPlan(
+        PhysicalPlanType.QuerySchemaPartition, req.getStorageGroup(), req.getDeviceGroupIDs());
     DataSet dataSet = configManager.getSchemaPartition(querySchemaPartitionPlan);
     return ((SchemaPartitionDataSet) dataSet).convertRpcSchemaPartitionInfo();
   }
 
   @Override
-  public DataPartitionInfo getDataPartition(GetDataPartitionReq req) throws TException {
-    DataPartitionPlan applyDataPartitionPlan = new DataPartitionPlan(PhysicalPlanType.QueryDataPartition, req.getStorageGroup(), req.getDeviceGroupStartTimeMap());
+  public SchemaPartitionResp applySchemaPartition(ApplySchemaPartitionReq req) throws TException {
+    SchemaPartitionPlan applySchemaPartitionPlan =
+      new SchemaPartitionPlan(
+        PhysicalPlanType.ApplySchemaPartition, req.getStorageGroup(), req.getDeviceGroupIDs());
+    DataSet dataSet = configManager.applySchemaPartition(applySchemaPartitionPlan);
+    return ((SchemaPartitionDataSet) dataSet).convertRpcSchemaPartitionInfo();
+  }
+
+  @Override
+  public DataPartitionResp fetchDataPartition(FetchDataPartitionReq req) throws TException {
+    // TODO: fetch Data
+    DataPartitionPlan applyDataPartitionPlan =
+      new DataPartitionPlan(
+        PhysicalPlanType.QueryDataPartition,
+        req.getStorageGroup(),
+        req.getDeviceGroupStartTimeMap());
     DataSet dataset = configManager.getDataPartition(applyDataPartitionPlan);
     return ((DataPartitionDataSet) dataset).convertRpcDataPartitionInfo();
   }
 
   @Override
-  public DataPartitionInfoResp fetchDataPartitionInfo(FetchDataPartitionReq req) throws TException {
-    return null;
-  }
-
-  @Override
-  public SchemaPartitionInfoResp fetchSchemaPartitionInfo(FetchSchemaPartitionReq req)
-      throws TException {
-    return null;
-  }
-
-  @Override
-  public PartitionInfoResp fetchPartitionInfo(FetchPartitionReq req) throws TException {
-    return null;
+  public DataPartitionResp applyDataPartition(ApplyDataPartitionReq req) throws TException {
+    DataPartitionPlan applyDataPartitionPlan =
+      new DataPartitionPlan(
+        PhysicalPlanType.ApplyDataPartition,
+        req.getStorageGroup(),
+        req.getDeviceGroupStartTimeMap());
+    DataSet dataset = configManager.applyDataPartition(applyDataPartitionPlan);
+    return ((DataPartitionDataSet) dataset).convertRpcDataPartitionInfo();
   }
 
   public void handleClientExit() {}

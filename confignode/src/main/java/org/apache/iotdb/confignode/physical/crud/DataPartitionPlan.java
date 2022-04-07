@@ -28,9 +28,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Query or apply DataPartition by the specific storageGroup and the deviceGroupStartTimeMap.
- */
+/** Query or apply DataPartition by the specific storageGroup and the deviceGroupStartTimeMap. */
 public class DataPartitionPlan extends PhysicalPlan {
   private String storageGroup;
   private Map<Integer, List<Long>> deviceGroupStartTimeMap;

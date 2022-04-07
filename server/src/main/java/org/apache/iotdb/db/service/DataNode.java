@@ -140,7 +140,7 @@ public class DataNode implements DataNodeMBean {
         ConfigIService.Client client = createClient(configNode);
         DataNodeRegisterResp dataNodeRegisterResp =
             client.registerDataNode(new DataNodeRegisterReq(thisNode));
-        if (dataNodeRegisterResp.getRegisterResult().getCode()
+        if (dataNodeRegisterResp.getStatus().getCode()
             == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           dataNodeID = dataNodeRegisterResp.getDataNodeID();
           logger.info("Joined a cluster successfully");
