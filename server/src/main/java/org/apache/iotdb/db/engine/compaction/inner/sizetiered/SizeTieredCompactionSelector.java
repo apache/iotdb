@@ -78,6 +78,11 @@ public class SizeTieredCompactionSelector
     this.timePartition = timePartition;
     this.tsFileManager = tsFileManager;
     this.sequence = sequence;
+    if (sequence) {
+      this.tsFileResources = tsFileManager.getSequenceListByTimePartition(timePartition);
+    } else {
+      this.tsFileResources = tsFileManager.getUnsequenceListByTimePartition(timePartition);
+    }
   }
 
   /**
