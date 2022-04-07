@@ -54,7 +54,7 @@ public class SinkHandle implements ISinkHandle {
 
   private final String remoteHostname;
   private final TFragmentInstanceId remoteFragmentInstanceId;
-  private final String remoteOperatorId;
+  private final String remotePlanNodeId;
   private final TFragmentInstanceId localFragmentInstanceId;
   private final LocalMemoryManager localMemoryManager;
   private final ExecutorService executorService;
@@ -77,7 +77,7 @@ public class SinkHandle implements ISinkHandle {
   public SinkHandle(
       String remoteHostname,
       TFragmentInstanceId remoteFragmentInstanceId,
-      String remoteOperatorId,
+      String remotePlanNodeId,
       TFragmentInstanceId localFragmentInstanceId,
       LocalMemoryManager localMemoryManager,
       ExecutorService executorService,
@@ -86,7 +86,7 @@ public class SinkHandle implements ISinkHandle {
       SinkHandleListener sinkHandleListener) {
     this.remoteHostname = Validate.notNull(remoteHostname);
     this.remoteFragmentInstanceId = Validate.notNull(remoteFragmentInstanceId);
-    this.remoteOperatorId = Validate.notNull(remoteOperatorId);
+    this.remotePlanNodeId = Validate.notNull(remotePlanNodeId);
     this.localFragmentInstanceId = Validate.notNull(localFragmentInstanceId);
     this.localMemoryManager = Validate.notNull(localMemoryManager);
     this.executorService = Validate.notNull(executorService);
@@ -156,14 +156,14 @@ public class SinkHandle implements ISinkHandle {
 
   private void sendEndOfDataBlockEvent() throws TException {
     logger.debug(
-        "Send end of data block event to operator {} of {}.",
-        remoteOperatorId,
+        "Send end of data block event to plan node {} of {}.",
+        remotePlanNodeId,
         remoteFragmentInstanceId);
     int attempt = 0;
     EndOfDataBlockEvent endOfDataBlockEvent =
         new EndOfDataBlockEvent(
             remoteFragmentInstanceId,
-            remoteOperatorId,
+            remotePlanNodeId,
             localFragmentInstanceId,
             nextSequenceId - 1);
     while (attempt < MAX_ATTEMPT_TIMES) {
@@ -173,8 +173,8 @@ public class SinkHandle implements ISinkHandle {
         break;
       } catch (TException e) {
         logger.error(
-            "Failed to send end of data block event to operator {} of {} due to {}, attempt times: {}",
-            remoteOperatorId,
+            "Failed to send end of data block event to plan node {} of {} due to {}, attempt times: {}",
+            remotePlanNodeId,
             remoteFragmentInstanceId,
             e.getMessage(),
             attempt);
@@ -291,8 +291,8 @@ public class SinkHandle implements ISinkHandle {
     return remoteFragmentInstanceId;
   }
 
-  String getRemoteOperatorId() {
-    return remoteOperatorId;
+  String getRemotePlanNodeId() {
+    return remotePlanNodeId;
   }
 
   TFragmentInstanceId getLocalFragmentInstanceId() {
@@ -304,7 +304,7 @@ public class SinkHandle implements ISinkHandle {
     return new StringJoiner(", ", SinkHandle.class.getSimpleName() + "[", "]")
         .add("remoteHostname='" + remoteHostname + "'")
         .add("remoteFragmentInstanceId=" + remoteFragmentInstanceId)
-        .add("remoteOperatorId='" + remoteOperatorId + "'")
+        .add("remotePlanNodeId='" + remotePlanNodeId + "'")
         .add("localFragmentInstanceId=" + localFragmentInstanceId)
         .toString();
   }
@@ -328,16 +328,16 @@ public class SinkHandle implements ISinkHandle {
     @Override
     public void run() {
       logger.debug(
-          "Send new data block event [{}, {}) to operator {} of {}.",
+          "Send new data block event [{}, {}) to plan node {} of {}.",
           startSequenceId,
           startSequenceId + blockSizes.size(),
-          remoteOperatorId,
+          remotePlanNodeId,
           remoteFragmentInstanceId);
       int attempt = 0;
       NewDataBlockEvent newDataBlockEvent =
           new NewDataBlockEvent(
               remoteFragmentInstanceId,
-              remoteOperatorId,
+              remotePlanNodeId,
               localFragmentInstanceId,
               startSequenceId,
               blockSizes);
@@ -348,8 +348,8 @@ public class SinkHandle implements ISinkHandle {
           break;
         } catch (TException e) {
           logger.error(
-              "Failed to send new data block event to operator {} of {} due to {}, attempt times: {}",
-              remoteOperatorId,
+              "Failed to send new data block event to plan node {} of {} due to {}, attempt times: {}",
+              remotePlanNodeId,
               remoteFragmentInstanceId,
               e.getMessage(),
               attempt);

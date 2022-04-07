@@ -55,7 +55,7 @@ public class SourceHandle implements ISourceHandle {
   private final String remoteHostname;
   private final TFragmentInstanceId remoteFragmentInstanceId;
   private final TFragmentInstanceId localFragmentInstanceId;
-  private final String localOperatorId;
+  private final String localPlanNodeId;
   private final LocalMemoryManager localMemoryManager;
   private final ExecutorService executorService;
   private final DataBlockService.Client client;
@@ -79,7 +79,7 @@ public class SourceHandle implements ISourceHandle {
       String remoteHostname,
       TFragmentInstanceId remoteFragmentInstanceId,
       TFragmentInstanceId localFragmentInstanceId,
-      String localOperatorId,
+      String localPlanNodeId,
       LocalMemoryManager localMemoryManager,
       ExecutorService executorService,
       DataBlockService.Client client,
@@ -88,7 +88,7 @@ public class SourceHandle implements ISourceHandle {
     this.remoteHostname = Validate.notNull(remoteHostname);
     this.remoteFragmentInstanceId = Validate.notNull(remoteFragmentInstanceId);
     this.localFragmentInstanceId = Validate.notNull(localFragmentInstanceId);
-    this.localOperatorId = Validate.notNull(localOperatorId);
+    this.localPlanNodeId = Validate.notNull(localPlanNodeId);
     this.localMemoryManager = Validate.notNull(localMemoryManager);
     this.executorService = Validate.notNull(executorService);
     this.client = Validate.notNull(client);
@@ -257,8 +257,8 @@ public class SourceHandle implements ISourceHandle {
     return localFragmentInstanceId;
   }
 
-  String getLocalOperatorId() {
-    return localOperatorId;
+  String getLocalPlanNodeId() {
+    return localPlanNodeId;
   }
 
   @Override
@@ -277,7 +277,7 @@ public class SourceHandle implements ISourceHandle {
         .add("remoteHostname='" + remoteHostname + "'")
         .add("remoteFragmentInstanceId=" + remoteFragmentInstanceId)
         .add("localFragmentInstanceId=" + localFragmentInstanceId)
-        .add("localOperatorId='" + localOperatorId + "'")
+        .add("localPlanNodeId='" + localPlanNodeId + "'")
         .toString();
   }
 
@@ -307,12 +307,12 @@ public class SourceHandle implements ISourceHandle {
     @Override
     public void run() {
       logger.debug(
-          "Get data blocks [{}, {}) from {} for operator {} of {}.",
+          "Get data blocks [{}, {}) from {} for plan node {} of {}.",
           startSequenceId,
           endSequenceId,
           remoteFragmentInstanceId,
-          localOperatorId,
-          localOperatorId);
+          localPlanNodeId,
+          localFragmentInstanceId);
       GetDataBlockRequest req =
           new GetDataBlockRequest(remoteFragmentInstanceId, startSequenceId, endSequenceId);
       int attempt = 0;
@@ -364,8 +364,8 @@ public class SourceHandle implements ISourceHandle {
 
   class SendAcknowledgeDataBlockEventTask implements Runnable {
 
-    private int startSequenceId;
-    private int endSequenceId;
+    private final int startSequenceId;
+    private final int endSequenceId;
 
     public SendAcknowledgeDataBlockEventTask(int startSequenceId, int endSequenceId) {
       this.startSequenceId = startSequenceId;

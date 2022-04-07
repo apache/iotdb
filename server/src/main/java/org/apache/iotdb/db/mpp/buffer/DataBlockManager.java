@@ -106,17 +106,17 @@ public class DataBlockManager implements IDataBlockManager {
     @Override
     public void onNewDataBlockEvent(NewDataBlockEvent e) throws TException {
       logger.debug(
-          "New data block event received, for operator {} of {} from {}.",
-          e.getTargetOperatorId(),
+          "New data block event received, for plan node {} of {} from {}.",
+          e.getTargetPlanNodeId(),
           e.getTargetFragmentInstanceId(),
           e.getSourceFragmentInstanceId());
       if (!sourceHandles.containsKey(e.getTargetFragmentInstanceId())
           || !sourceHandles
               .get(e.getTargetFragmentInstanceId())
-              .containsKey(e.getTargetOperatorId())
+              .containsKey(e.getTargetPlanNodeId())
           || sourceHandles
               .get(e.getTargetFragmentInstanceId())
-              .get(e.getTargetOperatorId())
+              .get(e.getTargetPlanNodeId())
               .isClosed()) {
         throw new TException(
             "Target fragment instance not found. Fragment instance ID: "
@@ -125,24 +125,24 @@ public class DataBlockManager implements IDataBlockManager {
       }
 
       SourceHandle sourceHandle =
-          sourceHandles.get(e.getTargetFragmentInstanceId()).get(e.getTargetOperatorId());
+          sourceHandles.get(e.getTargetFragmentInstanceId()).get(e.getTargetPlanNodeId());
       sourceHandle.updatePendingDataBlockInfo(e.getStartSequenceId(), e.getBlockSizes());
     }
 
     @Override
     public void onEndOfDataBlockEvent(EndOfDataBlockEvent e) throws TException {
       logger.debug(
-          "End of data block event received, for operator {} of {} from {}.",
-          e.getTargetOperatorId(),
+          "End of data block event received, for plan node {} of {} from {}.",
+          e.getTargetPlanNodeId(),
           e.getTargetFragmentInstanceId(),
           e.getSourceFragmentInstanceId());
       if (!sourceHandles.containsKey(e.getTargetFragmentInstanceId())
           || !sourceHandles
               .get(e.getTargetFragmentInstanceId())
-              .containsKey(e.getTargetOperatorId())
+              .containsKey(e.getTargetPlanNodeId())
           || sourceHandles
               .get(e.getTargetFragmentInstanceId())
-              .get(e.getTargetOperatorId())
+              .get(e.getTargetPlanNodeId())
               .isClosed()) {
         throw new TException(
             "Target fragment instance not found. Fragment instance ID: "
@@ -152,7 +152,7 @@ public class DataBlockManager implements IDataBlockManager {
       SourceHandle sourceHandle =
           sourceHandles
               .getOrDefault(e.getTargetFragmentInstanceId(), Collections.emptyMap())
-              .get(e.getTargetOperatorId());
+              .get(e.getTargetPlanNodeId());
       sourceHandle.setNoMoreTsBlocks(e.getLastSequenceId());
     }
   }
@@ -165,13 +165,13 @@ public class DataBlockManager implements IDataBlockManager {
       if (!sourceHandles.containsKey(sourceHandle.getLocalFragmentInstanceId())
           || !sourceHandles
               .get(sourceHandle.getLocalFragmentInstanceId())
-              .containsKey(sourceHandle.getLocalOperatorId())) {
+              .containsKey(sourceHandle.getLocalPlanNodeId())) {
         logger.info(
             "Resources of finished source handle {} has already been released", sourceHandle);
       }
       sourceHandles
           .get(sourceHandle.getLocalFragmentInstanceId())
-          .remove(sourceHandle.getLocalOperatorId());
+          .remove(sourceHandle.getLocalPlanNodeId());
       if (sourceHandles.get(sourceHandle.getLocalFragmentInstanceId()).isEmpty()) {
         sourceHandles.remove(sourceHandle.getLocalFragmentInstanceId());
       }
@@ -242,15 +242,15 @@ public class DataBlockManager implements IDataBlockManager {
       TFragmentInstanceId localFragmentInstanceId,
       String remoteHostname,
       TFragmentInstanceId remoteFragmentInstanceId,
-      String remoteOperatorId)
+      String remotePlanNodeId)
       throws IOException {
     if (sinkHandles.containsKey(localFragmentInstanceId)) {
       throw new IllegalStateException("Sink handle for " + localFragmentInstanceId + " exists.");
     }
 
     logger.info(
-        "Create sink handle to operator {} of {} for {}",
-        remoteOperatorId,
+        "Create sink handle to plan node {} of {} for {}",
+        remotePlanNodeId,
         remoteFragmentInstanceId,
         localFragmentInstanceId);
 
@@ -258,7 +258,7 @@ public class DataBlockManager implements IDataBlockManager {
         new SinkHandle(
             remoteHostname,
             remoteFragmentInstanceId,
-            remoteOperatorId,
+            remotePlanNodeId,
             localFragmentInstanceId,
             localMemoryManager,
             executorService,
@@ -272,24 +272,24 @@ public class DataBlockManager implements IDataBlockManager {
   @Override
   public ISourceHandle createSourceHandle(
       TFragmentInstanceId localFragmentInstanceId,
-      String localOperatorId,
+      String localPlanNodeId,
       String remoteHostname,
       TFragmentInstanceId remoteFragmentInstanceId)
       throws IOException {
     if (sourceHandles.containsKey(localFragmentInstanceId)
-        && sourceHandles.get(localFragmentInstanceId).containsKey(localOperatorId)) {
+        && sourceHandles.get(localFragmentInstanceId).containsKey(localPlanNodeId)) {
       throw new IllegalStateException(
-          "Source handle for operator "
-              + localOperatorId
+          "Source handle for plan node "
+              + localPlanNodeId
               + " of "
               + localFragmentInstanceId
               + " exists.");
     }
 
     logger.info(
-        "Create source handle from {} for operator {} of {}",
+        "Create source handle from {} for plan node {} of {}",
         remoteFragmentInstanceId,
-        localOperatorId,
+        localPlanNodeId,
         localFragmentInstanceId);
 
     SourceHandle sourceHandle =
@@ -297,7 +297,7 @@ public class DataBlockManager implements IDataBlockManager {
             remoteHostname,
             remoteFragmentInstanceId,
             localFragmentInstanceId,
-            localOperatorId,
+            localPlanNodeId,
             localMemoryManager,
             executorService,
             // TODO: hard coded port.
@@ -306,7 +306,7 @@ public class DataBlockManager implements IDataBlockManager {
             new SourceHandleListenerImpl());
     sourceHandles
         .computeIfAbsent(localFragmentInstanceId, key -> new ConcurrentHashMap<>())
-        .put(localOperatorId, sourceHandle);
+        .put(localPlanNodeId, sourceHandle);
     return sourceHandle;
   }
 
@@ -325,8 +325,8 @@ public class DataBlockManager implements IDataBlockManager {
       sinkHandles.remove(fragmentInstanceId);
     }
     if (sourceHandles.containsKey(fragmentInstanceId)) {
-      Map<String, SourceHandle> operatorIdToSourceHandle = sourceHandles.get(fragmentInstanceId);
-      for (Entry<String, SourceHandle> entry : operatorIdToSourceHandle.entrySet()) {
+      Map<String, SourceHandle> planNodeIdToSourceHandle = sourceHandles.get(fragmentInstanceId);
+      for (Entry<String, SourceHandle> entry : planNodeIdToSourceHandle.entrySet()) {
         logger.info("Close source handle {}", sourceHandles);
         entry.getValue().close();
       }

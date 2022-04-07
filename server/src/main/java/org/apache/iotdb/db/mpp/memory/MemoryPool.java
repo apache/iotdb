@@ -22,9 +22,8 @@ package org.apache.iotdb.db.mpp.memory;
 import com.google.common.util.concurrent.AbstractFuture;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
-import org.apache.commons.lang3.Validate;
-
 import javax.annotation.Nullable;
+import org.apache.commons.lang3.Validate;
 
 import java.util.HashMap;
 import java.util.Iterator;
@@ -162,11 +161,11 @@ public class MemoryPool {
       }
 
       long bytesToReserve = future.getBytes();
-      if (maxBytes - reservedBytes < bytesToReserve
-          || maxBytesPerQuery - queryMemoryReservations.getOrDefault(future.getQueryId(), 0L)
-              < bytesToReserve) {
+      if (maxBytes - reservedBytes < bytesToReserve) {
         return;
-      } else {
+      }
+      if (maxBytesPerQuery - queryMemoryReservations.getOrDefault(future.getQueryId(), 0L)
+          >= bytesToReserve) {
         reservedBytes += bytesToReserve;
         queryMemoryReservations.merge(future.getQueryId(), bytesToReserve, Long::sum);
         future.set(null);

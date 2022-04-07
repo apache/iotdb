@@ -44,7 +44,7 @@ struct AcknowledgeDataBlockEvent {
 
 struct NewDataBlockEvent {
   1: required TFragmentInstanceId targetFragmentInstanceId
-  2: required string targetOperatorId
+  2: required string targetPlanNodeId
   3: required TFragmentInstanceId sourceFragmentInstanceId
   4: required i32 startSequenceId
   5: required list<i64> blockSizes
@@ -52,7 +52,7 @@ struct NewDataBlockEvent {
 
 struct EndOfDataBlockEvent {
   1: required TFragmentInstanceId targetFragmentInstanceId
-  2: required string targetOperatorId
+  2: required string targetPlanNodeId
   3: required TFragmentInstanceId sourceFragmentInstanceId
   4: required i32 lastSequenceId
 }
