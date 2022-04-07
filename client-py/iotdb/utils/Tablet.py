@@ -170,9 +170,7 @@ class Tablet(object):
                         has_none = True
 
             else:
-                raise RuntimeError(
-                    "Unsupported data type:" + str(self.__data_types[i])
-                )
+                raise RuntimeError("Unsupported data type:" + str(self.__data_types[i]))
 
         if has_none:
             for i in range(self.__column_number):
