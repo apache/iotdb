@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.confignode.persistence;
 
+import org.apache.iotdb.commons.partition.DataNodeLocation;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.response.DataNodesInfoDataSet;
-import org.apache.iotdb.confignode.partition.DataNodeInfo;
 import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
 import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -42,11 +42,11 @@ public class DataNodeInfoPersistence {
   private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeInfoPersistence.class);
 
   /** online data nodes */
-  private final ConcurrentNavigableMap<Integer, DataNodeInfo> onlineDataNodes =
+  private final ConcurrentNavigableMap<Integer, DataNodeLocation> onlineDataNodes =
       new ConcurrentSkipListMap();
 
   /** For remove node or draining node */
-  private Set<DataNodeInfo> drainingDataNodes = new HashSet<>();
+  private Set<DataNodeLocation> drainingDataNodes = new HashSet<>();
 
   private final ReentrantReadWriteLock dataNodeInfoReadWriteLock;
 
@@ -54,21 +54,21 @@ public class DataNodeInfoPersistence {
     this.dataNodeInfoReadWriteLock = new ReentrantReadWriteLock();
   }
 
-  public ConcurrentNavigableMap<Integer, DataNodeInfo> getOnlineDataNodes() {
+  public ConcurrentNavigableMap<Integer, DataNodeLocation> getOnlineDataNodes() {
     return onlineDataNodes;
   }
 
-  public boolean containsValue(DataNodeInfo info) {
+  public boolean containsValue(DataNodeLocation info) {
     return onlineDataNodes.containsValue(info);
   }
 
-  public void put(int dataNodeID, DataNodeInfo info) {
+  public void put(int dataNodeID, DataNodeLocation info) {
     onlineDataNodes.put(dataNodeID, info);
   }
 
-  public int getDataNodeInfo(DataNodeInfo info) {
+  public int getDataNodeInfo(DataNodeLocation info) {
     // TODO: optimize
-    for (Map.Entry<Integer, DataNodeInfo> entry : onlineDataNodes.entrySet()) {
+    for (Map.Entry<Integer, DataNodeLocation> entry : onlineDataNodes.entrySet()) {
       if (entry.getValue().equals(info)) {
         return info.getDataNodeID();
       }
@@ -84,7 +84,7 @@ public class DataNodeInfoPersistence {
    */
   public TSStatus registerDataNode(RegisterDataNodePlan plan) {
     TSStatus result;
-    DataNodeInfo info = plan.getInfo();
+    DataNodeLocation info = plan.getInfo();
     dataNodeInfoReadWriteLock.writeLock().lock();
     try {
       if (onlineDataNodes.containsValue(info)) {
@@ -116,9 +116,9 @@ public class DataNodeInfoPersistence {
     dataNodeInfoReadWriteLock.readLock().lock();
     try {
       if (dataNodeId == -1) {
-        result.setInfoList(new ArrayList<>(onlineDataNodes.values()));
+        result.setDataNodeList(new ArrayList<>(onlineDataNodes.values()));
       } else {
-        result.setInfoList(Collections.singletonList(onlineDataNodes.get(dataNodeId)));
+        result.setDataNodeList(Collections.singletonList(onlineDataNodes.get(dataNodeId)));
       }
     } finally {
       dataNodeInfoReadWriteLock.readLock().unlock();

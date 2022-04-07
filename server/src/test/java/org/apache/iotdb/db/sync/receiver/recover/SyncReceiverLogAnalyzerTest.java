@@ -156,7 +156,7 @@ public class SyncReceiverLogAnalyzerTest {
     for (int i = 0; i < 3; i++) {
       VirtualStorageGroupProcessor processor =
           StorageEngine.getInstance().getProcessor(new PartialPath(SG_NAME + i));
-      assertTrue(processor.getSequenceFileTreeSet().isEmpty());
+      assertTrue(processor.getSequenceFileList().isEmpty());
       assertTrue(processor.getUnSequenceFileList().isEmpty());
     }
 

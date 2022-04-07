@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 public class PathPatternTree {
@@ -41,6 +42,18 @@ public class PathPatternTree {
    * DML use prefixMatch.
    */
   protected boolean isPrefixMatchPath;
+
+  public PathPatternTree(PartialPath deivcePath, String[] measurements) {
+    // TODO
+    this.root = new PathPatternNode(SQLConstant.ROOT);
+    this.pathList = new ArrayList<>();
+  };
+
+  public PathPatternTree(Map<PartialPath, List<String>> devices) {
+    // TODO
+    this.root = new PathPatternNode(SQLConstant.ROOT);
+    this.pathList = new ArrayList<>();
+  };
 
   public PathPatternTree() {
     this.root = new PathPatternNode(SQLConstant.ROOT);

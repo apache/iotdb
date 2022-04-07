@@ -113,7 +113,7 @@ public class PartitionedSnapshotTest extends DataSnapshotTest {
     VirtualStorageGroupProcessor processor =
         StorageEngine.getInstance().getProcessor(new PartialPath(TestUtils.getTestSg(0)));
     assertEquals(9, processor.getPartitionMaxFileVersions(0));
-    List<TsFileResource> loadedFiles = processor.getSequenceFileTreeSet();
+    List<TsFileResource> loadedFiles = processor.getSequenceFileList();
     assertEquals(tsFileResources.size(), loadedFiles.size());
     for (int i = 0; i < 9; i++) {
       assertEquals(i, loadedFiles.get(i).getMaxPlanIndex());
@@ -190,7 +190,7 @@ public class PartitionedSnapshotTest extends DataSnapshotTest {
       VirtualStorageGroupProcessor processor =
           StorageEngine.getInstance().getProcessor(new PartialPath(TestUtils.getTestSg(0)));
       assertEquals(-1, processor.getPartitionMaxFileVersions(0));
-      List<TsFileResource> loadedFiles = processor.getSequenceFileTreeSet();
+      List<TsFileResource> loadedFiles = processor.getSequenceFileList();
       assertEquals(0, loadedFiles.size());
       assertEquals(0, processor.getUnSequenceFileList().size());
 
