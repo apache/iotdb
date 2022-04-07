@@ -49,10 +49,8 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
-import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.ThreadUtils;
@@ -576,9 +574,9 @@ public class StorageEngineV2 implements IService {
   }
 
   /**
-   * insert an InsertRowPlan to a storage group.
+   * insert an InsertRowNode to a storage group.
    *
-   * @param insertRowPlan physical plan of insertion
+   * @param insertRowNode
    */
   //  // TODO:(New insert)
   //  public void insertV2(DataRegionId dataRegionId, InsertRowNode insertRowNode)
@@ -1062,21 +1060,6 @@ public class StorageEngineV2 implements IService {
   /** unlock all merge lock of the storage group processor related to the query */
   public void mergeUnLock(List<VirtualStorageGroupProcessor> list) {
     list.forEach(VirtualStorageGroupProcessor::readUnlock);
-  }
-
-  protected void getSeriesSchemas(InsertPlan insertPlan, VirtualStorageGroupProcessor processor)
-      throws StorageEngineException, MetadataException {
-    try {
-      if (config.isEnableIDTable()) {
-        processor.getIdTable().getSeriesSchemas(insertPlan);
-      } else {
-        IoTDB.schemaProcessor.getSeriesSchemasAndReadLockDevice(insertPlan);
-        insertPlan.setDeviceID(
-            DeviceIDFactory.getInstance().getDeviceID(insertPlan.getDevicePath()));
-      }
-    } catch (IOException e) {
-      throw new StorageEngineException(e);
-    }
   }
 
   static class InstanceHolder {
