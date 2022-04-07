@@ -71,8 +71,7 @@ public class DeviceMergeNode extends ProcessNode {
     this.children = new ArrayList<>();
   }
 
-  public void setFilterNullPolicy(
-      FilterNullPolicy filterNullPolicy) {
+  public void setFilterNullPolicy(FilterNullPolicy filterNullPolicy) {
     this.filterNullPolicy = filterNullPolicy;
   }
 

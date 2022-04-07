@@ -18,13 +18,6 @@
  */
 package org.apache.iotdb.db.mpp.sql.plan.node.process;
 
-import static org.junit.Assert.assertEquals;
-
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.common.filter.RegexpFilter;
@@ -45,26 +38,41 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.mpp.sql.statement.component.FillPolicy;
 import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullPolicy;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
+
 import org.junit.Test;
+
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import static org.junit.Assert.assertEquals;
 
 public class SortNodeSerdeTest {
 
   @Test
   public void TestSerializeAndDeserialize() throws IllegalPathException {
-    FilterNode filterNode = new FilterNode(new PlanNodeId("TestFilterNode"), new RegexpFilter(
-        FilterType.EQUAL, new MeasurementPath("s1"), "s1"));
+    FilterNode filterNode =
+        new FilterNode(
+            new PlanNodeId("TestFilterNode"),
+            new RegexpFilter(FilterType.EQUAL, new MeasurementPath("s1"), "s1"));
 
     FillNode fillNode = new FillNode(new PlanNodeId("TestFillNode"), FillPolicy.PREVIOUS);
-    DeviceMergeNode deviceMergeNode = new DeviceMergeNode(new PlanNodeId("TestDeviceMergeNode"), OrderBy.TIMESTAMP_ASC);
+    DeviceMergeNode deviceMergeNode =
+        new DeviceMergeNode(new PlanNodeId("TestDeviceMergeNode"), OrderBy.TIMESTAMP_ASC);
     List<String> columnNames = new ArrayList<>();
-    columnNames.add("s1"); columnNames.add("s2");
+    columnNames.add("s1");
+    columnNames.add("s2");
     deviceMergeNode.setColumnNames(columnNames);
 
     List<PlanNode> planNodes = new ArrayList<>();
     planNodes.add(new ShowDevicesNode(new PlanNodeId("TestShowDevice")));
     List<String> columns = new ArrayList<>();
-    columns.add("s1"); columns.add("s2");
-    AggregateNode aggregateNode = new AggregateNode(new PlanNodeId("TestAggregateNode"), null, planNodes, columnNames);
+    columns.add("s1");
+    columns.add("s2");
+    AggregateNode aggregateNode =
+        new AggregateNode(new PlanNodeId("TestAggregateNode"), null, planNodes, columnNames);
     deviceMergeNode.addChild(aggregateNode);
     deviceMergeNode.addChild(new ShowDevicesNode(new PlanNodeId("TestShowDevice")));
     deviceMergeNode.setFilterNullPolicy(FilterNullPolicy.CONTAINS_NULL);
@@ -72,19 +80,27 @@ public class SortNodeSerdeTest {
 
     filterNode.addChild(fillNode);
 
-    FilterNullNode filterNullNode = new FilterNullNode(new PlanNodeId("TestFilterNullNode"), filterNode, FilterNullPolicy.ALL_NULL, null);
+    FilterNullNode filterNullNode =
+        new FilterNullNode(
+            new PlanNodeId("TestFilterNullNode"), filterNode, FilterNullPolicy.ALL_NULL, null);
 
     Map<String, String> groupedPathMap = new HashMap<>();
     groupedPathMap.put("s1", "s");
     groupedPathMap.put("s2", "a");
-    GroupByLevelNode groupByLevelNode = new GroupByLevelNode(new PlanNodeId("TestGroupByLevelNode"), filterNullNode, new int[] {1, 3}, groupedPathMap);
+    GroupByLevelNode groupByLevelNode =
+        new GroupByLevelNode(
+            new PlanNodeId("TestGroupByLevelNode"),
+            filterNullNode,
+            new int[] {1, 3},
+            groupedPathMap);
 
     LimitNode limitNode = new LimitNode(new PlanNodeId("TestLimitNode"), 3, groupByLevelNode);
     OffsetNode offsetNode = new OffsetNode(new PlanNodeId("TestOffsetNode"), limitNode, 2);
 
     List<String> orderByStr = new ArrayList<>();
     orderByStr.add("s1");
-    SortNode sortNode = new SortNode(new PlanNodeId("TestSortNode"), offsetNode, orderByStr, OrderBy.TIMESTAMP_ASC);
+    SortNode sortNode =
+        new SortNode(new PlanNodeId("TestSortNode"), offsetNode, orderByStr, OrderBy.TIMESTAMP_ASC);
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
     sortNode.serialize(byteBuffer);
     byteBuffer.flip();

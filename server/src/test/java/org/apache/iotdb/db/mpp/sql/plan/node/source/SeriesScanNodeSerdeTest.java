@@ -18,38 +18,34 @@
  */
 package org.apache.iotdb.db.mpp.sql.plan.node.source;
 
-import static org.apache.iotdb.tsfile.read.filter.factory.FilterType.VALUE_FILTER;
-import static org.junit.Assert.assertEquals;
-
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Set;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.GroupType;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
-import org.apache.iotdb.db.mpp.common.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.sql.plan.node.PlanNodeDeserializeHelper;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.ShowDevicesNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregateScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
-import org.apache.iotdb.db.qp.utils.GroupByLevelController;
-import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
-import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
-import org.apache.iotdb.tsfile.read.filter.operator.In;
+
 import org.junit.Test;
+
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+
+import static org.junit.Assert.assertEquals;
 
 public class SeriesScanNodeSerdeTest {
 
   @Test
   public void TestSerializeAndDeserialize() throws QueryProcessException, IllegalPathException {
-    SeriesScanNode seriesScanNode = new SeriesScanNode(new PlanNodeId("TestSeriesScanNode"), new AlignedPath("s1"), new RegionReplicaSet(new ConsensusGroupId(GroupType.DataRegion, 1), new ArrayList<>()));
+    SeriesScanNode seriesScanNode =
+        new SeriesScanNode(
+            new PlanNodeId("TestSeriesScanNode"),
+            new AlignedPath("s1"),
+            new RegionReplicaSet(new ConsensusGroupId(GroupType.DataRegion, 1), new ArrayList<>()));
     seriesScanNode.setTimeFilter(new GroupByFilter(1, 2, 3, 4));
     seriesScanNode.setScanOrder(OrderBy.TIMESTAMP_ASC);
     ByteBuffer byteBuffer = ByteBuffer.allocate(2048);

@@ -143,7 +143,8 @@ public class RegexpFilter extends FunctionFilter {
   public static RegexpFilter deserialize(ByteBuffer byteBuffer) {
     QueryFilter queryFilter = QueryFilter.deserialize(byteBuffer);
     String value = ReadWriteIOUtils.readString(byteBuffer);
-    RegexpFilter regexpFilter = new RegexpFilter(queryFilter.filterType, queryFilter.singlePath, value);
+    RegexpFilter regexpFilter =
+        new RegexpFilter(queryFilter.filterType, queryFilter.singlePath, value);
     return regexpFilter;
   }
 }

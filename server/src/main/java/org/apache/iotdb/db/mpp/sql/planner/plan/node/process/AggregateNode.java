@@ -133,7 +133,8 @@ public class AggregateNode extends ProcessNode {
       columnNames.add(ReadWriteIOUtils.readString(byteBuffer));
     }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    AggregateNode aggregateNode = new AggregateNode(planNodeId, new HashMap<>(), new ArrayList<>(), columnNames);
+    AggregateNode aggregateNode =
+        new AggregateNode(planNodeId, new HashMap<>(), new ArrayList<>(), columnNames);
     aggregateNode.groupByTimeParameter = groupByTimeParameter;
     return aggregateNode;
   }

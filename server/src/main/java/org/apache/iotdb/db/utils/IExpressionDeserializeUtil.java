@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.utils;
 
-import java.nio.ByteBuffer;
 import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
@@ -26,6 +25,8 @@ import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
+
+import java.nio.ByteBuffer;
 
 public class IExpressionDeserializeUtil {
 
@@ -37,7 +38,8 @@ public class IExpressionDeserializeUtil {
       case AND:
         return BinaryExpression.and(deserialize(byteBuffer), deserialize(byteBuffer));
       case SERIES:
-        return new SingleSeriesExpression(PathDeserializeUtil.deserialize(byteBuffer), FilterFactory.deserialize(byteBuffer));
+        return new SingleSeriesExpression(
+            PathDeserializeUtil.deserialize(byteBuffer), FilterFactory.deserialize(byteBuffer));
       case GLOBAL_TIME:
         return GlobalTimeExpression.deserialize(byteBuffer);
       case TRUE:

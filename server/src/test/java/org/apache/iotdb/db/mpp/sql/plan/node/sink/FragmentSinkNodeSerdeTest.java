@@ -18,9 +18,6 @@
  */
 package org.apache.iotdb.db.mpp.sql.plan.node.sink;
 
-import static org.junit.Assert.assertEquals;
-
-import java.nio.ByteBuffer;
 import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
@@ -28,15 +25,24 @@ import org.apache.iotdb.db.mpp.sql.plan.node.PlanNodeDeserializeHelper;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.ShowDevicesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.sink.FragmentSinkNode;
+
 import org.junit.Test;
+
+import java.nio.ByteBuffer;
+
+import static org.junit.Assert.assertEquals;
 
 public class FragmentSinkNodeSerdeTest {
 
   @Test
   public void TestSerializeAndDeserialize() {
-    FragmentSinkNode fragmentSinkNode = new FragmentSinkNode(new PlanNodeId("TestFragmentSinkNode"));
+    FragmentSinkNode fragmentSinkNode =
+        new FragmentSinkNode(new PlanNodeId("TestFragmentSinkNode"));
     fragmentSinkNode.addChild(new ShowDevicesNode(new PlanNodeId("TestShowDevicesNode")));
-    fragmentSinkNode.setDownStream(new Endpoint("127.0.0.1", 6666), new FragmentInstanceId(new PlanFragmentId("q", 1), "ds"), new PlanNodeId("test"));
+    fragmentSinkNode.setDownStream(
+        new Endpoint("127.0.0.1", 6666),
+        new FragmentInstanceId(new PlanFragmentId("q", 1), "ds"),
+        new PlanNodeId("test"));
 
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
     fragmentSinkNode.serialize(byteBuffer);

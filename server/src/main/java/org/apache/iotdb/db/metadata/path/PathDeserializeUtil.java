@@ -21,12 +21,6 @@ package org.apache.iotdb.db.metadata.path;
 import org.apache.iotdb.tsfile.read.common.Path;
 
 import java.nio.ByteBuffer;
-import org.apache.iotdb.tsfile.read.expression.ExpressionType;
-import org.apache.iotdb.tsfile.read.expression.IExpression;
-import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
-import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
-import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
-import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 
 public class PathDeserializeUtil {
 

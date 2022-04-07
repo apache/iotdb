@@ -53,6 +53,6 @@ public abstract class SourceNode extends PlanNode implements AutoCloseable {
       return false;
     }
 
-    return getExpressionString().equals(((SourceNode)o).getExpressionString());
+    return getExpressionString().equals(((SourceNode) o).getExpressionString());
   }
 }

@@ -18,18 +18,19 @@
  */
 package org.apache.iotdb.db.mpp.sql.plan.node.process;
 
-import static org.junit.Assert.assertEquals;
-
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.mpp.sql.plan.node.PlanNodeDeserializeHelper;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.ShowDevicesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.AggregateNode;
+
 import org.junit.Test;
+
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.junit.Assert.assertEquals;
 
 public class AggregateNodeSerdeTest {
 
@@ -38,8 +39,10 @@ public class AggregateNodeSerdeTest {
     List<PlanNode> planNodes = new ArrayList<>();
     planNodes.add(new ShowDevicesNode(new PlanNodeId("TestShowDevice")));
     List<String> columnNames = new ArrayList<>();
-    columnNames.add("s1"); columnNames.add("s2");
-    AggregateNode aggregateNode = new AggregateNode(new PlanNodeId("TestAggregateNode"), null, planNodes, columnNames);
+    columnNames.add("s1");
+    columnNames.add("s2");
+    AggregateNode aggregateNode =
+        new AggregateNode(new PlanNodeId("TestAggregateNode"), null, planNodes, columnNames);
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
     aggregateNode.serialize(byteBuffer);
     byteBuffer.flip();

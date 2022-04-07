@@ -142,7 +142,11 @@ public class LikeFilter extends FunctionFilter {
 
   public static LikeFilter deserialize(ByteBuffer byteBuffer) {
     QueryFilter queryFilter = QueryFilter.deserialize(byteBuffer);
-    LikeFilter likeFilter = new LikeFilter(queryFilter.filterType, queryFilter.singlePath, ReadWriteIOUtils.readString(byteBuffer));
+    LikeFilter likeFilter =
+        new LikeFilter(
+            queryFilter.filterType,
+            queryFilter.singlePath,
+            ReadWriteIOUtils.readString(byteBuffer));
     return likeFilter;
   }
 }

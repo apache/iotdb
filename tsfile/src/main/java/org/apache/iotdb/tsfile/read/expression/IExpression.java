@@ -18,10 +18,6 @@
  */
 package org.apache.iotdb.tsfile.read.expression;
 
-import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
-import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
-import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
-
 import java.io.Serializable;
 import java.nio.ByteBuffer;
 

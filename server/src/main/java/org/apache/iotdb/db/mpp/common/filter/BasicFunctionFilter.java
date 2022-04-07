@@ -180,7 +180,11 @@ public class BasicFunctionFilter extends FunctionFilter {
 
   public static BasicFunctionFilter deserialize(ByteBuffer byteBuffer) {
     QueryFilter queryFilter = QueryFilter.deserialize(byteBuffer);
-    BasicFunctionFilter basicFunctionFilter = new BasicFunctionFilter(queryFilter.filterType, queryFilter.singlePath, ReadWriteIOUtils.readString(byteBuffer));
+    BasicFunctionFilter basicFunctionFilter =
+        new BasicFunctionFilter(
+            queryFilter.filterType,
+            queryFilter.singlePath,
+            ReadWriteIOUtils.readString(byteBuffer));
     basicFunctionFilter.funcToken = BasicFilterType.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     return basicFunctionFilter;
   }

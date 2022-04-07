@@ -147,9 +147,9 @@ public class SeriesAggregateScanNode extends SourceNode {
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.SERIES_AGGREGATE_SCAN.serialize(byteBuffer);
     if (groupByTimeParameter == null) {
-      ReadWriteIOUtils.write((byte)0, byteBuffer);
+      ReadWriteIOUtils.write((byte) 0, byteBuffer);
     } else {
-      ReadWriteIOUtils.write((byte)1, byteBuffer);
+      ReadWriteIOUtils.write((byte) 1, byteBuffer);
       groupByTimeParameter.serialize(byteBuffer);
     }
 
@@ -174,7 +174,8 @@ public class SeriesAggregateScanNode extends SourceNode {
     }
 
     //  aggregateFunc to be consider
-    FunctionExpression functionExpression = (FunctionExpression) ExpressionType.deserialize(byteBuffer);
+    FunctionExpression functionExpression =
+        (FunctionExpression) ExpressionType.deserialize(byteBuffer);
     Filter filter = FilterFactory.deserialize(byteBuffer);
     String columnName = ReadWriteIOUtils.readString(byteBuffer);
     RegionReplicaSet regionReplicaSet = new RegionReplicaSet();

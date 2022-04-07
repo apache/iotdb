@@ -18,11 +18,6 @@
  */
 package org.apache.iotdb.db.mpp.sql.plan.node.process;
 
-import static org.junit.Assert.assertEquals;
-
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
@@ -36,33 +31,51 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.sink.FragmentSinkNode;
 import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullPolicy;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
+
 import org.junit.Test;
+
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.junit.Assert.assertEquals;
 
 public class ExchangeNodeSerdeTest {
 
   @Test
   public void TestSerializeAndDeserialize() {
-    DeviceMergeNode deviceMergeNode = new DeviceMergeNode(new PlanNodeId("TestDeviceMergeNode"), OrderBy.TIMESTAMP_ASC);
+    DeviceMergeNode deviceMergeNode =
+        new DeviceMergeNode(new PlanNodeId("TestDeviceMergeNode"), OrderBy.TIMESTAMP_ASC);
     List<String> columnNames = new ArrayList<>();
-    columnNames.add("s1"); columnNames.add("s2");
+    columnNames.add("s1");
+    columnNames.add("s2");
     deviceMergeNode.setColumnNames(columnNames);
 
     List<PlanNode> planNodes = new ArrayList<>();
     planNodes.add(new ShowDevicesNode(new PlanNodeId("TestShowDevice")));
     List<String> columns = new ArrayList<>();
-    columns.add("s1"); columns.add("s2");
-    AggregateNode aggregateNode = new AggregateNode(new PlanNodeId("TestAggregateNode"), null, planNodes, columnNames);
+    columns.add("s1");
+    columns.add("s2");
+    AggregateNode aggregateNode =
+        new AggregateNode(new PlanNodeId("TestAggregateNode"), null, planNodes, columnNames);
     deviceMergeNode.addChild(aggregateNode);
     deviceMergeNode.addChild(new ShowDevicesNode(new PlanNodeId("TestShowDevice")));
     deviceMergeNode.setFilterNullPolicy(FilterNullPolicy.CONTAINS_NULL);
 
     ExchangeNode exchangeNode = new ExchangeNode(new PlanNodeId("TestExchangeNode"));
-    FragmentSinkNode fragmentSinkNode = new FragmentSinkNode(new PlanNodeId("TestFragmentSinkNode"));
-    fragmentSinkNode.setDownStream(new Endpoint("127.0.0.1", 6666), new FragmentInstanceId(new PlanFragmentId("q", 1), "ds"), new PlanNodeId("test"));
+    FragmentSinkNode fragmentSinkNode =
+        new FragmentSinkNode(new PlanNodeId("TestFragmentSinkNode"));
+    fragmentSinkNode.setDownStream(
+        new Endpoint("127.0.0.1", 6666),
+        new FragmentInstanceId(new PlanFragmentId("q", 1), "ds"),
+        new PlanNodeId("test"));
     fragmentSinkNode.addChild(new ShowDevicesNode(new PlanNodeId("ss")));
     exchangeNode.setRemoteSourceNode(fragmentSinkNode);
     exchangeNode.addChild(deviceMergeNode);
-    exchangeNode.setUpstream(new Endpoint("127.0.0.1", 6666), new FragmentInstanceId(new PlanFragmentId("q", 1), "ds"), new PlanNodeId("test"));
+    exchangeNode.setUpstream(
+        new Endpoint("127.0.0.1", 6666),
+        new FragmentInstanceId(new PlanFragmentId("q", 1), "ds"),
+        new PlanNodeId("test"));
 
     ByteBuffer byteBuffer = ByteBuffer.allocate(10240);
     exchangeNode.serialize(byteBuffer);

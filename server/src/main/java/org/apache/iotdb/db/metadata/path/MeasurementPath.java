@@ -346,9 +346,9 @@ public class MeasurementPath extends PartialPath {
     PathType.Measurement.serialize(byteBuffer);
     super.serializeWithoutType(byteBuffer);
     if (measurementSchema == null) {
-      ReadWriteIOUtils.write((byte)0, byteBuffer);
+      ReadWriteIOUtils.write((byte) 0, byteBuffer);
     } else {
-      ReadWriteIOUtils.write((byte)1, byteBuffer);
+      ReadWriteIOUtils.write((byte) 1, byteBuffer);
       if (measurementSchema instanceof MeasurementSchema) {
         ReadWriteIOUtils.write((byte) 0, byteBuffer);
       } else if (measurementSchema instanceof VectorMeasurementSchema) {
