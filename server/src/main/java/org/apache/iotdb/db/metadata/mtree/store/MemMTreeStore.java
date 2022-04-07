@@ -22,7 +22,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MNodeUtils;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
@@ -88,16 +88,17 @@ public class MemMTreeStore implements IMTreeStore {
   }
 
   @Override
-  public void updateStorageGroupMNode(IStorageGroupMNode node) {}
-
-  @Override
   public void updateMNode(IMNode node) {}
 
   @Override
   public IEntityMNode setToEntity(IMNode node) {
     IEntityMNode result = MNodeUtils.setToEntity(node);
     if (result != node) {
-      MemoryStatistics.getInstance().requestMemory(IMNodeSizeEstimator.getEntityNodeBaseSize());
+      memoryStatistics.requestMemory(IMNodeSizeEstimator.getEntityNodeBaseSize());
+    }
+
+    if (result.isStorageGroup()) {
+      root = result;
     }
     return result;
   }
@@ -106,9 +107,18 @@ public class MemMTreeStore implements IMTreeStore {
   public IMNode setToInternal(IEntityMNode entityMNode) {
     IMNode result = MNodeUtils.setToInternal(entityMNode);
     if (result != entityMNode) {
-      MemoryStatistics.getInstance().releaseMemory(IMNodeSizeEstimator.getEntityNodeBaseSize());
+      memoryStatistics.releaseMemory(IMNodeSizeEstimator.getEntityNodeBaseSize());
+    }
+    if (result.isStorageGroup()) {
+      root = result;
     }
     return result;
+  }
+
+  @Override
+  public void setAlias(IMeasurementMNode measurementMNode, String alias) {
+    measurementMNode.setAlias(alias);
+    memoryStatistics.requestMemory(IMNodeSizeEstimator.getAliasOccupation() + alias.length());
   }
 
   @Override

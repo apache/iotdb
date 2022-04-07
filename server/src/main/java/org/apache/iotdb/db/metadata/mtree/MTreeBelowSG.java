@@ -235,9 +235,6 @@ public class MTreeBelowSG implements Serializable {
           entityMNode = store.setToEntity(device);
           if (entityMNode.isStorageGroup()) {
             this.storageGroupMNode = entityMNode.getAsStorageGroupMNode();
-            store.updateStorageGroupMNode(storageGroupMNode);
-          } else {
-            store.updateMNode(entityMNode);
           }
           device = entityMNode;
         }
@@ -325,9 +322,6 @@ public class MTreeBelowSG implements Serializable {
         entityMNode.setAligned(true);
         if (entityMNode.isStorageGroup()) {
           this.storageGroupMNode = entityMNode.getAsStorageGroupMNode();
-          store.updateStorageGroupMNode(storageGroupMNode);
-        } else {
-          store.updateMNode(entityMNode);
         }
         device = entityMNode;
       }
@@ -435,9 +429,6 @@ public class MTreeBelowSG implements Serializable {
           curNode = store.setToInternal(parent);
           if (curNode.isStorageGroup()) {
             this.storageGroupMNode = curNode.getAsStorageGroupMNode();
-            store.updateStorageGroupMNode(storageGroupMNode);
-          } else {
-            store.updateMNode(curNode);
           }
         }
       }
@@ -468,6 +459,11 @@ public class MTreeBelowSG implements Serializable {
       iterator.close();
     }
   }
+
+  public void setAlias(IMeasurementMNode measurementMNode, String alias) throws MetadataException {
+    store.setAlias(measurementMNode, alias);
+  }
+
   // endregion
 
   // region Entity/Device operation
@@ -510,9 +506,6 @@ public class MTreeBelowSG implements Serializable {
       IEntityMNode entityMNode = store.setToEntity(node);
       if (entityMNode.isStorageGroup()) {
         this.storageGroupMNode = entityMNode.getAsStorageGroupMNode();
-        store.updateStorageGroupMNode(entityMNode.getAsStorageGroupMNode());
-      } else {
-        store.updateMNode(entityMNode);
       }
       return entityMNode;
     }
@@ -1513,11 +1506,7 @@ public class MTreeBelowSG implements Serializable {
   }
 
   public void updateMNode(IMNode node) throws MetadataException {
-    if (node.isStorageGroup()) {
-      store.updateStorageGroupMNode(node.getAsStorageGroupMNode());
-    } else {
-      store.updateMNode(node);
-    }
+    store.updateMNode(node);
   }
 
   public IMNode getChildFromPinnedMNode(IMNode parent, String measurement)

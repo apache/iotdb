@@ -1257,8 +1257,7 @@ public class SchemaRegion {
         leafMNode.getParent().deleteAliasChild(leafMNode.getAlias());
       }
       leafMNode.getParent().addAlias(alias, leafMNode);
-      leafMNode.setAlias(alias);
-      mtree.updateMNode(leafMNode);
+      mtree.setAlias(leafMNode, alias);
     } finally {
       mtree.unPinMNode(leafMNode);
     }
@@ -1329,8 +1328,7 @@ public class SchemaRegion {
         leafMNode.getParent().deleteAliasChild(leafMNode.getAlias());
       }
 
-      leafMNode.setAlias(alias);
-      mtree.updateMNode(leafMNode);
+      mtree.setAlias(leafMNode, alias);
       // persist to WAL
       logWriter.changeAlias(fullPath, alias);
     }

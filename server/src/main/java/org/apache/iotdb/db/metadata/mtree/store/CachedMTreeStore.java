@@ -23,7 +23,6 @@ import org.apache.iotdb.db.exception.metadata.cache.MNodeNotCachedException;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
-import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.MNodeUtils;
 import org.apache.iotdb.db.metadata.mnode.estimator.IMNodeSizeEstimator;
 import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
@@ -232,20 +231,6 @@ public class CachedMTreeStore implements IMTreeStore {
     }
   }
 
-  @Override
-  public void updateStorageGroupMNode(IStorageGroupMNode node) throws MetadataException {
-    this.root = node;
-    writeLock.lock();
-    try {
-      file.updateStorageGroupNode(node);
-    } catch (IOException e) {
-      logger.error("IOException occurred during updating StorageGroupMNode {}", node.getFullPath());
-      throw new MetadataException(e);
-    } finally {
-      writeLock.unlock();
-    }
-  }
-
   /**
    * The upside modification on node in MTree or MManager should be sync to MTreeStore explicitly.
    * Must pin the node first before update
@@ -253,31 +238,54 @@ public class CachedMTreeStore implements IMTreeStore {
    * @param node the modified node
    */
   @Override
-  public void updateMNode(IMNode node) {
-    readLock.lock();
-    try {
-      cacheManager.updateCacheStatusAfterUpdate(node);
-    } finally {
-      readLock.unlock();
+  public void updateMNode(IMNode node) throws MetadataException {
+    if (node.isStorageGroup()) {
+      this.root = node;
+      writeLock.lock();
+      try {
+        file.updateStorageGroupNode(node.getAsStorageGroupMNode());
+      } catch (IOException e) {
+        logger.error(
+            "IOException occurred during updating StorageGroupMNode {}", node.getFullPath());
+        throw new MetadataException(e);
+      } finally {
+        writeLock.unlock();
+      }
+    } else {
+      readLock.lock();
+      try {
+        cacheManager.updateCacheStatusAfterUpdate(node);
+      } finally {
+        readLock.unlock();
+      }
     }
   }
 
   @Override
-  public IEntityMNode setToEntity(IMNode node) {
+  public IEntityMNode setToEntity(IMNode node) throws MetadataException {
     IEntityMNode result = MNodeUtils.setToEntity(node);
     if (result != node) {
       memManager.updatePinnedSize(IMNodeSizeEstimator.getEntityNodeBaseSize());
     }
+    updateMNode(result);
     return result;
   }
 
   @Override
-  public IMNode setToInternal(IEntityMNode entityMNode) {
+  public IMNode setToInternal(IEntityMNode entityMNode) throws MetadataException {
     IMNode result = MNodeUtils.setToInternal(entityMNode);
     if (result != entityMNode) {
       memManager.updatePinnedSize(-IMNodeSizeEstimator.getEntityNodeBaseSize());
     }
+    updateMNode(result);
     return result;
+  }
+
+  @Override
+  public void setAlias(IMeasurementMNode measurementMNode, String alias) throws MetadataException {
+    measurementMNode.setAlias(alias);
+    memManager.updatePinnedSize(IMNodeSizeEstimator.getAliasOccupation() + alias.length());
+    updateMNode(measurementMNode);
   }
 
   /**
