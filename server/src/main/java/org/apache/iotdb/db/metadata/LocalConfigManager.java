@@ -248,12 +248,12 @@ public class LocalConfigManager {
     deleteSchemaRegionsInStorageGroup(
         storageGroup, partitionTable.deleteStorageGroup(storageGroup));
 
-    if (MetadataSyncManager.getInstance().isEnableSync()) {
-      MetadataSyncManager.getInstance()
-          .syncMetadataPlan(new DeleteStorageGroupPlan(Collections.singletonList(storageGroup)));
-    }
     for (Template template : templateManager.getTemplateMap().values()) {
       templateManager.unmarkStorageGroup(template, storageGroup.getFullPath());
+    }
+    if (MetadataSyncManager.getInstance().isEnableSync()) {
+      MetadataSyncManager.getInstance()
+              .syncMetadataPlan(new DeleteStorageGroupPlan(Collections.singletonList(storageGroup)));
     }
 
     if (!config.isEnableMemControl()) {
