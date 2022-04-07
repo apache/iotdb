@@ -42,7 +42,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 
-public class IotDBWriter extends Writer {
+public class IoTDBWriter extends Writer {
     public static class Task extends com.alibaba.datax.common.spi.Writer.Task {
         private static final Logger LOG = LoggerFactory.getLogger(IotDBWriter.Task.class);
 

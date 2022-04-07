@@ -19,14 +19,14 @@
 
 package org.apache.iotdb.datax.writer.iotdbwriter;
 
-public class IotDBColumn {
+public class IoTDBColumn {
     private String name;
     private String type;
 
-    public IotDBColumn() {
+    public IoTDBColumn() {
     }
 
-    public IotDBColumn(String name, String type) {
+    public IoTDBColumn(String name, String type) {
         this.name = name;
         this.type = type;
     }
