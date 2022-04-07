@@ -27,6 +27,9 @@ import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaRegion;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -36,6 +39,7 @@ public class SchemaEngine {
 
   private Map<ConsensusGroupId, ISchemaRegion> schemaRegionMap;
   private SchemaEngineType schemaRegionStoredType;
+  private static final Logger logger = LoggerFactory.getLogger(SchemaEngine.class);
 
   private static class SchemaEngineManagerHolder {
     private static final SchemaEngine INSTANCE = new SchemaEngine();
@@ -52,6 +56,7 @@ public class SchemaEngine {
   public void init() {
     schemaRegionMap = new ConcurrentHashMap<>();
     schemaRegionStoredType = IoTDBDescriptor.getInstance().getConfig().getMetadataManagerType();
+    logger.info("used schema engine type: {}.", schemaRegionStoredType);
   }
 
   public void clear() {
