@@ -17,27 +17,20 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.memory;
+package org.apache.iotdb.db.mpp.buffer;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
-/**
- * Manages memory of a data node. The memory is divided into two memory pools so that the memory for
- * read and for write can be isolated.
- */
-public class LocalMemoryManager {
+import java.nio.ByteBuffer;
 
-  private final MemoryPool queryPool;
-
-  public LocalMemoryManager() {
-    queryPool =
-        new MemoryPool(
-            "query",
-            IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForRead(),
-            (long) (IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForRead() * 0.5));
+public class TsBlockSerde {
+  public ByteBuffer serialized(TsBlock tsBlock) {
+    // TODO: implement
+    return null;
   }
 
-  public MemoryPool getQueryPool() {
-    return queryPool;
+  public TsBlock deserialize(ByteBuffer buffer) {
+    // TODO: implement
+    return null;
   }
 }
