@@ -18,10 +18,13 @@
  */
 package org.apache.iotdb.db.mpp.operator.meta;
 
+import java.io.IOException;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.operator.OperatorContext;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -127,5 +130,20 @@ public class TimeSeriesMetaScanOperator extends MetaScanOperator {
     return map.entrySet().stream()
         .map(e -> "\"" + e.getKey() + "\"" + ":" + "\"" + e.getValue() + "\"")
         .collect(Collectors.joining(","));
+  }
+
+  @Override
+  public PlanNodeId getSourceId() {
+    return null;
+  }
+
+  @Override
+  public void initQueryDataSource(QueryDataSource dataSource) {
+
+  }
+
+  @Override
+  public boolean isFinished() throws IOException {
+    return false;
   }
 }

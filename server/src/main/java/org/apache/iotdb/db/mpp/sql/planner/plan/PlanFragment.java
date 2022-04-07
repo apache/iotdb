@@ -59,15 +59,15 @@ public class PlanFragment {
   // and the DataRegions of all SourceNodes should be same in one PlanFragment.
   // So we can use the DataRegion of one SourceNode as the PlanFragment's DataRegion.
   public RegionReplicaSet getTargetDataRegion() {
-    return getNodeDataRegion(root);
+    return getNodeRegion(root);
   }
 
-  private RegionReplicaSet getNodeDataRegion(PlanNode root) {
+  private RegionReplicaSet getNodeRegion(PlanNode root) {
     if (root instanceof SourceNode) {
       return ((SourceNode) root).getRegionReplicaSet();
     }
     for (PlanNode child : root.getChildren()) {
-      RegionReplicaSet result = getNodeDataRegion(child);
+      RegionReplicaSet result = getNodeRegion(child);
       if (result != null) {
         return result;
       }

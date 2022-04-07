@@ -18,19 +18,18 @@
  */
 package org.apache.iotdb.db.mpp.operator.meta;
 
+import java.io.IOException;
+import java.util.List;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaRegion;
-import org.apache.iotdb.db.mpp.operator.Operator;
 import org.apache.iotdb.db.mpp.operator.OperatorContext;
+import org.apache.iotdb.db.mpp.operator.source.SourceOperator;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
-import java.io.IOException;
-import java.util.List;
-
-public class MetaScanOperator implements Operator {
+public abstract class MetaScanOperator implements SourceOperator {
 
   protected OperatorContext operatorContext;
   protected TsBlock tsBlock;
@@ -60,9 +59,7 @@ public class MetaScanOperator implements Operator {
     this.columns = columns;
   }
 
-  protected TsBlock createTsBlock() throws MetadataException {
-    return null;
-  }
+  protected abstract TsBlock createTsBlock() throws MetadataException;
 
   public PartialPath getPartialPath() {
     return partialPath;
