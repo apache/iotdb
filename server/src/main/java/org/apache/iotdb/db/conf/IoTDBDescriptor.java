@@ -940,13 +940,11 @@ public class IoTDBDescriptor {
       conf.setWalFileSizeThresholdInByte(walFileSizeThreshold);
     }
 
-    long walNodeMaxStorageSpace =
+    long walFileTTL =
         Long.parseLong(
-            properties.getProperty(
-                "wal_node_max_storage_space_in_mb",
-                Long.toString(conf.getWalNodeMaxStorageSpaceInMb())));
-    if (walNodeMaxStorageSpace > 0) {
-      conf.setWalNodeMaxStorageSpaceInMb(walNodeMaxStorageSpace);
+            properties.getProperty("wal_file_ttl_in_ms", Long.toString(conf.getWalFileTTLInMs())));
+    if (walFileTTL > 0) {
+      conf.setWalFileTTLInMs(walFileTTL);
     }
 
     long walMemTableSnapshotThreshold =

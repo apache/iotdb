@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.wal.io;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.wal.buffer.WALEntry;
 
@@ -43,8 +44,11 @@ import java.util.NoSuchElementException;
  */
 public class WALReader implements Closeable {
   private static final Logger logger = LoggerFactory.getLogger(WALReader.class);
-  /** 10MB as default memory limit */
-  private static final int MEMORY_LIMIT_IN_BYTES = 10 * 1024 * 1024;
+  /** 1/10 of .wal file size as buffer size */
+  private static final int STREAM_BUFFER_SIZE =
+      (int) IoTDBDescriptor.getInstance().getConfig().getWalFileSizeThresholdInByte() / 10;
+  /** 1000 as default batch limit */
+  private static final int BATCH_LIMIT = 1_000;
 
   private final File logFile;
   private final DataInputStream logStream;
@@ -55,7 +59,9 @@ public class WALReader implements Closeable {
 
   public WALReader(File logFile) throws FileNotFoundException {
     this.logFile = logFile;
-    this.logStream = new DataInputStream(new BufferedInputStream(new FileInputStream(logFile)));
+    this.logStream =
+        new DataInputStream(
+            new BufferedInputStream(new FileInputStream(logFile), STREAM_BUFFER_SIZE));
     this.walEntries = new LinkedList<>();
   }
 
@@ -66,18 +72,13 @@ public class WALReader implements Closeable {
     }
     // read WALEntries from log stream
     try {
-      if (fileCorrupted || logStream.available() <= 0) {
+      if (fileCorrupted) {
         return false;
       }
       walEntries.clear();
-      int totalSize = 0;
-      while (totalSize < MEMORY_LIMIT_IN_BYTES) {
-        int availableBytes = logStream.available();
+      while (walEntries.size() < BATCH_LIMIT) {
         WALEntry walEntry = WALEntry.deserialize(logStream);
-
         walEntries.add(walEntry);
-
-        totalSize += availableBytes - logStream.available();
       }
     } catch (EOFException e) {
       // reach end of wal file

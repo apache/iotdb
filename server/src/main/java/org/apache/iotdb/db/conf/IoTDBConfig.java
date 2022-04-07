@@ -159,7 +159,7 @@ public class IoTDBConfig {
   private String[] walDirs = {DEFAULT_BASE_DIR + File.separator + IoTDBConstant.WAL_FOLDER_NAME};
 
   /** Duration a wal flush operation will wait before calling fsync. Unit: millisecond */
-  private long fsyncWalDelayInMs = 100;
+  private long fsyncWalDelayInMs = 10;
 
   /** Max number of wal nodes, each node corresponds to one wal directory */
   private int maxWalNodesNum = 0;
@@ -176,8 +176,8 @@ public class IoTDBConfig {
   /** Size threshold of each wal file. Unit: byte */
   private long walFileSizeThresholdInByte = 10 * 1024 * 1024;
 
-  /** Max storage space for each wal node. Unit: MB */
-  private long walNodeMaxStorageSpaceInMb = 3 * 1024;
+  /** TTL of wal file. Unit: ms */
+  private long walFileTTLInMs = 24 * 60 * 60 * 1000;
 
   /**
    * MemTable size threshold for triggering MemTable snapshot in wal. When a memTable's size exceeds
@@ -1414,12 +1414,12 @@ public class IoTDBConfig {
     this.walFileSizeThresholdInByte = walFileSizeThresholdInByte;
   }
 
-  public long getWalNodeMaxStorageSpaceInMb() {
-    return walNodeMaxStorageSpaceInMb;
+  public long getWalFileTTLInMs() {
+    return walFileTTLInMs;
   }
 
-  void setWalNodeMaxStorageSpaceInMb(long walNodeMaxStorageSpaceInMb) {
-    this.walNodeMaxStorageSpaceInMb = walNodeMaxStorageSpaceInMb;
+  public void setWalFileTTLInMs(long walFileTTLInMs) {
+    this.walFileTTLInMs = walFileTTLInMs;
   }
 
   public long getWalMemTableSnapshotThreshold() {
