@@ -351,7 +351,7 @@ public class CachedMTreeStore implements IMTreeStore {
   }
 
   private void ensureMemoryStatus() {
-    if (memManager.isExceedCapacity()) {
+    if (memManager.isExceedFlushThreshold()) {
       tryExecuteMemoryRelease();
     }
   }
@@ -363,7 +363,7 @@ public class CachedMTreeStore implements IMTreeStore {
    */
   private void tryExecuteMemoryRelease() {
     executeMemoryRelease();
-    if (memManager.isExceedCapacity()) {
+    if (memManager.isExceedFlushThreshold()) {
       if (!hasFlushTask) {
         registerFlushTask();
       }
@@ -375,7 +375,7 @@ public class CachedMTreeStore implements IMTreeStore {
    * no node could be evicted. Update the memory status after evicting each node.
    */
   private void executeMemoryRelease() {
-    while (memManager.isExceedThreshold()) {
+    while (memManager.isExceedReleaseThreshold()) {
       if (!cacheManager.evict()) {
         break;
       }

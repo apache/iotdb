@@ -27,11 +27,13 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class MemManagerNodeEstimatedSizeBasedImpl implements IMemManager {
 
-  private static final double THRESHOLD_RATIO = 0.6;
+  private static final double RELEASE_THRESHOLD_RATIO = 0.6;
+  private static final double FLUSH_THRESHOLD_RATION = 0.75;
 
   private MemoryStatistics memoryStatistics = MemoryStatistics.getInstance();
 
-  private long threshold;
+  private long releaseThreshold;
+  private long flushThreshold;
 
   private AtomicLong size = new AtomicLong(0);
 
@@ -43,7 +45,8 @@ public class MemManagerNodeEstimatedSizeBasedImpl implements IMemManager {
   public void init() {
     size.getAndSet(0);
     pinnedSize.getAndSet(0);
-    threshold = (long) (memoryStatistics.getMemoryCapacity() * THRESHOLD_RATIO);
+    releaseThreshold = (long) (memoryStatistics.getMemoryCapacity() * RELEASE_THRESHOLD_RATIO);
+    flushThreshold = (long) (memoryStatistics.getMemoryCapacity() * FLUSH_THRESHOLD_RATION);
   }
 
   @Override
@@ -52,13 +55,13 @@ public class MemManagerNodeEstimatedSizeBasedImpl implements IMemManager {
   }
 
   @Override
-  public boolean isExceedThreshold() {
-    return !isEmpty() && memoryStatistics.getMemoryUsage() > threshold;
+  public boolean isExceedReleaseThreshold() {
+    return !isEmpty() && memoryStatistics.getMemoryUsage() > releaseThreshold;
   }
 
   @Override
-  public boolean isExceedCapacity() {
-    return memoryStatistics.isExceedCapacity();
+  public boolean isExceedFlushThreshold() {
+    return !isEmpty() && memoryStatistics.getMemoryUsage() > flushThreshold;
   }
 
   @Override
