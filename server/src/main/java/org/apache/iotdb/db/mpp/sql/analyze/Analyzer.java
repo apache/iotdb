@@ -41,10 +41,7 @@ import org.apache.iotdb.db.mpp.sql.rewriter.WildcardsRemover;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.component.WhereCondition;
-import org.apache.iotdb.db.mpp.sql.statement.crud.InsertRowStatement;
-import org.apache.iotdb.db.mpp.sql.statement.crud.InsertStatement;
-import org.apache.iotdb.db.mpp.sql.statement.crud.InsertTabletStatement;
-import org.apache.iotdb.db.mpp.sql.statement.crud.QueryStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.*;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
@@ -222,6 +219,7 @@ public class Analyzer {
       return analysis;
     }
 
+    @Override
     public Analysis visitInsertRow(InsertRowStatement insertRowStatement, MPPQueryContext context) {
       DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
       dataPartitionQueryParam.setDevicePath(insertRowStatement.getDevicePath().getFullPath());
@@ -252,6 +250,150 @@ public class Analyzer {
       }
 
       analysis.setStatement(insertRowStatement);
+      analysis.setDataPartitionInfo(partitionInfo.getDataPartitionInfo());
+      analysis.setSchemaPartitionInfo(partitionInfo.getSchemaPartitionInfo());
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitInsertRows(
+        InsertRowsStatement insertRowsStatement, MPPQueryContext context) {
+      // TODO remove duplicate
+      List<DataPartitionQueryParam> dataPartitionQueryParams = new ArrayList<>();
+      for (InsertRowStatement insertRowStatement :
+          insertRowsStatement.getInsertRowStatementList()) {
+        DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
+        dataPartitionQueryParam.setDevicePath(insertRowStatement.getDevicePath().getFullPath());
+        dataPartitionQueryParam.setTimePartitionSlotList(
+            insertRowStatement.getTimePartitionSlots());
+        dataPartitionQueryParams.add(dataPartitionQueryParam);
+      }
+
+      PartitionInfo partitionInfo = partitionFetcher.fetchPartitionInfos(dataPartitionQueryParams);
+
+      SchemaTree schemaTree = null;
+      if (IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
+        schemaTree =
+            schemaFetcher.fetchSchemaListWithAutoCreate(
+                insertRowsStatement.getDevicePaths(),
+                insertRowsStatement.getMeasurementsList(),
+                insertRowsStatement.getDataTypesList());
+      } else {
+        PathPatternTree patternTree = new PathPatternTree();
+        for (InsertRowStatement insertRowStatement :
+            insertRowsStatement.getInsertRowStatementList()) {
+          patternTree.appendPaths(
+              insertRowStatement.getDevicePath(),
+              Arrays.asList(insertRowStatement.getMeasurements()));
+        }
+        schemaFetcher.fetchSchema(patternTree);
+      }
+      Analysis analysis = new Analysis();
+      analysis.setSchemaTree(schemaTree);
+
+      try {
+        insertRowsStatement.transferType(schemaTree);
+      } catch (QueryProcessException e) {
+        throw new SemanticException(e.getMessage());
+      }
+
+      if (!insertRowsStatement.checkDataType(schemaTree)) {
+        throw new SemanticException("Data type mismatch");
+      }
+
+      analysis.setStatement(insertRowsStatement);
+      analysis.setDataPartitionInfo(partitionInfo.getDataPartitionInfo());
+      analysis.setSchemaPartitionInfo(partitionInfo.getSchemaPartitionInfo());
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitInsertMultiTablet(
+        InsertMultiTabletStatement insertMultiTabletStatement, MPPQueryContext context) {
+      // TODO remove duplicate
+      List<DataPartitionQueryParam> dataPartitionQueryParams = new ArrayList<>();
+      for (InsertTabletStatement insertTabletStatement :
+          insertMultiTabletStatement.getInsertTabletStatementList()) {
+        DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
+        dataPartitionQueryParam.setDevicePath(insertTabletStatement.getDevicePath().getFullPath());
+        dataPartitionQueryParam.setTimePartitionSlotList(
+            insertTabletStatement.getTimePartitionSlots());
+        dataPartitionQueryParams.add(dataPartitionQueryParam);
+      }
+
+      PartitionInfo partitionInfo = partitionFetcher.fetchPartitionInfos(dataPartitionQueryParams);
+
+      SchemaTree schemaTree = null;
+      if (IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
+        schemaTree =
+            schemaFetcher.fetchSchemaListWithAutoCreate(
+                insertMultiTabletStatement.getDevicePaths(),
+                insertMultiTabletStatement.getMeasurementsList(),
+                insertMultiTabletStatement.getDataTypesList());
+      } else {
+        PathPatternTree patternTree = new PathPatternTree();
+        for (InsertTabletStatement insertTabletStatement :
+            insertMultiTabletStatement.getInsertTabletStatementList()) {
+          patternTree.appendPaths(
+              insertTabletStatement.getDevicePath(),
+              Arrays.asList(insertTabletStatement.getMeasurements()));
+        }
+        schemaFetcher.fetchSchema(patternTree);
+      }
+      Analysis analysis = new Analysis();
+      analysis.setSchemaTree(schemaTree);
+
+      if (!insertMultiTabletStatement.checkDataType(schemaTree)) {
+        throw new SemanticException("Data type mismatch");
+      }
+      analysis.setStatement(insertMultiTabletStatement);
+      analysis.setDataPartitionInfo(partitionInfo.getDataPartitionInfo());
+      analysis.setSchemaPartitionInfo(partitionInfo.getSchemaPartitionInfo());
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitInsertRowsOfOneDevice(
+        InsertRowsOfOneDeviceStatement insertRowsOfOneDeviceStatement, MPPQueryContext context) {
+      DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
+      dataPartitionQueryParam.setDevicePath(
+          insertRowsOfOneDeviceStatement.getDevicePath().getFullPath());
+      dataPartitionQueryParam.setTimePartitionSlotList(
+          insertRowsOfOneDeviceStatement.getTimePartitionSlots());
+
+      PartitionInfo partitionInfo = partitionFetcher.fetchPartitionInfo(dataPartitionQueryParam);
+
+      SchemaTree schemaTree = null;
+      if (IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
+        schemaTree =
+            schemaFetcher.fetchSchemaWithAutoCreate(
+                insertRowsOfOneDeviceStatement.getDevicePath(),
+                insertRowsOfOneDeviceStatement.getMeasurements(),
+                insertRowsOfOneDeviceStatement.getDataTypes());
+      } else {
+        PathPatternTree patternTree = new PathPatternTree();
+        for (InsertRowStatement insertRowStatement :
+            insertRowsOfOneDeviceStatement.getInsertRowStatementList()) {
+          patternTree.appendPaths(
+              insertRowStatement.getDevicePath(),
+              Arrays.asList(insertRowStatement.getMeasurements()));
+        }
+        schemaFetcher.fetchSchema(patternTree);
+      }
+      Analysis analysis = new Analysis();
+      analysis.setSchemaTree(schemaTree);
+
+      try {
+        insertRowsOfOneDeviceStatement.transferType(schemaTree);
+      } catch (QueryProcessException e) {
+        throw new SemanticException(e.getMessage());
+      }
+
+      if (!insertRowsOfOneDeviceStatement.checkDataType(schemaTree)) {
+        throw new SemanticException("Data type mismatch");
+      }
+
+      analysis.setStatement(insertRowsOfOneDeviceStatement);
       analysis.setDataPartitionInfo(partitionInfo.getDataPartitionInfo());
       analysis.setSchemaPartitionInfo(partitionInfo.getSchemaPartitionInfo());
       return analysis;

@@ -20,9 +20,13 @@
 package org.apache.iotdb.db.mpp.sql.statement.crud;
 
 import org.apache.iotdb.commons.partition.TimePartitionSlot;
+import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
+import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-import java.util.List;
+import java.util.*;
 
 public class InsertRowsOfOneDeviceStatement extends InsertBaseStatement {
 
@@ -35,15 +39,50 @@ public class InsertRowsOfOneDeviceStatement extends InsertBaseStatement {
 
   public void setInsertRowStatementList(List<InsertRowStatement> insertRowStatementList) {
     this.insertRowStatementList = insertRowStatementList;
+
+    // set device path, measurements, and data types
+    if (insertRowStatementList == null || insertRowStatementList.size() == 0) {
+      return;
+    }
+    devicePath = insertRowStatementList.get(0).getDevicePath();
+    Map<String, TSDataType> measurementsAndDataType = new HashMap<>();
+    for (InsertRowStatement insertRowStatement : insertRowStatementList) {
+      List<String> measurements = Arrays.asList(insertRowStatement.getMeasurements());
+
+      //      return measurements.stream().collect(Collectors.toMap(key -> key, key ->
+      // insertRowStatement.dataTypes[measurements.indexOf(key)]));
+      //      measurementsAndDataType.p；
+      //      List a = new ArrayList<>();
+      //      a.stream().collect()
+
+    }
   }
 
-  @Override
   public List<TimePartitionSlot> getTimePartitionSlots() {
-    return null;
+    Set<TimePartitionSlot> timePartitionSlotSet = new HashSet<>();
+    for (InsertRowStatement insertRowStatement : insertRowStatementList) {
+      timePartitionSlotSet.add(StorageEngine.getTimePartitionSlot(insertRowStatement.getTime()));
+    }
+    return new ArrayList<>(timePartitionSlotSet);
   }
 
   @Override
   public boolean checkDataType(SchemaTree schemaTree) {
-    return false;
+    for (InsertRowStatement insertRowStatement : insertRowStatementList) {
+      if (!insertRowStatement.checkDataType(schemaTree)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  public void transferType(SchemaTree schemaTree) throws QueryProcessException {
+    for (InsertRowStatement insertRowStatement : insertRowStatementList) {
+      insertRowStatement.transferType(schemaTree);
+    }
+  }
+
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitInsertRowsOfOneDevice(this, context);
   }
 }

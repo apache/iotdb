@@ -19,42 +19,42 @@
 
 package org.apache.iotdb.db.mpp.sql.statement.crud;
 
-import org.apache.iotdb.commons.partition.TimePartitionSlot;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
+import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class InsertRowsStatement extends InsertBaseStatement {
 
-  /**
-   * Suppose there is an InsertRowsStatement, which contains 5 InsertRowStatements,
-   * insertRowStatementList={InsertRowStatement_0, InsertRowStatement_1, InsertRowStatement_2,
-   * InsertRowStatement_3, InsertRowStatement_4}, then the insertRowStatementIndexList={0, 1, 2, 3,
-   * 4} respectively. But when the InsertRowsStatement is split into two InsertRowsStatements
-   * according to different storage group in cluster version, suppose that the
-   * InsertRowsStatement_1's insertRowStatementList = {InsertRowStatement_0, InsertRowStatement_3,
-   * InsertRowStatement_4}, then InsertRowsStatement_1's insertRowStatementIndexList = {0, 3, 4};
-   * InsertRowsStatement_2's insertRowStatementList = {InsertRowStatement_1, * InsertRowStatement_2}
-   * then InsertRowsStatement_2's insertRowStatementIndexList= {1, 2} respectively;
-   */
-  private List<Integer> insertRowStatementIndexList;
-
   /** the InsertRowsStatement list */
   private List<InsertRowStatement> insertRowStatementList;
 
-  private List<PartialPath> devicePaths;
-
   public List<PartialPath> getDevicePaths() {
-    return devicePaths;
+    List<PartialPath> partialPaths = new ArrayList<>();
+    for (InsertRowStatement insertRowStatement : insertRowStatementList) {
+      partialPaths.add(insertRowStatement.devicePath);
+    }
+    return partialPaths;
   }
 
-  public List<Integer> getInsertRowStatementIndexList() {
-    return insertRowStatementIndexList;
+  public List<String[]> getMeasurementsList() {
+    List<String[]> measurementsList = new ArrayList<>();
+    for (InsertRowStatement insertRowStatement : insertRowStatementList) {
+      measurementsList.add(insertRowStatement.measurements);
+    }
+    return measurementsList;
   }
 
-  public void setInsertRowStatementIndexList(List<Integer> insertRowStatementIndexList) {
-    this.insertRowStatementIndexList = insertRowStatementIndexList;
+  public List<TSDataType[]> getDataTypesList() {
+    List<TSDataType[]> dataTypesList = new ArrayList<>();
+    for (InsertRowStatement insertRowStatement : insertRowStatementList) {
+      dataTypesList.add(insertRowStatement.dataTypes);
+    }
+    return dataTypesList;
   }
 
   public List<InsertRowStatement> getInsertRowStatementList() {
@@ -66,12 +66,22 @@ public class InsertRowsStatement extends InsertBaseStatement {
   }
 
   @Override
-  public List<TimePartitionSlot> getTimePartitionSlots() {
-    return null;
+  public boolean checkDataType(SchemaTree schemaTree) {
+    for (InsertRowStatement insertRowStatement : insertRowStatementList) {
+      if (!insertRowStatement.checkDataType(schemaTree)) {
+        return false;
+      }
+    }
+    return true;
   }
 
-  @Override
-  public boolean checkDataType(SchemaTree schemaTree) {
-    return false;
+  public void transferType(SchemaTree schemaTree) throws QueryProcessException {
+    for (InsertRowStatement insertRowStatement : insertRowStatementList) {
+      insertRowStatement.transferType(schemaTree);
+    }
+  }
+
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitInsertRows(this, context);
   }
 }

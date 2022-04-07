@@ -24,12 +24,47 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 
 public class InsertRowsOfOneDeviceNode extends InsertNode {
 
-  protected InsertRowsOfOneDeviceNode(PlanNodeId id) {
+  /**
+   * Suppose there is an InsertRowsOfOneDeviceNode, which contains 5 InsertRowNodes,
+   * insertRowNodeList={InsertRowNode_0, InsertRowNode_1, InsertRowNode_2, InsertRowNode_3,
+   * InsertRowNode_4}, then the insertRowNodeIndexList={0, 1, 2, 3, 4} respectively. But when the
+   * InsertRowsOfOneDeviceNode is split into two InsertRowsOfOneDeviceNodes according to different
+   * storage group in cluster version, suppose that the InsertRowsOfOneDeviceNode_1's
+   * insertRowNodeList = {InsertRowNode_0, InsertRowNode_3, InsertRowNode_4}, then
+   * InsertRowsOfOneDeviceNode_1's insertRowNodeIndexList = {0, 3, 4}; InsertRowsOfOneDeviceNode_2's
+   * insertRowNodeList = {InsertRowNode_1, * InsertRowNode_2} then InsertRowsOfOneDeviceNode_2's
+   * insertRowNodeIndexList= {1, 2} respectively;
+   */
+  private List<Integer> insertRowNodeIndexList;
+
+  /** the InsertRowsNode list */
+  private List<InsertRowNode> insertRowNodeList;
+
+  public InsertRowsOfOneDeviceNode(PlanNodeId id) {
     super(id);
+    insertRowNodeIndexList = new ArrayList<>();
+    insertRowNodeList = new ArrayList<>();
+  }
+
+  public List<Integer> getInsertRowNodeIndexList() {
+    return insertRowNodeIndexList;
+  }
+
+  public void setInsertRowNodeIndexList(List<Integer> insertRowNodeIndexList) {
+    this.insertRowNodeIndexList = insertRowNodeIndexList;
+  }
+
+  public List<InsertRowNode> getInsertRowNodeList() {
+    return insertRowNodeList;
+  }
+
+  public void setInsertRowNodeList(List<InsertRowNode> insertRowNodeList) {
+    this.insertRowNodeList = insertRowNodeList;
   }
 
   @Override
