@@ -64,7 +64,7 @@ def test_tablet_insertion():
         df_output = df_output[df_input.columns.tolist()]
 
         session.close()
-    assert_frame_equal(df_input, df_output)
+    assert_frame_equal(df_input, df_output, False)
 
 
 def test_nullable_tablet_insertion():
@@ -106,4 +106,4 @@ def test_nullable_tablet_insertion():
         df_output = df_output[df_input.columns.tolist()]
 
         session.close()
-    assert_frame_equal(df_input, df_output)
+    assert_frame_equal(df_input, df_output, False)
