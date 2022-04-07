@@ -66,12 +66,11 @@ public class PublishHandler extends AbstractInterceptHandler {
   public void onConnect(InterceptConnectMessage msg) {
     try {
       BasicOpenSessionResp basicOpenSessionResp =
-          SessionManager.getInstance()
-              .openSession(
-                  msg.getUsername(),
-                  new String(msg.getPassword()),
-                  ZoneId.systemDefault().toString(),
-                  TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3);
+          SESSION_MANAGER.openSession(
+              msg.getUsername(),
+              new String(msg.getPassword()),
+              ZoneId.systemDefault().toString(),
+              TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3);
       sessionId = basicOpenSessionResp.getSessionId();
     } catch (TException e) {
       throw new RuntimeException(e);

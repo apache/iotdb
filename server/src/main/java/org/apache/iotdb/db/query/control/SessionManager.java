@@ -306,6 +306,7 @@ public class SessionManager {
     }
   }
 
+  /** Check whether specific user has the authorization to given plan. */
   public boolean checkAuthorization(PhysicalPlan plan, String username) throws AuthException {
     if (!plan.isAuthenticationRequired()) {
       return true;
@@ -319,6 +320,7 @@ public class SessionManager {
         username, plan.getAuthPaths(), plan.getOperatorType(), targetUser);
   }
 
+  /** Check whether specific Session has the authorization to given plan. */
   public TSStatus checkAuthority(PhysicalPlan plan, long sessionId) {
     try {
       if (!checkAuthorization(plan, sessionIdToUsername.get(sessionId))) {
