@@ -26,6 +26,7 @@ import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSequenceSpaceCom
 import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerUnsequenceSpaceCompactionSelector;
 import org.apache.iotdb.db.engine.compaction.inner.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.performer.ReadChunkCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.performer.ReadPointCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
@@ -115,7 +116,7 @@ public class SizeTieredCompactionSelector
                 tsFileManager,
                 resources,
                 sequence,
-                new ReadChunkCompactionPerformer(),
+                sequence ? new ReadChunkCompactionPerformer() : new ReadPointCompactionPerformer(),
                 CompactionTaskManager.currentTaskNum));
       }
       return taskList;

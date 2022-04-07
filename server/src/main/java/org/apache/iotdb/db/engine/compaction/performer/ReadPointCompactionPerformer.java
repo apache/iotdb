@@ -58,7 +58,7 @@ import java.util.stream.Collectors;
 public class ReadPointCompactionPerformer extends AbstractCompactionPerformer {
   private Logger LOGGER = LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
 
-  private List<TsFileResource> targetFiles;
+  private List<TsFileResource> targetFiles = Collections.emptyList();
 
   public ReadPointCompactionPerformer(
       List<TsFileResource> seqFiles,

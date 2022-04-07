@@ -23,6 +23,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -32,8 +33,8 @@ import java.util.List;
  * all kinds of Performer can be used for all kinds of compaction tasks!
  */
 public abstract class AbstractCompactionPerformer {
-  protected List<TsFileResource> seqFiles;
-  protected List<TsFileResource> unseqFiles;
+  protected List<TsFileResource> seqFiles = Collections.emptyList();
+  protected List<TsFileResource> unseqFiles = Collections.emptyList();
 
   public abstract void perform()
       throws IOException, MetadataException, StorageEngineException, InterruptedException;

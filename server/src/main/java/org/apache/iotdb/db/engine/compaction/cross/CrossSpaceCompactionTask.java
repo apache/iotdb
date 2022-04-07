@@ -119,7 +119,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         compactionLogger.close();
 
         performer.setSeqFiles(selectedSequenceFiles);
-        performer.setUnseqFiles(unseqTsFileResourceList);
+        performer.setUnseqFiles(selectedUnsequenceFiles);
         performer.setTargetFiles(targetTsfileResourceList);
         performer.perform();
 
