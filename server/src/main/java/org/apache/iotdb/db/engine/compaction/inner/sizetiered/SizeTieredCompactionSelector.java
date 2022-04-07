@@ -22,9 +22,9 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
+import org.apache.iotdb.db.engine.compaction.comparator.DefaultCompactionTaskComparatorImpl;
 import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionSelector;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
-import org.apache.iotdb.db.engine.compaction.task.CompactionTaskComparator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -44,10 +44,10 @@ import java.util.PriorityQueue;
  * selector traverses the file list from old to new. If the size of selected files or the number of
  * select files exceed given threshold, a compaction task will be submitted to task queue in
  * CompactionTaskManager. In CompactionTaskManager, tasks are ordered by {@link
- * CompactionTaskComparator}. To maximize compaction efficiency, selector searches compaction task
- * from 0 compaction files(that is, file that never been compacted, named level 0 file) to higher
- * level files. If a compaction task is found in some level, selector will not search higher level
- * anymore.
+ * DefaultCompactionTaskComparatorImpl}. To maximize compaction efficiency, selector searches
+ * compaction task from 0 compaction files(that is, file that never been compacted, named level 0
+ * file) to higher level files. If a compaction task is found in some level, selector will not
+ * search higher level anymore.
  */
 public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSelector {
   private static final Logger LOGGER =

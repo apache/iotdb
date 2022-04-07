@@ -27,9 +27,9 @@ import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.compaction.comparator.DefaultCompactionTaskComparatorImpl;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionTaskStatus;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
-import org.apache.iotdb.db.engine.compaction.task.CompactionTaskComparator;
 import org.apache.iotdb.db.utils.datastructure.FixedPriorityBlockingQueue;
 
 import com.google.common.util.concurrent.RateLimiter;
@@ -62,7 +62,7 @@ public class CompactionTaskManager implements IService {
   private WrappedScheduledExecutorService taskExecutionPool;
   public static volatile AtomicInteger currentTaskNum = new AtomicInteger(0);
   private FixedPriorityBlockingQueue<AbstractCompactionTask> candidateCompactionTaskQueue =
-      new FixedPriorityBlockingQueue<>(1024, new CompactionTaskComparator());
+      new FixedPriorityBlockingQueue<>(1024, new DefaultCompactionTaskComparatorImpl());
   // <logicalStorageGroupName,futureSet>, it is used to terminate all compaction tasks under the
   // logicalStorageGroup
   private Map<String, Set<Future<Void>>> storageGroupTasks = new ConcurrentHashMap<>();

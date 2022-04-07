@@ -19,11 +19,11 @@
 package org.apache.iotdb.db.engine.compaction;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.compaction.comparator.DefaultCompactionTaskComparatorImpl;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionPriority;
 import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
-import org.apache.iotdb.db.engine.compaction.task.CompactionTaskComparator;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -47,7 +47,7 @@ public class CompactionTaskComparatorTest {
   private final Logger LOGGER = LoggerFactory.getLogger(CompactionTaskComparatorTest.class);
   private final AtomicInteger taskNum = new AtomicInteger(0);
   private FixedPriorityBlockingQueue<AbstractCompactionTask> compactionTaskQueue =
-      new FixedPriorityBlockingQueue<>(1024, new CompactionTaskComparator());
+      new FixedPriorityBlockingQueue<>(1024, new DefaultCompactionTaskComparatorImpl());
   private TsFileManager tsFileManager = new TsFileManager("fakeSg", "0", "/");
 
   @Before
@@ -128,7 +128,9 @@ public class CompactionTaskComparatorTest {
   @Test
   public void testPriorityQueueSizeLimit() {
     MinMaxPriorityQueue<AbstractCompactionTask> limitQueue =
-        MinMaxPriorityQueue.orderedBy(new CompactionTaskComparator()).maximumSize(50).create();
+        MinMaxPriorityQueue.orderedBy(new DefaultCompactionTaskComparatorImpl())
+            .maximumSize(50)
+            .create();
     AbstractCompactionTask[] compactionTasks = new AbstractCompactionTask[100];
     for (int i = 0; i < 100; ++i) {
       List<TsFileResource> resources = new ArrayList<>();

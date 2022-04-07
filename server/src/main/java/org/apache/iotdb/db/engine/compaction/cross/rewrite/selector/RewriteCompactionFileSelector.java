@@ -392,9 +392,4 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
     long maxCost = unseqFile.getTsFileSize();
     return Math.min(multiSeriesCost, maxCost);
   }
-
-  @Override
-  public int getConcurrentMergeNum() {
-    return concurrentMergeNum;
-  }
 }

@@ -17,19 +17,19 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.compaction.task;
+package org.apache.iotdb.db.engine.compaction.comparator;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionPriority;
 import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionTask;
+import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 
-import java.util.Comparator;
 import java.util.List;
 
-public class CompactionTaskComparator implements Comparator<AbstractCompactionTask> {
+public class DefaultCompactionTaskComparatorImpl implements ICompactionTaskComparator {
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   @Override
@@ -55,7 +55,7 @@ public class CompactionTaskComparator implements Comparator<AbstractCompactionTa
     }
   }
 
-  private int compareInnerSpaceCompactionTask(
+  public int compareInnerSpaceCompactionTask(
       AbstractInnerSpaceCompactionTask o1, AbstractInnerSpaceCompactionTask o2) {
     if (o1.isSequence() ^ o2.isSequence()) {
       // prioritize sequence file compaction
@@ -97,7 +97,7 @@ public class CompactionTaskComparator implements Comparator<AbstractCompactionTa
     return 0;
   }
 
-  private int compareCrossSpaceCompactionTask(
+  public int compareCrossSpaceCompactionTask(
       AbstractCrossSpaceCompactionTask o1, AbstractCrossSpaceCompactionTask o2) {
     if (o1.getSelectedSequenceFiles().size() != o2.getSelectedSequenceFiles().size()) {
       // we prefer the task with fewer sequence files

@@ -16,18 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.engine.compaction.comparator;
 
-package org.apache.iotdb.db.engine.compaction.cross.rewrite.selector;
+import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionTask;
+import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionTask;
+import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 
-import org.apache.iotdb.db.exception.MergeException;
+import java.util.Comparator;
 
-import java.util.List;
+public interface ICompactionTaskComparator extends Comparator<AbstractCompactionTask> {
+  int compare(AbstractCompactionTask task1, AbstractCompactionTask task2);
 
-/**
- * IMergeFileSelector selects a set of files from given seqFiles and unseqFiles which can be merged
- * without exceeding given memory budget.
- */
-public interface ICrossSpaceMergeFileSelector {
+  int compareInnerSpaceCompactionTask(
+      AbstractInnerSpaceCompactionTask task1, AbstractInnerSpaceCompactionTask task2);
 
-  List[] select() throws MergeException;
+  int compareCrossSpaceCompactionTask(
+      AbstractCrossSpaceCompactionTask task1, AbstractCrossSpaceCompactionTask task2);
 }
