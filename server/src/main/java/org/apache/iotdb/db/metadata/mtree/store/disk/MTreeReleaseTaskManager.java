@@ -56,6 +56,8 @@ public class MTreeReleaseTaskManager {
   }
 
   public void submit(Runnable task) {
-    releaseTaskExecutor.submit(task);
+    if (!releaseTaskExecutor.isShutdown()) {
+      releaseTaskExecutor.submit(task);
+    }
   }
 }
