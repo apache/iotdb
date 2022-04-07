@@ -1119,6 +1119,7 @@ public class RSchemaRegion implements ISchemaRegion {
   public Pair<List<MeasurementPath>, Integer> getMeasurementPathsWithAlias(
       PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch)
       throws MetadataException {
+    // todo page query
     return new Pair<>(getMeasurementPaths(pathPattern, false), offset + limit);
   }
 
