@@ -49,13 +49,15 @@ public class MTreeReleaseTaskManager {
 
   public void clear() {
     if (releaseTaskExecutor != null) {
-      releaseTaskExecutor.shutdown();
+      releaseTaskExecutor.shutdownNow();
       while (!releaseTaskExecutor.isTerminated()) ;
       releaseTaskExecutor = null;
     }
   }
 
   public void submit(Runnable task) {
-    releaseTaskExecutor.submit(task);
+    if (!releaseTaskExecutor.isShutdown()) {
+      releaseTaskExecutor.submit(task);
+    }
   }
 }

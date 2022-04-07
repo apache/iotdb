@@ -50,13 +50,15 @@ public class MTreeFlushTaskManager {
 
   public void clear() {
     if (flushTaskExecutor != null) {
-      flushTaskExecutor.shutdown();
+      flushTaskExecutor.shutdownNow();
       while (!flushTaskExecutor.isTerminated()) ;
       flushTaskExecutor = null;
     }
   }
 
   public void submit(Runnable task) {
-    flushTaskExecutor.submit(task);
+    if (!flushTaskExecutor.isShutdown()) {
+      flushTaskExecutor.submit(task);
+    }
   }
 }
