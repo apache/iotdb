@@ -136,10 +136,8 @@ public class AlterTimeSeriesNode extends PlanNode {
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {}
-
-  @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-
+    throw new NotImplementedException(
+        "serializeAttributes of AlterTimeSeriesNode is not implemented");
   }
 }

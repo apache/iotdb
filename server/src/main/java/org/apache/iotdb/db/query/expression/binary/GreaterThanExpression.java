@@ -20,9 +20,13 @@
 package org.apache.iotdb.db.query.expression.binary;
 
 import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.query.expression.ExpressionType;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.db.query.udf.core.transformer.CompareBinaryTransformer;
 import org.apache.iotdb.db.query.udf.core.transformer.CompareGreaterThanTransformer;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import java.nio.ByteBuffer;
 
 public class GreaterThanExpression extends BinaryExpression {
   public GreaterThanExpression(Expression leftExpression, Expression rightExpression) {
@@ -39,5 +43,20 @@ public class GreaterThanExpression extends BinaryExpression {
   @Override
   protected String operator() {
     return ">";
+  }
+
+  public static GreaterThanExpression deserialize(ByteBuffer buffer) {
+    boolean isConstantOperandCache = ReadWriteIOUtils.readBool(buffer);
+    GreaterThanExpression greaterThanExpression =
+        new GreaterThanExpression(
+            ExpressionType.deserialize(buffer), ExpressionType.deserialize(buffer));
+    greaterThanExpression.isConstantOperandCache = isConstantOperandCache;
+    return greaterThanExpression;
+  }
+
+  @Override
+  public void serialize(ByteBuffer byteBuffer) {
+    ExpressionType.Greater_Than.serialize(byteBuffer);
+    super.serialize(byteBuffer);
   }
 }

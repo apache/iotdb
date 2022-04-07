@@ -18,11 +18,18 @@
  */
 package org.apache.iotdb.tsfile.read.expression;
 
+import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
+import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
+import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
+
 import java.io.Serializable;
+import java.nio.ByteBuffer;
 
 public interface IExpression extends Serializable {
 
   ExpressionType getType();
 
   IExpression clone();
+
+  void serialize(ByteBuffer byteBuffer);
 }

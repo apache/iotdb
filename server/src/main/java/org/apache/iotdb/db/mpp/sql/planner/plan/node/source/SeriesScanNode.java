@@ -18,28 +18,28 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.source;
 
-import java.util.HashSet;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.metadata.path.AlignedPath;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
+import org.apache.iotdb.tsfile.compress.IUnCompressor.NoUnCompressor;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.collect.ImmutableList;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /**
  * SeriesScanOperator is responsible for read data a specific series. When reading data, the
@@ -178,28 +178,27 @@ public class SeriesScanNode extends SourceNode {
   }
 
   public static SeriesScanNode deserialize(ByteBuffer byteBuffer) {
-    byte type = ReadWriteIOUtils.readByte(byteBuffer);
-    PartialPath partialPath = null;
-    if (type == 0) {
-      partialPath = MeasurementPath.deserialize(byteBuffer);
-    } else if (type == 1) {
-      partialPath = AlignedPath.deserialize(byteBuffer);
-    } else {
-      partialPath = PartialPath.deserialize(byteBuffer);
-    }
+    PartialPath partialPath = (PartialPath) PathDeserializeUtil.deserialize(byteBuffer);
     int size = ReadWriteIOUtils.readInt(byteBuffer);
-    Set<String> allSensors = new HashSet<>();
-    for (int i = 0; i < size; i ++) {
-      allSensors.add(ReadWriteIOUtils.readString(byteBuffer));
+    Set<String> allSensors = null;
+    if (size != -1) {
+      allSensors = new HashSet<>();
+      for (int i = 0; i < size; i++) {
+        allSensors.add(ReadWriteIOUtils.readString(byteBuffer));
+      }
     }
     OrderBy scanOrder = OrderBy.values()[ReadWriteIOUtils.readInt(byteBuffer)];
-
-    Filter timeFilter = FilterFactory.deserialize(byteBuffer);
-    Filter valueFilter = FilterFactory.deserialize(byteBuffer);
+    byte isNull = ReadWriteIOUtils.readByte(byteBuffer);
+    Filter timeFilter = null;
+    if (isNull == 1) timeFilter = FilterFactory.deserialize(byteBuffer);
+    isNull = ReadWriteIOUtils.readByte(byteBuffer);
+    Filter valueFilter = null;
+    if (isNull == 1) valueFilter = FilterFactory.deserialize(byteBuffer);
     int limit = ReadWriteIOUtils.readInt(byteBuffer);
     int offset = ReadWriteIOUtils.readInt(byteBuffer);
     String columnName = ReadWriteIOUtils.readString(byteBuffer);
-    DataRegionReplicaSet dataRegionReplicaSet = DataRegionReplicaSet.deserialize(byteBuffer);
+    RegionReplicaSet dataRegionReplicaSet = new RegionReplicaSet();
+    dataRegionReplicaSet.deserializeImpl(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     SeriesScanNode seriesScanNode = new SeriesScanNode(planNodeId, partialPath);
     seriesScanNode.allSensors = allSensors;
@@ -207,7 +206,7 @@ public class SeriesScanNode extends SourceNode {
     seriesScanNode.limit = limit;
     seriesScanNode.offset = offset;
     seriesScanNode.scanOrder = scanOrder;
-    seriesScanNode.dataRegionReplicaSet = dataRegionReplicaSet;
+    seriesScanNode.regionReplicaSet = dataRegionReplicaSet;
     seriesScanNode.timeFilter = timeFilter;
     seriesScanNode.valueFilter = valueFilter;
     return seriesScanNode;
@@ -216,25 +215,33 @@ public class SeriesScanNode extends SourceNode {
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.SERIES_SCAN.serialize(byteBuffer);
-    if (seriesPath instanceof MeasurementPath) {
-      ReadWriteIOUtils.write((byte)0, byteBuffer);
-    } else if (seriesPath instanceof AlignedPath) {
-      ReadWriteIOUtils.write((byte)1, byteBuffer);
-    } else {
-      ReadWriteIOUtils.write((byte)2, byteBuffer);
-    }
     seriesPath.serialize(byteBuffer);
-    ReadWriteIOUtils.write(allSensors.size(), byteBuffer);
-    for (String sensor : allSensors) {
-      ReadWriteIOUtils.write(sensor, byteBuffer);
+    if (allSensors == null) {
+      ReadWriteIOUtils.write(-1, byteBuffer);
+    } else {
+      ReadWriteIOUtils.write(allSensors.size(), byteBuffer);
+      for (String sensor : allSensors) {
+        ReadWriteIOUtils.write(sensor, byteBuffer);
+      }
     }
     ReadWriteIOUtils.write(scanOrder.ordinal(), byteBuffer);
-    timeFilter.serialize(byteBuffer);
-    valueFilter.serialize(byteBuffer);
+    if (timeFilter == null) {
+      ReadWriteIOUtils.write((byte) 0, byteBuffer);
+    } else {
+      ReadWriteIOUtils.write((byte) 1, byteBuffer);
+      timeFilter.serialize(byteBuffer);
+    }
+
+    if (valueFilter == null) {
+      ReadWriteIOUtils.write((byte) 0, byteBuffer);
+    } else {
+      ReadWriteIOUtils.write((byte) 1, byteBuffer);
+      valueFilter.serialize(byteBuffer);
+    }
     ReadWriteIOUtils.write(limit, byteBuffer);
     ReadWriteIOUtils.write(offset, byteBuffer);
     ReadWriteIOUtils.write(columnName, byteBuffer);
-    dataRegionReplicaSet.serialize(byteBuffer);
+    regionReplicaSet.serializeImpl(byteBuffer);
   }
 
   public PartialPath getSeriesPath() {

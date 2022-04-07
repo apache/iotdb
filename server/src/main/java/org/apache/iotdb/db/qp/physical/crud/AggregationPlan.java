@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -29,9 +30,12 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.thrift.TException;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.LinkedHashMap;
@@ -190,5 +194,63 @@ public class AggregationPlan extends RawDataQueryPlan {
       columnForDisplay = aggregatePath;
     }
     return columnForDisplay;
+  }
+
+  @Override
+  protected void serializeImpl(ByteBuffer buffer) {
+    super.serializeImpl(buffer);
+    ReadWriteIOUtils.write(aggregations.size(), buffer);
+    for (String s : aggregations) {
+      ReadWriteIOUtils.write(s, buffer);
+    }
+    ReadWriteIOUtils.write(deduplicatedAggregations.size(), buffer);
+    for (String s : deduplicatedAggregations) {
+      ReadWriteIOUtils.write(s, buffer);
+    }
+    if (levels == null) {
+      ReadWriteIOUtils.write(-1, buffer);
+    } else {
+      ReadWriteIOUtils.write(levels.length, buffer);
+      for (int i = 0; i < levels.length; i++) {
+        ReadWriteIOUtils.write(levels[i], buffer);
+      }
+    }
+
+    groupByLevelController.serialize(buffer);
+    ReadWriteIOUtils.write(groupPathsResultMap.size(), buffer);
+    for (Map.Entry<String, AggregateResult> e : groupPathsResultMap.entrySet()) {
+      ReadWriteIOUtils.write(e.getKey(), buffer);
+      try {
+        e.getValue().serialize(buffer);
+      } catch (IOException ioException) {
+        ioException.printStackTrace();
+      }
+    }
+  }
+
+  @Override
+  public void deserialize(ByteBuffer buffer) throws IllegalPathException, IOException {
+    super.deserialize(buffer);
+    int aggregationSize = ReadWriteIOUtils.readInt(buffer);
+    for (int i = 0; i < aggregationSize; i++) {
+      aggregations.add(ReadWriteIOUtils.readString(buffer));
+    }
+    int deduplicatedAggregationSize = ReadWriteIOUtils.readInt(buffer);
+    for (int i = 0; i < deduplicatedAggregationSize; i++) {
+      deduplicatedAggregations.add(ReadWriteIOUtils.readString(buffer));
+    }
+    int levelSize = ReadWriteIOUtils.readInt(buffer);
+    if (levelSize != -1) {
+      levels = new int[ReadWriteIOUtils.readInt(buffer)];
+      for (int i = 0; i < levels.length; i++) {
+        levels[i] = ReadWriteIOUtils.readInt(buffer);
+      }
+    }
+    groupByLevelController = GroupByLevelController.deserialize(buffer);
+    int groupPathsResultMapSize = ReadWriteIOUtils.readInt(buffer);
+    for (int i = 0; i < groupPathsResultMapSize; i++) {
+      groupPathsResultMap.put(
+          ReadWriteIOUtils.readString(buffer), AggregateResult.deserializeFrom(buffer));
+    }
   }
 }

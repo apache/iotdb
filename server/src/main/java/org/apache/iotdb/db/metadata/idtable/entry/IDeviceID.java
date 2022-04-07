@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.metadata.idtable.entry;
 
 import java.nio.ByteBuffer;
-import org.apache.iotdb.db.query.udf.datastructure.tv.SerializableTVList;
 
 /** device id interface */
 public interface IDeviceID {

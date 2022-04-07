@@ -89,12 +89,17 @@ public class PlanFragment {
     return null;
   }
 
+  public void serialize(ByteBuffer byteBuffer) {
+    id.serialize(byteBuffer);
+    root.serialize(byteBuffer);
+  }
+
   public static PlanFragment deserialize(ByteBuffer byteBuffer) {
     return new PlanFragment(PlanFragmentId.deserialize(byteBuffer), deserializeHelper(byteBuffer));
   }
 
   // deserialize the plan node recursively
-  private static PlanNode deserializeHelper(ByteBuffer byteBuffer) {
+  public static PlanNode deserializeHelper(ByteBuffer byteBuffer) {
     PlanNode root = PlanNodeType.deserialize(byteBuffer);
     int childrenCount = byteBuffer.getInt();
     for (int i = 0; i < childrenCount; i++) {

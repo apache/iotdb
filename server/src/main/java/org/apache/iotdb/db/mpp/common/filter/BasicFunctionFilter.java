@@ -18,11 +18,6 @@
  */
 package org.apache.iotdb.db.mpp.common.filter;
 
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.sql.SQLParserException;
@@ -39,6 +34,7 @@ import org.apache.iotdb.tsfile.utils.StringContainer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.Objects;
 
@@ -176,15 +172,16 @@ public class BasicFunctionFilter extends FunctionFilter {
   }
 
   public void serialize(ByteBuffer byteBuffer) {
-    super.serialize(byteBuffer);
+    FilterTypes.BasicFunction.serialize(byteBuffer);
+    super.serializeWithoutType(byteBuffer);
     ReadWriteIOUtils.write(value, byteBuffer);
     ReadWriteIOUtils.write(funcToken.ordinal(), byteBuffer);
   }
 
   public static BasicFunctionFilter deserialize(ByteBuffer byteBuffer) {
-    BasicFunctionFilter queryFilter = (BasicFunctionFilter) QueryFilter.deserialize(byteBuffer);
-    queryFilter.value = ReadWriteIOUtils.readString(byteBuffer);
-    queryFilter.funcToken = BasicFilterType.values()[ReadWriteIOUtils.readInt(byteBuffer)];
-    return queryFilter;
+    QueryFilter queryFilter = QueryFilter.deserialize(byteBuffer);
+    BasicFunctionFilter basicFunctionFilter = new BasicFunctionFilter(queryFilter.filterType, queryFilter.singlePath, ReadWriteIOUtils.readString(byteBuffer));
+    basicFunctionFilter.funcToken = BasicFilterType.values()[ReadWriteIOUtils.readInt(byteBuffer)];
+    return basicFunctionFilter;
   }
 }

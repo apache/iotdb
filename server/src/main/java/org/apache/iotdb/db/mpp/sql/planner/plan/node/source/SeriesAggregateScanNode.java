@@ -20,25 +20,26 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.source;
 
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.mpp.common.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.query.expression.ExpressionType;
 import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
-import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
-import org.apache.iotdb.tsfile.read.filter.operator.OrFilter;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.collect.ImmutableList;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /**
  * SeriesAggregateOperator is responsible to do the aggregation calculation for one series. It will
@@ -145,22 +146,46 @@ public class SeriesAggregateScanNode extends SourceNode {
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.SERIES_AGGREGATE_SCAN.serialize(byteBuffer);
-    // TODO groupByTimeParameter has no field
-    // TODO aggregateFunc to be consider
+    if (groupByTimeParameter == null) {
+      ReadWriteIOUtils.write((byte)0, byteBuffer);
+    } else {
+      ReadWriteIOUtils.write((byte)1, byteBuffer);
+      groupByTimeParameter.serialize(byteBuffer);
+    }
+
+    aggregateFunc.serialize(byteBuffer); //  aggregateFunc to be consider
     filter.serialize(byteBuffer);
     ReadWriteIOUtils.write(columnName, byteBuffer);
-    dataRegionReplicaSet.serialize(byteBuffer);
+    regionReplicaSet.serializeImpl(byteBuffer);
   }
 
   public static SeriesAggregateScanNode deserialize(ByteBuffer byteBuffer) {
+    byte type = ReadWriteIOUtils.readByte(byteBuffer);
+    GroupByTimeParameter groupByTimeParameter = null;
+    if (type == 1) {
+      groupByTimeParameter = new GroupByTimeParameter();
+      try {
+        groupByTimeParameter.deserialize(byteBuffer);
+      } catch (IllegalPathException e) {
+        e.printStackTrace();
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
+    }
+
+    //  aggregateFunc to be consider
+    FunctionExpression functionExpression = (FunctionExpression) ExpressionType.deserialize(byteBuffer);
     Filter filter = FilterFactory.deserialize(byteBuffer);
     String columnName = ReadWriteIOUtils.readString(byteBuffer);
-    DataRegionReplicaSet dataRegionReplicaSet = DataRegionReplicaSet.deserialize(byteBuffer);
+    RegionReplicaSet regionReplicaSet = new RegionReplicaSet();
+    regionReplicaSet.deserializeImpl(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     SeriesAggregateScanNode seriesAggregateScanNode = new SeriesAggregateScanNode(planNodeId);
     seriesAggregateScanNode.columnName = columnName;
-    seriesAggregateScanNode.dataRegionReplicaSet = dataRegionReplicaSet;
+    seriesAggregateScanNode.regionReplicaSet = regionReplicaSet;
     seriesAggregateScanNode.filter = filter;
+    seriesAggregateScanNode.groupByTimeParameter = groupByTimeParameter;
+    seriesAggregateScanNode.aggregateFunc = functionExpression;
     return seriesAggregateScanNode;
   }
 

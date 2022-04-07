@@ -18,15 +18,24 @@
  */
 package org.apache.iotdb.db.mpp.sql.plan.node.metadata.read;
 
-
+import org.apache.iotdb.db.mpp.sql.plan.node.PlanNodeDeserializeHelper;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.ShowDevicesNode;
+
 import org.junit.Test;
+
+import java.nio.ByteBuffer;
+
+import static org.junit.Assert.assertEquals;
 
 public class ShowDevicesNodeSerdeTest {
 
   @Test
   public void TestSerializeAndDeserialize() {
     ShowDevicesNode showDevicesNode = new ShowDevicesNode(new PlanNodeId("TestShowDevicesNode"));
+    ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
+    showDevicesNode.serialize(byteBuffer);
+    byteBuffer.flip();
+    assertEquals(PlanNodeDeserializeHelper.deserialize(byteBuffer), showDevicesNode);
   }
 }

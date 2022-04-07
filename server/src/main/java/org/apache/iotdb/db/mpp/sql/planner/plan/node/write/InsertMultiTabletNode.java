@@ -29,7 +29,7 @@ import java.util.List;
 
 public class InsertMultiTabletNode extends InsertNode {
 
-  protected InsertMultiTabletNode(PlanNodeId id) {
+  public InsertMultiTabletNode(PlanNodeId id) {
     super(id);
   }
 
@@ -62,18 +62,6 @@ public class InsertMultiTabletNode extends InsertNode {
   }
 
   public static InsertMultiTabletNode deserialize(ByteBuffer byteBuffer) {
-    InsertMultiTabletNode tempNode = new InsertMultiTabletNode(null);
-    deserializeAttributes(tempNode, byteBuffer);
-    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    InsertMultiTabletNode ansNode = new InsertMultiTabletNode(planNodeId);
-    copyAttributes(ansNode, tempNode);
-    tempNode = null;
-    return ansNode;
-  }
-
-  @Override
-  protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.INSERT_MULTI_TABLET.serialize(byteBuffer);
-    super.serializeAttributes(byteBuffer);
+    return null;
   }
 }

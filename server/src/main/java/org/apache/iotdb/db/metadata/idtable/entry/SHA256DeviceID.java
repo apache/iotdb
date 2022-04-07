@@ -18,13 +18,13 @@
  */
 package org.apache.iotdb.db.metadata.idtable.entry;
 
-import java.nio.ByteBuffer;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
-
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 

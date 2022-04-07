@@ -19,9 +19,10 @@
 
 package org.apache.iotdb.db.metadata.idtable.entry;
 
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 import java.nio.ByteBuffer;
 import java.util.Objects;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /** Using device id path as id */
 public class PlainDeviceID implements IDeviceID {

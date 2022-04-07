@@ -40,6 +40,7 @@ import org.apache.iotdb.db.query.udf.core.transformer.Transformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -289,4 +290,11 @@ public abstract class BinaryExpression extends Expression {
   }
 
   protected abstract String operator();
+
+  @Override
+  public void serialize(ByteBuffer byteBuffer) {
+    super.serialize(byteBuffer);
+    leftExpression.serialize(byteBuffer);
+    rightExpression.serialize(byteBuffer);
+  }
 }

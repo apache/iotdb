@@ -65,5 +65,8 @@ public class ShowDevicesNode extends ShowNode {
     return new ShowDevicesNode(planNodeId);
   }
 
-
+  @Override
+  public boolean equals(Object o) {
+    return super.equals(o);
+  }
 }

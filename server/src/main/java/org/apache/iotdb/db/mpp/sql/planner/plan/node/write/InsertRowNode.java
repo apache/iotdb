@@ -27,6 +27,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.nio.ByteBuffer;
@@ -88,21 +89,6 @@ public class InsertRowNode extends InsertNode {
     return null;
   }
 
-  public static InsertRowNode deserialize(ByteBuffer byteBuffer) {
-    InsertRowNode tempNode = new InsertRowNode(null);
-    deserializeAttributes(tempNode, byteBuffer);
-    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    InsertRowNode ansNode = new InsertRowNode(planNodeId);
-    copyAttributes(ansNode, tempNode);
-    return ansNode;
-  }
-
-  @Override
-  protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.INSERT_ROW.serialize(byteBuffer);
-    super.serializeAttributes(byteBuffer);
-  }
-
   public Object[] getValues() {
     return values;
   }
@@ -117,5 +103,9 @@ public class InsertRowNode extends InsertNode {
 
   public void setTime(long time) {
     this.time = time;
+  }
+
+  public static InsertRowNode deserialize(ByteBuffer byteBuffer) {
+    return null;
   }
 }

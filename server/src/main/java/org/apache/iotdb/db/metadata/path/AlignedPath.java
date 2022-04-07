@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.metadata.path;
 
-import java.nio.ByteBuffer;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.engine.memtable.AlignedWritableMemChunk;
 import org.apache.iotdb.db.engine.memtable.AlignedWritableMemChunkGroup;
@@ -50,7 +49,6 @@ import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -65,6 +63,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -506,40 +505,54 @@ public class AlignedPath extends PartialPath {
   }
 
   public void serialize(ByteBuffer byteBuffer) {
+    PathType.Aligned.serialize(byteBuffer);
+    super.serializeWithoutType(byteBuffer);
     ReadWriteIOUtils.write(measurementList.size(), byteBuffer);
     for (String measurement : measurementList) {
       ReadWriteIOUtils.write(measurement, byteBuffer);
     }
-    ReadWriteIOUtils.write(schemaList.size(), byteBuffer);
-    for (IMeasurementSchema measurementSchema : schemaList) {
-      if (measurementSchema instanceof MeasurementSchema) {
-        ReadWriteIOUtils.write((byte) 0, byteBuffer);
-      } else if (measurementSchema instanceof VectorMeasurementSchema) {
-        ReadWriteIOUtils.write((byte) 1, byteBuffer);
+    if (schemaList == null) {
+      ReadWriteIOUtils.write(-1, byteBuffer);
+    } else {
+      ReadWriteIOUtils.write(schemaList.size(), byteBuffer);
+      for (IMeasurementSchema measurementSchema : schemaList) {
+        if (measurementSchema instanceof MeasurementSchema) {
+          ReadWriteIOUtils.write((byte) 0, byteBuffer);
+        } else if (measurementSchema instanceof VectorMeasurementSchema) {
+          ReadWriteIOUtils.write((byte) 1, byteBuffer);
+        }
+        measurementSchema.serializeTo(byteBuffer);
       }
-      measurementSchema.serializeTo(byteBuffer);
     }
   }
 
   public static AlignedPath deserialize(ByteBuffer byteBuffer) {
-    AlignedPath alignedPath = (AlignedPath) PartialPath.deserialize(byteBuffer);
+    PartialPath partialPath = PartialPath.deserialize(byteBuffer);
+    AlignedPath alignedPath = new AlignedPath();
     int measurementSize = ReadWriteIOUtils.readInt(byteBuffer);
     List<String> measurements = new ArrayList<>();
-    for (int i = 0; i < measurementSize; i ++) {
+    for (int i = 0; i < measurementSize; i++) {
       measurements.add(ReadWriteIOUtils.readString(byteBuffer));
     }
     int measurementSchemaSize = ReadWriteIOUtils.readInt(byteBuffer);
-    List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
-    for (int i = 0; i < measurementSchemaSize; i ++) {
-      byte type = ReadWriteIOUtils.readByte(byteBuffer);
-      if (type == 0) {
-        measurementSchemas.add(MeasurementSchema.deserializeFrom(byteBuffer));
-      } else if (type == 1) {
-        measurementSchemas.add(VectorMeasurementSchema.deserializeFrom(byteBuffer));
+    List<IMeasurementSchema> measurementSchemas = null;
+    if (measurementSchemaSize != -1) {
+      measurementSchemas = new ArrayList<>();
+      for (int i = 0; i < measurementSchemaSize; i++) {
+        byte type = ReadWriteIOUtils.readByte(byteBuffer);
+        if (type == 0) {
+          measurementSchemas.add(MeasurementSchema.deserializeFrom(byteBuffer));
+        } else if (type == 1) {
+          measurementSchemas.add(VectorMeasurementSchema.deserializeFrom(byteBuffer));
+        }
       }
     }
+
     alignedPath.measurementList = measurements;
     alignedPath.schemaList = measurementSchemas;
+    alignedPath.nodes = partialPath.nodes;
+    alignedPath.device = partialPath.getDevice();
+    alignedPath.fullPath = partialPath.getFullPath();
     return alignedPath;
   }
 }

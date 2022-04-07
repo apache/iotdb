@@ -18,8 +18,9 @@
  */
 package org.apache.iotdb.db.mpp.common;
 
-import java.nio.ByteBuffer;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import java.nio.ByteBuffer;
 
 /** The fragment instance ID class. */
 public class FragmentInstanceId {

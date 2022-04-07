@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -26,8 +27,12 @@ import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 import org.apache.iotdb.tsfile.read.filter.GroupByMonthFilter;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.thrift.TException;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
 
 public class GroupByTimePlan extends AggregationPlan {
 
@@ -134,5 +139,29 @@ public class GroupByTimePlan extends AggregationPlan {
           new GroupByFilter(
               plan.getInterval(), plan.getSlidingStep(), plan.getStartTime(), plan.getEndTime()));
     }
+  }
+
+  @Override
+  protected void serializeImpl(ByteBuffer buffer) {
+    super.serializeImpl(buffer);
+    ReadWriteIOUtils.write(startTime, buffer);
+    ReadWriteIOUtils.write(endTime, buffer);
+    ReadWriteIOUtils.write(interval, buffer);
+    ReadWriteIOUtils.write(slidingStep, buffer);
+    ReadWriteIOUtils.write(isIntervalByMonth, buffer);
+    ReadWriteIOUtils.write(isSlidingStepByMonth, buffer);
+    ReadWriteIOUtils.write(leftCRightO, buffer);
+  }
+
+  @Override
+  public void deserialize(ByteBuffer buffer) throws IllegalPathException, IOException {
+    super.deserialize(buffer);
+    startTime = ReadWriteIOUtils.readLong(buffer);
+    endTime = ReadWriteIOUtils.readLong(buffer);
+    interval = ReadWriteIOUtils.readLong(buffer);
+    slidingStep = ReadWriteIOUtils.readLong(buffer);
+    isIntervalByMonth = ReadWriteIOUtils.readBool(buffer);
+    isSlidingStepByMonth = ReadWriteIOUtils.readBool(buffer);
+    leftCRightO = ReadWriteIOUtils.readBool(buffer);
   }
 }

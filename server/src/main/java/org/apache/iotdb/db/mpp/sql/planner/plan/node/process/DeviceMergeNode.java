@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
-import java.util.HashMap;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
@@ -27,12 +26,12 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullPolicy;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /**
  * DeviceMergeOperator is responsible for constructing a device-based view of a set of series. And
@@ -69,6 +68,12 @@ public class DeviceMergeNode extends ProcessNode {
   public DeviceMergeNode(PlanNodeId id, OrderBy mergeOrder) {
     this(id);
     this.mergeOrder = mergeOrder;
+    this.children = new ArrayList<>();
+  }
+
+  public void setFilterNullPolicy(
+      FilterNullPolicy filterNullPolicy) {
+    this.filterNullPolicy = filterNullPolicy;
   }
 
   @Override
@@ -129,7 +134,7 @@ public class DeviceMergeNode extends ProcessNode {
     // TODO deserialize childDeviceNodeMap
     int columnSize = ReadWriteIOUtils.readInt(byteBuffer);
     List<String> columnNames = new ArrayList<>(columnSize);
-    for (int i = 0; i < columnSize; i ++) {
+    for (int i = 0; i < columnSize; i++) {
       columnNames.add(ReadWriteIOUtils.readString(byteBuffer));
     }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);

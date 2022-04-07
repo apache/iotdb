@@ -24,15 +24,14 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
-import org.apache.iotdb.tsfile.read.filter.operator.Like;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.collect.ImmutableList;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /**
  * In general, the parameter in sortNode should be pushed down to the upstream operators. In our
@@ -95,7 +94,7 @@ public class SortNode extends ProcessNode {
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.SORT.serialize(byteBuffer);
     ReadWriteIOUtils.write(orderBy.size(), byteBuffer);
-    for (int i = 0; i < orderBy.size(); i ++) {
+    for (int i = 0; i < orderBy.size(); i++) {
       ReadWriteIOUtils.write(orderBy.get(i), byteBuffer);
     }
     ReadWriteIOUtils.write(sortOrder.ordinal(), byteBuffer);
@@ -104,7 +103,7 @@ public class SortNode extends ProcessNode {
   public static SortNode deserialize(ByteBuffer byteBuffer) {
     List<String> orderBys = new ArrayList<>();
     int size = ReadWriteIOUtils.readInt(byteBuffer);
-    for (int i = 0; i < size; i ++) {
+    for (int i = 0; i < size; i++) {
       orderBys.add(ReadWriteIOUtils.readString(byteBuffer));
     }
     OrderBy orderBy = OrderBy.values()[ReadWriteIOUtils.readInt(byteBuffer)];

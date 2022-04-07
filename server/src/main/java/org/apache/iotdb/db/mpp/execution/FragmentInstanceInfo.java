@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.mpp.execution;
 
 public class FragmentInstanceInfo {
-
   private final FragmentInstanceState state;
 
   private final long endTime;
@@ -35,13 +34,5 @@ public class FragmentInstanceInfo {
 
   public long getEndTime() {
     return endTime;
-  }
-
-  public static DataRegionId deserialize(ByteBuffer byteBuffer) {
-    return new DataRegionId(ReadWriteIOUtils.readInt(byteBuffer));
-  }
-
-  public void serialize(ByteBuffer byteBuffer) {
-    ReadWriteIOUtils.write(dataRegionId, byteBuffer);
   }
 }

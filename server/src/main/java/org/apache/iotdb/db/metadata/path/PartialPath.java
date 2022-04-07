@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.metadata.path;
 
-import java.nio.ByteBuffer;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.modification.Modification;
@@ -49,6 +48,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -569,7 +569,12 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   }
 
   public void serialize(ByteBuffer byteBuffer) {
-    super.serialize(byteBuffer);
+    PathType.Partial.serialize(byteBuffer);
+    serializeWithoutType(byteBuffer);
+  }
+
+  protected void serializeWithoutType(ByteBuffer byteBuffer) {
+    super.serializeWithoutType(byteBuffer);
     ReadWriteIOUtils.write(nodes.length, byteBuffer);
     for (String node : nodes) {
       ReadWriteIOUtils.write(node, byteBuffer);
@@ -577,13 +582,17 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   }
 
   public static PartialPath deserialize(ByteBuffer byteBuffer) {
-    PartialPath partialPath = (PartialPath) Path.deserialize(byteBuffer);
+    Path path = Path.deserialize(byteBuffer);
+    PartialPath partialPath = new PartialPath();
     int nodeSize = ReadWriteIOUtils.readInt(byteBuffer);
     String[] nodes = new String[nodeSize];
-    for (int i = 0; i < nodeSize; i ++) {
+    for (int i = 0; i < nodeSize; i++) {
       nodes[i] = ReadWriteIOUtils.readString(byteBuffer);
     }
     partialPath.nodes = nodes;
+    partialPath.setMeasurement(path.getMeasurement());
+    partialPath.device = path.getDevice();
+    partialPath.fullPath = path.getFullPath();
     return partialPath;
   }
 }

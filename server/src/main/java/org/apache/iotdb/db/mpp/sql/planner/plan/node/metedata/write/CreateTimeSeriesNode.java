@@ -18,22 +18,22 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write;
 
-import org.apache.iotdb.db.metadata.path.AlignedPath;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class CreateTimeSeriesNode extends PlanNode {
   private PartialPath path;
@@ -167,46 +167,34 @@ public class CreateTimeSeriesNode extends PlanNode {
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.CREATE_TIME_SERIES.serialize(byteBuffer);
-    if (path instanceof MeasurementPath) {
-      ReadWriteIOUtils.write((byte)0, byteBuffer);
-    } else if (path instanceof AlignedPath) {
-      ReadWriteIOUtils.write((byte)1, byteBuffer);
-    } else {
-      ReadWriteIOUtils.write((byte)2, byteBuffer);
+    throw new NotImplementedException(
+        "serializeAttributes of CreateTimeSeriesNode is not implemented");
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
     }
-    path.serialize(byteBuffer);
-    dataType.serializeTo(byteBuffer);
-    ReadWriteIOUtils.write(encoding.serialize(), byteBuffer);
-    ReadWriteIOUtils.write(compressor.serialize(), byteBuffer);
-    ReadWriteIOUtils.write(alias, byteBuffer);
-    ReadWriteIOUtils.write(props, byteBuffer);
-    ReadWriteIOUtils.write(tags, byteBuffer);
-    ReadWriteIOUtils.write(attributes, byteBuffer);
-    ReadWriteIOUtils.write(tagOffset, byteBuffer);
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
+    CreateTimeSeriesNode that = (CreateTimeSeriesNode) o;
+    return tagOffset == that.tagOffset
+        && path.equals(that.path)
+        && dataType == that.dataType
+        && encoding == that.encoding
+        && compressor == that.compressor
+        && ((alias == null && that.alias == null) || alias.equals(that.alias))
+        && ((props == null && that.props == null) || props.equals(that.props))
+        && ((tags == null && that.tags == null) || tags.equals(that.tags))
+        && ((attributes == null && that.attributes == null) || attributes.equals(that.attributes));
   }
 
   public static CreateTimeSeriesNode deserialize(ByteBuffer byteBuffer) {
-    byte pathType = ReadWriteIOUtils.readByte(byteBuffer);
-    PartialPath partialPath = null;
-    if (pathType == 0) {
-      partialPath = MeasurementPath.deserialize(byteBuffer);
-    } else if (pathType == 1) {
-      partialPath = AlignedPath.deserialize(byteBuffer);
-    } else {
-      partialPath = PartialPath.deserialize(byteBuffer);
-    }
-    TSDataType dataType = TSDataType.deserializeFrom(byteBuffer);
-    TSEncoding encoding = TSEncoding.deserialize(ReadWriteIOUtils.readByte(byteBuffer));
-    CompressionType compressor = CompressionType.deserialize(ReadWriteIOUtils.readByte(byteBuffer));
-    String alias = ReadWriteIOUtils.readString(byteBuffer);
-    Map<String, String> props = ReadWriteIOUtils.readMap(byteBuffer);
-    Map<String, String> tags = ReadWriteIOUtils.readMap(byteBuffer);
-    Map<String, String> attributes = ReadWriteIOUtils.readMap(byteBuffer);
-    long tagOffset = ReadWriteIOUtils.readLong(byteBuffer);
-    CreateTimeSeriesNode createTimeSeriesNode = new CreateTimeSeriesNode(PlanNodeId.deserialize(byteBuffer),
-        partialPath, dataType, encoding, compressor, props, tags, attributes, alias);
-    createTimeSeriesNode.setTagOffset(tagOffset);
-    return createTimeSeriesNode;
+    return null;
   }
 }

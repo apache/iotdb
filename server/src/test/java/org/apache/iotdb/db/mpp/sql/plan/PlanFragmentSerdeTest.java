@@ -18,6 +18,4 @@
  */
 package org.apache.iotdb.db.mpp.sql.plan;
 
-public class PlanFragmentSerdeTest {
-
-}
+public class PlanFragmentSerdeTest {}

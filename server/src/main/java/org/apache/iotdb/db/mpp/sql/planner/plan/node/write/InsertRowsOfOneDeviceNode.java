@@ -29,7 +29,7 @@ import java.util.List;
 
 public class InsertRowsOfOneDeviceNode extends InsertNode {
 
-  protected InsertRowsOfOneDeviceNode(PlanNodeId id) {
+  public InsertRowsOfOneDeviceNode(PlanNodeId id) {
     super(id);
   }
 
@@ -56,23 +56,12 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
     return null;
   }
 
-  public static InsertRowsOfOneDeviceNode deserialize(ByteBuffer byteBuffer) {
-    InsertRowsOfOneDeviceNode tempNode = new InsertRowsOfOneDeviceNode(null);
-    deserializeAttributes(tempNode, byteBuffer);
-    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    InsertRowsOfOneDeviceNode ansNode = new InsertRowsOfOneDeviceNode(planNodeId);
-    copyAttributes(ansNode, tempNode);
-    return ansNode;
-  }
-
-  @Override
-  protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.INSERT_ROWS_OF_ONE_DEVICE.serialize(byteBuffer);
-    super.serializeAttributes(byteBuffer);
-  }
-
   @Override
   public List<InsertNode> splitByPartition(Analysis analysis) {
+    return null;
+  }
+
+  public static InsertRowsOfOneDeviceNode deserialize(ByteBuffer byteBuffer) {
     return null;
   }
 }

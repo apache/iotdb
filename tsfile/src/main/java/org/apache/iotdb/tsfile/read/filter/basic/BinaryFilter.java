@@ -25,7 +25,6 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.Objects;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /** Definition for binary filter operations. */
 public abstract class BinaryFilter implements Filter, Serializable {

@@ -161,10 +161,8 @@ public class CreateAlignedTimeSeriesNode extends PlanNode {
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {}
-
-  @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-
+    throw new NotImplementedException(
+        "serializeAttributes of CreateAlignedTimeSeriesNode is not implemented");
   }
 }

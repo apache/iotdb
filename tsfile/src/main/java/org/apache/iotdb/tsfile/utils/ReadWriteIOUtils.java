@@ -883,6 +883,37 @@ public class ReadWriteIOUtils {
     }
   }
 
+  public static void writeObject(Object value, ByteBuffer byteBuffer) {
+    if (value instanceof Long) {
+      byteBuffer.putInt(LONG.ordinal());
+      byteBuffer.putLong((Long) value);
+    } else if (value instanceof Double) {
+      byteBuffer.putInt(DOUBLE.ordinal());
+      byteBuffer.putDouble((Double) value);
+    } else if (value instanceof Integer) {
+      byteBuffer.putInt(INTEGER.ordinal());
+      byteBuffer.putInt((Integer) value);
+    } else if (value instanceof Float) {
+      byteBuffer.putInt(FLOAT.ordinal());
+      byteBuffer.putFloat((Float) value);
+    } else if (value instanceof Binary) {
+      byteBuffer.putInt(BINARY.ordinal());
+      byte[] bytes = ((Binary) value).getValues();
+      byteBuffer.putInt(bytes.length);
+      byteBuffer.put(bytes);
+    } else if (value instanceof Boolean) {
+      byteBuffer.putInt(BOOLEAN.ordinal());
+      byteBuffer.put(Boolean.TRUE.equals(value) ? (byte) 1 : (byte) 0);
+    } else if (value == null) {
+      byteBuffer.putInt(NULL.ordinal());
+    } else {
+      byteBuffer.putInt(STRING.ordinal());
+      byte[] bytes = value.toString().getBytes();
+      byteBuffer.putInt(bytes.length);
+      byteBuffer.put(bytes);
+    }
+  }
+
   public static Object readObject(ByteBuffer buffer) {
     ClassSerializeId serializeId = ClassSerializeId.values()[buffer.get()];
     switch (serializeId) {

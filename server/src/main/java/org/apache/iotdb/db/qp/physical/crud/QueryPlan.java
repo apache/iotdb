@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
@@ -33,13 +34,17 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.primitives.Bytes;
 import org.apache.thrift.TException;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -251,5 +256,102 @@ public abstract class QueryPlan extends PhysicalPlan {
 
   public void setWithoutAllNull(boolean withoutAllNull) {
     this.withoutAllNull = withoutAllNull;
+  }
+
+  @Override
+  protected void serializeImpl(ByteBuffer buffer) {
+    super.serializeImpl(buffer);
+    if (resultColumns == null) {
+      ReadWriteIOUtils.write(-1, buffer);
+    } else {
+      ReadWriteIOUtils.write(resultColumns.size(), buffer);
+      for (ResultColumn resultColumn : resultColumns) {
+        resultColumn.serialize(buffer);
+      }
+    }
+
+    if (paths == null) {
+      ReadWriteIOUtils.write(-1, buffer);
+    } else {
+      ReadWriteIOUtils.write(paths.size(), buffer);
+      for (MeasurementPath measurementPath : paths) {
+        measurementPath.serialize(buffer);
+      }
+    }
+
+    ReadWriteIOUtils.write(alignByTime, buffer);
+    ReadWriteIOUtils.write(rowLimit, buffer);
+    ReadWriteIOUtils.write(rowOffset, buffer);
+    ReadWriteIOUtils.write(ascending, buffer);
+
+    if (pathToIndex == null) {
+      ReadWriteIOUtils.write(-1, buffer);
+    } else {
+      ReadWriteIOUtils.write(pathToIndex.size(), buffer);
+      for (Map.Entry<String, Integer> entry : pathToIndex.entrySet()) {
+        ReadWriteIOUtils.write(entry.getKey(), buffer);
+        ReadWriteIOUtils.write(entry.getValue(), buffer);
+      }
+    }
+
+    if (withoutNullColumnsIndex == null) {
+      ReadWriteIOUtils.write(-1, buffer);
+    } else {
+      ReadWriteIOUtils.write(withoutNullColumnsIndex.size(), buffer);
+      for (Integer index : withoutNullColumnsIndex) {
+        ReadWriteIOUtils.write(index, buffer);
+      }
+    }
+
+    ReadWriteIOUtils.write(enableRedirect, buffer);
+    ReadWriteIOUtils.write(enableTracing, buffer);
+    ReadWriteIOUtils.write(withoutAnyNull, buffer);
+    ReadWriteIOUtils.write(withoutAllNull, buffer);
+  }
+
+  @Override
+  public void deserialize(ByteBuffer buffer) throws IllegalPathException, IOException {
+    super.deserialize(buffer);
+    int resultColumnsSize = ReadWriteIOUtils.readInt(buffer);
+    if (resultColumnsSize != -1) {
+      if (resultColumns == null) resultColumns = new ArrayList<>();
+      for (int i = 0; i < resultColumnsSize; i++) {
+        resultColumns.add(ResultColumn.deserialize(buffer));
+      }
+    }
+
+    int pathSize = ReadWriteIOUtils.readInt(buffer);
+    if (pathSize != -1) {
+      if (paths != null) paths = new ArrayList<>();
+      for (int i = 0; i < pathSize; i++) {
+        paths.add(MeasurementPath.deserialize(buffer));
+      }
+    }
+
+    alignByTime = ReadWriteIOUtils.readBool(buffer);
+    rowLimit = ReadWriteIOUtils.readInt(buffer);
+    rowOffset = ReadWriteIOUtils.readInt(buffer);
+    ascending = ReadWriteIOUtils.readBool(buffer);
+
+    int pathToIndexSize = ReadWriteIOUtils.readInt(buffer);
+    if (pathToIndexSize != -1) {
+      if (pathToIndex == null) pathToIndex = new HashMap<>();
+      for (int i = 0; i < pathToIndexSize; i++) {
+        pathToIndex.put(ReadWriteIOUtils.readString(buffer), ReadWriteIOUtils.readInt(buffer));
+      }
+    }
+
+    int withoutNullColumnsIndexSize = ReadWriteIOUtils.readInt(buffer);
+    if (withoutNullColumnsIndexSize != -1) {
+      if (withoutNullColumnsIndex == null) withoutNullColumnsIndex = new HashSet<>();
+      for (int i = 0; i < withoutNullColumnsIndexSize; i++) {
+        withoutNullColumnsIndex.add(ReadWriteIOUtils.readInt(buffer));
+      }
+    }
+
+    enableRedirect = ReadWriteIOUtils.readBool(buffer);
+    enableTracing = ReadWriteIOUtils.readBool(buffer);
+    withoutAnyNull = ReadWriteIOUtils.readBool(buffer);
+    withoutAllNull = ReadWriteIOUtils.readBool(buffer);
   }
 }

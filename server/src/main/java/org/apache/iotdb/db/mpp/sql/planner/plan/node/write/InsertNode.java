@@ -22,20 +22,18 @@ import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.metadata.idtable.entry.PlainDeviceID;
 import org.apache.iotdb.db.metadata.idtable.entry.SHA256DeviceID;
-import org.apache.iotdb.db.metadata.path.AlignedPath;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.nio.ByteBuffer;
 import java.util.List;
-import sun.security.krb5.internal.PAData;
 
 public abstract class InsertNode extends PlanNode {
 
@@ -131,72 +129,7 @@ public abstract class InsertNode extends PlanNode {
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    if (devicePath instanceof MeasurementPath) {
-      ReadWriteIOUtils.write((byte)0, byteBuffer);
-    } else if (devicePath instanceof AlignedPath) {
-      ReadWriteIOUtils.write((byte)1, byteBuffer);
-    } else {
-      ReadWriteIOUtils.write((byte)2, byteBuffer);
-    }
-    devicePath.serialize(byteBuffer);
-    ReadWriteIOUtils.write(isAligned, byteBuffer);
-    ReadWriteIOUtils.write(measurements.length, byteBuffer);
-    for (int i = 0; i < measurements.length; i ++) {
-      measurements[i].serializeTo(byteBuffer);
-    }
-    ReadWriteIOUtils.write(dataTypes.length, byteBuffer);
-    for (int i = 0; i < dataTypes.length; i ++) {
-      dataTypes[i].serializeTo(byteBuffer);
-    }
-    if (deviceID instanceof PlainDeviceID) {
-      ReadWriteIOUtils.write((byte)0, byteBuffer);
-    } else if (deviceID instanceof SHA256DeviceID) {
-      ReadWriteIOUtils.write((byte)1, byteBuffer);
-    }
-    deviceID.serialize(byteBuffer);
-  }
-
-  protected static void deserializeAttributes(InsertNode insertNode, ByteBuffer byteBuffer) {
-    PartialPath partialPath = null;
-    byte pathType = ReadWriteIOUtils.readByte(byteBuffer);
-    if (pathType == 0) {
-      partialPath = MeasurementPath.deserialize(byteBuffer);
-    } else if (pathType == 1) {
-      partialPath = AlignedPath.deserialize(byteBuffer);
-    } else {
-      partialPath = PartialPath.deserialize(byteBuffer);
-    }
-    boolean isAligned = ReadWriteIOUtils.readBool(byteBuffer);
-    int measurementSize = ReadWriteIOUtils.readInt(byteBuffer);
-    MeasurementSchema[] measurements = new MeasurementSchema[measurementSize];
-    for (int i = 0; i < measurementSize; i ++) {
-      measurements[i] = MeasurementSchema.deserializeFrom(byteBuffer);
-    }
-    int dataTypeSize = ReadWriteIOUtils.readInt(byteBuffer);
-    TSDataType[] dataTypes = new TSDataType[dataTypeSize];
-    for (int i = 0; i < dataTypeSize; i ++) {
-      dataTypes[i] = TSDataType.deserializeFrom(byteBuffer);
-    }
-
-    byte deviceIdType = ReadWriteIOUtils.readByte(byteBuffer);
-    IDeviceID deviceID = null;
-    if (deviceIdType == 0) {
-      deviceID = PlainDeviceID.deserialize(byteBuffer);
-    } else {
-      deviceID = SHA256DeviceID.deserialize(byteBuffer);
-    }
-    insertNode.deviceID = deviceID;
-    insertNode.devicePath = partialPath;
-    insertNode.isAligned = isAligned;
-    insertNode.dataTypes = dataTypes;
-    insertNode.measurements = measurements;
-  }
-
-  protected static void copyAttributes(InsertNode destNode, InsertNode srcNode) {
-    destNode.deviceID = srcNode.deviceID;
-    destNode.devicePath = srcNode.devicePath;
-    destNode.isAligned = srcNode.isAligned;
-    destNode.dataTypes = srcNode.dataTypes;
-    destNode.measurements = srcNode.measurements;
+    throw new NotImplementedException(
+        "serializeAttributes of InsertNode is not implemented");
   }
 }

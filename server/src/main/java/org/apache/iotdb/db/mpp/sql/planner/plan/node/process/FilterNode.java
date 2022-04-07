@@ -19,11 +19,8 @@
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.mpp.common.filter.BasicFunctionFilter;
-import org.apache.iotdb.db.mpp.common.filter.InFilter;
-import org.apache.iotdb.db.mpp.common.filter.LikeFilter;
+import org.apache.iotdb.db.mpp.common.filter.FilterDeserializeUtil;
 import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
-import org.apache.iotdb.db.mpp.common.filter.RegexpFilter;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
@@ -35,7 +32,6 @@ import com.google.common.collect.ImmutableList;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /** The FilterNode is responsible to filter the RowRecord from TsBlock. */
 public class FilterNode extends ProcessNode {
@@ -85,20 +81,8 @@ public class FilterNode extends ProcessNode {
   }
 
   public static FilterNode deserialize(ByteBuffer byteBuffer) {
-    byte filterType = ReadWriteIOUtils.readByte(byteBuffer);
+    QueryFilter predicate = FilterDeserializeUtil.deserialize(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    QueryFilter predicate = null;
-    if (filterType == 0) {
-      predicate = BasicFunctionFilter.deserialize(byteBuffer);
-    } else if (filterType == 1) {
-      predicate = LikeFilter.deserialize(byteBuffer);
-    } else if (filterType == 2) {
-      predicate = InFilter.deserialize(byteBuffer);
-    } else if (filterType == 3) {
-      predicate = RegexpFilter.deserialize(byteBuffer);
-    } else {
-      predicate = QueryFilter.deserialize(byteBuffer);
-    }
     FilterNode filterNode = new FilterNode(planNodeId, predicate);
     return filterNode;
   }
@@ -106,17 +90,7 @@ public class FilterNode extends ProcessNode {
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.FILTER.serialize(byteBuffer);
-    if (predicate instanceof BasicFunctionFilter) {
-      ReadWriteIOUtils.write((byte)0, byteBuffer);
-    } else if (predicate instanceof LikeFilter) {
-      ReadWriteIOUtils.write((byte)1, byteBuffer);
-    } else if (predicate instanceof InFilter) {
-      ReadWriteIOUtils.write((byte)2, byteBuffer);
-    } else if (predicate instanceof RegexpFilter) {
-      ReadWriteIOUtils.write((byte)3, byteBuffer);
-    } else {
-      ReadWriteIOUtils.write((byte)4, byteBuffer);  // QueryFilter
-    }
+    predicate.serialize(byteBuffer);
   }
 
   public QueryFilter getPredicate() {

@@ -30,6 +30,7 @@ import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.nio.ByteBuffer;
@@ -137,21 +138,6 @@ public class InsertTabletNode extends InsertNode {
   @Override
   public List<String> getOutputColumnNames() {
     return null;
-  }
-
-  @Override
-  protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.INSERT_TABLET.serialize(byteBuffer);
-    super.serializeAttributes(byteBuffer);
-  }
-
-  public static InsertTabletNode deserialize(ByteBuffer byteBuffer) {
-    InsertTabletNode tempNode = new InsertTabletNode(null);
-    deserializeAttributes(tempNode, byteBuffer);
-    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    InsertTabletNode ansNode = new InsertTabletNode(planNodeId);
-    copyAttributes(ansNode, tempNode);
-    return ansNode;
   }
 
   @Override
@@ -283,5 +269,9 @@ public class InsertTabletNode extends InsertNode {
       bitMaps[i] = new BitMap(rowSize);
     }
     return bitMaps;
+  }
+
+  public static InsertTabletNode deserialize(ByteBuffer byteBuffer) {
+    return null;
   }
 }
