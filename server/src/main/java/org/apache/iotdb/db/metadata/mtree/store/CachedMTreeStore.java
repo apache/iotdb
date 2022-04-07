@@ -358,20 +358,25 @@ public class CachedMTreeStore implements IMTreeStore {
   /** clear all the data of MTreeStore in memory and disk. */
   @Override
   public void clear() {
-    root = null;
-    cacheManager.clear();
-    if (file != null) {
-      try {
-        file.clear();
-        file.close();
-      } catch (MetadataException | IOException e) {
-        logger.error(String.format("Error occurred during SchemaFile clear, %s", e.getMessage()));
+    writeLock.lock();
+    try {
+      cacheManager.clear(root);
+      root = null;
+      if (file != null) {
+        try {
+          file.clear();
+          file.close();
+        } catch (MetadataException | IOException e) {
+          logger.error(String.format("Error occurred during SchemaFile clear, %s", e.getMessage()));
+        }
       }
-    }
-    file = null;
+      file = null;
 
-    hasFlushTask = false;
-    hasReleaseTask = false;
+      hasFlushTask = false;
+      hasReleaseTask = false;
+    } finally {
+      writeLock.unlock();
+    }
   }
 
   private void ensureMemoryStatus() {

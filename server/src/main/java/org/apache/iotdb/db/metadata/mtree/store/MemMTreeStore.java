@@ -33,11 +33,14 @@ import org.apache.iotdb.db.metadata.mnode.iterator.MNodeIterator;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.rescon.MemoryStatistics;
 
+import java.util.concurrent.atomic.AtomicLong;
+
 /** This is a memory-based implementation of IMTreeStore. All MNodes are stored in memory. */
 public class MemMTreeStore implements IMTreeStore {
 
   private MemoryStatistics memoryStatistics = MemoryStatistics.getInstance();
   private IMNodeSizeEstimator estimator = new BasicMNodSizeEstimator();
+  private AtomicLong localMemoryUsage = new AtomicLong(0);
 
   private IMNode root;
 
@@ -77,14 +80,14 @@ public class MemMTreeStore implements IMTreeStore {
   public IMNode addChild(IMNode parent, String childName, IMNode child) {
     IMNode result = parent.addChild(childName, child);
     if (result == child) {
-      memoryStatistics.requestMemory(estimator.estimateSize(child));
+      requestMemory(estimator.estimateSize(child));
     }
     return result;
   }
 
   @Override
   public void deleteChild(IMNode parent, String childName) {
-    memoryStatistics.releaseMemory(estimator.estimateSize(parent.deleteChild(childName)));
+    releaseMemory(estimator.estimateSize(parent.deleteChild(childName)));
   }
 
   @Override
@@ -94,7 +97,7 @@ public class MemMTreeStore implements IMTreeStore {
   public IEntityMNode setToEntity(IMNode node) {
     IEntityMNode result = MNodeUtils.setToEntity(node);
     if (result != node) {
-      memoryStatistics.requestMemory(IMNodeSizeEstimator.getEntityNodeBaseSize());
+      requestMemory(IMNodeSizeEstimator.getEntityNodeBaseSize());
     }
 
     if (result.isStorageGroup()) {
@@ -107,7 +110,7 @@ public class MemMTreeStore implements IMTreeStore {
   public IMNode setToInternal(IEntityMNode entityMNode) {
     IMNode result = MNodeUtils.setToInternal(entityMNode);
     if (result != entityMNode) {
-      memoryStatistics.releaseMemory(IMNodeSizeEstimator.getEntityNodeBaseSize());
+      releaseMemory(IMNodeSizeEstimator.getEntityNodeBaseSize());
     }
     if (result.isStorageGroup()) {
       root = result;
@@ -128,15 +131,14 @@ public class MemMTreeStore implements IMTreeStore {
     if (existingAlias != null && alias != null) {
       int delta = alias.length() - existingAlias.length();
       if (delta > 0) {
-        memoryStatistics.requestMemory(delta);
+        requestMemory(delta);
       } else if (delta < 0) {
-        memoryStatistics.releaseMemory(-delta);
+        releaseMemory(-delta);
       }
     } else if (alias == null) {
-      memoryStatistics.releaseMemory(
-          IMNodeSizeEstimator.getAliasOccupation() + existingAlias.length());
+      releaseMemory(IMNodeSizeEstimator.getAliasOccupation() + existingAlias.length());
     } else {
-      memoryStatistics.requestMemory(IMNodeSizeEstimator.getAliasOccupation() + alias.length());
+      requestMemory(IMNodeSizeEstimator.getAliasOccupation() + alias.length());
     }
   }
 
@@ -152,5 +154,17 @@ public class MemMTreeStore implements IMTreeStore {
   @Override
   public void clear() {
     root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
+    memoryStatistics.releaseMemory(localMemoryUsage.get());
+    localMemoryUsage.set(0);
+  }
+
+  private void requestMemory(int size) {
+    memoryStatistics.requestMemory(size);
+    localMemoryUsage.getAndUpdate(v -> v += size);
+  }
+
+  private void releaseMemory(int size) {
+    localMemoryUsage.getAndUpdate(v -> v -= size);
+    memoryStatistics.releaseMemory(size);
   }
 }

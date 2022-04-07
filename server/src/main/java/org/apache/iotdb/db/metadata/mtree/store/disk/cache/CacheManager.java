@@ -448,9 +448,27 @@ public abstract class CacheManager implements ICacheManager {
   }
 
   @Override
-  public void clear() {
+  public void clear(IMNode root) {
+    clearMNodeInMemory(root);
     clearNodeCache();
     nodeBuffer.clear();
+  }
+
+  private void clearMNodeInMemory(IMNode node) {
+    CacheEntry cacheEntry = getCacheEntry(node);
+    if (cacheEntry == null) {
+      return;
+    }
+
+    if (cacheEntry.isPinned()) {
+      memManager.releasePinnedMemResource(node);
+    }
+    memManager.releaseMemResource(node);
+
+    Iterator<IMNode> iterator = getCachedMNodeContainer(node).getChildrenIterator();
+    while (iterator.hasNext()) {
+      clearMNodeInMemory(iterator.next());
+    }
   }
 
   protected CacheEntry getCacheEntry(IMNode node) {

@@ -48,5 +48,5 @@ public interface ICacheManager {
 
   boolean unPinMNode(IMNode node);
 
-  void clear();
+  void clear(IMNode root);
 }
