@@ -274,6 +274,7 @@ public class EnvironmentUtils {
     config.setThriftServerAwaitTimeForStopService(60);
     // we do not start 9091 port in test.
     MetricConfigDescriptor.getInstance().getMetricConfig().setEnableMetric(false);
+    config.setAvgSeriesPointNumberThreshold(Integer.MAX_VALUE);
     // use async wal mode in test
     config.setWalMode(WALMode.ASYNC);
     config.setAvgSeriesPointNumberThreshold(Integer.MAX_VALUE);
