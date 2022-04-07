@@ -170,7 +170,8 @@ public class StandAloneConsensus implements IConsensus {
   }
 
   @Override
-  public boolean isLeader(ConsensusGroupId groupId) {
-    return true;
+  public Peer getLeader(ConsensusGroupId groupId) {
+    // StandAlone itself IS the Leader. This method should not be called
+    return null;
   }
 }

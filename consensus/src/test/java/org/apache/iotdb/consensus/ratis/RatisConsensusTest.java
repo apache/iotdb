@@ -52,6 +52,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class RatisConsensusTest {
 
+  private static final int INCR = 1;
+  private static final int READ = 2;
+  private static final int NOOP = 3;
+
   private static class TestDataSet implements DataSet {
     private int number;
 
@@ -72,7 +76,7 @@ public class RatisConsensusTest {
     }
 
     public boolean isIncr() {
-      return cmd == 1;
+      return cmd == INCR;
     }
   }
 
@@ -155,6 +159,14 @@ public class RatisConsensusTest {
     }
   }
 
+  private boolean isLeader(int index) {
+    ByteBufferConsensusRequest incrReq = constructRequest(NOOP);
+    ConsensusWriteResponse response = servers.get(index).write(gid, incrReq);
+    return response != null
+        && response.getStatus() != null
+        && response.getStatus().getCode() == 200;
+  }
+
   @Test
   public void basicConsensus() throws Exception {
 
@@ -169,7 +181,7 @@ public class RatisConsensusTest {
     // 6. Remove two Peers from Group (peer 0 and peer 2)
     // transfer the leader to peer1
     servers.get(0).transferLeader(gid, peer1);
-    Assert.assertTrue(servers.get(1).isLeader(gid));
+    Assert.assertTrue(isLeader(1));
     // first use removePeer to inform the group leader of configuration change
     servers.get(1).removePeer(gid, peer0);
     servers.get(1).removePeer(gid, peer2);
@@ -200,6 +212,13 @@ public class RatisConsensusTest {
     doConsensus(servers.get(0), gid, 10, 40);
   }
 
+  private ByteBufferConsensusRequest constructRequest(int type) {
+    ByteBuffer incr = ByteBuffer.allocate(4);
+    incr.putInt(type);
+    incr.flip();
+    return new ByteBufferConsensusRequest(incr);
+  }
+
   private void doConsensus(IConsensus consensus, ConsensusGroupId gid, int count, int target)
       throws Exception {
 
@@ -209,11 +228,7 @@ public class RatisConsensusTest {
     for (int i = 0; i < count; i++) {
       executorService.submit(
           () -> {
-            ByteBuffer incr = ByteBuffer.allocate(4);
-            incr.putInt(1);
-            incr.flip();
-            ByteBufferConsensusRequest incrReq = new ByteBufferConsensusRequest(incr);
-
+            ByteBufferConsensusRequest incrReq = constructRequest(INCR);
             ConsensusWriteResponse response = consensus.write(gid, incrReq);
             if (response.getException() != null) {
               response.getException().printStackTrace(System.out);
@@ -228,10 +243,7 @@ public class RatisConsensusTest {
     // wait at most 60s for write to complete, otherwise fail the test
     Assert.assertTrue(latch.await(60, TimeUnit.SECONDS));
 
-    ByteBuffer get = ByteBuffer.allocate(4);
-    get.putInt(2);
-    get.flip();
-    ByteBufferConsensusRequest getReq = new ByteBufferConsensusRequest(get);
+    ByteBufferConsensusRequest getReq = constructRequest(READ);
 
     // wait at most 60s to discover a valid leader
     long start = System.currentTimeMillis();
@@ -242,13 +254,14 @@ public class RatisConsensusTest {
         break;
       }
       for (int i = 0; i < 3; i++) {
-        if (servers.get(i).isLeader(gid)) {
+        if (isLeader(i)) {
           leader = servers.get(i);
         }
       }
     }
     Assert.assertNotNull(leader);
 
+    Thread.sleep(1000);
     // Check we reached a consensus
     ConsensusReadResponse response = leader.read(gid, getReq);
     TestDataSet result = (TestDataSet) response.getDataset();

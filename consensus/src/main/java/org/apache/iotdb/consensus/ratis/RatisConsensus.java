@@ -440,18 +440,16 @@ public class RatisConsensus implements IConsensus {
   }
 
   @Override
-  public boolean isLeader(ConsensusGroupId groupId) {
+  public Peer getLeader(ConsensusGroupId groupId) {
     RaftGroupId raftGroupId = Utils.toRatisGroupId(groupId);
-
-    boolean isLeader;
-    try {
-      isLeader = server.getDivision(raftGroupId).getInfo().isLeader();
-    } catch (IOException exception) {
-      // if the query fails, simply return not leader
-      logger.warn("isLeader request failed with exception: ", exception);
-      isLeader = false;
+    RaftClient client = clientMap.getOrDefault(raftGroupId, null);
+    if (client == null) {
+      // this consensus Peer is not responsible for group(groupId)
+      return null;
     }
-    return isLeader;
+    String leaderId = client.getLeaderId().toString();
+    Endpoint leaderEp = Utils.parseEndpoint(leaderId);
+    return new Peer(groupId, leaderEp);
   }
 
   @Override
