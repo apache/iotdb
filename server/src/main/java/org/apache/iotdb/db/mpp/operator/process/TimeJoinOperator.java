@@ -59,11 +59,12 @@ public class TimeJoinOperator implements ProcessOperator {
    */
   private final List<TSDataType> dataTypes;
 
+  private boolean finished;
+
   public TimeJoinOperator(
       OperatorContext operatorContext,
       List<Operator> children,
       OrderBy mergeOrder,
-      int columnCount,
       List<TSDataType> dataTypes) {
     this.operatorContext = operatorContext;
     this.children = children;
@@ -72,7 +73,7 @@ public class TimeJoinOperator implements ProcessOperator {
     this.inputIndex = new int[this.inputCount];
     this.noMoreTsBlocks = new boolean[this.inputCount];
     this.timeSelector = new TimeSelector(this.inputCount << 1, OrderBy.TIMESTAMP_ASC == mergeOrder);
-    this.columnCount = columnCount;
+    this.columnCount = dataTypes.size();
     this.dataTypes = dataTypes;
   }
 
@@ -154,6 +155,9 @@ public class TimeJoinOperator implements ProcessOperator {
 
   @Override
   public boolean hasNext() throws IOException {
+    if (finished) {
+      return false;
+    }
     for (int i = 0; i < inputCount; i++) {
       if (!empty(i)) {
         return true;
@@ -173,6 +177,22 @@ public class TimeJoinOperator implements ProcessOperator {
     for (Operator child : children) {
       child.close();
     }
+  }
+
+  @Override
+  public boolean isFinished() {
+    if (finished) {
+      return true;
+    }
+    finished = true;
+    for (int i = 0; i < columnCount; i++) {
+      // has more tsBlock output from children[i] or has cached tsBlock in inputTsBlocks[i]
+      if (!noMoreTsBlocks[i] || !empty(i)) {
+        finished = false;
+        break;
+      }
+    }
+    return finished;
   }
 
   private boolean empty(int columnIndex) {
