@@ -536,10 +536,10 @@ public class CachedMTreeStore implements IMTreeStore {
           }
         }
         if (node != null) {
-          if (parent.hasChild(node.getName())) {
+          IMNode nodeInMem = parent.getChild(node.getName());
+          if (nodeInMem != null) {
             // this branch means the node load from disk is in cache, thus use the instance in
             // cache
-            IMNode nodeInMem = parent.getChild(node.getName());
             try {
               cacheManager.updateCacheStatusAfterMemoryRead(nodeInMem);
               node = nodeInMem;
