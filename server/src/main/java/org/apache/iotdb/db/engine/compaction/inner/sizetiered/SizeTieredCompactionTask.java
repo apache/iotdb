@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.engine.compaction.inner.sizetiered;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.performer.AbstractCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.performer.ReadChunkCompactionPerformer;
@@ -26,9 +25,6 @@ import org.apache.iotdb.db.engine.compaction.performer.ReadPointCompactionPerfor
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
 import java.util.List;
@@ -39,8 +35,6 @@ import java.util.concurrent.atomic.AtomicInteger;
  * SizeTieredCompactionSelector} into one file.
  */
 public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
 
   protected AbstractCompactionPerformer performer;
 
