@@ -44,6 +44,7 @@ import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
+import org.apache.iotdb.db.metadata.schemaregion.SchemaRegionUtils;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode.REntityMNode;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode.RMNodeType;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode.RMNodeValueType;
@@ -69,7 +70,6 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.db.utils.FileUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -245,9 +245,9 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public void deleteSchemaRegion() {
+  public void deleteSchemaRegion() throws MetadataException {
     clear();
-    clearAllData();
+    SchemaRegionUtils.deleteSchemaRegionFolder(schemaRegionDirPath, logger);
   }
 
   @Override
@@ -1959,12 +1959,5 @@ public class RSchemaRegion implements ISchemaRegion {
   @TestOnly
   public void printScanAllKeys() throws IOException {
     readWriteHandler.scanAllKeys(schemaRegionDirPath + File.separator + "scanAllKeys.txt");
-  }
-
-  public void clearAllData() {
-    File rockdDbFile = new File(schemaRegionDirPath);
-    if (rockdDbFile.exists() && rockdDbFile.isDirectory()) {
-      FileUtils.deleteDirectory(rockdDbFile);
-    }
   }
 }

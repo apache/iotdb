@@ -398,31 +398,7 @@ public class SchemaRegion implements ISchemaRegion {
     clear();
 
     // delete all the schema region files
-    File schemaRegionDir = SystemFileFactory.INSTANCE.getFile(schemaRegionDirPath);
-    File[] sgFiles = schemaRegionDir.listFiles();
-    if (sgFiles == null) {
-      throw new MetadataException(
-          String.format("Can't get files in schema region dir %s", schemaRegionDirPath));
-    }
-    for (File file : sgFiles) {
-      if (file.delete()) {
-        logger.info("delete schema region folder {}", schemaRegionDir.getAbsolutePath());
-      } else {
-        logger.info("delete schema region folder {} failed.", schemaRegionDir.getAbsolutePath());
-        throw new MetadataException(
-            String.format(
-                "Failed to delete schema region folder %s", schemaRegionDir.getAbsolutePath()));
-      }
-    }
-
-    if (schemaRegionDir.delete()) {
-      logger.info("delete schema region folder {}", schemaRegionDir.getAbsolutePath());
-    } else {
-      logger.info("delete schema region folder {} failed.", schemaRegionDir.getAbsolutePath());
-      throw new MetadataException(
-          String.format(
-              "Failed to delete schema region folder %s", schemaRegionDir.getAbsolutePath()));
-    }
+    SchemaRegionUtils.deleteSchemaRegionFolder(schemaRegionDirPath, logger);
   }
 
   // endregion
