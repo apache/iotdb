@@ -129,6 +129,10 @@ public class DataBlockService extends ThriftService {
     executorService.shutdown();
   }
 
+  public static DataBlockService getInstance() {
+    return DataBlockManagerServiceHolder.INSTANCE;
+  }
+
   private static class DataBlockManagerServiceHolder {
     private static final DataBlockService INSTANCE = new DataBlockService();
 
