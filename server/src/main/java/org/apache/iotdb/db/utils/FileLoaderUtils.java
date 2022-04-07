@@ -99,9 +99,6 @@ public class FileLoaderUtils {
     TimeseriesMetadata timeSeriesMetadata;
     // If the tsfile is closed, we need to load from tsfile
     if (resource.isClosed()) {
-      if (!resource.getTsFile().exists()) {
-        return null;
-      }
       timeSeriesMetadata =
           TimeSeriesMetadataCache.getInstance()
               .get(
@@ -116,7 +113,7 @@ public class FileLoaderUtils {
             new DiskChunkMetadataLoader(resource, seriesPath, context, filter));
       }
     } else { // if the tsfile is unclosed, we just get it directly from TsFileResource
-      timeSeriesMetadata = (TimeseriesMetadata) resource.getTimeSeriesMetadata();
+      timeSeriesMetadata = (TimeseriesMetadata) resource.getTimeSeriesMetadata(seriesPath);
       if (timeSeriesMetadata != null) {
         timeSeriesMetadata.setChunkMetadataLoader(
             new MemChunkMetadataLoader(resource, seriesPath, context, filter));
@@ -191,7 +188,8 @@ public class FileLoaderUtils {
         }
       }
     } else { // if the tsfile is unclosed, we just get it directly from TsFileResource
-      alignedTimeSeriesMetadata = (AlignedTimeSeriesMetadata) resource.getTimeSeriesMetadata();
+      alignedTimeSeriesMetadata =
+          (AlignedTimeSeriesMetadata) resource.getTimeSeriesMetadata(vectorPath);
       if (alignedTimeSeriesMetadata != null) {
         alignedTimeSeriesMetadata.setChunkMetadataLoader(
             new MemAlignedChunkMetadataLoader(resource, vectorPath, context, filter));

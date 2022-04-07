@@ -19,7 +19,10 @@
 
 -->
 
-## Encoding 
+# Encoding
+
+
+## Encoding Methods
 
 To improve the efficiency of data storage, it is necessary to encode data during data writing, thereby reducing the amount of disk space used. In the process of writing and reading data, the amount of data involved in the I/O operations can be reduced to improve performance. IoTDB supports the following encoding methods for different data types:
 
@@ -51,22 +54,31 @@ Usage restrictions: When using GORILLA to encode INT32 data, you need to ensure 
 
 DICTIONARY encoding is lossless. It is suitable for TEXT data with low cardinality (i.e. low number of distinct values). It is not recommended to use it for high-cardinality data. 
 
+* FREQ
 
-### Correspondence between data type and encoding
+FREQ encoding is lossy. It transforms the time sequence to the frequency domain and only reserve part of the frequency components with high energy. It is more suitable for sequence with obvious periodicity.
+
+> There are two parameters of FREQ encoding in the configuration file: `freq_snr` defines the signal-noise-ratio (SNR). Both the compression ratio and accuracy loss decrease when it increases. `freq_block_size` defines the data size in a time-frequency transformation. It is not recommended to modify the default value. The detailed experimental results and analysis of the influences of parameters are in the design document. 
+
+* ZIGZAG 
+  
+ZIGZAG encoding maps signed integers to unsigned integers so that numbers with a small absolute value (for instance, -1) have a small variant encoded value too. It does this in a way that "zig-zags" back and forth through the positive and negative integers.
+
+## Correspondence between data type and encoding
 
 The five encodings described in the previous sections are applicable to different data types. If the correspondence is wrong, the time series cannot be created correctly. The correspondence between the data type and its supported encodings is summarized in the Table below.
 
-<center> 
+<div style="text-align: center;"> 
 
 **The correspondence between the data type and its supported encodings**
 
 |Data Type	|Supported Encoding|
 |:---:|:---:|
 |BOOLEAN|	PLAIN, RLE|
-|INT32	|PLAIN, RLE, TS_2DIFF, GORILLA|
-|INT64	|PLAIN, RLE, TS_2DIFF, GORILLA|
-|FLOAT	|PLAIN, RLE, TS_2DIFF, GORILLA|
-|DOUBLE	|PLAIN, RLE, TS_2DIFF, GORILLA|
+|INT32	|PLAIN, RLE, TS_2DIFF, GORILLA, FREQ, ZIGZAG|
+|INT64	|PLAIN, RLE, TS_2DIFF, GORILLA, FREQ, ZIGZAG|
+|FLOAT	|PLAIN, RLE, TS_2DIFF, GORILLA, FREQ|
+|DOUBLE	|PLAIN, RLE, TS_2DIFF, GORILLA, FREQ|
 |TEXT	|PLAIN, DICTIONARY|
 
-</center>
+</div>

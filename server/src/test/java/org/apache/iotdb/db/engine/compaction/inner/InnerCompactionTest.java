@@ -20,10 +20,10 @@
 package org.apache.iotdb.db.engine.compaction.inner;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
+import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -41,7 +41,7 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.After;
 import org.junit.Before;
@@ -68,7 +68,7 @@ public abstract class InnerCompactionTest {
   protected TSEncoding encoding = TSEncoding.PLAIN;
 
   protected String[] deviceIds;
-  protected UnaryMeasurementSchema[] measurementSchemas;
+  protected MeasurementSchema[] measurementSchemas;
 
   protected List<TsFileResource> seqResources = new ArrayList<>();
   protected List<TsFileResource> unseqResources = new ArrayList<>();
@@ -78,44 +78,39 @@ public abstract class InnerCompactionTest {
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException, Exception {
     EnvironmentUtils.envSetUp();
-    IoTDB.metaManager.init();
-    prevMergeChunkThreshold =
-        IoTDBDescriptor.getInstance().getConfig().getMergeChunkPointNumberThreshold();
-    IoTDBDescriptor.getInstance().getConfig().setMergeChunkPointNumberThreshold(-1);
+    IoTDB.schemaEngine.init();
     prepareSeries();
     prepareFiles(seqFileNum, unseqFileNum);
   }
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
+    new CompactionConfigRestorer().restoreCompactionConfig();
     removeFiles();
     seqResources.clear();
     unseqResources.clear();
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setMergeChunkPointNumberThreshold(prevMergeChunkThreshold);
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
-    IoTDB.metaManager.clear();
+    IoTDB.schemaEngine.clear();
     EnvironmentUtils.cleanEnv();
   }
 
   void prepareSeries() throws MetadataException {
-    measurementSchemas = new UnaryMeasurementSchema[measurementNum];
+    measurementSchemas = new MeasurementSchema[measurementNum];
     for (int i = 0; i < measurementNum; i++) {
       measurementSchemas[i] =
-          new UnaryMeasurementSchema(
+          new MeasurementSchema(
               "sensor" + i, TSDataType.DOUBLE, encoding, CompressionType.UNCOMPRESSED);
     }
     deviceIds = new String[deviceNum];
     for (int i = 0; i < deviceNum; i++) {
       deviceIds[i] = COMPACTION_TEST_SG + PATH_SEPARATOR + "device" + i;
     }
-    IoTDB.metaManager.setStorageGroup(new PartialPath(COMPACTION_TEST_SG));
+    IoTDB.schemaEngine.setStorageGroup(new PartialPath(COMPACTION_TEST_SG));
     for (String device : deviceIds) {
-      for (UnaryMeasurementSchema measurementSchema : measurementSchemas) {
+      for (MeasurementSchema measurementSchema : measurementSchemas) {
         PartialPath devicePath = new PartialPath(device);
-        IoTDB.metaManager.createTimeseries(
+        IoTDB.schemaEngine.createTimeseries(
             devicePath.concatNode(measurementSchema.getMeasurementId()),
             measurementSchema.getType(),
             measurementSchema.getEncodingType(),
@@ -185,6 +180,7 @@ public abstract class InnerCompactionTest {
   }
 
   private void removeFiles() throws IOException {
+    FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     for (TsFileResource tsFileResource : seqResources) {
       if (tsFileResource.getTsFile().exists()) {
         tsFileResource.remove();
@@ -204,14 +200,13 @@ public abstract class InnerCompactionTest {
     for (File resourceFile : resourceFiles) {
       resourceFile.delete();
     }
-    FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
   }
 
   void prepareFile(TsFileResource tsFileResource, long timeOffset, long ptNum, long valueOffset)
       throws IOException, WriteProcessException {
     TsFileWriter fileWriter = new TsFileWriter(tsFileResource.getTsFile());
     for (String deviceId : deviceIds) {
-      for (UnaryMeasurementSchema measurementSchema : measurementSchemas) {
+      for (MeasurementSchema measurementSchema : measurementSchemas) {
         fileWriter.registerTimeseries(new Path(deviceId), measurementSchema);
       }
     }

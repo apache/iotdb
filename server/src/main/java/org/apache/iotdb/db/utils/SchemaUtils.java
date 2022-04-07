@@ -33,8 +33,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,6 +68,8 @@ public class SchemaUtils {
     intSet.add(TSEncoding.RLE);
     intSet.add(TSEncoding.TS_2DIFF);
     intSet.add(TSEncoding.GORILLA);
+    intSet.add(TSEncoding.ZIGZAG);
+    intSet.add(TSEncoding.FREQ);
     schemaChecker.put(TSDataType.INT32, intSet);
     schemaChecker.put(TSDataType.INT64, intSet);
 
@@ -95,7 +97,7 @@ public class SchemaUtils {
       TSDataType dataType = schema.getType();
       TSEncoding encoding = schema.getEncodingType();
       CompressionType compressionType = schema.getCompressor();
-      IoTDB.metaManager.createTimeseries(
+      IoTDB.schemaEngine.createTimeseries(
           path, dataType, encoding, compressionType, Collections.emptyMap());
     } catch (PathAlreadyExistException ignored) {
       // ignore added timeseries
@@ -119,11 +121,11 @@ public class SchemaUtils {
     TSEncoding encoding = schema.getEncodingType();
     CompressionType compressionType = schema.getCompressor();
     IMeasurementSchema measurementSchema =
-        new UnaryMeasurementSchema(path.getMeasurement(), dataType, encoding, compressionType);
+        new MeasurementSchema(path.getMeasurement(), dataType, encoding, compressionType);
 
     IMeasurementMNode measurementMNode =
         MeasurementMNode.getMeasurementMNode(null, path.getMeasurement(), measurementSchema, null);
-    IoTDB.metaManager.cacheMeta(path, measurementMNode, true);
+    IoTDB.schemaEngine.cacheMeta(path, measurementMNode, true);
   }
 
   public static List<TSDataType> getSeriesTypesByPaths(Collection<? extends PartialPath> paths) {

@@ -18,7 +18,9 @@
  */
 package org.apache.iotdb.db.query.reader.series;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
@@ -29,6 +31,7 @@ import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Set;
 
 public class SeriesReaderByTimestamp implements IReaderByTimestamp {
@@ -54,6 +57,30 @@ public class SeriesReaderByTimestamp implements IReaderByTimestamp {
 
   public SeriesReaderByTimestamp(SeriesReader seriesReader, boolean ascending) {
     this.seriesReader = seriesReader;
+    this.ascending = ascending;
+  }
+
+  @TestOnly
+  public SeriesReaderByTimestamp(
+      PartialPath seriesPath,
+      Set<String> allSensors,
+      TSDataType dataType,
+      QueryContext context,
+      List<TsFileResource> seqFileResource,
+      List<TsFileResource> unseqFileResource,
+      boolean ascending) {
+    Filter timeFilter = TimeFilter.defaultTimeFilter(ascending);
+    seriesReader =
+        new SeriesReader(
+            seriesPath,
+            allSensors,
+            dataType,
+            context,
+            seqFileResource,
+            unseqFileResource,
+            timeFilter,
+            null,
+            ascending);
     this.ascending = ascending;
   }
 

@@ -191,7 +191,7 @@ public class IoTDBSessionVectorABDeviceIT {
       compressors.add(CompressionType.SNAPPY);
     }
     session.createAlignedTimeseries(
-        ROOT_SG1_D1, measurements, dataTypes, encodings, compressors, null);
+        ROOT_SG1_D1, measurements, dataTypes, encodings, compressors, null, null, null);
   }
 
   private static void prepareAlignedTimeSeriesData()

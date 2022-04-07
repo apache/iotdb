@@ -89,9 +89,50 @@ public class AggregationQueryOperator extends QueryOperator {
   @Override
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
-    return isAlignByDevice()
-        ? this.generateAlignByDevicePlan(generator)
-        : super.generateRawDataQueryPlan(generator, initAggregationPlan(new AggregationPlan()));
+    PhysicalPlan plan =
+        isAlignByDevice()
+            ? this.generateAlignByDevicePlan(generator)
+            : super.generateRawDataQueryPlan(generator, initAggregationPlan(new AggregationPlan()));
+
+    if (!verifyAllAggregationDataTypesMatched(
+        isAlignByDevice()
+            ? ((AlignByDevicePlan) plan).getAggregationPlan()
+            : (AggregationPlan) plan)) {
+      throw new LogicalOperatorException(
+          "Aggregate functions [AVG, SUM, EXTREME, MIN_VALUE, MAX_VALUE] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]");
+    }
+
+    return plan;
+  }
+
+  private boolean verifyAllAggregationDataTypesMatched(AggregationPlan plan) {
+    List<String> aggregations = plan.getDeduplicatedAggregations();
+    List<TSDataType> dataTypes = SchemaUtils.getSeriesTypesByPaths(plan.getDeduplicatedPaths());
+
+    for (int i = 0; i < aggregations.size(); i++) {
+      if (!verifyIsAggregationDataTypeMatched(aggregations.get(i), dataTypes.get(i))) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private boolean verifyIsAggregationDataTypeMatched(String aggregation, TSDataType dataType) {
+    switch (aggregation.toLowerCase()) {
+      case SQLConstant.AVG:
+      case SQLConstant.SUM:
+      case SQLConstant.EXTREME:
+      case SQLConstant.MIN_VALUE:
+      case SQLConstant.MAX_VALUE:
+        return dataType.isNumeric();
+      case SQLConstant.COUNT:
+      case SQLConstant.MIN_TIME:
+      case SQLConstant.MAX_TIME:
+      case SQLConstant.FIRST_VALUE:
+      case SQLConstant.LAST_VALUE:
+      default:
+        return true;
+    }
   }
 
   private boolean verifyAllAggregationDataTypesEqual() throws MetadataException {

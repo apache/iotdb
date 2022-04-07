@@ -21,7 +21,7 @@ package org.apache.iotdb.cluster.query;
 
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.ReaderNotFoundException;
-import org.apache.iotdb.cluster.metadata.CMManager;
+import org.apache.iotdb.cluster.metadata.CSchemaEngine;
 import org.apache.iotdb.cluster.metadata.MetaPuller;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
@@ -32,6 +32,7 @@ import org.apache.iotdb.cluster.query.reader.mult.IMultBatchReader;
 import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
 import org.apache.iotdb.cluster.rpc.thrift.LastQueryRequest;
+import org.apache.iotdb.cluster.rpc.thrift.MeasurementSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.MultSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PreviousFillRequest;
@@ -53,18 +54,18 @@ import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
-import org.apache.iotdb.db.query.dataset.groupby.GroupByExecutor;
-import org.apache.iotdb.db.query.dataset.groupby.LocalGroupByExecutor;
 import org.apache.iotdb.db.query.executor.AggregationExecutor;
 import org.apache.iotdb.db.query.executor.LastQueryExecutor;
 import org.apache.iotdb.db.query.executor.fill.PreviousFill;
+import org.apache.iotdb.db.query.executor.groupby.GroupByExecutor;
+import org.apache.iotdb.db.query.executor.groupby.impl.LocalGroupByExecutor;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SerializeUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -110,8 +111,8 @@ public class LocalQueryExecutor {
     this.queryManager = dataGroupMember.getQueryManager();
   }
 
-  private CMManager getCMManager() {
-    return ((CMManager) IoTDB.metaManager);
+  private CSchemaEngine getCSchemaEngine() {
+    return ((CSchemaEngine) IoTDB.schemaEngine);
   }
 
   /** Return the data of the reader whose id is "readerId", using timestamps in "timeBuffer". */
@@ -224,7 +225,7 @@ public class LocalQueryExecutor {
     // The request is routed to this node since this node contains the data and
     // metadata of the designated timeseries. Because of which, the following metadata access will
     // not trigger an RPC.
-    path.setMeasurementSchema(IoTDB.metaManager.getSeriesSchema(path));
+    path.setMeasurementSchema(IoTDB.schemaEngine.getSeriesSchema(path));
     TSDataType dataType = TSDataType.values()[request.getDataTypeOrdinal()];
     Filter timeFilter = null;
     Filter valueFilter = null;
@@ -312,7 +313,7 @@ public class LocalQueryExecutor {
       // The request is routed to this node since this node contains the data and
       // metadata of the designated timeseries. Because of which, the following metadata access will
       // not trigger an RPC.
-      path.setMeasurementSchema(IoTDB.metaManager.getSeriesSchema(path));
+      path.setMeasurementSchema(IoTDB.schemaEngine.getSeriesSchema(path));
       paths.add(path);
       dataTypes.add(TSDataType.values()[request.getDataTypeOrdinal().get(i)]);
     }
@@ -484,7 +485,8 @@ public class LocalQueryExecutor {
             .computeIfAbsent(slotPreviousHolderMap.get(slot), s -> new ArrayList<>())
             .add(new PartialPath(prefixPath));
       } else {
-        getCMManager().collectMeasurementSchema(new PartialPath(prefixPath), measurementSchemas);
+        getCSchemaEngine()
+            .collectMeasurementSchema(new PartialPath(prefixPath), measurementSchemas);
       }
     }
 
@@ -522,7 +524,7 @@ public class LocalQueryExecutor {
             .computeIfAbsent(slotPreviousHolderMap.get(slot), s -> new ArrayList<>())
             .add(prefixPath);
       } else {
-        getCMManager().collectTimeseriesSchema(new PartialPath(prefixPath), timeseriesSchemas);
+        getCSchemaEngine().collectTimeseriesSchema(new PartialPath(prefixPath), timeseriesSchemas);
       }
     }
 
@@ -558,7 +560,7 @@ public class LocalQueryExecutor {
     // The request is routed to this node since this node contains the data and
     // metadata of the designated timeseries. Because of which, the following metadata access will
     // not trigger an RPC.
-    path.setMeasurementSchema(IoTDB.metaManager.getSeriesSchema(path));
+    path.setMeasurementSchema(IoTDB.schemaEngine.getSeriesSchema(path));
     TSDataType dataType = TSDataType.values()[request.dataTypeOrdinal];
     Set<String> deviceMeasurements = request.getDeviceMeasurements();
 
@@ -601,16 +603,15 @@ public class LocalQueryExecutor {
     }
   }
 
-  public ByteBuffer getAllMeasurementSchema(ByteBuffer planBuffer)
+  public ByteBuffer getAllMeasurementSchema(MeasurementSchemaRequest request)
       throws CheckConsistencyException, IOException, MetadataException {
     dataGroupMember.syncLeaderWithConsistencyCheck(false);
 
-    ShowTimeSeriesPlan plan = (ShowTimeSeriesPlan) PhysicalPlan.Factory.create(planBuffer);
+    ShowTimeSeriesPlan plan = (ShowTimeSeriesPlan) PhysicalPlan.Factory.create(request.planBinary);
     List<ShowTimeSeriesResult> allTimeseriesSchema;
-    allTimeseriesSchema =
-        getCMManager()
-            .showLocalTimeseries(
-                plan, new QueryContext(SessionManager.getInstance().requestQueryId(false)));
+    RemoteQueryContext queryContext =
+        queryManager.getQueryContext(request.getRequester(), request.getQueryId());
+    allTimeseriesSchema = getCSchemaEngine().showLocalTimeseries(plan, queryContext);
 
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     try (DataOutputStream dataOutputStream = new DataOutputStream(outputStream)) {
@@ -626,7 +627,7 @@ public class LocalQueryExecutor {
       throws CheckConsistencyException, IOException, MetadataException {
     dataGroupMember.syncLeaderWithConsistencyCheck(false);
     ShowDevicesPlan plan = (ShowDevicesPlan) PhysicalPlan.Factory.create(planBuffer);
-    List<ShowDevicesResult> allDevicesResult = getCMManager().getLocalDevices(plan);
+    List<ShowDevicesResult> allDevicesResult = getCSchemaEngine().getLocalDevices(plan);
 
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     try (DataOutputStream dataOutputStream = new DataOutputStream(outputStream)) {
@@ -749,7 +750,8 @@ public class LocalQueryExecutor {
         dataType,
         ascResults,
         descResults,
-        new SlotTsFileFilter(nodeSlots));
+        new SlotTsFileFilter(nodeSlots),
+        ascending);
     return results;
   }
 
@@ -766,7 +768,7 @@ public class LocalQueryExecutor {
     for (String seriesPath : timeseriesList) {
       try {
         List<MeasurementPath> path =
-            getCMManager().getMeasurementPaths(new PartialPath(seriesPath));
+            getCSchemaEngine().getMeasurementPaths(new PartialPath(seriesPath));
         if (path.size() != 1) {
           throw new MetadataException(
               String.format("Timeseries number of the name [%s] is not 1.", seriesPath));
@@ -866,7 +868,14 @@ public class LocalQueryExecutor {
             aggregationTypeOrdinals,
             queryContext,
             ascending);
-    if (!executor.isEmpty()) {
+    boolean isEmpty;
+    try {
+      isEmpty = executor.isEmpty();
+    } catch (IOException e) {
+      logger.error("Something wrong happened", e);
+      throw new QueryProcessException(e, TSStatusCode.INTERNAL_SERVER_ERROR.ordinal());
+    }
+    if (!isEmpty) {
       long executorId = queryManager.registerGroupByExecutor(executor);
       logger.debug(
           "{}: Build a GroupByExecutor of {} for {}, executorId: {}",
@@ -999,9 +1008,9 @@ public class LocalQueryExecutor {
     int count = 0;
     for (String s : pathsToQuery) {
       if (level == -1) {
-        count += getCMManager().getAllTimeseriesCount(new PartialPath(s));
+        count += getCSchemaEngine().getAllTimeseriesCount(new PartialPath(s));
       } else {
-        count += getCMManager().getNodesCountInGivenLevel(new PartialPath(s), level);
+        count += getCSchemaEngine().getNodesCountInGivenLevel(new PartialPath(s), level);
       }
     }
     return count;
@@ -1013,7 +1022,7 @@ public class LocalQueryExecutor {
 
     int count = 0;
     for (String s : pathsToQuery) {
-      count += getCMManager().getDevicesNum(new PartialPath(s));
+      count += getCSchemaEngine().getDevicesNum(new PartialPath(s));
     }
     return count;
   }
@@ -1021,14 +1030,16 @@ public class LocalQueryExecutor {
   @SuppressWarnings("java:S1135") // ignore todos
   public ByteBuffer last(LastQueryRequest request)
       throws CheckConsistencyException, QueryProcessException, IOException, StorageEngineException,
-          IllegalPathException {
+          MetadataException {
     dataGroupMember.syncLeaderWithConsistencyCheck(false);
 
     RemoteQueryContext queryContext =
         queryManager.getQueryContext(request.getRequestor(), request.getQueryId());
-    List<PartialPath> partialPaths = new ArrayList<>();
+    List<PartialPath> seriesPaths = new ArrayList<>();
     for (String path : request.getPaths()) {
-      partialPaths.add(new MeasurementPath(path));
+      PartialPath partialPath = new PartialPath(path);
+      seriesPaths.add(
+          new MeasurementPath(partialPath, IoTDB.schemaEngine.getSeriesSchema(partialPath)));
     }
     List<TSDataType> dataTypes = new ArrayList<>(request.dataTypeOrdinals.size());
     for (Integer dataTypeOrdinal : request.dataTypeOrdinals) {
@@ -1041,13 +1052,13 @@ public class LocalQueryExecutor {
       expression = new GlobalTimeExpression(filter);
     }
 
-    List<Pair<Boolean, TimeValuePair>> timeValuePairs =
+    List<TimeValuePair> timeValuePairs =
         LastQueryExecutor.calculateLastPairForSeriesLocally(
-            partialPaths, dataTypes, queryContext, expression, request.getDeviceMeasurements());
+            seriesPaths, dataTypes, queryContext, expression, request.getDeviceMeasurements());
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-    for (Pair<Boolean, TimeValuePair> timeValuePair : timeValuePairs) {
-      SerializeUtils.serializeTVPair(timeValuePair.right, dataOutputStream);
+    for (TimeValuePair timeValuePair : timeValuePairs) {
+      SerializeUtils.serializeTVPair(timeValuePair, dataOutputStream);
     }
     return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
   }

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.qp.physical;
 
+import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -43,7 +44,6 @@ import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateFunctionPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateIndexPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateSnapshotPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTriggerPlan;
@@ -53,6 +53,7 @@ import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropFunctionPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropIndexPlan;
+import org.apache.iotdb.db.qp.physical.sys.DropTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.DropTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
@@ -70,6 +71,7 @@ import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.StartTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.StopTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
+import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
 import org.apache.iotdb.db.qp.utils.EmptyOutputStream;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -85,12 +87,13 @@ import java.util.Collections;
 import java.util.List;
 
 /** This class is a abstract class for all type of PhysicalPlan. */
-public abstract class PhysicalPlan {
+public abstract class PhysicalPlan implements IConsensusRequest {
   private static final Logger logger = LoggerFactory.getLogger(PhysicalPlan.class);
 
   private static final String SERIALIZATION_UNIMPLEMENTED = "serialization unimplemented";
 
   private boolean isQuery = false;
+
   private Operator.OperatorType operatorType;
   private static final int NULL_VALUE_LEN = -1;
 
@@ -104,6 +107,12 @@ public abstract class PhysicalPlan {
   protected long index;
 
   private boolean debug;
+
+  /**
+   * Since IoTDB v0.13, all DDL and DML use patternMatch as default. Before IoTDB v0.13, all DDL and
+   * DML use prefixMatch.
+   */
+  private boolean isPrefixMatch = false;
 
   /** whether the plan can be split into more than one Plans. Only used in the cluster mode. */
   public boolean canBeSplit() {
@@ -130,6 +139,10 @@ public abstract class PhysicalPlan {
 
   public Operator.OperatorType getOperatorType() {
     return operatorType;
+  }
+
+  public String getOperatorName() {
+    return operatorType.toString();
   }
 
   public void setOperatorType(Operator.OperatorType operatorType) {
@@ -178,6 +191,20 @@ public abstract class PhysicalPlan {
     throw new UnsupportedOperationException(SERIALIZATION_UNIMPLEMENTED);
   }
 
+  @Override
+  public void serializeRequest(ByteBuffer buffer) {
+    serialize(buffer);
+  }
+
+  @Override
+  public void deserializeRequest(ByteBuffer buffer) throws Exception {
+    try {
+      deserialize(buffer);
+    } catch (IllegalPathException | IOException e) {
+      throw new Exception(e);
+    }
+  }
+
   /**
    * Serialize the plan into the given buffer. This is provided for WAL, so fields that can be
    * recovered will not be serialized. If error occurs when serializing this plan, the buffer will
@@ -185,7 +212,7 @@ public abstract class PhysicalPlan {
    *
    * @param buffer
    */
-  public void serialize(ByteBuffer buffer) {
+  public final void serialize(ByteBuffer buffer) {
     buffer.mark();
     try {
       serializeImpl(buffer);
@@ -269,6 +296,10 @@ public abstract class PhysicalPlan {
     if (this instanceof AuthorPlan) {
       this.loginUserName = loginUserName;
     }
+  }
+
+  public boolean isAuthenticationRequired() {
+    return true;
   }
 
   /** Used to check whether a user has the permission to execute the plan with these paths. */
@@ -429,6 +460,12 @@ public abstract class PhysicalPlan {
         case PRUNE_TEMPLATE:
           plan = new PruneTemplatePlan();
           break;
+        case DROP_TEMPLATE:
+          plan = new DropTemplatePlan();
+          break;
+        case UNSET_TEMPLATE:
+          plan = new UnsetTemplatePlan();
+          break;
         case SET_TEMPLATE:
           plan = new SetTemplatePlan();
           break;
@@ -446,9 +483,6 @@ public abstract class PhysicalPlan {
           break;
         case MERGE:
           plan = new MergePlan();
-          break;
-        case CREATE_SNAPSHOT:
-          plan = new CreateSnapshotPlan();
           break;
         case CLEARCACHE:
           plan = new ClearCachePlan();
@@ -526,7 +560,7 @@ public abstract class PhysicalPlan {
     DROP_CONTINUOUS_QUERY,
     SHOW_CONTINUOUS_QUERIES,
     MERGE,
-    CREATE_SNAPSHOT,
+    CREATE_SNAPSHOT, // the snapshot feature has been deprecated, this is kept for compatibility
     CLEARCACHE,
     CREATE_FUNCTION,
     DROP_FUNCTION,
@@ -534,7 +568,8 @@ public abstract class PhysicalPlan {
     SET_SYSTEM_MODE,
     UNSET_TEMPLATE,
     APPEND_TEMPLATE,
-    PRUNE_TEMPLATE
+    PRUNE_TEMPLATE,
+    DROP_TEMPLATE
   }
 
   public long getIndex() {
@@ -552,4 +587,12 @@ public abstract class PhysicalPlan {
    * @throws QueryProcessException when the check fails
    */
   public void checkIntegrity() throws QueryProcessException {}
+
+  public boolean isPrefixMatch() {
+    return isPrefixMatch;
+  }
+
+  public void setPrefixMatch(boolean prefixMatch) {
+    isPrefixMatch = prefixMatch;
+  }
 }

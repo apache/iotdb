@@ -80,7 +80,7 @@ public class ShowTimeseriesDataSet extends ShowDataSet {
   @Override
   public List<RowRecord> getQueryDataSet() throws MetadataException {
     List<ShowTimeSeriesResult> timeseriesList =
-        IoTDB.metaManager.showTimeseries((ShowTimeSeriesPlan) plan, context);
+        IoTDB.schemaEngine.showTimeseries((ShowTimeSeriesPlan) plan, context);
     List<RowRecord> records = new ArrayList<>();
     for (ShowTimeSeriesResult result : timeseriesList) {
       RowRecord record = new RowRecord(0);

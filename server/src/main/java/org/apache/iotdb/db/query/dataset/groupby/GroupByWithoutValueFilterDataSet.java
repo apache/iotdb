@@ -30,12 +30,19 @@ import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.query.executor.groupby.AlignedGroupByExecutor;
+import org.apache.iotdb.db.query.executor.groupby.GroupByExecutor;
+import org.apache.iotdb.db.query.executor.groupby.SlidingWindowGroupByExecutor;
+import org.apache.iotdb.db.query.executor.groupby.SlidingWindowGroupByExecutorFactory;
+import org.apache.iotdb.db.query.executor.groupby.impl.LocalAlignedGroupByExecutor;
+import org.apache.iotdb.db.query.executor.groupby.impl.LocalGroupByExecutor;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,9 +53,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
-public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
+public class GroupByWithoutValueFilterDataSet extends GroupByTimeEngineDataSet {
 
   private static final Logger logger =
       LoggerFactory.getLogger(GroupByWithoutValueFilterDataSet.class);
@@ -98,122 +104,134 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       throw new QueryProcessException("TimeFilter cannot be null in GroupBy query.");
     }
 
-    List<VirtualStorageGroupProcessor> list =
-        StorageEngine.getInstance()
-            .mergeLock(paths.stream().map(p -> (PartialPath) p).collect(Collectors.toList()));
-
     // init resultIndexes, group aligned series
     pathToAggrIndexesMap = MetaUtils.groupAggregationsBySeries(paths);
     alignedPathToAggrIndexesMap =
         MetaUtils.groupAlignedSeriesWithAggregations(pathToAggrIndexesMap);
 
+    List<PartialPath> groupedPathList =
+        new ArrayList<>(pathToAggrIndexesMap.size() + alignedPathToAggrIndexesMap.size());
+    groupedPathList.addAll(pathToAggrIndexesMap.keySet());
+    groupedPathList.addAll(alignedPathToAggrIndexesMap.keySet());
+
+    Pair<List<VirtualStorageGroupProcessor>, Map<VirtualStorageGroupProcessor, List<PartialPath>>>
+        lockListAndProcessorToSeriesMapPair =
+            StorageEngine.getInstance().mergeLock(groupedPathList);
+    List<VirtualStorageGroupProcessor> lockList = lockListAndProcessorToSeriesMapPair.left;
+    Map<VirtualStorageGroupProcessor, List<PartialPath>> processorToSeriesMap =
+        lockListAndProcessorToSeriesMapPair.right;
+
     try {
-      // init GroupByExecutor for non-aligned series
-      for (Map.Entry<PartialPath, List<Integer>> entry : pathToAggrIndexesMap.entrySet()) {
-        MeasurementPath path = (MeasurementPath) entry.getKey();
-        List<Integer> indexes = entry.getValue();
-        if (!pathExecutors.containsKey(path)) {
-          pathExecutors.put(
-              path,
-              getGroupByExecutor(
-                  path,
-                  groupByTimePlan.getAllMeasurementsInDevice(path.getDevice()),
-                  context,
-                  timeFilter.copy(),
-                  null,
-                  ascending));
-        }
-        for (int index : indexes) {
+      // init QueryDataSource Cache
+      QueryResourceManager.getInstance()
+          .initQueryDataSourceCache(processorToSeriesMap, context, timeFilter);
+    } catch (Exception e) {
+      logger.error("Meet error when init QueryDataSource ", e);
+      throw new QueryProcessException("Meet error when init QueryDataSource.", e);
+    } finally {
+      StorageEngine.getInstance().mergeUnLock(lockList);
+    }
+
+    // init GroupByExecutor for non-aligned series
+    for (Map.Entry<PartialPath, List<Integer>> entry : pathToAggrIndexesMap.entrySet()) {
+      MeasurementPath path = (MeasurementPath) entry.getKey();
+      List<Integer> indexes = entry.getValue();
+      if (!pathExecutors.containsKey(path)) {
+        pathExecutors.put(
+            path,
+            getGroupByExecutor(
+                path,
+                groupByTimePlan.getAllMeasurementsInDevice(path.getDevice()),
+                context,
+                timeFilter.copy(),
+                null,
+                ascending));
+      }
+      for (int index : indexes) {
+        AggregateResult aggrResult =
+            AggregateResultFactory.getAggrResultByName(
+                groupByTimePlan.getDeduplicatedAggregations().get(index),
+                path.getSeriesType(),
+                ascending);
+        slidingWindowGroupByExecutors[index] =
+            SlidingWindowGroupByExecutorFactory.getSlidingWindowGroupByExecutor(
+                groupByTimePlan.getDeduplicatedAggregations().get(index),
+                path.getSeriesType(),
+                ascending);
+        pathExecutors.get(path).addAggregateResult(aggrResult);
+      }
+    }
+    // init GroupByExecutor for aligned series
+    for (Map.Entry<AlignedPath, List<List<Integer>>> entry :
+        alignedPathToAggrIndexesMap.entrySet()) {
+      AlignedPath path = entry.getKey();
+      List<List<Integer>> indexesList = entry.getValue();
+      if (!alignedPathExecutors.containsKey(path)) {
+        alignedPathExecutors.put(
+            path, getAlignedGroupByExecutor(path, context, timeFilter.copy(), null, ascending));
+      }
+      for (int i = 0; i < path.getMeasurementList().size(); i++) {
+        List<AggregateResult> aggrResultList = new ArrayList<>();
+        for (int index : indexesList.get(i)) {
           AggregateResult aggrResult =
               AggregateResultFactory.getAggrResultByName(
                   groupByTimePlan.getDeduplicatedAggregations().get(index),
-                  path.getSeriesType(),
+                  path.getSchemaList().get(i).getType(),
                   ascending);
-          pathExecutors.get(path).addAggregateResult(aggrResult);
+          slidingWindowGroupByExecutors[index] =
+              SlidingWindowGroupByExecutorFactory.getSlidingWindowGroupByExecutor(
+                  groupByTimePlan.getDeduplicatedAggregations().get(index),
+                  path.getSchemaList().get(i).getType(),
+                  ascending);
+          aggrResultList.add(aggrResult);
         }
+        alignedPathExecutors.get(path).addAggregateResult(aggrResultList);
       }
-      // init GroupByExecutor for aligned series
-      for (Map.Entry<AlignedPath, List<List<Integer>>> entry :
-          alignedPathToAggrIndexesMap.entrySet()) {
-        AlignedPath path = entry.getKey();
-        List<List<Integer>> indexesList = entry.getValue();
-        if (!alignedPathExecutors.containsKey(path)) {
-          alignedPathExecutors.put(
-              path, getAlignedGroupByExecutor(path, context, timeFilter.copy(), null, ascending));
-        }
-        for (int i = 0; i < path.getMeasurementList().size(); i++) {
-          List<AggregateResult> aggrResultList = new ArrayList<>();
-          for (int index : indexesList.get(i)) {
-            AggregateResult aggrResult =
-                AggregateResultFactory.getAggrResultByName(
-                    groupByTimePlan.getDeduplicatedAggregations().get(index),
-                    path.getSchemaList().get(i).getType(),
-                    ascending);
-            aggrResultList.add(aggrResult);
-          }
-          alignedPathExecutors.get(path).addAggregateResult(aggrResultList);
-        }
-      }
-    } finally {
-      StorageEngine.getInstance().mergeUnLock(list);
     }
   }
 
   @Override
-  public RowRecord nextWithoutConstraint() throws IOException {
-    if (!hasCachedTimeInterval) {
-      throw new IOException(
-          "need to call hasNext() before calling next() " + "in GroupByWithoutValueFilterDataSet.");
-    }
-    hasCachedTimeInterval = false;
-    RowRecord record;
-    if (leftCRightO) {
-      record = new RowRecord(curStartTime);
-    } else {
-      record = new RowRecord(curEndTime - 1);
-    }
-
-    curAggregateResults = getNextAggregateResult();
-    for (AggregateResult res : curAggregateResults) {
-      if (res == null) {
-        record.addField(null);
-        continue;
-      }
-      record.addField(res.getResult(), res.getResultDataType());
-    }
-    return record;
-  }
-
-  private AggregateResult[] getNextAggregateResult() throws IOException {
+  protected AggregateResult[] getNextAggregateResult() throws IOException {
     curAggregateResults = new AggregateResult[paths.size()];
+    for (SlidingWindowGroupByExecutor slidingWindowGroupByExecutor :
+        slidingWindowGroupByExecutors) {
+      slidingWindowGroupByExecutor.setTimeRange(curStartTime, curEndTime);
+    }
     try {
-      // get aggregate results of non-aligned series
-      for (Map.Entry<PartialPath, List<Integer>> entry : pathToAggrIndexesMap.entrySet()) {
-        MeasurementPath path = (MeasurementPath) entry.getKey();
-        List<Integer> indexes = entry.getValue();
-        GroupByExecutor groupByExecutor = pathExecutors.get(path);
-        List<AggregateResult> aggregations = groupByExecutor.calcResult(curStartTime, curEndTime);
-        for (int i = 0; i < aggregations.size(); i++) {
-          int resultIndex = indexes.get(i);
-          curAggregateResults[resultIndex] = aggregations.get(i);
-        }
-      }
-      // get aggregate results of aligned series
-      for (Map.Entry<AlignedPath, List<List<Integer>>> entry :
-          alignedPathToAggrIndexesMap.entrySet()) {
-        AlignedPath path = entry.getKey();
-        List<List<Integer>> indexesList = entry.getValue();
-        AlignedGroupByExecutor groupByExecutor = alignedPathExecutors.get(path);
-        List<List<AggregateResult>> aggregationsList =
-            groupByExecutor.calcAlignedResult(curStartTime, curEndTime);
-        for (int i = 0; i < path.getMeasurementList().size(); i++) {
-          List<AggregateResult> aggregations = aggregationsList.get(i);
-          List<Integer> indexes = indexesList.get(i);
-          for (int j = 0; j < aggregations.size(); j++) {
-            int resultIndex = indexes.get(j);
-            curAggregateResults[resultIndex] = aggregations.get(j);
+      while (!isEndCal()) {
+        // get pre-aggregate results of non-aligned series
+        for (Map.Entry<PartialPath, List<Integer>> entry : pathToAggrIndexesMap.entrySet()) {
+          MeasurementPath path = (MeasurementPath) entry.getKey();
+          List<Integer> indexes = entry.getValue();
+          GroupByExecutor groupByExecutor = pathExecutors.get(path);
+          List<AggregateResult> aggregations =
+              groupByExecutor.calcResult(curPreAggrStartTime, curPreAggrEndTime);
+          for (int i = 0; i < aggregations.size(); i++) {
+            int resultIndex = indexes.get(i);
+            slidingWindowGroupByExecutors[resultIndex].update(aggregations.get(i).clone());
           }
         }
+        // get pre-aggregate results of aligned series
+        for (Map.Entry<AlignedPath, List<List<Integer>>> entry :
+            alignedPathToAggrIndexesMap.entrySet()) {
+          AlignedPath path = entry.getKey();
+          List<List<Integer>> indexesList = entry.getValue();
+          AlignedGroupByExecutor groupByExecutor = alignedPathExecutors.get(path);
+          List<List<AggregateResult>> aggregationsList =
+              groupByExecutor.calcAlignedResult(curPreAggrStartTime, curPreAggrEndTime);
+          for (int i = 0; i < path.getMeasurementList().size(); i++) {
+            List<AggregateResult> aggregations = aggregationsList.get(i);
+            List<Integer> indexes = indexesList.get(i);
+            for (int j = 0; j < aggregations.size(); j++) {
+              int resultIndex = indexes.get(j);
+              slidingWindowGroupByExecutors[resultIndex].update(aggregations.get(j).clone());
+            }
+          }
+        }
+        updatePreAggrInterval();
+      }
+      for (int i = 0; i < curAggregateResults.length; i++) {
+        curAggregateResults[i] = slidingWindowGroupByExecutors[i].getAggregateResult();
       }
     } catch (QueryProcessException e) {
       logger.error("GroupByWithoutValueFilterDataSet execute has error", e);

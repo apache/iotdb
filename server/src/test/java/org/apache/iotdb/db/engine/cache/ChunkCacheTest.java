@@ -40,7 +40,7 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -69,7 +69,7 @@ public class ChunkCacheTest {
   long flushInterval = 20;
 
   String[] deviceIds;
-  UnaryMeasurementSchema[] measurementSchemas;
+  MeasurementSchema[] measurementSchemas;
 
   List<TsFileResource> seqResources = new ArrayList<>();
   List<TsFileResource> unseqResources = new ArrayList<>();
@@ -82,7 +82,7 @@ public class ChunkCacheTest {
     if (!tempSGDir.exists()) {
       Assert.assertTrue(tempSGDir.mkdirs());
     }
-    IoTDB.metaManager.init();
+    IoTDB.schemaEngine.init();
     prepareSeries();
     prepareFiles(seqFileNum, unseqFileNum);
   }
@@ -94,7 +94,7 @@ public class ChunkCacheTest {
     unseqResources.clear();
     chunkCache.clear();
     TimeSeriesMetadataCache.getInstance().clear();
-    IoTDB.metaManager.clear();
+    IoTDB.schemaEngine.clear();
     EnvironmentUtils.cleanAllDir();
   }
 
@@ -135,21 +135,21 @@ public class ChunkCacheTest {
   }
 
   void prepareSeries() throws MetadataException {
-    measurementSchemas = new UnaryMeasurementSchema[measurementNum];
+    measurementSchemas = new MeasurementSchema[measurementNum];
     for (int i = 0; i < measurementNum; i++) {
       measurementSchemas[i] =
-          new UnaryMeasurementSchema(
+          new MeasurementSchema(
               "sensor" + i, TSDataType.DOUBLE, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED);
     }
     deviceIds = new String[deviceNum];
     for (int i = 0; i < deviceNum; i++) {
       deviceIds[i] = TEST_SG + PATH_SEPARATOR + "device" + i;
     }
-    IoTDB.metaManager.setStorageGroup(new PartialPath(TEST_SG));
+    IoTDB.schemaEngine.setStorageGroup(new PartialPath(TEST_SG));
     for (String device : deviceIds) {
-      for (UnaryMeasurementSchema measurementSchema : measurementSchemas) {
+      for (MeasurementSchema measurementSchema : measurementSchemas) {
         PartialPath devicePath = new PartialPath(device);
-        IoTDB.metaManager.createTimeseries(
+        IoTDB.schemaEngine.createTimeseries(
             devicePath.concatNode(measurementSchema.getMeasurementId()),
             measurementSchema.getType(),
             measurementSchema.getEncodingType(),
@@ -188,7 +188,7 @@ public class ChunkCacheTest {
       throws IOException, WriteProcessException {
     TsFileWriter fileWriter = new TsFileWriter(tsFileResource.getTsFile());
     for (String deviceId : deviceIds) {
-      for (UnaryMeasurementSchema measurementSchema : measurementSchemas) {
+      for (MeasurementSchema measurementSchema : measurementSchemas) {
         fileWriter.registerTimeseries(new Path(deviceId), measurementSchema);
       }
     }

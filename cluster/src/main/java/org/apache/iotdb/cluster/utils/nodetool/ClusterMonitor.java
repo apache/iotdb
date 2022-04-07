@@ -33,6 +33,8 @@ import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.server.monitor.Timer;
 import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.cluster.utils.nodetool.function.NodeToolCmd;
+import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -44,6 +46,7 @@ import org.apache.iotdb.db.service.metrics.Metric;
 import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.service.metrics.Tag;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.commons.collections4.map.MultiKeyMap;
@@ -55,7 +58,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.cluster.utils.nodetool.function.NodeToolCmd.BUILDING_CLUSTER_INFO;
@@ -90,7 +92,7 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
   private void startCollectClusterStatus() {
     // monitor all nodes' live status
     LOGGER.info("start metric node status and leader distribution");
-    Executors.newSingleThreadScheduledExecutor()
+    IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(ThreadName.Cluster_Monitor.getName())
         .scheduleAtFixedRate(
             () -> {
               MetaGroupMember metaGroupMember = ClusterIoTDB.getInstance().getMetaGroupMember();
@@ -125,6 +127,7 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
           .gauge(
               count,
               Metric.CLUSTER_NODE_LEADER_COUNT.toString(),
+              MetricLevel.IMPORTANT,
               Tag.NAME.toString(),
               node.internalIp);
     }
@@ -153,6 +156,7 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
           .gauge(
               isAlive ? 1 : 0,
               Metric.CLUSTER_NODE_STATUS.toString(),
+              MetricLevel.IMPORTANT,
               Tag.NAME.toString(),
               node.internalIp);
     }

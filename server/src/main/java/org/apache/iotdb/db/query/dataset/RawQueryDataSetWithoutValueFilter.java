@@ -20,11 +20,12 @@
 package org.apache.iotdb.db.query.dataset;
 
 import org.apache.iotdb.db.concurrent.WrappedRunnable;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.control.QueryTimeManager;
-import org.apache.iotdb.db.query.pool.QueryTaskPoolManager;
+import org.apache.iotdb.db.query.pool.RawQueryReadTaskPoolManager;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.db.utils.datastructure.TimeSelector;
@@ -100,10 +101,18 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
             }
             blockingQueue.put(batchData);
 
+            // has limit clause
             if (batchDataLengthList != null) {
               batchDataLengthList[seriesIndex] += batchData.length();
               if (batchDataLengthList[seriesIndex] >= fetchLimit) {
-                break;
+                // the queue has enough space to hold SignalBatchData, just break the while loop
+                if (blockingQueue.remainingCapacity() > 0) {
+                  break;
+                } else { // otherwise, exit without putting SignalBatchData, main thread will submit
+                  // a new task again, then it will put SignalBatchData successfully
+                  reader.setManagedByQueryManager(false);
+                  return;
+                }
               }
             }
             // if the queue also has free space, just submit another itself
@@ -174,11 +183,16 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
   private int bufferNum;
 
   // capacity for blocking queue
-  private static final int BLOCKING_QUEUE_CAPACITY = 5;
+  private static final int BLOCKING_QUEUE_CAPACITY =
+      IoTDBDescriptor.getInstance().getConfig().getRawQueryBlockingQueueCapacity();
 
   private final long queryId;
 
-  private static final QueryTaskPoolManager TASK_POOL_MANAGER = QueryTaskPoolManager.getInstance();
+  // this field record the original value of offset clause, won't change during the query execution
+  protected final int originalRowOffset;
+
+  private static final RawQueryReadTaskPoolManager TASK_POOL_MANAGER =
+      RawQueryReadTaskPoolManager.getInstance();
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(RawQueryDataSetWithoutValueFilter.class);
@@ -196,6 +210,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
         queryPlan.getDeduplicatedDataTypes(),
         queryPlan.isAscending());
     this.rowLimit = queryPlan.getRowLimit();
+    this.originalRowOffset = queryPlan.getRowOffset();
     this.rowOffset = queryPlan.getRowOffset();
     this.withoutAnyNull = queryPlan.isWithoutAnyNull();
     this.withoutAllNull = queryPlan.isWithoutAllNull();
@@ -229,6 +244,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
    */
   public RawQueryDataSetWithoutValueFilter(long queryId) {
     this.queryId = queryId;
+    this.originalRowOffset = 0;
     blockingQueueArray = new BlockingQueue[0];
     timeHeap = new TimeSelector(0, ascending);
   }
@@ -260,7 +276,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
         paths.get(seriesIndex).getFullPath(),
         batchDataLengthList,
         seriesIndex,
-        rowLimit + rowOffset);
+        rowLimit + originalRowOffset);
   }
 
   /**
@@ -295,7 +311,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
 
       long minTime = timeHeap.pollFirst();
 
-      if (withoutAnyNull && filterRowRecord(seriesNum, minTime)) {
+      if ((withoutAnyNull || withoutAllNull) && filterRowRecord(seriesNum, minTime)) {
         continue;
       }
 
@@ -493,35 +509,84 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
     return tsQueryDataSet;
   }
 
-  /** if any column in the row record is null, we filter it. */
+  /** if columns in the row record match the condition of null value filter, we filter it. */
   private boolean filterRowRecord(int seriesNum, long minTime)
       throws IOException, InterruptedException {
-    boolean hasNull = false;
+    boolean hasNull = false, isAllNull = true;
+    // because `cachedBatchDataArray[seriesIndex]` may be TSDataType.VECTOR type
+    // so seriesIndex may not be corresponding to `withoutNullColumnsIndex`
+    // we need the `index` to record
+    int index = 0;
     for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
+      if (withoutNullColumnsIndex != null && !withoutNullColumnsIndex.contains(index)) {
+        index++;
+        continue;
+      }
+
       if (cachedBatchDataArray[seriesIndex] == null
           || !cachedBatchDataArray[seriesIndex].hasCurrent()
           || cachedBatchDataArray[seriesIndex].currentTime() != minTime) {
+        index++;
         hasNull = true;
       } else {
         if (TSDataType.VECTOR == cachedBatchDataArray[seriesIndex].getDataType()) {
+          boolean nullFlag = false;
           for (TsPrimitiveType primitiveVal : cachedBatchDataArray[seriesIndex].getVector()) {
+            if (withoutNullColumnsIndex != null && !withoutNullColumnsIndex.contains(index)) {
+              index++;
+              continue;
+            }
             if (primitiveVal == null) {
               hasNull = true;
+              nullFlag = true;
+            } else {
+              isAllNull = false;
+            }
+            index++;
+          }
+
+          if (!nullFlag) {
+            isAllNull = false;
+            if (isWithoutAllNull()) {
               break;
             }
           }
+        } else {
+          index++;
+          isAllNull = false;
         }
       }
-      if (hasNull) {
+      if (hasNull && isWithoutAnyNull()) {
+        break;
+      }
+
+      if (!hasNull) {
+        isAllNull = false;
+      }
+
+      if (!isAllNull && isWithoutAllNull()) {
         break;
       }
     }
-    if (hasNull) {
+    if (hasNull && isWithoutAnyNull()) {
       for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
         if (cachedBatchDataArray[seriesIndex] != null
             && cachedBatchDataArray[seriesIndex].hasCurrent()
             && cachedBatchDataArray[seriesIndex].currentTime() == minTime) {
           prepareForNext(seriesIndex);
+        }
+      }
+      return true;
+    }
+
+    if (isAllNull && isWithoutAllNull()) {
+      if (withoutNullColumnsIndex != null) {
+        for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
+          if (cachedBatchDataArray[seriesIndex] != null
+              && cachedBatchDataArray[seriesIndex].hasCurrent()
+              && cachedBatchDataArray[seriesIndex].currentTime() == minTime) {
+            prepareForNext(seriesIndex);
+          }
         }
       }
       return true;

@@ -46,7 +46,6 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -77,7 +76,7 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
   }
 
   @Override
-  protected List<Pair<Boolean, TimeValuePair>> calculateLastPairForSeries(
+  protected List<TimeValuePair> calculateLastPairForSeries(
       List<PartialPath> seriesPaths,
       List<TSDataType> dataTypes,
       QueryContext context,
@@ -87,7 +86,7 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
     return calculateLastPairsForSeries(seriesPaths, dataTypes, context, expression, lastQueryPlan);
   }
 
-  private List<Pair<Boolean, TimeValuePair>> calculateLastPairsForSeries(
+  private List<TimeValuePair> calculateLastPairsForSeries(
       List<PartialPath> seriesPaths,
       List<TSDataType> dataTypes,
       QueryContext context,
@@ -100,14 +99,12 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
     } catch (CheckConsistencyException e) {
       throw new IOException(e);
     }
-    List<Pair<Boolean, TimeValuePair>> results = new ArrayList<>(seriesPaths.size());
+    List<TimeValuePair> results = new ArrayList<>(seriesPaths.size());
     for (int i = 0; i < seriesPaths.size(); i++) {
-      results.add(new Pair<>(true, new TimeValuePair(Long.MIN_VALUE, null)));
+      results.add(null);
     }
-
     List<PartitionGroup> globalGroups = metaGroupMember.getPartitionTable().getGlobalGroups();
-    List<Future<List<Pair<Boolean, TimeValuePair>>>> groupFutures =
-        new ArrayList<>(globalGroups.size());
+    List<Future<List<TimeValuePair>>> groupFutures = new ArrayList<>(globalGroups.size());
     List<Integer> dataTypeOrdinals = new ArrayList<>(dataTypes.size());
     for (TSDataType dataType : dataTypes) {
       dataTypeOrdinals.add(dataType.ordinal());
@@ -124,15 +121,16 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
               dataTypeOrdinals);
       groupFutures.add(lastQueryPool.submit(task));
     }
-    for (Future<List<Pair<Boolean, TimeValuePair>>> groupFuture : groupFutures) {
+    for (Future<List<TimeValuePair>> groupFuture : groupFutures) {
       try {
         // merge results from each group
-        List<Pair<Boolean, TimeValuePair>> timeValuePairs = groupFuture.get();
+        List<TimeValuePair> timeValuePairs = groupFuture.get();
         for (int i = 0; i < timeValuePairs.size(); i++) {
-          if (timeValuePairs.get(i) != null
-              && timeValuePairs.get(i).right != null
-              && timeValuePairs.get(i).right.getTimestamp() > results.get(i).right.getTimestamp()) {
-            results.get(i).right = timeValuePairs.get(i).right;
+          TimeValuePair currentResult = results.get(i);
+          TimeValuePair newResult = timeValuePairs.get(i);
+          if (currentResult == null
+              || newResult != null && newResult.getTimestamp() > currentResult.getTimestamp()) {
+            results.add(i, newResult);
           }
         }
       } catch (InterruptedException e) {
@@ -145,7 +143,7 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
     return results;
   }
 
-  class GroupLastTask implements Callable<List<Pair<Boolean, TimeValuePair>>> {
+  class GroupLastTask implements Callable<List<TimeValuePair>> {
 
     private PartitionGroup group;
     private List<PartialPath> seriesPaths;
@@ -173,11 +171,11 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
     }
 
     @Override
-    public List<Pair<Boolean, TimeValuePair>> call() throws Exception {
+    public List<TimeValuePair> call() throws Exception {
       return calculateSeriesLast(group, seriesPaths, queryContext);
     }
 
-    private List<Pair<Boolean, TimeValuePair>> calculateSeriesLast(
+    private List<TimeValuePair> calculateSeriesLast(
         PartitionGroup group, List<PartialPath> seriesPaths, QueryContext context)
         throws QueryProcessException, StorageEngineException, IOException {
       if (group.contains(metaGroupMember.getThisNode())) {
@@ -187,7 +185,7 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
       }
     }
 
-    private List<Pair<Boolean, TimeValuePair>> calculateSeriesLastLocally(
+    private List<TimeValuePair> calculateSeriesLastLocally(
         PartitionGroup group, List<PartialPath> seriesPaths, QueryContext context)
         throws StorageEngineException, QueryProcessException, IOException {
       DataGroupMember localDataMember =
@@ -201,7 +199,7 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
           seriesPaths, dataTypes, context, expression, queryPlan.getDeviceToMeasurements());
     }
 
-    private List<Pair<Boolean, TimeValuePair>> calculateSeriesLastRemotely(
+    private List<TimeValuePair> calculateSeriesLastRemotely(
         PartitionGroup group, List<PartialPath> seriesPaths, QueryContext context) {
       for (Node node : group) {
         try {
@@ -219,10 +217,10 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
           for (int i = 0; i < seriesPaths.size(); i++) {
             timeValuePairs.add(SerializeUtils.deserializeTVPair(buffer));
           }
-          List<Pair<Boolean, TimeValuePair>> results = new ArrayList<>();
+          List<TimeValuePair> results = new ArrayList<>();
           for (int i = 0; i < seriesPaths.size(); i++) {
             TimeValuePair pair = timeValuePairs.get(i);
-            results.add(new Pair<>(true, pair));
+            results.add(pair);
           }
           return results;
         } catch (IOException | TException e) {

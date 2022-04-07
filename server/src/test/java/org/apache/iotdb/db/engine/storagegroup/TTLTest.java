@@ -56,7 +56,7 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.After;
 import org.junit.Before;
@@ -102,15 +102,15 @@ public class TTLTest {
   }
 
   private void createSchemas() throws MetadataException, StorageGroupProcessorException {
-    IoTDB.metaManager.setStorageGroup(new PartialPath(sg1));
-    IoTDB.metaManager.setStorageGroup(new PartialPath(sg2));
+    IoTDB.schemaEngine.setStorageGroup(new PartialPath(sg1));
+    IoTDB.schemaEngine.setStorageGroup(new PartialPath(sg2));
     virtualStorageGroupProcessor =
         new VirtualStorageGroupProcessor(
             IoTDBDescriptor.getInstance().getConfig().getSystemDir(),
             sg1,
             new DirectFlushPolicy(),
             sg1);
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaEngine.createTimeseries(
         new PartialPath(g1s1),
         TSDataType.INT64,
         TSEncoding.PLAIN,
@@ -124,20 +124,20 @@ public class TTLTest {
     boolean caught = false;
 
     try {
-      IoTDB.metaManager.setTTL(new PartialPath(sg1 + ".notExist"), ttl);
+      IoTDB.schemaEngine.setTTL(new PartialPath(sg1 + ".notExist"), ttl);
     } catch (MetadataException e) {
       caught = true;
     }
     assertTrue(caught);
 
     // normally set ttl
-    IoTDB.metaManager.setTTL(new PartialPath(sg1), ttl);
+    IoTDB.schemaEngine.setTTL(new PartialPath(sg1), ttl);
     IStorageGroupMNode mNode =
-        IoTDB.metaManager.getStorageGroupNodeByStorageGroupPath(new PartialPath(sg1));
+        IoTDB.schemaEngine.getStorageGroupNodeByStorageGroupPath(new PartialPath(sg1));
     assertEquals(ttl, mNode.getDataTTL());
 
     // default ttl
-    mNode = IoTDB.metaManager.getStorageGroupNodeByStorageGroupPath(new PartialPath(sg2));
+    mNode = IoTDB.schemaEngine.getStorageGroupNodeByStorageGroupPath(new PartialPath(sg2));
     assertEquals(Long.MAX_VALUE, mNode.getDataTTL());
   }
 
@@ -154,10 +154,7 @@ public class TTLTest {
     plan.setMeasurementMNodes(
         new IMeasurementMNode[] {
           MeasurementMNode.getMeasurementMNode(
-              null,
-              "s1",
-              new UnaryMeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN),
-              null)
+              null, "s1", new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN), null)
         });
     plan.transferType();
 
@@ -190,10 +187,7 @@ public class TTLTest {
     plan.setMeasurementMNodes(
         new IMeasurementMNode[] {
           MeasurementMNode.getMeasurementMNode(
-              null,
-              "s1",
-              new UnaryMeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN),
-              null)
+              null, "s1", new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN), null)
         });
     plan.transferType();
 
@@ -225,7 +219,9 @@ public class TTLTest {
     // files before ttl
     QueryDataSource dataSource =
         virtualStorageGroupProcessor.query(
-            SchemaTestUtils.getMeasurementPath(sg1 + TsFileConstant.PATH_SEPARATOR + s1),
+            Collections.singletonList(
+                SchemaTestUtils.getMeasurementPath(sg1 + TsFileConstant.PATH_SEPARATOR + s1)),
+            sg1,
             EnvironmentUtils.TEST_QUERY_CONTEXT,
             null,
             null);
@@ -239,7 +235,12 @@ public class TTLTest {
     // files after ttl
     dataSource =
         virtualStorageGroupProcessor.query(
-            new PartialPath(sg1, s1), EnvironmentUtils.TEST_QUERY_CONTEXT, null, null);
+            Collections.singletonList(
+                SchemaTestUtils.getMeasurementPath(sg1 + TsFileConstant.PATH_SEPARATOR + s1)),
+            sg1,
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
+            null,
+            null);
     seqResource = dataSource.getSeqResources();
     unseqResource = dataSource.getUnseqResources();
     assertTrue(seqResource.size() < 4);
@@ -251,11 +252,10 @@ public class TTLTest {
     IBatchReader reader =
         new SeriesRawDataBatchReader(
             path,
-            allSensors,
             TSDataType.INT64,
             EnvironmentUtils.TEST_QUERY_CONTEXT,
-            dataSource,
-            null,
+            seqResource,
+            unseqResource,
             null,
             null,
             true);
@@ -275,7 +275,12 @@ public class TTLTest {
     virtualStorageGroupProcessor.setDataTTL(0);
     dataSource =
         virtualStorageGroupProcessor.query(
-            new PartialPath(sg1, s1), EnvironmentUtils.TEST_QUERY_CONTEXT, null, null);
+            Collections.singletonList(
+                SchemaTestUtils.getMeasurementPath(sg1 + TsFileConstant.PATH_SEPARATOR + s1)),
+            sg1,
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
+            null,
+            null);
     seqResource = dataSource.getSeqResources();
     unseqResource = dataSource.getUnseqResources();
     assertEquals(0, seqResource.size());
@@ -404,7 +409,7 @@ public class TTLTest {
   public void testShowTTL()
       throws IOException, QueryProcessException, QueryFilterOptimizationException,
           StorageEngineException, MetadataException, InterruptedException {
-    IoTDB.metaManager.setTTL(new PartialPath(sg1), ttl);
+    IoTDB.schemaEngine.setTTL(new PartialPath(sg1), ttl);
 
     ShowTTLPlan plan = new ShowTTLPlan(Collections.emptyList());
     PlanExecutor executor = new PlanExecutor();
@@ -434,6 +439,8 @@ public class TTLTest {
     assertEquals(4, virtualStorageGroupProcessor.getUnSequenceFileList().size());
 
     virtualStorageGroupProcessor.setDataTTL(0);
+    virtualStorageGroupProcessor.checkFilesTTL();
+
     assertEquals(0, virtualStorageGroupProcessor.getSequenceFileTreeSet().size());
     assertEquals(0, virtualStorageGroupProcessor.getUnSequenceFileList().size());
   }

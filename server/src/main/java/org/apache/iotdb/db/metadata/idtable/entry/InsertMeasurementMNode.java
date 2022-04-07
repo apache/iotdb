@@ -31,13 +31,13 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.util.Map;
 
 /**
  * Generated entity implements IMeasurementMNode interface to unify insert logic through id table
- * and mmanager
+ * and schemaEngine
  */
 public class InsertMeasurementMNode implements IMeasurementMNode {
   SchemaEntry schemaEntry;
@@ -54,7 +54,7 @@ public class InsertMeasurementMNode implements IMeasurementMNode {
       String measurementId, SchemaEntry schemaEntry, TriggerExecutor executor) {
     this.schemaEntry = schemaEntry;
     schema =
-        new UnaryMeasurementSchema(
+        new MeasurementSchema(
             measurementId,
             schemaEntry.getTSDataType(),
             schemaEntry.getTSEncoding(),
@@ -140,7 +140,7 @@ public class InsertMeasurementMNode implements IMeasurementMNode {
   }
 
   @Override
-  public void addChild(String name, IMNode child) {
+  public IMNode addChild(String name, IMNode child) {
     throw new UnsupportedOperationException("insert measurement mnode doesn't support this method");
   }
 
@@ -156,6 +156,11 @@ public class InsertMeasurementMNode implements IMeasurementMNode {
 
   @Override
   public void replaceChild(String oldChildName, IMNode newChildNode) {
+    throw new UnsupportedOperationException("insert measurement mnode doesn't support this method");
+  }
+
+  @Override
+  public void moveDataToNewMNode(IMNode newMNode) {
     throw new UnsupportedOperationException("insert measurement mnode doesn't support this method");
   }
 
