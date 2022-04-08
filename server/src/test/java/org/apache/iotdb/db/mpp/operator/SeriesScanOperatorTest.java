@@ -118,7 +118,7 @@ public class SeriesScanOperatorTest {
         count++;
       }
       assertEquals(25, count);
-    } catch (IOException | IllegalPathException e) {
+    } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
     }
