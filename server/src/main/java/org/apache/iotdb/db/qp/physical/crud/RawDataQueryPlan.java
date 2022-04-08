@@ -18,16 +18,13 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
 import org.apache.iotdb.db.qp.logical.crud.SpecialClauseComponent;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.db.utils.IExpressionDeserializeUtil;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -35,10 +32,7 @@ import org.apache.iotdb.tsfile.read.expression.IBinaryExpression;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -218,64 +212,6 @@ public class RawDataQueryPlan extends QueryPlan {
   public void transformToVector() {
     if (!this.deduplicatedVectorPaths.isEmpty()) {
       this.deduplicatedPaths = this.deduplicatedVectorPaths;
-    }
-  }
-
-  @Override
-  protected void serializeImpl(ByteBuffer buffer) {
-    super.serializeImpl(buffer);
-    ReadWriteIOUtils.write(deduplicatedPaths.size(), buffer);
-    for (PartialPath partialPath : deduplicatedPaths) {
-      partialPath.serialize(buffer);
-    }
-    if (expression == null) {
-      ReadWriteIOUtils.write((byte) 0, buffer);
-    } else {
-      ReadWriteIOUtils.write((byte) 1, buffer);
-      expression.serialize(buffer);
-    }
-    ReadWriteIOUtils.write(deviceToMeasurements.size(), buffer);
-    for (Map.Entry<String, Set<String>> e : deviceToMeasurements.entrySet()) {
-      ReadWriteIOUtils.write(e.getKey(), buffer);
-      ReadWriteIOUtils.write(e.getValue().size(), buffer);
-      for (String measurement : e.getValue()) {
-        ReadWriteIOUtils.write(measurement, buffer);
-      }
-    }
-
-    ReadWriteIOUtils.write(deduplicatedVectorPaths.size(), buffer);
-    for (PartialPath partialPath : deduplicatedVectorPaths) {
-      partialPath.serialize(buffer);
-    }
-  }
-
-  @Override
-  public void deserialize(ByteBuffer buffer) throws IllegalPathException, IOException {
-    super.deserialize(buffer);
-    int deduplicatedPathSize = ReadWriteIOUtils.readInt(buffer);
-    for (int i = 0; i < deduplicatedPathSize; i++) {
-      deduplicatedPaths.add((PartialPath) PathDeserializeUtil.deserialize(buffer));
-    }
-
-    byte type = ReadWriteIOUtils.readByte(buffer);
-    if (type == 1) {
-      expression = IExpressionDeserializeUtil.deserialize(buffer);
-    }
-
-    int deviceToMeasurementSize = ReadWriteIOUtils.readInt(buffer);
-    for (int i = 0; i < deviceToMeasurementSize; i++) {
-      String deviceName = ReadWriteIOUtils.readString(buffer);
-      int size = ReadWriteIOUtils.readInt(buffer);
-      Set<String> measurementSet = new HashSet<>();
-      for (int j = 0; j < size; j++) {
-        measurementSet.add(ReadWriteIOUtils.readString(buffer));
-      }
-      deviceToMeasurements.put(deviceName, measurementSet);
-    }
-
-    int deduplicatedVectorPathSize = ReadWriteIOUtils.readInt(buffer);
-    for (int i = 0; i < deduplicatedVectorPathSize; i++) {
-      deduplicatedVectorPaths.add((PartialPath) PathDeserializeUtil.deserialize(buffer));
     }
   }
 }

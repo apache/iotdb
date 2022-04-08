@@ -222,13 +222,7 @@ public abstract class PhysicalPlan implements IConsensusRequest {
   }
 
   protected void serializeImpl(ByteBuffer buffer) {
-    ReadWriteIOUtils.write(isQuery, buffer);
-    ReadWriteIOUtils.write(operatorType.ordinal(), buffer);
-    ReadWriteIOUtils.write(canBeSplit, buffer);
-    ReadWriteIOUtils.write(loginUserName, buffer);
-    ReadWriteIOUtils.write(index, buffer);
-    ReadWriteIOUtils.write(debug, buffer);
-    ReadWriteIOUtils.write(isPrefixMatch, buffer);
+    throw new UnsupportedOperationException(SERIALIZATION_UNIMPLEMENTED);
   }
 
   /**
@@ -238,13 +232,7 @@ public abstract class PhysicalPlan implements IConsensusRequest {
    * @param buffer
    */
   public void deserialize(ByteBuffer buffer) throws IllegalPathException, IOException {
-    isQuery = ReadWriteIOUtils.readBool(buffer);
-    operatorType = Operator.OperatorType.values()[ReadWriteIOUtils.readInt(buffer)];
-    canBeSplit = ReadWriteIOUtils.readBool(buffer);
-    loginUserName = ReadWriteIOUtils.readString(buffer);
-    index = ReadWriteIOUtils.readLong(buffer);
-    debug = ReadWriteIOUtils.readBool(buffer);
-    isPrefixMatch = ReadWriteIOUtils.readBool(buffer);
+    throw new UnsupportedOperationException(SERIALIZATION_UNIMPLEMENTED);
   }
 
   protected void putString(ByteBuffer buffer, String value) {
