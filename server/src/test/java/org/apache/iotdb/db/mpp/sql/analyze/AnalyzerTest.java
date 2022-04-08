@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.sql.analyze;
 
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
+import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.sql.parser.StatementGenerator;
 
 import org.junit.Assert;
@@ -47,7 +48,7 @@ public class AnalyzerTest {
 
   private void assertAnalyzeSemanticException(String sql, String message) {
     try {
-      Analyzer analyzer = new Analyzer(new MPPQueryContext());
+      Analyzer analyzer = new Analyzer(new MPPQueryContext(new QueryId("test_query")));
       analyzer.analyze(StatementGenerator.createStatement(sql, ZonedDateTime.now().getOffset()));
       fail();
     } catch (RuntimeException e) {
