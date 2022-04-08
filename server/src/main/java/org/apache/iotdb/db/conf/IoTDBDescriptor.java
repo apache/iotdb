@@ -161,6 +161,10 @@ public class IoTDBDescriptor {
           Integer.parseInt(
               properties.getProperty("rpc_port", Integer.toString(conf.getRpcPort()))));
 
+      conf.setMppPort(
+          Integer.parseInt(
+              properties.getProperty("mpp_port", Integer.toString(conf.getRpcPort()))));
+
       conf.setEnableInfluxDBRpcService(
           Boolean.parseBoolean(
               properties.getProperty(
@@ -833,6 +837,9 @@ public class IoTDBDescriptor {
 
       // cluster
       loadClusterProps(properties);
+
+      // shuffle
+      loadShuffleProps(properties);
     } catch (FileNotFoundException e) {
       logger.warn("Fail to find config file {}", url, e);
     } catch (IOException e) {
@@ -1472,6 +1479,28 @@ public class IoTDBDescriptor {
     conf.setInternalPort(
         Integer.parseInt(
             properties.getProperty("internal_port", Integer.toString(conf.getInternalPort()))));
+  }
+
+  public void loadShuffleProps(Properties properties) {
+    conf.setDataBlockManagerPort(
+        Integer.parseInt(
+            properties.getProperty(
+                "data_block_manager_port", Integer.toString(conf.getDataBlockManagerPort()))));
+    conf.setDataBlockManagerCorePoolSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "data_block_manager_core_pool_size",
+                Integer.toString(conf.getDataBlockManagerCorePoolSize()))));
+    conf.setDataBlockManagerMaxPoolSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "data_block_manager_max_pool_size",
+                Integer.toString(conf.getDataBlockManagerMaxPoolSize()))));
+    conf.setDataBlockManagerKeepAliveTimeInMs(
+        Integer.parseInt(
+            properties.getProperty(
+                "data_block_manager_keep_alive_time_in_ms",
+                Integer.toString(conf.getDataBlockManagerKeepAliveTimeInMs()))));
   }
 
   /** Get default encode algorithm by data type */

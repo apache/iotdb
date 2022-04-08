@@ -38,10 +38,6 @@ import org.apache.iotdb.db.mpp.sql.statement.sys.AuthorStatement;
  */
 public abstract class StatementVisitor<R, C> {
 
-  public R process(StatementNode node) {
-    return process(node, null);
-  }
-
   public R process(StatementNode node, C context) {
     return node.accept(this, context);
   }

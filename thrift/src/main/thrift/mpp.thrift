@@ -27,23 +27,34 @@ struct TFragmentInstanceId {
 }
 
 struct GetDataBlockRequest {
-  1: required TFragmentInstanceId fragmentInstanceId
-  2: required i64 blockId
+  1: required TFragmentInstanceId sourceFragmentInstanceId
+  2: required i32 startSequenceId
+  3: required i32 endSequenceId
 }
 
 struct GetDataBlockResponse {
   1: required list<binary> tsBlocks
 }
 
+struct AcknowledgeDataBlockEvent {
+  1: required TFragmentInstanceId sourceFragmentInstanceId
+  2: required i32 startSequenceId
+  3: required i32 endSequenceId
+}
+
 struct NewDataBlockEvent {
-  1: required TFragmentInstanceId fragmentInstanceId
-  2: required string operatorId
-  3: required i64 blockId
+  1: required TFragmentInstanceId targetFragmentInstanceId
+  2: required string targetPlanNodeId
+  3: required TFragmentInstanceId sourceFragmentInstanceId
+  4: required i32 startSequenceId
+  5: required list<i64> blockSizes
 }
 
 struct EndOfDataBlockEvent {
-  1: required TFragmentInstanceId fragmentInstanceId
-  2: required string operatorId
+  1: required TFragmentInstanceId targetFragmentInstanceId
+  2: required string targetPlanNodeId
+  3: required TFragmentInstanceId sourceFragmentInstanceId
+  4: required i32 lastSequenceId
 }
 
 struct TFragmentInstance {
@@ -110,6 +121,8 @@ service InternalService {
 
 service DataBlockService {
   GetDataBlockResponse getDataBlock(GetDataBlockRequest req);
+
+  void onAcknowledgeDataBlockEvent(AcknowledgeDataBlockEvent e);
 
   void onNewDataBlockEvent(NewDataBlockEvent e);
 
