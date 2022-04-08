@@ -718,6 +718,13 @@ var config = {
 						]
 					},
 					{
+<<<<<<< HEAD
+					    title: 'UDF Library',
+					    children: [
+					        ['Library-UDF/Get-Started', 'Get Started'],
+					        ['Library-UDF/Data-Quality', 'Data Quality']
+					    ]
+=======
 						title: 'Write and Delete Data',
 						sidebarDepth: 1,
 						children: [
@@ -726,6 +733,7 @@ var config = {
 							['Write-And-Delete-Data/CSV-Tool','CSV Tool'],
 							['Write-And-Delete-Data/Delete-Data','Delete Data']
 						]
+>>>>>>> master
 					},
 					{
 						title: 'Query Data',
@@ -1637,6 +1645,13 @@ var config = {
 						]
 					},
 					{
+<<<<<<< HEAD
+          				title: 'UDF 函数库',
+          				children: [
+          					['Library-UDF/Get-started', '快速上手'],
+          					['Library-UDF/Data-Quality', '数据质量']
+          				]
+=======
 						title: '数据写入和删除',
 						sidebarDepth: 1,
 						children: [
@@ -1645,6 +1660,7 @@ var config = {
 							['Write-And-Delete-Data/CSV-Tool','导入导出 CSV'],
 							['Write-And-Delete-Data/Delete-Data','删除数据']
 						]
+>>>>>>> master
 					},
 					{
 						title: '数据查询',

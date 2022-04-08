@@ -23,17 +23,16 @@ import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.commons.lang.Validate;
 
 import java.nio.ByteBuffer;
 import java.util.List;
 
 public class FragmentSinkNode extends SinkNode {
   private PlanNode child;
-  private ExchangeNode downStreamNode;
 
   private Endpoint downStreamEndpoint;
   private FragmentInstanceId downStreamInstanceId;
@@ -49,16 +48,26 @@ public class FragmentSinkNode extends SinkNode {
   }
 
   @Override
-  public void addChild(PlanNode child) {
-    this.child = child;
-  }
-
-  @Override
   public PlanNode clone() {
     FragmentSinkNode sinkNode = new FragmentSinkNode(getId());
     sinkNode.setDownStream(downStreamEndpoint, downStreamInstanceId, downStreamPlanNodeId);
-    sinkNode.setDownStreamNode(downStreamNode);
     return sinkNode;
+  }
+
+  @Override
+  public PlanNode cloneWithChildren(List<PlanNode> children) {
+    Validate.isTrue(
+        children == null || children.size() == 1,
+        "Children size of FragmentSinkNode should be 0 or 1");
+    FragmentSinkNode sinkNode = (FragmentSinkNode) clone();
+    if (children != null) {
+      sinkNode.setChild(children.get(0));
+    }
+    return sinkNode;
+  }
+
+  public void addChild(PlanNode child) {
+    this.child = child;
   }
 
   @Override
@@ -121,18 +130,14 @@ public class FragmentSinkNode extends SinkNode {
         getDownStreamEndpoint().getIp(), getDownStreamInstanceId(), getDownStreamPlanNodeId());
   }
 
-  public ExchangeNode getDownStreamNode() {
-    return downStreamNode;
-  }
-
-  public void setDownStreamNode(ExchangeNode downStreamNode) {
-    this.downStreamNode = downStreamNode;
-  }
-
   public void setDownStream(Endpoint endPoint, FragmentInstanceId instanceId, PlanNodeId nodeId) {
     this.downStreamEndpoint = endPoint;
     this.downStreamInstanceId = instanceId;
     this.downStreamPlanNodeId = nodeId;
+  }
+
+  public void setDownStreamPlanNodeId(PlanNodeId downStreamPlanNodeId) {
+    this.downStreamPlanNodeId = downStreamPlanNodeId;
   }
 
   public Endpoint getDownStreamEndpoint() {

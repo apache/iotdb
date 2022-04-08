@@ -17,7 +17,6 @@
 #
 
 import struct
-
 from iotdb.utils.IoTDBConstants import TSDataType
 from iotdb.utils.BitMap import BitMap
 
@@ -41,14 +40,24 @@ class NumpyTablet(object):
         """
         if len(values) > 0 and len(values[0]) != len(timestamps):
             raise RuntimeError(
-                "Input error! len(timestamps) does not equal to len(values)!"
+                "Input error! len(timestamps) does not equal to len(values[0])!"
+            )
+        if len(values) != len(data_types):
+            raise RuntimeError(
+                "Input error! len(values) does not equal to len(data_types)!"
             )
 
-        if not NumpyTablet.check_sorted(timestamps):
+        if not self.check_sorted(timestamps):
             index = timestamps.argsort()
             timestamps = timestamps[index]
             for i in range(len(values)):
                 values[i] = values[i][index]
+
+        if timestamps.dtype != TSDataType.INT64.np_dtype():
+            timestamps = timestamps.astype(TSDataType.INT64.np_dtype())
+        for i in range(len(values)):
+            if values[i].dtype != data_types[i].np_dtype():
+                values[i] = values[i].astype(data_types[i].np_dtype())
 
         self.__values = values
         self.__timestamps = timestamps

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.common;
 
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
@@ -32,6 +33,9 @@ public class QueryId {
 
   private final String id;
 
+  private int nextPlanNodeIndex;
+  private int nextPlanFragmentIndex;
+
   public static QueryId valueOf(String queryId) {
     // ID is verified in the constructor
     return new QueryId(queryId);
@@ -39,6 +43,16 @@ public class QueryId {
 
   public QueryId(String id) {
     this.id = validateId(id);
+    this.nextPlanNodeIndex = 0;
+    this.nextPlanFragmentIndex = 0;
+  }
+
+  public PlanNodeId genPlanNodeId() {
+    return new PlanNodeId(String.format("%s_%d", id, nextPlanNodeIndex++));
+  }
+
+  public PlanFragmentId genPlanFragmentId() {
+    return new PlanFragmentId(this, nextPlanFragmentIndex++);
   }
 
   public String getId() {

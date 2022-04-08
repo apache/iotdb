@@ -21,7 +21,6 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeIdAllocator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -62,7 +61,7 @@ public class LimitNode extends ProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new LimitNode(PlanNodeIdAllocator.generateId(), this.limit);
+    return new LimitNode(getId(), this.limit);
   }
 
   @Override
