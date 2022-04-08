@@ -19,9 +19,10 @@
 
 package org.apache.iotdb.db.service.metrics;
 
-import com.sun.management.OperatingSystemMXBean;
 import org.apache.iotdb.metrics.MetricManager;
 import org.apache.iotdb.metrics.utils.MetricLevel;
+
+import com.sun.management.OperatingSystemMXBean;
 
 import java.lang.management.ManagementFactory;
 
@@ -31,60 +32,61 @@ import java.lang.management.ManagementFactory;
  */
 public class ProcessMetricsMonitor {
 
-    private MetricManager metricManager = MetricsService.getInstance().getMetricManager();
-    private static OperatingSystemMXBean sunOsMXBean;
+  private MetricManager metricManager = MetricsService.getInstance().getMetricManager();
+  private static OperatingSystemMXBean sunOsMXBean;
 
-    public void collectProcessCPUInfo() {
-        metricManager.getOrCreateAutoGauge(
-                Metric.PROCESS_CPU_LOAD.toString(),
-                MetricLevel.IMPORTANT,
-                sunOsMXBean,
-                a -> (long) (sunOsMXBean.getProcessCpuLoad() * 100),
-                Tag.NAME.toString(),
-                "process");
-        metricManager.getOrCreateAutoGauge(
-                Metric.PROCESS_CPU_TIME.toString(),
-                MetricLevel.IMPORTANT,
-                sunOsMXBean,
-                com.sun.management.OperatingSystemMXBean::getProcessCpuTime,
-                Tag.NAME.toString(),
-                "process");
-    }
+  public void collectProcessCPUInfo() {
+    metricManager.getOrCreateAutoGauge(
+        Metric.PROCESS_CPU_LOAD.toString(),
+        MetricLevel.IMPORTANT,
+        sunOsMXBean,
+        a -> (long) (sunOsMXBean.getProcessCpuLoad() * 100),
+        Tag.NAME.toString(),
+        "process");
+    metricManager.getOrCreateAutoGauge(
+        Metric.PROCESS_CPU_TIME.toString(),
+        MetricLevel.IMPORTANT,
+        sunOsMXBean,
+        com.sun.management.OperatingSystemMXBean::getProcessCpuTime,
+        Tag.NAME.toString(),
+        "process");
+  }
 
-    public void collectProcessMemInfo() {
-        Runtime runtime = Runtime.getRuntime();
-        metricManager.getOrCreateAutoGauge(
-                Metric.PROCESS_MAX_MEM.toString(),
-                MetricLevel.IMPORTANT,
-                runtime,
-                a -> runtime.maxMemory(),
-                Tag.NAME.toString(),
-                "process");
-        metricManager.getOrCreateAutoGauge(
-                Metric.PROCESS_TOTAL_MEM.toString(),
-                MetricLevel.IMPORTANT,
-                runtime,
-                a -> runtime.totalMemory(),
-                Tag.NAME.toString(),
-                "process");
-        metricManager.getOrCreateAutoGauge(
-                Metric.PROCESS_FREE_MEM.toString(),
-                MetricLevel.IMPORTANT,
-                runtime,
-                a -> runtime.freeMemory(),
-                Tag.NAME.toString(),
-                "process");
-    }
+  public void collectProcessMemInfo() {
+    Runtime runtime = Runtime.getRuntime();
+    metricManager.getOrCreateAutoGauge(
+        Metric.PROCESS_MAX_MEM.toString(),
+        MetricLevel.IMPORTANT,
+        runtime,
+        a -> runtime.maxMemory(),
+        Tag.NAME.toString(),
+        "process");
+    metricManager.getOrCreateAutoGauge(
+        Metric.PROCESS_TOTAL_MEM.toString(),
+        MetricLevel.IMPORTANT,
+        runtime,
+        a -> runtime.totalMemory(),
+        Tag.NAME.toString(),
+        "process");
+    metricManager.getOrCreateAutoGauge(
+        Metric.PROCESS_FREE_MEM.toString(),
+        MetricLevel.IMPORTANT,
+        runtime,
+        a -> runtime.freeMemory(),
+        Tag.NAME.toString(),
+        "process");
+  }
 
-    private ProcessMetricsMonitor() {
-        sunOsMXBean = (com.sun.management.OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
-    }
+  private ProcessMetricsMonitor() {
+    sunOsMXBean =
+        (com.sun.management.OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
+  }
 
-    public static ProcessMetricsMonitor getInstance() {
-        return ThreadMetricsMonitorHolder.INSTANCE;
-    }
+  public static ProcessMetricsMonitor getInstance() {
+    return ThreadMetricsMonitorHolder.INSTANCE;
+  }
 
-    private static class ThreadMetricsMonitorHolder {
-        private static final ProcessMetricsMonitor INSTANCE = new ProcessMetricsMonitor();
-    }
+  private static class ThreadMetricsMonitorHolder {
+    private static final ProcessMetricsMonitor INSTANCE = new ProcessMetricsMonitor();
+  }
 }

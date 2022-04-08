@@ -19,85 +19,83 @@
 
 package org.apache.iotdb.db.service.metrics;
 
-import com.sun.management.OperatingSystemMXBean;
 import org.apache.iotdb.metrics.MetricManager;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
-import java.lang.management.ManagementFactory;
+import com.sun.management.OperatingSystemMXBean;
 
+import java.lang.management.ManagementFactory;
 
 /**
  * @author Erickin
  * @create 2022-03-31-下午 3:09
  */
 public class SysRunMetricsMonitor {
-    private MetricManager metricManager = MetricsService.getInstance().getMetricManager();
-    private static com.sun.management.OperatingSystemMXBean osMXBean;
+  private MetricManager metricManager = MetricsService.getInstance().getMetricManager();
+  private static com.sun.management.OperatingSystemMXBean osMXBean;
 
+  private SysRunMetricsMonitor() {
+    osMXBean = (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
+  }
 
-    private SysRunMetricsMonitor() {
-        osMXBean = (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
-    }
+  public void collectSystemCpuInfo() {
+    metricManager.getOrCreateAutoGauge(
+        Metric.SYS_CPU_LOAD.toString(),
+        MetricLevel.IMPORTANT,
+        osMXBean,
+        a -> (long) (osMXBean.getSystemCpuLoad() * 100),
+        Tag.NAME.toString(),
+        "system");
 
-    public void collectSystemCpuInfo() {
-        metricManager.getOrCreateAutoGauge(
-                Metric.SYS_CPU_LOAD.toString(),
-                MetricLevel.IMPORTANT,
-                osMXBean,
-                a -> (long) (osMXBean.getSystemCpuLoad() * 100),
-                Tag.NAME.toString(),
-                "system");
+    metricManager
+        .getOrCreateGauge(
+            Metric.SYS_CPU_CORES.toString(), MetricLevel.IMPORTANT, Tag.NAME.toString(), "system")
+        .set(osMXBean.getAvailableProcessors());
+  }
 
-        metricManager.getOrCreateGauge(
-                Metric.SYS_CPU_CORES.toString(),
-                MetricLevel.IMPORTANT,
-                Tag.NAME.toString(),
-                "system").set(osMXBean.getAvailableProcessors());
-    }
+  public void collectSystemMEMInfo() {
+    metricManager
+        .getOrCreateGauge(
+            Metric.SYS_TOTAL_PHYSICAL_MEMORY_SIZE.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            "system")
+        .set(osMXBean.getTotalPhysicalMemorySize());
+    metricManager.getOrCreateAutoGauge(
+        Metric.SYS_FREE_PHYSICAL_MEMORY_SIZE.toString(),
+        MetricLevel.IMPORTANT,
+        osMXBean,
+        a -> osMXBean.getFreePhysicalMemorySize(),
+        Tag.NAME.toString(),
+        "system");
+    metricManager.getOrCreateAutoGauge(
+        Metric.SYS_TOTAL_SWAP_SPACE_SIZE.toString(),
+        MetricLevel.IMPORTANT,
+        osMXBean,
+        a -> osMXBean.getTotalSwapSpaceSize(),
+        Tag.NAME.toString(),
+        "system");
+    metricManager.getOrCreateAutoGauge(
+        Metric.SYS_FREE_SWAP_SPACE_SIZE.toString(),
+        MetricLevel.IMPORTANT,
+        osMXBean,
+        a -> osMXBean.getFreeSwapSpaceSize(),
+        Tag.NAME.toString(),
+        "system");
+    metricManager.getOrCreateAutoGauge(
+        Metric.SYS_COMMITTED_VM_SIZE.toString(),
+        MetricLevel.IMPORTANT,
+        osMXBean,
+        a -> osMXBean.getCommittedVirtualMemorySize(),
+        Tag.NAME.toString(),
+        "system");
+  }
 
-    public void collectSystemMEMInfo() {
-        metricManager.getOrCreateGauge(
-                Metric.SYS_TOTAL_PHYSICAL_MEMORY_SIZE.toString(),
-                MetricLevel.IMPORTANT,
-                Tag.NAME.toString(),
-                "system")
-                .set(osMXBean.getTotalPhysicalMemorySize());
-        metricManager.getOrCreateAutoGauge(
-                Metric.SYS_FREE_PHYSICAL_MEMORY_SIZE.toString(),
-                MetricLevel.IMPORTANT,
-                osMXBean,
-                a -> osMXBean.getFreePhysicalMemorySize(),
-                Tag.NAME.toString(),
-                "system");
-        metricManager.getOrCreateAutoGauge(
-                Metric.SYS_TOTAL_SWAP_SPACE_SIZE.toString(),
-                MetricLevel.IMPORTANT,
-                osMXBean,
-                a -> osMXBean.getTotalSwapSpaceSize(),
-                Tag.NAME.toString(),
-                "system");
-        metricManager.getOrCreateAutoGauge(
-                Metric.SYS_FREE_SWAP_SPACE_SIZE.toString(),
-                MetricLevel.IMPORTANT,
-                osMXBean,
-                a -> osMXBean.getFreeSwapSpaceSize(),
-                Tag.NAME.toString(),
-                "system");
-        metricManager.getOrCreateAutoGauge(
-                Metric.SYS_COMMITTED_VM_SIZE.toString(),
-                MetricLevel.IMPORTANT,
-                osMXBean,
-                a -> osMXBean.getCommittedVirtualMemorySize(),
-                Tag.NAME.toString(),
-                "system");
-    }
+  public static SysRunMetricsMonitor getInstance() {
+    return SysRunMetricsMonitor.SysRunMetricsMonitorHolder.INSTANCE;
+  }
 
-
-    public static SysRunMetricsMonitor getInstance() {
-        return SysRunMetricsMonitor.SysRunMetricsMonitorHolder.INSTANCE;
-    }
-
-    private static class SysRunMetricsMonitorHolder {
-        private static final SysRunMetricsMonitor INSTANCE = new SysRunMetricsMonitor();
-    }
+  private static class SysRunMetricsMonitorHolder {
+    private static final SysRunMetricsMonitor INSTANCE = new SysRunMetricsMonitor();
+  }
 }
