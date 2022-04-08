@@ -42,13 +42,13 @@ public class MTreeReleaseTaskManager {
     return MTreeReleaseTaskManager.MTreeReleaseTaskManagerHolder.INSTANCE;
   }
 
-  public void init() {
+  public synchronized void init() {
     releaseTaskExecutor =
         IoTDBThreadPoolFactory.newCachedThreadPool(
             MTREE_RELEASE_THREAD_POOL_NAME, Runtime.getRuntime().availableProcessors());
   }
 
-  public void clear() {
+  public synchronized void clear() {
     if (releaseTaskExecutor != null) {
       releaseTaskExecutor.shutdownNow();
       while (!releaseTaskExecutor.isTerminated()) ;
@@ -56,7 +56,7 @@ public class MTreeReleaseTaskManager {
     }
   }
 
-  public void submit(Runnable task) {
+  public synchronized void submit(Runnable task) {
     try {
       if (!releaseTaskExecutor.isShutdown()) {
         releaseTaskExecutor.submit(task);
