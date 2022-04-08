@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.consensus;
 
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class SchemaRegionId implements ConsensusGroupId {
 
@@ -44,12 +45,29 @@ public class SchemaRegionId implements ConsensusGroupId {
   }
 
   @Override
+  public int getId() {
+    return id;
+  }
+
+  @Override
   public GroupType getType() {
     return GroupType.SchemaRegion;
   }
 
   @Override
-  public int getId() {
-    return id;
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    SchemaRegionId that = (SchemaRegionId) o;
+    return id == that.id;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(id, GroupType.SchemaRegion);
   }
 }

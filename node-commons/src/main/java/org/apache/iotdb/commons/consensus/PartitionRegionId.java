@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.consensus;
 
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class PartitionRegionId implements ConsensusGroupId {
 
@@ -51,5 +52,22 @@ public class PartitionRegionId implements ConsensusGroupId {
   @Override
   public GroupType getType() {
     return GroupType.PartitionRegion;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    PartitionRegionId that = (PartitionRegionId) o;
+    return id == that.id;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(id, GroupType.PartitionRegion);
   }
 }
