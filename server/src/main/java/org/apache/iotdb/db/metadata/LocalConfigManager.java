@@ -190,7 +190,6 @@ public class LocalConfigManager {
 
       if (timedForceMLogThread != null) {
         timedForceMLogThread.shutdownNow();
-        while (!timedForceMLogThread.isTerminated()) ;
         timedForceMLogThread = null;
       }
     } catch (IOException e) {
