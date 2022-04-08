@@ -21,10 +21,14 @@ package org.apache.iotdb.db.metadata.mtree.store.disk;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.concurrent.ExecutorService;
 
 public class MTreeReleaseTaskManager {
 
+  private static final Logger logger = LoggerFactory.getLogger(MTreeReleaseTaskManager.class);
   private static final String MTREE_RELEASE_THREAD_POOL_NAME = "MTree-release-task";
 
   private volatile ExecutorService releaseTaskExecutor;
@@ -56,6 +60,15 @@ public class MTreeReleaseTaskManager {
   }
 
   public void submit(Runnable task) {
-    releaseTaskExecutor.submit(task);
+    releaseTaskExecutor.submit(
+        () -> {
+          try {
+            task.run();
+          } catch (Throwable throwable) {
+            logger.error("Something wrong happened during MTree release.", throwable);
+            throwable.printStackTrace();
+            throw throwable;
+          }
+        });
   }
 }

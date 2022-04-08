@@ -21,10 +21,14 @@ package org.apache.iotdb.db.metadata.mtree.store.disk;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.concurrent.ExecutorService;
 
 public class MTreeFlushTaskManager {
 
+  private static final Logger logger = LoggerFactory.getLogger(MTreeFlushTaskManager.class);
   private static final String MTREE_FLUSH_THREAD_POOL_NAME = "MTree-flush-task";
 
   private volatile ExecutorService flushTaskExecutor;
@@ -57,6 +61,15 @@ public class MTreeFlushTaskManager {
   }
 
   public void submit(Runnable task) {
-    flushTaskExecutor.submit(task);
+    flushTaskExecutor.submit(
+        () -> {
+          try {
+            task.run();
+          } catch (Throwable throwable) {
+            logger.error("Something wrong happened during MTree flush.", throwable);
+            throwable.printStackTrace();
+            throw throwable;
+          }
+        });
   }
 }
