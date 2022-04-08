@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.sql.statement;
 
+import org.apache.iotdb.db.mpp.sql.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.QueryStatement;
@@ -27,17 +28,14 @@ import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesSta
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
 
 /**
- * This class provides a visitor of {@link StatementNode}, which can be extended to create a visitor
- * which only needs to handle a subset of the available methods.
+ * This class provides a visitor of {@link org.apache.iotdb.db.mpp.sql.statement.StatementNode},
+ * which can be extended to create a visitor which only needs to handle a subset of the available
+ * methods.
  *
  * @param <R> The return type of the visit operation.
  * @param <C> The context information during visiting.
  */
 public abstract class StatementVisitor<R, C> {
-
-  public R process(StatementNode node) {
-    return process(node, null);
-  }
 
   public R process(StatementNode node, C context) {
     return node.accept(this, context);
@@ -84,5 +82,9 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitInsertTablet(InsertTabletStatement insertTabletStatement, C context) {
     return visitStatement(insertTabletStatement, context);
+  }
+
+  public R visitInsertRow(InsertRowStatement insertRowStatement, C context) {
+    return visitStatement(insertRowStatement, context);
   }
 }

@@ -39,6 +39,8 @@ import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.Coordinator;
 import org.apache.iotdb.db.mpp.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
+import org.apache.iotdb.db.mpp.sql.parser.StatementGenerator;
+import org.apache.iotdb.db.mpp.sql.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -320,16 +322,6 @@ public class TSServiceImpl implements TSIService.Iface {
   public TSOpenSessionResp openSession(TSOpenSessionReq req) throws TException {
     IoTDBConstant.ClientVersion clientVersion = parseClientVersion(req);
     BasicOpenSessionResp openSessionResp =
-        serviceProvider.openSession(
-            req.username, req.password, req.zoneId, req.client_protocol, clientVersion);
-    TSStatus tsStatus = RpcUtils.getStatus(openSessionResp.getCode(), openSessionResp.getMessage());
-    TSOpenSessionResp resp = new TSOpenSessionResp(tsStatus, CURRENT_RPC_VERSION);
-    return resp.setSessionId(openSessionResp.getSessionId());
-  }
-
-  public TSOpenSessionResp openSessionV2(TSOpenSessionReq req) throws TException {
-    IoTDBConstant.ClientVersion clientVersion = parseClientVersion(req);
-    BasicOpenSessionResp openSessionResp =
         SESSION_MANAGER.openSession(
             req.username, req.password, req.zoneId, req.client_protocol, clientVersion);
     TSStatus tsStatus = RpcUtils.getStatus(openSessionResp.getCode(), openSessionResp.getMessage());
@@ -348,13 +340,6 @@ public class TSServiceImpl implements TSIService.Iface {
   @Override
   public TSStatus closeSession(TSCloseSessionReq req) {
     return new TSStatus(
-        !serviceProvider.closeSession(req.sessionId)
-            ? RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR)
-            : RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
-  }
-
-  public TSStatus closeSessionV2(TSCloseSessionReq req) {
-    return new TSStatus(
         !SESSION_MANAGER.closeSession(req.sessionId)
             ? RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR)
             : RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
@@ -368,7 +353,7 @@ public class TSServiceImpl implements TSIService.Iface {
 
   @Override
   public TSStatus closeOperation(TSCloseOperationReq req) {
-    return serviceProvider.closeOperation(
+    return SESSION_MANAGER.closeOperation(
         req.sessionId, req.queryId, req.statementId, req.isSetStatementId(), req.isSetQueryId());
   }
 
@@ -376,7 +361,7 @@ public class TSServiceImpl implements TSIService.Iface {
   public TSFetchMetadataResp fetchMetadata(TSFetchMetadataReq req) {
     TSFetchMetadataResp resp = new TSFetchMetadataResp();
 
-    if (!serviceProvider.checkLogin(req.getSessionId())) {
+    if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
       return resp.setStatus(getNotLoggedInStatus());
     }
 
@@ -522,7 +507,7 @@ public class TSServiceImpl implements TSIService.Iface {
     long t1 = System.currentTimeMillis();
     List<TSStatus> result = new ArrayList<>();
     boolean isAllSuccessful = true;
-    if (!serviceProvider.checkLogin(req.getSessionId())) {
+    if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
       return getNotLoggedInStatus();
     }
 
@@ -554,7 +539,7 @@ public class TSServiceImpl implements TSIService.Iface {
             index = 0;
           }
 
-          TSStatus status = serviceProvider.checkAuthority(physicalPlan, req.getSessionId());
+          TSStatus status = SESSION_MANAGER.checkAuthority(physicalPlan, req.getSessionId());
           if (status != null) {
             insertRowsPlan.getResults().put(index, status);
             isAllSuccessful = false;
@@ -576,7 +561,7 @@ public class TSServiceImpl implements TSIService.Iface {
             multiPlan = new CreateMultiTimeSeriesPlan();
             executeList.add(multiPlan);
           }
-          TSStatus status = serviceProvider.checkAuthority(physicalPlan, req.getSessionId());
+          TSStatus status = SESSION_MANAGER.checkAuthority(physicalPlan, req.getSessionId());
           if (status != null) {
             multiPlan.getResults().put(i, status);
             isAllSuccessful = false;
@@ -628,7 +613,7 @@ public class TSServiceImpl implements TSIService.Iface {
   public TSExecuteStatementResp executeStatement(TSExecuteStatementReq req) {
     String statement = req.getStatement();
     try {
-      if (!serviceProvider.checkLogin(req.getSessionId())) {
+      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
         return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
       }
 
@@ -666,7 +651,7 @@ public class TSServiceImpl implements TSIService.Iface {
   @Override
   public TSExecuteStatementResp executeQueryStatement(TSExecuteStatementReq req) {
     try {
-      if (!serviceProvider.checkLogin(req.getSessionId())) {
+      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
         return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
       }
 
@@ -702,7 +687,7 @@ public class TSServiceImpl implements TSIService.Iface {
   @Override
   public TSExecuteStatementResp executeRawDataQuery(TSRawDataQueryReq req) {
     try {
-      if (!serviceProvider.checkLogin(req.getSessionId())) {
+      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
         return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
       }
 
@@ -748,7 +733,7 @@ public class TSServiceImpl implements TSIService.Iface {
   @Override
   public TSExecuteStatementResp executeLastDataQuery(TSLastDataQueryReq req) {
     try {
-      if (!serviceProvider.checkLogin(req.getSessionId())) {
+      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
         return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
       }
 
@@ -822,7 +807,7 @@ public class TSServiceImpl implements TSIService.Iface {
     List<? extends PartialPath> authPaths = plan.getAuthPaths();
     if (authPaths != null
         && !authPaths.isEmpty()
-        && !serviceProvider.checkAuthorization(plan, username)) {
+        && !SESSION_MANAGER.checkAuthorization(plan, username)) {
       return RpcUtils.getTSExecuteStatementResp(
           RpcUtils.getStatus(
               TSStatusCode.NO_PERMISSION_ERROR,
@@ -944,7 +929,7 @@ public class TSServiceImpl implements TSIService.Iface {
       long sessionId)
       throws IoTDBException, TException, SQLException, IOException, InterruptedException,
           QueryFilterOptimizationException {
-    TSStatus status = serviceProvider.checkAuthority(physicalPlan, sessionId);
+    TSStatus status = SESSION_MANAGER.checkAuthority(physicalPlan, sessionId);
     if (status != null) {
       return new TSExecuteStatementResp(status);
     }
@@ -1000,7 +985,7 @@ public class TSServiceImpl implements TSIService.Iface {
     InsertMultiTabletPlan insertMultiTabletPlan = new InsertMultiTabletPlan();
     for (int i = 0; i < insertTabletPlans.size(); i++) {
       InsertTabletPlan insertTabletPlan = insertTabletPlans.get(i);
-      TSStatus status = serviceProvider.checkAuthority(insertTabletPlan, sessionId);
+      TSStatus status = SESSION_MANAGER.checkAuthority(insertTabletPlan, sessionId);
 
       if (status != null) {
         // not authorized
@@ -1016,7 +1001,7 @@ public class TSServiceImpl implements TSIService.Iface {
   @Override
   public TSFetchResultsResp fetchResults(TSFetchResultsReq req) {
     try {
-      if (!serviceProvider.checkLogin(req.getSessionId())) {
+      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
         return RpcUtils.getTSFetchResultsResp(getNotLoggedInStatus());
       }
 
@@ -1082,7 +1067,7 @@ public class TSServiceImpl implements TSIService.Iface {
   /** update statement can be: 1. select-into statement 2. non-query statement */
   @Override
   public TSExecuteStatementResp executeUpdateStatement(TSExecuteStatementReq req) {
-    if (!serviceProvider.checkLogin(req.getSessionId())) {
+    if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
       return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
     }
 
@@ -1133,7 +1118,7 @@ public class TSServiceImpl implements TSIService.Iface {
   }
 
   private TSExecuteStatementResp executeNonQueryStatement(PhysicalPlan plan, long sessionId) {
-    TSStatus status = serviceProvider.checkAuthority(plan, sessionId);
+    TSStatus status = SESSION_MANAGER.checkAuthority(plan, sessionId);
     return status != null
         ? new TSExecuteStatementResp(status)
         : RpcUtils.getTSExecuteStatementResp(executeNonQueryPlan(plan))
@@ -1202,7 +1187,7 @@ public class TSServiceImpl implements TSIService.Iface {
 
   @Override
   public TSStatus insertRecords(TSInsertRecordsReq req) {
-    if (!serviceProvider.checkLogin(req.getSessionId())) {
+    if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
       return getNotLoggedInStatus();
     }
 
@@ -1224,7 +1209,7 @@ public class TSServiceImpl implements TSIService.Iface {
                 req.getMeasurementsList().get(i).toArray(new String[0]),
                 req.valuesList.get(i),
                 req.isAligned);
-        TSStatus status = serviceProvider.checkAuthority(plan, req.getSessionId());
+        TSStatus status = SESSION_MANAGER.checkAuthority(plan, req.getSessionId());
         if (status != null) {
           insertRowsPlan.getResults().put(i, status);
           allCheckSuccess = false;
@@ -1274,7 +1259,7 @@ public class TSServiceImpl implements TSIService.Iface {
 
   @Override
   public TSStatus insertRecordsOfOneDevice(TSInsertRecordsOfOneDeviceReq req) {
-    if (!serviceProvider.checkLogin(req.getSessionId())) {
+    if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
       return getNotLoggedInStatus();
     }
 
@@ -1295,7 +1280,7 @@ public class TSServiceImpl implements TSIService.Iface {
               req.getMeasurementsList(),
               req.getValuesList(),
               req.isAligned);
-      TSStatus status = serviceProvider.checkAuthority(plan, req.getSessionId());
+      TSStatus status = SESSION_MANAGER.checkAuthority(plan, req.getSessionId());
       statusList.add(status != null ? status : executeNonQueryPlan(plan));
     } catch (IoTDBException e) {
       statusList.add(
@@ -1320,7 +1305,7 @@ public class TSServiceImpl implements TSIService.Iface {
 
   @Override
   public TSStatus insertStringRecordsOfOneDevice(TSInsertStringRecordsOfOneDeviceReq req) {
-    if (!serviceProvider.checkLogin(req.getSessionId())) {
+    if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
       return getNotLoggedInStatus();
     }
 
@@ -1343,7 +1328,7 @@ public class TSServiceImpl implements TSIService.Iface {
         plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);
         plan.setNeedInferType(true);
         plan.setAligned(req.isAligned);
-        TSStatus status = serviceProvider.checkAuthority(plan, req.getSessionId());
+        TSStatus status = SESSION_MANAGER.checkAuthority(plan, req.getSessionId());
 
         if (status != null) {
           insertRowsPlan.getResults().put(i, status);
@@ -1378,7 +1363,7 @@ public class TSServiceImpl implements TSIService.Iface {
 
   @Override
   public TSStatus insertStringRecords(TSInsertStringRecordsReq req) {
-    if (!serviceProvider.checkLogin(req.getSessionId())) {
+    if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
       return getNotLoggedInStatus();
     }
 
@@ -1401,7 +1386,7 @@ public class TSServiceImpl implements TSIService.Iface {
         plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);
         plan.setNeedInferType(true);
         plan.setAligned(req.isAligned);
-        TSStatus status = serviceProvider.checkAuthority(plan, req.getSessionId());
+        TSStatus status = SESSION_MANAGER.checkAuthority(plan, req.getSessionId());
 
         if (status != null) {
           insertRowsPlan.getResults().put(i, status);
@@ -1492,7 +1477,7 @@ public class TSServiceImpl implements TSIService.Iface {
   @Override
   public TSStatus insertRecord(TSInsertRecordReq req) {
     try {
-      if (!serviceProvider.checkLogin(req.getSessionId())) {
+      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
         return getNotLoggedInStatus();
       }
 
@@ -1509,7 +1494,7 @@ public class TSServiceImpl implements TSIService.Iface {
               req.getMeasurements().toArray(new String[0]),
               req.values,
               req.isAligned);
-      TSStatus status = serviceProvider.checkAuthority(plan, req.getSessionId());
+      TSStatus status = SESSION_MANAGER.checkAuthority(plan, req.getSessionId());
       return status != null ? status : executeNonQueryPlan(plan);
     } catch (IoTDBException e) {
       return onIoTDBException(e, OperationType.INSERT_RECORD, e.getErrorCode());
@@ -1519,10 +1504,47 @@ public class TSServiceImpl implements TSIService.Iface {
     }
   }
 
+  public TSStatus insertRecordV2(TSInsertRecordReq req) {
+    long t1 = System.currentTimeMillis();
+    try {
+      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+        return getNotLoggedInStatus();
+      }
+
+      AUDIT_LOGGER.debug(
+          "Session {} insertRecord, device {}, time {}",
+          SESSION_MANAGER.getCurrSessionId(),
+          req.getPrefixPath(),
+          req.getTimestamp());
+
+      InsertRowStatement statement = (InsertRowStatement) StatementGenerator.createStatement(req);
+
+      // Step 2: call the coordinator
+      long queryId = SESSION_MANAGER.requestQueryId(false);
+      ExecutionResult result =
+          coordinator.execute(
+              statement,
+              new QueryId(String.valueOf(queryId)),
+              QueryType.WRITE,
+              SESSION_MANAGER.getSessionInfo(req.sessionId),
+              "");
+
+      // TODO(INSERT) do this check in analyze
+      //      TSStatus status = SESSION_MANAGER.checkAuthority(insertTabletPlan,
+      // req.getSessionId());
+      return result.status;
+    } catch (Exception e) {
+      return onNPEOrUnexpectedException(
+          e, OperationType.INSERT_TABLET, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+    } finally {
+      addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
+    }
+  }
+
   @Override
   public TSStatus insertStringRecord(TSInsertStringRecordReq req) {
     try {
-      if (!serviceProvider.checkLogin(req.getSessionId())) {
+      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
         return getNotLoggedInStatus();
       }
 
@@ -1540,7 +1562,7 @@ public class TSServiceImpl implements TSIService.Iface {
       plan.setValues(req.getValues().toArray(new Object[0]));
       plan.setNeedInferType(true);
       plan.setAligned(req.isAligned);
-      TSStatus status = serviceProvider.checkAuthority(plan, req.getSessionId());
+      TSStatus status = SESSION_MANAGER.checkAuthority(plan, req.getSessionId());
       return status != null ? status : executeNonQueryPlan(plan);
     } catch (IoTDBException e) {
       return onIoTDBException(e, OperationType.INSERT_STRING_RECORD, e.getErrorCode());
@@ -1553,7 +1575,7 @@ public class TSServiceImpl implements TSIService.Iface {
   @Override
   public TSStatus deleteData(TSDeleteDataReq req) {
     try {
-      if (!serviceProvider.checkLogin(req.getSessionId())) {
+      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
         return getNotLoggedInStatus();
       }
 
@@ -1565,7 +1587,7 @@ public class TSServiceImpl implements TSIService.Iface {
         paths.add(new PartialPath(path));
       }
       plan.addPaths(paths);
-      TSStatus status = serviceProvider.checkAuthority(plan, req.getSessionId());
+      TSStatus status = SESSION_MANAGER.checkAuthority(plan, req.getSessionId());
 
       return status != null ? new TSStatus(status) : new TSStatus(executeNonQueryPlan(plan));
     } catch (IoTDBException e) {
@@ -1580,7 +1602,7 @@ public class TSServiceImpl implements TSIService.Iface {
   public TSStatus insertTablet(TSInsertTabletReq req) {
     long t1 = System.currentTimeMillis();
     try {
-      if (!serviceProvider.checkLogin(req.getSessionId())) {
+      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
         return getNotLoggedInStatus();
       }
 
@@ -1595,7 +1617,7 @@ public class TSServiceImpl implements TSIService.Iface {
       insertTabletPlan.setRowCount(req.size);
       insertTabletPlan.setDataTypes(req.types);
       insertTabletPlan.setAligned(req.isAligned);
-      TSStatus status = serviceProvider.checkAuthority(insertTabletPlan, req.getSessionId());
+      TSStatus status = SESSION_MANAGER.checkAuthority(insertTabletPlan, req.getSessionId());
 
       return status != null ? status : executeNonQueryPlan(insertTabletPlan);
     } catch (IoTDBException e) {
@@ -1611,25 +1633,13 @@ public class TSServiceImpl implements TSIService.Iface {
   public TSStatus insertTabletV2(TSInsertTabletReq req) {
     long t1 = System.currentTimeMillis();
     try {
-      // TODO (xingtanzjr) move this method to SESSION_MANAGER
-      if (!serviceProvider.checkLogin(req.getSessionId())) {
+      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
         return getNotLoggedInStatus();
       }
 
       // Step 1: TODO(INSERT) transfer from TSInsertTabletReq to Statement
-      InsertTabletStatement statement = new InsertTabletStatement();
-      //      InsertTabletPlan insertTabletPlan =
-      //          new InsertTabletPlan(new PartialPath(req.getPrefixPath()), req.measurements);
-      //      insertTabletPlan.setTimes(QueryDataSetUtils.readTimesFromBuffer(req.timestamps,
-      // req.size));
-      //      insertTabletPlan.setColumns(
-      //          QueryDataSetUtils.readValuesFromBuffer(
-      //              req.values, req.types, req.types.size(), req.size));
-      //      insertTabletPlan.setBitMaps(
-      //          QueryDataSetUtils.readBitMapsFromBuffer(req.values, req.types.size(), req.size));
-      //      insertTabletPlan.setRowCount(req.size);
-      //      insertTabletPlan.setDataTypes(req.types);
-      //      insertTabletPlan.setAligned(req.isAligned);
+      InsertTabletStatement statement =
+          (InsertTabletStatement) StatementGenerator.createStatement(req);
 
       // Step 2: call the coordinator
       long queryId = SESSION_MANAGER.requestQueryId(false);
@@ -1642,7 +1652,7 @@ public class TSServiceImpl implements TSIService.Iface {
               "");
 
       // TODO(INSERT) do this check in analyze
-      //      TSStatus status = serviceProvider.checkAuthority(insertTabletPlan,
+      //      TSStatus status = SESSION_MANAGER.checkAuthority(insertTabletPlan,
       // req.getSessionId());
       return result.status;
     } catch (Exception e) {
@@ -1657,7 +1667,7 @@ public class TSServiceImpl implements TSIService.Iface {
   public TSStatus insertTablets(TSInsertTabletsReq req) {
     long t1 = System.currentTimeMillis();
     try {
-      if (!serviceProvider.checkLogin(req.getSessionId())) {
+      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
         return getNotLoggedInStatus();
       }
 
@@ -1702,7 +1712,7 @@ public class TSServiceImpl implements TSIService.Iface {
     InsertMultiTabletPlan insertMultiTabletPlan = new InsertMultiTabletPlan();
     for (int i = 0; i < req.prefixPaths.size(); i++) {
       InsertTabletPlan insertTabletPlan = constructInsertTabletPlan(req, i);
-      TSStatus status = serviceProvider.checkAuthority(insertTabletPlan, req.getSessionId());
+      TSStatus status = SESSION_MANAGER.checkAuthority(insertTabletPlan, req.getSessionId());
       if (status != null) {
         // not authorized
         insertMultiTabletPlan.getResults().put(i, status);
@@ -1717,12 +1727,12 @@ public class TSServiceImpl implements TSIService.Iface {
   @Override
   public TSStatus setStorageGroup(long sessionId, String storageGroup) {
     try {
-      if (!serviceProvider.checkLogin(sessionId)) {
+      if (!SESSION_MANAGER.checkLogin(sessionId)) {
         return getNotLoggedInStatus();
       }
 
       SetStorageGroupPlan plan = new SetStorageGroupPlan(new PartialPath(storageGroup));
-      TSStatus status = serviceProvider.checkAuthority(plan, sessionId);
+      TSStatus status = SESSION_MANAGER.checkAuthority(plan, sessionId);
 
       return status != null ? status : executeNonQueryPlan(plan);
     } catch (IoTDBException e) {
@@ -1736,7 +1746,7 @@ public class TSServiceImpl implements TSIService.Iface {
   @Override
   public TSStatus deleteStorageGroups(long sessionId, List<String> storageGroups) {
     try {
-      if (!serviceProvider.checkLogin(sessionId)) {
+      if (!SESSION_MANAGER.checkLogin(sessionId)) {
         return getNotLoggedInStatus();
       }
 
@@ -1745,7 +1755,7 @@ public class TSServiceImpl implements TSIService.Iface {
         storageGroupList.add(new PartialPath(storageGroup));
       }
       DeleteStorageGroupPlan plan = new DeleteStorageGroupPlan(storageGroupList);
-      TSStatus status = serviceProvider.checkAuthority(plan, sessionId);
+      TSStatus status = SESSION_MANAGER.checkAuthority(plan, sessionId);
       return status != null ? status : executeNonQueryPlan(plan);
     } catch (IoTDBException e) {
       return onIoTDBException(e, OperationType.DELETE_STORAGE_GROUPS, e.getErrorCode());
@@ -1758,7 +1768,7 @@ public class TSServiceImpl implements TSIService.Iface {
   @Override
   public TSStatus createTimeseries(TSCreateTimeseriesReq req) {
     try {
-      if (!serviceProvider.checkLogin(req.getSessionId())) {
+      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
         return getNotLoggedInStatus();
       }
 
@@ -1777,7 +1787,7 @@ public class TSServiceImpl implements TSIService.Iface {
               req.tags,
               req.attributes,
               req.measurementAlias);
-      TSStatus status = serviceProvider.checkAuthority(plan, req.getSessionId());
+      TSStatus status = SESSION_MANAGER.checkAuthority(plan, req.getSessionId());
       return status != null ? status : executeNonQueryPlan(plan);
     } catch (IoTDBException e) {
       return onIoTDBException(e, OperationType.CREATE_TIMESERIES, e.getErrorCode());
@@ -1790,7 +1800,7 @@ public class TSServiceImpl implements TSIService.Iface {
   @Override
   public TSStatus createAlignedTimeseries(TSCreateAlignedTimeseriesReq req) {
     try {
-      if (!serviceProvider.checkLogin(req.getSessionId())) {
+      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
         return getNotLoggedInStatus();
       }
 
@@ -1836,7 +1846,7 @@ public class TSServiceImpl implements TSIService.Iface {
               req.measurementAlias,
               req.tagsList,
               req.attributesList);
-      TSStatus status = serviceProvider.checkAuthority(plan, req.getSessionId());
+      TSStatus status = SESSION_MANAGER.checkAuthority(plan, req.getSessionId());
       return status != null ? status : executeNonQueryPlan(plan);
     } catch (IoTDBException e) {
       return onIoTDBException(e, OperationType.CREATE_ALIGNED_TIMESERIES, e.getErrorCode());
@@ -1850,7 +1860,7 @@ public class TSServiceImpl implements TSIService.Iface {
   @Override
   public TSStatus createMultiTimeseries(TSCreateMultiTimeseriesReq req) {
     try {
-      if (!serviceProvider.checkLogin(req.getSessionId())) {
+      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
         return getNotLoggedInStatus();
       }
 
@@ -1888,7 +1898,7 @@ public class TSServiceImpl implements TSIService.Iface {
       CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan();
       for (int i = 0; i < req.paths.size(); i++) {
         plan.setPath(new PartialPath(req.paths.get(i)));
-        TSStatus status = serviceProvider.checkAuthority(plan, req.getSessionId());
+        TSStatus status = SESSION_MANAGER.checkAuthority(plan, req.getSessionId());
         if (status != null) {
           // not authorized
           multiPlan.getResults().put(i, status);
@@ -1937,7 +1947,7 @@ public class TSServiceImpl implements TSIService.Iface {
   @Override
   public TSStatus deleteTimeseries(long sessionId, List<String> paths) {
     try {
-      if (!serviceProvider.checkLogin(sessionId)) {
+      if (!SESSION_MANAGER.checkLogin(sessionId)) {
         return getNotLoggedInStatus();
       }
 
@@ -1946,7 +1956,7 @@ public class TSServiceImpl implements TSIService.Iface {
         pathList.add(new PartialPath(path));
       }
       DeleteTimeSeriesPlan plan = new DeleteTimeSeriesPlan(pathList);
-      TSStatus status = serviceProvider.checkAuthority(plan, sessionId);
+      TSStatus status = SESSION_MANAGER.checkAuthority(plan, sessionId);
       return status != null ? status : executeNonQueryPlan(plan);
     } catch (IoTDBException e) {
       return onIoTDBException(e, OperationType.DELETE_TIMESERIES, e.getErrorCode());
@@ -1964,7 +1974,7 @@ public class TSServiceImpl implements TSIService.Iface {
   @Override
   public TSStatus createSchemaTemplate(TSCreateSchemaTemplateReq req) throws TException {
     try {
-      if (!serviceProvider.checkLogin(req.getSessionId())) {
+      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
         return getNotLoggedInStatus();
       }
 
@@ -1979,7 +1989,7 @@ public class TSServiceImpl implements TSIService.Iface {
       // Construct plan from serialized request
       ByteBuffer buffer = ByteBuffer.wrap(req.getSerializedTemplate());
       plan = CreateTemplatePlan.deserializeFromReq(buffer);
-      TSStatus status = serviceProvider.checkAuthority(plan, req.getSessionId());
+      TSStatus status = SESSION_MANAGER.checkAuthority(plan, req.getSessionId());
 
       return status != null ? status : executeNonQueryPlan(plan);
     } catch (Exception e) {
@@ -2006,7 +2016,7 @@ public class TSServiceImpl implements TSIService.Iface {
     AppendTemplatePlan plan =
         new AppendTemplatePlan(
             req.getName(), req.isAligned, measurements, dataTypes, encodings, compressionTypes);
-    TSStatus status = serviceProvider.checkAuthority(plan, req.getSessionId());
+    TSStatus status = SESSION_MANAGER.checkAuthority(plan, req.getSessionId());
     return status != null ? status : executeNonQueryPlan(plan);
   }
 
@@ -2014,7 +2024,7 @@ public class TSServiceImpl implements TSIService.Iface {
   public TSStatus pruneSchemaTemplate(TSPruneSchemaTemplateReq req) {
     PruneTemplatePlan plan =
         new PruneTemplatePlan(req.getName(), Collections.singletonList(req.getPath()));
-    TSStatus status = serviceProvider.checkAuthority(plan, req.getSessionId());
+    TSStatus status = SESSION_MANAGER.checkAuthority(plan, req.getSessionId());
     return status != null ? status : executeNonQueryPlan(plan);
   }
 
@@ -2068,7 +2078,7 @@ public class TSServiceImpl implements TSIService.Iface {
 
   @Override
   public TSStatus setSchemaTemplate(TSSetSchemaTemplateReq req) throws TException {
-    if (!serviceProvider.checkLogin(req.getSessionId())) {
+    if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
       return getNotLoggedInStatus();
     }
 
@@ -2082,7 +2092,7 @@ public class TSServiceImpl implements TSIService.Iface {
 
     try {
       SetTemplatePlan plan = new SetTemplatePlan(req.templateName, req.prefixPath);
-      TSStatus status = serviceProvider.checkAuthority(plan, req.getSessionId());
+      TSStatus status = SESSION_MANAGER.checkAuthority(plan, req.getSessionId());
       return status != null ? status : executeNonQueryPlan(plan);
     } catch (IllegalPathException e) {
       return onIoTDBException(e, OperationType.EXECUTE_STATEMENT, e.getErrorCode());
@@ -2091,7 +2101,7 @@ public class TSServiceImpl implements TSIService.Iface {
 
   @Override
   public TSStatus unsetSchemaTemplate(TSUnsetSchemaTemplateReq req) throws TException {
-    if (!serviceProvider.checkLogin(req.getSessionId())) {
+    if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
       return getNotLoggedInStatus();
     }
 
@@ -2105,7 +2115,7 @@ public class TSServiceImpl implements TSIService.Iface {
 
     try {
       UnsetTemplatePlan plan = new UnsetTemplatePlan(req.prefixPath, req.templateName);
-      TSStatus status = serviceProvider.checkAuthority(plan, req.getSessionId());
+      TSStatus status = SESSION_MANAGER.checkAuthority(plan, req.getSessionId());
       return status != null ? status : executeNonQueryPlan(plan);
     } catch (IllegalPathException e) {
       return onIoTDBException(e, OperationType.EXECUTE_STATEMENT, e.getErrorCode());
@@ -2114,7 +2124,7 @@ public class TSServiceImpl implements TSIService.Iface {
 
   @Override
   public TSStatus dropSchemaTemplate(TSDropSchemaTemplateReq req) throws TException {
-    if (!serviceProvider.checkLogin(req.getSessionId())) {
+    if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
       return getNotLoggedInStatus();
     }
 
@@ -2126,7 +2136,7 @@ public class TSServiceImpl implements TSIService.Iface {
     }
 
     DropTemplatePlan plan = new DropTemplatePlan(req.templateName);
-    TSStatus status = serviceProvider.checkAuthority(plan, req.getSessionId());
+    TSStatus status = SESSION_MANAGER.checkAuthority(plan, req.getSessionId());
     return status != null ? status : executeNonQueryPlan(plan);
   }
 

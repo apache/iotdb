@@ -20,7 +20,9 @@ package org.apache.iotdb.db.engine;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.ShutdownException;
+import org.apache.iotdb.commons.partition.TimePartitionSlot;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -53,6 +55,7 @@ import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.common.DataRegion;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
@@ -135,6 +138,8 @@ public class StorageEngine implements IService {
   private List<CloseFileListener> customCloseFileListeners = new ArrayList<>();
   private List<FlushListener> customFlushListeners = new ArrayList<>();
 
+  private final Map<DataRegionId, DataRegion> regionMap = new ConcurrentHashMap<>();
+
   private StorageEngine() {}
 
   public static StorageEngine getInstance() {
@@ -177,6 +182,16 @@ public class StorageEngine implements IService {
 
   public static long getTimePartition(long time) {
     return enablePartition ? time / timePartitionInterval : 0;
+  }
+
+  public static TimePartitionSlot getTimePartitionSlot(long time) {
+    TimePartitionSlot timePartitionSlot = new TimePartitionSlot();
+    if (enablePartition) {
+      timePartitionSlot.setStartTime(time - time % timePartitionInterval);
+    } else {
+      timePartitionSlot.setStartTime(0);
+    }
+    return timePartitionSlot;
   }
 
   public static boolean isEnablePartition() {
@@ -856,13 +871,23 @@ public class StorageEngine implements IService {
     if (!processorMap.containsKey(storageGroupPath)) {
       return;
     }
-
+    abortCompactionTaskForStorageGroup(storageGroupPath);
     deleteAllDataFilesInOneStorageGroup(storageGroupPath);
     releaseWalDirectByteBufferPoolInOneStorageGroup(storageGroupPath);
     StorageGroupManager storageGroupManager = processorMap.remove(storageGroupPath);
     storageGroupManager.deleteStorageGroupSystemFolder(
         systemDir + File.pathSeparator + storageGroupPath);
     storageGroupManager.stopSchedulerPool();
+  }
+
+  private void abortCompactionTaskForStorageGroup(PartialPath storageGroupPath) {
+    if (!processorMap.containsKey(storageGroupPath)) {
+      return;
+    }
+
+    StorageGroupManager manager = processorMap.get(storageGroupPath);
+    manager.setAllowCompaction(false);
+    manager.abortCompaction();
   }
 
   public void loadNewTsFileForSync(TsFileResource newTsFileResource)
@@ -1060,6 +1085,17 @@ public class StorageEngine implements IService {
     } catch (IOException e) {
       throw new StorageEngineException(e);
     }
+  }
+
+  // When registering a new region, the coordinator needs to register the corresponding region with
+  // the local engine before adding the corresponding consensusGroup to the consensus layer
+  // TODO implement it
+  public DataRegion createDataRegion(DataRegionId regionId, String sg, long ttl) {
+    return null;
+  }
+
+  public DataRegion getDataRegion(DataRegionId regionId) {
+    return regionMap.get(regionId);
   }
 
   static class InstanceHolder {

@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.schedule;
 
-import org.apache.iotdb.db.mpp.execution.ExecFragmentInstance;
+import org.apache.iotdb.db.mpp.execution.Driver;
 import org.apache.iotdb.db.mpp.schedule.queue.IndexedBlockingQueue;
 import org.apache.iotdb.db.mpp.schedule.task.FragmentInstanceTask;
 import org.apache.iotdb.db.utils.stats.CpuTimer;
@@ -33,7 +33,7 @@ import java.util.concurrent.TimeUnit;
 /** the worker thread of {@link FragmentInstanceTask} */
 public class FragmentInstanceTaskExecutor extends AbstractExecutor {
 
-  private static final Duration EXECUTION_TIME_SLICE = new Duration(100, TimeUnit.MILLISECONDS);
+  public static final Duration EXECUTION_TIME_SLICE = new Duration(100, TimeUnit.MILLISECONDS);
 
   // As the callback is lightweight enough, there's no need to use another one thread to execute.
   private static final Executor listeningExecutor = MoreExecutors.directExecutor();
@@ -52,7 +52,7 @@ public class FragmentInstanceTaskExecutor extends AbstractExecutor {
     if (!scheduler.readyToRunning(task)) {
       return;
     }
-    ExecFragmentInstance instance = task.getFragmentInstance();
+    Driver instance = task.getFragmentInstance();
     CpuTimer timer = new CpuTimer();
     ListenableFuture<Void> future = instance.processFor(EXECUTION_TIME_SLICE);
     CpuTimer.CpuDuration duration = timer.elapsedTime();

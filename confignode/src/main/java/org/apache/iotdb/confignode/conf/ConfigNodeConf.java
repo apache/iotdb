@@ -20,10 +20,10 @@ package org.apache.iotdb.confignode.conf;
 
 import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.consensus.common.ConsensusType;
 import org.apache.iotdb.rpc.RpcUtils;
 
 import java.io.File;
+import java.util.Collections;
 
 public class ConfigNodeConf {
 
@@ -33,14 +33,18 @@ public class ConfigNodeConf {
   /** used for communication between data node and config node */
   private int rpcPort = 22277;
 
-  /** used for communication between data node and data node */
+  /** used for communication between config node and config node */
   private int internalPort = 22278;
 
-  /** ConfigNodeGroup consensus protocol */
-  private ConsensusType consensusType = ConsensusType.STANDALONE;
+  /** ConfigNode consensus protocol */
+  private String configNodeConsensusProtocolClass =
+      "org.apache.iotdb.consensus.ratis.RatisConsensus";
+
+  private String dataNodeConsensusProtocolClass = "org.apache.iotdb.consensus.ratis.RatisConsensus";
 
   /** Used for building the ConfigNode consensus group */
-  private Endpoint[] configNodeGroupAddressList = null;
+  private Endpoint[] configNodeGroupAddressList =
+      Collections.singletonList(new Endpoint("0.0.0.0", 22278)).toArray(new Endpoint[0]);
 
   /** Number of DeviceGroups per StorageGroup */
   private int deviceGroupCount = 10000;
@@ -199,12 +203,20 @@ public class ConfigNodeConf {
     this.consensusDir = consensusDir;
   }
 
-  public ConsensusType getConsensusType() {
-    return consensusType;
+  public String getConfigNodeConsensusProtocolClass() {
+    return configNodeConsensusProtocolClass;
   }
 
-  public void setConsensusType(ConsensusType consensusType) {
-    this.consensusType = consensusType;
+  public void setConfigNodeConsensusProtocolClass(String configNodeConsensusProtocolClass) {
+    this.configNodeConsensusProtocolClass = configNodeConsensusProtocolClass;
+  }
+
+  public String getDataNodeConsensusProtocolClass() {
+    return dataNodeConsensusProtocolClass;
+  }
+
+  public void setDataNodeConsensusProtocolClass(String dataNodeConsensusProtocolClass) {
+    this.dataNodeConsensusProtocolClass = dataNodeConsensusProtocolClass;
   }
 
   public Endpoint[] getConfigNodeGroupAddressList() {

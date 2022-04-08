@@ -17,15 +17,12 @@
 #
 
 import struct
-
 from iotdb.utils.IoTDBConstants import TSDataType
 from iotdb.utils.BitMap import BitMap
 
 
 class NumpyTablet(object):
-    def __init__(
-        self, device_id, measurements, data_types, values, timestamps
-    ):
+    def __init__(self, device_id, measurements, data_types, values, timestamps):
         """
         creating a numpy tablet for insertion
           for example, considering device: root.sg1.d1
@@ -41,6 +38,27 @@ class NumpyTablet(object):
         :param values: List of numpy array, the values of each column should be the inner numpy array
         :param timestamps: Numpy array, the timestamps
         """
+        if len(values) > 0 and len(values[0]) != len(timestamps):
+            raise RuntimeError(
+                "Input error! len(timestamps) does not equal to len(values[0])!"
+            )
+        if len(values) != len(data_types):
+            raise RuntimeError(
+                "Input error! len(values) does not equal to len(data_types)!"
+            )
+
+        if not self.check_sorted(timestamps):
+            index = timestamps.argsort()
+            timestamps = timestamps[index]
+            for i in range(len(values)):
+                values[i] = values[i][index]
+
+        if timestamps.dtype != TSDataType.INT64.np_dtype():
+            timestamps = timestamps.astype(TSDataType.INT64.np_dtype())
+        for i in range(len(values)):
+            if values[i].dtype != data_types[i].np_dtype():
+                values[i] = values[i].astype(data_types[i].np_dtype())
+
         self.__values = values
         self.__timestamps = timestamps
         self.__device_id = device_id
@@ -67,6 +85,12 @@ class NumpyTablet(object):
 
     def get_device_id(self):
         return self.__device_id
+
+    def get_timestamps(self):
+        return self.__timestamps
+
+    def get_values(self):
+        return self.__values
 
     def get_binary_timestamps(self):
         return self.__timestamps.tobytes()

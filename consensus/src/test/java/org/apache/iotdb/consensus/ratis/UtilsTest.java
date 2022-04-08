@@ -19,7 +19,7 @@
 package org.apache.iotdb.consensus.ratis;
 
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
-import org.apache.iotdb.commons.consensus.GroupType;
+import org.apache.iotdb.commons.consensus.PartitionRegionId;
 
 import org.apache.ratis.protocol.RaftGroupId;
 import org.junit.Assert;
@@ -28,9 +28,10 @@ import org.junit.Test;
 public class UtilsTest {
   @Test
   public void testEncryption() {
-    ConsensusGroupId raw = new ConsensusGroupId(GroupType.PartitionRegion, 100);
+    ConsensusGroupId raw = new PartitionRegionId(100);
     RaftGroupId id = Utils.toRatisGroupId(raw);
     ConsensusGroupId cgid = Utils.toConsensusGroupId(id);
-    Assert.assertEquals(raw, cgid);
+    Assert.assertEquals(raw.getId(), cgid.getId());
+    Assert.assertEquals(raw.getType(), cgid.getType());
   }
 }

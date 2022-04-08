@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.consensus.standalone;
 
+import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -31,8 +32,10 @@ import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.consensus.exception.IllegalPeerNumException;
 import org.apache.iotdb.consensus.statemachine.IStateMachine;
+import org.apache.iotdb.consensus.statemachine.IStateMachine.Registry;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -41,19 +44,25 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * A simple single replica consensus implementation.
+ * A simple consensus implementation, which can be used when replicaNum is 1.
+ *
+ * <p>Notice: The stateMachine needs to implement WAL itself to ensure recovery after a restart
  *
  * <p>any module can use `IConsensus consensusImpl = new StandAloneConsensus(id -> new
  * EmptyStateMachine());` to perform an initialization implementation.
  */
-public class StandAloneConsensus implements IConsensus {
+class StandAloneConsensus implements IConsensus {
 
+  private final Endpoint thisNode;
+  private final File storageDir;
   private final IStateMachine.Registry registry;
-  private final Map<ConsensusGroupId, StandAloneServerImpl> stateMachineMap;
+  private final Map<ConsensusGroupId, StandAloneServerImpl> stateMachineMap =
+      new ConcurrentHashMap<>();
 
-  public StandAloneConsensus(IStateMachine.Registry registry) {
+  public StandAloneConsensus(Endpoint thisNode, File storageDir, Registry registry) {
+    this.thisNode = thisNode;
+    this.storageDir = storageDir;
     this.registry = registry;
-    this.stateMachineMap = new ConcurrentHashMap<>();
   }
 
   @Override
@@ -136,6 +145,7 @@ public class StandAloneConsensus implements IConsensus {
           v.stop();
           return null;
         });
+
     if (!exist.get()) {
       return ConsensusGenericResponse.newBuilder()
           .setException(new ConsensusGroupNotExistException(groupId))
