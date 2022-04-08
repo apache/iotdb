@@ -18,10 +18,14 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner;
 
+import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaRegion;
+import org.apache.iotdb.db.mpp.buffer.DataBlockManager;
+import org.apache.iotdb.db.mpp.buffer.DataBlockService;
 import org.apache.iotdb.db.mpp.buffer.ISinkHandle;
+import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
 import org.apache.iotdb.db.mpp.execution.DataDriver;
 import org.apache.iotdb.db.mpp.execution.DataDriverContext;
@@ -51,8 +55,10 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.sink.FragmentSinkNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregateScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
+import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -66,6 +72,9 @@ import static java.util.Objects.requireNonNull;
  * run a fragment instance parallel and take full advantage of multi-cores
  */
 public class LocalExecutionPlanner {
+
+  private static final DataBlockManager DATA_BLOCK_MANAGER =
+      DataBlockService.getInstance().getDataBlockManager();
 
   public static LocalExecutionPlanner getInstance() {
     return InstanceHolder.INSTANCE;
@@ -212,6 +221,7 @@ public class LocalExecutionPlanner {
 
     @Override
     public Operator visitExchange(ExchangeNode node, LocalExecutionPlanContext context) {
+
       // TODO(jackie tien) create SourceHandle here
       return super.visitExchange(node, context);
     }
@@ -219,10 +229,27 @@ public class LocalExecutionPlanner {
     @Override
     public Operator visitFragmentSink(FragmentSinkNode node, LocalExecutionPlanContext context) {
       Operator child = node.getChild().accept(this, context);
-      // TODO(jackie tien) create SinkHandle here
-      ISinkHandle sinkHandle = null;
-      context.setSinkHandle(sinkHandle);
-      return child;
+      Endpoint target = node.getDownStreamEndpoint();
+      FragmentInstanceId localInstanceId = context.instanceContext.getId();
+      FragmentInstanceId targetInstanceId = node.getDownStreamInstanceId();
+      try {
+        ISinkHandle sinkHandle =
+            DATA_BLOCK_MANAGER.createSinkHandle(
+                new TFragmentInstanceId(
+                    localInstanceId.getQueryId().getId(),
+                    String.valueOf(localInstanceId.getFragmentId().getId()),
+                    localInstanceId.getInstanceId()),
+                target.getIp(),
+                new TFragmentInstanceId(
+                    targetInstanceId.getQueryId().getId(),
+                    String.valueOf(targetInstanceId.getFragmentId().getId()),
+                    targetInstanceId.getInstanceId()),
+                node.getDownStreamPlanNodeId().getId());
+        context.setSinkHandle(sinkHandle);
+        return child;
+      } catch (IOException e) {
+        throw new RuntimeException("Error happened while creating sink handle", e);
+      }
     }
   }
 
