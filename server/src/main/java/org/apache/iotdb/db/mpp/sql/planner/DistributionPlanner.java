@@ -105,7 +105,8 @@ public class DistributionPlanner {
     sinkNode.setChild(rootInstance.getFragment().getRoot());
     context
         .getResultNodeContext()
-        .setUpStream(rootInstance.getHostEndpoint(), rootInstance.getId(), sinkNode.getPlanNodeId());
+        .setUpStream(
+            rootInstance.getHostEndpoint(), rootInstance.getId(), sinkNode.getPlanNodeId());
     rootInstance.getFragment().setRoot(sinkNode);
   }
 
@@ -207,7 +208,8 @@ public class DistributionPlanner {
       // PlanNode, we need to process
       // them with special method
       context.putNodeDistribution(
-          node.getPlanNodeId(), new NodeDistribution(NodeDistributionType.SAME_WITH_ALL_CHILDREN, null));
+          node.getPlanNodeId(),
+          new NodeDistribution(NodeDistributionType.SAME_WITH_ALL_CHILDREN, null));
 
       return node.cloneWithChildren(children);
     }
