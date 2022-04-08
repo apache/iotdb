@@ -60,8 +60,8 @@ import java.util.stream.Collectors;
 public class ReadPointCompactionPerformer
     implements ICrossCompactionPerformer, IUnseqCompactionPerformer {
   private Logger LOGGER = LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
-  private List<TsFileResource> seqFiles;
-  private List<TsFileResource> unseqFiles;
+  private List<TsFileResource> seqFiles = Collections.emptyList();
+  private List<TsFileResource> unseqFiles = Collections.emptyList();
 
   private List<TsFileResource> targetFiles = Collections.emptyList();
 

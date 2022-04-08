@@ -64,6 +64,8 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
     this.virtualGroupId = virtualStorageGroupId;
     this.timePartition = timePartition;
     this.tsFileManager = tsFileManager;
+    this.sequenceFileList = tsFileManager.getSequenceListByTimePartition(timePartition);
+    this.unsequenceFileList = tsFileManager.getUnsequenceListByTimePartition(timePartition);
   }
 
   /**
