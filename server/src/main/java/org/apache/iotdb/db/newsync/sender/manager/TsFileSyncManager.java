@@ -23,6 +23,7 @@ import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.storagegroup.virtualSg.StorageGroupManager;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.newsync.sender.pipe.TsFilePipe;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,6 +45,7 @@ public class TsFileSyncManager {
 
   private static class TsFileSyncManagerHolder {
     private static final TsFileSyncManager INSTANCE = new TsFileSyncManager();
+
     private TsFileSyncManagerHolder() {}
   }
 
@@ -86,13 +88,15 @@ public class TsFileSyncManager {
 
   public List<File> registerAndCollectHistoryTsFile(TsFilePipe syncPipe, long dataStartTime) {
     registerSyncTask(syncPipe);
-    tsFilesAlreadyCollected = new ConcurrentHashMap<>(); // should be locked while containing multi pipes
+    tsFilesAlreadyCollected =
+        new ConcurrentHashMap<>(); // should be locked while containing multi pipes
 
     List<File> historyTsFiles = new ArrayList<>();
     Iterator<Map.Entry<PartialPath, StorageGroupManager>> sgIterator =
-            StorageEngine.getInstance().getProcessorMap().entrySet().iterator();
+        StorageEngine.getInstance().getProcessorMap().entrySet().iterator();
     while (sgIterator.hasNext()) {
-      historyTsFiles.addAll(sgIterator.next().getValue().collectHistoryTsFileForSync(dataStartTime));
+      historyTsFiles.addAll(
+          sgIterator.next().getValue().collectHistoryTsFileForSync(dataStartTime));
     }
 
     tsFilesAlreadyCollected = null;

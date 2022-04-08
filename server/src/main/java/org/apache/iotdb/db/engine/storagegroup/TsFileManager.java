@@ -23,7 +23,6 @@ import org.apache.iotdb.db.exception.WriteLockFailedException;
 import org.apache.iotdb.db.newsync.sender.manager.TsFileSyncManager;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
 
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -92,6 +91,8 @@ import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
+
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -3195,7 +3196,9 @@ public class VirtualStorageGroupProcessor {
 
   /**
    * Used to collect history TsFiles(i.e. the tsfile whose memtable == null).
-   * @param dataStartTime only collect history TsFiles which contains the data after the dataStartTime
+   *
+   * @param dataStartTime only collect history TsFiles which contains the data after the
+   *     dataStartTime
    * @return A list, which contains TsFile path
    */
   public List<File> collectHistoryTsFileForSync(long dataStartTime) {
