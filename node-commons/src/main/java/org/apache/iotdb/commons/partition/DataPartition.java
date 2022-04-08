@@ -163,4 +163,11 @@ public class DataPartition {
 
     return result;
   }
+
+  /**
+   * Create a DataPartition by ConfigNode
+   */
+  public void createDataPartition(String storageGroup, SeriesPartitionSlot seriesPartitionSlot, TimePartitionSlot timePartitionSlot, RegionReplicaSet regionReplicaSet) {
+    dataPartitionMap.computeIfAbsent(storageGroup, key -> new HashMap<>()).computeIfAbsent(seriesPartitionSlot, key -> new HashMap<>()).put(timePartitionSlot, Collections.singletonList(regionReplicaSet));
+  }
 }

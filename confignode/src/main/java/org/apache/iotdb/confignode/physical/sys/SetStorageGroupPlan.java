@@ -23,6 +23,7 @@ import org.apache.iotdb.confignode.partition.StorageGroupSchema;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
 import org.apache.iotdb.confignode.physical.PhysicalPlanType;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -74,7 +75,7 @@ public class SetStorageGroupPlan extends PhysicalPlan {
   }
 
   @Override
-  protected void deserializeImpl(ByteBuffer buffer) {
+  protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     schema.deserialize(buffer);
 
     int length = buffer.getInt();

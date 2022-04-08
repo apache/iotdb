@@ -176,20 +176,29 @@ public class PartitionManager {
    */
   private Map<String, Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>> allocateDataPartition(
           Map<String, Map<SeriesPartitionSlot, List<TimePartitionSlot>>> noAssignedDataPartitionSlotsMap) {
-    List<RegionReplicaSet> dataRegionEndPoints =
-        RegionInfoPersistence.getInstance().getDataRegionEndPoint(storageGroup);
-    Random random = new Random();
-    Map<Integer, Map<Long, List<RegionReplicaSet>>> dataPartitionReplicaSets = new HashMap<>();
-    for (Map.Entry<Integer, List<Long>> seriesPartitionEntry :
-        noAssignedSeriesPartitionSlots.entrySet()) {
-      dataPartitionReplicaSets.put(seriesPartitionEntry.getKey(), new HashMap<>());
-      for (long timePartitionSlot : seriesPartitionEntry.getValue()) {
-        dataPartitionReplicaSets
-            .get(seriesPartitionEntry.getKey())
-            .computeIfAbsent(timePartitionSlot, key -> new ArrayList<>())
-            .add(dataRegionEndPoints.get(random.nextInt(dataRegionEndPoints.size())));
+
+    Map<String, Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>> result = new HashMap<>();
+
+    for (String storageGroup : noAssignedDataPartitionSlotsMap.keySet()) {
+      Map<SeriesPartitionSlot, List<TimePartitionSlot>> noAssignedPartitionSlotsMap = noAssignedDataPartitionSlotsMap.get(storageGroup);
+      List<RegionReplicaSet> dataRegionEndPoints =
+              RegionInfoPersistence.getInstance().getDataRegionEndPoint(storageGroup);
+      Random random = new Random();
+
+      Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>> allocateResult = new HashMap<>();
+      for (Map.Entry<SeriesPartitionSlot, List<TimePartitionSlot>> seriesPartitionEntry :
+              noAssignedPartitionSlotsMap.entrySet()) {
+        allocateResult.put(seriesPartitionEntry.getKey(), new HashMap<>());
+        for (TimePartitionSlot timePartitionSlot : seriesPartitionEntry.getValue()) {
+          allocateResult
+                  .get(seriesPartitionEntry.getKey())
+                  .computeIfAbsent(timePartitionSlot, key -> new ArrayList<>())
+                  .add(dataRegionEndPoints.get(random.nextInt(dataRegionEndPoints.size())));
+        }
       }
+
+      result.put(storageGroup, allocateResult);
     }
-    return dataPartitionReplicaSets;
+    return result;
   }
 }

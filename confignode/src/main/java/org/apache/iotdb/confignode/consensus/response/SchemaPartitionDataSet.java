@@ -20,8 +20,8 @@
 package org.apache.iotdb.confignode.consensus.response;
 
 import org.apache.iotdb.commons.partition.SchemaPartition;
-import org.apache.iotdb.confignode.rpc.thrift.RegionMessage;
-import org.apache.iotdb.confignode.rpc.thrift.SchemaPartitionResp;
+import org.apache.iotdb.confignode.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionResp;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
@@ -57,8 +57,9 @@ public class SchemaPartitionDataSet implements DataSet {
     this.schemaPartition = schemaPartition;
   }
 
-  public void convertToRpcSchemaPartitionResp(SchemaPartitionResp resp) {
-    Map<String, Map<Integer, RegionMessage>> schemaRegionMap = new HashMap<>();
+  // TODO: Reconstruct this interface after PatterTree is moved to node-commons
+  public void convertToRpcSchemaPartitionResp(TSchemaPartitionResp resp) {
+    Map<String, Map<Integer, TRegionReplicaSet>> schemaRegionMap = new HashMap<>();
 
     schemaPartition
         .getSchemaPartitionMap()
@@ -70,7 +71,7 @@ public class SchemaPartitionDataSet implements DataSet {
               // Extract Map<SeriesPartitionSlot, RegionReplicaSet>
               seriesPartitionSlotRegionReplicaSetMap.forEach(
                   ((seriesPartitionSlot, regionReplicaSet) -> {
-                    RegionMessage regionMessage = new RegionMessage();
+                    TRegionReplicaSet regionMessage = new TRegionReplicaSet();
                     regionMessage.setRegionId(regionReplicaSet.getId().getId());
                     List<EndPoint> endPointList = new ArrayList<>();
                     regionReplicaSet
@@ -88,6 +89,6 @@ public class SchemaPartitionDataSet implements DataSet {
                   }));
             });
 
-    resp.setSchemaRegionMap(schemaRegionMap);
+    // resp.setSchemaRegionMap(schemaRegionMap);
   }
 }

@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.partition.TimePartitionSlot;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionDataSet;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionDataSet;
+import org.apache.iotdb.confignode.physical.crud.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.physical.crud.QueryDataPartitionPlan;
 import org.apache.iotdb.confignode.physical.crud.QuerySchemaPartitionPlan;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -141,16 +142,13 @@ public class PartitionInfoPersistence {
     return dataPartitionDataSet;
   }
 
-  public TSStatus createDataPartition(QueryDataPartitionPlan physicalPlan) {
+  public TSStatus createDataPartition(CreateDataPartitionPlan physicalPlan) {
     dataPartitionReadWriteLock.writeLock().lock();
 
     try {
-      // Allocate DataPartition by DataPartitionPlan
-      String storageGroup = physicalPlan.getStorageGroup();
-      Map<Integer, RegionReplicaSet> schemaPartitionReplicaSets =
-          physicalPlan.getSchemaPartitionReplicaSets();
-      schemaPartitionReplicaSets.forEach(
-          (key, value) -> schemaPartition.setSchemaRegionReplicaSet(storageGroup, key, value));
+      // Allocate DataPartition by CreateDataPartitionPlan
+      Map<String, Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>> assignedResult = physicalPlan.getAssignedDataPartition();
+      assignedResult.forEach((storageGroup, seriesPartitionTimePartitionSlots) -> seriesPartitionTimePartitionSlots.forEach(((seriesPartitionSlot, timePartitionSlotRegionReplicaSets) -> timePartitionSlotRegionReplicaSets.forEach(((timePartitionSlot, regionReplicaSets) -> regionReplicaSets.forEach(regionReplicaSet -> dataPartition.createDataPartition(storageGroup, seriesPartitionSlot, timePartitionSlot, regionReplicaSet)))))));
     } finally {
       dataPartitionReadWriteLock.writeLock().unlock();
     }

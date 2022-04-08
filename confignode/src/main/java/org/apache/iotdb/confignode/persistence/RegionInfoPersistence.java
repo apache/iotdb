@@ -89,6 +89,7 @@ public class RegionInfoPersistence {
       result.setSchemaList(new ArrayList<>(storageGroupsMap.values()));
     } finally {
       regionReadWriteLock.readLock().unlock();
+      result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
     }
     return result;
   }
@@ -157,8 +158,7 @@ public class RegionInfoPersistence {
   @TestOnly
   public void clear() {
     storageGroupsMap.clear();
-    schemaRegion.getSchemaRegionDataNodesMap().clear();
-    dataRegion.getDataRegionDataNodesMap().clear();
+    regionMap.clear();
   }
 
   private static class RegionInfoPersistenceHolder {

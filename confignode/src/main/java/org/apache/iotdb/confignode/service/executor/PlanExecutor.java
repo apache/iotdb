@@ -23,6 +23,7 @@ import org.apache.iotdb.confignode.persistence.DataNodeInfoPersistence;
 import org.apache.iotdb.confignode.persistence.PartitionInfoPersistence;
 import org.apache.iotdb.confignode.persistence.RegionInfoPersistence;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
+import org.apache.iotdb.confignode.physical.crud.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.physical.crud.QueryDataPartitionPlan;
 import org.apache.iotdb.confignode.physical.crud.QuerySchemaPartitionPlan;
 import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
@@ -71,7 +72,7 @@ public class PlanExecutor {
       case CreateSchemaPartition:
         return partitionInfoPersistence.createSchemaPartition((QuerySchemaPartitionPlan) plan);
       case CreateDataPartition:
-        return partitionInfoPersistence.createDataPartition((QueryDataPartitionPlan) plan);
+        return partitionInfoPersistence.createDataPartition((CreateDataPartitionPlan) plan);
       default:
         throw new UnknownPhysicalPlanTypeException(plan.getType());
     }
