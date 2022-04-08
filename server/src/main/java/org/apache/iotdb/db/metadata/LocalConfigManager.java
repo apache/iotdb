@@ -41,7 +41,7 @@ import org.apache.iotdb.db.metadata.storagegroup.StorageGroupSchemaManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
-import org.apache.iotdb.db.newsync.sender.manager.MetadataSyncManager;
+import org.apache.iotdb.db.newsync.sender.manager.SchemaSyncManager;
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
@@ -251,8 +251,8 @@ public class LocalConfigManager {
     for (Template template : templateManager.getTemplateMap().values()) {
       templateManager.unmarkStorageGroup(template, storageGroup.getFullPath());
     }
-    if (MetadataSyncManager.getInstance().isEnableSync()) {
-      MetadataSyncManager.getInstance()
+    if (SchemaSyncManager.getInstance().isEnableSync()) {
+      SchemaSyncManager.getInstance()
           .syncMetadataPlan(new DeleteStorageGroupPlan(Collections.singletonList(storageGroup)));
     }
 

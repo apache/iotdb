@@ -43,23 +43,23 @@ import java.util.Set;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_RESULT_NODES;
 
-public class MetadataSyncManager {
+public class SchemaSyncManager {
 
-  private static final Logger logger = LoggerFactory.getLogger(MetadataSyncManager.class);
+  private static final Logger logger = LoggerFactory.getLogger(SchemaSyncManager.class);
 
   private TsFilePipe syncPipe = null;
 
-  private static class MetadataSyncManagerHolder {
+  private static class SchemaSyncManagerHolder {
 
-    private MetadataSyncManagerHolder() {
+    private SchemaSyncManagerHolder() {
       // allowed to do nothing
     }
 
-    private static final MetadataSyncManager INSTANCE = new MetadataSyncManager();
+    private static final SchemaSyncManager INSTANCE = new SchemaSyncManager();
   }
 
-  public static MetadataSyncManager getInstance() {
-    return MetadataSyncManager.MetadataSyncManagerHolder.INSTANCE;
+  public static SchemaSyncManager getInstance() {
+    return SchemaSyncManagerHolder.INSTANCE;
   }
 
   public void registerSyncTask(TsFilePipe syncPipe) {

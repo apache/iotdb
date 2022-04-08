@@ -29,7 +29,7 @@ import org.apache.iotdb.db.newsync.pipedata.PipeData;
 import org.apache.iotdb.db.newsync.pipedata.SchemaPipeData;
 import org.apache.iotdb.db.newsync.pipedata.TsFilePipeData;
 import org.apache.iotdb.db.newsync.pipedata.queue.BufferedPipeDataQueue;
-import org.apache.iotdb.db.newsync.sender.manager.MetadataSyncManager;
+import org.apache.iotdb.db.newsync.sender.manager.SchemaSyncManager;
 import org.apache.iotdb.db.newsync.sender.manager.TsFileSyncManager;
 import org.apache.iotdb.db.newsync.sender.recovery.TsFilePipeLogger;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -45,7 +45,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class TsFilePipe implements Pipe {
   private static final Logger logger = LoggerFactory.getLogger(TsFilePipe.class);
-  private final MetadataSyncManager schemaSyncManager = MetadataSyncManager.getInstance();
+  private final SchemaSyncManager schemaSyncManager = SchemaSyncManager.getInstance();
   private final TsFileSyncManager tsFileSyncManager = TsFileSyncManager.getInstance();
 
   private final long createTime;

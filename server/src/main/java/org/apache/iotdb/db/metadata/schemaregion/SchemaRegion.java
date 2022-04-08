@@ -53,7 +53,7 @@ import org.apache.iotdb.db.metadata.storagegroup.StorageGroupSchemaManager;
 import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
-import org.apache.iotdb.db.newsync.sender.manager.MetadataSyncManager;
+import org.apache.iotdb.db.newsync.sender.manager.SchemaSyncManager;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -166,7 +166,7 @@ public class SchemaRegion {
   // device -> DeviceMNode
   private LoadingCache<PartialPath, IMNode> mNodeCache;
   private TagManager tagManager;
-  private MetadataSyncManager syncManager = MetadataSyncManager.getInstance();
+  private SchemaSyncManager syncManager = SchemaSyncManager.getInstance();
 
   // region Interfaces and Implementation of initialization、snapshot、recover and clear
   public SchemaRegion(
