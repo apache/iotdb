@@ -28,7 +28,7 @@ public class MTreeReleaseTaskManager {
 
   private static final String MTREE_RELEASE_THREAD_POOL_NAME = "MTree-release-task";
 
-  private ExecutorService releaseTaskExecutor;
+  private volatile ExecutorService releaseTaskExecutor;
 
   private MTreeReleaseTaskManager() {}
 

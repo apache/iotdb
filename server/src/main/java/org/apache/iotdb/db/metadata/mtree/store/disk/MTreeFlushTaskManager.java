@@ -27,7 +27,7 @@ public class MTreeFlushTaskManager {
 
   private static final String MTREE_FLUSH_THREAD_POOL_NAME = "MTree-flush-task";
 
-  private ExecutorService flushTaskExecutor;
+  private volatile ExecutorService flushTaskExecutor;
 
   private MTreeFlushTaskManager() {}
 
