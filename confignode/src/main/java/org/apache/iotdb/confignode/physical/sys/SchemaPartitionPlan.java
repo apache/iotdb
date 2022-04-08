@@ -23,6 +23,7 @@ import org.apache.iotdb.confignode.physical.PhysicalPlan;
 import org.apache.iotdb.confignode.physical.PhysicalPlanType;
 import org.apache.iotdb.confignode.util.SerializeDeserializeUtil;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.List;
@@ -68,7 +69,7 @@ public class SchemaPartitionPlan extends PhysicalPlan {
   }
 
   @Override
-  protected void deserializeImpl(ByteBuffer buffer) {
+  protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     storageGroup = SerializeDeserializeUtil.readString(buffer);
     int idSize = SerializeDeserializeUtil.readInt(buffer);
     for (int i = 0; i < idSize; i++) {

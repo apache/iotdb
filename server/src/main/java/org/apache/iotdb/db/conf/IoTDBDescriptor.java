@@ -247,6 +247,8 @@ public class IoTDBDescriptor {
 
       conf.setWalDir(properties.getProperty("wal_dir", conf.getWalDir()));
 
+      conf.setConsensusDir(properties.getProperty("consensus_dir", conf.getConsensusDir()));
+
       int mlogBufferSize =
           Integer.parseInt(
               properties.getProperty(
@@ -1479,6 +1481,10 @@ public class IoTDBDescriptor {
     conf.setInternalPort(
         Integer.parseInt(
             properties.getProperty("internal_port", Integer.toString(conf.getInternalPort()))));
+
+    conf.setConsensusPort(
+        Integer.parseInt(
+            properties.getProperty("consensus_port", Integer.toString(conf.getConsensusPort()))));
   }
 
   public void loadShuffleProps(Properties properties) {

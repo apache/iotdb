@@ -64,6 +64,10 @@ public class ConfigManager implements Manager {
     this.permissionManager = new PermissionManager(this);
   }
 
+  public void close() throws IOException {
+    consensusManager.close();
+  }
+
   @Override
   public boolean isStopped() {
     return false;

@@ -19,61 +19,46 @@
 
 package org.apache.iotdb.commons.consensus;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Objects;
 
-// TODO Use a mature IDL framework such as Protobuf to manage this structure
-public class ConsensusGroupId {
+public interface ConsensusGroupId {
 
-  private GroupType type;
-  private int id;
+  // contains specific id and type
+  void serializeImpl(ByteBuffer buffer);
 
-  public ConsensusGroupId() {}
+  // only deserialize specific id
+  void deserializeImpl(ByteBuffer buffer);
 
-  public ConsensusGroupId(GroupType type, int id) {
-    this.type = type;
-    this.id = id;
-  }
+  // return specific id
+  int getId();
 
-  public GroupType getType() {
-    return type;
-  }
+  // return specific type
+  GroupType getType();
 
-  public int getId() {
-    return id;
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
+  class Factory {
+    public static ConsensusGroupId create(ByteBuffer buffer) throws IOException {
+      int index = buffer.get();
+      if (index >= GroupType.values().length) {
+        throw new IOException("unrecognized id type " + index);
+      }
+      GroupType type = GroupType.values()[index];
+      ConsensusGroupId id;
+      switch (type) {
+        case DataRegion:
+          id = new DataRegionId();
+          break;
+        case SchemaRegion:
+          id = new SchemaRegionId();
+          break;
+        case PartitionRegion:
+          id = new PartitionRegionId();
+          break;
+        default:
+          throw new IOException("unrecognized id type " + type);
+      }
+      id.deserializeImpl(buffer);
+      return id;
     }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    ConsensusGroupId that = (ConsensusGroupId) o;
-    return id == that.id && Objects.equals(type, that.type);
-  }
-
-  public void serializeImpl(ByteBuffer buffer) {
-    buffer.putInt(type.ordinal());
-    buffer.putInt(id);
-  }
-
-  public void deserializeImpl(ByteBuffer buffer) {
-    int ordinal = buffer.getInt();
-    // TODO: (xingtanzjr) should we add validation for the ordinal ?
-    type = GroupType.values()[ordinal];
-    id = buffer.getInt();
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(type, id);
-  }
-
-  @Override
-  public String toString() {
-    return String.format("ConsensusGroupId[%s]-%s", type, id);
   }
 }

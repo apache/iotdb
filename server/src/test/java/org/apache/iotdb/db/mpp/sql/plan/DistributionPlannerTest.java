@@ -20,8 +20,7 @@
 package org.apache.iotdb.db.mpp.sql.plan;
 
 import org.apache.iotdb.commons.cluster.Endpoint;
-import org.apache.iotdb.commons.consensus.ConsensusGroupId;
-import org.apache.iotdb.commons.consensus.GroupType;
+import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.partition.DataNodeLocation;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
@@ -46,7 +45,11 @@ import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 
 import org.junit.Test;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 
@@ -74,7 +77,6 @@ public class DistributionPlannerTest {
     DistributionPlanner planner =
         new DistributionPlanner(analysis, new LogicalQueryPlan(new MPPQueryContext(queryId), root));
     PlanNode newRoot = planner.rewriteSource();
-
     assertEquals(newRoot.getChildren().get(0).getChildren().size(), 3);
   }
 
@@ -155,7 +157,7 @@ public class DistributionPlannerTest {
         new DistributionPlanner(analysis, new LogicalQueryPlan(context, root));
     DistributedQueryPlan plan = planner.planFragments();
     plan.getInstances().forEach(System.out::println);
-    assertEquals(plan.getInstances().size(), 3);
+    assertEquals(3, plan.getInstances().size());
   }
 
   private Analysis constructAnalysis() {
@@ -174,13 +176,13 @@ public class DistributionPlannerTest {
     List<RegionReplicaSet> d1DataRegions = new ArrayList<>();
     d1DataRegions.add(
         new RegionReplicaSet(
-            new ConsensusGroupId(GroupType.DataRegion, 1),
+            new DataRegionId(1),
             Arrays.asList(
                 new DataNodeLocation(11, new Endpoint("192.0.1.1", 9000)),
                 new DataNodeLocation(12, new Endpoint("192.0.1.2", 9000)))));
     d1DataRegions.add(
         new RegionReplicaSet(
-            new ConsensusGroupId(GroupType.DataRegion, 2),
+            new DataRegionId(2),
             Arrays.asList(
                 new DataNodeLocation(21, new Endpoint("192.0.2.1", 9000)),
                 new DataNodeLocation(22, new Endpoint("192.0.2.2", 9000)))));
@@ -190,7 +192,7 @@ public class DistributionPlannerTest {
     List<RegionReplicaSet> d2DataRegions = new ArrayList<>();
     d2DataRegions.add(
         new RegionReplicaSet(
-            new ConsensusGroupId(GroupType.DataRegion, 3),
+            new DataRegionId(3),
             Arrays.asList(
                 new DataNodeLocation(31, new Endpoint("192.0.3.1", 9000)),
                 new DataNodeLocation(32, new Endpoint("192.0.3.2", 9000)))));
@@ -200,13 +202,13 @@ public class DistributionPlannerTest {
     List<RegionReplicaSet> d3DataRegions = new ArrayList<>();
     d3DataRegions.add(
         new RegionReplicaSet(
-            new ConsensusGroupId(GroupType.DataRegion, 1),
+            new DataRegionId(1),
             Arrays.asList(
                 new DataNodeLocation(11, new Endpoint("192.0.1.1", 9000)),
                 new DataNodeLocation(12, new Endpoint("192.0.1.2", 9000)))));
     d3DataRegions.add(
         new RegionReplicaSet(
-            new ConsensusGroupId(GroupType.DataRegion, 4),
+            new DataRegionId(4),
             Arrays.asList(
                 new DataNodeLocation(41, new Endpoint("192.0.4.1", 9000)),
                 new DataNodeLocation(42, new Endpoint("192.0.4.2", 9000)))));
