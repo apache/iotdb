@@ -17,15 +17,24 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.buffer;
+package org.apache.iotdb.tsfile.read.common.block.column;
 
-import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
+import java.util.HashMap;
+import java.util.Map;
 
-import java.util.function.Supplier;
+public class ColumnSerdeFactory {
 
-public class TsBlockSerdeFactory implements Supplier<TsBlockSerde> {
-  @Override
-  public TsBlockSerde get() {
-    return new TsBlockSerde();
+  private static Map<ColumnEncoding, ColumnSerde> encodingToSerde = new HashMap<>();
+
+  static {
+    encodingToSerde.put(ColumnEncoding.INT32_ARRAY, new Int32ColumnSerde());
+    encodingToSerde.put(ColumnEncoding.INT64_ARRAY, new Int64ColumnSerde());
+  }
+
+  public static ColumnSerde get(ColumnEncoding columnEncoding) {
+    if (!encodingToSerde.containsKey(columnEncoding)) {
+      throw new IllegalArgumentException("Unsupported column encoding: " + columnEncoding);
+    }
+    return encodingToSerde.get(columnEncoding);
   }
 }

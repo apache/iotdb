@@ -17,20 +17,6 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.buffer;
+package org.apache.iotdb.tsfile.common.block;
 
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-
-import java.nio.ByteBuffer;
-
-public class TsBlockSerde {
-  public ByteBuffer serialized(TsBlock tsBlock) {
-    // TODO: implement
-    return null;
-  }
-
-  public TsBlock deserialize(ByteBuffer buffer) {
-    // TODO: implement
-    return null;
-  }
-}
+public class TsBlockSerdeTest {}

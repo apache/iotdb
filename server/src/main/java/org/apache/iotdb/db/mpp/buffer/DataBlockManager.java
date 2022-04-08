@@ -27,6 +27,7 @@ import org.apache.iotdb.mpp.rpc.thrift.GetDataBlockRequest;
 import org.apache.iotdb.mpp.rpc.thrift.GetDataBlockResponse;
 import org.apache.iotdb.mpp.rpc.thrift.NewDataBlockEvent;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
+import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
 
 import org.apache.commons.lang3.Validate;
 import org.apache.thrift.TException;
@@ -79,8 +80,12 @@ public class DataBlockManager implements IDataBlockManager {
       GetDataBlockResponse resp = new GetDataBlockResponse();
       SinkHandle sinkHandle = sinkHandles.get(req.getSourceFragmentInstanceId());
       for (int i = req.getStartSequenceId(); i < req.getEndSequenceId(); i++) {
-        ByteBuffer serializedTsBlock = sinkHandle.getSerializedTsBlock(i);
-        resp.addToTsBlocks(serializedTsBlock);
+        try {
+          ByteBuffer serializedTsBlock = sinkHandle.getSerializedTsBlock(i);
+          resp.addToTsBlocks(serializedTsBlock);
+        } catch (IOException e) {
+          throw new TException(e);
+        }
       }
       return resp;
     }

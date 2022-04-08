@@ -27,6 +27,7 @@ import org.apache.iotdb.mpp.rpc.thrift.EndOfDataBlockEvent;
 import org.apache.iotdb.mpp.rpc.thrift.NewDataBlockEvent;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
 
 import org.apache.thrift.TException;
 import org.junit.Assert;
@@ -125,7 +126,12 @@ public class SinkHandleTest {
 
     // Get tsblocks.
     for (int i = 0; i < numOfMockTsBlock; i++) {
-      sinkHandle.getSerializedTsBlock(i);
+      try {
+        sinkHandle.getSerializedTsBlock(i);
+      } catch (IOException e) {
+        e.printStackTrace();
+        Assert.fail();
+      }
       Assert.assertTrue(sinkHandle.isFull().isDone());
     }
     Assert.assertFalse(sinkHandle.isFinished());
@@ -251,7 +257,12 @@ public class SinkHandleTest {
 
     // Get tsblocks.
     for (int i = 0; i < numOfMockTsBlock; i++) {
-      sinkHandle.getSerializedTsBlock(i);
+      try {
+        sinkHandle.getSerializedTsBlock(i);
+      } catch (IOException e) {
+        e.printStackTrace();
+        Assert.fail();
+      }
       Assert.assertFalse(sinkHandle.isFull().isDone());
     }
     Assert.assertFalse(sinkHandle.isFinished());
@@ -324,7 +335,12 @@ public class SinkHandleTest {
 
     // Get tsblocks after the SinkHandle is closed.
     for (int i = numOfMockTsBlock; i < numOfMockTsBlock * 2; i++) {
-      sinkHandle.getSerializedTsBlock(i);
+      try {
+        sinkHandle.getSerializedTsBlock(i);
+      } catch (IOException e) {
+        e.printStackTrace();
+        Assert.fail();
+      }
     }
     Assert.assertFalse(sinkHandle.isFinished());
 

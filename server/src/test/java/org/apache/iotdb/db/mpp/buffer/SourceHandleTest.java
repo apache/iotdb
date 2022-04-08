@@ -27,6 +27,7 @@ import org.apache.iotdb.mpp.rpc.thrift.DataBlockService.Client;
 import org.apache.iotdb.mpp.rpc.thrift.GetDataBlockRequest;
 import org.apache.iotdb.mpp.rpc.thrift.GetDataBlockResponse;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
+import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
 
 import org.apache.thrift.TException;
 import org.junit.Assert;
