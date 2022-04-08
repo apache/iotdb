@@ -158,6 +158,10 @@ public class SeriesScanNode extends SourceNode {
     return NO_CHILD_ALLOWED;
   }
 
+  public void setColumnName(String columnName) {
+    this.columnName = columnName;
+  }
+
   @Override
   public List<String> getOutputColumnNames() {
     return ImmutableList.of(columnName);
