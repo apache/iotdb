@@ -48,6 +48,10 @@ public class PlanFragment {
     return root;
   }
 
+  public void setRoot(PlanNode root) {
+    this.root = root;
+  }
+
   @Override
   public String toString() {
     return String.format("PlanFragment-%s", getId());

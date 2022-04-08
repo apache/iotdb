@@ -20,18 +20,20 @@ package org.apache.iotdb.commons.partition;
 
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class RegionReplicaSet {
-  private ConsensusGroupId Id;
+  private ConsensusGroupId id;
   private List<DataNodeLocation> dataNodeList;
 
   public RegionReplicaSet() {}
 
-  public RegionReplicaSet(ConsensusGroupId Id, List<DataNodeLocation> dataNodeList) {
-    this.Id = Id;
+  public RegionReplicaSet(ConsensusGroupId id, List<DataNodeLocation> dataNodeList) {
+    this.id = id;
     this.dataNodeList = dataNodeList;
   }
 
@@ -44,20 +46,20 @@ public class RegionReplicaSet {
   }
 
   public ConsensusGroupId getId() {
-    return Id;
+    return id;
   }
 
   public void setId(ConsensusGroupId id) {
-    this.Id = id;
+    this.id = id;
   }
 
   @Override
   public String toString() {
-    return String.format("RegionReplicaSet[%s-%d]: %s", Id.getType(), Id.getId(), dataNodeList);
+    return String.format("RegionReplicaSet[%s-%s]: %s", id.getType(), id, dataNodeList);
   }
 
   public void serializeImpl(ByteBuffer buffer) {
-    Id.serializeImpl(buffer);
+    id.serializeImpl(buffer);
     buffer.putInt(dataNodeList.size());
     dataNodeList.forEach(
         dataNode -> {
@@ -65,9 +67,8 @@ public class RegionReplicaSet {
         });
   }
 
-  public void deserializeImpl(ByteBuffer buffer) {
-    Id = new ConsensusGroupId();
-    Id.deserializeImpl(buffer);
+  public void deserializeImpl(ByteBuffer buffer) throws IOException {
+    id = ConsensusGroupId.Factory.create(buffer);
 
     int size = buffer.getInt();
     // We should always make dataNodeList as a new Object when deserialization
@@ -81,12 +82,19 @@ public class RegionReplicaSet {
   }
 
   @Override
-  public int hashCode() {
-    return toString().hashCode();
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    RegionReplicaSet that = (RegionReplicaSet) o;
+    return Objects.equals(id, that.id) && Objects.equals(dataNodeList, that.dataNodeList);
   }
 
   @Override
-  public boolean equals(Object obj) {
-    return obj instanceof RegionReplicaSet && obj.toString().equals(toString());
+  public int hashCode() {
+    return Objects.hash(id, dataNodeList);
   }
 }

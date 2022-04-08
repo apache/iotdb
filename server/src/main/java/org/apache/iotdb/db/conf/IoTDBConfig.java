@@ -104,6 +104,9 @@ public class IoTDBConfig {
   /** Port which the JDBC server listens to. */
   private int rpcPort = 6667;
 
+  /** Port which is used for node communication in MPP. */
+  private int mppPort = 7777;
+
   /** Port which the influxdb protocol server listens to. */
   private int influxDBRpcPort = 8086;
 
@@ -259,6 +262,9 @@ public class IoTDBConfig {
 
   /** Wal directory. */
   private String walDir = DEFAULT_BASE_DIR + File.separator + "wal";
+
+  /** Consensus directory. */
+  private String consensusDir = DEFAULT_BASE_DIR + File.separator + "consensus";
 
   /** Maximum MemTable number. Invalid when enableMemControl is true. */
   private int maxMemtableNumber = 0;
@@ -820,11 +826,21 @@ public class IoTDBConfig {
   /** Internal ip for data node */
   private String internalIp;
 
-  /** Internal port of data node */
+  /** Internal port for coordinator */
   private int internalPort = 9003;
+
+  /** Internal port for consensus protocol */
+  private int consensusPort = 40010;
 
   /** The max time of data node waiting to join into the cluster */
   private long joinClusterTimeOutMs = TimeUnit.SECONDS.toMillis(60);
+
+  /**
+   * The consensus protocol class. The Datanode should communicate with ConfigNode on startup and
+   * set this variable so that the correct class name can be obtained later when the consensus layer
+   * singleton is initialized
+   */
+  private String consensusProtocolClass = "org.apache.iotdb.consensus.ratis.RatisConsensus";
 
   /** Port that data block manager thrift service listen to. */
   private int dataBlockManagerPort = 7777;
@@ -949,6 +965,7 @@ public class IoTDBConfig {
     syncDir = addHomeDir(syncDir);
     tracingDir = addHomeDir(tracingDir);
     walDir = addHomeDir(walDir);
+    consensusDir = addHomeDir(consensusDir);
     indexRootFolder = addHomeDir(indexRootFolder);
     extDir = addHomeDir(extDir);
     udfDir = addHomeDir(udfDir);
@@ -1152,6 +1169,14 @@ public class IoTDBConfig {
 
   void setWalDir(String walDir) {
     this.walDir = walDir;
+  }
+
+  public String getConsensusDir() {
+    return consensusDir;
+  }
+
+  public void setConsensusDir(String consensusDir) {
+    this.consensusDir = consensusDir;
   }
 
   public String getExtDir() {
@@ -2591,12 +2616,36 @@ public class IoTDBConfig {
     this.internalPort = internalPort;
   }
 
+  public int getConsensusPort() {
+    return consensusPort;
+  }
+
+  public void setConsensusPort(int consensusPort) {
+    this.consensusPort = consensusPort;
+  }
+
   public long getJoinClusterTimeOutMs() {
     return joinClusterTimeOutMs;
   }
 
   public void setJoinClusterTimeOutMs(long joinClusterTimeOutMs) {
     this.joinClusterTimeOutMs = joinClusterTimeOutMs;
+  }
+
+  public String getConsensusProtocolClass() {
+    return consensusProtocolClass;
+  }
+
+  public void setConsensusProtocolClass(String consensusProtocolClass) {
+    this.consensusProtocolClass = consensusProtocolClass;
+  }
+
+  public int getMppPort() {
+    return mppPort;
+  }
+
+  public void setMppPort(int mppPort) {
+    this.mppPort = mppPort;
   }
 
   public int getDataBlockManagerPort() {

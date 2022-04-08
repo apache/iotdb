@@ -65,7 +65,7 @@ public class ExchangeNode extends PlanNode {
     ExchangeNode node = new ExchangeNode(getId());
     if (remoteSourceNode != null) {
       FragmentSinkNode remoteSourceNodeClone = (FragmentSinkNode) remoteSourceNode.clone();
-      remoteSourceNodeClone.setDownStreamNode(node);
+      remoteSourceNodeClone.setDownStreamPlanNodeId(node.getId());
       node.setRemoteSourceNode(remoteSourceNode);
     }
     return node;

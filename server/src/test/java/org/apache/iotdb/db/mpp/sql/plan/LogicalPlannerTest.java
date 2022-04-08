@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.sql.plan;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
+import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
 import org.apache.iotdb.db.mpp.sql.parser.StatementGenerator;
 import org.apache.iotdb.db.mpp.sql.planner.LogicalPlanner;
@@ -60,9 +61,7 @@ public class LogicalPlannerTest {
   LogicalPlanPrinter planPrinter = new LogicalPlanPrinter();
 
   @Before
-  public void setUp() {
-    PlanNodeIdAllocator.reset();
-  }
+  public void setUp() {}
 
   @Test
   @Ignore
@@ -432,7 +431,7 @@ public class LogicalPlannerTest {
     try {
       Statement statement =
           StatementGenerator.createStatement(sql, ZonedDateTime.now().getOffset());
-      MPPQueryContext context = new MPPQueryContext();
+      MPPQueryContext context = new MPPQueryContext(new QueryId("test_query"));
       // TODO: do analyze after implementing ISchemaFetcher and IPartitionFetcher
       //      Analyzer analyzer = new Analyzer(context);
       //      Analysis analysis = analyzer.analyze(statement);
