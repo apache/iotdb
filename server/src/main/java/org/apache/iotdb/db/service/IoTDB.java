@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
 import org.apache.iotdb.commons.service.StartupChecks;
-import org.apache.iotdb.db.auth.LocalAuthorizer;
 import org.apache.iotdb.db.conf.IoTDBConfigCheck;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceCheck;
@@ -65,7 +64,6 @@ public class IoTDB implements IoTDBMBean {
   private static final RegisterManager registerManager = new RegisterManager();
   public static LocalSchemaProcessor schemaProcessor = LocalSchemaProcessor.getInstance();
   public static LocalConfigManager configManager = LocalConfigManager.getInstance();
-  public static LocalAuthorizer authorizer = LocalAuthorizer.getInstance();
   public static ServiceProvider serviceProvider;
   private static boolean clusterMode = false;
 

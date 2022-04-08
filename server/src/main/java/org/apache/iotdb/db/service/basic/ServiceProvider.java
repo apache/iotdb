@@ -22,6 +22,7 @@ package org.apache.iotdb.db.service.basic;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.auth.authorizer.AuthorizerManager;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.OperationType;
@@ -39,7 +40,6 @@ import org.apache.iotdb.db.query.control.QueryTimeManager;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.control.SessionTimeoutManager;
 import org.apache.iotdb.db.query.control.tracing.TracingManager;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
@@ -155,7 +155,8 @@ public abstract class ServiceProvider {
     boolean status;
     String loginMessage = null;
     try {
-      status = IoTDB.authorizer.login(username, password);
+      AuthorizerManager authorizerManager = AuthorizerManager.getInstance();
+      status = authorizerManager.login(username, password);
     } catch (AuthException e) {
       LOGGER.info("meet error while logging in.", e);
       status = false;
