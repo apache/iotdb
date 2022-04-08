@@ -29,16 +29,14 @@ public class IntRAKEDecoder extends RAKEDecoder {
     String subNumBuffer = numBuffer.substring(0, Math.min(32, numBuffer.length()));
     this.numBuffer = "";
     if (subNumBuffer.charAt(0) == '0') {
-      int r = Integer.parseInt(subNumBuffer, 2);
-      return r;
+      return Integer.parseInt(subNumBuffer, 2);
     } else {
       String tmpSubNumBuffer = "0";
       for (int i = 1; i < subNumBuffer.length(); i++) {
         if (subNumBuffer.charAt(i) == '1') tmpSubNumBuffer += "0";
         else tmpSubNumBuffer += "1";
       }
-      int r = -Integer.parseInt(tmpSubNumBuffer, 2) - 1;
-      return r;
+      return -Integer.parseInt(tmpSubNumBuffer, 2) - 1;
     }
   }
 }
