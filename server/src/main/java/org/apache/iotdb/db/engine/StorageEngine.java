@@ -1087,6 +1087,9 @@ public class StorageEngine implements IService {
     }
   }
 
+  // When registering a new region, the coordinator needs to register the corresponding region with
+  // the local engine before adding the corresponding consensusGroup to the consensus layer
+  // TODO implement it
   public DataRegion createDataRegion(DataRegionId regionId, String sg, long ttl) {
     return null;
   }
