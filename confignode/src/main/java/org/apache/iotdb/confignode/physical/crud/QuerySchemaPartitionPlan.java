@@ -30,16 +30,16 @@ import java.util.List;
 import java.util.Map;
 
 /** Query or apply SchemaPartition by the specific storageGroup and the deviceGroupStartTimeMap. */
-public class SchemaPartitionPlan extends PhysicalPlan {
+public class QuerySchemaPartitionPlan extends PhysicalPlan {
   private String storageGroup;
   private List<Integer> seriesPartitionSlots;
   private Map<Integer, RegionReplicaSet> schemaPartitionReplicaSets;
 
-  public SchemaPartitionPlan(PhysicalPlanType physicalPlanType) {
+  public QuerySchemaPartitionPlan(PhysicalPlanType physicalPlanType) {
     super(physicalPlanType);
   }
 
-  public SchemaPartitionPlan(
+  public QuerySchemaPartitionPlan(
       PhysicalPlanType physicalPlanType, String storageGroup, List<Integer> seriesPartitionSlots) {
     this(physicalPlanType);
     this.storageGroup = storageGroup;
@@ -57,7 +57,7 @@ public class SchemaPartitionPlan extends PhysicalPlan {
 
   @Override
   protected void serializeImpl(ByteBuffer buffer) {
-    buffer.putInt(PhysicalPlanType.QueryDataPartition.ordinal());
+    buffer.putInt(PhysicalPlanType.GetDataPartition.ordinal());
     SerializeDeserializeUtil.write(storageGroup, buffer);
     buffer.putInt(seriesPartitionSlots.size());
     seriesPartitionSlots.forEach(id -> SerializeDeserializeUtil.write(id, buffer));

@@ -88,34 +88,34 @@ public interface Manager {
   TSStatus setStorageGroup(PhysicalPlan physicalPlan);
 
   /**
-   * get data partition
+   * Get SchemaPartition
    *
-   * @param physicalPlan physical plan
-   * @return data set
-   */
-  DataSet getDataPartition(PhysicalPlan physicalPlan);
-
-  /**
-   * get schema partition
-   *
-   * @param physicalPlan physical plan
-   * @return data set
+   * @param physicalPlan SchemaPartitionPlan
+   * @return SchemaPartitionDataSet
    */
   DataSet getSchemaPartition(PhysicalPlan physicalPlan);
 
   /**
-   * apply schema partition
+   * Get or create SchemaPartition
    *
-   * @param physicalPlan physical plan
-   * @return data set
+   * @param physicalPlan SchemaPartitionPlan
+   * @return SchemaPartitionDataSet
    */
-  DataSet applySchemaPartition(PhysicalPlan physicalPlan);
+  DataSet getOrCreateSchemaPartition(PhysicalPlan physicalPlan);
 
   /**
-   * apply data partition
+   * Get DataPartition
    *
-   * @param physicalPlan physical plan
-   * @return data set
+   * @param physicalPlan DataPartitionPlan
+   * @return DataPartitionDataSet
    */
-  DataSet applyDataPartition(PhysicalPlan physicalPlan);
+  DataSet getDataPartition(PhysicalPlan physicalPlan);
+
+  /**
+   * Get or create DataPartition
+   *
+   * @param physicalPlan DataPartitionPlan
+   * @return DataPartitionDataSet
+   */
+  DataSet getOrCreateDataPartition(PhysicalPlan physicalPlan);
 }

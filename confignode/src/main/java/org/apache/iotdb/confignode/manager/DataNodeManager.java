@@ -51,17 +51,18 @@ public class DataNodeManager {
   }
 
   /**
-   * register dta node info when data node start
+   * Register DataNode
    *
    * @param plan RegisterDataNodePlan
-   * @return success if data node regist first
+   * @return SUCCESS_STATUS if DataNode first register, and DATANODE_ALREADY_REGISTERED if DataNode
+   *     is already registered
    */
   public TSStatus registerDataNode(RegisterDataNodePlan plan) {
     TSStatus result;
     DataNodeLocation info = plan.getInfo();
 
     if (dataNodeInfoPersistence.containsValue(info)) {
-      result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      result = new TSStatus(TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode());
       DataNodeInfoPersistence.setRegisterDataNodeMessages(result, info.getDataNodeID());
       return result;
     } else {
@@ -72,10 +73,11 @@ public class DataNodeManager {
   }
 
   /**
-   * get dta node info
+   * Get DataNode info
    *
    * @param plan QueryDataNodeInfoPlan
-   * @return all data node info if dataNodeId of plan is -1
+   * @return The specific DataNode's info or all DataNode info if dataNodeId in
+   *     QueryDataNodeInfoPlan is -1
    */
   public DataNodesInfoDataSet getDataNodeInfo(QueryDataNodeInfoPlan plan) {
     return (DataNodesInfoDataSet) getConsensusManager().read(plan).getDataset();

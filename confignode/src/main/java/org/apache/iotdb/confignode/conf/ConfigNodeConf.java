@@ -47,10 +47,11 @@ public class ConfigNodeConf {
       Collections.singletonList(new Endpoint("0.0.0.0", 22278)).toArray(new Endpoint[0]);
 
   /** Number of DeviceGroups per StorageGroup */
-  private int deviceGroupCount = 10000;
+  private int seriesPartitionSlotNum = 10000;
 
   /** DeviceGroup hash executor class */
-  private String deviceGroupHashExecutorClass = "org.apache.iotdb.commons.hash.BKDRHashExecutor";
+  private String seriesPartitionSlotExecutorClass =
+      "org.apache.iotdb.commons.hash.BKDRHashExecutor";
 
   /** Max concurrent client number */
   private int rpcMaxConcurrentClientNum = 65535;
@@ -115,20 +116,20 @@ public class ConfigNodeConf {
     return dir;
   }
 
-  public int getDeviceGroupCount() {
-    return deviceGroupCount;
+  public int getSeriesPartitionSlotNum() {
+    return seriesPartitionSlotNum;
   }
 
-  public void setDeviceGroupCount(int deviceGroupCount) {
-    this.deviceGroupCount = deviceGroupCount;
+  public void setSeriesPartitionSlotNum(int seriesPartitionSlotNum) {
+    this.seriesPartitionSlotNum = seriesPartitionSlotNum;
   }
 
-  public String getDeviceGroupHashExecutorClass() {
-    return deviceGroupHashExecutorClass;
+  public String getSeriesPartitionSlotExecutorClass() {
+    return seriesPartitionSlotExecutorClass;
   }
 
-  public void setDeviceGroupHashExecutorClass(String deviceGroupHashExecutorClass) {
-    this.deviceGroupHashExecutorClass = deviceGroupHashExecutorClass;
+  public void setSeriesPartitionSlotExecutorClass(String seriesPartitionSlotExecutorClass) {
+    this.seriesPartitionSlotExecutorClass = seriesPartitionSlotExecutorClass;
   }
 
   public int getRpcMaxConcurrentClientNum() {

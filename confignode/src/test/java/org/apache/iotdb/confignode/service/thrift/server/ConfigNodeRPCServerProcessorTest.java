@@ -145,10 +145,10 @@ public class ConfigNodeRPCServerProcessorTest {
     deviceGroupHashInfo = processor.getDeviceGroupHashInfo();
     Assert.assertEquals(
         deviceGroupHashInfo.getDeviceGroupCount(),
-        ConfigNodeDescriptor.getInstance().getConf().getDeviceGroupCount());
+        ConfigNodeDescriptor.getInstance().getConf().getSeriesPartitionSlotNum());
     Assert.assertEquals(
         deviceGroupHashInfo.getHashClass(),
-        ConfigNodeDescriptor.getInstance().getConf().getDeviceGroupHashExecutorClass());
+        ConfigNodeDescriptor.getInstance().getConf().getSeriesPartitionSlotExecutorClass());
   }
 
   @Test

@@ -103,7 +103,12 @@ public enum TSStatusCode {
   PARSE_LOG_ERROR(708),
 
   // configuration
-  CONFIG_ERROR(800);
+  CONFIG_ERROR(800),
+
+  // ConfigNode response
+  DATANODE_ALREADY_REGISTERED(901),
+  STORAGE_GROUP_ALREADY_EXISTS(902),
+  NOT_ENOUGH_DATA_NODE(903);
 
   private int statusCode;
 

@@ -65,10 +65,11 @@ public class ConsensusManager {
   /** Build DeviceGroupHashExecutor */
   private void setHashExecutor() {
     try {
-      Class<?> executor = Class.forName(conf.getDeviceGroupHashExecutorClass());
+      Class<?> executor = Class.forName(conf.getSeriesPartitionSlotExecutorClass());
       Constructor<?> executorConstructor = executor.getConstructor(int.class);
       hashExecutor =
-          (DeviceGroupHashExecutor) executorConstructor.newInstance(conf.getDeviceGroupCount());
+          (DeviceGroupHashExecutor)
+              executorConstructor.newInstance(conf.getSeriesPartitionSlotNum());
     } catch (ClassNotFoundException
         | NoSuchMethodException
         | InstantiationException
@@ -76,7 +77,7 @@ public class ConsensusManager {
         | InvocationTargetException e) {
       LOGGER.error(
           "Couldn't Constructor DeviceGroupHashExecutor class: {}",
-          conf.getDeviceGroupHashExecutorClass(),
+          conf.getSeriesPartitionSlotExecutorClass(),
           e);
       hashExecutor = null;
     }

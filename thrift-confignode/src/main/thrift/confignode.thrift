@@ -42,7 +42,7 @@ struct TDataNodeRegisterReq {
 }
 
 struct TGlobalConfig {
-    1: optional string consensusType
+    1: optional string dataNodeConsensusProtocolClass
     2: optional i32 seriesPartitionSlotNum
     3: optional string seriesPartitionSlotExecutorClass
 }

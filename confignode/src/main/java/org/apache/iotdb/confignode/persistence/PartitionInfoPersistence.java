@@ -22,17 +22,16 @@ package org.apache.iotdb.confignode.persistence;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.commons.partition.SchemaPartition;
+import org.apache.iotdb.commons.partition.SeriesPartitionSlot;
+import org.apache.iotdb.commons.partition.TimePartitionSlot;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionDataSet;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionDataSet;
-import org.apache.iotdb.confignode.physical.crud.DataPartitionPlan;
-import org.apache.iotdb.confignode.physical.crud.SchemaPartitionPlan;
+import org.apache.iotdb.confignode.physical.crud.QueryDataPartitionPlan;
+import org.apache.iotdb.confignode.physical.crud.QuerySchemaPartitionPlan;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Map;
@@ -40,7 +39,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /** manage data partition and schema partition */
 public class PartitionInfoPersistence {
-  private static final Logger LOGGER = LoggerFactory.getLogger(PartitionInfoPersistence.class);
 
   /** schema partition read write lock */
   private final ReentrantReadWriteLock schemaPartitionReadWriteLock;
@@ -62,12 +60,13 @@ public class PartitionInfoPersistence {
   }
 
   /**
-   * Get schema partition
+   * TODO: Reconstruct this interface after PatterTree is moved to node-commons
+   * Get SchemaPartition
    *
-   * @param physicalPlan storageGroup and deviceGroupIDs
-   * @return SchemaPartitionDataSet
+   * @param physicalPlan SchemaPartitionPlan with PatternTree
+   * @return SchemaPartitionDataSet that contains only existing SchemaPartition
    */
-  public DataSet getSchemaPartition(SchemaPartitionPlan physicalPlan) {
+  public DataSet getSchemaPartition(QuerySchemaPartitionPlan physicalPlan) {
     SchemaPartitionDataSet schemaPartitionDataSet = new SchemaPartitionDataSet();
     schemaPartitionReadWriteLock.readLock().lock();
     try {
@@ -85,16 +84,17 @@ public class PartitionInfoPersistence {
   }
 
   /**
-   * Apply new SchemaPartitions
+   * TODO: Reconstruct this interface after PatterTree is moved to node-commons
+   * Get SchemaPartition and create a new one if it does not exist
    *
-   * @param physicalPlan storage group and the new SchemaPartition locations
-   * @return SUCCESS_STATUS if apply successes
+   * @param physicalPlan SchemaPartitionPlan with PatternTree
+   * @return SchemaPartitionDataSet
    */
-  public TSStatus applySchemaPartition(SchemaPartitionPlan physicalPlan) {
+  public TSStatus createSchemaPartition(QuerySchemaPartitionPlan physicalPlan) {
     schemaPartitionReadWriteLock.writeLock().lock();
 
     try {
-      // allocate partition by storage group and device group id
+      // Allocate SchemaPartition by SchemaPartitionPlan
       String storageGroup = physicalPlan.getStorageGroup();
       Map<Integer, RegionReplicaSet> schemaPartitionReplicaSets =
           physicalPlan.getSchemaPartitionReplicaSets();
@@ -107,61 +107,63 @@ public class PartitionInfoPersistence {
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
-  public DataSet getDataPartition(DataPartitionPlan physicalPlan) {
-    DataPartitionDataSet dataPartitionDataSet = new DataPartitionDataSet();
-    dataPartitionReadWriteLock.readLock().lock();
-    try {
-      String storageGroup = physicalPlan.getStorageGroup();
-      Map<Integer, List<Long>> partitionSlots = physicalPlan.getSeriesPartitionTimePartitionSlots();
-      DataPartition dataPartitionInfo = new DataPartition();
-      dataPartitionInfo.setDataPartitionMap(
-          dataPartition.getDataPartition(storageGroup, partitionSlots));
-      dataPartitionDataSet.setDataPartition(dataPartitionInfo);
-    } finally {
-      schemaPartitionReadWriteLock.readLock().unlock();
-      dataPartitionDataSet.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
-    }
-    return dataPartitionDataSet;
-  }
-
-  public TSStatus applyDataPartition(DataPartitionPlan physicalPlan) {
-    schemaPartitionReadWriteLock.writeLock().lock();
-
-    try {
-      // allocate partition by storage group and device group id
-      String storageGroup = physicalPlan.getStorageGroup();
-      Map<Integer, RegionReplicaSet> schemaPartitionReplicaSets =
-          physicalPlan.getSchemaPartitionReplicaSets();
-      schemaPartitionReplicaSets.forEach(
-          (key, value) -> schemaPartition.setSchemaRegionReplicaSet(storageGroup, key, value));
-    } finally {
-      schemaPartitionReadWriteLock.writeLock().unlock();
-    }
-
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-  }
-
+  /**
+   * TODO: Reconstruct this interface after PatterTree is moved to node-commons
+   */
   public List<Integer> filterSchemaRegionNoAssignedPartitionSlots(
-      String storageGroup, List<Integer> seriesPartitionSlots) {
+          String storageGroup, List<Integer> seriesPartitionSlots) {
     List<Integer> result;
     schemaPartitionReadWriteLock.readLock().lock();
     try {
       result =
-          schemaPartition.filterNoAssignedSeriesPartitionSlot(storageGroup, seriesPartitionSlots);
+              schemaPartition.filterNoAssignedSeriesPartitionSlot(storageGroup, seriesPartitionSlots);
     } finally {
       schemaPartitionReadWriteLock.readLock().unlock();
     }
     return result;
   }
 
-  public Map<Integer, List<Long>> filterDataRegionNoAssignedPartitionSlots(
-      String storageGroup, Map<Integer, List<Long>> seriesPartitionTimePartitionSlots) {
-    Map<Integer, List<Long>> result;
+  /**
+   * Get DataPartition
+   *
+   * @param physicalPlan DataPartitionPlan with Map<StorageGroupName, Map<SeriesPartitionSlot, List<TimePartitionSlot>>>
+   * @return DataPartitionDataSet that contains only existing DataPartition
+   */
+  public DataSet getDataPartition(QueryDataPartitionPlan physicalPlan) {
+    DataPartitionDataSet dataPartitionDataSet = new DataPartitionDataSet();
     dataPartitionReadWriteLock.readLock().lock();
     try {
-      result =
-          dataPartition.filterDataRegionNoAssignedPartitionSlots(
-              storageGroup, seriesPartitionTimePartitionSlots);
+      dataPartitionDataSet.setDataPartition(dataPartition.getDataPartition(physicalPlan.getPartitionSlotsMap()));
+    } finally {
+      dataPartitionReadWriteLock.readLock().unlock();
+      dataPartitionDataSet.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    }
+    return dataPartitionDataSet;
+  }
+
+  public TSStatus createDataPartition(QueryDataPartitionPlan physicalPlan) {
+    dataPartitionReadWriteLock.writeLock().lock();
+
+    try {
+      // Allocate DataPartition by DataPartitionPlan
+      String storageGroup = physicalPlan.getStorageGroup();
+      Map<Integer, RegionReplicaSet> schemaPartitionReplicaSets =
+          physicalPlan.getSchemaPartitionReplicaSets();
+      schemaPartitionReplicaSets.forEach(
+          (key, value) -> schemaPartition.setSchemaRegionReplicaSet(storageGroup, key, value));
+    } finally {
+      dataPartitionReadWriteLock.writeLock().unlock();
+    }
+
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  public Map<String, Map<SeriesPartitionSlot, List<TimePartitionSlot>>> filterNoAssignedDataPartitionSlots(
+          Map<String, Map<SeriesPartitionSlot, List<TimePartitionSlot>>> partitionSlotsMap) {
+    Map<String, Map<SeriesPartitionSlot, List<TimePartitionSlot>>> result;
+    dataPartitionReadWriteLock.readLock().lock();
+    try {
+      result = dataPartition.filterNoAssignedDataPartitionSlots(partitionSlotsMap);
     } finally {
       dataPartitionReadWriteLock.readLock().unlock();
     }

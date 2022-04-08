@@ -24,12 +24,8 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.response.DataNodesInfoDataSet;
 import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
 import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
-import org.apache.iotdb.consensus.common.ConsensusType;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -42,8 +38,6 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class DataNodeInfoPersistence {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeInfoPersistence.class);
 
   private final ReentrantReadWriteLock dataNodeInfoReadWriteLock;
 
@@ -85,21 +79,12 @@ public class DataNodeInfoPersistence {
     onlineDataNodes.put(dataNodeID, info);
   }
 
-  public int getDataNodeInfo(DataNodeLocation info) {
-    // TODO: optimize
-    for (Map.Entry<Integer, DataNodeLocation> entry : onlineDataNodes.entrySet()) {
-      if (entry.getValue().equals(info)) {
-        return info.getDataNodeID();
-      }
-    }
-    return -1;
-  }
-
   /**
-   * register dta node info when data node start
+   * Persistence DataNode info
    *
    * @param plan RegisterDataNodePlan
-   * @return success if data node regist first
+   * @return SUCCESS_STATUS if DataNode first register, and DATANODE_ALREADY_REGISTERED if DataNode
+   *     is already registered
    */
   public TSStatus registerDataNode(RegisterDataNodePlan plan) {
     TSStatus result;
@@ -116,10 +101,11 @@ public class DataNodeInfoPersistence {
   }
 
   /**
-   * get dta node info
+   * Get DataNode info
    *
    * @param plan QueryDataNodeInfoPlan
-   * @return all data node info if dataNodeId of plan is -1
+   * @return The specific DataNode's info or all DataNode info if dataNodeId in
+   *     QueryDataNodeInfoPlan is -1
    */
   public DataNodesInfoDataSet getDataNodeInfo(QueryDataNodeInfoPlan plan) {
     DataNodesInfoDataSet result = new DataNodesInfoDataSet();
@@ -179,20 +165,21 @@ public class DataNodeInfoPersistence {
   public static void setRegisterDataNodeMessages(TSStatus status, int dataNodeId) {
     StringBuilder messageBuilder = new StringBuilder();
 
-    // dataNodeId
+    // Set DataNodeId
     messageBuilder.append(dataNodeId);
 
-    // consensusType
-    ConsensusType consensusType = ConfigNodeDescriptor.getInstance().getConf().getConsensusType();
-    messageBuilder.append(consensusType.toString().length());
-    messageBuilder.append(consensusType);
+    // Set DataNode consensus protocol class
+    String dataNodeConsensusProtocolClass =
+        ConfigNodeDescriptor.getInstance().getConf().getDataNodeConsensusProtocolClass();
+    messageBuilder.append(dataNodeConsensusProtocolClass.length());
+    messageBuilder.append(dataNodeConsensusProtocolClass);
 
-    // seriesPartitionSlotNum
-    messageBuilder.append(ConfigNodeDescriptor.getInstance().getConf().getDeviceGroupCount());
+    // Set seriesPartitionSlotNum
+    messageBuilder.append(ConfigNodeDescriptor.getInstance().getConf().getSeriesPartitionSlotNum());
 
     // seriesPartitionSlotExecutorClass
     String seriesPartitionSlotExecutorClass =
-        ConfigNodeDescriptor.getInstance().getConf().getDeviceGroupHashExecutorClass();
+        ConfigNodeDescriptor.getInstance().getConf().getSeriesPartitionSlotExecutorClass();
     messageBuilder.append(seriesPartitionSlotExecutorClass.length());
     messageBuilder.append(seriesPartitionSlotExecutorClass);
 

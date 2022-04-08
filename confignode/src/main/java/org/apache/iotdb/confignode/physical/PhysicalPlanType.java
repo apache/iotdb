@@ -25,8 +25,10 @@ public enum PhysicalPlanType {
   DeleteStorageGroup,
   QueryStorageGroupSchema,
   CreateRegion,
-  QueryDataPartition,
-  ApplyDataPartition,
-  QuerySchemaPartition,
-  ApplySchemaPartition
+  GetDataPartition,
+  CreateDataPartition,
+  GetOrCreateDataPartition,
+  GetSchemaPartition,
+  CreateSchemaPartition,
+  GetOrCreateSchemaPartition
 }

@@ -18,8 +18,14 @@
  */
 package org.apache.iotdb.commons.partition;
 
+import java.nio.ByteBuffer;
+
 public class SeriesPartitionSlot {
   private int deviceGroupId;
+
+  public SeriesPartitionSlot() {
+    // Empty constructor
+  }
 
   public SeriesPartitionSlot(int deviceGroupId) {
     this.deviceGroupId = deviceGroupId;
@@ -40,5 +46,13 @@ public class SeriesPartitionSlot {
   public boolean equals(Object obj) {
     return obj instanceof SeriesPartitionSlot
         && this.deviceGroupId == ((SeriesPartitionSlot) obj).deviceGroupId;
+  }
+
+  public void serializeImpl(ByteBuffer buffer) {
+    buffer.putInt(deviceGroupId);
+  }
+
+  public void deserializeImpl(ByteBuffer buffer) {
+    deviceGroupId = buffer.getInt();
   }
 }

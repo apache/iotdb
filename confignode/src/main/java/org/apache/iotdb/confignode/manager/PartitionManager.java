@@ -19,12 +19,16 @@
 package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
+import org.apache.iotdb.commons.partition.SeriesPartitionSlot;
+import org.apache.iotdb.commons.partition.TimePartitionSlot;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionDataSet;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionDataSet;
 import org.apache.iotdb.confignode.persistence.PartitionInfoPersistence;
 import org.apache.iotdb.confignode.persistence.RegionInfoPersistence;
-import org.apache.iotdb.confignode.physical.crud.DataPartitionPlan;
-import org.apache.iotdb.confignode.physical.crud.SchemaPartitionPlan;
+import org.apache.iotdb.confignode.physical.PhysicalPlanType;
+import org.apache.iotdb.confignode.physical.crud.CreateDataPartitionPlan;
+import org.apache.iotdb.confignode.physical.crud.QueryDataPartitionPlan;
+import org.apache.iotdb.confignode.physical.crud.QuerySchemaPartitionPlan;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
@@ -53,13 +57,18 @@ public class PartitionManager {
     this.configNodeManager = configNodeManager;
   }
 
+  private ConsensusManager getConsensusManager() {
+    return configNodeManager.getConsensusManager();
+  }
+
   /**
+   * TODO: Reconstruct this interface after PatterTree is moved to node-commons
    * Get SchemaPartition
    *
-   * @param physicalPlan SchemaPartitionPlan with StorageGroup and DeviceGroupIds
-   * @return Empty DataSet if the specific SchemaPartition does not exist
+   * @param physicalPlan SchemaPartitionPlan with PatternTree
+   * @return SchemaPartitionDataSet that contains only existing SchemaPartition
    */
-  public DataSet getSchemaPartition(SchemaPartitionPlan physicalPlan) {
+  public DataSet getSchemaPartition(QuerySchemaPartitionPlan physicalPlan) {
     SchemaPartitionDataSet schemaPartitionDataSet;
     ConsensusReadResponse consensusReadResponse = getConsensusManager().read(physicalPlan);
     schemaPartitionDataSet = (SchemaPartitionDataSet) consensusReadResponse.getDataset();
@@ -67,12 +76,13 @@ public class PartitionManager {
   }
 
   /**
-   * Get SchemaPartition and apply a new one if it does not exist
+   * TODO: Reconstruct this interface after PatterTree is moved to node-commons
+   * Get SchemaPartition and create a new one if it does not exist
    *
-   * @param physicalPlan SchemaPartitionPlan with StorageGroup and DeviceGroupIds
+   * @param physicalPlan SchemaPartitionPlan with PatternTree
    * @return SchemaPartitionDataSet
    */
-  public DataSet applySchemaPartition(SchemaPartitionPlan physicalPlan) {
+  public DataSet getOrCreateSchemaPartition(QuerySchemaPartitionPlan physicalPlan) {
     String storageGroup = physicalPlan.getStorageGroup();
     List<Integer> seriesPartitionSlots = physicalPlan.getSeriesPartitionSlots();
     List<Integer> noAssignedSeriesPartitionSlots =
@@ -99,7 +109,7 @@ public class PartitionManager {
   /**
    * TODO: allocate schema partition by LoadManager
    *
-   * @param storageGroup storage group
+   * @param storageGroup StorageGroupName
    * @param noAssignedSeriesPartitionSlots not assigned SeriesPartitionSlots
    * @return assign result
    */
@@ -117,17 +127,13 @@ public class PartitionManager {
     return schemaPartitionReplicaSets;
   }
 
-  private ConsensusManager getConsensusManager() {
-    return configNodeManager.getConsensusManager();
-  }
-
   /**
    * Get DataPartition
    *
-   * @param physicalPlan DataPartitionPlan with StorageGroup, DeviceGroupIds and StartTimes
-   * @return Empty DataSet if the specific DataPartition does not exist
+   * @param physicalPlan DataPartitionPlan with Map<StorageGroupName, Map<SeriesPartitionSlot, List<TimePartitionSlot>>>
+   * @return DataPartitionDataSet that contains only existing DataPartition
    */
-  public DataSet getDataPartition(DataPartitionPlan physicalPlan) {
+  public DataSet getDataPartition(QueryDataPartitionPlan physicalPlan) {
     DataPartitionDataSet dataPartitionDataSet;
     ConsensusReadResponse consensusReadResponse = getConsensusManager().read(physicalPlan);
     dataPartitionDataSet = (DataPartitionDataSet) consensusReadResponse.getDataset();
@@ -135,46 +141,41 @@ public class PartitionManager {
   }
 
   /**
-   * Get DataPartition and apply a new one if it does not exist
+   * Get DataPartition and create a new one if it does not exist
    *
-   * @param physicalPlan DataPartitionPlan with StorageGroup, DeviceGroupIds and StartTimes
+   * @param physicalPlan DataPartitionPlan with Map<StorageGroupName, Map<SeriesPartitionSlot, List<TimePartitionSlot>>>
    * @return DataPartitionDataSet
    */
-  public DataSet applyDataPartition(DataPartitionPlan physicalPlan) {
+  public DataSet getOrCreateDataPartition(QueryDataPartitionPlan physicalPlan) {
+    Map<String, Map<SeriesPartitionSlot, List<TimePartitionSlot>>> noAssignedDataPartitionSlots =
+            partitionInfoPersistence.filterNoAssignedDataPartitionSlots(physicalPlan.getPartitionSlotsMap());
 
-    String storageGroup = physicalPlan.getStorageGroup();
-    Map<Integer, List<Long>> seriesPartitionSlots =
-        physicalPlan.getSeriesPartitionTimePartitionSlots();
-    Map<Integer, List<Long>> noAssignedSeriesPartitionSlots =
-        partitionInfoPersistence.filterDataRegionNoAssignedPartitionSlots(
-            storageGroup, seriesPartitionSlots);
+    if (noAssignedDataPartitionSlots.size() > 0) {
+      // Allocate DataPartition
+      Map<String, Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>> assignedDataPartition =
+          allocateDataPartition(noAssignedDataPartitionSlots);
+      CreateDataPartitionPlan createPlan = new CreateDataPartitionPlan(PhysicalPlanType.CreateDataPartition);
+      createPlan.setAssignedDataPartition(assignedDataPartition);
 
-    if (noAssignedSeriesPartitionSlots.size() > 0) {
-      // allocate partition by storage group and device group id
-      Map<Integer, Map<Long, List<RegionReplicaSet>>> dataPartitionReplicaSets =
-          allocateDataPartition(storageGroup, noAssignedSeriesPartitionSlots);
-      physicalPlan.setDataPartitionReplicaSets(dataPartitionReplicaSets);
-
+      // Persistence DataPartition
       ConsensusWriteResponse consensusWriteResponse = getConsensusManager().write(physicalPlan);
       if (consensusWriteResponse.getStatus().getCode()
           == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.info("Allocate data partition to {}.", dataPartitionReplicaSets);
+        LOGGER.info("Allocate data partition to {}.", assignedDataPartition);
       }
     }
 
-    physicalPlan.setDataPartitionReplicaSets(new HashMap<>());
     return getDataPartition(physicalPlan);
   }
 
   /**
    * TODO: allocate by LoadManager
    *
-   * @param storageGroup storage group name
-   * @param noAssignedSeriesPartitionSlots not assigned DataPartitionSlots
-   * @return assign result
+   * @param noAssignedDataPartitionSlotsMap Map<StorageGroupName, Map<SeriesPartitionSlot, List<TimePartitionSlot>>>
+   * @return assign result, Map<StorageGroupName, Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>>
    */
-  private Map<Integer, Map<Long, List<RegionReplicaSet>>> allocateDataPartition(
-      String storageGroup, Map<Integer, List<Long>> noAssignedSeriesPartitionSlots) {
+  private Map<String, Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>> allocateDataPartition(
+          Map<String, Map<SeriesPartitionSlot, List<TimePartitionSlot>>> noAssignedDataPartitionSlotsMap) {
     List<RegionReplicaSet> dataRegionEndPoints =
         RegionInfoPersistence.getInstance().getDataRegionEndPoint(storageGroup);
     Random random = new Random();

@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,34 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.partition;
+package org.apache.iotdb.confignode.physical.crud;
 
-import java.nio.ByteBuffer;
-
-public class TimePartitionSlot {
-  private long startTime;
-
-  public TimePartitionSlot() {
-    // empty constructor
-  }
-
-  public TimePartitionSlot(long startTime) {
-    this.startTime = startTime;
-  }
-
-  public long getStartTime() {
-    return startTime;
-  }
-
-  public void setStartTime(long startTime) {
-    this.startTime = startTime;
-  }
-
-  public void serializeImpl(ByteBuffer buffer) {
-    buffer.putLong(startTime);
-  }
-
-  public void deserializeImpl(ByteBuffer buffer) {
-    startTime = buffer.getLong();
-  }
+/** TODO: Reconstruct this interface after PatterTree is moved to node-commons */
+public class CreateSchemaPartitionPlan {
 }

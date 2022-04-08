@@ -19,8 +19,6 @@
 package org.apache.iotdb.commons.cluster;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Objects;
 
 public class DataNodeLocation {

@@ -20,9 +20,6 @@
 package org.apache.iotdb.confignode.persistence;
 
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
-import org.apache.iotdb.commons.cluster.Endpoint;
-import org.apache.iotdb.commons.consensus.SchemaRegionId;
-import org.apache.iotdb.commons.partition.DataNodeLocation;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaDataSet;
@@ -62,29 +59,23 @@ public class RegionInfoPersistence {
   }
 
   /**
-   * StorageGroupSchema and Region allocation result persistence
+   * Persistence StorageGroupSchema and Region allocation result
    *
    * @param plan SetStorageGroupPlan
-   * @return TSStatusCode.SUCCESS_STATUS if success
+   * @return SUCCESS_STATUS
    */
   public TSStatus setStorageGroup(SetStorageGroupPlan plan) {
     TSStatus result;
     regionReadWriteLock.writeLock().lock();
     try {
-      if (storageGroupsMap.containsKey(plan.getSchema().getName())) {
-        result = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
-        result.setMessage(
-            String.format("StorageGroup %s is already set.", plan.getSchema().getName()));
-      } else {
-        StorageGroupSchema schema = plan.getSchema();
-        storageGroupsMap.put(schema.getName(), schema);
+      StorageGroupSchema schema = plan.getSchema();
+      storageGroupsMap.put(schema.getName(), schema);
 
-        for (RegionReplicaSet regionReplicaSet : plan.getRegionReplicaSets()) {
-          regionMap.put(regionReplicaSet.getId(), regionReplicaSet);
-        }
-
-        result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      for (RegionReplicaSet regionReplicaSet : plan.getRegionReplicaSets()) {
+        regionMap.put(regionReplicaSet.getId(), regionReplicaSet);
       }
+
+      result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } finally {
       regionReadWriteLock.writeLock().unlock();
     }
@@ -153,7 +144,14 @@ public class RegionInfoPersistence {
   }
 
   public boolean containsStorageGroup(String storageName) {
-    return storageGroupsMap.containsKey(storageName);
+    boolean result;
+    regionReadWriteLock.readLock().lock();
+    try {
+      result = storageGroupsMap.containsKey(storageName);
+    } finally {
+      regionReadWriteLock.readLock().unlock();
+    }
+    return result;
   }
 
   @TestOnly

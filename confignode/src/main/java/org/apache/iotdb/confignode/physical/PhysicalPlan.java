@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.confignode.physical;
 
-import org.apache.iotdb.confignode.physical.crud.DataPartitionPlan;
-import org.apache.iotdb.confignode.physical.crud.SchemaPartitionPlan;
+import org.apache.iotdb.confignode.physical.crud.QueryDataPartitionPlan;
+import org.apache.iotdb.confignode.physical.crud.QuerySchemaPartitionPlan;
 import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
 import org.apache.iotdb.confignode.physical.sys.QueryStorageGroupSchemaPlan;
 import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
@@ -97,17 +97,17 @@ public abstract class PhysicalPlan implements IConsensusRequest {
         case QueryStorageGroupSchema:
           plan = new QueryStorageGroupSchemaPlan();
           break;
-        case QueryDataPartition:
-          plan = new DataPartitionPlan(PhysicalPlanType.QueryDataPartition);
+        case GetDataPartition:
+          plan = new QueryDataPartitionPlan(PhysicalPlanType.GetDataPartition);
           break;
-        case ApplyDataPartition:
-          plan = new DataPartitionPlan(PhysicalPlanType.ApplyDataPartition);
+        case GetOrCreateDataPartition:
+          plan = new QueryDataPartitionPlan(PhysicalPlanType.GetOrCreateDataPartition);
           break;
-        case QuerySchemaPartition:
-          plan = new SchemaPartitionPlan(PhysicalPlanType.QuerySchemaPartition);
+        case GetSchemaPartition:
+          plan = new QuerySchemaPartitionPlan(PhysicalPlanType.GetSchemaPartition);
           break;
-        case ApplySchemaPartition:
-          plan = new SchemaPartitionPlan(PhysicalPlanType.ApplySchemaPartition);
+        case GetOrCreateSchemaPartition:
+          plan = new QuerySchemaPartitionPlan(PhysicalPlanType.GetOrCreateSchemaPartition);
           break;
         default:
           throw new IOException("unknown PhysicalPlan type: " + typeNum);

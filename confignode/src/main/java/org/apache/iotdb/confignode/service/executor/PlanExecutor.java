@@ -23,8 +23,8 @@ import org.apache.iotdb.confignode.persistence.DataNodeInfoPersistence;
 import org.apache.iotdb.confignode.persistence.PartitionInfoPersistence;
 import org.apache.iotdb.confignode.persistence.RegionInfoPersistence;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
-import org.apache.iotdb.confignode.physical.crud.DataPartitionPlan;
-import org.apache.iotdb.confignode.physical.crud.SchemaPartitionPlan;
+import org.apache.iotdb.confignode.physical.crud.QueryDataPartitionPlan;
+import org.apache.iotdb.confignode.physical.crud.QuerySchemaPartitionPlan;
 import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
 import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.physical.sys.SetStorageGroupPlan;
@@ -51,10 +51,12 @@ public class PlanExecutor {
         return dataNodeInfoPersistence.getDataNodeInfo((QueryDataNodeInfoPlan) plan);
       case QueryStorageGroupSchema:
         return regionInfoPersistence.getStorageGroupSchema();
-      case QueryDataPartition:
-        return partitionInfoPersistence.getDataPartition((DataPartitionPlan) plan);
-      case QuerySchemaPartition:
-        return partitionInfoPersistence.getSchemaPartition((SchemaPartitionPlan) plan);
+      case GetDataPartition:
+      case GetOrCreateDataPartition:
+        return partitionInfoPersistence.getDataPartition((QueryDataPartitionPlan) plan);
+      case GetSchemaPartition:
+      case GetOrCreateSchemaPartition:
+        return partitionInfoPersistence.getSchemaPartition((QuerySchemaPartitionPlan) plan);
       default:
         throw new UnknownPhysicalPlanTypeException(plan.getType());
     }
@@ -66,10 +68,10 @@ public class PlanExecutor {
         return dataNodeInfoPersistence.registerDataNode((RegisterDataNodePlan) plan);
       case SetStorageGroup:
         return regionInfoPersistence.setStorageGroup((SetStorageGroupPlan) plan);
-      case ApplySchemaPartition:
-        return partitionInfoPersistence.applySchemaPartition((SchemaPartitionPlan) plan);
-      case ApplyDataPartition:
-        return partitionInfoPersistence.applyDataPartition((DataPartitionPlan) plan);
+      case CreateSchemaPartition:
+        return partitionInfoPersistence.createSchemaPartition((QuerySchemaPartitionPlan) plan);
+      case CreateDataPartition:
+        return partitionInfoPersistence.createDataPartition((QueryDataPartitionPlan) plan);
       default:
         throw new UnknownPhysicalPlanTypeException(plan.getType());
     }

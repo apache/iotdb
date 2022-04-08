@@ -21,7 +21,9 @@ package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.commons.cluster.DataNodeLocation;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.GroupType;
+import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -58,19 +60,21 @@ public class RegionManager {
   }
 
   /**
-   * 1. region allocation 2. add to storage group map
+   * Set StorageGroup and allocate the default amount Regions
    *
    * @param plan SetStorageGroupPlan
-   * @return TSStatusCode.SUCCESS_STATUS if region allocate
+   * @return SUCCESS_STATUS if the StorageGroup is set and region allocation successful.
+   *     NOT_ENOUGH_DATA_NODE if there are not enough DataNode for Region allocation.
+   *     STORAGE_GROUP_ALREADY_EXISTS if the StorageGroup is already set.
    */
   public TSStatus setStorageGroup(SetStorageGroupPlan plan) {
     TSStatus result;
     if (configNodeManager.getDataNodeManager().getOnlineDataNodeCount() < regionReplicaCount) {
-      result = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      result = new TSStatus(TSStatusCode.NOT_ENOUGH_DATA_NODE.getStatusCode());
       result.setMessage("DataNode is not enough, please register more.");
     } else {
       if (regionInfoPersistence.containsStorageGroup(plan.getSchema().getName())) {
-        result = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+        result = new TSStatus(TSStatusCode.STORAGE_GROUP_ALREADY_EXISTS.getStatusCode());
         result.setMessage(
             String.format("StorageGroup %s is already set.", plan.getSchema().getName()));
       } else {
@@ -99,24 +103,23 @@ public class RegionManager {
       Collections.shuffle(onlineDataNodes);
 
       RegionReplicaSet regionReplicaSet = new RegionReplicaSet();
-      ConsensusGroupId consensusGroupId =
-          new ConsensusGroupId(type, regionInfoPersistence.generateNextRegionGroupId());
-      regionReplicaSet.setId(consensusGroupId);
-      regionReplicaSet.setDataNodeList(onlineDataNodes.subList(0, regionCount));
-      plan.addRegion(regionReplicaSet);
-
+      ConsensusGroupId consensusGroupId = null;
       switch (type) {
         case SchemaRegion:
+          consensusGroupId = new SchemaRegionId(regionInfoPersistence.generateNextRegionGroupId());
           plan.getSchema().addSchemaRegionGroup(consensusGroupId);
           break;
         case DataRegion:
+          consensusGroupId = new DataRegionId(regionInfoPersistence.generateNextRegionGroupId());
           plan.getSchema().addDataRegionGroup(consensusGroupId);
       }
+      regionReplicaSet.setId(consensusGroupId);
+      regionReplicaSet.setDataNodeList(onlineDataNodes.subList(0, regionCount));
+      plan.addRegion(regionReplicaSet);
     }
   }
 
   public StorageGroupSchemaDataSet getStorageGroupSchema() {
-
     ConsensusReadResponse readResponse =
         getConsensusManager().read(new QueryStorageGroupSchemaPlan());
     return (StorageGroupSchemaDataSet) readResponse.getDataset();

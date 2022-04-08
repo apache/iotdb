@@ -20,9 +20,11 @@
 package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.confignode.consensus.response.DataNodesInfoDataSet;
+import org.apache.iotdb.confignode.consensus.response.DataPartitionDataSet;
+import org.apache.iotdb.confignode.consensus.response.SchemaPartitionDataSet;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
-import org.apache.iotdb.confignode.physical.crud.DataPartitionPlan;
-import org.apache.iotdb.confignode.physical.crud.SchemaPartitionPlan;
+import org.apache.iotdb.confignode.physical.crud.QueryDataPartitionPlan;
+import org.apache.iotdb.confignode.physical.crud.QuerySchemaPartitionPlan;
 import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
 import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.physical.sys.SetStorageGroupPlan;
@@ -112,21 +114,21 @@ public class ConfigManager implements Manager {
 
     // TODO: Only leader can query SchemaPartition
 
-    if (physicalPlan instanceof SchemaPartitionPlan) {
-      return partitionManager.getSchemaPartition((SchemaPartitionPlan) physicalPlan);
+    if (physicalPlan instanceof QuerySchemaPartitionPlan) {
+      return partitionManager.getSchemaPartition((QuerySchemaPartitionPlan) physicalPlan);
     }
-    return new DataNodesInfoDataSet();
+    return new SchemaPartitionDataSet();
   }
 
   @Override
-  public DataSet applySchemaPartition(PhysicalPlan physicalPlan) {
+  public DataSet getOrCreateSchemaPartition(PhysicalPlan physicalPlan) {
 
     // TODO: Only leader can apply SchemaPartition
 
-    if (physicalPlan instanceof SchemaPartitionPlan) {
-      return partitionManager.applySchemaPartition((SchemaPartitionPlan) physicalPlan);
+    if (physicalPlan instanceof QuerySchemaPartitionPlan) {
+      return partitionManager.getOrCreateSchemaPartition((QuerySchemaPartitionPlan) physicalPlan);
     }
-    return new DataNodesInfoDataSet();
+    return new SchemaPartitionDataSet();
   }
 
   @Override
@@ -134,21 +136,21 @@ public class ConfigManager implements Manager {
 
     // TODO: Only leader can query DataPartition
 
-    if (physicalPlan instanceof DataPartitionPlan) {
-      return partitionManager.getDataPartition((DataPartitionPlan) physicalPlan);
+    if (physicalPlan instanceof QueryDataPartitionPlan) {
+      return partitionManager.getDataPartition((QueryDataPartitionPlan) physicalPlan);
     }
-    return new DataNodesInfoDataSet();
+    return new DataPartitionDataSet();
   }
 
   @Override
-  public DataSet applyDataPartition(PhysicalPlan physicalPlan) {
+  public DataSet getOrCreateDataPartition(PhysicalPlan physicalPlan) {
 
     // TODO: only leader can apply DataPartition
 
-    if (physicalPlan instanceof DataPartitionPlan) {
-      return partitionManager.applyDataPartition((DataPartitionPlan) physicalPlan);
+    if (physicalPlan instanceof QueryDataPartitionPlan) {
+      return partitionManager.getOrCreateDataPartition((QueryDataPartitionPlan) physicalPlan);
     }
-    return new DataNodesInfoDataSet();
+    return new DataPartitionDataSet();
   }
 
   @Override
