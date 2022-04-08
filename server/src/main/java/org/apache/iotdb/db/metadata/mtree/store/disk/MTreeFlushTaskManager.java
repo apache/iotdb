@@ -22,7 +22,6 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.RejectedExecutionException;
 
 public class MTreeFlushTaskManager {
 
@@ -58,13 +57,6 @@ public class MTreeFlushTaskManager {
   }
 
   public void submit(Runnable task) {
-    try {
-      if (!flushTaskExecutor.isShutdown()) {
-        flushTaskExecutor.submit(task);
-      }
-    } catch (RejectedExecutionException e) {
-      e.printStackTrace();
-      throw e;
-    }
+    flushTaskExecutor.submit(task);
   }
 }

@@ -62,6 +62,7 @@ public class MTreeReleaseTaskManager {
         releaseTaskExecutor.submit(task);
       }
     } catch (RejectedExecutionException e) {
+      System.out.println(releaseTaskExecutor.isShutdown());
       e.printStackTrace();
       throw e;
     }
