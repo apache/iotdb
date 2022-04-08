@@ -298,8 +298,9 @@ public class AlignedTVList extends TVList {
           break;
       }
       BitMap bitMap = new BitMap(ARRAY_SIZE);
-      // last bitmap should be marked to the tslist size's position
-      if (i == timestamps.size() - 1) {
+      // last bitmap should be marked to the tvlist size's position
+      // if rowCount % ARRAY_SIZE != 0, last bitmap should mark all
+      if (i == timestamps.size() - 1 && rowCount % ARRAY_SIZE != 0) {
         for (int j = 0; j < rowCount % ARRAY_SIZE; j++) {
           bitMap.mark(j);
         }
