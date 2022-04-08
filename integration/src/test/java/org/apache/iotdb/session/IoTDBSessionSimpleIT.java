@@ -1675,4 +1675,40 @@ public class IoTDBSessionSimpleIT {
       Assert.assertNull(record.getFields().get(i).getDataType());
     }
   }
+
+  @Test
+  public void testInsertDataWithoutType() throws IoTDBConnectionException, StatementExecutionException {
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+
+    String deviceId = "root.sg1.d1";
+    List<String> measurements = new ArrayList<>();
+    measurements.add("s1");
+    measurements.add("s2");
+    measurements.add("s3");
+
+    for (long time = 0; time < 1; time++) {
+      List<Object> values = new ArrayList<>();
+      values.add(1L);
+      values.add("String");
+      values.add(3.0d);
+      session.insertRecord2(deviceId, time, measurements, values);
+    }
+
+    Set<String> expected = new HashSet<>();
+    expected.add(TSDataType.INT64.name());
+    expected.add(TSDataType.TEXT.name());
+    expected.add(TSDataType.DOUBLE.name());
+
+    Set<String> actual = new HashSet<>();
+    SessionDataSet dataSet = session.executeQueryStatement("show timeseries root.**");
+    while (dataSet.hasNext()) {
+      actual.add(dataSet.next().getFields().get(3).getStringValue());
+    }
+
+    Assert.assertEquals(expected, actual);
+
+    session.close();
+
+  }
 }
