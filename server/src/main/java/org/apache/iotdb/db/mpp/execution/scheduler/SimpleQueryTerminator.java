@@ -67,7 +67,7 @@ public class SimpleQueryTerminator implements IQueryTerminator {
     try {
       return future.get();
     } catch (InterruptedException | ExecutionException e) {
-      e.printStackTrace();
+      // TODO: (xingtanzjr) Record the error info with logger
       Thread.currentThread().interrupt();
       return false;
     }
