@@ -33,7 +33,7 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.metadata.template.UndefinedTemplateException;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.metadata.rescon.MetadataResourceManager;
+import org.apache.iotdb.db.metadata.rescon.SchemaResourceManager;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaRegion;
 import org.apache.iotdb.db.metadata.storagegroup.IStorageGroupSchemaManager;
@@ -118,7 +118,7 @@ public class LocalConfigManager {
     }
 
     try {
-      MetadataResourceManager.initMetadataResource();
+      SchemaResourceManager.initSchemaResource();
 
       templateManager.init();
       storageGroupSchemaManager.init();
@@ -176,7 +176,7 @@ public class LocalConfigManager {
     }
 
     try {
-      MetadataResourceManager.clearMetadataResource();
+      SchemaResourceManager.clearSchemaResource();
 
       partitionTable.clear();
 

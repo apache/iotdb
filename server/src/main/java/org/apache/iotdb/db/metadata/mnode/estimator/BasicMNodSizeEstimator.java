@@ -90,7 +90,7 @@ public class BasicMNodSizeEstimator implements IMNodeSizeEstimator {
    */
   protected static final int MEASUREMENT_NODE_BASE_SIZE = 64;
   // alias length, hashCode and occupation in aliasMap, 4 + 4 + 44 = 52B
-  protected static final int ALIAS_OCCUPATION = 52;
+  protected static final int ALIAS_BASE_SIZE = 52;
 
   public int estimateSize(IMNode node) {
     int size = NODE_BASE_SIZE + node.getName().length();
@@ -98,7 +98,7 @@ public class BasicMNodSizeEstimator implements IMNodeSizeEstimator {
       size += MEASUREMENT_NODE_BASE_SIZE;
       IMeasurementMNode measurementMNode = node.getAsMeasurementMNode();
       if (measurementMNode.getAlias() != null) {
-        size += ALIAS_OCCUPATION + measurementMNode.getAlias().length();
+        size += ALIAS_BASE_SIZE + measurementMNode.getAlias().length();
       }
     } else {
       size += INTERNAL_NODE_BASE_SIZE;

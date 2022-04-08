@@ -25,11 +25,11 @@ import org.apache.iotdb.db.metadata.mtree.store.disk.MTreeReleaseTaskManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.MemManagerHolder;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
 
-public class MetadataResourceManager {
+public class SchemaResourceManager {
 
-  private MetadataResourceManager() {}
+  private SchemaResourceManager() {}
 
-  public static void initMetadataResource() {
+  public static void initSchemaResource() {
     TimeseriesStatistics.getInstance().init();
     MemoryStatistics.getInstance().init();
     if (IoTDBDescriptor.getInstance()
@@ -40,7 +40,7 @@ public class MetadataResourceManager {
     }
   }
 
-  public static void clearMetadataResource() {
+  public static void clearSchemaResource() {
     TimeseriesStatistics.getInstance().clear();
     MemoryStatistics.getInstance().clear();
     if (IoTDBDescriptor.getInstance()

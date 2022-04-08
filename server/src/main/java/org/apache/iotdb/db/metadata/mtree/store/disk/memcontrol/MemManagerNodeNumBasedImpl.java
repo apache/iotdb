@@ -24,13 +24,14 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
+// This class is used for memory control in dev and debug environment.
 public class MemManagerNodeNumBasedImpl implements IMemManager {
 
   private int capacity;
 
-  private AtomicInteger size = new AtomicInteger(0);
+  private final AtomicInteger size = new AtomicInteger(0);
 
-  private AtomicInteger pinnedSize = new AtomicInteger(0);
+  private final AtomicInteger pinnedSize = new AtomicInteger(0);
 
   MemManagerNodeNumBasedImpl() {}
 

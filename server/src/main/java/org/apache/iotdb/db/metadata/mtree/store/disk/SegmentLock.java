@@ -21,7 +21,7 @@ package org.apache.iotdb.db.metadata.mtree.store.disk;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
- * Segment lock for saving memory space Notice that this class is a static class and all it's
+ * Segment lock for saving memory space. Notice that this class is a static class and all it's
  * methods are static
  */
 public class SegmentLock {

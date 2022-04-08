@@ -24,7 +24,7 @@ public class CacheEntry {
 
   private volatile boolean isVolatile = false;
 
-  private volatile AtomicInteger semaphore = new AtomicInteger();
+  private final AtomicInteger semaphore = new AtomicInteger();
 
   public boolean isVolatile() {
     return isVolatile;
@@ -43,10 +43,6 @@ public class CacheEntry {
   }
 
   public boolean isPinned() {
-    return semaphore != null && semaphore.get() > 0;
-  }
-
-  public int getPinNumber() {
-    return semaphore.get();
+    return semaphore.get() > 0;
   }
 }

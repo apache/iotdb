@@ -21,7 +21,7 @@ package org.apache.iotdb.db.metadata.mnode.estimator;
 
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 
-import static org.apache.iotdb.db.metadata.mnode.estimator.BasicMNodSizeEstimator.ALIAS_OCCUPATION;
+import static org.apache.iotdb.db.metadata.mnode.estimator.BasicMNodSizeEstimator.ALIAS_BASE_SIZE;
 import static org.apache.iotdb.db.metadata.mnode.estimator.BasicMNodSizeEstimator.ENTITY_NODE_BASE_SIZE;
 
 public interface IMNodeSizeEstimator {
@@ -32,7 +32,7 @@ public interface IMNodeSizeEstimator {
     return ENTITY_NODE_BASE_SIZE;
   }
 
-  static int getAliasOccupation() {
-    return ALIAS_OCCUPATION;
+  static int getAliasBaseSize() {
+    return ALIAS_BASE_SIZE;
   }
 }

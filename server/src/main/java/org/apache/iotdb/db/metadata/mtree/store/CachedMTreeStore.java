@@ -54,25 +54,26 @@ public class CachedMTreeStore implements IMTreeStore {
 
   private static final Logger logger = LoggerFactory.getLogger(CachedMTreeStore.class);
 
-  private IMemManager memManager = MemManagerHolder.getMemManagerInstance();
+  private final IMemManager memManager = MemManagerHolder.getMemManagerInstance();
 
-  private ICacheManager cacheManager = new LRUCacheManager();
+  private final ICacheManager cacheManager = new LRUCacheManager();
 
   private ISchemaFile file;
 
   private IMNode root;
 
-  private MTreeFlushTaskManager flushTaskManager = MTreeFlushTaskManager.getInstance();
+  private final MTreeFlushTaskManager flushTaskManager = MTreeFlushTaskManager.getInstance();
   private int flushCount = 0;
   private volatile boolean hasFlushTask;
 
-  private MTreeReleaseTaskManager releaseTaskManager = MTreeReleaseTaskManager.getInstance();
+  private final MTreeReleaseTaskManager releaseTaskManager = MTreeReleaseTaskManager.getInstance();
   private volatile boolean hasReleaseTask;
   private int releaseCount = 0;
 
-  private ReadWriteLock readWriteLock = new ReentrantReadWriteLock(); // default writer preferential
-  private Lock readLock = readWriteLock.readLock();
-  private Lock writeLock = readWriteLock.writeLock();
+  private final ReadWriteLock readWriteLock =
+      new ReentrantReadWriteLock(); // default writer preferential
+  private final Lock readLock = readWriteLock.readLock();
+  private final Lock writeLock = readWriteLock.writeLock();
 
   public CachedMTreeStore(PartialPath rootPath, int schemaRegionId)
       throws MetadataException, IOException {
@@ -303,9 +304,9 @@ public class CachedMTreeStore implements IMTreeStore {
       memManager.updatePinnedSize(alias.length() - existingAlias.length());
     } else if (alias == null) {
       memManager.updatePinnedSize(
-          -(IMNodeSizeEstimator.getAliasOccupation() + existingAlias.length()));
+          -(IMNodeSizeEstimator.getAliasBaseSize() + existingAlias.length()));
     } else {
-      memManager.updatePinnedSize(IMNodeSizeEstimator.getAliasOccupation() + alias.length());
+      memManager.updatePinnedSize(IMNodeSizeEstimator.getAliasBaseSize() + alias.length());
     }
   }
 

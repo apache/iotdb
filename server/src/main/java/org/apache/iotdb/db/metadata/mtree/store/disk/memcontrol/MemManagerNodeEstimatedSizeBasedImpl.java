@@ -25,21 +25,22 @@ import org.apache.iotdb.db.metadata.rescon.MemoryStatistics;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
+// This class is used for memory control in industry environment.
 public class MemManagerNodeEstimatedSizeBasedImpl implements IMemManager {
 
   private static final double RELEASE_THRESHOLD_RATIO = 0.6;
   private static final double FLUSH_THRESHOLD_RATION = 0.75;
 
-  private MemoryStatistics memoryStatistics = MemoryStatistics.getInstance();
+  private final MemoryStatistics memoryStatistics = MemoryStatistics.getInstance();
 
   private long releaseThreshold;
   private long flushThreshold;
 
-  private AtomicLong size = new AtomicLong(0);
+  private final AtomicLong size = new AtomicLong(0);
 
-  private AtomicLong pinnedSize = new AtomicLong(0);
+  private final AtomicLong pinnedSize = new AtomicLong(0);
 
-  private CachedMNodeSizeEstimator estimator = new CachedMNodeSizeEstimator();
+  private final CachedMNodeSizeEstimator estimator = new CachedMNodeSizeEstimator();
 
   @Override
   public void init() {

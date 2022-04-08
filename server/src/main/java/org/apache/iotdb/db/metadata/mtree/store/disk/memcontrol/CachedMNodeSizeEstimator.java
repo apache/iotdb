@@ -52,7 +52,7 @@ public class CachedMNodeSizeEstimator extends BasicMNodSizeEstimator {
       size += MEASUREMENT_NODE_BASE_SIZE;
       IMeasurementMNode measurementMNode = node.getAsMeasurementMNode();
       if (measurementMNode.getAlias() != null) {
-        size += ALIAS_OCCUPATION + measurementMNode.getAlias().length();
+        size += ALIAS_BASE_SIZE + measurementMNode.getAlias().length();
       }
     } else {
       size += INTERNAL_NODE_BASE_SIZE;

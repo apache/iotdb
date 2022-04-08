@@ -136,9 +136,9 @@ public class MemMTreeStore implements IMTreeStore {
         releaseMemory(-delta);
       }
     } else if (alias == null) {
-      releaseMemory(IMNodeSizeEstimator.getAliasOccupation() + existingAlias.length());
+      releaseMemory(IMNodeSizeEstimator.getAliasBaseSize() + existingAlias.length());
     } else {
-      requestMemory(IMNodeSizeEstimator.getAliasOccupation() + alias.length());
+      requestMemory(IMNodeSizeEstimator.getAliasBaseSize() + alias.length());
     }
   }
 
