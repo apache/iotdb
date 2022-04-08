@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -61,7 +62,7 @@ import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.IDTableManager;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.newsync.sender.pipe.TsFilePipe;
+import org.apache.iotdb.db.newsync.sender.manager.TsFileSyncManager;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
@@ -91,8 +92,6 @@ import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
-
-import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -268,8 +267,8 @@ public class VirtualStorageGroupProcessor {
 
   private IDTable idTable;
 
-  /** for sync collecting data */
-  private TsFilePipe tsFilePipe;
+  /** used to collect TsFiles in this virtual storage group */
+  private TsFileSyncManager tsFileSyncManager = TsFileSyncManager.getInstance();
 
   /**
    * get the direct byte buffer from pool, each fetch contains two ByteBuffer, return null if fetch
@@ -1278,9 +1277,6 @@ public class VirtualStorageGroupProcessor {
               this::unsequenceFlushCallback,
               false);
     }
-    if (tsFilePipe != null) {
-      tsFileProcessor.registerSyncDataCollector(tsFilePipe);
-    }
 
     if (enableMemControl) {
       TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(storageGroupInfo);
@@ -2031,8 +2027,8 @@ public class VirtualStorageGroupProcessor {
       if (!tsFileResource.isClosed()) {
         TsFileProcessor tsfileProcessor = tsFileResource.getProcessor();
         tsfileProcessor.deleteDataInMemory(deletion, devicePaths);
-      } else if (tsFilePipe != null) {
-        tsFilePipe.collectRealTimeDeletion(deletion);
+      } else if (tsFileSyncManager.isEnableSync()) {
+        tsFileSyncManager.collectRealTimeDeletion(deletion);
       }
 
       // add a record in case of rollback
@@ -3197,73 +3193,17 @@ public class VirtualStorageGroupProcessor {
     }
   }
 
-  /** sync methods */
-  public void registerSyncDataCollector(TsFilePipe tsFilePipe) {
-    writeLock("Register collector for sync");
-    try {
-      this.tsFilePipe = tsFilePipe;
-      registerTsFileResourceList(tsFileManager.getTsFileList(true), tsFilePipe);
-      registerTsFileResourceList(tsFileManager.getTsFileList(false), tsFilePipe);
-    } finally {
-      writeUnlock();
-    }
-  }
-
-  private void registerTsFileResourceList(
-      List<TsFileResource> tsFileResources, TsFilePipe tsFilePipe) {
-    int size = tsFileResources.size();
-    for (int i = 0; i < size; i++) {
-      TsFileProcessor tsFileProcessor = tsFileResources.get(i).getProcessor();
-      if (tsFileProcessor != null) {
-        tsFileProcessor.registerSyncDataCollector(tsFilePipe);
-      }
-    }
-  }
-
   /**
-   * This method is for sync. Collect history tsfile data and register in every TsFileProcessor to
-   * collect real time tsfile and deletion.
-   *
-   * @param tsFilePipe the sync data collector
-   * @return ths list the paris of (history tsfile, the offset of its mods file)
+   * Used to collect history TsFiles(i.e. the tsfile whose memtable == null).
+   * @param dataStartTime only collect history TsFiles which contains the data after the dataStartTime
+   * @return A list, which contains TsFile path
    */
-  public List<Pair<File, Long>> collectDataForSync(TsFilePipe tsFilePipe, long dataStartTime) {
-    List<Pair<File, Long>> historyTsFiles = new ArrayList<>();
+  public List<File> collectHistoryTsFileForSync(long dataStartTime) {
     writeLock("Collect data for sync");
     try {
-      this.tsFilePipe = tsFilePipe;
-      List<TsFileResource> seqTsFileResource = tsFileManager.getTsFileList(true);
-      List<TsFileResource> unseqTsFileResource = tsFileManager.getTsFileList(false);
-      collectTsFiles(seqTsFileResource, historyTsFiles, dataStartTime);
-      collectTsFiles(unseqTsFileResource, historyTsFiles, dataStartTime);
+      return tsFileManager.collectHistoryTsFileForSync(dataStartTime);
     } finally {
       writeUnlock();
-    }
-
-    return historyTsFiles;
-  }
-
-  private void collectTsFiles(
-      List<TsFileResource> tsFileResources,
-      List<Pair<File, Long>> historyTsFiles,
-      long dataStartTime) {
-    for (TsFileResource tsFileResource : tsFileResources) {
-      if (tsFileResource.getFileEndTime() < dataStartTime) {
-        continue;
-      }
-      TsFileProcessor tsFileProcessor = tsFileResource.getProcessor();
-      boolean isRealTimeTsFile = false;
-      if (tsFileProcessor != null) {
-        isRealTimeTsFile =
-            tsFileResource
-                .getProcessor()
-                .registerSyncDataCollector(tsFilePipe); // register to collect real time data
-      }
-      if (!isRealTimeTsFile) {
-        File mods = new File(tsFileResource.getModFile().getFilePath());
-        long modsOffset = mods.exists() ? mods.length() : 0L;
-        historyTsFiles.add(new Pair<>(tsFileResource.getTsFile(), modsOffset));
-      }
     }
   }
 

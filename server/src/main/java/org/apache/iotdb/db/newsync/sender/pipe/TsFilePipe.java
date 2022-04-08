@@ -25,13 +25,14 @@ import org.apache.iotdb.db.engine.storagegroup.virtualSg.StorageGroupManager;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.sync.PipeException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.metadata.sync.MetadataSyncManager;
+import org.apache.iotdb.db.newsync.sender.manager.MetadataSyncManager;
 import org.apache.iotdb.db.newsync.conf.SyncPathUtil;
 import org.apache.iotdb.db.newsync.pipedata.DeletionPipeData;
 import org.apache.iotdb.db.newsync.pipedata.PipeData;
 import org.apache.iotdb.db.newsync.pipedata.SchemaPipeData;
 import org.apache.iotdb.db.newsync.pipedata.TsFilePipeData;
 import org.apache.iotdb.db.newsync.pipedata.queue.BufferedPipeDataQueue;
+import org.apache.iotdb.db.newsync.sender.manager.TsFileSyncManager;
 import org.apache.iotdb.db.newsync.sender.recovery.TsFilePipeLogger;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -50,6 +51,7 @@ import java.util.concurrent.locks.ReentrantLock;
 public class TsFilePipe implements Pipe {
   private static final Logger logger = LoggerFactory.getLogger(TsFilePipe.class);
   private final MetadataSyncManager schemaSyncManager = MetadataSyncManager.getInstance();
+  private final TsFileSyncManager tsFileSyncManager = TsFileSyncManager.getInstance();
 
   private final long createTime;
   private final String name;
@@ -123,7 +125,7 @@ public class TsFilePipe implements Pipe {
   private void collectData() {
     registerMetadata();
     List<PhysicalPlan> historyMetadata = collectHistoryMetadata();
-    List<Pair<File, Long>> historyTsFiles = collectTsFile();
+    List<File> historyTsFiles = collectTsFile();
     isCollectingRealTimeData = true;
 
     // get all history data
@@ -136,18 +138,8 @@ public class TsFilePipe implements Pipe {
     }
     for (int i = 0; i < historyTsFilesSize; i++) {
       long serialNumber = 1 - historyTsFilesSize + i;
-      try {
-        File hardLink =
-            pipeLog.createTsFileAndModsHardlink(
-                historyTsFiles.get(i).left, historyTsFiles.get(i).right);
-        historyData.add(new TsFilePipeData(hardLink.getParent(), hardLink.getName(), serialNumber));
-      } catch (IOException e) {
-        logger.warn(
-            String.format(
-                "Create hard link for tsfile %s error, serial number is %d.",
-                historyTsFiles.get(i).left.getPath(), serialNumber),
-            e);
-      }
+      File tsFile = historyTsFiles.get(i);
+      historyData.add(new TsFilePipeData(tsFile.getParent(), tsFile.getName(), serialNumber));
     }
 
     // add history data into blocking deque
@@ -181,32 +173,25 @@ public class TsFilePipe implements Pipe {
   }
 
   private void registerTsFile() {
-    StorageEngine.getInstance().registerSyncDataCollector(this);
-    Iterator<Map.Entry<PartialPath, StorageGroupManager>> sgIterator =
-        StorageEngine.getInstance().getProcessorMap().entrySet().iterator();
-    while (sgIterator.hasNext()) {
-      sgIterator.next().getValue().registerSyncDataCollector(this);
-    }
+    tsFileSyncManager.registerSyncTask(this);
   }
 
   private void deregisterTsFile() {
-    StorageEngine.getInstance().registerSyncDataCollector(null);
-    Iterator<Map.Entry<PartialPath, StorageGroupManager>> sgIterator =
-        StorageEngine.getInstance().getProcessorMap().entrySet().iterator();
-    while (sgIterator.hasNext()) {
-      sgIterator.next().getValue().registerSyncDataCollector(null);
-    }
+    tsFileSyncManager.deregisterSyncTask();
   }
 
-  private List<Pair<File, Long>> collectTsFile() {
-    List<Pair<File, Long>> historyTsFiles = new ArrayList<>();
-    StorageEngine.getInstance().registerSyncDataCollector(this);
-    Iterator<Map.Entry<PartialPath, StorageGroupManager>> sgIterator =
-        StorageEngine.getInstance().getProcessorMap().entrySet().iterator();
-    while (sgIterator.hasNext()) {
-      historyTsFiles.addAll(sgIterator.next().getValue().collectDataForSync(this, dataStartTime));
+  private List<File> collectTsFile() {
+    return tsFileSyncManager.registerAndCollectHistoryTsFile(this, dataStartTime);
+  }
+
+  public File createHistoryTsFileHardlink(File tsFile, long modsOffset) {
+    try {
+      return pipeLog.createTsFileAndModsHardlink(tsFile, modsOffset);
+    } catch (IOException e) {
+      logger.error(
+          String.format("Create hardlink for history tsfile %s error.", tsFile.getPath()), e);
     }
-    return historyTsFiles;
+    return null;
   }
 
   public void collectRealTimeDeletion(Deletion deletion) {
@@ -254,7 +239,7 @@ public class TsFilePipe implements Pipe {
     }
   }
 
-  public void collectRealTimeTsFileResource(File tsFile) {
+  public void collectRealTimeResource(File tsFile) {
     try {
       pipeLog.createTsFileResourceHardlink(tsFile);
     } catch (IOException e) {

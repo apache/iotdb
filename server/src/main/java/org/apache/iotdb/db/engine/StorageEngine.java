@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.exception.ShutdownException;
@@ -54,7 +55,6 @@ import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.newsync.sender.pipe.TsFilePipe;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
@@ -68,8 +68,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
-
-import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -136,9 +134,6 @@ public class StorageEngine implements IService {
   // add customized listeners here for flush and close events
   private List<CloseFileListener> customCloseFileListeners = new ArrayList<>();
   private List<FlushListener> customFlushListeners = new ArrayList<>();
-
-  /** collector for sync, used to collect newly closed TsFiles and deletions */
-  private TsFilePipe tsFilePipe;
 
   private StorageEngine() {}
 
@@ -569,9 +564,6 @@ public class StorageEngine implements IService {
     processor.setDataTTL(storageGroupMNode.getDataTTL());
     processor.setCustomFlushListeners(customFlushListeners);
     processor.setCustomCloseFileListeners(customCloseFileListeners);
-    if (tsFilePipe != null) {
-      processor.registerSyncDataCollector(tsFilePipe);
-    }
     return processor;
   }
 
@@ -1088,11 +1080,6 @@ public class StorageEngine implements IService {
     } catch (IOException e) {
       throw new StorageEngineException(e);
     }
-  }
-
-  /** sync methods */
-  public void registerSyncDataCollector(TsFilePipe tsFilePipe) {
-    this.tsFilePipe = tsFilePipe;
   }
 
   static class InstanceHolder {

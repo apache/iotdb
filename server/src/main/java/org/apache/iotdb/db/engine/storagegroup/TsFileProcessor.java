@@ -46,6 +46,7 @@ import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.newsync.sender.manager.TsFileSyncManager;
 import org.apache.iotdb.db.newsync.sender.pipe.TsFilePipe;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
@@ -160,8 +161,8 @@ public class TsFileProcessor {
   /** flush file listener */
   private List<FlushListener> flushListeners = new ArrayList<>();
 
-  /** for sync collecting data */
-  private TsFilePipe tsFilePipe;
+  /** used to collct this TsFile for sync */
+  private TsFileSyncManager tsFileSyncManager = TsFileSyncManager.getInstance();
 
   @SuppressWarnings("squid:S107")
   TsFileProcessor(
@@ -659,8 +660,8 @@ public class TsFileProcessor {
       if (!flushingMemTables.isEmpty()) {
         modsToMemtable.add(new Pair<>(deletion, flushingMemTables.getLast()));
       }
-      if (tsFilePipe != null) {
-        tsFilePipe.collectRealTimeDeletion(deletion);
+      if (tsFileSyncManager.isEnableSync()) {
+        tsFileSyncManager.collectRealTimeDeletion(deletion);
       }
     } finally {
       flushQueryLock.writeLock().unlock();
@@ -808,8 +809,8 @@ public class TsFileProcessor {
         // When invoke closing TsFile after insert data to memTable, we shouldn't flush until invoke
         // flushing memTable in System module.
         addAMemtableIntoFlushingList(tmpMemTable);
-        if (tsFilePipe != null) {
-          tsFilePipe.collectRealTimeTsFile(tsFileResource.getTsFile());
+        if (tsFileSyncManager.isEnableSync()) {
+          tsFileSyncManager.collectRealTimeTsFile(tsFileResource.getTsFile());
         }
         logger.info("Memtable {} has been added to flushing list", tmpMemTable);
         shouldClose = true;
@@ -1195,8 +1196,8 @@ public class TsFileProcessor {
     long closeStartTime = System.currentTimeMillis();
     writer.endFile();
     tsFileResource.serialize();
-    if (tsFilePipe != null) {
-      tsFilePipe.collectRealTimeTsFileResource(tsFileResource.getTsFile());
+    if (tsFileSyncManager.isEnableSync()) {
+      tsFileSyncManager.collectRealTimeResource(tsFileResource.getTsFile());
     }
     logger.info("Ended file {}", tsFileResource);
 
@@ -1248,20 +1249,11 @@ public class TsFileProcessor {
     return logNode;
   }
 
-  /** sync methods */
-
-  /**
-   * register the sync data collector into this tsfile processor.
-   *
-   * @param tsFilePipe the pipe which collecting data
-   * @return return true if and only if working memTable exists, i.e. the tsfile processor is not
-   *     flushing or closed.
-   */
-  public boolean registerSyncDataCollector(TsFilePipe tsFilePipe) {
+  /** sync method */
+  public boolean isMemtableNotNull() {
     flushQueryLock.writeLock().lock();
     try {
-      this.tsFilePipe = tsFilePipe;
-      return (workMemTable != null);
+      return workMemTable != null;
     } finally {
       flushQueryLock.writeLock().unlock();
     }

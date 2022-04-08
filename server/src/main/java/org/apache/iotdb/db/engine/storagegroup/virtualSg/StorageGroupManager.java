@@ -30,7 +30,6 @@ import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.newsync.sender.pipe.TsFilePipe;
 import org.apache.iotdb.db.utils.ThreadUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -490,24 +489,11 @@ public class StorageGroupManager {
     }
   }
 
-  /** sync methods */
-  public void registerSyncDataCollector(TsFilePipe tsFilePipe) {
+  /** collect all tsfiles whose memtable == null for sync */
+  public List<File> collectHistoryTsFileForSync(long dataStartTime) {
+    List<File> historyTsFiles = new ArrayList<>();
     for (VirtualStorageGroupProcessor processor : virtualStorageGroupProcessor) {
-      processor.registerSyncDataCollector(tsFilePipe);
-    }
-  }
-
-  /**
-   * This method is for sync. collect all history data in this storage group, and register to
-   * collect real time data.
-   *
-   * @param tsFilePipe the sync data collector
-   * @return ths list the paris of (history tsfile, the offset of its mods file)
-   */
-  public List<Pair<File, Long>> collectDataForSync(TsFilePipe tsFilePipe, long dataStartTime) {
-    List<Pair<File, Long>> historyTsFiles = new ArrayList<>();
-    for (VirtualStorageGroupProcessor processor : virtualStorageGroupProcessor) {
-      historyTsFiles.addAll(processor.collectDataForSync(tsFilePipe, dataStartTime));
+      historyTsFiles.addAll(processor.collectHistoryTsFileForSync(dataStartTime));
     }
     return historyTsFiles;
   }
