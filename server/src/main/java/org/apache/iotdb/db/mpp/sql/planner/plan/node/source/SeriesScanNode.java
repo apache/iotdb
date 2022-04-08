@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.source;
 
-import java.io.IOException;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -35,6 +34,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.collect.ImmutableList;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashSet;

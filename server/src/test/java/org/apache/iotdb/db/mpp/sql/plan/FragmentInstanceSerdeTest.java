@@ -19,9 +19,7 @@
 package org.apache.iotdb.db.mpp.sql.plan;
 
 import org.apache.iotdb.commons.cluster.Endpoint;
-import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
-import org.apache.iotdb.commons.consensus.GroupType;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
