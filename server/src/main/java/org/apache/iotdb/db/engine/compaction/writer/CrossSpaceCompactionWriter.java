@@ -126,7 +126,6 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
     }
     fileWriterList = null;
     seqTsFileResources = null;
-    chunkWriterMap.clear();
   }
 
   @Override

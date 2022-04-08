@@ -49,10 +49,7 @@ public class InnerSpaceCompactionWriter extends AbstractCompactionWriter {
 
   @Override
   public void endMeasurement(int subTaskId) throws IOException {
-    writeRateLimit(chunkWriterMap.get(subTaskId).estimateMaxSeriesMemSize());
-    synchronized (fileWriter) {
-      chunkWriterMap.get(subTaskId).writeToFileWriter(fileWriter);
-    }
+    flushChunkToFileWriter(fileWriter, subTaskId);
   }
 
   @Override
@@ -78,7 +75,6 @@ public class InnerSpaceCompactionWriter extends AbstractCompactionWriter {
     if (fileWriter != null && fileWriter.canWrite()) {
       fileWriter.close();
     }
-    chunkWriterMap.clear();
     fileWriter = null;
   }
 
