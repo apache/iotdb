@@ -161,7 +161,7 @@ session.insert_tablet(tablet_)
 
 **注意**
 1. Tablet 中的每一列时间戳和值记录为一个 ndarray
-2. ndarray 最好使用如下面例子中的特定的 dtype，如果不使用也可以，不会影响正确性。
+2. ndarray 推荐使用如下面例子中的特定的 dtype，如果不使用，不会影响正确性。
 
 ```python
 data_types_ = [

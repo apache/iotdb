@@ -183,7 +183,7 @@ With less memory footprint and time cost of serialization, the insert performanc
 
 **Notice**
 1. time and value columns in Tablet are ndarray.
-2. it's better to use the specific dtypes to each ndarray, see the example below 
+2. recommended to use the specific dtypes to each ndarray, see the example below 
 (if not, the default dtypes are also ok).
 
 ```python
