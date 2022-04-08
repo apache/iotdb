@@ -31,9 +31,10 @@ public class InternalServiceClientFactory {
   // TODO: (xingtanzjr) consider the best practice to maintain the clients
   public static InternalService.Client getInternalServiceClient(String endpoint, int port)
       throws TTransportException {
-    TTransport transport = new TSocket(endpoint, port);
-    transport.open();
-    TProtocol protocol = new TBinaryProtocol(transport);
-    return new InternalService.Client(protocol);
+    try (TTransport transport = new TSocket(endpoint, port)) {
+      transport.open();
+      TProtocol protocol = new TBinaryProtocol(transport);
+      return new InternalService.Client(protocol);
+    }
   }
 }

@@ -95,7 +95,7 @@ public class ConfigExecution implements IQueryExecution {
       return new ExecutionResult(context.getQueryId(), RpcUtils.getStatus(statusCode));
 
     } catch (InterruptedException | ExecutionException e) {
-      e.printStackTrace();
+      Thread.currentThread().interrupt();
       return new ExecutionResult(
           context.getQueryId(), RpcUtils.getStatus(TSStatusCode.QUERY_PROCESS_ERROR));
     }

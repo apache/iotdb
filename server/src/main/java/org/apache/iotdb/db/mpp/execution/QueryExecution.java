@@ -198,6 +198,7 @@ public class QueryExecution implements IQueryExecution {
       return new ExecutionResult(context.getQueryId(), RpcUtils.getStatus(statusCode));
     } catch (InterruptedException | ExecutionException e) {
       // TODO: (xingtanzjr) use more accurate error handling
+      Thread.currentThread().interrupt();
       return new ExecutionResult(
           context.getQueryId(), RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR));
     }

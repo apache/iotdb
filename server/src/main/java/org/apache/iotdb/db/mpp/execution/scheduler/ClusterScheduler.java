@@ -117,6 +117,7 @@ public class ClusterScheduler implements IScheduler {
         return true;
       }
     } catch (InterruptedException | ExecutionException e) {
+      Thread.currentThread().interrupt();
       // TODO: (xingtanzjr) record the dispatch failure reason.
     }
     return false;
