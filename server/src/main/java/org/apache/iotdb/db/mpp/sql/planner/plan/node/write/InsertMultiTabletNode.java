@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
 import java.nio.ByteBuffer;
@@ -75,6 +76,9 @@ public class InsertMultiTabletNode extends InsertNode {
   /** the InsertTabletNode list */
   List<InsertTabletNode> insertTabletNodeList;
 
+  /** record the result of insert tablets */
+  private Map<Integer, TSStatus> results = new HashMap<>();
+
   public InsertMultiTabletNode(PlanNodeId id) {
     super(id);
     parentInsertTabletNodeIndexList = new ArrayList<>();
@@ -124,6 +128,10 @@ public class InsertMultiTabletNode extends InsertNode {
       }
     }
     return new ArrayList<>(splitMap.values());
+  }
+
+  public Map<Integer, TSStatus> getResults() {
+    return results;
   }
 
   @Override
