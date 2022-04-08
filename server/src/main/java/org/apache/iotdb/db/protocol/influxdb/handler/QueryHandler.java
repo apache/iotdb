@@ -43,6 +43,7 @@ import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
@@ -878,7 +879,7 @@ public class QueryHandler {
     try {
       QueryPlan queryPlan =
           (QueryPlan) serviceProvider.getPlanner().parseSQLToPhysicalPlan(realQuerySql);
-      TSStatus tsStatus = serviceProvider.checkAuthority(queryPlan, sessionId);
+      TSStatus tsStatus = SessionManager.getInstance().checkAuthority(queryPlan, sessionId);
       if (tsStatus != null) {
         throw new AuthException(tsStatus.getMessage());
       }

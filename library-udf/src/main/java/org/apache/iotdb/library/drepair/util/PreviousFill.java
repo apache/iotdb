@@ -16,39 +16,34 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.consensus.common;
+package org.apache.iotdb.library.drepair.util;
 
-import java.util.Arrays;
+import org.apache.iotdb.db.query.udf.api.access.RowIterator;
 
-public enum ConsensusType {
-  STANDALONE("standalone"),
-  RATIS("ratis");
+public class PreviousFill extends ValueFill {
 
-  private final String typeName;
+  private long previousTime = -1;
+  private double previousValue;
 
-  ConsensusType(String typeName) {
-    this.typeName = typeName;
-  }
-
-  public String getTypeName() {
-    return typeName;
+  public PreviousFill(RowIterator dataIterator) throws Exception {
+    super(dataIterator);
   }
 
   @Override
-  public String toString() {
-    return typeName;
-  }
-
-  public static ConsensusType getConsensusType(String typeName) {
-    for (ConsensusType type : ConsensusType.values()) {
-      if (type.getTypeName().equals(typeName)) {
-        return type;
+  public void fill() {
+    // NaN at the beginning is not filled
+    for (int i = 0; i < original.length; i++) {
+      if (Double.isNaN(original[i])) {
+        if (previousTime == -1) { // 序列初始为空，直接pass
+          repaired[i] = original[i];
+        } else {
+          repaired[i] = previousValue;
+        }
+      } else {
+        previousTime = time[i];
+        previousValue = original[i];
+        repaired[i] = original[i];
       }
     }
-
-    throw new IllegalArgumentException(
-        String.format(
-            "Unknown consensus type, found: %s expected: %s",
-            typeName, Arrays.toString(ConsensusType.values())));
   }
 }
