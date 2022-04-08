@@ -27,6 +27,7 @@ import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class InsertRowsOfOneDeviceStatement extends InsertBaseStatement {
 
@@ -48,14 +49,15 @@ public class InsertRowsOfOneDeviceStatement extends InsertBaseStatement {
     Map<String, TSDataType> measurementsAndDataType = new HashMap<>();
     for (InsertRowStatement insertRowStatement : insertRowStatementList) {
       List<String> measurements = Arrays.asList(insertRowStatement.getMeasurements());
-
-      //      return measurements.stream().collect(Collectors.toMap(key -> key, key ->
-      // insertRowStatement.dataTypes[measurements.indexOf(key)]));
-      //      measurementsAndDataType.p；
-      //      List a = new ArrayList<>();
-      //      a.stream().collect()
-
+      Map<String, TSDataType> subMap =
+          measurements.stream()
+              .collect(
+                  Collectors.toMap(
+                      key -> key, key -> insertRowStatement.dataTypes[measurements.indexOf(key)]));
+      measurementsAndDataType.putAll(subMap);
     }
+    measurements = measurementsAndDataType.keySet().toArray(new String[0]);
+    dataTypes = measurementsAndDataType.values().toArray(new TSDataType[0]);
   }
 
   public List<TimePartitionSlot> getTimePartitionSlots() {

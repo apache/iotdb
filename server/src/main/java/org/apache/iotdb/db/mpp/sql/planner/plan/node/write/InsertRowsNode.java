@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.write;
 
+import org.apache.iotdb.commons.partition.RegionReplicaSet;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
@@ -25,7 +27,9 @@ import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class InsertRowsNode extends InsertNode {
 
@@ -103,6 +107,27 @@ public class InsertRowsNode extends InsertNode {
 
   @Override
   public List<InsertNode> splitByPartition(Analysis analysis) {
-    return null;
+    Map<RegionReplicaSet, InsertRowsNode> splitMap = new HashMap<>();
+    for (int i = 0; i < insertRowNodeList.size(); i++) {
+      InsertRowNode insertRowNode = insertRowNodeList.get(i);
+      // data region for insert row node
+      RegionReplicaSet dataRegionReplicaSet =
+          analysis
+              .getDataPartitionInfo()
+              .getDataRegionReplicaSetForWriting(
+                  insertRowNode.devicePath.getFullPath(),
+                  StorageEngine.getTimePartitionSlot(insertRowNode.getTime()));
+      if (splitMap.containsKey(dataRegionReplicaSet)) {
+        InsertRowsNode tmpNode = splitMap.get(dataRegionReplicaSet);
+        tmpNode.addOneInsertRowNode(insertRowNode, i);
+      } else {
+        InsertRowsNode tmpNode = new InsertRowsNode(this.getId());
+        tmpNode.setDataRegionReplicaSet(dataRegionReplicaSet);
+        tmpNode.addOneInsertRowNode(insertRowNode, i);
+        splitMap.put(dataRegionReplicaSet, tmpNode);
+      }
+    }
+
+    return new ArrayList<>(splitMap.values());
   }
 }

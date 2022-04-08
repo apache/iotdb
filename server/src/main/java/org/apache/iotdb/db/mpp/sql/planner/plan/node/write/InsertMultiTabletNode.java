@@ -18,18 +18,14 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.write;
 
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 public class InsertMultiTabletNode extends InsertNode {
 
@@ -79,10 +75,6 @@ public class InsertMultiTabletNode extends InsertNode {
   /** the InsertTabletNode list */
   List<InsertTabletNode> insertTabletNodeList;
 
-  Boolean isEnableMultithreading;
-
-  Integer differentStorageGroupsCount;
-
   public InsertMultiTabletNode(PlanNodeId id) {
     super(id);
     parentInsertTabletNodeIndexList = new ArrayList<>();
@@ -105,9 +97,33 @@ public class InsertMultiTabletNode extends InsertNode {
     this.insertTabletNodeList = insertTabletNodeList;
   }
 
+  public void addInsertTabletNode(InsertTabletNode node, Integer parentIndex) {
+    insertTabletNodeList.add(node);
+    parentInsertTabletNodeIndexList.add(parentIndex);
+  }
+
   @Override
   public List<InsertNode> splitByPartition(Analysis analysis) {
-    return null;
+    Map<RegionReplicaSet, InsertMultiTabletNode> splitMap = new HashMap<>();
+    // Map<PartitionGroup, Map<PartialPath, InsertMultiTabletPlan>> pgSgPathPlanMap = new
+    // HashMap<>();
+    for (int i = 0; i < insertTabletNodeList.size(); i++) {
+      InsertTabletNode insertTabletNode = insertTabletNodeList.get(i);
+      List<InsertNode> tmpResult = insertTabletNode.splitByPartition(analysis);
+      for (InsertNode subNode : tmpResult) {
+        RegionReplicaSet dataRegionReplicaSet = subNode.getDataRegionReplicaSet();
+        if (splitMap.containsKey(dataRegionReplicaSet)) {
+          InsertMultiTabletNode tmpNode = splitMap.get(dataRegionReplicaSet);
+          tmpNode.addInsertTabletNode((InsertTabletNode) subNode, i);
+        } else {
+          InsertMultiTabletNode tmpNode = new InsertMultiTabletNode(this.getId());
+          tmpNode.setDataRegionReplicaSet(dataRegionReplicaSet);
+          tmpNode.addInsertTabletNode((InsertTabletNode) subNode, i);
+          splitMap.put(dataRegionReplicaSet, tmpNode);
+        }
+      }
+    }
+    return new ArrayList<>(splitMap.values());
   }
 
   @Override
@@ -139,56 +155,4 @@ public class InsertMultiTabletNode extends InsertNode {
 
   @Override
   public void serialize(ByteBuffer byteBuffer) {}
-
-  public int getDifferentStorageGroupsCount() {
-    if (differentStorageGroupsCount == null) {
-      Set<String> insertPlanSGSet = new HashSet<>();
-      int defaultStorageGroupLevel = new IoTDBConfig().getDefaultStorageGroupLevel();
-      for (InsertTabletNode insertTabletNode : insertTabletNodeList) {
-        String[] nodes = insertTabletNode.getDevicePath().getNodes();
-        StringBuilder stringBuilder = new StringBuilder();
-        for (int i = 0; i <= defaultStorageGroupLevel && i < nodes.length; i++) {
-          stringBuilder.append(nodes[i]).append(".");
-        }
-        insertPlanSGSet.add(stringBuilder.toString());
-      }
-      differentStorageGroupsCount = insertPlanSGSet.size();
-    }
-    return differentStorageGroupsCount;
-  }
-
-  public boolean isEnableMultiThreading() {
-    // If we enable multithreading, we need to consider the loss of switching between threads,
-    // so we need to judge the core threads of the thread pool and the size of the tablet.
-
-    // Therefore, we set the number of core threads in the thread pool to
-    // min(the number of different sg, availableProcessors()/2),
-    // and need columns >= insertMultiTabletEnableMultithreadingColumnThreshold.
-
-    // It should be noted that if the number of sg is large and exceeds twice of the recommended
-    // number of CPU threads,
-    // it may lead to failure to allocate out of heap memory and NPE.
-    // Therefore, we will also turn off multithreading in this case.
-    if (isEnableMultithreading == null) {
-      int sgSize = getDifferentStorageGroupsCount();
-      // SG should be >= 1 so that it will not be locked and degenerate into serial.
-      // SG should be <= Runtime.getRuntime().availableProcessors()*2  so that to avoid failure to
-      // allocate out of heap memory and NPE
-      if (sgSize <= 1 || sgSize >= Runtime.getRuntime().availableProcessors() * 2) {
-        isEnableMultithreading = false;
-      } else {
-        int count = 0;
-        for (InsertTabletNode insertTabletNode : insertTabletNodeList) {
-          if (insertTabletNode.getColumns().length
-              >= IoTDBDescriptor.getInstance()
-                  .getConfig()
-                  .getInsertMultiTabletEnableMultithreadingColumnThreshold()) {
-            count++;
-          }
-        }
-        isEnableMultithreading = count * 2 >= insertTabletNodeList.size();
-      }
-    }
-    return isEnableMultithreading;
-  }
 }
