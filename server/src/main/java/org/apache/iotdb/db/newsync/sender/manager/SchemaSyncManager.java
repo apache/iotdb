@@ -43,6 +43,11 @@ import java.util.Set;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_RESULT_NODES;
 
+/**
+ * SchemaSyncManager is designed to collect history metadata(i.e. all storage group and all
+ * timeseries in IoTDB), and realtime metadata(i.e. create storage group, timeseries and delete
+ * timeseries operations) for all registered {@linkplain TsFilePipe}.
+ */
 public class SchemaSyncManager {
 
   private static final Logger logger = LoggerFactory.getLogger(SchemaSyncManager.class);

@@ -34,6 +34,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * TsFileSyncManager is designed for collect all history TsFiles(i.e. before the pipe start time,
+ * all tsfiles whose memtable is set to null.), and realtime tsfiles for registered {@linkplain
+ * TsFilePipe}.
+ */
 public class TsFileSyncManager {
   private static final Logger logger = LoggerFactory.getLogger(TsFileSyncManager.class);
 
