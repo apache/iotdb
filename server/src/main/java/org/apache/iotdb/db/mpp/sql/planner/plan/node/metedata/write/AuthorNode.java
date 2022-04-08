@@ -23,7 +23,7 @@ import org.apache.iotdb.db.auth.entity.PrivilegeType;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.mpp.sql.statement.sys.AuthorStatement;
+import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 
 import java.nio.ByteBuffer;
 import java.util.HashSet;
@@ -32,7 +32,7 @@ import java.util.Set;
 
 public class AuthorNode extends PlanNode {
 
-  private AuthorStatement.AuthorType authorType;
+  private AuthorOperator.AuthorType authorType;
   private String userName;
   private String roleName;
   private String password;
@@ -42,7 +42,7 @@ public class AuthorNode extends PlanNode {
 
   public AuthorNode(
       PlanNodeId id,
-      AuthorStatement.AuthorType authorType,
+      AuthorOperator.AuthorType authorType,
       String userName,
       String roleName,
       String password,
@@ -60,11 +60,11 @@ public class AuthorNode extends PlanNode {
     this.nodeName = nodeName;
   }
 
-  public AuthorStatement.AuthorType getAuthorType() {
+  public AuthorOperator.AuthorType getAuthorType() {
     return authorType;
   }
 
-  public void setAuthorType(AuthorStatement.AuthorType authorType) {
+  public void setAuthorType(AuthorOperator.AuthorType authorType) {
     this.authorType = authorType;
   }
 
@@ -206,59 +206,59 @@ public class AuthorNode extends PlanNode {
     return new String(byteInfo, 0, infoSize);
   }
 
-  private int getPlanType(AuthorStatement.AuthorType physicalPlanType) {
+  private int getPlanType(AuthorOperator.AuthorType physicalPlanType) {
     int type;
     switch (physicalPlanType) {
       case CREATE_USER:
-        type = AuthorStatement.AuthorType.CREATE_USER.ordinal();
+        type = AuthorOperator.AuthorType.CREATE_USER.ordinal();
         break;
       case CREATE_ROLE:
-        type = AuthorStatement.AuthorType.CREATE_ROLE.ordinal();
+        type = AuthorOperator.AuthorType.CREATE_ROLE.ordinal();
         break;
       case DROP_USER:
-        type = AuthorStatement.AuthorType.DROP_USER.ordinal();
+        type = AuthorOperator.AuthorType.DROP_USER.ordinal();
         break;
       case DROP_ROLE:
-        type = AuthorStatement.AuthorType.DROP_ROLE.ordinal();
+        type = AuthorOperator.AuthorType.DROP_ROLE.ordinal();
         break;
       case GRANT_ROLE:
-        type = AuthorStatement.AuthorType.GRANT_ROLE.ordinal();
+        type = AuthorOperator.AuthorType.GRANT_ROLE.ordinal();
         break;
       case GRANT_USER:
-        type = AuthorStatement.AuthorType.GRANT_USER.ordinal();
+        type = AuthorOperator.AuthorType.GRANT_USER.ordinal();
         break;
       case GRANT_ROLE_TO_USER:
-        type = AuthorStatement.AuthorType.GRANT_ROLE_TO_USER.ordinal();
+        type = AuthorOperator.AuthorType.GRANT_ROLE_TO_USER.ordinal();
         break;
       case REVOKE_USER:
-        type = AuthorStatement.AuthorType.REVOKE_USER.ordinal();
+        type = AuthorOperator.AuthorType.REVOKE_USER.ordinal();
         break;
       case REVOKE_ROLE:
-        type = AuthorStatement.AuthorType.REVOKE_ROLE.ordinal();
+        type = AuthorOperator.AuthorType.REVOKE_ROLE.ordinal();
         break;
       case REVOKE_ROLE_FROM_USER:
-        type = AuthorStatement.AuthorType.REVOKE_ROLE_FROM_USER.ordinal();
+        type = AuthorOperator.AuthorType.REVOKE_ROLE_FROM_USER.ordinal();
         break;
       case UPDATE_USER:
-        type = AuthorStatement.AuthorType.UPDATE_USER.ordinal();
+        type = AuthorOperator.AuthorType.UPDATE_USER.ordinal();
         break;
       case LIST_USER:
-        type = AuthorStatement.AuthorType.LIST_USER.ordinal();
+        type = AuthorOperator.AuthorType.LIST_USER.ordinal();
         break;
       case LIST_ROLE:
-        type = AuthorStatement.AuthorType.LIST_ROLE.ordinal();
+        type = AuthorOperator.AuthorType.LIST_ROLE.ordinal();
         break;
       case LIST_USER_PRIVILEGE:
-        type = AuthorStatement.AuthorType.LIST_USER_PRIVILEGE.ordinal();
+        type = AuthorOperator.AuthorType.LIST_USER_PRIVILEGE.ordinal();
         break;
       case LIST_ROLE_PRIVILEGE:
-        type = AuthorStatement.AuthorType.LIST_ROLE_PRIVILEGE.ordinal();
+        type = AuthorOperator.AuthorType.LIST_ROLE_PRIVILEGE.ordinal();
         break;
       case LIST_USER_ROLES:
-        type = AuthorStatement.AuthorType.LIST_USER_ROLES.ordinal();
+        type = AuthorOperator.AuthorType.LIST_USER_ROLES.ordinal();
         break;
       case LIST_ROLE_USERS:
-        type = AuthorStatement.AuthorType.LIST_ROLE_USERS.ordinal();
+        type = AuthorOperator.AuthorType.LIST_ROLE_USERS.ordinal();
         break;
       default:
         throw new IllegalArgumentException("Unknown operator: " + physicalPlanType);

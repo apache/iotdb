@@ -61,6 +61,7 @@ import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParserBaseVisitor;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
@@ -1365,7 +1366,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitCreateUser(IoTDBSqlParser.CreateUserContext ctx) {
-    AuthorStatement authorStatement = new AuthorStatement(AuthorStatement.AuthorType.CREATE_USER);
+    AuthorStatement authorStatement = new AuthorStatement(AuthorOperator.AuthorType.CREATE_USER);
     authorStatement.setUserName(ctx.userName.getText());
     authorStatement.setPassWord(parseStringLiteral(ctx.password.getText()));
     return authorStatement;
@@ -1375,7 +1376,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitCreateRole(IoTDBSqlParser.CreateRoleContext ctx) {
-    AuthorStatement authorStatement = new AuthorStatement(AuthorStatement.AuthorType.CREATE_ROLE);
+    AuthorStatement authorStatement = new AuthorStatement(AuthorOperator.AuthorType.CREATE_ROLE);
     authorStatement.setRoleName(ctx.roleName.getText());
     return authorStatement;
   }
@@ -1384,7 +1385,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitAlterUser(IoTDBSqlParser.AlterUserContext ctx) {
-    AuthorStatement authorStatement = new AuthorStatement(AuthorStatement.AuthorType.UPDATE_USER);
+    AuthorStatement authorStatement = new AuthorStatement(AuthorOperator.AuthorType.UPDATE_USER);
     authorStatement.setUserName(ctx.userName.getText());
     authorStatement.setNewPassword(parseStringLiteral(ctx.password.getText()));
     return authorStatement;
@@ -1394,7 +1395,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitGrantUser(IoTDBSqlParser.GrantUserContext ctx) {
-    AuthorStatement authorStatement = new AuthorStatement(AuthorStatement.AuthorType.GRANT_USER);
+    AuthorStatement authorStatement = new AuthorStatement(AuthorOperator.AuthorType.GRANT_USER);
     authorStatement.setUserName(ctx.userName.getText());
     authorStatement.setPrivilegeList(parsePrivilege(ctx.privileges()));
     authorStatement.setNodeNameList(parsePrefixPath(ctx.prefixPath()));
@@ -1405,7 +1406,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitGrantRole(IoTDBSqlParser.GrantRoleContext ctx) {
-    AuthorStatement authorStatement = new AuthorStatement(AuthorStatement.AuthorType.GRANT_ROLE);
+    AuthorStatement authorStatement = new AuthorStatement(AuthorOperator.AuthorType.GRANT_ROLE);
     authorStatement.setRoleName(ctx.roleName.getText());
     authorStatement.setPrivilegeList(parsePrivilege(ctx.privileges()));
     authorStatement.setNodeNameList(parsePrefixPath(ctx.prefixPath()));
@@ -1417,7 +1418,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitGrantRoleToUser(IoTDBSqlParser.GrantRoleToUserContext ctx) {
     AuthorStatement authorStatement =
-        new AuthorStatement(AuthorStatement.AuthorType.GRANT_ROLE_TO_USER);
+        new AuthorStatement(AuthorOperator.AuthorType.GRANT_ROLE_TO_USER);
     authorStatement.setRoleName(ctx.roleName.getText());
     authorStatement.setUserName(ctx.userName.getText());
     return authorStatement;
@@ -1427,7 +1428,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitRevokeUser(IoTDBSqlParser.RevokeUserContext ctx) {
-    AuthorStatement authorStatement = new AuthorStatement(AuthorStatement.AuthorType.REVOKE_USER);
+    AuthorStatement authorStatement = new AuthorStatement(AuthorOperator.AuthorType.REVOKE_USER);
     authorStatement.setUserName(ctx.userName.getText());
     authorStatement.setPrivilegeList(parsePrivilege(ctx.privileges()));
     authorStatement.setNodeNameList(parsePrefixPath(ctx.prefixPath()));
@@ -1438,7 +1439,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitRevokeRole(IoTDBSqlParser.RevokeRoleContext ctx) {
-    AuthorStatement authorStatement = new AuthorStatement(AuthorStatement.AuthorType.REVOKE_ROLE);
+    AuthorStatement authorStatement = new AuthorStatement(AuthorOperator.AuthorType.REVOKE_ROLE);
     authorStatement.setRoleName(ctx.roleName.getText());
     authorStatement.setPrivilegeList(parsePrivilege(ctx.privileges()));
     authorStatement.setNodeNameList(parsePrefixPath(ctx.prefixPath()));
@@ -1450,7 +1451,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitRevokeRoleFromUser(IoTDBSqlParser.RevokeRoleFromUserContext ctx) {
     AuthorStatement authorStatement =
-        new AuthorStatement(AuthorStatement.AuthorType.REVOKE_ROLE_FROM_USER);
+        new AuthorStatement(AuthorOperator.AuthorType.REVOKE_ROLE_FROM_USER);
     authorStatement.setRoleName(ctx.roleName.getText());
     authorStatement.setUserName(ctx.userName.getText());
     return authorStatement;
@@ -1460,7 +1461,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitDropUser(IoTDBSqlParser.DropUserContext ctx) {
-    AuthorStatement authorStatement = new AuthorStatement(AuthorStatement.AuthorType.DROP_USER);
+    AuthorStatement authorStatement = new AuthorStatement(AuthorOperator.AuthorType.DROP_USER);
     authorStatement.setUserName(ctx.userName.getText());
     return authorStatement;
   }
@@ -1469,7 +1470,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitDropRole(IoTDBSqlParser.DropRoleContext ctx) {
-    AuthorStatement authorStatement = new AuthorStatement(AuthorStatement.AuthorType.DROP_ROLE);
+    AuthorStatement authorStatement = new AuthorStatement(AuthorOperator.AuthorType.DROP_ROLE);
     authorStatement.setRoleName(ctx.roleName.getText());
     return authorStatement;
   }
@@ -1478,14 +1479,14 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitListUser(IoTDBSqlParser.ListUserContext ctx) {
-    return new AuthorStatement(AuthorStatement.AuthorType.LIST_USER);
+    return new AuthorStatement(AuthorOperator.AuthorType.LIST_USER);
   }
 
   // List Roles
 
   @Override
   public Statement visitListRole(IoTDBSqlParser.ListRoleContext ctx) {
-    return new AuthorStatement(AuthorStatement.AuthorType.LIST_ROLE);
+    return new AuthorStatement(AuthorOperator.AuthorType.LIST_ROLE);
   }
 
   // List Privileges
@@ -1493,7 +1494,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitListPrivilegesUser(IoTDBSqlParser.ListPrivilegesUserContext ctx) {
     AuthorStatement authorStatement =
-        new AuthorStatement(AuthorStatement.AuthorType.LIST_USER_PRIVILEGE);
+        new AuthorStatement(AuthorOperator.AuthorType.LIST_USER_PRIVILEGE);
     authorStatement.setUserName(ctx.userName.getText());
     authorStatement.setNodeNameList(parsePrefixPath(ctx.prefixPath()));
     return authorStatement;
@@ -1504,7 +1505,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitListPrivilegesRole(IoTDBSqlParser.ListPrivilegesRoleContext ctx) {
     AuthorStatement authorStatement =
-        new AuthorStatement(AuthorStatement.AuthorType.LIST_ROLE_PRIVILEGE);
+        new AuthorStatement(AuthorOperator.AuthorType.LIST_ROLE_PRIVILEGE);
     authorStatement.setRoleName(ctx.roleName.getText());
     authorStatement.setNodeNameList(parsePrefixPath(ctx.prefixPath()));
     return authorStatement;
@@ -1515,7 +1516,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitListUserPrivileges(IoTDBSqlParser.ListUserPrivilegesContext ctx) {
     AuthorStatement authorStatement =
-        new AuthorStatement(AuthorStatement.AuthorType.LIST_USER_PRIVILEGE);
+        new AuthorStatement(AuthorOperator.AuthorType.LIST_USER_PRIVILEGE);
     authorStatement.setUserName(ctx.userName.getText());
     return authorStatement;
   }
@@ -1525,7 +1526,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitListRolePrivileges(IoTDBSqlParser.ListRolePrivilegesContext ctx) {
     AuthorStatement authorStatement =
-        new AuthorStatement(AuthorStatement.AuthorType.LIST_ROLE_PRIVILEGE);
+        new AuthorStatement(AuthorOperator.AuthorType.LIST_ROLE_PRIVILEGE);
     authorStatement.setRoleName(ctx.roleName.getText());
     return authorStatement;
   }
@@ -1535,7 +1536,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitListAllRoleOfUser(IoTDBSqlParser.ListAllRoleOfUserContext ctx) {
     AuthorStatement authorStatement =
-        new AuthorStatement(AuthorStatement.AuthorType.LIST_USER_ROLES);
+        new AuthorStatement(AuthorOperator.AuthorType.LIST_USER_ROLES);
     authorStatement.setUserName(ctx.userName.getText());
     return authorStatement;
   }
@@ -1545,7 +1546,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitListAllUserOfRole(IoTDBSqlParser.ListAllUserOfRoleContext ctx) {
     AuthorStatement authorStatement =
-        new AuthorStatement(AuthorStatement.AuthorType.LIST_ROLE_USERS);
+        new AuthorStatement(AuthorOperator.AuthorType.LIST_ROLE_USERS);
     authorStatement.setRoleName(ctx.roleName.getText());
     return authorStatement;
   }

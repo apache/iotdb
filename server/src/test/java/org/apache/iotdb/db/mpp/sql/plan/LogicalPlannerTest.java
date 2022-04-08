@@ -34,7 +34,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateAligne
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement;
-import org.apache.iotdb.db.mpp.sql.statement.sys.AuthorStatement;
+import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -384,7 +384,7 @@ public class LogicalPlannerTest {
     sql = "CREATE USER thulab 'passwd';";
     authorNode = (AuthorNode) parseSQLToPlanNode(sql);
     Assert.assertNotNull(authorNode);
-    Assert.assertEquals(AuthorStatement.AuthorType.CREATE_USER, authorNode.getAuthorType());
+    Assert.assertEquals(AuthorOperator.AuthorType.CREATE_USER, authorNode.getAuthorType());
     Assert.assertEquals("thulab", authorNode.getUserName());
     Assert.assertEquals("passwd", authorNode.getPassword());
 
@@ -392,14 +392,14 @@ public class LogicalPlannerTest {
     sql = "CREATE ROLE admin;";
     authorNode = (AuthorNode) parseSQLToPlanNode(sql);
     Assert.assertNotNull(authorNode);
-    Assert.assertEquals(AuthorStatement.AuthorType.CREATE_ROLE, authorNode.getAuthorType());
+    Assert.assertEquals(AuthorOperator.AuthorType.CREATE_ROLE, authorNode.getAuthorType());
     Assert.assertEquals("admin", authorNode.getRoleName());
 
     // alter user
     sql = "ALTER USER tempuser SET PASSWORD 'newpwd';";
     authorNode = (AuthorNode) parseSQLToPlanNode(sql);
     Assert.assertNotNull(authorNode);
-    Assert.assertEquals(AuthorStatement.AuthorType.UPDATE_USER, authorNode.getAuthorType());
+    Assert.assertEquals(AuthorOperator.AuthorType.UPDATE_USER, authorNode.getAuthorType());
     Assert.assertEquals("tempuser", authorNode.getUserName());
     Assert.assertEquals("newpwd", authorNode.getNewPassword());
 
@@ -407,7 +407,7 @@ public class LogicalPlannerTest {
     sql = "GRANT USER tempuser PRIVILEGES DELETE_TIMESERIES on root.ln;";
     authorNode = (AuthorNode) parseSQLToPlanNode(sql);
     Assert.assertNotNull(authorNode);
-    Assert.assertEquals(AuthorStatement.AuthorType.GRANT_USER, authorNode.getAuthorType());
+    Assert.assertEquals(AuthorOperator.AuthorType.GRANT_USER, authorNode.getAuthorType());
     Assert.assertEquals("tempuser", authorNode.getUserName());
     Assert.assertEquals(authorNode.strToPermissions(privilegesList), authorNode.getPermissions());
     Assert.assertEquals("root.ln", authorNode.getNodeName().getFullPath());
@@ -416,7 +416,7 @@ public class LogicalPlannerTest {
     sql = "GRANT ROLE temprole PRIVILEGES DELETE_TIMESERIES ON root.ln;";
     authorNode = (AuthorNode) parseSQLToPlanNode(sql);
     Assert.assertNotNull(authorNode);
-    Assert.assertEquals(AuthorStatement.AuthorType.GRANT_ROLE, authorNode.getAuthorType());
+    Assert.assertEquals(AuthorOperator.AuthorType.GRANT_ROLE, authorNode.getAuthorType());
     Assert.assertEquals("temprole", authorNode.getRoleName());
     Assert.assertEquals(authorNode.strToPermissions(privilegesList), authorNode.getPermissions());
     Assert.assertEquals("root.ln", authorNode.getNodeName().getFullPath());
@@ -425,7 +425,7 @@ public class LogicalPlannerTest {
     sql = "GRANT temprole TO tempuser;";
     authorNode = (AuthorNode) parseSQLToPlanNode(sql);
     Assert.assertNotNull(authorNode);
-    Assert.assertEquals(AuthorStatement.AuthorType.GRANT_ROLE_TO_USER, authorNode.getAuthorType());
+    Assert.assertEquals(AuthorOperator.AuthorType.GRANT_ROLE_TO_USER, authorNode.getAuthorType());
     Assert.assertEquals("temprole", authorNode.getRoleName());
     Assert.assertEquals("tempuser", authorNode.getUserName());
 
@@ -433,7 +433,7 @@ public class LogicalPlannerTest {
     sql = "REVOKE USER tempuser PRIVILEGES DELETE_TIMESERIES on root.ln;";
     authorNode = (AuthorNode) parseSQLToPlanNode(sql);
     Assert.assertNotNull(authorNode);
-    Assert.assertEquals(AuthorStatement.AuthorType.REVOKE_USER, authorNode.getAuthorType());
+    Assert.assertEquals(AuthorOperator.AuthorType.REVOKE_USER, authorNode.getAuthorType());
     Assert.assertEquals("tempuser", authorNode.getUserName());
     Assert.assertEquals(authorNode.strToPermissions(privilegesList), authorNode.getPermissions());
     Assert.assertEquals("root.ln", authorNode.getNodeName().getFullPath());
@@ -442,7 +442,7 @@ public class LogicalPlannerTest {
     sql = "REVOKE ROLE temprole PRIVILEGES DELETE_TIMESERIES ON root.ln;";
     authorNode = (AuthorNode) parseSQLToPlanNode(sql);
     Assert.assertNotNull(authorNode);
-    Assert.assertEquals(AuthorStatement.AuthorType.REVOKE_ROLE, authorNode.getAuthorType());
+    Assert.assertEquals(AuthorOperator.AuthorType.REVOKE_ROLE, authorNode.getAuthorType());
     Assert.assertEquals("temprole", authorNode.getRoleName());
     Assert.assertEquals(authorNode.strToPermissions(privilegesList), authorNode.getPermissions());
     Assert.assertEquals("root.ln", authorNode.getNodeName().getFullPath());
@@ -452,7 +452,7 @@ public class LogicalPlannerTest {
     authorNode = (AuthorNode) parseSQLToPlanNode(sql);
     Assert.assertNotNull(authorNode);
     Assert.assertEquals(
-        AuthorStatement.AuthorType.REVOKE_ROLE_FROM_USER, authorNode.getAuthorType());
+        AuthorOperator.AuthorType.REVOKE_ROLE_FROM_USER, authorNode.getAuthorType());
     Assert.assertEquals("temprole", authorNode.getRoleName());
     Assert.assertEquals("tempuser", authorNode.getUserName());
 
@@ -460,62 +460,62 @@ public class LogicalPlannerTest {
     sql = "DROP USER xiaoming;";
     authorNode = (AuthorNode) parseSQLToPlanNode(sql);
     Assert.assertNotNull(authorNode);
-    Assert.assertEquals(AuthorStatement.AuthorType.DROP_USER, authorNode.getAuthorType());
+    Assert.assertEquals(AuthorOperator.AuthorType.DROP_USER, authorNode.getAuthorType());
     Assert.assertEquals("xiaoming", authorNode.getUserName());
 
     // drop role
     sql = "DROP ROLE admin;";
     authorNode = (AuthorNode) parseSQLToPlanNode(sql);
     Assert.assertNotNull(authorNode);
-    Assert.assertEquals(AuthorStatement.AuthorType.DROP_ROLE, authorNode.getAuthorType());
+    Assert.assertEquals(AuthorOperator.AuthorType.DROP_ROLE, authorNode.getAuthorType());
     Assert.assertEquals("admin", authorNode.getRoleName());
 
     // list user
     sql = "LIST USER";
     authorNode = (AuthorNode) parseSQLToPlanNode(sql);
     Assert.assertNotNull(authorNode);
-    Assert.assertEquals(AuthorStatement.AuthorType.LIST_USER, authorNode.getAuthorType());
+    Assert.assertEquals(AuthorOperator.AuthorType.LIST_USER, authorNode.getAuthorType());
 
     // list role
     sql = "LIST ROLE";
     authorNode = (AuthorNode) parseSQLToPlanNode(sql);
     Assert.assertNotNull(authorNode);
-    Assert.assertEquals(AuthorStatement.AuthorType.LIST_ROLE, authorNode.getAuthorType());
+    Assert.assertEquals(AuthorOperator.AuthorType.LIST_ROLE, authorNode.getAuthorType());
 
     // list privileges user
     sql = "LIST PRIVILEGES USER sgcc_wirte_user ON root.sgcc;";
     authorNode = (AuthorNode) parseSQLToPlanNode(sql);
     Assert.assertNotNull(authorNode);
-    Assert.assertEquals(AuthorStatement.AuthorType.LIST_USER_PRIVILEGE, authorNode.getAuthorType());
+    Assert.assertEquals(AuthorOperator.AuthorType.LIST_USER_PRIVILEGE, authorNode.getAuthorType());
 
     // list privileges role
     sql = "LIST PRIVILEGES ROLE wirte_role ON root.sgcc;";
     authorNode = (AuthorNode) parseSQLToPlanNode(sql);
     Assert.assertNotNull(authorNode);
-    Assert.assertEquals(AuthorStatement.AuthorType.LIST_ROLE_PRIVILEGE, authorNode.getAuthorType());
+    Assert.assertEquals(AuthorOperator.AuthorType.LIST_ROLE_PRIVILEGE, authorNode.getAuthorType());
 
     // list user privileges
     sql = "LIST USER PRIVILEGES tempuser;";
     authorNode = (AuthorNode) parseSQLToPlanNode(sql);
     Assert.assertNotNull(authorNode);
-    Assert.assertEquals(AuthorStatement.AuthorType.LIST_USER_PRIVILEGE, authorNode.getAuthorType());
+    Assert.assertEquals(AuthorOperator.AuthorType.LIST_USER_PRIVILEGE, authorNode.getAuthorType());
 
     // list role privileges
     sql = "LIST ROLE PRIVILEGES actor;";
     authorNode = (AuthorNode) parseSQLToPlanNode(sql);
     Assert.assertNotNull(authorNode);
-    Assert.assertEquals(AuthorStatement.AuthorType.LIST_ROLE_PRIVILEGE, authorNode.getAuthorType());
+    Assert.assertEquals(AuthorOperator.AuthorType.LIST_ROLE_PRIVILEGE, authorNode.getAuthorType());
 
     // list all role of user
     sql = "LIST ALL ROLE OF USER tempuser;";
     authorNode = (AuthorNode) parseSQLToPlanNode(sql);
     Assert.assertNotNull(authorNode);
-    Assert.assertEquals(AuthorStatement.AuthorType.LIST_USER_ROLES, authorNode.getAuthorType());
+    Assert.assertEquals(AuthorOperator.AuthorType.LIST_USER_ROLES, authorNode.getAuthorType());
 
     // list all user of role
     sql = "LIST ALL USER OF ROLE roleuser;";
     authorNode = (AuthorNode) parseSQLToPlanNode(sql);
     Assert.assertNotNull(authorNode);
-    Assert.assertEquals(AuthorStatement.AuthorType.LIST_ROLE_USERS, authorNode.getAuthorType());
+    Assert.assertEquals(AuthorOperator.AuthorType.LIST_ROLE_USERS, authorNode.getAuthorType());
   }
 }

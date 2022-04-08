@@ -18,4 +18,6 @@
  */
 package org.apache.iotdb.db.auth;
 
-public class ClusterAuthorizer {}
+public class ClusterAuthorizer {
+  // TODO: send rpc to confignode
+}
