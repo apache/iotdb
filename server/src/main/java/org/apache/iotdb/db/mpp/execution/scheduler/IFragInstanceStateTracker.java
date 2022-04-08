@@ -17,20 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.sql.planner.plan.node;
+package org.apache.iotdb.db.mpp.execution.scheduler;
 
-import org.apache.iotdb.commons.utils.TestOnly;
+public interface IFragInstanceStateTracker {
+  void start();
 
-public class PlanNodeIdAllocator {
-  public static int initialId = 0;
-
-  public static synchronized PlanNodeId generateId() {
-    initialId++;
-    return new PlanNodeId(String.valueOf(initialId));
-  }
-
-  @TestOnly
-  public static synchronized void reset() {
-    initialId = 0;
-  }
+  void abort();
 }
