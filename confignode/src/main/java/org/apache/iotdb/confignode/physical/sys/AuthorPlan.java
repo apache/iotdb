@@ -21,10 +21,8 @@ package org.apache.iotdb.confignode.physical.sys;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
 import org.apache.iotdb.confignode.physical.PhysicalPlanType;
 import org.apache.iotdb.db.auth.AuthException;
-import org.apache.iotdb.db.auth.entity.PrivilegeType;
 
 import java.nio.ByteBuffer;
-import java.util.HashSet;
 import java.util.Set;
 
 public class AuthorPlan extends PhysicalPlan {
@@ -128,28 +126,6 @@ public class AuthorPlan extends PhysicalPlan {
     this.userName = userName;
   }
 
-  private Set<Integer> strToPermissions(String[] authorizationList) throws AuthException {
-    Set<Integer> result = new HashSet<>();
-    if (authorizationList == null) {
-      return result;
-    }
-    for (String s : authorizationList) {
-      PrivilegeType[] types = PrivilegeType.values();
-      boolean legal = false;
-      for (PrivilegeType privilegeType : types) {
-        if (s.equalsIgnoreCase(privilegeType.name())) {
-          result.add(privilegeType.ordinal());
-          legal = true;
-          break;
-        }
-      }
-      if (!legal) {
-        throw new AuthException("No such privilege " + s);
-      }
-    }
-    return result;
-  }
-
   @Override
   protected void serializeImpl(ByteBuffer buffer) {
     buffer.putInt(getPlanTypeOrdinal(authorType));
@@ -181,7 +157,6 @@ public class AuthorPlan extends PhysicalPlan {
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) {
-    int type = buffer.getInt();
     userName = getAuthorInfo(buffer);
     roleName = getAuthorInfo(buffer);
     password = getAuthorInfo(buffer);

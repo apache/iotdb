@@ -54,14 +54,14 @@ public class ConfigManager implements Manager {
   /** manager assign schema region and data region */
   private final RegionManager regionManager;
 
-  private final PermissonManager permissonManager;
+  private final PermissionManager permissionManager;
 
   public ConfigManager() throws IOException {
     this.dataNodeManager = new DataNodeManager(this);
     this.partitionManager = new PartitionManager(this);
     this.regionManager = new RegionManager(this);
     this.consensusManager = new ConsensusManager();
-    this.permissonManager = new PermissonManager(this);
+    this.permissionManager = new PermissionManager(this);
   }
 
   @Override
@@ -154,7 +154,7 @@ public class ConfigManager implements Manager {
   @Override
   public TSStatus operatePermission(PhysicalPlan physicalPlan) {
     if (physicalPlan instanceof AuthorPlan) {
-      return permissonManager.operatePermission((AuthorPlan) physicalPlan);
+      return permissionManager.operatePermission((AuthorPlan) physicalPlan);
     }
     return ERROR_TSSTATUS;
   }

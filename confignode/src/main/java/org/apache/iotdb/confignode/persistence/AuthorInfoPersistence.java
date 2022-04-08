@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.confignode.persistence;
 
+import org.apache.iotdb.confignode.consensus.response.PermissionInfoDataSet;
 import org.apache.iotdb.confignode.physical.PhysicalPlanType;
 import org.apache.iotdb.confignode.physical.sys.AuthorPlan;
-import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
@@ -106,27 +106,28 @@ public class AuthorInfoPersistence {
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
-  public DataSet executeListRole(AuthorPlan plan) throws AuthException {
+  /** TODO: Construct the query result as a DataSet and return it */
+  public PermissionInfoDataSet executeListRole(AuthorPlan plan) throws AuthException {
     return null;
   }
 
-  public DataSet executeListUser(AuthorPlan plan) throws AuthException {
+  public PermissionInfoDataSet executeListUser(AuthorPlan plan) throws AuthException {
     return null;
   }
 
-  public DataSet executeListRoleUsers(AuthorPlan plan) throws AuthException {
+  public PermissionInfoDataSet executeListRoleUsers(AuthorPlan plan) throws AuthException {
     return null;
   }
 
-  public DataSet executeListUserRoles(AuthorPlan plan) throws AuthException {
+  public PermissionInfoDataSet executeListUserRoles(AuthorPlan plan) throws AuthException {
     return null;
   }
 
-  public DataSet executeListRolePrivileges(AuthorPlan plan) throws AuthException {
+  public PermissionInfoDataSet executeListRolePrivileges(AuthorPlan plan) throws AuthException {
     return null;
   }
 
-  public DataSet executeListUserPrivileges(AuthorPlan plan) throws AuthException {
+  public PermissionInfoDataSet executeListUserPrivileges(AuthorPlan plan) throws AuthException {
     return null;
   }
 

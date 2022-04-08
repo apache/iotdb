@@ -17,24 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.manager;
+package org.apache.iotdb.confignode.consensus.response;
 
-import org.apache.iotdb.confignode.physical.sys.AuthorPlan;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.consensus.common.DataSet;
 
-public class PermissonManager {
-
-  private Manager configManager;
-
-  public PermissonManager(Manager configManager) {
-    this.configManager = configManager;
-  }
-
-  public TSStatus operatePermission(AuthorPlan authorPlan) {
-    return getConsensusManager().write(authorPlan).getStatus();
-  }
-
-  private ConsensusManager getConsensusManager() {
-    return configManager.getConsensusManager();
-  }
+public class PermissionInfoDataSet implements DataSet {
+  // TODO: Store the returned result
 }
