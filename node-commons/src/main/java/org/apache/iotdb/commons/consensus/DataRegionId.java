@@ -70,4 +70,8 @@ public class DataRegionId implements ConsensusGroupId {
   public int hashCode() {
     return Objects.hash(id, GroupType.DataRegion);
   }
+
+  public String toString() {
+    return String.format("%s-%d", getType(), id);
+  }
 }

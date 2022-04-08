@@ -54,7 +54,7 @@ public class RegionReplicaSet {
   }
 
   public String toString() {
-    return String.format("RegionReplicaSet[%s-%s]: %s", id.getType(), id, dataNodeList);
+    return String.format("RegionReplicaSet[%s, %s]", id, dataNodeList);
   }
 
   public void serializeImpl(ByteBuffer buffer) {

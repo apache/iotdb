@@ -181,6 +181,8 @@ public class DistributionPlanner {
       context.putNodeDistribution(
           node.getId(),
           new NodeDistribution(NodeDistributionType.NO_CHILD, node.getDataRegionReplicaSet()));
+      System.out.printf(
+          String.format("Series - NodeDistributionMap: %s %n", context.nodeDistribution));
       return node.clone();
     }
 
@@ -207,6 +209,7 @@ public class DistributionPlanner {
               : NodeDistributionType.SAME_WITH_SOME_CHILD;
       context.putNodeDistribution(
           newNode.getId(), new NodeDistribution(distributionType, dataRegion));
+      System.out.printf(String.format("NodeDistributionMap: %s %n", context.nodeDistribution));
 
       // If the distributionType of all the children are same, no ExchangeNode need to be added.
       if (distributionType == NodeDistributionType.SAME_WITH_ALL_CHILDREN) {
@@ -218,14 +221,20 @@ public class DistributionPlanner {
       // parent.
       visitedChildren.forEach(
           child -> {
+            System.out.printf(
+                "NodeId: %s. DataRegion: %s. ChildId: %s, ChildRegion: %s%n",
+                newNode, dataRegion, child, context.getNodeDistribution(child.getId()).dataRegion);
             if (!dataRegion.equals(context.getNodeDistribution(child.getId()).dataRegion)) {
+              System.out.printf("Add exchange Node for child: %s%n", child);
               ExchangeNode exchangeNode = new ExchangeNode(PlanNodeIdAllocator.generateId());
               exchangeNode.setChild(child);
               newNode.addChild(exchangeNode);
             } else {
+              System.out.printf("Do not add Exchange Node: %s%n", child);
               newNode.addChild(child);
             }
           });
+      System.out.printf("New Node -> %s, child size: %d%n", newNode, newNode.getChildren().size());
       return newNode;
     }
 
@@ -283,6 +292,10 @@ public class DistributionPlanner {
     private NodeDistribution(NodeDistributionType type, RegionReplicaSet dataRegion) {
       this.type = type;
       this.dataRegion = dataRegion;
+    }
+
+    public String toString() {
+      return String.format("DataDistribution[Type: %s, RegionSet: %s]", type, dataRegion);
     }
   }
 
