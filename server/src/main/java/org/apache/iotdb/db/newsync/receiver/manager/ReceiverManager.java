@@ -138,8 +138,8 @@ public class ReceiverManager {
    * @param pipeName name of pipe
    * @param remoteIp remoteIp of pipe
    * @param createTime createTime of pipe
-   * @param consume if consume is true, these messages will not be deleted. Otherwise, these messages can be
-   *     read next time.
+   * @param consume if consume is true, these messages will not be deleted. Otherwise, these
+   *     messages can be read next time.
    * @return recent messages
    */
   public List<PipeMessage> getPipeMessages(
@@ -176,8 +176,8 @@ public class ReceiverManager {
    * @param pipeName name of pipe
    * @param remoteIp remoteIp of pipe
    * @param createTime createTime of pipe
-   * @param consume if consume is true, recent messages will not be deleted. Otherwise, these messages can
-   *     be read next time.
+   * @param consume if consume is true, recent messages will not be deleted. Otherwise, these
+   *     messages can be read next time.
    * @return the most important message
    */
   public PipeMessage getPipeMessage(
