@@ -155,8 +155,7 @@ public abstract class ServiceProvider {
     boolean status;
     String loginMessage = null;
     try {
-      AuthorizerManager authorizerManager = AuthorizerManager.getInstance();
-      status = authorizerManager.login(username, password);
+      status = AuthorizerManager.getInstance().login(username, password);
     } catch (AuthException e) {
       LOGGER.info("meet error while logging in.", e);
       status = false;
