@@ -42,11 +42,11 @@ import java.util.concurrent.ConcurrentHashMap;
 public class ReceiverLogAnalyzer {
   private static final Logger logger = LoggerFactory.getLogger(ReceiverLogAnalyzer.class);
   // record recovery result of receiver server status
-  private static boolean pipeServerEnable = false;
-  private static Map<String, Map<String, PipeInfo>> pipeInfoMap = new ConcurrentHashMap<>();
-  private static Map<String, List<PipeMessage>> pipeMessageMap = new ConcurrentHashMap<>();
+  private boolean pipeServerEnable = false;
+  private Map<String, Map<String, PipeInfo>> pipeInfoMap = new ConcurrentHashMap<>();
+  private Map<String, List<PipeMessage>> pipeMessageMap = new ConcurrentHashMap<>();
 
-  public static void scan() throws StartupException {
+  public void scan() throws StartupException {
     logger.info("Start to recover all sync state for sync receiver.");
     pipeInfoMap = new ConcurrentHashMap<>();
     pipeMessageMap = new ConcurrentHashMap<>();
@@ -92,15 +92,15 @@ public class ReceiverLogAnalyzer {
     }
   }
 
-  public static boolean isPipeServerEnable() {
+  public boolean isPipeServerEnable() {
     return pipeServerEnable;
   }
 
-  public static Map<String, Map<String, PipeInfo>> getPipeInfoMap() {
+  public Map<String, Map<String, PipeInfo>> getPipeInfoMap() {
     return pipeInfoMap;
   }
 
-  public static Map<String, List<PipeMessage>> getPipeMessageMap() {
+  public Map<String, List<PipeMessage>> getPipeMessageMap() {
     return pipeMessageMap;
   }
 
@@ -109,7 +109,7 @@ public class ReceiverLogAnalyzer {
    *
    * @param logLine log line
    */
-  private static void analyzeServiceLog(String logLine) {
+  private void analyzeServiceLog(String logLine) {
     if (logLine.equals("on")) {
       pipeServerEnable = true;
     } else if (logLine.equals("off")) {
@@ -142,7 +142,7 @@ public class ReceiverLogAnalyzer {
    *
    * @param logLine log line
    */
-  private static void analyzeMsgLog(String logLine) {
+  private void analyzeMsgLog(String logLine) {
     String[] items = logLine.split(",");
     String pipeIdentifier = items[0];
     if (items.length == 3) {

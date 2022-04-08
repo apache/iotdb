@@ -69,9 +69,10 @@ public class ReceiverLogAnalyzerTest {
       log.dropPipe(pipe1, ip2);
       log.startPipe(pipe1, ip1);
       log.close();
-      ReceiverLogAnalyzer.scan();
-      Map<String, Map<String, PipeInfo>> map = ReceiverLogAnalyzer.getPipeInfoMap();
-      Assert.assertTrue(ReceiverLogAnalyzer.isPipeServerEnable());
+      ReceiverLogAnalyzer receiverLogAnalyzer = new ReceiverLogAnalyzer();
+      receiverLogAnalyzer.scan();
+      Map<String, Map<String, PipeInfo>> map = receiverLogAnalyzer.getPipeInfoMap();
+      Assert.assertTrue(receiverLogAnalyzer.isPipeServerEnable());
       Assert.assertNotNull(map);
       Assert.assertEquals(2, map.get(pipe1).size());
       Assert.assertEquals(1, map.get(pipe2).size());
@@ -106,8 +107,9 @@ public class ReceiverLogAnalyzerTest {
       log.readPipeMsg(pipeIdentifier2);
       log.close();
 
-      ReceiverLogAnalyzer.scan();
-      Map<String, List<PipeMessage>> map = ReceiverLogAnalyzer.getPipeMessageMap();
+      ReceiverLogAnalyzer receiverLogAnalyzer = new ReceiverLogAnalyzer();
+      receiverLogAnalyzer.scan();
+      Map<String, List<PipeMessage>> map = receiverLogAnalyzer.getPipeMessageMap();
       Assert.assertNotNull(map);
       Assert.assertEquals(3, map.get(pipeIdentifier1).size());
       Assert.assertNull(map.get(pipeIdentifier2));

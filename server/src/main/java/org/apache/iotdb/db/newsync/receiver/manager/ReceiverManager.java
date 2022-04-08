@@ -46,10 +46,11 @@ public class ReceiverManager {
 
   public void init() throws StartupException {
     log = new ReceiverLog();
-    ReceiverLogAnalyzer.scan();
-    pipeInfoMap = ReceiverLogAnalyzer.getPipeInfoMap();
-    pipeServerEnable = ReceiverLogAnalyzer.isPipeServerEnable();
-    pipeMessageMap = ReceiverLogAnalyzer.getPipeMessageMap();
+    ReceiverLogAnalyzer analyzer = new ReceiverLogAnalyzer();
+    analyzer.scan();
+    pipeInfoMap = analyzer.getPipeInfoMap();
+    pipeServerEnable = analyzer.isPipeServerEnable();
+    pipeMessageMap = analyzer.getPipeMessageMap();
   }
 
   public void close() throws IOException {
