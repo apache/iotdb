@@ -329,7 +329,7 @@ public class LogicalPlanner {
         InsertRowsStatement insertRowsStatement, MPPQueryContext context) {
       // set schema in insert node
       // convert insert statement to insert node
-      InsertRowsNode insertRowsNode = new InsertRowsNode(PlanNodeIdAllocator.generateId());
+      InsertRowsNode insertRowsNode = new InsertRowsNode(context.getQueryId().genPlanNodeId());
       for (int i = 0; i < insertRowsStatement.getInsertRowStatementList().size(); i++) {
         InsertRowStatement insertRowStatement =
             insertRowsStatement.getInsertRowStatementList().get(i);
@@ -359,7 +359,7 @@ public class LogicalPlanner {
       // set schema in insert node
       // convert insert statement to insert node
       InsertMultiTabletNode insertMultiTabletNode =
-          new InsertMultiTabletNode(PlanNodeIdAllocator.generateId());
+          new InsertMultiTabletNode(context.getQueryId().genPlanNodeId());
       List<InsertTabletNode> insertTabletNodeList = new ArrayList<>();
       for (int i = 0; i < insertMultiTabletStatement.getInsertTabletStatementList().size(); i++) {
         InsertTabletStatement insertTabletStatement =
@@ -391,7 +391,7 @@ public class LogicalPlanner {
         InsertRowsOfOneDeviceStatement insertRowsOfOneDeviceStatement, MPPQueryContext context) {
       // set schema in insert node
       // convert insert statement to insert node
-      InsertRowsNode insertRowsNode = new InsertRowsNode(PlanNodeIdAllocator.generateId());
+      InsertRowsNode insertRowsNode = new InsertRowsNode(context.getQueryId().genPlanNodeId());
       for (int i = 0; i < insertRowsOfOneDeviceStatement.getInsertRowStatementList().size(); i++) {
         InsertRowStatement insertRowStatement =
             insertRowsOfOneDeviceStatement.getInsertRowStatementList().get(i);
