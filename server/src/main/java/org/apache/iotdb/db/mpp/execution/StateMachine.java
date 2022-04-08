@@ -44,8 +44,9 @@ public class StateMachine<T> {
   private final Object lock = new Object();
   private final Set<T> terminalStates;
 
+  @SuppressWarnings("java:S3077")
   @GuardedBy("lock")
-  private volatile T state;
+  private T state;
 
   @GuardedBy("lock")
   private final List<StateChangeListener<T>> stateChangeListeners = new ArrayList<>();
