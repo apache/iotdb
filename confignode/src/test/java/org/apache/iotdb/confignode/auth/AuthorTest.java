@@ -18,26 +18,12 @@
  */
 package org.apache.iotdb.confignode.auth;
 
-import org.apache.iotdb.confignode.physical.PhysicalPlanType;
-import org.apache.iotdb.confignode.rpc.thrift.AuthorizerReq;
-import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
 import org.apache.iotdb.confignode.utils.ConfigNodeEnvironmentUtils;
 import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
-import org.apache.iotdb.rpc.RpcTransportFactory;
-import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
-import org.apache.thrift.TException;
-import org.apache.thrift.protocol.TBinaryProtocol;
-import org.apache.thrift.transport.TTransport;
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Test;
-
-import java.util.HashSet;
-import java.util.Set;
 
 public class AuthorTest {
 
@@ -54,18 +40,5 @@ public class AuthorTest {
     ConfigNodeEnvironmentUtils.cleanEnv();
   }
 
-  @Test
-  public void createUserTest() throws TException {
-    ConfigIService.Client client;
-    TTransport transport = null;
-    transport = RpcTransportFactory.INSTANCE.getTransport("0.0.0.0", 22277, 2000);
-    transport.open();
-    client = new ConfigIService.Client(new TBinaryProtocol(transport));
-    Set<Integer> i = new HashSet<>();
-    TSStatus tsStatus =
-        client.operatePermission(
-            new AuthorizerReq(
-                PhysicalPlanType.CREATE_USER.ordinal(), "root01", "", "root001", "", i, ""));
-    Assert.assertEquals(tsStatus.getCode(), TSStatusCode.SUCCESS_STATUS.getStatusCode());
-  }
+  // TODO: ADD TEST
 }
