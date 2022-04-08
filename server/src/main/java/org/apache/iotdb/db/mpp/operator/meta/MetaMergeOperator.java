@@ -72,4 +72,9 @@ public class MetaMergeOperator implements ProcessOperator {
     }
     return false;
   }
+
+  @Override
+  public boolean isFinished() throws IOException {
+    return false;
+  }
 }

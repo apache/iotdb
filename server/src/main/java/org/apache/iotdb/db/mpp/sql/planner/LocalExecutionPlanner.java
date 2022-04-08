@@ -63,7 +63,6 @@ import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
-import java.util.stream.Collectors;
 
 /**
  * used to plan a fragment instance. Currently, we simply change it from PlanNode to executable
@@ -146,13 +145,12 @@ public class LocalExecutionPlanner {
     public Operator visitTimeSeriesMetaScan(
         TimeSeriesMetaScanNode node, LocalExecutionPlanContext context) {
       OperatorContext operatorContext =
-          context.taskContext.addOperatorContext(
+          context.instanceContext.addOperatorContext(
               context.getNextOperatorId(),
               node.getId(),
               TimeSeriesMetaScanOperator.class.getSimpleName());
       return new TimeSeriesMetaScanOperator(
           operatorContext,
-          node.getRegionReplicaSet().getId(),
           node.getLimit(),
           node.getOffset(),
           node.getPath(),
@@ -171,7 +169,7 @@ public class LocalExecutionPlanner {
               .map(n -> n.accept(this, context))
               .collect(Collectors.toList());
       OperatorContext operatorContext =
-          context.taskContext.addOperatorContext(
+          context.instanceContext.addOperatorContext(
               context.getNextOperatorId(), node.getId(), MetaMergeOperator.class.getSimpleName());
       return new MetaMergeOperator(operatorContext, children);
     }

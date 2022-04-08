@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.db.mpp.operator;
 
-import org.apache.iotdb.commons.consensus.ConsensusGroupId;
-import org.apache.iotdb.commons.consensus.GroupType;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -108,7 +106,6 @@ public class MetaScanOperatorTest {
       TimeSeriesMetaScanOperator timeSeriesMetaScanOperator =
           new TimeSeriesMetaScanOperator(
               fragmentInstanceContext.getOperatorContexts().get(0),
-              new ConsensusGroupId(GroupType.SchemaRegion, 0),
               10,
               0,
               new PartialPath(META_SCAN_OPERATOR_TEST_SG + ".device0.*"),

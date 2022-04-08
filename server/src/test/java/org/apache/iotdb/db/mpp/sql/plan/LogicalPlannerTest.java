@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.mpp.sql.plan;
 
-import java.nio.ByteBuffer;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
@@ -48,6 +47,7 @@ import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import java.nio.ByteBuffer;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -383,11 +383,12 @@ public class LogicalPlannerTest {
       Assert.assertEquals(10, showTimeSeriesNode.getOffset());
       Assert.assertTrue(showTimeSeriesNode.isHasLimit());
 
-      //test serialize and deserialize
+      // test serialize and deserialize
       ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
       showTimeSeriesNode.serialize(byteBuffer);
       byteBuffer.flip();
-      TimeSeriesMetaScanNode showTimeSeriesNode2 = (TimeSeriesMetaScanNode) PlanNodeType.deserialize(byteBuffer);
+      TimeSeriesMetaScanNode showTimeSeriesNode2 =
+          (TimeSeriesMetaScanNode) PlanNodeType.deserialize(byteBuffer);
       Assert.assertNotNull(showTimeSeriesNode2);
       Assert.assertEquals(
           new PartialPath("root.ln.wf01.wt01.status"), showTimeSeriesNode2.getPath());

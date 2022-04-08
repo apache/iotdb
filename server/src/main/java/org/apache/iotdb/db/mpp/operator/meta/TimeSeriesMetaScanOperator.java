@@ -18,11 +18,10 @@
  */
 package org.apache.iotdb.db.mpp.operator.meta;
 
-import java.io.IOException;
-import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.execution.SchemaDriverContext;
 import org.apache.iotdb.db.mpp.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
@@ -32,6 +31,7 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -58,7 +58,6 @@ public class TimeSeriesMetaScanOperator extends MetaScanOperator {
 
   public TimeSeriesMetaScanOperator(
       OperatorContext operatorContext,
-      ConsensusGroupId schemaRegionId,
       int limit,
       int offset,
       PartialPath partialPath,
@@ -68,7 +67,7 @@ public class TimeSeriesMetaScanOperator extends MetaScanOperator {
       boolean orderByHeat,
       boolean isPrefixPath,
       List<String> columns) {
-    super(operatorContext, schemaRegionId, limit, offset, partialPath, isPrefixPath, columns);
+    super(operatorContext, limit, offset, partialPath, isPrefixPath, columns);
     this.isContains = isContains;
     this.key = key;
     this.value = value;
@@ -94,7 +93,8 @@ public class TimeSeriesMetaScanOperator extends MetaScanOperator {
   @Override
   protected TsBlock createTsBlock() throws MetadataException {
     TsBlockBuilder builder = new TsBlockBuilder(Arrays.asList(resourceTypes));
-    schemaRegion
+    ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
+        .getSchemaRegion()
         .showTimeseries(convertToPhysicalPlan(), operatorContext.getInstanceContext())
         .left
         .forEach(series -> setColumns(series, builder));
@@ -138,9 +138,7 @@ public class TimeSeriesMetaScanOperator extends MetaScanOperator {
   }
 
   @Override
-  public void initQueryDataSource(QueryDataSource dataSource) {
-
-  }
+  public void initQueryDataSource(QueryDataSource dataSource) {}
 
   @Override
   public boolean isFinished() throws IOException {

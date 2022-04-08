@@ -18,16 +18,14 @@
  */
 package org.apache.iotdb.db.mpp.operator.meta;
 
-import java.io.IOException;
-import java.util.List;
-import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
-import org.apache.iotdb.db.metadata.schemaregion.SchemaRegion;
 import org.apache.iotdb.db.mpp.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.operator.source.SourceOperator;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+
+import java.io.IOException;
+import java.util.List;
 
 public abstract class MetaScanOperator implements SourceOperator {
 
@@ -35,7 +33,6 @@ public abstract class MetaScanOperator implements SourceOperator {
   protected TsBlock tsBlock;
   private boolean hasCachedTsBlock;
 
-  protected SchemaRegion schemaRegion;
   protected int limit;
   protected int offset;
   protected PartialPath partialPath;
@@ -44,14 +41,12 @@ public abstract class MetaScanOperator implements SourceOperator {
 
   protected MetaScanOperator(
       OperatorContext operatorContext,
-      ConsensusGroupId schemaRegionId,
       int limit,
       int offset,
       PartialPath partialPath,
       boolean isPrefixPath,
       List<String> columns) {
     this.operatorContext = operatorContext;
-    this.schemaRegion = SchemaEngine.getInstance().getSchemaRegion(schemaRegionId);
     this.limit = limit;
     this.offset = offset;
     this.partialPath = partialPath;
@@ -63,10 +58,6 @@ public abstract class MetaScanOperator implements SourceOperator {
 
   public PartialPath getPartialPath() {
     return partialPath;
-  }
-
-  public SchemaRegion getSchemaRegion() {
-    return schemaRegion;
   }
 
   public int getLimit() {
