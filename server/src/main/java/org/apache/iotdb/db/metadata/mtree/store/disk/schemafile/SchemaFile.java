@@ -183,6 +183,7 @@ public class SchemaFile implements ISchemaFile {
           setNodeAddress(
               new StorageGroupMNode(null, sgPathNodes[sgPathNodes.length - 1], dataTTL), 0L);
     }
+    resNode.setFullPath(storageGroupName);
     if (templateHash != 0) {
       resNode.setSchemaTemplate(TemplateManager.getInstance().getTemplateFromHash(templateHash));
     }

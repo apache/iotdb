@@ -48,17 +48,21 @@ import java.util.Collections;
 public class MemManagerTest {
 
   private IoTDBConfig config;
+  private long rawMemorySize;
 
   @Before
   public void setUp() throws Exception {
     config = IoTDBDescriptor.getInstance().getConfig();
     config.setSchemaEngineMode(SchemaEngineMode.Schema_File.toString());
+    rawMemorySize = config.getAllocateMemoryForSchema();
+    config.setAllocateMemoryForSchema(1500);
     EnvironmentUtils.envSetUp();
   }
 
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
+    config.setAllocateMemoryForSchema(rawMemorySize);
     config.setSchemaEngineMode(SchemaEngineMode.Memory.toString());
   }
 
@@ -85,18 +89,22 @@ public class MemManagerTest {
     int permSgSize = basicMNodSizeEstimator.estimateSize(storageGroupMNode);
 
     CachedMNodeSizeEstimator cachedMNodeSizeEstimator = new CachedMNodeSizeEstimator();
-    int cachedSgSize =
-        cachedMNodeSizeEstimator.estimateSize(storageGroupMNode)
-            - 5; // no "root." when init the sg node of schemaRegion
+    int cachedSgSize = cachedMNodeSizeEstimator.estimateSize(storageGroupMNode);
     int deviceSize = cachedMNodeSizeEstimator.estimateSize(deviceNode);
     int measurementSize = cachedMNodeSizeEstimator.estimateSize(measurementMNode);
 
     Assert.assertEquals(
-        permSgSize + cachedSgSize + deviceSize + measurementSize,
-        memoryStatistics.getMemoryUsage());
-    Assert.assertEquals(
         cachedSgSize + deviceSize,
         memManager.getPinnedSize()); // device is pinned and hold by mNodeCache
-    Assert.assertEquals(measurementSize, memManager.getCachedSize());
+
+    // measurementMNode may be evicted according to the test environment
+    int possibleAllMemUsage = permSgSize + cachedSgSize + deviceSize + measurementSize;
+    int possibleMemUsageWithoutMeasurement = permSgSize + cachedSgSize + deviceSize;
+
+    Assert.assertTrue(
+        memoryStatistics.getMemoryUsage() == possibleAllMemUsage
+            || memoryStatistics.getMemoryUsage() == possibleMemUsageWithoutMeasurement);
+    Assert.assertTrue(
+        memManager.getCachedSize() == measurementSize || memManager.getCachedSize() == 0);
   }
 }
