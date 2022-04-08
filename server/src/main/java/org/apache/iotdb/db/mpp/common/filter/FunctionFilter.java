@@ -66,7 +66,7 @@ public class FunctionFilter extends QueryFilter {
     int childSize = ReadWriteIOUtils.readInt(byteBuffer);
     List<QueryFilter> queryFilters = new ArrayList<>();
     for (int i = 0; i < childSize; i++) {
-      queryFilters.add(QueryFilter.deserialize(byteBuffer));
+      queryFilters.add(FilterDeserializeUtil.deserialize(byteBuffer));
     }
     boolean isLeaf = ReadWriteIOUtils.readBool(byteBuffer);
     boolean isSingle = ReadWriteIOUtils.readBool(byteBuffer);
