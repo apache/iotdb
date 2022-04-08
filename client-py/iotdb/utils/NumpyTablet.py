@@ -17,7 +17,6 @@
 #
 
 import struct
-import numpy as np
 from iotdb.utils.IoTDBConstants import TSDataType
 from iotdb.utils.BitMap import BitMap
 
@@ -54,11 +53,11 @@ class NumpyTablet(object):
             for i in range(len(values)):
                 values[i] = values[i][index]
 
-        if timestamps.dtype != np.dtype(">i8"):
-            timestamps = timestamps.astype(np.dtype(">i8"))
+        if timestamps.dtype != TSDataType.INT64.np_dtype():
+            timestamps = timestamps.astype(TSDataType.INT64.np_dtype())
         for i in range(len(values)):
-            
-
+            if values[i].dtype != data_types[i].np_dtype():
+                values[i] = values[i].astype(data_types[i].np_dtype())
 
         self.__values = values
         self.__timestamps = timestamps

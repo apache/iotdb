@@ -82,7 +82,7 @@ def test_sort_numpy_tablet():
         "root.sg_test_01.d_01", measurements_, data_types_, values_, timestamps_
     )
     np_values_unsorted = [
-        np.array([False, False, False, True, True], np.dtype('>?')),
+        np.array([False, False, False, True, True], np.dtype(">?")),
         np.array([0, 10, 100, 1000, 10000], np.dtype(">i4")),
         np.array([1, 11, 111, 1111, 11111], np.dtype(">i8")),
         np.array([1.1, 1.25, 188.1, 0, 8.999], np.dtype(">f4")),
@@ -91,12 +91,17 @@ def test_sort_numpy_tablet():
     ]
     np_timestamps_unsorted = np.array([9, 8, 7, 6, 5], np.dtype(">i8"))
     np_tablet_ = NumpyTablet(
-        "root.sg_test_01.d_01", measurements_, data_types_, np_values_unsorted, np_timestamps_unsorted
+        "root.sg_test_01.d_01",
+        measurements_,
+        data_types_,
+        np_values_unsorted,
+        np_timestamps_unsorted,
     )
     assert tablet_.get_binary_timestamps() == np_tablet_.get_binary_timestamps()
     assert tablet_.get_binary_values() == np_tablet_.get_binary_values()
 
-def test_numpy_tablet_correct_endian():
+
+def test_numpy_tablet_auto_correct_datatype():
 
     measurements_ = ["s_01", "s_02", "s_03", "s_04", "s_05", "s_06"]
     data_types_ = [
@@ -119,17 +124,24 @@ def test_numpy_tablet_correct_endian():
         "root.sg_test_01.d_01", measurements_, data_types_, values_, timestamps_
     )
     np_values_unsorted = [
-        np.array([False, False, False, True, True], np.dtype('>?')),
-        np.array([0, 10, 100, 1000, 10000], np.dtype(">i4")),
-        np.array([1, 11, 111, 1111, 11111], np.dtype(">i8")),
-        np.array([1.1, 1.25, 188.1, 0, 8.999], np.dtype(">f4")),
-        np.array([10011.1, 101.0, 688.25, 6.25, 776], np.dtype(">f8")),
+        np.array([False, False, False, True, True]),
+        np.array([0, 10, 100, 1000, 10000]),
+        np.array([1, 11, 111, 1111, 11111]),
+        np.array([1.1, 1.25, 188.1, 0, 8.999]),
+        np.array([10011.1, 101.0, 688.25, 6.25, 776]),
         np.array(["test09", "test08", "test07", "test06", "test05"]),
     ]
     np_timestamps_unsorted = np.array([9, 8, 7, 6, 5])
+    # numpy.dtype of int and float should be little endian by default
     assert np_timestamps_unsorted.dtype != np.dtype(">i8")
+    for i in range(1, 4):
+        assert np_values_unsorted[i].dtype != data_types_[i].np_dtype()
     np_tablet_ = NumpyTablet(
-        "root.sg_test_01.d_01", measurements_, data_types_, np_values_unsorted, np_timestamps_unsorted
+        "root.sg_test_01.d_01",
+        measurements_,
+        data_types_,
+        np_values_unsorted,
+        np_timestamps_unsorted,
     )
     assert tablet_.get_binary_timestamps() == np_tablet_.get_binary_timestamps()
     assert tablet_.get_binary_values() == np_tablet_.get_binary_values()
