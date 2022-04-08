@@ -138,20 +138,20 @@ public class ReceiverManager {
    * @param pipeName name of pipe
    * @param remoteIp remoteIp of pipe
    * @param createTime createTime of pipe
-   * @param del if del is true, these messages will not be deleted. Otherwise, these messages can be
+   * @param consume if consume is true, these messages will not be deleted. Otherwise, these messages can be
    *     read next time.
    * @return recent messages
    */
   public List<PipeMessage> getPipeMessages(
-      String pipeName, String remoteIp, long createTime, boolean del) {
+      String pipeName, String remoteIp, long createTime, boolean consume) {
     List<PipeMessage> pipeMessageList = new ArrayList<>();
     if (pipeInfoMap.containsKey(pipeName) && pipeInfoMap.get(pipeName).containsKey(remoteIp)) {
       synchronized (pipeInfoMap.get(pipeName).get(remoteIp)) {
         String pipeIdentifier =
             SyncPathUtil.getReceiverPipeFolderName(pipeName, remoteIp, createTime);
-        if (del) {
+        if (consume) {
           try {
-            log.readPipeMsg(pipeIdentifier);
+            log.comsumePipeMsg(pipeIdentifier);
           } catch (IOException e) {
             logger.error(
                 "Can not read pipe message about {} from disk because {}",
@@ -161,7 +161,7 @@ public class ReceiverManager {
         }
         if (pipeMessageMap.containsKey(pipeIdentifier)) {
           pipeMessageList = pipeMessageMap.get(pipeIdentifier);
-          if (del) {
+          if (consume) {
             pipeMessageMap.remove(pipeIdentifier);
           }
         }
@@ -176,13 +176,13 @@ public class ReceiverManager {
    * @param pipeName name of pipe
    * @param remoteIp remoteIp of pipe
    * @param createTime createTime of pipe
-   * @param del if del is true, recent messages will not be deleted. Otherwise, these messages can
+   * @param consume if consume is true, recent messages will not be deleted. Otherwise, these messages can
    *     be read next time.
    * @return the most important message
    */
   public PipeMessage getPipeMessage(
-      String pipeName, String remoteIp, long createTime, boolean del) {
-    List<PipeMessage> pipeMessageList = getPipeMessages(pipeName, remoteIp, createTime, del);
+      String pipeName, String remoteIp, long createTime, boolean consume) {
+    List<PipeMessage> pipeMessageList = getPipeMessages(pipeName, remoteIp, createTime, consume);
     PipeMessage message = new PipeMessage(PipeMessage.MsgType.INFO, "");
     if (!pipeMessageList.isEmpty()) {
       for (PipeMessage pipeMessage : pipeMessageList) {

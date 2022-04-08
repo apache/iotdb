@@ -380,7 +380,7 @@ public class TsFileManager {
       collectTsFile(historyTsFiles, getTsFileList(false), dataStartTime);
       return historyTsFiles;
     } finally {
-      readLock();
+      readUnlock();
     }
   }
 

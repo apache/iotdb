@@ -98,13 +98,13 @@ public class ReceiverLogAnalyzerTest {
 
       log.writePipeMsg(pipeIdentifier1, info);
       log.writePipeMsg(pipeIdentifier1, warn);
-      log.readPipeMsg(pipeIdentifier1);
+      log.comsumePipeMsg(pipeIdentifier1);
       log.writePipeMsg(pipeIdentifier1, error);
       log.writePipeMsg(pipeIdentifier1, info);
       log.writePipeMsg(pipeIdentifier1, warn);
 
       log.writePipeMsg(pipeIdentifier2, error);
-      log.readPipeMsg(pipeIdentifier2);
+      log.comsumePipeMsg(pipeIdentifier2);
       log.close();
 
       ReceiverLogAnalyzer receiverLogAnalyzer = new ReceiverLogAnalyzer();

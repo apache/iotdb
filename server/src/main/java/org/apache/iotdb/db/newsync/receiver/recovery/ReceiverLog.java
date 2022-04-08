@@ -86,7 +86,7 @@ public class ReceiverLog {
     msgWriter.flush();
   }
 
-  public void readPipeMsg(String pipeIdentifier) throws IOException {
+  public void comsumePipeMsg(String pipeIdentifier) throws IOException {
     if (msgWriter == null) {
       init();
     }
