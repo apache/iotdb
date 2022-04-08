@@ -489,25 +489,6 @@ public class StorageEngineV2 implements IService {
   }
 
   /**
-   * This method is for sync, delete tsfile or sth like them, just get storage group directly by sg
-   * name
-   *
-   * @param storageGroupPath storage group path
-   * @return storage group processor
-   */
-  public VirtualStorageGroupProcessor getProcessorDirectly(PartialPath storageGroupPath)
-      throws StorageEngineException {
-    // try {
-    // TODO(load) get dataRegion ID by storageGroupPath
-    // IStorageGroupMNode storageGroupMNode = IoTDB.schemaProcessor.getStorageGroupNodeByPath(path);
-    // return getDataRegionByPath(storageGroupPath, storageGroupMNode);
-    return null;
-    // } catch (StorageGroupProcessorException | MetadataException e) {
-    //    throw new StorageEngineException(e);
-    // }
-  }
-
-  /**
    * This method is for create new DataRegion in StorageEngine
    *
    * @param dataRegionId
@@ -523,21 +504,6 @@ public class StorageEngineV2 implements IService {
     } catch (StorageGroupProcessorException e) {
       throw new StorageEngineException(e);
     }
-  }
-
-  /**
-   * get lock holder for each sg
-   *
-   * @return storage group processor
-   */
-  public List<String> getLockInfo(List<ConsensusGroupId> dataRegionIdList)
-      throws StorageEngineException {
-    List<String> lockHolderList = new ArrayList<>(dataRegionIdList.size());
-    for (ConsensusGroupId dataRegionId : dataRegionIdList) {
-      VirtualStorageGroupProcessor virtualStorageGroupProcessor = dataRegionMap.get(dataRegionId);
-      lockHolderList.add(virtualStorageGroupProcessor.getInsertWriteLockHolder());
-    }
-    return lockHolderList;
   }
 
   /**
@@ -894,42 +860,6 @@ public class StorageEngineV2 implements IService {
           dataRegion.getTimedCompactionScheduleTask(), ThreadName.COMPACTION_SCHEDULE);
       ThreadUtils.stopThreadPool(dataRegion.getWALTrimScheduleTask(), ThreadName.WAL_TRIM);
     }
-  }
-
-  public void loadNewTsFileForSync(TsFileResource newTsFileResource)
-      throws StorageEngineException, LoadFileException, IllegalPathException {
-    getProcessorDirectly(new PartialPath(getSgByEngineFile(newTsFileResource.getTsFile(), false)))
-        .loadNewTsFileForSync(newTsFileResource);
-  }
-
-  public void loadNewTsFile(TsFileResource newTsFileResource)
-      throws LoadFileException, StorageEngineException, MetadataException {
-    Set<String> deviceSet = newTsFileResource.getDevices();
-    if (deviceSet == null || deviceSet.isEmpty()) {
-      throw new StorageEngineException("Can not get the corresponding storage group.");
-    }
-    String device = deviceSet.iterator().next();
-    PartialPath devicePath = new PartialPath(device);
-    PartialPath storageGroupPath = IoTDB.schemaProcessor.getBelongedStorageGroup(devicePath);
-    getProcessorDirectly(storageGroupPath).loadNewTsFile(newTsFileResource);
-  }
-
-  public boolean deleteTsfileForSync(File deletedTsfile)
-      throws StorageEngineException, IllegalPathException {
-    return getProcessorDirectly(new PartialPath(getSgByEngineFile(deletedTsfile, false)))
-        .deleteTsfile(deletedTsfile);
-  }
-
-  public boolean deleteTsfile(File deletedTsfile)
-      throws StorageEngineException, IllegalPathException {
-    return getProcessorDirectly(new PartialPath(getSgByEngineFile(deletedTsfile, true)))
-        .deleteTsfile(deletedTsfile);
-  }
-
-  public boolean unloadTsfile(File tsfileToBeUnloaded, File targetDir)
-      throws StorageEngineException, IllegalPathException {
-    return getProcessorDirectly(new PartialPath(getSgByEngineFile(tsfileToBeUnloaded, true)))
-        .unloadTsfile(tsfileToBeUnloaded, targetDir);
   }
 
   /**
