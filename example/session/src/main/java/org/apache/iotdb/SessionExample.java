@@ -77,9 +77,9 @@ public class SessionExample {
     // createTemplate();
     createTimeseries();
     createMultiTimeseries();
-    //insertRecord();
+    // insertRecord();
     insertRecord2();
-    //insertTablet();
+    // insertTablet();
     //    insertTabletWithNullValues();
     //    insertTablets();
     //    insertRecords();
@@ -309,9 +309,8 @@ public class SessionExample {
     }
   }
 
-
   private static void insertRecord4Redirect2()
-          throws IoTDBConnectionException, StatementExecutionException {
+      throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < 6; i++) {
       for (int j = 0; j < 2; j++) {
         String deviceId = "root.redirect" + i + ".d" + j;
@@ -366,7 +365,7 @@ public class SessionExample {
   }
 
   private static void insertRecordInObject2()
-          throws IoTDBConnectionException, StatementExecutionException {
+      throws IoTDBConnectionException, StatementExecutionException {
     String deviceId = ROOT_SG1_D1;
     List<String> measurements = new ArrayList<>();
     measurements.add("s1");
@@ -374,7 +373,7 @@ public class SessionExample {
     measurements.add("s3");
 
     for (long time = 0; time < 100; time++) {
-      session.insertRecord2(deviceId, time, measurements,  1L, 1L, 1L);
+      session.insertRecord2(deviceId, time, measurements, 1L, 1L, 1L);
     }
   }
 
@@ -418,7 +417,8 @@ public class SessionExample {
     session.insertRecords(deviceIds, timestamps, measurementsList, typesList, valuesList);
   }
 
-  private static void insertRecords2() throws IoTDBConnectionException, StatementExecutionException {
+  private static void insertRecords2()
+      throws IoTDBConnectionException, StatementExecutionException {
     String deviceId = ROOT_SG1_D1;
     List<String> measurements = new ArrayList<>();
     measurements.add("s1");
@@ -434,7 +434,6 @@ public class SessionExample {
       values.add(1L);
       values.add(2L);
       values.add(3L);
-
 
       deviceIds.add(deviceId);
       measurementsList.add(measurements);

@@ -1677,7 +1677,8 @@ public class IoTDBSessionSimpleIT {
   }
 
   @Test
-  public void testInsertDataWithoutType() throws IoTDBConnectionException, StatementExecutionException {
+  public void testInsertDataWithoutType()
+      throws IoTDBConnectionException, StatementExecutionException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
 
@@ -1709,6 +1710,5 @@ public class IoTDBSessionSimpleIT {
     Assert.assertEquals(expected, actual);
 
     session.close();
-
   }
 }

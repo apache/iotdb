@@ -805,14 +805,10 @@ public class Session {
    * @see Session#insertRecords(List, List, List, List, List)
    * @see Session#insertTablet(Tablet)
    */
-  public void insertRecord2(
-          String deviceId,
-          long time,
-          List<String> measurements,
-          Object... values)
-          throws IoTDBConnectionException, StatementExecutionException {
+  public void insertRecord2(String deviceId, long time, List<String> measurements, Object... values)
+      throws IoTDBConnectionException, StatementExecutionException {
     TSInsertRecordReq request =
-            genTSInsertRecordReq(deviceId, time, measurements, Arrays.asList(values), false);
+        genTSInsertRecordReq(deviceId, time, measurements, Arrays.asList(values), false);
     insertRecord(deviceId, request);
   }
 
@@ -969,30 +965,28 @@ public class Session {
    * insert data in one row, if you want improve your performance, please use insertRecords method
    * or insertTablet method
    *
-   * @see Session#insertRecords(List, List, List, List, List)
+   * @see Session#insertRecords2(List, List, List, List)
    * @see Session#insertTablet(Tablet)
    */
   public void insertRecord2(
-          String deviceId,
-          long time,
-          List<String> measurements,
-          List<Object> values)
-          throws IoTDBConnectionException, StatementExecutionException {
+      String deviceId, long time, List<String> measurements, List<Object> values)
+      throws IoTDBConnectionException, StatementExecutionException {
     // not vector by default
-    TSInsertRecordReq request =
-            genTSInsertRecordReq(deviceId, time, measurements, values, false);
+    TSInsertRecordReq request = genTSInsertRecordReq(deviceId, time, measurements, values, false);
     insertRecord(deviceId, request);
   }
 
   /**
    * switch java type to TSDataType
+   *
    * @param clazz: data class
    * @return TSDataType
    * @throws UnSupportedDataTypeException
    */
-  private static TSDataType javaTypeToTSDataType( Class<?> clazz) throws UnSupportedDataTypeException {
+  private static TSDataType javaTypeToTSDataType(Class<?> clazz)
+      throws UnSupportedDataTypeException {
     String simpleName = clazz.getSimpleName();
-    switch(simpleName){
+    switch (simpleName) {
       case "Boolean":
       case "boolean":
         return TSDataType.BOOLEAN;
@@ -1022,16 +1016,18 @@ public class Session {
 
   /**
    * switch java type to TSDataType
+   *
    * @param list: data list
    * @return TSDataType
    * @throws UnSupportedDataTypeException
    */
-  private static List<TSDataType> javaTypeToTSDataType( List<Object> list) throws UnSupportedDataTypeException {
-    List<TSDataType> result=new ArrayList<>(list.size());
-    for(int i=0;i<list.size();i++){
-      Object obj=list.get(i);
-      if(obj!=null){
-        result.add(i,javaTypeToTSDataType(obj.getClass()));
+  private static List<TSDataType> javaTypeToTSDataType(List<Object> list)
+      throws UnSupportedDataTypeException {
+    List<TSDataType> result = new ArrayList<>(list.size());
+    for (int i = 0; i < list.size(); i++) {
+      Object obj = list.get(i);
+      if (obj != null) {
+        result.add(i, javaTypeToTSDataType(obj.getClass()));
       }
     }
     return result;
@@ -1064,13 +1060,9 @@ public class Session {
    * @see Session#insertTablet(Tablet)
    */
   public void insertAlignedRecord2(
-          String deviceId,
-          long time,
-          List<String> measurements,
-          List<Object> values)
-          throws IoTDBConnectionException, StatementExecutionException {
-    TSInsertRecordReq request =
-            genTSInsertRecordReq(deviceId, time, measurements, values, true);
+      String deviceId, long time, List<String> measurements, List<Object> values)
+      throws IoTDBConnectionException, StatementExecutionException {
+    TSInsertRecordReq request = genTSInsertRecordReq(deviceId, time, measurements, values, true);
     insertRecord(deviceId, request);
   }
 
@@ -1093,15 +1085,15 @@ public class Session {
   }
 
   private TSInsertRecordReq genTSInsertRecordReq(
-          String prefixPath,
-          long time,
-          List<String> measurements,
-          List<Object> values,
-          boolean isAligned)
-          throws IoTDBConnectionException {
+      String prefixPath,
+      long time,
+      List<String> measurements,
+      List<Object> values,
+      boolean isAligned)
+      throws IoTDBConnectionException {
     TSInsertRecordReq request = new TSInsertRecordReq();
     // Tsdatatype information is obtained from the values type
-    List<TSDataType> types=javaTypeToTSDataType(values);
+    List<TSDataType> types = javaTypeToTSDataType(values);
     request.setPrefixPath(prefixPath);
     request.setTimestamp(time);
     request.setMeasurements(measurements);
@@ -1325,22 +1317,21 @@ public class Session {
    * @see Session#insertTablet(Tablet)
    */
   public void insertRecords2(
-          List<String> deviceIds,
-          List<Long> times,
-          List<List<String>> measurementsList,
-          List<List<Object>> valuesList)
-          throws IoTDBConnectionException, StatementExecutionException {
+      List<String> deviceIds,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<Object>> valuesList)
+      throws IoTDBConnectionException, StatementExecutionException {
     int len = deviceIds.size();
     if (len != times.size() || len != measurementsList.size() || len != valuesList.size()) {
       throw new IllegalArgumentException(
-              "deviceIds, times, measurementsList and valuesList's size should be equal");
+          "deviceIds, times, measurementsList and valuesList's size should be equal");
     }
     if (enableCacheLeader) {
-      insertRecordsWithLeaderCache2(
-              deviceIds, times, measurementsList, valuesList, false);
+      insertRecordsWithLeaderCache2(deviceIds, times, measurementsList, valuesList, false);
     } else {
       TSInsertRecordsReq request =
-              genTSInsertRecordsReq2(deviceIds, times, measurementsList, valuesList, false);
+          genTSInsertRecordsReq2(deviceIds, times, measurementsList, valuesList, false);
       try {
         defaultSessionConnection.insertRecords(request);
       } catch (RedirectException e) {
@@ -1724,32 +1715,32 @@ public class Session {
   }
 
   private void insertRecordsWithLeaderCache2(
-          List<String> deviceIds,
-          List<Long> times,
-          List<List<String>> measurementsList,
-         // List<List<TSDataType>> typesList,
-          List<List<Object>> valuesList,
-          boolean isAligned)
-          throws IoTDBConnectionException, StatementExecutionException {
+      List<String> deviceIds,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      // List<List<TSDataType>> typesList,
+      List<List<Object>> valuesList,
+      boolean isAligned)
+      throws IoTDBConnectionException, StatementExecutionException {
 
-    List<List<TSDataType>> typesList=new ArrayList<>(valuesList.size());
-    for(int i=0;i<valuesList.size();i++){
-      typesList.add(i,javaTypeToTSDataType(valuesList.get(i)));
+    List<List<TSDataType>> typesList = new ArrayList<>(valuesList.size());
+    for (int i = 0; i < valuesList.size(); i++) {
+      typesList.add(i, javaTypeToTSDataType(valuesList.get(i)));
     }
 
     Map<SessionConnection, TSInsertRecordsReq> recordsGroup = new HashMap<>();
     for (int i = 0; i < deviceIds.size(); i++) {
       final SessionConnection connection = getSessionConnection(deviceIds.get(i));
       TSInsertRecordsReq request =
-              recordsGroup.computeIfAbsent(connection, k -> new TSInsertRecordsReq());
+          recordsGroup.computeIfAbsent(connection, k -> new TSInsertRecordsReq());
       request.setIsAligned(isAligned);
       updateTSInsertRecordsReq(
-              request,
-              deviceIds.get(i),
-              times.get(i),
-              measurementsList.get(i),
-              typesList.get(i),
-              valuesList.get(i));
+          request,
+          deviceIds.get(i),
+          times.get(i),
+          measurementsList.get(i),
+          typesList.get(i),
+          valuesList.get(i));
     }
     insertByGroup(recordsGroup, SessionConnection::insertRecords);
   }
@@ -1773,15 +1764,15 @@ public class Session {
   }
 
   private TSInsertRecordsReq genTSInsertRecordsReq2(
-          List<String> deviceIds,
-          List<Long> times,
-          List<List<String>> measurementsList,
-          List<List<Object>> valuesList,
-          boolean isAligned)
-          throws IoTDBConnectionException {
-    List<List<TSDataType>> typesList=new ArrayList<>(valuesList.size());
-    for(int i=0;i<valuesList.size();i++){
-      typesList.add(i,javaTypeToTSDataType(valuesList.get(i)));
+      List<String> deviceIds,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<Object>> valuesList,
+      boolean isAligned)
+      throws IoTDBConnectionException {
+    List<List<TSDataType>> typesList = new ArrayList<>(valuesList.size());
+    for (int i = 0; i < valuesList.size(); i++) {
+      typesList.add(i, javaTypeToTSDataType(valuesList.get(i)));
     }
 
     TSInsertRecordsReq request = new TSInsertRecordsReq();
@@ -2117,13 +2108,9 @@ public class Session {
    * this method should be used to test other time cost in client
    */
   public void testInsertRecord2(
-          String deviceId,
-          long time,
-          List<String> measurements,
-          List<Object> values)
-          throws IoTDBConnectionException, StatementExecutionException {
-    TSInsertRecordReq request =
-            genTSInsertRecordReq(deviceId, time, measurements, values, false);
+      String deviceId, long time, List<String> measurements, List<Object> values)
+      throws IoTDBConnectionException, StatementExecutionException {
+    TSInsertRecordReq request = genTSInsertRecordReq(deviceId, time, measurements, values, false);
     defaultSessionConnection.testInsertRecord(request);
   }
 
