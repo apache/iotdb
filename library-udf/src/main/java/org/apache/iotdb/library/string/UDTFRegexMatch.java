@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.library.anomaly;
+package org.apache.iotdb.library.string;
 
 import org.apache.iotdb.db.query.udf.api.UDTF;
 import org.apache.iotdb.db.query.udf.api.access.Row;
@@ -26,49 +26,46 @@ import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowByRowAccessStrategy;
-import org.apache.iotdb.library.anomaly.util.StreamMissDetector;
-import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-/** This function is used to detect missing anomalies. */
-public class UDTFMissDetect implements UDTF {
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
-  private StreamMissDetector detector;
+/** This function matches substring according to given regex from an input series. */
+public class UDTFRegexMatch implements UDTF {
+  private Pattern pattern;
+  private int group;
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
     validator
         .validateInputSeriesNumber(1)
-        .validateInputSeriesDataType(
-            0, TSDataType.DOUBLE, TSDataType.FLOAT, TSDataType.INT32, TSDataType.INT64)
+        .validateInputSeriesDataType(0, TSDataType.TEXT)
         .validate(
-            x -> (int) x >= 10,
-            "minlen should be an integer greater than or equal to 10.",
-            validator.getParameters().getIntOrDefault("minlen", 10));
+            regex -> ((String) regex).length() > 0,
+            "regexp has to be a valid regular expression.",
+            validator.getParameters().getStringOrDefault("regex", ""))
+        .validate(
+            group -> (int) group >= 0,
+            "group index has to be a non-negative integer.",
+            validator.getParameters().getIntOrDefault("group", 0));
   }
 
   @Override
-  public void beforeStart(UDFParameters udfp, UDTFConfigurations udtfc) throws Exception {
-    udtfc.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(TSDataType.BOOLEAN);
-    int minLength = udfp.getIntOrDefault("minlen", 10);
-    this.detector = new StreamMissDetector(minLength);
+  public void beforeStart(UDFParameters udfParameters, UDTFConfigurations udtfConfigurations)
+      throws Exception {
+    pattern = Pattern.compile(udfParameters.getString("regex"));
+    group = udfParameters.getIntOrDefault("group", 0);
+    udtfConfigurations
+        .setAccessStrategy(new RowByRowAccessStrategy())
+        .setOutputDataType(TSDataType.TEXT);
   }
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
-    detector.insert(row.getTime(), Util.getValueAsDouble(row));
-    while (detector.hasNext()) {
-      collector.putBoolean(detector.getOutTime(), detector.getOutValue());
-      detector.next();
-    }
-  }
-
-  @Override
-  public void terminate(PointCollector collector) throws Exception {
-    detector.flush();
-    while (detector.hasNext()) {
-      collector.putBoolean(detector.getOutTime(), detector.getOutValue());
-      detector.next();
+    Matcher matcher = pattern.matcher(row.getString(0));
+    if (matcher.find() && matcher.groupCount() >= group) {
+      collector.putString(row.getTime(), matcher.group(group));
     }
   }
 }
