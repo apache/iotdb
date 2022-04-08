@@ -20,6 +20,7 @@ package org.apache.iotdb.db.mpp.sql.plan;
 
 import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.GroupType;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -73,17 +74,17 @@ public class FragmentInstanceSerdeTest {
     SeriesScanNode seriesScanNode1 =
         new SeriesScanNode(new PlanNodeId("SeriesScanNode1"), new MeasurementPath("root.sg.d1.s2"));
     seriesScanNode1.setDataRegionReplicaSet(
-        new RegionReplicaSet(new ConsensusGroupId(GroupType.DataRegion, 1), new ArrayList<>()));
+        new RegionReplicaSet(new DataRegionId(1), new ArrayList<>()));
     seriesScanNode1.setScanOrder(OrderBy.TIMESTAMP_DESC);
     SeriesScanNode seriesScanNode2 =
         new SeriesScanNode(new PlanNodeId("SeriesScanNode2"), new MeasurementPath("root.sg.d2.s1"));
     seriesScanNode2.setDataRegionReplicaSet(
-        new RegionReplicaSet(new ConsensusGroupId(GroupType.DataRegion, 2), new ArrayList<>()));
+        new RegionReplicaSet(new DataRegionId(2), new ArrayList<>()));
     seriesScanNode2.setScanOrder(OrderBy.TIMESTAMP_DESC);
     SeriesScanNode seriesScanNode3 =
         new SeriesScanNode(new PlanNodeId("SeriesScanNode3"), new MeasurementPath("root.sg.d2.s2"));
     seriesScanNode3.setDataRegionReplicaSet(
-        new RegionReplicaSet(new ConsensusGroupId(GroupType.DataRegion, 3), new ArrayList<>()));
+        new RegionReplicaSet(new DataRegionId(3), new ArrayList<>()));
     seriesScanNode3.setScanOrder(OrderBy.TIMESTAMP_DESC);
     seriesScanNode1.setColumnName("root.sg.d1.s2");
     seriesScanNode2.setColumnName("root.sg.d2.s1");
@@ -101,7 +102,7 @@ public class FragmentInstanceSerdeTest {
     FragmentInstance fragmentInstance =
         new FragmentInstance(new PlanFragment(new PlanFragmentId("test", -1), offsetNode), -1);
     RegionReplicaSet regionReplicaSet =
-        new RegionReplicaSet(new ConsensusGroupId(GroupType.DataRegion, 1), new ArrayList<>());
+        new RegionReplicaSet(new DataRegionId(1), new ArrayList<>());
     fragmentInstance.setDataRegionId(regionReplicaSet);
     fragmentInstance.setHostEndpoint(new Endpoint("127.0.0.1", 6666));
     fragmentInstance.setTimeFilter(new GroupByFilter(1, 2, 3, 4));

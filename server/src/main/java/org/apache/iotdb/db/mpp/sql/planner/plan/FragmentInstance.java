@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan;
 
+import java.io.IOException;
 import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
@@ -116,7 +117,11 @@ public class FragmentInstance implements IConsensusRequest {
         new FragmentInstance(
             PlanFragment.deserialize(buffer), Integer.parseInt(id.getInstanceId()));
     RegionReplicaSet regionReplicaSet = new RegionReplicaSet();
-    regionReplicaSet.deserializeImpl(buffer);
+    try {
+      regionReplicaSet.deserializeImpl(buffer);
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
     Endpoint endpoint = new Endpoint();
     endpoint.deserializeImpl(buffer);
     fragmentInstance.dataRegion = regionReplicaSet;

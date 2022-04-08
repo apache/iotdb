@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.source;
 
+import java.io.IOException;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -201,7 +202,11 @@ public class SeriesScanNode extends SourceNode {
     int offset = ReadWriteIOUtils.readInt(byteBuffer);
     String columnName = ReadWriteIOUtils.readString(byteBuffer);
     RegionReplicaSet dataRegionReplicaSet = new RegionReplicaSet();
-    dataRegionReplicaSet.deserializeImpl(byteBuffer);
+    try {
+      dataRegionReplicaSet.deserializeImpl(byteBuffer);
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     SeriesScanNode seriesScanNode = new SeriesScanNode(planNodeId, partialPath);
     seriesScanNode.allSensors = allSensors;

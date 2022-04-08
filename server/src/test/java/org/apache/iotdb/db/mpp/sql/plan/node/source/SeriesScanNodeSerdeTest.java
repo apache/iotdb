@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.mpp.sql.plan.node.source;
 
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.GroupType;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -45,7 +46,7 @@ public class SeriesScanNodeSerdeTest {
         new SeriesScanNode(
             new PlanNodeId("TestSeriesScanNode"),
             new AlignedPath("s1"),
-            new RegionReplicaSet(new ConsensusGroupId(GroupType.DataRegion, 1), new ArrayList<>()));
+            new RegionReplicaSet(new DataRegionId(1), new ArrayList<>()));
     seriesScanNode.setTimeFilter(new GroupByFilter(1, 2, 3, 4));
     seriesScanNode.setScanOrder(OrderBy.TIMESTAMP_ASC);
     ByteBuffer byteBuffer = ByteBuffer.allocate(2048);

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.source;
 
+import java.io.IOException;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.common.GroupByTimeParameter;
@@ -160,7 +161,11 @@ public class SeriesAggregateScanNode extends SourceNode {
     Filter filter = FilterFactory.deserialize(byteBuffer);
     String columnName = ReadWriteIOUtils.readString(byteBuffer);
     RegionReplicaSet regionReplicaSet = new RegionReplicaSet();
-    regionReplicaSet.deserializeImpl(byteBuffer);
+    try {
+      regionReplicaSet.deserializeImpl(byteBuffer);
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     SeriesAggregateScanNode seriesAggregateScanNode = new SeriesAggregateScanNode(planNodeId);
     seriesAggregateScanNode.columnName = columnName;
