@@ -18,10 +18,6 @@
  */
 package org.apache.iotdb.db.mpp.sql.plan;
 
-import static org.junit.Assert.assertEquals;
-
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.GroupType;
@@ -32,7 +28,6 @@ import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.filter.BasicFunctionFilter;
 import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
 import org.apache.iotdb.db.mpp.sql.constant.FilterConstant.FilterType;
-import org.apache.iotdb.db.mpp.sql.plan.node.PlanNodeDeserializeHelper;
 import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.mpp.sql.planner.plan.PlanFragment;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
@@ -45,7 +40,13 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullPolicy;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
+
 import org.junit.Test;
+
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+
+import static org.junit.Assert.assertEquals;
 
 public class FragmentInstanceSerdeTest {
 
@@ -71,15 +72,18 @@ public class FragmentInstanceSerdeTest {
 
     SeriesScanNode seriesScanNode1 =
         new SeriesScanNode(new PlanNodeId("SeriesScanNode1"), new MeasurementPath("root.sg.d1.s2"));
-    seriesScanNode1.setDataRegionReplicaSet(new RegionReplicaSet(new ConsensusGroupId(GroupType.DataRegion, 1), new ArrayList<>()));
+    seriesScanNode1.setDataRegionReplicaSet(
+        new RegionReplicaSet(new ConsensusGroupId(GroupType.DataRegion, 1), new ArrayList<>()));
     seriesScanNode1.setScanOrder(OrderBy.TIMESTAMP_DESC);
     SeriesScanNode seriesScanNode2 =
         new SeriesScanNode(new PlanNodeId("SeriesScanNode2"), new MeasurementPath("root.sg.d2.s1"));
-    seriesScanNode2.setDataRegionReplicaSet(new RegionReplicaSet(new ConsensusGroupId(GroupType.DataRegion, 2), new ArrayList<>()));
+    seriesScanNode2.setDataRegionReplicaSet(
+        new RegionReplicaSet(new ConsensusGroupId(GroupType.DataRegion, 2), new ArrayList<>()));
     seriesScanNode2.setScanOrder(OrderBy.TIMESTAMP_DESC);
     SeriesScanNode seriesScanNode3 =
         new SeriesScanNode(new PlanNodeId("SeriesScanNode3"), new MeasurementPath("root.sg.d2.s2"));
-    seriesScanNode3.setDataRegionReplicaSet(new RegionReplicaSet(new ConsensusGroupId(GroupType.DataRegion, 3), new ArrayList<>()));
+    seriesScanNode3.setDataRegionReplicaSet(
+        new RegionReplicaSet(new ConsensusGroupId(GroupType.DataRegion, 3), new ArrayList<>()));
     seriesScanNode3.setScanOrder(OrderBy.TIMESTAMP_DESC);
     seriesScanNode1.setColumnName("root.sg.d1.s2");
     seriesScanNode2.setColumnName("root.sg.d2.s1");
@@ -94,8 +98,10 @@ public class FragmentInstanceSerdeTest {
     limitNode.addChild(filterNullNode);
     offsetNode.addChild(limitNode);
 
-    FragmentInstance fragmentInstance = new FragmentInstance(new PlanFragment(new PlanFragmentId("test", -1), offsetNode), -1);
-    RegionReplicaSet regionReplicaSet = new RegionReplicaSet(new ConsensusGroupId(GroupType.DataRegion, 1), new ArrayList<>());
+    FragmentInstance fragmentInstance =
+        new FragmentInstance(new PlanFragment(new PlanFragmentId("test", -1), offsetNode), -1);
+    RegionReplicaSet regionReplicaSet =
+        new RegionReplicaSet(new ConsensusGroupId(GroupType.DataRegion, 1), new ArrayList<>());
     fragmentInstance.setDataRegionId(regionReplicaSet);
     fragmentInstance.setHostEndpoint(new Endpoint("127.0.0.1", 6666));
     fragmentInstance.setTimeFilter(new GroupByFilter(1, 2, 3, 4));
@@ -106,5 +112,4 @@ public class FragmentInstanceSerdeTest {
     FragmentInstance deserializeFragmentInstance = FragmentInstance.deserializeFrom(byteBuffer);
     assertEquals(deserializeFragmentInstance.toString(), fragmentInstance.toString());
   }
-
 }

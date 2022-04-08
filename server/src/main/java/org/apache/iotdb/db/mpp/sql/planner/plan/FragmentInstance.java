@@ -18,21 +18,18 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan;
 
-import java.util.Objects;
 import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.sink.FragmentSinkNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 
 import java.nio.ByteBuffer;
-import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 
 public class FragmentInstance implements IConsensusRequest {
   private FragmentInstanceId id;
@@ -115,8 +112,9 @@ public class FragmentInstance implements IConsensusRequest {
 
   public static FragmentInstance deserializeFrom(ByteBuffer buffer) {
     FragmentInstanceId id = FragmentInstanceId.deserialize(buffer);
-    FragmentInstance fragmentInstance = new FragmentInstance(PlanFragment.deserialize(buffer),
-        Integer.parseInt(id.getInstanceId()));
+    FragmentInstance fragmentInstance =
+        new FragmentInstance(
+            PlanFragment.deserialize(buffer), Integer.parseInt(id.getInstanceId()));
     RegionReplicaSet regionReplicaSet = new RegionReplicaSet();
     regionReplicaSet.deserializeImpl(buffer);
     Endpoint endpoint = new Endpoint();
