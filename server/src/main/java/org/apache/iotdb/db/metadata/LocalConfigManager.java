@@ -176,6 +176,8 @@ public class LocalConfigManager {
     }
 
     try {
+      MetadataResourceManager.clearMetadataResource();
+
       partitionTable.clear();
 
       for (SchemaRegion schemaRegion : schemaEngine.getAllSchemaRegions()) {
@@ -185,8 +187,6 @@ public class LocalConfigManager {
 
       storageGroupSchemaManager.clear();
       templateManager.clear();
-
-      MetadataResourceManager.clearMetadataResource();
 
       if (timedForceMLogThread != null) {
         timedForceMLogThread.shutdownNow();

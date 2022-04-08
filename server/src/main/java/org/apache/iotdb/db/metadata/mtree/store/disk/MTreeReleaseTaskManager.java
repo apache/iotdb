@@ -22,7 +22,6 @@ package org.apache.iotdb.db.metadata.mtree.store.disk;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.RejectedExecutionException;
 
 public class MTreeReleaseTaskManager {
 
@@ -42,13 +41,13 @@ public class MTreeReleaseTaskManager {
     return MTreeReleaseTaskManager.MTreeReleaseTaskManagerHolder.INSTANCE;
   }
 
-  public synchronized void init() {
+  public void init() {
     releaseTaskExecutor =
         IoTDBThreadPoolFactory.newCachedThreadPool(
             MTREE_RELEASE_THREAD_POOL_NAME, Runtime.getRuntime().availableProcessors());
   }
 
-  public synchronized void clear() {
+  public void clear() {
     if (releaseTaskExecutor != null) {
       releaseTaskExecutor.shutdownNow();
       while (!releaseTaskExecutor.isTerminated()) ;
@@ -56,15 +55,7 @@ public class MTreeReleaseTaskManager {
     }
   }
 
-  public synchronized void submit(Runnable task) {
-    try {
-      if (!releaseTaskExecutor.isShutdown()) {
-        releaseTaskExecutor.submit(task);
-      }
-    } catch (RejectedExecutionException e) {
-      System.out.println(releaseTaskExecutor.isShutdown());
-      e.printStackTrace();
-      throw e;
-    }
+  public void submit(Runnable task) {
+    releaseTaskExecutor.submit(task);
   }
 }

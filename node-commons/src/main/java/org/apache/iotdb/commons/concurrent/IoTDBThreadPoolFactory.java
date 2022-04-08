@@ -146,7 +146,7 @@ public class IoTDBThreadPoolFactory {
         maximumPoolSize,
         60L,
         TimeUnit.SECONDS,
-        new SynchronousQueue<>(),
+        new LinkedBlockingQueue<>(),
         new IoTThreadFactory(poolName),
         poolName);
   }
