@@ -27,10 +27,13 @@ import org.apache.iotdb.confignode.physical.crud.DataPartitionPlan;
 import org.apache.iotdb.confignode.physical.crud.SchemaPartitionPlan;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
+import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -38,7 +41,11 @@ import java.util.Random;
 
 /** manage data partition and schema partition */
 public class PartitionManager {
+
   private static final Logger LOGGER = LoggerFactory.getLogger(PartitionManager.class);
+
+  private static final PartitionInfoPersistence partitionInfoPersistence =
+      PartitionInfoPersistence.getInstance();
 
   private final Manager configNodeManager;
 
@@ -67,60 +74,51 @@ public class PartitionManager {
    */
   public DataSet applySchemaPartition(SchemaPartitionPlan physicalPlan) {
     String storageGroup = physicalPlan.getStorageGroup();
-    List<Integer> deviceGroupIDs = physicalPlan.getDeviceGroupIDs();
-    List<Integer> noAssignDeviceGroupId =
-        PartitionInfoPersistence.getInstance()
-            .filterSchemaRegionNoAssignDeviceGroupId(storageGroup, deviceGroupIDs);
+    List<Integer> seriesPartitionSlots = physicalPlan.getSeriesPartitionSlots();
+    List<Integer> noAssignedSeriesPartitionSlots =
+        partitionInfoPersistence.filterSchemaRegionNoAssignedPartitionSlots(
+            storageGroup, seriesPartitionSlots);
 
-    if (noAssignDeviceGroupId.size() == 0 && !getConsensusManager().isLeader()) {
-      // Reject apply if there exists not assigned SchemaPartition and the local ConfigNode is not
-      // the leader
-      // TODO: Tell DataNode to re-transmit
-      return new SchemaPartitionDataSet();
+    if (noAssignedSeriesPartitionSlots.size() > 0) {
+      // allocate partition by storage group and device group id
+      Map<Integer, RegionReplicaSet> schemaPartitionReplicaSets =
+          allocateSchemaPartition(storageGroup, noAssignedSeriesPartitionSlots);
+      physicalPlan.setSchemaPartitionReplicaSet(schemaPartitionReplicaSets);
+
+      ConsensusWriteResponse consensusWriteResponse = getConsensusManager().write(physicalPlan);
+      if (consensusWriteResponse.getStatus().getCode()
+          == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.info("Allocate schema partition to {}.", schemaPartitionReplicaSets);
+      }
     }
 
-    // allocate partition by storage group and device group id
-    Map<Integer, RegionReplicaSet> deviceGroupIdReplicaSets =
-        allocateSchemaPartition(storageGroup, noAssignDeviceGroupId);
-    physicalPlan.setDeviceGroupIdReplicaSet(deviceGroupIdReplicaSets);
-    getConsensusManager().write(physicalPlan);
-    LOGGER.info("Allocate schema partition to {}.", deviceGroupIdReplicaSets);
-
+    physicalPlan.setSchemaPartitionReplicaSet(new HashMap<>());
     return getSchemaPartition(physicalPlan);
   }
 
   /**
-   * TODO: allocate schema partition by balancer
+   * TODO: allocate schema partition by LoadManager
    *
    * @param storageGroup storage group
-   * @param deviceGroupIDs device group id list
+   * @param noAssignedSeriesPartitionSlots not assigned SeriesPartitionSlots
+   * @return assign result
    */
   private Map<Integer, RegionReplicaSet> allocateSchemaPartition(
-      String storageGroup, List<Integer> deviceGroupIDs) {
+      String storageGroup, List<Integer> noAssignedSeriesPartitionSlots) {
     List<RegionReplicaSet> schemaRegionEndPoints =
-        RegionInfoPersistence.getInstance().getSchemaRegionEndPoint();
+        RegionInfoPersistence.getInstance().getSchemaRegionEndPoint(storageGroup);
     Random random = new Random();
-    Map<Integer, RegionReplicaSet> deviceGroupIdReplicaSets = new HashMap<>();
-    for (Integer deviceGroupID : deviceGroupIDs) {
+    Map<Integer, RegionReplicaSet> schemaPartitionReplicaSets = new HashMap<>();
+    for (Integer seriesPartitionSlot : noAssignedSeriesPartitionSlots) {
       RegionReplicaSet schemaRegionReplicaSet =
           schemaRegionEndPoints.get(random.nextInt(schemaRegionEndPoints.size()));
-      deviceGroupIdReplicaSets.put(deviceGroupID, schemaRegionReplicaSet);
+      schemaPartitionReplicaSets.put(seriesPartitionSlot, schemaRegionReplicaSet);
     }
-    return deviceGroupIdReplicaSets;
+    return schemaPartitionReplicaSets;
   }
 
   private ConsensusManager getConsensusManager() {
     return configNodeManager.getConsensusManager();
-  }
-
-  /**
-   * Get DataPartition and apply a new one if it does not exist
-   *
-   * @param physicalPlan DataPartitionPlan with StorageGroup, DeviceGroupIds and StartTimes
-   * @return DataPartitionDataSet
-   */
-  public DataSet applyDataPartition(DataPartitionPlan physicalPlan) {
-    return null;
   }
 
   /**
@@ -133,7 +131,58 @@ public class PartitionManager {
     DataPartitionDataSet dataPartitionDataSet;
     ConsensusReadResponse consensusReadResponse = getConsensusManager().read(physicalPlan);
     dataPartitionDataSet = (DataPartitionDataSet) consensusReadResponse.getDataset();
-
     return dataPartitionDataSet;
+  }
+
+  /**
+   * Get DataPartition and apply a new one if it does not exist
+   *
+   * @param physicalPlan DataPartitionPlan with StorageGroup, DeviceGroupIds and StartTimes
+   * @return DataPartitionDataSet
+   */
+  public DataSet applyDataPartition(DataPartitionPlan physicalPlan) {
+
+    String storageGroup = physicalPlan.getStorageGroup();
+    Map<Integer, List<Long>> seriesPartitionSlots = physicalPlan.getSeriesPartitionTimePartitionSlots();
+    Map<Integer, List<Long>> noAssignedSeriesPartitionSlots =
+            partitionInfoPersistence.filterDataRegionNoAssignedPartitionSlots(
+                    storageGroup, seriesPartitionSlots);
+
+    if (noAssignedSeriesPartitionSlots.size() > 0) {
+      // allocate partition by storage group and device group id
+      Map<Integer, Map<Long, List<RegionReplicaSet>>> dataPartitionReplicaSets =
+              allocateDataPartition(storageGroup, noAssignedSeriesPartitionSlots);
+      physicalPlan.setDataPartitionReplicaSets(dataPartitionReplicaSets);
+
+      ConsensusWriteResponse consensusWriteResponse = getConsensusManager().write(physicalPlan);
+      if (consensusWriteResponse.getStatus().getCode()
+              == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.info("Allocate data partition to {}.", dataPartitionReplicaSets);
+      }
+    }
+
+    physicalPlan.setDataPartitionReplicaSets(new HashMap<>());
+    return getDataPartition(physicalPlan);
+  }
+
+  /**
+   * TODO: allocate by LoadManager
+   *
+   * @param storageGroup storage group name
+   * @param noAssignedSeriesPartitionSlots not assigned DataPartitionSlots
+   * @return assign result
+   */
+  private Map<Integer, Map<Long, List<RegionReplicaSet>>> allocateDataPartition(String storageGroup, Map<Integer, List<Long>> noAssignedSeriesPartitionSlots) {
+    List<RegionReplicaSet> dataRegionEndPoints =
+            RegionInfoPersistence.getInstance().getDataRegionEndPoint(storageGroup);
+    Random random = new Random();
+    Map<Integer, Map<Long, List<RegionReplicaSet>>> dataPartitionReplicaSets = new HashMap<>();
+    for (Map.Entry<Integer, List<Long>> seriesPartitionEntry : noAssignedSeriesPartitionSlots.entrySet()) {
+      dataPartitionReplicaSets.put(seriesPartitionEntry.getKey(), new HashMap<>());
+      for (long timePartitionSlot : seriesPartitionEntry.getValue()) {
+        dataPartitionReplicaSets.get(seriesPartitionEntry.getKey()).computeIfAbsent(timePartitionSlot, key -> new ArrayList<>()).add(dataRegionEndPoints.get(random.nextInt(dataRegionEndPoints.size())));
+      }
+    }
+    return dataPartitionReplicaSets;
   }
 }

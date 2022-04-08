@@ -42,10 +42,10 @@ public class SchemaPartition {
   }
 
   public Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> getSchemaPartition(
-      String storageGroup, List<Integer> deviceGroupIDs) {
+      String storageGroup, List<Integer> seriesPartitionSlots) {
     Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> storageGroupMap = new HashMap<>();
     Map<SeriesPartitionSlot, RegionReplicaSet> deviceGroupMap = new HashMap<>();
-    deviceGroupIDs.forEach(
+    seriesPartitionSlots.forEach(
         deviceGroupID -> {
           if (schemaPartitionMap.get(storageGroup) != null
               && schemaPartitionMap
@@ -61,18 +61,18 @@ public class SchemaPartition {
   }
 
   /**
-   * Filter out unassigned device groups
+   * Filter out unassigned SeriesPartitionSlots
    *
    * @param storageGroup storage group name
-   * @param deviceGroupIDs device group id list
-   * @return deviceGroupIDs does not assigned
+   * @param seriesPartitionSlots SeriesPartitionSlotIds
+   * @return not assigned seriesPartitionSlots
    */
-  public List<Integer> filterNoAssignDeviceGroupId(
-      String storageGroup, List<Integer> deviceGroupIDs) {
+  public List<Integer> filterNoAssignedSeriesPartitionSlot(
+      String storageGroup, List<Integer> seriesPartitionSlots) {
     if (!schemaPartitionMap.containsKey(storageGroup)) {
-      return deviceGroupIDs;
+      return seriesPartitionSlots;
     }
-    return deviceGroupIDs.stream()
+    return seriesPartitionSlots.stream()
         .filter(
             id -> !schemaPartitionMap.get(storageGroup).containsKey(new SeriesPartitionSlot(id)))
         .collect(Collectors.toList());

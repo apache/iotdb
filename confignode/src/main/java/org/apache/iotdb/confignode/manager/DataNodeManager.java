@@ -27,13 +27,10 @@ import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
-import org.apache.iotdb.tsfile.read.filter.operator.In;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /** Manager server info of data node, add node or remove node */
@@ -41,7 +38,8 @@ public class DataNodeManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeManager.class);
 
-  private static final DataNodeInfoPersistence dataNodeInfoPersistence = DataNodeInfoPersistence.getInstance();
+  private static final DataNodeInfoPersistence dataNodeInfoPersistence =
+      DataNodeInfoPersistence.getInstance();
 
   private final Manager configManager;
 

@@ -20,10 +20,11 @@
 package org.apache.iotdb.confignode.consensus.response;
 
 import org.apache.iotdb.commons.partition.DataPartition;
-import org.apache.iotdb.confignode.rpc.thrift.DataPartitionInfo;
-import org.apache.iotdb.confignode.rpc.thrift.RegionReplicaSet;
+import org.apache.iotdb.confignode.rpc.thrift.DataPartitionResp;
+import org.apache.iotdb.confignode.rpc.thrift.RegionMessage;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -31,38 +32,52 @@ import java.util.List;
 import java.util.Map;
 
 public class DataPartitionDataSet implements DataSet {
-  private DataPartition dataPartitionInfo;
 
-  public DataPartition getDataPartitionInfo() {
-    return dataPartitionInfo;
+  private TSStatus status;
+
+  private DataPartition dataPartition;
+
+  public TSStatus getStatus() {
+    return status;
   }
 
-  public void setDataPartitionInfos(DataPartition dataPartitionInfo) {
-    this.dataPartitionInfo = dataPartitionInfo;
+  public void setStatus(TSStatus status) {
+    this.status = status;
   }
 
-  public DataPartitionInfo convertRpcDataPartitionInfo() {
-    DataPartitionInfo rpcDataPartitionInfo = new DataPartitionInfo();
-    Map<String, Map<Integer, Map<Long, List<RegionReplicaSet>>>>
-        deviceGroupStartTimeDataRegionGroupMap = new HashMap<>();
+  public DataPartition getDataPartition() {
+    return dataPartition;
+  }
 
-    dataPartitionInfo
+  public void setDataPartition(DataPartition dataPartition) {
+    this.dataPartition = dataPartition;
+  }
+
+  public void convertToRpcDataPartitionResp(DataPartitionResp resp) {
+    Map<String, Map<Integer, Map<Long, List<RegionMessage>>>> dataPartitionMap = new HashMap<>();
+
+    dataPartition
         .getDataPartitionMap()
         .forEach(
             ((storageGroup, seriesPartitionSlotTimePartitionSlotRegionReplicaSetListMap) -> {
-              deviceGroupStartTimeDataRegionGroupMap.putIfAbsent(storageGroup, new HashMap<>());
+              // Extract StorageGroupName
+              dataPartitionMap.putIfAbsent(storageGroup, new HashMap<>());
+
               seriesPartitionSlotTimePartitionSlotRegionReplicaSetListMap.forEach(
                   ((seriesPartitionSlot, timePartitionSlotReplicaSetListMap) -> {
-                    deviceGroupStartTimeDataRegionGroupMap
+                    // Extract SeriesPartitionSlot
+                    dataPartitionMap
                         .get(storageGroup)
                         .putIfAbsent(seriesPartitionSlot.getDeviceGroupId(), new HashMap<>());
+
+                    // Extract Map<TimePartitionSlot, List<RegionReplicaSet>>
                     timePartitionSlotReplicaSetListMap.forEach(
                         ((timePartitionSlot, regionReplicaSetList) -> {
-                          List<RegionReplicaSet> rpcRegionReplicaSetList = new ArrayList<>();
+                          List<RegionMessage> regionMessages = new ArrayList<>();
                           regionReplicaSetList.forEach(
                               regionReplicaSet -> {
-                                RegionReplicaSet rpcRegionReplicaSet = new RegionReplicaSet();
-                                rpcRegionReplicaSet.setRegionId(regionReplicaSet.getId().getId());
+                                RegionMessage regionMessage = new RegionMessage();
+                                regionMessage.setRegionId(regionReplicaSet.getId().getId());
                                 List<EndPoint> endPointList = new ArrayList<>();
                                 regionReplicaSet
                                     .getDataNodeList()
@@ -72,19 +87,17 @@ public class DataPartitionDataSet implements DataSet {
                                                 new EndPoint(
                                                     dataNodeLocation.getEndPoint().getIp(),
                                                     dataNodeLocation.getEndPoint().getPort())));
-                                rpcRegionReplicaSet.setEndpoint(endPointList);
-                                rpcRegionReplicaSetList.add(rpcRegionReplicaSet);
+                                regionMessage.setEndpoint(endPointList);
+                                regionMessages.add(regionMessage);
                               });
-                          deviceGroupStartTimeDataRegionGroupMap
+                          dataPartitionMap
                               .get(storageGroup)
                               .get(seriesPartitionSlot.getDeviceGroupId())
-                              .put(timePartitionSlot.getStartTime(), rpcRegionReplicaSetList);
+                              .put(timePartitionSlot.getStartTime(), regionMessages);
                         }));
                   }));
             }));
 
-    rpcDataPartitionInfo.setDeviceGroupStartTimeDataRegionGroupMap(
-        deviceGroupStartTimeDataRegionGroupMap);
-    return rpcDataPartitionInfo;
+    resp.setDataPartitionMap(dataPartitionMap);
   }
 }

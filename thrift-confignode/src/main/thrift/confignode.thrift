@@ -83,7 +83,7 @@ struct ApplySchemaPartitionReq {
 }
 
 struct SchemaPartitionResp {
-  1: required rpc.TSStatus result
+  1: required rpc.TSStatus status
     // map<StorageGroupName, map<SeriesPartitionSlot, RegionMessage>>
   2: optional map<string, map<i32, RegionMessage>> schemaRegionMap
 }
@@ -96,7 +96,7 @@ struct FetchDataPartitionReq {
 struct ApplyDataPartitionReq {
     1: required string storageGroup
     // map<SeriesPartitionSlot, list<TimePartitionSlot>>
-    2: required map<i32, list<i64>> deviceGroupStartTimeMap
+    2: required map<i32, list<i64>> seriesPartitionTimePartitionSlots
 }
 
 struct DataPartitionResp {

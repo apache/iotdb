@@ -26,7 +26,6 @@ import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaDataSet;
-import org.apache.iotdb.confignode.partition.StorageGroupSchema;
 import org.apache.iotdb.confignode.persistence.RegionInfoPersistence;
 import org.apache.iotdb.confignode.physical.sys.QueryStorageGroupSchemaPlan;
 import org.apache.iotdb.confignode.physical.sys.SetStorageGroupPlan;
@@ -34,10 +33,8 @@ import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /** manage data partition and schema partition */
 public class RegionManager {
@@ -47,7 +44,8 @@ public class RegionManager {
   private static final int schemaRegionCount = conf.getSchemaRegionCount();
   private static final int dataRegionCount = conf.getDataRegionCount();
 
-  private static final RegionInfoPersistence regionInfoPersistence = RegionInfoPersistence.getInstance();
+  private static final RegionInfoPersistence regionInfoPersistence =
+      RegionInfoPersistence.getInstance();
 
   private final Manager configNodeManager;
 
@@ -67,23 +65,23 @@ public class RegionManager {
    */
   public TSStatus setStorageGroup(SetStorageGroupPlan plan) {
     TSStatus result;
-      if (configNodeManager.getDataNodeManager().getOnlineDataNodeCount() < regionReplicaCount) {
+    if (configNodeManager.getDataNodeManager().getOnlineDataNodeCount() < regionReplicaCount) {
+      result = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      result.setMessage("DataNode is not enough, please register more.");
+    } else {
+      if (regionInfoPersistence.containsStorageGroup(plan.getSchema().getName())) {
         result = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
-        result.setMessage("DataNode is not enough, please register more.");
+        result.setMessage(
+            String.format("StorageGroup %s is already set.", plan.getSchema().getName()));
       } else {
-        if (regionInfoPersistence.containsStorageGroup(plan.getSchema().getName())) {
-          result = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
-          result.setMessage(
-              String.format("StorageGroup %s is already set.", plan.getSchema().getName()));
-        } else {
-          // allocate schema region
-          allocateRegions(plan, GroupType.SchemaRegion);
-          // allocate data region
-          allocateRegions(plan, GroupType.DataRegion);
-          // write consensus
-          result = getConsensusManager().write(plan).getStatus();
-        }
+        // allocate schema region
+        allocateRegions(plan, GroupType.SchemaRegion);
+        // allocate data region
+        allocateRegions(plan, GroupType.DataRegion);
+        // write consensus
+        result = getConsensusManager().write(plan).getStatus();
       }
+    }
     return result;
   }
 
@@ -101,7 +99,8 @@ public class RegionManager {
       Collections.shuffle(onlineDataNodes);
 
       RegionReplicaSet regionReplicaSet = new RegionReplicaSet();
-      ConsensusGroupId consensusGroupId = new ConsensusGroupId(type, regionInfoPersistence.generateNextRegionGroupId());
+      ConsensusGroupId consensusGroupId =
+          new ConsensusGroupId(type, regionInfoPersistence.generateNextRegionGroupId());
       regionReplicaSet.setId(consensusGroupId);
       regionReplicaSet.setDataNodeList(onlineDataNodes.subList(0, regionCount));
       plan.addRegion(regionReplicaSet);

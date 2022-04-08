@@ -19,10 +19,7 @@
 
 package org.apache.iotdb.confignode.persistence;
 
-import org.apache.iotdb.commons.cluster.DataNodeLocation;
-import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
-import org.apache.iotdb.commons.consensus.GroupType;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaDataSet;
@@ -36,7 +33,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.stream.Collectors;
 
 /** manage data partition and schema partition */
 public class RegionInfoPersistence {
@@ -103,41 +99,42 @@ public class RegionInfoPersistence {
     return result;
   }
 
-  /** @return key is schema region id, value is endpoint list */
-  public List<RegionReplicaSet> getSchemaRegionEndPoint() {
+  /** @return The SchemaRegion ReplicaSets in the specific StorageGroup */
+  public List<RegionReplicaSet> getSchemaRegionEndPoint(String storageGroup) {
     List<RegionReplicaSet> schemaRegionEndPoints = new ArrayList<>();
+    regionReadWriteLock.readLock().lock();
+    try {
+      if (storageGroupsMap.containsKey(storageGroup)) {
+        List<ConsensusGroupId> schemaRegionIds =
+            storageGroupsMap.get(storageGroup).getSchemaRegionGroupIds();
+        for (ConsensusGroupId consensusGroupId : schemaRegionIds) {
+          schemaRegionEndPoints.add(regionMap.get(consensusGroupId));
+        }
+      }
+    } finally {
+      regionReadWriteLock.readLock().unlock();
+    }
 
-    schemaRegion
-        .getSchemaRegionDataNodesMap()
-        .entrySet()
-        .forEach(
-            entity -> {
-              RegionReplicaSet schemaRegionReplicaSet = new RegionReplicaSet();
-              List<Endpoint> endPoints = new ArrayList<>();
-              entity
-                  .getValue()
-                  .forEach(
-                      dataNodeId -> {
-                        if (DataNodeInfoPersistence.getInstance()
-                            .getOnlineDataNodes()
-                            .containsKey(dataNodeId)) {
-                          endPoints.add(
-                              DataNodeInfoPersistence.getInstance()
-                                  .getOnlineDataNodes()
-                                  .get(dataNodeId)
-                                  .getEndPoint());
-                        }
-                      });
-              schemaRegionReplicaSet.setId(
-                  new ConsensusGroupId(GroupType.SchemaRegion, entity.getKey()));
-              // TODO: (xingtanzjr) We cannot get the dataNodeId here, use 0 as the placeholder
-              schemaRegionReplicaSet.setDataNodeList(
-                  endPoints.stream()
-                      .map(endpoint -> new DataNodeLocation(0, endpoint))
-                      .collect(Collectors.toList()));
-              schemaRegionEndPoints.add(schemaRegionReplicaSet);
-            });
     return schemaRegionEndPoints;
+  }
+
+  /** @return The DataRegion ReplicaSets in the specific StorageGroup */
+  public List<RegionReplicaSet> getDataRegionEndPoint(String storageGroup) {
+    List<RegionReplicaSet> dataRegionEndPoints = new ArrayList<>();
+    regionReadWriteLock.readLock().lock();
+    try {
+      if (storageGroupsMap.containsKey(storageGroup)) {
+        List<ConsensusGroupId> dataRegionIds =
+                storageGroupsMap.get(storageGroup).getDataRegionGroupIds();
+        for (ConsensusGroupId consensusGroupId : dataRegionIds) {
+          dataRegionEndPoints.add(regionMap.get(consensusGroupId));
+        }
+      }
+    } finally {
+      regionReadWriteLock.readLock().unlock();
+    }
+
+    return dataRegionEndPoints;
   }
 
   public int generateNextRegionGroupId() {

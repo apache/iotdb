@@ -20,10 +20,11 @@
 package org.apache.iotdb.confignode.consensus.response;
 
 import org.apache.iotdb.commons.partition.SchemaPartition;
-import org.apache.iotdb.confignode.rpc.thrift.RegionReplicaSet;
-import org.apache.iotdb.confignode.rpc.thrift.SchemaPartitionInfo;
+import org.apache.iotdb.confignode.rpc.thrift.RegionMessage;
+import org.apache.iotdb.confignode.rpc.thrift.SchemaPartitionResp;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -31,7 +32,22 @@ import java.util.List;
 import java.util.Map;
 
 public class SchemaPartitionDataSet implements DataSet {
+
+  private TSStatus status;
+
   private SchemaPartition schemaPartition;
+
+  public SchemaPartitionDataSet() {
+    // empty constructor
+  }
+
+  public TSStatus getStatus() {
+    return status;
+  }
+
+  public void setStatus(TSStatus status) {
+    this.status = status;
+  }
 
   public SchemaPartition getSchemaPartition() {
     return schemaPartition;
@@ -41,19 +57,21 @@ public class SchemaPartitionDataSet implements DataSet {
     this.schemaPartition = schemaPartition;
   }
 
-  public SchemaPartitionInfo convertRpcSchemaPartitionInfo() {
-    SchemaPartitionInfo rpcSchemaPartitionInfo = new SchemaPartitionInfo();
-    Map<String, Map<Integer, RegionReplicaSet>> schemaRegionDataNodesMap = new HashMap<>();
+  public void convertToRpcSchemaPartitionResp(SchemaPartitionResp resp) {
+    Map<String, Map<Integer, RegionMessage>> schemaRegionMap = new HashMap<>();
 
     schemaPartition
         .getSchemaPartitionMap()
         .forEach(
             (storageGroup, seriesPartitionSlotRegionReplicaSetMap) -> {
-              schemaRegionDataNodesMap.putIfAbsent(storageGroup, new HashMap<>());
+              // Extract StorageGroupName
+              schemaRegionMap.putIfAbsent(storageGroup, new HashMap<>());
+
+              // Extract Map<SeriesPartitionSlot, RegionReplicaSet>
               seriesPartitionSlotRegionReplicaSetMap.forEach(
                   ((seriesPartitionSlot, regionReplicaSet) -> {
-                    RegionReplicaSet rpcRegionReplicaSet = new RegionReplicaSet();
-                    rpcRegionReplicaSet.setRegionId(regionReplicaSet.getId().getId());
+                    RegionMessage regionMessage = new RegionMessage();
+                    regionMessage.setRegionId(regionReplicaSet.getId().getId());
                     List<EndPoint> endPointList = new ArrayList<>();
                     regionReplicaSet
                         .getDataNodeList()
@@ -63,14 +81,13 @@ public class SchemaPartitionDataSet implements DataSet {
                                     new EndPoint(
                                         dataNodeLocation.getEndPoint().getIp(),
                                         dataNodeLocation.getEndPoint().getPort())));
-                    rpcRegionReplicaSet.setEndpoint(endPointList);
-                    schemaRegionDataNodesMap
+                    regionMessage.setEndpoint(endPointList);
+                    schemaRegionMap
                         .get(storageGroup)
-                        .put(seriesPartitionSlot.getDeviceGroupId(), rpcRegionReplicaSet);
+                        .put(seriesPartitionSlot.getDeviceGroupId(), regionMessage);
                   }));
             });
 
-    rpcSchemaPartitionInfo.setSchemaRegionDataNodesMap(schemaRegionDataNodesMap);
-    return rpcSchemaPartitionInfo;
+    resp.setSchemaRegionMap(schemaRegionMap);
   }
 }

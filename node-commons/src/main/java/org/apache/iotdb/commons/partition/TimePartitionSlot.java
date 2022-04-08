@@ -21,6 +21,14 @@ package org.apache.iotdb.commons.partition;
 public class TimePartitionSlot {
   private long startTime;
 
+  public TimePartitionSlot() {
+    // empty constructor
+  }
+
+  public TimePartitionSlot(long startTime) {
+    this.startTime = startTime;
+  }
+
   public long getStartTime() {
     return startTime;
   }

@@ -23,10 +23,13 @@ import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.confignode.consensus.response.DataPartitionDataSet;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionDataSet;
 import org.apache.iotdb.confignode.physical.crud.DataPartitionPlan;
 import org.apache.iotdb.confignode.physical.crud.SchemaPartitionPlan;
 import org.apache.iotdb.consensus.common.DataSet;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -69,62 +72,97 @@ public class PartitionInfoPersistence {
     schemaPartitionReadWriteLock.readLock().lock();
     try {
       String storageGroup = physicalPlan.getStorageGroup();
-      List<Integer> deviceGroupIDs = physicalPlan.getDeviceGroupIDs();
+      List<Integer> deviceGroupIDs = physicalPlan.getSeriesPartitionSlots();
       SchemaPartition schemaPartitionInfo = new SchemaPartition();
       schemaPartitionInfo.setSchemaPartitionMap(
           schemaPartition.getSchemaPartition(storageGroup, deviceGroupIDs));
       schemaPartitionDataSet.setSchemaPartition(schemaPartitionInfo);
     } finally {
       schemaPartitionReadWriteLock.readLock().unlock();
+      schemaPartitionDataSet.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
     }
     return schemaPartitionDataSet;
   }
 
   /**
-   * If does not exist, apply a new schema partition
+   * Apply new SchemaPartitions
    *
-   * @param physicalPlan storage group and device group id
-   * @return Schema Partition data set
+   * @param physicalPlan storage group and the new SchemaPartition locations
+   * @return SUCCESS_STATUS if apply successes
    */
-  public DataSet applySchemaPartition(SchemaPartitionPlan physicalPlan) {
+  public TSStatus applySchemaPartition(SchemaPartitionPlan physicalPlan) {
     schemaPartitionReadWriteLock.writeLock().lock();
 
-    String storageGroup = physicalPlan.getStorageGroup();
-    List<Integer> deviceGroupIDs = physicalPlan.getDeviceGroupIDs();
-    List<Integer> noAssignDeviceGroupId =
-        schemaPartition.filterNoAssignDeviceGroupId(storageGroup, deviceGroupIDs);
-
-    // allocate partition by storage group and device group id
-    Map<Integer, RegionReplicaSet> deviceGroupIdReplicaSets =
-        physicalPlan.getDeviceGroupIdReplicaSets();
     try {
-
-      deviceGroupIdReplicaSets.forEach(
+      // allocate partition by storage group and device group id
+      String storageGroup = physicalPlan.getStorageGroup();
+      Map<Integer, RegionReplicaSet> schemaPartitionReplicaSets =
+          physicalPlan.getSchemaPartitionReplicaSets();
+      schemaPartitionReplicaSets.forEach(
           (key, value) -> schemaPartition.setSchemaRegionReplicaSet(storageGroup, key, value));
     } finally {
       schemaPartitionReadWriteLock.writeLock().unlock();
     }
 
-    return getSchemaPartition(physicalPlan);
-  }
-
-  /**
-   * TODO:allocate schema partition by balancer
-   *
-   * @param physicalPlan physical plan
-   * @return data set
-   */
-  public DataSet applyDataPartition(DataPartitionPlan physicalPlan) {
-    return null;
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   public DataSet getDataPartition(DataPartitionPlan physicalPlan) {
-    return null;
+    DataPartitionDataSet dataPartitionDataSet = new DataPartitionDataSet();
+    dataPartitionReadWriteLock.readLock().lock();
+    try {
+      String storageGroup = physicalPlan.getStorageGroup();
+      Map<Integer, List<Long>> partitionSlots = physicalPlan.getSeriesPartitionTimePartitionSlots();
+      DataPartition dataPartitionInfo = new DataPartition();
+      dataPartitionInfo.setDataPartitionMap(
+              dataPartition.getDataPartition(storageGroup, partitionSlots));
+      dataPartitionDataSet.setDataPartition(dataPartitionInfo);
+    } finally {
+      schemaPartitionReadWriteLock.readLock().unlock();
+      dataPartitionDataSet.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    }
+    return dataPartitionDataSet;
   }
 
-  public List<Integer> filterSchemaRegionNoAssignDeviceGroupId(
-      String storageGroup, List<Integer> deviceGroupIDs) {
-    return schemaPartition.filterNoAssignDeviceGroupId(storageGroup, deviceGroupIDs);
+  public TSStatus applyDataPartition(DataPartitionPlan physicalPlan) {
+    schemaPartitionReadWriteLock.writeLock().lock();
+
+    try {
+      // allocate partition by storage group and device group id
+      String storageGroup = physicalPlan.getStorageGroup();
+      Map<Integer, RegionReplicaSet> schemaPartitionReplicaSets =
+              physicalPlan.getSchemaPartitionReplicaSets();
+      schemaPartitionReplicaSets.forEach(
+              (key, value) -> schemaPartition.setSchemaRegionReplicaSet(storageGroup, key, value));
+    } finally {
+      schemaPartitionReadWriteLock.writeLock().unlock();
+    }
+
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  public List<Integer> filterSchemaRegionNoAssignedPartitionSlots(
+      String storageGroup, List<Integer> seriesPartitionSlots) {
+    List<Integer> result;
+    schemaPartitionReadWriteLock.readLock().lock();
+    try {
+      result =
+          schemaPartition.filterNoAssignedSeriesPartitionSlot(storageGroup, seriesPartitionSlots);
+    } finally {
+      schemaPartitionReadWriteLock.readLock().unlock();
+    }
+    return result;
+  }
+
+  public Map<Integer, List<Long>> filterDataRegionNoAssignedPartitionSlots(String storageGroup, Map<Integer, List<Long>> seriesPartitionTimePartitionSlots) {
+    Map<Integer, List<Long>> result;
+    dataPartitionReadWriteLock.readLock().lock();
+    try {
+      result = dataPartition.filterDataRegionNoAssignedPartitionSlots(storageGroup, seriesPartitionTimePartitionSlots);
+    } finally {
+      dataPartitionReadWriteLock.readLock().unlock();
+    }
+    return result;
   }
 
   @TestOnly

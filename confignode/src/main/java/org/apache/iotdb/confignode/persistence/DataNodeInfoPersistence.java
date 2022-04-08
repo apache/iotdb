@@ -191,7 +191,8 @@ public class DataNodeInfoPersistence {
     messageBuilder.append(ConfigNodeDescriptor.getInstance().getConf().getDeviceGroupCount());
 
     // seriesPartitionSlotExecutorClass
-    String seriesPartitionSlotExecutorClass = ConfigNodeDescriptor.getInstance().getConf().getDeviceGroupHashExecutorClass();
+    String seriesPartitionSlotExecutorClass =
+        ConfigNodeDescriptor.getInstance().getConf().getDeviceGroupHashExecutorClass();
     messageBuilder.append(seriesPartitionSlotExecutorClass.length());
     messageBuilder.append(seriesPartitionSlotExecutorClass);
 

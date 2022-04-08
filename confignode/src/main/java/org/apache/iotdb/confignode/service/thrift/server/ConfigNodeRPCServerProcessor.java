@@ -39,19 +39,10 @@ import org.apache.iotdb.confignode.rpc.thrift.DataNodeMessage;
 import org.apache.iotdb.confignode.rpc.thrift.DataNodeMessageResp;
 import org.apache.iotdb.confignode.rpc.thrift.DataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.DataNodeRegisterResp;
-import org.apache.iotdb.confignode.rpc.thrift.DataPartitionInfo;
-import org.apache.iotdb.confignode.rpc.thrift.DataPartitionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.DataPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.DeleteStorageGroupReq;
-import org.apache.iotdb.confignode.rpc.thrift.DeviceGroupHashInfo;
 import org.apache.iotdb.confignode.rpc.thrift.FetchDataPartitionReq;
-import org.apache.iotdb.confignode.rpc.thrift.FetchPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.FetchSchemaPartitionReq;
-import org.apache.iotdb.confignode.rpc.thrift.GetDataPartitionReq;
-import org.apache.iotdb.confignode.rpc.thrift.GetSchemaPartitionReq;
-import org.apache.iotdb.confignode.rpc.thrift.PartitionInfoResp;
-import org.apache.iotdb.confignode.rpc.thrift.SchemaPartitionInfo;
-import org.apache.iotdb.confignode.rpc.thrift.SchemaPartitionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.SchemaPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.SetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.StorageGroupMessage;
@@ -120,10 +111,10 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
       Map<Integer, DataNodeMessage> msgMap = new HashMap<>();
       for (DataNodeLocation info : dataSet.getDataNodeList()) {
         msgMap.put(
-          info.getDataNodeID(),
-          new DataNodeMessage(
             info.getDataNodeID(),
-            new EndPoint(info.getEndPoint().getIp(), info.getEndPoint().getPort())));
+            new DataNodeMessage(
+                info.getDataNodeID(),
+                new EndPoint(info.getEndPoint().getIp(), info.getEndPoint().getPort())));
         resp.setDataNodeMessageMap(msgMap);
       }
     }
@@ -134,8 +125,7 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
   @Override
   public TSStatus setStorageGroup(SetStorageGroupReq req) throws TException {
     SetStorageGroupPlan plan =
-        new SetStorageGroupPlan(
-            new StorageGroupSchema(req.getStorageGroup()));
+        new SetStorageGroupPlan(new StorageGroupSchema(req.getStorageGroup()));
 
     TSStatus resp = configManager.setStorageGroup(plan);
     if (resp.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -154,7 +144,8 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
 
   @Override
   public StorageGroupMessageResp getStorageGroupsMessage() throws TException {
-    StorageGroupSchemaDataSet dataSet = (StorageGroupSchemaDataSet) configManager.getStorageGroupSchema();
+    StorageGroupSchemaDataSet dataSet =
+        (StorageGroupSchemaDataSet) configManager.getStorageGroupSchema();
 
     StorageGroupMessageResp resp = new StorageGroupMessageResp();
     resp.setStatus(dataSet.getStatus());
@@ -173,8 +164,8 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
   public SchemaPartitionResp fetchSchemaPartition(FetchSchemaPartitionReq req) throws TException {
     // TODO: fetch schema
     SchemaPartitionPlan querySchemaPartitionPlan =
-      new SchemaPartitionPlan(
-        PhysicalPlanType.QuerySchemaPartition, req.getStorageGroup(), req.getDeviceGroupIDs());
+        new SchemaPartitionPlan(
+            PhysicalPlanType.QuerySchemaPartition, req.getStorageGroup(), req.getDeviceGroupIDs());
     DataSet dataSet = configManager.getSchemaPartition(querySchemaPartitionPlan);
     return ((SchemaPartitionDataSet) dataSet).convertRpcSchemaPartitionInfo();
   }
@@ -182,20 +173,30 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
   @Override
   public SchemaPartitionResp applySchemaPartition(ApplySchemaPartitionReq req) throws TException {
     SchemaPartitionPlan applySchemaPartitionPlan =
-      new SchemaPartitionPlan(
-        PhysicalPlanType.ApplySchemaPartition, req.getStorageGroup(), req.getDeviceGroupIDs());
-    DataSet dataSet = configManager.applySchemaPartition(applySchemaPartitionPlan);
-    return ((SchemaPartitionDataSet) dataSet).convertRpcSchemaPartitionInfo();
+        new SchemaPartitionPlan(
+            PhysicalPlanType.ApplySchemaPartition,
+            req.getStorageGroup(),
+            req.getSeriesPartitionSlots());
+    SchemaPartitionDataSet dataSet =
+        (SchemaPartitionDataSet) configManager.applySchemaPartition(applySchemaPartitionPlan);
+
+    SchemaPartitionResp resp = new SchemaPartitionResp();
+    resp.setStatus(dataSet.getStatus());
+    if (dataSet.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      dataSet.convertToRpcSchemaPartitionResp(resp);
+    }
+
+    return resp;
   }
 
   @Override
   public DataPartitionResp fetchDataPartition(FetchDataPartitionReq req) throws TException {
     // TODO: fetch Data
     DataPartitionPlan applyDataPartitionPlan =
-      new DataPartitionPlan(
-        PhysicalPlanType.QueryDataPartition,
-        req.getStorageGroup(),
-        req.getDeviceGroupStartTimeMap());
+        new DataPartitionPlan(
+            PhysicalPlanType.QueryDataPartition,
+            req.getStorageGroup(),
+            req.getDeviceGroupStartTimeMap());
     DataSet dataset = configManager.getDataPartition(applyDataPartitionPlan);
     return ((DataPartitionDataSet) dataset).convertRpcDataPartitionInfo();
   }
@@ -203,12 +204,20 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
   @Override
   public DataPartitionResp applyDataPartition(ApplyDataPartitionReq req) throws TException {
     DataPartitionPlan applyDataPartitionPlan =
-      new DataPartitionPlan(
-        PhysicalPlanType.ApplyDataPartition,
-        req.getStorageGroup(),
-        req.getDeviceGroupStartTimeMap());
-    DataSet dataset = configManager.applyDataPartition(applyDataPartitionPlan);
-    return ((DataPartitionDataSet) dataset).convertRpcDataPartitionInfo();
+        new DataPartitionPlan(
+            PhysicalPlanType.ApplyDataPartition,
+            req.getStorageGroup(),
+            req.getSeriesPartitionTimePartitionSlots());
+    DataPartitionDataSet dataset =
+        (DataPartitionDataSet) configManager.applyDataPartition(applyDataPartitionPlan);
+
+    DataPartitionResp resp = new DataPartitionResp();
+    resp.setStatus(dataset.getStatus());
+    if (dataset.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      dataset.convertToRpcDataPartitionResp(resp);
+    }
+
+    return resp;
   }
 
   public void handleClientExit() {}

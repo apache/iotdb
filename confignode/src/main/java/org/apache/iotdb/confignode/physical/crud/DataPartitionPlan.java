@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.confignode.physical.crud;
 
+import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
 import org.apache.iotdb.confignode.physical.PhysicalPlanType;
 import org.apache.iotdb.confignode.util.SerializeDeserializeUtil;
@@ -31,7 +32,8 @@ import java.util.Map;
 /** Query or apply DataPartition by the specific storageGroup and the deviceGroupStartTimeMap. */
 public class DataPartitionPlan extends PhysicalPlan {
   private String storageGroup;
-  private Map<Integer, List<Long>> deviceGroupStartTimeMap;
+  private Map<Integer, List<Long>> seriesPartitionTimePartitionSlots;
+  private Map<Integer, Map<Long, List<RegionReplicaSet>>> dataPartitionReplicaSets;
 
   public DataPartitionPlan(PhysicalPlanType physicalPlanType) {
     super(physicalPlanType);
@@ -40,10 +42,10 @@ public class DataPartitionPlan extends PhysicalPlan {
   public DataPartitionPlan(
       PhysicalPlanType physicalPlanType,
       String storageGroup,
-      Map<Integer, List<Long>> deviceGroupStartTimeMap) {
+      Map<Integer, List<Long>> seriesPartitionTimePartitionSlots) {
     this(physicalPlanType);
     this.storageGroup = storageGroup;
-    this.deviceGroupStartTimeMap = deviceGroupStartTimeMap;
+    this.seriesPartitionTimePartitionSlots = seriesPartitionTimePartitionSlots;
   }
 
   public String getStorageGroup() {
@@ -54,12 +56,20 @@ public class DataPartitionPlan extends PhysicalPlan {
     this.storageGroup = storageGroup;
   }
 
-  public Map<Integer, List<Long>> getDeviceGroupIDs() {
-    return deviceGroupStartTimeMap;
+  public Map<Integer, List<Long>> getSeriesPartitionTimePartitionSlots() {
+    return seriesPartitionTimePartitionSlots;
   }
 
-  public void setDeviceGroupIDs(Map<Integer, List<Long>> deviceGroupIDs) {
-    this.deviceGroupStartTimeMap = deviceGroupIDs;
+  public void setSeriesPartitionTimePartitionSlots(Map<Integer, List<Long>> deviceGroupIDs) {
+    this.seriesPartitionTimePartitionSlots = deviceGroupIDs;
+  }
+
+  public Map<Integer, Map<Long, List<RegionReplicaSet>>> getDataPartitionReplicaSets() {
+    return dataPartitionReplicaSets;
+  }
+
+  public void setDataPartitionReplicaSets(Map<Integer, Map<Long, List<RegionReplicaSet>>> dataPartitionReplicaSets) {
+    this.dataPartitionReplicaSets = dataPartitionReplicaSets;
   }
 
   @Override
@@ -67,12 +77,25 @@ public class DataPartitionPlan extends PhysicalPlan {
     buffer.putInt(PhysicalPlanType.QueryDataPartition.ordinal());
     SerializeDeserializeUtil.write(storageGroup, buffer);
 
-    buffer.putInt(deviceGroupStartTimeMap.size());
-    for (Map.Entry<Integer, List<Long>> entry : deviceGroupStartTimeMap.entrySet()) {
+    buffer.putInt(seriesPartitionTimePartitionSlots.size());
+    for (Map.Entry<Integer, List<Long>> entry : seriesPartitionTimePartitionSlots.entrySet()) {
       buffer.putInt(entry.getKey());
       buffer.putInt(entry.getValue().size());
       for (Long startTime : entry.getValue()) {
         buffer.putLong(startTime);
+      }
+    }
+
+    buffer.putInt(dataPartitionReplicaSets.size());
+    for (Map.Entry<Integer, Map<Long, List<RegionReplicaSet>>> seriesPartitionSlotEntry : dataPartitionReplicaSets.entrySet()) {
+      buffer.putInt(seriesPartitionSlotEntry.getKey());
+      buffer.putInt(seriesPartitionSlotEntry.getValue().size());
+      for (Map.Entry<Long, List<RegionReplicaSet>> timePartitionSlotEntry : seriesPartitionSlotEntry.getValue().entrySet()) {
+        buffer.putLong(timePartitionSlotEntry.getKey());
+        buffer.putInt(timePartitionSlotEntry.getValue().size());
+        for (RegionReplicaSet regionReplicaSet : timePartitionSlotEntry.getValue()) {
+          regionReplicaSet.deserializeImpl(buffer);
+        }
       }
     }
   }
@@ -82,7 +105,7 @@ public class DataPartitionPlan extends PhysicalPlan {
     storageGroup = SerializeDeserializeUtil.readString(buffer);
 
     int mapLength = buffer.getInt();
-    deviceGroupStartTimeMap = new HashMap<>(mapLength);
+    seriesPartitionTimePartitionSlots = new HashMap<>(mapLength);
     for (int i = 0; i < mapLength; i++) {
       int deviceGroupId = buffer.getInt();
       int listLength = buffer.getInt();
@@ -90,7 +113,25 @@ public class DataPartitionPlan extends PhysicalPlan {
       for (int j = 0; j < listLength; j++) {
         startTimeList.set(j, buffer.getLong());
       }
-      deviceGroupStartTimeMap.put(deviceGroupId, startTimeList);
+      seriesPartitionTimePartitionSlots.put(deviceGroupId, startTimeList);
+    }
+
+    mapLength = buffer.getInt();
+    dataPartitionReplicaSets = new HashMap<>(mapLength);
+    for (int i = 0; i < mapLength; i++) {
+      int seriesPartitionSlot = buffer.getInt();
+      int subMapLength = buffer.getInt();
+      dataPartitionReplicaSets.put(seriesPartitionSlot, new HashMap<>());
+      for (int j = 0; j < subMapLength; j++) {
+        long timePartitionSlot = buffer.getLong();
+        int listLength = buffer.getInt();
+        dataPartitionReplicaSets.get(seriesPartitionSlot).put(timePartitionSlot, new ArrayList<>());
+        for (int k = 0; k < listLength; k++) {
+          RegionReplicaSet regionReplicaSet = new RegionReplicaSet();
+          regionReplicaSet.deserializeImpl(buffer);
+          dataPartitionReplicaSets.get(seriesPartitionSlot).get(timePartitionSlot).add(regionReplicaSet);
+        }
+      }
     }
   }
 }

@@ -23,7 +23,7 @@ import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 /**
- * a subset of services provided by {@ConfigManager}. For use internally only, pased to Managers,
+ * a subset of services provided by {@ConfigManager}. For use internally only, passed to Managers,
  * services.
  */
 public interface Manager {
@@ -33,7 +33,28 @@ public interface Manager {
    *
    * @return true if service stopped
    */
-  public boolean isStopped();
+  boolean isStopped();
+
+  /**
+   * get data node info manager
+   *
+   * @return DataNodeInfoManager instance
+   */
+  DataNodeManager getDataNodeManager();
+
+  /**
+   * get consensus manager
+   *
+   * @return ConsensusManager instance
+   */
+  ConsensusManager getConsensusManager();
+
+  /**
+   * get assign region manager
+   *
+   * @return AssignRegionManager instance
+   */
+  RegionManager getRegionManager();
 
   /**
    * register data node
@@ -41,7 +62,7 @@ public interface Manager {
    * @param physicalPlan physical plan
    * @return status
    */
-  public TSStatus registerDataNode(PhysicalPlan physicalPlan);
+  TSStatus registerDataNode(PhysicalPlan physicalPlan);
 
   /**
    * get data node info
@@ -67,13 +88,6 @@ public interface Manager {
   TSStatus setStorageGroup(PhysicalPlan physicalPlan);
 
   /**
-   * get data node info manager
-   *
-   * @return DataNodeInfoManager instance
-   */
-  DataNodeManager getDataNodeManager();
-
-  /**
    * get data partition
    *
    * @param physicalPlan physical plan
@@ -90,13 +104,6 @@ public interface Manager {
   DataSet getSchemaPartition(PhysicalPlan physicalPlan);
 
   /**
-   * get assign region manager
-   *
-   * @return AssignRegionManager instance
-   */
-  RegionManager getRegionManager();
-
-  /**
    * apply schema partition
    *
    * @param physicalPlan physical plan
@@ -111,6 +118,4 @@ public interface Manager {
    * @return data set
    */
   DataSet applyDataPartition(PhysicalPlan physicalPlan);
-
-  ConsensusManager getConsensusManager();
 }

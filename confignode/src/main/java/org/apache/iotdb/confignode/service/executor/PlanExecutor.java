@@ -55,10 +55,6 @@ public class PlanExecutor {
         return partitionInfoPersistence.getDataPartition((DataPartitionPlan) plan);
       case QuerySchemaPartition:
         return partitionInfoPersistence.getSchemaPartition((SchemaPartitionPlan) plan);
-      case ApplySchemaPartition:
-        return partitionInfoPersistence.applySchemaPartition((SchemaPartitionPlan) plan);
-      case ApplyDataPartition:
-        return partitionInfoPersistence.applyDataPartition((DataPartitionPlan) plan);
       default:
         throw new UnknownPhysicalPlanTypeException(plan.getType());
     }
@@ -70,6 +66,10 @@ public class PlanExecutor {
         return dataNodeInfoPersistence.registerDataNode((RegisterDataNodePlan) plan);
       case SetStorageGroup:
         return regionInfoPersistence.setStorageGroup((SetStorageGroupPlan) plan);
+      case ApplySchemaPartition:
+        return partitionInfoPersistence.applySchemaPartition((SchemaPartitionPlan) plan);
+      case ApplyDataPartition:
+        return partitionInfoPersistence.applyDataPartition((DataPartitionPlan) plan);
       default:
         throw new UnknownPhysicalPlanTypeException(plan.getType());
     }

@@ -36,7 +36,7 @@ import java.io.IOException;
 
 /** Entry of all management, AssignPartitionManager,AssignRegionManager. */
 public class ConfigManager implements Manager {
-  private static final ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();
+
   private static final TSStatus ERROR_TSSTATUS =
       new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
 
@@ -106,20 +106,10 @@ public class ConfigManager implements Manager {
   }
 
   @Override
-  public DataNodeManager getDataNodeManager() {
-    return dataNodeManager;
-  }
-
-  @Override
-  public DataSet getDataPartition(PhysicalPlan physicalPlan) {
-    if (physicalPlan instanceof DataPartitionPlan) {
-      return partitionManager.getDataPartition((DataPartitionPlan) physicalPlan);
-    }
-    return new DataNodesInfoDataSet();
-  }
-
-  @Override
   public DataSet getSchemaPartition(PhysicalPlan physicalPlan) {
+
+    // TODO: Only leader can query SchemaPartition
+
     if (physicalPlan instanceof SchemaPartitionPlan) {
       return partitionManager.getSchemaPartition((SchemaPartitionPlan) physicalPlan);
     }
@@ -127,12 +117,10 @@ public class ConfigManager implements Manager {
   }
 
   @Override
-  public RegionManager getRegionManager() {
-    return regionManager;
-  }
-
-  @Override
   public DataSet applySchemaPartition(PhysicalPlan physicalPlan) {
+
+    // TODO: Only leader can apply SchemaPartition
+
     if (physicalPlan instanceof SchemaPartitionPlan) {
       return partitionManager.applySchemaPartition((SchemaPartitionPlan) physicalPlan);
     }
@@ -140,11 +128,35 @@ public class ConfigManager implements Manager {
   }
 
   @Override
+  public DataSet getDataPartition(PhysicalPlan physicalPlan) {
+
+    // TODO: Only leader can query DataPartition
+
+    if (physicalPlan instanceof DataPartitionPlan) {
+      return partitionManager.getDataPartition((DataPartitionPlan) physicalPlan);
+    }
+    return new DataNodesInfoDataSet();
+  }
+
+  @Override
   public DataSet applyDataPartition(PhysicalPlan physicalPlan) {
+
+    // TODO: only leader can apply DataPartition
+
     if (physicalPlan instanceof DataPartitionPlan) {
       return partitionManager.applyDataPartition((DataPartitionPlan) physicalPlan);
     }
     return new DataNodesInfoDataSet();
+  }
+
+  @Override
+  public DataNodeManager getDataNodeManager() {
+    return dataNodeManager;
+  }
+
+  @Override
+  public RegionManager getRegionManager() {
+    return regionManager;
   }
 
   @Override
