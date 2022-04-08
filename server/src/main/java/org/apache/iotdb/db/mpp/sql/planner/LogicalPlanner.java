@@ -451,7 +451,7 @@ public class LogicalPlanner {
     public AuthorNode getNewAuthorNode(AuthorStatement authorStatement, MPPQueryContext context) {
       try {
         return new AuthorNode(
-            PlanNodeIdAllocator.generateId(),
+            context.getQueryId().genPlanNodeId(),
             authorStatement.getAuthorType(),
             authorStatement.getUserName(),
             authorStatement.getRoleName(),
