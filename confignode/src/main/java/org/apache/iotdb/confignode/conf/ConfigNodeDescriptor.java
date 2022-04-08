@@ -19,7 +19,8 @@
 package org.apache.iotdb.confignode.conf;
 
 import org.apache.iotdb.commons.cluster.Endpoint;
-import org.apache.iotdb.consensus.common.ConsensusType;
+import org.apache.iotdb.commons.exception.BadNodeUrlException;
+import org.apache.iotdb.commons.utils.CommonUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -122,9 +123,13 @@ public class ConfigNodeDescriptor {
               properties.getProperty(
                   "config_node_internal_port", String.valueOf(conf.getInternalPort()))));
 
-      conf.setConsensusType(
-          ConsensusType.getConsensusType(
-              properties.getProperty("consensus_type", String.valueOf(conf.getConsensusType()))));
+      conf.setConfigNodeConsensusProtocolClass(
+          properties.getProperty(
+              "config_node_consensus_protocol_class", conf.getConfigNodeConsensusProtocolClass()));
+
+      conf.setDataNodeConsensusProtocolClass(
+          properties.getProperty(
+              "data_node_consensus_protocol_class", conf.getDataNodeConsensusProtocolClass()));
 
       conf.setRpcAdvancedCompressionEnable(
           Boolean.parseBoolean(
@@ -175,25 +180,15 @@ public class ConfigNodeDescriptor {
               properties.getProperty(
                   "data_region_count", String.valueOf(conf.getDataRegionCount()))));
 
-      String addresses = properties.getProperty("config_node_group_address_list", null);
-      if (addresses != null) {
-        String[] addressList = addresses.split(",");
-        Endpoint[] endpointList = new Endpoint[addressList.length];
-        for (int i = 0; i < addressList.length; i++) {
-          String[] ipPort = addressList[i].split(":");
-          if (ipPort.length != 2) {
-            throw new IOException(
-                String.format(
-                    "Parsing parameter config_node_group_address_list error. "
-                        + "The %d-th address must format to ip:port, but currently is %s",
-                    i, addressList[i]));
-          }
-          endpointList[i] = new Endpoint(ipPort[0], Integer.parseInt(ipPort[1]));
-        }
-        conf.setConfigNodeGroupAddressList(endpointList);
-      }
+      String addresses = properties.getProperty("config_node_group_address_list", "0.0.0.0:22278");
 
-    } catch (IOException e) {
+      String[] addressList = addresses.split(",");
+      Endpoint[] endpointList = new Endpoint[addressList.length];
+      for (int i = 0; i < addressList.length; i++) {
+        endpointList[i] = CommonUtils.parseNodeUrl(addressList[i]);
+      }
+      conf.setConfigNodeGroupAddressList(endpointList);
+    } catch (IOException | BadNodeUrlException e) {
       LOGGER.warn("Couldn't load ConfigNode conf file, use default config", e);
     } finally {
       conf.updatePath();

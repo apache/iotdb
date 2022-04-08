@@ -20,7 +20,9 @@ package org.apache.iotdb.consensus.ratis;
 
 import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
-import org.apache.iotdb.commons.consensus.GroupType;
+import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.consensus.PartitionRegionId;
+import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
@@ -110,25 +112,28 @@ public class Utils {
     }
     String consensusGroupString = new String(padded, 0, validOffset + 1);
     String[] items = consensusGroupString.split("-");
-    GroupType groupType = null;
+    ConsensusGroupId id;
     switch (items[0]) {
       case DataRegionAbbr:
         {
-          groupType = GroupType.DataRegion;
+          id = new DataRegionId(Integer.parseInt(items[1]));
           break;
         }
       case PartitionRegionAbbr:
         {
-          groupType = GroupType.PartitionRegion;
+          id = new PartitionRegionId(Integer.parseInt(items[1]));
           break;
         }
       case SchemaRegionAbbr:
         {
-          groupType = GroupType.SchemaRegion;
+          id = new SchemaRegionId(Integer.parseInt(items[1]));
           break;
         }
+      default:
+        throw new IllegalArgumentException(
+            String.format("Unexpected consensusGroupId %s", items[0]));
     }
-    return new ConsensusGroupId(groupType, Integer.parseInt(items[1]));
+    return id;
   }
 
   public static ByteBuffer serializeTSStatus(TSStatus status) throws TException {
