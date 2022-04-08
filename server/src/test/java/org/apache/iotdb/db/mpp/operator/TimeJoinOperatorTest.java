@@ -27,12 +27,12 @@ import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.FragmentInstanceContext;
+import org.apache.iotdb.db.mpp.execution.FragmentInstanceState;
 import org.apache.iotdb.db.mpp.operator.process.TimeJoinOperator;
 import org.apache.iotdb.db.mpp.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderTestUtil;
-import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -49,6 +49,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.Assert.*;
 
@@ -80,27 +81,27 @@ public class TimeJoinOperatorTest {
       allSensors.add("sensor0");
       allSensors.add("sensor1");
       QueryId queryId = new QueryId("stub_query");
+      AtomicReference<FragmentInstanceState> state =
+          new AtomicReference<>(FragmentInstanceState.RUNNING);
       FragmentInstanceContext fragmentInstanceContext =
           new FragmentInstanceContext(
-              new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance"));
+              new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance"), state);
       fragmentInstanceContext.addOperatorContext(
           1, new PlanNodeId("1"), SeriesScanOperator.class.getSimpleName());
       fragmentInstanceContext.addOperatorContext(
           2, new PlanNodeId("2"), SeriesScanOperator.class.getSimpleName());
       fragmentInstanceContext.addOperatorContext(
           3, new PlanNodeId("3"), TimeJoinOperator.class.getSimpleName());
-      QueryDataSource dataSource = new QueryDataSource(seqResources, unSeqResources);
-      QueryUtils.fillOrderIndexes(dataSource, measurementPath1.getDevice(), true);
       SeriesScanOperator seriesScanOperator1 =
           new SeriesScanOperator(
               measurementPath1,
               allSensors,
               TSDataType.INT32,
               fragmentInstanceContext.getOperatorContexts().get(0),
-              dataSource,
               null,
               null,
               true);
+      seriesScanOperator1.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
 
       MeasurementPath measurementPath2 =
           new MeasurementPath(TIME_JOIN_OPERATOR_TEST_SG + ".device0.sensor1", TSDataType.INT32);
@@ -110,17 +111,16 @@ public class TimeJoinOperatorTest {
               allSensors,
               TSDataType.INT32,
               fragmentInstanceContext.getOperatorContexts().get(1),
-              dataSource,
               null,
               null,
               true);
+      seriesScanOperator2.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
 
       TimeJoinOperator timeJoinOperator =
           new TimeJoinOperator(
               fragmentInstanceContext.getOperatorContexts().get(2),
               Arrays.asList(seriesScanOperator1, seriesScanOperator2),
               OrderBy.TIMESTAMP_ASC,
-              2,
               Arrays.asList(TSDataType.INT32, TSDataType.INT32));
       int count = 0;
       while (timeJoinOperator.hasNext()) {

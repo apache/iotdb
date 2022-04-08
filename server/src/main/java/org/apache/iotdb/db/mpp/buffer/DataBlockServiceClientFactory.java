@@ -24,21 +24,27 @@ import org.apache.iotdb.mpp.rpc.thrift.DataBlockService;
 import org.apache.iotdb.mpp.rpc.thrift.DataBlockService.Client;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 
+import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.transport.TTransport;
-import org.apache.thrift.transport.TTransportException;
+
+import java.io.IOException;
 
 public class DataBlockServiceClientFactory {
   public DataBlockService.Client getDataBlockServiceClient(String hostname, int port)
-      throws TTransportException {
-    TTransport transport = RpcTransportFactory.INSTANCE.getTransportWithNoTimeout(hostname, port);
-    transport.open();
-    TProtocol protocol =
-        IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable()
-            ? new TCompactProtocol(transport)
-            : new TBinaryProtocol(transport);
-    return new Client(protocol);
+      throws IOException {
+    try {
+      TTransport transport = RpcTransportFactory.INSTANCE.getTransportWithNoTimeout(hostname, port);
+      transport.open();
+      TProtocol protocol =
+          IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable()
+              ? new TCompactProtocol(transport)
+              : new TBinaryProtocol(transport);
+      return new Client(protocol);
+    } catch (TException e) {
+      throw new IOException(e);
+    }
   }
 }

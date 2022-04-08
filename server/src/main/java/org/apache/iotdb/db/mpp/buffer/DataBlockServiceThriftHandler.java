@@ -19,32 +19,26 @@
 
 package org.apache.iotdb.db.mpp.buffer;
 
-import org.apache.iotdb.mpp.rpc.thrift.DataBlockService;
-import org.apache.iotdb.mpp.rpc.thrift.EndOfDataBlockEvent;
-import org.apache.iotdb.mpp.rpc.thrift.GetDataBlockRequest;
-import org.apache.iotdb.mpp.rpc.thrift.GetDataBlockResponse;
-import org.apache.iotdb.mpp.rpc.thrift.NewDataBlockEvent;
+import org.apache.thrift.protocol.TProtocol;
+import org.apache.thrift.server.ServerContext;
+import org.apache.thrift.server.TServerEventHandler;
+import org.apache.thrift.transport.TTransport;
 
-import org.apache.thrift.TException;
+public class DataBlockServiceThriftHandler implements TServerEventHandler {
 
-public class DataBlockServiceImpl implements DataBlockService.Iface {
+  @Override
+  public void preServe() {}
 
-  public DataBlockServiceImpl() {
-    super();
+  @Override
+  public ServerContext createContext(TProtocol tProtocol, TProtocol tProtocol1) {
+    return null;
   }
 
   @Override
-  public GetDataBlockResponse getDataBlock(GetDataBlockRequest req) throws TException {
-    throw new UnsupportedOperationException();
-  }
+  public void deleteContext(
+      ServerContext serverContext, TProtocol tProtocol, TProtocol tProtocol1) {}
 
   @Override
-  public void onNewDataBlockEvent(NewDataBlockEvent e) throws TException {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public void onEndOfDataBlockEvent(EndOfDataBlockEvent e) throws TException {
-    throw new UnsupportedOperationException();
-  }
+  public void processContext(
+      ServerContext serverContext, TTransport tTransport, TTransport tTransport1) {}
 }
