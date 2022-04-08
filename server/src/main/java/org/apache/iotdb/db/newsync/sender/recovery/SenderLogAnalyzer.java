@@ -62,7 +62,8 @@ public class SenderLogAnalyzer {
   public void recover() throws IOException {
     BufferedReader br = new BufferedReader(new FileReader(senderLog));
 
-    int lineNumber = 0; // line index shown in sender log starts from 1, so lineNumber starts from 0.
+    int lineNumber =
+        0; // line index shown in sender log starts from 1, so lineNumber starts from 0.
     String readLine = "";
     String[] parseStrings;
 

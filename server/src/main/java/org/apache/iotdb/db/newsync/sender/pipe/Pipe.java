@@ -19,10 +19,10 @@
  */
 package org.apache.iotdb.db.newsync.sender.pipe;
 
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.exception.sync.PipeException;
 import org.apache.iotdb.db.newsync.pipedata.PipeData;
 import org.apache.iotdb.db.newsync.transport.client.ITransportClient;
-import org.apache.iotdb.db.conf.IoTDBConfig;
 
 /**
  * Pipe is the abstract of a sync task, and a data source for {@linkplain ITransportClient}. When
@@ -75,8 +75,8 @@ public interface Pipe {
   long getCreateTime();
 
   /**
-   * Get the {@linkplain Pipe.PipeStatus} of this pipe.
-   * When a pipe is created, the status should be {@linkplain PipeStatus#STOP}
+   * Get the {@linkplain Pipe.PipeStatus} of this pipe. When a pipe is created, the status should be
+   * {@linkplain PipeStatus#STOP}
    *
    * @return The Status of this pipe.
    */

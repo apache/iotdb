@@ -253,7 +253,7 @@ public class LocalConfigManager {
     }
     if (MetadataSyncManager.getInstance().isEnableSync()) {
       MetadataSyncManager.getInstance()
-              .syncMetadataPlan(new DeleteStorageGroupPlan(Collections.singletonList(storageGroup)));
+          .syncMetadataPlan(new DeleteStorageGroupPlan(Collections.singletonList(storageGroup)));
     }
 
     if (!config.isEnableMemControl()) {

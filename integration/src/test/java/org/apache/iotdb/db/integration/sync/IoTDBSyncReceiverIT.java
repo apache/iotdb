@@ -325,7 +325,8 @@ public class IoTDBSyncReceiverIT {
       // check heartbeat
       SyncResponse response1 =
           ReceiverService.getInstance()
-              .receiveMsg(new SyncRequest(RequestType.HEARTBEAT, pipeName1, remoteIp1, createdTime1));
+              .receiveMsg(
+                  new SyncRequest(RequestType.HEARTBEAT, pipeName1, remoteIp1, createdTime1));
       Assert.assertEquals(ResponseType.WARN, response1.type);
 
       // 5. restart pipe
@@ -335,7 +336,8 @@ public class IoTDBSyncReceiverIT {
       // check heartbeat
       SyncResponse response2 =
           ReceiverService.getInstance()
-              .receiveMsg(new SyncRequest(RequestType.HEARTBEAT, pipeName1, remoteIp1, createdTime1));
+              .receiveMsg(
+                  new SyncRequest(RequestType.HEARTBEAT, pipeName1, remoteIp1, createdTime1));
       Assert.assertEquals(ResponseType.INFO, response2.type);
 
       // 6. drop pipe
