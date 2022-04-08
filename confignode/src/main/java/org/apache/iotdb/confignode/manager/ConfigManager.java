@@ -60,6 +60,10 @@ public class ConfigManager implements Manager {
     this.consensusManager = new ConsensusManager();
   }
 
+  public void close() throws IOException {
+    consensusManager.close();
+  }
+
   @Override
   public boolean isStopped() {
     return false;

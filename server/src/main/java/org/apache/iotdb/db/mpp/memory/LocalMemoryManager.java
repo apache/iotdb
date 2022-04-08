@@ -19,25 +19,22 @@
 
 package org.apache.iotdb.db.mpp.memory;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+
 /**
  * Manages memory of a data node. The memory is divided into two memory pools so that the memory for
  * read and for write can be isolated.
  */
 public class LocalMemoryManager {
 
-  private final long maxBytes;
   private final MemoryPool queryPool;
 
   public LocalMemoryManager() {
-    long maxMemory = Runtime.getRuntime().maxMemory();
-    // Save 20% memory for untracked allocations.
-    maxBytes = (long) (maxMemory * 0.8);
-    // Allocate 50% memory for query execution.
-    queryPool = new MemoryPool("query", (long) (maxBytes * 0.5));
-  }
-
-  public long getMaxBytes() {
-    return maxBytes;
+    queryPool =
+        new MemoryPool(
+            "query",
+            IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForRead(),
+            (long) (IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForRead() * 0.5));
   }
 
   public MemoryPool getQueryPool() {
