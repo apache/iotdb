@@ -24,7 +24,6 @@ import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
 import org.apache.iotdb.db.mpp.sql.optimization.PlanOptimizer;
 import org.apache.iotdb.db.mpp.sql.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeIdAllocator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AlterTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateTimeSeriesNode;
@@ -60,7 +59,7 @@ public class LogicalPlanner {
   }
 
   public LogicalQueryPlan plan(Analysis analysis) {
-    PlanNode rootNode = new LogicalPlanVisitor(analysis).process(analysis.getStatement());
+    PlanNode rootNode = new LogicalPlanVisitor(analysis).process(analysis.getStatement(), context);
 
     // optimize the query logical plan
     if (analysis.getStatement() instanceof QueryStatement) {
@@ -127,7 +126,7 @@ public class LogicalPlanner {
       }
 
       if (queryStatement.isAlignByDevice()) {
-        DeviceMergeNode deviceMergeNode = new DeviceMergeNode(PlanNodeIdAllocator.generateId());
+        DeviceMergeNode deviceMergeNode = new DeviceMergeNode(context.getQueryId().genPlanNodeId());
         for (Map.Entry<String, Set<SourceNode>> entry : deviceNameToSourceNodesMap.entrySet()) {
           String deviceName = entry.getKey();
           List<PlanNode> planNodes = new ArrayList<>(entry.getValue());
@@ -136,7 +135,7 @@ public class LogicalPlanner {
           } else {
             TimeJoinNode timeJoinNode =
                 new TimeJoinNode(
-                    PlanNodeIdAllocator.generateId(),
+                    context.getQueryId().genPlanNodeId(),
                     queryStatement.getResultOrder(),
                     null,
                     planNodes);
@@ -152,13 +151,18 @@ public class LogicalPlanner {
               .collect(Collectors.toList());
       TimeJoinNode timeJoinNode =
           new TimeJoinNode(
-              PlanNodeIdAllocator.generateId(), queryStatement.getResultOrder(), null, planNodes);
+              context.getQueryId().genPlanNodeId(),
+              queryStatement.getResultOrder(),
+              null,
+              planNodes);
       return new PlanBuilder(timeJoinNode);
     }
 
     private Set<SourceNode> planResultColumn(ResultColumn resultColumn) {
       Set<SourceNode> resultSourceNodeSet = new HashSet<>();
-      resultColumn.getExpression().collectPlanNode(resultSourceNodeSet);
+      resultColumn
+          .getExpression()
+          .collectPlanNode(resultSourceNodeSet, context.getQueryId().genPlanNodeId());
       return resultSourceNodeSet;
     }
 
@@ -168,7 +172,7 @@ public class LogicalPlanner {
       }
 
       return planBuilder.withNewRoot(
-          new FilterNode(PlanNodeIdAllocator.generateId(), planBuilder.getRoot(), queryFilter));
+          new FilterNode(context.getQueryId().genPlanNodeId(), planBuilder.getRoot(), queryFilter));
     }
 
     private PlanBuilder planGroupByLevel(
@@ -179,7 +183,7 @@ public class LogicalPlanner {
 
       return planBuilder.withNewRoot(
           new GroupByLevelNode(
-              PlanNodeIdAllocator.generateId(),
+              context.getQueryId().genPlanNodeId(),
               planBuilder.getRoot(),
               groupByLevelComponent.getLevels(),
               groupByLevelComponent.getGroupedPathMap()));
@@ -198,7 +202,7 @@ public class LogicalPlanner {
 
       return planBuilder.withNewRoot(
           new FilterNullNode(
-              PlanNodeIdAllocator.generateId(),
+              context.getQueryId().genPlanNodeId(),
               planBuilder.getRoot(),
               filterNullComponent.getWithoutPolicyType(),
               filterNullComponent.getWithoutNullColumns().stream()
@@ -212,7 +216,8 @@ public class LogicalPlanner {
       }
 
       return planBuilder.withNewRoot(
-          new SortNode(PlanNodeIdAllocator.generateId(), planBuilder.getRoot(), null, resultOrder));
+          new SortNode(
+              context.getQueryId().genPlanNodeId(), planBuilder.getRoot(), null, resultOrder));
     }
 
     private PlanBuilder planLimit(PlanBuilder planBuilder, int rowLimit) {
@@ -221,7 +226,7 @@ public class LogicalPlanner {
       }
 
       return planBuilder.withNewRoot(
-          new LimitNode(PlanNodeIdAllocator.generateId(), rowLimit, planBuilder.getRoot()));
+          new LimitNode(context.getQueryId().genPlanNodeId(), rowLimit, planBuilder.getRoot()));
     }
 
     private PlanBuilder planOffset(PlanBuilder planBuilder, int rowOffset) {
@@ -230,14 +235,14 @@ public class LogicalPlanner {
       }
 
       return planBuilder.withNewRoot(
-          new OffsetNode(PlanNodeIdAllocator.generateId(), planBuilder.getRoot(), rowOffset));
+          new OffsetNode(context.getQueryId().genPlanNodeId(), planBuilder.getRoot(), rowOffset));
     }
 
     @Override
     public PlanNode visitCreateTimeseries(
         CreateTimeSeriesStatement createTimeSeriesStatement, MPPQueryContext context) {
       return new CreateTimeSeriesNode(
-          PlanNodeIdAllocator.generateId(),
+          context.getQueryId().genPlanNodeId(),
           createTimeSeriesStatement.getPath(),
           createTimeSeriesStatement.getDataType(),
           createTimeSeriesStatement.getEncoding(),
@@ -253,7 +258,7 @@ public class LogicalPlanner {
         CreateAlignedTimeSeriesStatement createAlignedTimeSeriesStatement,
         MPPQueryContext context) {
       return new CreateAlignedTimeSeriesNode(
-          PlanNodeIdAllocator.generateId(),
+          context.getQueryId().genPlanNodeId(),
           createAlignedTimeSeriesStatement.getDevicePath(),
           createAlignedTimeSeriesStatement.getMeasurements(),
           createAlignedTimeSeriesStatement.getDataTypes(),
@@ -269,7 +274,7 @@ public class LogicalPlanner {
     public PlanNode visitAlterTimeseries(
         AlterTimeSeriesStatement alterTimeSeriesStatement, MPPQueryContext context) {
       return new AlterTimeSeriesNode(
-          PlanNodeIdAllocator.generateId(),
+          context.getQueryId().genPlanNodeId(),
           alterTimeSeriesStatement.getPath(),
           alterTimeSeriesStatement.getAlterType(),
           alterTimeSeriesStatement.getAlterMap(),
@@ -290,7 +295,7 @@ public class LogicalPlanner {
                   insertTabletStatement.getDevicePath(),
                   Arrays.asList(insertTabletStatement.getMeasurements()));
       return new InsertTabletNode(
-          PlanNodeIdAllocator.generateId(),
+          context.getQueryId().genPlanNodeId(),
           insertTabletStatement.getDevicePath(),
           insertTabletStatement.isAligned(),
           measurementSchemas.toArray(new MeasurementSchema[0]),
@@ -312,7 +317,7 @@ public class LogicalPlanner {
                   insertRowStatement.getDevicePath(),
                   Arrays.asList(insertRowStatement.getMeasurements()));
       return new InsertRowNode(
-          PlanNodeIdAllocator.generateId(),
+          context.getQueryId().genPlanNodeId(),
           insertRowStatement.getDevicePath(),
           insertRowStatement.isAligned(),
           measurementSchemas.toArray(new MeasurementSchema[0]),
