@@ -49,11 +49,15 @@
 
     <programming-language>Java</programming-language>
     <programming-language>Python</programming-language>
+    <programming-language>C++</programming-language>
+    <programming-language>Go</programming-language>
 
     <category rdf:resource="http://projects.apache.org/category/database" />
     <category rdf:resource="http://projects.apache.org/category/iot"/>
     <category rdf:resource="http://projects.apache.org/category/java"/>
     <category rdf:resource="http://projects.apache.org/category/python"/>
+    <category rdf:resource="http://projects.apache.org/category/c++"/>
+    <category rdf:resource="http://projects.apache.org/category/go"/>
 
     <release>
       <Version>
