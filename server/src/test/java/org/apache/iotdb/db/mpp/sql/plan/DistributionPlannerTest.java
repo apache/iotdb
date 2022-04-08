@@ -47,7 +47,11 @@ import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 
 import org.junit.Test;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 
@@ -151,7 +155,7 @@ public class DistributionPlannerTest {
         new DistributionPlanner(analysis, new LogicalQueryPlan(context, root));
     DistributedQueryPlan plan = planner.planFragments();
     plan.getInstances().forEach(System.out::println);
-    assertEquals(plan.getInstances().size(), 3);
+    assertEquals(3, plan.getInstances().size());
   }
 
   private Analysis constructAnalysis() {
