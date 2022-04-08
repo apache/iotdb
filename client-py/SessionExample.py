@@ -185,14 +185,14 @@ session.insert_tablet(tablet_)
 
 # insert one numpy tablet into the database.
 np_values_ = [
-    np.array([False, True, False, True], np.dtype(">?")),
-    np.array([10, 100, 100, 0], np.dtype(">i4")),
-    np.array([11, 11111, 1, 0], np.dtype(">i8")),
-    np.array([1.1, 1.25, 188.1, 0], np.dtype(">f4")),
-    np.array([10011.1, 101.0, 688.25, 6.25], np.dtype(">f8")),
-    np.array(["test01", "test02", "test03", "test04"]),
+    np.array([False, True, False, True], TSDataType.BOOLEAN.np_dtype()),
+    np.array([10, 100, 100, 0], TSDataType.INT32.np_dtype()),
+    np.array([11, 11111, 1, 0], TSDataType.INT64.np_dtype()),
+    np.array([1.1, 1.25, 188.1, 0], TSDataType.FLOAT.np_dtype()),
+    np.array([10011.1, 101.0, 688.25, 6.25], TSDataType.DOUBLE.np_dtype()),
+    np.array(["test01", "test02", "test03", "test04"], TSDataType.TEXT.np_dtype()),
 ]
-np_timestamps_ = np.array([1, 2, 3, 4], np.dtype(">i8"))
+np_timestamps_ = np.array([1, 2, 3, 4], TSDataType.INT64.np_dtype())
 np_tablet_ = NumpyTablet(
     "root.sg_test_01.d_02", measurements_, data_types_, np_values_, np_timestamps_
 )

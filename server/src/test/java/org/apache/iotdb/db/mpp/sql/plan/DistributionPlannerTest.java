@@ -38,8 +38,6 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.mpp.sql.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.mpp.sql.planner.plan.SubPlan;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeIdAllocator;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
@@ -56,72 +54,75 @@ public class DistributionPlannerTest {
 
   @Test
   public void TestRewriteSourceNode() throws IllegalPathException {
+    QueryId queryId = new QueryId("test_query");
+
     TimeJoinNode timeJoinNode =
         new TimeJoinNode(
-            PlanNodeIdAllocator.generateId(), OrderBy.TIMESTAMP_ASC, FilterNullPolicy.NO_FILTER);
+            queryId.genPlanNodeId(), OrderBy.TIMESTAMP_ASC, FilterNullPolicy.NO_FILTER);
 
     timeJoinNode.addChild(
-        new SeriesScanNode(PlanNodeIdAllocator.generateId(), new PartialPath("root.sg.d1.s1")));
+        new SeriesScanNode(queryId.genPlanNodeId(), new PartialPath("root.sg.d1.s1")));
     timeJoinNode.addChild(
-        new SeriesScanNode(PlanNodeIdAllocator.generateId(), new PartialPath("root.sg.d1.s2")));
+        new SeriesScanNode(queryId.genPlanNodeId(), new PartialPath("root.sg.d1.s2")));
     timeJoinNode.addChild(
-        new SeriesScanNode(PlanNodeIdAllocator.generateId(), new PartialPath("root.sg.d22.s1")));
+        new SeriesScanNode(queryId.genPlanNodeId(), new PartialPath("root.sg.d22.s1")));
 
-    LimitNode root = new LimitNode(PlanNodeIdAllocator.generateId(), 10, timeJoinNode);
+    LimitNode root = new LimitNode(queryId.genPlanNodeId(), 10, timeJoinNode);
 
     Analysis analysis = constructAnalysis();
 
     DistributionPlanner planner =
-        new DistributionPlanner(analysis, new LogicalQueryPlan(new MPPQueryContext(), root));
+        new DistributionPlanner(analysis, new LogicalQueryPlan(new MPPQueryContext(queryId), root));
     PlanNode newRoot = planner.rewriteSource();
 
-    System.out.println(PlanNodeUtil.nodeToString(newRoot));
     assertEquals(newRoot.getChildren().get(0).getChildren().size(), 3);
   }
 
   @Test
   public void TestAddExchangeNode() throws IllegalPathException {
+    QueryId queryId = new QueryId("test_query");
     TimeJoinNode timeJoinNode =
         new TimeJoinNode(
-            PlanNodeIdAllocator.generateId(), OrderBy.TIMESTAMP_ASC, FilterNullPolicy.NO_FILTER);
+            queryId.genPlanNodeId(), OrderBy.TIMESTAMP_ASC, FilterNullPolicy.NO_FILTER);
 
     timeJoinNode.addChild(
-        new SeriesScanNode(PlanNodeIdAllocator.generateId(), new PartialPath("root.sg.d1.s1")));
+        new SeriesScanNode(queryId.genPlanNodeId(), new PartialPath("root.sg.d1.s1")));
     timeJoinNode.addChild(
-        new SeriesScanNode(PlanNodeIdAllocator.generateId(), new PartialPath("root.sg.d1.s2")));
+        new SeriesScanNode(queryId.genPlanNodeId(), new PartialPath("root.sg.d1.s2")));
     timeJoinNode.addChild(
-        new SeriesScanNode(PlanNodeIdAllocator.generateId(), new PartialPath("root.sg.d22.s1")));
+        new SeriesScanNode(queryId.genPlanNodeId(), new PartialPath("root.sg.d22.s1")));
 
-    LimitNode root = new LimitNode(PlanNodeIdAllocator.generateId(), 10, timeJoinNode);
+    LimitNode root = new LimitNode(queryId.genPlanNodeId(), 10, timeJoinNode);
 
     Analysis analysis = constructAnalysis();
 
     DistributionPlanner planner =
-        new DistributionPlanner(analysis, new LogicalQueryPlan(new MPPQueryContext(), root));
+        new DistributionPlanner(analysis, new LogicalQueryPlan(new MPPQueryContext(queryId), root));
     PlanNode rootAfterRewrite = planner.rewriteSource();
     PlanNode rootWithExchange = planner.addExchangeNode(rootAfterRewrite);
-    //    PlanNodeUtil.printPlanNode(rootWithExchange);
     assertEquals(rootWithExchange.getChildren().get(0).getChildren().size(), 3);
   }
 
   @Test
   public void TestSplitFragment() throws IllegalPathException {
+    QueryId queryId = new QueryId("test_query");
     TimeJoinNode timeJoinNode =
         new TimeJoinNode(
-            PlanNodeIdAllocator.generateId(), OrderBy.TIMESTAMP_ASC, FilterNullPolicy.NO_FILTER);
+            queryId.genPlanNodeId(), OrderBy.TIMESTAMP_ASC, FilterNullPolicy.NO_FILTER);
 
     timeJoinNode.addChild(
-        new SeriesScanNode(PlanNodeIdAllocator.generateId(), new PartialPath("root.sg.d1.s1")));
+        new SeriesScanNode(queryId.genPlanNodeId(), new PartialPath("root.sg.d1.s1")));
     timeJoinNode.addChild(
-        new SeriesScanNode(PlanNodeIdAllocator.generateId(), new PartialPath("root.sg.d1.s2")));
+        new SeriesScanNode(queryId.genPlanNodeId(), new PartialPath("root.sg.d1.s2")));
     timeJoinNode.addChild(
-        new SeriesScanNode(PlanNodeIdAllocator.generateId(), new PartialPath("root.sg.d22.s1")));
+        new SeriesScanNode(queryId.genPlanNodeId(), new PartialPath("root.sg.d22.s1")));
 
-    LimitNode root = new LimitNode(PlanNodeIdAllocator.generateId(), 10, timeJoinNode);
+    LimitNode root = new LimitNode(queryId.genPlanNodeId(), 10, timeJoinNode);
 
     Analysis analysis = constructAnalysis();
 
-    MPPQueryContext context = new MPPQueryContext("", new QueryId("query1"), null, QueryType.READ);
+    MPPQueryContext context =
+        new MPPQueryContext("", queryId, null, QueryType.READ, new Endpoint());
     DistributionPlanner planner =
         new DistributionPlanner(analysis, new LogicalQueryPlan(context, root));
     PlanNode rootAfterRewrite = planner.rewriteSource();
@@ -132,22 +133,24 @@ public class DistributionPlannerTest {
 
   @Test
   public void TestParallelPlan() throws IllegalPathException {
+    QueryId queryId = new QueryId("test_query");
     TimeJoinNode timeJoinNode =
         new TimeJoinNode(
-            PlanNodeIdAllocator.generateId(), OrderBy.TIMESTAMP_ASC, FilterNullPolicy.NO_FILTER);
+            queryId.genPlanNodeId(), OrderBy.TIMESTAMP_ASC, FilterNullPolicy.NO_FILTER);
 
     timeJoinNode.addChild(
-        new SeriesScanNode(PlanNodeIdAllocator.generateId(), new PartialPath("root.sg.d1.s1")));
+        new SeriesScanNode(queryId.genPlanNodeId(), new PartialPath("root.sg.d1.s1")));
     timeJoinNode.addChild(
-        new SeriesScanNode(PlanNodeIdAllocator.generateId(), new PartialPath("root.sg.d1.s2")));
+        new SeriesScanNode(queryId.genPlanNodeId(), new PartialPath("root.sg.d1.s2")));
     timeJoinNode.addChild(
-        new SeriesScanNode(PlanNodeIdAllocator.generateId(), new PartialPath("root.sg.d333.s1")));
+        new SeriesScanNode(queryId.genPlanNodeId(), new PartialPath("root.sg.d333.s1")));
 
-    LimitNode root = new LimitNode(PlanNodeIdAllocator.generateId(), 10, timeJoinNode);
+    LimitNode root = new LimitNode(queryId.genPlanNodeId(), 10, timeJoinNode);
 
     Analysis analysis = constructAnalysis();
 
-    MPPQueryContext context = new MPPQueryContext("", new QueryId("query1"), null, QueryType.READ);
+    MPPQueryContext context =
+        new MPPQueryContext("", queryId, null, QueryType.READ, new Endpoint());
     DistributionPlanner planner =
         new DistributionPlanner(analysis, new LogicalQueryPlan(context, root));
     DistributedQueryPlan plan = planner.planFragments();
