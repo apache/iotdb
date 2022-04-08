@@ -98,7 +98,7 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
       if (rootNode instanceof FragmentSinkNode) {
         // Set target Endpoint for FragmentSinkNode
         FragmentSinkNode sinkNode = (FragmentSinkNode) rootNode;
-        PlanNodeId downStreamNodeId = sinkNode.getDownStreamNode().getPlanNodeId();
+        PlanNodeId downStreamNodeId = sinkNode.getDownStreamPlanNodeId();
         FragmentInstance downStreamInstance = findDownStreamInstance(downStreamNodeId);
         sinkNode.setDownStream(
             downStreamInstance.getHostEndpoint(), downStreamInstance.getId(), downStreamNodeId);

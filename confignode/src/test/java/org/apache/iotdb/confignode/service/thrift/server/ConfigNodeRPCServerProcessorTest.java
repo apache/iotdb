@@ -34,12 +34,14 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
+import org.apache.ratis.util.FileUtils;
 import org.apache.thrift.TException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -48,20 +50,24 @@ import java.util.Map;
 
 public class ConfigNodeRPCServerProcessorTest {
 
+  ConfigNodeRPCServerProcessor processor;
+
   @Before
-  public void before() {}
+  public void before() throws IOException {
+    processor = new ConfigNodeRPCServerProcessor();
+  }
 
   @After
-  public void after() {
+  public void after() throws IOException {
     DataNodeInfoPersistence.getInstance().clear();
     PartitionInfoPersistence.getInstance().clear();
     RegionInfoPersistence.getInstance().clear();
+    processor.close();
+    FileUtils.deleteFully(new File(ConfigNodeDescriptor.getInstance().getConf().getConsensusDir()));
   }
 
   @Test
   public void registerDataNodeTest() throws TException, IOException {
-    ConfigNodeRPCServerProcessor processor = new ConfigNodeRPCServerProcessor();
-
     DataNodeRegisterResp resp;
     DataNodeRegisterReq registerReq0 = new DataNodeRegisterReq(new EndPoint("0.0.0.0", 6667));
     DataNodeRegisterReq registerReq1 = new DataNodeRegisterReq(new EndPoint("0.0.0.0", 6668));
@@ -101,8 +107,6 @@ public class ConfigNodeRPCServerProcessorTest {
 
   @Test
   public void setStorageGroupTest() throws TException, IOException {
-    ConfigNodeRPCServerProcessor processor = new ConfigNodeRPCServerProcessor();
-
     TSStatus status;
     final String sg = "root.sg0";
 
@@ -136,7 +140,6 @@ public class ConfigNodeRPCServerProcessorTest {
 
   @Test
   public void getDeviceGroupHashInfoTest() throws TException, IOException {
-    ConfigNodeRPCServerProcessor processor = new ConfigNodeRPCServerProcessor();
     // get Device Group hash
     DeviceGroupHashInfo deviceGroupHashInfo = new DeviceGroupHashInfo();
     deviceGroupHashInfo = processor.getDeviceGroupHashInfo();
@@ -150,8 +153,6 @@ public class ConfigNodeRPCServerProcessorTest {
 
   @Test
   public void applySchemaPartitionTest() throws TException, IOException {
-    ConfigNodeRPCServerProcessor processor = new ConfigNodeRPCServerProcessor();
-
     TSStatus status;
     final String sg = "root.sg0";
 
@@ -183,22 +184,16 @@ public class ConfigNodeRPCServerProcessorTest {
     deviceGroupIds.add(deviceGroupId);
     getSchemaPartitionReq.setStorageGroup(sg).setDeviceGroupIDs(deviceGroupIds);
     SchemaPartitionInfo schemaPartitionInfo = processor.applySchemaPartition(getSchemaPartitionReq);
-    Assert.assertTrue(schemaPartitionInfo != null);
-    Assert.assertTrue(schemaPartitionInfo.getSchemaRegionDataNodesMap().get(sg) != null);
+    Assert.assertNotNull(schemaPartitionInfo);
+    Assert.assertNotNull(schemaPartitionInfo.getSchemaRegionDataNodesMap().get(sg));
     schemaPartitionInfo
         .getSchemaRegionDataNodesMap()
         .get(sg)
-        .entrySet()
-        .forEach(
-            entity -> {
-              Assert.assertEquals(deviceGroupId, entity.getKey());
-            });
+        .forEach((key, value) -> Assert.assertEquals(deviceGroupId, key));
   }
 
   @Test
   public void getSchemaPartitionTest() throws TException, IOException {
-    ConfigNodeRPCServerProcessor processor = new ConfigNodeRPCServerProcessor();
-
     TSStatus status;
     final String sg = "root.sg0";
 
@@ -230,27 +225,22 @@ public class ConfigNodeRPCServerProcessorTest {
     deviceGroupIds.add(deviceGroupId);
     getSchemaPartitionReq.setStorageGroup(sg).setDeviceGroupIDs(deviceGroupIds);
     SchemaPartitionInfo schemaPartitionInfo = processor.getSchemaPartition(getSchemaPartitionReq);
-    Assert.assertTrue(schemaPartitionInfo != null);
-    Assert.assertTrue(schemaPartitionInfo.getSchemaRegionDataNodesMap().get(sg) != null);
+    Assert.assertNotNull(schemaPartitionInfo);
+    Assert.assertNotNull(schemaPartitionInfo.getSchemaRegionDataNodesMap().get(sg));
 
     // because does not apply schema partition, so schema partition is null
-    Assert.assertEquals(
-        null, schemaPartitionInfo.getSchemaRegionDataNodesMap().get(sg).get(deviceGroupId));
+    Assert.assertNull(schemaPartitionInfo.getSchemaRegionDataNodesMap().get(sg).get(deviceGroupId));
 
     // applySchemaPartition
     deviceGroupIds.add(deviceGroupId);
     getSchemaPartitionReq.setStorageGroup(sg).setDeviceGroupIDs(deviceGroupIds);
     schemaPartitionInfo = processor.applySchemaPartition(getSchemaPartitionReq);
-    Assert.assertTrue(schemaPartitionInfo != null);
-    Assert.assertTrue(schemaPartitionInfo.getSchemaRegionDataNodesMap().get(sg) != null);
+    Assert.assertNotNull(schemaPartitionInfo);
+    Assert.assertNotNull(schemaPartitionInfo.getSchemaRegionDataNodesMap().get(sg));
     schemaPartitionInfo
         .getSchemaRegionDataNodesMap()
         .get(sg)
-        .entrySet()
-        .forEach(
-            entity -> {
-              Assert.assertEquals(deviceGroupId, entity.getKey());
-            });
+        .forEach((key, value) -> Assert.assertEquals(deviceGroupId, key));
 
     // getSchemaPartition twice
     getSchemaPartitionReq = new GetSchemaPartitionReq();
@@ -258,11 +248,11 @@ public class ConfigNodeRPCServerProcessorTest {
     deviceGroupIds.add(deviceGroupId);
     getSchemaPartitionReq.setStorageGroup(sg).setDeviceGroupIDs(deviceGroupIds);
     schemaPartitionInfo = processor.getSchemaPartition(getSchemaPartitionReq);
-    Assert.assertTrue(schemaPartitionInfo != null);
-    Assert.assertTrue(schemaPartitionInfo.getSchemaRegionDataNodesMap().get(sg) != null);
+    Assert.assertNotNull(schemaPartitionInfo);
+    Assert.assertNotNull(schemaPartitionInfo.getSchemaRegionDataNodesMap().get(sg));
 
     // because apply schema partition, so schema partition is not null
-    Assert.assertTrue(
-        schemaPartitionInfo.getSchemaRegionDataNodesMap().get(sg).get(deviceGroupId) != null);
+    Assert.assertNotNull(
+        schemaPartitionInfo.getSchemaRegionDataNodesMap().get(sg).get(deviceGroupId));
   }
 }
