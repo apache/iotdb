@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.mpp.common;
 
+import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
+
 /** The fragment instance ID class. */
 public class FragmentInstanceId {
 
@@ -52,5 +54,9 @@ public class FragmentInstanceId {
 
   public String toString() {
     return fullId;
+  }
+
+  public TFragmentInstanceId toThrift() {
+    return new TFragmentInstanceId(queryId.getId(), String.valueOf(fragmentId.getId()), instanceId);
   }
 }
