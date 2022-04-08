@@ -22,9 +22,9 @@ package org.apache.iotdb.db.engine.compaction;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionSelector;
-import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSequenceSpaceCompactionSelector;
-import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerUnsequenceSpaceCompactionSelector;
+import org.apache.iotdb.db.engine.compaction.cross.ICrossSpaceSelector;
+import org.apache.iotdb.db.engine.compaction.inner.IInnerSeqSpaceSelector;
+import org.apache.iotdb.db.engine.compaction.inner.IInnerUnseqSpaceSelector;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.compaction.task.ICompactionSelector;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
@@ -90,14 +90,14 @@ public class CompactionScheduler {
 
     List<AbstractCompactionTask> taskList = null;
     if (sequence) {
-      AbstractInnerSequenceSpaceCompactionSelector innerSpaceCompactionSelector =
+      IInnerSeqSpaceSelector innerSpaceCompactionSelector =
           config
               .getInnerSequenceCompactionStrategy()
               .getCompactionSelector(
                   logicalStorageGroupName, virtualStorageGroupName, timePartition, tsFileManager);
       taskList = innerSpaceCompactionSelector.select();
     } else {
-      AbstractInnerUnsequenceSpaceCompactionSelector innerSpaceCompactionSelector =
+      IInnerUnseqSpaceSelector innerSpaceCompactionSelector =
           config
               .getInnerUnsequenceCompactionStrategy()
               .getCompactionSelector(
@@ -119,7 +119,7 @@ public class CompactionScheduler {
     if (!config.isEnableCrossSpaceCompaction()) {
       return;
     }
-    AbstractCrossSpaceCompactionSelector crossSpaceCompactionSelector =
+    ICrossSpaceSelector crossSpaceCompactionSelector =
         config
             .getCrossCompactionStrategy()
             .getCompactionSelector(

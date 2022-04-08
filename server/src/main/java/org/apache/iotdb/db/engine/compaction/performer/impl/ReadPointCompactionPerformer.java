@@ -16,11 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.compaction.performer;
+package org.apache.iotdb.db.engine.compaction.performer.impl;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.inner.utils.MultiTsFileDeviceIterator;
+import org.apache.iotdb.db.engine.compaction.performer.ICrossCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.performer.IUnseqCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.writer.AbstractCompactionWriter;
 import org.apache.iotdb.db.engine.compaction.writer.CrossSpaceCompactionWriter;
 import org.apache.iotdb.db.engine.compaction.writer.InnerSpaceCompactionWriter;
@@ -55,8 +57,11 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class ReadPointCompactionPerformer extends AbstractCompactionPerformer {
+public class ReadPointCompactionPerformer
+    implements ICrossCompactionPerformer, IUnseqCompactionPerformer {
   private Logger LOGGER = LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
+  private List<TsFileResource> seqFiles;
+  private List<TsFileResource> unseqFiles;
 
   private List<TsFileResource> targetFiles = Collections.emptyList();
 
@@ -306,5 +311,16 @@ public class ReadPointCompactionPerformer extends AbstractCompactionPerformer {
           String.format(
               "[Compaction] compaction for target file %s abort", targetFiles.toString()));
     }
+  }
+
+  @Override
+  public void setSourceFiles(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
+    this.seqFiles = seqFiles;
+    this.unseqFiles = unseqFiles;
+  }
+
+  @Override
+  public void setSourceFiles(List<TsFileResource> unseqFiles) {
+    this.unseqFiles = unseqFiles;
   }
 }

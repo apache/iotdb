@@ -280,7 +280,7 @@ public class CompactionTaskManager implements IService {
     }
   }
 
-  public synchronized void removeRunningTaskFromList(AbstractCompactionTask task) {
+  public synchronized void removeRunningTaskFuture(AbstractCompactionTask task) {
     String storageGroupName = task.getFullStorageGroupName();
     if (storageGroupTasks.containsKey(storageGroupName)) {
       storageGroupTasks.get(storageGroupName).remove(task);

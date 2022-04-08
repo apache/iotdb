@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.engine.compaction.constant;
 
-import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerUnsequenceSpaceCompactionSelector;
+import org.apache.iotdb.db.engine.compaction.inner.IInnerUnseqSpaceSelector;
 import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompactionSelector;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 
@@ -33,7 +33,7 @@ public enum InnerUnsequenceCompactionStrategy {
     throw new RuntimeException("Illegal Compaction Strategy " + name);
   }
 
-  public AbstractInnerUnsequenceSpaceCompactionSelector getCompactionSelector(
+  public IInnerUnseqSpaceSelector getCompactionSelector(
       String logicalStorageGroupName,
       String virtualStorageGroupName,
       long timePartition,

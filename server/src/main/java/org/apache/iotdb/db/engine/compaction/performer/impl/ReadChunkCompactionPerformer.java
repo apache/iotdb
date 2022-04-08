@@ -16,13 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.compaction.performer;
+package org.apache.iotdb.db.engine.compaction.performer.impl;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.inner.utils.AlignedSeriesCompactionExecutor;
 import org.apache.iotdb.db.engine.compaction.inner.utils.MultiTsFileDeviceIterator;
 import org.apache.iotdb.db.engine.compaction.inner.utils.SingleSeriesCompactionExecutor;
+import org.apache.iotdb.db.engine.compaction.performer.ISeqCompactionPerformer;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -44,10 +45,11 @@ import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
 
-public class ReadChunkCompactionPerformer extends AbstractCompactionPerformer {
+public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private TsFileResource targetResource;
+  private List<TsFileResource> seqFiles;
 
   public ReadChunkCompactionPerformer(List<TsFileResource> sourceFiles, TsFileResource targetFile) {
     this.seqFiles = sourceFiles;
@@ -96,11 +98,6 @@ public class ReadChunkCompactionPerformer extends AbstractCompactionPerformer {
               targetFiles.size()));
     }
     this.targetResource = targetFiles.get(0);
-  }
-
-  @Override
-  public void setUnseqFiles(List<TsFileResource> unseqFiles) {
-    throw new RuntimeException("The performer of this class cannot compact with unseq files!");
   }
 
   private void compactAlignedSeries(
@@ -160,5 +157,10 @@ public class ReadChunkCompactionPerformer extends AbstractCompactionPerformer {
               p, measurementSchema, readerAndChunkMetadataList, writer, targetResource);
       compactionExecutorOfCurrentTimeSeries.execute();
     }
+  }
+
+  @Override
+  public void setSourceFiles(List<TsFileResource> seqFiles) {
+    this.seqFiles = seqFiles;
   }
 }

@@ -19,10 +19,10 @@
 package org.apache.iotdb.db.engine.compaction.constant;
 
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
-import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionSelector;
 import org.apache.iotdb.db.engine.compaction.cross.CrossSpaceCompactionTask;
+import org.apache.iotdb.db.engine.compaction.cross.ICrossSpaceSelector;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.RewriteCrossSpaceCompactionSelector;
-import org.apache.iotdb.db.engine.compaction.performer.ReadPointCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.performer.impl.ReadPointCompactionPerformer;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 
@@ -60,7 +60,7 @@ public enum CrossCompactionStrategy {
     }
   }
 
-  public AbstractCrossSpaceCompactionSelector getCompactionSelector(
+  public ICrossSpaceSelector getCompactionSelector(
       String logicalStorageGroupName,
       String virtualGroupId,
       String storageGroupDir,

@@ -22,11 +22,11 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
-import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSequenceSpaceCompactionSelector;
-import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerUnsequenceSpaceCompactionSelector;
+import org.apache.iotdb.db.engine.compaction.inner.IInnerSeqSpaceSelector;
+import org.apache.iotdb.db.engine.compaction.inner.IInnerUnseqSpaceSelector;
 import org.apache.iotdb.db.engine.compaction.inner.InnerSpaceCompactionTask;
-import org.apache.iotdb.db.engine.compaction.performer.ReadChunkCompactionPerformer;
-import org.apache.iotdb.db.engine.compaction.performer.ReadPointCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.performer.impl.ReadChunkCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.performer.impl.ReadPointCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
@@ -56,8 +56,7 @@ import java.util.PriorityQueue;
  * found in some level, selector will not search higher level anymore.
  */
 public class SizeTieredCompactionSelector
-    implements AbstractInnerSequenceSpaceCompactionSelector,
-        AbstractInnerUnsequenceSpaceCompactionSelector {
+    implements IInnerSeqSpaceSelector, IInnerUnseqSpaceSelector {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();

@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.compaction.CompactionExceptionHandler;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.log.CompactionLogger;
-import org.apache.iotdb.db.engine.compaction.performer.AbstractCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.performer.ICompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
@@ -65,7 +65,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       TsFileManager tsFileManager,
       List<TsFileResource> selectedTsFileResourceList,
       boolean sequence,
-      AbstractCompactionPerformer performer,
+      ICompactionPerformer performer,
       AtomicInteger currentTaskNum) {
     super(
         logicalStorageGroupName + "-" + virtualStorageGroupName,
@@ -123,11 +123,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
           "{} [Compaction] compaction with {}", fullStorageGroupName, selectedTsFileResourceList);
 
       // carry out the compaction
-      if (sequence) {
-        performer.setSeqFiles(selectedTsFileResourceList);
-      } else {
-        performer.setUnseqFiles(selectedTsFileResourceList);
-      }
+      performer.setSourceFiles(selectedTsFileResourceList);
       performer.setTargetFiles(Collections.singletonList(targetTsFileResource));
       performer.perform();
 

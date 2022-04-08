@@ -16,13 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.compaction.inner;
+package org.apache.iotdb.db.engine.compaction.performer;
 
-import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
-import org.apache.iotdb.db.engine.compaction.task.ICompactionSelector;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 
 import java.util.List;
 
-public interface AbstractInnerUnsequenceSpaceCompactionSelector extends ICompactionSelector {
-  List<AbstractCompactionTask> select();
+public interface ISeqCompactionPerformer extends ICompactionPerformer {
+  void setSourceFiles(List<TsFileResource> seqFiles);
 }

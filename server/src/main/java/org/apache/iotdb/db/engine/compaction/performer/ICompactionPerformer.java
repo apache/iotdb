@@ -23,7 +23,6 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 
 import java.io.IOException;
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -32,20 +31,19 @@ import java.util.List;
  * from tsfile, and some may using query tools to read data point by point from tsfile. Notice, not
  * all kinds of Performer can be used for all kinds of compaction tasks!
  */
-public abstract class AbstractCompactionPerformer {
-  protected List<TsFileResource> seqFiles = Collections.emptyList();
-  protected List<TsFileResource> unseqFiles = Collections.emptyList();
+public interface ICompactionPerformer {
 
-  public abstract void perform()
+  void perform()
       throws IOException, MetadataException, StorageEngineException, InterruptedException;
 
-  public abstract void setTargetFiles(List<TsFileResource> targetFiles);
+  void setTargetFiles(List<TsFileResource> targetFiles);
 
-  public void setSeqFiles(List<TsFileResource> seqFiles) {
-    this.seqFiles = seqFiles;
+  default void setSourceFiles(List<TsFileResource> files) {
+    throw new RuntimeException("Cannot set single type of source files to this kind of performer");
   }
 
-  public void setUnseqFiles(List<TsFileResource> unseqFiles) {
-    this.unseqFiles = unseqFiles;
+  default void setSourceFiles(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
+    throw new RuntimeException(
+        "Cannot set both seq files and unseq files to this kind of performer");
   }
 }

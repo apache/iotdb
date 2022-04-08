@@ -23,10 +23,10 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
-import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionSelector;
 import org.apache.iotdb.db.engine.compaction.cross.CrossSpaceCompactionTask;
+import org.apache.iotdb.db.engine.compaction.cross.ICrossSpaceSelector;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.ICrossSpaceMergeFileSelector;
-import org.apache.iotdb.db.engine.compaction.performer.ReadPointCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.performer.impl.ReadPointCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -41,10 +41,17 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
-public class RewriteCrossSpaceCompactionSelector extends AbstractCrossSpaceCompactionSelector {
+public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  protected String logicalStorageGroupName;
+  protected String virtualGroupId;
+  protected String storageGroupDir;
+  protected long timePartition;
+  protected TsFileManager tsFileManager;
+  protected List<TsFileResource> sequenceFileList;
+  protected List<TsFileResource> unsequenceFileList;
 
   public RewriteCrossSpaceCompactionSelector(
       String logicalStorageGroupName,
@@ -52,12 +59,11 @@ public class RewriteCrossSpaceCompactionSelector extends AbstractCrossSpaceCompa
       String storageGroupDir,
       long timePartition,
       TsFileManager tsFileManager) {
-    super(
-        logicalStorageGroupName,
-        virtualStorageGroupId,
-        storageGroupDir,
-        timePartition,
-        tsFileManager);
+    this.storageGroupDir = storageGroupDir;
+    this.logicalStorageGroupName = logicalStorageGroupName;
+    this.virtualGroupId = virtualStorageGroupId;
+    this.timePartition = timePartition;
+    this.tsFileManager = tsFileManager;
   }
 
   /**

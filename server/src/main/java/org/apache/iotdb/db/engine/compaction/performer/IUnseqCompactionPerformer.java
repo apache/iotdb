@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,13 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.compaction.inner;
+package org.apache.iotdb.db.engine.compaction.performer;
 
-import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
-import org.apache.iotdb.db.engine.compaction.task.ICompactionSelector;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 
 import java.util.List;
 
-public interface AbstractInnerSequenceSpaceCompactionSelector extends ICompactionSelector {
-  List<AbstractCompactionTask> select();
+public interface IUnseqCompactionPerformer extends ICompactionPerformer {
+  void setSourceFiles(List<TsFileResource> unseqFiles);
 }

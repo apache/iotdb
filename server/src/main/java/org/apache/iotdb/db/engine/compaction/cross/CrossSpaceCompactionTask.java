@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.compaction.CompactionExceptionHandler;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.log.CompactionLogger;
-import org.apache.iotdb.db.engine.compaction.performer.AbstractCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.performer.ICrossCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
@@ -64,7 +64,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
       TsFileManager tsFileManager,
       List<TsFileResource> selectedSequenceFiles,
       List<TsFileResource> selectedUnsequenceFiles,
-      AbstractCompactionPerformer performer,
+      ICrossCompactionPerformer performer,
       AtomicInteger currentTaskNum) {
     super(
         logicalStorageGroup + "-" + virutalStorageGroupName,
@@ -118,8 +118,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         // restart recovery
         compactionLogger.close();
 
-        performer.setSeqFiles(selectedSequenceFiles);
-        performer.setUnseqFiles(selectedUnsequenceFiles);
+        performer.setSourceFiles(selectedSequenceFiles, selectedUnsequenceFiles);
         performer.setTargetFiles(targetTsfileResourceList);
         performer.perform();
 
