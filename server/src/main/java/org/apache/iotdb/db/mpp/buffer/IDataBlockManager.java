@@ -21,6 +21,10 @@ package org.apache.iotdb.db.mpp.buffer;
 
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 
+import org.apache.thrift.transport.TTransportException;
+
+import java.io.IOException;
+
 public interface IDataBlockManager {
   /**
    * Create a sink handle who sends data blocks to a remote downstream fragment instance in async
@@ -31,30 +35,32 @@ public interface IDataBlockManager {
    * @param remoteHostname Hostname of the remote fragment instance where the data blocks should be
    *     sent to.
    * @param remoteFragmentInstanceId ID of the remote fragment instance.
-   * @param remoteOperatorId The sink operator ID of the remote fragment instance.
+   * @param remotePlanNodeId The sink plan node ID of the remote fragment instance.
    */
   ISinkHandle createSinkHandle(
       TFragmentInstanceId localFragmentInstanceId,
       String remoteHostname,
       TFragmentInstanceId remoteFragmentInstanceId,
-      String remoteOperatorId);
+      String remotePlanNodeId)
+      throws TTransportException, IOException;
 
   /**
-   * Create a source handle who fetches data blocks from a remote upstream fragment instance for an
-   * operator of a local fragment instance in async manner.
+   * Create a source handle who fetches data blocks from a remote upstream fragment instance for a
+   * plan node of a local fragment instance in async manner.
    *
    * @param localFragmentInstanceId ID of the local fragment instance who receives data blocks from
    *     the source handle.
-   * @param localOperatorId The local sink operator ID.
+   * @param localPlanNodeId The local sink plan node ID.
    * @param remoteHostname Hostname of the remote fragment instance where the data blocks should be
    *     received from.
    * @param remoteFragmentInstanceId ID of the remote fragment instance.
    */
   ISourceHandle createSourceHandle(
       TFragmentInstanceId localFragmentInstanceId,
-      String localOperatorId,
+      String localPlanNodeId,
       String remoteHostname,
-      TFragmentInstanceId remoteFragmentInstanceId);
+      TFragmentInstanceId remoteFragmentInstanceId)
+      throws IOException;
 
   /**
    * Release all the related resources of a fragment instance, including data blocks that are not

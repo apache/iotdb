@@ -72,6 +72,10 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
     this.configManager = new ConfigManager();
   }
 
+  public void close() throws IOException {
+    configManager.close();
+  }
+
   @Override
   public DataNodeRegisterResp registerDataNode(DataNodeRegisterReq req) throws TException {
     RegisterDataNodePlan plan =

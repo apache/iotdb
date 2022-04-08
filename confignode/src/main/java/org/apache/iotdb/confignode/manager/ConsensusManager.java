@@ -20,18 +20,17 @@ package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
-import org.apache.iotdb.commons.consensus.GroupType;
+import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.commons.hash.DeviceGroupHashExecutor;
 import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.statemachine.PartitionRegionStateMachine;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
-import org.apache.iotdb.consensus.ratis.RatisConsensus;
-import org.apache.iotdb.consensus.standalone.StandAloneConsensus;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,7 +41,6 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 /** ConsensusManager maintains consensus class, request will redirect to consensus layer */
@@ -58,6 +56,10 @@ public class ConsensusManager {
   public ConsensusManager() throws IOException {
     setHashExecutor();
     setConsensusLayer();
+  }
+
+  public void close() throws IOException {
+    consensusImpl.stop();
   }
 
   /** Build DeviceGroupHashExecutor */
@@ -87,44 +89,21 @@ public class ConsensusManager {
   /** Build ConfigNodeGroup ConsensusLayer */
   private void setConsensusLayer() throws IOException {
     // There is only one ConfigNodeGroup
-    consensusGroupId = new ConsensusGroupId(GroupType.PartitionRegion, 0);
+    consensusGroupId = new PartitionRegionId(0);
 
-    // Implement specific consensus
-    switch (conf.getConsensusType()) {
-      case STANDALONE:
-        constructStandAloneConsensus();
-        break;
-      case RATIS:
-        constructRatisConsensus();
-        break;
-      default:
-        throw new IllegalArgumentException(
-            "Start ConfigNode failed, unrecognized ConsensusType: "
-                + conf.getConsensusType().getTypeName());
-    }
-  }
-
-  private void constructStandAloneConsensus() throws IOException {
-    // Standalone consensus
-    consensusImpl = new StandAloneConsensus(id -> new PartitionRegionStateMachine());
-    consensusImpl.start();
-
-    // Standalone ConsensusGroup
-    consensusImpl.addConsensusGroup(
-        consensusGroupId,
-        Collections.singletonList(
-            new Peer(
-                consensusGroupId, new Endpoint(conf.getRpcAddress(), conf.getInternalPort()))));
-  }
-
-  private void constructRatisConsensus() throws IOException {
     // Ratis consensus local implement
     consensusImpl =
-        RatisConsensus.newBuilder()
-            .setEndpoint(new Endpoint(conf.getRpcAddress(), conf.getInternalPort()))
-            .setStateMachineRegistry(id -> new PartitionRegionStateMachine())
-            .setStorageDir(new File(conf.getConsensusDir()))
-            .build();
+        ConsensusFactory.getConsensusImpl(
+                conf.getConfigNodeConsensusProtocolClass(),
+                new Endpoint(conf.getRpcAddress(), conf.getInternalPort()),
+                new File(conf.getConsensusDir()),
+                gid -> new PartitionRegionStateMachine())
+            .orElseThrow(
+                () ->
+                    new IllegalArgumentException(
+                        String.format(
+                            ConsensusFactory.CONSTRUCT_FAILED_MSG,
+                            conf.getConfigNodeConsensusProtocolClass())));
     consensusImpl.start();
 
     // Build ratis group from user properties

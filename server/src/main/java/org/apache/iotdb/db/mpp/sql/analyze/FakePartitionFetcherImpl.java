@@ -21,8 +21,7 @@ package org.apache.iotdb.db.mpp.sql.analyze;
 
 import org.apache.iotdb.commons.cluster.DataNodeLocation;
 import org.apache.iotdb.commons.cluster.Endpoint;
-import org.apache.iotdb.commons.consensus.ConsensusGroupId;
-import org.apache.iotdb.commons.consensus.GroupType;
+import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.partition.*;
 
 import java.util.*;
@@ -48,13 +47,13 @@ public class FakePartitionFetcherImpl implements IPartitionFetcher {
     List<RegionReplicaSet> d1DataRegions = new ArrayList<>();
     d1DataRegions.add(
         new RegionReplicaSet(
-            new ConsensusGroupId(GroupType.DataRegion, 1),
+            new DataRegionId(1),
             Arrays.asList(
                 new DataNodeLocation(11, new Endpoint("192.0.1.1", 9000)),
                 new DataNodeLocation(12, new Endpoint("192.0.1.2", 9000)))));
     d1DataRegions.add(
         new RegionReplicaSet(
-            new ConsensusGroupId(GroupType.DataRegion, 2),
+            new DataRegionId(2),
             Arrays.asList(
                 new DataNodeLocation(21, new Endpoint("192.0.2.1", 9000)),
                 new DataNodeLocation(22, new Endpoint("192.0.2.2", 9000)))));
@@ -64,7 +63,7 @@ public class FakePartitionFetcherImpl implements IPartitionFetcher {
     List<RegionReplicaSet> d2DataRegions = new ArrayList<>();
     d2DataRegions.add(
         new RegionReplicaSet(
-            new ConsensusGroupId(GroupType.DataRegion, 3),
+            new DataRegionId(3),
             Arrays.asList(
                 new DataNodeLocation(31, new Endpoint("192.0.3.1", 9000)),
                 new DataNodeLocation(32, new Endpoint("192.0.3.2", 9000)))));
@@ -74,13 +73,13 @@ public class FakePartitionFetcherImpl implements IPartitionFetcher {
     List<RegionReplicaSet> d3DataRegions = new ArrayList<>();
     d3DataRegions.add(
         new RegionReplicaSet(
-            new ConsensusGroupId(GroupType.DataRegion, 1),
+            new DataRegionId(1),
             Arrays.asList(
                 new DataNodeLocation(11, new Endpoint("192.0.1.1", 9000)),
                 new DataNodeLocation(12, new Endpoint("192.0.1.2", 9000)))));
     d3DataRegions.add(
         new RegionReplicaSet(
-            new ConsensusGroupId(GroupType.DataRegion, 4),
+            new DataRegionId(4),
             Arrays.asList(
                 new DataNodeLocation(41, new Endpoint("192.0.4.1", 9000)),
                 new DataNodeLocation(42, new Endpoint("192.0.4.2", 9000)))));

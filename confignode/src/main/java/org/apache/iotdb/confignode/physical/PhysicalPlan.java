@@ -73,12 +73,15 @@ public abstract class PhysicalPlan implements IConsensusRequest {
 
   protected abstract void serializeImpl(ByteBuffer buffer);
 
-  protected abstract void deserializeImpl(ByteBuffer buffer);
+  protected abstract void deserializeImpl(ByteBuffer buffer) throws IOException;
 
   public static class Factory {
 
     public static PhysicalPlan create(ByteBuffer buffer) throws IOException {
       int typeNum = buffer.getInt();
+      if (typeNum >= PhysicalPlanType.values().length) {
+        throw new IOException("unrecognized log type " + typeNum);
+      }
       PhysicalPlanType type = PhysicalPlanType.values()[typeNum];
       PhysicalPlan plan;
       switch (type) {
