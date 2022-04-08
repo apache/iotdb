@@ -57,16 +57,16 @@
 
     <release>
       <Version>
-        <name>apache-iotdb-0.10.1-incubating</name>
-        <created>2020-08-23</created>
-        <revision>0.10.1</revision>
+        <name>apache-iotdb-0.13.0</name>
+        <created>2022-03-20</created>
+        <revision>0.13.0</revision>
       </Version>
     </release>
 
     <repository>
       <GitRepository>
-        <location rdf:resource="https://github.com/apache/incubator-iotdb.git"/>
-        <browse rdf:resource="https://github.com/apache/incubator-iotdb.git"/>
+        <location rdf:resource="https://github.com/apache/iotdb.git"/>
+        <browse rdf:resource="https://github.com/apache/iotdb.git"/>
       </GitRepository>
     </repository>
     <maintainer>
