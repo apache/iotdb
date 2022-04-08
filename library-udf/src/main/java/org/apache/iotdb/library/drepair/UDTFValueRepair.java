@@ -71,7 +71,6 @@ public class UDTFValueRepair implements UDTF {
 
   @Override
   public void transform(RowWindow rowWindow, PointCollector collector) throws Exception {
-    // 设置修复方法及参数
     ValueRepair vr;
     if ("screen".equalsIgnoreCase(method)) {
       Screen screen = new Screen(rowWindow.getRowIterator());
@@ -92,7 +91,6 @@ public class UDTFValueRepair implements UDTF {
     } else {
       throw new Exception("Illegal method.");
     }
-    // 开始修复并输出结果
     vr.repair();
     double[] repaired = vr.getRepaired();
     long[] time = vr.getTime();

@@ -137,7 +137,6 @@ select timestamprepair(s1) from root.test.d2
 ### 使用示例
 #### 使用 linear 方法进行填补
 
->>>>>>> master:docs/zh/UserGuide/UDF-Library/Data-Repairing.md
 当`method`缺省或取值为 'linear' 时，本函数将使用线性插值方法进行填补。
 
 输入序列：
