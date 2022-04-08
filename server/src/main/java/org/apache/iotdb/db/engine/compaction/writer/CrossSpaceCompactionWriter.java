@@ -30,7 +30,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
   // target fileIOWriters
@@ -49,22 +48,19 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
   // whether each target file is empty or not
   private final boolean[] isEmptyFile;
 
-  // This variable has three values, which is
-  // 0: has not flushed chunk group header yet
-  // 1: start flushing chunk group header
-  // 2: finish flushing chunk group header
-  // The index of the array corresponds to each target file.
-  private final AtomicInteger[] hasTargetFileStartChunkGroup;
+  // whether each target file has device data
+  private final boolean[] isDeviceExistedInTargetFiles;
+
+  private int chunkGroupHeaderSize;
 
   public CrossSpaceCompactionWriter(
       List<TsFileResource> targetResources, List<TsFileResource> seqFileResources)
       throws IOException {
     currentDeviceEndTime = new long[seqFileResources.size()];
     isEmptyFile = new boolean[seqFileResources.size()];
-    hasTargetFileStartChunkGroup = new AtomicInteger[seqFileResources.size()];
+    isDeviceExistedInTargetFiles = new boolean[targetResources.size()];
     for (int i = 0; i < targetResources.size(); i++) {
       this.fileWriterList.add(new TsFileIOWriter(targetResources.get(i).getTsFile()));
-      this.hasTargetFileStartChunkGroup[i] = new AtomicInteger(0);
       isEmptyFile[i] = true;
     }
     this.seqTsFileResources = seqFileResources;
@@ -76,17 +72,21 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
     this.isAlign = isAlign;
     this.seqFileIndexArray = new int[subTaskNum];
     checkIsDeviceExistAndGetDeviceEndTime();
-    for (int i = 0; i < seqTsFileResources.size(); i++) {
-      hasTargetFileStartChunkGroup[i].set(0);
+    for (int i = 0; i < fileWriterList.size(); i++) {
+      chunkGroupHeaderSize = fileWriterList.get(i).startChunkGroup(deviceId);
     }
   }
 
   @Override
   public void endChunkGroup() throws IOException {
     for (int i = 0; i < seqTsFileResources.size(); i++) {
-      if (hasTargetFileStartChunkGroup[i].get() == 2) {
-        fileWriterList.get(i).endChunkGroup();
+      TsFileIOWriter targetFileWriter = fileWriterList.get(i);
+      if (isDeviceExistedInTargetFiles[i]) {
+        targetFileWriter.endChunkGroup();
+      } else {
+        targetFileWriter.truncate(targetFileWriter.getPos() - chunkGroupHeaderSize);
       }
+      isDeviceExistedInTargetFiles[i] = false;
     }
     deviceId = null;
   }
@@ -100,9 +100,9 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
   @Override
   public void write(long timestamp, Object value, int subTaskId) throws IOException {
     checkTimeAndMayFlushChunkToCurrentFile(timestamp, subTaskId);
-    checkAndMayStartChunkGroup(subTaskId);
     writeDataPoint(timestamp, value, subTaskId);
     checkChunkSizeAndMayOpenANewChunk(fileWriterList.get(seqFileIndexArray[subTaskId]), subTaskId);
+    isDeviceExistedInTargetFiles[seqFileIndexArray[subTaskId]] = true;
     isEmptyFile[seqFileIndexArray[subTaskId]] = false;
   }
 
@@ -181,20 +181,9 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
     }
   }
 
-  private void checkAndMayStartChunkGroup(int subTaskId) throws IOException {
-    int fileIndex = seqFileIndexArray[subTaskId];
-    if (hasTargetFileStartChunkGroup[fileIndex].compareAndSet(0, 1)) {
-      fileWriterList.get(fileIndex).startChunkGroup(deviceId);
-      hasTargetFileStartChunkGroup[fileIndex].set(2);
-    }
-  }
-
   private void flushChunkToFileWriter(int subTaskId) throws IOException {
     int fileIndex = seqFileIndexArray[subTaskId];
     writeRateLimit(chunkWriterMap.get(subTaskId).estimateMaxSeriesMemSize());
-    while (hasTargetFileStartChunkGroup[fileIndex].get() == 1) {
-      // wait until the target file has finished flushing chunk group header
-    }
     synchronized (fileWriterList.get(fileIndex)) {
       chunkWriterMap.get(subTaskId).writeToFileWriter(fileWriterList.get(fileIndex));
     }
