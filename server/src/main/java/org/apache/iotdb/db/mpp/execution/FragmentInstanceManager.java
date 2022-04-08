@@ -93,16 +93,21 @@ public class FragmentInstanceManager {
                       instanceId,
                       fragmentInstanceId -> new FragmentInstanceContext(fragmentInstanceId, state));
 
-              DataDriver driver =
-                  planner.plan(
-                      instance.getFragment().getRoot(),
-                      context,
-                      instance.getTimeFilter(),
-                      dataRegion);
-              return new FragmentInstanceExecution(scheduler, instanceId, context, driver, state);
+              try {
+                DataDriver driver =
+                    planner.plan(
+                        instance.getFragment().getRoot(),
+                        context,
+                        instance.getTimeFilter(),
+                        dataRegion);
+                return new FragmentInstanceExecution(scheduler, instanceId, context, driver, state);
+              } catch (Throwable t) {
+                context.failed(t);
+                return null;
+              }
             });
 
-    return execution.getInstanceInfo();
+    return execution != null ? execution.getInstanceInfo() : createFailedInstanceInfo(instanceId);
   }
 
   public FragmentInstanceInfo execSchemaQueryFragmentInstance(
@@ -121,12 +126,16 @@ public class FragmentInstanceManager {
                       instanceId,
                       fragmentInstanceId -> new FragmentInstanceContext(fragmentInstanceId, state));
 
-              SchemaDriver driver =
-                  planner.plan(instance.getFragment().getRoot(), context, schemaRegion);
-              return new FragmentInstanceExecution(scheduler, instanceId, context, driver, state);
+              try {
+                SchemaDriver driver =
+                    planner.plan(instance.getFragment().getRoot(), context, schemaRegion);
+                return new FragmentInstanceExecution(scheduler, instanceId, context, driver, state);
+              } catch (Throwable t) {
+                context.failed(t);
+                return null;
+              }
             });
-
-    return execution.getInstanceInfo();
+    return execution != null ? execution.getInstanceInfo() : createFailedInstanceInfo(instanceId);
   }
 
   public FragmentInstanceInfo abortFragmentInstance(FragmentInstanceId fragmentInstanceId) {
@@ -154,14 +163,22 @@ public class FragmentInstanceManager {
     return execution.getInstanceInfo();
   }
 
+  private FragmentInstanceInfo createFailedInstanceInfo(FragmentInstanceId instanceId) {
+    return new FragmentInstanceInfo(
+        FragmentInstanceState.FAILED, instanceContext.get(instanceId).getEndTime());
+  }
+
   private void removeOldTasks() {
     long oldestAllowedInstance = System.currentTimeMillis() - infoCacheTime.toMillis();
-    instanceExecution
+    instanceContext
         .entrySet()
         .removeIf(
             entry -> {
               FragmentInstanceId instanceId = entry.getKey();
-              FragmentInstanceExecution execution = entry.getValue();
+              FragmentInstanceExecution execution = instanceExecution.get(instanceId);
+              if (execution == null) {
+                return true;
+              }
               long endTime = execution.getInstanceInfo().getEndTime();
               if (endTime != -1 && endTime <= oldestAllowedInstance) {
                 instanceContext.remove(instanceId);
