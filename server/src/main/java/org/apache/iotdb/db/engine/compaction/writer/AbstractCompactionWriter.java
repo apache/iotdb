@@ -142,10 +142,18 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
     measurementPointCountArray[subTaskId] += 1;
   }
 
+  protected void flushChunkToFileWriter(TsFileIOWriter targetWriter, int subTaskId)
+      throws IOException {
+    writeRateLimit(chunkWriterMap.get(subTaskId).estimateMaxSeriesMemSize());
+    synchronized (targetWriter) {
+      chunkWriterMap.get(subTaskId).writeToFileWriter(targetWriter);
+    }
+  }
+
   protected void checkChunkSizeAndMayOpenANewChunk(TsFileIOWriter fileWriter, int subTaskId)
       throws IOException {
     if (measurementPointCountArray[subTaskId] % 10 == 0 && checkChunkSize(subTaskId)) {
-      writeRateLimit(chunkWriterMap.get(subTaskId).estimateMaxSeriesMemSize());
+      flushChunkToFileWriter(fileWriter, subTaskId);
       CompactionMetricsManager.recordWriteInfo(
           this instanceof CrossSpaceCompactionWriter
               ? CompactionType.CROSS_COMPACTION
@@ -153,9 +161,6 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
           ProcessChunkType.DESERIALIZE_CHUNK,
           this.isAlign,
           chunkWriterMap.get(subTaskId).estimateMaxSeriesMemSize());
-      synchronized (fileWriter) {
-        chunkWriterMap.get(subTaskId).writeToFileWriter(fileWriter);
-      }
     }
   }
 

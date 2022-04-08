@@ -18,9 +18,6 @@
  */
 package org.apache.iotdb.db.engine.compaction.writer;
 
-import org.apache.iotdb.db.engine.compaction.CompactionMetricsManager;
-import org.apache.iotdb.db.engine.compaction.constant.CompactionType;
-import org.apache.iotdb.db.engine.compaction.constant.ProcessChunkType;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
@@ -93,7 +90,7 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
 
   @Override
   public void endMeasurement(int subTaskId) throws IOException {
-    flushChunkToFileWriter(subTaskId);
+    flushChunkToFileWriter(fileWriterList.get(seqFileIndexArray[subTaskId]), subTaskId);
     seqFileIndexArray[subTaskId] = 0;
   }
 
@@ -143,7 +140,7 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
     // if timestamp is later than the current source seq tsfile, than flush chunk writer
     while (timestamp > currentDeviceEndTime[fileIndex]) {
       if (fileIndex != seqTsFileResources.size() - 1) {
-        flushChunkToFileWriter(subTaskId);
+        flushChunkToFileWriter(fileWriterList.get(fileIndex), subTaskId);
         seqFileIndexArray[subTaskId] = ++fileIndex;
       } else {
         // If the seq file is deleted for various reasons, the following two situations may occur
@@ -178,26 +175,6 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
       }
 
       fileIndex++;
-    }
-  }
-
-  private void flushChunkToFileWriter(int subTaskId) throws IOException {
-    int fileIndex = seqFileIndexArray[subTaskId];
-    writeRateLimit(chunkWriterMap.get(subTaskId).estimateMaxSeriesMemSize());
-    synchronized (fileWriterList.get(fileIndex)) {
-      chunkWriterMap.get(subTaskId).writeToFileWriter(fileWriterList.get(fileIndex));
-    }
-  }
-
-  protected void checkChunkSizeAndMayOpenANewChunk(TsFileIOWriter fileWriter, int subTaskId)
-      throws IOException {
-    if (measurementPointCountArray[subTaskId] % 10 == 0 && checkChunkSize(subTaskId)) {
-      flushChunkToFileWriter(subTaskId);
-      CompactionMetricsManager.recordWriteInfo(
-          CompactionType.CROSS_COMPACTION,
-          ProcessChunkType.DESERIALIZE_CHUNK,
-          this.isAlign,
-          chunkWriterMap.get(subTaskId).estimateMaxSeriesMemSize());
     }
   }
 }
