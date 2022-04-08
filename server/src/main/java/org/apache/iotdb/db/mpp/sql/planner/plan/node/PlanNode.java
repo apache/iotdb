@@ -32,7 +32,7 @@ public abstract class PlanNode {
   protected static final int ONE_CHILD = 1;
   protected static final int CHILD_COUNT_NO_LIMIT = -1;
 
-  private final PlanNodeId id;
+  private PlanNodeId id;
 
   protected PlanNode(PlanNodeId id) {
     requireNonNull(id, "id is null");
@@ -41,6 +41,10 @@ public abstract class PlanNode {
 
   public PlanNodeId getId() {
     return id;
+  }
+
+  public void setId(PlanNodeId id) {
+    this.id = id;
   }
 
   public abstract List<PlanNode> getChildren();

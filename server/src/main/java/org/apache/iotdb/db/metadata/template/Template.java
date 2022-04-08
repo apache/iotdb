@@ -438,6 +438,10 @@ public class Template {
     }
   }
 
+  public void unmarkStorageGroup(String storageGroup) {
+    relatedSchemaRegion.remove(storageGroup);
+  }
+
   // endregion
 
   // region inner utils

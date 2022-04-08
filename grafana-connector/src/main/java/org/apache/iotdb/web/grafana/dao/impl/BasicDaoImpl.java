@@ -132,34 +132,35 @@ public class BasicDaoImpl implements BasicDao {
     long to = zonedCovertToLong(timeRange.right);
     final long hours = Duration.between(timeRange.left, timeRange.right).toHours();
 
-    String sql =
-        String.format(
-            "SELECT %s FROM root.%s WHERE time > %d and time < %d",
-            s.substring(s.lastIndexOf('.') + 1),
-            s.substring(0, s.lastIndexOf('.')),
-            from * timestampRadioX,
-            to * timestampRadioX);
+    String sql = "SELECT ? FROM root.? WHERE time > ? and time < ?";
+    Object[] params =
+        new Object[] {
+          s.substring(s.lastIndexOf('.') + 1),
+          s.substring(0, s.lastIndexOf('.')),
+          from * timestampRadioX,
+          to * timestampRadioX,
+        };
     String columnName = "root." + s;
 
     String intervalLocal = getInterval(hours);
     if (!"".equals(intervalLocal)) {
-      sql =
-          String.format(
-              "SELECT "
-                  + function
-                  + "(%s) FROM root.%s WHERE time > %d and time < %d group by ([%d, %d),%s)",
-              s.substring(s.lastIndexOf('.') + 1),
-              s.substring(0, s.lastIndexOf('.')),
-              from * timestampRadioX,
-              to * timestampRadioX,
-              from * timestampRadioX,
-              to * timestampRadioX,
-              intervalLocal);
+      sql = "SELECT ?(?) FROM root.? WHERE time > ? and time < ? group by ([?, ?),?)";
+      params =
+          new Object[] {
+            function,
+            s.substring(s.lastIndexOf('.') + 1),
+            s.substring(0, s.lastIndexOf('.')),
+            from * timestampRadioX,
+            to * timestampRadioX,
+            from * timestampRadioX,
+            to * timestampRadioX,
+            intervalLocal
+          };
       columnName = function + "(root." + s + ")";
     }
 
-    logger.info(sql);
-    return jdbcTemplate.query(sql, new TimeValuesRowMapper(columnName));
+    logger.info("SQL: {}, Params: {}", sql, params);
+    return jdbcTemplate.query(sql, params, new TimeValuesRowMapper(columnName));
   }
 
   public String getInterval(final long hours) {

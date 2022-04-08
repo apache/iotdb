@@ -49,4 +49,9 @@ public class GroupByLevelOperator implements ProcessOperator {
   public void close() throws Exception {
     ProcessOperator.super.close();
   }
+
+  @Override
+  public boolean isFinished() {
+    return false;
+  }
 }

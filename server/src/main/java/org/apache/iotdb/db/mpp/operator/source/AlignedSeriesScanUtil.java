@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.mpp.operator.source;
 
-import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -48,12 +47,10 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
       Set<String> allSensors,
       TSDataType dataType,
       FragmentInstanceContext context,
-      QueryDataSource dataSource,
       Filter timeFilter,
       Filter valueFilter,
       boolean ascending) {
-    super(
-        seriesPath, allSensors, dataType, context, dataSource, timeFilter, valueFilter, ascending);
+    super(seriesPath, allSensors, dataType, context, timeFilter, valueFilter, ascending);
     dataTypes =
         ((AlignedPath) seriesPath)
             .getSchemaList().stream().map(IMeasurementSchema::getType).collect(Collectors.toList());

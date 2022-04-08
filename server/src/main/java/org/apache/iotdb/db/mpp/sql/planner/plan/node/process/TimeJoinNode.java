@@ -21,10 +21,10 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeIdAllocator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullPolicy;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.nio.ByteBuffer;
@@ -51,6 +51,9 @@ public class TimeJoinNode extends ProcessNode {
 
   private List<PlanNode> children;
 
+  // output columns' data type
+  private List<TSDataType> types;
+
   public TimeJoinNode(PlanNodeId id, OrderBy mergeOrder, FilterNullPolicy filterNullPolicy) {
     super(id);
     this.mergeOrder = mergeOrder;
@@ -74,8 +77,7 @@ public class TimeJoinNode extends ProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new TimeJoinNode(
-        PlanNodeIdAllocator.generateId(), this.mergeOrder, this.filterNullPolicy);
+    return new TimeJoinNode(getId(), this.mergeOrder, this.filterNullPolicy);
   }
 
   @Override
@@ -129,6 +131,10 @@ public class TimeJoinNode extends ProcessNode {
 
   public String toString() {
     return "TimeJoinNode-" + this.getId();
+  }
+
+  public List<TSDataType> getTypes() {
+    return types;
   }
 
   @TestOnly
