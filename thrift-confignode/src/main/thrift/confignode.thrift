@@ -21,116 +21,118 @@ include "rpc.thrift"
 namespace java org.apache.iotdb.confignode.rpc.thrift
 namespace py iotdb.thrift.confignode
 
+// TODO: using thrift-common
+struct TRegionReplicaSet {
+    1: required i32 regionId
+    2: required string groupType
+    3: required list<rpc.EndPoint> endpoint
+}
+
+struct TSeriesPartitionSlot {
+    1: required i32 slotId
+}
+
+struct TTimePartitionSlot {
+    1: required i64 startTime
+}
+
 // DataNode
-struct DataNodeRegisterReq {
+struct TDataNodeRegisterReq {
     1: required rpc.EndPoint endPoint
 }
 
-struct DataNodeRegisterResp {
+struct TGlobalConfig {
+    1: optional string consensusType
+    2: optional i32 seriesPartitionSlotNum
+    3: optional string seriesPartitionSlotExecutorClass
+}
+
+struct TDataNodeRegisterResp {
     1: required rpc.TSStatus status
     2: optional i32 dataNodeID
-    3: optional string consensusType
-    4: optional i32 seriesPartitionSlotNum
-    5: optional string seriesPartitionSlotExecutorClass
+    3: optional TGlobalConfig globalConfig
 }
 
-struct DataNodeMessageResp {
+struct TDataNodeMessageResp {
   1: required rpc.TSStatus status
-  // map<dataNodeId, DataNodeMessage>
-  2: optional map<i32, DataNodeMessage> dataNodeMessageMap
+  // map<DataNodeId, DataNodeMessage>
+  2: optional map<i32, TDataNodeMessage> dataNodeMessageMap
 }
 
-struct DataNodeMessage {
+struct TDataNodeMessage {
   1: required i32 dataNodeId
   2: required rpc.EndPoint endPoint
 }
 
 // StorageGroup
-struct SetStorageGroupReq {
+struct TSetStorageGroupReq {
     1: required string storageGroup
     2: optional i64 ttl
 }
 
-struct DeleteStorageGroupReq {
+struct TDeleteStorageGroupReq {
     1: required string storageGroup
 }
 
-struct StorageGroupMessageResp {
+struct TStorageGroupMessageResp {
   1: required rpc.TSStatus status
   // map<string, StorageGroupMessage>
-  2: optional map<string, StorageGroupMessage> storageGroupMessageMap
+  2: optional map<string, TStorageGroupMessage> storageGroupMessageMap
 }
 
-struct StorageGroupMessage {
+struct TStorageGroupMessage {
     1: required string storageGroup
-}
-
-// Region
-struct RegionMessage {
-    1: required i32 regionId
-    2: required list<rpc.EndPoint> endpoint
 }
 
 // Schema
-struct FetchSchemaPartitionReq {
-    // Full paths of devices
-    1: required list<string> devicePaths
+struct TSchemaPartitionReq {
+    1: required binary pathPatternTree
 }
 
-struct ApplySchemaPartitionReq {
-    1: required string storageGroup
-    2: required list<i32> seriesPartitionSlots
-}
-
-struct SchemaPartitionResp {
+struct TSchemaPartitionResp {
   1: required rpc.TSStatus status
-    // map<StorageGroupName, map<SeriesPartitionSlot, RegionMessage>>
-  2: optional map<string, map<i32, RegionMessage>> schemaRegionMap
+    // map<StorageGroupName, map<TSeriesPartitionSlot, TRegionReplicaSet>>
+  2: optional map<string, map<TSeriesPartitionSlot, TRegionReplicaSet>> schemaRegionMap
 }
 
 // Data
-struct FetchDataPartitionReq {
-    1: required map<i32, list<i64>> deviceGroupIDToStartTimeMap
+struct TDataPartitionReq {
+    // map<StorageGroupName, map<TSeriesPartitionSlot, list<TTimePartitionSlot>>>
+    1: required map<string, map<TSeriesPartitionSlot, list<TTimePartitionSlot>>> partitionSlotsMap
 }
 
-struct ApplyDataPartitionReq {
-    1: required string storageGroup
-    // map<SeriesPartitionSlot, list<TimePartitionSlot>>
-    2: required map<i32, list<i64>> seriesPartitionTimePartitionSlots
-}
-
-struct DataPartitionResp {
+struct TDataPartitionResp {
   1: required rpc.TSStatus status
-  // map<StorageGroupName, map<SeriesPartitionSlot, map<TimePartitionSlot, list<RegionMessage>>>>
-  2: required map<string, map<i32, map<i64, list<RegionMessage>>>> dataPartitionMap
+  // map<StorageGroupName, map<TSeriesPartitionSlot, map<TTimePartitionSlot, list<TRegionReplicaSet>>>>
+  2: optional map<string, map<TSeriesPartitionSlot, map<TTimePartitionSlot, list<TRegionReplicaSet>>>> dataPartitionMap
 }
 
 service ConfigIService {
 
   /* DataNode */
 
-  DataNodeRegisterResp registerDataNode(DataNodeRegisterReq req)
+  TDataNodeRegisterResp registerDataNode(TDataNodeRegisterReq req)
 
-  DataNodeMessageResp getDataNodesMessage(i32 dataNodeID)
+  TDataNodeMessageResp getDataNodesMessage(i32 dataNodeID)
 
   /* StorageGroup */
 
-  rpc.TSStatus setStorageGroup(SetStorageGroupReq req)
+  rpc.TSStatus setStorageGroup(TSetStorageGroupReq req)
 
-  rpc.TSStatus deleteStorageGroup(DeleteStorageGroupReq req)
+  rpc.TSStatus deleteStorageGroup(TDeleteStorageGroupReq req)
 
-  StorageGroupMessageResp getStorageGroupsMessage()
+  TStorageGroupMessageResp getStorageGroupsMessage()
 
   /* Schema */
 
-  SchemaPartitionResp fetchSchemaPartition(FetchSchemaPartitionReq req)
+  TSchemaPartitionResp getSchemaPartition(TSchemaPartitionReq req)
 
-  SchemaPartitionResp applySchemaPartition(ApplySchemaPartitionReq req)
+  TSchemaPartitionResp getOrCreateSchemaPartition(TSchemaPartitionReq req)
 
   /* Data */
 
-  DataPartitionResp fetchDataPartition(FetchDataPartitionReq req)
+  TDataPartitionResp getDataPartition(TDataPartitionReq req)
 
-  DataPartitionResp applyDataPartition(ApplyDataPartitionReq req)
+  TDataPartitionResp getOrCreateDataPartition(TDataPartitionReq req)
 
 }

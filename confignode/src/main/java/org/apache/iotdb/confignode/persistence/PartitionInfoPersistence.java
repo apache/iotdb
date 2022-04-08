@@ -65,7 +65,7 @@ public class PartitionInfoPersistence {
    * Get schema partition
    *
    * @param physicalPlan storageGroup and deviceGroupIDs
-   * @return Empty Data Set if does not exist
+   * @return SchemaPartitionDataSet
    */
   public DataSet getSchemaPartition(SchemaPartitionPlan physicalPlan) {
     SchemaPartitionDataSet schemaPartitionDataSet = new SchemaPartitionDataSet();
@@ -115,7 +115,7 @@ public class PartitionInfoPersistence {
       Map<Integer, List<Long>> partitionSlots = physicalPlan.getSeriesPartitionTimePartitionSlots();
       DataPartition dataPartitionInfo = new DataPartition();
       dataPartitionInfo.setDataPartitionMap(
-              dataPartition.getDataPartition(storageGroup, partitionSlots));
+          dataPartition.getDataPartition(storageGroup, partitionSlots));
       dataPartitionDataSet.setDataPartition(dataPartitionInfo);
     } finally {
       schemaPartitionReadWriteLock.readLock().unlock();
@@ -131,9 +131,9 @@ public class PartitionInfoPersistence {
       // allocate partition by storage group and device group id
       String storageGroup = physicalPlan.getStorageGroup();
       Map<Integer, RegionReplicaSet> schemaPartitionReplicaSets =
-              physicalPlan.getSchemaPartitionReplicaSets();
+          physicalPlan.getSchemaPartitionReplicaSets();
       schemaPartitionReplicaSets.forEach(
-              (key, value) -> schemaPartition.setSchemaRegionReplicaSet(storageGroup, key, value));
+          (key, value) -> schemaPartition.setSchemaRegionReplicaSet(storageGroup, key, value));
     } finally {
       schemaPartitionReadWriteLock.writeLock().unlock();
     }
@@ -154,11 +154,14 @@ public class PartitionInfoPersistence {
     return result;
   }
 
-  public Map<Integer, List<Long>> filterDataRegionNoAssignedPartitionSlots(String storageGroup, Map<Integer, List<Long>> seriesPartitionTimePartitionSlots) {
+  public Map<Integer, List<Long>> filterDataRegionNoAssignedPartitionSlots(
+      String storageGroup, Map<Integer, List<Long>> seriesPartitionTimePartitionSlots) {
     Map<Integer, List<Long>> result;
     dataPartitionReadWriteLock.readLock().lock();
     try {
-      result = dataPartition.filterDataRegionNoAssignedPartitionSlots(storageGroup, seriesPartitionTimePartitionSlots);
+      result =
+          dataPartition.filterDataRegionNoAssignedPartitionSlots(
+              storageGroup, seriesPartitionTimePartitionSlots);
     } finally {
       dataPartitionReadWriteLock.readLock().unlock();
     }

@@ -125,7 +125,7 @@ public class RegionInfoPersistence {
     try {
       if (storageGroupsMap.containsKey(storageGroup)) {
         List<ConsensusGroupId> dataRegionIds =
-                storageGroupsMap.get(storageGroup).getDataRegionGroupIds();
+            storageGroupsMap.get(storageGroup).getDataRegionGroupIds();
         for (ConsensusGroupId consensusGroupId : dataRegionIds) {
           dataRegionEndPoints.add(regionMap.get(consensusGroupId));
         }

@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.commons.partition;
 
-import java.util.*;
 import java.util.stream.Collectors;
 
 public class DataPartition {
@@ -38,20 +37,24 @@ public class DataPartition {
     this.dataPartitionMap = dataPartitionMap;
   }
 
-  public Map<String, Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>> getDataPartition(String storageGroup, Map<Integer, List<Long>> partitionSlots) {
-    Map<String, Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>> result = new HashMap<>();
+  public Map<String, Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>>
+      getDataPartition(String storageGroup, Map<Integer, List<Long>> partitionSlots) {
+    Map<String, Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>> result =
+        new HashMap<>();
     Map<SeriesPartitionSlot, RegionReplicaSet> deviceGroupMap = new HashMap<>();
     partitionSlots.forEach(
-            seriesPartitionSlot -> {
-              if (dataPartitionMap.get(storageGroup) != null
-                      && dataPartitionMap
-                      .get(storageGroup)
-                      .containsKey(new SeriesPartitionSlot(seriesPartitionSlot))) {
-                deviceGroupMap.put(
-                        new SeriesPartitionSlot(seriesPartitionSlot),
-                        schemaPartitionMap.get(storageGroup).get(new SeriesPartitionSlot(seriesPartitionSlot)));
-              }
-            });
+        seriesPartitionSlot -> {
+          if (dataPartitionMap.get(storageGroup) != null
+              && dataPartitionMap
+                  .get(storageGroup)
+                  .containsKey(new SeriesPartitionSlot(seriesPartitionSlot))) {
+            deviceGroupMap.put(
+                new SeriesPartitionSlot(seriesPartitionSlot),
+                schemaPartitionMap
+                    .get(storageGroup)
+                    .get(new SeriesPartitionSlot(seriesPartitionSlot)));
+          }
+        });
     storageGroupMap.put(storageGroup, deviceGroupMap);
     return result;
   }
@@ -104,7 +107,8 @@ public class DataPartition {
    * @param seriesPartitionTimePartitionSlots SeriesPartitionSlotIds and TimePartitionSlotIds
    * @return not assigned seriesPartitionSlots and TimePartitionSlots
    */
-  public Map<Integer, List<Long>> filterDataRegionNoAssignedPartitionSlots(String storageGroup, Map<Integer, List<Long>> seriesPartitionTimePartitionSlots) {
+  public Map<Integer, List<Long>> filterDataRegionNoAssignedPartitionSlots(
+      String storageGroup, Map<Integer, List<Long>> seriesPartitionTimePartitionSlots) {
     if (!dataPartitionMap.containsKey(storageGroup)) {
       return seriesPartitionTimePartitionSlots;
     }
@@ -113,12 +117,19 @@ public class DataPartition {
     for (int seriesPartitionSlotId : seriesPartitionTimePartitionSlots.keySet()) {
       SeriesPartitionSlot seriesPartitionSlot = new SeriesPartitionSlot(seriesPartitionSlotId);
       if (!dataPartitionMap.get(storageGroup).containsKey(seriesPartitionSlot)) {
-        result.put(seriesPartitionSlotId, seriesPartitionTimePartitionSlots.get(seriesPartitionSlotId));
+        result.put(
+            seriesPartitionSlotId, seriesPartitionTimePartitionSlots.get(seriesPartitionSlotId));
       } else {
-        for (long timePartitionSlotId : seriesPartitionTimePartitionSlots.get(seriesPartitionSlotId)) {
+        for (long timePartitionSlotId :
+            seriesPartitionTimePartitionSlots.get(seriesPartitionSlotId)) {
           TimePartitionSlot timePartitionSlot = new TimePartitionSlot(timePartitionSlotId);
-          if (!dataPartitionMap.get(storageGroup).get(seriesPartitionSlot).containsKey(timePartitionSlot)) {
-            result.computeIfAbsent(seriesPartitionSlotId, key -> new ArrayList<>()).add(timePartitionSlotId);
+          if (!dataPartitionMap
+              .get(storageGroup)
+              .get(seriesPartitionSlot)
+              .containsKey(timePartitionSlot)) {
+            result
+                .computeIfAbsent(seriesPartitionSlotId, key -> new ArrayList<>())
+                .add(timePartitionSlotId);
           }
         }
       }

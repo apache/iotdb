@@ -68,7 +68,8 @@ public class DataPartitionPlan extends PhysicalPlan {
     return dataPartitionReplicaSets;
   }
 
-  public void setDataPartitionReplicaSets(Map<Integer, Map<Long, List<RegionReplicaSet>>> dataPartitionReplicaSets) {
+  public void setDataPartitionReplicaSets(
+      Map<Integer, Map<Long, List<RegionReplicaSet>>> dataPartitionReplicaSets) {
     this.dataPartitionReplicaSets = dataPartitionReplicaSets;
   }
 
@@ -87,10 +88,12 @@ public class DataPartitionPlan extends PhysicalPlan {
     }
 
     buffer.putInt(dataPartitionReplicaSets.size());
-    for (Map.Entry<Integer, Map<Long, List<RegionReplicaSet>>> seriesPartitionSlotEntry : dataPartitionReplicaSets.entrySet()) {
+    for (Map.Entry<Integer, Map<Long, List<RegionReplicaSet>>> seriesPartitionSlotEntry :
+        dataPartitionReplicaSets.entrySet()) {
       buffer.putInt(seriesPartitionSlotEntry.getKey());
       buffer.putInt(seriesPartitionSlotEntry.getValue().size());
-      for (Map.Entry<Long, List<RegionReplicaSet>> timePartitionSlotEntry : seriesPartitionSlotEntry.getValue().entrySet()) {
+      for (Map.Entry<Long, List<RegionReplicaSet>> timePartitionSlotEntry :
+          seriesPartitionSlotEntry.getValue().entrySet()) {
         buffer.putLong(timePartitionSlotEntry.getKey());
         buffer.putInt(timePartitionSlotEntry.getValue().size());
         for (RegionReplicaSet regionReplicaSet : timePartitionSlotEntry.getValue()) {
@@ -129,7 +132,10 @@ public class DataPartitionPlan extends PhysicalPlan {
         for (int k = 0; k < listLength; k++) {
           RegionReplicaSet regionReplicaSet = new RegionReplicaSet();
           regionReplicaSet.deserializeImpl(buffer);
-          dataPartitionReplicaSets.get(seriesPartitionSlot).get(timePartitionSlot).add(regionReplicaSet);
+          dataPartitionReplicaSets
+              .get(seriesPartitionSlot)
+              .get(timePartitionSlot)
+              .add(regionReplicaSet);
         }
       }
     }

@@ -143,20 +143,21 @@ public class PartitionManager {
   public DataSet applyDataPartition(DataPartitionPlan physicalPlan) {
 
     String storageGroup = physicalPlan.getStorageGroup();
-    Map<Integer, List<Long>> seriesPartitionSlots = physicalPlan.getSeriesPartitionTimePartitionSlots();
+    Map<Integer, List<Long>> seriesPartitionSlots =
+        physicalPlan.getSeriesPartitionTimePartitionSlots();
     Map<Integer, List<Long>> noAssignedSeriesPartitionSlots =
-            partitionInfoPersistence.filterDataRegionNoAssignedPartitionSlots(
-                    storageGroup, seriesPartitionSlots);
+        partitionInfoPersistence.filterDataRegionNoAssignedPartitionSlots(
+            storageGroup, seriesPartitionSlots);
 
     if (noAssignedSeriesPartitionSlots.size() > 0) {
       // allocate partition by storage group and device group id
       Map<Integer, Map<Long, List<RegionReplicaSet>>> dataPartitionReplicaSets =
-              allocateDataPartition(storageGroup, noAssignedSeriesPartitionSlots);
+          allocateDataPartition(storageGroup, noAssignedSeriesPartitionSlots);
       physicalPlan.setDataPartitionReplicaSets(dataPartitionReplicaSets);
 
       ConsensusWriteResponse consensusWriteResponse = getConsensusManager().write(physicalPlan);
       if (consensusWriteResponse.getStatus().getCode()
-              == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.info("Allocate data partition to {}.", dataPartitionReplicaSets);
       }
     }
@@ -172,15 +173,20 @@ public class PartitionManager {
    * @param noAssignedSeriesPartitionSlots not assigned DataPartitionSlots
    * @return assign result
    */
-  private Map<Integer, Map<Long, List<RegionReplicaSet>>> allocateDataPartition(String storageGroup, Map<Integer, List<Long>> noAssignedSeriesPartitionSlots) {
+  private Map<Integer, Map<Long, List<RegionReplicaSet>>> allocateDataPartition(
+      String storageGroup, Map<Integer, List<Long>> noAssignedSeriesPartitionSlots) {
     List<RegionReplicaSet> dataRegionEndPoints =
-            RegionInfoPersistence.getInstance().getDataRegionEndPoint(storageGroup);
+        RegionInfoPersistence.getInstance().getDataRegionEndPoint(storageGroup);
     Random random = new Random();
     Map<Integer, Map<Long, List<RegionReplicaSet>>> dataPartitionReplicaSets = new HashMap<>();
-    for (Map.Entry<Integer, List<Long>> seriesPartitionEntry : noAssignedSeriesPartitionSlots.entrySet()) {
+    for (Map.Entry<Integer, List<Long>> seriesPartitionEntry :
+        noAssignedSeriesPartitionSlots.entrySet()) {
       dataPartitionReplicaSets.put(seriesPartitionEntry.getKey(), new HashMap<>());
       for (long timePartitionSlot : seriesPartitionEntry.getValue()) {
-        dataPartitionReplicaSets.get(seriesPartitionEntry.getKey()).computeIfAbsent(timePartitionSlot, key -> new ArrayList<>()).add(dataRegionEndPoints.get(random.nextInt(dataRegionEndPoints.size())));
+        dataPartitionReplicaSets
+            .get(seriesPartitionEntry.getKey())
+            .computeIfAbsent(timePartitionSlot, key -> new ArrayList<>())
+            .add(dataRegionEndPoints.get(random.nextInt(dataRegionEndPoints.size())));
       }
     }
     return dataPartitionReplicaSets;
