@@ -28,6 +28,7 @@ import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import jersey.repackaged.com.google.common.util.concurrent.SettableFuture;
+import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -104,6 +105,6 @@ public class ConfigExecution implements IQueryExecution {
   // Generate the corresponding IConfigTask by statement.
   // Each type of statement will has a ConfigTask
   private IConfigTask getTask(Statement statement) {
-    return null;
+    throw new NotImplementedException();
   }
 }
