@@ -18,28 +18,58 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner;
 
+import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
 import org.apache.iotdb.db.mpp.sql.optimization.PlanOptimizer;
 import org.apache.iotdb.db.mpp.sql.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeIdAllocator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AlterTimeSeriesNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AuthorNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateTimeSeriesNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.DeviceMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.FilterNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.FilterNullNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.GroupByLevelNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.LimitNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.OffsetNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.SortNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SourceNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.*;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.component.*;
 import org.apache.iotdb.db.mpp.sql.statement.crud.*;
+import org.apache.iotdb.db.mpp.sql.statement.component.FillComponent;
+import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullComponent;
+import org.apache.iotdb.db.mpp.sql.statement.component.GroupByLevelComponent;
+import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
+import org.apache.iotdb.db.mpp.sql.statement.component.ResultColumn;
+import org.apache.iotdb.db.mpp.sql.statement.crud.AggregationQueryStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.FillQueryStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.InsertRowStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.InsertTabletStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
+import org.apache.iotdb.db.mpp.sql.statement.sys.AuthorStatement;
+import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /** Generate a logical plan for the statement. */
 public class LogicalPlanner {
@@ -53,7 +83,7 @@ public class LogicalPlanner {
   }
 
   public LogicalQueryPlan plan(Analysis analysis) {
-    PlanNode rootNode = new LogicalPlanVisitor(analysis).process(analysis.getStatement());
+    PlanNode rootNode = new LogicalPlanVisitor(analysis).process(analysis.getStatement(), context);
 
     // optimize the query logical plan
     if (analysis.getStatement() instanceof QueryStatement) {
@@ -160,7 +190,7 @@ public class LogicalPlanner {
     public PlanNode visitCreateTimeseries(
         CreateTimeSeriesStatement createTimeSeriesStatement, MPPQueryContext context) {
       return new CreateTimeSeriesNode(
-          PlanNodeIdAllocator.generateId(),
+          context.getQueryId().genPlanNodeId(),
           createTimeSeriesStatement.getPath(),
           createTimeSeriesStatement.getDataType(),
           createTimeSeriesStatement.getEncoding(),
@@ -176,7 +206,7 @@ public class LogicalPlanner {
         CreateAlignedTimeSeriesStatement createAlignedTimeSeriesStatement,
         MPPQueryContext context) {
       return new CreateAlignedTimeSeriesNode(
-          PlanNodeIdAllocator.generateId(),
+          context.getQueryId().genPlanNodeId(),
           createAlignedTimeSeriesStatement.getDevicePath(),
           createAlignedTimeSeriesStatement.getMeasurements(),
           createAlignedTimeSeriesStatement.getDataTypes(),
@@ -192,7 +222,7 @@ public class LogicalPlanner {
     public PlanNode visitAlterTimeseries(
         AlterTimeSeriesStatement alterTimeSeriesStatement, MPPQueryContext context) {
       return new AlterTimeSeriesNode(
-          PlanNodeIdAllocator.generateId(),
+          context.getQueryId().genPlanNodeId(),
           alterTimeSeriesStatement.getPath(),
           alterTimeSeriesStatement.getAlterType(),
           alterTimeSeriesStatement.getAlterMap(),
@@ -213,7 +243,7 @@ public class LogicalPlanner {
                   insertTabletStatement.getDevicePath(),
                   Arrays.asList(insertTabletStatement.getMeasurements()));
       return new InsertTabletNode(
-          PlanNodeIdAllocator.generateId(),
+          context.getQueryId().genPlanNodeId(),
           insertTabletStatement.getDevicePath(),
           insertTabletStatement.isAligned(),
           measurementSchemas.toArray(new MeasurementSchema[0]),
@@ -235,13 +265,131 @@ public class LogicalPlanner {
                   insertRowStatement.getDevicePath(),
                   Arrays.asList(insertRowStatement.getMeasurements()));
       return new InsertRowNode(
-          PlanNodeIdAllocator.generateId(),
+          context.getQueryId().genPlanNodeId(),
           insertRowStatement.getDevicePath(),
           insertRowStatement.isAligned(),
           measurementSchemas.toArray(new MeasurementSchema[0]),
           insertRowStatement.getDataTypes(),
           insertRowStatement.getTime(),
           insertRowStatement.getValues());
+    }
+
+    @Override
+    public PlanNode visitCreateUser(AuthorStatement authorStatement, MPPQueryContext context) {
+      return getNewAuthorNode(authorStatement, context);
+    }
+
+    @Override
+    public PlanNode visitCreateRole(AuthorStatement authorStatement, MPPQueryContext context) {
+      return getNewAuthorNode(authorStatement, context);
+    }
+
+    @Override
+    public PlanNode visitAlterUser(AuthorStatement authorStatement, MPPQueryContext context) {
+      return getNewAuthorNode(authorStatement, context);
+    }
+
+    @Override
+    public PlanNode visitGrantUser(AuthorStatement authorStatement, MPPQueryContext context) {
+      return getNewAuthorNode(authorStatement, context);
+    }
+
+    @Override
+    public PlanNode visitGrantRole(AuthorStatement authorStatement, MPPQueryContext context) {
+      return getNewAuthorNode(authorStatement, context);
+    }
+
+    @Override
+    public PlanNode visitGrantRoleToUser(AuthorStatement authorStatement, MPPQueryContext context) {
+      return getNewAuthorNode(authorStatement, context);
+    }
+
+    @Override
+    public PlanNode visitRevokeUser(AuthorStatement authorStatement, MPPQueryContext context) {
+      return getNewAuthorNode(authorStatement, context);
+    }
+
+    @Override
+    public PlanNode visitRevokeRole(AuthorStatement authorStatement, MPPQueryContext context) {
+      return getNewAuthorNode(authorStatement, context);
+    }
+
+    @Override
+    public PlanNode visitRevokeRoleFromUser(
+        AuthorStatement authorStatement, MPPQueryContext context) {
+      return getNewAuthorNode(authorStatement, context);
+    }
+
+    @Override
+    public PlanNode visitDropUser(AuthorStatement authorStatement, MPPQueryContext context) {
+      return getNewAuthorNode(authorStatement, context);
+    }
+
+    @Override
+    public PlanNode visitDropRole(AuthorStatement authorStatement, MPPQueryContext context) {
+      return getNewAuthorNode(authorStatement, context);
+    }
+
+    @Override
+    public PlanNode visitListUser(AuthorStatement authorStatement, MPPQueryContext context) {
+      return getNewAuthorNode(authorStatement, context);
+    }
+
+    @Override
+    public PlanNode visitListRole(AuthorStatement authorStatement, MPPQueryContext context) {
+      return getNewAuthorNode(authorStatement, context);
+    }
+
+    @Override
+    public PlanNode visitListPrivilegesUser(
+        AuthorStatement authorStatement, MPPQueryContext context) {
+      return getNewAuthorNode(authorStatement, context);
+    }
+
+    @Override
+    public PlanNode visitListPrivilegesRole(
+        AuthorStatement authorStatement, MPPQueryContext context) {
+      return getNewAuthorNode(authorStatement, context);
+    }
+
+    @Override
+    public PlanNode visitListUserPrivileges(
+        AuthorStatement authorStatement, MPPQueryContext context) {
+      return getNewAuthorNode(authorStatement, context);
+    }
+
+    @Override
+    public PlanNode visitListRolePrivileges(
+        AuthorStatement authorStatement, MPPQueryContext context) {
+      return getNewAuthorNode(authorStatement, context);
+    }
+
+    @Override
+    public PlanNode visitListAllRoleOfUser(
+        AuthorStatement authorStatement, MPPQueryContext context) {
+      return getNewAuthorNode(authorStatement, context);
+    }
+
+    @Override
+    public PlanNode visitListAllUserOfRole(
+        AuthorStatement authorStatement, MPPQueryContext context) {
+      return getNewAuthorNode(authorStatement, context);
+    }
+
+    public AuthorNode getNewAuthorNode(AuthorStatement authorStatement, MPPQueryContext context) {
+      try {
+        return new AuthorNode(
+            context.getQueryId().genPlanNodeId(),
+            authorStatement.getAuthorType(),
+            authorStatement.getUserName(),
+            authorStatement.getRoleName(),
+            authorStatement.getPassWord(),
+            authorStatement.getNewPassword(),
+            authorStatement.getPrivilegeList(),
+            authorStatement.getNodeName());
+      } catch (AuthException e) {
+        return null;
+      }
     }
   }
 }

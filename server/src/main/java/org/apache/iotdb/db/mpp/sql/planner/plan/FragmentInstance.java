@@ -28,6 +28,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.sink.FragmentSinkNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.nio.ByteBuffer;
 
@@ -39,6 +40,8 @@ public class FragmentInstance implements IConsensusRequest {
   // The DataRegion where the FragmentInstance should run
   private RegionReplicaSet dataRegion;
   private Endpoint hostEndpoint;
+
+  private Filter timeFilter;
 
   // We can add some more params for a specific FragmentInstance
   // So that we can make different FragmentInstance owns different data range.
@@ -82,9 +85,15 @@ public class FragmentInstance implements IConsensusRequest {
       FragmentSinkNode sink = (FragmentSinkNode) root;
       return String.format(
           "(%s, %s, %s)",
-          sink.getDownStreamEndpoint(), sink.getDownStreamInstanceId(), sink.getDownStreamNode());
+          sink.getDownStreamEndpoint(),
+          sink.getDownStreamInstanceId(),
+          sink.getDownStreamPlanNodeId());
     }
     return "<No downstream>";
+  }
+
+  public Filter getTimeFilter() {
+    return timeFilter;
   }
 
   public String toString() {

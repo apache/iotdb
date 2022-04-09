@@ -20,8 +20,8 @@ package org.apache.iotdb.db.mpp.operator.source;
 
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.mpp.operator.Operator;
 import org.apache.iotdb.db.mpp.operator.OperatorContext;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -29,19 +29,19 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import java.io.IOException;
 import java.util.Set;
 
-public class SeriesScanOperator implements Operator {
+public class SeriesScanOperator implements SourceOperator {
 
   private final OperatorContext operatorContext;
   private final SeriesScanUtil seriesScanUtil;
   private TsBlock tsBlock;
   private boolean hasCachedTsBlock = false;
+  private boolean finished = false;
 
   public SeriesScanOperator(
       PartialPath seriesPath,
       Set<String> allSensors,
       TSDataType dataType,
       OperatorContext context,
-      QueryDataSource dataSource,
       Filter timeFilter,
       Filter valueFilter,
       boolean ascending) {
@@ -52,7 +52,6 @@ public class SeriesScanOperator implements Operator {
             allSensors,
             dataType,
             context.getInstanceContext(),
-            dataSource,
             timeFilter,
             valueFilter,
             ascending);
@@ -64,47 +63,56 @@ public class SeriesScanOperator implements Operator {
   }
 
   @Override
-  public TsBlock next() throws IOException {
+  public TsBlock next() {
     if (hasCachedTsBlock || hasNext()) {
       hasCachedTsBlock = false;
       return tsBlock;
     }
-    throw new IOException("no next batch");
+    throw new IllegalStateException("no next batch");
   }
 
   @Override
-  public boolean hasNext() throws IOException {
+  public boolean hasNext() {
 
-    if (hasCachedTsBlock) {
-      return true;
-    }
+    try {
+      if (hasCachedTsBlock) {
+        return true;
+      }
 
-    /*
-     * consume page data firstly
-     */
-    if (readPageData()) {
-      hasCachedTsBlock = true;
-      return true;
-    }
+      /*
+       * consume page data firstly
+       */
+      if (readPageData()) {
+        hasCachedTsBlock = true;
+        return true;
+      }
 
-    /*
-     * consume chunk data secondly
-     */
-    if (readChunkData()) {
-      hasCachedTsBlock = true;
-      return true;
-    }
-
-    /*
-     * consume next file finally
-     */
-    while (seriesScanUtil.hasNextFile()) {
+      /*
+       * consume chunk data secondly
+       */
       if (readChunkData()) {
         hasCachedTsBlock = true;
         return true;
       }
+
+      /*
+       * consume next file finally
+       */
+      while (seriesScanUtil.hasNextFile()) {
+        if (readChunkData()) {
+          hasCachedTsBlock = true;
+          return true;
+        }
+      }
+      return hasCachedTsBlock;
+    } catch (IOException e) {
+      throw new RuntimeException("Error happened while scanning the file", e);
     }
-    return hasCachedTsBlock;
+  }
+
+  @Override
+  public boolean isFinished() throws IOException {
+    return finished || (finished = hasNext());
   }
 
   private boolean readChunkData() throws IOException {
@@ -128,5 +136,15 @@ public class SeriesScanOperator implements Operator {
 
   private boolean isEmpty(TsBlock tsBlock) {
     return tsBlock == null || tsBlock.isEmpty();
+  }
+
+  @Override
+  public PlanNodeId getSourceId() {
+    return null;
+  }
+
+  @Override
+  public void initQueryDataSource(QueryDataSource dataSource) {
+    seriesScanUtil.initQueryDataSource(dataSource);
   }
 }

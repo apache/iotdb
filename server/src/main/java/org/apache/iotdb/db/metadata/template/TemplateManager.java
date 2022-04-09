@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.metadata.template;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.DuplicatedTemplateException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -307,7 +307,7 @@ public class TemplateManager {
   }
 
   public void markSchemaRegion(
-      Template template, String storageGroup, ConsensusGroupId schemaRegionId) {
+      Template template, String storageGroup, SchemaRegionId schemaRegionId) {
     synchronized (templateUsageInStorageGroup) {
       if (!templateUsageInStorageGroup.containsKey(storageGroup)) {
         templateUsageInStorageGroup.putIfAbsent(
@@ -319,7 +319,7 @@ public class TemplateManager {
   }
 
   public void unmarkSchemaRegion(
-      Template template, String storageGroup, ConsensusGroupId schemaRegionId) {
+      Template template, String storageGroup, SchemaRegionId schemaRegionId) {
     Set<Template> usageInStorageGroup = templateUsageInStorageGroup.get(storageGroup);
     usageInStorageGroup.remove(template);
     synchronized (templateUsageInStorageGroup) {
@@ -328,6 +328,13 @@ public class TemplateManager {
       }
     }
     template.unmarkSchemaRegion(storageGroup, schemaRegionId);
+  }
+
+  public void unmarkStorageGroup(Template template, String storageGroup) {
+    synchronized (templateUsageInStorageGroup) {
+      templateUsageInStorageGroup.remove(storageGroup);
+    }
+    template.unmarkStorageGroup(storageGroup);
   }
 
   public void forceLog() {
