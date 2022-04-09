@@ -31,8 +31,8 @@ import org.apache.iotdb.confignode.physical.sys.AuthorPlan;
 import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
 import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.physical.sys.SetStorageGroupPlan;
-import org.apache.iotdb.confignode.rpc.thrift.AuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
+import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeMessage;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeMessageResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
@@ -46,6 +46,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupMessage;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupMessageResp;
+import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
@@ -179,31 +180,6 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
     // req.getDeviceGroupIDs());
     //    DataSet dataSet = configManager.getSchemaPartition(querySchemaPartitionPlan);
     //    return ((SchemaPartitionDataSet) dataSet).convertRpcSchemaPartitionInfo();
-  }
-  
-  public TSStatus operatePermission(AuthorizerReq req) throws TException {
-    if (req.getAuthorType() < 0 || req.getAuthorType() >= PhysicalPlanType.values().length) {
-      throw new IndexOutOfBoundsException("Invalid ordinal");
-    }
-    AuthorPlan plan = null;
-    try {
-      plan =
-          new AuthorPlan(
-              PhysicalPlanType.values()[req.getAuthorType()],
-              req.getUserName(),
-              req.getRoleName(),
-              req.getPassword(),
-              req.getNewPassword(),
-              req.getPermissions(),
-              req.getNodeName());
-    } catch (AuthException e) {
-      LOGGER.error(e.getMessage());
-    }
-    return configManager.operatePermission(plan);
-  }
-
-  @Override
-  public DataPartitionInfo applyDataPartition(GetDataPartitionReq req) throws TException {
     return null;
   }
 
@@ -261,6 +237,28 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
     }
 
     return resp;
+  }
+
+  @Override
+  public TSStatus operatePermission(TAuthorizerReq req) throws TException {
+    if (req.getAuthorType() < 0 || req.getAuthorType() >= PhysicalPlanType.values().length) {
+      throw new IndexOutOfBoundsException("Invalid ordinal");
+    }
+    AuthorPlan plan = null;
+    try {
+      plan =
+          new AuthorPlan(
+              PhysicalPlanType.values()[req.getAuthorType()],
+              req.getUserName(),
+              req.getRoleName(),
+              req.getPassword(),
+              req.getNewPassword(),
+              req.getPermissions(),
+              req.getNodeName());
+    } catch (AuthException e) {
+      LOGGER.error(e.getMessage());
+    }
+    return configManager.operatePermission(plan);
   }
 
   public void handleClientExit() {}

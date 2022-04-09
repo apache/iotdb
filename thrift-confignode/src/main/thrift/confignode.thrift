@@ -107,7 +107,8 @@ struct TDataPartitionResp {
   2: optional map<string, map<TSeriesPartitionSlot, map<TTimePartitionSlot, list<TRegionReplicaSet>>>> dataPartitionMap
 }
 
-struct AuthorizerReq{
+// Authorize
+struct TAuthorizerReq {
     1: required i32 authorType
     2: required string userName
     3: required string roleName
@@ -116,6 +117,7 @@ struct AuthorizerReq{
     6: required set<i32> permissions
     7: required string nodeName
 }
+
 service ConfigIService {
 
   /* DataNode */
@@ -144,6 +146,7 @@ service ConfigIService {
 
   TDataPartitionResp getOrCreateDataPartition(TDataPartitionReq req)
 
-  rpc.TSStatus operatePermission(AuthorizerReq req)
+  /* Authorize */
+  rpc.TSStatus operatePermission(TAuthorizerReq req)
 
 }
