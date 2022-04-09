@@ -28,6 +28,7 @@ import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
 import org.apache.iotdb.db.mpp.sql.parser.StatementGenerator;
 import org.apache.iotdb.db.mpp.sql.planner.LogicalPlanner;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AlterTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AuthorNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
@@ -44,6 +45,7 @@ import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import java.nio.ByteBuffer;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -216,6 +218,15 @@ public class LogicalPlannerTest {
             }
           },
           createAlignedTimeSeriesNode.getTagsList());
+
+      // Test serialize and deserialize
+      ByteBuffer byteBuffer = ByteBuffer.allocate(1000);
+      createAlignedTimeSeriesNode.serialize(byteBuffer);
+      byteBuffer.flip();
+
+      CreateAlignedTimeSeriesNode createAlignedTimeSeriesNode1 =
+          (CreateAlignedTimeSeriesNode) PlanNodeType.deserialize(byteBuffer);
+      Assert.assertTrue(createAlignedTimeSeriesNode.equals(createAlignedTimeSeriesNode1));
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
@@ -238,6 +249,15 @@ public class LogicalPlannerTest {
             }
           },
           alterTimeSeriesNode.getAlterMap());
+
+      // Test serialize and deserialize
+      ByteBuffer byteBuffer = ByteBuffer.allocate(1000);
+      alterTimeSeriesNode.serialize(byteBuffer);
+      byteBuffer.flip();
+
+      AlterTimeSeriesNode alterTimeSeriesNode1 =
+          (AlterTimeSeriesNode) PlanNodeType.deserialize(byteBuffer);
+      Assert.assertTrue(alterTimeSeriesNode.equals(alterTimeSeriesNode1));
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
@@ -258,6 +278,15 @@ public class LogicalPlannerTest {
             }
           },
           alterTimeSeriesNode.getAlterMap());
+
+      // Test serialize and deserialize
+      ByteBuffer byteBuffer = ByteBuffer.allocate(1000);
+      alterTimeSeriesNode.serialize(byteBuffer);
+      byteBuffer.flip();
+
+      AlterTimeSeriesNode alterTimeSeriesNode1 =
+          (AlterTimeSeriesNode) PlanNodeType.deserialize(byteBuffer);
+      Assert.assertTrue(alterTimeSeriesNode.equals(alterTimeSeriesNode1));
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
@@ -278,6 +307,15 @@ public class LogicalPlannerTest {
             }
           },
           alterTimeSeriesNode.getAlterMap());
+
+      // Test serialize and deserialize
+      ByteBuffer byteBuffer = ByteBuffer.allocate(1000);
+      alterTimeSeriesNode.serialize(byteBuffer);
+      byteBuffer.flip();
+
+      AlterTimeSeriesNode alterTimeSeriesNode1 =
+          (AlterTimeSeriesNode) PlanNodeType.deserialize(byteBuffer);
+      Assert.assertTrue(alterTimeSeriesNode.equals(alterTimeSeriesNode1));
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
@@ -298,6 +336,15 @@ public class LogicalPlannerTest {
             }
           },
           alterTimeSeriesNode.getAlterMap());
+
+      // Test serialize and deserialize
+      ByteBuffer byteBuffer = ByteBuffer.allocate(1000);
+      alterTimeSeriesNode.serialize(byteBuffer);
+      byteBuffer.flip();
+
+      AlterTimeSeriesNode alterTimeSeriesNode1 =
+          (AlterTimeSeriesNode) PlanNodeType.deserialize(byteBuffer);
+      Assert.assertTrue(alterTimeSeriesNode.equals(alterTimeSeriesNode1));
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
@@ -318,6 +365,15 @@ public class LogicalPlannerTest {
             }
           },
           alterTimeSeriesNode.getAlterMap());
+
+      // Test serialize and deserialize
+      ByteBuffer byteBuffer = ByteBuffer.allocate(1000);
+      alterTimeSeriesNode.serialize(byteBuffer);
+      byteBuffer.flip();
+
+      AlterTimeSeriesNode alterTimeSeriesNode1 =
+          (AlterTimeSeriesNode) PlanNodeType.deserialize(byteBuffer);
+      Assert.assertTrue(alterTimeSeriesNode.equals(alterTimeSeriesNode1));
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
@@ -347,6 +403,15 @@ public class LogicalPlannerTest {
             }
           },
           alterTimeSeriesNode.getAttributesMap());
+
+      // Test serialize and deserialize
+      ByteBuffer byteBuffer = ByteBuffer.allocate(1000);
+      alterTimeSeriesNode.serialize(byteBuffer);
+      byteBuffer.flip();
+
+      AlterTimeSeriesNode alterTimeSeriesNode1 =
+          (AlterTimeSeriesNode) PlanNodeType.deserialize(byteBuffer);
+      Assert.assertTrue(alterTimeSeriesNode.equals(alterTimeSeriesNode1));
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();

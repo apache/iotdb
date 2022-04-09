@@ -128,7 +128,9 @@ public class LocalExecutionPlanner {
       boolean ascending = node.getScanOrder() == OrderBy.TIMESTAMP_ASC;
       OperatorContext operatorContext =
           context.instanceContext.addOperatorContext(
-              context.getNextOperatorId(), node.getId(), SeriesScanOperator.class.getSimpleName());
+              context.getNextOperatorId(),
+              node.getPlanNodeId(),
+              SeriesScanOperator.class.getSimpleName());
 
       SeriesScanOperator seriesScanOperator =
           new SeriesScanOperator(
@@ -186,7 +188,9 @@ public class LocalExecutionPlanner {
       Operator child = node.getChild().accept(this, context);
       return new LimitOperator(
           context.instanceContext.addOperatorContext(
-              context.getNextOperatorId(), node.getId(), LimitOperator.class.getSimpleName()),
+              context.getNextOperatorId(),
+              node.getPlanNodeId(),
+              LimitOperator.class.getSimpleName()),
           node.getLimit(),
           child);
     }
@@ -215,7 +219,9 @@ public class LocalExecutionPlanner {
               .collect(Collectors.toList());
       OperatorContext operatorContext =
           context.instanceContext.addOperatorContext(
-              context.getNextOperatorId(), node.getId(), TimeJoinOperator.class.getSimpleName());
+              context.getNextOperatorId(),
+              node.getPlanNodeId(),
+              TimeJoinOperator.class.getSimpleName());
       return new TimeJoinOperator(operatorContext, children, node.getMergeOrder(), node.getTypes());
     }
 

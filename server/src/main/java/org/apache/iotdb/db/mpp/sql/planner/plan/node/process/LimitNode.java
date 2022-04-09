@@ -59,7 +59,7 @@ public class LimitNode extends ProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new LimitNode(getId(), this.limit);
+    return new LimitNode(getPlanNodeId(), this.limit);
   }
 
   @Override
@@ -97,12 +97,12 @@ public class LimitNode extends ProcessNode {
   }
 
   public String toString() {
-    return "LimitNode-" + this.getId();
+    return "LimitNode-" + this.getPlanNodeId();
   }
 
   @TestOnly
   public Pair<String, List<String>> print() {
-    String title = String.format("[LimitNode (%s)]", this.getId());
+    String title = String.format("[LimitNode (%s)]", this.getPlanNodeId());
     List<String> attributes = new ArrayList<>();
     attributes.add("RowLimit: " + this.getLimit());
     return new Pair<>(title, attributes);

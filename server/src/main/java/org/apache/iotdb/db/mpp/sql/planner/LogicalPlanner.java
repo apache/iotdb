@@ -286,7 +286,6 @@ public class LogicalPlanner {
           createAlignedTimeSeriesStatement.getCompressors(),
           createAlignedTimeSeriesStatement.getAliasList(),
           createAlignedTimeSeriesStatement.getTagsList(),
-          createAlignedTimeSeriesStatement.getTagOffsets(),
           createAlignedTimeSeriesStatement.getAttributesList());
     }
 
