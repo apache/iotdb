@@ -45,6 +45,7 @@ import org.apache.iotdb.db.mpp.sql.statement.crud.*;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.sys.AuthorStatement;
 
 import java.util.*;
 
@@ -220,6 +221,146 @@ public class Analyzer {
     }
 
     @Override
+    public Analysis visitCreateUser(AuthorStatement authorStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(authorStatement);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitCreateRole(AuthorStatement authorStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(authorStatement);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitAlterUser(AuthorStatement authorStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(authorStatement);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitGrantUser(AuthorStatement authorStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(authorStatement);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitGrantRole(AuthorStatement authorStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(authorStatement);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitGrantRoleToUser(AuthorStatement authorStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(authorStatement);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitRevokeUser(AuthorStatement authorStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(authorStatement);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitRevokeRole(AuthorStatement authorStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(authorStatement);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitRevokeRoleFromUser(
+        AuthorStatement authorStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(authorStatement);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitDropUser(AuthorStatement authorStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(authorStatement);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitDropRole(AuthorStatement authorStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(authorStatement);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitListUser(AuthorStatement authorStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(authorStatement);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitListRole(AuthorStatement authorStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(authorStatement);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitListPrivilegesUser(
+        AuthorStatement authorStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(authorStatement);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitListPrivilegesRole(
+        AuthorStatement authorStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(authorStatement);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitListUserPrivileges(
+        AuthorStatement authorStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(authorStatement);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitListRolePrivileges(
+        AuthorStatement authorStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(authorStatement);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitListAllRoleOfUser(
+        AuthorStatement authorStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(authorStatement);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitListAllUserOfRole(
+        AuthorStatement authorStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(authorStatement);
+      return analysis;
+    }
+
+    @Override
     public Analysis visitInsertRow(InsertRowStatement insertRowStatement, MPPQueryContext context) {
       DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
       dataPartitionQueryParam.setDevicePath(insertRowStatement.getDevicePath().getFullPath());
@@ -252,6 +393,7 @@ public class Analyzer {
       analysis.setStatement(insertRowStatement);
       analysis.setDataPartitionInfo(partitionInfo.getDataPartitionInfo());
       analysis.setSchemaPartitionInfo(partitionInfo.getSchemaPartitionInfo());
+
       return analysis;
     }
 
@@ -304,6 +446,7 @@ public class Analyzer {
       analysis.setStatement(insertRowsStatement);
       analysis.setDataPartitionInfo(partitionInfo.getDataPartitionInfo());
       analysis.setSchemaPartitionInfo(partitionInfo.getSchemaPartitionInfo());
+
       return analysis;
     }
 
@@ -349,6 +492,7 @@ public class Analyzer {
       analysis.setStatement(insertMultiTabletStatement);
       analysis.setDataPartitionInfo(partitionInfo.getDataPartitionInfo());
       analysis.setSchemaPartitionInfo(partitionInfo.getSchemaPartitionInfo());
+
       return analysis;
     }
 
@@ -396,6 +540,7 @@ public class Analyzer {
       analysis.setStatement(insertRowsOfOneDeviceStatement);
       analysis.setDataPartitionInfo(partitionInfo.getDataPartitionInfo());
       analysis.setSchemaPartitionInfo(partitionInfo.getSchemaPartitionInfo());
+
       return analysis;
     }
   }

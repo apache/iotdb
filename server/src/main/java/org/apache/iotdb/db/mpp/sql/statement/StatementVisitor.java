@@ -23,6 +23,7 @@ import org.apache.iotdb.db.mpp.sql.statement.crud.*;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.sys.AuthorStatement;
 
 /**
  * This class provides a visitor of {@link org.apache.iotdb.db.mpp.sql.statement.StatementNode},
@@ -79,6 +80,103 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitInsertTablet(InsertTabletStatement insertTabletStatement, C context) {
     return visitStatement(insertTabletStatement, context);
+  }
+
+  /** Data Control Language (DCL) */
+
+  // Create User
+  public R visitCreateUser(AuthorStatement authorStatement, C context) {
+    return visitStatement(authorStatement, context);
+  }
+
+  // Create Role
+  public R visitCreateRole(AuthorStatement authorStatement, C context) {
+    return visitStatement(authorStatement, context);
+  }
+
+  // Alter Password
+  public R visitAlterUser(AuthorStatement authorStatement, C context) {
+    return visitStatement(authorStatement, context);
+  }
+
+  // Grant User Privileges
+  public R visitGrantUser(AuthorStatement authorStatement, C context) {
+    return visitStatement(authorStatement, context);
+  }
+
+  // Grant Role Privileges
+  public R visitGrantRole(AuthorStatement authorStatement, C context) {
+    return visitStatement(authorStatement, context);
+  }
+
+  // Grant User Role
+  public R visitGrantRoleToUser(AuthorStatement authorStatement, C context) {
+    return visitStatement(authorStatement, context);
+  }
+
+  // Revoke User Privileges
+  public R visitRevokeUser(AuthorStatement authorStatement, C context) {
+    return visitStatement(authorStatement, context);
+  }
+
+  // Revoke Role Privileges
+  public R visitRevokeRole(AuthorStatement authorStatement, C context) {
+    return visitStatement(authorStatement, context);
+  }
+
+  // Revoke Role From User
+  public R visitRevokeRoleFromUser(AuthorStatement authorStatement, C context) {
+    return visitStatement(authorStatement, context);
+  }
+
+  // Drop User
+  public R visitDropUser(AuthorStatement authorStatement, C context) {
+    return visitStatement(authorStatement, context);
+  }
+
+  // Drop Role
+  public R visitDropRole(AuthorStatement authorStatement, C context) {
+    return visitStatement(authorStatement, context);
+  }
+
+  // List Users
+  public R visitListUser(AuthorStatement authorStatement, C context) {
+    return visitStatement(authorStatement, context);
+  }
+
+  // List Roles
+  public R visitListRole(AuthorStatement authorStatement, C context) {
+    return visitStatement(authorStatement, context);
+  }
+
+  // List Privileges
+  public R visitListPrivilegesUser(AuthorStatement authorStatement, C context) {
+    return visitStatement(authorStatement, context);
+  }
+
+  // List Privileges of Roles On Specific Path
+  public R visitListPrivilegesRole(AuthorStatement authorStatement, C context) {
+    return visitStatement(authorStatement, context);
+  }
+
+  // List Privileges of Users
+  public R visitListUserPrivileges(AuthorStatement authorStatement, C context) {
+    return visitStatement(authorStatement, context);
+  }
+
+  // List Privileges of Roles
+  public R visitListRolePrivileges(AuthorStatement authorStatement, C context) {
+    return visitStatement(authorStatement, context);
+  }
+
+  // List Roles of Users
+  public R visitListAllRoleOfUser(AuthorStatement authorStatement, C context) {
+    return visitStatement(authorStatement, context);
+  }
+
+  // List Users of Role
+  public R visitListAllUserOfRole(AuthorStatement authorStatement, C context) {
+    return visitStatement(authorStatement, context);
   }
 
   public R visitInsertRow(InsertRowStatement insertRowStatement, C context) {

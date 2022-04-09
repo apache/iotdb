@@ -77,7 +77,7 @@ public class TimeJoinNode extends ProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new TimeJoinNode(getId(), this.mergeOrder, this.filterNullPolicy);
+    return new TimeJoinNode(getPlanNodeId(), this.mergeOrder, this.filterNullPolicy);
   }
 
   @Override
@@ -130,7 +130,7 @@ public class TimeJoinNode extends ProcessNode {
   }
 
   public String toString() {
-    return "TimeJoinNode-" + this.getId();
+    return "TimeJoinNode-" + this.getPlanNodeId();
   }
 
   public List<TSDataType> getTypes() {
@@ -139,7 +139,7 @@ public class TimeJoinNode extends ProcessNode {
 
   @TestOnly
   public Pair<String, List<String>> print() {
-    String title = String.format("[TimeJoinNode (%s)]", this.getId());
+    String title = String.format("[TimeJoinNode (%s)]", this.getPlanNodeId());
     List<String> attributes = new ArrayList<>();
     attributes.add("MergeOrder: " + (this.getMergeOrder() == null ? "null" : this.getMergeOrder()));
     attributes.add(

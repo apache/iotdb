@@ -153,7 +153,7 @@ public class SeriesAggregateScanNode extends SourceNode {
 
   @TestOnly
   public Pair<String, List<String>> print() {
-    String title = String.format("[SeriesAggregateScanNode (%s)]", this.getId());
+    String title = String.format("[SeriesAggregateScanNode (%s)]", this.getPlanNodeId());
     List<String> attributes = new ArrayList<>();
     attributes.add("AggregateFunction: " + this.getExpressionString());
     return new Pair<>(title, attributes);
