@@ -28,6 +28,8 @@ public class Endpoint {
   private String ip;
   private int port;
 
+  public Endpoint() {}
+
   public Endpoint(String ip, int port) {
     this.ip = ip;
     this.port = port;

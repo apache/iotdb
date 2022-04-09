@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.mpp.common;
 
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
-
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;

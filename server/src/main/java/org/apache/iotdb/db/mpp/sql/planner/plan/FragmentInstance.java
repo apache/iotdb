@@ -27,9 +27,9 @@ import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.sink.FragmentSinkNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public class FragmentInstance implements IConsensusRequest {
@@ -122,7 +122,7 @@ public class FragmentInstance implements IConsensusRequest {
 
   /** TODO need to be implemented */
   public static FragmentInstance deserializeFrom(ByteBuffer byteBuffer)
-      throws IllegalPathException {
+      throws IllegalPathException, IOException {
     FragmentInstance fragmentInstance =
         new FragmentInstance(PlanFragment.deserialize(byteBuffer), byteBuffer.getInt());
     fragmentInstance.setRegionReplicaSet(RegionReplicaSet.deserializeImpl(byteBuffer));

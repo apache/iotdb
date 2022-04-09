@@ -20,8 +20,7 @@
 package org.apache.iotdb.db.service;
 
 import org.apache.iotdb.commons.cluster.Endpoint;
-import org.apache.iotdb.commons.consensus.ConsensusGroupId;
-import org.apache.iotdb.commons.consensus.GroupType;
+import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.partition.DataNodeLocation;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -98,8 +97,8 @@ public class InternalServiceImplTest {
     dataNodeList.add(new DataNodeLocation(6669, new Endpoint("0.0.0.0", 6669)));
 
     // construct fragmentInstance
-    ConsensusGroupId consensusGroupId = new ConsensusGroupId(GroupType.SchemaRegion, 1);
-    RegionReplicaSet regionReplicaSet = new RegionReplicaSet(consensusGroupId, dataNodeList);
+    SchemaRegionId schemaRegionId = new SchemaRegionId(0);
+    RegionReplicaSet regionReplicaSet = new RegionReplicaSet(schemaRegionId, dataNodeList);
     PlanFragment planFragment = new PlanFragment(new PlanFragmentId("2", 3), createTimeSeriesNode);
     FragmentInstance fragmentInstance = new FragmentInstance(planFragment, 4);
     fragmentInstance.setRegionReplicaSet(regionReplicaSet);

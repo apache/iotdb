@@ -89,7 +89,8 @@ public class RegionReplicaSet {
       return false;
     }
     RegionReplicaSet that = (RegionReplicaSet) o;
-    return Objects.equals(consensusGroupId, that.consensusGroupId) && Objects.equals(dataNodeList, that.dataNodeList);
+    return Objects.equals(consensusGroupId, that.consensusGroupId)
+        && Objects.equals(dataNodeList, that.dataNodeList);
   }
 
   @Override

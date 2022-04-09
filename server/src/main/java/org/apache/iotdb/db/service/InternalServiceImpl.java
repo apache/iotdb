@@ -56,7 +56,7 @@ public class InternalServiceImpl implements InternalService.Iface {
     FragmentInstance fragmentInstance = null;
     try {
       fragmentInstance = FragmentInstance.deserializeFrom(req.fragmentInstance.body);
-    } catch (IllegalPathException e) {
+    } catch (IllegalPathException | IOException e) {
       LOGGER.error(e.getMessage());
       response.setAccepted(false);
       response.setMessage(e.getMessage());

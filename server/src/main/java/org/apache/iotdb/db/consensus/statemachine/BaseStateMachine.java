@@ -31,6 +31,8 @@ import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+
 public abstract class BaseStateMachine implements IStateMachine {
 
   private static final Logger logger = LoggerFactory.getLogger(BaseStateMachine.class);
@@ -39,7 +41,7 @@ public abstract class BaseStateMachine implements IStateMachine {
   public TSStatus write(IConsensusRequest request) {
     try {
       return write(getFragmentInstance(request));
-    } catch (IllegalArgumentException | IllegalPathException e) {
+    } catch (IllegalArgumentException | IllegalPathException | IOException e) {
       logger.error(e.getMessage());
       return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
@@ -51,9 +53,7 @@ public abstract class BaseStateMachine implements IStateMachine {
   public DataSet read(IConsensusRequest request) {
     try {
       return read(getFragmentInstance(request));
-    } catch (IllegalArgumentException e) {
-      return null;
-    } catch (IllegalPathException e) {
+    } catch (IllegalArgumentException | IllegalPathException | IOException e) {
       logger.error(e.getMessage());
       return null;
     }
@@ -62,7 +62,7 @@ public abstract class BaseStateMachine implements IStateMachine {
   protected abstract DataSet read(FragmentInstance fragmentInstance);
 
   private FragmentInstance getFragmentInstance(IConsensusRequest request)
-      throws IllegalPathException {
+      throws IllegalPathException, IOException {
     FragmentInstance instance;
     if (request instanceof ByteBufferConsensusRequest) {
       instance =
