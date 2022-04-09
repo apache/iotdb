@@ -40,6 +40,7 @@ import org.apache.iotdb.db.mpp.sql.rewriter.RemoveNotOptimizer;
 import org.apache.iotdb.db.mpp.sql.rewriter.WildcardsRemover;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
+import org.apache.iotdb.db.mpp.sql.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.sql.statement.component.WhereCondition;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertStatement;
@@ -56,6 +57,7 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.util.ExpressionOptimizer;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 /** Analyze the statement and generate Analysis. */
 public class Analyzer {
@@ -101,18 +103,27 @@ public class Analyzer {
         SchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree);
 
         // bind metadata, remove wildcards, and apply SLIMIT & SOFFSET
-        Map<String, Set<PartialPath>> deviceIdToPathsMap = new HashMap<>();
-        List<String> outputColumnNames = new ArrayList<>();
         rewrittenStatement =
-            (QueryStatement)
-                new WildcardsRemover()
-                    .rewrite(rewrittenStatement, schemaTree, outputColumnNames, deviceIdToPathsMap);
+            (QueryStatement) new WildcardsRemover().rewrite(rewrittenStatement, schemaTree);
 
         // fetch partition information
+        Set<String> devicePathSet = new HashSet<>();
+        for (ResultColumn resultColumn : queryStatement.getSelectComponent().getResultColumns()) {
+          devicePathSet.addAll(
+              resultColumn.collectPaths().stream()
+                  .map(PartialPath::getDevice)
+                  .collect(Collectors.toList()));
+        }
+        if (queryStatement.getWhereCondition() != null) {
+          devicePathSet.addAll(
+              queryStatement.getWhereCondition().getQueryFilter().getPathSet().stream()
+                  .map(PartialPath::getDevice)
+                  .collect(Collectors.toList()));
+        }
         List<DataPartitionQueryParam> dataPartitionQueryParams = new ArrayList<>();
-        for (String deviceId : deviceIdToPathsMap.keySet()) {
+        for (String devicePath : devicePathSet) {
           DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
-          dataPartitionQueryParam.setDevicePath(deviceId);
+          dataPartitionQueryParam.setDevicePath(devicePath);
           dataPartitionQueryParams.add(dataPartitionQueryParam);
         }
         DataPartition dataPartition =
@@ -144,8 +155,6 @@ public class Analyzer {
         }
         analysis.setStatement(rewrittenStatement);
         analysis.setSchemaTree(schemaTree);
-        analysis.setDeviceIdToPathsMap(deviceIdToPathsMap);
-        analysis.setOutputColumnNames(outputColumnNames);
         analysis.setDataPartitionInfo(dataPartition);
       } catch (StatementAnalyzeException
           | PathNumOverLimitException

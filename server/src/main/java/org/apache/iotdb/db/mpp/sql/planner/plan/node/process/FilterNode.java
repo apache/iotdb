@@ -31,6 +31,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 /** The FilterNode is responsible to filter the RowRecord from TsBlock. */
 public class FilterNode extends ProcessNode {
@@ -120,11 +121,14 @@ public class FilterNode extends ProcessNode {
     FilterNode that = (FilterNode) o;
     return Objects.equals(child, that.child)
         && Objects.equals(predicate, that.predicate)
-        && Objects.equals(outputColumnNames, that.outputColumnNames);
+        && Objects.equals(
+            outputColumnNames.stream().sorted().collect(Collectors.toList()),
+            that.outputColumnNames.stream().sorted().collect(Collectors.toList()));
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(child, predicate, outputColumnNames);
+    return Objects.hash(
+        child, predicate, outputColumnNames.stream().sorted().collect(Collectors.toList()));
   }
 }

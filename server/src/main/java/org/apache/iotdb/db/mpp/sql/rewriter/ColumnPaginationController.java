@@ -105,7 +105,7 @@ public class ColumnPaginationController {
 
   public boolean hasCurOffset() {
     if (isDisabled) {
-      return true;
+      return false;
     }
 
     return curOffset != 0;

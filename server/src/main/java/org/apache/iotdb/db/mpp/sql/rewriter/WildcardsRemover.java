@@ -41,7 +41,6 @@ import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * This rewriter:
@@ -62,11 +61,7 @@ public class WildcardsRemover {
    */
   private boolean isPrefixMatch;
 
-  public Statement rewrite(
-      Statement statement,
-      SchemaTree schemaTree,
-      List<String> outputColumnNames,
-      Map<String, Set<PartialPath>> deviceIdToPathsMap)
+  public Statement rewrite(Statement statement, SchemaTree schemaTree)
       throws StatementAnalyzeException, PathNumOverLimitException {
     QueryStatement queryStatement = (QueryStatement) statement;
     this.paginationController =
@@ -83,11 +78,6 @@ public class WildcardsRemover {
     if (queryStatement.getIndexType() == null) {
       // remove wildcards in SELECT clause
       removeWildcardsInSelectPaths(queryStatement);
-      deviceIdToPathsMap.putAll(queryStatement.getSelectComponent().getDeviceIdToPathsMap());
-      outputColumnNames.addAll(
-          queryStatement.getSelectComponent().getResultColumns().stream()
-              .map(ResultColumn::getResultColumnName)
-              .collect(Collectors.toList()));
 
       // remove wildcards in WITHOUT NULL clause
       if (queryStatement.getFilterNullComponent() != null
@@ -98,7 +88,7 @@ public class WildcardsRemover {
 
     // remove wildcards in WHERE clause
     if (queryStatement.getWhereCondition() != null) {
-      removeWildcardsInQueryFilter(queryStatement, deviceIdToPathsMap);
+      removeWildcardsInQueryFilter(queryStatement);
     }
 
     return queryStatement;
@@ -184,8 +174,7 @@ public class WildcardsRemover {
     queryStatement.getFilterNullComponent().setWithoutNullColumns(resultExpressions);
   }
 
-  private void removeWildcardsInQueryFilter(
-      QueryStatement queryStatement, Map<String, Set<PartialPath>> deviceIdToPathsMap)
+  private void removeWildcardsInQueryFilter(QueryStatement queryStatement)
       throws StatementAnalyzeException {
     WhereCondition whereCondition = queryStatement.getWhereCondition();
     List<PartialPath> fromPaths = queryStatement.getFromComponent().getPrefixPaths();
@@ -194,11 +183,6 @@ public class WildcardsRemover {
     whereCondition.setQueryFilter(
         removeWildcardsInQueryFilter(whereCondition.getQueryFilter(), fromPaths, resultPaths));
     whereCondition.getQueryFilter().setPathSet(resultPaths);
-
-    for (PartialPath path :
-        resultPaths.stream().filter(SQLConstant::isNotReservedPath).collect(Collectors.toList())) {
-      deviceIdToPathsMap.computeIfAbsent(path.getDevice(), k -> new HashSet<>()).add(path);
-    }
   }
 
   private QueryFilter removeWildcardsInQueryFilter(
@@ -294,6 +278,7 @@ public class WildcardsRemover {
       paginationController.consume(pair.left.size(), pair.right);
       return pair.left;
     } catch (Exception e) {
+      e.printStackTrace();
       throw new StatementAnalyzeException(
           "error occurred when removing wildcard: " + e.getMessage());
     }
@@ -307,7 +292,7 @@ public class WildcardsRemover {
     List<List<Expression>> extendedExpressions = new ArrayList<>();
     for (Expression originExpression : expressions) {
       List<Expression> actualExpressions = new ArrayList<>();
-      originExpression.removeWildcards(new WildcardsRemover(), actualExpressions);
+      originExpression.removeWildcards(this, actualExpressions);
       if (actualExpressions.isEmpty()) {
         // Let's ignore the eval of the function which has at least one non-existence series as
         // input. See IOTDB-1212: https://github.com/apache/iotdb/pull/3101

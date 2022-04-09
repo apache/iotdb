@@ -20,13 +20,20 @@
 package org.apache.iotdb.db.mpp.sql.statement.crud;
 
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.component.GroupByLevelComponent;
 import org.apache.iotdb.db.mpp.sql.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.sql.statement.component.SelectComponent;
+import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
 import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
+
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 public class AggregationQueryStatement extends QueryStatement {
 
@@ -54,11 +61,26 @@ public class AggregationQueryStatement extends QueryStatement {
     return groupByLevelComponent != null && groupByLevelComponent.getLevels().length > 0;
   }
 
+  public Map<String, Map<PartialPath, Set<AggregationType>>> getDeviceNameToAggregationsMap() {
+    Map<String, Map<PartialPath, Set<AggregationType>>> deviceNameToAggregationsMap =
+        new HashMap<>();
+    for (ResultColumn resultColumn : getSelectComponent().getResultColumns()) {
+      FunctionExpression expression = (FunctionExpression) resultColumn.getExpression();
+      PartialPath path = expression.getPaths().get(0);
+      String functionName = expression.getFunctionName();
+      deviceNameToAggregationsMap
+          .computeIfAbsent(path.getDevice(), key -> new HashMap<>())
+          .computeIfAbsent(path, key -> new HashSet<>())
+          .add(AggregationType.valueOf(functionName.toUpperCase()));
+    }
+    return deviceNameToAggregationsMap;
+  }
+
   @Override
   public void selfCheck() {
     super.selfCheck();
 
-    if (!disableAlign()) {
+    if (disableAlign()) {
       throw new SemanticException("AGGREGATION doesn't support disable align clause.");
     }
     checkSelectComponent(selectComponent);

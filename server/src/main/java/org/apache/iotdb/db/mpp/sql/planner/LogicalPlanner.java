@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.mpp.sql.planner;
 
 import org.apache.iotdb.db.auth.AuthException;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
 import org.apache.iotdb.db.mpp.sql.optimization.PlanOptimizer;
@@ -28,7 +29,6 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AlterTimeSer
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AuthorNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateTimeSeriesNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.*;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
@@ -43,6 +43,7 @@ import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.sys.AuthorStatement;
+import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -89,12 +90,13 @@ public class LogicalPlanner {
     @Override
     public PlanNode visitQuery(QueryStatement queryStatement, MPPQueryContext context) {
       QueryPlanBuilder planBuilder = new QueryPlanBuilder(context);
+
       planBuilder.planRawDataQuerySource(
-          analysis.getDeviceIdToPathsMap(),
+          queryStatement.getDeviceNameToPathsMap(),
           queryStatement.getResultOrder(),
           queryStatement.isAlignByDevice(),
           analysis.getQueryFilter(),
-          analysis.getOutputColumnNames());
+          queryStatement.getSelectedPathNames());
 
       planBuilder.planFilterNull(queryStatement.getFilterNullComponent());
       planBuilder.planLimit(queryStatement.getRowLimit());
@@ -106,26 +108,28 @@ public class LogicalPlanner {
     public PlanNode visitAggregationQuery(
         AggregationQueryStatement queryStatement, MPPQueryContext context) {
       QueryPlanBuilder planBuilder = new QueryPlanBuilder(context);
+      Map<String, Map<PartialPath, Set<AggregationType>>> deviceNameToAggregationsMap;
 
       if (analysis.getQueryFilter() != null
           && analysis.getQueryFilter().getType() != ExpressionType.GLOBAL_TIME) {
-        // with VF
-        planBuilder.planRawDataQuerySource(
-            analysis.getDeviceIdToPathsMap(),
+        // with value filter
+        planBuilder.planAggregationSourceWithValueFilter(
+            queryStatement.getDeviceNameToAggregationsMap(),
+            queryStatement.getDeviceNameToPathsMap(),
             queryStatement.getResultOrder(),
             queryStatement.isAlignByDevice(),
             analysis.getQueryFilter(),
-            analysis.getOutputColumnNames());
-        // TODO: add AggregateNode
+            queryStatement.getSelectedPathNames());
       } else {
-        planBuilder.planAggregationQuerySource(
-            analysis.getDeviceNameToAggregationsMap(),
+        // without value filter
+        planBuilder.planAggregationSourceWithoutValueFilter(
+            queryStatement.getDeviceNameToAggregationsMap(),
             queryStatement.getResultOrder(),
             queryStatement.isAlignByDevice(),
-            analysis.getQueryFilter(),
-            analysis.getOutputColumnNames());
+            analysis.getQueryFilter());
       }
 
+      planBuilder.planGroupByLevel(queryStatement.getGroupByLevelComponent());
       planBuilder.planFilterNull(queryStatement.getFilterNullComponent());
       planBuilder.planLimit(queryStatement.getRowLimit());
       planBuilder.planOffset(queryStatement.getRowOffset());

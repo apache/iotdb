@@ -24,12 +24,13 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
-import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 
 /**
  * This node is used to aggregate required series from multiple sources. The source data will be
@@ -45,22 +46,17 @@ public class AggregateNode extends ProcessNode {
   // result TsBlock
   // (Currently we only support one series in the aggregation function)
   // TODO: need consider whether it is suitable the aggregation function using FunctionExpression
-  private Map<String, FunctionExpression> aggregateFuncMap;
-
-  private final PartialPath seriesPath;
-  private final List<AggregationType> aggregateFuncList;
+  private final Map<PartialPath, Set<AggregationType>> aggregateFuncMap;
 
   private final List<PlanNode> children;
   private List<String> columnNames;
 
   public AggregateNode(
       PlanNodeId id,
-      PartialPath seriesPath,
-      List<AggregationType> aggregateFuncList,
+      Map<PartialPath, Set<AggregationType>> aggregateFuncMap,
       List<PlanNode> children) {
     super(id);
-    this.seriesPath = seriesPath;
-    this.aggregateFuncList = aggregateFuncList;
+    this.aggregateFuncMap = aggregateFuncMap;
     this.children = children;
   }
 
@@ -100,4 +96,26 @@ public class AggregateNode extends ProcessNode {
 
   @Override
   public void serialize(ByteBuffer byteBuffer) {}
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+
+    AggregateNode that = (AggregateNode) o;
+    return Objects.equals(groupByTimeParameter, that.groupByTimeParameter)
+        && Objects.equals(aggregateFuncMap, that.aggregateFuncMap)
+        && Objects.equals(children, that.children)
+        && Objects.equals(columnNames, that.columnNames);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(groupByTimeParameter, aggregateFuncMap, children, columnNames);
+  }
 }

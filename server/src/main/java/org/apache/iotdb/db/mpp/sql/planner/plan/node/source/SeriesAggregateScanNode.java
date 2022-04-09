@@ -36,6 +36,8 @@ import com.google.common.collect.ImmutableList;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 /**
  * SeriesAggregateOperator is responsible to do the aggregation calculation for one series. It will
@@ -69,7 +71,7 @@ public class SeriesAggregateScanNode extends SourceNode {
   // The default order is TIMESTAMP_ASC, which means "order by timestamp asc"
   private OrderBy scanOrder = OrderBy.TIMESTAMP_ASC;
 
-  private Filter filter;
+  private Filter timeFilter;
 
   private String columnName;
 
@@ -84,11 +86,13 @@ public class SeriesAggregateScanNode extends SourceNode {
       PlanNodeId id,
       PartialPath seriesPath,
       List<AggregationType> aggregateFuncList,
-      OrderBy scanOrder) {
+      OrderBy scanOrder,
+      Filter timeFilter) {
     this(id);
     this.seriesPath = seriesPath;
     this.aggregateFuncList = aggregateFuncList;
     this.scanOrder = scanOrder;
+    this.timeFilter = timeFilter;
   }
 
   @Override
@@ -155,8 +159,8 @@ public class SeriesAggregateScanNode extends SourceNode {
   // This method is used when do the PredicatePushDown.
   // The filter is not put in the constructor because the filter is only clear in the predicate
   // push-down stage
-  public void setFilter(Filter filter) {
-    this.filter = filter;
+  public void setTimeFilter(Filter timeFilter) {
+    this.timeFilter = timeFilter;
   }
 
   public PartialPath getSeriesPath() {
@@ -173,5 +177,36 @@ public class SeriesAggregateScanNode extends SourceNode {
     List<String> attributes = new ArrayList<>();
     attributes.add("AggregateFunctions: " + this.getExpressionString());
     return new Pair<>(title, attributes);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+
+    SeriesAggregateScanNode that = (SeriesAggregateScanNode) o;
+    return Objects.equals(groupByTimeParameter, that.groupByTimeParameter)
+        && Objects.equals(seriesPath, that.seriesPath)
+        && Objects.equals(
+            aggregateFuncList.stream().sorted().collect(Collectors.toList()),
+            that.aggregateFuncList.stream().sorted().collect(Collectors.toList()))
+        && scanOrder == that.scanOrder
+        && Objects.equals(timeFilter, that.timeFilter);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(
+        super.hashCode(),
+        groupByTimeParameter,
+        seriesPath,
+        aggregateFuncList.stream().sorted().collect(Collectors.toList()),
+        scanOrder,
+        timeFilter);
   }
 }

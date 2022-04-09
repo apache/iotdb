@@ -453,10 +453,8 @@ public class LogicalPlannerTest {
       Statement statement =
           StatementGenerator.createStatement(sql, ZonedDateTime.now().getOffset());
       MPPQueryContext context = new MPPQueryContext(new QueryId("test_query"));
-      // TODO: do analyze after implementing ISchemaFetcher and IPartitionFetcher
       Analyzer analyzer = new Analyzer(context);
       Analysis analysis = analyzer.analyze(statement);
-      analysis.setStatement(statement);
       LogicalPlanner planner = new LogicalPlanner(context, new ArrayList<>());
       planNode = planner.plan(analysis).getRootNode();
     } catch (Exception e) {

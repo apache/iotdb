@@ -26,10 +26,8 @@ import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * This node is responsible for the final aggregation merge operation. It will process the data from
@@ -57,7 +55,7 @@ public class GroupByLevelNode extends ProcessNode {
     this.child = child;
     this.groupByLevels = groupByLevels;
     this.groupedPathMap = groupedPathMap;
-    this.columnNames = new ArrayList<>(groupedPathMap.values());
+    this.columnNames = groupedPathMap.values().stream().distinct().collect(Collectors.toList());
   }
 
   @Override
@@ -120,5 +118,28 @@ public class GroupByLevelNode extends ProcessNode {
     attributes.add("GroupByLevels: " + Arrays.toString(this.getGroupByLevels()));
     attributes.add("ColumnNames: " + this.getOutputColumnNames());
     return new Pair<>(title, attributes);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+
+    GroupByLevelNode that = (GroupByLevelNode) o;
+    return Objects.equals(child, that.child)
+        && Arrays.equals(groupByLevels, that.groupByLevels)
+        && Objects.equals(groupedPathMap, that.groupedPathMap);
+  }
+
+  @Override
+  public int hashCode() {
+    int result = Objects.hash(child, groupedPathMap);
+    result = 31 * result + Arrays.hashCode(groupByLevels);
+    return result;
   }
 }

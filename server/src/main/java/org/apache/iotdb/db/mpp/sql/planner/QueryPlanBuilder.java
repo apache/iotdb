@@ -31,6 +31,8 @@ import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
+import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -54,7 +56,7 @@ public class QueryPlanBuilder {
       OrderBy scanOrder,
       boolean isAlignByDevice,
       IExpression queryFilter,
-      List<String> outputColumnNames) {
+      List<String> selectedPathList) {
     Map<String, List<PlanNode>> deviceNameToSourceNodesMap = new HashMap<>();
 
     for (Map.Entry<String, Set<PartialPath>> entry : deviceNameToPathsMap.entrySet()) {
@@ -67,74 +69,131 @@ public class QueryPlanBuilder {
     }
 
     if (isAlignByDevice) {
-      convergeWithDeviceMerge(
-          deviceNameToSourceNodesMap, scanOrder, queryFilter, outputColumnNames);
+      planDeviceMerge(deviceNameToSourceNodesMap, scanOrder, queryFilter, selectedPathList);
     } else {
-      convergeWithTimeJoin(deviceNameToSourceNodesMap, scanOrder, queryFilter, outputColumnNames);
+      planTimeJoin(deviceNameToSourceNodesMap, scanOrder, queryFilter, selectedPathList);
     }
   }
 
-  public void planAggregationQuerySource(
+  public void planAggregationSourceWithoutValueFilter(
       Map<String, Map<PartialPath, Set<AggregationType>>> deviceNameToAggregationsMap,
       OrderBy scanOrder,
       boolean isAlignByDevice,
-      IExpression queryFilter,
-      List<String> outputColumnNames) {
+      IExpression queryFilter) {
+    Filter timeFilter = null;
+    if (queryFilter != null) {
+      timeFilter = ((GlobalTimeExpression) queryFilter).getFilter();
+    }
+
     Map<String, List<PlanNode>> deviceNameToSourceNodesMap = new HashMap<>();
     for (Map.Entry<String, Map<PartialPath, Set<AggregationType>>> entry :
         deviceNameToAggregationsMap.entrySet()) {
       String deviceName = entry.getKey();
 
       for (PartialPath path : entry.getValue().keySet()) {
-        SeriesAggregateScanNode aggregateScanNode =
-            new SeriesAggregateScanNode(
-                context.getQueryId().genPlanNodeId(),
-                path,
-                new ArrayList<>(entry.getValue().get(path)),
-                scanOrder);
         deviceNameToSourceNodesMap
             .computeIfAbsent(deviceName, k -> new ArrayList<>())
             .add(
-                new AggregateNode(
+                new SeriesAggregateScanNode(
                     context.getQueryId().genPlanNodeId(),
                     path,
                     new ArrayList<>(entry.getValue().get(path)),
-                    Collections.singletonList(aggregateScanNode)));
+                    scanOrder,
+                    timeFilter));
       }
     }
 
     if (isAlignByDevice) {
-      convergeWithDeviceMerge(
-          deviceNameToSourceNodesMap, scanOrder, queryFilter, outputColumnNames);
+      planDeviceMerge(deviceNameToSourceNodesMap, scanOrder, null, null);
     } else {
-      convergeWithTimeJoin(deviceNameToSourceNodesMap, scanOrder, queryFilter, outputColumnNames);
+      planTimeJoin(deviceNameToSourceNodesMap, scanOrder, null, null);
     }
   }
 
-  public void convergeWithTimeJoin(
+  public void planAggregationSourceWithValueFilter(
+      Map<String, Map<PartialPath, Set<AggregationType>>> deviceNameToAggregationsMap,
+      Map<String, Set<PartialPath>> deviceNameToPathsMap,
+      OrderBy scanOrder,
+      boolean isAlignByDevice,
+      IExpression queryFilter,
+      List<String> selectedPathList) {
+    Map<String, List<PlanNode>> deviceNameToSourceNodesMap = new HashMap<>();
+
+    for (Map.Entry<String, Set<PartialPath>> entry : deviceNameToPathsMap.entrySet()) {
+      String deviceName = entry.getKey();
+      for (PartialPath path : entry.getValue()) {
+        deviceNameToSourceNodesMap
+            .computeIfAbsent(deviceName, k -> new ArrayList<>())
+            .add(new SeriesScanNode(context.getQueryId().genPlanNodeId(), path, scanOrder));
+      }
+    }
+
+    if (isAlignByDevice) {
+      planDeviceMergeForAggregation(
+          deviceNameToAggregationsMap,
+          deviceNameToSourceNodesMap,
+          scanOrder,
+          queryFilter,
+          selectedPathList);
+    } else {
+      planTimeJoin(deviceNameToSourceNodesMap, scanOrder, queryFilter, selectedPathList);
+      Map<PartialPath, Set<AggregationType>> aggregateFuncMap = new HashMap<>();
+      deviceNameToAggregationsMap.values().forEach(aggregateFuncMap::putAll);
+      this.root =
+          new AggregateNode(
+              context.getQueryId().genPlanNodeId(),
+              aggregateFuncMap,
+              Collections.singletonList(this.getRoot()));
+    }
+  }
+
+  public void planTimeJoin(
       Map<String, List<PlanNode>> deviceNameToSourceNodesMap,
       OrderBy mergeOrder,
       IExpression queryFilter,
-      List<String> outputColumnNames) {
+      List<String> selectedPathList) {
     List<PlanNode> sourceNodes =
         deviceNameToSourceNodesMap.entrySet().stream()
             .flatMap(entry -> entry.getValue().stream())
             .collect(Collectors.toList());
-    this.root = convergeWithTimeJoin(sourceNodes, mergeOrder, queryFilter, outputColumnNames);
+    this.root = convergeWithTimeJoin(sourceNodes, mergeOrder, queryFilter, selectedPathList);
   }
 
-  public void convergeWithDeviceMerge(
+  public void planDeviceMerge(
       Map<String, List<PlanNode>> deviceNameToSourceNodesMap,
       OrderBy mergeOrder,
       IExpression queryFilter,
-      List<String> outputColumnNames) {
+      List<String> selectedPathList) {
     DeviceMergeNode deviceMergeNode =
         new DeviceMergeNode(context.getQueryId().genPlanNodeId(), mergeOrder);
     for (Map.Entry<String, List<PlanNode>> entry : deviceNameToSourceNodesMap.entrySet()) {
       String deviceName = entry.getKey();
       List<PlanNode> planNodes = new ArrayList<>(entry.getValue());
       deviceMergeNode.addChildDeviceNode(
-          deviceName, convergeWithTimeJoin(planNodes, mergeOrder, queryFilter, outputColumnNames));
+          deviceName, convergeWithTimeJoin(planNodes, mergeOrder, queryFilter, selectedPathList));
+    }
+    this.root = deviceMergeNode;
+  }
+
+  private void planDeviceMergeForAggregation(
+      Map<String, Map<PartialPath, Set<AggregationType>>> deviceNameToAggregationsMap,
+      Map<String, List<PlanNode>> deviceNameToSourceNodesMap,
+      OrderBy mergeOrder,
+      IExpression queryFilter,
+      List<String> selectedPathList) {
+    DeviceMergeNode deviceMergeNode =
+        new DeviceMergeNode(context.getQueryId().genPlanNodeId(), mergeOrder);
+    for (Map.Entry<String, List<PlanNode>> entry : deviceNameToSourceNodesMap.entrySet()) {
+      String deviceName = entry.getKey();
+      List<PlanNode> planNodes = new ArrayList<>(entry.getValue());
+      PlanNode timeJoinNode =
+          convergeWithTimeJoin(planNodes, mergeOrder, queryFilter, selectedPathList);
+      AggregateNode aggregateNode =
+          new AggregateNode(
+              context.getQueryId().genPlanNodeId(),
+              deviceNameToAggregationsMap.get(deviceName),
+              Collections.singletonList(timeJoinNode));
+      deviceMergeNode.addChildDeviceNode(deviceName, aggregateNode);
     }
     this.root = deviceMergeNode;
   }
@@ -158,16 +217,6 @@ public class QueryPlanBuilder {
     }
 
     return tmpNode;
-  }
-
-  public void planQueryFilter(IExpression queryFilter, List<String> outputColumnNames) {
-    if (queryFilter == null) {
-      return;
-    }
-
-    this.root =
-        new FilterNode(
-            context.getQueryId().genPlanNodeId(), this.getRoot(), queryFilter, outputColumnNames);
   }
 
   public void planGroupByLevel(GroupByLevelComponent groupByLevelComponent) {
