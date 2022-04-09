@@ -21,7 +21,6 @@ package org.apache.iotdb.db.metadata.schemaregion;
 
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.storagegroup.IStorageGroupSchemaManager;
 import org.apache.iotdb.db.metadata.storagegroup.StorageGroupSchemaManager;
@@ -80,11 +79,7 @@ public class SchemaEngine {
     if (schemaRegion != null) {
       return;
     }
-    PartialPath checkedStorageGroup =
-        localStorageGroupSchemaManager.ensureStorageGroup(storageGroup);
-    if (!checkedStorageGroup.equals(storageGroup)) {
-      throw new StorageGroupAlreadySetException(checkedStorageGroup.getFullPath());
-    }
+    localStorageGroupSchemaManager.ensureStorageGroup(storageGroup);
     schemaRegion =
         new SchemaRegion(
             storageGroup,

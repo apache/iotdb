@@ -151,9 +151,9 @@ public class StorageGroupSchemaManager implements IStorageGroupSchemaManager {
   }
 
   @Override
-  public PartialPath ensureStorageGroup(PartialPath path) throws MetadataException {
+  public void ensureStorageGroup(PartialPath path) throws MetadataException {
     try {
-      return getBelongedStorageGroup(path);
+      getBelongedStorageGroup(path);
     } catch (StorageGroupNotSetException e) {
       if (!config.isAutoCreateSchemaEnabled()) {
         throw e;
@@ -162,7 +162,6 @@ public class StorageGroupSchemaManager implements IStorageGroupSchemaManager {
           MetaUtils.getStorageGroupPathByLevel(path, config.getDefaultStorageGroupLevel());
       try {
         setStorageGroup(storageGroupPath);
-        return storageGroupPath;
       } catch (StorageGroupAlreadySetException storageGroupAlreadySetException) {
         // do nothing
         // concurrent timeseries creation may result concurrent ensureStorageGroup
@@ -173,8 +172,6 @@ public class StorageGroupSchemaManager implements IStorageGroupSchemaManager {
           // Timeseries can't be created under a deviceNode without storageGroup.
           throw storageGroupAlreadySetException;
         }
-
-        return storageGroupPath;
       }
     }
   }

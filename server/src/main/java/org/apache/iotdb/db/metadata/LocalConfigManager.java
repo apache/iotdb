@@ -39,6 +39,7 @@ import org.apache.iotdb.db.metadata.storagegroup.IStorageGroupSchemaManager;
 import org.apache.iotdb.db.metadata.storagegroup.StorageGroupSchemaManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
+import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
@@ -224,10 +225,7 @@ public class LocalConfigManager {
    */
   public void setStorageGroup(PartialPath storageGroup) throws MetadataException {
     storageGroupSchemaManager.setStorageGroup(storageGroup);
-    setStorageGroupResource(storageGroup);
-  }
 
-  private void setStorageGroupResource(PartialPath storageGroup) throws MetadataException {
     partitionTable.setStorageGroup(storageGroup);
 
     schemaEngine.createSchemaRegion(
@@ -239,8 +237,28 @@ public class LocalConfigManager {
   }
 
   private void ensureStorageGroup(PartialPath path) throws MetadataException {
-    PartialPath storageGroup = storageGroupSchemaManager.ensureStorageGroup(path);
-    setStorageGroupResource(storageGroup);
+    try {
+      getBelongedStorageGroup(path);
+    } catch (StorageGroupNotSetException e) {
+      if (!config.isAutoCreateSchemaEnabled()) {
+        throw e;
+      }
+      PartialPath storageGroupPath =
+          MetaUtils.getStorageGroupPathByLevel(path, config.getDefaultStorageGroupLevel());
+      try {
+        setStorageGroup(storageGroupPath);
+      } catch (StorageGroupAlreadySetException storageGroupAlreadySetException) {
+        // do nothing
+        // concurrent timeseries creation may result concurrent ensureStorageGroup
+        // it's ok that the storageGroup has already been set
+
+        if (storageGroupAlreadySetException.isHasChild()) {
+          // if setStorageGroup failure is because of child, the deviceNode should not be created.
+          // Timeseries can't be created under a deviceNode without storageGroup.
+          throw storageGroupAlreadySetException;
+        }
+      }
+    }
   }
 
   /**

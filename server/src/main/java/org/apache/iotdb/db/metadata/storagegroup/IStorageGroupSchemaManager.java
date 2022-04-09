@@ -46,7 +46,9 @@ public interface IStorageGroupSchemaManager {
    */
   void setStorageGroup(PartialPath path) throws MetadataException;
 
-  PartialPath ensureStorageGroup(PartialPath path) throws MetadataException;
+  // different with LocalConfigManager.ensureStorageGroup, this method won't init storageGroup
+  // resources.
+  void ensureStorageGroup(PartialPath path) throws MetadataException;
 
   /**
    * Delete storage groups of given paths from MTree. Log format: "delete_storage_group,sg1,sg2,sg3"
