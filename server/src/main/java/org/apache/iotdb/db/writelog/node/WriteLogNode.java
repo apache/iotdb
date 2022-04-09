@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.writelog.node;
 
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.writelog.io.ILogReader;
 
@@ -35,6 +36,14 @@ public interface WriteLogNode {
    * @param plan - a PhysicalPlan
    */
   void write(PhysicalPlan plan) throws IOException;
+
+  /**
+   * Write a wal for a PlanNode. First, the PhysicalPlan will be conveyed to byte[]. Then the byte[]
+   * will be put into a cache. When the cache is full, the logs in the cache will be synced to disk.
+   *
+   * @param plan - a PhysicalPlan
+   */
+  void write(PlanNode plan) throws IOException;
 
   /** Sync and close streams. */
   void close() throws IOException;

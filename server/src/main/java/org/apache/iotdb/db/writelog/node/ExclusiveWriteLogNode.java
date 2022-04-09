@@ -23,6 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.utils.MmapUtil;
 import org.apache.iotdb.db.utils.ThreadUtils;
@@ -133,6 +134,33 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     }
   }
 
+  @Override
+  public void write(PlanNode node) throws IOException {
+    if (deleted.get()) {
+      throw new IOException("WAL node deleted");
+    }
+    lock.lock();
+    try {
+      putLog(node);
+      if (bufferedLogNum >= config.getFlushWalThreshold()) {
+        sync();
+      }
+    } catch (BufferOverflowException e) {
+      // if the size of a single plan bigger than logBufferWorking
+      // we need to clear the buffer to drop something wrong that has written.
+      logBufferWorking.clear();
+      // TODO(WAL)
+      //      int neededSize = node.getSerializedSize();
+      //      throw new IOException(
+      //              "Log cannot fit into the buffer, please increase wal_buffer_size to more than
+      // "
+      //                      + neededSize * 2,
+      //              e);
+    } finally {
+      lock.unlock();
+    }
+  }
+
   private void putLog(PhysicalPlan plan) {
     try {
       plan.serialize(logBufferWorking);
@@ -145,6 +173,24 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
       }
       sync();
       plan.serialize(logBufferWorking);
+    }
+    bufferedLogNum++;
+  }
+
+  private void putLog(PlanNode node) {
+    try {
+      // TODO(WAL)
+      // node.serialize(logBufferWorking);
+    } catch (BufferOverflowException e) {
+      bufferOverflowNum++;
+      if (bufferOverflowNum > 200) {
+        logger.info(
+            "WAL bytebuffer overflows too many times. If this occurs frequently, please increase wal_buffer_size.");
+        bufferOverflowNum = 0;
+      }
+      sync();
+      // TODO(WAL)
+      // node.serialize(logBufferWorking);
     }
     bufferedLogNum++;
   }

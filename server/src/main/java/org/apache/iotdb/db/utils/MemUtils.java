@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -110,6 +111,33 @@ public class MemUtils {
    * before inserting.
    */
   public static long getTabletSize(
+      InsertTabletNode insertTabletNode, int start, int end, boolean addingTextDataSize) {
+    if (start >= end) {
+      return 0L;
+    }
+    long memSize = 0;
+    for (int i = 0; i < insertTabletNode.getMeasurements().length; i++) {
+      if (insertTabletNode.getMeasurements()[i] == null) {
+        continue;
+      }
+      // time column memSize
+      memSize += (end - start) * 8L;
+      if (insertTabletNode.getDataTypes()[i] == TSDataType.TEXT && addingTextDataSize) {
+        for (int j = start; j < end; j++) {
+          memSize += getBinarySize(((Binary[]) insertTabletNode.getColumns()[i])[j]);
+        }
+      } else {
+        memSize += (end - start) * insertTabletNode.getDataTypes()[i].getDataTypeSize();
+      }
+    }
+    return memSize;
+  }
+
+  /**
+   * If mem control enabled, do not add text data size here, the size will be added to memtable
+   * before inserting.
+   */
+  public static long getTabletSize(
       InsertTabletPlan insertTabletPlan, int start, int end, boolean addingTextDataSize) {
     if (start >= end) {
       return 0L;
@@ -148,6 +176,32 @@ public class MemUtils {
       if (valueType == TSDataType.TEXT && addingTextDataSize) {
         for (int j = start; j < end; j++) {
           memSize += getBinarySize(((Binary[]) insertTabletPlan.getColumns()[i])[j]);
+        }
+      } else {
+        memSize += (long) (end - start) * valueType.getDataTypeSize();
+      }
+    }
+    // time and index column memSize for vector
+    memSize += (end - start) * (8L + 4L);
+    return memSize;
+  }
+
+  public static long getAlignedTabletSize(
+      InsertTabletNode insertTabletNode, int start, int end, boolean addingTextDataSize) {
+    if (start >= end) {
+      return 0L;
+    }
+    long memSize = 0;
+    for (int i = 0; i < insertTabletNode.getMeasurements().length; i++) {
+      if (insertTabletNode.getMeasurements()[i] == null) {
+        continue;
+      }
+      TSDataType valueType;
+      // value columns memSize
+      valueType = insertTabletNode.getDataTypes()[i];
+      if (valueType == TSDataType.TEXT && addingTextDataSize) {
+        for (int j = start; j < end; j++) {
+          memSize += getBinarySize(((Binary[]) insertTabletNode.getColumns()[i])[j]);
         }
       } else {
         memSize += (long) (end - start) * valueType.getDataTypeSize();
