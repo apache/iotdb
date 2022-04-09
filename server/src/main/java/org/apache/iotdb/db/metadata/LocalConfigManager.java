@@ -273,7 +273,6 @@ public class LocalConfigManager {
   }
 
   private void deleteStorageGroup(PartialPath storageGroup) throws MetadataException {
-    storageGroupSchemaManager.deleteStorageGroup(storageGroup);
     deleteSchemaRegionsInStorageGroup(
         storageGroup, partitionTable.deleteStorageGroup(storageGroup));
 
@@ -284,6 +283,7 @@ public class LocalConfigManager {
     if (!config.isEnableMemControl()) {
       MemTableManager.getInstance().addOrDeleteStorageGroup(-1);
     }
+    storageGroupSchemaManager.deleteStorageGroup(storageGroup);
   }
 
   private void deleteSchemaRegionsInStorageGroup(
