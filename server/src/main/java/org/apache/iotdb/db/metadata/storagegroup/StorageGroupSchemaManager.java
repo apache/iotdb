@@ -22,11 +22,13 @@ package org.apache.iotdb.db.metadata.storagegroup;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mtree.MTreeAboveSG;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
@@ -144,6 +146,35 @@ public class StorageGroupSchemaManager implements IStorageGroupSchemaManager {
         logWriter.setStorageGroup(path);
       } catch (IOException e) {
         throw new MetadataException(e);
+      }
+    }
+  }
+
+  @Override
+  public PartialPath ensureStorageGroup(PartialPath path) throws MetadataException {
+    try {
+      return getBelongedStorageGroup(path);
+    } catch (StorageGroupNotSetException e) {
+      if (!config.isAutoCreateSchemaEnabled()) {
+        throw e;
+      }
+      PartialPath storageGroupPath =
+          MetaUtils.getStorageGroupPathByLevel(path, config.getDefaultStorageGroupLevel());
+      try {
+        setStorageGroup(storageGroupPath);
+        return storageGroupPath;
+      } catch (StorageGroupAlreadySetException storageGroupAlreadySetException) {
+        // do nothing
+        // concurrent timeseries creation may result concurrent ensureStorageGroup
+        // it's ok that the storageGroup has already been set
+
+        if (storageGroupAlreadySetException.isHasChild()) {
+          // if setStorageGroup failure is because of child, the deviceNode should not be created.
+          // Timeseries can't be created under a deviceNode without storageGroup.
+          throw storageGroupAlreadySetException;
+        }
+
+        return storageGroupPath;
       }
     }
   }

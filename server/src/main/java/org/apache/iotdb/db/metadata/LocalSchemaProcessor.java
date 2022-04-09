@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata;
 
+import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -34,6 +35,7 @@ import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.rescon.TimeseriesStatistics;
+import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaRegion;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
@@ -129,6 +131,7 @@ public class LocalSchemaProcessor {
   protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private LocalConfigManager configManager = LocalConfigManager.getInstance();
+  private SchemaEngine schemaEngine = SchemaEngine.getInstance();
 
   // region SchemaProcessor Singleton
   private static class LocalSchemaProcessorHolder {
@@ -158,13 +161,14 @@ public class LocalSchemaProcessor {
    * thrown.
    */
   private SchemaRegion getBelongedSchemaRegion(PartialPath path) throws MetadataException {
-    return configManager.getBelongedSchemaRegion(path);
+    return schemaEngine.getSchemaRegion(configManager.getBelongedSchemaRegionId(path));
   }
 
   // This interface involves storage group auto creation
   private SchemaRegion getBelongedSchemaRegionWithAutoCreate(PartialPath path)
       throws MetadataException {
-    return configManager.getBelongedSchemaRegionWithAutoCreate(path);
+    return schemaEngine.getSchemaRegion(
+        configManager.getBelongedSchemaRegionIdWithAutoCreate(path));
   }
 
   /**
@@ -175,12 +179,23 @@ public class LocalSchemaProcessor {
    */
   private List<SchemaRegion> getInvolvedSchemaRegions(
       PartialPath pathPattern, boolean isPrefixMatch) throws MetadataException {
-    return configManager.getInvolvedSchemaRegions(pathPattern, isPrefixMatch);
+    List<SchemaRegionId> schemaRegionIds =
+        configManager.getInvolvedSchemaRegionIds(pathPattern, isPrefixMatch);
+    List<SchemaRegion> result = new ArrayList<>();
+    for (SchemaRegionId schemaRegionId : schemaRegionIds) {
+      result.add(schemaEngine.getSchemaRegion(schemaRegionId));
+    }
+    return result;
   }
 
   private List<SchemaRegion> getSchemaRegionsByStorageGroup(PartialPath storageGroup)
       throws MetadataException {
-    return configManager.getSchemaRegionsByStorageGroup(storageGroup);
+    List<SchemaRegion> result = new ArrayList<>();
+    for (SchemaRegionId schemaRegionId :
+        configManager.getSchemaRegionIdsByStorageGroup(storageGroup)) {
+      result.add(schemaEngine.getSchemaRegion(schemaRegionId));
+    }
+    return result;
   }
 
   // endregion
@@ -379,7 +394,7 @@ public class LocalSchemaProcessor {
    * @param storageGroup root.node.(node)*
    */
   public void setStorageGroup(PartialPath storageGroup) throws MetadataException {
-    configManager.setStorageGroup(storageGroup, true);
+    configManager.setStorageGroup(storageGroup);
   }
 
   /**

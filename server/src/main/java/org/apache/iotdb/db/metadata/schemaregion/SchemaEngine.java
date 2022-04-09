@@ -21,8 +21,10 @@ package org.apache.iotdb.db.metadata.schemaregion;
 
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
+import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.storagegroup.IStorageGroupSchemaManager;
+import org.apache.iotdb.db.metadata.storagegroup.StorageGroupSchemaManager;
 
 import java.util.Collection;
 import java.util.Map;
@@ -30,6 +32,9 @@ import java.util.concurrent.ConcurrentHashMap;
 
 // manage all the schemaRegion in this dataNode
 public class SchemaEngine {
+
+  private final IStorageGroupSchemaManager localStorageGroupSchemaManager =
+      StorageGroupSchemaManager.getInstance();
 
   private Map<SchemaRegionId, SchemaRegion> schemaRegionMap;
 
@@ -64,16 +69,28 @@ public class SchemaEngine {
     return schemaRegionMap.values();
   }
 
-  public synchronized SchemaRegion createSchemaRegion(
-      PartialPath storageGroup, SchemaRegionId schemaRegionId, IStorageGroupMNode storageGroupMNode)
+  public void createSchemaRegion(String storageGroup, SchemaRegionId schemaRegionId)
       throws MetadataException {
+    createSchemaRegion(new PartialPath(storageGroup), schemaRegionId);
+  }
+
+  public synchronized void createSchemaRegion(
+      PartialPath storageGroup, SchemaRegionId schemaRegionId) throws MetadataException {
     SchemaRegion schemaRegion = schemaRegionMap.get(schemaRegionId);
     if (schemaRegion != null) {
-      return schemaRegion;
+      return;
     }
-    schemaRegion = new SchemaRegion(storageGroup, schemaRegionId, storageGroupMNode);
+    PartialPath checkedStorageGroup =
+        localStorageGroupSchemaManager.ensureStorageGroup(storageGroup);
+    if (!checkedStorageGroup.equals(storageGroup)) {
+      throw new StorageGroupAlreadySetException(checkedStorageGroup.getFullPath());
+    }
+    schemaRegion =
+        new SchemaRegion(
+            storageGroup,
+            schemaRegionId,
+            localStorageGroupSchemaManager.getStorageGroupNodeByStorageGroupPath(storageGroup));
     schemaRegionMap.put(schemaRegionId, schemaRegion);
-    return schemaRegion;
   }
 
   public void deleteSchemaRegion(SchemaRegionId schemaRegionId) throws MetadataException {
