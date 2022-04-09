@@ -29,27 +29,12 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AlterTimeSer
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AuthorNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateTimeSeriesNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.DeviceMergeNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.FilterNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.FilterNullNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.GroupByLevelNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.LimitNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.OffsetNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.SortNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SourceNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.component.*;
-import org.apache.iotdb.db.mpp.sql.statement.crud.*;
-import org.apache.iotdb.db.mpp.sql.statement.component.FillComponent;
-import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullComponent;
-import org.apache.iotdb.db.mpp.sql.statement.component.GroupByLevelComponent;
-import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
-import org.apache.iotdb.db.mpp.sql.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.sql.statement.crud.*;
 import org.apache.iotdb.db.mpp.sql.statement.crud.AggregationQueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.FillQueryStatement;
@@ -66,12 +51,9 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 /** Generate a logical plan for the statement. */
 public class LogicalPlanner {

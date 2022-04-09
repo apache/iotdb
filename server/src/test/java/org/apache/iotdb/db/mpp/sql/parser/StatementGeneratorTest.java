@@ -38,11 +38,7 @@ public class StatementGeneratorTest {
     List<String> selectExprList = Arrays.asList("s1", "s2");
     List<String> prefixPaths = Collections.singletonList("root.sg1.d1");
     checkQueryStatement(
-        "SELECT sum(s1), max_value(s2), last_value(s1) FROM root.sg1.d1 LIMIT 10 OFFSET 10",
-        selectExprList,
-        prefixPaths,
-        10,
-        10);
+        "SELECT s1, s2 FROM root.sg1.d1 LIMIT 10 OFFSET 10", selectExprList, prefixPaths, 10, 10);
   }
 
   // TODO: add more tests
