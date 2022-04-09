@@ -143,16 +143,24 @@ public class ReadWriteIOUtils {
     buffer.putInt(map.size());
     length += 4;
     for (Entry<String, String> entry : map.entrySet()) {
-      bytes = entry.getKey().getBytes();
-      buffer.putInt(bytes.length);
+      if (entry.getKey() == null) {
+        buffer.putInt(-1);
+      } else {
+        bytes = entry.getKey().getBytes();
+        buffer.putInt(bytes.length);
+        buffer.put(bytes);
+        length += bytes.length;
+      }
       length += 4;
-      buffer.put(bytes);
-      length += bytes.length;
-      bytes = entry.getValue().getBytes();
-      buffer.putInt(bytes.length);
+      if (entry.getValue() == null) {
+        buffer.putInt(-1);
+      } else {
+        bytes = entry.getValue().getBytes();
+        buffer.putInt(bytes.length);
+        buffer.put(bytes);
+        length += bytes.length;
+      }
       length += 4;
-      buffer.put(bytes);
-      length += bytes.length;
     }
     return length;
   }

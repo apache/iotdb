@@ -152,7 +152,7 @@ public class SeriesScanNode extends SourceNode {
 
   @Override
   public PlanNode clone() {
-    return new SeriesScanNode(getId(), getSeriesPath(), this.regionReplicaSet);
+    return new SeriesScanNode(getPlanNodeId(), getSeriesPath(), this.regionReplicaSet);
   }
 
   @Override
@@ -200,12 +200,12 @@ public class SeriesScanNode extends SourceNode {
   public String toString() {
     return String.format(
         "SeriesScanNode-%s:[SeriesPath: %s, DataRegion: %s]",
-        this.getId(), this.getSeriesPath(), this.getDataRegionReplicaSet());
+        this.getPlanNodeId(), this.getSeriesPath(), this.getDataRegionReplicaSet());
   }
 
   @TestOnly
   public Pair<String, List<String>> print() {
-    String title = String.format("[SeriesScanNode (%s)]", this.getId());
+    String title = String.format("[SeriesScanNode (%s)]", this.getPlanNodeId());
     List<String> attributes = new ArrayList<>();
     attributes.add("SeriesPath: " + this.getSeriesPath());
     attributes.add("scanOrder: " + this.getScanOrder());

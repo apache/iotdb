@@ -113,7 +113,7 @@ public class GroupByLevelNode extends ProcessNode {
 
   @TestOnly
   public Pair<String, List<String>> print() {
-    String title = String.format("[GroupByLevelNode (%s)]", this.getId());
+    String title = String.format("[GroupByLevelNode (%s)]", this.getPlanNodeId());
     List<String> attributes = new ArrayList<>();
     attributes.add("GroupByLevels: " + Arrays.toString(this.getGroupByLevels()));
     attributes.add("ColumnNames: " + this.getOutputColumnNames());

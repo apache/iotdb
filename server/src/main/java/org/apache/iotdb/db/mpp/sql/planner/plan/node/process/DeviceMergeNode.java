@@ -78,7 +78,7 @@ public class DeviceMergeNode extends ProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new DeviceMergeNode(getId(), mergeOrder);
+    return new DeviceMergeNode(getPlanNodeId(), mergeOrder);
   }
 
   @Override
@@ -120,7 +120,7 @@ public class DeviceMergeNode extends ProcessNode {
 
   @TestOnly
   public Pair<String, List<String>> print() {
-    String title = String.format("[DeviceMergeNode (%s)]", this.getId());
+    String title = String.format("[DeviceMergeNode (%s)]", this.getPlanNodeId());
     List<String> attributes = new ArrayList<>();
     attributes.add("MergeOrder: " + (this.getMergeOrder() == null ? "null" : this.getMergeOrder()));
     return new Pair<>(title, attributes);

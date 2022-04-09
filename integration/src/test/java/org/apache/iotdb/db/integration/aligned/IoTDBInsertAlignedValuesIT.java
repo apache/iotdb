@@ -40,7 +40,7 @@ import java.sql.Statement;
 import java.util.Objects;
 
 @Category({LocalStandaloneTest.class})
-public class IOTDBInsertAlignedValuesIT {
+public class IoTDBInsertAlignedValuesIT {
   private static Connection connection;
   private static final int oldTsFileGroupSizeInByte =
       TSFileDescriptor.getInstance().getConfig().getGroupSizeInByte();
@@ -368,5 +368,24 @@ public class IOTDBInsertAlignedValuesIT {
     } catch (SQLException e) {
       Assert.assertEquals("411: Insertion contains duplicated measurement: status", e.getMessage());
     }
+  }
+
+  @Test
+  public void testExtendTextColumn() {
+    int primitiveArraySize = IoTDBDescriptor.getInstance().getConfig().getPrimitiveArraySize();
+    IoTDBDescriptor.getInstance().getConfig().setPrimitiveArraySize(2);
+    try (Statement st1 = connection.createStatement()) {
+      st1.execute("insert into root.sg.d1(time,s1,s2) aligned values(1,'test','test')");
+      st1.execute("insert into root.sg.d1(time,s1,s2) aligned values(2,'test','test')");
+      st1.execute("insert into root.sg.d1(time,s1,s2) aligned values(3,'test','test')");
+      st1.execute("insert into root.sg.d1(time,s1,s2) aligned values(4,'test','test')");
+      st1.execute("insert into root.sg.d1(time,s1,s3) aligned values(5,'test','test')");
+      st1.execute("insert into root.sg.d1(time,s1,s2) aligned values(6,'test','test')");
+      st1.execute("flush");
+      st1.execute("insert into root.sg.d1(time,s1,s3) aligned values(7,'test','test')");
+    } catch (SQLException e) {
+      Assert.fail();
+    }
+    IoTDBDescriptor.getInstance().getConfig().setPrimitiveArraySize(primitiveArraySize);
   }
 }

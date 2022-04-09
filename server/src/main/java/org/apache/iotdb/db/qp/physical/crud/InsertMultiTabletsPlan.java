@@ -41,19 +41,19 @@ import java.util.TreeMap;
 
 /**
  * Mainly used in the distributed version, when multiple InsertTabletPlans belong to a raft
- * replication group, we merge these InsertTabletPlans into one InsertMultiTabletPlan, which can
+ * replication group, we merge these InsertTabletPlans into one InsertMultiTabletsPlan, which can
  * reduce the number of raft logs. For details, please refer to
  * https://issues.apache.org/jira/browse/IOTDB-1099
  */
-public class InsertMultiTabletPlan extends InsertPlan implements BatchPlan {
+public class InsertMultiTabletsPlan extends InsertPlan implements BatchPlan {
 
   /**
    * the value is used to indict the parent InsertTabletPlan's index when the parent
    * InsertTabletPlan is split to multi sub InsertTabletPlans. if the InsertTabletPlan have no
    * parent plan, the value is zero;
    *
-   * <p>suppose we originally have three InsertTabletPlans in one InsertMultiTabletPlan, then the
-   * initial InsertMultiTabletPlan would have the following two attributes:
+   * <p>suppose we originally have three InsertTabletPlans in one InsertMultiTabletsPlan, then the
+   * initial InsertMultiTabletsPlan would have the following two attributes:
    *
    * <p>insertTabletPlanList={InsertTabletPlan_1,InsertTabletPlan_2,InsertTabletPlan_3}
    *
@@ -104,19 +104,19 @@ public class InsertMultiTabletPlan extends InsertPlan implements BatchPlan {
 
   Integer differentStorageGroupsCount;
 
-  public InsertMultiTabletPlan() {
+  public InsertMultiTabletsPlan() {
     super(OperatorType.MULTI_BATCH_INSERT);
     this.insertTabletPlanList = new ArrayList<>();
     this.parentInsertTabletPlanIndexList = new ArrayList<>();
   }
 
-  public InsertMultiTabletPlan(List<InsertTabletPlan> insertTabletPlanList) {
+  public InsertMultiTabletsPlan(List<InsertTabletPlan> insertTabletPlanList) {
     super(OperatorType.MULTI_BATCH_INSERT);
     this.insertTabletPlanList = insertTabletPlanList;
     this.parentInsertTabletPlanIndexList = new ArrayList<>();
   }
 
-  public InsertMultiTabletPlan(
+  public InsertMultiTabletsPlan(
       List<InsertTabletPlan> insertTabletPlanList, List<Integer> parentInsertTabletPlanIndexList) {
     super(OperatorType.MULTI_BATCH_INSERT);
     this.insertTabletPlanList = insertTabletPlanList;
@@ -214,8 +214,8 @@ public class InsertMultiTabletPlan extends InsertPlan implements BatchPlan {
   }
 
   /**
-   * @param index the index of the sub plan in this InsertMultiTabletPlan
-   * @return the parent's index in the parent InsertMultiTabletPlan
+   * @param index the index of the sub plan in this InsertMultiTabletsPlan
+   * @return the parent's index in the parent InsertMultiTabletsPlan
    */
   public int getParentIndex(int index) {
     if (index >= parentInsertTabletPlanIndexList.size() || index < 0) {
@@ -316,14 +316,14 @@ public class InsertMultiTabletPlan extends InsertPlan implements BatchPlan {
   public void setIndex(long index) {
     super.setIndex(index);
     for (InsertTabletPlan insertTabletPlan : insertTabletPlanList) {
-      // use the InsertMultiTabletPlan's index as the sub InsertTabletPlan's index
+      // use the InsertMultiTabletsPlan's index as the sub InsertTabletPlan's index
       insertTabletPlan.setIndex(index);
     }
   }
 
   @Override
   public String toString() {
-    return "InsertMultiTabletPlan{"
+    return "InsertMultiTabletsPlan{"
         + " insertTabletPlanList="
         + insertTabletPlanList
         + ", parentInsetTablePlanIndexList="
@@ -340,7 +340,7 @@ public class InsertMultiTabletPlan extends InsertPlan implements BatchPlan {
       return false;
     }
 
-    InsertMultiTabletPlan that = (InsertMultiTabletPlan) o;
+    InsertMultiTabletsPlan that = (InsertMultiTabletsPlan) o;
 
     if (!Objects.equals(insertTabletPlanList, that.insertTabletPlanList)) {
       return false;

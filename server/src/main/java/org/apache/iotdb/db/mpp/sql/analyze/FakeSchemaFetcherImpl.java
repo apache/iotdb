@@ -24,6 +24,8 @@ import org.apache.iotdb.db.mpp.common.schematree.*;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import java.util.List;
+
 public class FakeSchemaFetcherImpl implements ISchemaFetcher {
 
   private final SchemaTree schemaTree = new SchemaTree(generateSchemaTree());
@@ -77,5 +79,11 @@ public class FakeSchemaFetcherImpl implements ISchemaFetcher {
     a.addAliasChild("status", s2);
 
     return root;
+  }
+
+  @Override
+  public SchemaTree fetchSchemaListWithAutoCreate(
+      List<PartialPath> devicePath, List<String[]> measurements, List<TSDataType[]> tsDataTypes) {
+    return null;
   }
 }

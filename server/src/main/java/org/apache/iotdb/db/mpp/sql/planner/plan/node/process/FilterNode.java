@@ -66,7 +66,7 @@ public class FilterNode extends ProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new FilterNode(getId(), predicate, outputColumnNames);
+    return new FilterNode(getPlanNodeId(), predicate, outputColumnNames);
   }
 
   @Override
@@ -101,7 +101,7 @@ public class FilterNode extends ProcessNode {
 
   @TestOnly
   public Pair<String, List<String>> print() {
-    String title = String.format("[FilterNode (%s)]", this.getId());
+    String title = String.format("[FilterNode (%s)]", this.getPlanNodeId());
     List<String> attributes = new ArrayList<>();
     attributes.add("QueryFilter: " + this.getPredicate());
     attributes.add("outputColumnNames: " + this.getOutputColumnNames());

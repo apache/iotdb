@@ -61,7 +61,7 @@ public class OffsetNode extends ProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new OffsetNode(getId(), offset);
+    return new OffsetNode(getPlanNodeId(), offset);
   }
 
   @Override
@@ -96,7 +96,7 @@ public class OffsetNode extends ProcessNode {
 
   @TestOnly
   public Pair<String, List<String>> print() {
-    String title = String.format("[OffsetNode (%s)]", this.getId());
+    String title = String.format("[OffsetNode (%s)]", this.getPlanNodeId());
     List<String> attributes = new ArrayList<>();
     attributes.add("RowOffset: " + this.getOffset());
     return new Pair<>(title, attributes);

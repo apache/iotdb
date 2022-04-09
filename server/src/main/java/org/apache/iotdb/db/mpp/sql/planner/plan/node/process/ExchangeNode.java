@@ -62,10 +62,10 @@ public class ExchangeNode extends PlanNode {
 
   @Override
   public PlanNode clone() {
-    ExchangeNode node = new ExchangeNode(getId());
+    ExchangeNode node = new ExchangeNode(getPlanNodeId());
     if (remoteSourceNode != null) {
       FragmentSinkNode remoteSourceNodeClone = (FragmentSinkNode) remoteSourceNode.clone();
-      remoteSourceNodeClone.setDownStreamPlanNodeId(node.getId());
+      remoteSourceNodeClone.setDownStreamPlanNodeId(node.getPlanNodeId());
       node.setRemoteSourceNode(remoteSourceNode);
     }
     return node;
@@ -103,7 +103,8 @@ public class ExchangeNode extends PlanNode {
   }
 
   public String toString() {
-    return String.format("ExchangeNode-%s: [SourceAddress:%s]", getId(), getSourceAddress());
+    return String.format(
+        "ExchangeNode-%s: [SourceAddress:%s]", getPlanNodeId(), getSourceAddress());
   }
 
   public String getSourceAddress() {

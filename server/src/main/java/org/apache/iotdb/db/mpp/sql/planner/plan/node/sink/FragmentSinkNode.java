@@ -47,7 +47,7 @@ public class FragmentSinkNode extends SinkNode {
 
   @Override
   public PlanNode clone() {
-    FragmentSinkNode sinkNode = new FragmentSinkNode(getId());
+    FragmentSinkNode sinkNode = new FragmentSinkNode(getPlanNodeId());
     sinkNode.setDownStream(downStreamEndpoint, downStreamInstanceId, downStreamPlanNodeId);
     return sinkNode;
   }
@@ -100,7 +100,8 @@ public class FragmentSinkNode extends SinkNode {
   }
 
   public String toString() {
-    return String.format("FragmentSinkNode-%s:[SendTo: (%s)]", getId(), getDownStreamAddress());
+    return String.format(
+        "FragmentSinkNode-%s:[SendTo: (%s)]", getPlanNodeId(), getDownStreamAddress());
   }
 
   public String getDownStreamAddress() {

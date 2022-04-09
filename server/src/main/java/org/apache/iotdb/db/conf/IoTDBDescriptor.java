@@ -380,6 +380,13 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "compaction_priority", conf.getCompactionPriority().toString())));
 
+      int subtaskNum =
+          Integer.parseInt(
+              properties.getProperty(
+                  "sub_compaction_thread_num", Integer.toString(conf.getSubCompactionTaskNum())));
+      subtaskNum = subtaskNum <= 0 ? 1 : subtaskNum;
+      conf.setSubCompactionTaskNum(subtaskNum);
+
       conf.setQueryTimeoutThreshold(
           Integer.parseInt(
               properties.getProperty(

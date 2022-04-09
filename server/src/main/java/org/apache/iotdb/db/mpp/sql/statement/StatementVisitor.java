@@ -210,4 +210,18 @@ public abstract class StatementVisitor<R, C> {
   public R visitInsertRow(InsertRowStatement insertRowStatement, C context) {
     return visitStatement(insertRowStatement, context);
   }
+
+  public R visitInsertRows(InsertRowsStatement insertRowsStatement, C context) {
+    return visitStatement(insertRowsStatement, context);
+  }
+
+  public R visitInsertMultiTablets(
+      InsertMultiTabletsStatement insertMultiTabletsStatement, C context) {
+    return visitStatement(insertMultiTabletsStatement, context);
+  }
+
+  public R visitInsertRowsOfOneDevice(
+      InsertRowsOfOneDeviceStatement insertRowsOfOneDeviceStatement, C context) {
+    return visitStatement(insertRowsOfOneDeviceStatement, context);
+  }
 }

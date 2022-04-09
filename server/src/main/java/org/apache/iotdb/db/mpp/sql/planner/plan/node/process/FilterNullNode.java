@@ -74,7 +74,7 @@ public class FilterNullNode extends ProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new FilterNullNode(getId(), discardPolicy);
+    return new FilterNullNode(getPlanNodeId(), discardPolicy);
   }
 
   @Override
@@ -113,7 +113,7 @@ public class FilterNullNode extends ProcessNode {
 
   @TestOnly
   public Pair<String, List<String>> print() {
-    String title = String.format("[FilterNullNode (%s)]", this.getId());
+    String title = String.format("[FilterNullNode (%s)]", this.getPlanNodeId());
     List<String> attributes = new ArrayList<>();
     attributes.add("FilterNullPolicy: " + this.getDiscardPolicy());
     attributes.add("FilterNullColumnNames: " + this.getFilterNullColumnNames());
