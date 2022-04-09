@@ -16,39 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.consensus.common;
+package org.apache.iotdb.db.auth.authorizer;
 
-import java.util.Arrays;
-
-public enum ConsensusType {
-  STANDALONE("standalone"),
-  RATIS("ratis");
-
-  private final String typeName;
-
-  ConsensusType(String typeName) {
-    this.typeName = typeName;
-  }
-
-  public String getTypeName() {
-    return typeName;
-  }
-
-  @Override
-  public String toString() {
-    return typeName;
-  }
-
-  public static ConsensusType getConsensusType(String typeName) {
-    for (ConsensusType type : ConsensusType.values()) {
-      if (type.getTypeName().equals(typeName)) {
-        return type;
-      }
-    }
-
-    throw new IllegalArgumentException(
-        String.format(
-            "Unknown consensus type, found: %s expected: %s",
-            typeName, Arrays.toString(ConsensusType.values())));
-  }
+public class ClusterAuthorizer {
+  // TODO: send rpc to confignode
 }

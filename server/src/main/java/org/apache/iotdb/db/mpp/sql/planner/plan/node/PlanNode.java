@@ -39,11 +39,11 @@ public abstract class PlanNode {
     this.id = id;
   }
 
-  public PlanNodeId getId() {
+  public PlanNodeId getPlanNodeId() {
     return id;
   }
 
-  public void setId(PlanNodeId id) {
+  public void setPlanNodeId(PlanNodeId id) {
     this.id = id;
   }
 

@@ -60,7 +60,7 @@ public class FillNode extends ProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new FillNode(getId(), fillPolicy);
+    return new FillNode(getPlanNodeId(), fillPolicy);
   }
 
   @Override
@@ -97,7 +97,7 @@ public class FillNode extends ProcessNode {
 
   @TestOnly
   public Pair<String, List<String>> print() {
-    String title = String.format("[FillNode (%s)]", this.getId());
+    String title = String.format("[FillNode (%s)]", this.getPlanNodeId());
     List<String> attributes = new ArrayList<>();
     attributes.add("FillPolicy: " + this.getFillPolicy());
     return new Pair<>(title, attributes);

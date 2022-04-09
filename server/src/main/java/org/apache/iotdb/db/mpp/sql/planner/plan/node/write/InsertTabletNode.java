@@ -225,7 +225,7 @@ public class InsertTabletNode extends InsertNode {
       }
       InsertTabletNode subNode =
           new InsertTabletNode(
-              getId(),
+              getPlanNodeId(),
               devicePath,
               isAligned,
               measurementSchemas,

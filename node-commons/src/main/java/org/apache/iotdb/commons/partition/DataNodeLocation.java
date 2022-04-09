@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.cluster.Endpoint;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class DataNodeLocation {
 
@@ -88,12 +89,13 @@ public class DataNodeLocation {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    return endPoint.equals(((DataNodeLocation) o).getEndPoint());
+    DataNodeLocation that = (DataNodeLocation) o;
+    return dataNodeID == that.dataNodeID && Objects.equals(endPoint, that.endPoint);
   }
 
   @Override
   public int hashCode() {
-    return endPoint.hashCode();
+    return Objects.hash(dataNodeID, endPoint);
   }
 
   public String toString() {

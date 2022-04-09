@@ -101,6 +101,16 @@ struct DataPartitionInfoResp {
     1: required map<string, map<i32, map<i64, list<RegionInfo>>>> dataPartitionMap
 }
 
+struct AuthorizerReq{
+    1: required i32 authorType
+    2: required string userName
+    3: required string roleName
+    4: required string password
+    5: required string newPassword
+    6: required set<i32> permissions
+    7: required string nodeName
+}
+
 struct SchemaPartitionInfoResp {
     // Map<StorageGroup, Map<DeviceGroupID, SchemaRegionPlaceInfo>>
     1: required map<string, map<i32, RegionInfo>> schemaPartitionInfo
@@ -145,4 +155,7 @@ service ConfigIService {
   SchemaPartitionInfoResp fetchSchemaPartitionInfo(FetchSchemaPartitionReq req)
 
   PartitionInfoResp fetchPartitionInfo(FetchPartitionReq req)
+
+   rpc.TSStatus operatePermission(AuthorizerReq req)
+
 }
