@@ -48,7 +48,7 @@ public class FillQueryStatement extends QueryStatement {
   public void selfCheck() {
     super.selfCheck();
 
-    if (DisableAlign()) {
+    if (disableAlign()) {
       throw new SemanticException("FILL doesn't support disable align clause.");
     }
 

@@ -92,15 +92,11 @@ public class LogicalPlanner {
       planBuilder.planRawDataQuerySource(
           analysis.getDeviceIdToPathsMap(),
           queryStatement.getResultOrder(),
-          queryStatement.isAlignByDevice());
-
-      if (queryStatement.getWhereCondition() != null) {
-        planBuilder.planQueryFilter(
-            queryStatement.getWhereCondition().getQueryFilter(), analysis.getOutputColumnNames());
-      }
+          queryStatement.isAlignByDevice(),
+          analysis.getQueryFilter(),
+          analysis.getOutputColumnNames());
 
       planBuilder.planFilterNull(queryStatement.getFilterNullComponent());
-      planBuilder.planSort(queryStatement.getResultOrder());
       planBuilder.planLimit(queryStatement.getRowLimit());
       planBuilder.planOffset(queryStatement.getRowOffset());
       return planBuilder.getRoot();
@@ -117,25 +113,23 @@ public class LogicalPlanner {
         planBuilder.planRawDataQuerySource(
             analysis.getDeviceIdToPathsMap(),
             queryStatement.getResultOrder(),
-            queryStatement.isAlignByDevice());
+            queryStatement.isAlignByDevice(),
+            analysis.getQueryFilter(),
+            analysis.getOutputColumnNames());
         // TODO: add AggregateNode
       } else {
         planBuilder.planAggregationQuerySource(
             analysis.getDeviceNameToAggregationsMap(),
             queryStatement.getResultOrder(),
-            queryStatement.isAlignByDevice());
+            queryStatement.isAlignByDevice(),
+            analysis.getQueryFilter(),
+            analysis.getOutputColumnNames());
       }
 
       planBuilder.planFilterNull(queryStatement.getFilterNullComponent());
-      planBuilder.planSort(queryStatement.getResultOrder());
       planBuilder.planLimit(queryStatement.getRowLimit());
       planBuilder.planOffset(queryStatement.getRowOffset());
       return planBuilder.getRoot();
-    }
-
-    @Override
-    public PlanNode visitFillQuery(FillQueryStatement queryStatement, MPPQueryContext context) {
-      return null;
     }
 
     @Override
@@ -151,18 +145,23 @@ public class LogicalPlanner {
     }
 
     @Override
+    public PlanNode visitFillQuery(FillQueryStatement queryStatement, MPPQueryContext context) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
     public PlanNode visitLastQuery(LastQueryStatement queryStatement, MPPQueryContext context) {
-      return null;
+      throw new UnsupportedOperationException();
     }
 
     @Override
     public PlanNode visitUDTFQuery(UDTFQueryStatement queryStatement, MPPQueryContext context) {
-      return null;
+      throw new UnsupportedOperationException();
     }
 
     @Override
     public PlanNode visitUDAFQuery(UDAFQueryStatement queryStatement, MPPQueryContext context) {
-      return null;
+      throw new UnsupportedOperationException();
     }
 
     @Override

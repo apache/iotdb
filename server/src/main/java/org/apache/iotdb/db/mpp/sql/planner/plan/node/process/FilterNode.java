@@ -19,10 +19,10 @@
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import com.google.common.collect.ImmutableList;
@@ -30,24 +30,25 @@ import com.google.common.collect.ImmutableList;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /** The FilterNode is responsible to filter the RowRecord from TsBlock. */
 public class FilterNode extends ProcessNode {
 
   private PlanNode child;
 
-  private final QueryFilter predicate;
+  private final IExpression predicate;
 
   private final List<String> outputColumnNames;
 
-  public FilterNode(PlanNodeId id, QueryFilter predicate, List<String> outputColumnNames) {
+  public FilterNode(PlanNodeId id, IExpression predicate, List<String> outputColumnNames) {
     super(id);
     this.predicate = predicate;
     this.outputColumnNames = outputColumnNames;
   }
 
   public FilterNode(
-      PlanNodeId id, PlanNode child, QueryFilter predicate, List<String> outputColumnNames) {
+      PlanNodeId id, PlanNode child, IExpression predicate, List<String> outputColumnNames) {
     this(id, predicate, outputColumnNames);
     this.child = child;
   }
@@ -89,7 +90,7 @@ public class FilterNode extends ProcessNode {
   @Override
   public void serialize(ByteBuffer byteBuffer) {}
 
-  public QueryFilter getPredicate() {
+  public IExpression getPredicate() {
     return predicate;
   }
 
@@ -104,5 +105,26 @@ public class FilterNode extends ProcessNode {
     attributes.add("QueryFilter: " + this.getPredicate());
     attributes.add("outputColumnNames: " + this.getOutputColumnNames());
     return new Pair<>(title, attributes);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+
+    FilterNode that = (FilterNode) o;
+    return Objects.equals(child, that.child)
+        && Objects.equals(predicate, that.predicate)
+        && Objects.equals(outputColumnNames, that.outputColumnNames);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(child, predicate, outputColumnNames);
   }
 }

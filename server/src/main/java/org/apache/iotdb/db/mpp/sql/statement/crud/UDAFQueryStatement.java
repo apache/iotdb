@@ -49,7 +49,7 @@ public class UDAFQueryStatement extends QueryStatement {
   public void selfCheck() {
     super.selfCheck();
 
-    if (!DisableAlign()) {
+    if (!disableAlign()) {
       throw new SemanticException("AGGREGATION doesn't support disable align clause.");
     }
     checkSelectComponent(selectComponent);

@@ -30,6 +30,7 @@ import com.google.common.collect.ImmutableList;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /** WithoutNode is used to discard specific rows from upstream node. */
 public class FilterNullNode extends ProcessNode {
@@ -117,5 +118,26 @@ public class FilterNullNode extends ProcessNode {
     attributes.add("FilterNullPolicy: " + this.getDiscardPolicy());
     attributes.add("FilterNullColumnNames: " + this.getFilterNullColumnNames());
     return new Pair<>(title, attributes);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+
+    FilterNullNode that = (FilterNullNode) o;
+    return discardPolicy == that.discardPolicy
+        && Objects.equals(child, that.child)
+        && Objects.equals(filterNullColumnNames, that.filterNullColumnNames);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(discardPolicy, child, filterNullColumnNames);
   }
 }

@@ -43,7 +43,7 @@ public class LastQueryStatement extends QueryStatement {
       throw new SemanticException("Last query doesn't support align by device.");
     }
 
-    if (DisableAlign()) {
+    if (disableAlign()) {
       throw new SemanticException("Disable align cannot be applied to LAST query.");
     }
 

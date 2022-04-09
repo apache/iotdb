@@ -21,7 +21,6 @@ package org.apache.iotdb.db.mpp.sql.planner;
 
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
-import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.*;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregateScanNode;
@@ -31,6 +30,7 @@ import org.apache.iotdb.db.mpp.sql.statement.component.GroupByLevelComponent;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.tsfile.read.expression.IExpression;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -52,7 +52,9 @@ public class QueryPlanBuilder {
   public void planRawDataQuerySource(
       Map<String, Set<PartialPath>> deviceNameToPathsMap,
       OrderBy scanOrder,
-      boolean isAlignByDevice) {
+      boolean isAlignByDevice,
+      IExpression queryFilter,
+      List<String> outputColumnNames) {
     Map<String, List<PlanNode>> deviceNameToSourceNodesMap = new HashMap<>();
 
     for (Map.Entry<String, Set<PartialPath>> entry : deviceNameToPathsMap.entrySet()) {
@@ -65,16 +67,19 @@ public class QueryPlanBuilder {
     }
 
     if (isAlignByDevice) {
-      convergeWithDeviceMerge(deviceNameToSourceNodesMap, scanOrder);
+      convergeWithDeviceMerge(
+          deviceNameToSourceNodesMap, scanOrder, queryFilter, outputColumnNames);
     } else {
-      convergeWithTimeJoin(deviceNameToSourceNodesMap, scanOrder);
+      convergeWithTimeJoin(deviceNameToSourceNodesMap, scanOrder, queryFilter, outputColumnNames);
     }
   }
 
   public void planAggregationQuerySource(
       Map<String, Map<PartialPath, Set<AggregationType>>> deviceNameToAggregationsMap,
       OrderBy scanOrder,
-      boolean isAlignByDevice) {
+      boolean isAlignByDevice,
+      IExpression queryFilter,
+      List<String> outputColumnNames) {
     Map<String, List<PlanNode>> deviceNameToSourceNodesMap = new HashMap<>();
     for (Map.Entry<String, Map<PartialPath, Set<AggregationType>>> entry :
         deviceNameToAggregationsMap.entrySet()) {
@@ -99,43 +104,63 @@ public class QueryPlanBuilder {
     }
 
     if (isAlignByDevice) {
-      convergeWithDeviceMerge(deviceNameToSourceNodesMap, scanOrder);
+      convergeWithDeviceMerge(
+          deviceNameToSourceNodesMap, scanOrder, queryFilter, outputColumnNames);
     } else {
-      convergeWithTimeJoin(deviceNameToSourceNodesMap, scanOrder);
+      convergeWithTimeJoin(deviceNameToSourceNodesMap, scanOrder, queryFilter, outputColumnNames);
     }
   }
 
   public void convergeWithTimeJoin(
-      Map<String, List<PlanNode>> deviceNameToSourceNodesMap, OrderBy mergeOrder) {
-    List<PlanNode> planNodes =
+      Map<String, List<PlanNode>> deviceNameToSourceNodesMap,
+      OrderBy mergeOrder,
+      IExpression queryFilter,
+      List<String> outputColumnNames) {
+    List<PlanNode> sourceNodes =
         deviceNameToSourceNodesMap.entrySet().stream()
             .flatMap(entry -> entry.getValue().stream())
             .collect(Collectors.toList());
-    if (planNodes.size() == 1) {
-      this.root = planNodes.get(0);
-    } else {
-      this.root = new TimeJoinNode(context.getQueryId().genPlanNodeId(), mergeOrder, planNodes);
-    }
+    this.root = convergeWithTimeJoin(sourceNodes, mergeOrder, queryFilter, outputColumnNames);
   }
 
   public void convergeWithDeviceMerge(
-      Map<String, List<PlanNode>> deviceNameToSourceNodesMap, OrderBy mergeOrder) {
-    DeviceMergeNode deviceMergeNode = new DeviceMergeNode(context.getQueryId().genPlanNodeId());
+      Map<String, List<PlanNode>> deviceNameToSourceNodesMap,
+      OrderBy mergeOrder,
+      IExpression queryFilter,
+      List<String> outputColumnNames) {
+    DeviceMergeNode deviceMergeNode =
+        new DeviceMergeNode(context.getQueryId().genPlanNodeId(), mergeOrder);
     for (Map.Entry<String, List<PlanNode>> entry : deviceNameToSourceNodesMap.entrySet()) {
       String deviceName = entry.getKey();
       List<PlanNode> planNodes = new ArrayList<>(entry.getValue());
-      if (planNodes.size() == 1) {
-        deviceMergeNode.addChildDeviceNode(deviceName, planNodes.get(0));
-      } else {
-        TimeJoinNode timeJoinNode =
-            new TimeJoinNode(context.getQueryId().genPlanNodeId(), mergeOrder, planNodes);
-        deviceMergeNode.addChildDeviceNode(deviceName, timeJoinNode);
-      }
+      deviceMergeNode.addChildDeviceNode(
+          deviceName, convergeWithTimeJoin(planNodes, mergeOrder, queryFilter, outputColumnNames));
     }
     this.root = deviceMergeNode;
   }
 
-  public void planQueryFilter(QueryFilter queryFilter, List<String> outputColumnNames) {
+  private PlanNode convergeWithTimeJoin(
+      List<PlanNode> sourceNodes,
+      OrderBy mergeOrder,
+      IExpression queryFilter,
+      List<String> outputColumnNames) {
+    PlanNode tmpNode;
+    if (sourceNodes.size() == 1) {
+      tmpNode = sourceNodes.get(0);
+    } else {
+      tmpNode = new TimeJoinNode(context.getQueryId().genPlanNodeId(), mergeOrder, sourceNodes);
+    }
+
+    if (queryFilter != null) {
+      tmpNode =
+          new FilterNode(
+              context.getQueryId().genPlanNodeId(), tmpNode, queryFilter, outputColumnNames);
+    }
+
+    return tmpNode;
+  }
+
+  public void planQueryFilter(IExpression queryFilter, List<String> outputColumnNames) {
     if (queryFilter == null) {
       return;
     }
@@ -173,21 +198,12 @@ public class QueryPlanBuilder {
                 .collect(Collectors.toList()));
   }
 
-  public void planSort(OrderBy resultOrder) {
-    if (resultOrder == null || resultOrder == OrderBy.TIMESTAMP_ASC) {
-      return;
-    }
-
-    this.root =
-        new SortNode(context.getQueryId().genPlanNodeId(), this.getRoot(), null, resultOrder);
-  }
-
   public void planLimit(int rowLimit) {
     if (rowLimit == 0) {
       return;
     }
 
-    this.root = new LimitNode(context.getQueryId().genPlanNodeId(), rowLimit, this.getRoot());
+    this.root = new LimitNode(context.getQueryId().genPlanNodeId(), this.getRoot(), rowLimit);
   }
 
   public void planOffset(int rowOffset) {

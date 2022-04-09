@@ -27,9 +27,7 @@ import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * DeviceMergeOperator is responsible for constructing a device-based view of a set of series. And
@@ -52,7 +50,7 @@ public class DeviceMergeNode extends ProcessNode {
 
   // The map from deviceName to corresponding query result node responsible for that device.
   // DeviceNode means the node whose output TsBlock contains the data belonged to one device.
-  private Map<String, PlanNode> childDeviceNodeMap;
+  private Map<String, PlanNode> childDeviceNodeMap = new HashMap<>();
 
   private List<PlanNode> children;
 
@@ -130,5 +128,26 @@ public class DeviceMergeNode extends ProcessNode {
 
   public void setChildren(List<PlanNode> children) {
     this.children = children;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+
+    DeviceMergeNode that = (DeviceMergeNode) o;
+    return mergeOrder == that.mergeOrder
+        && filterNullPolicy == that.filterNullPolicy
+        && Objects.equals(childDeviceNodeMap, that.childDeviceNodeMap);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(mergeOrder, filterNullPolicy, childDeviceNodeMap);
   }
 }

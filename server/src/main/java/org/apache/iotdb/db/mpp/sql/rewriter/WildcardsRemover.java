@@ -33,6 +33,7 @@ import org.apache.iotdb.db.mpp.sql.statement.component.GroupByLevelController;
 import org.apache.iotdb.db.mpp.sql.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.sql.statement.component.WhereCondition;
 import org.apache.iotdb.db.mpp.sql.statement.crud.AggregationQueryStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.LastQueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.QueryStatement;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.query.expression.Expression;
@@ -70,7 +71,12 @@ public class WildcardsRemover {
     QueryStatement queryStatement = (QueryStatement) statement;
     this.paginationController =
         new ColumnPaginationController(
-            queryStatement.getSeriesLimit(), queryStatement.getSeriesOffset());
+            queryStatement.getSeriesLimit(),
+            queryStatement.getSeriesOffset(),
+            queryStatement.isAlignByDevice()
+                || queryStatement.disableAlign()
+                || queryStatement instanceof LastQueryStatement
+                || queryStatement.isGroupByLevel());
     this.schemaTree = schemaTree;
     this.isPrefixMatch = queryStatement.isPrefixMatchPath();
 
@@ -189,7 +195,8 @@ public class WildcardsRemover {
         removeWildcardsInQueryFilter(whereCondition.getQueryFilter(), fromPaths, resultPaths));
     whereCondition.getQueryFilter().setPathSet(resultPaths);
 
-    for (PartialPath path : resultPaths) {
+    for (PartialPath path :
+        resultPaths.stream().filter(SQLConstant::isNotReservedPath).collect(Collectors.toList())) {
       deviceIdToPathsMap.computeIfAbsent(path.getDevice(), k -> new HashSet<>()).add(path);
     }
   }

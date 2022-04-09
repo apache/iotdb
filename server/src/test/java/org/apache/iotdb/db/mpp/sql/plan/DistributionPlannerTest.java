@@ -67,7 +67,7 @@ public class DistributionPlannerTest {
     timeJoinNode.addChild(
         new SeriesScanNode(queryId.genPlanNodeId(), new PartialPath("root.sg.d22.s1")));
 
-    LimitNode root = new LimitNode(queryId.genPlanNodeId(), 10, timeJoinNode);
+    LimitNode root = new LimitNode(queryId.genPlanNodeId(), timeJoinNode, 10);
 
     Analysis analysis = constructAnalysis();
 
@@ -89,7 +89,7 @@ public class DistributionPlannerTest {
     timeJoinNode.addChild(
         new SeriesScanNode(queryId.genPlanNodeId(), new PartialPath("root.sg.d22.s1")));
 
-    LimitNode root = new LimitNode(queryId.genPlanNodeId(), 10, timeJoinNode);
+    LimitNode root = new LimitNode(queryId.genPlanNodeId(), timeJoinNode, 10);
 
     Analysis analysis = constructAnalysis();
 
@@ -112,7 +112,7 @@ public class DistributionPlannerTest {
     timeJoinNode.addChild(
         new SeriesScanNode(queryId.genPlanNodeId(), new PartialPath("root.sg.d22.s1")));
 
-    LimitNode root = new LimitNode(queryId.genPlanNodeId(), 10, timeJoinNode);
+    LimitNode root = new LimitNode(queryId.genPlanNodeId(), timeJoinNode, 10);
 
     Analysis analysis = constructAnalysis();
 
@@ -138,7 +138,7 @@ public class DistributionPlannerTest {
     timeJoinNode.addChild(
         new SeriesScanNode(queryId.genPlanNodeId(), new PartialPath("root.sg.d333.s1")));
 
-    LimitNode root = new LimitNode(queryId.genPlanNodeId(), 10, timeJoinNode);
+    LimitNode root = new LimitNode(queryId.genPlanNodeId(), timeJoinNode, 10);
 
     Analysis analysis = constructAnalysis();
 

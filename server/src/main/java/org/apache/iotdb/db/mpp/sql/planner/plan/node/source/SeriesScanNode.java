@@ -33,6 +33,7 @@ import com.google.common.collect.ImmutableList;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -209,5 +210,40 @@ public class SeriesScanNode extends SourceNode {
     attributes.add("SeriesPath: " + this.getSeriesPath());
     attributes.add("scanOrder: " + this.getScanOrder());
     return new Pair<>(title, attributes);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+
+    SeriesScanNode that = (SeriesScanNode) o;
+    return limit == that.limit
+        && offset == that.offset
+        && Objects.equals(seriesPath, that.seriesPath)
+        && Objects.equals(allSensors, that.allSensors)
+        && scanOrder == that.scanOrder
+        && Objects.equals(timeFilter, that.timeFilter)
+        && Objects.equals(valueFilter, that.valueFilter)
+        && Objects.equals(columnName, that.columnName);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(
+        super.hashCode(),
+        seriesPath,
+        allSensors,
+        scanOrder,
+        timeFilter,
+        valueFilter,
+        limit,
+        offset,
+        columnName);
   }
 }

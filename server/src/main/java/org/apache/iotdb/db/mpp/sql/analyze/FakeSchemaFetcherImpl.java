@@ -20,19 +20,62 @@
 package org.apache.iotdb.db.mpp.sql.analyze;
 
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
-import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
+import org.apache.iotdb.db.mpp.common.schematree.*;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 public class FakeSchemaFetcherImpl implements ISchemaFetcher {
+
+  private final SchemaTree schemaTree = new SchemaTree(generateSchemaTree());
+
   @Override
   public SchemaTree fetchSchema(PathPatternTree patternTree) {
-    return new SchemaTree();
+    return schemaTree;
   }
 
   @Override
   public SchemaTree fetchSchemaWithAutoCreate(
       PartialPath devicePath, String[] measurements, TSDataType[] tsDataTypes) {
-    return null;
+    return schemaTree;
+  }
+
+  /**
+   * Generate the following tree: root.sg.d1.s1, root.sg.d1.s2(status) root.sg.d2.s1,
+   * root.sg.d2.s2(status) root.sg.d2.a.s1, root.sg.d2.a.s2(status)
+   *
+   * @return the root node of the generated schemTree
+   */
+  private SchemaNode generateSchemaTree() {
+    SchemaNode root = new SchemaInternalNode("root");
+
+    SchemaNode sg = new SchemaInternalNode("sg");
+    root.addChild("sg", sg);
+
+    SchemaEntityNode d1 = new SchemaEntityNode("d1");
+    sg.addChild("d1", d1);
+
+    SchemaMeasurementNode s1 =
+        new SchemaMeasurementNode("s1", new MeasurementSchema("s1", TSDataType.INT32));
+    d1.addChild("s1", s1);
+    SchemaMeasurementNode s2 =
+        new SchemaMeasurementNode("s2", new MeasurementSchema("s1", TSDataType.INT32));
+    s2.setAlias("status");
+    d1.addChild("s2", s2);
+    d1.addAliasChild("status", s2);
+
+    SchemaEntityNode d2 = new SchemaEntityNode("d2");
+    sg.addChild("d2", d2);
+    d2.addChild("s1", s1);
+    d2.addChild("s2", s2);
+    d2.addAliasChild("status", s2);
+
+    SchemaEntityNode a = new SchemaEntityNode("a");
+    a.setAligned(true);
+    d2.addChild("a", a);
+    a.addChild("s1", s1);
+    a.addChild("s2", s2);
+    a.addAliasChild("status", s2);
+
+    return root;
   }
 }

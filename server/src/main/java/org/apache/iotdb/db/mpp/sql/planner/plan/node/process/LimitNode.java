@@ -29,12 +29,13 @@ import com.google.common.collect.ImmutableList;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /** LimitNode is used to select top n result. It uses the default order of upstream nodes */
 public class LimitNode extends ProcessNode {
 
   // The limit count
-  private int limit;
+  private final int limit;
   private PlanNode child;
 
   public LimitNode(PlanNodeId id, int limit) {
@@ -42,7 +43,7 @@ public class LimitNode extends ProcessNode {
     this.limit = limit;
   }
 
-  public LimitNode(PlanNodeId id, int limit, PlanNode child) {
+  public LimitNode(PlanNodeId id, PlanNode child, int limit) {
     this(id, limit);
     this.child = child;
   }
@@ -106,5 +107,24 @@ public class LimitNode extends ProcessNode {
     List<String> attributes = new ArrayList<>();
     attributes.add("RowLimit: " + this.getLimit());
     return new Pair<>(title, attributes);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+
+    LimitNode that = (LimitNode) o;
+    return limit == that.limit && Objects.equals(child, that.child);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(limit, child);
   }
 }

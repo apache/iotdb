@@ -27,6 +27,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * OffsetNode is used to skip top n result from upstream nodes. It uses the default order of
@@ -99,5 +100,24 @@ public class OffsetNode extends ProcessNode {
     List<String> attributes = new ArrayList<>();
     attributes.add("RowOffset: " + this.getOffset());
     return new Pair<>(title, attributes);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+
+    OffsetNode that = (OffsetNode) o;
+    return offset == that.offset && Objects.equals(child, that.child);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(child, offset);
   }
 }

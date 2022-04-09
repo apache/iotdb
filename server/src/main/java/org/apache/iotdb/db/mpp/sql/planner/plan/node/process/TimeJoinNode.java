@@ -30,6 +30,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
@@ -141,5 +142,26 @@ public class TimeJoinNode extends ProcessNode {
         "FilterNullPolicy: "
             + (this.getFilterNullPolicy() == null ? "null" : this.getFilterNullPolicy()));
     return new Pair<>(title, attributes);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+
+    TimeJoinNode that = (TimeJoinNode) o;
+    return mergeOrder == that.mergeOrder
+        && filterNullPolicy == that.filterNullPolicy
+        && Objects.equals(children, that.children);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(mergeOrder, filterNullPolicy, children);
   }
 }
