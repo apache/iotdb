@@ -104,9 +104,9 @@ public class ConfigNodeConfCheck {
    */
   private void writeSpecialProperties(File specialPropertiesFile) {
     specialProperties.setProperty(
-        "device_group_count", String.valueOf(conf.getSeriesPartitionSlotNum()));
+        "series_partition_slot_num", String.valueOf(conf.getSeriesPartitionSlotNum()));
     specialProperties.setProperty(
-        "device_group_hash_executor_class", conf.getSeriesPartitionSlotExecutorClass());
+        "series_partition_slot_executor_class", conf.getSeriesPartitionSlotExecutorClass());
     try {
       specialProperties.store(new FileOutputStream(specialPropertiesFile), "");
     } catch (IOException e) {
@@ -117,26 +117,26 @@ public class ConfigNodeConfCheck {
 
   /** Ensure that special parameters are consistent with each startup except the first one */
   private void checkSpecialProperties() throws ConfigurationException {
-    int specialDeviceGroupCount =
+    int specialSeriesPartitionSlotNum =
         Integer.parseInt(
             specialProperties.getProperty(
-                "device_group_count", String.valueOf(conf.getSeriesPartitionSlotNum())));
-    if (specialDeviceGroupCount != conf.getSeriesPartitionSlotNum()) {
+                "series_partition_slot_num", String.valueOf(conf.getSeriesPartitionSlotNum())));
+    if (specialSeriesPartitionSlotNum != conf.getSeriesPartitionSlotNum()) {
       throw new ConfigurationException(
-          "device_group_count",
+          "series_partition_slot_num",
           String.valueOf(conf.getSeriesPartitionSlotNum()),
-          String.valueOf(specialDeviceGroupCount));
+          String.valueOf(specialSeriesPartitionSlotNum));
     }
 
-    String specialDeviceGroupHashExecutorClass =
+    String specialSeriesPartitionSlotExecutorClass =
         specialProperties.getProperty(
-            "device_group_hash_executor_class", conf.getSeriesPartitionSlotExecutorClass());
+            "series_partition_slot_executor_class", conf.getSeriesPartitionSlotExecutorClass());
     if (!Objects.equals(
-        specialDeviceGroupHashExecutorClass, conf.getSeriesPartitionSlotExecutorClass())) {
+        specialSeriesPartitionSlotExecutorClass, conf.getSeriesPartitionSlotExecutorClass())) {
       throw new ConfigurationException(
-          "device_group_hash_executor_class",
+          "series_partition_slot_executor_class",
           conf.getSeriesPartitionSlotExecutorClass(),
-          specialDeviceGroupHashExecutorClass);
+          specialSeriesPartitionSlotExecutorClass);
     }
   }
 

@@ -31,6 +31,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/** TODO: Reconstruct this class after PatterTree is moved to node-commons */
 public class SchemaPartitionDataSet implements DataSet {
 
   private TSStatus status;
@@ -57,7 +58,6 @@ public class SchemaPartitionDataSet implements DataSet {
     this.schemaPartition = schemaPartition;
   }
 
-  // TODO: Reconstruct this interface after PatterTree is moved to node-commons
   public void convertToRpcSchemaPartitionResp(TSchemaPartitionResp resp) {
     Map<String, Map<Integer, TRegionReplicaSet>> schemaRegionMap = new HashMap<>();
 
