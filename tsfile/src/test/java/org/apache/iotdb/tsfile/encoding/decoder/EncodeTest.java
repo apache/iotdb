@@ -115,8 +115,8 @@ public class EncodeTest {
                     ratio /= repeatTime;
                     encodeTime = encodeTime / ((long) repeatTime);
                     decodeTime = decodeTime / ((long)  repeatTime);
-//                        compressTime = compressTime * 1000 / ((long) tmp.size() *repeatTime);
-//                        uncompressTime = uncompressTime * 1000 / ((long) tmp.size() *repeatTime);
+//                        compressTime = compressTime / ((long) repeatTime);
+//                        uncompressTime = uncompressTime / ((long) repeatTime);
                     System.out.println(scheme.toString());
 //                        System.out.println(String.valueOf(encodeTime));
                     String[] record = {scheme.toString(), comp.toString(), String.valueOf(encodeTime), "",
