@@ -20,9 +20,9 @@
 package org.apache.iotdb.db.mpp.sql.planner;
 
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeIdAllocator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.*;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregateScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
@@ -39,7 +39,11 @@ public class QueryPlanBuilder {
 
   private PlanNode root;
 
-  public QueryPlanBuilder() {}
+  private final MPPQueryContext context;
+
+  public QueryPlanBuilder(MPPQueryContext context) {
+    this.context = context;
+  }
 
   public PlanNode getRoot() {
     return root;
@@ -56,7 +60,7 @@ public class QueryPlanBuilder {
       for (PartialPath path : entry.getValue()) {
         deviceNameToSourceNodesMap
             .computeIfAbsent(deviceName, k -> new ArrayList<>())
-            .add(new SeriesScanNode(PlanNodeIdAllocator.generateId(), path, scanOrder));
+            .add(new SeriesScanNode(context.getQueryId().genPlanNodeId(), path, scanOrder));
       }
     }
 
@@ -79,7 +83,7 @@ public class QueryPlanBuilder {
       for (PartialPath path : entry.getValue().keySet()) {
         SeriesAggregateScanNode aggregateScanNode =
             new SeriesAggregateScanNode(
-                PlanNodeIdAllocator.generateId(),
+                context.getQueryId().genPlanNodeId(),
                 path,
                 new ArrayList<>(entry.getValue().get(path)),
                 scanOrder);
@@ -87,7 +91,7 @@ public class QueryPlanBuilder {
             .computeIfAbsent(deviceName, k -> new ArrayList<>())
             .add(
                 new AggregateNode(
-                    PlanNodeIdAllocator.generateId(),
+                    context.getQueryId().genPlanNodeId(),
                     path,
                     new ArrayList<>(entry.getValue().get(path)),
                     Collections.singletonList(aggregateScanNode)));
@@ -110,13 +114,13 @@ public class QueryPlanBuilder {
     if (planNodes.size() == 1) {
       this.root = planNodes.get(0);
     } else {
-      this.root = new TimeJoinNode(PlanNodeIdAllocator.generateId(), mergeOrder, planNodes);
+      this.root = new TimeJoinNode(context.getQueryId().genPlanNodeId(), mergeOrder, planNodes);
     }
   }
 
   public void convergeWithDeviceMerge(
       Map<String, List<PlanNode>> deviceNameToSourceNodesMap, OrderBy mergeOrder) {
-    DeviceMergeNode deviceMergeNode = new DeviceMergeNode(PlanNodeIdAllocator.generateId());
+    DeviceMergeNode deviceMergeNode = new DeviceMergeNode(context.getQueryId().genPlanNodeId());
     for (Map.Entry<String, List<PlanNode>> entry : deviceNameToSourceNodesMap.entrySet()) {
       String deviceName = entry.getKey();
       List<PlanNode> planNodes = new ArrayList<>(entry.getValue());
@@ -124,7 +128,7 @@ public class QueryPlanBuilder {
         deviceMergeNode.addChildDeviceNode(deviceName, planNodes.get(0));
       } else {
         TimeJoinNode timeJoinNode =
-            new TimeJoinNode(PlanNodeIdAllocator.generateId(), mergeOrder, planNodes);
+            new TimeJoinNode(context.getQueryId().genPlanNodeId(), mergeOrder, planNodes);
         deviceMergeNode.addChildDeviceNode(deviceName, timeJoinNode);
       }
     }
@@ -138,7 +142,7 @@ public class QueryPlanBuilder {
 
     this.root =
         new FilterNode(
-            PlanNodeIdAllocator.generateId(), this.getRoot(), queryFilter, outputColumnNames);
+            context.getQueryId().genPlanNodeId(), this.getRoot(), queryFilter, outputColumnNames);
   }
 
   public void planGroupByLevel(GroupByLevelComponent groupByLevelComponent) {
@@ -148,7 +152,7 @@ public class QueryPlanBuilder {
 
     this.root =
         new GroupByLevelNode(
-            PlanNodeIdAllocator.generateId(),
+            context.getQueryId().genPlanNodeId(),
             this.getRoot(),
             groupByLevelComponent.getLevels(),
             groupByLevelComponent.getGroupedPathMap());
@@ -161,7 +165,7 @@ public class QueryPlanBuilder {
 
     this.root =
         new FilterNullNode(
-            PlanNodeIdAllocator.generateId(),
+            context.getQueryId().genPlanNodeId(),
             this.getRoot(),
             filterNullComponent.getWithoutPolicyType(),
             filterNullComponent.getWithoutNullColumns().stream()
@@ -174,7 +178,8 @@ public class QueryPlanBuilder {
       return;
     }
 
-    this.root = new SortNode(PlanNodeIdAllocator.generateId(), this.getRoot(), null, resultOrder);
+    this.root =
+        new SortNode(context.getQueryId().genPlanNodeId(), this.getRoot(), null, resultOrder);
   }
 
   public void planLimit(int rowLimit) {
@@ -182,7 +187,7 @@ public class QueryPlanBuilder {
       return;
     }
 
-    this.root = new LimitNode(PlanNodeIdAllocator.generateId(), rowLimit, this.getRoot());
+    this.root = new LimitNode(context.getQueryId().genPlanNodeId(), rowLimit, this.getRoot());
   }
 
   public void planOffset(int rowOffset) {
@@ -190,6 +195,6 @@ public class QueryPlanBuilder {
       return;
     }
 
-    this.root = new OffsetNode(PlanNodeIdAllocator.generateId(), this.getRoot(), rowOffset);
+    this.root = new OffsetNode(context.getQueryId().genPlanNodeId(), this.getRoot(), rowOffset);
   }
 }

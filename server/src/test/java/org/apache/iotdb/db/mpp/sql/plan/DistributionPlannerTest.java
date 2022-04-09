@@ -58,9 +58,7 @@ public class DistributionPlannerTest {
   public void TestRewriteSourceNode() throws IllegalPathException {
     QueryId queryId = new QueryId("test_query");
 
-    TimeJoinNode timeJoinNode =
-        new TimeJoinNode(
-            queryId.genPlanNodeId(), OrderBy.TIMESTAMP_ASC);
+    TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), OrderBy.TIMESTAMP_ASC);
 
     timeJoinNode.addChild(
         new SeriesScanNode(queryId.genPlanNodeId(), new PartialPath("root.sg.d1.s1")));
@@ -82,9 +80,7 @@ public class DistributionPlannerTest {
   @Test
   public void TestAddExchangeNode() throws IllegalPathException {
     QueryId queryId = new QueryId("test_query");
-    TimeJoinNode timeJoinNode =
-        new TimeJoinNode(
-            queryId.genPlanNodeId(), OrderBy.TIMESTAMP_ASC);
+    TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), OrderBy.TIMESTAMP_ASC);
 
     timeJoinNode.addChild(
         new SeriesScanNode(queryId.genPlanNodeId(), new PartialPath("root.sg.d1.s1")));
@@ -107,9 +103,7 @@ public class DistributionPlannerTest {
   @Test
   public void TestSplitFragment() throws IllegalPathException {
     QueryId queryId = new QueryId("test_query");
-    TimeJoinNode timeJoinNode =
-        new TimeJoinNode(
-            queryId.genPlanNodeId(), OrderBy.TIMESTAMP_ASC);
+    TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), OrderBy.TIMESTAMP_ASC);
 
     timeJoinNode.addChild(
         new SeriesScanNode(queryId.genPlanNodeId(), new PartialPath("root.sg.d1.s1")));
@@ -135,9 +129,7 @@ public class DistributionPlannerTest {
   @Test
   public void TestParallelPlan() throws IllegalPathException {
     QueryId queryId = new QueryId("test_query");
-    TimeJoinNode timeJoinNode =
-        new TimeJoinNode(
-            queryId.genPlanNodeId(), OrderBy.TIMESTAMP_ASC);
+    TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), OrderBy.TIMESTAMP_ASC);
 
     timeJoinNode.addChild(
         new SeriesScanNode(queryId.genPlanNodeId(), new PartialPath("root.sg.d1.s1")));

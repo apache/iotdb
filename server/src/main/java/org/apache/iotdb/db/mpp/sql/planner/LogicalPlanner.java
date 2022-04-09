@@ -28,26 +28,12 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AlterTimeSer
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AuthorNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateTimeSeriesNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.DeviceMergeNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.FilterNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.FilterNullNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.GroupByLevelNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.LimitNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.OffsetNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.SortNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SourceNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.*;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.component.*;
 import org.apache.iotdb.db.mpp.sql.statement.crud.*;
-import org.apache.iotdb.db.mpp.sql.statement.component.FillComponent;
-import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullComponent;
-import org.apache.iotdb.db.mpp.sql.statement.component.GroupByLevelComponent;
-import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
-import org.apache.iotdb.db.mpp.sql.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.sql.statement.crud.AggregationQueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.FillQueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertRowStatement;
@@ -56,20 +42,13 @@ import org.apache.iotdb.db.mpp.sql.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
-import org.apache.iotdb.tsfile.read.expression.ExpressionType;
 import org.apache.iotdb.db.mpp.sql.statement.sys.AuthorStatement;
-import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.tsfile.read.expression.ExpressionType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.util.*;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 /** Generate a logical plan for the statement. */
 public class LogicalPlanner {
@@ -109,7 +88,7 @@ public class LogicalPlanner {
 
     @Override
     public PlanNode visitQuery(QueryStatement queryStatement, MPPQueryContext context) {
-      QueryPlanBuilder planBuilder = new QueryPlanBuilder();
+      QueryPlanBuilder planBuilder = new QueryPlanBuilder(context);
       planBuilder.planRawDataQuerySource(
           analysis.getDeviceIdToPathsMap(),
           queryStatement.getResultOrder(),
@@ -130,7 +109,7 @@ public class LogicalPlanner {
     @Override
     public PlanNode visitAggregationQuery(
         AggregationQueryStatement queryStatement, MPPQueryContext context) {
-      QueryPlanBuilder planBuilder = new QueryPlanBuilder();
+      QueryPlanBuilder planBuilder = new QueryPlanBuilder(context);
 
       if (analysis.getQueryFilter() != null
           && analysis.getQueryFilter().getType() != ExpressionType.GLOBAL_TIME) {
