@@ -109,8 +109,6 @@ public class InsertMultiTabletsNode extends InsertNode {
   @Override
   public List<InsertNode> splitByPartition(Analysis analysis) {
     Map<RegionReplicaSet, InsertMultiTabletsNode> splitMap = new HashMap<>();
-    // Map<PartitionGroup, Map<PartialPath, InsertMultiTabletPlan>> pgSgPathPlanMap = new
-    // HashMap<>();
     for (int i = 0; i < insertTabletNodeList.size(); i++) {
       InsertTabletNode insertTabletNode = insertTabletNodeList.get(i);
       List<InsertNode> tmpResult = insertTabletNode.splitByPartition(analysis);

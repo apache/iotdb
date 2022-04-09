@@ -43,15 +43,8 @@ import org.apache.iotdb.db.mpp.sql.parser.StatementGenerator;
 import org.apache.iotdb.db.mpp.sql.statement.crud.*;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
-import org.apache.iotdb.db.qp.physical.crud.SelectIntoPlan;
-import org.apache.iotdb.db.qp.physical.crud.UDFPlan;
+import org.apache.iotdb.db.qp.physical.crud.*;
+import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletsPlan;
 import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
@@ -981,19 +974,19 @@ public class TSServiceImpl implements TSIService.Iface {
 
   private TSStatus insertTabletsInternally(
       List<InsertTabletPlan> insertTabletPlans, long sessionId) {
-    InsertMultiTabletPlan insertMultiTabletPlan = new InsertMultiTabletPlan();
+    InsertMultiTabletsPlan insertMultiTabletsPlan = new InsertMultiTabletsPlan();
     for (int i = 0; i < insertTabletPlans.size(); i++) {
       InsertTabletPlan insertTabletPlan = insertTabletPlans.get(i);
       TSStatus status = SESSION_MANAGER.checkAuthority(insertTabletPlan, sessionId);
 
       if (status != null) {
         // not authorized
-        insertMultiTabletPlan.getResults().put(i, status);
+        insertMultiTabletsPlan.getResults().put(i, status);
       }
     }
-    insertMultiTabletPlan.setInsertTabletPlanList(insertTabletPlans);
+    insertMultiTabletsPlan.setInsertTabletPlanList(insertTabletPlans);
 
-    return executeNonQueryPlan(insertMultiTabletPlan);
+    return executeNonQueryPlan(insertMultiTabletsPlan);
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
@@ -1934,22 +1927,22 @@ public class TSServiceImpl implements TSIService.Iface {
     return insertTabletPlan;
   }
 
-  /** construct one InsertMultiTabletPlan and process it */
+  /** construct one InsertMultiTabletsPlan and process it */
   public TSStatus insertTabletsInternally(TSInsertTabletsReq req) throws IllegalPathException {
     List<InsertTabletPlan> insertTabletPlanList = new ArrayList<>();
-    InsertMultiTabletPlan insertMultiTabletPlan = new InsertMultiTabletPlan();
+    InsertMultiTabletsPlan insertMultiTabletsPlan = new InsertMultiTabletsPlan();
     for (int i = 0; i < req.prefixPaths.size(); i++) {
       InsertTabletPlan insertTabletPlan = constructInsertTabletPlan(req, i);
       TSStatus status = SESSION_MANAGER.checkAuthority(insertTabletPlan, req.getSessionId());
       if (status != null) {
         // not authorized
-        insertMultiTabletPlan.getResults().put(i, status);
+        insertMultiTabletsPlan.getResults().put(i, status);
       }
       insertTabletPlanList.add(insertTabletPlan);
     }
 
-    insertMultiTabletPlan.setInsertTabletPlanList(insertTabletPlanList);
-    return executeNonQueryPlan(insertMultiTabletPlan);
+    insertMultiTabletsPlan.setInsertTabletPlanList(insertTabletPlanList);
+    return executeNonQueryPlan(insertMultiTabletsPlan);
   }
 
   @Override
