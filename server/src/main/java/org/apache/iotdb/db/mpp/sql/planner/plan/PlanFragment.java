@@ -47,6 +47,10 @@ public class PlanFragment {
     return root;
   }
 
+  public void setRoot(PlanNode root) {
+    this.root = root;
+  }
+
   public String toString() {
     return String.format("PlanFragment-%s", getId());
   }

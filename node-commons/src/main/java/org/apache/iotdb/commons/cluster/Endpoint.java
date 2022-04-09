@@ -37,8 +37,18 @@ public class Endpoint {
     return ip;
   }
 
+  public Endpoint setIp(String ip) {
+    this.ip = ip;
+    return this;
+  }
+
   public int getPort() {
     return port;
+  }
+
+  public Endpoint setPort(int port) {
+    this.port = port;
+    return this;
   }
 
   public void serializeImpl(ByteBuffer buffer) {

@@ -20,9 +20,11 @@ package org.apache.iotdb.commons.partition;
 
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class RegionReplicaSet {
   private ConsensusGroupId consensusGroupId;
@@ -66,8 +68,8 @@ public class RegionReplicaSet {
         });
   }
 
-  public static RegionReplicaSet deserializeImpl(ByteBuffer buffer) {
-    ConsensusGroupId consensusGroupId = ConsensusGroupId.deserializeImpl(buffer);
+  public static RegionReplicaSet deserializeImpl(ByteBuffer buffer) throws IOException {
+    ConsensusGroupId consensusGroupId = ConsensusGroupId.Factory.create(buffer);
 
     int size = buffer.getInt();
     // We should always make dataNodeList as a new Object when deserialization
@@ -78,11 +80,20 @@ public class RegionReplicaSet {
     return new RegionReplicaSet(consensusGroupId, dataNodeList);
   }
 
-  public int hashCode() {
-    return toString().hashCode();
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    RegionReplicaSet that = (RegionReplicaSet) o;
+    return Objects.equals(consensusGroupId, that.consensusGroupId) && Objects.equals(dataNodeList, that.dataNodeList);
   }
 
-  public boolean equals(Object obj) {
-    return obj instanceof RegionReplicaSet && obj.toString().equals(toString());
+  @Override
+  public int hashCode() {
+    return Objects.hash(consensusGroupId, dataNodeList);
   }
 }

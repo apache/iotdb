@@ -47,6 +47,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   private static final String NO_SUCH_ROLE_EXCEPTION = "No such role : %s";
   private static final String NO_SUCH_USER_EXCEPTION = "No such user : %s";
 
+  // TODO: add cache
   static {
     ADMIN_PRIVILEGES = new HashSet<>();
     for (int i = 0; i < PrivilegeType.values().length; i++) {

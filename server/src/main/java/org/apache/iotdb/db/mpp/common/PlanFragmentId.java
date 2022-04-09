@@ -31,6 +31,8 @@ public class PlanFragmentId {
   private final QueryId queryId;
   private final int id;
 
+  private int nextFragmentInstanceId;
+
   public static PlanFragmentId valueOf(String stageId) {
     List<String> ids = QueryId.parseDottedId(stageId, 2, "stageId");
     return valueOf(ids);
@@ -48,6 +50,11 @@ public class PlanFragmentId {
   public PlanFragmentId(QueryId queryId, int id) {
     this.queryId = requireNonNull(queryId, "queryId is null");
     this.id = id;
+    this.nextFragmentInstanceId = 0;
+  }
+
+  public FragmentInstanceId genFragmentInstanceId() {
+    return new FragmentInstanceId(this, String.valueOf(nextFragmentInstanceId++));
   }
 
   public QueryId getQueryId() {

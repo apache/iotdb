@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.mpp.common;
 
+import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
+
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
@@ -56,6 +58,10 @@ public class FragmentInstanceId {
 
   public String toString() {
     return fullId;
+  }
+
+  public TFragmentInstanceId toThrift() {
+    return new TFragmentInstanceId(queryId.getId(), String.valueOf(fragmentId.getId()), instanceId);
   }
 
   public void serialize(ByteBuffer byteBuffer) {

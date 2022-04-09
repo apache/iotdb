@@ -21,6 +21,7 @@ package org.apache.iotdb.db.consensus.statemachine;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.consensus.common.DataSet;
+import org.apache.iotdb.db.metadata.schemaregion.SchemaRegion;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -39,9 +40,12 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
 
   private static final Logger logger = LoggerFactory.getLogger(SchemaRegionStateMachine.class);
 
+  private final SchemaRegion region;
+
   private PlanExecutor executor;
 
-  public SchemaRegionStateMachine() {
+  public SchemaRegionStateMachine(SchemaRegion region) {
+    this.region = region;
     try {
       executor = new PlanExecutor();
     } catch (QueryProcessException e) {
@@ -61,7 +65,8 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
 
   @Override
   protected TSStatus write(FragmentInstance fragmentInstance) {
-    logger.info("Execute write plan in SchemaRegionStateMachine : {}", fragmentInstance);
+    logger.info("Execute write plan in SchemaRegionStateMachine");
+
     // Take create Timeseries as an example
     PlanNode planNode = fragmentInstance.getFragment().getRoot();
     // TODO transfer to physicalplan as a tentative plan
@@ -87,7 +92,7 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
 
   @Override
   protected DataSet read(FragmentInstance fragmentInstance) {
-    logger.info("Execute read plan in SchemaRegionStateMachine: {}", fragmentInstance);
+    logger.info("Execute read plan in SchemaRegionStateMachine");
     return null;
   }
 }

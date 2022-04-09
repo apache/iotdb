@@ -27,6 +27,8 @@ import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.sink.FragmentSinkNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.nio.ByteBuffer;
 
@@ -40,6 +42,8 @@ public class FragmentInstance implements IConsensusRequest {
   private RegionReplicaSet regionReplicaSet;
 
   private Endpoint hostEndpoint;
+
+  private Filter timeFilter;
 
   // The index to generate this FragmentInstanceId
   private int index;
@@ -87,9 +91,15 @@ public class FragmentInstance implements IConsensusRequest {
       FragmentSinkNode sink = (FragmentSinkNode) root;
       return String.format(
           "(%s, %s, %s)",
-          sink.getDownStreamEndpoint(), sink.getDownStreamInstanceId(), sink.getDownStreamNode());
+          sink.getDownStreamEndpoint(),
+          sink.getDownStreamInstanceId(),
+          sink.getDownStreamPlanNodeId());
     }
     return "<No downstream>";
+  }
+
+  public Filter getTimeFilter() {
+    return timeFilter;
   }
 
   public String toString() {

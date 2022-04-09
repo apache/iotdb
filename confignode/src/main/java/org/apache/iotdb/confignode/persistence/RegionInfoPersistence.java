@@ -20,8 +20,7 @@
 package org.apache.iotdb.confignode.persistence;
 
 import org.apache.iotdb.commons.cluster.Endpoint;
-import org.apache.iotdb.commons.consensus.ConsensusGroupId;
-import org.apache.iotdb.commons.consensus.GroupType;
+import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.partition.DataNodeLocation;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -160,8 +159,7 @@ public class RegionInfoPersistence {
                                   .getEndPoint());
                         }
                       });
-              schemaRegionReplicaSet.setConsensusGroupId(
-                  new ConsensusGroupId(GroupType.SchemaRegion, entity.getKey()));
+              schemaRegionReplicaSet.setConsensusGroupId(new SchemaRegionId(entity.getKey()));
               // TODO: (xingtanzjr) We cannot get the dataNodeId here, use 0 as the placeholder
               schemaRegionReplicaSet.setDataNodeList(
                   endPoints.stream()
