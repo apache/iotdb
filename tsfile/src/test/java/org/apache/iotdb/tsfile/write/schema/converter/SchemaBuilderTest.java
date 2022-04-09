@@ -30,12 +30,13 @@ import org.apache.iotdb.tsfile.write.schema.Schema;
 
 import org.junit.Test;
 
+import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class SchemaBuilderTest {
 
@@ -65,10 +66,15 @@ public class SchemaBuilderTest {
     String[] tsDesStrings = {
       "[s4,DOUBLE,RLE,{max_point_number=3},SNAPPY]", "[s5,INT32,TS_2DIFF,,UNCOMPRESSED]"
     };
-    int i = 0;
+    List<String> expected = Arrays.asList(tsDesStrings);
+    List<String> actual = new ArrayList<String>();
     for (IMeasurementSchema desc : timeseries) {
-      assertEquals(tsDesStrings[i++], desc.toString());
+      actual.add(desc.toString());
     }
+    assertTrue(
+        actual.size() == expected.size()
+            && actual.containsAll(expected)
+            && expected.containsAll(actual));
   }
 
   @Test
@@ -101,10 +107,15 @@ public class SchemaBuilderTest {
     String[] tsDesStrings = {
       "[s4,DOUBLE,RLE,{max_point_number=3},SNAPPY]", "[s5,INT32,TS_2DIFF,,UNCOMPRESSED]"
     };
-    int i = 0;
+    List<String> expected = Arrays.asList(tsDesStrings);
+    List<String> actual = new ArrayList<String>();
     for (IMeasurementSchema desc : timeseries) {
-      assertEquals(tsDesStrings[i++], desc.toString());
+      actual.add(desc.toString());
     }
+    assertTrue(
+        actual.size() == expected.size()
+            && actual.containsAll(expected)
+            && expected.containsAll(actual));
   }
 
   @Test
@@ -145,9 +156,14 @@ public class SchemaBuilderTest {
       "[s5,INT32,TS_2DIFF,,UNCOMPRESSED]",
       "[s6,INT64,RLE,{max_point_number=3},SNAPPY]"
     };
-    int i = 0;
+    List<String> expected = Arrays.asList(tsDesStrings);
+    List<String> actual = new ArrayList<String>();
     for (IMeasurementSchema desc : timeseries) {
-      assertEquals(tsDesStrings[i++], desc.toString());
+      actual.add(desc.toString());
     }
+    assertTrue(
+        actual.size() == expected.size()
+            && actual.containsAll(expected)
+            && expected.containsAll(actual));
   }
 }
