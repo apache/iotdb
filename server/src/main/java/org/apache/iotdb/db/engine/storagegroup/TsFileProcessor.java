@@ -46,6 +46,7 @@ import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
@@ -256,6 +257,64 @@ public class TsFileProcessor {
           insertRowPlan.getDeviceID().toStringID(), insertRowPlan.getTime());
     }
     tsFileResource.updatePlanIndexes(insertRowPlan.getIndex());
+  }
+
+  /**
+   * insert data in an InsertRowNode into the workingMemtable.
+   *
+   * @param insertRowNode physical plan of insertion
+   */
+  public void insert(InsertRowNode insertRowNode) throws WriteProcessException {
+
+    if (workMemTable == null) {
+      if (enableMemControl) {
+        workMemTable = new PrimitiveMemTable(enableMemControl);
+        MemTableManager.getInstance().addMemtableNumber();
+      } else {
+        workMemTable = MemTableManager.getInstance().getAvailableMemTable(storageGroupName);
+      }
+    }
+
+    long[] memIncrements = null;
+    if (enableMemControl) {
+      if (insertRowNode.isAligned()) {
+        // memIncrements = checkAlignedMemCostAndAddToTspInfo(insertRowNode);
+      } else {
+        // memIncrements = checkMemCostAndAddToTspInfo(insertRowNode);
+      }
+    }
+
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
+      try {
+        getLogNode().write(insertRowNode);
+      } catch (Exception e) {
+        if (enableMemControl && memIncrements != null) {
+          rollbackMemoryInfo(memIncrements);
+        }
+        throw new WriteProcessException(
+            String.format(
+                "%s: %s write WAL failed",
+                storageGroupName, tsFileResource.getTsFile().getAbsolutePath()),
+            e);
+      }
+    }
+
+    if (insertRowNode.isAligned()) {
+      workMemTable.insertAlignedRow(insertRowNode);
+    } else {
+      workMemTable.insert(insertRowNode);
+    }
+
+    // update start time of this memtable
+    tsFileResource.updateStartTime(
+        insertRowNode.getDeviceID().toStringID(), insertRowNode.getTime());
+    // for sequence tsfile, we update the endTime only when the file is prepared to be closed.
+    // for unsequence tsfile, we have to update the endTime for each insertion.
+    if (!sequence) {
+      tsFileResource.updateEndTime(
+          insertRowNode.getDeviceID().toStringID(), insertRowNode.getTime());
+    }
+    // tsFileResource.updatePlanIndexes(insertRowNode.getIndex());
   }
 
   /**
