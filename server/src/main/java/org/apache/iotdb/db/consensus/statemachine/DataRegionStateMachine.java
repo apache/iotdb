@@ -21,6 +21,7 @@ package org.apache.iotdb.db.consensus.statemachine;
 
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.mpp.common.DataRegion;
+import org.apache.iotdb.db.mpp.execution.FragmentInstanceManager;
 import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
@@ -31,6 +32,9 @@ import org.slf4j.LoggerFactory;
 public class DataRegionStateMachine extends BaseStateMachine {
 
   private static final Logger logger = LoggerFactory.getLogger(DataRegionStateMachine.class);
+
+  private static final FragmentInstanceManager INSTANCE_MANAGER =
+      FragmentInstanceManager.getInstance();
 
   private final DataRegion region;
 
@@ -52,7 +56,8 @@ public class DataRegionStateMachine extends BaseStateMachine {
 
   @Override
   protected DataSet read(FragmentInstance fragmentInstance) {
-    logger.info("Execute read plan in DataRegionStateMachine");
+    // TODO here we need to change after VSG being renamed to DataRegion
+    //    return INSTANCE_MANAGER.execDataQueryFragmentInstance(fragmentInstance, region);
     return null;
   }
 }

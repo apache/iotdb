@@ -25,8 +25,8 @@ package org.apache.iotdb.db.mpp.common;
  */
 // TODO: (xingtanzjr) This class should be substituted with the class defined in Consensus level
 public class DataRegion {
-  private Integer dataRegionId;
-  private String endpoint;
+  private final Integer dataRegionId;
+  private final String endpoint;
 
   public DataRegion(Integer dataRegionId, String endpoint) {
     this.dataRegionId = dataRegionId;
