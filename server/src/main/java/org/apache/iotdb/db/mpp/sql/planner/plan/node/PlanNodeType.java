@@ -38,11 +38,8 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.sink.FragmentSinkNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregateScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertMultiTabletNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowsNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowsOfOneDeviceNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.*;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertMultiTabletsNode;
 
 import java.nio.ByteBuffer;
 
@@ -120,7 +117,7 @@ public enum PlanNodeType {
       case 16:
         return InsertRowsOfOneDeviceNode.deserialize(buffer);
       case 17:
-        return InsertMultiTabletNode.deserialize(buffer);
+        return InsertMultiTabletsNode.deserialize(buffer);
       case 18:
         return ShowDevicesNode.deserialize(buffer);
       case 19:

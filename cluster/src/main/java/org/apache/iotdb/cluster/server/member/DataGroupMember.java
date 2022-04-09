@@ -726,7 +726,7 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
         try {
           if (plan instanceof InsertPlan
               && ClusterDescriptor.getInstance().getConfig().isEnableAutoCreateSchema()) {
-            if (plan instanceof InsertRowsPlan || plan instanceof InsertMultiTabletPlan) {
+            if (plan instanceof InsertRowsPlan || plan instanceof InsertMultiTabletsPlan) {
               if (e instanceof BatchProcessException) {
                 for (TSStatus status : ((BatchProcessException) e).getFailingStatus()) {
                   if (status.getCode() == TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode()) {
@@ -803,7 +803,7 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
       try {
         if (plan instanceof InsertPlan
             && ClusterDescriptor.getInstance().getConfig().isEnableAutoCreateSchema()) {
-          if (plan instanceof InsertRowsPlan || plan instanceof InsertMultiTabletPlan) {
+          if (plan instanceof InsertRowsPlan || plan instanceof InsertMultiTabletsPlan) {
             if (status.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
               for (TSStatus tmpStatus : status.getSubStatus()) {
                 if (tmpStatus.getCode() == TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode()) {
@@ -848,8 +848,9 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
       throws CheckConsistencyException, IllegalPathException {
     logger.debug("create time series for failed insertion {}", plan);
     // apply measurements according to failed measurements
-    if (plan instanceof InsertMultiTabletPlan) {
-      for (InsertTabletPlan insertPlan : ((InsertMultiTabletPlan) plan).getInsertTabletPlanList()) {
+    if (plan instanceof InsertMultiTabletsPlan) {
+      for (InsertTabletPlan insertPlan :
+          ((InsertMultiTabletsPlan) plan).getInsertTabletPlanList()) {
         if (insertPlan.getFailedMeasurements() != null) {
           insertPlan.getPlanFromFailed();
         }

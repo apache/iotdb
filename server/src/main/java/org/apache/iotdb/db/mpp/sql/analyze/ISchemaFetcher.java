@@ -24,6 +24,8 @@ import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
+import java.util.List;
+
 /**
  * This interface is used to fetch the metadata information required in execution plan generating.
  */
@@ -33,4 +35,7 @@ public interface ISchemaFetcher {
 
   SchemaTree fetchSchemaWithAutoCreate(
       PartialPath devicePath, String[] measurements, TSDataType[] tsDataTypes);
+
+  SchemaTree fetchSchemaListWithAutoCreate(
+      List<PartialPath> devicePath, List<String[]> measurements, List<TSDataType[]> tsDataTypes);
 }
