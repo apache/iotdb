@@ -28,15 +28,15 @@ import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import java.nio.ByteBuffer;
 import java.util.*;
 
-public class InsertMultiTabletNode extends InsertNode {
+public class InsertMultiTabletsNode extends InsertNode {
 
   /**
    * the value is used to indict the parent InsertTabletNode's index when the parent
    * InsertTabletNode is split to multi sub InsertTabletNodes. if the InsertTabletNode have no
    * parent plan, the value is zero;
    *
-   * <p>suppose we originally have three InsertTabletNodes in one InsertMultiTabletNode, then the
-   * initial InsertMultiTabletNode would have the following two attributes:
+   * <p>suppose we originally have three InsertTabletNodes in one InsertMultiTabletsNode, then the
+   * initial InsertMultiTabletsNode would have the following two attributes:
    *
    * <p>insertTabletNodeList={InsertTabletNode_1,InsertTabletNode_2,InsertTabletNode_3}
    *
@@ -79,7 +79,7 @@ public class InsertMultiTabletNode extends InsertNode {
   /** record the result of insert tablets */
   private Map<Integer, TSStatus> results = new HashMap<>();
 
-  public InsertMultiTabletNode(PlanNodeId id) {
+  public InsertMultiTabletsNode(PlanNodeId id) {
     super(id);
     parentInsertTabletNodeIndexList = new ArrayList<>();
     insertTabletNodeList = new ArrayList<>();
@@ -108,7 +108,7 @@ public class InsertMultiTabletNode extends InsertNode {
 
   @Override
   public List<InsertNode> splitByPartition(Analysis analysis) {
-    Map<RegionReplicaSet, InsertMultiTabletNode> splitMap = new HashMap<>();
+    Map<RegionReplicaSet, InsertMultiTabletsNode> splitMap = new HashMap<>();
     // Map<PartitionGroup, Map<PartialPath, InsertMultiTabletPlan>> pgSgPathPlanMap = new
     // HashMap<>();
     for (int i = 0; i < insertTabletNodeList.size(); i++) {
@@ -117,10 +117,10 @@ public class InsertMultiTabletNode extends InsertNode {
       for (InsertNode subNode : tmpResult) {
         RegionReplicaSet dataRegionReplicaSet = subNode.getDataRegionReplicaSet();
         if (splitMap.containsKey(dataRegionReplicaSet)) {
-          InsertMultiTabletNode tmpNode = splitMap.get(dataRegionReplicaSet);
+          InsertMultiTabletsNode tmpNode = splitMap.get(dataRegionReplicaSet);
           tmpNode.addInsertTabletNode((InsertTabletNode) subNode, i);
         } else {
-          InsertMultiTabletNode tmpNode = new InsertMultiTabletNode(this.getPlanNodeId());
+          InsertMultiTabletsNode tmpNode = new InsertMultiTabletsNode(this.getPlanNodeId());
           tmpNode.setDataRegionReplicaSet(dataRegionReplicaSet);
           tmpNode.addInsertTabletNode((InsertTabletNode) subNode, i);
           splitMap.put(dataRegionReplicaSet, tmpNode);
@@ -157,7 +157,7 @@ public class InsertMultiTabletNode extends InsertNode {
     return null;
   }
 
-  public static InsertMultiTabletNode deserialize(ByteBuffer byteBuffer) {
+  public static InsertMultiTabletsNode deserialize(ByteBuffer byteBuffer) {
     return null;
   }
 

@@ -451,12 +451,12 @@ public class Analyzer {
     }
 
     @Override
-    public Analysis visitInsertMultiTablet(
-        InsertMultiTabletStatement insertMultiTabletStatement, MPPQueryContext context) {
+    public Analysis visitInsertMultiTablets(
+        InsertMultiTabletsStatement insertMultiTabletsStatement, MPPQueryContext context) {
       // TODO remove duplicate
       List<DataPartitionQueryParam> dataPartitionQueryParams = new ArrayList<>();
       for (InsertTabletStatement insertTabletStatement :
-          insertMultiTabletStatement.getInsertTabletStatementList()) {
+          insertMultiTabletsStatement.getInsertTabletStatementList()) {
         DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
         dataPartitionQueryParam.setDevicePath(insertTabletStatement.getDevicePath().getFullPath());
         dataPartitionQueryParam.setTimePartitionSlotList(
@@ -470,13 +470,13 @@ public class Analyzer {
       if (IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
         schemaTree =
             schemaFetcher.fetchSchemaListWithAutoCreate(
-                insertMultiTabletStatement.getDevicePaths(),
-                insertMultiTabletStatement.getMeasurementsList(),
-                insertMultiTabletStatement.getDataTypesList());
+                insertMultiTabletsStatement.getDevicePaths(),
+                insertMultiTabletsStatement.getMeasurementsList(),
+                insertMultiTabletsStatement.getDataTypesList());
       } else {
         PathPatternTree patternTree = new PathPatternTree();
         for (InsertTabletStatement insertTabletStatement :
-            insertMultiTabletStatement.getInsertTabletStatementList()) {
+            insertMultiTabletsStatement.getInsertTabletStatementList()) {
           patternTree.appendPaths(
               insertTabletStatement.getDevicePath(),
               Arrays.asList(insertTabletStatement.getMeasurements()));
@@ -486,10 +486,10 @@ public class Analyzer {
       Analysis analysis = new Analysis();
       analysis.setSchemaTree(schemaTree);
 
-      if (!insertMultiTabletStatement.checkDataType(schemaTree)) {
+      if (!insertMultiTabletsStatement.checkDataType(schemaTree)) {
         throw new SemanticException("Data type mismatch");
       }
-      analysis.setStatement(insertMultiTabletStatement);
+      analysis.setStatement(insertMultiTabletsStatement);
       analysis.setDataPartitionInfo(partitionInfo.getDataPartitionInfo());
       analysis.setSchemaPartitionInfo(partitionInfo.getSchemaPartitionInfo());
 

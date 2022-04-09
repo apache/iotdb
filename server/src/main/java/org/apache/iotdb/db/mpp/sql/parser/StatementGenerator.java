@@ -33,7 +33,6 @@ import org.apache.iotdb.db.mpp.sql.statement.component.SelectComponent;
 import org.apache.iotdb.db.mpp.sql.statement.component.WhereCondition;
 import org.apache.iotdb.db.mpp.sql.statement.crud.*;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
-import org.apache.iotdb.db.qp.physical.crud.*;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
 import org.apache.iotdb.db.qp.sql.SqlLexer;
 import org.apache.iotdb.db.qp.strategy.SQLParseError;
@@ -201,7 +200,7 @@ public class StatementGenerator {
 
   public static Statement createStatement(TSInsertTabletsReq req) throws IllegalPathException {
     // construct insert statement
-    InsertMultiTabletStatement insertStatement = new InsertMultiTabletStatement();
+    InsertMultiTabletsStatement insertStatement = new InsertMultiTabletsStatement();
     List<InsertTabletStatement> insertTabletStatementList = new ArrayList<>();
     for (int i = 0; i < req.prefixPaths.size(); i++) {
       InsertTabletStatement insertTabletStatement = new InsertTabletStatement();

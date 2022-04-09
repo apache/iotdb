@@ -27,7 +27,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import java.util.ArrayList;
 import java.util.List;
 
-public class InsertMultiTabletStatement extends InsertBaseStatement {
+public class InsertMultiTabletsStatement extends InsertBaseStatement {
 
   /** the InsertTabletStatement list */
   List<InsertTabletStatement> insertTabletStatementList;
@@ -75,6 +75,6 @@ public class InsertMultiTabletStatement extends InsertBaseStatement {
   }
 
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitInsertMultiTablet(this, context);
+    return visitor.visitInsertMultiTablets(this, context);
   }
 }

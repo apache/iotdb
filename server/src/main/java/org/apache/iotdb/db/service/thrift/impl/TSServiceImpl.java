@@ -1889,8 +1889,8 @@ public class TSServiceImpl implements TSIService.Iface {
       }
 
       // Step 1: TODO(INSERT) transfer from TSInsertTabletsReq to Statement
-      InsertMultiTabletStatement statement =
-          (InsertMultiTabletStatement) StatementGenerator.createStatement(req);
+      InsertMultiTabletsStatement statement =
+          (InsertMultiTabletsStatement) StatementGenerator.createStatement(req);
       // Step 2: call the coordinator
       long queryId = SESSION_MANAGER.requestQueryId(false);
       ExecutionResult result =

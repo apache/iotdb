@@ -38,12 +38,11 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SourceNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertMultiTabletNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
-import org.apache.iotdb.db.mpp.sql.statement.component.*;
 import org.apache.iotdb.db.mpp.sql.statement.component.FillComponent;
 import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullComponent;
 import org.apache.iotdb.db.mpp.sql.statement.component.GroupByLevelComponent;
@@ -497,16 +496,16 @@ public class LogicalPlanner {
     }
 
     @Override
-    public PlanNode visitInsertMultiTablet(
-        InsertMultiTabletStatement insertMultiTabletStatement, MPPQueryContext context) {
+    public PlanNode visitInsertMultiTablets(
+        InsertMultiTabletsStatement insertMultiTabletsStatement, MPPQueryContext context) {
       // set schema in insert node
       // convert insert statement to insert node
-      InsertMultiTabletNode insertMultiTabletNode =
-          new InsertMultiTabletNode(context.getQueryId().genPlanNodeId());
+      InsertMultiTabletsNode insertMultiTabletsNode =
+          new InsertMultiTabletsNode(context.getQueryId().genPlanNodeId());
       List<InsertTabletNode> insertTabletNodeList = new ArrayList<>();
-      for (int i = 0; i < insertMultiTabletStatement.getInsertTabletStatementList().size(); i++) {
+      for (int i = 0; i < insertMultiTabletsStatement.getInsertTabletStatementList().size(); i++) {
         InsertTabletStatement insertTabletStatement =
-            insertMultiTabletStatement.getInsertTabletStatementList().get(i);
+            insertMultiTabletsStatement.getInsertTabletStatementList().get(i);
         List<MeasurementSchema> measurementSchemas =
             analysis
                 .getSchemaTree()
@@ -515,7 +514,7 @@ public class LogicalPlanner {
                     Arrays.asList(insertTabletStatement.getMeasurements()));
         insertTabletNodeList.add(
             new InsertTabletNode(
-                insertMultiTabletNode.getPlanNodeId(),
+                insertMultiTabletsNode.getPlanNodeId(),
                 insertTabletStatement.getDevicePath(),
                 insertTabletStatement.isAligned(),
                 measurementSchemas.toArray(new MeasurementSchema[0]),
@@ -525,8 +524,8 @@ public class LogicalPlanner {
                 insertTabletStatement.getColumns(),
                 insertTabletStatement.getRowCount()));
       }
-      insertMultiTabletNode.setInsertTabletNodeList(insertTabletNodeList);
-      return insertMultiTabletNode;
+      insertMultiTabletsNode.setInsertTabletNodeList(insertTabletNodeList);
+      return insertMultiTabletsNode;
     }
 
     @Override
