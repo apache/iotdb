@@ -442,6 +442,12 @@ public class IoTDBConfig {
   /** The interval of compaction task submission from queue in CompactionTaskMananger */
   private long compactionSubmissionIntervalInMs = 60_000L;
 
+  /**
+   * The number of sub compaction threads to be set up to perform compaction. Currently only works
+   * for nonAligned data in cross space compaction and unseq inner space compaction.
+   */
+  private int subCompactionTaskNum = 4;
+
   /** whether to cache meta data(ChunkMetaData and TsFileMetaData) or not. */
   private boolean metaDataCacheEnable = true;
 
@@ -2550,6 +2556,14 @@ public class IoTDBConfig {
 
   public void setCompactionSubmissionIntervalInMs(long interval) {
     compactionSubmissionIntervalInMs = interval;
+  }
+
+  public int getSubCompactionTaskNum() {
+    return subCompactionTaskNum;
+  }
+
+  public void setSubCompactionTaskNum(int subCompactionTaskNum) {
+    this.subCompactionTaskNum = subCompactionTaskNum;
   }
 
   public String getDeviceIDTransformationMethod() {
