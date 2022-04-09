@@ -216,8 +216,7 @@ public class AlterTimeSeriesNode extends PlanNode {
     byte label = byteBuffer.get();
     if (label == 0) {
       alterMap = new HashMap<>();
-    }
-    if (label == 1) {
+    } else if (label == 1) {
       alterMap = ReadWriteIOUtils.readMap(byteBuffer);
     }
 
@@ -225,8 +224,7 @@ public class AlterTimeSeriesNode extends PlanNode {
     label = byteBuffer.get();
     if (label == 0) {
       tagsMap = new HashMap<>();
-    }
-    if (label == 1) {
+    } else if (label == 1) {
       tagsMap = ReadWriteIOUtils.readMap(byteBuffer);
     }
 
@@ -234,8 +232,7 @@ public class AlterTimeSeriesNode extends PlanNode {
     label = byteBuffer.get();
     if (label == 0) {
       attributesMap = new HashMap<>();
-    }
-    if (label == 1) {
+    } else if (label == 1) {
       attributesMap = ReadWriteIOUtils.readMap(byteBuffer);
     }
     return new AlterTimeSeriesNode(
