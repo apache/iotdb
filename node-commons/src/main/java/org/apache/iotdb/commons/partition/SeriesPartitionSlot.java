@@ -39,10 +39,12 @@ public class SeriesPartitionSlot {
     this.deviceGroupId = deviceGroupId;
   }
 
+  @Override
   public int hashCode() {
     return new Integer(deviceGroupId).hashCode();
   }
 
+  @Override
   public boolean equals(Object obj) {
     return obj instanceof SeriesPartitionSlot
         && this.deviceGroupId == ((SeriesPartitionSlot) obj).deviceGroupId;

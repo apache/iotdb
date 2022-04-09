@@ -114,7 +114,7 @@ public class RegionManager {
           plan.getSchema().addDataRegionGroup(consensusGroupId);
       }
       regionReplicaSet.setId(consensusGroupId);
-      regionReplicaSet.setDataNodeList(onlineDataNodes.subList(0, regionCount));
+      regionReplicaSet.setDataNodeList(onlineDataNodes.subList(0, regionReplicaCount));
       plan.addRegion(regionReplicaSet);
     }
   }

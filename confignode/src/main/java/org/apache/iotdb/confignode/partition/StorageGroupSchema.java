@@ -19,6 +19,9 @@
 package org.apache.iotdb.confignode.partition;
 
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.consensus.SchemaRegionId;
+import org.apache.iotdb.confignode.util.SerializeDeserializeUtil;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -68,12 +71,34 @@ public class StorageGroupSchema {
   public void serialize(ByteBuffer buffer) {
     buffer.putInt(name.length());
     buffer.put(name.getBytes());
+
+    buffer.putInt(schemaRegionGroupIds.size());
+    for (ConsensusGroupId schemaRegionGroupId : schemaRegionGroupIds) {
+      schemaRegionGroupId.serializeImpl(buffer);
+    }
+
+    buffer.putInt(dataRegionGroupIds.size());
+    for (ConsensusGroupId dataRegionGroupId : dataRegionGroupIds) {
+      dataRegionGroupId.serializeImpl(buffer);
+    }
   }
 
   public void deserialize(ByteBuffer buffer) {
+    name = SerializeDeserializeUtil.readString(buffer);
+
     int length = buffer.getInt();
-    byte[] byteName = new byte[length];
-    buffer.get(byteName, 0, length);
-    name = new String(byteName, 0, length);
+    schemaRegionGroupIds = new ArrayList<>();
+    for (int i = 0; i < length; i++) {
+      SchemaRegionId schemaRegionId = new SchemaRegionId();
+      schemaRegionId.deserializeImpl(buffer);
+      schemaRegionGroupIds.add(schemaRegionId);
+    }
+
+    length = buffer.getInt();
+    for (int i = 0; i < length; i++) {
+      DataRegionId dataRegionId = new DataRegionId();
+      dataRegionId.deserializeImpl(buffer);
+      dataRegionGroupIds.add(dataRegionId);
+    }
   }
 }

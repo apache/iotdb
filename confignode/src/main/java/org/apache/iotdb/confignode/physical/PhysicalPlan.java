@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.confignode.physical;
 
+import org.apache.iotdb.confignode.physical.crud.CreateDataPartitionPlan;
+import org.apache.iotdb.confignode.physical.crud.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.physical.crud.QueryDataPartitionPlan;
 import org.apache.iotdb.confignode.physical.crud.QuerySchemaPartitionPlan;
 import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
@@ -100,11 +102,17 @@ public abstract class PhysicalPlan implements IConsensusRequest {
         case GetDataPartition:
           plan = new QueryDataPartitionPlan(PhysicalPlanType.GetDataPartition);
           break;
+        case CreateDataPartition:
+          plan = new CreateDataPartitionPlan(PhysicalPlanType.CreateDataPartition);
+          break;
         case GetOrCreateDataPartition:
           plan = new QueryDataPartitionPlan(PhysicalPlanType.GetOrCreateDataPartition);
           break;
         case GetSchemaPartition:
           plan = new QuerySchemaPartitionPlan(PhysicalPlanType.GetSchemaPartition);
+          break;
+        case CreateSchemaPartition:
+          plan = new CreateSchemaPartitionPlan(PhysicalPlanType.CreateSchemaPartition);
           break;
         case GetOrCreateSchemaPartition:
           plan = new QuerySchemaPartitionPlan(PhysicalPlanType.GetOrCreateSchemaPartition);

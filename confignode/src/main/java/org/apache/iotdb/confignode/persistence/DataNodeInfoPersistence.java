@@ -163,31 +163,35 @@ public class DataNodeInfoPersistence {
   }
 
   public static void setRegisterDataNodeMessages(TSStatus status, int dataNodeId) {
-    StringBuilder messageBuilder = new StringBuilder();
+    List<TSStatus> subStatus = new ArrayList<>();
 
     // Set DataNodeId
-    messageBuilder.append(dataNodeId);
-
+    subStatus.add(new TSStatus().setMessage(String.valueOf(dataNodeId)));
     // Set DataNode consensus protocol class
-    String dataNodeConsensusProtocolClass =
-        ConfigNodeDescriptor.getInstance().getConf().getDataNodeConsensusProtocolClass();
-    messageBuilder.append(dataNodeConsensusProtocolClass.length());
-    messageBuilder.append(dataNodeConsensusProtocolClass);
-
+    subStatus.add(
+        new TSStatus()
+            .setMessage(
+                ConfigNodeDescriptor.getInstance().getConf().getDataNodeConsensusProtocolClass()));
     // Set seriesPartitionSlotNum
-    messageBuilder.append(ConfigNodeDescriptor.getInstance().getConf().getSeriesPartitionSlotNum());
+    subStatus.add(
+        new TSStatus()
+            .setMessage(
+                String.valueOf(
+                    ConfigNodeDescriptor.getInstance().getConf().getSeriesPartitionSlotNum())));
+    // Set seriesPartitionSlotExecutorClass
+    subStatus.add(
+        new TSStatus()
+            .setMessage(
+                ConfigNodeDescriptor.getInstance()
+                    .getConf()
+                    .getSeriesPartitionSlotExecutorClass()));
 
-    // seriesPartitionSlotExecutorClass
-    String seriesPartitionSlotExecutorClass =
-        ConfigNodeDescriptor.getInstance().getConf().getSeriesPartitionSlotExecutorClass();
-    messageBuilder.append(seriesPartitionSlotExecutorClass.length());
-    messageBuilder.append(seriesPartitionSlotExecutorClass);
-
-    status.setMessage(messageBuilder.toString());
+    status.setSubStatus(subStatus);
   }
 
   @TestOnly
   public void clear() {
+    nextDataNodeId = 0;
     onlineDataNodes.clear();
     drainingDataNodes.clear();
   }

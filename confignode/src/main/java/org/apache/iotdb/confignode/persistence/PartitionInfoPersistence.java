@@ -34,6 +34,7 @@ import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -57,12 +58,13 @@ public class PartitionInfoPersistence {
     this.schemaPartitionReadWriteLock = new ReentrantReadWriteLock();
     this.dataPartitionReadWriteLock = new ReentrantReadWriteLock();
     this.schemaPartition = new SchemaPartition();
+    this.schemaPartition.setSchemaPartitionMap(new HashMap<>());
     this.dataPartition = new DataPartition();
+    this.dataPartition.setDataPartitionMap(new HashMap<>());
   }
 
   /**
-   * TODO: Reconstruct this interface after PatterTree is moved to node-commons
-   * Get SchemaPartition
+   * TODO: Reconstruct this interface after PatterTree is moved to node-commons Get SchemaPartition
    *
    * @param physicalPlan SchemaPartitionPlan with PatternTree
    * @return SchemaPartitionDataSet that contains only existing SchemaPartition
@@ -85,8 +87,8 @@ public class PartitionInfoPersistence {
   }
 
   /**
-   * TODO: Reconstruct this interface after PatterTree is moved to node-commons
-   * Get SchemaPartition and create a new one if it does not exist
+   * TODO: Reconstruct this interface after PatterTree is moved to node-commons Get SchemaPartition
+   * and create a new one if it does not exist
    *
    * @param physicalPlan SchemaPartitionPlan with PatternTree
    * @return SchemaPartitionDataSet
@@ -108,16 +110,14 @@ public class PartitionInfoPersistence {
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
-  /**
-   * TODO: Reconstruct this interface after PatterTree is moved to node-commons
-   */
+  /** TODO: Reconstruct this interface after PatterTree is moved to node-commons */
   public List<Integer> filterSchemaRegionNoAssignedPartitionSlots(
-          String storageGroup, List<Integer> seriesPartitionSlots) {
+      String storageGroup, List<Integer> seriesPartitionSlots) {
     List<Integer> result;
     schemaPartitionReadWriteLock.readLock().lock();
     try {
       result =
-              schemaPartition.filterNoAssignedSeriesPartitionSlot(storageGroup, seriesPartitionSlots);
+          schemaPartition.filterNoAssignedSeriesPartitionSlot(storageGroup, seriesPartitionSlots);
     } finally {
       schemaPartitionReadWriteLock.readLock().unlock();
     }
@@ -127,14 +127,16 @@ public class PartitionInfoPersistence {
   /**
    * Get DataPartition
    *
-   * @param physicalPlan DataPartitionPlan with Map<StorageGroupName, Map<SeriesPartitionSlot, List<TimePartitionSlot>>>
+   * @param physicalPlan DataPartitionPlan with Map<StorageGroupName, Map<SeriesPartitionSlot,
+   *     List<TimePartitionSlot>>>
    * @return DataPartitionDataSet that contains only existing DataPartition
    */
   public DataSet getDataPartition(QueryDataPartitionPlan physicalPlan) {
     DataPartitionDataSet dataPartitionDataSet = new DataPartitionDataSet();
     dataPartitionReadWriteLock.readLock().lock();
     try {
-      dataPartitionDataSet.setDataPartition(dataPartition.getDataPartition(physicalPlan.getPartitionSlotsMap()));
+      dataPartitionDataSet.setDataPartition(
+          dataPartition.getDataPartition(physicalPlan.getPartitionSlotsMap()));
     } finally {
       dataPartitionReadWriteLock.readLock().unlock();
       dataPartitionDataSet.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
@@ -147,8 +149,21 @@ public class PartitionInfoPersistence {
 
     try {
       // Allocate DataPartition by CreateDataPartitionPlan
-      Map<String, Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>> assignedResult = physicalPlan.getAssignedDataPartition();
-      assignedResult.forEach((storageGroup, seriesPartitionTimePartitionSlots) -> seriesPartitionTimePartitionSlots.forEach(((seriesPartitionSlot, timePartitionSlotRegionReplicaSets) -> timePartitionSlotRegionReplicaSets.forEach(((timePartitionSlot, regionReplicaSets) -> regionReplicaSets.forEach(regionReplicaSet -> dataPartition.createDataPartition(storageGroup, seriesPartitionSlot, timePartitionSlot, regionReplicaSet)))))));
+      Map<String, Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>>
+          assignedResult = physicalPlan.getAssignedDataPartition();
+      assignedResult.forEach(
+          (storageGroup, seriesPartitionTimePartitionSlots) ->
+              seriesPartitionTimePartitionSlots.forEach(
+                  ((seriesPartitionSlot, timePartitionSlotRegionReplicaSets) ->
+                      timePartitionSlotRegionReplicaSets.forEach(
+                          ((timePartitionSlot, regionReplicaSets) ->
+                              regionReplicaSets.forEach(
+                                  regionReplicaSet ->
+                                      dataPartition.createDataPartition(
+                                          storageGroup,
+                                          seriesPartitionSlot,
+                                          timePartitionSlot,
+                                          regionReplicaSet)))))));
     } finally {
       dataPartitionReadWriteLock.writeLock().unlock();
     }
@@ -156,7 +171,8 @@ public class PartitionInfoPersistence {
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
-  public Map<String, Map<SeriesPartitionSlot, List<TimePartitionSlot>>> filterNoAssignedDataPartitionSlots(
+  public Map<String, Map<SeriesPartitionSlot, List<TimePartitionSlot>>>
+      filterNoAssignedDataPartitionSlots(
           Map<String, Map<SeriesPartitionSlot, List<TimePartitionSlot>>> partitionSlotsMap) {
     Map<String, Map<SeriesPartitionSlot, List<TimePartitionSlot>>> result;
     dataPartitionReadWriteLock.readLock().lock();

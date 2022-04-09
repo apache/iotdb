@@ -44,7 +44,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupMessage;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupMessageResp;
-import org.apache.iotdb.confignode.util.SerializeDeserializeUtil;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
@@ -54,8 +53,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /** ConfigNodeRPCServer exposes the interface that interacts with the DataNode */
@@ -81,18 +80,21 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
     TDataNodeRegisterResp resp = new TDataNodeRegisterResp();
     resp.setStatus(status);
 
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      ByteBuffer buffer = ByteBuffer.wrap(status.getMessage().getBytes());
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        || status.getCode() == TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode()) {
+      List<TSStatus> subStatus = status.getSubStatus();
 
       // Extract DataNodeId
-      resp.setDataNodeID(buffer.getInt());
+      resp.setDataNodeID(Integer.parseInt(subStatus.get(0).getMessage()));
 
       // Extract GlobalConfig
       TGlobalConfig globalConfig = new TGlobalConfig();
-      globalConfig.setConsensusType(SerializeDeserializeUtil.readString(buffer));
-      globalConfig.setSeriesPartitionSlotNum(buffer.getInt());
-      globalConfig.setSeriesPartitionSlotExecutorClass(SerializeDeserializeUtil.readString(buffer));
+      globalConfig.setDataNodeConsensusProtocolClass(subStatus.get(1).getMessage());
+      globalConfig.setSeriesPartitionSlotNum(Integer.parseInt(subStatus.get(2).getMessage()));
+      globalConfig.setSeriesPartitionSlotExecutorClass(subStatus.get(3).getMessage());
       resp.setGlobalConfig(globalConfig);
+
+      resp.getStatus().setSubStatus(null);
 
       LOGGER.info(
           "Register DataNode successful. DataNodeID: {}, {}",
@@ -205,7 +207,8 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
     QueryDataPartitionPlan getDataPartitionPlan =
         new QueryDataPartitionPlan(PhysicalPlanType.GetDataPartition);
     getDataPartitionPlan.convertFromRpcTDataPartitionReq(req);
-    DataPartitionDataSet dataset = (DataPartitionDataSet) configManager.getDataPartition(getDataPartitionPlan);
+    DataPartitionDataSet dataset =
+        (DataPartitionDataSet) configManager.getDataPartition(getDataPartitionPlan);
 
     TDataPartitionResp resp = new TDataPartitionResp();
     resp.setStatus(dataset.getStatus());
@@ -219,10 +222,10 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
   @Override
   public TDataPartitionResp getOrCreateDataPartition(TDataPartitionReq req) throws TException {
     QueryDataPartitionPlan getOrCreateDataPartitionPlan =
-        new QueryDataPartitionPlan(
-            PhysicalPlanType.GetOrCreateDataPartition);
+        new QueryDataPartitionPlan(PhysicalPlanType.GetOrCreateDataPartition);
     getOrCreateDataPartitionPlan.convertFromRpcTDataPartitionReq(req);
-    DataPartitionDataSet dataset = (DataPartitionDataSet) configManager.getOrCreateDataPartition(getOrCreateDataPartitionPlan);
+    DataPartitionDataSet dataset =
+        (DataPartitionDataSet) configManager.getOrCreateDataPartition(getOrCreateDataPartitionPlan);
 
     TDataPartitionResp resp = new TDataPartitionResp();
     resp.setStatus(dataset.getStatus());

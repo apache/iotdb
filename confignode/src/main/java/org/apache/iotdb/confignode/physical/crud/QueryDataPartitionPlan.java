@@ -18,13 +18,11 @@
  */
 package org.apache.iotdb.confignode.physical.crud;
 
-import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.commons.partition.SeriesPartitionSlot;
 import org.apache.iotdb.commons.partition.TimePartitionSlot;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
 import org.apache.iotdb.confignode.physical.PhysicalPlanType;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
-import org.apache.iotdb.confignode.util.SerializeDeserializeUtil;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -52,29 +50,37 @@ public class QueryDataPartitionPlan extends PhysicalPlan {
    */
   public void convertFromRpcTDataPartitionReq(TDataPartitionReq req) {
     partitionSlotsMap = new HashMap<>();
-    req.getPartitionSlotsMap().forEach(((storageGroup, tSeriesPartitionTimePartitionSlots) -> {
-      // Extract StorageGroupName
-      partitionSlotsMap.putIfAbsent(storageGroup, new HashMap<>());
+    req.getPartitionSlotsMap()
+        .forEach(
+            ((storageGroup, tSeriesPartitionTimePartitionSlots) -> {
+              // Extract StorageGroupName
+              partitionSlotsMap.putIfAbsent(storageGroup, new HashMap<>());
 
-      tSeriesPartitionTimePartitionSlots.forEach(((tSeriesPartitionSlot, tTimePartitionSlots) -> {
-        // Extract SeriesPartitionSlot
-        SeriesPartitionSlot seriesPartitionSlot = new SeriesPartitionSlot(tSeriesPartitionSlot.getSlotId());
-        partitionSlotsMap.get(storageGroup).putIfAbsent(seriesPartitionSlot, new ArrayList<>());
+              tSeriesPartitionTimePartitionSlots.forEach(
+                  ((tSeriesPartitionSlot, tTimePartitionSlots) -> {
+                    // Extract SeriesPartitionSlot
+                    SeriesPartitionSlot seriesPartitionSlot =
+                        new SeriesPartitionSlot(tSeriesPartitionSlot.getSlotId());
+                    partitionSlotsMap
+                        .get(storageGroup)
+                        .putIfAbsent(seriesPartitionSlot, new ArrayList<>());
 
-        // Extract TimePartitionSlots
-        tTimePartitionSlots.forEach(tTimePartitionSlot -> partitionSlotsMap.get(storageGroup).get(seriesPartitionSlot).add(new TimePartitionSlot(tTimePartitionSlot.getStartTime())));
-      }));
-    }));
+                    // Extract TimePartitionSlots
+                    tTimePartitionSlots.forEach(
+                        tTimePartitionSlot ->
+                            partitionSlotsMap
+                                .get(storageGroup)
+                                .get(seriesPartitionSlot)
+                                .add(new TimePartitionSlot(tTimePartitionSlot.getStartTime())));
+                  }));
+            }));
   }
 
   @Override
   protected void serializeImpl(ByteBuffer buffer) {
     buffer.putInt(PhysicalPlanType.GetDataPartition.ordinal());
-
   }
 
   @Override
-  protected void deserializeImpl(ByteBuffer buffer) {
-
-  }
+  protected void deserializeImpl(ByteBuffer buffer) {}
 }

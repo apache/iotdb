@@ -157,6 +157,7 @@ public class RegionInfoPersistence {
 
   @TestOnly
   public void clear() {
+    nextRegionGroupId = 0;
     storageGroupsMap.clear();
     regionMap.clear();
   }

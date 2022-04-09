@@ -18,6 +18,22 @@
  */
 package org.apache.iotdb.confignode.physical.crud;
 
+import org.apache.iotdb.confignode.physical.PhysicalPlan;
+import org.apache.iotdb.confignode.physical.PhysicalPlanType;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+
 /** TODO: Reconstruct this interface after PatterTree is moved to node-commons */
-public class CreateSchemaPartitionPlan {
+public class CreateSchemaPartitionPlan extends PhysicalPlan {
+
+  public CreateSchemaPartitionPlan(PhysicalPlanType type) {
+    super(type);
+  }
+
+  @Override
+  protected void serializeImpl(ByteBuffer buffer) {}
+
+  @Override
+  protected void deserializeImpl(ByteBuffer buffer) throws IOException {}
 }

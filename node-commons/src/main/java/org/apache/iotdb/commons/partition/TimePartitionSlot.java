@@ -39,6 +39,17 @@ public class TimePartitionSlot {
     this.startTime = startTime;
   }
 
+  @Override
+  public int hashCode() {
+    return new Long(this.startTime).hashCode();
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    return o instanceof TimePartitionSlot
+        && ((TimePartitionSlot) o).getStartTime() == this.startTime;
+  }
+
   public void serializeImpl(ByteBuffer buffer) {
     buffer.putLong(startTime);
   }

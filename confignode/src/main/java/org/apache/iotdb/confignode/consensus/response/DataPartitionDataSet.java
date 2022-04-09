@@ -61,7 +61,8 @@ public class DataPartitionDataSet implements DataSet {
    * @param resp TDataPartitionResp
    */
   public void convertToRpcDataPartitionResp(TDataPartitionResp resp) {
-    Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>> dataPartitionMap = new HashMap<>();
+    Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
+        dataPartitionMap = new HashMap<>();
 
     dataPartition
         .getDataPartitionMap()
@@ -73,15 +74,22 @@ public class DataPartitionDataSet implements DataSet {
               seriesPartitionSlotTimePartitionSlotRegionReplicaSetListMap.forEach(
                   ((seriesPartitionSlot, timePartitionSlotReplicaSetListMap) -> {
                     // Extract TSeriesPartitionSlot
-                    TSeriesPartitionSlot tSeriesPartitionSlot = new TSeriesPartitionSlot(seriesPartitionSlot.getDeviceGroupId());
-                    dataPartitionMap.get(storageGroup).putIfAbsent(tSeriesPartitionSlot, new HashMap<>());
+                    TSeriesPartitionSlot tSeriesPartitionSlot =
+                        new TSeriesPartitionSlot(seriesPartitionSlot.getDeviceGroupId());
+                    dataPartitionMap
+                        .get(storageGroup)
+                        .putIfAbsent(tSeriesPartitionSlot, new HashMap<>());
 
                     // Extract Map<TimePartitionSlot, List<RegionReplicaSet>>
                     timePartitionSlotReplicaSetListMap.forEach(
                         ((timePartitionSlot, regionReplicaSets) -> {
                           // Extract TTimePartitionSlot
-                          TTimePartitionSlot tTimePartitionSlot = new TTimePartitionSlot(timePartitionSlot.getStartTime());
-                          dataPartitionMap.get(storageGroup).get(tSeriesPartitionSlot).putIfAbsent(tTimePartitionSlot, new ArrayList<>());
+                          TTimePartitionSlot tTimePartitionSlot =
+                              new TTimePartitionSlot(timePartitionSlot.getStartTime());
+                          dataPartitionMap
+                              .get(storageGroup)
+                              .get(tSeriesPartitionSlot)
+                              .putIfAbsent(tTimePartitionSlot, new ArrayList<>());
 
                           // Extract TRegionReplicaSets
                           regionReplicaSets.forEach(
@@ -106,7 +114,11 @@ public class DataPartitionDataSet implements DataSet {
                                                     dataNodeLocation.getEndPoint().getPort())));
                                 tRegionReplicaSet.setEndpoint(endPointList);
 
-                                dataPartitionMap.get(storageGroup).get(tSeriesPartitionSlot).get(tTimePartitionSlot).add(tRegionReplicaSet);
+                                dataPartitionMap
+                                    .get(storageGroup)
+                                    .get(tSeriesPartitionSlot)
+                                    .get(tTimePartitionSlot)
+                                    .add(tRegionReplicaSet);
                               });
                         }));
                   }));

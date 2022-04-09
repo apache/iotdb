@@ -34,30 +34,39 @@ import java.util.Map;
 
 public class CreateDataPartitionPlan extends PhysicalPlan {
 
-  private Map<String, Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>> assignedDataPartition;
+  private Map<String, Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>>
+      assignedDataPartition;
 
   public CreateDataPartitionPlan(PhysicalPlanType type) {
     super(type);
   }
 
-  public Map<String, Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>> getAssignedDataPartition() {
+  public Map<String, Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>>
+      getAssignedDataPartition() {
     return assignedDataPartition;
   }
 
-  public void setAssignedDataPartition(Map<String, Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>> assignedDataPartition) {
+  public void setAssignedDataPartition(
+      Map<String, Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>>
+          assignedDataPartition) {
     this.assignedDataPartition = assignedDataPartition;
   }
 
   @Override
   protected void serializeImpl(ByteBuffer buffer) {
+    buffer.putInt(PhysicalPlanType.CreateDataPartition.ordinal());
+
     buffer.putInt(assignedDataPartition.size());
-    for (Map.Entry<String, Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>> seriesPartitionTimePartitionEntry : assignedDataPartition.entrySet()) {
+    for (Map.Entry<String, Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>>
+        seriesPartitionTimePartitionEntry : assignedDataPartition.entrySet()) {
       SerializeDeserializeUtil.write(seriesPartitionTimePartitionEntry.getKey(), buffer);
       buffer.putInt(seriesPartitionTimePartitionEntry.getValue().size());
-      for (Map.Entry<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>> timePartitionEntry : seriesPartitionTimePartitionEntry.getValue().entrySet()) {
+      for (Map.Entry<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>
+          timePartitionEntry : seriesPartitionTimePartitionEntry.getValue().entrySet()) {
         timePartitionEntry.getKey().serializeImpl(buffer);
         buffer.putInt(timePartitionEntry.getValue().size());
-        for (Map.Entry<TimePartitionSlot, List<RegionReplicaSet>> regionReplicaSetEntry : timePartitionEntry.getValue().entrySet()) {
+        for (Map.Entry<TimePartitionSlot, List<RegionReplicaSet>> regionReplicaSetEntry :
+            timePartitionEntry.getValue().entrySet()) {
           regionReplicaSetEntry.getKey().serializeImpl(buffer);
           buffer.putInt(regionReplicaSetEntry.getValue().size());
           for (RegionReplicaSet regionReplicaSet : regionReplicaSetEntry.getValue()) {
@@ -84,12 +93,19 @@ public class CreateDataPartitionPlan extends PhysicalPlan {
         for (int k = 0; k < timePartitionSlotNum; k++) {
           TimePartitionSlot timePartitionSlot = new TimePartitionSlot();
           timePartitionSlot.deserializeImpl(buffer);
-          assignedDataPartition.get(storageGroupName).get(seriesPartitionSlot).put(timePartitionSlot, new ArrayList<>());
+          assignedDataPartition
+              .get(storageGroupName)
+              .get(seriesPartitionSlot)
+              .put(timePartitionSlot, new ArrayList<>());
           int regionReplicaSetNum = buffer.getInt();
           for (int l = 0; l < regionReplicaSetNum; l++) {
             RegionReplicaSet regionReplicaSet = new RegionReplicaSet();
             regionReplicaSet.deserializeImpl(buffer);
-            assignedDataPartition.get(storageGroupName).get(seriesPartitionSlot).get(timePartitionSlot).add(regionReplicaSet);
+            assignedDataPartition
+                .get(storageGroupName)
+                .get(seriesPartitionSlot)
+                .get(timePartitionSlot)
+                .add(regionReplicaSet);
           }
         }
       }
