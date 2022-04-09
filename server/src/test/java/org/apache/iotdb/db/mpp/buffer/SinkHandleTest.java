@@ -27,7 +27,6 @@ import org.apache.iotdb.mpp.rpc.thrift.EndOfDataBlockEvent;
 import org.apache.iotdb.mpp.rpc.thrift.NewDataBlockEvent;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
 
 import org.apache.thrift.TException;
 import org.junit.Assert;
@@ -84,7 +83,7 @@ public class SinkHandleTest {
             mockLocalMemoryManager,
             Executors.newSingleThreadExecutor(),
             mockClient,
-            new TsBlockSerde(),
+            Utils.createMockTsBlockSerde(mockTsBlockSize),
             mockSinkHandleListener);
     Assert.assertTrue(sinkHandle.isFull().isDone());
     Assert.assertFalse(sinkHandle.isFinished());
@@ -216,7 +215,7 @@ public class SinkHandleTest {
             mockLocalMemoryManager,
             Executors.newSingleThreadExecutor(),
             mockClient,
-            new TsBlockSerde(),
+            Utils.createMockTsBlockSerde(mockTsBlockSize),
             mockSinkHandleListener);
     Assert.assertTrue(sinkHandle.isFull().isDone());
     Assert.assertFalse(sinkHandle.isFinished());
@@ -398,7 +397,7 @@ public class SinkHandleTest {
             mockLocalMemoryManager,
             Executors.newSingleThreadExecutor(),
             mockClient,
-            new TsBlockSerde(),
+            Utils.createMockTsBlockSerde(mockTsBlockSize),
             mockSinkHandleListener);
     Assert.assertTrue(sinkHandle.isFull().isDone());
     Assert.assertFalse(sinkHandle.isFinished());
