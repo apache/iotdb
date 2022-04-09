@@ -120,7 +120,7 @@ public class InsertMultiTabletNode extends InsertNode {
           InsertMultiTabletNode tmpNode = splitMap.get(dataRegionReplicaSet);
           tmpNode.addInsertTabletNode((InsertTabletNode) subNode, i);
         } else {
-          InsertMultiTabletNode tmpNode = new InsertMultiTabletNode(this.getId());
+          InsertMultiTabletNode tmpNode = new InsertMultiTabletNode(this.getPlanNodeId());
           tmpNode.setDataRegionReplicaSet(dataRegionReplicaSet);
           tmpNode.addInsertTabletNode((InsertTabletNode) subNode, i);
           splitMap.put(dataRegionReplicaSet, tmpNode);

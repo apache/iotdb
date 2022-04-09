@@ -125,7 +125,7 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
         InsertRowsNode tmpNode = splitMap.get(dataRegionReplicaSet);
         tmpNode.addOneInsertRowNode(insertRowNode, i);
       } else {
-        InsertRowsNode tmpNode = new InsertRowsNode(this.getId());
+        InsertRowsNode tmpNode = new InsertRowsNode(this.getPlanNodeId());
         tmpNode.setDataRegionReplicaSet(dataRegionReplicaSet);
         tmpNode.addOneInsertRowNode(insertRowNode, i);
         splitMap.put(dataRegionReplicaSet, tmpNode);

@@ -44,12 +44,12 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.component.*;
-import org.apache.iotdb.db.mpp.sql.statement.crud.*;
 import org.apache.iotdb.db.mpp.sql.statement.component.FillComponent;
 import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullComponent;
 import org.apache.iotdb.db.mpp.sql.statement.component.GroupByLevelComponent;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 import org.apache.iotdb.db.mpp.sql.statement.component.ResultColumn;
+import org.apache.iotdb.db.mpp.sql.statement.crud.*;
 import org.apache.iotdb.db.mpp.sql.statement.crud.AggregationQueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.FillQueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertRowStatement;
@@ -484,7 +484,7 @@ public class LogicalPlanner {
                     Arrays.asList(insertRowStatement.getMeasurements()));
         insertRowsNode.addOneInsertRowNode(
             new InsertRowNode(
-                insertRowsNode.getId(),
+                insertRowsNode.getPlanNodeId(),
                 insertRowStatement.getDevicePath(),
                 insertRowStatement.isAligned(),
                 measurementSchemas.toArray(new MeasurementSchema[0]),
@@ -515,7 +515,7 @@ public class LogicalPlanner {
                     Arrays.asList(insertTabletStatement.getMeasurements()));
         insertTabletNodeList.add(
             new InsertTabletNode(
-                insertMultiTabletNode.getId(),
+                insertMultiTabletNode.getPlanNodeId(),
                 insertTabletStatement.getDevicePath(),
                 insertTabletStatement.isAligned(),
                 measurementSchemas.toArray(new MeasurementSchema[0]),
@@ -546,7 +546,7 @@ public class LogicalPlanner {
                     Arrays.asList(insertRowStatement.getMeasurements()));
         insertRowsNode.addOneInsertRowNode(
             new InsertRowNode(
-                insertRowsNode.getId(),
+                insertRowsNode.getPlanNodeId(),
                 insertRowStatement.getDevicePath(),
                 insertRowStatement.isAligned(),
                 measurementSchemas.toArray(new MeasurementSchema[0]),
