@@ -162,7 +162,7 @@ public class LimitOperatorTest {
         count++;
       }
       assertEquals(13, count);
-    } catch (IOException | IllegalPathException e) {
+    } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
     }

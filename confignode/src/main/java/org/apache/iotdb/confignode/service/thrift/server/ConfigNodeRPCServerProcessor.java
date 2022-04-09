@@ -27,9 +27,11 @@ import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.partition.StorageGroupSchema;
 import org.apache.iotdb.confignode.physical.PhysicalPlanType;
 import org.apache.iotdb.confignode.physical.crud.QueryDataPartitionPlan;
+import org.apache.iotdb.confignode.physical.sys.AuthorPlan;
 import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
 import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.confignode.rpc.thrift.AuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeMessage;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeMessageResp;
@@ -177,6 +179,31 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
     // req.getDeviceGroupIDs());
     //    DataSet dataSet = configManager.getSchemaPartition(querySchemaPartitionPlan);
     //    return ((SchemaPartitionDataSet) dataSet).convertRpcSchemaPartitionInfo();
+  }
+  
+  public TSStatus operatePermission(AuthorizerReq req) throws TException {
+    if (req.getAuthorType() < 0 || req.getAuthorType() >= PhysicalPlanType.values().length) {
+      throw new IndexOutOfBoundsException("Invalid ordinal");
+    }
+    AuthorPlan plan = null;
+    try {
+      plan =
+          new AuthorPlan(
+              PhysicalPlanType.values()[req.getAuthorType()],
+              req.getUserName(),
+              req.getRoleName(),
+              req.getPassword(),
+              req.getNewPassword(),
+              req.getPermissions(),
+              req.getNodeName());
+    } catch (AuthException e) {
+      LOGGER.error(e.getMessage());
+    }
+    return configManager.operatePermission(plan);
+  }
+
+  @Override
+  public DataPartitionInfo applyDataPartition(GetDataPartitionReq req) throws TException {
     return null;
   }
 

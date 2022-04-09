@@ -16,37 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.physical;
+package org.apache.iotdb.library.drepair.util;
 
-public enum PhysicalPlanType {
-  RegisterDataNode,
-  QueryDataNodeInfo,
-  SetStorageGroup,
-  DeleteStorageGroup,
-  QueryStorageGroupSchema,
-  CreateRegion,
-  GetDataPartition,
-  CreateDataPartition,
-  GetOrCreateDataPartition,
-  GetSchemaPartition,
-  CreateSchemaPartition,
-  GetOrCreateSchemaPartition,
-  AUTHOR,
-  CREATE_USER,
-  CREATE_ROLE,
-  DROP_USER,
-  DROP_ROLE,
-  GRANT_ROLE,
-  GRANT_USER,
-  GRANT_ROLE_TO_USER,
-  REVOKE_USER,
-  REVOKE_ROLE,
-  REVOKE_ROLE_FROM_USER,
-  UPDATE_USER,
-  LIST_USER,
-  LIST_ROLE,
-  LIST_USER_PRIVILEGE,
-  LIST_ROLE_PRIVILEGE,
-  LIST_USER_ROLES,
-  LIST_ROLE_USERS
+import org.apache.iotdb.db.query.udf.api.access.RowIterator;
+
+public class MeanFill extends ValueFill {
+  public MeanFill(RowIterator dataIterator) throws Exception {
+    super(dataIterator);
+    calMeanAndVar();
+  }
+
+  @Override
+  public void fill() {
+    for (int i = 0; i < original.length; i++) {
+      double yt = original[i];
+      if (!Double.isNaN(yt)) {
+        repaired[i] = yt;
+      } else {
+        repaired[i] = mean;
+      }
+    }
+  }
 }

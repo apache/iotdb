@@ -16,37 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.physical;
 
-public enum PhysicalPlanType {
-  RegisterDataNode,
-  QueryDataNodeInfo,
-  SetStorageGroup,
-  DeleteStorageGroup,
-  QueryStorageGroupSchema,
-  CreateRegion,
-  GetDataPartition,
-  CreateDataPartition,
-  GetOrCreateDataPartition,
-  GetSchemaPartition,
-  CreateSchemaPartition,
-  GetOrCreateSchemaPartition,
-  AUTHOR,
-  CREATE_USER,
-  CREATE_ROLE,
-  DROP_USER,
-  DROP_ROLE,
-  GRANT_ROLE,
-  GRANT_USER,
-  GRANT_ROLE_TO_USER,
-  REVOKE_USER,
-  REVOKE_ROLE,
-  REVOKE_ROLE_FROM_USER,
-  UPDATE_USER,
-  LIST_USER,
-  LIST_ROLE,
-  LIST_USER_PRIVILEGE,
-  LIST_ROLE_PRIVILEGE,
-  LIST_USER_ROLES,
-  LIST_ROLE_USERS
+package org.apache.iotdb.confignode.consensus.response;
+
+import org.apache.iotdb.consensus.common.DataSet;
+
+public class PermissionInfoDataSet implements DataSet {
+  // TODO: Store the returned result
 }
