@@ -45,9 +45,10 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
   // whether each target file is empty or not
   private final boolean[] isEmptyFile;
 
-  // whether each target file has device data
+  // whether each target file has device data or not
   private final boolean[] isDeviceExistedInTargetFiles;
 
+  // current chunk group header size
   private int chunkGroupHeaderSize;
 
   public CrossSpaceCompactionWriter(

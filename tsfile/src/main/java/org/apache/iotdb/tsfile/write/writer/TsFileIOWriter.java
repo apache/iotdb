@@ -458,8 +458,8 @@ public class TsFileIOWriter implements AutoCloseable {
     out.flush();
   }
 
-  public void truncate(long truncateSize) throws IOException {
-    out.truncate(truncateSize);
+  public void truncate(long offset) throws IOException {
+    out.truncate(offset);
   }
 
   /**

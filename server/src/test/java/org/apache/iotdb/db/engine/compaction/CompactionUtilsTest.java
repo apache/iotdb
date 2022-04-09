@@ -30,9 +30,14 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.file.MetaMarker;
+import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
+import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -1766,7 +1771,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
   }
 
   /**
-   * Total 5 seq files and 5 unseq files, each file has different nonAligned timeseries.
+   * Total 4 seq files and 5 unseq files, each file has different nonAligned timeseries.
    *
    * <p>Seq files<br>
    * first and second file has d0 ~ d1 and s0 ~ s2, time range is 0 ~ 299 and 350 ~ 649, value range
@@ -1850,6 +1855,34 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
     CompactionUtils.compact(seqResources, unseqResources, targetResources);
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
+    List<String> deviceIdList = new ArrayList<>();
+    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0");
+    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1");
+    for (int i = 0; i < 2; i++) {
+      Assert.assertTrue(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
+      Assert.assertTrue(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
+      Assert.assertFalse(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
+      Assert.assertFalse(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
+      check(targetResources.get(i), deviceIdList);
+    }
+    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2");
+    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3");
+    for (int i = 2; i < 4; i++) {
+      Assert.assertTrue(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
+      Assert.assertTrue(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
+      Assert.assertTrue(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
+      Assert.assertTrue(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
+      check(targetResources.get(i), deviceIdList);
+    }
+
     Map<String, Long> measurementMaxTime = new HashMap<>();
 
     for (int i = 0; i < 4; i++) {
@@ -1919,7 +1952,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
   }
 
   /**
-   * Total 5 seq files and 5 unseq files, each file has different nonAligned timeseries.
+   * Total 4 seq files and 5 unseq files, each file has different nonAligned timeseries.
    *
    * <p>Seq files<br>
    * first and second file has d0 ~ d1 and s0 ~ s2, time range is 0 ~ 299 and 350 ~ 649, value range
@@ -2016,6 +2049,34 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
     CompactionUtils.compact(seqResources, unseqResources, targetResources);
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
+    List<String> deviceIdList = new ArrayList<>();
+    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0");
+    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1");
+    for (int i = 0; i < 2; i++) {
+      Assert.assertTrue(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
+      Assert.assertTrue(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
+      Assert.assertFalse(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
+      Assert.assertFalse(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
+      check(targetResources.get(i), deviceIdList);
+    }
+    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2");
+    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3");
+    for (int i = 2; i < 4; i++) {
+      Assert.assertTrue(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
+      Assert.assertTrue(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
+      Assert.assertTrue(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
+      Assert.assertTrue(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
+      check(targetResources.get(i), deviceIdList);
+    }
+
     Map<String, Long> measurementMaxTime = new HashMap<>();
     for (int i = 0; i < 4; i++) {
       for (int j = 0; j < 5; j++) {
@@ -2086,7 +2147,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
   }
 
   /**
-   * Total 5 seq files and 5 unseq files, each file has different nonAligned timeseries.
+   * Total 4 seq files and 5 unseq files, each file has different nonAligned timeseries.
    *
    * <p>Seq files<br>
    * first and second file has d0 ~ d1 and s0 ~ s2, time range is 0 ~ 299 and 350 ~ 649, value range
@@ -2179,6 +2240,32 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
     CompactionUtils.compact(seqResources, unseqResources, targetResources);
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
+    List<String> deviceIdList = new ArrayList<>();
+    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1");
+    for (int i = 0; i < 2; i++) {
+      Assert.assertFalse(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
+      Assert.assertTrue(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
+      Assert.assertFalse(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
+      Assert.assertFalse(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
+      check(targetResources.get(i), deviceIdList);
+    }
+    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3");
+    for (int i = 2; i < 4; i++) {
+      Assert.assertFalse(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
+      Assert.assertTrue(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
+      Assert.assertFalse(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
+      Assert.assertTrue(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
+      check(targetResources.get(i), deviceIdList);
+    }
+
     Map<String, Long> measurementMaxTime = new HashMap<>();
     for (int i = 0; i < 4; i++) {
       for (int j = 0; j < 5; j++) {
@@ -2245,7 +2332,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
   }
 
   /**
-   * Total 5 seq files and 5 unseq files, each file has different nonAligned timeseries.
+   * Total 4 seq files and 5 unseq files, each file has different nonAligned timeseries.
    *
    * <p>Seq files<br>
    * first and second file has d0 ~ d1 and s0 ~ s2, time range is 0 ~ 299 and 350 ~ 649, value range
@@ -2259,8 +2346,8 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
    * forth and fifth file has d0 and s0 ~ s4, time range is 450 ~ 549 and 550 ~ 649, value range is
    * 20450 ~ 20549 and 20550 ~ 20649.
    *
-   * <p>The data of d0, d1 and d2 is deleted in each file. Data in the first target file is all
-   * deleted.
+   * <p>The data of d0, d1 and d2 is deleted in each file. Data in the first and second target file
+   * is all deleted.
    */
   @Test
   public void testCrossSpaceCompactionWithAllDataDeletedInOneTargetFile()
@@ -2334,6 +2421,21 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
     CompactionUtils.compact(seqResources, unseqResources, targetResources);
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
+    Assert.assertEquals(2, targetResources.size());
+    List<String> deviceIdList = new ArrayList<>();
+    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3");
+    for (int i = 0; i < 2; i++) {
+      Assert.assertFalse(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
+      Assert.assertFalse(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
+      Assert.assertFalse(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
+      Assert.assertTrue(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
+      check(targetResources.get(i), deviceIdList);
+    }
+
     Map<String, Long> measurementMaxTime = new HashMap<>();
     for (int i = 0; i < 4; i++) {
       for (int j = 0; j < 5; j++) {
@@ -2394,7 +2496,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
   }
 
   /**
-   * Total 5 seq files and 5 unseq files, each file has different nonAligned timeseries.
+   * Total 4 seq files and 5 unseq files, each file has different nonAligned timeseries.
    *
    * <p>Seq files<br>
    * first and second file has d0 ~ d1 and s0 ~ s2, time range is 0 ~ 299 and 350 ~ 649, value range
@@ -2490,6 +2592,48 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
     CompactionUtils.compact(seqResources, unseqResources, targetResources);
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
+
+    Assert.assertEquals(4, targetResources.size());
+    List<String> deviceIdList = new ArrayList<>();
+    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0");
+    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1");
+    for (int i = 0; i < 2; i++) {
+      Assert.assertTrue(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
+      Assert.assertTrue(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
+      Assert.assertFalse(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
+      Assert.assertFalse(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
+      check(targetResources.get(i), deviceIdList);
+    }
+    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2");
+    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3");
+    for (int i = 2; i < 3; i++) {
+      Assert.assertTrue(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
+      Assert.assertTrue(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
+      Assert.assertTrue(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
+      Assert.assertTrue(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
+      check(targetResources.get(i), deviceIdList);
+    }
+    deviceIdList.clear();
+    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3");
+    for (int i = 3; i < 4; i++) {
+      Assert.assertFalse(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
+      Assert.assertFalse(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
+      Assert.assertFalse(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
+      Assert.assertTrue(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
+      check(targetResources.get(i), deviceIdList);
+    }
 
     Map<String, Long> measurementMaxTime = new HashMap<>();
     for (int i = 0; i < 4; i++) {
@@ -2946,6 +3090,35 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
     CompactionUtils.compact(seqResources, unseqResources, targetResources);
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
+
+    Assert.assertEquals(4, targetResources.size());
+    List<String> deviceIdList = new ArrayList<>();
+    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d10000");
+    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d10001");
+    for (int i = 0; i < 2; i++) {
+      Assert.assertTrue(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d10000"));
+      Assert.assertTrue(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d10001"));
+      Assert.assertFalse(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d10002"));
+      Assert.assertFalse(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d10003"));
+      check(targetResources.get(i), deviceIdList);
+    }
+    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d10002");
+    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d10003");
+    for (int i = 2; i < 4; i++) {
+      Assert.assertTrue(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d10000"));
+      Assert.assertTrue(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d10001"));
+      Assert.assertTrue(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d10002"));
+      Assert.assertTrue(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d10003"));
+      check(targetResources.get(i), deviceIdList);
+    }
 
     for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();
         i < TsFileGeneratorUtils.getAlignDeviceOffset() + 4;
@@ -3447,6 +3620,54 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
           CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
       CompactionUtils.compact(seqResources, unseqResources, targetResources);
       CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
+
+      Assert.assertEquals(4, targetResources.size());
+      List<String> deviceIdList = new ArrayList<>();
+      deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0");
+      deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1");
+      for (int i = 0; i < 2; i++) {
+        Assert.assertTrue(
+            targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
+        Assert.assertTrue(
+            targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
+        Assert.assertFalse(
+            targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
+        Assert.assertFalse(
+            targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
+        check(targetResources.get(i), deviceIdList);
+      }
+      deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2");
+      deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3");
+      for (int i = 2; i < 3; i++) {
+        Assert.assertTrue(
+            targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
+        Assert.assertTrue(
+            targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
+        Assert.assertTrue(
+            targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
+        Assert.assertTrue(
+            targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
+        check(targetResources.get(i), deviceIdList);
+      }
+      deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2");
+      deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3");
+      deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d4");
+      deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d5");
+      for (int i = 3; i < 4; i++) {
+        Assert.assertTrue(
+            targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
+        Assert.assertTrue(
+            targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
+        Assert.assertTrue(
+            targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
+        Assert.assertTrue(
+            targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
+        Assert.assertTrue(
+            targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d4"));
+        Assert.assertTrue(
+            targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d5"));
+        check(targetResources.get(i), deviceIdList);
+      }
     } catch (MetadataException
         | IOException
         | WriteProcessException
@@ -3469,6 +3690,35 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
           CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
       CompactionUtils.compact(seqResources, unseqResources, targetResources);
       CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
+
+      Assert.assertEquals(2, targetResources.size());
+      List<String> deviceIdList = new ArrayList<>();
+      deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0");
+      deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1");
+      for (int i = 0; i < 1; i++) {
+        Assert.assertTrue(
+            targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
+        Assert.assertTrue(
+            targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
+        Assert.assertFalse(
+            targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
+        Assert.assertFalse(
+            targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
+        check(targetResources.get(i), deviceIdList);
+      }
+      deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2");
+      deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3");
+      for (int i = 1; i < 2; i++) {
+        Assert.assertTrue(
+            targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
+        Assert.assertTrue(
+            targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
+        Assert.assertTrue(
+            targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
+        Assert.assertTrue(
+            targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
+        check(targetResources.get(i), deviceIdList);
+      }
 
       for (int i = 0; i < 4; i++) {
         for (int j = 0; j < 4; j++) {
@@ -3527,6 +3777,49 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
         deleteMap.put(path, new Pair<>(startValue, endValue));
       }
       CompactionFileGeneratorUtils.generateMods(deleteMap, resource, false);
+    }
+  }
+
+  /**
+   * Check whether target file contain empty chunk group or not. Assert fail if it contains empty
+   * chunk group whose deviceID is not in the deviceIdList.
+   */
+  public void check(TsFileResource targetResource, List<String> deviceIdList) throws IOException {
+    byte marker;
+    try (TsFileSequenceReader reader =
+        new TsFileSequenceReader(targetResource.getTsFile().getAbsolutePath())) {
+      reader.position((long) TSFileConfig.MAGIC_STRING.getBytes().length + 1);
+      while ((marker = reader.readMarker()) != MetaMarker.SEPARATOR) {
+        switch (marker) {
+          case MetaMarker.CHUNK_HEADER:
+          case MetaMarker.TIME_CHUNK_HEADER:
+          case MetaMarker.VALUE_CHUNK_HEADER:
+          case MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER:
+          case MetaMarker.ONLY_ONE_PAGE_TIME_CHUNK_HEADER:
+          case MetaMarker.ONLY_ONE_PAGE_VALUE_CHUNK_HEADER:
+            ChunkHeader header = reader.readChunkHeader(marker);
+            int dataSize = header.getDataSize();
+            reader.position(reader.position() + dataSize);
+            break;
+          case MetaMarker.CHUNK_GROUP_HEADER:
+            ChunkGroupHeader chunkGroupHeader = reader.readChunkGroupHeader();
+            String deviceID = chunkGroupHeader.getDeviceID();
+            if (!deviceIdList.contains(deviceID)) {
+              Assert.fail(
+                  "Target file "
+                      + targetResource.getTsFile().getPath()
+                      + " contains empty chunk group "
+                      + deviceID);
+            }
+            break;
+          case MetaMarker.OPERATION_INDEX_RANGE:
+            reader.readPlanIndex();
+            break;
+          default:
+            // the disk file is corrupted, using this file may be dangerous
+            throw new IOException("Unexpected marker " + marker);
+        }
+      }
     }
   }
 }
