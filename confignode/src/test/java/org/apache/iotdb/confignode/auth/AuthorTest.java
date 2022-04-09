@@ -16,35 +16,29 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.physical;
+package org.apache.iotdb.confignode.auth;
 
-public enum PhysicalPlanType {
-  RegisterDataNode,
-  QueryDataNodeInfo,
-  SetStorageGroup,
-  DeleteStorageGroup,
-  QueryStorageGroupSchema,
-  CreateRegion,
-  QueryDataPartition,
-  ApplyDataPartition,
-  QuerySchemaPartition,
-  ApplySchemaPartition,
-  AUTHOR,
-  CREATE_USER,
-  CREATE_ROLE,
-  DROP_USER,
-  DROP_ROLE,
-  GRANT_ROLE,
-  GRANT_USER,
-  GRANT_ROLE_TO_USER,
-  REVOKE_USER,
-  REVOKE_ROLE,
-  REVOKE_ROLE_FROM_USER,
-  UPDATE_USER,
-  LIST_USER,
-  LIST_ROLE,
-  LIST_USER_PRIVILEGE,
-  LIST_ROLE_PRIVILEGE,
-  LIST_USER_ROLES,
-  LIST_ROLE_USERS
+import org.apache.iotdb.confignode.utils.ConfigNodeEnvironmentUtils;
+import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
+import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
+
+import org.junit.After;
+import org.junit.Before;
+
+public class AuthorTest {
+
+  IAuthorizer authorizer;
+
+  @Before
+  public void setUp() throws Exception {
+    ConfigNodeEnvironmentUtils.envSetUp();
+    authorizer = BasicAuthorizer.getInstance();
+  }
+
+  @After
+  public void tearDown() throws Exception {
+    ConfigNodeEnvironmentUtils.cleanEnv();
+  }
+
+  // TODO: ADD TEST
 }

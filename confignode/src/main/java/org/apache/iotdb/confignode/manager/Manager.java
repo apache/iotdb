@@ -116,4 +116,12 @@ public interface Manager {
   DeviceGroupHashInfo getDeviceGroupHashInfo();
 
   ConsensusManager getConsensusManager();
+
+  /**
+   * operate permission
+   *
+   * @param physicalPlan
+   * @return
+   */
+  TSStatus operatePermission(PhysicalPlan physicalPlan);
 }
