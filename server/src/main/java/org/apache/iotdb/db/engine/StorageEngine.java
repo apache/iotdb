@@ -238,7 +238,7 @@ public class StorageEngine implements IService {
     List<IStorageGroupMNode> sgNodes = IoTDB.schemaProcessor.getAllStorageGroupNodes();
     // init wal recover manager
     WALRecoverManager.getInstance()
-        .setAllVsgScannedLatch(
+        .setAllDataRegionScannedLatch(
             new CountDownLatch(sgNodes.size() * config.getDataRegionNum()));
     // recover all logic storage groups
     List<Future<Void>> futures = new LinkedList<>();
@@ -477,11 +477,12 @@ public class StorageEngine implements IService {
     }
   }
 
-  public DataRegion getProcessorByVSGId(PartialPath path, int vsgId)
+  public DataRegion getProcessorByDataRegionId(PartialPath path, int dataRegionId)
       throws StorageEngineException {
     try {
       IStorageGroupMNode storageGroupMNode = IoTDB.schemaProcessor.getStorageGroupNodeByPath(path);
-      return getStorageGroupManager(storageGroupMNode).getProcessor(storageGroupMNode, vsgId);
+      return getStorageGroupManager(storageGroupMNode)
+          .getProcessor(storageGroupMNode, dataRegionId);
     } catch (DataRegionException | MetadataException e) {
       throw new StorageEngineException(e);
     }
@@ -790,16 +791,17 @@ public class StorageEngine implements IService {
       List<TsFileResource> unseqResourcesToBeSettled,
       List<String> tsFilePaths)
       throws StorageEngineException {
-    StorageGroupManager vsg = processorMap.get(sgPath);
-    if (vsg == null) {
+    StorageGroupManager storageGroupManager = processorMap.get(sgPath);
+    if (storageGroupManager == null) {
       throw new StorageEngineException(
           "The Storage Group " + sgPath.toString() + " is not existed.");
     }
-    if (!vsg.getIsSettling().compareAndSet(false, true)) {
+    if (!storageGroupManager.getIsSettling().compareAndSet(false, true)) {
       throw new StorageEngineException(
           "Storage Group " + sgPath.getFullPath() + " is already being settled now.");
     }
-    vsg.getResourcesToBeSettled(seqResourcesToBeSettled, unseqResourcesToBeSettled, tsFilePaths);
+    storageGroupManager.getResourcesToBeSettled(
+        seqResourcesToBeSettled, unseqResourcesToBeSettled, tsFilePaths);
   }
 
   public void setSettling(PartialPath sgPath, boolean isSettling) {

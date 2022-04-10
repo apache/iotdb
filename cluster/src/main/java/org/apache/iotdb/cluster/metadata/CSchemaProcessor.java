@@ -285,14 +285,12 @@ public class CSchemaProcessor extends LocalSchemaProcessor {
   }
 
   /**
-<<<<<<< HEAD
-   * the {@link org.apache.iotdb.db.writelog.recover.LogReplayer#replayLogs(Supplier, DataRegion)}
-   * will call this to get schema after restart we should retry to get schema util we get the
-   * schema.
-=======
-   * the {@link org.apache.iotdb.db.wal.recover.file.UnsealedTsFileRecoverPerformer#redoLog} will
-   * call this to get schema after restart we should retry to get schema util we get the schema.
->>>>>>> cc78c84f99aadcf5aa59dcbdba862171f267173b
+   * <<<<<<< HEAD the {@link org.apache.iotdb.db.writelog.recover.LogReplayer#replayLogs(Supplier,
+   * DataRegion)} will call this to get schema after restart we should retry to get schema util we
+   * get the schema. ======= the {@link
+   * org.apache.iotdb.db.wal.recover.file.UnsealedTsFileRecoverPerformer#redoLog} will call this to
+   * get schema after restart we should retry to get schema util we get the schema. >>>>>>>
+   * cc78c84f99aadcf5aa59dcbdba862171f267173b
    *
    * @param deviceId the device id.
    * @param measurements the measurements.

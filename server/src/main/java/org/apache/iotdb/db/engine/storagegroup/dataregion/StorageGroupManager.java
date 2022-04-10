@@ -139,8 +139,7 @@ public class StorageGroupManager {
    * @param partialPath device path
    * @return virtual storage group processor
    */
-  public DataRegion getProcessor(
-      PartialPath partialPath, IStorageGroupMNode storageGroupMNode)
+  public DataRegion getProcessor(PartialPath partialPath, IStorageGroupMNode storageGroupMNode)
       throws DataRegionException, StorageEngineException {
     int dataRegionId = partitioner.deviceToDataRegionId(partialPath);
     return getProcessor(storageGroupMNode, dataRegionId);
@@ -150,7 +149,7 @@ public class StorageGroupManager {
   // actually storageGroupMNode is a unique object on the mtree, synchronize it is reasonable
   public DataRegion getProcessor(IStorageGroupMNode storageGroupMNode, int dataRegionId)
       throws DataRegionException, StorageEngineException {
-            DataRegion processor = dataRegion[dataRegionId];
+    DataRegion processor = dataRegion[dataRegionId];
     if (processor == null) {
       // if finish recover
       if (isDataRegionReady[dataRegionId].get()) {

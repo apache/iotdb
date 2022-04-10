@@ -350,27 +350,12 @@ public class StorageEngineV2 implements IService {
     }
   }
 
-<<<<<<< HEAD
-  private void timedCloseTsFileProcessor() {
-    try {
-      for (DataRegion dataRegion : dataRegionMap.values()) {
-        if (dataRegion != null) {
-          dataRegion.timedCloseTsFileProcessor();
-        }
-      }
-    } catch (Exception e) {
-      logger.error("An error occurred when timed closing tsfiles interval", e);
-    }
-  }
-
-=======
->>>>>>> cc78c84f99aadcf5aa59dcbdba862171f267173b
   @Override
   public void stop() {
-    for (DataRegion vsg : dataRegionMap.values()) {
-      if (vsg != null) {
+    for (DataRegion dataRegion : dataRegionMap.values()) {
+      if (dataRegion != null) {
         ThreadUtils.stopThreadPool(
-            vsg.getTimedCompactionScheduleTask(), ThreadName.COMPACTION_SCHEDULE);
+            dataRegion.getTimedCompactionScheduleTask(), ThreadName.COMPACTION_SCHEDULE);
       }
     }
     syncCloseAllProcessor();
@@ -388,13 +373,7 @@ public class StorageEngineV2 implements IService {
     try {
       for (DataRegion dataRegion : dataRegionMap.values()) {
         ThreadUtils.stopThreadPool(
-<<<<<<< HEAD
             dataRegion.getTimedCompactionScheduleTask(), ThreadName.COMPACTION_SCHEDULE);
-        ThreadUtils.stopThreadPool(dataRegion.getWALTrimScheduleTask(), ThreadName.WAL_TRIM);
-=======
-            virtualStorageGroupProcessor.getTimedCompactionScheduleTask(),
-            ThreadName.COMPACTION_SCHEDULE);
->>>>>>> cc78c84f99aadcf5aa59dcbdba862171f267173b
       }
       forceCloseAllProcessor();
     } catch (TsFileProcessorException e) {

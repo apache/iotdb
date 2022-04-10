@@ -342,7 +342,7 @@ public class DataRegion {
   }
 
   /** this class is used to store recovering context */
-  private class VSGRecoveryContext {
+  private class DataRegionRecoveryContext {
     /** number of files to be recovered */
     private final long numOfFilesToRecover;
     /** when the change of recoveredFilesNum exceeds this, log check will be triggered */
@@ -354,7 +354,7 @@ public class DataRegion {
     /** last recovery log files num */
     private long lastLogCheckFilesNum;
 
-    public VSGRecoveryContext(long numOfFilesToRecover) {
+    public DataRegionRecoveryContext(long numOfFilesToRecover) {
       this.numOfFilesToRecover = numOfFilesToRecover;
       this.recoveredFilesNum = 0;
       this.filesNumLogCheckTrigger = this.numOfFilesToRecover / 100;
@@ -371,9 +371,7 @@ public class DataRegion {
         if (lastLogTime + config.getRecoveryLogIntervalInMs() < System.currentTimeMillis()) {
           logger.info(
               "The data region {}[{}] has recovered {}%, please wait a moment.",
-              logicalStorageGroupName,
-                  dataRegionId,
-              recoveredFilesNum * 1.0 / numOfFilesToRecover);
+              logicalStorageGroupName, dataRegionId, recoveredFilesNum * 1.0 / numOfFilesToRecover);
           lastLogTime = System.currentTimeMillis();
         }
       }
@@ -407,8 +405,8 @@ public class DataRegion {
 
       // split by partition so that we can find the last file of each partition and decide to
       // close it or not
-      VSGRecoveryContext VSGRecoveryContext =
-          new VSGRecoveryContext(tmpSeqTsFiles.size() + tmpUnseqTsFiles.size());
+      DataRegionRecoveryContext DataRegionRecoveryContext =
+          new DataRegionRecoveryContext(tmpSeqTsFiles.size() + tmpUnseqTsFiles.size());
       Map<Long, List<TsFileResource>> partitionTmpSeqTsFiles =
           splitResourcesByPartition(tmpSeqTsFiles);
       Map<Long, List<TsFileResource>> partitionTmpUnseqTsFiles =
@@ -424,7 +422,7 @@ public class DataRegion {
           } else {
             value.remove(value.size() - 1);
             WALRecoverListener recoverListener =
-                recoverUnsealedTsFile(tsFileResource, VSGRecoveryContext, true);
+                recoverUnsealedTsFile(tsFileResource, DataRegionRecoveryContext, true);
             recoverListeners.add(recoverListener);
           }
         }
@@ -438,21 +436,21 @@ public class DataRegion {
           } else {
             value.remove(value.size() - 1);
             WALRecoverListener recoverListener =
-                recoverUnsealedTsFile(tsFileResource, VSGRecoveryContext, false);
+                recoverUnsealedTsFile(tsFileResource, DataRegionRecoveryContext, false);
             recoverListeners.add(recoverListener);
           }
         }
       }
-      WALRecoverManager.getInstance().getAllVsgScannedLatch().countDown();
+      WALRecoverManager.getInstance().getAllDataRegionScannedLatch().countDown();
       // recover sealed TsFiles
       for (List<TsFileResource> value : partitionTmpSeqTsFiles.values()) {
         for (TsFileResource tsFileResource : value) {
-          recoverSealedTsFiles(tsFileResource, VSGRecoveryContext, true);
+          recoverSealedTsFiles(tsFileResource, DataRegionRecoveryContext, true);
         }
       }
       for (List<TsFileResource> value : partitionTmpUnseqTsFiles.values()) {
         for (TsFileResource tsFileResource : value) {
-          recoverSealedTsFiles(tsFileResource, VSGRecoveryContext, false);
+          recoverSealedTsFiles(tsFileResource, DataRegionRecoveryContext, false);
         }
       }
       // wait until all unsealed TsFiles have been recovered
@@ -464,7 +462,7 @@ public class DataRegion {
               recoverListener.getCause());
         }
         // update VSGRecoveryContext
-        VSGRecoveryContext.incrementRecoveredFilesNum();
+        DataRegionRecoveryContext.incrementRecoveredFilesNum();
       }
       for (TsFileResource resource : tsFileManager.getTsFileList(true)) {
         long partitionNum = resource.getTimePartition();
@@ -677,7 +675,7 @@ public class DataRegion {
 
   /** submit unsealed TsFile to WALRecoverManager */
   private WALRecoverListener recoverUnsealedTsFile(
-      TsFileResource unsealedTsFile, VSGRecoveryContext context, boolean isSeq) {
+      TsFileResource unsealedTsFile, DataRegionRecoveryContext context, boolean isSeq) {
     UnsealedTsFileRecoverPerformer recoverPerformer =
         new UnsealedTsFileRecoverPerformer(
             unsealedTsFile, isSeq, idTable, this::callbackAfterUnsealedTsFileRecovered);
@@ -738,10 +736,9 @@ public class DataRegion {
     tsFileManager.add(tsFileResource, recoverPerformer.isSequence());
   }
 
-
   /** recover sealed TsFile */
   private void recoverSealedTsFiles(
-      TsFileResource sealedTsFile, VSGRecoveryContext context, boolean isSeq) {
+      TsFileResource sealedTsFile, DataRegionRecoveryContext context, boolean isSeq) {
     try (SealedTsFileRecoverPerformer recoverPerformer =
         new SealedTsFileRecoverPerformer(sealedTsFile)) {
       recoverPerformer.recover();

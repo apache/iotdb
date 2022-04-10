@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.wal.recover.file;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.StorageGroupProcessorException;
+import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.tsfile.exception.NotCompatibleTsFileException;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -53,7 +53,7 @@ public abstract class AbstractTsFileRecoverPerformer implements Closeable {
    * necessary) and truncate the file to remaining corrected data. <br>
    * Notice: this method may open a {@link RestorableTsFileIOWriter}, remember to close it.
    */
-  protected void recoverWithWriter() throws StorageGroupProcessorException, IOException {
+  protected void recoverWithWriter() throws DataRegionException, IOException {
     File tsFile = tsFileResource.getTsFile();
     if (!tsFile.exists()) {
       logger.error("TsFile {} is missing, will skip its recovery.", tsFile);
@@ -73,9 +73,9 @@ public abstract class AbstractTsFileRecoverPerformer implements Closeable {
       boolean result = tsFile.delete();
       logger.warn(
           "TsFile {} is incompatible. Try to delete it and delete result is {}", tsFile, result);
-      throw new StorageGroupProcessorException(e);
+      throw new DataRegionException(e);
     } catch (IOException e) {
-      throw new StorageGroupProcessorException(e);
+      throw new DataRegionException(e);
     }
 
     // reconstruct .resource file when TsFile is complete
@@ -83,7 +83,7 @@ public abstract class AbstractTsFileRecoverPerformer implements Closeable {
       try {
         reconstructResourceFile();
       } catch (IOException e) {
-        throw new StorageGroupProcessorException(
+        throw new DataRegionException(
             "Failed recover the resource file: " + tsFile + RESOURCE_SUFFIX + e);
       }
     }
