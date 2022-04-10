@@ -176,6 +176,11 @@ public class LocalConfigManager {
     try {
       SchemaResourceManager.clearSchemaResource();
 
+      if (timedForceMLogThread != null) {
+        timedForceMLogThread.shutdownNow();
+        timedForceMLogThread = null;
+      }
+
       partitionTable.clear();
 
       for (SchemaRegion schemaRegion : schemaEngine.getAllSchemaRegions()) {
@@ -186,10 +191,6 @@ public class LocalConfigManager {
       storageGroupSchemaManager.clear();
       templateManager.clear();
 
-      if (timedForceMLogThread != null) {
-        timedForceMLogThread.shutdownNow();
-        timedForceMLogThread = null;
-      }
     } catch (IOException e) {
       logger.error("Error occurred when clearing LocalConfigManager:", e);
     }
