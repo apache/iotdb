@@ -688,8 +688,7 @@ public class IoTDBDescriptor {
 
       conf.setDataRegionNum(
           Integer.parseInt(
-              properties.getProperty(
-                  "virtual_storage_group_num", String.valueOf(conf.getDataRegionNum()))));
+              properties.getProperty("data_region_num", String.valueOf(conf.getDataRegionNum()))));
 
       conf.setRecoveryLogIntervalInMs(
           Long.parseLong(

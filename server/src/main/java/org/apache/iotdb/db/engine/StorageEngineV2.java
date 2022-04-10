@@ -37,8 +37,8 @@ import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy.DirectFlushPolicy;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.exception.BatchProcessException;
+import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
@@ -225,7 +225,7 @@ public class StorageEngineV2 implements IService {
     recoverEndTrigger.start();
   }
 
-  private void getLocalDataRegion() throws MetadataException, StorageGroupProcessorException {
+  private void getLocalDataRegion() throws MetadataException, DataRegionException {
     File system = SystemFileFactory.INSTANCE.getFile(systemDir);
     File[] sgDirs = system.listFiles();
     for (File sgDir : sgDirs) {
@@ -457,7 +457,7 @@ public class StorageEngineV2 implements IService {
    */
   public DataRegion buildNewStorageGroupProcessor(
       String logicalStorageGroupName, String virtualStorageGroupId, long ttl)
-      throws StorageGroupProcessorException {
+      throws DataRegionException {
     DataRegion processor;
     logger.info(
         "construct a processor instance, the storage group is {}, Thread is {}",
@@ -607,7 +607,7 @@ public class StorageEngineV2 implements IService {
   // When registering a new region, the coordinator needs to register the corresponding region with
   // the local engine before adding the corresponding consensusGroup to the consensus layer
   public DataRegion createDataRegion(DataRegionId regionId, String sg, long ttl)
-      throws StorageGroupProcessorException {
+      throws DataRegionException {
     DataRegion dataRegion = buildNewStorageGroupProcessor(sg, regionId.toString(), ttl);
     dataRegionMap.put(regionId, dataRegion);
     return dataRegion;

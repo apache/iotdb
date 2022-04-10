@@ -32,7 +32,7 @@ import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.StorageGroupProcessorException;
+import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
@@ -191,7 +191,7 @@ public class SizeTieredCompactionRecoverTest {
           "0",
           new TsFileFlushPolicy.DirectFlushPolicy(),
           COMPACTION_TEST_SG);
-    } catch (StorageGroupProcessorException | IOException e) {
+    } catch (DataRegionException | IOException e) {
       Assert.fail(e.getMessage());
     }
   }

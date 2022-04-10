@@ -56,7 +56,7 @@ public class StorageGroupInfo {
     memoryCost = new AtomicLong();
   }
 
-  public DataRegion getVirtualStorageGroupProcessor() {
+  public DataRegion getDataRegion() {
     return dataRegion;
   }
 

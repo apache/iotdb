@@ -24,9 +24,9 @@ import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion.TimePartitionFilter;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.StorageGroupNotReadyException;
-import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -65,10 +65,10 @@ public class StorageGroupManager {
    * recover status of each virtual storage group processor, null if this logical storage group is
    * new created
    */
-  private AtomicBoolean[] isVsgReady;
+  private AtomicBoolean[] isDataRegionReady;
 
   /** number of ready virtual storage group processors */
-  private AtomicInteger readyVsgNum;
+  private AtomicInteger readyDataRegionNum;
 
   private AtomicBoolean isSettling = new AtomicBoolean();
 
@@ -81,10 +81,10 @@ public class StorageGroupManager {
 
   public StorageGroupManager(boolean needRecovering) {
     dataRegion = new DataRegion[partitioner.getPartitionCount()];
-    isVsgReady = new AtomicBoolean[partitioner.getPartitionCount()];
+    isDataRegionReady = new AtomicBoolean[partitioner.getPartitionCount()];
     boolean recoverReady = !needRecovering;
     for (int i = 0; i < partitioner.getPartitionCount(); i++) {
-      isVsgReady[i] = new AtomicBoolean(recoverReady);
+      isDataRegionReady[i] = new AtomicBoolean(recoverReady);
     }
   }
 
@@ -151,13 +151,13 @@ public class StorageGroupManager {
   @SuppressWarnings("java:S2445")
   // actually storageGroupMNode is a unique object on the mtree, synchronize it is reasonable
   public DataRegion getProcessor(PartialPath partialPath, IStorageGroupMNode storageGroupMNode)
-      throws StorageGroupProcessorException, StorageEngineException {
-    int loc = partitioner.deviceToVirtualStorageGroupId(partialPath);
+      throws DataRegionException, StorageEngineException {
+    int loc = partitioner.deviceToDataRegionId(partialPath);
 
     DataRegion processor = dataRegion[loc];
     if (processor == null) {
       // if finish recover
-      if (isVsgReady[loc].get()) {
+      if (isDataRegionReady[loc].get()) {
         synchronized (storageGroupMNode) {
           processor = dataRegion[loc];
           if (processor == null) {
@@ -187,12 +187,12 @@ public class StorageGroupManager {
    */
   public void asyncRecover(
       IStorageGroupMNode storageGroupMNode, ExecutorService pool, List<Future<Void>> futures) {
-    readyVsgNum = new AtomicInteger(0);
+    readyDataRegionNum = new AtomicInteger(0);
     for (int i = 0; i < partitioner.getPartitionCount(); i++) {
       int cur = i;
       Callable<Void> recoverVsgTask =
           () -> {
-            isVsgReady[cur].set(false);
+            isDataRegionReady[cur].set(false);
             DataRegion processor = null;
             try {
               processor =
@@ -201,7 +201,7 @@ public class StorageGroupManager {
                           storageGroupMNode.getPartialPath(),
                           storageGroupMNode,
                           String.valueOf(cur));
-            } catch (StorageGroupProcessorException e) {
+            } catch (DataRegionException e) {
               logger.error(
                   "Failed to recover virtual storage group {}[{}]",
                   storageGroupMNode.getFullPath(),
@@ -210,11 +210,11 @@ public class StorageGroupManager {
             }
 
             dataRegion[cur] = processor;
-            isVsgReady[cur].set(true);
+            isDataRegionReady[cur].set(true);
             logger.info(
                 "Storage Group {} has been recovered {}/{}",
                 storageGroupMNode.getFullPath(),
-                readyVsgNum.incrementAndGet(),
+                readyDataRegionNum.incrementAndGet(),
                 partitioner.getPartitionCount());
             return null;
           };

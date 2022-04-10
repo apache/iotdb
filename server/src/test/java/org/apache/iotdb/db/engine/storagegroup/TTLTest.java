@@ -25,8 +25,8 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy.DirectFlushPolicy;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.TriggerExecutionException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -87,7 +87,7 @@ public class TTLTest {
   private long prevPartitionInterval;
 
   @Before
-  public void setUp() throws MetadataException, StorageGroupProcessorException {
+  public void setUp() throws MetadataException, DataRegionException {
     prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(86400);
     EnvironmentUtils.envSetUp();
@@ -101,7 +101,7 @@ public class TTLTest {
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(prevPartitionInterval);
   }
 
-  private void createSchemas() throws MetadataException, StorageGroupProcessorException {
+  private void createSchemas() throws MetadataException, DataRegionException {
     IoTDB.schemaProcessor.setStorageGroup(new PartialPath(sg1));
     IoTDB.schemaProcessor.setStorageGroup(new PartialPath(sg2));
     dataRegion =

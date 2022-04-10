@@ -34,7 +34,7 @@ public class HashVirtualPartitioner implements VirtualPartitioner {
   }
 
   @Override
-  public int deviceToVirtualStorageGroupId(PartialPath deviceId) {
+  public int deviceToDataRegionId(PartialPath deviceId) {
     return toStorageGroupId(deviceId);
   }
 

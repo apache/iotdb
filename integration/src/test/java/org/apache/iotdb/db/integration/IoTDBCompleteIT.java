@@ -39,20 +39,20 @@ import java.sql.*;
  */
 @Category({LocalStandaloneTest.class, ClusterTest.class})
 public class IoTDBCompleteIT {
-  private int prevVirtualStorageGroupNum;
+  private int prevDataRegionNum;
 
   @Before
   public void setUp() throws InterruptedException {
     // test different partition
-    prevVirtualStorageGroupNum = IoTDBDescriptor.getInstance().getConfig().getDataRegionNum();
-    ConfigFactory.getConfig().setVirtualStorageGroupNum(16);
+    prevDataRegionNum = IoTDBDescriptor.getInstance().getConfig().getDataRegionNum();
+    ConfigFactory.getConfig().setDataRegionNum(16);
     EnvFactory.getEnv().initBeforeClass();
   }
 
   @After
   public void tearDown() throws Exception {
     EnvFactory.getEnv().cleanAfterClass();
-    ConfigFactory.getConfig().setVirtualStorageGroupNum(prevVirtualStorageGroupNum);
+    ConfigFactory.getConfig().setDataRegionNum(prevDataRegionNum);
   }
 
   @Test

@@ -1016,14 +1016,14 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default| 604800 |
 |Effective|Only allowed to be modified in first start up|
 
-* virtual\_storage\_group\_num
+* data\_region\_num
 
-|Name| virtual\_storage\_group\_num |
-|:---:|:---|
-|Description| number of virtual storage groups per user-defined storage group, a virtual storage group is the unit of parallelism in memory as all ingestions in one virtual storage group are serialized, recommended value is [virtual storage group number] = [CPU core number] / [user-defined storage group number]|
-|Type| LONG |
-|Default| 1 |
-|Effective|Only allowed to be modified in first start up|
+|    Name     | data\_region\_num                                                                                                                                                                                                                                                  |
+|:-----------:|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Description | number of data regions per user-defined storage group, a data region is the unit of parallelism in memory as all ingestions in one data region are serialized, recommended value is [data region number] = [CPU core number] / [user-defined storage group number] |
+|    Type     | LONG                                                                                                                                                                                                                                                               |
+|   Default   | 1                                                                                                                                                                                                                                                                  |
+|  Effective  | Only allowed to be modified in first start up                                                                                                                                                                                                                      |
 
 <!--
 * enable\_id\_table

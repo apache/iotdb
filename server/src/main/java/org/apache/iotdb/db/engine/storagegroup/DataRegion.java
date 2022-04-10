@@ -46,9 +46,9 @@ import org.apache.iotdb.db.engine.upgrade.UpgradeLog;
 import org.apache.iotdb.db.engine.version.SimpleFileVersionController;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.BatchProcessException;
+import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.LoadFileException;
-import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.TriggerExecutionException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
@@ -378,7 +378,7 @@ public class DataRegion {
       String dataRegionId,
       TsFileFlushPolicy fileFlushPolicy,
       String logicalStorageGroupName)
-      throws StorageGroupProcessorException {
+      throws DataRegionException {
     this.dataRegionId = dataRegionId;
     this.logicalStorageGroupName = logicalStorageGroupName;
     this.fileFlushPolicy = fileFlushPolicy;
@@ -498,11 +498,11 @@ public class DataRegion {
   }
 
   /** recover from file */
-  private void recover() throws StorageGroupProcessorException {
+  private void recover() throws DataRegionException {
     try {
       recoverCompaction();
     } catch (Exception e) {
-      throw new StorageGroupProcessorException(e);
+      throw new DataRegionException(e);
     }
 
     try {
@@ -554,7 +554,7 @@ public class DataRegion {
       }
       updateLatestFlushedTime();
     } catch (IOException e) {
-      throw new StorageGroupProcessorException(e);
+      throw new DataRegionException(e);
     }
 
     List<TsFileResource> seqTsFileResources = tsFileManager.getTsFileList(true);
@@ -652,7 +652,7 @@ public class DataRegion {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private Pair<List<TsFileResource>, List<TsFileResource>> getAllFiles(List<String> folders)
-      throws IOException, StorageGroupProcessorException {
+      throws IOException, DataRegionException {
     List<File> tsFiles = new ArrayList<>();
     List<File> upgradeFiles = new ArrayList<>();
     for (String baseDir : folders) {
@@ -729,12 +729,12 @@ public class DataRegion {
   }
 
   /** check if the tsfile's time is smaller than system current time */
-  private void checkTsFileTime(File tsFile) throws StorageGroupProcessorException {
+  private void checkTsFileTime(File tsFile) throws DataRegionException {
     String[] items = tsFile.getName().replace(TSFILE_SUFFIX, "").split(FILE_NAME_SEPARATOR);
     long fileTime = Long.parseLong(items[0]);
     long currentTime = System.currentTimeMillis();
     if (fileTime > currentTime) {
-      throw new StorageGroupProcessorException(
+      throw new DataRegionException(
           String.format(
               "data region %s[%s] is down, because the time of tsfile %s is larger than system current time, "
                   + "file time is %d while system current time is %d, please check it.",
@@ -841,7 +841,7 @@ public class DataRegion {
           }
         }
         tsFileManager.add(tsFileResource, isSeq);
-      } catch (StorageGroupProcessorException | IOException e) {
+      } catch (DataRegionException | IOException e) {
         logger.warn(
             "Skip TsFile: {} because of error in recover: ", tsFileResource.getTsFilePath(), e);
         continue;

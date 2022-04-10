@@ -39,9 +39,9 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.dataregion.StorageGroupManager;
 import org.apache.iotdb.db.exception.BatchProcessException;
+import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
@@ -472,7 +472,7 @@ public class StorageEngine implements IService {
       IStorageGroupMNode storageGroupMNode = IoTDB.schemaProcessor.getStorageGroupNodeByPath(path);
       storageGroupPath = storageGroupMNode.getPartialPath();
       return getStorageGroupProcessorByPath(storageGroupPath, storageGroupMNode);
-    } catch (StorageGroupProcessorException | MetadataException e) {
+    } catch (DataRegionException | MetadataException e) {
       throw new StorageEngineException(e);
     }
   }
@@ -487,7 +487,7 @@ public class StorageEngine implements IService {
     try {
       IStorageGroupMNode storageGroupMNode = IoTDB.schemaProcessor.getStorageGroupNodeByPath(path);
       return getStorageGroupProcessorByPath(path, storageGroupMNode);
-    } catch (StorageGroupProcessorException | MetadataException e) {
+    } catch (DataRegionException | MetadataException e) {
       throw new StorageEngineException(e);
     }
   }
@@ -507,7 +507,7 @@ public class StorageEngine implements IService {
         lockHolderList.add(dataRegion.getInsertWriteLockHolder());
       }
       return lockHolderList;
-    } catch (StorageGroupProcessorException | MetadataException e) {
+    } catch (DataRegionException | MetadataException e) {
       throw new StorageEngineException(e);
     }
   }
@@ -524,7 +524,7 @@ public class StorageEngine implements IService {
   // actually storageGroupMNode is a unique object on the mtree, synchronize it is reasonable
   private DataRegion getStorageGroupProcessorByPath(
       PartialPath devicePath, IStorageGroupMNode storageGroupMNode)
-      throws StorageGroupProcessorException, StorageEngineException {
+      throws DataRegionException, StorageEngineException {
     StorageGroupManager storageGroupManager = processorMap.get(storageGroupMNode.getPartialPath());
     if (storageGroupManager == null) {
       synchronized (this) {
@@ -548,7 +548,7 @@ public class StorageEngine implements IService {
       PartialPath logicalStorageGroupName,
       IStorageGroupMNode storageGroupMNode,
       String virtualStorageGroupId)
-      throws StorageGroupProcessorException {
+      throws DataRegionException {
     DataRegion processor;
     logger.info(
         "construct a processor instance, the storage group is {}, Thread is {}",

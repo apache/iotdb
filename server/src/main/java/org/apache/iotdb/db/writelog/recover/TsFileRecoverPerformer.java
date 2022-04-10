@@ -28,7 +28,7 @@ import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.StorageGroupProcessorException;
+import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.tsfile.exception.NotCompatibleTsFileException;
@@ -95,7 +95,7 @@ public class TsFileRecoverPerformer {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public RestorableTsFileIOWriter recover(
       boolean needRedoWal, Supplier<ByteBuffer[]> supplier, Consumer<ByteBuffer[]> consumer)
-      throws StorageGroupProcessorException, IOException {
+      throws DataRegionException, IOException {
 
     File file = FSFactoryProducer.getFSFactory().getFile(filePath);
     if (!file.exists()) {
@@ -117,9 +117,9 @@ public class TsFileRecoverPerformer {
     } catch (NotCompatibleTsFileException e) {
       boolean result = file.delete();
       logger.warn("TsFile {} is incompatible. Delete it successfully {}", filePath, result);
-      throw new StorageGroupProcessorException(e);
+      throw new DataRegionException(e);
     } catch (IOException e) {
-      throw new StorageGroupProcessorException(e);
+      throw new DataRegionException(e);
     }
 
     // judge whether tsfile is complete
@@ -128,7 +128,7 @@ public class TsFileRecoverPerformer {
         recoverResource();
         return restorableTsFileIOWriter;
       } catch (IOException e) {
-        throw new StorageGroupProcessorException(
+        throw new DataRegionException(
             "recover the resource file failed: " + filePath + RESOURCE_SUFFIX + e);
       }
     }
@@ -148,7 +148,7 @@ public class TsFileRecoverPerformer {
             .deleteNode(
                 logNodePrefix + SystemFileFactory.INSTANCE.getFile(filePath).getName(), consumer);
       } catch (IOException e) {
-        throw new StorageGroupProcessorException(e);
+        throw new DataRegionException(e);
       }
     }
     return restorableTsFileIOWriter;
@@ -277,7 +277,7 @@ public class TsFileRecoverPerformer {
 
   private void redoLogs(
       RestorableTsFileIOWriter restorableTsFileIOWriter, Supplier<ByteBuffer[]> supplier)
-      throws StorageGroupProcessorException {
+      throws DataRegionException {
     IMemTable recoverMemTable = new PrimitiveMemTable();
     LogReplayer logReplayer =
         new LogReplayer(
@@ -307,10 +307,10 @@ public class TsFileRecoverPerformer {
       // otherwise this file is not closed before crush, do nothing so we can continue writing
       // into it
     } catch (IOException | ExecutionException e) {
-      throw new StorageGroupProcessorException(e);
+      throw new DataRegionException(e);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      throw new StorageGroupProcessorException(e);
+      throw new DataRegionException(e);
     }
   }
 }

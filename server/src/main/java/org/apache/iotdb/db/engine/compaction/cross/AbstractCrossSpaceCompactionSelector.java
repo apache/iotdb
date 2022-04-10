@@ -26,7 +26,7 @@ import java.util.List;
 
 public abstract class AbstractCrossSpaceCompactionSelector extends AbstractCompactionSelector {
   protected String logicalStorageGroupName;
-  protected String virtualGroupId;
+  protected String dataRegionId;
   protected String storageGroupDir;
   protected long timePartition;
   protected TsFileManager tsFileManager;
@@ -36,13 +36,13 @@ public abstract class AbstractCrossSpaceCompactionSelector extends AbstractCompa
 
   public AbstractCrossSpaceCompactionSelector(
       String logicalStorageGroupName,
-      String virtualGroupId,
+      String dataRegionId,
       String storageGroupDir,
       long timePartition,
       TsFileManager tsFileManager,
       CrossSpaceCompactionTaskFactory taskFactory) {
     this.logicalStorageGroupName = logicalStorageGroupName;
-    this.virtualGroupId = virtualGroupId;
+    this.dataRegionId = dataRegionId;
     this.storageGroupDir = storageGroupDir;
     this.timePartition = timePartition;
     this.sequenceFileList = tsFileManager.getSequenceListByTimePartition(timePartition);

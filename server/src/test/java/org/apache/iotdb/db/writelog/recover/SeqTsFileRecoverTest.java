@@ -26,8 +26,8 @@ import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.version.VersionController;
+import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
@@ -390,7 +390,7 @@ public class SeqTsFileRecoverTest {
 
   @Test
   public void testNonLastRecovery()
-      throws StorageGroupProcessorException, IOException, MetadataException, WriteProcessException {
+      throws DataRegionException, IOException, MetadataException, WriteProcessException {
     prepareData();
     TsFileRecoverPerformer performer =
         new TsFileRecoverPerformer(logNodePrefix, resource, false, false, null);
@@ -458,7 +458,7 @@ public class SeqTsFileRecoverTest {
 
   @Test
   public void testLastRecovery()
-      throws StorageGroupProcessorException, IOException, MetadataException, WriteProcessException {
+      throws DataRegionException, IOException, MetadataException, WriteProcessException {
     prepareData();
     TsFileRecoverPerformer performer =
         new TsFileRecoverPerformer(logNodePrefix, resource, false, true, null);
@@ -527,7 +527,7 @@ public class SeqTsFileRecoverTest {
 
   @Test
   public void testLastRecoveryWithDeletion()
-      throws StorageGroupProcessorException, IOException, MetadataException, WriteProcessException {
+      throws DataRegionException, IOException, MetadataException, WriteProcessException {
     prepareDataWithDeletion();
     TsFileRecoverPerformer performer =
         new TsFileRecoverPerformer(logNodePrefix, resource, false, true, null);

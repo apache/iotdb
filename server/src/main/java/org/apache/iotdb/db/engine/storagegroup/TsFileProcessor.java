@@ -1606,7 +1606,7 @@ public class TsFileProcessor {
   }
 
   public void submitAFlushTask() {
-    this.storageGroupInfo.getVirtualStorageGroupProcessor().submitAFlushTaskWhenShouldFlush(this);
+    this.storageGroupInfo.getDataRegion().submitAFlushTaskWhenShouldFlush(this);
   }
 
   public boolean alreadyMarkedClosing() {

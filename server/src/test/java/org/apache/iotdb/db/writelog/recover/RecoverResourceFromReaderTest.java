@@ -25,8 +25,8 @@ import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.version.VersionController;
+import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
@@ -187,7 +187,7 @@ public class RecoverResourceFromReaderTest {
   }
 
   @Test
-  public void testResourceRecovery() throws StorageGroupProcessorException, IOException {
+  public void testResourceRecovery() throws DataRegionException, IOException {
     // write a broken resourceFile
     File resourceFile =
         FSFactoryProducer.getFSFactory()

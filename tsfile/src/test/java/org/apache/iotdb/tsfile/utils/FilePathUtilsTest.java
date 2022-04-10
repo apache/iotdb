@@ -74,7 +74,7 @@ public class FilePathUtilsTest {
   }
 
   @Test
-  public void getVirtualStorageGroupNameTest() {
+  public void getDataRegionNameTest() {
     String tmpVirtualSgName = FilePathUtils.getDataRegionId(tsFile.getAbsolutePath());
     Assert.assertEquals(dataRegionId, tmpVirtualSgName);
   }

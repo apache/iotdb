@@ -26,14 +26,14 @@ public interface VirtualPartitioner {
    * use device id to determine storage group id
    *
    * @param deviceId device id
-   * @return virtual storage group id
+   * @return data region id
    */
-  int deviceToVirtualStorageGroupId(PartialPath deviceId);
+  int deviceToDataRegionId(PartialPath deviceId);
 
   /**
-   * get total number of virtual storage group
+   * get total number of data region
    *
-   * @return total number of virtual storage group
+   * @return total number of data region
    */
   int getPartitionCount();
 }

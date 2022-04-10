@@ -21,15 +21,15 @@ package org.apache.iotdb.db.exception;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-public class StorageGroupProcessorException extends IoTDBException {
+public class DataRegionException extends IoTDBException {
 
   private static final long serialVersionUID = 7373978140952977661L;
 
-  public StorageGroupProcessorException(Exception exception) {
-    super(exception, TSStatusCode.STORAGE_GROUP_PROCESSOR_ERROR.getStatusCode());
+  public DataRegionException(Exception exception) {
+    super(exception, TSStatusCode.DATA_REGION_ERROR.getStatusCode());
   }
 
-  public StorageGroupProcessorException(String message) {
-    super(message, TSStatusCode.STORAGE_GROUP_PROCESSOR_ERROR.getStatusCode());
+  public DataRegionException(String message) {
+    super(message, TSStatusCode.DATA_REGION_ERROR.getStatusCode());
   }
 }
