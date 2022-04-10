@@ -24,7 +24,14 @@ import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.*;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.AggregateNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.DeviceMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.FilterNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.FilterNullNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.GroupByLevelNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.LimitNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.OffsetNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregateScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullPolicy;
@@ -41,27 +48,37 @@ import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 
 import org.apache.commons.compress.utils.Sets;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
+/** This class generates logical plans for test cases of the query statements. */
 public class QueryLogicalPlanUtil {
 
+  // test cases of query statement
   public static final List<String> querySQLs = new ArrayList<>();
+
+  // key: query statement; value: expected logical plan
   public static final Map<String, PlanNode> sqlToPlanMap = new HashMap<>();
 
-  public static final Map<String, MeasurementPath> pathMap = new HashMap<>();
+  public static final Map<String, MeasurementPath> schemaMap = new HashMap<>();
 
   static {
     try {
-      pathMap.put("root.sg.d1.s1", new MeasurementPath("root.sg.d1.s1", TSDataType.INT32));
-      pathMap.put("root.sg.d1.s2", new MeasurementPath("root.sg.d1.s2", TSDataType.INT32));
-      pathMap.put("root.sg.d2.s1", new MeasurementPath("root.sg.d2.s1", TSDataType.INT32));
-      pathMap.put("root.sg.d2.s2", new MeasurementPath("root.sg.d2.s2", TSDataType.INT32));
+      schemaMap.put("root.sg.d1.s1", new MeasurementPath("root.sg.d1.s1", TSDataType.INT32));
+      schemaMap.put("root.sg.d1.s2", new MeasurementPath("root.sg.d1.s2", TSDataType.INT32));
+      schemaMap.put("root.sg.d2.s1", new MeasurementPath("root.sg.d2.s1", TSDataType.INT32));
+      schemaMap.put("root.sg.d2.s2", new MeasurementPath("root.sg.d2.s2", TSDataType.INT32));
     } catch (IllegalPathException e) {
       e.printStackTrace();
     }
   }
 
-  // raw data query
+  /* 1. Raw Data Query */
   static {
     String sql =
         "SELECT s1 FROM root.sg.* WHERE time > 100 and s2 > 10 "
@@ -70,24 +87,30 @@ public class QueryLogicalPlanUtil {
     List<PlanNode> sourceNodeList = new ArrayList<>();
     sourceNodeList.add(
         new SeriesScanNode(
-            new PlanNodeId("test_query_0"), pathMap.get("root.sg.d1.s2"), OrderBy.TIMESTAMP_DESC));
+            new PlanNodeId("test_query_0"),
+            schemaMap.get("root.sg.d1.s2"),
+            OrderBy.TIMESTAMP_DESC));
     sourceNodeList.add(
         new SeriesScanNode(
-            new PlanNodeId("test_query_1"), pathMap.get("root.sg.d2.s1"), OrderBy.TIMESTAMP_DESC));
+            new PlanNodeId("test_query_1"),
+            schemaMap.get("root.sg.d2.s1"),
+            OrderBy.TIMESTAMP_DESC));
     sourceNodeList.add(
         new SeriesScanNode(
-            new PlanNodeId("test_query_2"), pathMap.get("root.sg.d2.s2"), OrderBy.TIMESTAMP_DESC));
+            new PlanNodeId("test_query_2"),
+            schemaMap.get("root.sg.d2.s2"),
+            OrderBy.TIMESTAMP_DESC));
 
     TimeJoinNode timeJoinNode =
         new TimeJoinNode(new PlanNodeId("test_query_3"), OrderBy.TIMESTAMP_DESC, sourceNodeList);
 
     IExpression leftExpression =
         new SingleSeriesExpression(
-            pathMap.get("root.sg.d1.s2"),
+            schemaMap.get("root.sg.d1.s2"),
             FilterFactory.and(ValueFilter.gt(10), TimeFilter.gt(100)));
     IExpression rightExpression =
         new SingleSeriesExpression(
-            pathMap.get("root.sg.d2.s2"),
+            schemaMap.get("root.sg.d2.s2"),
             FilterFactory.and(ValueFilter.gt(10), TimeFilter.gt(100)));
     IExpression expression = BinaryExpression.and(leftExpression, rightExpression);
 
@@ -112,7 +135,7 @@ public class QueryLogicalPlanUtil {
     sqlToPlanMap.put(sql, offsetNode);
   }
 
-  // raw data query (align by device)
+  /* 2. Raw Data Query (align by device) */
   static {
     String sql =
         "SELECT * FROM root.sg.* WHERE time > 100 and s1 > 10 "
@@ -122,16 +145,24 @@ public class QueryLogicalPlanUtil {
     List<PlanNode> sourceNodeList2 = new ArrayList<>();
     sourceNodeList1.add(
         new SeriesScanNode(
-            new PlanNodeId("test_query_0"), pathMap.get("root.sg.d1.s1"), OrderBy.TIMESTAMP_DESC));
+            new PlanNodeId("test_query_0"),
+            schemaMap.get("root.sg.d1.s1"),
+            OrderBy.TIMESTAMP_DESC));
     sourceNodeList1.add(
         new SeriesScanNode(
-            new PlanNodeId("test_query_1"), pathMap.get("root.sg.d1.s2"), OrderBy.TIMESTAMP_DESC));
+            new PlanNodeId("test_query_1"),
+            schemaMap.get("root.sg.d1.s2"),
+            OrderBy.TIMESTAMP_DESC));
     sourceNodeList2.add(
         new SeriesScanNode(
-            new PlanNodeId("test_query_2"), pathMap.get("root.sg.d2.s1"), OrderBy.TIMESTAMP_DESC));
+            new PlanNodeId("test_query_2"),
+            schemaMap.get("root.sg.d2.s1"),
+            OrderBy.TIMESTAMP_DESC));
     sourceNodeList2.add(
         new SeriesScanNode(
-            new PlanNodeId("test_query_3"), pathMap.get("root.sg.d2.s2"), OrderBy.TIMESTAMP_DESC));
+            new PlanNodeId("test_query_3"),
+            schemaMap.get("root.sg.d2.s2"),
+            OrderBy.TIMESTAMP_DESC));
 
     TimeJoinNode timeJoinNode1 =
         new TimeJoinNode(new PlanNodeId("test_query_4"), OrderBy.TIMESTAMP_DESC, sourceNodeList1);
@@ -140,11 +171,11 @@ public class QueryLogicalPlanUtil {
 
     IExpression leftExpression =
         new SingleSeriesExpression(
-            pathMap.get("root.sg.d1.s1"),
+            schemaMap.get("root.sg.d1.s1"),
             FilterFactory.and(ValueFilter.gt(10), TimeFilter.gt(100)));
     IExpression rightExpression =
         new SingleSeriesExpression(
-            pathMap.get("root.sg.d2.s1"),
+            schemaMap.get("root.sg.d2.s1"),
             FilterFactory.and(ValueFilter.gt(10), TimeFilter.gt(100)));
     IExpression expression = BinaryExpression.and(leftExpression, rightExpression);
 
@@ -176,7 +207,7 @@ public class QueryLogicalPlanUtil {
     sqlToPlanMap.put(sql, offsetNode);
   }
 
-  // aggregation query (without value filter)
+  /* 3. Aggregation Query (without value filter) */
   static {
     String sql =
         "SELECT count(s1), max_value(s2), last_value(s1) FROM root.sg.* WHERE time > 100 "
@@ -191,28 +222,28 @@ public class QueryLogicalPlanUtil {
     sourceNodeList.add(
         new SeriesAggregateScanNode(
             new PlanNodeId("test_query_0"),
-            pathMap.get("root.sg.d1.s1"),
+            schemaMap.get("root.sg.d1.s1"),
             aggregationTypeList1,
             OrderBy.TIMESTAMP_DESC,
             timeFilter));
     sourceNodeList.add(
         new SeriesAggregateScanNode(
             new PlanNodeId("test_query_1"),
-            pathMap.get("root.sg.d1.s2"),
+            schemaMap.get("root.sg.d1.s2"),
             aggregationTypeList2,
             OrderBy.TIMESTAMP_DESC,
             timeFilter));
     sourceNodeList.add(
         new SeriesAggregateScanNode(
             new PlanNodeId("test_query_2"),
-            pathMap.get("root.sg.d2.s1"),
+            schemaMap.get("root.sg.d2.s1"),
             aggregationTypeList1,
             OrderBy.TIMESTAMP_DESC,
             timeFilter));
     sourceNodeList.add(
         new SeriesAggregateScanNode(
             new PlanNodeId("test_query_3"),
-            pathMap.get("root.sg.d2.s2"),
+            schemaMap.get("root.sg.d2.s2"),
             aggregationTypeList2,
             OrderBy.TIMESTAMP_DESC,
             timeFilter));
@@ -246,7 +277,7 @@ public class QueryLogicalPlanUtil {
     sqlToPlanMap.put(sql, offsetNode);
   }
 
-  // aggregation query (without value filter + align by device)
+  /* 4. Aggregation Query (without value filter and align by device) */
   static {
     String sql =
         "SELECT count(s1), max_value(s2), last_value(s1) FROM root.sg.* WHERE time > 100 "
@@ -262,28 +293,28 @@ public class QueryLogicalPlanUtil {
     sourceNodeList1.add(
         new SeriesAggregateScanNode(
             new PlanNodeId("test_query_0"),
-            pathMap.get("root.sg.d1.s1"),
+            schemaMap.get("root.sg.d1.s1"),
             aggregationTypeList1,
             OrderBy.TIMESTAMP_DESC,
             timeFilter));
     sourceNodeList1.add(
         new SeriesAggregateScanNode(
             new PlanNodeId("test_query_1"),
-            pathMap.get("root.sg.d1.s2"),
+            schemaMap.get("root.sg.d1.s2"),
             aggregationTypeList2,
             OrderBy.TIMESTAMP_DESC,
             timeFilter));
     sourceNodeList2.add(
         new SeriesAggregateScanNode(
             new PlanNodeId("test_query_2"),
-            pathMap.get("root.sg.d2.s1"),
+            schemaMap.get("root.sg.d2.s1"),
             aggregationTypeList1,
             OrderBy.TIMESTAMP_DESC,
             timeFilter));
     sourceNodeList2.add(
         new SeriesAggregateScanNode(
             new PlanNodeId("test_query_3"),
-            pathMap.get("root.sg.d2.s2"),
+            schemaMap.get("root.sg.d2.s2"),
             aggregationTypeList2,
             OrderBy.TIMESTAMP_DESC,
             timeFilter));
@@ -312,7 +343,7 @@ public class QueryLogicalPlanUtil {
     sqlToPlanMap.put(sql, offsetNode);
   }
 
-  // aggregation query (with value filter)
+  /* 5. Aggregation Query (with value filter) */
   static {
     String sql =
         "SELECT count(s1), max_value(s2), last_value(s1) FROM root.sg.* WHERE time > 100 and s2 > 10 "
@@ -321,27 +352,35 @@ public class QueryLogicalPlanUtil {
     List<PlanNode> sourceNodeList = new ArrayList<>();
     sourceNodeList.add(
         new SeriesScanNode(
-            new PlanNodeId("test_query_0"), pathMap.get("root.sg.d1.s1"), OrderBy.TIMESTAMP_DESC));
+            new PlanNodeId("test_query_0"),
+            schemaMap.get("root.sg.d1.s1"),
+            OrderBy.TIMESTAMP_DESC));
     sourceNodeList.add(
         new SeriesScanNode(
-            new PlanNodeId("test_query_1"), pathMap.get("root.sg.d1.s2"), OrderBy.TIMESTAMP_DESC));
+            new PlanNodeId("test_query_1"),
+            schemaMap.get("root.sg.d1.s2"),
+            OrderBy.TIMESTAMP_DESC));
     sourceNodeList.add(
         new SeriesScanNode(
-            new PlanNodeId("test_query_2"), pathMap.get("root.sg.d2.s1"), OrderBy.TIMESTAMP_DESC));
+            new PlanNodeId("test_query_2"),
+            schemaMap.get("root.sg.d2.s1"),
+            OrderBy.TIMESTAMP_DESC));
     sourceNodeList.add(
         new SeriesScanNode(
-            new PlanNodeId("test_query_3"), pathMap.get("root.sg.d2.s2"), OrderBy.TIMESTAMP_DESC));
+            new PlanNodeId("test_query_3"),
+            schemaMap.get("root.sg.d2.s2"),
+            OrderBy.TIMESTAMP_DESC));
 
     TimeJoinNode timeJoinNode =
         new TimeJoinNode(new PlanNodeId("test_query_4"), OrderBy.TIMESTAMP_DESC, sourceNodeList);
 
     IExpression leftExpression =
         new SingleSeriesExpression(
-            pathMap.get("root.sg.d1.s2"),
+            schemaMap.get("root.sg.d1.s2"),
             FilterFactory.and(ValueFilter.gt(10), TimeFilter.gt(100)));
     IExpression rightExpression =
         new SingleSeriesExpression(
-            pathMap.get("root.sg.d2.s2"),
+            schemaMap.get("root.sg.d2.s2"),
             FilterFactory.and(ValueFilter.gt(10), TimeFilter.gt(100)));
     IExpression expression = BinaryExpression.and(leftExpression, rightExpression);
     List<String> outputColumnNames =
@@ -351,13 +390,15 @@ public class QueryLogicalPlanUtil {
 
     Map<PartialPath, Set<AggregationType>> aggregateFuncMap = new HashMap<>();
     aggregateFuncMap.put(
-        pathMap.get("root.sg.d1.s1"),
+        schemaMap.get("root.sg.d1.s1"),
         Sets.newHashSet(AggregationType.COUNT, AggregationType.LAST_VALUE));
-    aggregateFuncMap.put(pathMap.get("root.sg.d1.s2"), Sets.newHashSet(AggregationType.MAX_VALUE));
     aggregateFuncMap.put(
-        pathMap.get("root.sg.d2.s1"),
+        schemaMap.get("root.sg.d1.s2"), Sets.newHashSet(AggregationType.MAX_VALUE));
+    aggregateFuncMap.put(
+        schemaMap.get("root.sg.d2.s1"),
         Sets.newHashSet(AggregationType.COUNT, AggregationType.LAST_VALUE));
-    aggregateFuncMap.put(pathMap.get("root.sg.d2.s2"), Sets.newHashSet(AggregationType.MAX_VALUE));
+    aggregateFuncMap.put(
+        schemaMap.get("root.sg.d2.s2"), Sets.newHashSet(AggregationType.MAX_VALUE));
     AggregateNode aggregateNode =
         new AggregateNode(
             new PlanNodeId("test_query_6"),
@@ -390,7 +431,7 @@ public class QueryLogicalPlanUtil {
     sqlToPlanMap.put(sql, offsetNode);
   }
 
-  // aggregation query (with value filter + align by device)
+  /* 6. Aggregation Query (with value filter and align by device) */
   static {
     String sql =
         "SELECT count(s1), max_value(s2), last_value(s1) FROM root.sg.* WHERE time > 100 and s2 > 10 "
@@ -400,16 +441,24 @@ public class QueryLogicalPlanUtil {
     List<PlanNode> sourceNodeList2 = new ArrayList<>();
     sourceNodeList1.add(
         new SeriesScanNode(
-            new PlanNodeId("test_query_0"), pathMap.get("root.sg.d1.s1"), OrderBy.TIMESTAMP_DESC));
+            new PlanNodeId("test_query_0"),
+            schemaMap.get("root.sg.d1.s1"),
+            OrderBy.TIMESTAMP_DESC));
     sourceNodeList1.add(
         new SeriesScanNode(
-            new PlanNodeId("test_query_1"), pathMap.get("root.sg.d1.s2"), OrderBy.TIMESTAMP_DESC));
+            new PlanNodeId("test_query_1"),
+            schemaMap.get("root.sg.d1.s2"),
+            OrderBy.TIMESTAMP_DESC));
     sourceNodeList2.add(
         new SeriesScanNode(
-            new PlanNodeId("test_query_2"), pathMap.get("root.sg.d2.s1"), OrderBy.TIMESTAMP_DESC));
+            new PlanNodeId("test_query_2"),
+            schemaMap.get("root.sg.d2.s1"),
+            OrderBy.TIMESTAMP_DESC));
     sourceNodeList2.add(
         new SeriesScanNode(
-            new PlanNodeId("test_query_3"), pathMap.get("root.sg.d2.s2"), OrderBy.TIMESTAMP_DESC));
+            new PlanNodeId("test_query_3"),
+            schemaMap.get("root.sg.d2.s2"),
+            OrderBy.TIMESTAMP_DESC));
 
     TimeJoinNode timeJoinNode1 =
         new TimeJoinNode(new PlanNodeId("test_query_4"), OrderBy.TIMESTAMP_DESC, sourceNodeList1);
@@ -418,11 +467,11 @@ public class QueryLogicalPlanUtil {
 
     IExpression leftExpression =
         new SingleSeriesExpression(
-            pathMap.get("root.sg.d1.s2"),
+            schemaMap.get("root.sg.d1.s2"),
             FilterFactory.and(ValueFilter.gt(10), TimeFilter.gt(100)));
     IExpression rightExpression =
         new SingleSeriesExpression(
-            pathMap.get("root.sg.d2.s2"),
+            schemaMap.get("root.sg.d2.s2"),
             FilterFactory.and(ValueFilter.gt(10), TimeFilter.gt(100)));
     IExpression expression = BinaryExpression.and(leftExpression, rightExpression);
 
@@ -438,13 +487,15 @@ public class QueryLogicalPlanUtil {
     Map<PartialPath, Set<AggregationType>> aggregateFuncMap1 = new HashMap<>();
     Map<PartialPath, Set<AggregationType>> aggregateFuncMap2 = new HashMap<>();
     aggregateFuncMap1.put(
-        pathMap.get("root.sg.d1.s1"),
+        schemaMap.get("root.sg.d1.s1"),
         Sets.newHashSet(AggregationType.COUNT, AggregationType.LAST_VALUE));
-    aggregateFuncMap1.put(pathMap.get("root.sg.d1.s2"), Sets.newHashSet(AggregationType.MAX_VALUE));
+    aggregateFuncMap1.put(
+        schemaMap.get("root.sg.d1.s2"), Sets.newHashSet(AggregationType.MAX_VALUE));
     aggregateFuncMap2.put(
-        pathMap.get("root.sg.d2.s1"),
+        schemaMap.get("root.sg.d2.s1"),
         Sets.newHashSet(AggregationType.COUNT, AggregationType.LAST_VALUE));
-    aggregateFuncMap2.put(pathMap.get("root.sg.d2.s2"), Sets.newHashSet(AggregationType.MAX_VALUE));
+    aggregateFuncMap2.put(
+        schemaMap.get("root.sg.d2.s2"), Sets.newHashSet(AggregationType.MAX_VALUE));
     AggregateNode aggregateNode1 =
         new AggregateNode(
             new PlanNodeId("test_query_8"),

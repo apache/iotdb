@@ -112,16 +112,6 @@ public class SeriesScanNode extends SourceNode {
     this.regionReplicaSet = dataRegion;
   }
 
-  @Override
-  public String getDeviceName() {
-    return seriesPath.getDevice();
-  }
-
-  @Override
-  protected String getExpressionString() {
-    return seriesPath.getFullPath();
-  }
-
   public int getLimit() {
     return limit;
   }

@@ -132,16 +132,6 @@ public class SeriesAggregateScanNode extends SourceNode {
   }
 
   @Override
-  public String getDeviceName() {
-    return seriesPath.getDevice();
-  }
-
-  @Override
-  protected String getExpressionString() {
-    return getAggregateFuncList().toString();
-  }
-
-  @Override
   public void close() throws Exception {}
 
   @Override
@@ -175,7 +165,7 @@ public class SeriesAggregateScanNode extends SourceNode {
   public Pair<String, List<String>> print() {
     String title = String.format("[SeriesAggregateScanNode (%s)]", this.getPlanNodeId());
     List<String> attributes = new ArrayList<>();
-    attributes.add("AggregateFunctions: " + this.getExpressionString());
+    attributes.add("AggregateFunctions: " + this.getAggregateFuncList().toString());
     return new Pair<>(title, attributes);
   }
 
