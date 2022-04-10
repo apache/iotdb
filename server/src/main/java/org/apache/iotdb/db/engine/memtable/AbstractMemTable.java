@@ -28,6 +28,8 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.service.metrics.Metric;
@@ -194,6 +196,49 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   @Override
+  public void insert(InsertRowNode insertRowNode) {
+    // if this insert plan isn't from storage engine (mainly from test), we should set a temp device
+    // id for it
+    if (insertRowNode.getDeviceID() == null) {
+      insertRowNode.setDeviceID(
+          DeviceIDFactory.getInstance().getDeviceID(insertRowNode.getDevicePath()));
+    }
+
+    // updatePlanIndexes(insertRowNode.getIndex());
+    updatePlanIndexes(0);
+    String[] measurements = insertRowNode.getMeasurements();
+    Object[] values = insertRowNode.getValues();
+
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    List<TSDataType> dataTypes = new ArrayList<>();
+    for (int i = 0; i < insertRowNode.getMeasurements().length; i++) {
+      if (measurements[i] == null) {
+        continue;
+      }
+      IMeasurementSchema schema = insertRowNode.getMeasurementSchemas()[i];
+      schemaList.add(schema);
+      dataTypes.add(schema.getType());
+    }
+    memSize += MemUtils.getRecordsSize(dataTypes, values, disableMemControl);
+    write(insertRowNode.getDeviceID(), schemaList, insertRowNode.getTime(), values);
+
+    int pointsInserted = insertRowNode.getMeasurements().length;
+
+    totalPointsNum += pointsInserted;
+
+    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
+      MetricsService.getInstance()
+          .getMetricManager()
+          .count(
+              pointsInserted,
+              Metric.QUANTITY.toString(),
+              MetricLevel.IMPORTANT,
+              Tag.NAME.toString(),
+              METRIC_POINT_IN);
+    }
+  }
+
+  @Override
   public void insertAlignedRow(InsertRowPlan insertRowPlan) {
     // if this insert plan isn't from storage engine, we should set a temp device id for it
     if (insertRowPlan.getDeviceID() == null) {
@@ -224,6 +269,52 @@ public abstract class AbstractMemTable implements IMemTable {
         insertRowPlan.getValues());
     int pointsInserted =
         insertRowPlan.getMeasurements().length - insertRowPlan.getFailedMeasurementNumber();
+    totalPointsNum += pointsInserted;
+
+    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
+      MetricsService.getInstance()
+          .getMetricManager()
+          .count(
+              pointsInserted,
+              Metric.QUANTITY.toString(),
+              MetricLevel.IMPORTANT,
+              Tag.NAME.toString(),
+              METRIC_POINT_IN);
+    }
+  }
+
+  @Override
+  public void insertAlignedRow(InsertRowNode insertRowNode) {
+    // if this insert node isn't from storage engine, we should set a temp device id for it
+    if (insertRowNode.getDeviceID() == null) {
+      insertRowNode.setDeviceID(
+          DeviceIDFactory.getInstance().getDeviceID(insertRowNode.getDevicePath()));
+    }
+
+    // updatePlanIndexes(insertRowNode.getIndex());
+    updatePlanIndexes(0);
+    String[] measurements = insertRowNode.getMeasurements();
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    List<TSDataType> dataTypes = new ArrayList<>();
+    for (int i = 0; i < insertRowNode.getMeasurements().length; i++) {
+      if (measurements[i] == null) {
+        continue;
+      }
+      IMeasurementSchema schema = insertRowNode.getMeasurementSchemas()[i];
+      schemaList.add(schema);
+      dataTypes.add(schema.getType());
+    }
+    if (schemaList.isEmpty()) {
+      return;
+    }
+    memSize +=
+        MemUtils.getAlignedRecordsSize(dataTypes, insertRowNode.getValues(), disableMemControl);
+    writeAlignedRow(
+        insertRowNode.getDeviceID(),
+        schemaList,
+        insertRowNode.getTime(),
+        insertRowNode.getValues());
+    int pointsInserted = insertRowNode.getMeasurements().length;
     totalPointsNum += pointsInserted;
 
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
@@ -291,6 +382,58 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   @Override
+  public void insertTablet(InsertTabletNode insertTabletNode, int start, int end)
+      throws WriteProcessException {
+    // TODO: PlanIndex
+    // updatePlanIndexes(insertTabletPlan.getIndex());
+    updatePlanIndexes(0);
+    try {
+      write(insertTabletNode, start, end);
+      memSize += MemUtils.getTabletSize(insertTabletNode, start, end, disableMemControl);
+      int pointsInserted = insertTabletNode.getDataTypes().length * (end - start);
+      totalPointsNum += pointsInserted;
+      if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
+        MetricsService.getInstance()
+            .getMetricManager()
+            .count(
+                pointsInserted,
+                Metric.QUANTITY.toString(),
+                MetricLevel.IMPORTANT,
+                Tag.NAME.toString(),
+                METRIC_POINT_IN);
+      }
+    } catch (RuntimeException e) {
+      throw new WriteProcessException(e);
+    }
+  }
+
+  @Override
+  public void insertAlignedTablet(InsertTabletNode insertTabletNode, int start, int end)
+      throws WriteProcessException {
+    // TODO: PlanIndex
+    // updatePlanIndexes(insertTabletPlan.getIndex());
+    updatePlanIndexes(0);
+    try {
+      writeAlignedTablet(insertTabletNode, start, end);
+      memSize += MemUtils.getAlignedTabletSize(insertTabletNode, start, end, disableMemControl);
+      int pointsInserted = insertTabletNode.getDataTypes().length * (end - start);
+      totalPointsNum += pointsInserted;
+      if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
+        MetricsService.getInstance()
+            .getMetricManager()
+            .count(
+                pointsInserted,
+                Metric.QUANTITY.toString(),
+                MetricLevel.IMPORTANT,
+                Tag.NAME.toString(),
+                METRIC_POINT_IN);
+      }
+    } catch (RuntimeException e) {
+      throw new WriteProcessException(e);
+    }
+  }
+
+  @Override
   public void write(
       IDeviceID deviceId,
       List<IMeasurementSchema> schemaList,
@@ -339,6 +482,32 @@ public abstract class AbstractMemTable implements IMemTable {
         end);
   }
 
+  public void write(InsertTabletNode insertTabletNode, int start, int end) {
+    // if this insert plan isn't from storage engine, we should set a temp device id for it
+    if (insertTabletNode.getDeviceID() == null) {
+      insertTabletNode.setDeviceID(
+          DeviceIDFactory.getInstance().getDeviceID(insertTabletNode.getDevicePath()));
+    }
+
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    for (int i = 0; i < insertTabletNode.getMeasurementSchemas().length; i++) {
+      if (insertTabletNode.getColumns()[i] == null) {
+        continue;
+      }
+      IMeasurementSchema schema = insertTabletNode.getMeasurementSchemas()[i];
+      schemaList.add(schema);
+    }
+    IWritableMemChunkGroup memChunkGroup =
+        createMemChunkGroupIfNotExistAndGet(insertTabletNode.getDeviceID(), schemaList);
+    memChunkGroup.writeValues(
+        insertTabletNode.getTimes(),
+        insertTabletNode.getColumns(),
+        insertTabletNode.getBitMaps(),
+        schemaList,
+        start,
+        end);
+  }
+
   @Override
   public void writeAlignedTablet(InsertTabletPlan insertTabletPlan, int start, int end) {
     // if this insert plan isn't from storage engine, we should set a temp device id for it
@@ -363,6 +532,35 @@ public abstract class AbstractMemTable implements IMemTable {
         insertTabletPlan.getTimes(),
         insertTabletPlan.getColumns(),
         insertTabletPlan.getBitMaps(),
+        schemaList,
+        start,
+        end);
+  }
+
+  public void writeAlignedTablet(InsertTabletNode insertTabletNode, int start, int end) {
+    // if this insert plan isn't from storage engine, we should set a temp device id for it
+    if (insertTabletNode.getDeviceID() == null) {
+      insertTabletNode.setDeviceID(
+          DeviceIDFactory.getInstance().getDeviceID(insertTabletNode.getDevicePath()));
+    }
+
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    for (int i = 0; i < insertTabletNode.getMeasurementSchemas().length; i++) {
+      if (insertTabletNode.getColumns()[i] == null) {
+        continue;
+      }
+      IMeasurementSchema schema = insertTabletNode.getMeasurementSchemas()[i];
+      schemaList.add(schema);
+    }
+    if (schemaList.isEmpty()) {
+      return;
+    }
+    IWritableMemChunkGroup memChunkGroup =
+        createAlignedMemChunkGroupIfNotExistAndGet(insertTabletNode.getDeviceID(), schemaList);
+    memChunkGroup.writeValues(
+        insertTabletNode.getTimes(),
+        insertTabletNode.getColumns(),
+        insertTabletNode.getBitMaps(),
         schemaList,
         start,
         end);

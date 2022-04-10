@@ -107,6 +107,9 @@ public class IoTDBConfig {
   /** Port which the JDBC server listens to. */
   private int rpcPort = 6667;
 
+  /** Port which is used for node communication in MPP. */
+  private int mppPort = 7777;
+
   /** Port which the influxdb protocol server listens to. */
   private int influxDBRpcPort = 8086;
 
@@ -264,6 +267,9 @@ public class IoTDBConfig {
 
   /** Strategy of multiple directories. */
   private String multiDirStrategyClassName = null;
+
+  /** Consensus directory. */
+  private String consensusDir = DEFAULT_BASE_DIR + File.separator + "consensus";
 
   /** Maximum MemTable number. Invalid when enableMemControl is true. */
   private int maxMemtableNumber = 0;
@@ -428,6 +434,12 @@ public class IoTDBConfig {
 
   /** The interval of compaction task submission from queue in CompactionTaskMananger */
   private long compactionSubmissionIntervalInMs = 60_000L;
+
+  /**
+   * The number of sub compaction threads to be set up to perform compaction. Currently only works
+   * for nonAligned data in cross space compaction and unseq inner space compaction.
+   */
+  private int subCompactionTaskNum = 4;
 
   /** whether to cache meta data(ChunkMetaData and TsFileMetaData) or not. */
   private boolean metaDataCacheEnable = true;
@@ -815,11 +827,33 @@ public class IoTDBConfig {
   /** Internal ip for data node */
   private String internalIp;
 
-  /** Internal port of data node */
+  /** Internal port for coordinator */
   private int internalPort = 9003;
+
+  /** Internal port for consensus protocol */
+  private int consensusPort = 40010;
 
   /** The max time of data node waiting to join into the cluster */
   private long joinClusterTimeOutMs = TimeUnit.SECONDS.toMillis(60);
+
+  /**
+   * The consensus protocol class. The Datanode should communicate with ConfigNode on startup and
+   * set this variable so that the correct class name can be obtained later when the consensus layer
+   * singleton is initialized
+   */
+  private String consensusProtocolClass = "org.apache.iotdb.consensus.ratis.RatisConsensus";
+
+  /** Port that data block manager thrift service listen to. */
+  private int dataBlockManagerPort = 7777;
+
+  /** Core pool size of data block manager. */
+  private int dataBlockManagerCorePoolSize = 1;
+
+  /** Max pool size of data block manager. */
+  private int dataBlockManagerMaxPoolSize = 5;
+
+  /** Thread keep alive time in ms of data block manager. */
+  private int dataBlockManagerKeepAliveTimeInMs = 1000;
 
   public IoTDBConfig() {
     try {
@@ -931,6 +965,7 @@ public class IoTDBConfig {
     schemaDir = addHomeDir(schemaDir);
     syncDir = addHomeDir(syncDir);
     tracingDir = addHomeDir(tracingDir);
+    consensusDir = addHomeDir(consensusDir);
     indexRootFolder = addHomeDir(indexRootFolder);
     extDir = addHomeDir(extDir);
     udfDir = addHomeDir(udfDir);
@@ -1105,6 +1140,14 @@ public class IoTDBConfig {
 
   void setQueryDir(String queryDir) {
     this.queryDir = queryDir;
+  }
+
+  public String getConsensusDir() {
+    return consensusDir;
+  }
+
+  public void setConsensusDir(String consensusDir) {
+    this.consensusDir = consensusDir;
   }
 
   public String getExtDir() {
@@ -2512,6 +2555,14 @@ public class IoTDBConfig {
     compactionSubmissionIntervalInMs = interval;
   }
 
+  public int getSubCompactionTaskNum() {
+    return subCompactionTaskNum;
+  }
+
+  public void setSubCompactionTaskNum(int subCompactionTaskNum) {
+    this.subCompactionTaskNum = subCompactionTaskNum;
+  }
+
   public String getDeviceIDTransformationMethod() {
     return deviceIDTransformationMethod;
   }
@@ -2576,11 +2627,67 @@ public class IoTDBConfig {
     this.internalPort = internalPort;
   }
 
+  public int getConsensusPort() {
+    return consensusPort;
+  }
+
+  public void setConsensusPort(int consensusPort) {
+    this.consensusPort = consensusPort;
+  }
+
   public long getJoinClusterTimeOutMs() {
     return joinClusterTimeOutMs;
   }
 
   public void setJoinClusterTimeOutMs(long joinClusterTimeOutMs) {
     this.joinClusterTimeOutMs = joinClusterTimeOutMs;
+  }
+
+  public String getConsensusProtocolClass() {
+    return consensusProtocolClass;
+  }
+
+  public void setConsensusProtocolClass(String consensusProtocolClass) {
+    this.consensusProtocolClass = consensusProtocolClass;
+  }
+
+  public int getMppPort() {
+    return mppPort;
+  }
+
+  public void setMppPort(int mppPort) {
+    this.mppPort = mppPort;
+  }
+
+  public int getDataBlockManagerPort() {
+    return dataBlockManagerPort;
+  }
+
+  public void setDataBlockManagerPort(int dataBlockManagerPort) {
+    this.dataBlockManagerPort = dataBlockManagerPort;
+  }
+
+  public int getDataBlockManagerCorePoolSize() {
+    return dataBlockManagerCorePoolSize;
+  }
+
+  public void setDataBlockManagerCorePoolSize(int dataBlockManagerCorePoolSize) {
+    this.dataBlockManagerCorePoolSize = dataBlockManagerCorePoolSize;
+  }
+
+  public int getDataBlockManagerMaxPoolSize() {
+    return dataBlockManagerMaxPoolSize;
+  }
+
+  public void setDataBlockManagerMaxPoolSize(int dataBlockManagerMaxPoolSize) {
+    this.dataBlockManagerMaxPoolSize = dataBlockManagerMaxPoolSize;
+  }
+
+  public int getDataBlockManagerKeepAliveTimeInMs() {
+    return dataBlockManagerKeepAliveTimeInMs;
+  }
+
+  public void setDataBlockManagerKeepAliveTimeInMs(int dataBlockManagerKeepAliveTimeInMs) {
+    this.dataBlockManagerKeepAliveTimeInMs = dataBlockManagerKeepAliveTimeInMs;
   }
 }

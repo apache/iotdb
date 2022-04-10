@@ -62,13 +62,13 @@ public class InsertTabletNode extends InsertNode {
       PlanNodeId id,
       PartialPath devicePath,
       boolean isAligned,
-      MeasurementSchema[] measurements,
+      MeasurementSchema[] measurementSchemas,
       TSDataType[] dataTypes,
       long[] times,
       BitMap[] bitMaps,
       Object[] columns,
       int rowCount) {
-    super(id, devicePath, isAligned, measurements, dataTypes);
+    super(id, devicePath, isAligned, measurementSchemas, dataTypes);
     this.times = times;
     this.bitMaps = bitMaps;
     this.columns = columns;
@@ -225,10 +225,10 @@ public class InsertTabletNode extends InsertNode {
       }
       InsertTabletNode subNode =
           new InsertTabletNode(
-              getId(),
+              getPlanNodeId(),
               devicePath,
               isAligned,
-              measurements,
+              measurementSchemas,
               dataTypes,
               subTimes,
               bitMaps,

@@ -66,7 +66,7 @@ public class SortNode extends ProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new SortNode(getId(), orderBy, sortOrder);
+    return new SortNode(getPlanNodeId(), orderBy, sortOrder);
   }
 
   @Override
@@ -97,7 +97,7 @@ public class SortNode extends ProcessNode {
 
   @TestOnly
   public Pair<String, List<String>> print() {
-    String title = String.format("[SortNode (%s)]", this.getId());
+    String title = String.format("[SortNode (%s)]", this.getPlanNodeId());
     List<String> attributes = new ArrayList<>();
     attributes.add("SortOrder: " + (this.getSortOrder() == null ? "null" : this.getSortOrder()));
     return new Pair<>(title, attributes);

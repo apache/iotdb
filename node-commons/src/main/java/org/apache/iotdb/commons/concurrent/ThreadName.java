@@ -37,6 +37,7 @@ public enum ThreadName {
   FLUSH_SERVICE("Flush"),
   FLUSH_SUB_TASK_SERVICE("Flush-SubTask"),
   COMPACTION_SERVICE("Compaction"),
+  COMPACTION_SUB_SERVICE("Sub-Compaction"),
   COMPACTION_SCHEDULE("Compaction_Schedule"),
   WAL_SERIALIZE("WAL-Serialize"),
   WAL_SYNC("WAL-Sync"),

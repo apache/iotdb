@@ -26,6 +26,8 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.wal.buffer.WALEntryValue;
@@ -102,6 +104,10 @@ public interface IMemTable extends WALEntryValue {
 
   void insertAlignedRow(InsertRowPlan insertRowPlan);
 
+  void insert(InsertRowNode insertRowNode);
+
+  void insertAlignedRow(InsertRowNode insertRowNode);
+
   /**
    * insert tablet into this memtable. The rows to be inserted are in the range [start, end). Null
    * value in each column values will be replaced by the subsequent non-null value, e.g., {1, null,
@@ -115,6 +121,12 @@ public interface IMemTable extends WALEntryValue {
       throws WriteProcessException;
 
   void insertAlignedTablet(InsertTabletPlan insertTabletPlan, int start, int end)
+      throws WriteProcessException;
+
+  void insertTablet(InsertTabletNode insertTabletNode, int start, int end)
+      throws WriteProcessException;
+
+  void insertAlignedTablet(InsertTabletNode insertTabletNode, int start, int end)
       throws WriteProcessException;
 
   ReadOnlyMemChunk query(

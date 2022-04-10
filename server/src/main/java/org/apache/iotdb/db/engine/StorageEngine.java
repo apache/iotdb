@@ -20,6 +20,7 @@ package org.apache.iotdb.db.engine;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.ShutdownException;
 import org.apache.iotdb.commons.partition.TimePartitionSlot;
 import org.apache.iotdb.commons.service.IService;
@@ -54,6 +55,7 @@ import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.common.DataRegion;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
@@ -137,6 +139,8 @@ public class StorageEngine implements IService {
   // add customized listeners here for flush and close events
   private List<CloseFileListener> customCloseFileListeners = new ArrayList<>();
   private List<FlushListener> customFlushListeners = new ArrayList<>();
+
+  private final Map<DataRegionId, DataRegion> regionMap = new ConcurrentHashMap<>();
 
   private StorageEngine() {}
 
@@ -1079,6 +1083,17 @@ public class StorageEngine implements IService {
     } catch (IOException e) {
       throw new StorageEngineException(e);
     }
+  }
+
+  // When registering a new region, the coordinator needs to register the corresponding region with
+  // the local engine before adding the corresponding consensusGroup to the consensus layer
+  // TODO implement it
+  public DataRegion createDataRegion(DataRegionId regionId, String sg, long ttl) {
+    return null;
+  }
+
+  public DataRegion getDataRegion(DataRegionId regionId) {
+    return regionMap.get(regionId);
   }
 
   static class InstanceHolder {

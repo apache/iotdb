@@ -59,12 +59,8 @@ import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.BatchPlan;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.qp.physical.crud.*;
+import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletsPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
@@ -600,14 +596,14 @@ public class CSchemaProcessor extends LocalSchemaProcessor {
   }
 
   /**
-   * @param insertMultiTabletPlan the InsertMultiTabletPlan
-   * @return true if all InsertTabletPlan in InsertMultiTabletPlan create timeseries success,
+   * @param insertMultiTabletsPlan the InsertMultiTabletsPlan
+   * @return true if all InsertTabletPlan in InsertMultiTabletsPlan create timeseries success,
    *     otherwise false
    */
-  public boolean createTimeseries(InsertMultiTabletPlan insertMultiTabletPlan)
+  public boolean createTimeseries(InsertMultiTabletsPlan insertMultiTabletsPlan)
       throws CheckConsistencyException, IllegalPathException {
     boolean allSuccess = true;
-    for (InsertTabletPlan insertTabletPlan : insertMultiTabletPlan.getInsertTabletPlanList()) {
+    for (InsertTabletPlan insertTabletPlan : insertMultiTabletsPlan.getInsertTabletPlanList()) {
       boolean success = createTimeseries(insertTabletPlan);
       allSuccess = allSuccess && success;
       if (!success) {
@@ -660,8 +656,8 @@ public class CSchemaProcessor extends LocalSchemaProcessor {
    */
   public boolean createTimeseries(InsertPlan insertPlan)
       throws IllegalPathException, CheckConsistencyException {
-    if (insertPlan instanceof InsertMultiTabletPlan) {
-      return createTimeseries((InsertMultiTabletPlan) insertPlan);
+    if (insertPlan instanceof InsertMultiTabletsPlan) {
+      return createTimeseries((InsertMultiTabletsPlan) insertPlan);
     }
 
     if (insertPlan instanceof InsertRowsPlan) {

@@ -21,7 +21,6 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeIdAllocator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -60,7 +59,7 @@ public class LimitNode extends ProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new LimitNode(PlanNodeIdAllocator.generateId(), this.limit);
+    return new LimitNode(getPlanNodeId(), this.limit);
   }
 
   @Override
@@ -98,12 +97,12 @@ public class LimitNode extends ProcessNode {
   }
 
   public String toString() {
-    return "LimitNode-" + this.getId();
+    return "LimitNode-" + this.getPlanNodeId();
   }
 
   @TestOnly
   public Pair<String, List<String>> print() {
-    String title = String.format("[LimitNode (%s)]", this.getId());
+    String title = String.format("[LimitNode (%s)]", this.getPlanNodeId());
     List<String> attributes = new ArrayList<>();
     attributes.add("RowLimit: " + this.getLimit());
     return new Pair<>(title, attributes);
