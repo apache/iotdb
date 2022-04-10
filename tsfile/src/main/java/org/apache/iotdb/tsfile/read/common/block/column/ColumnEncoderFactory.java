@@ -22,19 +22,19 @@ package org.apache.iotdb.tsfile.read.common.block.column;
 import java.util.HashMap;
 import java.util.Map;
 
-public class ColumnSerdeFactory {
+public class ColumnEncoderFactory {
 
-  private static Map<ColumnEncoding, ColumnSerde> encodingToSerde = new HashMap<>();
+  private static Map<ColumnEncoding, ColumnEncoder> encodingToEncoder = new HashMap<>();
 
   static {
-    encodingToSerde.put(ColumnEncoding.INT32_ARRAY, new Int32ColumnSerde());
-    encodingToSerde.put(ColumnEncoding.INT64_ARRAY, new Int64ColumnSerde());
+    encodingToEncoder.put(ColumnEncoding.INT32_ARRAY, new Int32ArrayColumnEncoder());
+    encodingToEncoder.put(ColumnEncoding.INT64_ARRAY, new Int64ArrayColumnEncoder());
   }
 
-  public static ColumnSerde get(ColumnEncoding columnEncoding) {
-    if (!encodingToSerde.containsKey(columnEncoding)) {
+  public static ColumnEncoder get(ColumnEncoding columnEncoding) {
+    if (!encodingToEncoder.containsKey(columnEncoding)) {
       throw new IllegalArgumentException("Unsupported column encoding: " + columnEncoding);
     }
-    return encodingToSerde.get(columnEncoding);
+    return encodingToEncoder.get(columnEncoding);
   }
 }

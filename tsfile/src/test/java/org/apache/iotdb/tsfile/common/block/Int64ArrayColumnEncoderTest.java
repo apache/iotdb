@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.tsfile.common.block;
 
-import org.apache.iotdb.tsfile.read.common.block.column.Int64ColumnSerde;
+import org.apache.iotdb.tsfile.read.common.block.column.Int64ArrayColumnEncoder;
 import org.apache.iotdb.tsfile.read.common.block.column.LongColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.LongColumnBuilder;
 
@@ -32,7 +32,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Optional;
 
-public class Int64ColumnSerdeTest {
+public class Int64ArrayColumnEncoderTest {
 
   @Test
   public void testLongColumn() {
@@ -47,7 +47,7 @@ public class Int64ColumnSerdeTest {
       }
     }
     LongColumn input = new LongColumn(positionCount, Optional.of(nullIndicators), values);
-    Int64ColumnSerde serde = new Int64ColumnSerde();
+    Int64ArrayColumnEncoder serde = new Int64ArrayColumnEncoder();
 
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dos = new DataOutputStream(byteArrayOutputStream);
@@ -70,5 +70,10 @@ public class Int64ColumnSerdeTest {
         Assert.assertEquals(i, output.getLong(i));
       }
     }
+  }
+
+  @Test
+  public void testDoubleColumn() {
+    // TODO: implement.
   }
 }

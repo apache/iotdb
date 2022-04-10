@@ -25,36 +25,36 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.FLOAT;
-import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.INT32;
+import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.DOUBLE;
+import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.INT64;
 
-public class Int32ColumnSerde implements ColumnSerde {
+public class Int64ArrayColumnEncoder implements ColumnEncoder {
 
   @Override
   public void readColumn(ColumnBuilder columnBuilder, ByteBuffer input, int positionCount) {
 
-    // Serialized int32 column:
+    // Serialized data layout:
     //    +---------------+-----------------+-------------+
     //    | may have null | null indicators |   values    |
     //    +---------------+-----------------+-------------+
-    //    | byte          | list[byte]      | list[int32] |
+    //    | byte          | list[byte]      | list[int64] |
     //    +---------------+-----------------+-------------+
 
-    boolean[] nullIndicators = ColumnSerde.deserializeNullIndicators(input, positionCount);
+    boolean[] nullIndicators = ColumnEncoder.deserializeNullIndicators(input, positionCount);
 
     TSDataType dataType = columnBuilder.getDataType();
-    if (INT32.equals(dataType)) {
+    if (INT64.equals(dataType)) {
       for (int i = 0; i < positionCount; i++) {
         if (nullIndicators != null && !nullIndicators[i]) {
-          columnBuilder.writeInt(input.getInt());
+          columnBuilder.writeLong(input.getLong());
         } else {
           columnBuilder.appendNull();
         }
       }
-    } else if (FLOAT.equals(dataType)) {
+    } else if (DOUBLE.equals(dataType)) {
       for (int i = 0; i < positionCount; i++) {
         if (nullIndicators != null && !nullIndicators[i]) {
-          columnBuilder.writeFloat(Float.intBitsToFloat(input.getInt()));
+          columnBuilder.writeDouble(Double.longBitsToDouble(input.getLong()));
         } else {
           columnBuilder.appendNull();
         }
@@ -67,20 +67,20 @@ public class Int32ColumnSerde implements ColumnSerde {
   @Override
   public void writeColumn(DataOutputStream output, Column column) throws IOException {
 
-    ColumnSerde.serializeNullIndicators(output, column);
+    ColumnEncoder.serializeNullIndicators(output, column);
 
     TSDataType dataType = column.getDataType();
     int positionCount = column.getPositionCount();
-    if (INT32.equals(dataType)) {
+    if (INT64.equals(dataType)) {
       for (int i = 0; i < positionCount; i++) {
         if (!column.isNull(i)) {
-          output.writeInt(column.getInt(i));
+          output.writeLong(column.getLong(i));
         }
       }
-    } else if (FLOAT.equals(dataType)) {
+    } else if (DOUBLE.equals(dataType)) {
       for (int i = 0; i < positionCount; i++) {
         if (!column.isNull(i)) {
-          output.writeInt(Float.floatToIntBits(column.getFloat(i)));
+          output.writeLong(Double.doubleToLongBits(column.getDouble(i)));
         }
       }
     } else {

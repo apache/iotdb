@@ -23,7 +23,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public interface ColumnSerde {
+public interface ColumnEncoder {
 
   /** Read a column from the specified input. */
   void readColumn(ColumnBuilder columnBuilder, ByteBuffer input, int positionCount);

@@ -20,7 +20,7 @@
 package org.apache.iotdb.tsfile.common.block;
 
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
-import org.apache.iotdb.tsfile.read.common.block.column.ColumnSerde;
+import org.apache.iotdb.tsfile.read.common.block.column.ColumnEncoder;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -31,7 +31,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class ColumnSerdeTest {
+public class ColumnEncoderTest {
   @Test
   public void testSerializeNullIndicators() throws IOException {
     // Construct a mock column with position count equals 7.
@@ -49,7 +49,7 @@ public class ColumnSerdeTest {
 
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream output = new DataOutputStream(byteArrayOutputStream);
-    ColumnSerde.serializeNullIndicators(output, mockColumn);
+    ColumnEncoder.serializeNullIndicators(output, mockColumn);
     byte[] bytes = byteArrayOutputStream.toByteArray();
     Assert.assertEquals(2, bytes.length);
     Assert.assertEquals(1, bytes[0]);
@@ -59,7 +59,7 @@ public class ColumnSerdeTest {
     Mockito.doReturn(8).when(mockColumn).getPositionCount();
     byteArrayOutputStream = new ByteArrayOutputStream();
     output = new DataOutputStream(byteArrayOutputStream);
-    ColumnSerde.serializeNullIndicators(output, mockColumn);
+    ColumnEncoder.serializeNullIndicators(output, mockColumn);
     bytes = byteArrayOutputStream.toByteArray();
     Assert.assertEquals(2, bytes.length);
     Assert.assertEquals(1, bytes[0]);
@@ -69,7 +69,7 @@ public class ColumnSerdeTest {
     Mockito.doReturn(15).when(mockColumn).getPositionCount();
     byteArrayOutputStream = new ByteArrayOutputStream();
     output = new DataOutputStream(byteArrayOutputStream);
-    ColumnSerde.serializeNullIndicators(output, mockColumn);
+    ColumnEncoder.serializeNullIndicators(output, mockColumn);
     bytes = byteArrayOutputStream.toByteArray();
     Assert.assertEquals(3, bytes.length);
     Assert.assertEquals(1, bytes[0]);
@@ -80,7 +80,7 @@ public class ColumnSerdeTest {
   @Test
   public void testDeserializeNullIndicators() {
     ByteBuffer buffer = ByteBuffer.wrap(new byte[] {(byte) 1, (byte) 0b1010_1010});
-    boolean[] nullIndicators = ColumnSerde.deserializeNullIndicators(buffer, 7);
+    boolean[] nullIndicators = ColumnEncoder.deserializeNullIndicators(buffer, 7);
     Assert.assertNotNull(nullIndicators);
     Assert.assertEquals(7, nullIndicators.length);
     for (int i = 0; i < nullIndicators.length; i++) {
@@ -92,7 +92,7 @@ public class ColumnSerdeTest {
     }
 
     buffer = ByteBuffer.wrap(new byte[] {(byte) 1, (byte) 0b1010_1010});
-    nullIndicators = ColumnSerde.deserializeNullIndicators(buffer, 8);
+    nullIndicators = ColumnEncoder.deserializeNullIndicators(buffer, 8);
     Assert.assertNotNull(nullIndicators);
     Assert.assertEquals(8, nullIndicators.length);
     for (int i = 0; i < nullIndicators.length; i++) {
@@ -104,7 +104,7 @@ public class ColumnSerdeTest {
     }
 
     buffer = ByteBuffer.wrap(new byte[] {(byte) 1, (byte) 0b1010_1010, (byte) 0b1010_1010});
-    nullIndicators = ColumnSerde.deserializeNullIndicators(buffer, 15);
+    nullIndicators = ColumnEncoder.deserializeNullIndicators(buffer, 15);
     Assert.assertNotNull(nullIndicators);
     Assert.assertEquals(15, nullIndicators.length);
     for (int i = 0; i < nullIndicators.length; i++) {
@@ -129,7 +129,7 @@ public class ColumnSerdeTest {
 
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream output = new DataOutputStream(byteArrayOutputStream);
-    ColumnSerde.serializeNullIndicators(output, mockColumn);
+    ColumnEncoder.serializeNullIndicators(output, mockColumn);
     byte[] bytes = byteArrayOutputStream.toByteArray();
     Assert.assertEquals(1, bytes.length);
     Assert.assertEquals(0, bytes[0]);
@@ -138,7 +138,7 @@ public class ColumnSerdeTest {
   @Test
   public void testDeserializeNoNullIndicators() {
     ByteBuffer byteBuffer = ByteBuffer.wrap(new byte[] {0});
-    boolean[] nullIndicators = ColumnSerde.deserializeNullIndicators(byteBuffer, 8);
+    boolean[] nullIndicators = ColumnEncoder.deserializeNullIndicators(byteBuffer, 8);
     Assert.assertNull(nullIndicators);
   }
 }

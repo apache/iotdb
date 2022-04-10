@@ -65,14 +65,15 @@ public class TsBlockSerde {
     ColumnEncoding columnEncoding = ColumnEncoding.deserializeFrom(byteBuffer);
     // Time column
     TimeColumnBuilder timeColumnBuilder = builder.getTimeColumnBuilder();
-    ColumnSerdeFactory.get(columnEncoding).readColumn(timeColumnBuilder, byteBuffer, positionCount);
+    ColumnEncoderFactory.get(columnEncoding)
+        .readColumn(timeColumnBuilder, byteBuffer, positionCount);
 
     for (int i = 0; i < valueColumnCount; i++) {
       // Column encoding.
       columnEncoding = ColumnEncoding.deserializeFrom(byteBuffer);
       // Value column.
       ColumnBuilder columnBuilder = builder.getColumnBuilder(i);
-      ColumnSerdeFactory.get(columnEncoding).readColumn(columnBuilder, byteBuffer, positionCount);
+      ColumnEncoderFactory.get(columnEncoding).readColumn(columnBuilder, byteBuffer, positionCount);
     }
 
     return builder.build();
@@ -102,15 +103,15 @@ public class TsBlockSerde {
     // Time column encoding.
     tsBlock.getTimeColumn().getEncoding().serializeTo(dataOutputStream);
     // Time column.
-    ColumnSerde columnSerde = ColumnSerdeFactory.get(tsBlock.getTimeColumn().getEncoding());
-    columnSerde.writeColumn(dataOutputStream, tsBlock.getTimeColumn());
+    ColumnEncoder columnEncoder = ColumnEncoderFactory.get(tsBlock.getTimeColumn().getEncoding());
+    columnEncoder.writeColumn(dataOutputStream, tsBlock.getTimeColumn());
 
     for (int i = 0; i < tsBlock.getValueColumnCount(); i++) {
       // Column encoding.
       tsBlock.getColumn(i).getEncoding().serializeTo(dataOutputStream);
       // Value column.
-      columnSerde = ColumnSerdeFactory.get(tsBlock.getColumn(i).getEncoding());
-      columnSerde.writeColumn(dataOutputStream, tsBlock.getColumn(i));
+      columnEncoder = ColumnEncoderFactory.get(tsBlock.getColumn(i).getEncoding());
+      columnEncoder.writeColumn(dataOutputStream, tsBlock.getColumn(i));
     }
 
     return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());

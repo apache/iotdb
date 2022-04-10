@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.tsfile.common.block;
 
-import org.apache.iotdb.tsfile.read.common.block.column.Int32ColumnSerde;
+import org.apache.iotdb.tsfile.read.common.block.column.Int32ArrayColumnEncoder;
 import org.apache.iotdb.tsfile.read.common.block.column.IntColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.IntColumnBuilder;
 
@@ -32,7 +32,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Optional;
 
-public class Int32ColumnSerdeTest {
+public class Int32ArrayColumnEncoderTest {
   @Test
   public void testIntColumn() {
     final int positionCount = 10;
@@ -46,7 +46,7 @@ public class Int32ColumnSerdeTest {
       }
     }
     IntColumn input = new IntColumn(positionCount, Optional.of(nullIndicators), values);
-    Int32ColumnSerde serde = new Int32ColumnSerde();
+    Int32ArrayColumnEncoder serde = new Int32ArrayColumnEncoder();
 
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dos = new DataOutputStream(byteArrayOutputStream);
