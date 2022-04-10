@@ -267,12 +267,7 @@ public class TsFileProcessor {
   public void insert(InsertRowNode insertRowNode) throws WriteProcessException {
 
     if (workMemTable == null) {
-      if (enableMemControl) {
-        workMemTable = new PrimitiveMemTable(enableMemControl);
-        MemTableManager.getInstance().addMemtableNumber();
-      } else {
-        workMemTable = MemTableManager.getInstance().getAvailableMemTable(storageGroupName);
-      }
+      createNewWorkingMemTable();
     }
 
     long[] memIncrements = null;
@@ -284,19 +279,20 @@ public class TsFileProcessor {
       }
     }
 
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
-      try {
-        getLogNode().write(insertRowNode);
-      } catch (Exception e) {
-        if (enableMemControl && memIncrements != null) {
-          rollbackMemoryInfo(memIncrements);
-        }
-        throw new WriteProcessException(
-            String.format(
-                "%s: %s write WAL failed",
-                storageGroupName, tsFileResource.getTsFile().getAbsolutePath()),
-            e);
+    try {
+      WALFlushListener walFlushListener = walNode.log(workMemTable.getMemTableId(), insertRowNode);
+      if (walFlushListener.waitForResult() == WALFlushListener.Status.FAILURE) {
+        throw walFlushListener.getCause();
       }
+    } catch (Exception e) {
+      if (enableMemControl && memIncrements != null) {
+        rollbackMemoryInfo(memIncrements);
+      }
+      throw new WriteProcessException(
+          String.format(
+              "%s: %s write WAL failed",
+              storageGroupName, tsFileResource.getTsFile().getAbsolutePath()),
+          e);
     }
 
     if (insertRowNode.isAligned()) {
@@ -415,12 +411,7 @@ public class TsFileProcessor {
       throws WriteProcessException {
 
     if (workMemTable == null) {
-      if (enableMemControl) {
-        workMemTable = new PrimitiveMemTable(enableMemControl);
-        MemTableManager.getInstance().addMemtableNumber();
-      } else {
-        workMemTable = MemTableManager.getInstance().getAvailableMemTable(storageGroupName);
-      }
+      createNewWorkingMemTable();
     }
 
     long[] memIncrements = null;
@@ -440,12 +431,10 @@ public class TsFileProcessor {
     }
 
     try {
-      if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
-        // TODO(WAL)
-        // Start and end should be removed from new WAL
-        // insertTabletNode.setStart(start);
-        // insertTabletNode.setEnd(end);
-        getLogNode().write(insertTabletNode);
+      WALFlushListener walFlushListener =
+          walNode.log(workMemTable.getMemTableId(), insertTabletNode, start, end);
+      if (walFlushListener.waitForResult() == WALFlushListener.Status.FAILURE) {
+        throw walFlushListener.getCause();
       }
     } catch (Exception e) {
       for (int i = start; i < end; i++) {

@@ -23,6 +23,8 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.memtable.AbstractMemTable;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
@@ -64,10 +66,17 @@ public class WALEntry implements SerializedSize {
     this(memTableId, value, config.getWalMode() == WALMode.SYNC);
     if (value instanceof InsertTabletPlan) {
       tabletInfo = new TabletInfo(0, ((InsertTabletPlan) value).getRowCount());
+    } else if (value instanceof InsertTabletNode) {
+      tabletInfo = new TabletInfo(0, ((InsertTabletNode) value).getRowCount());
     }
   }
 
   public WALEntry(int memTableId, InsertTabletPlan value, int tabletStart, int tabletEnd) {
+    this(memTableId, value, config.getWalMode() == WALMode.SYNC);
+    tabletInfo = new TabletInfo(tabletStart, tabletEnd);
+  }
+
+  public WALEntry(int memTableId, InsertTabletNode value, int tabletStart, int tabletEnd) {
     this(memTableId, value, config.getWalMode() == WALMode.SYNC);
     tabletInfo = new TabletInfo(tabletStart, tabletEnd);
   }
@@ -83,6 +92,10 @@ public class WALEntry implements SerializedSize {
       this.type = WALEntryType.DELETE_PLAN;
     } else if (value instanceof IMemTable) {
       this.type = WALEntryType.MEMORY_TABLE_SNAPSHOT;
+    } else if (value instanceof InsertRowNode) {
+      this.type = WALEntryType.INSERT_ROW_NODE;
+    } else if (value instanceof InsertTabletNode) {
+      this.type = WALEntryType.INSERT_TABLET_NODE;
     } else {
       throw new RuntimeException("Unknown WALEntry type");
     }
@@ -109,7 +122,12 @@ public class WALEntry implements SerializedSize {
         ((InsertTabletPlan) value)
             .serializeToWAL(buffer, tabletInfo.tabletStart, tabletInfo.tabletEnd);
         break;
+      case INSERT_TABLET_NODE:
+        ((InsertTabletNode) value)
+            .serializeToWAL(buffer, tabletInfo.tabletStart, tabletInfo.tabletEnd);
+        break;
       case INSERT_ROW_PLAN:
+      case INSERT_ROW_NODE:
       case DELETE_PLAN:
       case MEMORY_TABLE_SNAPSHOT:
         value.serializeToWAL(buffer);
@@ -139,6 +157,12 @@ public class WALEntry implements SerializedSize {
         break;
       case MEMORY_TABLE_SNAPSHOT:
         value = AbstractMemTable.Factory.create(stream);
+        break;
+      case INSERT_ROW_NODE:
+        // TODO
+        break;
+      case INSERT_TABLET_NODE:
+        // TODO
         break;
     }
     return new WALEntry(type, memTableId, value);
@@ -182,9 +206,9 @@ public class WALEntry implements SerializedSize {
   }
 
   private static class TabletInfo {
-    /** start row of InsertTabletPlan */
+    /** start row of insert tablet */
     private final int tabletStart;
-    /** end row of InsertTabletPlan */
+    /** end row of insert tablet */
     private final int tabletEnd;
 
     public TabletInfo(int tabletStart, int tabletEnd) {

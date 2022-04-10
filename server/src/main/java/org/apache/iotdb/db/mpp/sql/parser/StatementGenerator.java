@@ -209,7 +209,7 @@ public class StatementGenerator {
       insertTabletStatement.setTimes(
           QueryDataSetUtils.readTimesFromBuffer(req.timestampsList.get(i), req.sizeList.get(i)));
       insertTabletStatement.setColumns(
-          QueryDataSetUtils.readValuesFromBuffer(
+          QueryDataSetUtils.readTabletValuesFromBuffer(
               req.valuesList.get(i),
               req.typesList.get(i),
               req.measurementsList.get(i).size(),

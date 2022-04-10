@@ -19,6 +19,8 @@
 package org.apache.iotdb.db.wal.node;
 
 import org.apache.iotdb.db.engine.memtable.IMemTable;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
@@ -45,8 +47,19 @@ public class WALFakeNode implements IWALNode {
   }
 
   @Override
+  public WALFlushListener log(int memTableId, InsertRowNode insertRowNode) {
+    return getResult();
+  }
+
+  @Override
   public WALFlushListener log(
       int memTableId, InsertTabletPlan insertTabletPlan, int start, int end) {
+    return getResult();
+  }
+
+  @Override
+  public WALFlushListener log(
+      int memTableId, InsertTabletNode insertTabletNode, int start, int end) {
     return getResult();
   }
 

@@ -29,6 +29,8 @@ import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
@@ -104,9 +106,22 @@ public class WALNode implements IWALNode {
   }
 
   @Override
+  public WALFlushListener log(int memTableId, InsertRowNode insertRowNode) {
+    WALEntry walEntry = new WALEntry(memTableId, insertRowNode);
+    return log(walEntry);
+  }
+
+  @Override
   public WALFlushListener log(
       int memTableId, InsertTabletPlan insertTabletPlan, int start, int end) {
     WALEntry walEntry = new WALEntry(memTableId, insertTabletPlan, start, end);
+    return log(walEntry);
+  }
+
+  @Override
+  public WALFlushListener log(
+      int memTableId, InsertTabletNode insertTabletNode, int start, int end) {
+    WALEntry walEntry = new WALEntry(memTableId, insertTabletNode, start, end);
     return log(walEntry);
   }
 
