@@ -143,13 +143,13 @@ public class LogicalPlanner {
     @Override
     public PlanNode visitGroupByQuery(
         GroupByQueryStatement queryStatement, MPPQueryContext context) {
-      return null;
+      throw new UnsupportedOperationException();
     }
 
     @Override
     public PlanNode visitGroupByFillQuery(
         GroupByFillQueryStatement queryStatement, MPPQueryContext context) {
-      return null;
+      throw new UnsupportedOperationException();
     }
 
     @Override
