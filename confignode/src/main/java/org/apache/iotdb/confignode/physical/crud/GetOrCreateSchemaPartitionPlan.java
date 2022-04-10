@@ -30,16 +30,16 @@ import java.util.List;
 import java.util.Map;
 
 /** Query or apply SchemaPartition by the specific storageGroup and the deviceGroupStartTimeMap. */
-public class QuerySchemaPartitionPlan extends PhysicalPlan {
+public class GetOrCreateSchemaPartitionPlan extends PhysicalPlan {
   private String storageGroup;
   private List<Integer> seriesPartitionSlots;
   private Map<Integer, RegionReplicaSet> schemaPartitionReplicaSets;
 
-  public QuerySchemaPartitionPlan(PhysicalPlanType physicalPlanType) {
+  public GetOrCreateSchemaPartitionPlan(PhysicalPlanType physicalPlanType) {
     super(physicalPlanType);
   }
 
-  public QuerySchemaPartitionPlan(
+  public GetOrCreateSchemaPartitionPlan(
       PhysicalPlanType physicalPlanType, String storageGroup, List<Integer> seriesPartitionSlots) {
     this(physicalPlanType);
     this.storageGroup = storageGroup;

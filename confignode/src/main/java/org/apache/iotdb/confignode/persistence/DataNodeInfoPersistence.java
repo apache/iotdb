@@ -20,7 +20,6 @@ package org.apache.iotdb.confignode.persistence;
 
 import org.apache.iotdb.commons.cluster.DataNodeLocation;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.response.DataNodesInfoDataSet;
 import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
 import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
@@ -83,8 +82,7 @@ public class DataNodeInfoPersistence {
    * Persistence DataNode info
    *
    * @param plan RegisterDataNodePlan
-   * @return SUCCESS_STATUS if DataNode first register, and DATANODE_ALREADY_REGISTERED if DataNode
-   *     is already registered
+   * @return SUCCESS_STATUS
    */
   public TSStatus registerDataNode(RegisterDataNodePlan plan) {
     TSStatus result;
@@ -93,7 +91,6 @@ public class DataNodeInfoPersistence {
     try {
       onlineDataNodes.put(info.getDataNodeID(), info);
       result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-      setRegisterDataNodeMessages(result, info.getDataNodeID());
     } finally {
       dataNodeInfoReadWriteLock.writeLock().unlock();
     }
@@ -160,33 +157,6 @@ public class DataNodeInfoPersistence {
     }
 
     return result;
-  }
-
-  public static void setRegisterDataNodeMessages(TSStatus status, int dataNodeId) {
-    List<TSStatus> subStatus = new ArrayList<>();
-
-    // Set DataNodeId
-    subStatus.add(new TSStatus().setMessage(String.valueOf(dataNodeId)));
-    // Set DataNode consensus protocol class
-    subStatus.add(
-        new TSStatus()
-            .setMessage(
-                ConfigNodeDescriptor.getInstance().getConf().getDataNodeConsensusProtocolClass()));
-    // Set seriesPartitionSlotNum
-    subStatus.add(
-        new TSStatus()
-            .setMessage(
-                String.valueOf(
-                    ConfigNodeDescriptor.getInstance().getConf().getSeriesPartitionSlotNum())));
-    // Set seriesPartitionSlotExecutorClass
-    subStatus.add(
-        new TSStatus()
-            .setMessage(
-                ConfigNodeDescriptor.getInstance()
-                    .getConf()
-                    .getSeriesPartitionSlotExecutorClass()));
-
-    status.setSubStatus(subStatus);
   }
 
   @TestOnly

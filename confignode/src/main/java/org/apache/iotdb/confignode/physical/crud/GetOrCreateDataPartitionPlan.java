@@ -31,11 +31,11 @@ import java.util.List;
 import java.util.Map;
 
 /** Query or apply DataPartition by the specific storageGroup and the deviceGroupStartTimeMap. */
-public class QueryDataPartitionPlan extends PhysicalPlan {
+public class GetOrCreateDataPartitionPlan extends PhysicalPlan {
 
   private Map<String, Map<SeriesPartitionSlot, List<TimePartitionSlot>>> partitionSlotsMap;
 
-  public QueryDataPartitionPlan(PhysicalPlanType physicalPlanType) {
+  public GetOrCreateDataPartitionPlan(PhysicalPlanType physicalPlanType) {
     super(physicalPlanType);
   }
 

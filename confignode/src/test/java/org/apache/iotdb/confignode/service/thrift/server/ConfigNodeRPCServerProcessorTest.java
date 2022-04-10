@@ -81,8 +81,8 @@ public class ConfigNodeRPCServerProcessorTest {
         ConfigNodeDescriptor.getInstance().getConf().getSeriesPartitionSlotNum(),
         globalConfig.getSeriesPartitionSlotNum());
     Assert.assertEquals(
-        ConfigNodeDescriptor.getInstance().getConf().getSeriesPartitionSlotExecutorClass(),
-        globalConfig.getSeriesPartitionSlotExecutorClass());
+        ConfigNodeDescriptor.getInstance().getConf().getSeriesPartitionExecutorClass(),
+        globalConfig.getSeriesPartitionExecutorClass());
   }
 
   @Test

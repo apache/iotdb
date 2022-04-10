@@ -20,8 +20,8 @@ package org.apache.iotdb.confignode.physical;
 
 import org.apache.iotdb.confignode.physical.crud.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.physical.crud.CreateSchemaPartitionPlan;
-import org.apache.iotdb.confignode.physical.crud.QueryDataPartitionPlan;
-import org.apache.iotdb.confignode.physical.crud.QuerySchemaPartitionPlan;
+import org.apache.iotdb.confignode.physical.crud.GetOrCreateDataPartitionPlan;
+import org.apache.iotdb.confignode.physical.crud.GetOrCreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.physical.sys.AuthorPlan;
 import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
 import org.apache.iotdb.confignode.physical.sys.QueryStorageGroupSchemaPlan;
@@ -101,22 +101,22 @@ public abstract class PhysicalPlan implements IConsensusRequest {
           plan = new QueryStorageGroupSchemaPlan();
           break;
         case GetDataPartition:
-          plan = new QueryDataPartitionPlan(PhysicalPlanType.GetDataPartition);
+          plan = new GetOrCreateDataPartitionPlan(PhysicalPlanType.GetDataPartition);
           break;
         case CreateDataPartition:
           plan = new CreateDataPartitionPlan(PhysicalPlanType.CreateDataPartition);
           break;
         case GetOrCreateDataPartition:
-          plan = new QueryDataPartitionPlan(PhysicalPlanType.GetOrCreateDataPartition);
+          plan = new GetOrCreateDataPartitionPlan(PhysicalPlanType.GetOrCreateDataPartition);
           break;
         case GetSchemaPartition:
-          plan = new QuerySchemaPartitionPlan(PhysicalPlanType.GetSchemaPartition);
+          plan = new GetOrCreateSchemaPartitionPlan(PhysicalPlanType.GetSchemaPartition);
           break;
         case CreateSchemaPartition:
           plan = new CreateSchemaPartitionPlan(PhysicalPlanType.CreateSchemaPartition);
           break;
         case GetOrCreateSchemaPartition:
-          plan = new QuerySchemaPartitionPlan(PhysicalPlanType.GetOrCreateSchemaPartition);
+          plan = new GetOrCreateSchemaPartitionPlan(PhysicalPlanType.GetOrCreateSchemaPartition);
           break;
         case LIST_USER:
         case LIST_ROLE:

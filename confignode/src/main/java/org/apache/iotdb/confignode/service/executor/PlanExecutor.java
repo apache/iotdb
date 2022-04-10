@@ -25,8 +25,9 @@ import org.apache.iotdb.confignode.persistence.PartitionInfoPersistence;
 import org.apache.iotdb.confignode.persistence.RegionInfoPersistence;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
 import org.apache.iotdb.confignode.physical.crud.CreateDataPartitionPlan;
-import org.apache.iotdb.confignode.physical.crud.QueryDataPartitionPlan;
-import org.apache.iotdb.confignode.physical.crud.QuerySchemaPartitionPlan;
+import org.apache.iotdb.confignode.physical.crud.CreateRegionsPlan;
+import org.apache.iotdb.confignode.physical.crud.GetOrCreateDataPartitionPlan;
+import org.apache.iotdb.confignode.physical.crud.GetOrCreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.physical.sys.AuthorPlan;
 import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
 import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
@@ -61,10 +62,10 @@ public class PlanExecutor {
         return regionInfoPersistence.getStorageGroupSchema();
       case GetDataPartition:
       case GetOrCreateDataPartition:
-        return partitionInfoPersistence.getDataPartition((QueryDataPartitionPlan) plan);
+        return partitionInfoPersistence.getDataPartition((GetOrCreateDataPartitionPlan) plan);
       case GetSchemaPartition:
       case GetOrCreateSchemaPartition:
-        return partitionInfoPersistence.getSchemaPartition((QuerySchemaPartitionPlan) plan);
+        return partitionInfoPersistence.getSchemaPartition((GetOrCreateSchemaPartitionPlan) plan);
       case LIST_USER:
         return authorInfoPersistence.executeListUser((AuthorPlan) plan);
       case LIST_ROLE:
@@ -89,8 +90,11 @@ public class PlanExecutor {
         return dataNodeInfoPersistence.registerDataNode((RegisterDataNodePlan) plan);
       case SetStorageGroup:
         return regionInfoPersistence.setStorageGroup((SetStorageGroupPlan) plan);
+      case CreateRegions:
+        return regionInfoPersistence.createRegions((CreateRegionsPlan) plan);
       case CreateSchemaPartition:
-        return partitionInfoPersistence.createSchemaPartition((QuerySchemaPartitionPlan) plan);
+        return partitionInfoPersistence.createSchemaPartition(
+            (GetOrCreateSchemaPartitionPlan) plan);
       case CreateDataPartition:
         return partitionInfoPersistence.createDataPartition((CreateDataPartitionPlan) plan);
       case CREATE_USER:

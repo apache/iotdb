@@ -29,6 +29,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaDataSet;
 import org.apache.iotdb.confignode.persistence.RegionInfoPersistence;
+import org.apache.iotdb.confignode.physical.crud.CreateRegionsPlan;
 import org.apache.iotdb.confignode.physical.sys.QueryStorageGroupSchemaPlan;
 import org.apache.iotdb.confignode.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
@@ -78,12 +79,20 @@ public class RegionManager {
         result.setMessage(
             String.format("StorageGroup %s is already set.", plan.getSchema().getName()));
       } else {
+        CreateRegionsPlan createPlan = new CreateRegionsPlan();
+        createPlan.setStorageGroup(plan.getSchema().getName());
+
         // allocate schema region
-        allocateRegions(plan, GroupType.SchemaRegion);
+        allocateRegions(GroupType.SchemaRegion, createPlan);
         // allocate data region
-        allocateRegions(plan, GroupType.DataRegion);
-        // write consensus
-        result = getConsensusManager().write(plan).getStatus();
+        allocateRegions(GroupType.DataRegion, createPlan);
+
+        // set StorageGroup
+        getConsensusManager().write(plan);
+
+        // create Region
+        // TODO: Send create Region to DataNode
+        result = getConsensusManager().write(createPlan).getStatus();
       }
     }
     return result;
@@ -93,7 +102,7 @@ public class RegionManager {
     return configNodeManager.getDataNodeManager();
   }
 
-  private void allocateRegions(SetStorageGroupPlan plan, GroupType type) {
+  private void allocateRegions(GroupType type, CreateRegionsPlan plan) {
 
     // TODO: Use CopySet algorithm to optimize region allocation policy
 
@@ -107,11 +116,9 @@ public class RegionManager {
       switch (type) {
         case SchemaRegion:
           consensusGroupId = new SchemaRegionId(regionInfoPersistence.generateNextRegionGroupId());
-          plan.getSchema().addSchemaRegionGroup(consensusGroupId);
           break;
         case DataRegion:
           consensusGroupId = new DataRegionId(regionInfoPersistence.generateNextRegionGroupId());
-          plan.getSchema().addDataRegionGroup(consensusGroupId);
       }
       regionReplicaSet.setId(consensusGroupId);
       regionReplicaSet.setDataNodeList(onlineDataNodes.subList(0, regionReplicaCount));

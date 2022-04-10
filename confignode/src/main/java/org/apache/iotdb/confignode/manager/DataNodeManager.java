@@ -23,8 +23,6 @@ import org.apache.iotdb.confignode.consensus.response.DataNodesInfoDataSet;
 import org.apache.iotdb.confignode.persistence.DataNodeInfoPersistence;
 import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
 import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
-import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
-import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import org.slf4j.Logger;
@@ -54,22 +52,10 @@ public class DataNodeManager {
    * Register DataNode
    *
    * @param plan RegisterDataNodePlan
-   * @return SUCCESS_STATUS if DataNode first register, and DATANODE_ALREADY_REGISTERED if DataNode
-   *     is already registered
+   * @return SUCCESS_STATUS
    */
   public TSStatus registerDataNode(RegisterDataNodePlan plan) {
-    TSStatus result;
-    DataNodeLocation info = plan.getInfo();
-
-    if (dataNodeInfoPersistence.containsValue(info)) {
-      result = new TSStatus(TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode());
-      DataNodeInfoPersistence.setRegisterDataNodeMessages(result, info.getDataNodeID());
-      return result;
-    } else {
-      info.setDataNodeID(dataNodeInfoPersistence.generateNextDataNodeId());
-      ConsensusWriteResponse consensusWriteResponse = getConsensusManager().write(plan);
-      return consensusWriteResponse.getStatus();
-    }
+    return getConsensusManager().write(plan).getStatus();
   }
 
   /**

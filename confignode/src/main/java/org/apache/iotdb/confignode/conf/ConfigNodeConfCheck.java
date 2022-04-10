@@ -106,7 +106,7 @@ public class ConfigNodeConfCheck {
     specialProperties.setProperty(
         "series_partition_slot_num", String.valueOf(conf.getSeriesPartitionSlotNum()));
     specialProperties.setProperty(
-        "series_partition_slot_executor_class", conf.getSeriesPartitionSlotExecutorClass());
+        "series_partition_executor_class", conf.getSeriesPartitionExecutorClass());
     try {
       specialProperties.store(new FileOutputStream(specialPropertiesFile), "");
     } catch (IOException e) {
@@ -130,12 +130,12 @@ public class ConfigNodeConfCheck {
 
     String specialSeriesPartitionSlotExecutorClass =
         specialProperties.getProperty(
-            "series_partition_slot_executor_class", conf.getSeriesPartitionSlotExecutorClass());
+            "series_partition_executor_class", conf.getSeriesPartitionExecutorClass());
     if (!Objects.equals(
-        specialSeriesPartitionSlotExecutorClass, conf.getSeriesPartitionSlotExecutorClass())) {
+        specialSeriesPartitionSlotExecutorClass, conf.getSeriesPartitionExecutorClass())) {
       throw new ConfigurationException(
-          "series_partition_slot_executor_class",
-          conf.getSeriesPartitionSlotExecutorClass(),
+          "series_partition_executor_class",
+          conf.getSeriesPartitionExecutorClass(),
           specialSeriesPartitionSlotExecutorClass);
     }
   }

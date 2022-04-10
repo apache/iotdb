@@ -33,9 +33,9 @@ public class RegisterDataNodePlan extends PhysicalPlan {
     super(PhysicalPlanType.RegisterDataNode);
   }
 
-  public RegisterDataNodePlan(int dataNodeID, Endpoint endpoint) {
+  public RegisterDataNodePlan(DataNodeLocation info) {
     this();
-    this.info = new DataNodeLocation(dataNodeID, endpoint);
+    this.info = info;
   }
 
   public DataNodeLocation getInfo() {

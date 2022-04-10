@@ -20,10 +20,13 @@
 package org.apache.iotdb.confignode.persistence;
 
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaDataSet;
 import org.apache.iotdb.confignode.partition.StorageGroupSchema;
+import org.apache.iotdb.confignode.physical.crud.CreateRegionsPlan;
 import org.apache.iotdb.confignode.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
@@ -59,7 +62,7 @@ public class RegionInfoPersistence {
   }
 
   /**
-   * Persistence StorageGroupSchema and Region allocation result
+   * Persistence new StorageGroupSchema
    *
    * @param plan SetStorageGroupPlan
    * @return SUCCESS_STATUS
@@ -70,11 +73,6 @@ public class RegionInfoPersistence {
     try {
       StorageGroupSchema schema = plan.getSchema();
       storageGroupsMap.put(schema.getName(), schema);
-
-      for (RegionReplicaSet regionReplicaSet : plan.getRegionReplicaSets()) {
-        regionMap.put(regionReplicaSet.getId(), regionReplicaSet);
-      }
-
       result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } finally {
       regionReadWriteLock.writeLock().unlock();
@@ -90,6 +88,34 @@ public class RegionInfoPersistence {
     } finally {
       regionReadWriteLock.readLock().unlock();
       result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    }
+    return result;
+  }
+
+  /**
+   * Persistence allocation result of new Regions
+   *
+   * @param plan CreateRegionsPlan
+   * @return SUCCESS_STATUS
+   */
+  public TSStatus createRegions(CreateRegionsPlan plan) {
+    TSStatus result;
+    regionReadWriteLock.writeLock().lock();
+    try {
+      StorageGroupSchema schema = storageGroupsMap.get(plan.getStorageGroup());
+
+      for (RegionReplicaSet regionReplicaSet : plan.getRegionReplicaSets()) {
+        regionMap.put(regionReplicaSet.getId(), regionReplicaSet);
+        if (regionReplicaSet.getId() instanceof DataRegionId) {
+          schema.addDataRegionGroup(regionReplicaSet.getId());
+        } else if (regionReplicaSet.getId() instanceof SchemaRegionId) {
+          schema.addSchemaRegionGroup(regionReplicaSet.getId());
+        }
+      }
+
+      result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } finally {
+      regionReadWriteLock.writeLock().unlock();
     }
     return result;
   }

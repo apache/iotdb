@@ -24,7 +24,7 @@ public enum PhysicalPlanType {
   SetStorageGroup,
   DeleteStorageGroup,
   QueryStorageGroupSchema,
-  CreateRegion,
+  CreateRegions,
   GetDataPartition,
   CreateDataPartition,
   GetOrCreateDataPartition,

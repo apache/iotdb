@@ -31,14 +31,16 @@ public class StorageGroupSchema {
 
   private String name;
 
-  private List<ConsensusGroupId> schemaRegionGroupIds;
-  private List<ConsensusGroupId> dataRegionGroupIds;
+  private final List<ConsensusGroupId> schemaRegionGroupIds;
+  private final List<ConsensusGroupId> dataRegionGroupIds;
 
   public StorageGroupSchema() {
-    // empty constructor
+    schemaRegionGroupIds = new ArrayList<>();
+    dataRegionGroupIds = new ArrayList<>();
   }
 
   public StorageGroupSchema(String name) {
+    this();
     this.name = name;
   }
 
@@ -51,9 +53,6 @@ public class StorageGroupSchema {
   }
 
   public void addSchemaRegionGroup(ConsensusGroupId id) {
-    if (schemaRegionGroupIds == null) {
-      schemaRegionGroupIds = new ArrayList<>();
-    }
     schemaRegionGroupIds.add(id);
   }
 
@@ -62,9 +61,6 @@ public class StorageGroupSchema {
   }
 
   public void addDataRegionGroup(ConsensusGroupId id) {
-    if (dataRegionGroupIds == null) {
-      dataRegionGroupIds = new ArrayList<>();
-    }
     dataRegionGroupIds.add(id);
   }
 
@@ -87,7 +83,6 @@ public class StorageGroupSchema {
     name = SerializeDeserializeUtil.readString(buffer);
 
     int length = buffer.getInt();
-    schemaRegionGroupIds = new ArrayList<>();
     for (int i = 0; i < length; i++) {
       SchemaRegionId schemaRegionId = new SchemaRegionId();
       schemaRegionId.deserializeImpl(buffer);

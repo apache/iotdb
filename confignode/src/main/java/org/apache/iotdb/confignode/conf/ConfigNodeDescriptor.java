@@ -108,9 +108,9 @@ public class ConfigNodeDescriptor {
               properties.getProperty(
                   "series_partition_slot_num", String.valueOf(conf.getSeriesPartitionSlotNum()))));
 
-      conf.setSeriesPartitionSlotExecutorClass(
+      conf.setSeriesPartitionExecutorClass(
           properties.getProperty(
-              "series_partition_slot_executor_class", conf.getSeriesPartitionSlotExecutorClass()));
+              "series_partition_executor_class", conf.getSeriesPartitionExecutorClass()));
 
       conf.setRpcAddress(properties.getProperty("config_node_rpc_address", conf.getRpcAddress()));
 

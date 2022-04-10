@@ -28,8 +28,8 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionDataSet;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionDataSet;
 import org.apache.iotdb.confignode.physical.crud.CreateDataPartitionPlan;
-import org.apache.iotdb.confignode.physical.crud.QueryDataPartitionPlan;
-import org.apache.iotdb.confignode.physical.crud.QuerySchemaPartitionPlan;
+import org.apache.iotdb.confignode.physical.crud.GetOrCreateDataPartitionPlan;
+import org.apache.iotdb.confignode.physical.crud.GetOrCreateSchemaPartitionPlan;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
@@ -69,7 +69,7 @@ public class PartitionInfoPersistence {
    * @param physicalPlan SchemaPartitionPlan with PatternTree
    * @return SchemaPartitionDataSet that contains only existing SchemaPartition
    */
-  public DataSet getSchemaPartition(QuerySchemaPartitionPlan physicalPlan) {
+  public DataSet getSchemaPartition(GetOrCreateSchemaPartitionPlan physicalPlan) {
     SchemaPartitionDataSet schemaPartitionDataSet = new SchemaPartitionDataSet();
     schemaPartitionReadWriteLock.readLock().lock();
     try {
@@ -93,7 +93,7 @@ public class PartitionInfoPersistence {
    * @param physicalPlan SchemaPartitionPlan with PatternTree
    * @return SchemaPartitionDataSet
    */
-  public TSStatus createSchemaPartition(QuerySchemaPartitionPlan physicalPlan) {
+  public TSStatus createSchemaPartition(GetOrCreateSchemaPartitionPlan physicalPlan) {
     schemaPartitionReadWriteLock.writeLock().lock();
 
     try {
@@ -131,7 +131,7 @@ public class PartitionInfoPersistence {
    *     List<TimePartitionSlot>>>
    * @return DataPartitionDataSet that contains only existing DataPartition
    */
-  public DataSet getDataPartition(QueryDataPartitionPlan physicalPlan) {
+  public DataSet getDataPartition(GetOrCreateDataPartitionPlan physicalPlan) {
     DataPartitionDataSet dataPartitionDataSet = new DataPartitionDataSet();
     dataPartitionReadWriteLock.readLock().lock();
     try {
