@@ -129,6 +129,7 @@ import org.apache.iotdb.db.utils.AuthUtils;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
+import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -520,6 +521,7 @@ public class PlanExecutor implements IPlanExecutor {
   private void operateFlush(FlushPlan plan) throws StorageGroupNotSetException {
     if (plan.getPaths().isEmpty()) {
       StorageEngine.getInstance().syncCloseAllProcessor();
+      WALManager.getInstance().deleteOutdatedWALFiles();
     } else {
       flushSpecifiedStorageGroups(plan);
     }

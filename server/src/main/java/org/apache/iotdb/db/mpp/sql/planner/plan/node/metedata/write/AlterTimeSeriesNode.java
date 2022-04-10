@@ -136,11 +136,6 @@ public class AlterTimeSeriesNode extends PlanNode {
   }
 
   @Override
-  public List<String> getOutputColumnNames() {
-    return null;
-  }
-
-  @Override
   public void serialize(ByteBuffer byteBuffer) {
     byteBuffer.putShort((short) PlanNodeType.ALTER_TIME_SERIES.ordinal());
     ReadWriteIOUtils.write(this.getPlanNodeId().getId(), byteBuffer);

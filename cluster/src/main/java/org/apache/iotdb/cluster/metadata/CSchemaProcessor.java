@@ -42,7 +42,6 @@ import org.apache.iotdb.cluster.utils.ClusterQueryUtils;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
@@ -114,7 +113,6 @@ import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.cluster.query.ClusterPlanExecutor.LOG_FAIL_CONNECT;
@@ -286,9 +284,8 @@ public class CSchemaProcessor extends LocalSchemaProcessor {
   }
 
   /**
-   * the {@link org.apache.iotdb.db.writelog.recover.LogReplayer#replayLogs(Supplier,
-   * VirtualStorageGroupProcessor)} will call this to get schema after restart we should retry to
-   * get schema util we get the schema.
+   * the {@link org.apache.iotdb.db.wal.recover.file.UnsealedTsFileRecoverPerformer#redoLog} will
+   * call this to get schema after restart we should retry to get schema util we get the schema.
    *
    * @param deviceId the device id.
    * @param measurements the measurements.

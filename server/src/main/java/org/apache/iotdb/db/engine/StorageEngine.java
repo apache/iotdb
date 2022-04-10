@@ -65,6 +65,8 @@ import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.ThreadUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
+import org.apache.iotdb.db.wal.exception.WALException;
+import org.apache.iotdb.db.wal.recover.WALRecoverManager;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
@@ -90,6 +92,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -130,7 +133,6 @@ public class StorageEngine implements IService {
   private ScheduledExecutorService ttlCheckThread;
   private ScheduledExecutorService seqMemtableTimedFlushCheckThread;
   private ScheduledExecutorService unseqMemtableTimedFlushCheckThread;
-  private ScheduledExecutorService tsFileTimedCloseCheckThread;
 
   private TsFileFlushPolicy fileFlushPolicy = new DirectFlushPolicy();
   private ExecutorService recoveryThreadPool;
@@ -237,16 +239,27 @@ public class StorageEngine implements IService {
         IoTDBThreadPoolFactory.newFixedThreadPool(
             Runtime.getRuntime().availableProcessors(), "Recovery-Thread-Pool");
 
-    // recover all logic storage group processors
     List<IStorageGroupMNode> sgNodes = IoTDB.schemaProcessor.getAllStorageGroupNodes();
+    // init wal recover manager
+    WALRecoverManager.getInstance()
+        .setAllVsgScannedLatch(
+            new CountDownLatch(sgNodes.size() * config.getVirtualStorageGroupNum()));
+    // recover all logic storage groups
     List<Future<Void>> futures = new LinkedList<>();
     for (IStorageGroupMNode storageGroup : sgNodes) {
       StorageGroupManager storageGroupManager =
           processorMap.computeIfAbsent(
               storageGroup.getPartialPath(), id -> new StorageGroupManager(true));
 
-      // recover all virtual storage groups in one logic storage group
+      // recover all virtual storage groups in each logic storage group
       storageGroupManager.asyncRecover(storageGroup, recoveryThreadPool, futures);
+    }
+
+    // wait until wal is recovered
+    try {
+      WALRecoverManager.getInstance().recover();
+    } catch (WALException e) {
+      logger.error("Fail to recover wal.", e);
     }
 
     // operations after all virtual storage groups are recovered
@@ -335,18 +348,6 @@ public class StorageEngine implements IService {
           TimeUnit.MILLISECONDS);
       logger.info("start unsequence memtable timed flush check thread successfully.");
     }
-    // timed close tsfile
-    if (config.isEnableTimedCloseTsFile()) {
-      tsFileTimedCloseCheckThread =
-          IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-              ThreadName.TIMED_CLOSE_TSFILE.getName());
-      tsFileTimedCloseCheckThread.scheduleAtFixedRate(
-          this::timedCloseTsFileProcessor,
-          config.getCloseTsFileCheckInterval(),
-          config.getCloseTsFileCheckInterval(),
-          TimeUnit.MILLISECONDS);
-      logger.info("start tsfile timed close check thread successfully.");
-    }
   }
 
   private void timedFlushSeqMemTable() {
@@ -369,16 +370,6 @@ public class StorageEngine implements IService {
     }
   }
 
-  private void timedCloseTsFileProcessor() {
-    try {
-      for (StorageGroupManager processor : processorMap.values()) {
-        processor.timedCloseTsFileProcessor();
-      }
-    } catch (Exception e) {
-      logger.error("An error occurred when timed closing tsfiles interval", e);
-    }
-  }
-
   @Override
   public void stop() {
     for (StorageGroupManager storageGroupManager : processorMap.values()) {
@@ -390,11 +381,7 @@ public class StorageEngine implements IService {
         seqMemtableTimedFlushCheckThread, ThreadName.TIMED_FlUSH_SEQ_MEMTABLE);
     ThreadUtils.stopThreadPool(
         unseqMemtableTimedFlushCheckThread, ThreadName.TIMED_FlUSH_UNSEQ_MEMTABLE);
-    ThreadUtils.stopThreadPool(tsFileTimedCloseCheckThread, ThreadName.TIMED_CLOSE_TSFILE);
     recoveryThreadPool.shutdownNow();
-    for (PartialPath storageGroup : IoTDB.schemaProcessor.getAllStorageGroupPaths()) {
-      this.releaseWalDirectByteBufferPoolInOneStorageGroup(storageGroup);
-    }
     processorMap.clear();
   }
 
@@ -411,7 +398,6 @@ public class StorageEngine implements IService {
     shutdownTimedService(ttlCheckThread, "TTlCheckThread");
     shutdownTimedService(seqMemtableTimedFlushCheckThread, "SeqMemtableTimedFlushCheckThread");
     shutdownTimedService(unseqMemtableTimedFlushCheckThread, "UnseqMemtableTimedFlushCheckThread");
-    shutdownTimedService(tsFileTimedCloseCheckThread, "TsFileTimedCloseCheckThread");
     recoveryThreadPool.shutdownNow();
     processorMap.clear();
   }
@@ -428,7 +414,7 @@ public class StorageEngine implements IService {
     }
   }
 
-  /** reboot timed flush sequence/unsequence memetable thread, timed close tsfile thread */
+  /** reboot timed flush sequence/unsequence memetable thread */
   public void rebootTimedService() throws ShutdownException {
     logger.info("Start rebooting all timed service.");
 
@@ -436,7 +422,6 @@ public class StorageEngine implements IService {
     stopTimedServiceAndThrow(seqMemtableTimedFlushCheckThread, "SeqMemtableTimedFlushCheckThread");
     stopTimedServiceAndThrow(
         unseqMemtableTimedFlushCheckThread, "UnseqMemtableTimedFlushCheckThread");
-    stopTimedServiceAndThrow(tsFileTimedCloseCheckThread, "TsFileTimedCloseCheckThread");
 
     logger.info("Stop all timed service successfully, and now restart them.");
 
@@ -497,6 +482,16 @@ public class StorageEngine implements IService {
     }
   }
 
+  public VirtualStorageGroupProcessor getProcessorByVSGId(PartialPath path, int vsgId)
+      throws StorageEngineException {
+    try {
+      IStorageGroupMNode storageGroupMNode = IoTDB.schemaProcessor.getStorageGroupNodeByPath(path);
+      return getStorageGroupManager(storageGroupMNode).getProcessor(storageGroupMNode, vsgId);
+    } catch (StorageGroupProcessorException | MetadataException e) {
+      throw new StorageEngineException(e);
+    }
+  }
+
   /**
    * get lock holder for each sg
    *
@@ -526,11 +521,22 @@ public class StorageEngine implements IService {
    *     modification in mtree
    * @return found or new storage group processor
    */
-  @SuppressWarnings("java:S2445")
-  // actually storageGroupMNode is a unique object on the mtree, synchronize it is reasonable
   private VirtualStorageGroupProcessor getStorageGroupProcessorByPath(
       PartialPath devicePath, IStorageGroupMNode storageGroupMNode)
       throws StorageGroupProcessorException, StorageEngineException {
+    return getStorageGroupManager(storageGroupMNode).getProcessor(devicePath, storageGroupMNode);
+  }
+
+  /**
+   * get storage group manager by storage group mnode
+   *
+   * @param storageGroupMNode mnode of the storage group, we need synchronize this to avoid
+   *     modification in mtree
+   * @return found or new storage group manager
+   */
+  @SuppressWarnings("java:S2445")
+  // actually storageGroupMNode is a unique object on the mtree, synchronize it is reasonable
+  private StorageGroupManager getStorageGroupManager(IStorageGroupMNode storageGroupMNode) {
     StorageGroupManager storageGroupManager = processorMap.get(storageGroupMNode.getPartialPath());
     if (storageGroupManager == null) {
       synchronized (this) {
@@ -541,7 +547,7 @@ public class StorageEngine implements IService {
         }
       }
     }
-    return storageGroupManager.getProcessor(devicePath, storageGroupMNode);
+    return storageGroupManager;
   }
 
   /**
@@ -841,13 +847,6 @@ public class StorageEngine implements IService {
     processorMap.get(storageGroupPath).syncDeleteDataFiles();
   }
 
-  /** release all the allocated non-heap */
-  public void releaseWalDirectByteBufferPoolInOneStorageGroup(PartialPath storageGroupPath) {
-    if (processorMap.containsKey(storageGroupPath)) {
-      processorMap.get(storageGroupPath).releaseWalDirectByteBufferPool();
-    }
-  }
-
   /** delete all data of storage groups' timeseries. */
   public synchronized boolean deleteAll() {
     logger.info("Start deleting all storage groups' timeseries");
@@ -873,7 +872,6 @@ public class StorageEngine implements IService {
     }
     abortCompactionTaskForStorageGroup(storageGroupPath);
     deleteAllDataFilesInOneStorageGroup(storageGroupPath);
-    releaseWalDirectByteBufferPoolInOneStorageGroup(storageGroupPath);
     StorageGroupManager storageGroupManager = processorMap.remove(storageGroupPath);
     storageGroupManager.deleteStorageGroupSystemFolder(
         systemDir + File.pathSeparator + storageGroupPath);

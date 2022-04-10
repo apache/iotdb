@@ -150,11 +150,6 @@ public class InsertMultiTabletsNode extends InsertNode {
     return NO_CHILD_ALLOWED;
   }
 
-  @Override
-  public List<String> getOutputColumnNames() {
-    return null;
-  }
-
   public static InsertMultiTabletsNode deserialize(ByteBuffer byteBuffer) {
     return null;
   }

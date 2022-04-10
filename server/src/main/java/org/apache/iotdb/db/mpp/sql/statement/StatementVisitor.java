@@ -73,6 +73,34 @@ public abstract class StatementVisitor<R, C> {
     return visitStatement(queryStatement, context);
   }
 
+  public R visitAggregationQuery(AggregationQueryStatement queryStatement, C context) {
+    return visitQuery(queryStatement, context);
+  }
+
+  public R visitFillQuery(FillQueryStatement queryStatement, C context) {
+    return visitQuery(queryStatement, context);
+  }
+
+  public R visitGroupByQuery(GroupByQueryStatement queryStatement, C context) {
+    return visitQuery(queryStatement, context);
+  }
+
+  public R visitGroupByFillQuery(GroupByFillQueryStatement queryStatement, C context) {
+    return visitQuery(queryStatement, context);
+  }
+
+  public R visitLastQuery(LastQueryStatement queryStatement, C context) {
+    return visitQuery(queryStatement, context);
+  }
+
+  public R visitUDTFQuery(UDTFQueryStatement queryStatement, C context) {
+    return visitQuery(queryStatement, context);
+  }
+
+  public R visitUDAFQuery(UDAFQueryStatement queryStatement, C context) {
+    return visitQuery(queryStatement, context);
+  }
+
   // Insert Statement
   public R visitInsert(InsertStatement insertStatement, C context) {
     return visitStatement(insertStatement, context);

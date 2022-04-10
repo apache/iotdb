@@ -372,33 +372,6 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default| 600000 |
 |Effective| Trigger |
 
-* enable\_timed\_close\_tsfile
-
-|Name| enable\_timed\_close\_tsfile |
-|:---:|:---|
-|Description| whether to timed close tsfiles |
-|Type|Bool|
-|Default| false |
-|Effective| Trigger |
-
-* close\_tsfile\_interval\_after\_flushing\_in\_ms
-
-|Name| close\_tsfile\_interval\_after\_flushing\_in\_ms |
-|:---:|:---|
-|Description| if a TsfileProcessor's last working memtable flush time is older than current time minus this and its working memtable is null, the TsfileProcessor will be closed |
-|Type|Int32|
-|Default| 3600000 |
-|Effective| Trigger |
-
-* close\_tsfile\_check\_interval\_in\_ms
-
-|Name| close\_tsfile\_check\_interval\_in\_ms |
-|:---:|:---|
-|Description| the interval to check whether tsfiles need closing |
-|Type|Int32|
-|Default| 600000 |
-|Effective| Trigger |
-
 * avg\_series\_point\_number\_threshold
 
 |Name| avg\_series\_point\_number\_threshold |
