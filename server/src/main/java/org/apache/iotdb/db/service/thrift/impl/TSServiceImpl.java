@@ -1799,7 +1799,7 @@ public class TSServiceImpl implements TSIService.Iface {
           new InsertTabletPlan(new PartialPath(req.getPrefixPath()), req.measurements);
       insertTabletPlan.setTimes(QueryDataSetUtils.readTimesFromBuffer(req.timestamps, req.size));
       insertTabletPlan.setColumns(
-          QueryDataSetUtils.readValuesFromBuffer(
+          QueryDataSetUtils.readTabletValuesFromBuffer(
               req.values, req.types, req.types.size(), req.size));
       insertTabletPlan.setBitMaps(
           QueryDataSetUtils.readBitMapsFromBuffer(req.values, req.types.size(), req.size));
@@ -1913,7 +1913,7 @@ public class TSServiceImpl implements TSIService.Iface {
     insertTabletPlan.setTimes(
         QueryDataSetUtils.readTimesFromBuffer(req.timestampsList.get(i), req.sizeList.get(i)));
     insertTabletPlan.setColumns(
-        QueryDataSetUtils.readValuesFromBuffer(
+        QueryDataSetUtils.readTabletValuesFromBuffer(
             req.valuesList.get(i),
             req.typesList.get(i),
             req.measurementsList.get(i).size(),

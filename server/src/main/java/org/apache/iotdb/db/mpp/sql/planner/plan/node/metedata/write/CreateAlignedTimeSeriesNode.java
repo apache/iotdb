@@ -159,11 +159,6 @@ public class CreateAlignedTimeSeriesNode extends PlanNode {
   }
 
   @Override
-  public List<String> getOutputColumnNames() {
-    return null;
-  }
-
-  @Override
   public void serialize(ByteBuffer byteBuffer) {
     byteBuffer.putShort((short) PlanNodeType.CREATE_ALIGNED_TIME_SERIES.ordinal());
     ReadWriteIOUtils.write(this.getPlanNodeId().getId(), byteBuffer);

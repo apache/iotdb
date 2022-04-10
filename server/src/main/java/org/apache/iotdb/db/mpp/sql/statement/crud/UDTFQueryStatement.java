@@ -19,9 +19,15 @@
 
 package org.apache.iotdb.db.mpp.sql.statement.crud;
 
+import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
+
 public class UDTFQueryStatement extends QueryStatement {
 
   public UDTFQueryStatement(QueryStatement queryStatement) {
     super(queryStatement);
+  }
+
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitUDTFQuery(this, context);
   }
 }

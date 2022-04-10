@@ -19,6 +19,8 @@
 package org.apache.iotdb.db.engine.memtable;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.flush.FlushStatus;
+import org.apache.iotdb.db.engine.flush.NotifyFlushMemTable;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.WriteProcessException;
@@ -34,23 +36,34 @@ import org.apache.iotdb.db.service.metrics.Metric;
 import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.service.metrics.Tag;
 import org.apache.iotdb.db.utils.MemUtils;
+import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
+import org.apache.iotdb.db.wal.utils.WALWriteUtils;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.DataInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public abstract class AbstractMemTable implements IMemTable {
+  private static final Logger logger = LoggerFactory.getLogger(AbstractMemTable.class);
+  private static final int FIXED_SERIALIZED_SIZE = Byte.BYTES + 2 * Integer.BYTES + 6 * Long.BYTES;
+  /** each memTable node has a unique int value identifier */
+  private static final AtomicInteger memTableIdCounter = new AtomicInteger();
+
+  private static final DeviceIDFactory deviceIDFactory = DeviceIDFactory.getInstance();
 
   /** DeviceId -> chunkGroup(MeasurementId -> chunk) */
   private final Map<IDeviceID, IWritableMemChunkGroup> memTableMap;
@@ -60,9 +73,8 @@ public abstract class AbstractMemTable implements IMemTable {
    */
   protected boolean disableMemControl = true;
 
-  private static final Logger logger = LoggerFactory.getLogger(AbstractMemTable.class);
-
   private boolean shouldFlush = false;
+  private volatile FlushStatus flushStatus = FlushStatus.WORKING;
   private final int avgSeriesPointNumThreshold =
       IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
   /** memory size of data points, including TEXT values */
@@ -83,7 +95,9 @@ public abstract class AbstractMemTable implements IMemTable {
 
   private long minPlanIndex = Long.MAX_VALUE;
 
-  private long createdTime = System.currentTimeMillis();
+  private final int memTableId = memTableIdCounter.getAndIncrement();
+
+  private final long createdTime = System.currentTimeMillis();
 
   private static final String METRIC_POINT_IN = "pointsIn";
 
@@ -144,8 +158,7 @@ public abstract class AbstractMemTable implements IMemTable {
     // if this insert plan isn't from storage engine (mainly from test), we should set a temp device
     // id for it
     if (insertRowPlan.getDeviceID() == null) {
-      insertRowPlan.setDeviceID(
-          DeviceIDFactory.getInstance().getDeviceID(insertRowPlan.getDevicePath()));
+      insertRowPlan.setDeviceID(deviceIDFactory.getDeviceID(insertRowPlan.getDevicePath()));
     }
 
     updatePlanIndexes(insertRowPlan.getIndex());
@@ -229,8 +242,7 @@ public abstract class AbstractMemTable implements IMemTable {
   public void insertAlignedRow(InsertRowPlan insertRowPlan) {
     // if this insert plan isn't from storage engine, we should set a temp device id for it
     if (insertRowPlan.getDeviceID() == null) {
-      insertRowPlan.setDeviceID(
-          DeviceIDFactory.getInstance().getDeviceID(insertRowPlan.getDevicePath()));
+      insertRowPlan.setDeviceID(deviceIDFactory.getDeviceID(insertRowPlan.getDevicePath()));
     }
 
     updatePlanIndexes(insertRowPlan.getIndex());
@@ -448,8 +460,7 @@ public abstract class AbstractMemTable implements IMemTable {
   public void write(InsertTabletPlan insertTabletPlan, int start, int end) {
     // if this insert plan isn't from storage engine, we should set a temp device id for it
     if (insertTabletPlan.getDeviceID() == null) {
-      insertTabletPlan.setDeviceID(
-          DeviceIDFactory.getInstance().getDeviceID(insertTabletPlan.getDevicePath()));
+      insertTabletPlan.setDeviceID(deviceIDFactory.getDeviceID(insertTabletPlan.getDevicePath()));
     }
 
     List<IMeasurementSchema> schemaList = new ArrayList<>();
@@ -501,8 +512,7 @@ public abstract class AbstractMemTable implements IMemTable {
   public void writeAlignedTablet(InsertTabletPlan insertTabletPlan, int start, int end) {
     // if this insert plan isn't from storage engine, we should set a temp device id for it
     if (insertTabletPlan.getDeviceID() == null) {
-      insertTabletPlan.setDeviceID(
-          DeviceIDFactory.getInstance().getDeviceID(insertTabletPlan.getDevicePath()));
+      insertTabletPlan.setDeviceID(deviceIDFactory.getDeviceID(insertTabletPlan.getDevicePath()));
     }
 
     List<IMeasurementSchema> schemaList = new ArrayList<>();
@@ -612,6 +622,7 @@ public abstract class AbstractMemTable implements IMemTable {
     totalPointsNumThreshold = 0;
     tvListRamCost = 0;
     maxPlanIndex = 0;
+    minPlanIndex = 0;
   }
 
   @Override
@@ -695,11 +706,107 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   @Override
+  public int getMemTableId() {
+    return memTableId;
+  }
+
+  @Override
   public long getCreatedTime() {
     return createdTime;
   }
 
+  @Override
+  public FlushStatus getFlushStatus() {
+    return flushStatus;
+  }
+
+  @Override
+  public void setFlushStatus(FlushStatus flushStatus) {
+    this.flushStatus = flushStatus;
+  }
+
   private IDeviceID getDeviceID(PartialPath deviceId) {
-    return DeviceIDFactory.getInstance().getDeviceID(deviceId);
+    return deviceIDFactory.getDeviceID(deviceId);
+  }
+
+  /** Notice: this method is concurrent unsafe */
+  @Override
+  public int serializedSize() {
+    if (isSignalMemTable()) {
+      return Byte.BYTES;
+    }
+    int size = FIXED_SERIALIZED_SIZE;
+    for (Map.Entry<IDeviceID, IWritableMemChunkGroup> entry : memTableMap.entrySet()) {
+      size += ReadWriteIOUtils.sizeToWrite(entry.getKey().toStringID());
+      size += Byte.BYTES;
+      size += entry.getValue().serializedSize();
+    }
+    return size;
+  }
+
+  /** Notice: this method is concurrent unsafe */
+  @Override
+  public void serializeToWAL(IWALByteBufferView buffer) {
+    WALWriteUtils.write(isSignalMemTable(), buffer);
+    if (isSignalMemTable()) {
+      return;
+    }
+    buffer.putInt(seriesNumber);
+    buffer.putLong(memSize);
+    buffer.putLong(tvListRamCost);
+    buffer.putLong(totalPointsNum);
+    buffer.putLong(totalPointsNumThreshold);
+    buffer.putLong(maxPlanIndex);
+    buffer.putLong(minPlanIndex);
+
+    buffer.putInt(memTableMap.size());
+    for (Map.Entry<IDeviceID, IWritableMemChunkGroup> entry : memTableMap.entrySet()) {
+      WALWriteUtils.write(entry.getKey().toStringID(), buffer);
+
+      IWritableMemChunkGroup memChunkGroup = entry.getValue();
+      WALWriteUtils.write(memChunkGroup instanceof AlignedWritableMemChunkGroup, buffer);
+      memChunkGroup.serializeToWAL(buffer);
+    }
+  }
+
+  public void deserialize(DataInputStream stream) throws IOException {
+    seriesNumber = stream.readInt();
+    memSize = stream.readLong();
+    tvListRamCost = stream.readLong();
+    totalPointsNum = stream.readLong();
+    totalPointsNumThreshold = stream.readLong();
+    maxPlanIndex = stream.readLong();
+    minPlanIndex = stream.readLong();
+
+    int memTableMapSize = stream.readInt();
+    for (int i = 0; i < memTableMapSize; ++i) {
+      IDeviceID deviceID = deviceIDFactory.getDeviceID(ReadWriteIOUtils.readString(stream));
+
+      boolean isAligned = ReadWriteIOUtils.readBool(stream);
+      IWritableMemChunkGroup memChunkGroup;
+      if (isAligned) {
+        memChunkGroup = AlignedWritableMemChunkGroup.deserialize(stream);
+      } else {
+        memChunkGroup = WritableMemChunkGroup.deserialize(stream);
+      }
+      memTableMap.put(deviceID, memChunkGroup);
+    }
+  }
+
+  public static class Factory {
+    private Factory() {}
+
+    public static IMemTable create(DataInputStream stream) throws IOException {
+      boolean isSignal = ReadWriteIOUtils.readBool(stream);
+      IMemTable memTable;
+      if (isSignal) {
+        memTable = new NotifyFlushMemTable();
+      } else {
+        PrimitiveMemTable primitiveMemTable = new PrimitiveMemTable();
+        primitiveMemTable.deserialize(stream);
+        memTable = primitiveMemTable;
+      }
+      return memTable;
+    }
   }
 }

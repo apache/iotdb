@@ -141,11 +141,6 @@ public class AuthorNode extends PlanNode {
   }
 
   @Override
-  public List<String> getOutputColumnNames() {
-    return null;
-  }
-
-  @Override
   public void serialize(ByteBuffer buffer) {
     buffer.putInt(getPlanType(authorType));
     buffer.putInt(userName.length());

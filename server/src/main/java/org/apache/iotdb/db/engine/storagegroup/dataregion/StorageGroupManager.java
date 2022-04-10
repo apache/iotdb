@@ -133,39 +133,37 @@ public class StorageGroupManager {
     }
   }
 
-  /** push check TsFileProcessor close interval down to all sg */
-  public void timedCloseTsFileProcessor() {
-    for (DataRegion dataRegion : this.dataRegion) {
-      if (dataRegion != null) {
-        dataRegion.timedCloseTsFileProcessor();
-      }
-    }
-  }
-
   /**
    * get processor from device id
    *
    * @param partialPath device path
    * @return virtual storage group processor
    */
+  public DataRegion getProcessor(
+      PartialPath partialPath, IStorageGroupMNode storageGroupMNode)
+      throws DataRegionException, StorageEngineException {
+    int dataRegionId = partitioner.deviceToDataRegionId(partialPath);
+    return getProcessor(storageGroupMNode, dataRegionId);
+  }
+
   @SuppressWarnings("java:S2445")
   // actually storageGroupMNode is a unique object on the mtree, synchronize it is reasonable
-  public DataRegion getProcessor(PartialPath partialPath, IStorageGroupMNode storageGroupMNode)
+  public DataRegion getProcessor(IStorageGroupMNode storageGroupMNode, int dataRegionId)
       throws DataRegionException, StorageEngineException {
-    int loc = partitioner.deviceToDataRegionId(partialPath);
-
-    DataRegion processor = dataRegion[loc];
+            DataRegion processor = dataRegion[dataRegionId];
     if (processor == null) {
       // if finish recover
-      if (isDataRegionReady[loc].get()) {
+      if (isDataRegionReady[dataRegionId].get()) {
         synchronized (storageGroupMNode) {
-          processor = dataRegion[loc];
+          processor = dataRegion[dataRegionId];
           if (processor == null) {
             processor =
                 StorageEngine.getInstance()
                     .buildNewStorageGroupProcessor(
-                        storageGroupMNode.getPartialPath(), storageGroupMNode, String.valueOf(loc));
-            dataRegion[loc] = processor;
+                        storageGroupMNode.getPartialPath(),
+                        storageGroupMNode,
+                        String.valueOf(dataRegionId));
+            dataRegion[dataRegionId] = processor;
           }
         }
       } else {
@@ -456,15 +454,6 @@ public class StorageGroupManager {
     }
   }
 
-  /** release resource of direct wal buffer */
-  public void releaseWalDirectByteBufferPool() {
-    for (DataRegion dataRegion : this.dataRegion) {
-      if (dataRegion != null) {
-        dataRegion.releaseWalDirectByteBufferPool();
-      }
-    }
-  }
-
   /** only for test */
   public void reset() {
     Arrays.fill(dataRegion, null);
@@ -475,7 +464,6 @@ public class StorageGroupManager {
       if (vsg != null) {
         ThreadUtils.stopThreadPool(
             vsg.getTimedCompactionScheduleTask(), ThreadName.COMPACTION_SCHEDULE);
-        ThreadUtils.stopThreadPool(vsg.getWALTrimScheduleTask(), ThreadName.WAL_TRIM);
       }
     }
   }

@@ -61,6 +61,8 @@ public class ReadWriteIOUtils {
   public static final int FLOAT_LEN = 4;
   public static final float BIT_LEN = 0.125F;
 
+  private static final int NO_BYTE_TO_READ = -1;
+
   private static final byte[] magicStringBytes;
 
   private static final String RETURN_ERROR = "Intend to read %d bytes but %d are actually returned";
@@ -113,7 +115,7 @@ public class ReadWriteIOUtils {
 
   public static int write(Map<String, String> map, DataOutputStream stream) throws IOException {
     if (map == null) {
-      return write(-1, stream);
+      return write(NO_BYTE_TO_READ, stream);
     }
 
     int length = 0;
@@ -135,7 +137,7 @@ public class ReadWriteIOUtils {
 
   public static int write(Map<String, String> map, ByteBuffer buffer) {
     if (map == null) {
-      return write(-1, buffer);
+      return write(NO_BYTE_TO_READ, buffer);
     }
 
     int length = 0;
@@ -180,7 +182,7 @@ public class ReadWriteIOUtils {
     } else {
       outputStream.write(0);
     }
-    return 1;
+    return BOOLEAN_LEN;
   }
 
   /** write a byte to byteBuffer according to flag. If flag is true, write 1, else write 0. */
@@ -193,7 +195,7 @@ public class ReadWriteIOUtils {
     }
 
     buffer.put(a);
-    return 1;
+    return BOOLEAN_LEN;
   }
 
   /**
@@ -338,7 +340,7 @@ public class ReadWriteIOUtils {
   public static int write(String s, OutputStream outputStream) throws IOException {
     int len = 0;
     if (s == null) {
-      len += write(-1, outputStream);
+      len += write(NO_BYTE_TO_READ, outputStream);
       return len;
     }
 
@@ -357,7 +359,7 @@ public class ReadWriteIOUtils {
   public static int writeVar(String s, OutputStream outputStream) throws IOException {
     int len = 0;
     if (s == null) {
-      len += ReadWriteForEncodingUtils.writeVarInt(-1, outputStream);
+      len += ReadWriteForEncodingUtils.writeVarInt(NO_BYTE_TO_READ, outputStream);
       return len;
     }
 
@@ -375,7 +377,7 @@ public class ReadWriteIOUtils {
    */
   public static int write(String s, ByteBuffer buffer) {
     if (s == null) {
-      return write(-1, buffer);
+      return write(NO_BYTE_TO_READ, buffer);
     }
     int len = 0;
     byte[] bytes = s.getBytes();
@@ -387,7 +389,7 @@ public class ReadWriteIOUtils {
 
   public static int writeVar(String s, ByteBuffer buffer) {
     if (s == null) {
-      return ReadWriteForEncodingUtils.writeVarInt(-1, buffer);
+      return ReadWriteForEncodingUtils.writeVarInt(NO_BYTE_TO_READ, buffer);
     }
     int len = 0;
     byte[] bytes = s.getBytes();
@@ -456,6 +458,17 @@ public class ReadWriteIOUtils {
   public static int write(TSEncoding encoding, ByteBuffer buffer) {
     byte n = encoding.serialize();
     return write(n, buffer);
+  }
+
+  public static int sizeToWrite(Binary n) {
+    return INT_LEN + n.getLength();
+  }
+
+  public static int sizeToWrite(String s) {
+    if (s == null) {
+      return INT_LEN;
+    }
+    return INT_LEN + s.getBytes().length;
   }
 
   /** read a byte var from inputStream. */
@@ -534,7 +547,7 @@ public class ReadWriteIOUtils {
    */
   public static int read(ByteBuffer buffer) {
     if (!buffer.hasRemaining()) {
-      return -1;
+      return NO_BYTE_TO_READ;
     }
     return buffer.get() & 0xFF;
   }
@@ -658,7 +671,7 @@ public class ReadWriteIOUtils {
     int offset = 0;
     int len;
     while (bytes.length - offset > 0
-        && (len = inputStream.read(bytes, offset, bytes.length - offset)) != -1) {
+        && (len = inputStream.read(bytes, offset, bytes.length - offset)) != NO_BYTE_TO_READ) {
       offset += len;
     }
     return bytes;
@@ -666,7 +679,7 @@ public class ReadWriteIOUtils {
 
   public static Map<String, String> readMap(ByteBuffer buffer) {
     int length = readInt(buffer);
-    if (length == -1) {
+    if (length == NO_BYTE_TO_READ) {
       return null;
     }
     Map<String, String> map = new HashMap<>(length);
@@ -728,7 +741,7 @@ public class ReadWriteIOUtils {
       throws IOException {
     int length = 0;
     int read;
-    while (buffer.hasRemaining() && (read = input.read(buffer, position)) != -1) {
+    while (buffer.hasRemaining() && (read = input.read(buffer, position)) != NO_BYTE_TO_READ) {
       length += read;
       position += read;
       input.read(buffer, position);
@@ -740,7 +753,7 @@ public class ReadWriteIOUtils {
   public static int readAsPossible(TsFileInput input, ByteBuffer buffer) throws IOException {
     int length = 0;
     int read;
-    while (buffer.hasRemaining() && (read = input.read(buffer)) != -1) {
+    while (buffer.hasRemaining() && (read = input.read(buffer)) != NO_BYTE_TO_READ) {
       length += read;
     }
     return length;
@@ -755,7 +768,9 @@ public class ReadWriteIOUtils {
       target.limit(target.position() + len);
     }
     int read;
-    while (length < len && target.hasRemaining() && (read = input.read(target, offset)) != -1) {
+    while (length < len
+        && target.hasRemaining()
+        && (read = input.read(target, offset)) != NO_BYTE_TO_READ) {
       length += read;
       offset += read;
     }

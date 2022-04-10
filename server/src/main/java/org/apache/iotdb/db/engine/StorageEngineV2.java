@@ -103,7 +103,6 @@ public class StorageEngineV2 implements IService {
   private ScheduledExecutorService ttlCheckThread;
   private ScheduledExecutorService seqMemtableTimedFlushCheckThread;
   private ScheduledExecutorService unseqMemtableTimedFlushCheckThread;
-  private ScheduledExecutorService tsFileTimedCloseCheckThread;
 
   private TsFileFlushPolicy fileFlushPolicy = new DirectFlushPolicy();
   private ExecutorService recoveryThreadPool;
@@ -325,18 +324,6 @@ public class StorageEngineV2 implements IService {
           TimeUnit.MILLISECONDS);
       logger.info("start unsequence memtable timed flush check thread successfully.");
     }
-    // timed close tsfile
-    if (config.isEnableTimedCloseTsFile()) {
-      tsFileTimedCloseCheckThread =
-          IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-              ThreadName.TIMED_CLOSE_TSFILE.getName());
-      tsFileTimedCloseCheckThread.scheduleAtFixedRate(
-          this::timedCloseTsFileProcessor,
-          config.getCloseTsFileCheckInterval(),
-          config.getCloseTsFileCheckInterval(),
-          TimeUnit.MILLISECONDS);
-      logger.info("start tsfile timed close check thread successfully.");
-    }
   }
 
   private void timedFlushSeqMemTable() {
@@ -363,6 +350,7 @@ public class StorageEngineV2 implements IService {
     }
   }
 
+<<<<<<< HEAD
   private void timedCloseTsFileProcessor() {
     try {
       for (DataRegion dataRegion : dataRegionMap.values()) {
@@ -375,13 +363,14 @@ public class StorageEngineV2 implements IService {
     }
   }
 
+=======
+>>>>>>> cc78c84f99aadcf5aa59dcbdba862171f267173b
   @Override
   public void stop() {
     for (DataRegion vsg : dataRegionMap.values()) {
       if (vsg != null) {
         ThreadUtils.stopThreadPool(
             vsg.getTimedCompactionScheduleTask(), ThreadName.COMPACTION_SCHEDULE);
-        ThreadUtils.stopThreadPool(vsg.getWALTrimScheduleTask(), ThreadName.WAL_TRIM);
       }
     }
     syncCloseAllProcessor();
@@ -390,12 +379,7 @@ public class StorageEngineV2 implements IService {
         seqMemtableTimedFlushCheckThread, ThreadName.TIMED_FlUSH_SEQ_MEMTABLE);
     ThreadUtils.stopThreadPool(
         unseqMemtableTimedFlushCheckThread, ThreadName.TIMED_FlUSH_UNSEQ_MEMTABLE);
-    ThreadUtils.stopThreadPool(tsFileTimedCloseCheckThread, ThreadName.TIMED_CLOSE_TSFILE);
     recoveryThreadPool.shutdownNow();
-    // TODO(Removed from new wal)
-    //    for (PartialPath storageGroup : IoTDB.schemaEngine.getAllStorageGroupPaths()) {
-    //      this.releaseWalDirectByteBufferPoolInOneStorageGroup(storageGroup);
-    //    }
     dataRegionMap.clear();
   }
 
@@ -404,8 +388,13 @@ public class StorageEngineV2 implements IService {
     try {
       for (DataRegion dataRegion : dataRegionMap.values()) {
         ThreadUtils.stopThreadPool(
+<<<<<<< HEAD
             dataRegion.getTimedCompactionScheduleTask(), ThreadName.COMPACTION_SCHEDULE);
         ThreadUtils.stopThreadPool(dataRegion.getWALTrimScheduleTask(), ThreadName.WAL_TRIM);
+=======
+            virtualStorageGroupProcessor.getTimedCompactionScheduleTask(),
+            ThreadName.COMPACTION_SCHEDULE);
+>>>>>>> cc78c84f99aadcf5aa59dcbdba862171f267173b
       }
       forceCloseAllProcessor();
     } catch (TsFileProcessorException e) {
@@ -414,7 +403,6 @@ public class StorageEngineV2 implements IService {
     shutdownTimedService(ttlCheckThread, "TTlCheckThread");
     shutdownTimedService(seqMemtableTimedFlushCheckThread, "SeqMemtableTimedFlushCheckThread");
     shutdownTimedService(unseqMemtableTimedFlushCheckThread, "UnseqMemtableTimedFlushCheckThread");
-    shutdownTimedService(tsFileTimedCloseCheckThread, "TsFileTimedCloseCheckThread");
     recoveryThreadPool.shutdownNow();
     dataRegionMap.clear();
   }
