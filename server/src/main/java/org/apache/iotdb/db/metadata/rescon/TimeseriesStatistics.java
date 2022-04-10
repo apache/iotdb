@@ -71,6 +71,6 @@ public class TimeseriesStatistics {
   }
 
   public void clear() {
-    this.totalSeriesNumber.set(0);
+    this.totalSeriesNumber.getAndSet(0);
   }
 }
