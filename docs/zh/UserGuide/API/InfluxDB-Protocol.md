@@ -183,7 +183,7 @@ time                address name phone sex socre
    (2)插入第二条数据时，由于此时记录 tag 顺序的 table 中已经有了三个 tag key，因此需要将出现的第四个 tag key=address 更新记录。IoTDB 对应的记录 tag 顺序的 table 为：
 
    | database | measurement | tag_key | order |
-       | -------- | ----------- | ------- | ----- |
+      | -------- | ----------- | ------- | ----- |
    | monitor | student     | name    | 0     |
    | monitor | student     | phone   | 1     |
    | monitor | student     | sex     | 2     |
@@ -192,7 +192,7 @@ time                address name phone sex socre
    (3)插入第三条数据时，此时四个 tag key 都已经记录过，所以不需要更新记录，IoTDB 对应的记录 tag 顺序的 table 为：
 
    | database | measurement | tag_key | order |
-       | -------- | ----------- | ------- | ----- |
+      | -------- | ----------- | ------- | ----- |
    | monitor | student     | name    | 0     |
    | monitor | student     | phone   | 1     |
    | monitor | student     | sex     | 2     |
