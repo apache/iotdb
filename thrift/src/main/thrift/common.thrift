@@ -18,7 +18,7 @@
  */
 
 namespace java org.apache.iotdb.common.rpc.thrift
-namespace py iotdb.common.thrift.rpc
+namespace py iotdb.thrift.rpc
 
  struct EndPoint {
    1: required string ip
