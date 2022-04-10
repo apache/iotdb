@@ -19,10 +19,13 @@
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.mpp.sql.planner.plan.IOutputPlanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.ColumnHeader;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import com.google.common.collect.ImmutableList;
@@ -35,7 +38,7 @@ import java.util.List;
  * In general, the parameter in sortNode should be pushed down to the upstream operators. In our
  * optimized logical query plan, the sortNode should not appear.
  */
-public class SortNode extends ProcessNode {
+public class SortNode extends ProcessNode implements IOutputPlanNode {
 
   private PlanNode child;
 
@@ -66,7 +69,7 @@ public class SortNode extends ProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new SortNode(getId(), orderBy, sortOrder);
+    return new SortNode(getPlanNodeId(), orderBy, sortOrder);
   }
 
   @Override
@@ -75,8 +78,18 @@ public class SortNode extends ProcessNode {
   }
 
   @Override
+  public List<ColumnHeader> getOutputColumnHeaders() {
+    return ((IOutputPlanNode) child).getOutputColumnHeaders();
+  }
+
+  @Override
   public List<String> getOutputColumnNames() {
-    return child.getOutputColumnNames();
+    return ((IOutputPlanNode) child).getOutputColumnNames();
+  }
+
+  @Override
+  public List<TSDataType> getOutputColumnTypes() {
+    return ((IOutputPlanNode) child).getOutputColumnTypes();
   }
 
   public OrderBy getSortOrder() {
@@ -97,7 +110,7 @@ public class SortNode extends ProcessNode {
 
   @TestOnly
   public Pair<String, List<String>> print() {
-    String title = String.format("[SortNode (%s)]", this.getId());
+    String title = String.format("[SortNode (%s)]", this.getPlanNodeId());
     List<String> attributes = new ArrayList<>();
     attributes.add("SortOrder: " + (this.getSortOrder() == null ? "null" : this.getSortOrder()));
     return new Pair<>(title, attributes);

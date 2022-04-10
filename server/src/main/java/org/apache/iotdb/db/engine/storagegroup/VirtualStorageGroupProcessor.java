@@ -61,6 +61,8 @@ import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.IDTableManager;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
@@ -76,9 +78,13 @@ import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.service.metrics.Tag;
 import org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
-import org.apache.iotdb.db.utils.MmapUtil;
 import org.apache.iotdb.db.utils.UpgradeUtils;
-import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
+import org.apache.iotdb.db.wal.recover.WALRecoverManager;
+import org.apache.iotdb.db.wal.recover.file.SealedTsFileRecoverPerformer;
+import org.apache.iotdb.db.wal.recover.file.UnsealedTsFileRecoverPerformer;
+import org.apache.iotdb.db.wal.utils.WALMode;
+import org.apache.iotdb.db.wal.utils.listener.WALFlushListener;
+import org.apache.iotdb.db.wal.utils.listener.WALRecoverListener;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -97,15 +103,12 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.MappedByteBuffer;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
-import java.util.Deque;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -116,6 +119,7 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -160,8 +164,6 @@ public class VirtualStorageGroupProcessor {
   /** indicating the file to be loaded overlap with some files. */
   private static final int POS_OVERLAP = -3;
 
-  private static final int WAL_BUFFER_SIZE =
-      IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2;
   private final boolean enableMemControl = config.isEnableMemControl();
   /**
    * a read write lock for guaranteeing concurrent safety when accessing all fields in this class
@@ -181,8 +183,6 @@ public class VirtualStorageGroupProcessor {
   /** time partition id in the storage group -> tsFileProcessor for this time partition */
   private final TreeMap<Long, TsFileProcessor> workUnsequenceTsFileProcessors = new TreeMap<>();
 
-  private final Deque<ByteBuffer> walByteBufferPool = new LinkedList<>();
-
   // upgrading sequence TsFile resource list
   private List<TsFileResource> upgradeSeqFileList = new LinkedList<>();
   /** sequence tsfile processors which are closing */
@@ -196,6 +196,8 @@ public class VirtualStorageGroupProcessor {
       new CopyOnReadLinkedList<>();
 
   private AtomicInteger upgradeFileCount = new AtomicInteger();
+
+  private AtomicBoolean isSettling = new AtomicBoolean();
 
   /** virtual storage group id */
   private String virtualStorageGroupId;
@@ -240,18 +242,6 @@ public class VirtualStorageGroupProcessor {
   /** flush listeners */
   private List<FlushListener> customFlushListeners = Collections.emptyList();
 
-  private int currentWalPoolSize = 0;
-
-  // this field is used to avoid when one writer release bytebuffer back to pool,
-  // and the next writer has already arrived, but the check thread get the lock first, it find the
-  // pool
-  // is not empty, so it free the memory. When the next writer get the lock, it will apply the
-  // memory again.
-  // So our free memory strategy is only when the expected size less than the current pool size
-  // and the pool is not empty and the time interval since the pool is not empty is larger than
-  // DEFAULT_POOL_TRIM_INTERVAL_MILLIS
-  private long timeWhenPoolNotEmpty = Long.MAX_VALUE;
-
   private ILastFlushTimeManager lastFlushTimeManager;
 
   /**
@@ -261,104 +251,10 @@ public class VirtualStorageGroupProcessor {
   private String insertWriteLockHolder = "";
 
   private ScheduledExecutorService timedCompactionScheduleTask;
-  private ScheduledExecutorService walTrimScheduleTask;
 
   public static final long COMPACTION_TASK_SUBMIT_DELAY = 20L * 1000L;
 
   private IDTable idTable;
-
-  /**
-   * get the direct byte buffer from pool, each fetch contains two ByteBuffer, return null if fetch
-   * fails
-   */
-  public ByteBuffer[] getWalDirectByteBuffer() {
-    ByteBuffer[] res = new ByteBuffer[2];
-    synchronized (walByteBufferPool) {
-      long startTime = System.nanoTime();
-      int MAX_WAL_BYTEBUFFER_NUM =
-          config.getConcurrentWritingTimePartition()
-              * config.getMaxWalBytebufferNumForEachPartition();
-      while (walByteBufferPool.isEmpty() && currentWalPoolSize + 2 > MAX_WAL_BYTEBUFFER_NUM) {
-        try {
-          walByteBufferPool.wait();
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
-          logger.error(
-              "getDirectByteBuffer occurs error while waiting for DirectByteBuffer" + "group {}-{}",
-              logicalStorageGroupName,
-              virtualStorageGroupId,
-              e);
-        }
-        logger.info(
-            "Waiting {} ms for wal direct byte buffer.",
-            (System.nanoTime() - startTime) / 1_000_000);
-      }
-      // If the queue is not empty, it must have at least two.
-      if (!walByteBufferPool.isEmpty()) {
-        res[0] = walByteBufferPool.pollFirst();
-        res[1] = walByteBufferPool.pollFirst();
-      } else {
-        // if the queue is empty and current size is less than MAX_BYTEBUFFER_NUM
-        // we can construct another two more new byte buffer
-        try {
-          res[0] = ByteBuffer.allocateDirect(WAL_BUFFER_SIZE);
-          res[1] = ByteBuffer.allocateDirect(WAL_BUFFER_SIZE);
-          currentWalPoolSize += 2;
-        } catch (OutOfMemoryError e) {
-          logger.error("Allocate ByteBuffers error", e);
-          if (res[0] != null) {
-            MmapUtil.clean((MappedByteBuffer) res[0]);
-          }
-          if (res[1] != null) {
-            MmapUtil.clean((MappedByteBuffer) res[1]);
-          }
-          return null;
-        }
-      }
-      // if the pool is empty, set the time back to MAX_VALUE
-      if (walByteBufferPool.isEmpty()) {
-        timeWhenPoolNotEmpty = Long.MAX_VALUE;
-      }
-    }
-    return res;
-  }
-
-  /** put the byteBuffer back to pool */
-  public void releaseWalBuffer(ByteBuffer[] byteBuffers) {
-    for (ByteBuffer byteBuffer : byteBuffers) {
-      byteBuffer.clear();
-    }
-    synchronized (walByteBufferPool) {
-      // if the pool is empty before, update the time
-      if (walByteBufferPool.isEmpty()) {
-        timeWhenPoolNotEmpty = System.nanoTime();
-      }
-      walByteBufferPool.addLast(byteBuffers[0]);
-      walByteBufferPool.addLast(byteBuffers[1]);
-      walByteBufferPool.notifyAll();
-    }
-  }
-
-  /** trim the size of the pool and release the memory of needless direct byte buffer */
-  private void trimTask() {
-    synchronized (walByteBufferPool) {
-      int expectedSize =
-          (workSequenceTsFileProcessors.size() + workUnsequenceTsFileProcessors.size()) * 2;
-      // the unit is ms
-      long poolNotEmptyIntervalInMS = (System.nanoTime() - timeWhenPoolNotEmpty) / 1_000_000;
-      // only when the expected size less than the current pool size
-      // and the pool is not empty and the time interval since the pool is not empty is larger than
-      // 10s
-      // we will trim the size to expectedSize until the pool is empty
-      while (expectedSize < currentWalPoolSize
-          && !walByteBufferPool.isEmpty()
-          && poolNotEmptyIntervalInMS >= config.getWalPoolTrimIntervalInMS()) {
-        MmapUtil.clean((MappedByteBuffer) walByteBufferPool.removeLast());
-        MmapUtil.clean((MappedByteBuffer) walByteBufferPool.removeLast());
-        currentWalPoolSize -= 2;
-      }
-    }
-  }
 
   /**
    * constrcut a storage group processor
@@ -415,20 +311,6 @@ public class VirtualStorageGroupProcessor {
               Tag.NAME.toString(),
               "storageGroup_" + getLogicalStorageGroupName());
     }
-
-    // start trim task at last
-    walTrimScheduleTask =
-        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-            ThreadName.WAL_TRIM.getName()
-                + "-"
-                + logicalStorageGroupName
-                + "-"
-                + virtualStorageGroupId);
-    walTrimScheduleTask.scheduleWithFixedDelay(
-        this::trimTask,
-        config.getWalPoolTrimIntervalInMS(),
-        config.getWalPoolTrimIntervalInMS(),
-        TimeUnit.MILLISECONDS);
   }
 
   public String getLogicalStorageGroupName() {
@@ -452,10 +334,18 @@ public class VirtualStorageGroupProcessor {
     return ret;
   }
 
+  public AtomicBoolean getIsSettling() {
+    return isSettling;
+  }
+
+  public void setSettling(boolean isSettling) {
+    this.isSettling.set(isSettling);
+  }
+
   /** this class is used to store recovering context */
-  private class RecoveryContext {
+  private class VSGRecoveryContext {
     /** number of files to be recovered */
-    private final long filesToRecoverNum;
+    private final long numOfFilesToRecover;
     /** when the change of recoveredFilesNum exceeds this, log check will be triggered */
     private final long filesNumLogCheckTrigger;
     /** number of already recovered files */
@@ -465,10 +355,10 @@ public class VirtualStorageGroupProcessor {
     /** last recovery log files num */
     private long lastLogCheckFilesNum;
 
-    public RecoveryContext(long filesToRecoverNum, long recoveredFilesNum) {
-      this.filesToRecoverNum = filesToRecoverNum;
-      this.recoveredFilesNum = recoveredFilesNum;
-      this.filesNumLogCheckTrigger = this.filesToRecoverNum / 100;
+    public VSGRecoveryContext(long numOfFilesToRecover) {
+      this.numOfFilesToRecover = numOfFilesToRecover;
+      this.recoveredFilesNum = 0;
+      this.filesNumLogCheckTrigger = this.numOfFilesToRecover / 100;
       this.lastLogTime = System.currentTimeMillis();
       this.lastLogCheckFilesNum = 0;
     }
@@ -484,7 +374,7 @@ public class VirtualStorageGroupProcessor {
               "The virtual storage group {}[{}] has recovered {}%, please wait a moment.",
               logicalStorageGroupName,
               virtualStorageGroupId,
-              recoveredFilesNum * 1.0 / filesToRecoverNum);
+              recoveredFilesNum * 1.0 / numOfFilesToRecover);
           lastLogTime = System.currentTimeMillis();
         }
       }
@@ -518,17 +408,64 @@ public class VirtualStorageGroupProcessor {
 
       // split by partition so that we can find the last file of each partition and decide to
       // close it or not
-      RecoveryContext recoveryContext =
-          new RecoveryContext(tmpSeqTsFiles.size() + tmpUnseqTsFiles.size(), 0);
+      VSGRecoveryContext VSGRecoveryContext =
+          new VSGRecoveryContext(tmpSeqTsFiles.size() + tmpUnseqTsFiles.size());
       Map<Long, List<TsFileResource>> partitionTmpSeqTsFiles =
           splitResourcesByPartition(tmpSeqTsFiles);
       Map<Long, List<TsFileResource>> partitionTmpUnseqTsFiles =
           splitResourcesByPartition(tmpUnseqTsFiles);
+      // recover unsealed TsFiles
+      List<WALRecoverListener> recoverListeners = new ArrayList<>();
       for (List<TsFileResource> value : partitionTmpSeqTsFiles.values()) {
-        recoverTsFiles(value, recoveryContext, true);
+        // tsFiles without resource file are unsealed
+        while (!value.isEmpty()) {
+          TsFileResource tsFileResource = value.get(value.size() - 1);
+          if (tsFileResource.resourceFileExists()) {
+            break;
+          } else {
+            value.remove(value.size() - 1);
+            WALRecoverListener recoverListener =
+                recoverUnsealedTsFile(tsFileResource, VSGRecoveryContext, true);
+            recoverListeners.add(recoverListener);
+          }
+        }
       }
       for (List<TsFileResource> value : partitionTmpUnseqTsFiles.values()) {
-        recoverTsFiles(value, recoveryContext, false);
+        // tsFiles without resource file are unsealed
+        while (!value.isEmpty()) {
+          TsFileResource tsFileResource = value.get(value.size() - 1);
+          if (tsFileResource.resourceFileExists()) {
+            break;
+          } else {
+            value.remove(value.size() - 1);
+            WALRecoverListener recoverListener =
+                recoverUnsealedTsFile(tsFileResource, VSGRecoveryContext, false);
+            recoverListeners.add(recoverListener);
+          }
+        }
+      }
+      WALRecoverManager.getInstance().getAllVsgScannedLatch().countDown();
+      // recover sealed TsFiles
+      for (List<TsFileResource> value : partitionTmpSeqTsFiles.values()) {
+        for (TsFileResource tsFileResource : value) {
+          recoverSealedTsFiles(tsFileResource, VSGRecoveryContext, true);
+        }
+      }
+      for (List<TsFileResource> value : partitionTmpUnseqTsFiles.values()) {
+        for (TsFileResource tsFileResource : value) {
+          recoverSealedTsFiles(tsFileResource, VSGRecoveryContext, false);
+        }
+      }
+      // wait until all unsealed TsFiles have been recovered
+      for (WALRecoverListener recoverListener : recoverListeners) {
+        if (recoverListener.waitForResult() == WALRecoverListener.Status.FAILURE) {
+          logger.error(
+              "Fail to recover unsealed TsFile {}, skip it.",
+              recoverListener.getFilePath(),
+              recoverListener.getCause());
+        }
+        // update VSGRecoveryContext
+        VSGRecoveryContext.incrementRecoveredFilesNum();
       }
       for (TsFileResource resource : tsFileManager.getTsFileList(true)) {
         long partitionNum = resource.getTimePartition();
@@ -703,7 +640,6 @@ public class VirtualStorageGroupProcessor {
     for (File f : upgradeFiles) {
       TsFileResource fileResource = new TsFileResource(f);
       fileResource.setStatus(TsFileResourceStatus.CLOSED);
-      ;
       // make sure the flush command is called before IoTDB is down.
       fileResource.deserializeFromOldFile();
       upgradeRet.add(fileResource);
@@ -743,113 +679,94 @@ public class VirtualStorageGroupProcessor {
     }
   }
 
-  private void recoverTsFiles(List<TsFileResource> tsFiles, RecoveryContext context, boolean isSeq)
-      throws IOException {
-    for (int i = 0; i < tsFiles.size(); i++) {
-      // update recovery context
-      context.incrementRecoveredFilesNum();
+  /** submit unsealed TsFile to WALRecoverManager */
+  private WALRecoverListener recoverUnsealedTsFile(
+      TsFileResource unsealedTsFile, VSGRecoveryContext context, boolean isSeq) {
+    UnsealedTsFileRecoverPerformer recoverPerformer =
+        new UnsealedTsFileRecoverPerformer(
+            unsealedTsFile, isSeq, idTable, this::callbackAfterUnsealedTsFileRecovered);
+    // remember to close UnsealedTsFileRecoverPerformer
+    return WALRecoverManager.getInstance().addRecoverPerformer(recoverPerformer);
+  }
 
-      TsFileResource tsFileResource = tsFiles.get(i);
-      long timePartitionId = tsFileResource.getTimePartition();
-
-      TsFileRecoverPerformer recoverPerformer =
-          new TsFileRecoverPerformer(
-              logicalStorageGroupName
-                  + File.separator
-                  + virtualStorageGroupId
-                  + FILE_NAME_SEPARATOR,
-              tsFileResource,
-              isSeq,
-              i == tsFiles.size() - 1,
-              this);
-
-      RestorableTsFileIOWriter writer = null;
+  private void callbackAfterUnsealedTsFileRecovered(
+      UnsealedTsFileRecoverPerformer recoverPerformer) {
+    TsFileResource tsFileResource = recoverPerformer.getTsFileResource();
+    if (!recoverPerformer.canWrite()) {
+      // cannot write, just close it
       try {
-        // this tsfile is not zero level, no need to perform redo wal
-        if (TsFileResource.getInnerCompactionCount(tsFileResource.getTsFile().getName()) > 0) {
-          writer =
-              recoverPerformer.recover(false, this::getWalDirectByteBuffer, this::releaseWalBuffer);
-          if (writer != null && writer.hasCrashed()) {
-            tsFileManager.addForRecover(tsFileResource, isSeq);
-          } else {
-            tsFileResource.setStatus(TsFileResourceStatus.CLOSED);
-            tsFileManager.add(tsFileResource, isSeq);
-            tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
+        tsFileResource.close();
+      } catch (IOException e) {
+        logger.error("Fail to close TsFile {} when recovering", tsFileResource.getTsFile(), e);
+      }
+      tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
+    } else {
+      // the last file is not closed, continue writing to it
+      RestorableTsFileIOWriter writer = recoverPerformer.getWriter();
+      long timePartitionId = tsFileResource.getTimePartition();
+      boolean isSeq = recoverPerformer.isSequence();
+      TsFileProcessor tsFileProcessor =
+          new TsFileProcessor(
+              virtualStorageGroupId,
+              storageGroupInfo,
+              tsFileResource,
+              this::closeUnsealedTsFileProcessorCallBack,
+              isSeq ? this::updateLatestFlushTimeCallback : this::unsequenceFlushCallback,
+              isSeq,
+              writer);
+      if (isSeq) {
+        workSequenceTsFileProcessors.put(timePartitionId, tsFileProcessor);
+      } else {
+        workUnsequenceTsFileProcessors.put(timePartitionId, tsFileProcessor);
+      }
+      tsFileResource.setProcessor(tsFileProcessor);
+      tsFileResource.removeResourceFile();
+      tsFileProcessor.setTimeRangeId(timePartitionId);
+      writer.makeMetadataVisible();
+      if (enableMemControl) {
+        TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(storageGroupInfo);
+        tsFileProcessor.setTsFileProcessorInfo(tsFileProcessorInfo);
+        this.storageGroupInfo.initTsFileProcessorInfo(tsFileProcessor);
+        // get chunkMetadata size
+        long chunkMetadataSize = 0;
+        for (Map<String, List<ChunkMetadata>> metaMap : writer.getMetadatasForQuery().values()) {
+          for (List<ChunkMetadata> metadatas : metaMap.values()) {
+            for (ChunkMetadata chunkMetadata : metadatas) {
+              chunkMetadataSize += chunkMetadata.calculateRamSize();
+            }
           }
-          continue;
-        } else {
-          writer =
-              recoverPerformer.recover(true, this::getWalDirectByteBuffer, this::releaseWalBuffer);
         }
+        tsFileProcessorInfo.addTSPMemCost(chunkMetadataSize);
+      }
+    }
+    tsFileManager.add(tsFileResource, recoverPerformer.isSequence());
+  }
 
-        if (i != tsFiles.size() - 1 || writer == null || !writer.canWrite()) {
-          // not the last file or cannot write, just close it
-          tsFileResource.close();
-          tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
-        } else if (writer.canWrite()) {
-          // the last file is not closed, continue writing to in
-          TsFileProcessor tsFileProcessor;
-          if (isSeq) {
-            tsFileProcessor =
-                new TsFileProcessor(
-                    virtualStorageGroupId,
-                    storageGroupInfo,
-                    tsFileResource,
-                    this::closeUnsealedTsFileProcessorCallBack,
-                    this::updateLatestFlushTimeCallback,
-                    true,
-                    writer);
-            if (enableMemControl) {
-              TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(storageGroupInfo);
-              tsFileProcessor.setTsFileProcessorInfo(tsFileProcessorInfo);
-              this.storageGroupInfo.initTsFileProcessorInfo(tsFileProcessor);
-            }
-            workSequenceTsFileProcessors.put(timePartitionId, tsFileProcessor);
-          } else {
-            tsFileProcessor =
-                new TsFileProcessor(
-                    virtualStorageGroupId,
-                    storageGroupInfo,
-                    tsFileResource,
-                    this::closeUnsealedTsFileProcessorCallBack,
-                    this::unsequenceFlushCallback,
-                    false,
-                    writer);
-            if (enableMemControl) {
-              TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(storageGroupInfo);
-              tsFileProcessor.setTsFileProcessorInfo(tsFileProcessorInfo);
-              this.storageGroupInfo.initTsFileProcessorInfo(tsFileProcessor);
-            }
-            workUnsequenceTsFileProcessors.put(timePartitionId, tsFileProcessor);
-          }
-          tsFileResource.setProcessor(tsFileProcessor);
-          tsFileResource.removeResourceFile();
-          tsFileProcessor.setTimeRangeId(timePartitionId);
-          writer.makeMetadataVisible();
-          if (enableMemControl) {
-            // get chunkMetadata size
-            long chunkMetadataSize = 0;
-            for (Map<String, List<ChunkMetadata>> metaMap :
-                writer.getMetadatasForQuery().values()) {
-              for (List<ChunkMetadata> metadatas : metaMap.values()) {
-                for (ChunkMetadata chunkMetadata : metadatas) {
-                  chunkMetadataSize += chunkMetadata.calculateRamSize();
-                }
-              }
-            }
-            tsFileProcessor.getTsFileProcessorInfo().addTSPMemCost(chunkMetadataSize);
-          }
-        }
-        tsFileManager.add(tsFileResource, isSeq);
-      } catch (StorageGroupProcessorException | IOException e) {
-        logger.warn(
-            "Skip TsFile: {} because of error in recover: ", tsFileResource.getTsFilePath(), e);
-        continue;
-      } finally {
-        if (writer != null) {
-          writer.close();
+  /** recover sealed TsFile */
+  private void recoverSealedTsFiles(
+      TsFileResource sealedTsFile, VSGRecoveryContext context, boolean isSeq) {
+    try (SealedTsFileRecoverPerformer recoverPerformer =
+        new SealedTsFileRecoverPerformer(sealedTsFile)) {
+      recoverPerformer.recover();
+      // pick up crashed compaction target files
+      if (recoverPerformer.hasCrashed()) {
+        if (TsFileResource.getInnerCompactionCount(sealedTsFile.getTsFile().getName()) > 0) {
+          tsFileManager.addForRecover(sealedTsFile, isSeq);
+          return;
+        } else {
+          logger.warn(
+              "Sealed TsFile {} has crashed at zero level, truncate and recover it.",
+              sealedTsFile.getTsFilePath());
         }
       }
+      sealedTsFile.close();
+      tsFileManager.add(sealedTsFile, isSeq);
+      tsFileResourceManager.registerSealedTsFileResource(sealedTsFile);
+    } catch (StorageGroupProcessorException | IOException e) {
+      logger.error("Fail to recover sealed TsFile {}, skip it.", sealedTsFile.getTsFilePath(), e);
+    } finally {
+      // update recovery context
+      context.incrementRecoveredFilesNum();
     }
   }
 
@@ -904,6 +821,44 @@ public class VirtualStorageGroupProcessor {
       insertToTsFileProcessor(insertRowPlan, isSequence, timePartitionId);
       // fire trigger after insertion
       TriggerEngine.fire(TriggerEvent.AFTER_INSERT, insertRowPlan);
+    } finally {
+      writeUnlock();
+    }
+  }
+
+  // TODO: (New Insert)
+  public void insert(InsertRowNode insertRowNode)
+      throws WriteProcessException, TriggerExecutionException {
+    // reject insertions that are out of ttl
+    if (!isAlive(insertRowNode.getTime())) {
+      throw new OutOfTTLException(insertRowNode.getTime(), (System.currentTimeMillis() - dataTTL));
+    }
+    writeLock("InsertRow");
+    try {
+      // init map
+      long timePartitionId = StorageEngine.getTimePartition(insertRowNode.getTime());
+
+      lastFlushTimeManager.ensureFlushedTimePartition(timePartitionId);
+
+      boolean isSequence =
+          insertRowNode.getTime()
+              > lastFlushTimeManager.getFlushedTime(
+                  timePartitionId, insertRowNode.getDevicePath().getFullPath());
+
+      // is unsequence and user set config to discard out of order data
+      if (!isSequence
+          && IoTDBDescriptor.getInstance().getConfig().isEnableDiscardOutOfOrderData()) {
+        return;
+      }
+
+      lastFlushTimeManager.ensureLastTimePartition(timePartitionId);
+
+      // fire trigger before insertion
+      // TriggerEngine.fire(TriggerEvent.BEFORE_INSERT, insertRowNode);
+      // insert to sequence or unSequence file
+      insertToTsFileProcessor(insertRowNode, isSequence, timePartitionId);
+      // fire trigger after insertion
+      // TriggerEngine.fire(TriggerEvent.AFTER_INSERT, insertRowNode);
     } finally {
       writeUnlock();
     }
@@ -1028,6 +983,102 @@ public class VirtualStorageGroupProcessor {
     }
   }
 
+  /**
+   * Insert a tablet (rows belonging to the same devices) into this storage group.
+   *
+   * @throws BatchProcessException if some of the rows failed to be inserted
+   */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
+  public void insertTablet(InsertTabletNode insertTabletNode)
+      throws BatchProcessException, TriggerExecutionException {
+
+    writeLock("insertTablet");
+    try {
+      TSStatus[] results = new TSStatus[insertTabletNode.getRowCount()];
+      Arrays.fill(results, RpcUtils.SUCCESS_STATUS);
+      boolean noFailure = true;
+
+      /*
+       * assume that batch has been sorted by client
+       */
+      int loc = 0;
+      while (loc < insertTabletNode.getRowCount()) {
+        long currTime = insertTabletNode.getTimes()[loc];
+        // skip points that do not satisfy TTL
+        if (!isAlive(currTime)) {
+          results[loc] =
+              RpcUtils.getStatus(
+                  TSStatusCode.OUT_OF_TTL_ERROR,
+                  "time " + currTime + " in current line is out of TTL: " + dataTTL);
+          loc++;
+          noFailure = false;
+        } else {
+          break;
+        }
+      }
+      // loc pointing at first legal position
+      if (loc == insertTabletNode.getRowCount()) {
+        throw new BatchProcessException(results);
+      }
+
+      //      TODO(Trigger)// fire trigger before insertion
+      //      final int firePosition = loc;
+      //      TriggerEngine.fire(TriggerEvent.BEFORE_INSERT, insertTabletPlan, firePosition);
+
+      // before is first start point
+      int before = loc;
+      // before time partition
+      long beforeTimePartition =
+          StorageEngine.getTimePartition(insertTabletNode.getTimes()[before]);
+      // init map
+      long lastFlushTime =
+          lastFlushTimeManager.ensureFlushedTimePartitionAndInit(
+              beforeTimePartition, insertTabletNode.getDevicePath().getFullPath(), Long.MIN_VALUE);
+      // if is sequence
+      boolean isSequence = false;
+      while (loc < insertTabletNode.getRowCount()) {
+        long time = insertTabletNode.getTimes()[loc];
+        // always in some time partition
+        // judge if we should insert sequence
+        if (!isSequence && time > lastFlushTime) {
+          // insert into unsequence and then start sequence
+          if (!IoTDBDescriptor.getInstance().getConfig().isEnableDiscardOutOfOrderData()) {
+            noFailure =
+                insertTabletToTsFileProcessor(
+                        insertTabletNode, before, loc, false, results, beforeTimePartition)
+                    && noFailure;
+          }
+          before = loc;
+          isSequence = true;
+        }
+        loc++;
+      }
+
+      // do not forget last part
+      if (before < loc
+          && (isSequence
+              || !IoTDBDescriptor.getInstance().getConfig().isEnableDiscardOutOfOrderData())) {
+        noFailure =
+            insertTabletToTsFileProcessor(
+                    insertTabletNode, before, loc, isSequence, results, beforeTimePartition)
+                && noFailure;
+      }
+      long globalLatestFlushedTime =
+          lastFlushTimeManager.getGlobalFlushedTime(insertTabletNode.getDevicePath().getFullPath());
+      // TODO:LAST CACHE
+      //      tryToUpdateBatchInsertLastCache(insertTabletNode, globalLatestFlushedTime);
+
+      if (!noFailure) {
+        throw new BatchProcessException(results);
+      }
+
+      //      TODO: trigger // fire trigger after insertion
+      //      TriggerEngine.fire(TriggerEvent.AFTER_INSERT, insertTabletPlan, firePosition);
+    } finally {
+      writeUnlock();
+    }
+  }
+
   /** @return whether the given time falls in ttl */
   private boolean isAlive(long time) {
     return dataTTL == Long.MAX_VALUE || (System.currentTimeMillis() - time) <= dataTTL;
@@ -1095,6 +1146,68 @@ public class VirtualStorageGroupProcessor {
     return true;
   }
 
+  /**
+   * insert batch to tsfile processor thread-safety that the caller need to guarantee The rows to be
+   * inserted are in the range [start, end) Null value in each column values will be replaced by the
+   * subsequent non-null value, e.g., {1, null, 3, null, 5} will be {1, 3, 5, null, 5}
+   *
+   * @param insertTabletNode insert a tablet of a device
+   * @param sequence whether is sequence
+   * @param start start index of rows to be inserted in insertTabletPlan
+   * @param end end index of rows to be inserted in insertTabletPlan
+   * @param results result array
+   * @param timePartitionId time partition id
+   * @return false if any failure occurs when inserting the tablet, true otherwise
+   */
+  private boolean insertTabletToTsFileProcessor(
+      InsertTabletNode insertTabletNode,
+      int start,
+      int end,
+      boolean sequence,
+      TSStatus[] results,
+      long timePartitionId) {
+    // return when start >= end
+    if (start >= end) {
+      return true;
+    }
+
+    TsFileProcessor tsFileProcessor = getOrCreateTsFileProcessor(timePartitionId, sequence);
+    if (tsFileProcessor == null) {
+      for (int i = start; i < end; i++) {
+        results[i] =
+            RpcUtils.getStatus(
+                TSStatusCode.INTERNAL_SERVER_ERROR,
+                "can not create TsFileProcessor, timePartitionId: " + timePartitionId);
+      }
+      return false;
+    }
+
+    try {
+      tsFileProcessor.insertTablet(insertTabletNode, start, end, results);
+    } catch (WriteProcessRejectException e) {
+      logger.warn("insert to TsFileProcessor rejected, {}", e.getMessage());
+      return false;
+    } catch (WriteProcessException e) {
+      logger.error("insert to TsFileProcessor error ", e);
+      return false;
+    }
+
+    lastFlushTimeManager.ensureLastTimePartition(timePartitionId);
+    // try to update the latest time of the device of this tsRecord
+    if (sequence) {
+      lastFlushTimeManager.updateLastTime(
+          timePartitionId,
+          insertTabletNode.getDevicePath().getFullPath(),
+          insertTabletNode.getTimes()[end - 1]);
+    }
+
+    // check memtable size and may async try to flush the work memtable
+    if (tsFileProcessor.shouldFlush()) {
+      fileFlushPolicy.apply(this, tsFileProcessor, sequence);
+    }
+    return true;
+  }
+
   private void tryToUpdateBatchInsertLastCache(InsertTabletPlan plan, Long latestFlushedTime) {
     if (!IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled()) {
       return;
@@ -1145,6 +1258,31 @@ public class VirtualStorageGroupProcessor {
     }
   }
 
+  private void insertToTsFileProcessor(
+      InsertRowNode insertRowNode, boolean sequence, long timePartitionId)
+      throws WriteProcessException {
+    TsFileProcessor tsFileProcessor = getOrCreateTsFileProcessor(timePartitionId, sequence);
+    if (tsFileProcessor == null) {
+      return;
+    }
+
+    tsFileProcessor.insert(insertRowNode);
+
+    // try to update the latest time of the device of this tsRecord
+    lastFlushTimeManager.updateLastTime(
+        timePartitionId, insertRowNode.getDevicePath().getFullPath(), insertRowNode.getTime());
+
+    long globalLatestFlushTime =
+        lastFlushTimeManager.getGlobalFlushedTime(insertRowNode.getDevicePath().getFullPath());
+
+    // tryToUpdateInsertLastCache(insertRowNode, globalLatestFlushTime);
+
+    // check memtable size and may asyncTryToFlush the work memtable
+    if (tsFileProcessor.shouldFlush()) {
+      fileFlushPolicy.apply(this, tsFileProcessor, sequence);
+    }
+  }
+
   private void tryToUpdateInsertLastCache(InsertRowPlan plan, Long latestFlushedTime) {
     if (!IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled()) {
       return;
@@ -1171,9 +1309,32 @@ public class VirtualStorageGroupProcessor {
   }
 
   /**
-   * mem control module use this method to flush memtable
+   * WAL module uses this method to flush memTable
    *
-   * @param tsFileProcessor tsfile processor in which memtable to be flushed
+   * @return True if flush task is submitted successfully
+   */
+  public boolean submitAFlushTask(long timeRangeId, boolean sequence) {
+    writeLock("submitAFlushTask");
+    try {
+      TsFileProcessor tsFileProcessor;
+      if (sequence) {
+        tsFileProcessor = workSequenceTsFileProcessors.get(timeRangeId);
+      } else {
+        tsFileProcessor = workUnsequenceTsFileProcessors.get(timeRangeId);
+      }
+      if (tsFileProcessor != null) {
+        fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
+      }
+      return tsFileProcessor != null;
+    } finally {
+      writeUnlock();
+    }
+  }
+
+  /**
+   * mem control module uses this method to flush memTable
+   *
+   * @param tsFileProcessor tsfile processor in which memTable to be flushed
    */
   public void submitAFlushTaskWhenShouldFlush(TsFileProcessor tsFileProcessor) {
     writeLock("submitAFlushTaskWhenShouldFlush");
@@ -1419,16 +1580,6 @@ public class VirtualStorageGroupProcessor {
     }
   }
 
-  /** release wal buffer */
-  public void releaseWalDirectByteBufferPool() {
-    synchronized (walByteBufferPool) {
-      while (!walByteBufferPool.isEmpty()) {
-        MmapUtil.clean((MappedByteBuffer) walByteBufferPool.removeFirst());
-        currentWalPoolSize--;
-      }
-    }
-  }
-
   /** delete tsfile */
   public void syncDeleteDataFiles() {
     logger.info(
@@ -1564,46 +1715,6 @@ public class VirtualStorageGroupProcessor {
     }
   }
 
-  public void timedCloseTsFileProcessor() {
-    writeLock("timedCloseTsFileProcessor");
-    try {
-      List<TsFileProcessor> seqTsFileProcessors =
-          new ArrayList<>(workSequenceTsFileProcessors.values());
-      long timeLowerBound =
-          System.currentTimeMillis() - config.getCloseTsFileIntervalAfterFlushing();
-      for (TsFileProcessor tsFileProcessor : seqTsFileProcessors) {
-        // working memtable is null(no more write ops) and last flush time exceeds close interval
-        if (tsFileProcessor.getWorkMemTableCreatedTime() == Long.MAX_VALUE
-            && tsFileProcessor.getLastWorkMemtableFlushTime() < timeLowerBound) {
-          logger.info(
-              "Exceed tsfile close interval, so close TsFileProcessor of time partition {} in storage group {}[{}]",
-              tsFileProcessor.getTimeRangeId(),
-              logicalStorageGroupName,
-              virtualStorageGroupId);
-          asyncCloseOneTsFileProcessor(true, tsFileProcessor);
-        }
-      }
-
-      List<TsFileProcessor> unSeqTsFileProcessors =
-          new ArrayList<>(workUnsequenceTsFileProcessors.values());
-      timeLowerBound = System.currentTimeMillis() - config.getCloseTsFileIntervalAfterFlushing();
-      for (TsFileProcessor tsFileProcessor : unSeqTsFileProcessors) {
-        // working memtable is null(no more write ops) and last flush time exceeds close interval
-        if (tsFileProcessor.getWorkMemTableCreatedTime() == Long.MAX_VALUE
-            && tsFileProcessor.getLastWorkMemtableFlushTime() < timeLowerBound) {
-          logger.info(
-              "Exceed tsfile close interval, so close TsFileProcessor of time partition {} in storage group {}[{}]",
-              tsFileProcessor.getTimeRangeId(),
-              logicalStorageGroupName,
-              virtualStorageGroupId);
-          asyncCloseOneTsFileProcessor(false, tsFileProcessor);
-        }
-      }
-    } finally {
-      writeUnlock();
-    }
-  }
-
   /** This method will be blocked until all tsfile processors are closed. */
   public void syncCloseAllWorkingTsFileProcessors() {
     synchronized (closeStorageGroupCondition) {
@@ -1725,6 +1836,37 @@ public class VirtualStorageGroupProcessor {
       throw new QueryProcessException(e);
     } finally {
       readUnlock();
+    }
+  }
+
+  /** used for mpp */
+  public QueryDataSource query(
+      List<PartialPath> pathList, String singleDeviceId, QueryContext context, Filter timeFilter)
+      throws QueryProcessException {
+    try {
+      List<TsFileResource> seqResources =
+          getFileResourceListForQuery(
+              tsFileManager.getTsFileList(true),
+              upgradeSeqFileList,
+              pathList,
+              singleDeviceId,
+              context,
+              timeFilter,
+              true);
+      List<TsFileResource> unseqResources =
+          getFileResourceListForQuery(
+              tsFileManager.getTsFileList(false),
+              upgradeUnseqFileList,
+              pathList,
+              singleDeviceId,
+              context,
+              timeFilter,
+              false);
+      QueryDataSource dataSource = new QueryDataSource(seqResources, unseqResources);
+      dataSource.setDataTTL(dataTTL);
+      return dataSource;
+    } catch (MetadataException e) {
+      throw new QueryProcessException(e);
     }
   }
 
@@ -1859,7 +2001,15 @@ public class VirtualStorageGroupProcessor {
       }
 
       // write log to impacted working TsFileProcessors
-      logDeletion(startTime, endTime, path, timePartitionFilter);
+      List<WALFlushListener> walListeners =
+          logDeleteInWAL(startTime, endTime, path, timePartitionFilter);
+
+      for (WALFlushListener walFlushListener : walListeners) {
+        if (walFlushListener.waitForResult() == WALFlushListener.Status.FAILURE) {
+          logger.error("Fail to log delete to wal.", walFlushListener.getCause());
+          throw walFlushListener.getCause();
+        }
+      }
 
       Deletion deletion = new Deletion(path, MERGE_MOD_START_VERSION_NUM, startTime, endTime);
 
@@ -1891,31 +2041,34 @@ public class VirtualStorageGroupProcessor {
     }
   }
 
-  private void logDeletion(
-      long startTime, long endTime, PartialPath path, TimePartitionFilter timePartitionFilter)
-      throws IOException {
+  private List<WALFlushListener> logDeleteInWAL(
+      long startTime, long endTime, PartialPath path, TimePartitionFilter timePartitionFilter) {
     long timePartitionStartId = StorageEngine.getTimePartition(startTime);
     long timePartitionEndId = StorageEngine.getTimePartition(endTime);
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
-      DeletePlan deletionPlan = new DeletePlan(startTime, endTime, path);
-      for (Map.Entry<Long, TsFileProcessor> entry : workSequenceTsFileProcessors.entrySet()) {
-        if (timePartitionStartId <= entry.getKey()
-            && entry.getKey() <= timePartitionEndId
-            && (timePartitionFilter == null
-                || timePartitionFilter.satisfy(logicalStorageGroupName, entry.getKey()))) {
-          entry.getValue().getLogNode().write(deletionPlan);
-        }
-      }
-
-      for (Map.Entry<Long, TsFileProcessor> entry : workUnsequenceTsFileProcessors.entrySet()) {
-        if (timePartitionStartId <= entry.getKey()
-            && entry.getKey() <= timePartitionEndId
-            && (timePartitionFilter == null
-                || timePartitionFilter.satisfy(logicalStorageGroupName, entry.getKey()))) {
-          entry.getValue().getLogNode().write(deletionPlan);
-        }
+    List<WALFlushListener> walFlushListeners = new ArrayList<>();
+    if (config.getWalMode() == WALMode.DISABLE) {
+      return walFlushListeners;
+    }
+    DeletePlan deletionPlan = new DeletePlan(startTime, endTime, path);
+    for (Map.Entry<Long, TsFileProcessor> entry : workSequenceTsFileProcessors.entrySet()) {
+      if (timePartitionStartId <= entry.getKey()
+          && entry.getKey() <= timePartitionEndId
+          && (timePartitionFilter == null
+              || timePartitionFilter.satisfy(logicalStorageGroupName, entry.getKey()))) {
+        WALFlushListener walFlushListener = entry.getValue().logDeleteInWAL(deletionPlan);
+        walFlushListeners.add(walFlushListener);
       }
     }
+    for (Map.Entry<Long, TsFileProcessor> entry : workUnsequenceTsFileProcessors.entrySet()) {
+      if (timePartitionStartId <= entry.getKey()
+          && entry.getKey() <= timePartitionEndId
+          && (timePartitionFilter == null
+              || timePartitionFilter.satisfy(logicalStorageGroupName, entry.getKey()))) {
+        WALFlushListener walFlushListener = entry.getValue().logDeleteInWAL(deletionPlan);
+        walFlushListeners.add(walFlushListener);
+      }
+    }
+    return walFlushListeners;
   }
 
   private boolean canSkipDelete(
@@ -3216,10 +3369,6 @@ public class VirtualStorageGroupProcessor {
 
   public ScheduledExecutorService getTimedCompactionScheduleTask() {
     return timedCompactionScheduleTask;
-  }
-
-  public ScheduledExecutorService getWALTrimScheduleTask() {
-    return walTrimScheduleTask;
   }
 
   public IDTable getIdTable() {

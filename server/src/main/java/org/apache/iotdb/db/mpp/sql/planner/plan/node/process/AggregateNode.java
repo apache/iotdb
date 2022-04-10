@@ -18,55 +18,77 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.GroupByTimeParameter;
+import org.apache.iotdb.db.mpp.sql.planner.plan.IOutputPlanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.ColumnHeader;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
+import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+import com.google.common.collect.ImmutableList;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * This node is used to aggregate required series from multiple sources. The source data will be
  * input as a TsBlock, it may be raw data or partial aggregation result. This node will output the
  * final series aggregated result represented by TsBlock.
  */
-public class AggregateNode extends ProcessNode {
-  // The parameter of `group by time`
-  // Its value will be null if there is no `group by time` clause,
-  private GroupByTimeParameter groupByTimeParameter;
+public class AggregateNode extends ProcessNode implements IOutputPlanNode {
 
-  // The list of aggregation functions, each FunctionExpression will be output as one column of
-  // result TsBlock
-  // (Currently we only support one series in the aggregation function)
-  // TODO: need consider whether it is suitable the aggregation function using FunctionExpression
-  private Map<String, FunctionExpression> aggregateFuncMap;
+  // The map from columns to corresponding aggregation functions on that column.
+  //    KEY: The index of a column in the input {@link TsBlock}.
+  //    VALUE: Aggregation functions on this column.
+  // (Currently, we only support one series in the aggregation function.)
+  private final Map<PartialPath, Set<AggregationType>> aggregateFuncMap;
 
-  private final List<PlanNode> children;
-  private final List<String> columnNames;
+  // The parameter of `group by time`.
+  // Its value will be null if there is no `group by time` clause.
+  private final GroupByTimeParameter groupByTimeParameter;
+
+  private final List<ColumnHeader> columnHeaders = new ArrayList<>();
+
+  private PlanNode child;
 
   public AggregateNode(
       PlanNodeId id,
-      Map<String, FunctionExpression> aggregateFuncMap,
-      List<PlanNode> children,
-      List<String> columnNames) {
+      PlanNode child,
+      Map<PartialPath, Set<AggregationType>> aggregateFuncMap,
+      GroupByTimeParameter groupByTimeParameter) {
     super(id);
+    this.child = child;
     this.aggregateFuncMap = aggregateFuncMap;
-    this.children = children;
-    this.columnNames = columnNames;
+    this.groupByTimeParameter = groupByTimeParameter;
+    for (Map.Entry<PartialPath, Set<AggregationType>> entry : aggregateFuncMap.entrySet()) {
+      PartialPath path = entry.getKey();
+      columnHeaders.addAll(
+          entry.getValue().stream()
+              .map(
+                  functionName ->
+                      new ColumnHeader(
+                          path.getFullPath(), functionName.name(), path.getSeriesType()))
+              .collect(Collectors.toList()));
+    }
   }
 
   @Override
   public List<PlanNode> getChildren() {
-    return children;
+    return ImmutableList.of(child);
   }
 
   @Override
   public void addChild(PlanNode child) {
-    throw new NotImplementedException("addChild of AggregateNode is not implemented");
+    this.child = child;
   }
 
   @Override
@@ -80,8 +102,18 @@ public class AggregateNode extends ProcessNode {
   }
 
   @Override
+  public List<ColumnHeader> getOutputColumnHeaders() {
+    return columnHeaders;
+  }
+
+  @Override
   public List<String> getOutputColumnNames() {
-    return columnNames;
+    return columnHeaders.stream().map(ColumnHeader::getColumnName).collect(Collectors.toList());
+  }
+
+  @Override
+  public List<TSDataType> getOutputColumnTypes() {
+    return columnHeaders.stream().map(ColumnHeader::getColumnType).collect(Collectors.toList());
   }
 
   @Override
@@ -95,4 +127,25 @@ public class AggregateNode extends ProcessNode {
 
   @Override
   public void serialize(ByteBuffer byteBuffer) {}
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+
+    AggregateNode that = (AggregateNode) o;
+    return Objects.equals(groupByTimeParameter, that.groupByTimeParameter)
+        && Objects.equals(aggregateFuncMap, that.aggregateFuncMap)
+        && Objects.equals(child, that.child);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(groupByTimeParameter, aggregateFuncMap, child);
+  }
 }

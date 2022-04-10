@@ -152,7 +152,8 @@ import -> Maven -> Existing Maven Projects
 
 # 常见编译错误
 
-无法下载 thrift-* 等文件，例如 `Could not get content
+## 无法下载 thrift-* 等文件
+例如 `Could not get content
 org.apache.maven.wagon.TransferFailedException: Transfer failed for https://github.com/apache/iotdb-bin-resources/blob/main/compile-tools/thrift-0.14-ubuntu`
 这一般是网络问题，这时候需要手动下载上述文件：
 
@@ -162,3 +163,11 @@ org.apache.maven.wagon.TransferFailedException: Transfer failed for https://gith
   
  * 将该文件拷贝到 thrift/target/tools/目录下 
  * 重新执行 maven 的编译命令
+
+
+## 无法下载errorprone ：
+```Failed to read artifact descriptor for com.google.errorprone:javac
+-shaded:jar:9+181-r4173-1: Could not transfer artifact com.google.errorprone:javac-shaded:pom:9+181-r4173-1
+```
+1. 手动下载jar包：   https://repo1.maven.org/maven2/com/google/errorprone/javac-shaded/9+181-r4173-1/javac-shaded-9+181-r4173-1.jar
+2. 将jar包安装到本地私仓库 ：   mvn install:install-file -DgroupId=com.google.errorprone -DartifactId=javac-shaded -Dversion=9+181-r4173-1 -Dpackaging=jar -Dfile=D:\workspace\iotdb-master\docs\javac-shaded-9+181-r4173-1.jar

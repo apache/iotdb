@@ -47,7 +47,7 @@ public class PathPatternTree {
     // TODO
     this.root = new PathPatternNode(SQLConstant.ROOT);
     this.pathList = new ArrayList<>();
-  };
+  }
 
   public PathPatternTree(Map<PartialPath, List<String>> devices) {
     // TODO

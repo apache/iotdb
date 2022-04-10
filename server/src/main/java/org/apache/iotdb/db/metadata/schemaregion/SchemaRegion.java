@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.schemaregion;
 
-import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -153,7 +153,7 @@ public class SchemaRegion {
 
   private String schemaRegionDirPath;
   private String storageGroupFullPath;
-  private ConsensusGroupId schemaRegionId;
+  private SchemaRegionId schemaRegionId;
 
   // the log file seriesPath
   private String logFilePath;
@@ -168,9 +168,7 @@ public class SchemaRegion {
 
   // region Interfaces and Implementation of initialization、snapshot、recover and clear
   public SchemaRegion(
-      PartialPath storageGroup,
-      ConsensusGroupId schemaRegionId,
-      IStorageGroupMNode storageGroupMNode)
+      PartialPath storageGroup, SchemaRegionId schemaRegionId, IStorageGroupMNode storageGroupMNode)
       throws MetadataException {
 
     storageGroupFullPath = storageGroup.getFullPath();
@@ -673,8 +671,6 @@ public class SchemaRegion {
       if (!isRecovering) {
         if (emptyStorageGroup != null) {
           StorageEngine.getInstance().deleteAllDataFilesInOneStorageGroup(emptyStorageGroup);
-          StorageEngine.getInstance()
-              .releaseWalDirectByteBufferPoolInOneStorageGroup(emptyStorageGroup);
         }
         deleteTimeSeriesPlan.setDeletePathList(Collections.singletonList(p));
         logWriter.deleteTimeseries(deleteTimeSeriesPlan);

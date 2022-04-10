@@ -20,15 +20,14 @@
 package org.apache.iotdb.db.mpp.sql.plan;
 
 import org.apache.iotdb.commons.cluster.Endpoint;
-import org.apache.iotdb.commons.consensus.ConsensusGroupId;
-import org.apache.iotdb.commons.consensus.GroupType;
+import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.partition.DataNodeLocation;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.commons.partition.SeriesPartitionSlot;
 import org.apache.iotdb.commons.partition.TimePartitionSlot;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
@@ -38,17 +37,20 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.mpp.sql.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.mpp.sql.planner.plan.SubPlan;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeIdAllocator;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
-import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullPolicy;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
+import com.google.common.collect.Sets;
 import org.junit.Test;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 
@@ -56,72 +58,104 @@ public class DistributionPlannerTest {
 
   @Test
   public void TestRewriteSourceNode() throws IllegalPathException {
-    TimeJoinNode timeJoinNode =
-        new TimeJoinNode(
-            PlanNodeIdAllocator.generateId(), OrderBy.TIMESTAMP_ASC, FilterNullPolicy.NO_FILTER);
+    QueryId queryId = new QueryId("test_query");
+
+    TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), OrderBy.TIMESTAMP_ASC);
 
     timeJoinNode.addChild(
-        new SeriesScanNode(PlanNodeIdAllocator.generateId(), new PartialPath("root.sg.d1.s1")));
+        new SeriesScanNode(
+            queryId.genPlanNodeId(),
+            new MeasurementPath("root.sg.d1.s1", TSDataType.INT32),
+            Sets.newHashSet("s1", "s2"),
+            OrderBy.TIMESTAMP_ASC));
     timeJoinNode.addChild(
-        new SeriesScanNode(PlanNodeIdAllocator.generateId(), new PartialPath("root.sg.d1.s2")));
+        new SeriesScanNode(
+            queryId.genPlanNodeId(),
+            new MeasurementPath("root.sg.d1.s2", TSDataType.INT32),
+            Sets.newHashSet("s1", "s2"),
+            OrderBy.TIMESTAMP_ASC));
     timeJoinNode.addChild(
-        new SeriesScanNode(PlanNodeIdAllocator.generateId(), new PartialPath("root.sg.d22.s1")));
+        new SeriesScanNode(
+            queryId.genPlanNodeId(),
+            new MeasurementPath("root.sg.d22.s1", TSDataType.INT32),
+            Sets.newHashSet("s1"),
+            OrderBy.TIMESTAMP_ASC));
 
-    LimitNode root = new LimitNode(PlanNodeIdAllocator.generateId(), 10, timeJoinNode);
+    LimitNode root = new LimitNode(queryId.genPlanNodeId(), timeJoinNode, 10);
 
     Analysis analysis = constructAnalysis();
 
     DistributionPlanner planner =
-        new DistributionPlanner(analysis, new LogicalQueryPlan(new MPPQueryContext(), root));
+        new DistributionPlanner(analysis, new LogicalQueryPlan(new MPPQueryContext(queryId), root));
     PlanNode newRoot = planner.rewriteSource();
-
-    System.out.println(PlanNodeUtil.nodeToString(newRoot));
     assertEquals(newRoot.getChildren().get(0).getChildren().size(), 3);
   }
 
   @Test
   public void TestAddExchangeNode() throws IllegalPathException {
-    TimeJoinNode timeJoinNode =
-        new TimeJoinNode(
-            PlanNodeIdAllocator.generateId(), OrderBy.TIMESTAMP_ASC, FilterNullPolicy.NO_FILTER);
+    QueryId queryId = new QueryId("test_query");
+    TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), OrderBy.TIMESTAMP_ASC);
 
     timeJoinNode.addChild(
-        new SeriesScanNode(PlanNodeIdAllocator.generateId(), new PartialPath("root.sg.d1.s1")));
+        new SeriesScanNode(
+            queryId.genPlanNodeId(),
+            new MeasurementPath("root.sg.d1.s1", TSDataType.INT32),
+            Sets.newHashSet("s1", "s2"),
+            OrderBy.TIMESTAMP_ASC));
     timeJoinNode.addChild(
-        new SeriesScanNode(PlanNodeIdAllocator.generateId(), new PartialPath("root.sg.d1.s2")));
+        new SeriesScanNode(
+            queryId.genPlanNodeId(),
+            new MeasurementPath("root.sg.d1.s2", TSDataType.INT32),
+            Sets.newHashSet("s1", "s2"),
+            OrderBy.TIMESTAMP_ASC));
     timeJoinNode.addChild(
-        new SeriesScanNode(PlanNodeIdAllocator.generateId(), new PartialPath("root.sg.d22.s1")));
+        new SeriesScanNode(
+            queryId.genPlanNodeId(),
+            new MeasurementPath("root.sg.d22.s1", TSDataType.INT32),
+            Sets.newHashSet("s1"),
+            OrderBy.TIMESTAMP_ASC));
 
-    LimitNode root = new LimitNode(PlanNodeIdAllocator.generateId(), 10, timeJoinNode);
+    LimitNode root = new LimitNode(queryId.genPlanNodeId(), timeJoinNode, 10);
 
     Analysis analysis = constructAnalysis();
 
     DistributionPlanner planner =
-        new DistributionPlanner(analysis, new LogicalQueryPlan(new MPPQueryContext(), root));
+        new DistributionPlanner(analysis, new LogicalQueryPlan(new MPPQueryContext(queryId), root));
     PlanNode rootAfterRewrite = planner.rewriteSource();
     PlanNode rootWithExchange = planner.addExchangeNode(rootAfterRewrite);
-    //    PlanNodeUtil.printPlanNode(rootWithExchange);
     assertEquals(rootWithExchange.getChildren().get(0).getChildren().size(), 3);
   }
 
   @Test
   public void TestSplitFragment() throws IllegalPathException {
-    TimeJoinNode timeJoinNode =
-        new TimeJoinNode(
-            PlanNodeIdAllocator.generateId(), OrderBy.TIMESTAMP_ASC, FilterNullPolicy.NO_FILTER);
+    QueryId queryId = new QueryId("test_query");
+    TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), OrderBy.TIMESTAMP_ASC);
 
     timeJoinNode.addChild(
-        new SeriesScanNode(PlanNodeIdAllocator.generateId(), new PartialPath("root.sg.d1.s1")));
+        new SeriesScanNode(
+            queryId.genPlanNodeId(),
+            new MeasurementPath("root.sg.d1.s1", TSDataType.INT32),
+            Sets.newHashSet("s1", "s2"),
+            OrderBy.TIMESTAMP_ASC));
     timeJoinNode.addChild(
-        new SeriesScanNode(PlanNodeIdAllocator.generateId(), new PartialPath("root.sg.d1.s2")));
+        new SeriesScanNode(
+            queryId.genPlanNodeId(),
+            new MeasurementPath("root.sg.d1.s2", TSDataType.INT32),
+            Sets.newHashSet("s1", "s2"),
+            OrderBy.TIMESTAMP_ASC));
     timeJoinNode.addChild(
-        new SeriesScanNode(PlanNodeIdAllocator.generateId(), new PartialPath("root.sg.d22.s1")));
+        new SeriesScanNode(
+            queryId.genPlanNodeId(),
+            new MeasurementPath("root.sg.d22.s1", TSDataType.INT32),
+            Sets.newHashSet("s1"),
+            OrderBy.TIMESTAMP_ASC));
 
-    LimitNode root = new LimitNode(PlanNodeIdAllocator.generateId(), 10, timeJoinNode);
+    LimitNode root = new LimitNode(queryId.genPlanNodeId(), timeJoinNode, 10);
 
     Analysis analysis = constructAnalysis();
 
-    MPPQueryContext context = new MPPQueryContext("", new QueryId("query1"), null, QueryType.READ);
+    MPPQueryContext context =
+        new MPPQueryContext("", queryId, null, QueryType.READ, new Endpoint());
     DistributionPlanner planner =
         new DistributionPlanner(analysis, new LogicalQueryPlan(context, root));
     PlanNode rootAfterRewrite = planner.rewriteSource();
@@ -132,27 +166,39 @@ public class DistributionPlannerTest {
 
   @Test
   public void TestParallelPlan() throws IllegalPathException {
-    TimeJoinNode timeJoinNode =
-        new TimeJoinNode(
-            PlanNodeIdAllocator.generateId(), OrderBy.TIMESTAMP_ASC, FilterNullPolicy.NO_FILTER);
+    QueryId queryId = new QueryId("test_query");
+    TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), OrderBy.TIMESTAMP_ASC);
 
     timeJoinNode.addChild(
-        new SeriesScanNode(PlanNodeIdAllocator.generateId(), new PartialPath("root.sg.d1.s1")));
+        new SeriesScanNode(
+            queryId.genPlanNodeId(),
+            new MeasurementPath("root.sg.d1.s1", TSDataType.INT32),
+            Sets.newHashSet("s1", "s2"),
+            OrderBy.TIMESTAMP_ASC));
     timeJoinNode.addChild(
-        new SeriesScanNode(PlanNodeIdAllocator.generateId(), new PartialPath("root.sg.d1.s2")));
+        new SeriesScanNode(
+            queryId.genPlanNodeId(),
+            new MeasurementPath("root.sg.d1.s2", TSDataType.INT32),
+            Sets.newHashSet("s1", "s2"),
+            OrderBy.TIMESTAMP_ASC));
     timeJoinNode.addChild(
-        new SeriesScanNode(PlanNodeIdAllocator.generateId(), new PartialPath("root.sg.d333.s1")));
+        new SeriesScanNode(
+            queryId.genPlanNodeId(),
+            new MeasurementPath("root.sg.d333.s1", TSDataType.INT32),
+            Sets.newHashSet("s1"),
+            OrderBy.TIMESTAMP_ASC));
 
-    LimitNode root = new LimitNode(PlanNodeIdAllocator.generateId(), 10, timeJoinNode);
+    LimitNode root = new LimitNode(queryId.genPlanNodeId(), timeJoinNode, 10);
 
     Analysis analysis = constructAnalysis();
 
-    MPPQueryContext context = new MPPQueryContext("", new QueryId("query1"), null, QueryType.READ);
+    MPPQueryContext context =
+        new MPPQueryContext("", queryId, null, QueryType.READ, new Endpoint());
     DistributionPlanner planner =
         new DistributionPlanner(analysis, new LogicalQueryPlan(context, root));
     DistributedQueryPlan plan = planner.planFragments();
     plan.getInstances().forEach(System.out::println);
-    assertEquals(plan.getInstances().size(), 3);
+    assertEquals(3, plan.getInstances().size());
   }
 
   private Analysis constructAnalysis() {
@@ -171,13 +217,13 @@ public class DistributionPlannerTest {
     List<RegionReplicaSet> d1DataRegions = new ArrayList<>();
     d1DataRegions.add(
         new RegionReplicaSet(
-            new ConsensusGroupId(GroupType.DataRegion, 1),
+            new DataRegionId(1),
             Arrays.asList(
                 new DataNodeLocation(11, new Endpoint("192.0.1.1", 9000)),
                 new DataNodeLocation(12, new Endpoint("192.0.1.2", 9000)))));
     d1DataRegions.add(
         new RegionReplicaSet(
-            new ConsensusGroupId(GroupType.DataRegion, 2),
+            new DataRegionId(2),
             Arrays.asList(
                 new DataNodeLocation(21, new Endpoint("192.0.2.1", 9000)),
                 new DataNodeLocation(22, new Endpoint("192.0.2.2", 9000)))));
@@ -187,7 +233,7 @@ public class DistributionPlannerTest {
     List<RegionReplicaSet> d2DataRegions = new ArrayList<>();
     d2DataRegions.add(
         new RegionReplicaSet(
-            new ConsensusGroupId(GroupType.DataRegion, 3),
+            new DataRegionId(3),
             Arrays.asList(
                 new DataNodeLocation(31, new Endpoint("192.0.3.1", 9000)),
                 new DataNodeLocation(32, new Endpoint("192.0.3.2", 9000)))));
@@ -197,13 +243,13 @@ public class DistributionPlannerTest {
     List<RegionReplicaSet> d3DataRegions = new ArrayList<>();
     d3DataRegions.add(
         new RegionReplicaSet(
-            new ConsensusGroupId(GroupType.DataRegion, 1),
+            new DataRegionId(1),
             Arrays.asList(
                 new DataNodeLocation(11, new Endpoint("192.0.1.1", 9000)),
                 new DataNodeLocation(12, new Endpoint("192.0.1.2", 9000)))));
     d3DataRegions.add(
         new RegionReplicaSet(
-            new ConsensusGroupId(GroupType.DataRegion, 4),
+            new DataRegionId(4),
             Arrays.asList(
                 new DataNodeLocation(41, new Endpoint("192.0.4.1", 9000)),
                 new DataNodeLocation(42, new Endpoint("192.0.4.2", 9000)))));

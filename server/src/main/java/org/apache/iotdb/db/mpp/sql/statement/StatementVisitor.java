@@ -19,13 +19,11 @@
 
 package org.apache.iotdb.db.mpp.sql.statement;
 
-import org.apache.iotdb.db.mpp.sql.statement.crud.InsertRowStatement;
-import org.apache.iotdb.db.mpp.sql.statement.crud.InsertStatement;
-import org.apache.iotdb.db.mpp.sql.statement.crud.InsertTabletStatement;
-import org.apache.iotdb.db.mpp.sql.statement.crud.QueryStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.*;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.sys.AuthorStatement;
 
 /**
  * This class provides a visitor of {@link org.apache.iotdb.db.mpp.sql.statement.StatementNode},
@@ -36,10 +34,6 @@ import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
  * @param <C> The context information during visiting.
  */
 public abstract class StatementVisitor<R, C> {
-
-  public R process(StatementNode node) {
-    return process(node, null);
-  }
 
   public R process(StatementNode node, C context) {
     return node.accept(this, context);
@@ -79,6 +73,34 @@ public abstract class StatementVisitor<R, C> {
     return visitStatement(queryStatement, context);
   }
 
+  public R visitAggregationQuery(AggregationQueryStatement queryStatement, C context) {
+    return visitQuery(queryStatement, context);
+  }
+
+  public R visitFillQuery(FillQueryStatement queryStatement, C context) {
+    return visitQuery(queryStatement, context);
+  }
+
+  public R visitGroupByQuery(GroupByQueryStatement queryStatement, C context) {
+    return visitQuery(queryStatement, context);
+  }
+
+  public R visitGroupByFillQuery(GroupByFillQueryStatement queryStatement, C context) {
+    return visitQuery(queryStatement, context);
+  }
+
+  public R visitLastQuery(LastQueryStatement queryStatement, C context) {
+    return visitQuery(queryStatement, context);
+  }
+
+  public R visitUDTFQuery(UDTFQueryStatement queryStatement, C context) {
+    return visitQuery(queryStatement, context);
+  }
+
+  public R visitUDAFQuery(UDAFQueryStatement queryStatement, C context) {
+    return visitQuery(queryStatement, context);
+  }
+
   // Insert Statement
   public R visitInsert(InsertStatement insertStatement, C context) {
     return visitStatement(insertStatement, context);
@@ -88,7 +110,118 @@ public abstract class StatementVisitor<R, C> {
     return visitStatement(insertTabletStatement, context);
   }
 
+  /** Data Control Language (DCL) */
+
+  // Create User
+  public R visitCreateUser(AuthorStatement authorStatement, C context) {
+    return visitStatement(authorStatement, context);
+  }
+
+  // Create Role
+  public R visitCreateRole(AuthorStatement authorStatement, C context) {
+    return visitStatement(authorStatement, context);
+  }
+
+  // Alter Password
+  public R visitAlterUser(AuthorStatement authorStatement, C context) {
+    return visitStatement(authorStatement, context);
+  }
+
+  // Grant User Privileges
+  public R visitGrantUser(AuthorStatement authorStatement, C context) {
+    return visitStatement(authorStatement, context);
+  }
+
+  // Grant Role Privileges
+  public R visitGrantRole(AuthorStatement authorStatement, C context) {
+    return visitStatement(authorStatement, context);
+  }
+
+  // Grant User Role
+  public R visitGrantRoleToUser(AuthorStatement authorStatement, C context) {
+    return visitStatement(authorStatement, context);
+  }
+
+  // Revoke User Privileges
+  public R visitRevokeUser(AuthorStatement authorStatement, C context) {
+    return visitStatement(authorStatement, context);
+  }
+
+  // Revoke Role Privileges
+  public R visitRevokeRole(AuthorStatement authorStatement, C context) {
+    return visitStatement(authorStatement, context);
+  }
+
+  // Revoke Role From User
+  public R visitRevokeRoleFromUser(AuthorStatement authorStatement, C context) {
+    return visitStatement(authorStatement, context);
+  }
+
+  // Drop User
+  public R visitDropUser(AuthorStatement authorStatement, C context) {
+    return visitStatement(authorStatement, context);
+  }
+
+  // Drop Role
+  public R visitDropRole(AuthorStatement authorStatement, C context) {
+    return visitStatement(authorStatement, context);
+  }
+
+  // List Users
+  public R visitListUser(AuthorStatement authorStatement, C context) {
+    return visitStatement(authorStatement, context);
+  }
+
+  // List Roles
+  public R visitListRole(AuthorStatement authorStatement, C context) {
+    return visitStatement(authorStatement, context);
+  }
+
+  // List Privileges
+  public R visitListPrivilegesUser(AuthorStatement authorStatement, C context) {
+    return visitStatement(authorStatement, context);
+  }
+
+  // List Privileges of Roles On Specific Path
+  public R visitListPrivilegesRole(AuthorStatement authorStatement, C context) {
+    return visitStatement(authorStatement, context);
+  }
+
+  // List Privileges of Users
+  public R visitListUserPrivileges(AuthorStatement authorStatement, C context) {
+    return visitStatement(authorStatement, context);
+  }
+
+  // List Privileges of Roles
+  public R visitListRolePrivileges(AuthorStatement authorStatement, C context) {
+    return visitStatement(authorStatement, context);
+  }
+
+  // List Roles of Users
+  public R visitListAllRoleOfUser(AuthorStatement authorStatement, C context) {
+    return visitStatement(authorStatement, context);
+  }
+
+  // List Users of Role
+  public R visitListAllUserOfRole(AuthorStatement authorStatement, C context) {
+    return visitStatement(authorStatement, context);
+  }
+
   public R visitInsertRow(InsertRowStatement insertRowStatement, C context) {
     return visitStatement(insertRowStatement, context);
+  }
+
+  public R visitInsertRows(InsertRowsStatement insertRowsStatement, C context) {
+    return visitStatement(insertRowsStatement, context);
+  }
+
+  public R visitInsertMultiTablets(
+      InsertMultiTabletsStatement insertMultiTabletsStatement, C context) {
+    return visitStatement(insertMultiTabletsStatement, context);
+  }
+
+  public R visitInsertRowsOfOneDevice(
+      InsertRowsOfOneDeviceStatement insertRowsOfOneDeviceStatement, C context) {
+    return visitStatement(insertRowsOfOneDeviceStatement, context);
   }
 }
