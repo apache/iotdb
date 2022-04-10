@@ -172,7 +172,7 @@ time                address name phone sex socre
    (1) When inserting the first piece of data, we need to update the three new tag keys to the table. The table of the record tag sequence corresponding to IoTDB is:
 
    | database | measurement | tag_key | Order |
-            | -------- | ----------- | ------- | ----- |
+          | -------- | ----------- | ------- | ----- |
    | monitor | student     | name    | 0     |
    | monitor | student     | phone   | 1     |
    | monitor | student     | sex     | 2     |
@@ -180,7 +180,7 @@ time                address name phone sex socre
    (2) When inserting the second piece of data, since there are already three tag keys in the table recording the tag order, it is necessary to update the record with the fourth tag key=address. The table of the record tag sequence corresponding to IoTDB is:
 
    | database | measurement | tag_key | order |
-            | -------- | ----------- | ------- | ----- |
+          | -------- | ----------- | ------- | ----- |
    | monitor | student     | name    | 0     |
    | monitor | student     | phone   | 1     |
    | monitor | student     | sex     | 2     |
@@ -189,7 +189,7 @@ time                address name phone sex socre
    (3) When inserting the third piece of data, the four tag keys have been recorded at this time, so there is no need to update the record. The table of the record tag sequence corresponding to IoTDB is:
 
    | database | measurement | tag_key | order |
-            | -------- | ----------- | ------- | ----- |
+          | -------- | ----------- | ------- | ----- |
    | monitor | student     | name    | 0     |
    | monitor | student     | phone   | 1     |
    | monitor | student     | sex     | 2     |
