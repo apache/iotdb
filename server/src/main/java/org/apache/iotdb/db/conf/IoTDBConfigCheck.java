@@ -158,7 +158,6 @@ public class IoTDBConfigCheck {
     systemProperties.put(TAG_ATTRIBUTE_FLUSH_INTERVAL, tagAttributeFlushInterval);
     systemProperties.put(MAX_DEGREE_OF_INDEX_STRING, maxDegreeOfIndexNode);
     systemProperties.put(DATA_REGION_NUM, dataRegionNum);
-    // systemProperties.put(VIRTUAL_STORAGE_GROUP_NUM, dataRegionNum);
     systemProperties.put(TIME_ENCODER_KEY, timeEncoderValue);
     systemProperties.put(ENABLE_ID_TABLE, enableIDTable);
     systemProperties.put(ENABLE_ID_TABLE_LOG_FILE, enableIdTableLogFile);
