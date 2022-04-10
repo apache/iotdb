@@ -54,7 +54,7 @@ public class IoTDBConfigCheck {
   // If user delete folder "data", system.properties can reset.
   private static final String PROPERTIES_FILE_NAME = "system.properties";
   private static final String SCHEMA_DIR = config.getSchemaDir();
-  private static final String WAL_DIR = config.getWalDir();
+  private static final String[] WAL_DIRS = config.getWalDirs();
 
   private File propertiesFile;
   private File tmpPropertiesFile;
@@ -233,17 +233,19 @@ public class IoTDBConfigCheck {
   }
 
   private void checkWALNotExists() {
-    if (SystemFileFactory.INSTANCE.getFile(WAL_DIR).isDirectory()) {
-      File[] sgWALs = SystemFileFactory.INSTANCE.getFile(WAL_DIR).listFiles();
-      if (sgWALs != null) {
-        for (File sgWAL : sgWALs) {
-          // make sure wal directory of each sg is empty
-          if (sgWAL.isDirectory() && sgWAL.list().length != 0) {
-            logger.error(
-                "WAL detected, please stop insertion and run 'SET SYSTEM TO READONLY', then run 'flush' on IoTDB {} before upgrading to {}.",
-                properties.getProperty(IOTDB_VERSION_STRING),
-                IoTDBConstant.VERSION);
-            System.exit(-1);
+    for (String walDir : WAL_DIRS) {
+      if (SystemFileFactory.INSTANCE.getFile(walDir).isDirectory()) {
+        File[] sgWALs = SystemFileFactory.INSTANCE.getFile(walDir).listFiles();
+        if (sgWALs != null) {
+          for (File sgWAL : sgWALs) {
+            // make sure wal directory of each sg is empty
+            if (sgWAL.isDirectory() && sgWAL.list().length != 0) {
+              logger.error(
+                  "WAL detected, please stop insertion and run 'SET SYSTEM TO READONLY', then run 'flush' on IoTDB {} before upgrading to {}.",
+                  properties.getProperty(IOTDB_VERSION_STRING),
+                  IoTDBConstant.VERSION);
+              System.exit(-1);
+            }
           }
         }
       }

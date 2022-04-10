@@ -29,7 +29,7 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
@@ -139,9 +139,9 @@ public class AsyncDataLogApplier implements LogApplier {
   }
 
   /**
-   * We can sure that the storage group of all InsertTabletPlans in InsertMultiTabletPlan are the
+   * We can sure that the storage group of all InsertTabletPlans in InsertMultiTabletsPlan are the
    * same. this is done in {@link
-   * org.apache.iotdb.cluster.query.ClusterPlanRouter#splitAndRoutePlan(InsertMultiTabletPlan)}
+   * org.apache.iotdb.cluster.query.ClusterPlanRouter#splitAndRoutePlan(InsertMultiTabletsPlan)}
    *
    * <p>We can also sure that the storage group of all InsertRowPlans in InsertRowsPlan are the
    * same. this is done in {@link
@@ -152,8 +152,8 @@ public class AsyncDataLogApplier implements LogApplier {
    */
   private PartialPath getPlanSG(PhysicalPlan plan) throws StorageGroupNotSetException {
     PartialPath sgPath = null;
-    if (plan instanceof InsertMultiTabletPlan) {
-      PartialPath deviceId = ((InsertMultiTabletPlan) plan).getFirstDeviceId();
+    if (plan instanceof InsertMultiTabletsPlan) {
+      PartialPath deviceId = ((InsertMultiTabletsPlan) plan).getFirstDeviceId();
       sgPath = IoTDB.schemaProcessor.getBelongedStorageGroup(deviceId);
     } else if (plan instanceof InsertRowsPlan) {
       PartialPath path = ((InsertRowsPlan) plan).getFirstDeviceId();

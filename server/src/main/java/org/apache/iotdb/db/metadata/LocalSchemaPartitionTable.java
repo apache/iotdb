@@ -19,8 +19,7 @@
 
 package org.apache.iotdb.db.metadata;
 
-import org.apache.iotdb.commons.consensus.ConsensusGroupId;
-import org.apache.iotdb.commons.consensus.GroupType;
+import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 
@@ -39,7 +38,7 @@ public class LocalSchemaPartitionTable {
 
   private AtomicInteger schemaRegionIdGenerator;
 
-  private Map<PartialPath, Set<ConsensusGroupId>> table;
+  private Map<PartialPath, Set<SchemaRegionId>> table;
 
   private static class LocalSchemaPartitionTableHolder {
     private static final LocalSchemaPartitionTable INSTANCE = new LocalSchemaPartitionTable();
@@ -69,15 +68,14 @@ public class LocalSchemaPartitionTable {
     }
   }
 
-  public synchronized ConsensusGroupId allocateSchemaRegionId(PartialPath storageGroup) {
-    ConsensusGroupId schemaRegionId =
-        new ConsensusGroupId(GroupType.SchemaRegion, schemaRegionIdGenerator.getAndIncrement());
+  public synchronized SchemaRegionId allocateSchemaRegionId(PartialPath storageGroup) {
+    SchemaRegionId schemaRegionId = new SchemaRegionId(schemaRegionIdGenerator.getAndIncrement());
     table.get(storageGroup).add(schemaRegionId);
     return schemaRegionId;
   }
 
   public synchronized void putSchemaRegionId(
-      PartialPath storageGroup, ConsensusGroupId schemaRegionId) {
+      PartialPath storageGroup, SchemaRegionId schemaRegionId) {
     table.get(storageGroup).add(schemaRegionId);
 
     if (schemaRegionId.getId() >= schemaRegionIdGenerator.get()) {
@@ -86,24 +84,24 @@ public class LocalSchemaPartitionTable {
   }
 
   public synchronized void removeSchemaRegionId(
-      PartialPath storageGroup, ConsensusGroupId schemaRegionId) {
+      PartialPath storageGroup, SchemaRegionId schemaRegionId) {
     table.get(storageGroup).remove(schemaRegionId);
   }
 
-  public ConsensusGroupId getSchemaRegionId(PartialPath storageGroup, PartialPath path) {
+  public SchemaRegionId getSchemaRegionId(PartialPath storageGroup, PartialPath path) {
     return calculateSchemaRegionId(storageGroup, path);
   }
 
-  public List<ConsensusGroupId> getInvolvedSchemaRegionIds(
+  public List<SchemaRegionId> getInvolvedSchemaRegionIds(
       PartialPath storageGroup, PartialPath pathPattern, boolean isPrefixMatch) {
-    List<ConsensusGroupId> result = new ArrayList<>();
+    List<SchemaRegionId> result = new ArrayList<>();
     if (table.containsKey(storageGroup)) {
       result.addAll(table.get(storageGroup));
     }
     return result;
   }
 
-  public Set<ConsensusGroupId> getSchemaRegionIdsByStorageGroup(PartialPath storageGroup) {
+  public Set<SchemaRegionId> getSchemaRegionIdsByStorageGroup(PartialPath storageGroup) {
     return table.get(storageGroup);
   }
 
@@ -111,13 +109,13 @@ public class LocalSchemaPartitionTable {
     table.put(storageGroup, Collections.synchronizedSet(new HashSet<>()));
   }
 
-  public synchronized Set<ConsensusGroupId> deleteStorageGroup(PartialPath storageGroup) {
+  public synchronized Set<SchemaRegionId> deleteStorageGroup(PartialPath storageGroup) {
     return table.remove(storageGroup);
   }
 
   // This method may be extended to implement multi schemaRegion for one storageGroup
   // todo keep consistent with the partition method of config node in new cluster
-  private ConsensusGroupId calculateSchemaRegionId(PartialPath storageGroup, PartialPath path) {
+  private SchemaRegionId calculateSchemaRegionId(PartialPath storageGroup, PartialPath path) {
     return table.get(storageGroup).iterator().next();
   }
 }

@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.template;
 
-import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
@@ -67,7 +67,7 @@ public class Template {
   private Map<String, IMeasurementSchema> schemaMap;
 
   // accelerate template query and check
-  private Map<String, Set<ConsensusGroupId>> relatedSchemaRegion;
+  private Map<String, Set<SchemaRegionId>> relatedSchemaRegion;
 
   // transient variable to be recorded in schema file
   // since order of CreateTemplatePlan is fixed, this code shall be fixed as well
@@ -423,27 +423,27 @@ public class Template {
     return directNodes.values();
   }
 
-  public Set<ConsensusGroupId> getRelatedSchemaRegion() {
-    Set<ConsensusGroupId> result = new HashSet<>();
-    for (Set<ConsensusGroupId> schemaRegionIds : relatedSchemaRegion.values()) {
+  public Set<SchemaRegionId> getRelatedSchemaRegion() {
+    Set<SchemaRegionId> result = new HashSet<>();
+    for (Set<SchemaRegionId> schemaRegionIds : relatedSchemaRegion.values()) {
       result.addAll(schemaRegionIds);
     }
     return result;
   }
 
-  public Set<ConsensusGroupId> getRelatedSchemaRegionInStorageGroup(String storageGroup) {
+  public Set<SchemaRegionId> getRelatedSchemaRegionInStorageGroup(String storageGroup) {
     return relatedSchemaRegion.get(storageGroup);
   }
 
-  public void markSchemaRegion(String storageGroup, ConsensusGroupId schemaRegionId) {
+  public void markSchemaRegion(String storageGroup, SchemaRegionId schemaRegionId) {
     if (!relatedSchemaRegion.containsKey(storageGroup)) {
       relatedSchemaRegion.putIfAbsent(storageGroup, new HashSet<>());
     }
     relatedSchemaRegion.get(storageGroup).add(schemaRegionId);
   }
 
-  public void unmarkSchemaRegion(String storageGroup, ConsensusGroupId schemaRegionId) {
-    Set<ConsensusGroupId> schemaRegionIds = relatedSchemaRegion.get(storageGroup);
+  public void unmarkSchemaRegion(String storageGroup, SchemaRegionId schemaRegionId) {
+    Set<SchemaRegionId> schemaRegionIds = relatedSchemaRegion.get(storageGroup);
     schemaRegionIds.remove(schemaRegionId);
     if (schemaRegionIds.isEmpty()) {
       relatedSchemaRegion.remove(storageGroup);

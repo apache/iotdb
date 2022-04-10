@@ -23,6 +23,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.response.DataNodesInfoDataSet;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
+import org.apache.iotdb.confignode.physical.sys.AuthorPlan;
 import org.apache.iotdb.confignode.physical.sys.DataPartitionPlan;
 import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
 import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
@@ -53,11 +54,18 @@ public class ConfigManager implements Manager {
   /** manager assign schema region and data region */
   private final RegionManager regionManager;
 
+  private final PermissionManager permissionManager;
+
   public ConfigManager() throws IOException {
     this.dataNodeManager = new DataNodeManager(this);
     this.partitionManager = new PartitionManager(this);
     this.regionManager = new RegionManager(this);
     this.consensusManager = new ConsensusManager();
+    this.permissionManager = new PermissionManager(this);
+  }
+
+  public void close() throws IOException {
+    consensusManager.close();
   }
 
   @Override
@@ -145,5 +153,13 @@ public class ConfigManager implements Manager {
   @Override
   public ConsensusManager getConsensusManager() {
     return consensusManager;
+  }
+
+  @Override
+  public TSStatus operatePermission(PhysicalPlan physicalPlan) {
+    if (physicalPlan instanceof AuthorPlan) {
+      return permissionManager.operatePermission((AuthorPlan) physicalPlan);
+    }
+    return ERROR_TSSTATUS;
   }
 }

@@ -41,7 +41,6 @@ import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.utils.ClusterQueryUtils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
@@ -59,12 +58,8 @@ import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.BatchPlan;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.qp.physical.crud.*;
+import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletsPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
@@ -117,7 +112,6 @@ import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.cluster.query.ClusterPlanExecutor.LOG_FAIL_CONNECT;
@@ -289,9 +283,8 @@ public class CSchemaProcessor extends LocalSchemaProcessor {
   }
 
   /**
-   * the {@link org.apache.iotdb.db.writelog.recover.LogReplayer#replayLogs(Supplier,
-   * VirtualStorageGroupProcessor)} will call this to get schema after restart we should retry to
-   * get schema util we get the schema.
+   * the {@link org.apache.iotdb.db.wal.recover.file.UnsealedTsFileRecoverPerformer#redoLog} will
+   * call this to get schema after restart we should retry to get schema util we get the schema.
    *
    * @param deviceId the device id.
    * @param measurements the measurements.
@@ -602,14 +595,14 @@ public class CSchemaProcessor extends LocalSchemaProcessor {
   }
 
   /**
-   * @param insertMultiTabletPlan the InsertMultiTabletPlan
-   * @return true if all InsertTabletPlan in InsertMultiTabletPlan create timeseries success,
+   * @param insertMultiTabletsPlan the InsertMultiTabletsPlan
+   * @return true if all InsertTabletPlan in InsertMultiTabletsPlan create timeseries success,
    *     otherwise false
    */
-  public boolean createTimeseries(InsertMultiTabletPlan insertMultiTabletPlan)
+  public boolean createTimeseries(InsertMultiTabletsPlan insertMultiTabletsPlan)
       throws CheckConsistencyException, IllegalPathException {
     boolean allSuccess = true;
-    for (InsertTabletPlan insertTabletPlan : insertMultiTabletPlan.getInsertTabletPlanList()) {
+    for (InsertTabletPlan insertTabletPlan : insertMultiTabletsPlan.getInsertTabletPlanList()) {
       boolean success = createTimeseries(insertTabletPlan);
       allSuccess = allSuccess && success;
       if (!success) {
@@ -662,8 +655,8 @@ public class CSchemaProcessor extends LocalSchemaProcessor {
    */
   public boolean createTimeseries(InsertPlan insertPlan)
       throws IllegalPathException, CheckConsistencyException {
-    if (insertPlan instanceof InsertMultiTabletPlan) {
-      return createTimeseries((InsertMultiTabletPlan) insertPlan);
+    if (insertPlan instanceof InsertMultiTabletsPlan) {
+      return createTimeseries((InsertMultiTabletsPlan) insertPlan);
     }
 
     if (insertPlan instanceof InsertRowsPlan) {

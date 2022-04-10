@@ -98,7 +98,7 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
       if (rootNode instanceof FragmentSinkNode) {
         // Set target Endpoint for FragmentSinkNode
         FragmentSinkNode sinkNode = (FragmentSinkNode) rootNode;
-        PlanNodeId downStreamNodeId = sinkNode.getDownStreamNode().getId();
+        PlanNodeId downStreamNodeId = sinkNode.getDownStreamPlanNodeId();
         FragmentInstance downStreamInstance = findDownStreamInstance(downStreamNodeId);
         sinkNode.setDownStream(
             downStreamInstance.getHostEndpoint(), downStreamInstance.getId(), downStreamNodeId);
@@ -107,7 +107,7 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
         PlanNode downStreamExchangeNode =
             downStreamInstance.getFragment().getPlanNodeById(downStreamNodeId);
         ((ExchangeNode) downStreamExchangeNode)
-            .setUpstream(instance.getHostEndpoint(), instance.getId(), sinkNode.getId());
+            .setUpstream(instance.getHostEndpoint(), instance.getId(), sinkNode.getPlanNodeId());
       }
     }
   }
@@ -117,7 +117,7 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
   }
 
   private void recordPlanNodeRelation(PlanNode root, PlanFragmentId planFragmentId) {
-    planNodeMap.put(root.getId(), planFragmentId);
+    planNodeMap.put(root.getPlanNodeId(), planFragmentId);
     for (PlanNode child : root.getChildren()) {
       recordPlanNodeRelation(child, planFragmentId);
     }
