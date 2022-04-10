@@ -63,47 +63,51 @@ public class SeriesScanOperator implements SourceOperator {
   }
 
   @Override
-  public TsBlock next() throws IOException {
+  public TsBlock next() {
     if (hasCachedTsBlock || hasNext()) {
       hasCachedTsBlock = false;
       return tsBlock;
     }
-    throw new IOException("no next batch");
+    throw new IllegalStateException("no next batch");
   }
 
   @Override
-  public boolean hasNext() throws IOException {
+  public boolean hasNext() {
 
-    if (hasCachedTsBlock) {
-      return true;
-    }
+    try {
+      if (hasCachedTsBlock) {
+        return true;
+      }
 
-    /*
-     * consume page data firstly
-     */
-    if (readPageData()) {
-      hasCachedTsBlock = true;
-      return true;
-    }
+      /*
+       * consume page data firstly
+       */
+      if (readPageData()) {
+        hasCachedTsBlock = true;
+        return true;
+      }
 
-    /*
-     * consume chunk data secondly
-     */
-    if (readChunkData()) {
-      hasCachedTsBlock = true;
-      return true;
-    }
-
-    /*
-     * consume next file finally
-     */
-    while (seriesScanUtil.hasNextFile()) {
+      /*
+       * consume chunk data secondly
+       */
       if (readChunkData()) {
         hasCachedTsBlock = true;
         return true;
       }
+
+      /*
+       * consume next file finally
+       */
+      while (seriesScanUtil.hasNextFile()) {
+        if (readChunkData()) {
+          hasCachedTsBlock = true;
+          return true;
+        }
+      }
+      return hasCachedTsBlock;
+    } catch (IOException e) {
+      throw new RuntimeException("Error happened while scanning the file", e);
     }
-    return hasCachedTsBlock;
   }
 
   @Override

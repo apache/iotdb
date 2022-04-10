@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.mpp.sql.planner.plan;
 
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
@@ -44,6 +45,10 @@ public class PlanFragment {
 
   public PlanNode getRoot() {
     return root;
+  }
+
+  public void setRoot(PlanNode root) {
+    this.root = root;
   }
 
   public String toString() {
@@ -77,7 +82,7 @@ public class PlanFragment {
   }
 
   private PlanNode getPlanNodeById(PlanNode root, PlanNodeId nodeId) {
-    if (root.getId().equals(nodeId)) {
+    if (root.getPlanNodeId().equals(nodeId)) {
       return root;
     }
     for (PlanNode child : root.getChildren()) {
@@ -89,12 +94,12 @@ public class PlanFragment {
     return null;
   }
 
-  public static PlanFragment deserialize(ByteBuffer byteBuffer) {
+  public static PlanFragment deserialize(ByteBuffer byteBuffer) throws IllegalPathException {
     return new PlanFragment(PlanFragmentId.deserialize(byteBuffer), deserializeHelper(byteBuffer));
   }
 
   // deserialize the plan node recursively
-  private static PlanNode deserializeHelper(ByteBuffer byteBuffer) {
+  private static PlanNode deserializeHelper(ByteBuffer byteBuffer) throws IllegalPathException {
     PlanNode root = PlanNodeType.deserialize(byteBuffer);
     int childrenCount = byteBuffer.getInt();
     for (int i = 0; i < childrenCount; i++) {

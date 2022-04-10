@@ -52,6 +52,8 @@ import java.util.Map;
 public class CompactionUtils {
   private static final Logger logger =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
+  private static final int subTaskNum =
+      IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum();
 
   /**
    * Update the targetResource. Move tmp target file to target file and serialize

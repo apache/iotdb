@@ -20,6 +20,8 @@ package org.apache.iotdb.db.engine.compaction.performer.impl;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.task.ReadPointPerformerSubTask;
 import org.apache.iotdb.db.engine.compaction.inner.utils.MultiTsFileDeviceIterator;
 import org.apache.iotdb.db.engine.compaction.performer.ICrossCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.performer.IUnseqCompactionPerformer;
@@ -41,11 +43,13 @@ import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.QueryUtils;
+import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,8 +57,12 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
 public class ReadPointCompactionPerformer
@@ -62,6 +70,8 @@ public class ReadPointCompactionPerformer
   private Logger LOGGER = LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private List<TsFileResource> seqFiles = Collections.emptyList();
   private List<TsFileResource> unseqFiles = Collections.emptyList();
+  private static final int subTaskNum =
+      IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum();
 
   private List<TsFileResource> targetFiles = Collections.emptyList();
 
@@ -114,6 +124,7 @@ public class ReadPointCompactionPerformer
       }
 
       compactionWriter.endFile();
+      updateDeviceStartTimeAndEndTime(targetFiles, compactionWriter);
       updatePlanIndexes(targetFiles, seqFiles, unseqFiles);
     } finally {
       QueryResourceManager.getInstance().endQuery(queryId);
@@ -168,9 +179,9 @@ public class ReadPointCompactionPerformer
     if (dataBatchReader.hasNextBatch()) {
       // chunkgroup is serialized only when at least one timeseries under this device has data
       compactionWriter.startChunkGroup(device, true);
-      compactionWriter.startMeasurement(measurementSchemas);
-      writeWithReader(compactionWriter, dataBatchReader);
-      compactionWriter.endMeasurement();
+      compactionWriter.startMeasurement(measurementSchemas, 0);
+      writeWithReader(compactionWriter, dataBatchReader, 0);
+      compactionWriter.endMeasurement(0);
       compactionWriter.endChunkGroup();
     }
   }
@@ -181,50 +192,73 @@ public class ReadPointCompactionPerformer
       AbstractCompactionWriter compactionWriter,
       QueryContext queryContext,
       QueryDataSource queryDataSource)
-      throws MetadataException, IOException {
+      throws MetadataException, IOException, InterruptedException {
     boolean hasStartChunkGroup = false;
     MultiTsFileDeviceIterator.MeasurementIterator measurementIterator =
         deviceIterator.iterateNotAlignedSeries(device, false);
     Set<String> allMeasurements = measurementIterator.getAllMeasurements();
+    int subTaskNums = Math.min(allMeasurements.size(), subTaskNum);
+
+    // assign all measurements to different sub tasks
+    Set<String>[] measurementsForEachSubTask = new HashSet[subTaskNums];
+    int idx = 0;
     for (String measurement : allMeasurements) {
-      List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
-      try {
-        if (IoTDBDescriptor.getInstance().getConfig().isEnableIDTable()) {
-          measurementSchemas.add(IDTableManager.getInstance().getSeriesSchema(device, measurement));
-        } else {
-          measurementSchemas.add(
-              IoTDB.schemaProcessor.getSeriesSchema(new PartialPath(device, measurement)));
-        }
-      } catch (PathNotExistException e) {
-        LOGGER.info("A deleted path is skipped: {}", e.getMessage());
-        continue;
+      if (measurementsForEachSubTask[idx % subTaskNums] == null) {
+        measurementsForEachSubTask[idx % subTaskNums] = new HashSet<String>();
       }
+      measurementsForEachSubTask[idx++ % subTaskNums].add(measurement);
+    }
 
-      IBatchReader dataBatchReader =
-          constructReader(
-              device,
-              Collections.singletonList(measurement),
-              measurementSchemas,
-              allMeasurements,
-              queryContext,
-              queryDataSource,
-              false);
+    // construct sub tasks and start compacting measurements in parallel
+    List<Future<Void>> futures = new ArrayList<>();
+    compactionWriter.startChunkGroup(device, false);
+    for (int i = 0; i < subTaskNums; i++) {
+      futures.add(
+          CompactionTaskManager.getInstance()
+              .submitSubTask(
+                  new ReadPointPerformerSubTask(
+                      device,
+                      measurementsForEachSubTask[i],
+                      queryContext,
+                      queryDataSource,
+                      compactionWriter,
+                      i)));
+    }
 
-      if (dataBatchReader.hasNextBatch()) {
-        if (!hasStartChunkGroup) {
-          // chunkgroup is serialized only when at least one timeseries under this device has
-          // data
-          compactionWriter.startChunkGroup(device, false);
-          hasStartChunkGroup = true;
-        }
-        compactionWriter.startMeasurement(measurementSchemas);
-        writeWithReader(compactionWriter, dataBatchReader);
-        compactionWriter.endMeasurement();
+    // wait for all sub tasks finish
+    for (int i = 0; i < subTaskNums; i++) {
+      try {
+        futures.get(i).get();
+      } catch (InterruptedException | ExecutionException e) {
+        LOGGER.error("SubCompactionTask meet errors ", e);
+        Thread.interrupted();
+        throw new InterruptedException();
       }
     }
 
-    if (hasStartChunkGroup) {
-      compactionWriter.endChunkGroup();
+    compactionWriter.endChunkGroup();
+  }
+
+  private static void updateDeviceStartTimeAndEndTime(
+      List<TsFileResource> targetResources, AbstractCompactionWriter compactionWriter) {
+    List<TsFileIOWriter> targetFileWriters = compactionWriter.getFileIOWriter();
+    for (int i = 0; i < targetFileWriters.size(); i++) {
+      TsFileIOWriter fileIOWriter = targetFileWriters.get(i);
+      TsFileResource fileResource = targetResources.get(i);
+      // The tmp target file may does not have any data points written due to the existence of the
+      // mods file, and it will be deleted after compaction. So skip the target file that has been
+      // deleted.
+      if (!fileResource.getTsFile().exists()) {
+        continue;
+      }
+      for (Map.Entry<String, List<TimeseriesMetadata>> entry :
+          fileIOWriter.getDeviceTimeseriesMetadataMap().entrySet()) {
+        String device = entry.getKey();
+        for (TimeseriesMetadata timeseriesMetadata : entry.getValue()) {
+          fileResource.updateStartTime(device, timeseriesMetadata.getStatistics().getStartTime());
+          fileResource.updateEndTime(device, timeseriesMetadata.getStatistics().getEndTime());
+        }
+      }
     }
   }
 
@@ -232,7 +266,7 @@ public class ReadPointCompactionPerformer
    * @param measurementIds if device is aligned, then measurementIds contain all measurements. If
    *     device is not aligned, then measurementIds only contain one measurement.
    */
-  private IBatchReader constructReader(
+  public static IBatchReader constructReader(
       String deviceId,
       List<String> measurementIds,
       List<IMeasurementSchema> measurementSchemas,
@@ -254,12 +288,12 @@ public class ReadPointCompactionPerformer
         seriesPath, allSensors, tsDataType, queryContext, queryDataSource, null, null, null, true);
   }
 
-  private void writeWithReader(AbstractCompactionWriter writer, IBatchReader reader)
-      throws IOException {
+  public static void writeWithReader(
+      AbstractCompactionWriter writer, IBatchReader reader, int subTaskId) throws IOException {
     while (reader.hasNextBatch()) {
       BatchData batchData = reader.nextBatch();
       while (batchData.hasCurrent()) {
-        writer.write(batchData.currentTime(), batchData.currentValue());
+        writer.write(batchData.currentTime(), batchData.currentValue(), subTaskId);
         batchData.next();
       }
     }

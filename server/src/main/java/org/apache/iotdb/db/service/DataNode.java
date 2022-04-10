@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.service;
 
+import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.exception.ConfigurationException;
@@ -62,7 +63,7 @@ public class DataNode implements DataNodeMBean {
    */
   private static final int DEFAULT_JOIN_RETRY = 10;
 
-  private EndPoint thisNode = new EndPoint();
+  private Endpoint thisNode = new Endpoint();
 
   private int dataNodeID;
 
@@ -122,7 +123,7 @@ public class DataNode implements DataNodeMBean {
   }
 
   public void joinCluster() throws StartupException {
-    List<EndPoint> configNodes;
+    List<Endpoint> configNodes;
     try {
       configNodes =
           CommonUtils.parseNodeUrls(IoTDBDescriptor.getInstance().getConfig().getConfigNodeUrls());
@@ -134,12 +135,13 @@ public class DataNode implements DataNodeMBean {
     while (retry > 0) {
       // randomly pick up a config node to try
       Random random = new Random();
-      EndPoint configNode = configNodes.get(random.nextInt(configNodes.size()));
+      Endpoint configNode = configNodes.get(random.nextInt(configNodes.size()));
       logger.info("start joining the cluster with the help of {}", configNode);
       try {
         ConfigIService.Client client = createClient(configNode);
         DataNodeRegisterResp dataNodeRegisterResp =
-            client.registerDataNode(new DataNodeRegisterReq(thisNode));
+            client.registerDataNode(
+                new DataNodeRegisterReq(new EndPoint(thisNode.getIp(), thisNode.getPort())));
         if (dataNodeRegisterResp.getRegisterResult().getCode()
             == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           dataNodeID = dataNodeRegisterResp.getDataNodeID();
@@ -199,13 +201,13 @@ public class DataNode implements DataNodeMBean {
     private DataNodeHolder() {}
   }
 
-  private ConfigIService.Client createClient(EndPoint endPoint) throws IoTDBConnectionException {
+  private ConfigIService.Client createClient(Endpoint endpoint) throws IoTDBConnectionException {
     TTransport transport;
     try {
       transport =
           RpcTransportFactory.INSTANCE.getTransport(
               // as there is a try-catch already, we do not need to use TSocket.wrap
-              endPoint.getIp(), endPoint.getPort(), 2000);
+              endpoint.getIp(), endpoint.getPort(), 2000);
       transport.open();
     } catch (TTransportException e) {
       throw new IoTDBConnectionException(e);

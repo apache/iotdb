@@ -238,6 +238,19 @@ public class VectorMeasurementSchema
   }
 
   @Override
+  public int serializedSize() {
+    int byteLen = 0;
+    byteLen += ReadWriteIOUtils.sizeToWrite(deviceId);
+    byteLen += Integer.BYTES;
+    for (Map.Entry<String, Integer> entry : measurementsToIndexMap.entrySet()) {
+      byteLen += ReadWriteIOUtils.sizeToWrite(entry.getKey());
+      byteLen += Integer.BYTES;
+    }
+    byteLen += (types.length + encodings.length + 1) * Byte.BYTES;
+    return byteLen;
+  }
+
+  @Override
   public int serializeTo(ByteBuffer buffer) {
     int byteLen = 0;
     byteLen += ReadWriteIOUtils.write(deviceId, buffer);

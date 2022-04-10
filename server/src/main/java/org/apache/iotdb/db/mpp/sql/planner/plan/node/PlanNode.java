@@ -32,15 +32,19 @@ public abstract class PlanNode {
   protected static final int ONE_CHILD = 1;
   protected static final int CHILD_COUNT_NO_LIMIT = -1;
 
-  private final PlanNodeId id;
+  private PlanNodeId id;
 
   protected PlanNode(PlanNodeId id) {
     requireNonNull(id, "id is null");
     this.id = id;
   }
 
-  public PlanNodeId getId() {
+  public PlanNodeId getPlanNodeId() {
     return id;
+  }
+
+  public void setPlanNodeId(PlanNodeId id) {
+    this.id = id;
   }
 
   public abstract List<PlanNode> getChildren();
@@ -69,8 +73,6 @@ public abstract class PlanNode {
   }
 
   public abstract int allowedChildCount();
-
-  public abstract List<String> getOutputColumnNames();
 
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
     return visitor.visitPlan(this, context);
