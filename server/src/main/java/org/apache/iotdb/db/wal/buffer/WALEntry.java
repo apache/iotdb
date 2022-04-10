@@ -177,6 +177,10 @@ public class WALEntry implements SerializedSize {
     return walFlushListener;
   }
 
+  public boolean isSignal() {
+    return false;
+  }
+
   private static class TabletInfo {
     /** start row of InsertTabletPlan */
     private final int tabletStart;

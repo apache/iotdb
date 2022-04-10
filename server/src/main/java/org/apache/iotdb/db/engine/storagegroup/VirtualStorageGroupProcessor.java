@@ -1074,8 +1074,13 @@ public class VirtualStorageGroupProcessor {
     }
   }
 
-  public void submitAFlushTask(long timeRangeId, boolean sequence) {
-    writeLock("submitAFlushTaskWhenShouldFlush");
+  /**
+   * WAL module uses this method to flush memTable
+   *
+   * @return True if flush task is submitted successfully
+   */
+  public boolean submitAFlushTask(long timeRangeId, boolean sequence) {
+    writeLock("submitAFlushTask");
     try {
       TsFileProcessor tsFileProcessor;
       if (sequence) {
@@ -1083,16 +1088,19 @@ public class VirtualStorageGroupProcessor {
       } else {
         tsFileProcessor = workUnsequenceTsFileProcessors.get(timeRangeId);
       }
-      fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
+      if (tsFileProcessor != null) {
+        fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
+      }
+      return tsFileProcessor != null;
     } finally {
       writeUnlock();
     }
   }
 
   /**
-   * mem control module use this method to flush memtable
+   * mem control module uses this method to flush memTable
    *
-   * @param tsFileProcessor tsfile processor in which memtable to be flushed
+   * @param tsFileProcessor tsfile processor in which memTable to be flushed
    */
   public void submitAFlushTaskWhenShouldFlush(TsFileProcessor tsFileProcessor) {
     writeLock("submitAFlushTaskWhenShouldFlush");

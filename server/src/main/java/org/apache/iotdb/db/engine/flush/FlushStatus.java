@@ -16,30 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.db.engine.flush;
 
-import org.apache.iotdb.db.engine.memtable.IMemTable;
-
-import java.io.IOException;
-
-public interface FlushListener {
-  void onMemTableFlushStarted(IMemTable memTable) throws IOException;
-
-  void onMemTableFlushed(IMemTable memTable);
-
-  class DefaultMemTableFLushListener implements FlushListener {
-
-    public static final DefaultMemTableFLushListener INSTANCE = new DefaultMemTableFLushListener();
-
-    @Override
-    public void onMemTableFlushStarted(IMemTable memTable) {
-      memTable.setFlushStatus(FlushStatus.FLUSHING);
-    }
-
-    @Override
-    public void onMemTableFlushed(IMemTable memTable) {
-      memTable.setFlushStatus(FlushStatus.FLUSHED);
-    }
-  }
+public enum FlushStatus {
+  /** MemTable is still working */
+  WORKING,
+  /** MemTable flush is flushing */
+  FLUSHING,
+  /** MemTable flush has been flushed */
+  FLUSHED
 }

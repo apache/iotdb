@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.engine.memtable;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.flush.FlushStatus;
 import org.apache.iotdb.db.engine.flush.NotifyFlushMemTable;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
@@ -71,6 +72,7 @@ public abstract class AbstractMemTable implements IMemTable {
   protected boolean disableMemControl = true;
 
   private boolean shouldFlush = false;
+  private volatile FlushStatus flushStatus = FlushStatus.WORKING;
   private final int avgSeriesPointNumThreshold =
       IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
   /** memory size of data points, including TEXT values */
@@ -513,6 +515,16 @@ public abstract class AbstractMemTable implements IMemTable {
   @Override
   public long getCreatedTime() {
     return createdTime;
+  }
+
+  @Override
+  public FlushStatus getFlushStatus() {
+    return flushStatus;
+  }
+
+  @Override
+  public void setFlushStatus(FlushStatus flushStatus) {
+    this.flushStatus = flushStatus;
   }
 
   private IDeviceID getDeviceID(PartialPath deviceId) {

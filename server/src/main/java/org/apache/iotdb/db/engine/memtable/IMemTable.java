@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.memtable;
 
+import org.apache.iotdb.db.engine.flush.FlushStatus;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.WriteProcessException;
@@ -171,4 +172,8 @@ public interface IMemTable extends WALEntryValue {
   int getMemTableId();
 
   long getCreatedTime();
+
+  FlushStatus getFlushStatus();
+
+  void setFlushStatus(FlushStatus flushStatus);
 }

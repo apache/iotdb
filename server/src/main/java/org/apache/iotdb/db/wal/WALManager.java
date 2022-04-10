@@ -42,7 +42,9 @@ import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
@@ -133,6 +135,18 @@ public class WALManager implements IService {
           TimeUnit.MILLISECONDS);
     } catch (Exception e) {
       throw new StartupException(this.getID().getName(), e.getMessage());
+    }
+  }
+
+  public void deleteOutdatedWALFiles() {
+    Future<?> future = walDeleteThread.submit(this::deleteOutdatedFiles);
+    try {
+      future.get();
+    } catch (ExecutionException e) {
+      logger.warn("Exception occurs when deleting wal files", e);
+    } catch (InterruptedException e) {
+      logger.warn("Interrupted when deleting wal files", e);
+      Thread.currentThread().interrupt();
     }
   }
 

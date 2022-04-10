@@ -247,6 +247,7 @@ public class WALNodeTest {
       walFlushListeners.add(walFlushListener);
     }
     walNode.onMemTableFlushed(memTable);
+    walNode.onMemTableCreated(new PrimitiveMemTable(), tsFilePath);
     // check existence of _0.wal file
     assertTrue(new File(logDirectory + File.separator + WALWriter.getLogFileName(0)).exists());
     assertTrue(new File(logDirectory + File.separator + WALWriter.getLogFileName(1)).exists());

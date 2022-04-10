@@ -23,6 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.engine.flush.FlushStatus;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -32,6 +33,7 @@ import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.wal.buffer.IWALBuffer;
+import org.apache.iotdb.db.wal.buffer.SignalWALEntry;
 import org.apache.iotdb.db.wal.buffer.WALBuffer;
 import org.apache.iotdb.db.wal.buffer.WALEntry;
 import org.apache.iotdb.db.wal.checkpoint.CheckpointManager;
@@ -147,7 +149,11 @@ public class WALNode implements IWALNode {
   // region Task to delete outdated .wal files
   /** Delete outdated .wal files */
   public void deleteOutdatedFiles() {
-    new DeleteOutdatedFileTask().run();
+    try {
+      new DeleteOutdatedFileTask().run();
+    } catch (Exception e) {
+      logger.error("Fail to delete wal node-{}'s outdated files.", identifier, e);
+    }
   }
 
   private class DeleteOutdatedFileTask implements Runnable {
@@ -159,10 +165,26 @@ public class WALNode implements IWALNode {
       // init firstValidVersionId
       firstValidVersionId = checkpointManager.getFirstValidWALVersionId();
       if (firstValidVersionId == Integer.MIN_VALUE) {
-        firstValidVersionId = buffer.getCurrentWALFileVersion();
+        // roll wal log writer to delete current wal file
+        WALEntry rollWALFileSignal =
+            new SignalWALEntry(SignalWALEntry.SignalType.ROLL_WAL_LOG_WRITER_SIGNAL, true);
+        WALFlushListener walFlushListener = log(rollWALFileSignal);
+        if (walFlushListener.waitForResult() == WALFlushListener.Status.FAILURE) {
+          logger.error(
+              "Fail to trigger rolling wal node-{}'s wal file log writer.",
+              identifier,
+              walFlushListener.getCause());
+        }
+        // update firstValidVersionId
+        firstValidVersionId = checkpointManager.getFirstValidWALVersionId();
+        if (firstValidVersionId == Integer.MIN_VALUE) {
+          firstValidVersionId = buffer.getCurrentWALFileVersion();
+        }
       }
+
       // delete outdated files
       File[] filesToDelete = deleteOutdatedFiles();
+
       // exceed time limit, update first valid version id by snapshotting or flushing memTable,
       // then delete old .wal files again
       if (filesToDelete != null && filesToDelete.length == 0) {
@@ -218,6 +240,7 @@ public class WALNode implements IWALNode {
       if (oldestMemTableInfo == null) {
         return;
       }
+      IMemTable oldestMemTable = oldestMemTableInfo.getMemTable();
 
       // get memTable's virtual storage group processor
       File oldestTsFile =
@@ -235,34 +258,92 @@ public class WALNode implements IWALNode {
       }
 
       // snapshot or flush memTable
-      int snapshotCount = memTableSnapshotCount.getOrDefault(oldestMemTableInfo.getMemTableId(), 0);
+      int snapshotCount = memTableSnapshotCount.getOrDefault(oldestMemTable.getMemTableId(), 0);
       if (snapshotCount >= MAX_WAL_MEM_TABLE_SNAPSHOT_NUM
-          || oldestMemTableInfo.getMemTable().getTVListsRamCost()
-              > MEM_TABLE_SNAPSHOT_THRESHOLD_IN_BYTE) {
-        vsgProcessor.submitAFlushTask(
-            TsFileUtils.getTimePartition(oldestTsFile), TsFileUtils.isSequence(oldestTsFile));
+          || oldestMemTable.getTVListsRamCost() > MEM_TABLE_SNAPSHOT_THRESHOLD_IN_BYTE) {
+        flushMemTable(vsgProcessor, oldestTsFile, oldestMemTable);
       } else {
-        // get vsg write lock to make sure no more writes to the memTable
-        vsgProcessor.writeLock("CheckpointManager#snapshotOrFlushOldestMemTable");
-        try {
-          // update first version id first to make sure snapshot is in the files ≥ current log
-          // version
-          oldestMemTableInfo.setFirstFileVersionId(buffer.getCurrentWALFileVersion());
-          // update snapshot count
-          memTableSnapshotCount.put(oldestMemTableInfo.getMemTableId(), snapshotCount + 1);
-          // log snapshot in .wal file
-          WALEntry walEntry =
-              new WALEntry(
-                  oldestMemTableInfo.getMemTableId(), oldestMemTableInfo.getMemTable(), true);
-          WALFlushListener flushListener = log(walEntry);
-          // wait until getting the result
-          // it's low-risk to block writes awhile because this memTable accumulates slowly
-          if (flushListener.waitForResult() == WALFlushListener.Status.FAILURE) {
-            logger.error("Fail to snapshot memTable of {}", oldestTsFile, flushListener.getCause());
+        snapshotMemTable(vsgProcessor, oldestTsFile, oldestMemTableInfo);
+      }
+    }
+
+    private void flushMemTable(
+        VirtualStorageGroupProcessor vsgProcessor, File tsFile, IMemTable memTable) {
+      boolean shouldWait = true;
+      if (memTable.getFlushStatus() == FlushStatus.WORKING) {
+        shouldWait =
+            vsgProcessor.submitAFlushTask(
+                TsFileUtils.getTimePartition(tsFile), TsFileUtils.isSequence(tsFile));
+        logger.info(
+            "WAL node-{} flushes memTable-{} to TsFile {}, memTable size is {}.",
+            identifier,
+            memTable.getMemTableId(),
+            tsFile,
+            memTable.getTVListsRamCost());
+      }
+
+      // it's fine to wait until memTable has been flushed, because deleting files is not urgent.
+      if (shouldWait) {
+        long sleepTime = 0;
+        while (memTable.getFlushStatus() != FlushStatus.FLUSHED) {
+          try {
+            Thread.sleep(1_000);
+            sleepTime += 1_000;
+            if (sleepTime > 10_000) {
+              logger.warn("Waiting too long for memTable flush to be done.");
+              break;
+            }
+          } catch (InterruptedException e) {
+            logger.warn("Interrupted when waiting for memTable flush to be done.");
+            Thread.currentThread().interrupt();
           }
-        } finally {
-          vsgProcessor.writeUnlock();
         }
+      }
+    }
+
+    private void snapshotMemTable(
+        VirtualStorageGroupProcessor vsgProcessor, File tsFile, MemTableInfo memTableInfo) {
+      IMemTable memTable = memTableInfo.getMemTable();
+      if (memTable.getFlushStatus() != FlushStatus.WORKING) {
+        return;
+      }
+
+      // update snapshot count
+      memTableSnapshotCount.compute(memTable.getMemTableId(), (k, v) -> v == null ? 1 : v + 1);
+      // roll wal log writer to make sure first version id will be updated
+      WALEntry rollWALFileSignal =
+          new SignalWALEntry(SignalWALEntry.SignalType.ROLL_WAL_LOG_WRITER_SIGNAL, true);
+      WALFlushListener fileRolledListener = log(rollWALFileSignal);
+      if (fileRolledListener.waitForResult() == WALFlushListener.Status.FAILURE) {
+        logger.error("Fail to roll wal log writer.", fileRolledListener.getCause());
+        return;
+      }
+      logger.info("Version id is {}", memTableInfo.getFirstFileVersionId());
+      // update first version id first to make sure snapshot is in the files ≥ current log
+      // version
+      memTableInfo.setFirstFileVersionId(buffer.getCurrentWALFileVersion());
+      logger.info("Version id is {}", memTableInfo.getFirstFileVersionId());
+
+      // get vsg write lock to make sure no more writes to the memTable
+      vsgProcessor.writeLock(
+          "CheckpointManager$DeleteOutdatedFileTask.snapshotOrFlushOldestMemTable");
+      try {
+        // log snapshot in a new .wal file
+        WALEntry walEntry = new WALEntry(memTable.getMemTableId(), memTable, true);
+        WALFlushListener flushListener = log(walEntry);
+
+        // wait until getting the result
+        // it's low-risk to block writes awhile because this memTable accumulates slowly
+        if (flushListener.waitForResult() == WALFlushListener.Status.FAILURE) {
+          logger.error("Fail to snapshot memTable of {}", tsFile, flushListener.getCause());
+        }
+        logger.info(
+            "WAL node-{} snapshots memTable-{} to wal files, memTable size is {}.",
+            identifier,
+            memTable.getMemTableId(),
+            memTable.getTVListsRamCost());
+      } finally {
+        vsgProcessor.writeUnlock();
       }
     }
   }

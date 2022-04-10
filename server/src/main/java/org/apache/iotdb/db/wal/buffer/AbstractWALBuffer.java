@@ -66,15 +66,11 @@ public abstract class AbstractWALBuffer implements IWALBuffer {
   }
 
   /** Notice: only called by syncBufferThread and old log writer will be closed by this function. */
-  protected boolean tryRollingLogWriter() throws IOException {
-    if (currentWALFileWriter.size() < FILE_SIZE_THRESHOLD) {
-      return false;
-    }
+  protected void rollLogWriter() throws IOException {
     currentWALFileWriter.close();
     File nextLogFile =
         SystemFileFactory.INSTANCE.getFile(
             logDirectory, WALWriter.getLogFileName(currentWALFileVersion.incrementAndGet()));
     currentWALFileWriter = new WALWriter(nextLogFile);
-    return true;
   }
 }

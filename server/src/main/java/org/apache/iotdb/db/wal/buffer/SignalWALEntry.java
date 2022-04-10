@@ -16,30 +16,36 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.wal.buffer;
 
-package org.apache.iotdb.db.engine.flush;
+import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 
-import org.apache.iotdb.db.engine.memtable.IMemTable;
+/** This class provides a signal to help wal buffer dealing with some special cases */
+public class SignalWALEntry extends WALEntry {
+  private final SignalType signalType;
 
-import java.io.IOException;
+  public SignalWALEntry(SignalType signalType) {
+    this(signalType, false);
+  }
 
-public interface FlushListener {
-  void onMemTableFlushStarted(IMemTable memTable) throws IOException;
+  public SignalWALEntry(SignalType signalType, boolean wait) {
+    super(Integer.MIN_VALUE, new DeletePlan(), wait);
+    this.signalType = signalType;
+  }
 
-  void onMemTableFlushed(IMemTable memTable);
+  @Override
+  public boolean isSignal() {
+    return true;
+  }
 
-  class DefaultMemTableFLushListener implements FlushListener {
+  public SignalType getSignalType() {
+    return signalType;
+  }
 
-    public static final DefaultMemTableFLushListener INSTANCE = new DefaultMemTableFLushListener();
-
-    @Override
-    public void onMemTableFlushStarted(IMemTable memTable) {
-      memTable.setFlushStatus(FlushStatus.FLUSHING);
-    }
-
-    @Override
-    public void onMemTableFlushed(IMemTable memTable) {
-      memTable.setFlushStatus(FlushStatus.FLUSHED);
-    }
+  public enum SignalType {
+    /** signal wal buffer has been closed */
+    CLOSE_SIGNAL,
+    /** signal wal buffer to roll wal log writer */
+    ROLL_WAL_LOG_WRITER_SIGNAL,
   }
 }

@@ -175,6 +175,7 @@ public class TsFileProcessor {
     this.updateLatestFlushTimeCallback = updateLatestFlushTimeCallback;
     this.sequence = sequence;
     this.walNode = WALManager.getInstance().applyForWALNode();
+    flushListeners.add(FlushListener.DefaultMemTableFLushListener.INSTANCE);
     flushListeners.add(this.walNode);
     closeFileListeners.add(closeTsFileCallback);
     logger.info("create a new tsfile processor {}", tsfile.getAbsolutePath());
@@ -196,6 +197,7 @@ public class TsFileProcessor {
     this.updateLatestFlushTimeCallback = updateLatestFlushTimeCallback;
     this.sequence = sequence;
     this.walNode = WALManager.getInstance().applyForWALNode();
+    flushListeners.add(FlushListener.DefaultMemTableFLushListener.INSTANCE);
     flushListeners.add(this.walNode);
     closeFileListeners.add(closeUnsealedTsFileProcessor);
     logger.info("reopen a tsfile processor {}", tsFileResource.getTsFile());
