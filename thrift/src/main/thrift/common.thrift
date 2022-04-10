@@ -35,5 +35,5 @@ namespace py iotdb.thrift.rpc
 
  struct RegionReplicaSet {
      1: required i32 regionId
-     2: required list<rpc.EndPoint> endpoint
+     2: required list<EndPoint> endpoint
  }

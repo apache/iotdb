@@ -25,13 +25,14 @@ typedef i32 int
 typedef i64 long
 
 struct CreateSchemaRegionReq {
-    1: required list<int> dataNodeID
-    2: required int schemaRegionID
+    1: required common.RegionReplicaSet regionReplicaSet
+    2: required string storageGroup
 }
 
 struct CreateDataRegionReq {
-    1: required list<int> dataNodeID
-    2: required int dataRegionID
+    1: required common.RegionReplicaSet regionReplicaSet
+    2: required string storageGroup
+    3: optional long ttl
 }
 
 struct CreateDataPartitionReq{
@@ -87,6 +88,5 @@ service ManagementIService {
       * @param previous data node in the data region, new data node, and dataregion id
     **/
     common.TSStatus migrateDataRegion(MigrateDataRegionReq req)
-
 
 }

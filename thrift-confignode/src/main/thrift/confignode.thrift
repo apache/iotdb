@@ -32,7 +32,7 @@ struct DataNodeRegisterResp {
 
 struct DataNodeMessage {
   1: required i32 dataNodeID
-  2: required rpc.EndPoint endPoint
+  2: required common.EndPoint endPoint
 }
 
 struct SetStorageGroupReq {
