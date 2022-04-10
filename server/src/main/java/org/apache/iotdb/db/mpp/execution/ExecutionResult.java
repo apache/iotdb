@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.mpp.execution;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.db.mpp.common.QueryId;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 public class ExecutionResult {
   public QueryId queryId;

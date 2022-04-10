@@ -18,10 +18,10 @@
  */
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
 import org.apache.iotdb.confignode.rpc.thrift.DeviceGroupHashInfo;
 import org.apache.iotdb.consensus.common.DataSet;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 /**
  * a subset of services provided by {@ConfigManager}. For use internally only, pased to Managers,
