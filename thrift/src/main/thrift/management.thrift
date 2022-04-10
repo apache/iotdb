@@ -19,7 +19,6 @@
 
 include "common.thrift"
 namespace java org.apache.iotdb.service.rpc.thrift
-namespace py iotdb.thrift.rpc
 
 typedef i32 int
 typedef i64 long
