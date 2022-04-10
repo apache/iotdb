@@ -26,8 +26,8 @@ import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
 import org.apache.iotdb.db.engine.memtable.IWritableMemChunkGroup;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -96,8 +96,7 @@ public class LogReplayer {
    * finds the logNode of the TsFile given by insertFilePath and logNodePrefix, reads the WALs from
    * the logNode and redoes them into a given MemTable and ModificationFile.
    */
-  public void replayLogs(
-      Supplier<ByteBuffer[]> supplier, VirtualStorageGroupProcessor virtualStorageGroupProcessor) {
+  public void replayLogs(Supplier<ByteBuffer[]> supplier, DataRegion dataRegion) {
     WriteLogNode logNode =
         MultiFileLogNodeManager.getInstance()
             .getNode(
@@ -110,7 +109,7 @@ public class LogReplayer {
         try {
           PhysicalPlan plan = logReader.next();
           if (plan instanceof InsertPlan) {
-            replayInsert((InsertPlan) plan, virtualStorageGroupProcessor);
+            replayInsert((InsertPlan) plan, dataRegion);
           } else if (plan instanceof DeletePlan) {
             replayDelete((DeletePlan) plan);
           }
@@ -160,8 +159,7 @@ public class LogReplayer {
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  private void replayInsert(
-      InsertPlan plan, VirtualStorageGroupProcessor virtualStorageGroupProcessor)
+  private void replayInsert(InsertPlan plan, DataRegion dataRegion)
       throws WriteProcessException, QueryProcessException {
     if (currentTsFileResource != null) {
       long minTime, maxTime;
@@ -194,7 +192,7 @@ public class LogReplayer {
     plan.setMeasurementMNodes(new IMeasurementMNode[plan.getMeasurements().length]);
     try {
       if (IoTDBDescriptor.getInstance().getConfig().isEnableIDTable()) {
-        virtualStorageGroupProcessor.getIdTable().getSeriesSchemas(plan);
+        dataRegion.getIdTable().getSeriesSchemas(plan);
       } else {
         IoTDB.schemaProcessor.getSeriesSchemasAndReadLockDevice(plan);
         plan.setDeviceID(DeviceIDFactory.getInstance().getDeviceID(plan.getDevicePath()));

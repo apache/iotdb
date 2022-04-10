@@ -34,8 +34,8 @@ import org.apache.iotdb.db.engine.flush.CloseFileListener;
 import org.apache.iotdb.db.engine.flush.FlushListener;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy.DirectFlushPolicy;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
-import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
@@ -95,7 +95,7 @@ public class StorageEngineV2 implements IService {
       FilePathUtils.regularizePath(config.getSystemDir()) + "storage_groups";
 
   /** DataRegionId -> DataRegion */
-  private final ConcurrentHashMap<ConsensusGroupId, VirtualStorageGroupProcessor> dataRegionMap =
+  private final ConcurrentHashMap<ConsensusGroupId, DataRegion> dataRegionMap =
       new ConcurrentHashMap<>();
 
   private AtomicBoolean isAllSgReady = new AtomicBoolean(false);
@@ -240,15 +240,14 @@ public class StorageEngineV2 implements IService {
           continue;
         }
         ConsensusGroupId dataRegionId = new DataRegionId(Integer.parseInt(dataRegionDir.getName()));
-        VirtualStorageGroupProcessor dataRegion =
-            buildNewStorageGroupProcessor(sg, dataRegionDir.getName(), ttl);
+        DataRegion dataRegion = buildNewStorageGroupProcessor(sg, dataRegionDir.getName(), ttl);
         dataRegionMap.putIfAbsent(dataRegionId, dataRegion);
       }
     }
   }
 
   private void asyncRecover(ExecutorService pool, List<Future<Void>> futures) {
-    for (VirtualStorageGroupProcessor processor : dataRegionMap.values()) {
+    for (DataRegion processor : dataRegionMap.values()) {
       Callable<Void> recoverVsgTask =
           () -> {
             processor.setReady(true);
@@ -289,7 +288,7 @@ public class StorageEngineV2 implements IService {
 
   private void checkTTL() {
     try {
-      for (VirtualStorageGroupProcessor dataRegion : dataRegionMap.values()) {
+      for (DataRegion dataRegion : dataRegionMap.values()) {
         if (dataRegion != null) {
           dataRegion.checkFilesTTL();
         }
@@ -342,7 +341,7 @@ public class StorageEngineV2 implements IService {
 
   private void timedFlushSeqMemTable() {
     try {
-      for (VirtualStorageGroupProcessor dataRegion : dataRegionMap.values()) {
+      for (DataRegion dataRegion : dataRegionMap.values()) {
         if (dataRegion != null) {
           dataRegion.timedFlushSeqMemTable();
         }
@@ -354,7 +353,7 @@ public class StorageEngineV2 implements IService {
 
   private void timedFlushUnseqMemTable() {
     try {
-      for (VirtualStorageGroupProcessor dataRegion : dataRegionMap.values()) {
+      for (DataRegion dataRegion : dataRegionMap.values()) {
         if (dataRegion != null) {
           dataRegion.timedFlushUnseqMemTable();
         }
@@ -366,7 +365,7 @@ public class StorageEngineV2 implements IService {
 
   private void timedCloseTsFileProcessor() {
     try {
-      for (VirtualStorageGroupProcessor dataRegion : dataRegionMap.values()) {
+      for (DataRegion dataRegion : dataRegionMap.values()) {
         if (dataRegion != null) {
           dataRegion.timedCloseTsFileProcessor();
         }
@@ -378,7 +377,7 @@ public class StorageEngineV2 implements IService {
 
   @Override
   public void stop() {
-    for (VirtualStorageGroupProcessor vsg : dataRegionMap.values()) {
+    for (DataRegion vsg : dataRegionMap.values()) {
       if (vsg != null) {
         ThreadUtils.stopThreadPool(
             vsg.getTimedCompactionScheduleTask(), ThreadName.COMPACTION_SCHEDULE);
@@ -403,12 +402,10 @@ public class StorageEngineV2 implements IService {
   @Override
   public void shutdown(long milliseconds) throws ShutdownException {
     try {
-      for (VirtualStorageGroupProcessor virtualStorageGroupProcessor : dataRegionMap.values()) {
+      for (DataRegion dataRegion : dataRegionMap.values()) {
         ThreadUtils.stopThreadPool(
-            virtualStorageGroupProcessor.getTimedCompactionScheduleTask(),
-            ThreadName.COMPACTION_SCHEDULE);
-        ThreadUtils.stopThreadPool(
-            virtualStorageGroupProcessor.getWALTrimScheduleTask(), ThreadName.WAL_TRIM);
+            dataRegion.getTimedCompactionScheduleTask(), ThreadName.COMPACTION_SCHEDULE);
+        ThreadUtils.stopThreadPool(dataRegion.getWALTrimScheduleTask(), ThreadName.WAL_TRIM);
       }
       forceCloseAllProcessor();
     } catch (TsFileProcessorException e) {
@@ -458,16 +455,16 @@ public class StorageEngineV2 implements IService {
    * @param virtualStorageGroupId virtual storage group id e.g. 1
    * @param logicalStorageGroupName logical storage group name e.g. root.sg1
    */
-  public VirtualStorageGroupProcessor buildNewStorageGroupProcessor(
+  public DataRegion buildNewStorageGroupProcessor(
       String logicalStorageGroupName, String virtualStorageGroupId, long ttl)
       throws StorageGroupProcessorException {
-    VirtualStorageGroupProcessor processor;
+    DataRegion processor;
     logger.info(
         "construct a processor instance, the storage group is {}, Thread is {}",
         logicalStorageGroupName,
         Thread.currentThread().getId());
     processor =
-        new VirtualStorageGroupProcessor(
+        new DataRegion(
             systemDir + File.separator + logicalStorageGroupName,
             virtualStorageGroupId,
             fileFlushPolicy,
@@ -500,7 +497,7 @@ public class StorageEngineV2 implements IService {
       }
     }
 
-    VirtualStorageGroupProcessor dataRegion = dataRegionMap.get(dataRegionId);
+    DataRegion dataRegion = dataRegionMap.get(dataRegionId);
 
     try {
       dataRegion.insert(insertRowNode);
@@ -522,32 +519,32 @@ public class StorageEngineV2 implements IService {
         throw new BatchProcessException(results);
       }
     }
-    VirtualStorageGroupProcessor dataRegion = dataRegionMap.get(dataRegionId);
+    DataRegion dataRegion = dataRegionMap.get(dataRegionId);
     dataRegion.insertTablet(insertTabletNode);
   }
 
   /** flush command Sync asyncCloseOneProcessor all file node processors. */
   public void syncCloseAllProcessor() {
     logger.info("Start closing all storage group processor");
-    for (VirtualStorageGroupProcessor virtualStorageGroupProcessor : dataRegionMap.values()) {
-      if (virtualStorageGroupProcessor != null) {
-        virtualStorageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
+    for (DataRegion dataRegion : dataRegionMap.values()) {
+      if (dataRegion != null) {
+        dataRegion.syncCloseAllWorkingTsFileProcessors();
       }
     }
   }
 
   public void forceCloseAllProcessor() throws TsFileProcessorException {
     logger.info("Start force closing all storage group processor");
-    for (VirtualStorageGroupProcessor virtualStorageGroupProcessor : dataRegionMap.values()) {
-      if (virtualStorageGroupProcessor != null) {
-        virtualStorageGroupProcessor.forceCloseAllWorkingTsFileProcessors();
+    for (DataRegion dataRegion : dataRegionMap.values()) {
+      if (dataRegion != null) {
+        dataRegion.forceCloseAllWorkingTsFileProcessors();
       }
     }
   }
 
   public void setTTL(List<ConsensusGroupId> dataRegionIdList, long dataTTL) {
     for (ConsensusGroupId dataRegionId : dataRegionIdList) {
-      VirtualStorageGroupProcessor dataRegion = dataRegionMap.get(dataRegionId);
+      DataRegion dataRegion = dataRegionMap.get(dataRegionId);
       if (dataRegion != null) {
         dataRegion.setDataTTL(dataTTL);
       }
@@ -566,23 +563,21 @@ public class StorageEngineV2 implements IService {
    */
   public Map<String, List<Pair<Long, Boolean>>> getWorkingStorageGroupPartitions() {
     Map<String, List<Pair<Long, Boolean>>> res = new ConcurrentHashMap<>();
-    for (Entry<ConsensusGroupId, VirtualStorageGroupProcessor> entry : dataRegionMap.entrySet()) {
-      VirtualStorageGroupProcessor virtualStorageGroupProcessor = entry.getValue();
-      if (virtualStorageGroupProcessor != null) {
+    for (Entry<ConsensusGroupId, DataRegion> entry : dataRegionMap.entrySet()) {
+      DataRegion dataRegion = entry.getValue();
+      if (dataRegion != null) {
         List<Pair<Long, Boolean>> partitionIdList = new ArrayList<>();
-        for (TsFileProcessor tsFileProcessor :
-            virtualStorageGroupProcessor.getWorkSequenceTsFileProcessors()) {
+        for (TsFileProcessor tsFileProcessor : dataRegion.getWorkSequenceTsFileProcessors()) {
           Pair<Long, Boolean> tmpPair = new Pair<>(tsFileProcessor.getTimeRangeId(), true);
           partitionIdList.add(tmpPair);
         }
 
-        for (TsFileProcessor tsFileProcessor :
-            virtualStorageGroupProcessor.getWorkUnsequenceTsFileProcessors()) {
+        for (TsFileProcessor tsFileProcessor : dataRegion.getWorkUnsequenceTsFileProcessors()) {
           Pair<Long, Boolean> tmpPair = new Pair<>(tsFileProcessor.getTimeRangeId(), false);
           partitionIdList.add(tmpPair);
         }
 
-        res.put(virtualStorageGroupProcessor.getStorageGroupPath(), partitionIdList);
+        res.put(dataRegion.getStorageGroupPath(), partitionIdList);
       }
     }
 
@@ -611,19 +606,14 @@ public class StorageEngineV2 implements IService {
 
   // When registering a new region, the coordinator needs to register the corresponding region with
   // the local engine before adding the corresponding consensusGroup to the consensus layer
-  public VirtualStorageGroupProcessor createDataRegion(DataRegionId regionId, String sg, long ttl)
-      throws StorageEngineException {
-    try {
-      VirtualStorageGroupProcessor dataRegion =
-          buildNewStorageGroupProcessor(sg, regionId.toString(), ttl);
-      dataRegionMap.put(regionId, dataRegion);
-    } catch (StorageGroupProcessorException e) {
-      throw new StorageEngineException(e);
-    }
-    return null;
+  public DataRegion createDataRegion(DataRegionId regionId, String sg, long ttl)
+      throws StorageGroupProcessorException {
+    DataRegion dataRegion = buildNewStorageGroupProcessor(sg, regionId.toString(), ttl);
+    dataRegionMap.put(regionId, dataRegion);
+    return dataRegion;
   }
 
-  public VirtualStorageGroupProcessor getDataRegion(DataRegionId regionId) {
+  public DataRegion getDataRegion(DataRegionId regionId) {
     return dataRegionMap.get(regionId);
   }
 

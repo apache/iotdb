@@ -686,10 +686,10 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "slow_query_threshold", String.valueOf(conf.getSlowQueryThreshold()))));
 
-      conf.setVirtualStorageGroupNum(
+      conf.setDataRegionNum(
           Integer.parseInt(
               properties.getProperty(
-                  "virtual_storage_group_num", String.valueOf(conf.getVirtualStorageGroupNum()))));
+                  "virtual_storage_group_num", String.valueOf(conf.getDataRegionNum()))));
 
       conf.setRecoveryLogIntervalInMs(
           Long.parseLong(

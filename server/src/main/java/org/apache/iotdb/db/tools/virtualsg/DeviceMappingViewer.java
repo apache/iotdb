@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.tools.virtualsg;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.storagegroup.virtualSg.HashVirtualPartitioner;
+import org.apache.iotdb.db.engine.storagegroup.dataregion.HashVirtualPartitioner;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.path.PartialPath;

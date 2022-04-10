@@ -31,7 +31,7 @@ import java.io.File;
  */
 public class TsFileIdentifier {
   private final String logicalStorageGroupName;
-  private final String virtualStorageGroupId;
+  private final String dataRegionId;
   private final String timePartitionId;
   private final boolean sequence;
   private final String filename;
@@ -57,12 +57,12 @@ public class TsFileIdentifier {
 
   private TsFileIdentifier(
       String logicalStorageGroupName,
-      String virtualStorageGroupId,
+      String dataRegionId,
       String timePartitionId,
       boolean sequence,
       String filename) {
     this.logicalStorageGroupName = logicalStorageGroupName;
-    this.virtualStorageGroupId = virtualStorageGroupId;
+    this.dataRegionId = dataRegionId;
     this.timePartitionId = timePartitionId;
     this.sequence = sequence;
     this.filename = filename;
@@ -150,7 +150,7 @@ public class TsFileIdentifier {
         INFO_SEPARATOR,
         logicalStorageGroupName,
         INFO_SEPARATOR,
-        virtualStorageGroupId,
+        dataRegionId,
         INFO_SEPARATOR,
         timePartitionId,
         INFO_SEPARATOR,
@@ -165,7 +165,7 @@ public class TsFileIdentifier {
     TsFileIdentifier otherInfo = (TsFileIdentifier) other;
     return otherInfo.sequence == this.sequence
         && otherInfo.logicalStorageGroupName.equals(this.logicalStorageGroupName)
-        && otherInfo.virtualStorageGroupId.equals(this.virtualStorageGroupId)
+        && otherInfo.dataRegionId.equals(this.dataRegionId)
         && otherInfo.timePartitionId.equals(this.timePartitionId)
         && otherInfo.filename.equals(this.filename);
   }
@@ -181,7 +181,7 @@ public class TsFileIdentifier {
             + File.separator
             + logicalStorageGroupName
             + File.separator
-            + virtualStorageGroupId
+            + dataRegionId
             + File.separator
             + timePartitionId
             + File.separator
@@ -204,7 +204,7 @@ public class TsFileIdentifier {
         + File.separator
         + logicalStorageGroupName
         + File.separator
-        + virtualStorageGroupId
+        + dataRegionId
         + File.separator
         + timePartitionId
         + File.separator
@@ -215,8 +215,8 @@ public class TsFileIdentifier {
     return logicalStorageGroupName;
   }
 
-  public String getVirtualStorageGroupId() {
-    return virtualStorageGroupId;
+  public String getDataRegionId() {
+    return dataRegionId;
   }
 
   public String getTimePartitionId() {

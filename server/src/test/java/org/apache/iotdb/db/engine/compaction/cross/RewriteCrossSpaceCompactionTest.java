@@ -23,10 +23,10 @@ import org.apache.iotdb.db.engine.compaction.AbstractCompactionTest;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.task.RewriteCrossSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -577,8 +577,8 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
    */
   @Test
   public void testOneDeletionDuringCompaction() throws Exception {
-    VirtualStorageGroupProcessor vsgp =
-        new VirtualStorageGroupProcessor(
+    DataRegion vsgp =
+        new DataRegion(
             STORAGE_GROUP_DIR.getPath(),
             "0",
             new TsFileFlushPolicy.DirectFlushPolicy(),
@@ -687,8 +687,8 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
    */
   @Test
   public void testSeveralDeletionsDuringCompaction() throws Exception {
-    VirtualStorageGroupProcessor vsgp =
-        new VirtualStorageGroupProcessor(
+    DataRegion vsgp =
+        new DataRegion(
             STORAGE_GROUP_DIR.getPath(),
             "0",
             new TsFileFlushPolicy.DirectFlushPolicy(),

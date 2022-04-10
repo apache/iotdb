@@ -28,10 +28,10 @@ import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -186,7 +186,7 @@ public class SizeTieredCompactionRecoverTest {
       File timePartitionDir = new File(SEQ_FILE_DIR);
       File f = new File(timePartitionDir.getParent() + File.separator + "test.tmp");
       f.createNewFile();
-      new VirtualStorageGroupProcessor(
+      new DataRegion(
           TestConstant.BASE_OUTPUT_PATH + File.separator + "data" + File.separator + "sequence",
           "0",
           new TsFileFlushPolicy.DirectFlushPolicy(),

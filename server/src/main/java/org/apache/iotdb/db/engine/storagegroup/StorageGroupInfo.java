@@ -34,7 +34,7 @@ import java.util.function.Supplier;
 /** The storageGroupInfo records the total memory cost of the Storage Group. */
 public class StorageGroupInfo {
 
-  private VirtualStorageGroupProcessor virtualStorageGroupProcessor;
+  private DataRegion dataRegion;
 
   /**
    * The total Storage group memory cost, including unsealed TsFileResource, ChunkMetadata, WAL,
@@ -51,13 +51,13 @@ public class StorageGroupInfo {
   /** A set of all unclosed TsFileProcessors in this SG */
   private List<TsFileProcessor> reportedTsps = new CopyOnWriteArrayList<>();
 
-  public StorageGroupInfo(VirtualStorageGroupProcessor virtualStorageGroupProcessor) {
-    this.virtualStorageGroupProcessor = virtualStorageGroupProcessor;
+  public StorageGroupInfo(DataRegion dataRegion) {
+    this.dataRegion = dataRegion;
     memoryCost = new AtomicLong();
   }
 
-  public VirtualStorageGroupProcessor getVirtualStorageGroupProcessor() {
-    return virtualStorageGroupProcessor;
+  public DataRegion getVirtualStorageGroupProcessor() {
+    return dataRegion;
   }
 
   /** When create a new TsFileProcessor, call this method */
@@ -101,8 +101,8 @@ public class StorageGroupInfo {
   }
 
   public Supplier<ByteBuffer[]> getWalSupplier() {
-    if (virtualStorageGroupProcessor != null) {
-      return virtualStorageGroupProcessor::getWalDirectByteBuffer;
+    if (dataRegion != null) {
+      return dataRegion::getWalDirectByteBuffer;
     } else { // only happens in test
       return this::walSupplier;
     }
@@ -119,8 +119,8 @@ public class StorageGroupInfo {
   }
 
   public Consumer<ByteBuffer[]> getWalConsumer() {
-    if (virtualStorageGroupProcessor != null) {
-      return virtualStorageGroupProcessor::releaseWalBuffer;
+    if (dataRegion != null) {
+      return dataRegion::releaseWalBuffer;
     } else { // only happens in test
       return this::walConsumer;
     }

@@ -44,8 +44,7 @@ public class IoTDBCompleteIT {
   @Before
   public void setUp() throws InterruptedException {
     // test different partition
-    prevVirtualStorageGroupNum =
-        IoTDBDescriptor.getInstance().getConfig().getVirtualStorageGroupNum();
+    prevVirtualStorageGroupNum = IoTDBDescriptor.getInstance().getConfig().getDataRegionNum();
     ConfigFactory.getConfig().setVirtualStorageGroupNum(16);
     EnvFactory.getEnv().initBeforeClass();
   }

@@ -30,7 +30,7 @@ import java.io.IOException;
 public class FilePathUtilsTest {
 
   private static final String storageGroupName = "root.group_9";
-  private static final String virtualSgName = "1";
+  private static final String dataRegionId = "1";
   private static final long partitionId = 0;
   private static final String tsFileName = "1611199237113-4-0.tsfile";
   private static final String fullPath =
@@ -38,7 +38,7 @@ public class FilePathUtilsTest {
           + File.separator
           + storageGroupName
           + File.separator
-          + virtualSgName
+          + dataRegionId
           + File.separator
           + partitionId
           + File.separator
@@ -75,8 +75,8 @@ public class FilePathUtilsTest {
 
   @Test
   public void getVirtualStorageGroupNameTest() {
-    String tmpVirtualSgName = FilePathUtils.getVirtualStorageGroupId(tsFile.getAbsolutePath());
-    Assert.assertEquals(virtualSgName, tmpVirtualSgName);
+    String tmpVirtualSgName = FilePathUtils.getDataRegionId(tsFile.getAbsolutePath());
+    Assert.assertEquals(dataRegionId, tmpVirtualSgName);
   }
 
   @Test
@@ -89,7 +89,7 @@ public class FilePathUtilsTest {
   public void getTsFilePrefixPathTest() {
     String tsFilePrefixPath = FilePathUtils.getTsFilePrefixPath(tsFile.getAbsolutePath());
     String exceptPrefixPath =
-        storageGroupName + File.separator + virtualSgName + File.separator + partitionId;
+        storageGroupName + File.separator + dataRegionId + File.separator + partitionId;
     Assert.assertEquals(exceptPrefixPath, tsFilePrefixPath);
   }
 

@@ -26,8 +26,8 @@ import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
@@ -68,7 +68,7 @@ public class TsFileRecoverPerformer {
   private final String logNodePrefix;
   private final TsFileResource tsFileResource;
   private final boolean sequence;
-  private VirtualStorageGroupProcessor virtualStorageGroupProcessor;
+  private DataRegion dataRegion;
 
   /** @param isLastFile whether this TsFile is the last file of its partition */
   public TsFileRecoverPerformer(
@@ -76,12 +76,12 @@ public class TsFileRecoverPerformer {
       TsFileResource currentTsFileResource,
       boolean sequence,
       boolean isLastFile,
-      VirtualStorageGroupProcessor storageGroupProcessor) {
+      DataRegion storageGroupProcessor) {
     this.filePath = currentTsFileResource.getTsFilePath();
     this.logNodePrefix = logNodePrefix;
     this.tsFileResource = currentTsFileResource;
     this.sequence = sequence;
-    this.virtualStorageGroupProcessor = storageGroupProcessor;
+    this.dataRegion = storageGroupProcessor;
   }
 
   /**
@@ -287,7 +287,7 @@ public class TsFileRecoverPerformer {
             tsFileResource,
             recoverMemTable,
             sequence);
-    logReplayer.replayLogs(supplier, virtualStorageGroupProcessor);
+    logReplayer.replayLogs(supplier, dataRegion);
     try {
       if (!recoverMemTable.isEmpty()) {
         // flush logs
