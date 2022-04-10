@@ -27,7 +27,7 @@ import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.commons.partition.SeriesPartitionSlot;
 import org.apache.iotdb.commons.partition.TimePartitionSlot;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
@@ -41,6 +41,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import com.google.common.collect.Sets;
 import org.junit.Test;
@@ -64,19 +65,19 @@ public class DistributionPlannerTest {
     timeJoinNode.addChild(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
-            new PartialPath("root.sg.d1.s1"),
+            new MeasurementPath("root.sg.d1.s1", TSDataType.INT32),
             Sets.newHashSet("s1", "s2"),
             OrderBy.TIMESTAMP_ASC));
     timeJoinNode.addChild(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
-            new PartialPath("root.sg.d1.s2"),
+            new MeasurementPath("root.sg.d1.s2", TSDataType.INT32),
             Sets.newHashSet("s1", "s2"),
             OrderBy.TIMESTAMP_ASC));
     timeJoinNode.addChild(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
-            new PartialPath("root.sg.d22.s1"),
+            new MeasurementPath("root.sg.d22.s1", TSDataType.INT32),
             Sets.newHashSet("s1"),
             OrderBy.TIMESTAMP_ASC));
 
@@ -98,19 +99,19 @@ public class DistributionPlannerTest {
     timeJoinNode.addChild(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
-            new PartialPath("root.sg.d1.s1"),
+            new MeasurementPath("root.sg.d1.s1", TSDataType.INT32),
             Sets.newHashSet("s1", "s2"),
             OrderBy.TIMESTAMP_ASC));
     timeJoinNode.addChild(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
-            new PartialPath("root.sg.d1.s2"),
+            new MeasurementPath("root.sg.d1.s2", TSDataType.INT32),
             Sets.newHashSet("s1", "s2"),
             OrderBy.TIMESTAMP_ASC));
     timeJoinNode.addChild(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
-            new PartialPath("root.sg.d22.s1"),
+            new MeasurementPath("root.sg.d22.s1", TSDataType.INT32),
             Sets.newHashSet("s1"),
             OrderBy.TIMESTAMP_ASC));
 
@@ -133,19 +134,19 @@ public class DistributionPlannerTest {
     timeJoinNode.addChild(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
-            new PartialPath("root.sg.d1.s1"),
+            new MeasurementPath("root.sg.d1.s1", TSDataType.INT32),
             Sets.newHashSet("s1", "s2"),
             OrderBy.TIMESTAMP_ASC));
     timeJoinNode.addChild(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
-            new PartialPath("root.sg.d1.s2"),
+            new MeasurementPath("root.sg.d1.s2", TSDataType.INT32),
             Sets.newHashSet("s1", "s2"),
             OrderBy.TIMESTAMP_ASC));
     timeJoinNode.addChild(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
-            new PartialPath("root.sg.d22.s1"),
+            new MeasurementPath("root.sg.d22.s1", TSDataType.INT32),
             Sets.newHashSet("s1"),
             OrderBy.TIMESTAMP_ASC));
 
@@ -171,19 +172,19 @@ public class DistributionPlannerTest {
     timeJoinNode.addChild(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
-            new PartialPath("root.sg.d1.s1"),
+            new MeasurementPath("root.sg.d1.s1", TSDataType.INT32),
             Sets.newHashSet("s1", "s2"),
             OrderBy.TIMESTAMP_ASC));
     timeJoinNode.addChild(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
-            new PartialPath("root.sg.d1.s2"),
+            new MeasurementPath("root.sg.d1.s2", TSDataType.INT32),
             Sets.newHashSet("s1", "s2"),
             OrderBy.TIMESTAMP_ASC));
     timeJoinNode.addChild(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
-            new PartialPath("root.sg.d333.s1"),
+            new MeasurementPath("root.sg.d333.s1", TSDataType.INT32),
             Sets.newHashSet("s1"),
             OrderBy.TIMESTAMP_ASC));
 

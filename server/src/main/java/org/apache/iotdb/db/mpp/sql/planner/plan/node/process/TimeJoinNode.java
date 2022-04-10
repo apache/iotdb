@@ -59,6 +59,7 @@ public class TimeJoinNode extends ProcessNode implements IOutputPlanNode {
   public TimeJoinNode(PlanNodeId id, OrderBy mergeOrder) {
     super(id);
     this.mergeOrder = mergeOrder;
+    this.children = new ArrayList<>();
   }
 
   public TimeJoinNode(PlanNodeId id, OrderBy mergeOrder, List<PlanNode> children) {
