@@ -26,7 +26,6 @@ import org.apache.iotdb.db.mpp.buffer.DataBlockManager;
 import org.apache.iotdb.db.mpp.buffer.DataBlockService;
 import org.apache.iotdb.db.mpp.buffer.ISinkHandle;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
-import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
 import org.apache.iotdb.db.mpp.execution.DataDriver;
 import org.apache.iotdb.db.mpp.execution.DataDriverContext;
 import org.apache.iotdb.db.mpp.execution.FragmentInstanceContext;
@@ -56,6 +55,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregateScanN
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
+import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.io.IOException;
@@ -168,7 +168,7 @@ public class LocalExecutionPlanner {
     public Operator visitFilter(FilterNode node, LocalExecutionPlanContext context) {
       PlanNode child = node.getChild();
 
-      QueryFilter filterExpression = node.getPredicate();
+      IExpression filterExpression = node.getPredicate();
       List<String> outputSymbols = node.getOutputColumnNames();
       return super.visitFilter(node, context);
     }
@@ -222,7 +222,8 @@ public class LocalExecutionPlanner {
               context.getNextOperatorId(),
               node.getPlanNodeId(),
               TimeJoinOperator.class.getSimpleName());
-      return new TimeJoinOperator(operatorContext, children, node.getMergeOrder(), node.getTypes());
+      return new TimeJoinOperator(
+          operatorContext, children, node.getMergeOrder(), node.getOutputColumnTypes());
     }
 
     @Override

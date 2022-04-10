@@ -135,11 +135,6 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     return NO_CHILD_ALLOWED;
   }
 
-  @Override
-  public List<String> getOutputColumnNames() {
-    return null;
-  }
-
   public static InsertTabletNode deserialize(ByteBuffer byteBuffer) {
     return null;
   }

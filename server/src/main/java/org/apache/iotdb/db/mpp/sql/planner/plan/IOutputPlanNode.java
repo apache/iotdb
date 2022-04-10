@@ -16,21 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.sql.planner.plan.node.source;
 
-import org.apache.iotdb.commons.partition.RegionReplicaSet;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+package org.apache.iotdb.db.mpp.sql.planner.plan;
 
-public abstract class SourceNode extends PlanNode implements AutoCloseable {
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.ColumnHeader;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-  public SourceNode(PlanNodeId id) {
-    super(id);
-  }
+import java.util.List;
 
-  public abstract void open() throws Exception;
+public interface IOutputPlanNode {
 
-  public abstract RegionReplicaSet getDataRegionReplicaSet();
+  List<ColumnHeader> getOutputColumnHeaders();
 
-  public abstract void setDataRegionReplicaSet(RegionReplicaSet regionReplicaSet);
+  List<String> getOutputColumnNames();
+
+  List<TSDataType> getOutputColumnTypes();
 }
