@@ -19,9 +19,12 @@
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.mpp.sql.planner.plan.IOutputPlanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.ColumnHeader;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -34,24 +37,28 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 /** The FilterNode is responsible to filter the RowRecord from TsBlock. */
-public class FilterNode extends ProcessNode {
+public class FilterNode extends ProcessNode implements IOutputPlanNode {
 
   private PlanNode child;
 
   private final IExpression predicate;
 
-  private final List<String> outputColumnNames;
+  private List<ColumnHeader> columnHeaders;
 
-  public FilterNode(PlanNodeId id, IExpression predicate, List<String> outputColumnNames) {
+  public FilterNode(PlanNodeId id, IExpression predicate) {
     super(id);
     this.predicate = predicate;
-    this.outputColumnNames = outputColumnNames;
   }
 
   public FilterNode(
       PlanNodeId id, PlanNode child, IExpression predicate, List<String> outputColumnNames) {
-    this(id, predicate, outputColumnNames);
+    this(id, predicate);
     this.child = child;
+    this.columnHeaders =
+        ((IOutputPlanNode) child)
+            .getOutputColumnHeaders().stream()
+                .filter(columnHeader -> outputColumnNames.contains(columnHeader.getColumnName()))
+                .collect(Collectors.toList());
   }
 
   @Override
@@ -66,7 +73,7 @@ public class FilterNode extends ProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new FilterNode(getPlanNodeId(), predicate, outputColumnNames);
+    return new FilterNode(getPlanNodeId(), predicate);
   }
 
   @Override
@@ -75,8 +82,18 @@ public class FilterNode extends ProcessNode {
   }
 
   @Override
+  public List<ColumnHeader> getOutputColumnHeaders() {
+    return columnHeaders;
+  }
+
+  @Override
   public List<String> getOutputColumnNames() {
-    return outputColumnNames;
+    return columnHeaders.stream().map(ColumnHeader::getColumnName).collect(Collectors.toList());
+  }
+
+  @Override
+  public List<TSDataType> getOutputColumnTypes() {
+    return columnHeaders.stream().map(ColumnHeader::getColumnType).collect(Collectors.toList());
   }
 
   @Override
@@ -121,14 +138,11 @@ public class FilterNode extends ProcessNode {
     FilterNode that = (FilterNode) o;
     return Objects.equals(child, that.child)
         && Objects.equals(predicate, that.predicate)
-        && Objects.equals(
-            outputColumnNames.stream().sorted().collect(Collectors.toList()),
-            that.outputColumnNames.stream().sorted().collect(Collectors.toList()));
+        && Objects.equals(columnHeaders, that.columnHeaders);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(
-        child, predicate, outputColumnNames.stream().sorted().collect(Collectors.toList()));
+    return Objects.hash(child, predicate, columnHeaders);
   }
 }

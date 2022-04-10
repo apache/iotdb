@@ -222,7 +222,8 @@ public class LocalExecutionPlanner {
               context.getNextOperatorId(),
               node.getPlanNodeId(),
               TimeJoinOperator.class.getSimpleName());
-      return new TimeJoinOperator(operatorContext, children, node.getMergeOrder(), node.getTypes());
+      return new TimeJoinOperator(
+          operatorContext, children, node.getMergeOrder(), node.getOutputColumnTypes());
     }
 
     @Override

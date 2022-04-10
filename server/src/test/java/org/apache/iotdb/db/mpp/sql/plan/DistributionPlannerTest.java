@@ -42,6 +42,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 
+import com.google.common.collect.Sets;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -61,11 +62,23 @@ public class DistributionPlannerTest {
     TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), OrderBy.TIMESTAMP_ASC);
 
     timeJoinNode.addChild(
-        new SeriesScanNode(queryId.genPlanNodeId(), new PartialPath("root.sg.d1.s1")));
+        new SeriesScanNode(
+            queryId.genPlanNodeId(),
+            new PartialPath("root.sg.d1.s1"),
+            Sets.newHashSet("s1", "s2"),
+            OrderBy.TIMESTAMP_ASC));
     timeJoinNode.addChild(
-        new SeriesScanNode(queryId.genPlanNodeId(), new PartialPath("root.sg.d1.s2")));
+        new SeriesScanNode(
+            queryId.genPlanNodeId(),
+            new PartialPath("root.sg.d1.s2"),
+            Sets.newHashSet("s1", "s2"),
+            OrderBy.TIMESTAMP_ASC));
     timeJoinNode.addChild(
-        new SeriesScanNode(queryId.genPlanNodeId(), new PartialPath("root.sg.d22.s1")));
+        new SeriesScanNode(
+            queryId.genPlanNodeId(),
+            new PartialPath("root.sg.d22.s1"),
+            Sets.newHashSet("s1"),
+            OrderBy.TIMESTAMP_ASC));
 
     LimitNode root = new LimitNode(queryId.genPlanNodeId(), timeJoinNode, 10);
 
@@ -83,11 +96,23 @@ public class DistributionPlannerTest {
     TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), OrderBy.TIMESTAMP_ASC);
 
     timeJoinNode.addChild(
-        new SeriesScanNode(queryId.genPlanNodeId(), new PartialPath("root.sg.d1.s1")));
+        new SeriesScanNode(
+            queryId.genPlanNodeId(),
+            new PartialPath("root.sg.d1.s1"),
+            Sets.newHashSet("s1", "s2"),
+            OrderBy.TIMESTAMP_ASC));
     timeJoinNode.addChild(
-        new SeriesScanNode(queryId.genPlanNodeId(), new PartialPath("root.sg.d1.s2")));
+        new SeriesScanNode(
+            queryId.genPlanNodeId(),
+            new PartialPath("root.sg.d1.s2"),
+            Sets.newHashSet("s1", "s2"),
+            OrderBy.TIMESTAMP_ASC));
     timeJoinNode.addChild(
-        new SeriesScanNode(queryId.genPlanNodeId(), new PartialPath("root.sg.d22.s1")));
+        new SeriesScanNode(
+            queryId.genPlanNodeId(),
+            new PartialPath("root.sg.d22.s1"),
+            Sets.newHashSet("s1"),
+            OrderBy.TIMESTAMP_ASC));
 
     LimitNode root = new LimitNode(queryId.genPlanNodeId(), timeJoinNode, 10);
 
@@ -106,11 +131,23 @@ public class DistributionPlannerTest {
     TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), OrderBy.TIMESTAMP_ASC);
 
     timeJoinNode.addChild(
-        new SeriesScanNode(queryId.genPlanNodeId(), new PartialPath("root.sg.d1.s1")));
+        new SeriesScanNode(
+            queryId.genPlanNodeId(),
+            new PartialPath("root.sg.d1.s1"),
+            Sets.newHashSet("s1", "s2"),
+            OrderBy.TIMESTAMP_ASC));
     timeJoinNode.addChild(
-        new SeriesScanNode(queryId.genPlanNodeId(), new PartialPath("root.sg.d1.s2")));
+        new SeriesScanNode(
+            queryId.genPlanNodeId(),
+            new PartialPath("root.sg.d1.s2"),
+            Sets.newHashSet("s1", "s2"),
+            OrderBy.TIMESTAMP_ASC));
     timeJoinNode.addChild(
-        new SeriesScanNode(queryId.genPlanNodeId(), new PartialPath("root.sg.d22.s1")));
+        new SeriesScanNode(
+            queryId.genPlanNodeId(),
+            new PartialPath("root.sg.d22.s1"),
+            Sets.newHashSet("s1"),
+            OrderBy.TIMESTAMP_ASC));
 
     LimitNode root = new LimitNode(queryId.genPlanNodeId(), timeJoinNode, 10);
 
@@ -132,11 +169,23 @@ public class DistributionPlannerTest {
     TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), OrderBy.TIMESTAMP_ASC);
 
     timeJoinNode.addChild(
-        new SeriesScanNode(queryId.genPlanNodeId(), new PartialPath("root.sg.d1.s1")));
+        new SeriesScanNode(
+            queryId.genPlanNodeId(),
+            new PartialPath("root.sg.d1.s1"),
+            Sets.newHashSet("s1", "s2"),
+            OrderBy.TIMESTAMP_ASC));
     timeJoinNode.addChild(
-        new SeriesScanNode(queryId.genPlanNodeId(), new PartialPath("root.sg.d1.s2")));
+        new SeriesScanNode(
+            queryId.genPlanNodeId(),
+            new PartialPath("root.sg.d1.s2"),
+            Sets.newHashSet("s1", "s2"),
+            OrderBy.TIMESTAMP_ASC));
     timeJoinNode.addChild(
-        new SeriesScanNode(queryId.genPlanNodeId(), new PartialPath("root.sg.d333.s1")));
+        new SeriesScanNode(
+            queryId.genPlanNodeId(),
+            new PartialPath("root.sg.d333.s1"),
+            Sets.newHashSet("s1"),
+            OrderBy.TIMESTAMP_ASC));
 
     LimitNode root = new LimitNode(queryId.genPlanNodeId(), timeJoinNode, 10);
 

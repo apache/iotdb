@@ -49,11 +49,6 @@ public class ShowDevicesNode extends ShowNode {
     return NO_CHILD_ALLOWED;
   }
 
-  @Override
-  public List<String> getOutputColumnNames() {
-    return null;
-  }
-
   public static ShowDevicesNode deserialize(ByteBuffer byteBuffer) {
     return null;
   }

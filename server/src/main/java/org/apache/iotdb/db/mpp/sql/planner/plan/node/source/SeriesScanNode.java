@@ -21,10 +21,13 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.source;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.sql.planner.plan.IOutputPlanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.ColumnHeader;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -43,7 +46,7 @@ import java.util.Set;
  *
  * <p>Children type: no child is allowed for SeriesScanNode
  */
-public class SeriesScanNode extends SourceNode {
+public class SeriesScanNode extends SourceNode implements IOutputPlanNode {
 
   // The path of the target series which will be scanned.
   private final PartialPath seriesPath;
@@ -68,7 +71,7 @@ public class SeriesScanNode extends SourceNode {
   // offset for result set. The default value is 0
   private int offset;
 
-  private String columnName;
+  private ColumnHeader columnHeader;
 
   // The id of DataRegion where the node will run
   private RegionReplicaSet regionReplicaSet;
@@ -78,10 +81,13 @@ public class SeriesScanNode extends SourceNode {
     this.seriesPath = seriesPath;
   }
 
-  public SeriesScanNode(PlanNodeId id, PartialPath seriesPath, OrderBy scanOrder) {
+  public SeriesScanNode(
+      PlanNodeId id, PartialPath seriesPath, Set<String> allSensors, OrderBy scanOrder) {
     super(id);
     this.seriesPath = seriesPath;
+    this.allSensors = allSensors;
     this.scanOrder = scanOrder;
+    this.columnHeader = new ColumnHeader(seriesPath.getFullPath(), seriesPath.getSeriesType());
   }
 
   public SeriesScanNode(PlanNodeId id, PartialPath seriesPath, RegionReplicaSet regionReplicaSet) {
@@ -120,10 +126,6 @@ public class SeriesScanNode extends SourceNode {
     return offset;
   }
 
-  public void setScanOrder(OrderBy scanOrder) {
-    this.scanOrder = scanOrder;
-  }
-
   public void setLimit(int limit) {
     this.limit = limit;
   }
@@ -151,8 +153,18 @@ public class SeriesScanNode extends SourceNode {
   }
 
   @Override
+  public List<ColumnHeader> getOutputColumnHeaders() {
+    return ImmutableList.of(columnHeader);
+  }
+
+  @Override
   public List<String> getOutputColumnNames() {
-    return ImmutableList.of(columnName);
+    return ImmutableList.of(columnHeader.getColumnName());
+  }
+
+  @Override
+  public List<TSDataType> getOutputColumnTypes() {
+    return ImmutableList.of(columnHeader.getColumnType());
   }
 
   public Set<String> getAllSensors() {
@@ -219,8 +231,7 @@ public class SeriesScanNode extends SourceNode {
         && Objects.equals(allSensors, that.allSensors)
         && scanOrder == that.scanOrder
         && Objects.equals(timeFilter, that.timeFilter)
-        && Objects.equals(valueFilter, that.valueFilter)
-        && Objects.equals(columnName, that.columnName);
+        && Objects.equals(valueFilter, that.valueFilter);
   }
 
   @Override
@@ -233,7 +244,6 @@ public class SeriesScanNode extends SourceNode {
         timeFilter,
         valueFilter,
         limit,
-        offset,
-        columnName);
+        offset);
   }
 }

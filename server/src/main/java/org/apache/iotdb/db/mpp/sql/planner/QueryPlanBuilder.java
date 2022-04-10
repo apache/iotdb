@@ -61,10 +61,14 @@ public class QueryPlanBuilder {
 
     for (Map.Entry<String, Set<PartialPath>> entry : deviceNameToPathsMap.entrySet()) {
       String deviceName = entry.getKey();
+      Set<String> allSensors =
+          entry.getValue().stream().map(PartialPath::getMeasurement).collect(Collectors.toSet());
       for (PartialPath path : entry.getValue()) {
         deviceNameToSourceNodesMap
             .computeIfAbsent(deviceName, k -> new ArrayList<>())
-            .add(new SeriesScanNode(context.getQueryId().genPlanNodeId(), path, scanOrder));
+            .add(
+                new SeriesScanNode(
+                    context.getQueryId().genPlanNodeId(), path, allSensors, scanOrder));
       }
     }
 
@@ -99,7 +103,8 @@ public class QueryPlanBuilder {
                     path,
                     new ArrayList<>(entry.getValue().get(path)),
                     scanOrder,
-                    timeFilter));
+                    timeFilter,
+                    null));
       }
     }
 
@@ -121,10 +126,14 @@ public class QueryPlanBuilder {
 
     for (Map.Entry<String, Set<PartialPath>> entry : deviceNameToPathsMap.entrySet()) {
       String deviceName = entry.getKey();
+      Set<String> allSensors =
+          entry.getValue().stream().map(PartialPath::getMeasurement).collect(Collectors.toSet());
       for (PartialPath path : entry.getValue()) {
         deviceNameToSourceNodesMap
             .computeIfAbsent(deviceName, k -> new ArrayList<>())
-            .add(new SeriesScanNode(context.getQueryId().genPlanNodeId(), path, scanOrder));
+            .add(
+                new SeriesScanNode(
+                    context.getQueryId().genPlanNodeId(), path, allSensors, scanOrder));
       }
     }
 
@@ -141,9 +150,7 @@ public class QueryPlanBuilder {
       deviceNameToAggregationsMap.values().forEach(aggregateFuncMap::putAll);
       this.root =
           new AggregateNode(
-              context.getQueryId().genPlanNodeId(),
-              aggregateFuncMap,
-              Collections.singletonList(this.getRoot()));
+              context.getQueryId().genPlanNodeId(), this.getRoot(), aggregateFuncMap, null);
     }
   }
 
@@ -191,8 +198,9 @@ public class QueryPlanBuilder {
       AggregateNode aggregateNode =
           new AggregateNode(
               context.getQueryId().genPlanNodeId(),
+              timeJoinNode,
               deviceNameToAggregationsMap.get(deviceName),
-              Collections.singletonList(timeJoinNode));
+              null);
       deviceMergeNode.addChildDeviceNode(deviceName, aggregateNode);
     }
     this.root = deviceMergeNode;
@@ -229,7 +237,7 @@ public class QueryPlanBuilder {
             context.getQueryId().genPlanNodeId(),
             this.getRoot(),
             groupByLevelComponent.getLevels(),
-            groupByLevelComponent.getGroupedPathMap());
+            groupByLevelComponent.getGroupedHeaderMap());
   }
 
   public void planFilterNull(FilterNullComponent filterNullComponent) {

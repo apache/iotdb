@@ -82,11 +82,6 @@ public class InsertRowNode extends InsertNode {
     return NO_CHILD_ALLOWED;
   }
 
-  @Override
-  public List<String> getOutputColumnNames() {
-    return null;
-  }
-
   public static InsertRowNode deserialize(ByteBuffer byteBuffer) {
     return null;
   }

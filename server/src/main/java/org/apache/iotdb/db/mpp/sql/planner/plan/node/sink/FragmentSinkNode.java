@@ -73,11 +73,6 @@ public class FragmentSinkNode extends SinkNode {
     return ONE_CHILD;
   }
 
-  @Override
-  public List<String> getOutputColumnNames() {
-    return null;
-  }
-
   public static FragmentSinkNode deserialize(ByteBuffer byteBuffer) {
     return null;
   }

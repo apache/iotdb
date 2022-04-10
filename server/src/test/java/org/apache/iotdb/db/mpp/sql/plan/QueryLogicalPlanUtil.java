@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.sql.plan;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.ColumnHeader;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.AggregateNode;
@@ -89,16 +90,19 @@ public class QueryLogicalPlanUtil {
         new SeriesScanNode(
             new PlanNodeId("test_query_0"),
             schemaMap.get("root.sg.d1.s2"),
+            Sets.newHashSet("s2"),
             OrderBy.TIMESTAMP_DESC));
     sourceNodeList.add(
         new SeriesScanNode(
             new PlanNodeId("test_query_1"),
             schemaMap.get("root.sg.d2.s1"),
+            Sets.newHashSet("s1", "s2"),
             OrderBy.TIMESTAMP_DESC));
     sourceNodeList.add(
         new SeriesScanNode(
             new PlanNodeId("test_query_2"),
             schemaMap.get("root.sg.d2.s2"),
+            Sets.newHashSet("s1", "s2"),
             OrderBy.TIMESTAMP_DESC));
 
     TimeJoinNode timeJoinNode =
@@ -147,21 +151,25 @@ public class QueryLogicalPlanUtil {
         new SeriesScanNode(
             new PlanNodeId("test_query_0"),
             schemaMap.get("root.sg.d1.s1"),
+            Sets.newHashSet("s1", "s2"),
             OrderBy.TIMESTAMP_DESC));
     sourceNodeList1.add(
         new SeriesScanNode(
             new PlanNodeId("test_query_1"),
             schemaMap.get("root.sg.d1.s2"),
+            Sets.newHashSet("s1", "s2"),
             OrderBy.TIMESTAMP_DESC));
     sourceNodeList2.add(
         new SeriesScanNode(
             new PlanNodeId("test_query_2"),
             schemaMap.get("root.sg.d2.s1"),
+            Sets.newHashSet("s1", "s2"),
             OrderBy.TIMESTAMP_DESC));
     sourceNodeList2.add(
         new SeriesScanNode(
             new PlanNodeId("test_query_3"),
             schemaMap.get("root.sg.d2.s2"),
+            Sets.newHashSet("s1", "s2"),
             OrderBy.TIMESTAMP_DESC));
 
     TimeJoinNode timeJoinNode1 =
@@ -225,43 +233,59 @@ public class QueryLogicalPlanUtil {
             schemaMap.get("root.sg.d1.s1"),
             aggregationTypeList1,
             OrderBy.TIMESTAMP_DESC,
-            timeFilter));
+            timeFilter,
+            null));
     sourceNodeList.add(
         new SeriesAggregateScanNode(
             new PlanNodeId("test_query_1"),
             schemaMap.get("root.sg.d1.s2"),
             aggregationTypeList2,
             OrderBy.TIMESTAMP_DESC,
-            timeFilter));
+            timeFilter,
+            null));
     sourceNodeList.add(
         new SeriesAggregateScanNode(
             new PlanNodeId("test_query_2"),
             schemaMap.get("root.sg.d2.s1"),
             aggregationTypeList1,
             OrderBy.TIMESTAMP_DESC,
-            timeFilter));
+            timeFilter,
+            null));
     sourceNodeList.add(
         new SeriesAggregateScanNode(
             new PlanNodeId("test_query_3"),
             schemaMap.get("root.sg.d2.s2"),
             aggregationTypeList2,
             OrderBy.TIMESTAMP_DESC,
-            timeFilter));
+            timeFilter,
+            null));
 
     TimeJoinNode timeJoinNode =
         new TimeJoinNode(new PlanNodeId("test_query_4"), OrderBy.TIMESTAMP_DESC, sourceNodeList);
 
     int[] groupByLevels = new int[] {1};
-    Map<String, String> groupedPathMap = new HashMap<>();
-    groupedPathMap.put("count(root.sg.d2.s1)", "count(root.sg.*.s1)");
-    groupedPathMap.put("count(root.sg.d1.s1)", "count(root.sg.*.s1)");
-    groupedPathMap.put("max_value(root.sg.d1.s2)", "max_value(root.sg.*.s2)");
-    groupedPathMap.put("max_value(root.sg.d2.s2)", "max_value(root.sg.*.s2)");
-    groupedPathMap.put("last_value(root.sg.d2.s1)", "last_value(root.sg.*.s1)");
-    groupedPathMap.put("last_value(root.sg.d1.s1)", "last_value(root.sg.*.s1)");
+    Map<ColumnHeader, ColumnHeader> groupedHeaderMap = new HashMap<>();
+    groupedHeaderMap.put(
+        new ColumnHeader("root.sg.d1.s1", AggregationType.COUNT.name(), TSDataType.INT32),
+        new ColumnHeader("root.sg.*.s1", AggregationType.COUNT.name(), TSDataType.INT32));
+    groupedHeaderMap.put(
+        new ColumnHeader("root.sg.d2.s1", AggregationType.COUNT.name(), TSDataType.INT32),
+        new ColumnHeader("root.sg.*.s1", AggregationType.COUNT.name(), TSDataType.INT32));
+    groupedHeaderMap.put(
+        new ColumnHeader("root.sg.d1.s2", AggregationType.MAX_VALUE.name(), TSDataType.INT32),
+        new ColumnHeader("root.sg.*.s2", AggregationType.MAX_VALUE.name(), TSDataType.INT32));
+    groupedHeaderMap.put(
+        new ColumnHeader("root.sg.d2.s2", AggregationType.MAX_VALUE.name(), TSDataType.INT32),
+        new ColumnHeader("root.sg.*.s2", AggregationType.MAX_VALUE.name(), TSDataType.INT32));
+    groupedHeaderMap.put(
+        new ColumnHeader("root.sg.d1.s1", AggregationType.LAST_VALUE.name(), TSDataType.INT32),
+        new ColumnHeader("root.sg.*.s1", AggregationType.LAST_VALUE.name(), TSDataType.INT32));
+    groupedHeaderMap.put(
+        new ColumnHeader("root.sg.d2.s1", AggregationType.LAST_VALUE.name(), TSDataType.INT32),
+        new ColumnHeader("root.sg.*.s1", AggregationType.LAST_VALUE.name(), TSDataType.INT32));
     GroupByLevelNode groupByLevelNode =
         new GroupByLevelNode(
-            new PlanNodeId("test_query_5"), timeJoinNode, groupByLevels, groupedPathMap);
+            new PlanNodeId("test_query_5"), timeJoinNode, groupByLevels, groupedHeaderMap);
 
     FilterNullNode filterNullNode =
         new FilterNullNode(
@@ -296,28 +320,32 @@ public class QueryLogicalPlanUtil {
             schemaMap.get("root.sg.d1.s1"),
             aggregationTypeList1,
             OrderBy.TIMESTAMP_DESC,
-            timeFilter));
+            timeFilter,
+            null));
     sourceNodeList1.add(
         new SeriesAggregateScanNode(
             new PlanNodeId("test_query_1"),
             schemaMap.get("root.sg.d1.s2"),
             aggregationTypeList2,
             OrderBy.TIMESTAMP_DESC,
-            timeFilter));
+            timeFilter,
+            null));
     sourceNodeList2.add(
         new SeriesAggregateScanNode(
             new PlanNodeId("test_query_2"),
             schemaMap.get("root.sg.d2.s1"),
             aggregationTypeList1,
             OrderBy.TIMESTAMP_DESC,
-            timeFilter));
+            timeFilter,
+            null));
     sourceNodeList2.add(
         new SeriesAggregateScanNode(
             new PlanNodeId("test_query_3"),
             schemaMap.get("root.sg.d2.s2"),
             aggregationTypeList2,
             OrderBy.TIMESTAMP_DESC,
-            timeFilter));
+            timeFilter,
+            null));
 
     TimeJoinNode timeJoinNode1 =
         new TimeJoinNode(new PlanNodeId("test_query_4"), OrderBy.TIMESTAMP_DESC, sourceNodeList1);
@@ -354,21 +382,25 @@ public class QueryLogicalPlanUtil {
         new SeriesScanNode(
             new PlanNodeId("test_query_0"),
             schemaMap.get("root.sg.d1.s1"),
+            Sets.newHashSet("s1", "s2"),
             OrderBy.TIMESTAMP_DESC));
     sourceNodeList.add(
         new SeriesScanNode(
             new PlanNodeId("test_query_1"),
             schemaMap.get("root.sg.d1.s2"),
+            Sets.newHashSet("s1", "s2"),
             OrderBy.TIMESTAMP_DESC));
     sourceNodeList.add(
         new SeriesScanNode(
             new PlanNodeId("test_query_2"),
             schemaMap.get("root.sg.d2.s1"),
+            Sets.newHashSet("s1", "s2"),
             OrderBy.TIMESTAMP_DESC));
     sourceNodeList.add(
         new SeriesScanNode(
             new PlanNodeId("test_query_3"),
             schemaMap.get("root.sg.d2.s2"),
+            Sets.newHashSet("s1", "s2"),
             OrderBy.TIMESTAMP_DESC));
 
     TimeJoinNode timeJoinNode =
@@ -400,22 +432,31 @@ public class QueryLogicalPlanUtil {
     aggregateFuncMap.put(
         schemaMap.get("root.sg.d2.s2"), Sets.newHashSet(AggregationType.MAX_VALUE));
     AggregateNode aggregateNode =
-        new AggregateNode(
-            new PlanNodeId("test_query_6"),
-            aggregateFuncMap,
-            Collections.singletonList(filterNode));
+        new AggregateNode(new PlanNodeId("test_query_6"), filterNode, aggregateFuncMap, null);
 
     int[] groupByLevels = new int[] {1};
-    Map<String, String> groupedPathMap = new HashMap<>();
-    groupedPathMap.put("count(root.sg.d2.s1)", "count(root.sg.*.s1)");
-    groupedPathMap.put("count(root.sg.d1.s1)", "count(root.sg.*.s1)");
-    groupedPathMap.put("max_value(root.sg.d1.s2)", "max_value(root.sg.*.s2)");
-    groupedPathMap.put("max_value(root.sg.d2.s2)", "max_value(root.sg.*.s2)");
-    groupedPathMap.put("last_value(root.sg.d2.s1)", "last_value(root.sg.*.s1)");
-    groupedPathMap.put("last_value(root.sg.d1.s1)", "last_value(root.sg.*.s1)");
+    Map<ColumnHeader, ColumnHeader> groupedHeaderMap = new HashMap<>();
+    groupedHeaderMap.put(
+        new ColumnHeader("root.sg.d1.s1", AggregationType.COUNT.name(), TSDataType.INT32),
+        new ColumnHeader("root.sg.*.s1", AggregationType.COUNT.name(), TSDataType.INT32));
+    groupedHeaderMap.put(
+        new ColumnHeader("root.sg.d2.s1", AggregationType.COUNT.name(), TSDataType.INT32),
+        new ColumnHeader("root.sg.*.s1", AggregationType.COUNT.name(), TSDataType.INT32));
+    groupedHeaderMap.put(
+        new ColumnHeader("root.sg.d1.s2", AggregationType.MAX_VALUE.name(), TSDataType.INT32),
+        new ColumnHeader("root.sg.*.s2", AggregationType.MAX_VALUE.name(), TSDataType.INT32));
+    groupedHeaderMap.put(
+        new ColumnHeader("root.sg.d2.s2", AggregationType.MAX_VALUE.name(), TSDataType.INT32),
+        new ColumnHeader("root.sg.*.s2", AggregationType.MAX_VALUE.name(), TSDataType.INT32));
+    groupedHeaderMap.put(
+        new ColumnHeader("root.sg.d1.s1", AggregationType.LAST_VALUE.name(), TSDataType.INT32),
+        new ColumnHeader("root.sg.*.s1", AggregationType.LAST_VALUE.name(), TSDataType.INT32));
+    groupedHeaderMap.put(
+        new ColumnHeader("root.sg.d2.s1", AggregationType.LAST_VALUE.name(), TSDataType.INT32),
+        new ColumnHeader("root.sg.*.s1", AggregationType.LAST_VALUE.name(), TSDataType.INT32));
     GroupByLevelNode groupByLevelNode =
         new GroupByLevelNode(
-            new PlanNodeId("test_query_5"), aggregateNode, groupByLevels, groupedPathMap);
+            new PlanNodeId("test_query_5"), aggregateNode, groupByLevels, groupedHeaderMap);
 
     FilterNullNode filterNullNode =
         new FilterNullNode(
@@ -443,21 +484,25 @@ public class QueryLogicalPlanUtil {
         new SeriesScanNode(
             new PlanNodeId("test_query_0"),
             schemaMap.get("root.sg.d1.s1"),
+            Sets.newHashSet("s1", "s2"),
             OrderBy.TIMESTAMP_DESC));
     sourceNodeList1.add(
         new SeriesScanNode(
             new PlanNodeId("test_query_1"),
             schemaMap.get("root.sg.d1.s2"),
+            Sets.newHashSet("s1", "s2"),
             OrderBy.TIMESTAMP_DESC));
     sourceNodeList2.add(
         new SeriesScanNode(
             new PlanNodeId("test_query_2"),
             schemaMap.get("root.sg.d2.s1"),
+            Sets.newHashSet("s1", "s2"),
             OrderBy.TIMESTAMP_DESC));
     sourceNodeList2.add(
         new SeriesScanNode(
             new PlanNodeId("test_query_3"),
             schemaMap.get("root.sg.d2.s2"),
+            Sets.newHashSet("s1", "s2"),
             OrderBy.TIMESTAMP_DESC));
 
     TimeJoinNode timeJoinNode1 =
@@ -497,15 +542,9 @@ public class QueryLogicalPlanUtil {
     aggregateFuncMap2.put(
         schemaMap.get("root.sg.d2.s2"), Sets.newHashSet(AggregationType.MAX_VALUE));
     AggregateNode aggregateNode1 =
-        new AggregateNode(
-            new PlanNodeId("test_query_8"),
-            aggregateFuncMap1,
-            Collections.singletonList(filterNode1));
+        new AggregateNode(new PlanNodeId("test_query_8"), filterNode1, aggregateFuncMap1, null);
     AggregateNode aggregateNode2 =
-        new AggregateNode(
-            new PlanNodeId("test_query_9"),
-            aggregateFuncMap2,
-            Collections.singletonList(filterNode2));
+        new AggregateNode(new PlanNodeId("test_query_9"), filterNode2, aggregateFuncMap2, null);
 
     DeviceMergeNode deviceMergeNode =
         new DeviceMergeNode(new PlanNodeId("test_query_10"), OrderBy.TIMESTAMP_DESC);

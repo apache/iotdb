@@ -19,9 +19,12 @@
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.mpp.sql.planner.plan.IOutputPlanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.ColumnHeader;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import com.google.common.collect.ImmutableList;
@@ -32,7 +35,7 @@ import java.util.List;
 import java.util.Objects;
 
 /** LimitNode is used to select top n result. It uses the default order of upstream nodes */
-public class LimitNode extends ProcessNode {
+public class LimitNode extends ProcessNode implements IOutputPlanNode {
 
   // The limit count
   private final int limit;
@@ -69,8 +72,18 @@ public class LimitNode extends ProcessNode {
   }
 
   @Override
+  public List<ColumnHeader> getOutputColumnHeaders() {
+    return ((IOutputPlanNode) child).getOutputColumnHeaders();
+  }
+
+  @Override
   public List<String> getOutputColumnNames() {
-    return child.getOutputColumnNames();
+    return ((IOutputPlanNode) child).getOutputColumnNames();
+  }
+
+  @Override
+  public List<TSDataType> getOutputColumnTypes() {
+    return ((IOutputPlanNode) child).getOutputColumnTypes();
   }
 
   @Override
