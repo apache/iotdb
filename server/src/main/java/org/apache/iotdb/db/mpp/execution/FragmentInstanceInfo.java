@@ -21,7 +21,6 @@ package org.apache.iotdb.db.mpp.execution;
 import org.apache.iotdb.consensus.common.DataSet;
 
 public class FragmentInstanceInfo implements DataSet {
-
   private final FragmentInstanceState state;
 
   private final long endTime;

@@ -131,4 +131,8 @@ public class QueryId {
   public static QueryId deserialize(ByteBuffer byteBuffer) {
     return new QueryId(ReadWriteIOUtils.readString(byteBuffer));
   }
+
+  public void serialize(ByteBuffer byteBuffer) {
+    ReadWriteIOUtils.write(id, byteBuffer);
+  }
 }

@@ -19,20 +19,28 @@
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
 import org.apache.iotdb.db.mpp.common.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.sql.planner.plan.IOutputPlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.ColumnHeader;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.collect.ImmutableList;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -121,12 +129,43 @@ public class AggregateNode extends ProcessNode implements IOutputPlanNode {
     return visitor.visitRowBasedSeriesAggregate(this, context);
   }
 
-  public static AggregateNode deserialize(ByteBuffer byteBuffer) {
-    return null;
+  @Override
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    PlanNodeType.AGGREGATE.serialize(byteBuffer);
+    // TODO serialize groupByTimeParameter，because it is unsure
+    ReadWriteIOUtils.write(aggregateFuncMap.size(), byteBuffer);
+    for (Map.Entry<PartialPath, Set<AggregationType>> e : aggregateFuncMap.entrySet()) {
+      e.getKey().serialize(byteBuffer);
+      ReadWriteIOUtils.write(e.getValue().size(), byteBuffer);
+      for (AggregationType aggregationType : e.getValue()) {
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+        try {
+          aggregationType.serializeTo(dataOutputStream);
+        } catch (IOException ioException) {
+          ioException.printStackTrace();
+        }
+        byteBuffer.put(byteArrayOutputStream.toByteArray());
+      }
+    }
   }
 
-  @Override
-  public void serialize(ByteBuffer byteBuffer) {}
+  public static AggregateNode deserialize(ByteBuffer byteBuffer) {
+    // TODO deserialize groupByTimeParameter， because it is unsure
+    Map<PartialPath, Set<AggregationType>> aggregateFuncMap = new HashMap<>();
+    int mapSize = ReadWriteIOUtils.readInt(byteBuffer);
+    for (int i = 0; i < mapSize; i++) {
+      PartialPath partialPath = (PartialPath) PathDeserializeUtil.deserialize(byteBuffer);
+      int setSize = ReadWriteIOUtils.readInt(byteBuffer);
+      Set<AggregationType> aggregationTypes = new HashSet<>();
+      for (int j = 0; j < setSize; j++) {
+        aggregationTypes.add(AggregationType.deserialize(byteBuffer));
+      }
+      aggregateFuncMap.put(partialPath, aggregationTypes);
+    }
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+    return new AggregateNode(planNodeId, null, aggregateFuncMap, null);
+  }
 
   @Override
   public boolean equals(Object o) {

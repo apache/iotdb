@@ -238,6 +238,11 @@ public class AuthorNode extends PlanNode {
       throw new IllegalArgumentException(e.getMessage());
     }
   }
+  
+  @Override
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    throw new NotImplementedException();
+  }
 
   public Set<Integer> strToPermissions(String[] privilegeList) throws AuthException {
     Set<Integer> result = new HashSet<>();
