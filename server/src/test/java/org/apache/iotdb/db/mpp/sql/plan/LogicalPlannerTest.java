@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.mpp.sql.plan;
 
-import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
@@ -40,7 +39,6 @@ import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -388,7 +386,7 @@ public class LogicalPlannerTest {
 
       AuthorNode authorNode1 = (AuthorNode) PlanNodeType.deserialize(byteBuffer);
       Assert.assertTrue(authorNode.equals(authorNode1));
-    } catch (IllegalPathException e) {
+    } catch (Exception e) {
       e.printStackTrace();
       fail();
     }
@@ -406,7 +404,7 @@ public class LogicalPlannerTest {
       byteBuffer.flip();
       AuthorNode authorNode1 = (AuthorNode) PlanNodeType.deserialize(byteBuffer);
       Assert.assertTrue(authorNode.equals(authorNode1));
-    } catch (IllegalPathException e) {
+    } catch (Exception e) {
       e.printStackTrace();
       fail();
     }
@@ -428,7 +426,7 @@ public class LogicalPlannerTest {
 
       authorNode1 = (AuthorNode) PlanNodeType.deserialize(byteBuffer);
       Assert.assertTrue(authorNode.equals(authorNode1));
-    } catch (IllegalPathException e) {
+    } catch (Exception e) {
       e.printStackTrace();
       fail();
     }
@@ -451,7 +449,7 @@ public class LogicalPlannerTest {
       AuthorNode authorNode1 = null;
       authorNode1 = (AuthorNode) PlanNodeType.deserialize(byteBuffer);
       Assert.assertTrue(authorNode.equals(authorNode1));
-    } catch (IllegalPathException | AuthException e) {
+    } catch (Exception e) {
       e.printStackTrace();
       fail();
     }
@@ -474,7 +472,7 @@ public class LogicalPlannerTest {
       AuthorNode authorNode1 = null;
       authorNode1 = (AuthorNode) PlanNodeType.deserialize(byteBuffer);
       Assert.assertTrue(authorNode.equals(authorNode1));
-    } catch (IllegalPathException | AuthException e) {
+    } catch (Exception e) {
       e.printStackTrace();
       fail();
     }
@@ -496,7 +494,7 @@ public class LogicalPlannerTest {
 
       authorNode1 = (AuthorNode) PlanNodeType.deserialize(byteBuffer);
       Assert.assertTrue(authorNode.equals(authorNode1));
-    } catch (IllegalPathException e) {
+    } catch (Exception e) {
       e.printStackTrace();
       fail();
     }
@@ -518,7 +516,7 @@ public class LogicalPlannerTest {
       AuthorNode authorNode1 = null;
       authorNode1 = (AuthorNode) PlanNodeType.deserialize(byteBuffer);
       Assert.assertTrue(authorNode.equals(authorNode1));
-    } catch (IllegalPathException | AuthException e) {
+    } catch (Exception e) {
       e.printStackTrace();
       fail();
     }
@@ -541,7 +539,7 @@ public class LogicalPlannerTest {
       authorNode1 = (AuthorNode) PlanNodeType.deserialize(byteBuffer);
       Assert.assertTrue(authorNode.equals(authorNode1));
 
-    } catch (IllegalPathException | AuthException e) {
+    } catch (Exception e) {
       e.printStackTrace();
       fail();
     }
@@ -564,7 +562,7 @@ public class LogicalPlannerTest {
 
       authorNode1 = (AuthorNode) PlanNodeType.deserialize(byteBuffer);
       Assert.assertTrue(authorNode.equals(authorNode1));
-    } catch (IllegalPathException e) {
+    } catch (Exception e) {
       e.printStackTrace();
       fail();
     }
@@ -585,7 +583,7 @@ public class LogicalPlannerTest {
 
       authorNode1 = (AuthorNode) PlanNodeType.deserialize(byteBuffer);
       Assert.assertTrue(authorNode.equals(authorNode1));
-    } catch (IllegalPathException e) {
+    } catch (Exception e) {
       e.printStackTrace();
       fail();
     }
@@ -606,7 +604,7 @@ public class LogicalPlannerTest {
 
       authorNode1 = (AuthorNode) PlanNodeType.deserialize(byteBuffer);
       Assert.assertTrue(authorNode.equals(authorNode1));
-    } catch (IllegalPathException e) {
+    } catch (Exception e) {
       e.printStackTrace();
       fail();
     }
@@ -626,7 +624,7 @@ public class LogicalPlannerTest {
 
       authorNode1 = (AuthorNode) PlanNodeType.deserialize(byteBuffer);
       Assert.assertTrue(authorNode.equals(authorNode1));
-    } catch (IllegalPathException e) {
+    } catch (Exception e) {
       e.printStackTrace();
       fail();
     }
@@ -646,7 +644,7 @@ public class LogicalPlannerTest {
 
       authorNode1 = (AuthorNode) PlanNodeType.deserialize(byteBuffer);
       Assert.assertTrue(authorNode.equals(authorNode1));
-    } catch (IllegalPathException e) {
+    } catch (Exception e) {
       e.printStackTrace();
       fail();
     }
@@ -667,7 +665,7 @@ public class LogicalPlannerTest {
 
       authorNode1 = (AuthorNode) PlanNodeType.deserialize(byteBuffer);
       Assert.assertTrue(authorNode.equals(authorNode1));
-    } catch (IllegalPathException e) {
+    } catch (Exception e) {
       e.printStackTrace();
       fail();
     }
@@ -688,7 +686,7 @@ public class LogicalPlannerTest {
 
       authorNode1 = (AuthorNode) PlanNodeType.deserialize(byteBuffer);
       Assert.assertTrue(authorNode.equals(authorNode1));
-    } catch (IllegalPathException e) {
+    } catch (Exception e) {
       e.printStackTrace();
       fail();
     }
@@ -709,7 +707,7 @@ public class LogicalPlannerTest {
 
       authorNode1 = (AuthorNode) PlanNodeType.deserialize(byteBuffer);
       Assert.assertTrue(authorNode.equals(authorNode1));
-    } catch (IllegalPathException e) {
+    } catch (Exception e) {
       e.printStackTrace();
       fail();
     }
@@ -730,7 +728,7 @@ public class LogicalPlannerTest {
 
       authorNode1 = (AuthorNode) PlanNodeType.deserialize(byteBuffer);
       Assert.assertTrue(authorNode.equals(authorNode1));
-    } catch (IllegalPathException e) {
+    } catch (Exception e) {
       e.printStackTrace();
       fail();
     }
@@ -750,7 +748,7 @@ public class LogicalPlannerTest {
 
       authorNode1 = (AuthorNode) PlanNodeType.deserialize(byteBuffer);
       Assert.assertTrue(authorNode.equals(authorNode1));
-    } catch (IllegalPathException e) {
+    } catch (Exception e) {
       e.printStackTrace();
       fail();
     }
@@ -770,7 +768,7 @@ public class LogicalPlannerTest {
 
       authorNode1 = (AuthorNode) PlanNodeType.deserialize(byteBuffer);
       Assert.assertTrue(authorNode.equals(authorNode1));
-    } catch (IllegalPathException e) {
+    } catch (Exception e) {
       e.printStackTrace();
       fail();
     }
