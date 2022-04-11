@@ -175,7 +175,7 @@ public class LogicalPlannerTest {
       CreateAlignedTimeSeriesNode createAlignedTimeSeriesNode1 =
           (CreateAlignedTimeSeriesNode) PlanNodeType.deserialize(byteBuffer);
       Assert.assertTrue(createAlignedTimeSeriesNode.equals(createAlignedTimeSeriesNode1));
-    } catch (IllegalPathException e) {
+    } catch (IllegalPathException | AuthException e) {
       e.printStackTrace();
       fail();
     }
@@ -206,7 +206,7 @@ public class LogicalPlannerTest {
       AlterTimeSeriesNode alterTimeSeriesNode1 =
           (AlterTimeSeriesNode) PlanNodeType.deserialize(byteBuffer);
       Assert.assertTrue(alterTimeSeriesNode.equals(alterTimeSeriesNode1));
-    } catch (IllegalPathException e) {
+    } catch (IllegalPathException | AuthException e) {
       e.printStackTrace();
       fail();
     }
@@ -235,7 +235,7 @@ public class LogicalPlannerTest {
       AlterTimeSeriesNode alterTimeSeriesNode1 =
           (AlterTimeSeriesNode) PlanNodeType.deserialize(byteBuffer);
       Assert.assertTrue(alterTimeSeriesNode.equals(alterTimeSeriesNode1));
-    } catch (IllegalPathException e) {
+    } catch (IllegalPathException | AuthException e) {
       e.printStackTrace();
       fail();
     }
@@ -264,7 +264,7 @@ public class LogicalPlannerTest {
       AlterTimeSeriesNode alterTimeSeriesNode1 =
           (AlterTimeSeriesNode) PlanNodeType.deserialize(byteBuffer);
       Assert.assertTrue(alterTimeSeriesNode.equals(alterTimeSeriesNode1));
-    } catch (IllegalPathException e) {
+    } catch (IllegalPathException | AuthException e) {
       e.printStackTrace();
       fail();
     }
@@ -293,7 +293,7 @@ public class LogicalPlannerTest {
       AlterTimeSeriesNode alterTimeSeriesNode1 =
           (AlterTimeSeriesNode) PlanNodeType.deserialize(byteBuffer);
       Assert.assertTrue(alterTimeSeriesNode.equals(alterTimeSeriesNode1));
-    } catch (IllegalPathException e) {
+    } catch (IllegalPathException | AuthException e) {
       e.printStackTrace();
       fail();
     }
@@ -322,7 +322,7 @@ public class LogicalPlannerTest {
       AlterTimeSeriesNode alterTimeSeriesNode1 =
           (AlterTimeSeriesNode) PlanNodeType.deserialize(byteBuffer);
       Assert.assertTrue(alterTimeSeriesNode.equals(alterTimeSeriesNode1));
-    } catch (IllegalPathException e) {
+    } catch (IllegalPathException | AuthException e) {
       e.printStackTrace();
       fail();
     }
@@ -360,156 +360,420 @@ public class LogicalPlannerTest {
       AlterTimeSeriesNode alterTimeSeriesNode1 =
           (AlterTimeSeriesNode) PlanNodeType.deserialize(byteBuffer);
       Assert.assertTrue(alterTimeSeriesNode.equals(alterTimeSeriesNode1));
-    } catch (IllegalPathException e) {
+    } catch (IllegalPathException | AuthException e) {
       e.printStackTrace();
       fail();
     }
   }
 
   @Test
-  public void authorTest() throws AuthException {
+  public void authorTest() {
 
     String sql = null;
-    AuthorNode authorNode = null;
-    String[] privilegesList = {"DELETE_TIMESERIES"};
+    String[] privilegeList = {"DELETE_TIMESERIES"};
 
     // create user
     sql = "CREATE USER thulab 'passwd';";
-    authorNode = (AuthorNode) parseSQLToPlanNode(sql);
-    Assert.assertNotNull(authorNode);
-    Assert.assertEquals(AuthorOperator.AuthorType.CREATE_USER, authorNode.getAuthorType());
-    Assert.assertEquals("thulab", authorNode.getUserName());
-    Assert.assertEquals("passwd", authorNode.getPassword());
+    try {
+      AuthorNode authorNode = (AuthorNode) parseSQLToPlanNode(sql);
+      Assert.assertNotNull(authorNode);
+      Assert.assertEquals(AuthorOperator.AuthorType.CREATE_USER, authorNode.getAuthorType());
+      Assert.assertEquals("thulab", authorNode.getUserName());
+      Assert.assertEquals("passwd", authorNode.getPassword());
+
+      // Test serialize and deserialize
+      ByteBuffer byteBuffer = ByteBuffer.allocate(1000);
+      authorNode.serialize(byteBuffer);
+      byteBuffer.flip();
+
+      AuthorNode authorNode1 = (AuthorNode) PlanNodeType.deserialize(byteBuffer);
+      Assert.assertTrue(authorNode.toString().equals(authorNode1.toString()));
+    } catch (IllegalPathException | AuthException e) {
+      e.printStackTrace();
+      fail();
+    }
 
     // create role
     sql = "CREATE ROLE admin;";
-    authorNode = (AuthorNode) parseSQLToPlanNode(sql);
-    Assert.assertNotNull(authorNode);
-    Assert.assertEquals(AuthorOperator.AuthorType.CREATE_ROLE, authorNode.getAuthorType());
-    Assert.assertEquals("admin", authorNode.getRoleName());
+    try {
+      AuthorNode authorNode = (AuthorNode) parseSQLToPlanNode(sql);
+      Assert.assertNotNull(authorNode);
+      Assert.assertEquals(AuthorOperator.AuthorType.CREATE_ROLE, authorNode.getAuthorType());
+      Assert.assertEquals("admin", authorNode.getRoleName());
+      // Test serialize and deserialize
+      ByteBuffer byteBuffer = ByteBuffer.allocate(1000);
+      authorNode.serialize(byteBuffer);
+      byteBuffer.flip();
+      AuthorNode authorNode1 = (AuthorNode) PlanNodeType.deserialize(byteBuffer);
+      Assert.assertTrue(authorNode.toString().equals(authorNode1.toString()));
+    } catch (IllegalPathException | AuthException e) {
+      e.printStackTrace();
+      fail();
+    }
 
     // alter user
     sql = "ALTER USER tempuser SET PASSWORD 'newpwd';";
-    authorNode = (AuthorNode) parseSQLToPlanNode(sql);
-    Assert.assertNotNull(authorNode);
-    Assert.assertEquals(AuthorOperator.AuthorType.UPDATE_USER, authorNode.getAuthorType());
-    Assert.assertEquals("tempuser", authorNode.getUserName());
-    Assert.assertEquals("newpwd", authorNode.getNewPassword());
+    try {
+      AuthorNode authorNode = (AuthorNode) parseSQLToPlanNode(sql);
+      Assert.assertNotNull(authorNode);
+      Assert.assertEquals(AuthorOperator.AuthorType.UPDATE_USER, authorNode.getAuthorType());
+      Assert.assertEquals("tempuser", authorNode.getUserName());
+      Assert.assertEquals("newpwd", authorNode.getNewPassword());
+      // Test serialize and deserialize
+      ByteBuffer byteBuffer = ByteBuffer.allocate(1000);
+      authorNode.serialize(byteBuffer);
+      byteBuffer.flip();
+
+      AuthorNode authorNode1 = null;
+
+      authorNode1 = (AuthorNode) PlanNodeType.deserialize(byteBuffer);
+      Assert.assertTrue(authorNode.toString().equals(authorNode1.toString()));
+    } catch (IllegalPathException | AuthException e) {
+      e.printStackTrace();
+      fail();
+    }
 
     // grant user
     sql = "GRANT USER tempuser PRIVILEGES DELETE_TIMESERIES on root.ln;";
-    authorNode = (AuthorNode) parseSQLToPlanNode(sql);
-    Assert.assertNotNull(authorNode);
-    Assert.assertEquals(AuthorOperator.AuthorType.GRANT_USER, authorNode.getAuthorType());
-    Assert.assertEquals("tempuser", authorNode.getUserName());
-    Assert.assertEquals(authorNode.strToPermissions(privilegesList), authorNode.getPermissions());
-    Assert.assertEquals("root.ln", authorNode.getNodeName().getFullPath());
+    try {
+      AuthorNode authorNode = (AuthorNode) parseSQLToPlanNode(sql);
+      Assert.assertNotNull(authorNode);
+      Assert.assertEquals(AuthorOperator.AuthorType.GRANT_USER, authorNode.getAuthorType());
+      Assert.assertEquals("tempuser", authorNode.getUserName());
+
+      Assert.assertEquals(authorNode.strToPermissions(privilegeList), authorNode.getPermissions());
+      Assert.assertEquals("root.ln", authorNode.getNodeName().getFullPath());
+      // Test serialize and deserialize
+      ByteBuffer byteBuffer = ByteBuffer.allocate(1000);
+      authorNode.serialize(byteBuffer);
+      byteBuffer.flip();
+
+      AuthorNode authorNode1 = null;
+      authorNode1 = (AuthorNode) PlanNodeType.deserialize(byteBuffer);
+      Assert.assertTrue(authorNode.toString().equals(authorNode1.toString()));
+    } catch (AuthException | IllegalPathException e) {
+      e.printStackTrace();
+      fail();
+    }
 
     // grant role
     sql = "GRANT ROLE temprole PRIVILEGES DELETE_TIMESERIES ON root.ln;";
-    authorNode = (AuthorNode) parseSQLToPlanNode(sql);
-    Assert.assertNotNull(authorNode);
-    Assert.assertEquals(AuthorOperator.AuthorType.GRANT_ROLE, authorNode.getAuthorType());
-    Assert.assertEquals("temprole", authorNode.getRoleName());
-    Assert.assertEquals(authorNode.strToPermissions(privilegesList), authorNode.getPermissions());
-    Assert.assertEquals("root.ln", authorNode.getNodeName().getFullPath());
+    try {
+      AuthorNode authorNode = (AuthorNode) parseSQLToPlanNode(sql);
+      Assert.assertNotNull(authorNode);
+      Assert.assertEquals(AuthorOperator.AuthorType.GRANT_ROLE, authorNode.getAuthorType());
+      Assert.assertEquals("temprole", authorNode.getRoleName());
+
+      Assert.assertEquals(authorNode.strToPermissions(privilegeList), authorNode.getPermissions());
+      Assert.assertEquals("root.ln", authorNode.getNodeName().getFullPath());
+      // Test serialize and deserialize
+      ByteBuffer byteBuffer = ByteBuffer.allocate(1000);
+      authorNode.serialize(byteBuffer);
+      byteBuffer.flip();
+
+      AuthorNode authorNode1 = null;
+      authorNode1 = (AuthorNode) PlanNodeType.deserialize(byteBuffer);
+      Assert.assertTrue(authorNode.toString().equals(authorNode1.toString()));
+    } catch (AuthException | IllegalPathException e) {
+      e.printStackTrace();
+      fail();
+    }
 
     // grant role to user
     sql = "GRANT temprole TO tempuser;";
-    authorNode = (AuthorNode) parseSQLToPlanNode(sql);
-    Assert.assertNotNull(authorNode);
-    Assert.assertEquals(AuthorOperator.AuthorType.GRANT_ROLE_TO_USER, authorNode.getAuthorType());
-    Assert.assertEquals("temprole", authorNode.getRoleName());
-    Assert.assertEquals("tempuser", authorNode.getUserName());
+    try {
+      AuthorNode authorNode = (AuthorNode) parseSQLToPlanNode(sql);
+      Assert.assertNotNull(authorNode);
+      Assert.assertEquals(AuthorOperator.AuthorType.GRANT_ROLE_TO_USER, authorNode.getAuthorType());
+      Assert.assertEquals("temprole", authorNode.getRoleName());
+      Assert.assertEquals("tempuser", authorNode.getUserName());
+      // Test serialize and deserialize
+      ByteBuffer byteBuffer = ByteBuffer.allocate(1000);
+      authorNode.serialize(byteBuffer);
+      byteBuffer.flip();
+
+      AuthorNode authorNode1 = null;
+
+      authorNode1 = (AuthorNode) PlanNodeType.deserialize(byteBuffer);
+      Assert.assertTrue(authorNode.toString().equals(authorNode1.toString()));
+    } catch (IllegalPathException | AuthException e) {
+      e.printStackTrace();
+      fail();
+    }
 
     // revoke user
     sql = "REVOKE USER tempuser PRIVILEGES DELETE_TIMESERIES on root.ln;";
-    authorNode = (AuthorNode) parseSQLToPlanNode(sql);
-    Assert.assertNotNull(authorNode);
-    Assert.assertEquals(AuthorOperator.AuthorType.REVOKE_USER, authorNode.getAuthorType());
-    Assert.assertEquals("tempuser", authorNode.getUserName());
-    Assert.assertEquals(authorNode.strToPermissions(privilegesList), authorNode.getPermissions());
-    Assert.assertEquals("root.ln", authorNode.getNodeName().getFullPath());
+    try {
+      AuthorNode authorNode = (AuthorNode) parseSQLToPlanNode(sql);
+      Assert.assertNotNull(authorNode);
+      Assert.assertEquals(AuthorOperator.AuthorType.REVOKE_USER, authorNode.getAuthorType());
+      Assert.assertEquals("tempuser", authorNode.getUserName());
+      Assert.assertEquals(authorNode.strToPermissions(privilegeList), authorNode.getPermissions());
+      Assert.assertEquals("root.ln", authorNode.getNodeName().getFullPath());
+      // Test serialize and deserialize
+      ByteBuffer byteBuffer = ByteBuffer.allocate(1000);
+      authorNode.serialize(byteBuffer);
+      byteBuffer.flip();
+
+      AuthorNode authorNode1 = null;
+      authorNode1 = (AuthorNode) PlanNodeType.deserialize(byteBuffer);
+      Assert.assertTrue(authorNode.toString().equals(authorNode1.toString()));
+    } catch (AuthException | IllegalPathException e) {
+      e.printStackTrace();
+      fail();
+    }
 
     // revoke role
     sql = "REVOKE ROLE temprole PRIVILEGES DELETE_TIMESERIES ON root.ln;";
-    authorNode = (AuthorNode) parseSQLToPlanNode(sql);
-    Assert.assertNotNull(authorNode);
-    Assert.assertEquals(AuthorOperator.AuthorType.REVOKE_ROLE, authorNode.getAuthorType());
-    Assert.assertEquals("temprole", authorNode.getRoleName());
-    Assert.assertEquals(authorNode.strToPermissions(privilegesList), authorNode.getPermissions());
-    Assert.assertEquals("root.ln", authorNode.getNodeName().getFullPath());
+    try {
+      AuthorNode authorNode = (AuthorNode) parseSQLToPlanNode(sql);
+      Assert.assertNotNull(authorNode);
+      Assert.assertEquals(AuthorOperator.AuthorType.REVOKE_ROLE, authorNode.getAuthorType());
+      Assert.assertEquals("temprole", authorNode.getRoleName());
+      Assert.assertEquals("root.ln", authorNode.getNodeName().getFullPath());
+      Assert.assertEquals(authorNode.strToPermissions(privilegeList), authorNode.getPermissions());
+      // Test serialize and deserialize
+      ByteBuffer byteBuffer = ByteBuffer.allocate(1000);
+      authorNode.serialize(byteBuffer);
+      byteBuffer.flip();
+
+      AuthorNode authorNode1 = null;
+      authorNode1 = (AuthorNode) PlanNodeType.deserialize(byteBuffer);
+      Assert.assertTrue(authorNode.toString().equals(authorNode1.toString()));
+
+    } catch (AuthException | IllegalPathException e) {
+      e.printStackTrace();
+      fail();
+    }
 
     // revoke role from user
     sql = "REVOKE temprole FROM tempuser;";
-    authorNode = (AuthorNode) parseSQLToPlanNode(sql);
-    Assert.assertNotNull(authorNode);
-    Assert.assertEquals(
-        AuthorOperator.AuthorType.REVOKE_ROLE_FROM_USER, authorNode.getAuthorType());
-    Assert.assertEquals("temprole", authorNode.getRoleName());
-    Assert.assertEquals("tempuser", authorNode.getUserName());
+    try {
+      AuthorNode authorNode = (AuthorNode) parseSQLToPlanNode(sql);
+      Assert.assertNotNull(authorNode);
+      Assert.assertEquals(
+          AuthorOperator.AuthorType.REVOKE_ROLE_FROM_USER, authorNode.getAuthorType());
+      Assert.assertEquals("temprole", authorNode.getRoleName());
+      Assert.assertEquals("tempuser", authorNode.getUserName());
+      // Test serialize and deserialize
+      ByteBuffer byteBuffer = ByteBuffer.allocate(1000);
+      authorNode.serialize(byteBuffer);
+      byteBuffer.flip();
+
+      AuthorNode authorNode1 = null;
+
+      authorNode1 = (AuthorNode) PlanNodeType.deserialize(byteBuffer);
+      Assert.assertTrue(authorNode.toString().equals(authorNode1.toString()));
+    } catch (IllegalPathException | AuthException e) {
+      e.printStackTrace();
+      fail();
+    }
 
     // drop user
     sql = "DROP USER xiaoming;";
-    authorNode = (AuthorNode) parseSQLToPlanNode(sql);
-    Assert.assertNotNull(authorNode);
-    Assert.assertEquals(AuthorOperator.AuthorType.DROP_USER, authorNode.getAuthorType());
-    Assert.assertEquals("xiaoming", authorNode.getUserName());
+    try {
+      AuthorNode authorNode = (AuthorNode) parseSQLToPlanNode(sql);
+      Assert.assertNotNull(authorNode);
+      Assert.assertEquals(AuthorOperator.AuthorType.DROP_USER, authorNode.getAuthorType());
+      Assert.assertEquals("xiaoming", authorNode.getUserName());
+      // Test serialize and deserialize
+      ByteBuffer byteBuffer = ByteBuffer.allocate(1000);
+      authorNode.serialize(byteBuffer);
+      byteBuffer.flip();
+
+      AuthorNode authorNode1 = null;
+
+      authorNode1 = (AuthorNode) PlanNodeType.deserialize(byteBuffer);
+      Assert.assertTrue(authorNode.toString().equals(authorNode1.toString()));
+    } catch (IllegalPathException | AuthException e) {
+      e.printStackTrace();
+      fail();
+    }
 
     // drop role
     sql = "DROP ROLE admin;";
-    authorNode = (AuthorNode) parseSQLToPlanNode(sql);
-    Assert.assertNotNull(authorNode);
-    Assert.assertEquals(AuthorOperator.AuthorType.DROP_ROLE, authorNode.getAuthorType());
-    Assert.assertEquals("admin", authorNode.getRoleName());
+    try {
+      AuthorNode authorNode = (AuthorNode) parseSQLToPlanNode(sql);
+      Assert.assertNotNull(authorNode);
+      Assert.assertEquals(AuthorOperator.AuthorType.DROP_ROLE, authorNode.getAuthorType());
+      Assert.assertEquals("admin", authorNode.getRoleName());
+      // Test serialize and deserialize
+      ByteBuffer byteBuffer = ByteBuffer.allocate(1000);
+      authorNode.serialize(byteBuffer);
+      byteBuffer.flip();
+
+      AuthorNode authorNode1 = null;
+
+      authorNode1 = (AuthorNode) PlanNodeType.deserialize(byteBuffer);
+      Assert.assertTrue(authorNode.toString().equals(authorNode1.toString()));
+    } catch (IllegalPathException | AuthException e) {
+      e.printStackTrace();
+      fail();
+    }
 
     // list user
     sql = "LIST USER";
-    authorNode = (AuthorNode) parseSQLToPlanNode(sql);
-    Assert.assertNotNull(authorNode);
-    Assert.assertEquals(AuthorOperator.AuthorType.LIST_USER, authorNode.getAuthorType());
+    try {
+      AuthorNode authorNode = (AuthorNode) parseSQLToPlanNode(sql);
+      Assert.assertNotNull(authorNode);
+      Assert.assertEquals(AuthorOperator.AuthorType.LIST_USER, authorNode.getAuthorType());
+      // Test serialize and deserialize
+      ByteBuffer byteBuffer = ByteBuffer.allocate(1000);
+      authorNode.serialize(byteBuffer);
+      byteBuffer.flip();
+
+      AuthorNode authorNode1 = null;
+
+      authorNode1 = (AuthorNode) PlanNodeType.deserialize(byteBuffer);
+      Assert.assertTrue(authorNode.toString().equals(authorNode1.toString()));
+    } catch (IllegalPathException | AuthException e) {
+      e.printStackTrace();
+      fail();
+    }
 
     // list role
     sql = "LIST ROLE";
-    authorNode = (AuthorNode) parseSQLToPlanNode(sql);
-    Assert.assertNotNull(authorNode);
-    Assert.assertEquals(AuthorOperator.AuthorType.LIST_ROLE, authorNode.getAuthorType());
+    try {
+      AuthorNode authorNode = (AuthorNode) parseSQLToPlanNode(sql);
+      Assert.assertNotNull(authorNode);
+      Assert.assertEquals(AuthorOperator.AuthorType.LIST_ROLE, authorNode.getAuthorType());
+      // Test serialize and deserialize
+      ByteBuffer byteBuffer = ByteBuffer.allocate(1000);
+      authorNode.serialize(byteBuffer);
+      byteBuffer.flip();
+
+      AuthorNode authorNode1 = null;
+
+      authorNode1 = (AuthorNode) PlanNodeType.deserialize(byteBuffer);
+      Assert.assertTrue(authorNode.toString().equals(authorNode1.toString()));
+    } catch (IllegalPathException | AuthException e) {
+      e.printStackTrace();
+      fail();
+    }
 
     // list privileges user
     sql = "LIST PRIVILEGES USER sgcc_wirte_user ON root.sgcc;";
-    authorNode = (AuthorNode) parseSQLToPlanNode(sql);
-    Assert.assertNotNull(authorNode);
-    Assert.assertEquals(AuthorOperator.AuthorType.LIST_USER_PRIVILEGE, authorNode.getAuthorType());
+    try {
+      AuthorNode authorNode = (AuthorNode) parseSQLToPlanNode(sql);
+      Assert.assertNotNull(authorNode);
+      Assert.assertEquals(
+          AuthorOperator.AuthorType.LIST_USER_PRIVILEGE, authorNode.getAuthorType());
+      // Test serialize and deserialize
+      ByteBuffer byteBuffer = ByteBuffer.allocate(1000);
+      authorNode.serialize(byteBuffer);
+      byteBuffer.flip();
+
+      AuthorNode authorNode1 = null;
+
+      authorNode1 = (AuthorNode) PlanNodeType.deserialize(byteBuffer);
+      Assert.assertTrue(authorNode.toString().equals(authorNode1.toString()));
+    } catch (IllegalPathException | AuthException e) {
+      e.printStackTrace();
+      fail();
+    }
 
     // list privileges role
     sql = "LIST PRIVILEGES ROLE wirte_role ON root.sgcc;";
-    authorNode = (AuthorNode) parseSQLToPlanNode(sql);
-    Assert.assertNotNull(authorNode);
-    Assert.assertEquals(AuthorOperator.AuthorType.LIST_ROLE_PRIVILEGE, authorNode.getAuthorType());
+    try {
+      AuthorNode authorNode = (AuthorNode) parseSQLToPlanNode(sql);
+      Assert.assertNotNull(authorNode);
+      Assert.assertEquals(
+          AuthorOperator.AuthorType.LIST_ROLE_PRIVILEGE, authorNode.getAuthorType());
+      // Test serialize and deserialize
+      ByteBuffer byteBuffer = ByteBuffer.allocate(1000);
+      authorNode.serialize(byteBuffer);
+      byteBuffer.flip();
+
+      AuthorNode authorNode1 = null;
+
+      authorNode1 = (AuthorNode) PlanNodeType.deserialize(byteBuffer);
+      Assert.assertTrue(authorNode.toString().equals(authorNode1.toString()));
+    } catch (IllegalPathException | AuthException e) {
+      e.printStackTrace();
+      fail();
+    }
 
     // list user privileges
     sql = "LIST USER PRIVILEGES tempuser;";
-    authorNode = (AuthorNode) parseSQLToPlanNode(sql);
-    Assert.assertNotNull(authorNode);
-    Assert.assertEquals(AuthorOperator.AuthorType.LIST_USER_PRIVILEGE, authorNode.getAuthorType());
+    try {
+      AuthorNode authorNode = (AuthorNode) parseSQLToPlanNode(sql);
+      Assert.assertNotNull(authorNode);
+      Assert.assertEquals(
+          AuthorOperator.AuthorType.LIST_USER_PRIVILEGE, authorNode.getAuthorType());
+      // Test serialize and deserialize
+      ByteBuffer byteBuffer = ByteBuffer.allocate(1000);
+      authorNode.serialize(byteBuffer);
+      byteBuffer.flip();
+
+      AuthorNode authorNode1 = null;
+
+      authorNode1 = (AuthorNode) PlanNodeType.deserialize(byteBuffer);
+      Assert.assertTrue(authorNode.toString().equals(authorNode1.toString()));
+    } catch (IllegalPathException | AuthException e) {
+      e.printStackTrace();
+      fail();
+    }
 
     // list role privileges
     sql = "LIST ROLE PRIVILEGES actor;";
-    authorNode = (AuthorNode) parseSQLToPlanNode(sql);
-    Assert.assertNotNull(authorNode);
-    Assert.assertEquals(AuthorOperator.AuthorType.LIST_ROLE_PRIVILEGE, authorNode.getAuthorType());
+    try {
+      AuthorNode authorNode = (AuthorNode) parseSQLToPlanNode(sql);
+      Assert.assertNotNull(authorNode);
+      Assert.assertEquals(
+          AuthorOperator.AuthorType.LIST_ROLE_PRIVILEGE, authorNode.getAuthorType());
+      // Test serialize and deserialize
+      ByteBuffer byteBuffer = ByteBuffer.allocate(1000);
+      authorNode.serialize(byteBuffer);
+      byteBuffer.flip();
+
+      AuthorNode authorNode1 = null;
+
+      authorNode1 = (AuthorNode) PlanNodeType.deserialize(byteBuffer);
+      Assert.assertTrue(authorNode.toString().equals(authorNode1.toString()));
+    } catch (IllegalPathException | AuthException e) {
+      e.printStackTrace();
+      fail();
+    }
 
     // list all role of user
     sql = "LIST ALL ROLE OF USER tempuser;";
-    authorNode = (AuthorNode) parseSQLToPlanNode(sql);
-    Assert.assertNotNull(authorNode);
-    Assert.assertEquals(AuthorOperator.AuthorType.LIST_USER_ROLES, authorNode.getAuthorType());
+    try {
+      AuthorNode authorNode = (AuthorNode) parseSQLToPlanNode(sql);
+      Assert.assertNotNull(authorNode);
+      Assert.assertEquals(AuthorOperator.AuthorType.LIST_USER_ROLES, authorNode.getAuthorType());
+      // Test serialize and deserialize
+      ByteBuffer byteBuffer = ByteBuffer.allocate(1000);
+      authorNode.serialize(byteBuffer);
+      byteBuffer.flip();
+
+      AuthorNode authorNode1 = null;
+
+      authorNode1 = (AuthorNode) PlanNodeType.deserialize(byteBuffer);
+      Assert.assertTrue(authorNode.toString().equals(authorNode1.toString()));
+    } catch (IllegalPathException | AuthException e) {
+      e.printStackTrace();
+      fail();
+    }
 
     // list all user of role
     sql = "LIST ALL USER OF ROLE roleuser;";
-    authorNode = (AuthorNode) parseSQLToPlanNode(sql);
-    Assert.assertNotNull(authorNode);
-    Assert.assertEquals(AuthorOperator.AuthorType.LIST_ROLE_USERS, authorNode.getAuthorType());
+    try {
+      AuthorNode authorNode = (AuthorNode) parseSQLToPlanNode(sql);
+      Assert.assertNotNull(authorNode);
+      Assert.assertEquals(AuthorOperator.AuthorType.LIST_ROLE_USERS, authorNode.getAuthorType());
+      // Test serialize and deserialize
+      ByteBuffer byteBuffer = ByteBuffer.allocate(1000);
+      authorNode.serialize(byteBuffer);
+      byteBuffer.flip();
+
+      AuthorNode authorNode1 = null;
+
+      authorNode1 = (AuthorNode) PlanNodeType.deserialize(byteBuffer);
+      Assert.assertTrue(authorNode.toString().equals(authorNode1.toString()));
+    } catch (IllegalPathException | AuthException e) {
+      e.printStackTrace();
+      fail();
+    }
   }
 
   private PlanNode parseSQLToPlanNode(String sql) {
