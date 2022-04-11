@@ -47,25 +47,18 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   protected String logicalStorageGroupName;
   protected String dataRegionId;
-  protected String storageGroupDir;
   protected long timePartition;
   protected TsFileManager tsFileManager;
-  protected List<TsFileResource> sequenceFileList;
-  protected List<TsFileResource> unsequenceFileList;
 
   public RewriteCrossSpaceCompactionSelector(
       String logicalStorageGroupName,
       String dataRegionId,
-      String storageGroupDir,
       long timePartition,
       TsFileManager tsFileManager) {
-    this.storageGroupDir = storageGroupDir;
     this.logicalStorageGroupName = logicalStorageGroupName;
     this.dataRegionId = dataRegionId;
     this.timePartition = timePartition;
     this.tsFileManager = tsFileManager;
-    this.sequenceFileList = tsFileManager.getSequenceListByTimePartition(timePartition);
-    this.unsequenceFileList = tsFileManager.getUnsequenceListByTimePartition(timePartition);
   }
 
   /**
@@ -77,7 +70,8 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
    * @return Returns whether the file was found and submits the merge task
    */
   @Override
-  public List<AbstractCompactionTask> select() {
+  public List<AbstractCompactionTask> selectCrossSpaceTask(
+      List<TsFileResource> sequenceFileList, List<TsFileResource> unsequenceFileList) {
     if ((CompactionTaskManager.currentTaskNum.get() >= config.getConcurrentCompactionThread())
         || (!config.isEnableCrossSpaceCompaction())) {
       return Collections.emptyList();

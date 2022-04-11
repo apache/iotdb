@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.engine.compaction.task;
 
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+
 import java.util.List;
 
 /**
@@ -27,5 +29,14 @@ import java.util.List;
  * increase the global compaction task count.
  */
 public interface ICompactionSelector {
-  List<AbstractCompactionTask> select();
+  default List<AbstractCompactionTask> selectInnerSpaceTask(List<TsFileResource> resources) {
+    throw new RuntimeException("This kind of selector cannot be used to select inner space task");
+  }
+
+  default List<AbstractCompactionTask> selectCrossSpaceTask(
+      List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
+    {
+      throw new RuntimeException("This kind of selector cannot be used to select cross space task");
+    }
+  }
 }

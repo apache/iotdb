@@ -63,14 +63,13 @@ public enum CrossCompactionStrategy {
   public ICrossSpaceSelector getCompactionSelector(
       String logicalStorageGroupName,
       String virtualGroupId,
-      String storageGroupDir,
       long timePartition,
       TsFileManager tsFileManager) {
     switch (this) {
       case REWRITE_COMPACTION:
       default:
         return new RewriteCrossSpaceCompactionSelector(
-            logicalStorageGroupName, virtualGroupId, storageGroupDir, timePartition, tsFileManager);
+            logicalStorageGroupName, virtualGroupId, timePartition, tsFileManager);
     }
   }
 }

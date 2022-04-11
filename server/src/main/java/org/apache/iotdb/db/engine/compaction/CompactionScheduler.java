@@ -23,8 +23,6 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.cross.ICrossSpaceSelector;
-import org.apache.iotdb.db.engine.compaction.inner.IInnerSeqSpaceSelector;
-import org.apache.iotdb.db.engine.compaction.inner.IInnerUnseqSpaceSelector;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.compaction.task.ICompactionSelector;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
@@ -41,7 +39,8 @@ import java.util.List;
  * For different types of compaction task(e.g. InnerSpaceCompaction), CompactionScheduler will call
  * the corresponding {@link ICompactionSelector selector} according to the compaction machanism of
  * the task(e.g. LevelCompaction, SizeTiredCompaction), and the selection and submission process is
- * carried out in the {@link ICompactionSelector#select() selectAndSubmit()} in selector.
+ * carried out in the {@link ICompactionSelector#selectInnerSpaceTask(List)} () and {@link
+ * ICompactionSelector#selectCrossSpaceTask(List, List)}} in selector.
  */
 public class CompactionScheduler {
   private static final Logger LOGGER =
@@ -88,22 +87,25 @@ public class CompactionScheduler {
       return;
     }
 
-    List<AbstractCompactionTask> taskList = null;
+    ICompactionSelector innerSpaceCompactionSelector = null;
     if (sequence) {
-      IInnerSeqSpaceSelector innerSpaceCompactionSelector =
+      innerSpaceCompactionSelector =
           config
               .getInnerSequenceCompactionStrategy()
               .getCompactionSelector(
                   logicalStorageGroupName, dataRegionId, timePartition, tsFileManager);
-      taskList = innerSpaceCompactionSelector.select();
     } else {
-      IInnerUnseqSpaceSelector innerSpaceCompactionSelector =
+      innerSpaceCompactionSelector =
           config
               .getInnerUnsequenceCompactionStrategy()
               .getCompactionSelector(
                   logicalStorageGroupName, dataRegionId, timePartition, tsFileManager);
-      taskList = innerSpaceCompactionSelector.select();
     }
+    List<AbstractCompactionTask> taskList =
+        innerSpaceCompactionSelector.selectInnerSpaceTask(
+            sequence
+                ? tsFileManager.getSequenceListByTimePartition(timePartition)
+                : tsFileManager.getUnsequenceListByTimePartition(timePartition));
     for (AbstractCompactionTask task : taskList) {
       CompactionTaskManager.getInstance().addTaskToWaitingQueue(task);
     }
@@ -123,12 +125,11 @@ public class CompactionScheduler {
         config
             .getCrossCompactionStrategy()
             .getCompactionSelector(
-                logicalStorageGroupName,
-                dataRegionId,
-                storageGroupDir,
-                timePartition,
-                tsFileManager);
-    List<AbstractCompactionTask> taskList = crossSpaceCompactionSelector.select();
+                logicalStorageGroupName, dataRegionId, timePartition, tsFileManager);
+    List<AbstractCompactionTask> taskList =
+        crossSpaceCompactionSelector.selectCrossSpaceTask(
+            tsFileManager.getSequenceListByTimePartition(timePartition),
+            tsFileManager.getUnsequenceListByTimePartition(timePartition));
     for (AbstractCompactionTask task : taskList) {
       CompactionTaskManager.getInstance().addTaskToWaitingQueue(task);
     }

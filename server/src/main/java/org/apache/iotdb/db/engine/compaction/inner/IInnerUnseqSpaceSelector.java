@@ -20,9 +20,10 @@ package org.apache.iotdb.db.engine.compaction.inner;
 
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.compaction.task.ICompactionSelector;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 
 import java.util.List;
 
 public interface IInnerUnseqSpaceSelector extends ICompactionSelector {
-  List<AbstractCompactionTask> select();
+  List<AbstractCompactionTask> selectInnerSpaceTask(List<TsFileResource> resources);
 }

@@ -78,11 +78,6 @@ public class SizeTieredCompactionSelector
     this.timePartition = timePartition;
     this.tsFileManager = tsFileManager;
     this.sequence = sequence;
-    if (sequence) {
-      this.tsFileResources = tsFileManager.getSequenceListByTimePartition(timePartition);
-    } else {
-      this.tsFileResources = tsFileManager.getUnsequenceListByTimePartition(timePartition);
-    }
   }
 
   /**
@@ -94,7 +89,7 @@ public class SizeTieredCompactionSelector
    * @return Returns whether the file was found and submits the merge task
    */
   @Override
-  public List<AbstractCompactionTask> select() {
+  public List<AbstractCompactionTask> selectInnerSpaceTask(List<TsFileResource> tsFileResources) {
     PriorityQueue<Pair<List<TsFileResource>, Long>> taskPriorityQueue =
         new PriorityQueue<>(new SizeTieredCompactionTaskComparator());
     try {
