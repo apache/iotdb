@@ -33,7 +33,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
 
   private static final Logger logger = LoggerFactory.getLogger(DataRegionStateMachine.class);
 
-  private static final FragmentInstanceManager INSTANCE_MANAGER =
+  private static final FragmentInstanceManager QUERY_INSTANCE_MANAGER =
       FragmentInstanceManager.getInstance();
 
   private final DataRegion region;
@@ -56,6 +56,6 @@ public class DataRegionStateMachine extends BaseStateMachine {
 
   @Override
   protected DataSet read(FragmentInstance fragmentInstance) {
-    return INSTANCE_MANAGER.execDataQueryFragmentInstance(fragmentInstance, region);
+    return QUERY_INSTANCE_MANAGER.execDataQueryFragmentInstance(fragmentInstance, region);
   }
 }
