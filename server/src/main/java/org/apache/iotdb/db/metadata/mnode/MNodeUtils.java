@@ -68,6 +68,7 @@ public class MNodeUtils {
     } else {
       node = new InternalMNode(parent, entityMNode.getName());
     }
+
     if (parent != null) {
       parent.replaceChild(entityMNode.getName(), node);
     }
