@@ -17,22 +17,22 @@
  * under the License.
  */
 
-include "rpc.thrift"
+include "common.thrift"
 namespace java org.apache.iotdb.confignode.rpc.thrift
 namespace py iotdb.thrift.confignode
 
 struct DataNodeRegisterReq {
-    1: required rpc.EndPoint endPoint
+    1: required common.EndPoint endPoint
 }
 
 struct DataNodeRegisterResp {
-    1: required rpc.TSStatus registerResult
+    1: required common.TSStatus registerResult
     2: optional i32 dataNodeID
 }
 
 struct DataNodeMessage {
   1: required i32 dataNodeID
-  2: required rpc.EndPoint endPoint
+  2: required common.EndPoint endPoint
 }
 
 struct SetStorageGroupReq {
@@ -56,17 +56,12 @@ struct GetSchemaPartitionReq {
     2: required list<i32> deviceGroupIDs
 }
 
-struct RegionReplicaSet {
-    1: required i32 regionId
-    2: required list<rpc.EndPoint> endpoint
-}
-
 struct SchemaPartitionInfo {
-    1: required map<string, map<i32, RegionReplicaSet>> schemaRegionDataNodesMap
+    1: required map<string, map<i32, common.RegionReplicaSet>> schemaRegionDataNodesMap
 }
 
 struct DataPartitionInfo {
-    1: required map<string, map<i64, map<i32, list<RegionReplicaSet>>>> deviceGroupStartTimeDataRegionGroupMap
+    1: required map<string, map<i64, map<i32, list<common.RegionReplicaSet>>>> deviceGroupStartTimeDataRegionGroupMap
 }
 
 struct GetDataPartitionReq {
@@ -93,7 +88,7 @@ struct FetchPartitionReq {
 
 struct RegionInfo {
     1: required i32 regionId
-    2: required list<rpc.EndPoint> endPointList
+    2: required list<common.EndPoint> endPointList
 }
 
 struct DataPartitionInfoResp {
@@ -130,9 +125,9 @@ service ConfigIService {
 
   map<i32, DataNodeMessage> getDataNodesMessage(i32 dataNodeID)
 
-  rpc.TSStatus setStorageGroup(SetStorageGroupReq req)
+  common.TSStatus setStorageGroup(SetStorageGroupReq req)
 
-  rpc.TSStatus deleteStorageGroup(DeleteStorageGroupReq req)
+  common.TSStatus deleteStorageGroup(DeleteStorageGroupReq req)
 
   map<string, StorageGroupMessage> getStorageGroupsMessage()
 
@@ -156,6 +151,6 @@ service ConfigIService {
 
   PartitionInfoResp fetchPartitionInfo(FetchPartitionReq req)
 
-   rpc.TSStatus operatePermission(AuthorizerReq req)
+   common.TSStatus operatePermission(AuthorizerReq req)
 
 }
