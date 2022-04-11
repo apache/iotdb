@@ -99,6 +99,7 @@ public class SchemaEngine {
   }
 
   public void deleteSchemaRegion(SchemaRegionId schemaRegionId) throws MetadataException {
-    schemaRegionMap.remove(schemaRegionId).deleteSchemaRegion();
+    schemaRegionMap.get(schemaRegionId).deleteSchemaRegion();
+    schemaRegionMap.remove(schemaRegionId);
   }
 }

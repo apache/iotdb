@@ -16,16 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.metadata.mtree.multimode;
 
-package org.apache.iotdb.db.exception.metadata;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.metadata.mtree.MTreeBelowSGTest;
+import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
 
-import org.apache.iotdb.rpc.TSStatusCode;
-
-public class DuplicatedTemplateException extends MetadataException {
-  public DuplicatedTemplateException(String path) {
-    super(
-        String.format("Failed to create duplicated template for path %s", path),
-        TSStatusCode.DUPLICATED_TEMPLATE.getStatusCode(),
-        true);
+public class MTreeMemoryModeTest extends MTreeBelowSGTest {
+  @Override
+  protected void setConfig() {
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setSchemaEngineMode(SchemaEngineMode.Memory.toString());
   }
+
+  @Override
+  protected void rollBackConfig() {}
 }

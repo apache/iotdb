@@ -22,6 +22,8 @@ import org.apache.iotdb.db.engine.trigger.executor.TriggerExecutor;
 import org.apache.iotdb.db.metadata.lastCache.container.ILastCacheContainer;
 import org.apache.iotdb.db.metadata.lastCache.container.LastCacheContainer;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
+import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
+import org.apache.iotdb.db.metadata.mnode.container.MNodeContainers;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
@@ -32,8 +34,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.Collections;
-import java.util.Map;
 
 public class MeasurementMNode extends MNode implements IMeasurementMNode {
 
@@ -198,20 +198,20 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
   }
 
   @Override
-  public void deleteChild(String name) {
-    // Do nothing
+  public IMNode deleteChild(String name) {
+    return null;
   }
 
   @Override
   public void replaceChild(String oldChildName, IMNode newChildNode) {}
 
   @Override
-  public Map<String, IMNode> getChildren() {
-    return Collections.emptyMap();
+  public IMNodeContainer getChildren() {
+    return MNodeContainers.emptyMNodeContainer();
   }
 
   @Override
-  public void setChildren(Map<String, IMNode> children) {
+  public void setChildren(IMNodeContainer children) {
     // Do nothing
   }
 

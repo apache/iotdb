@@ -164,7 +164,7 @@ public class InfluxDBServiceImpl implements InfluxDBService.Iface {
 
   private TSStatus executeNonQueryPlan(PhysicalPlan plan, long sessionId)
       throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
-    org.apache.iotdb.service.rpc.thrift.TSStatus status =
+    org.apache.iotdb.common.rpc.thrift.TSStatus status =
         SESSION_MANAGER.checkAuthority(plan, sessionId);
     if (status == null) {
       status =

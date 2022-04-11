@@ -24,6 +24,7 @@ import org.apache.iotdb.cluster.query.ClusterPlanExecutor;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.query.manage.ClusterSessionManager;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineReadonlyException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -34,7 +35,6 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
