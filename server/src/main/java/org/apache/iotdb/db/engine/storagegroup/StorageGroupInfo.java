@@ -28,7 +28,7 @@ import java.util.concurrent.atomic.AtomicLong;
 /** The storageGroupInfo records the total memory cost of the Storage Group. */
 public class StorageGroupInfo {
 
-  private VirtualStorageGroupProcessor virtualStorageGroupProcessor;
+  private DataRegion dataRegion;
 
   /**
    * The total Storage group memory cost, including unsealed TsFileResource, ChunkMetadata, WAL,
@@ -45,13 +45,13 @@ public class StorageGroupInfo {
   /** A set of all unclosed TsFileProcessors in this SG */
   private List<TsFileProcessor> reportedTsps = new CopyOnWriteArrayList<>();
 
-  public StorageGroupInfo(VirtualStorageGroupProcessor virtualStorageGroupProcessor) {
-    this.virtualStorageGroupProcessor = virtualStorageGroupProcessor;
+  public StorageGroupInfo(DataRegion dataRegion) {
+    this.dataRegion = dataRegion;
     memoryCost = new AtomicLong();
   }
 
-  public VirtualStorageGroupProcessor getVirtualStorageGroupProcessor() {
-    return virtualStorageGroupProcessor;
+  public DataRegion getDataRegion() {
+    return dataRegion;
   }
 
   /** When create a new TsFileProcessor, call this method */

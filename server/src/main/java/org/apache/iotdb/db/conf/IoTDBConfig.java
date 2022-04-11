@@ -789,8 +789,8 @@ public class IoTDBConfig {
   /** the size of ioTaskQueue */
   private int ioTaskQueueSizeForFlushing = 10;
 
-  /** the number of virtual storage groups per user-defined storage group */
-  private int virtualStorageGroupNum = 1;
+  /** the number of data regions per user-defined storage group */
+  private int dataRegionNum = 1;
 
   /** the interval to log recover progress of each vsg when starting iotdb */
   private long recoveryLogIntervalInMs = 5_000L;
@@ -2338,12 +2338,12 @@ public class IoTDBConfig {
     this.defaultIndexWindowRange = defaultIndexWindowRange;
   }
 
-  public int getVirtualStorageGroupNum() {
-    return virtualStorageGroupNum;
+  public int getDataRegionNum() {
+    return dataRegionNum;
   }
 
-  public void setVirtualStorageGroupNum(int virtualStorageGroupNum) {
-    this.virtualStorageGroupNum = virtualStorageGroupNum;
+  public void setDataRegionNum(int dataRegionNum) {
+    this.dataRegionNum = dataRegionNum;
   }
 
   public long getRecoveryLogIntervalInMs() {

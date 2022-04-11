@@ -118,7 +118,7 @@ public class RewriteCrossSpaceCompactionSelector extends AbstractCrossSpaceCompa
         AbstractCompactionTask compactionTask =
             taskFactory.createTask(
                 logicalStorageGroupName,
-                virtualGroupId,
+                dataRegionId,
                 timePartition,
                 tsFileManager,
                 mergeFiles[0],
@@ -126,7 +126,7 @@ public class RewriteCrossSpaceCompactionSelector extends AbstractCrossSpaceCompa
         CompactionTaskManager.getInstance().addTaskToWaitingQueue(compactionTask);
         LOGGER.info(
             "{} [Compaction] submit a task with {} sequence file and {} unseq files",
-            logicalStorageGroupName + "-" + virtualGroupId,
+            logicalStorageGroupName + "-" + dataRegionId,
             mergeResource.getSeqFiles().size(),
             mergeResource.getUnseqFiles().size());
       }

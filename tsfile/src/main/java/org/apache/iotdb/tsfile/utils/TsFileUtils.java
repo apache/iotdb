@@ -41,9 +41,9 @@ public class TsFileUtils {
     return Long.parseLong(timePartitionFolder.getName());
   }
 
-  public static int getVirtualStorageGroupId(File tsFile) {
-    File vsgFolder = tsFile.getParentFile().getParentFile();
-    return Integer.parseInt(vsgFolder.getName());
+  public static int getDataRegionId(File tsFile) {
+    File dataRegionFolder = tsFile.getParentFile().getParentFile();
+    return Integer.parseInt(dataRegionFolder.getName());
   }
 
   public static String getStorageGroup(File tsFile) {

@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.mpp.sql.planner;
 
 import org.apache.iotdb.commons.cluster.Endpoint;
-import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaRegion;
 import org.apache.iotdb.db.mpp.buffer.DataBlockManager;
@@ -84,7 +84,7 @@ public class LocalExecutionPlanner {
       PlanNode plan,
       FragmentInstanceContext instanceContext,
       Filter timeFilter,
-      VirtualStorageGroupProcessor dataRegion) {
+      DataRegion dataRegion) {
     LocalExecutionPlanContext context = new LocalExecutionPlanContext(instanceContext);
 
     Operator root = plan.accept(new Visitor(), context);

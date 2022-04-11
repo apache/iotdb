@@ -26,7 +26,7 @@ import java.util.List;
 
 public abstract class AbstractInnerSpaceCompactionSelector extends AbstractCompactionSelector {
   protected String logicalStorageGroupName;
-  protected String virtualStorageGroupName;
+  protected String dataRegionName;
   protected long timePartition;
   protected List<TsFileResource> tsFileResources;
   protected boolean sequence;
@@ -35,13 +35,13 @@ public abstract class AbstractInnerSpaceCompactionSelector extends AbstractCompa
 
   public AbstractInnerSpaceCompactionSelector(
       String logicalStorageGroupName,
-      String virtualStorageGroupName,
+      String dataRegionName,
       long timePartition,
       TsFileManager tsFileManager,
       boolean sequence,
       InnerSpaceCompactionTaskFactory taskFactory) {
     this.logicalStorageGroupName = logicalStorageGroupName;
-    this.virtualStorageGroupName = virtualStorageGroupName;
+    this.dataRegionName = dataRegionName;
     this.timePartition = timePartition;
     this.tsFileManager = tsFileManager;
     this.sequence = sequence;

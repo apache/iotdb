@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.storagegroup.virtualSg;
+package org.apache.iotdb.db.engine.storagegroup.dataregion;
 
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -54,8 +54,8 @@ public class HashVirtualPartitionerTest {
     PartialPath d1 = new PartialPath("root.sg1.d1");
     PartialPath d2 = new PartialPath("root.sg1.d2");
 
-    int sg1 = hashVirtualPartitioner.deviceToVirtualStorageGroupId(d1);
-    int sg2 = hashVirtualPartitioner.deviceToVirtualStorageGroupId(d2);
+    int sg1 = hashVirtualPartitioner.deviceToDataRegionId(d1);
+    int sg2 = hashVirtualPartitioner.deviceToDataRegionId(d2);
 
     assertEquals(sg1, Math.abs(d1.hashCode() % hashVirtualPartitioner.getPartitionCount()));
     assertEquals(sg2, Math.abs(d2.hashCode() % hashVirtualPartitioner.getPartitionCount()));
