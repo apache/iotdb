@@ -28,7 +28,7 @@ import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.partition.SeriesPartitionSlot;
 import org.apache.iotdb.commons.partition.TimePartitionSlot;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
@@ -45,9 +45,10 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesMet
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
-import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullPolicy;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
+import com.google.common.collect.Sets;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -64,18 +65,28 @@ public class DistributionPlannerTest {
   public void TestRewriteSourceNode() throws IllegalPathException {
     QueryId queryId = new QueryId("test_query");
 
-    TimeJoinNode timeJoinNode =
-        new TimeJoinNode(
-            queryId.genPlanNodeId(), OrderBy.TIMESTAMP_ASC, FilterNullPolicy.NO_FILTER);
+    TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), OrderBy.TIMESTAMP_ASC);
 
     timeJoinNode.addChild(
-        new SeriesScanNode(queryId.genPlanNodeId(), new PartialPath("root.sg.d1.s1")));
+        new SeriesScanNode(
+            queryId.genPlanNodeId(),
+            new MeasurementPath("root.sg.d1.s1", TSDataType.INT32),
+            Sets.newHashSet("s1", "s2"),
+            OrderBy.TIMESTAMP_ASC));
     timeJoinNode.addChild(
-        new SeriesScanNode(queryId.genPlanNodeId(), new PartialPath("root.sg.d1.s2")));
+        new SeriesScanNode(
+            queryId.genPlanNodeId(),
+            new MeasurementPath("root.sg.d1.s2", TSDataType.INT32),
+            Sets.newHashSet("s1", "s2"),
+            OrderBy.TIMESTAMP_ASC));
     timeJoinNode.addChild(
-        new SeriesScanNode(queryId.genPlanNodeId(), new PartialPath("root.sg.d22.s1")));
+        new SeriesScanNode(
+            queryId.genPlanNodeId(),
+            new MeasurementPath("root.sg.d22.s1", TSDataType.INT32),
+            Sets.newHashSet("s1"),
+            OrderBy.TIMESTAMP_ASC));
 
-    LimitNode root = new LimitNode(queryId.genPlanNodeId(), 10, timeJoinNode);
+    LimitNode root = new LimitNode(queryId.genPlanNodeId(), timeJoinNode, 10);
 
     Analysis analysis = constructAnalysis();
 
@@ -129,18 +140,28 @@ public class DistributionPlannerTest {
   @Test
   public void TestAddExchangeNode() throws IllegalPathException {
     QueryId queryId = new QueryId("test_query");
-    TimeJoinNode timeJoinNode =
-        new TimeJoinNode(
-            queryId.genPlanNodeId(), OrderBy.TIMESTAMP_ASC, FilterNullPolicy.NO_FILTER);
+    TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), OrderBy.TIMESTAMP_ASC);
 
     timeJoinNode.addChild(
-        new SeriesScanNode(queryId.genPlanNodeId(), new PartialPath("root.sg.d1.s1")));
+        new SeriesScanNode(
+            queryId.genPlanNodeId(),
+            new MeasurementPath("root.sg.d1.s1", TSDataType.INT32),
+            Sets.newHashSet("s1", "s2"),
+            OrderBy.TIMESTAMP_ASC));
     timeJoinNode.addChild(
-        new SeriesScanNode(queryId.genPlanNodeId(), new PartialPath("root.sg.d1.s2")));
+        new SeriesScanNode(
+            queryId.genPlanNodeId(),
+            new MeasurementPath("root.sg.d1.s2", TSDataType.INT32),
+            Sets.newHashSet("s1", "s2"),
+            OrderBy.TIMESTAMP_ASC));
     timeJoinNode.addChild(
-        new SeriesScanNode(queryId.genPlanNodeId(), new PartialPath("root.sg.d22.s1")));
+        new SeriesScanNode(
+            queryId.genPlanNodeId(),
+            new MeasurementPath("root.sg.d22.s1", TSDataType.INT32),
+            Sets.newHashSet("s1"),
+            OrderBy.TIMESTAMP_ASC));
 
-    LimitNode root = new LimitNode(queryId.genPlanNodeId(), 10, timeJoinNode);
+    LimitNode root = new LimitNode(queryId.genPlanNodeId(), timeJoinNode, 10);
 
     Analysis analysis = constructAnalysis();
 
@@ -154,18 +175,28 @@ public class DistributionPlannerTest {
   @Test
   public void TestSplitFragment() throws IllegalPathException {
     QueryId queryId = new QueryId("test_query");
-    TimeJoinNode timeJoinNode =
-        new TimeJoinNode(
-            queryId.genPlanNodeId(), OrderBy.TIMESTAMP_ASC, FilterNullPolicy.NO_FILTER);
+    TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), OrderBy.TIMESTAMP_ASC);
 
     timeJoinNode.addChild(
-        new SeriesScanNode(queryId.genPlanNodeId(), new PartialPath("root.sg.d1.s1")));
+        new SeriesScanNode(
+            queryId.genPlanNodeId(),
+            new MeasurementPath("root.sg.d1.s1", TSDataType.INT32),
+            Sets.newHashSet("s1", "s2"),
+            OrderBy.TIMESTAMP_ASC));
     timeJoinNode.addChild(
-        new SeriesScanNode(queryId.genPlanNodeId(), new PartialPath("root.sg.d1.s2")));
+        new SeriesScanNode(
+            queryId.genPlanNodeId(),
+            new MeasurementPath("root.sg.d1.s2", TSDataType.INT32),
+            Sets.newHashSet("s1", "s2"),
+            OrderBy.TIMESTAMP_ASC));
     timeJoinNode.addChild(
-        new SeriesScanNode(queryId.genPlanNodeId(), new PartialPath("root.sg.d22.s1")));
+        new SeriesScanNode(
+            queryId.genPlanNodeId(),
+            new MeasurementPath("root.sg.d22.s1", TSDataType.INT32),
+            Sets.newHashSet("s1"),
+            OrderBy.TIMESTAMP_ASC));
 
-    LimitNode root = new LimitNode(queryId.genPlanNodeId(), 10, timeJoinNode);
+    LimitNode root = new LimitNode(queryId.genPlanNodeId(), timeJoinNode, 10);
 
     Analysis analysis = constructAnalysis();
 
@@ -182,18 +213,28 @@ public class DistributionPlannerTest {
   @Test
   public void TestParallelPlan() throws IllegalPathException {
     QueryId queryId = new QueryId("test_query");
-    TimeJoinNode timeJoinNode =
-        new TimeJoinNode(
-            queryId.genPlanNodeId(), OrderBy.TIMESTAMP_ASC, FilterNullPolicy.NO_FILTER);
+    TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), OrderBy.TIMESTAMP_ASC);
 
     timeJoinNode.addChild(
-        new SeriesScanNode(queryId.genPlanNodeId(), new PartialPath("root.sg.d1.s1")));
+        new SeriesScanNode(
+            queryId.genPlanNodeId(),
+            new MeasurementPath("root.sg.d1.s1", TSDataType.INT32),
+            Sets.newHashSet("s1", "s2"),
+            OrderBy.TIMESTAMP_ASC));
     timeJoinNode.addChild(
-        new SeriesScanNode(queryId.genPlanNodeId(), new PartialPath("root.sg.d1.s2")));
+        new SeriesScanNode(
+            queryId.genPlanNodeId(),
+            new MeasurementPath("root.sg.d1.s2", TSDataType.INT32),
+            Sets.newHashSet("s1", "s2"),
+            OrderBy.TIMESTAMP_ASC));
     timeJoinNode.addChild(
-        new SeriesScanNode(queryId.genPlanNodeId(), new PartialPath("root.sg.d333.s1")));
+        new SeriesScanNode(
+            queryId.genPlanNodeId(),
+            new MeasurementPath("root.sg.d333.s1", TSDataType.INT32),
+            Sets.newHashSet("s1"),
+            OrderBy.TIMESTAMP_ASC));
 
-    LimitNode root = new LimitNode(queryId.genPlanNodeId(), 10, timeJoinNode);
+    LimitNode root = new LimitNode(queryId.genPlanNodeId(), timeJoinNode, 10);
 
     Analysis analysis = constructAnalysis();
 

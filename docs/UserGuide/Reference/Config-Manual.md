@@ -372,33 +372,6 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default| 600000 |
 |Effective| Trigger |
 
-* enable\_timed\_close\_tsfile
-
-|Name| enable\_timed\_close\_tsfile |
-|:---:|:---|
-|Description| whether to timed close tsfiles |
-|Type|Bool|
-|Default| false |
-|Effective| Trigger |
-
-* close\_tsfile\_interval\_after\_flushing\_in\_ms
-
-|Name| close\_tsfile\_interval\_after\_flushing\_in\_ms |
-|:---:|:---|
-|Description| if a TsfileProcessor's last working memtable flush time is older than current time minus this and its working memtable is null, the TsfileProcessor will be closed |
-|Type|Int32|
-|Default| 3600000 |
-|Effective| Trigger |
-
-* close\_tsfile\_check\_interval\_in\_ms
-
-|Name| close\_tsfile\_check\_interval\_in\_ms |
-|:---:|:---|
-|Description| the interval to check whether tsfiles need closing |
-|Type|Int32|
-|Default| 600000 |
-|Effective| Trigger |
-
 * avg\_series\_point\_number\_threshold
 
 |Name| avg\_series\_point\_number\_threshold |
@@ -1016,14 +989,14 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default| 604800 |
 |Effective|Only allowed to be modified in first start up|
 
-* virtual\_storage\_group\_num
+* data\_region\_num
 
-|Name| virtual\_storage\_group\_num |
-|:---:|:---|
-|Description| number of virtual storage groups per user-defined storage group, a virtual storage group is the unit of parallelism in memory as all ingestions in one virtual storage group are serialized, recommended value is [virtual storage group number] = [CPU core number] / [user-defined storage group number]|
-|Type| LONG |
-|Default| 1 |
-|Effective|Only allowed to be modified in first start up|
+|    Name     | data\_region\_num                                                                                                                                                                                                                                                  |
+|:-----------:|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Description | number of data regions per user-defined storage group, a data region is the unit of parallelism in memory as all ingestions in one data region are serialized, recommended value is [data region number] = [CPU core number] / [user-defined storage group number] |
+|    Type     | LONG                                                                                                                                                                                                                                                               |
+|   Default   | 1                                                                                                                                                                                                                                                                  |
+|  Effective  | Only allowed to be modified in first start up                                                                                                                                                                                                                      |
 
 <!--
 * enable\_id\_table

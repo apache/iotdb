@@ -19,6 +19,8 @@
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.mpp.sql.planner.plan.IOutputPlanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.ColumnHeader;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
@@ -30,18 +32,19 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
- * TimeJoinOperator is responsible for join two or more TsBlock. The join algorithm is like outer
- * join by timestamp column. It will join two or more TsBlock by Timestamp column. The output result
- * of TimeJoinOperator is sorted by timestamp
+ * This node is responsible for join two or more TsBlock. The join algorithm is like outer join by
+ * timestamp column. It will join two or more TsBlock by Timestamp column. The output result of
+ * TimeJoinOperator is sorted by timestamp
  */
 // TODO: define the TimeJoinMergeNode for distributed plan
-public class TimeJoinNode extends ProcessNode {
+public class TimeJoinNode extends ProcessNode implements IOutputPlanNode {
 
   // This parameter indicates the order when executing multiway merge sort.
-  private OrderBy mergeOrder;
+  private final OrderBy mergeOrder;
 
   // The policy to decide whether a row should be discarded
   // The without policy is able to be push down to the TimeJoinOperator because we can know whether
@@ -51,23 +54,18 @@ public class TimeJoinNode extends ProcessNode {
 
   private List<PlanNode> children;
 
-  // output columns' data type
-  private List<TSDataType> types;
+  private final List<ColumnHeader> columnHeaders = new ArrayList<>();
 
-  public TimeJoinNode(PlanNodeId id, OrderBy mergeOrder, FilterNullPolicy filterNullPolicy) {
+  public TimeJoinNode(PlanNodeId id, OrderBy mergeOrder) {
     super(id);
     this.mergeOrder = mergeOrder;
-    this.filterNullPolicy = filterNullPolicy;
     this.children = new ArrayList<>();
   }
 
-  public TimeJoinNode(
-      PlanNodeId id,
-      OrderBy mergeOrder,
-      FilterNullPolicy filterNullPolicy,
-      List<PlanNode> children) {
-    this(id, mergeOrder, filterNullPolicy);
+  public TimeJoinNode(PlanNodeId id, OrderBy mergeOrder, List<PlanNode> children) {
+    this(id, mergeOrder);
     this.children = children;
+    initColumnHeaders();
   }
 
   @Override
@@ -77,7 +75,7 @@ public class TimeJoinNode extends ProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new TimeJoinNode(getId(), this.mergeOrder, this.filterNullPolicy);
+    return new TimeJoinNode(getPlanNodeId(), this.mergeOrder);
   }
 
   @Override
@@ -85,11 +83,24 @@ public class TimeJoinNode extends ProcessNode {
     return CHILD_COUNT_NO_LIMIT;
   }
 
+  private void initColumnHeaders() {
+    for (PlanNode child : children) {
+      columnHeaders.addAll(((IOutputPlanNode) child).getOutputColumnHeaders());
+    }
+  }
+
+  @Override
+  public List<ColumnHeader> getOutputColumnHeaders() {
+    return columnHeaders;
+  }
+
   @Override
   public List<String> getOutputColumnNames() {
-    return children.stream()
-        .flatMap(child -> child.getOutputColumnNames().stream())
-        .collect(Collectors.toList());
+    return columnHeaders.stream().map(ColumnHeader::getColumnName).collect(Collectors.toList());
+  }
+
+  public List<TSDataType> getOutputColumnTypes() {
+    return columnHeaders.stream().map(ColumnHeader::getColumnType).collect(Collectors.toList());
   }
 
   @Override
@@ -121,30 +132,43 @@ public class TimeJoinNode extends ProcessNode {
     return filterNullPolicy;
   }
 
-  public void setMergeOrder(OrderBy mergeOrder) {
-    this.mergeOrder = mergeOrder;
-  }
-
   public void setWithoutPolicy(FilterNullPolicy filterNullPolicy) {
     this.filterNullPolicy = filterNullPolicy;
   }
 
   public String toString() {
-    return "TimeJoinNode-" + this.getId();
-  }
-
-  public List<TSDataType> getTypes() {
-    return types;
+    return "TimeJoinNode-" + this.getPlanNodeId();
   }
 
   @TestOnly
   public Pair<String, List<String>> print() {
-    String title = String.format("[TimeJoinNode (%s)]", this.getId());
+    String title = String.format("[TimeJoinNode (%s)]", this.getPlanNodeId());
     List<String> attributes = new ArrayList<>();
     attributes.add("MergeOrder: " + (this.getMergeOrder() == null ? "null" : this.getMergeOrder()));
     attributes.add(
         "FilterNullPolicy: "
             + (this.getFilterNullPolicy() == null ? "null" : this.getFilterNullPolicy()));
     return new Pair<>(title, attributes);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+
+    TimeJoinNode that = (TimeJoinNode) o;
+    return mergeOrder == that.mergeOrder
+        && filterNullPolicy == that.filterNullPolicy
+        && Objects.equals(children, that.children);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(mergeOrder, filterNullPolicy, children);
   }
 }

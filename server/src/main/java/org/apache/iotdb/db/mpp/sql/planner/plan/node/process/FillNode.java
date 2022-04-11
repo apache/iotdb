@@ -19,10 +19,13 @@
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.mpp.sql.planner.plan.IOutputPlanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.ColumnHeader;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.component.FillPolicy;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import com.google.common.collect.ImmutableList;
@@ -32,7 +35,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /** FillNode is used to fill the empty field in one row. */
-public class FillNode extends ProcessNode {
+public class FillNode extends ProcessNode implements IOutputPlanNode {
 
   private PlanNode child;
 
@@ -60,7 +63,7 @@ public class FillNode extends ProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new FillNode(getId(), fillPolicy);
+    return new FillNode(getPlanNodeId(), fillPolicy);
   }
 
   @Override
@@ -69,8 +72,18 @@ public class FillNode extends ProcessNode {
   }
 
   @Override
+  public List<ColumnHeader> getOutputColumnHeaders() {
+    return ((IOutputPlanNode) child).getOutputColumnHeaders();
+  }
+
+  @Override
   public List<String> getOutputColumnNames() {
-    return child.getOutputColumnNames();
+    return ((IOutputPlanNode) child).getOutputColumnNames();
+  }
+
+  @Override
+  public List<TSDataType> getOutputColumnTypes() {
+    return ((IOutputPlanNode) child).getOutputColumnTypes();
   }
 
   public FillPolicy getFillPolicy() {
@@ -97,7 +110,7 @@ public class FillNode extends ProcessNode {
 
   @TestOnly
   public Pair<String, List<String>> print() {
-    String title = String.format("[FillNode (%s)]", this.getId());
+    String title = String.format("[FillNode (%s)]", this.getPlanNodeId());
     List<String> attributes = new ArrayList<>();
     attributes.add("FillPolicy: " + this.getFillPolicy());
     return new Pair<>(title, attributes);

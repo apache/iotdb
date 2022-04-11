@@ -21,6 +21,11 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.DevicesMetaScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesMetaScanNode;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.ShowDevicesNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AlterTimeSeriesNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AuthorNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.AggregateNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.DeviceMergeNode;
@@ -36,11 +41,8 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.sink.FragmentSinkNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregateScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertMultiTabletNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowsNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowsOfOneDeviceNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.*;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertMultiTabletsNode;
 
 import java.nio.ByteBuffer;
 
@@ -66,7 +68,10 @@ public enum PlanNodeType {
   DEVICES_META_SCAN((short) 18),
   CREATE_TIME_SERIES((short) 19),
   EXCHANGE((short) 20),
-  TIME_SERIES_META_SCAN((short) 21);
+  AUTHOR((short) 21),
+  ALTER_TIME_SERIES((short) 22),
+  CREATE_ALIGNED_TIME_SERIES((short) 23),
+  TIME_SERIES_META_SCAN((short) 24);
 
   private final short nodeType;
 
@@ -116,7 +121,7 @@ public enum PlanNodeType {
       case 16:
         return InsertRowsOfOneDeviceNode.deserialize(buffer);
       case 17:
-        return InsertMultiTabletNode.deserialize(buffer);
+        return InsertMultiTabletsNode.deserialize(buffer);
       case 18:
         return DevicesMetaScanNode.deserialize(buffer);
       case 19:
@@ -124,8 +129,14 @@ public enum PlanNodeType {
       case 20:
         return ExchangeNode.deserialize(buffer);
       case 21:
+        return AuthorNode.deserialize(buffer);
+      case 22:
+        return AlterTimeSeriesNode.deserialize(buffer);
+      case 23:
+        return CreateAlignedTimeSeriesNode.deserialize(buffer);
+      case 24:
         return TimeSeriesMetaScanNode.deserialize(buffer);
-      default:
+        default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }
   }

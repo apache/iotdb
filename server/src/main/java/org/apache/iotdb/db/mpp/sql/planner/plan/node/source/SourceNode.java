@@ -55,4 +55,5 @@ public abstract class SourceNode extends PlanNode implements AutoCloseable {
 
     return getExpressionString().equals(o.toString());
   }
+  public abstract void setDataRegionReplicaSet(RegionReplicaSet regionReplicaSet);
 }

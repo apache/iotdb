@@ -63,11 +63,11 @@ public class DevicesMetaScanNode extends MetaScanNode {
   }
 
   @Override
-  public List<String> getOutputColumnNames() {
-    return null;
+  public int allowedChildCount() {
+    return NO_CHILD_ALLOWED;
   }
 
-  public static DevicesMetaScanNode deserialize(ByteBuffer byteBuffer) {
+  public static ShowDevicesNode deserialize(ByteBuffer byteBuffer) {
     return null;
   }
 

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.sql.planner.plan;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
@@ -84,7 +85,7 @@ public class PlanFragment {
   }
 
   private PlanNode getPlanNodeById(PlanNode root, PlanNodeId nodeId) {
-    if (root.getId().equals(nodeId)) {
+    if (root.getPlanNodeId().equals(nodeId)) {
       return root;
     }
     for (PlanNode child : root.getChildren()) {
@@ -96,7 +97,7 @@ public class PlanFragment {
     return null;
   }
 
-  public static PlanFragment deserialize(ByteBuffer byteBuffer) throws MetadataException {
+  public static PlanFragment deserialize(ByteBuffer byteBuffer) throws IllegalPathException {
     return new PlanFragment(PlanFragmentId.deserialize(byteBuffer), deserializeHelper(byteBuffer));
   }
 

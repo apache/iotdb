@@ -19,14 +19,13 @@
 package org.apache.iotdb.db.mpp.sql.planner;
 
 import org.apache.iotdb.commons.cluster.Endpoint;
-import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaRegion;
 import org.apache.iotdb.db.mpp.buffer.DataBlockManager;
 import org.apache.iotdb.db.mpp.buffer.DataBlockService;
 import org.apache.iotdb.db.mpp.buffer.ISinkHandle;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
-import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
 import org.apache.iotdb.db.mpp.execution.DataDriver;
 import org.apache.iotdb.db.mpp.execution.DataDriverContext;
 import org.apache.iotdb.db.mpp.execution.FragmentInstanceContext;
@@ -60,6 +59,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregateScanN
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
+import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.io.IOException;
@@ -88,7 +88,7 @@ public class LocalExecutionPlanner {
       PlanNode plan,
       FragmentInstanceContext instanceContext,
       Filter timeFilter,
-      VirtualStorageGroupProcessor dataRegion) {
+      DataRegion dataRegion) {
     LocalExecutionPlanContext context = new LocalExecutionPlanContext(instanceContext);
 
     Operator root = plan.accept(new Visitor(), context);
@@ -132,7 +132,9 @@ public class LocalExecutionPlanner {
       boolean ascending = node.getScanOrder() == OrderBy.TIMESTAMP_ASC;
       OperatorContext operatorContext =
           context.instanceContext.addOperatorContext(
-              context.getNextOperatorId(), node.getId(), SeriesScanOperator.class.getSimpleName());
+              context.getNextOperatorId(),
+              node.getPlanNodeId(),
+              SeriesScanOperator.class.getSimpleName());
 
       SeriesScanOperator seriesScanOperator =
           new SeriesScanOperator(
@@ -203,7 +205,7 @@ public class LocalExecutionPlanner {
     public Operator visitFilter(FilterNode node, LocalExecutionPlanContext context) {
       PlanNode child = node.getChild();
 
-      QueryFilter filterExpression = node.getPredicate();
+      IExpression filterExpression = node.getPredicate();
       List<String> outputSymbols = node.getOutputColumnNames();
       return super.visitFilter(node, context);
     }
@@ -223,7 +225,9 @@ public class LocalExecutionPlanner {
       Operator child = node.getChild().accept(this, context);
       return new LimitOperator(
           context.instanceContext.addOperatorContext(
-              context.getNextOperatorId(), node.getId(), LimitOperator.class.getSimpleName()),
+              context.getNextOperatorId(),
+              node.getPlanNodeId(),
+              LimitOperator.class.getSimpleName()),
           node.getLimit(),
           child);
     }
@@ -252,8 +256,11 @@ public class LocalExecutionPlanner {
               .collect(Collectors.toList());
       OperatorContext operatorContext =
           context.instanceContext.addOperatorContext(
-              context.getNextOperatorId(), node.getId(), TimeJoinOperator.class.getSimpleName());
-      return new TimeJoinOperator(operatorContext, children, node.getMergeOrder(), node.getTypes());
+              context.getNextOperatorId(),
+              node.getPlanNodeId(),
+              TimeJoinOperator.class.getSimpleName());
+      return new TimeJoinOperator(
+          operatorContext, children, node.getMergeOrder(), node.getOutputColumnTypes());
     }
 
     @Override
