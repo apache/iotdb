@@ -169,6 +169,11 @@ public class AuthorNode extends PlanNode {
     }
   }
 
+  @Override
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    throw new NotImplementedException();
+  }
+
   public static AuthorNode deserialize(ByteBuffer buffer) {
     return null;
   }

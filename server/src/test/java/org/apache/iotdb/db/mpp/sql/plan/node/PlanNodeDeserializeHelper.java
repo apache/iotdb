@@ -16,25 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.hash;
+package org.apache.iotdb.db.mpp.sql.plan.node;
 
-public class BKDRHashExecutor extends DeviceGroupHashExecutor {
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 
-  private static final int seed = 131;
+import java.nio.ByteBuffer;
 
-  public BKDRHashExecutor(int deviceGroupCount) {
-    super(deviceGroupCount);
-  }
+public class PlanNodeDeserializeHelper {
 
-  @Override
-  public int getDeviceGroupID(String device) {
-    int hash = 0;
-
-    for (int i = 0; i < device.length(); i++) {
-      hash = hash * seed + (int) device.charAt(i);
+  public static PlanNode deserialize(ByteBuffer byteBuffer) {
+    PlanNode root = PlanNodeType.deserialize(byteBuffer);
+    int childrenCount = byteBuffer.getInt();
+    for (int i = 0; i < childrenCount; i++) {
+      root.addChild(deserialize(byteBuffer));
     }
-    hash &= Integer.MAX_VALUE;
-
-    return hash % deviceGroupCount;
+    return root;
   }
 }

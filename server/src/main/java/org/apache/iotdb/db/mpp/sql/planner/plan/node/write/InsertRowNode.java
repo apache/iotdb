@@ -84,10 +84,6 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     return NO_CHILD_ALLOWED;
   }
 
-  public static InsertRowNode deserialize(ByteBuffer byteBuffer) {
-    return null;
-  }
-
   @Override
   public int serializedSize() {
     return 0;
@@ -113,5 +109,9 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
 
   public void setTime(long time) {
     this.time = time;
+  }
+
+  public static InsertRowNode deserialize(ByteBuffer byteBuffer) {
+    return null;
   }
 }

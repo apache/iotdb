@@ -28,8 +28,8 @@ import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
 import org.apache.iotdb.commons.utils.CommonUtils;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
-import org.apache.iotdb.confignode.rpc.thrift.DataNodeRegisterReq;
-import org.apache.iotdb.confignode.rpc.thrift.DataNodeRegisterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConfigCheck;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -139,10 +139,10 @@ public class DataNode implements DataNodeMBean {
       logger.info("start joining the cluster with the help of {}", configNode);
       try {
         ConfigIService.Client client = createClient(configNode);
-        DataNodeRegisterResp dataNodeRegisterResp =
+        TDataNodeRegisterResp dataNodeRegisterResp =
             client.registerDataNode(
-                new DataNodeRegisterReq(new EndPoint(thisNode.getIp(), thisNode.getPort())));
-        if (dataNodeRegisterResp.getRegisterResult().getCode()
+                new TDataNodeRegisterReq(new EndPoint(thisNode.getIp(), thisNode.getPort())));
+        if (dataNodeRegisterResp.getStatus().getCode()
             == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           dataNodeID = dataNodeRegisterResp.getDataNodeID();
           logger.info("Joined a cluster successfully");

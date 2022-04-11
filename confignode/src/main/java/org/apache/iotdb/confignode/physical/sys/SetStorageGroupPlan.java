@@ -18,21 +18,17 @@
  */
 package org.apache.iotdb.confignode.physical.sys;
 
-import org.apache.iotdb.confignode.partition.DataRegionInfo;
-import org.apache.iotdb.confignode.partition.SchemaRegionInfo;
 import org.apache.iotdb.confignode.partition.StorageGroupSchema;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
 import org.apache.iotdb.confignode.physical.PhysicalPlanType;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class SetStorageGroupPlan extends PhysicalPlan {
 
   private StorageGroupSchema schema;
-
-  private SchemaRegionInfo schemaRegionInfo;
-
-  private DataRegionInfo dataRegionInfo;
 
   public SetStorageGroupPlan() {
     super(PhysicalPlanType.SetStorageGroup);
@@ -52,34 +48,27 @@ public class SetStorageGroupPlan extends PhysicalPlan {
     this.schema = schema;
   }
 
-  public SchemaRegionInfo getSchemaRegionInfo() {
-    return schemaRegionInfo;
-  }
-
-  public void setSchemaRegionInfo(SchemaRegionInfo schemaRegionInfo) {
-    this.schemaRegionInfo = schemaRegionInfo;
-  }
-
-  public DataRegionInfo getDataRegionInfo() {
-    return dataRegionInfo;
-  }
-
-  public void setDataRegionInfo(DataRegionInfo dataRegionInfo) {
-    this.dataRegionInfo = dataRegionInfo;
-  }
-
   @Override
   protected void serializeImpl(ByteBuffer buffer) {
     buffer.putInt(PhysicalPlanType.SetStorageGroup.ordinal());
     schema.serialize(buffer);
-    schemaRegionInfo.serializeImpl(buffer);
-    dataRegionInfo.serializeImpl(buffer);
   }
 
   @Override
-  protected void deserializeImpl(ByteBuffer buffer) {
+  protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     schema.deserialize(buffer);
-    schemaRegionInfo.deserializeImpl(buffer);
-    dataRegionInfo.deserializeImpl(buffer);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    SetStorageGroupPlan that = (SetStorageGroupPlan) o;
+    return schema.equals(that.schema);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(schema);
   }
 }
