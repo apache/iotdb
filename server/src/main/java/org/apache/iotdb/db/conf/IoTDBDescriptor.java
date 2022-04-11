@@ -871,9 +871,6 @@ public class IoTDBDescriptor {
       // CQ
       loadCQProps(properties);
 
-      // meta manager
-      loadMetadataConfig(properties);
-
       // cluster
       loadClusterProps(properties);
 
@@ -1500,11 +1497,6 @@ public class IoTDBDescriptor {
         Integer.parseInt(
             properties.getProperty(
                 "cqlog_buffer_size", Integer.toString(conf.getCqlogBufferSize()))));
-  }
-
-  private void loadMetadataConfig(Properties properties) {
-    conf.setMetadataManagerType(
-        properties.getProperty("schema_engine_type", conf.getMetadataManagerType().name()));
   }
 
   public void loadClusterProps(Properties properties) {
