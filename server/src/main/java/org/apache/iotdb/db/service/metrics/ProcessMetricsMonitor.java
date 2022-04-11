@@ -33,7 +33,7 @@ import java.lang.management.ManagementFactory;
 public class ProcessMetricsMonitor {
 
   private MetricManager metricManager = MetricsService.getInstance().getMetricManager();
-  private static OperatingSystemMXBean sunOsMXBean;
+  private OperatingSystemMXBean sunOsMXBean;
 
   public void collectProcessCPUInfo() {
     metricManager.getOrCreateAutoGauge(
