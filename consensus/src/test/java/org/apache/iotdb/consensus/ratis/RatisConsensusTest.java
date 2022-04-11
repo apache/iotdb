@@ -183,6 +183,7 @@ public class RatisConsensusTest {
     // then use removeConsensusGroup to clean up removed Consensus-Peer's states
     servers.get(0).removeConsensusGroup(gid);
     servers.get(2).removeConsensusGroup(gid);
+    Assert.assertEquals(servers.get(1).getLeader(gid), peers.get(1));
 
     // 7. try consensus again with one peer
     doConsensus(servers.get(1), gid, 10, 20);
