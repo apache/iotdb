@@ -19,15 +19,15 @@
 
 package org.apache.iotdb.db.mpp.sql.statement.component;
 
-import java.nio.ByteBuffer;
-import java.util.Objects;
 import org.apache.iotdb.db.mpp.sql.statement.StatementNode;
 import org.apache.iotdb.db.query.expression.Expression;
-
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.db.query.expression.ExpressionType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 
 /** This class maintains information of {@code WITHOUT NULL} clause. */
 public class FilterNullComponent extends StatementNode {
@@ -65,8 +65,8 @@ public class FilterNullComponent extends StatementNode {
       return false;
     }
     FilterNullComponent that = (FilterNullComponent) o;
-    return filterNullPolicy == that.filterNullPolicy &&
-        Objects.equals(withoutNullColumns, that.withoutNullColumns);
+    return filterNullPolicy == that.filterNullPolicy
+        && Objects.equals(withoutNullColumns, that.withoutNullColumns);
   }
 
   @Override
@@ -83,10 +83,11 @@ public class FilterNullComponent extends StatementNode {
   }
 
   public static FilterNullComponent deserialize(ByteBuffer byteBuffer) {
-    FilterNullPolicy filterNullPolicy = FilterNullPolicy.values()[ReadWriteIOUtils.readInt(byteBuffer)];
+    FilterNullPolicy filterNullPolicy =
+        FilterNullPolicy.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     int withoutNullSize = ReadWriteIOUtils.readInt(byteBuffer);
     List<Expression> withoutNullColumns = new ArrayList<>();
-    for (int i = 0; i < withoutNullSize; i ++) {
+    for (int i = 0; i < withoutNullSize; i++) {
       withoutNullColumns.add(ExpressionType.deserialize(byteBuffer));
     }
     FilterNullComponent filterNullComponent = new FilterNullComponent();

@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
-import com.google.common.collect.ImmutableList;
-import java.util.HashMap;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.sql.planner.plan.IOutputPlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.ColumnHeader;
@@ -32,9 +30,12 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import com.google.common.collect.ImmutableList;
+
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -142,8 +143,9 @@ public class GroupByLevelNode extends ProcessNode implements IOutputPlanNode {
     }
     int mapSize = ReadWriteIOUtils.readInt(byteBuffer);
     Map<ColumnHeader, ColumnHeader> groupedPathMap = new HashMap<>();
-    for (int i = 0; i < mapSize; i ++) {
-      groupedPathMap.put(ColumnHeader.deserialize(byteBuffer), ColumnHeader.deserialize(byteBuffer));
+    for (int i = 0; i < mapSize; i++) {
+      groupedPathMap.put(
+          ColumnHeader.deserialize(byteBuffer), ColumnHeader.deserialize(byteBuffer));
     }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new GroupByLevelNode(planNodeId, null, groupByLevels, groupedPathMap);

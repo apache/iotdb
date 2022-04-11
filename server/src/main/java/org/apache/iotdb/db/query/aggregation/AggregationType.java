@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.query.aggregation;
 
-import java.io.DataOutputStream;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 
 import java.io.IOException;

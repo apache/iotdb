@@ -127,7 +127,7 @@ public class TimeJoinNode extends ProcessNode implements IOutputPlanNode {
         FilterNullPolicy.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     int columnHeaderSize = ReadWriteIOUtils.readInt(byteBuffer);
     List<ColumnHeader> columnHeaders = new ArrayList<>();
-    for (int i = 0; i < columnHeaderSize; i ++) {
+    for (int i = 0; i < columnHeaderSize; i++) {
       columnHeaders.add(ColumnHeader.deserialize(byteBuffer));
     }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);

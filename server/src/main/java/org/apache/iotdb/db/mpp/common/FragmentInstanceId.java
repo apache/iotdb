@@ -18,11 +18,11 @@
  */
 package org.apache.iotdb.db.mpp.common;
 
-import java.util.Objects;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 /** The fragment instance ID class. */
 public class FragmentInstanceId {
@@ -83,10 +83,10 @@ public class FragmentInstanceId {
       return false;
     }
     FragmentInstanceId that = (FragmentInstanceId) o;
-    return Objects.equals(fullId, that.fullId) &&
-        Objects.equals(queryId, that.queryId) &&
-        Objects.equals(fragmentId, that.fragmentId) &&
-        Objects.equals(instanceId, that.instanceId);
+    return Objects.equals(fullId, that.fullId)
+        && Objects.equals(queryId, that.queryId)
+        && Objects.equals(fragmentId, that.fragmentId)
+        && Objects.equals(instanceId, that.instanceId);
   }
 
   @Override

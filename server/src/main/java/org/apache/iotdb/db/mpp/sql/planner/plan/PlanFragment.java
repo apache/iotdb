@@ -18,9 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan;
 
-import java.util.Objects;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
@@ -28,6 +26,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SourceNode;
 
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 /** PlanFragment contains a sub-query of distributed query. */
 public class PlanFragment {
@@ -123,8 +122,7 @@ public class PlanFragment {
       return false;
     }
     PlanFragment that = (PlanFragment) o;
-    return Objects.equals(id, that.id) &&
-        Objects.equals(root, that.root);
+    return Objects.equals(id, that.id) && Objects.equals(root, that.root);
   }
 
   @Override

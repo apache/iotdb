@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.sink;
 
-import java.util.Objects;
 import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
@@ -31,6 +30,7 @@ import org.apache.commons.lang.Validate;
 
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.Objects;
 
 public class FragmentSinkNode extends SinkNode {
   private PlanNode child;
@@ -161,15 +161,15 @@ public class FragmentSinkNode extends SinkNode {
       return false;
     }
     FragmentSinkNode that = (FragmentSinkNode) o;
-    return Objects.equals(child, that.child) &&
-        Objects.equals(downStreamEndpoint, that.downStreamEndpoint) &&
-        Objects.equals(downStreamInstanceId, that.downStreamInstanceId) &&
-        Objects.equals(downStreamPlanNodeId, that.downStreamPlanNodeId);
+    return Objects.equals(child, that.child)
+        && Objects.equals(downStreamEndpoint, that.downStreamEndpoint)
+        && Objects.equals(downStreamInstanceId, that.downStreamInstanceId)
+        && Objects.equals(downStreamPlanNodeId, that.downStreamPlanNodeId);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), child, downStreamEndpoint, downStreamInstanceId,
-        downStreamPlanNodeId);
+    return Objects.hash(
+        super.hashCode(), child, downStreamEndpoint, downStreamInstanceId, downStreamPlanNodeId);
   }
 }

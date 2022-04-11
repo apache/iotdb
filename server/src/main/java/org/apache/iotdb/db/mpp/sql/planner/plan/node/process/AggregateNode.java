@@ -18,11 +18,6 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.util.HashSet;
-import java.util.Objects;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
 import org.apache.iotdb.db.mpp.common.GroupByTimeParameter;
@@ -34,16 +29,21 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import com.google.common.collect.ImmutableList;
+
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-
-import com.google.common.collect.ImmutableList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -154,11 +154,11 @@ public class AggregateNode extends ProcessNode implements IOutputPlanNode {
     // TODO deserialize groupByTimeParameter， because it is unsure
     Map<PartialPath, Set<AggregationType>> aggregateFuncMap = new HashMap<>();
     int mapSize = ReadWriteIOUtils.readInt(byteBuffer);
-    for (int i = 0; i < mapSize; i ++) {
+    for (int i = 0; i < mapSize; i++) {
       PartialPath partialPath = (PartialPath) PathDeserializeUtil.deserialize(byteBuffer);
       int setSize = ReadWriteIOUtils.readInt(byteBuffer);
       Set<AggregationType> aggregationTypes = new HashSet<>();
-      for (int j = 0; j < setSize; j ++) {
+      for (int j = 0; j < setSize; j++) {
         aggregationTypes.add(AggregationType.deserialize(byteBuffer));
       }
       aggregateFuncMap.put(partialPath, aggregationTypes);

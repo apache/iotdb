@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.db.mpp.sql.planner.plan.node;
 
-import java.nio.ByteBuffer;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-
-import java.util.Objects;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class ColumnHeader {
 

@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan;
 
-import java.util.Objects;
 import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
@@ -32,6 +31,7 @@ import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class FragmentInstance implements IConsensusRequest {
   private FragmentInstanceId id;
@@ -150,11 +150,11 @@ public class FragmentInstance implements IConsensusRequest {
       return false;
     }
     FragmentInstance that = (FragmentInstance) o;
-    return Objects.equals(id, that.id) &&
-        Objects.equals(fragment, that.fragment) &&
-        Objects.equals(dataRegion, that.dataRegion) &&
-        Objects.equals(hostEndpoint, that.hostEndpoint) &&
-        Objects.equals(timeFilter, that.timeFilter);
+    return Objects.equals(id, that.id)
+        && Objects.equals(fragment, that.fragment)
+        && Objects.equals(dataRegion, that.dataRegion)
+        && Objects.equals(hostEndpoint, that.hostEndpoint)
+        && Objects.equals(timeFilter, that.timeFilter);
   }
 
   @Override

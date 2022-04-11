@@ -18,11 +18,11 @@
  */
 package org.apache.iotdb.db.mpp.common;
 
-import java.util.Objects;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.Objects;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
@@ -89,9 +89,9 @@ public class PlanFragmentId {
       return false;
     }
     PlanFragmentId that = (PlanFragmentId) o;
-    return id == that.id &&
-        nextFragmentInstanceId == that.nextFragmentInstanceId &&
-        Objects.equals(queryId, that.queryId);
+    return id == that.id
+        && nextFragmentInstanceId == that.nextFragmentInstanceId
+        && Objects.equals(queryId, that.queryId);
   }
 
   @Override

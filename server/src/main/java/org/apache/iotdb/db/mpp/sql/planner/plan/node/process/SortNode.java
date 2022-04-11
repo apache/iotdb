@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
-import java.util.Objects;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.sql.planner.plan.IOutputPlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.ColumnHeader;
@@ -36,6 +35,7 @@ import com.google.common.collect.ImmutableList;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * In general, the parameter in sortNode should be pushed down to the upstream operators. In our
@@ -145,9 +145,9 @@ public class SortNode extends ProcessNode implements IOutputPlanNode {
       return false;
     }
     SortNode sortNode = (SortNode) o;
-    return Objects.equals(child, sortNode.child) &&
-        Objects.equals(orderBy, sortNode.orderBy) &&
-        sortOrder == sortNode.sortOrder;
+    return Objects.equals(child, sortNode.child)
+        && Objects.equals(orderBy, sortNode.orderBy)
+        && sortOrder == sortNode.sortOrder;
   }
 
   @Override

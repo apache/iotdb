@@ -29,6 +29,7 @@ import org.apache.iotdb.db.utils.IExpressionDeserializeUtil;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.collect.ImmutableList;
 
@@ -37,7 +38,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /** The FilterNode is responsible to filter the RowRecord from TsBlock. */
 public class FilterNode extends ProcessNode implements IOutputPlanNode {
@@ -99,8 +99,7 @@ public class FilterNode extends ProcessNode implements IOutputPlanNode {
     return columnHeaders.stream().map(ColumnHeader::getColumnType).collect(Collectors.toList());
   }
 
-  public void setColumnHeaders(
-      List<ColumnHeader> columnHeaders) {
+  public void setColumnHeaders(List<ColumnHeader> columnHeaders) {
     this.columnHeaders = columnHeaders;
   }
 
@@ -115,7 +114,7 @@ public class FilterNode extends ProcessNode implements IOutputPlanNode {
     List<ColumnHeader> columnHeaders = null;
     if (columnSize != -1) {
       columnHeaders = new ArrayList<>();
-      for (int i = 0; i < columnSize; i ++) {
+      for (int i = 0; i < columnSize; i++) {
         columnHeaders.add(ColumnHeader.deserialize(byteBuffer));
       }
     }

@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
-import java.util.Objects;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.sql.planner.plan.IOutputPlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.ColumnHeader;
@@ -36,6 +35,7 @@ import com.google.common.collect.ImmutableList;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /** FillNode is used to fill the empty field in one row. */
 public class FillNode extends ProcessNode implements IOutputPlanNode {
@@ -136,8 +136,7 @@ public class FillNode extends ProcessNode implements IOutputPlanNode {
       return false;
     }
     FillNode fillNode = (FillNode) o;
-    return Objects.equals(child, fillNode.child) &&
-        fillPolicy == fillNode.fillPolicy;
+    return Objects.equals(child, fillNode.child) && fillPolicy == fillNode.fillPolicy;
   }
 
   @Override

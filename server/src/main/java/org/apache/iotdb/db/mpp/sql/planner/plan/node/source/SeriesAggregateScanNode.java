@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.source;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -42,6 +40,8 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.collect.ImmutableList;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -188,7 +188,7 @@ public class SeriesAggregateScanNode extends SourceNode implements IOutputPlanNo
     PartialPath partialPath = (PartialPath) PathDeserializeUtil.deserialize(byteBuffer);
     int aggregateFuncSize = ReadWriteIOUtils.readInt(byteBuffer);
     List<AggregationType> aggregateFuncList = new ArrayList<>();
-    for (int i = 0; i < aggregateFuncSize; i ++) {
+    for (int i = 0; i < aggregateFuncSize; i++) {
       aggregateFuncList.add(AggregationType.deserialize(byteBuffer));
     }
     OrderBy scanOrder = OrderBy.values()[ReadWriteIOUtils.readInt(byteBuffer)];
@@ -202,7 +202,9 @@ public class SeriesAggregateScanNode extends SourceNode implements IOutputPlanNo
       e.printStackTrace();
     }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    SeriesAggregateScanNode seriesAggregateScanNode = new SeriesAggregateScanNode(planNodeId, partialPath, aggregateFuncList, scanOrder, timeFilter, null);
+    SeriesAggregateScanNode seriesAggregateScanNode =
+        new SeriesAggregateScanNode(
+            planNodeId, partialPath, aggregateFuncList, scanOrder, timeFilter, null);
     seriesAggregateScanNode.regionReplicaSet = regionReplicaSet;
     return seriesAggregateScanNode;
   }

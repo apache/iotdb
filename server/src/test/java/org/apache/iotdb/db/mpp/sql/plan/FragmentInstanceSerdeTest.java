@@ -24,9 +24,6 @@ import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
-import org.apache.iotdb.db.mpp.common.filter.BasicFunctionFilter;
-import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
-import org.apache.iotdb.db.mpp.sql.constant.FilterConstant.FilterType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.mpp.sql.planner.plan.PlanFragment;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
@@ -42,8 +39,8 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
-
 import org.apache.iotdb.tsfile.read.filter.operator.Gt;
+
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
@@ -62,15 +59,21 @@ public class FragmentInstanceSerdeTest {
     FilterNullNode filterNullNode =
         new FilterNullNode(
             new PlanNodeId("TestFilterNullNode"), null, FilterNullPolicy.ALL_NULL, null);
-    IExpression expression = BinaryExpression.and(new SingleSeriesExpression(new MeasurementPath("root.sg.d1.s2"), new Gt<Integer>(10,
-        org.apache.iotdb.tsfile.read.filter.factory.FilterType.VALUE_FILTER)), new SingleSeriesExpression(new MeasurementPath("root.sg.d2.s2"), new Gt<Integer>(10,
-        org.apache.iotdb.tsfile.read.filter.factory.FilterType.VALUE_FILTER)));
+    IExpression expression =
+        BinaryExpression.and(
+            new SingleSeriesExpression(
+                new MeasurementPath("root.sg.d1.s2"),
+                new Gt<Integer>(
+                    10, org.apache.iotdb.tsfile.read.filter.factory.FilterType.VALUE_FILTER)),
+            new SingleSeriesExpression(
+                new MeasurementPath("root.sg.d2.s2"),
+                new Gt<Integer>(
+                    10, org.apache.iotdb.tsfile.read.filter.factory.FilterType.VALUE_FILTER)));
 
     FilterNode filterNode = new FilterNode(new PlanNodeId("FilterNode"), expression);
 
     TimeJoinNode timeJoinNode =
-        new TimeJoinNode(
-            new PlanNodeId("TimeJoinNode"), OrderBy.TIMESTAMP_DESC);
+        new TimeJoinNode(new PlanNodeId("TimeJoinNode"), OrderBy.TIMESTAMP_DESC);
     timeJoinNode.setWithoutPolicy(FilterNullPolicy.CONTAINS_NULL);
     SeriesScanNode seriesScanNode1 =
         new SeriesScanNode(new PlanNodeId("SeriesScanNode1"), new MeasurementPath("root.sg.d1.s2"));

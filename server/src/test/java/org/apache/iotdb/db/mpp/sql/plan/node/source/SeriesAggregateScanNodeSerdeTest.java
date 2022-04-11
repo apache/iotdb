@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.mpp.sql.plan.node.source;
 
-import java.util.List;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -29,7 +28,6 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregateScanNode;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
-import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.operator.In;
 
@@ -38,6 +36,7 @@ import org.junit.Test;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import static org.apache.iotdb.tsfile.read.filter.factory.FilterType.VALUE_FILTER;
@@ -53,8 +52,12 @@ public class SeriesAggregateScanNodeSerdeTest {
     aggregateFuncList.add(AggregationType.MAX_TIME);
     SeriesAggregateScanNode seriesAggregateScanNode =
         new SeriesAggregateScanNode(
-            new PlanNodeId("TestSeriesAggregateScanNode"), new MeasurementPath("root.sg.d1.s1", TSDataType.BOOLEAN), aggregateFuncList,
-            OrderBy.TIMESTAMP_ASC, new In<String>(st, VALUE_FILTER, true), null);
+            new PlanNodeId("TestSeriesAggregateScanNode"),
+            new MeasurementPath("root.sg.d1.s1", TSDataType.BOOLEAN),
+            aggregateFuncList,
+            OrderBy.TIMESTAMP_ASC,
+            new In<String>(st, VALUE_FILTER, true),
+            null);
     seriesAggregateScanNode.setDataRegionReplicaSet(
         new RegionReplicaSet(new DataRegionId(1), new ArrayList<>()));
 

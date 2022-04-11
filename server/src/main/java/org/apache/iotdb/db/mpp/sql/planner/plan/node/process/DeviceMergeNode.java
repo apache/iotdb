@@ -75,8 +75,7 @@ public class DeviceMergeNode extends ProcessNode implements IOutputPlanNode {
     this.children = new ArrayList<>();
   }
 
-  public void setFilterNullComponent(
-      FilterNullComponent filterNullComponent) {
+  public void setFilterNullComponent(FilterNullComponent filterNullComponent) {
     this.filterNullComponent = filterNullComponent;
   }
 
@@ -162,13 +161,14 @@ public class DeviceMergeNode extends ProcessNode implements IOutputPlanNode {
     FilterNullComponent filterNullComponent = FilterNullComponent.deserialize(byteBuffer);
     Map<String, PlanNode> childDeviceNodeMap = new HashMap<>();
     int childDeviceNodeMapSize = ReadWriteIOUtils.readInt(byteBuffer);
-    for (int i = 0; i < childDeviceNodeMapSize; i ++) {
-      childDeviceNodeMap.put(ReadWriteIOUtils.readString(byteBuffer), PlanFragment.deserializeHelper(byteBuffer));
+    for (int i = 0; i < childDeviceNodeMapSize; i++) {
+      childDeviceNodeMap.put(
+          ReadWriteIOUtils.readString(byteBuffer), PlanFragment.deserializeHelper(byteBuffer));
     }
 
     List<ColumnHeader> columnHeaders = new ArrayList<>();
     int columnHeaderSize = ReadWriteIOUtils.readInt(byteBuffer);
-    for (int i = 0; i < columnHeaderSize; i ++) {
+    for (int i = 0; i < columnHeaderSize; i++) {
       columnHeaders.add(ColumnHeader.deserialize(byteBuffer));
     }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
