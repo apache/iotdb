@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.confignode.service.thrift.server;
 
-import org.apache.iotdb.common.rpc.thrift.EndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.DataNodeLocation;
 import org.apache.iotdb.commons.cluster.Endpoint;
@@ -36,7 +35,6 @@ import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
-import org.apache.iotdb.confignode.rpc.thrift.TDataNodeMessage;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeMessageResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
@@ -46,7 +44,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupMessage;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupMessageResp;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -56,8 +53,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 
 /** ConfigNodeRPCServer exposes the interface that interacts with the DataNode */
 public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
@@ -82,12 +77,21 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
                 -1, new Endpoint(req.getEndPoint().getIp(), req.getEndPoint().getPort())));
     DataNodeConfigurationDataSet dataSet =
         (DataNodeConfigurationDataSet) configManager.registerDataNode(plan);
+
+    if (dataSet.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      LOGGER.info(
+          "Register DataNode successful. DataNodeId: {}, Endpoint: {}",
+          dataSet.getDataNodeId(),
+          req.getEndPoint().toString());
+    } else {
+      LOGGER.info(
+          "Register DataNode {} failed. {}",
+          req.getEndPoint().toString(),
+          dataSet.getStatus().getMessage());
+    }
+
     TDataNodeRegisterResp resp = new TDataNodeRegisterResp();
     dataSet.convertToRpcDataNodeRegisterResp(resp);
-    LOGGER.info(
-        "Register DataNode successful. DataNodeID: {}, {}",
-        resp.getDataNodeID(),
-        req.getEndPoint().toString());
     return resp;
   }
 
@@ -97,19 +101,7 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
     DataNodesInfoDataSet dataSet = (DataNodesInfoDataSet) configManager.getDataNodeInfo(plan);
 
     TDataNodeMessageResp resp = new TDataNodeMessageResp();
-    resp.setStatus(dataSet.getStatus());
-    if (dataSet.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      Map<Integer, TDataNodeMessage> msgMap = new HashMap<>();
-      for (DataNodeLocation info : dataSet.getDataNodeList()) {
-        msgMap.put(
-            info.getDataNodeId(),
-            new TDataNodeMessage(
-                info.getDataNodeId(),
-                new EndPoint(info.getEndPoint().getIp(), info.getEndPoint().getPort())));
-        resp.setDataNodeMessageMap(msgMap);
-      }
-    }
-
+    dataSet.convertToRPCDataNodeMessageResp(resp);
     return resp;
   }
 
@@ -139,15 +131,7 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
         (StorageGroupSchemaDataSet) configManager.getStorageGroupSchema();
 
     TStorageGroupMessageResp resp = new TStorageGroupMessageResp();
-    resp.setStatus(dataSet.getStatus());
-    if (dataSet.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      Map<String, TStorageGroupMessage> storageGroupMessageMap = new HashMap<>();
-      for (StorageGroupSchema schema : dataSet.getSchemaList()) {
-        storageGroupMessageMap.put(schema.getName(), new TStorageGroupMessage(schema.getName()));
-      }
-      resp.setStorageGroupMessageMap(storageGroupMessageMap);
-    }
-
+    dataSet.convertToRPCStorageGroupMessageResp(resp);
     return resp;
   }
 
@@ -195,11 +179,7 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
         (DataPartitionDataSet) configManager.getDataPartition(getDataPartitionPlan);
 
     TDataPartitionResp resp = new TDataPartitionResp();
-    resp.setStatus(dataset.getStatus());
-    if (dataset.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      dataset.convertToRpcDataPartitionResp(resp);
-    }
-
+    dataset.convertToRpcDataPartitionResp(resp);
     return resp;
   }
 
@@ -212,11 +192,7 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
         (DataPartitionDataSet) configManager.getOrCreateDataPartition(getOrCreateDataPartitionPlan);
 
     TDataPartitionResp resp = new TDataPartitionResp();
-    resp.setStatus(dataset.getStatus());
-    if (dataset.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      dataset.convertToRpcDataPartitionResp(resp);
-    }
-
+    dataset.convertToRpcDataPartitionResp(resp);
     return resp;
   }
 
