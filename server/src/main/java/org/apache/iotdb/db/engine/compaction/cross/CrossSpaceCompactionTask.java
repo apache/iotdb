@@ -58,15 +58,17 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
   protected List<TsFileResource> holdWriteLockList = new ArrayList<>();
 
   public CrossSpaceCompactionTask(
-      String logicalStorageGroup,
-      String dataRegionId,
       long timePartition,
       TsFileManager tsFileManager,
       List<TsFileResource> selectedSequenceFiles,
       List<TsFileResource> selectedUnsequenceFiles,
       ICrossCompactionPerformer performer,
       AtomicInteger currentTaskNum) {
-    super(logicalStorageGroup + "-" + dataRegionId, timePartition, tsFileManager, currentTaskNum);
+    super(
+        tsFileManager.getStorageGroupName() + "-" + tsFileManager.getDataRegion(),
+        timePartition,
+        tsFileManager,
+        currentTaskNum);
     this.selectedSequenceFiles = selectedSequenceFiles;
     this.selectedUnsequenceFiles = selectedUnsequenceFiles;
     this.seqTsFileResourceList = tsFileManager.getSequenceListByTimePartition(timePartition);

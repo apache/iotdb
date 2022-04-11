@@ -23,14 +23,12 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
-import org.apache.iotdb.db.engine.compaction.cross.CrossSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.cross.ICrossSpaceSelector;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.ICrossSpaceMergeFileSelector;
-import org.apache.iotdb.db.engine.compaction.performer.impl.ReadPointCompactionPerformer;
-import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -70,7 +68,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
    * @return Returns whether the file was found and submits the merge task
    */
   @Override
-  public List<AbstractCompactionTask> selectCrossSpaceTask(
+  public List selectCrossSpaceTask(
       List<TsFileResource> sequenceFileList, List<TsFileResource> unsequenceFileList) {
     if ((CompactionTaskManager.currentTaskNum.get() >= config.getConcurrentCompactionThread())
         || (!config.isEnableCrossSpaceCompaction())) {
@@ -121,16 +119,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
             logicalStorageGroupName + "-" + dataRegionId,
             mergeResource.getSeqFiles().size(),
             mergeResource.getUnseqFiles().size());
-        return Collections.singletonList(
-            new CrossSpaceCompactionTask(
-                logicalStorageGroupName,
-                dataRegionId,
-                timePartition,
-                tsFileManager,
-                mergeFiles[0],
-                mergeFiles[1],
-                new ReadPointCompactionPerformer(),
-                CompactionTaskManager.currentTaskNum));
+        return Collections.singletonList(new Pair<>(mergeFiles[0], mergeFiles[1]));
       }
 
     } catch (MergeException | IOException e) {

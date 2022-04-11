@@ -724,8 +724,6 @@ public class StorageGroupProcessorTest {
       processor.syncCloseAllWorkingTsFileProcessors();
       InnerSpaceCompactionTask task =
           new InnerSpaceCompactionTask(
-              storageGroup,
-              "0",
               0,
               processor.getTsFileManager(),
               processor.getSequenceFileList(),

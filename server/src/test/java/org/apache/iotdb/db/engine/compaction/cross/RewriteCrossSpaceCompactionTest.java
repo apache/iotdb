@@ -221,8 +221,6 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
     tsFileManager.addAll(unseqResources, false);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
-            COMPACTION_TEST_SG,
-            "0",
             0,
             tsFileManager,
             seqResources,
@@ -459,8 +457,6 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
     tsFileManager.addAll(unseqResources, false);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
-            COMPACTION_TEST_SG,
-            "0",
             0,
             tsFileManager,
             seqResources,
@@ -607,8 +603,6 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
-            COMPACTION_TEST_SG,
-            "0",
             0,
             vsgp.getTsFileResourceManager(),
             seqResources,
@@ -718,8 +712,6 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
-            COMPACTION_TEST_SG,
-            "0",
             0,
             vsgp.getTsFileResourceManager(),
             seqResources,

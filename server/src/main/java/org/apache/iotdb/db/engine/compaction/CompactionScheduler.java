@@ -22,10 +22,14 @@ package org.apache.iotdb.db.engine.compaction;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.compaction.cross.CrossSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.cross.ICrossSpaceSelector;
-import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
+import org.apache.iotdb.db.engine.compaction.inner.InnerSpaceCompactionTask;
+import org.apache.iotdb.db.engine.compaction.performer.ICompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.task.ICompactionSelector;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -91,23 +95,41 @@ public class CompactionScheduler {
     if (sequence) {
       innerSpaceCompactionSelector =
           config
-              .getInnerSequenceCompactionStrategy()
+              .getInnerSequenceCompactionSelector()
               .getCompactionSelector(
                   logicalStorageGroupName, dataRegionId, timePartition, tsFileManager);
     } else {
       innerSpaceCompactionSelector =
           config
-              .getInnerUnsequenceCompactionStrategy()
+              .getInnerUnsequenceCompactionSelector()
               .getCompactionSelector(
                   logicalStorageGroupName, dataRegionId, timePartition, tsFileManager);
     }
-    List<AbstractCompactionTask> taskList =
+    List<List<TsFileResource>> taskList =
         innerSpaceCompactionSelector.selectInnerSpaceTask(
             sequence
                 ? tsFileManager.getSequenceListByTimePartition(timePartition)
                 : tsFileManager.getUnsequenceListByTimePartition(timePartition));
-    for (AbstractCompactionTask task : taskList) {
-      CompactionTaskManager.getInstance().addTaskToWaitingQueue(task);
+    for (List<TsFileResource> task : taskList) {
+      ICompactionPerformer performer =
+          sequence
+              ? IoTDBDescriptor.getInstance()
+                  .getConfig()
+                  .getInnerSeqCompactionPerformer()
+                  .getCompactionPerformer()
+              : IoTDBDescriptor.getInstance()
+                  .getConfig()
+                  .getInnerUnseqCompactionPerformer()
+                  .getCompactionPerformer();
+      CompactionTaskManager.getInstance()
+          .addTaskToWaitingQueue(
+              new InnerSpaceCompactionTask(
+                  timePartition,
+                  tsFileManager,
+                  task,
+                  sequence,
+                  performer,
+                  CompactionTaskManager.currentTaskNum));
     }
   }
 
@@ -123,15 +145,26 @@ public class CompactionScheduler {
     }
     ICrossSpaceSelector crossSpaceCompactionSelector =
         config
-            .getCrossCompactionStrategy()
+            .getCrossCompactionSelector()
             .getCompactionSelector(
                 logicalStorageGroupName, dataRegionId, timePartition, tsFileManager);
-    List<AbstractCompactionTask> taskList =
+    List<Pair<List<TsFileResource>, List<TsFileResource>>> taskList =
         crossSpaceCompactionSelector.selectCrossSpaceTask(
             tsFileManager.getSequenceListByTimePartition(timePartition),
             tsFileManager.getUnsequenceListByTimePartition(timePartition));
-    for (AbstractCompactionTask task : taskList) {
-      CompactionTaskManager.getInstance().addTaskToWaitingQueue(task);
+    for (Pair<List<TsFileResource>, List<TsFileResource>> selectedFilesPair : taskList) {
+      CompactionTaskManager.getInstance()
+          .addTaskToWaitingQueue(
+              new CrossSpaceCompactionTask(
+                  timePartition,
+                  tsFileManager,
+                  selectedFilesPair.left,
+                  selectedFilesPair.right,
+                  IoTDBDescriptor.getInstance()
+                      .getConfig()
+                      .getCrossCompactionPerformer()
+                      .getCompactionPerformer(),
+                  CompactionTaskManager.currentTaskNum));
     }
   }
 }

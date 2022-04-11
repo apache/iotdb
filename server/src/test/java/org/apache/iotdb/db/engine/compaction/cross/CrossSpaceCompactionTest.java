@@ -431,10 +431,8 @@ public class CrossSpaceCompactionTest {
             AbstractCompactionTask compactionTask =
                 IoTDBDescriptor.getInstance()
                     .getConfig()
-                    .getCrossCompactionStrategy()
+                    .getCrossCompactionSelector()
                     .getCompactionTask(
-                        COMPACTION_TEST_SG,
-                        "0",
                         0,
                         new TsFileManager(
                             "root.compactionTest",
@@ -736,10 +734,8 @@ public class CrossSpaceCompactionTest {
             AbstractCompactionTask compactionTask =
                 IoTDBDescriptor.getInstance()
                     .getConfig()
-                    .getCrossCompactionStrategy()
+                    .getCrossCompactionSelector()
                     .getCompactionTask(
-                        COMPACTION_TEST_SG,
-                        "0",
                         0,
                         new TsFileManager(
                             "root.compactionTest",
@@ -1040,10 +1036,8 @@ public class CrossSpaceCompactionTest {
             AbstractCompactionTask compactionTask =
                 IoTDBDescriptor.getInstance()
                     .getConfig()
-                    .getCrossCompactionStrategy()
+                    .getCrossCompactionSelector()
                     .getCompactionTask(
-                        COMPACTION_TEST_SG,
-                        "0",
                         0,
                         new TsFileManager(
                             "root.compactionTest",

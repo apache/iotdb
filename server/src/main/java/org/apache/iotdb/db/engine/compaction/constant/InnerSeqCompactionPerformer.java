@@ -16,13 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.compaction.inner;
+package org.apache.iotdb.db.engine.compaction.constant;
 
-import org.apache.iotdb.db.engine.compaction.task.ICompactionSelector;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.compaction.performer.ISeqCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.performer.impl.ReadChunkCompactionPerformer;
 
-import java.util.List;
+public enum InnerSeqCompactionPerformer {
+  READ_CHUNK;
 
-public interface IInnerUnseqSpaceSelector extends ICompactionSelector {
-  List<List<TsFileResource>> selectInnerSpaceTask(List<TsFileResource> resources);
+  public static InnerSeqCompactionPerformer getInnerSeqCompactionPerformer(String name) {
+    if (READ_CHUNK.toString().equalsIgnoreCase(name)) {
+      return READ_CHUNK;
+    }
+    throw new RuntimeException("Illegal compaction performer for seq inner compaction " + name);
+  }
+
+  public ISeqCompactionPerformer getCompactionPerformer() {
+    switch (this) {
+      case READ_CHUNK:
+      default:
+        return new ReadChunkCompactionPerformer();
+    }
+  }
 }

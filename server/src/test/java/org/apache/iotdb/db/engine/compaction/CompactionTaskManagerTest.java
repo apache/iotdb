@@ -72,8 +72,6 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
     tsFileManager.addAll(seqResources, true);
     InnerSpaceCompactionTask task1 =
         new InnerSpaceCompactionTask(
-            "root.compactionTest",
-            "0",
             0,
             tsFileManager,
             seqResources,
@@ -82,8 +80,6 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
             new AtomicInteger(0));
     InnerSpaceCompactionTask task2 =
         new InnerSpaceCompactionTask(
-            "root.compactionTest",
-            "0",
             0,
             tsFileManager,
             seqResources,
@@ -137,8 +133,6 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
     tsFileManager.addAll(seqResources, true);
     InnerSpaceCompactionTask task1 =
         new InnerSpaceCompactionTask(
-            "root.compactionTest",
-            "0",
             0,
             tsFileManager,
             seqResources,
@@ -147,8 +141,6 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
             new AtomicInteger(0));
     InnerSpaceCompactionTask task2 =
         new InnerSpaceCompactionTask(
-            "root.compactionTest",
-            "0",
             0,
             tsFileManager,
             seqResources,
@@ -203,8 +195,6 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
     tsFileManager.addAll(seqResources, true);
     InnerSpaceCompactionTask task1 =
         new InnerSpaceCompactionTask(
-            "root.compactionTest",
-            "0",
             0,
             tsFileManager,
             seqResources,
@@ -213,8 +203,6 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
             new AtomicInteger(0));
     InnerSpaceCompactionTask task2 =
         new InnerSpaceCompactionTask(
-            "root.compactionTest",
-            "0",
             0,
             tsFileManager,
             seqResources,
@@ -255,8 +243,6 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
     tsFileManager.addAll(seqResources, true);
     InnerSpaceCompactionTask task1 =
         new InnerSpaceCompactionTask(
-            "root.compactionTest",
-            "0",
             0,
             tsFileManager,
             seqResources,
@@ -301,8 +287,6 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
     tsFileManager.addAll(seqResources, true);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            "root.compactionTest",
-            "0",
             0,
             tsFileManager,
             seqResources,
@@ -330,8 +314,6 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
     tsFileManager.addAll(unseqResources, false);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
-            COMPACTION_TEST_SG,
-            "0",
             0,
             tsFileManager,
             seqResources,

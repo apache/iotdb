@@ -28,29 +28,25 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 
 import java.util.List;
 
-public enum CrossCompactionStrategy {
-  REWRITE_COMPACTION;
+public enum CrossCompactionSelector {
+  REWRITE;
 
-  public static CrossCompactionStrategy getCrossCompactionStrategy(String name) {
+  public static CrossCompactionSelector getCrossCompactionStrategy(String name) {
     if ("REWRITE_COMPACTION".equalsIgnoreCase(name)) {
-      return REWRITE_COMPACTION;
+      return REWRITE;
     }
     throw new RuntimeException("Illegal Cross Compaction Strategy " + name);
   }
 
   public CrossSpaceCompactionTask getCompactionTask(
-      String logicalStorageGroupName,
-      String virtualStorageGroupName,
       long timePartitionId,
       TsFileManager tsFileManager,
       List<TsFileResource> selectedSeqTsFileResourceList,
       List<TsFileResource> selectedUnSeqTsFileResourceList) {
     switch (this) {
-      case REWRITE_COMPACTION:
+      case REWRITE:
       default:
         return new CrossSpaceCompactionTask(
-            logicalStorageGroupName,
-            virtualStorageGroupName,
             timePartitionId,
             tsFileManager,
             selectedSeqTsFileResourceList,
@@ -66,7 +62,7 @@ public enum CrossCompactionStrategy {
       long timePartition,
       TsFileManager tsFileManager) {
     switch (this) {
-      case REWRITE_COMPACTION:
+      case REWRITE:
       default:
         return new RewriteCrossSpaceCompactionSelector(
             logicalStorageGroupName, virtualGroupId, timePartition, tsFileManager);

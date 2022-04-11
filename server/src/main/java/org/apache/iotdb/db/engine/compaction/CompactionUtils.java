@@ -20,7 +20,7 @@ package org.apache.iotdb.db.engine.compaction;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.constant.CrossCompactionStrategy;
+import org.apache.iotdb.db.engine.compaction.constant.CrossCompactionSelector;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.RewriteCrossSpaceCompactionResource;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.ICrossSpaceMergeFileSelector;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.RewriteCompactionFileSelector;
@@ -231,10 +231,10 @@ public class CompactionUtils {
 
   public static ICrossSpaceMergeFileSelector getCrossSpaceFileSelector(
       long budget, RewriteCrossSpaceCompactionResource resource) {
-    CrossCompactionStrategy strategy =
-        IoTDBDescriptor.getInstance().getConfig().getCrossCompactionStrategy();
+    CrossCompactionSelector strategy =
+        IoTDBDescriptor.getInstance().getConfig().getCrossCompactionSelector();
     switch (strategy) {
-      case REWRITE_COMPACTION:
+      case REWRITE:
         return new RewriteCompactionFileSelector(resource, budget);
       default:
         throw new UnsupportedOperationException("Unknown CrossSpaceFileStrategy " + strategy);

@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.engine.compaction.task;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.List;
 
@@ -29,11 +30,14 @@ import java.util.List;
  * increase the global compaction task count.
  */
 public interface ICompactionSelector {
-  default List<AbstractCompactionTask> selectInnerSpaceTask(List<TsFileResource> resources) {
+  /*
+   * This method should be implemented by all SequenceSpaceInnerSelector and UnsequenceSpaceInnerSelector. It takes the list of tsfile in a time partition as input, and returns a list of list. Each list in the returned list is the source files of one compaction tasks.
+   */
+  default List<List<TsFileResource>> selectInnerSpaceTask(List<TsFileResource> resources) {
     throw new RuntimeException("This kind of selector cannot be used to select inner space task");
   }
 
-  default List<AbstractCompactionTask> selectCrossSpaceTask(
+  default List<Pair<List<TsFileResource>, List<TsFileResource>>> selectCrossSpaceTask(
       List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
     {
       throw new RuntimeException("This kind of selector cannot be used to select cross space task");

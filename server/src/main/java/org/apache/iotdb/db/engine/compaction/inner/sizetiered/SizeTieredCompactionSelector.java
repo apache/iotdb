@@ -24,10 +24,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.inner.IInnerSeqSpaceSelector;
 import org.apache.iotdb.db.engine.compaction.inner.IInnerUnseqSpaceSelector;
-import org.apache.iotdb.db.engine.compaction.inner.InnerSpaceCompactionTask;
-import org.apache.iotdb.db.engine.compaction.performer.impl.ReadChunkCompactionPerformer;
-import org.apache.iotdb.db.engine.compaction.performer.impl.ReadPointCompactionPerformer;
-import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -89,7 +85,7 @@ public class SizeTieredCompactionSelector
    * @return Returns whether the file was found and submits the merge task
    */
   @Override
-  public List<AbstractCompactionTask> selectInnerSpaceTask(List<TsFileResource> tsFileResources) {
+  public List<List<TsFileResource>> selectInnerSpaceTask(List<TsFileResource> tsFileResources) {
     PriorityQueue<Pair<List<TsFileResource>, Long>> taskPriorityQueue =
         new PriorityQueue<>(new SizeTieredCompactionTaskComparator());
     try {
@@ -99,19 +95,10 @@ public class SizeTieredCompactionSelector
           break;
         }
       }
-      List<AbstractCompactionTask> taskList = new LinkedList<>();
+      List<List<TsFileResource>> taskList = new LinkedList<>();
       while (taskPriorityQueue.size() > 0) {
         List<TsFileResource> resources = taskPriorityQueue.poll().left;
-        taskList.add(
-            new InnerSpaceCompactionTask(
-                logicalStorageGroupName,
-                dataRegionId,
-                timePartition,
-                tsFileManager,
-                resources,
-                sequence,
-                sequence ? new ReadChunkCompactionPerformer() : new ReadPointCompactionPerformer(),
-                CompactionTaskManager.currentTaskNum));
+        taskList.add(resources);
       }
       return taskList;
     } catch (Exception e) {

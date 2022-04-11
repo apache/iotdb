@@ -276,8 +276,6 @@ public class CompactionTaskComparatorTest {
         boolean sequence,
         List<TsFileResource> selectedTsFileResourceList) {
       super(
-          storageGroupName,
-          "0",
           timePartition,
           tsFileManager,
           selectedTsFileResourceList,
@@ -310,8 +308,6 @@ public class CompactionTaskComparatorTest {
         List<TsFileResource> selectedSequenceFiles,
         List<TsFileResource> selectedUnsequenceFiles) {
       super(
-          fullStorageGroupName,
-          "0",
           timePartition,
           tsFileManager,
           selectedSequenceFiles,

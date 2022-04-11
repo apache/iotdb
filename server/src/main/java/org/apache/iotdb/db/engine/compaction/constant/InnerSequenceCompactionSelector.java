@@ -23,12 +23,12 @@ import org.apache.iotdb.db.engine.compaction.inner.IInnerSeqSpaceSelector;
 import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompactionSelector;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 
-public enum InnerSequenceCompactionStrategy {
-  SIZE_TIERED_COMPACTION;
+public enum InnerSequenceCompactionSelector {
+  SIZE_TIERED;
 
-  public static InnerSequenceCompactionStrategy getInnerSequenceCompactionStrategy(String name) {
+  public static InnerSequenceCompactionSelector getInnerSequenceCompactionStrategy(String name) {
     if ("SIZE_TIERED_COMPACTION".equalsIgnoreCase(name)) {
-      return SIZE_TIERED_COMPACTION;
+      return SIZE_TIERED;
     }
     throw new RuntimeException("Illegal Compaction Strategy " + name);
   }
@@ -39,7 +39,7 @@ public enum InnerSequenceCompactionStrategy {
       long timePartition,
       TsFileManager tsFileManager) {
     switch (this) {
-      case SIZE_TIERED_COMPACTION:
+      case SIZE_TIERED:
       default:
         return new SizeTieredCompactionSelector(
             logicalStorageGroupName, virtualStorageGroupName, timePartition, tsFileManager, true);

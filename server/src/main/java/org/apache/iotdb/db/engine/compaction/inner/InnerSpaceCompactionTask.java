@@ -59,8 +59,6 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   protected boolean[] isHoldingWriteLock;
 
   public InnerSpaceCompactionTask(
-      String logicalStorageGroupName,
-      String dataRegionId,
       long timePartition,
       TsFileManager tsFileManager,
       List<TsFileResource> selectedTsFileResourceList,
@@ -68,7 +66,10 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       ICompactionPerformer performer,
       AtomicInteger currentTaskNum) {
     super(
-        logicalStorageGroupName + "-" + dataRegionId, timePartition, tsFileManager, currentTaskNum);
+        tsFileManager.getStorageGroupName() + "-" + tsFileManager.getDataRegion(),
+        timePartition,
+        tsFileManager,
+        currentTaskNum);
     this.selectedTsFileResourceList = selectedTsFileResourceList;
     this.sequence = sequence;
     this.performer = performer;
