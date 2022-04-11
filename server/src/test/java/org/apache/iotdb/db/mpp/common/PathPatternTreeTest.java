@@ -52,6 +52,18 @@ public class PathPatternTreeTest {
   public void pathPatternTreeTest2() throws IllegalPathException, IOException {
     checkPathPatternTree(
         Arrays.asList(
+            new PartialPath("root.sg1.d1.t1.s1"),
+            new PartialPath("root.sg1.d1.t2.s2"),
+            new PartialPath("root.sg1.*.t1.s1"),
+            new PartialPath("root.sg1.d2.t1.s1")),
+        Arrays.asList(new PartialPath("root.sg1.d1.t2.s2"), new PartialPath("root.sg1.*.t1.s1")),
+        Arrays.asList(new PartialPath("root.sg1.d1.t2"), new PartialPath("root.sg1.*")));
+  }
+
+  @Test
+  public void pathPatternTreeTest3() throws IllegalPathException, IOException {
+    checkPathPatternTree(
+        Arrays.asList(
             new PartialPath("root.sg1.d1.s1"),
             new PartialPath("root.sg1.d1.s2"),
             new PartialPath("root.sg1.d1.t1.s1"),
@@ -68,7 +80,7 @@ public class PathPatternTreeTest {
   }
 
   @Test
-  public void pathPatternTreeTest3() throws IllegalPathException, IOException {
+  public void pathPatternTreeTest4() throws IllegalPathException, IOException {
     checkPathPatternTree(
         Arrays.asList(
             new PartialPath("root.sg1.d1.s1"),
@@ -85,7 +97,7 @@ public class PathPatternTreeTest {
   }
 
   @Test
-  public void pathPatternTreeTest4() throws IllegalPathException, IOException {
+  public void pathPatternTreeTest5() throws IllegalPathException, IOException {
     checkPathPatternTree(
         Arrays.asList(
             new PartialPath("root.sg1.d1.s1"),
@@ -98,7 +110,7 @@ public class PathPatternTreeTest {
   }
 
   @Test
-  public void pathPatternTreeTest5() throws IllegalPathException, IOException {
+  public void pathPatternTreeTest6() throws IllegalPathException, IOException {
     checkPathPatternTree(
         Arrays.asList(
             new PartialPath("root.sg1.d1.s1"),

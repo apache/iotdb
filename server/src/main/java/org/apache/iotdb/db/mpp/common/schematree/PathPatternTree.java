@@ -53,7 +53,7 @@ public class PathPatternTree {
     for (Map.Entry<PartialPath, List<String>> entry : deviceToMeasurementsMap.entrySet()) {
       appendPaths(entry.getKey(), entry.getValue());
     }
-  };
+  }
 
   public PathPatternTree() {
     this.root = new PathPatternNode(SQLConstant.ROOT);
@@ -85,6 +85,11 @@ public class PathPatternTree {
       } else {
         pathPatternList.add(parseNodesToString(nodes));
       }
+      nodes.remove(nodes.size() - 1);
+      return;
+    }
+    if (curNode.isWildcard()) {
+      pathPatternList.add(parseNodesToString(nodes));
       nodes.remove(nodes.size() - 1);
       return;
     }

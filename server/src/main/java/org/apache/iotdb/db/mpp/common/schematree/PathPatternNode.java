@@ -58,6 +58,10 @@ public class PathPatternNode {
     return children.isEmpty();
   }
 
+  public boolean isWildcard() {
+    return name.equals("*") || name.equals("**");
+  }
+
   @TestOnly
   public boolean equalWith(PathPatternNode that) {
     if (this == that) {
