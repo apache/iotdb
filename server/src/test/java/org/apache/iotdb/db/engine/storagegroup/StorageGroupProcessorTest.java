@@ -33,7 +33,7 @@ import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
-import org.apache.iotdb.db.exception.StorageGroupProcessorException;
+import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.TriggerExecutionException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -79,7 +79,7 @@ public class StorageGroupProcessorTest {
   private String systemDir = TestConstant.OUTPUT_DATA_DIR.concat("info");
   private String deviceId = "root.vehicle.d0";
   private String measurementId = "s0";
-  private VirtualStorageGroupProcessor processor;
+  private DataRegion processor;
   private QueryContext context = EnvironmentUtils.TEST_QUERY_CONTEXT;
 
   @Before
@@ -862,9 +862,9 @@ public class StorageGroupProcessorTest {
     config.setUnseqMemtableFlushInterval(preFLushInterval);
   }
 
-  class DummySGP extends VirtualStorageGroupProcessor {
+  class DummySGP extends DataRegion {
 
-    DummySGP(String systemInfoDir, String storageGroupName) throws StorageGroupProcessorException {
+    DummySGP(String systemInfoDir, String storageGroupName) throws DataRegionException {
       super(systemInfoDir, "0", new TsFileFlushPolicy.DirectFlushPolicy(), storageGroupName);
     }
   }

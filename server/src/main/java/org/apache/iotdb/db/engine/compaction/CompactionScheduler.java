@@ -55,19 +55,19 @@ public class CompactionScheduler {
     try {
       tryToSubmitCrossSpaceCompactionTask(
           tsFileManager.getStorageGroupName(),
-          tsFileManager.getVirtualStorageGroup(),
+          tsFileManager.getDataRegion(),
           tsFileManager.getStorageGroupDir(),
           timePartition,
           tsFileManager);
       tryToSubmitInnerSpaceCompactionTask(
           tsFileManager.getStorageGroupName(),
-          tsFileManager.getVirtualStorageGroup(),
+          tsFileManager.getDataRegion(),
           timePartition,
           tsFileManager,
           true);
       tryToSubmitInnerSpaceCompactionTask(
           tsFileManager.getStorageGroupName(),
-          tsFileManager.getVirtualStorageGroup(),
+          tsFileManager.getDataRegion(),
           timePartition,
           tsFileManager,
           false);
@@ -78,7 +78,7 @@ public class CompactionScheduler {
 
   public static void tryToSubmitInnerSpaceCompactionTask(
       String logicalStorageGroupName,
-      String virtualStorageGroupName,
+      String dataRegionId,
       long timePartition,
       TsFileManager tsFileManager,
       boolean sequence)
@@ -94,14 +94,14 @@ public class CompactionScheduler {
           config
               .getInnerSequenceCompactionStrategy()
               .getCompactionSelector(
-                  logicalStorageGroupName, virtualStorageGroupName, timePartition, tsFileManager);
+                  logicalStorageGroupName, dataRegionId, timePartition, tsFileManager);
       taskList = innerSpaceCompactionSelector.select();
     } else {
       IInnerUnseqSpaceSelector innerSpaceCompactionSelector =
           config
               .getInnerUnsequenceCompactionStrategy()
               .getCompactionSelector(
-                  logicalStorageGroupName, virtualStorageGroupName, timePartition, tsFileManager);
+                  logicalStorageGroupName, dataRegionId, timePartition, tsFileManager);
       taskList = innerSpaceCompactionSelector.select();
     }
     for (AbstractCompactionTask task : taskList) {
@@ -111,7 +111,7 @@ public class CompactionScheduler {
 
   private static void tryToSubmitCrossSpaceCompactionTask(
       String logicalStorageGroupName,
-      String virtualStorageGroupName,
+      String dataRegionId,
       String storageGroupDir,
       long timePartition,
       TsFileManager tsFileManager)
@@ -124,7 +124,7 @@ public class CompactionScheduler {
             .getCrossCompactionStrategy()
             .getCompactionSelector(
                 logicalStorageGroupName,
-                virtualStorageGroupName,
+                dataRegionId,
                 storageGroupDir,
                 timePartition,
                 tsFileManager);

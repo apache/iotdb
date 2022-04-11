@@ -324,11 +324,6 @@ public class IoTDBDescriptor {
                   "max_waiting_time_when_insert_blocked",
                   Integer.toString(conf.getMaxWaitingTimeWhenInsertBlocked()))));
 
-      conf.setEstimatedSeriesSize(
-          Integer.parseInt(
-              properties.getProperty(
-                  "estimated_series_size", Integer.toString(conf.getEstimatedSeriesSize()))));
-
       conf.setIoTaskQueueSizeForFlushing(
           Integer.parseInt(
               properties.getProperty(
@@ -479,11 +474,12 @@ public class IoTDBDescriptor {
                   "raw_query_blocking_queue_capacity",
                   Integer.toString(conf.getRawQueryBlockingQueueCapacity()))));
 
-      conf.setSchemaRegionCacheSize(
+      conf.setSchemaRegionDeviceNodeCacheSize(
           Integer.parseInt(
               properties
                   .getProperty(
-                      "metadata_node_cache_size", Integer.toString(conf.getSchemaRegionCacheSize()))
+                      "schema_region_device_node_cache_size",
+                      Integer.toString(conf.getSchemaRegionDeviceNodeCacheSize()))
                   .trim()));
 
       conf.setmRemoteSchemaCacheSize(
@@ -693,10 +689,9 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "slow_query_threshold", String.valueOf(conf.getSlowQueryThreshold()))));
 
-      conf.setVirtualStorageGroupNum(
+      conf.setDataRegionNum(
           Integer.parseInt(
-              properties.getProperty(
-                  "virtual_storage_group_num", String.valueOf(conf.getVirtualStorageGroupNum()))));
+              properties.getProperty("data_region_num", String.valueOf(conf.getDataRegionNum()))));
 
       conf.setRecoveryLogIntervalInMs(
           Long.parseLong(
@@ -741,6 +736,33 @@ public class IoTDBDescriptor {
           Boolean.parseBoolean(
               properties.getProperty(
                   "enable_id_table_log_file", String.valueOf(conf.isEnableIDTableLogFile()))));
+
+      conf.setSchemaEngineMode(
+          properties.getProperty("schema_engine_mode", String.valueOf(conf.getSchemaEngineMode())));
+
+      conf.setCachedMNodeSizeInSchemaFileMode(
+          Integer.parseInt(
+              properties.getProperty(
+                  "cached_mnode_size_in_schema_file_mode",
+                  String.valueOf(conf.getCachedMNodeSizeInSchemaFileMode()))));
+
+      conf.setMaxSchemaFlushThreadNum(
+          Integer.parseInt(
+              properties.getProperty(
+                  "max_schema_flush_thread", String.valueOf(conf.getMaxSchemaFlushThreadNum()))));
+
+      conf.setMinimumSegmentInSchemaFile(
+          Short.parseShort(
+              properties.getProperty(
+                  "minimum_schema_file_segment_in_bytes",
+                  String.valueOf(conf.getMinimumSegmentInSchemaFile()))));
+
+      conf.setPageCacheSizeInSchemaFile(
+          Short.parseShort(
+              properties.getProperty(
+                  "page_cache_in_schema_file",
+                  String.valueOf(conf.getPageCacheSizeInSchemaFile()))));
+
       // mqtt
       loadMqttProps(properties);
 

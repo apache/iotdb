@@ -45,13 +45,13 @@ public class CompactionRecoverManager {
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private final TsFileManager tsFileManager;
   private final String logicalStorageGroupName;
-  private final String virtualStorageGroupId;
+  private final String dataRegionId;
 
   public CompactionRecoverManager(
-      TsFileManager tsFileManager, String logicalStorageGroupName, String virtualStorageGroupId) {
+      TsFileManager tsFileManager, String logicalStorageGroupName, String dataRegionId) {
     this.tsFileManager = tsFileManager;
     this.logicalStorageGroupName = logicalStorageGroupName;
-    this.virtualStorageGroupId = virtualStorageGroupId;
+    this.dataRegionId = dataRegionId;
   }
 
   public void recoverInnerSpaceCompaction(boolean isSequence) {
@@ -75,12 +75,7 @@ public class CompactionRecoverManager {
     }
     for (String dir : dirs) {
       File storageGroupDir =
-          new File(
-              dir
-                  + File.separator
-                  + logicalStorageGroupName
-                  + File.separator
-                  + virtualStorageGroupId);
+          new File(dir + File.separator + logicalStorageGroupName + File.separator + dataRegionId);
       if (!storageGroupDir.exists()) {
         return;
       }
@@ -98,11 +93,7 @@ public class CompactionRecoverManager {
         for (File compactionLog : compactionLogs) {
           logger.info("Calling compaction recover task.");
           new CompactionRecoverTask(
-                  logicalStorageGroupName,
-                  virtualStorageGroupId,
-                  tsFileManager,
-                  compactionLog,
-                  isInnerSpace)
+                  logicalStorageGroupName, dataRegionId, tsFileManager, compactionLog, isInnerSpace)
               .doCompaction();
         }
       }
@@ -121,11 +112,7 @@ public class CompactionRecoverManager {
     if (logFileFromOld.exists()) {
       logger.info("Calling compaction task to recover from previous version.");
       new CompactionRecoverTask(
-              logicalStorageGroupName,
-              virtualStorageGroupId,
-              tsFileManager,
-              logFileFromOld,
-              isInnerSpace)
+              logicalStorageGroupName, dataRegionId, tsFileManager, logFileFromOld, isInnerSpace)
           .doCompaction();
     }
   }

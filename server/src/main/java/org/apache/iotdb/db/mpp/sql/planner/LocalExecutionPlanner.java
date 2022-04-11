@@ -19,12 +19,13 @@
 package org.apache.iotdb.db.mpp.sql.planner;
 
 import org.apache.iotdb.commons.cluster.Endpoint;
-import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaRegion;
 import org.apache.iotdb.db.mpp.buffer.DataBlockManager;
 import org.apache.iotdb.db.mpp.buffer.DataBlockService;
 import org.apache.iotdb.db.mpp.buffer.ISinkHandle;
+import org.apache.iotdb.db.mpp.buffer.ISourceHandle;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.execution.DataDriver;
 import org.apache.iotdb.db.mpp.execution.DataDriverContext;
@@ -35,8 +36,9 @@ import org.apache.iotdb.db.mpp.operator.Operator;
 import org.apache.iotdb.db.mpp.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.operator.process.LimitOperator;
 import org.apache.iotdb.db.mpp.operator.process.TimeJoinOperator;
+import org.apache.iotdb.db.mpp.operator.source.DataSourceOperator;
+import org.apache.iotdb.db.mpp.operator.source.ExchangeOperator;
 import org.apache.iotdb.db.mpp.operator.source.SeriesScanOperator;
-import org.apache.iotdb.db.mpp.operator.source.SourceOperator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.AggregateNode;
@@ -54,7 +56,6 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.sink.FragmentSinkNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregateScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
-import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
@@ -84,7 +85,7 @@ public class LocalExecutionPlanner {
       PlanNode plan,
       FragmentInstanceContext instanceContext,
       Filter timeFilter,
-      VirtualStorageGroupProcessor dataRegion) {
+      DataRegion dataRegion) {
     LocalExecutionPlanContext context = new LocalExecutionPlanContext(instanceContext);
 
     Operator root = plan.accept(new Visitor(), context);
@@ -134,6 +135,7 @@ public class LocalExecutionPlanner {
 
       SeriesScanOperator seriesScanOperator =
           new SeriesScanOperator(
+              node.getPlanNodeId(),
               seriesPath,
               node.getAllSensors(),
               seriesPath.getSeriesType(),
@@ -228,9 +230,26 @@ public class LocalExecutionPlanner {
 
     @Override
     public Operator visitExchange(ExchangeNode node, LocalExecutionPlanContext context) {
+      OperatorContext operatorContext =
+          context.instanceContext.addOperatorContext(
+              context.getNextOperatorId(),
+              node.getPlanNodeId(),
+              SeriesScanOperator.class.getSimpleName());
+      FragmentInstanceId localInstanceId = context.instanceContext.getId();
+      FragmentInstanceId remoteInstanceId = node.getUpstreamInstanceId();
+      Endpoint source = node.getUpstreamEndpoint();
 
-      // TODO(jackie tien) create SourceHandle here
-      return super.visitExchange(node, context);
+      try {
+        ISourceHandle sourceHandle =
+            DATA_BLOCK_MANAGER.createSourceHandle(
+                localInstanceId.toThrift(),
+                node.getPlanNodeId().getId(),
+                source.getIp(),
+                remoteInstanceId.toThrift());
+        return new ExchangeOperator(operatorContext, sourceHandle, node.getUpstreamPlanNodeId());
+      } catch (IOException e) {
+        throw new RuntimeException("Error happened while creating source handle", e);
+      }
     }
 
     @Override
@@ -242,15 +261,9 @@ public class LocalExecutionPlanner {
       try {
         ISinkHandle sinkHandle =
             DATA_BLOCK_MANAGER.createSinkHandle(
-                new TFragmentInstanceId(
-                    localInstanceId.getQueryId().getId(),
-                    String.valueOf(localInstanceId.getFragmentId().getId()),
-                    localInstanceId.getInstanceId()),
+                localInstanceId.toThrift(),
                 target.getIp(),
-                new TFragmentInstanceId(
-                    targetInstanceId.getQueryId().getId(),
-                    String.valueOf(targetInstanceId.getFragmentId().getId()),
-                    targetInstanceId.getInstanceId()),
+                targetInstanceId.toThrift(),
                 node.getDownStreamPlanNodeId().getId());
         context.setSinkHandle(sinkHandle);
         return child;
@@ -270,7 +283,7 @@ public class LocalExecutionPlanner {
   private static class LocalExecutionPlanContext {
     private final FragmentInstanceContext instanceContext;
     private final List<PartialPath> paths;
-    private final List<SourceOperator> sourceOperators;
+    private final List<DataSourceOperator> sourceOperators;
     private ISinkHandle sinkHandle;
 
     private int nextOperatorId = 0;
@@ -289,7 +302,7 @@ public class LocalExecutionPlanner {
       return paths;
     }
 
-    public List<SourceOperator> getSourceOperators() {
+    public List<DataSourceOperator> getSourceOperators() {
       return sourceOperators;
     }
 
@@ -297,7 +310,7 @@ public class LocalExecutionPlanner {
       paths.add(path);
     }
 
-    public void addSourceOperator(SourceOperator sourceOperator) {
+    public void addSourceOperator(DataSourceOperator sourceOperator) {
       sourceOperators.add(sourceOperator);
     }
 

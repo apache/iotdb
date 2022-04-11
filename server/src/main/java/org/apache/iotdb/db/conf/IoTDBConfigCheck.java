@@ -88,8 +88,10 @@ public class IoTDBConfigCheck {
   private static String maxDegreeOfIndexNode =
       String.valueOf(TSFileDescriptor.getInstance().getConfig().getMaxDegreeOfIndexNode());
 
+  private static final String DATA_REGION_NUM = "data_region_num";
+  // for upgrading from old file
   private static final String VIRTUAL_STORAGE_GROUP_NUM = "virtual_storage_group_num";
-  private static String virtualStorageGroupNum = String.valueOf(config.getVirtualStorageGroupNum());
+  private static String dataRegionNum = String.valueOf(config.getDataRegionNum());
 
   private static final String ENABLE_ID_TABLE = "enable_id_table";
   private static String enableIDTable = String.valueOf(config.isEnableIDTable());
@@ -155,7 +157,7 @@ public class IoTDBConfigCheck {
     systemProperties.put(TAG_ATTRIBUTE_SIZE_STRING, tagAttributeTotalSize);
     systemProperties.put(TAG_ATTRIBUTE_FLUSH_INTERVAL, tagAttributeFlushInterval);
     systemProperties.put(MAX_DEGREE_OF_INDEX_STRING, maxDegreeOfIndexNode);
-    systemProperties.put(VIRTUAL_STORAGE_GROUP_NUM, virtualStorageGroupNum);
+    systemProperties.put(DATA_REGION_NUM, dataRegionNum);
     systemProperties.put(TIME_ENCODER_KEY, timeEncoderValue);
     systemProperties.put(ENABLE_ID_TABLE, enableIDTable);
     systemProperties.put(ENABLE_ID_TABLE_LOG_FILE, enableIdTableLogFile);
@@ -252,7 +254,7 @@ public class IoTDBConfigCheck {
     }
   }
 
-  /** upgrade 0.12 properties to 0.13 properties */
+  /** upgrade 0.12 or 0.13 properties to 0.14 properties */
   private void upgradePropertiesFile() throws IOException {
     // create an empty tmpPropertiesFile
     if (tmpPropertiesFile.createNewFile()) {
@@ -270,6 +272,9 @@ public class IoTDBConfigCheck {
             }
           });
       properties.setProperty(IOTDB_VERSION_STRING, IoTDBConstant.VERSION);
+      // rename virtual_storage_group_num to data_region_num
+      properties.setProperty(DATA_REGION_NUM, properties.getProperty(VIRTUAL_STORAGE_GROUP_NUM));
+      properties.remove(VIRTUAL_STORAGE_GROUP_NUM);
       properties.store(tmpFOS, SYSTEM_PROPERTIES_STRING);
 
       // upgrade finished, delete old system.properties file
@@ -346,8 +351,8 @@ public class IoTDBConfigCheck {
       throwException(MAX_DEGREE_OF_INDEX_STRING, maxDegreeOfIndexNode);
     }
 
-    if (!(properties.getProperty(VIRTUAL_STORAGE_GROUP_NUM).equals(virtualStorageGroupNum))) {
-      throwException(VIRTUAL_STORAGE_GROUP_NUM, virtualStorageGroupNum);
+    if (!(properties.getProperty(DATA_REGION_NUM).equals(dataRegionNum))) {
+      throwException(DATA_REGION_NUM, dataRegionNum);
     }
 
     if (!(properties.getProperty(TIME_ENCODER_KEY).equals(timeEncoderValue))) {

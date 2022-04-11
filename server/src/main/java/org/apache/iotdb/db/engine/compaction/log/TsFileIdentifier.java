@@ -31,7 +31,7 @@ import java.io.File;
  */
 public class TsFileIdentifier {
   private final String logicalStorageGroupName;
-  private final String virtualStorageGroupId;
+  private final String dataRegionId;
   private final String timePartitionId;
   private final boolean sequence;
   private final String filename;
@@ -39,30 +39,30 @@ public class TsFileIdentifier {
   // Notice: Do not change the offset of info
   public static final int FILE_NAME_OFFSET_IN_PATH = 1;
   public static final int TIME_PARTITION_OFFSET_IN_PATH = 2;
-  public static final int VIRTUAL_SG_OFFSET_IN_PATH = 3;
+  public static final int DATA_REGION_OFFSET_IN_PATH = 3;
   public static final int LOGICAL_SG_OFFSET_IN_PATH = 4;
   public static final int SEQUENCE_OFFSET_IN_PATH = 5;
 
   public static final int SEQUENCE_OFFSET_IN_LOG = 0;
   public static final int LOGICAL_SG_OFFSET_IN_LOG = 1;
-  public static final int VIRTUAL_SG_OFFSET_IN_LOG = 2;
+  public static final int DATA_REGION_OFFSET_IN_LOG = 2;
   public static final int TIME_PARTITION_OFFSET_IN_LOG = 3;
   public static final int FILE_NAME_OFFSET_IN_LOG = 4;
 
   private static final int LOGICAL_SG_OFFSET_IN_LOG_FROM_OLD = 0;
-  private static final int VIRTUAL_SG_OFFSET_IN_LOG_FROM_OLD = 1;
+  private static final int DATA_REGION_OFFSET_IN_LOG_FROM_OLD = 1;
   private static final int TIME_PARTITION_OFFSET_IN_LOG_FROM_OLD = 2;
   private static final int FILE_NAME_OFFSET_IN_LOG_FROM_OLD = 3;
   private static final int SEQUENCE_OFFSET_IN_LOG_FROM_OLD = 4;
 
   private TsFileIdentifier(
       String logicalStorageGroupName,
-      String virtualStorageGroupId,
+      String dataRegionId,
       String timePartitionId,
       boolean sequence,
       String filename) {
     this.logicalStorageGroupName = logicalStorageGroupName;
-    this.virtualStorageGroupId = virtualStorageGroupId;
+    this.dataRegionId = dataRegionId;
     this.timePartitionId = timePartitionId;
     this.sequence = sequence;
     this.filename = filename;
@@ -92,7 +92,7 @@ public class TsFileIdentifier {
 
     return new TsFileIdentifier(
         splittedPath[length - LOGICAL_SG_OFFSET_IN_PATH],
-        splittedPath[length - VIRTUAL_SG_OFFSET_IN_PATH],
+        splittedPath[length - DATA_REGION_OFFSET_IN_PATH],
         splittedPath[length - TIME_PARTITION_OFFSET_IN_PATH],
         splittedPath[length - SEQUENCE_OFFSET_IN_PATH].equals(IoTDBConstant.SEQUENCE_FLODER_NAME),
         splittedPath[length - FILE_NAME_OFFSET_IN_PATH]);
@@ -112,7 +112,7 @@ public class TsFileIdentifier {
     }
     return new TsFileIdentifier(
         splittedFileInfo[LOGICAL_SG_OFFSET_IN_LOG],
-        splittedFileInfo[VIRTUAL_SG_OFFSET_IN_LOG],
+        splittedFileInfo[DATA_REGION_OFFSET_IN_LOG],
         splittedFileInfo[TIME_PARTITION_OFFSET_IN_LOG],
         splittedFileInfo[SEQUENCE_OFFSET_IN_LOG].equals("sequence"),
         splittedFileInfo[FILE_NAME_OFFSET_IN_LOG]);
@@ -135,7 +135,7 @@ public class TsFileIdentifier {
     }
     return new TsFileIdentifier(
         splittedFileInfo[LOGICAL_SG_OFFSET_IN_LOG_FROM_OLD],
-        splittedFileInfo[VIRTUAL_SG_OFFSET_IN_LOG_FROM_OLD],
+        splittedFileInfo[DATA_REGION_OFFSET_IN_LOG_FROM_OLD],
         splittedFileInfo[TIME_PARTITION_OFFSET_IN_LOG_FROM_OLD],
         splittedFileInfo[SEQUENCE_OFFSET_IN_LOG_FROM_OLD].equals("true")
             || splittedFileInfo[SEQUENCE_OFFSET_IN_LOG_FROM_OLD].equals("sequence"),
@@ -150,7 +150,7 @@ public class TsFileIdentifier {
         INFO_SEPARATOR,
         logicalStorageGroupName,
         INFO_SEPARATOR,
-        virtualStorageGroupId,
+        dataRegionId,
         INFO_SEPARATOR,
         timePartitionId,
         INFO_SEPARATOR,
@@ -165,7 +165,7 @@ public class TsFileIdentifier {
     TsFileIdentifier otherInfo = (TsFileIdentifier) other;
     return otherInfo.sequence == this.sequence
         && otherInfo.logicalStorageGroupName.equals(this.logicalStorageGroupName)
-        && otherInfo.virtualStorageGroupId.equals(this.virtualStorageGroupId)
+        && otherInfo.dataRegionId.equals(this.dataRegionId)
         && otherInfo.timePartitionId.equals(this.timePartitionId)
         && otherInfo.filename.equals(this.filename);
   }
@@ -181,7 +181,7 @@ public class TsFileIdentifier {
             + File.separator
             + logicalStorageGroupName
             + File.separator
-            + virtualStorageGroupId
+            + dataRegionId
             + File.separator
             + timePartitionId
             + File.separator
@@ -204,7 +204,7 @@ public class TsFileIdentifier {
         + File.separator
         + logicalStorageGroupName
         + File.separator
-        + virtualStorageGroupId
+        + dataRegionId
         + File.separator
         + timePartitionId
         + File.separator
@@ -215,8 +215,8 @@ public class TsFileIdentifier {
     return logicalStorageGroupName;
   }
 
-  public String getVirtualStorageGroupId() {
-    return virtualStorageGroupId;
+  public String getDataRegionId() {
+    return dataRegionId;
   }
 
   public String getTimePartitionId() {

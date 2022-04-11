@@ -197,9 +197,6 @@ public class IoTDBConfig {
   private long deleteWalFilesPeriodInMs = 10 * 60 * 1000;
   // endregion
 
-  /** Unit: byte */
-  private int estimatedSeriesSize = 300;
-
   /**
    * Size of log buffer for every MetaData operation. If the size of a MetaData operation plan is
    * larger than this parameter, then the MetaData operation plan will be rejected by SchemaRegion.
@@ -467,7 +464,7 @@ public class IoTDBConfig {
   private boolean enableMonitorSeriesWrite = false;
 
   /** Cache size of {@code checkAndGetDataTypeCache} in {@link LocalSchemaProcessor}. */
-  private int schemaRegionCacheSize = 10000;
+  private int schemaRegionDeviceNodeCacheSize = 10000;
 
   /** Cache size of {@code checkAndGetDataTypeCache} in {@link LocalSchemaProcessor}. */
   private int mRemoteSchemaCacheSize = 100000;
@@ -793,8 +790,8 @@ public class IoTDBConfig {
   /** the size of ioTaskQueue */
   private int ioTaskQueueSizeForFlushing = 10;
 
-  /** the number of virtual storage groups per user-defined storage group */
-  private int virtualStorageGroupNum = 1;
+  /** the number of data regions per user-defined storage group */
+  private int dataRegionNum = 1;
 
   /** the interval to log recover progress of each vsg when starting iotdb */
   private long recoveryLogIntervalInMs = 5_000L;
@@ -822,6 +819,21 @@ public class IoTDBConfig {
 
   /** Encryption provided class parameter */
   private String encryptDecryptProviderParameter;
+
+  /** whether to use persistent schema mode */
+  private String schemaEngineMode = "Memory";
+
+  /** the memory used for metadata cache when using persistent schema */
+  private int cachedMNodeSizeInSchemaFileMode = -1;
+
+  /** the max num of thread used for flushing metadata to schema file */
+  private int maxSchemaFlushThreadNum = 15;
+
+  /** the minimum size (in bytes) of segment inside a schema file page */
+  private short minimumSegmentInSchemaFile = 0;
+
+  /** cache size for pages in one schema file */
+  private int pageCacheSizeInSchemaFile = 1024;
 
   /**
    * Ip and port of config nodes. each one is a {internalIp | domain name}:{meta port} string tuple.
@@ -1282,12 +1294,12 @@ public class IoTDBConfig {
     this.rpcMaxConcurrentClientNum = rpcMaxConcurrentClientNum;
   }
 
-  public int getSchemaRegionCacheSize() {
-    return schemaRegionCacheSize;
+  public int getSchemaRegionDeviceNodeCacheSize() {
+    return schemaRegionDeviceNodeCacheSize;
   }
 
-  void setSchemaRegionCacheSize(int schemaRegionCacheSize) {
-    this.schemaRegionCacheSize = schemaRegionCacheSize;
+  void setSchemaRegionDeviceNodeCacheSize(int schemaRegionDeviceNodeCacheSize) {
+    this.schemaRegionDeviceNodeCacheSize = schemaRegionDeviceNodeCacheSize;
   }
 
   public int getmRemoteSchemaCacheSize() {
@@ -1484,14 +1496,6 @@ public class IoTDBConfig {
     this.deleteWalFilesPeriodInMs = deleteWalFilesPeriodInMs;
   }
 
-  public int getEstimatedSeriesSize() {
-    return estimatedSeriesSize;
-  }
-
-  public void setEstimatedSeriesSize(int estimatedSeriesSize) {
-    this.estimatedSeriesSize = estimatedSeriesSize;
-  }
-
   public boolean isChunkBufferPoolEnable() {
     return chunkBufferPoolEnable;
   }
@@ -1568,7 +1572,7 @@ public class IoTDBConfig {
     return allocateMemoryForSchema;
   }
 
-  void setAllocateMemoryForSchema(long allocateMemoryForSchema) {
+  public void setAllocateMemoryForSchema(long allocateMemoryForSchema) {
     this.allocateMemoryForSchema = allocateMemoryForSchema;
   }
 
@@ -2342,12 +2346,12 @@ public class IoTDBConfig {
     this.defaultIndexWindowRange = defaultIndexWindowRange;
   }
 
-  public int getVirtualStorageGroupNum() {
-    return virtualStorageGroupNum;
+  public int getDataRegionNum() {
+    return dataRegionNum;
   }
 
-  public void setVirtualStorageGroupNum(int virtualStorageGroupNum) {
-    this.virtualStorageGroupNum = virtualStorageGroupNum;
+  public void setDataRegionNum(int dataRegionNum) {
+    this.dataRegionNum = dataRegionNum;
   }
 
   public long getRecoveryLogIntervalInMs() {
@@ -2615,6 +2619,46 @@ public class IoTDBConfig {
 
   public void setEncryptDecryptProviderParameter(String encryptDecryptProviderParameter) {
     this.encryptDecryptProviderParameter = encryptDecryptProviderParameter;
+  }
+
+  public String getSchemaEngineMode() {
+    return schemaEngineMode;
+  }
+
+  public void setSchemaEngineMode(String schemaEngineMode) {
+    this.schemaEngineMode = schemaEngineMode;
+  }
+
+  public int getCachedMNodeSizeInSchemaFileMode() {
+    return cachedMNodeSizeInSchemaFileMode;
+  }
+
+  public void setCachedMNodeSizeInSchemaFileMode(int cachedMNodeSizeInSchemaFileMode) {
+    this.cachedMNodeSizeInSchemaFileMode = cachedMNodeSizeInSchemaFileMode;
+  }
+
+  public int getMaxSchemaFlushThreadNum() {
+    return maxSchemaFlushThreadNum;
+  }
+
+  public void setMaxSchemaFlushThreadNum(int maxSchemaFlushThreadNum) {
+    this.maxSchemaFlushThreadNum = maxSchemaFlushThreadNum;
+  }
+
+  public short getMinimumSegmentInSchemaFile() {
+    return minimumSegmentInSchemaFile;
+  }
+
+  public void setMinimumSegmentInSchemaFile(short minimumSegmentInSchemaFile) {
+    this.minimumSegmentInSchemaFile = minimumSegmentInSchemaFile;
+  }
+
+  public int getPageCacheSizeInSchemaFile() {
+    return pageCacheSizeInSchemaFile;
+  }
+
+  public void setPageCacheSizeInSchemaFile(int pageCacheSizeInSchemaFile) {
+    this.pageCacheSizeInSchemaFile = pageCacheSizeInSchemaFile;
   }
 
   public List<String> getConfigNodeUrls() {

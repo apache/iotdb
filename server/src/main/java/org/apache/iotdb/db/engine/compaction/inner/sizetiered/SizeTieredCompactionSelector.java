@@ -61,7 +61,7 @@ public class SizeTieredCompactionSelector
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   protected String logicalStorageGroupName;
-  protected String virtualStorageGroupName;
+  protected String dataRegionId;
   protected long timePartition;
   protected List<TsFileResource> tsFileResources;
   protected TsFileManager tsFileManager;
@@ -69,12 +69,12 @@ public class SizeTieredCompactionSelector
 
   public SizeTieredCompactionSelector(
       String logicalStorageGroupName,
-      String virtualStorageGroupName,
+      String dataRegionId,
       long timePartition,
       TsFileManager tsFileManager,
       boolean sequence) {
     this.logicalStorageGroupName = logicalStorageGroupName;
-    this.virtualStorageGroupName = virtualStorageGroupName;
+    this.dataRegionId = dataRegionId;
     this.timePartition = timePartition;
     this.tsFileManager = tsFileManager;
     this.sequence = sequence;
@@ -110,7 +110,7 @@ public class SizeTieredCompactionSelector
         taskList.add(
             new InnerSpaceCompactionTask(
                 logicalStorageGroupName,
-                virtualStorageGroupName,
+                dataRegionId,
                 timePartition,
                 tsFileManager,
                 resources,

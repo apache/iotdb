@@ -60,7 +60,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
 
   public InnerSpaceCompactionTask(
       String logicalStorageGroupName,
-      String virtualStorageGroupName,
+      String dataRegionId,
       long timePartition,
       TsFileManager tsFileManager,
       List<TsFileResource> selectedTsFileResourceList,
@@ -68,10 +68,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       ICompactionPerformer performer,
       AtomicInteger currentTaskNum) {
     super(
-        logicalStorageGroupName + "-" + virtualStorageGroupName,
-        timePartition,
-        tsFileManager,
-        currentTaskNum);
+        logicalStorageGroupName + "-" + dataRegionId, timePartition, tsFileManager, currentTaskNum);
     this.selectedTsFileResourceList = selectedTsFileResourceList;
     this.sequence = sequence;
     this.performer = performer;

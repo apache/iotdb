@@ -46,7 +46,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   protected String logicalStorageGroupName;
-  protected String virtualGroupId;
+  protected String dataRegionId;
   protected String storageGroupDir;
   protected long timePartition;
   protected TsFileManager tsFileManager;
@@ -55,13 +55,13 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
 
   public RewriteCrossSpaceCompactionSelector(
       String logicalStorageGroupName,
-      String virtualStorageGroupId,
+      String dataRegionId,
       String storageGroupDir,
       long timePartition,
       TsFileManager tsFileManager) {
     this.storageGroupDir = storageGroupDir;
     this.logicalStorageGroupName = logicalStorageGroupName;
-    this.virtualGroupId = virtualStorageGroupId;
+    this.dataRegionId = dataRegionId;
     this.timePartition = timePartition;
     this.tsFileManager = tsFileManager;
     this.sequenceFileList = tsFileManager.getSequenceListByTimePartition(timePartition);
@@ -124,13 +124,13 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       if (mergeFiles[0].size() > 0 && mergeFiles[1].size() > 0) {
         LOGGER.info(
             "{} [Compaction] submit a task with {} sequence file and {} unseq files",
-            logicalStorageGroupName + "-" + virtualGroupId,
+            logicalStorageGroupName + "-" + dataRegionId,
             mergeResource.getSeqFiles().size(),
             mergeResource.getUnseqFiles().size());
         return Collections.singletonList(
             new CrossSpaceCompactionTask(
                 logicalStorageGroupName,
-                virtualGroupId,
+                dataRegionId,
                 timePartition,
                 tsFileManager,
                 mergeFiles[0],
