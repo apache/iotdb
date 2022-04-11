@@ -57,10 +57,6 @@ public class ValuePageReader {
 
   private int deleteCursor = 0;
 
-  public ValuePageReader(ByteBuffer pageData, TSDataType dataType, Decoder valueDecoder) {
-    this(null, pageData, dataType, valueDecoder);
-  }
-
   public ValuePageReader(
       PageHeader pageHeader, ByteBuffer pageData, TSDataType dataType, Decoder valueDecoder) {
     this.dataType = dataType;
@@ -73,12 +69,19 @@ public class ValuePageReader {
   }
 
   private void splitDataToBitmapAndValue(ByteBuffer pageData) {
+    if (!pageData.hasRemaining()) { // Empty Page
+      return;
+    }
     this.size = ReadWriteIOUtils.readInt(pageData);
     this.bitmap = new byte[(size + 7) / 8];
     pageData.get(bitmap);
     this.valueBuffer = pageData.slice();
   }
 
+  /**
+   * return a BatchData with the corresponding timeBatch, the BatchData's dataType is same as this
+   * sub sensor
+   */
   public BatchData nextBatch(long[] timeBatch, boolean ascending, Filter filter) {
     BatchData pageData = BatchDataFactory.createBatchData(dataType, ascending, false);
     for (int i = 0; i < timeBatch.length; i++) {
@@ -130,6 +133,59 @@ public class ValuePageReader {
     return pageData.flip();
   }
 
+  public TsPrimitiveType nextValue(long timestamp, int timeIndex) {
+    TsPrimitiveType resultValue = null;
+    if (valueBuffer == null || ((bitmap[timeIndex / 8] & 0xFF) & (MASK >>> (timeIndex % 8))) == 0) {
+      return null;
+    }
+    switch (dataType) {
+      case BOOLEAN:
+        boolean aBoolean = valueDecoder.readBoolean(valueBuffer);
+        if (!isDeleted(timestamp)) {
+          resultValue = new TsPrimitiveType.TsBoolean(aBoolean);
+        }
+        break;
+      case INT32:
+        int anInt = valueDecoder.readInt(valueBuffer);
+        if (!isDeleted(timestamp)) {
+          resultValue = new TsPrimitiveType.TsInt(anInt);
+        }
+        break;
+      case INT64:
+        long aLong = valueDecoder.readLong(valueBuffer);
+        if (!isDeleted(timestamp)) {
+          resultValue = new TsPrimitiveType.TsLong(aLong);
+        }
+        break;
+      case FLOAT:
+        float aFloat = valueDecoder.readFloat(valueBuffer);
+        if (!isDeleted(timestamp)) {
+          resultValue = new TsPrimitiveType.TsFloat(aFloat);
+        }
+        break;
+      case DOUBLE:
+        double aDouble = valueDecoder.readDouble(valueBuffer);
+        if (!isDeleted(timestamp)) {
+          resultValue = new TsPrimitiveType.TsDouble(aDouble);
+        }
+        break;
+      case TEXT:
+        Binary aBinary = valueDecoder.readBinary(valueBuffer);
+        if (!isDeleted(timestamp)) {
+          resultValue = new TsPrimitiveType.TsBinary(aBinary);
+        }
+        break;
+      default:
+        throw new UnSupportedDataTypeException(String.valueOf(dataType));
+    }
+
+    return resultValue;
+  }
+
+  /**
+   * return the value array of the corresponding time, if this sub sensor don't have a value in a
+   * time, just fill it with null
+   */
   public TsPrimitiveType[] nextValueBatch(long[] timeBatch) {
     TsPrimitiveType[] valueBatch = new TsPrimitiveType[size];
     if (valueBuffer == null) {

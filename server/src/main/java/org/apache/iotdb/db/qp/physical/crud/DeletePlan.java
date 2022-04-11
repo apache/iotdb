@@ -18,11 +18,17 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
+import org.apache.iotdb.db.engine.storagegroup.DataRegion.TimePartitionFilter;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
+import org.apache.iotdb.db.wal.buffer.WALEntryValue;
+import org.apache.iotdb.db.wal.utils.WALWriteUtils;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -30,14 +36,22 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-public class DeletePlan extends PhysicalPlan {
+public class DeletePlan extends PhysicalPlan implements WALEntryValue {
+  /** byte: type, integer: paths.size(), long: deleteStartTime, deleteEndTime, index */
+  private static final int FIXED_SERIALIZED_SIZE = Byte.BYTES + Integer.BYTES + Long.BYTES * 3;
 
   private long deleteStartTime;
   private long deleteEndTime;
   private List<PartialPath> paths = new ArrayList<>();
+  /**
+   * This deletion only affects those time partitions that evaluate true by the filter. If the
+   * filter is null, all partitions are processed. This is to avoid redundant data deletions when
+   * one timeseries deletion is split and executed into different replication groups.
+   */
+  private TimePartitionFilter partitionFilter;
 
   public DeletePlan() {
-    super(false, Operator.OperatorType.DELETE);
+    super(Operator.OperatorType.DELETE);
   }
 
   /**
@@ -48,7 +62,7 @@ public class DeletePlan extends PhysicalPlan {
    * @param path time series path
    */
   public DeletePlan(long startTime, long endTime, PartialPath path) {
-    super(false, Operator.OperatorType.DELETE);
+    super(Operator.OperatorType.DELETE);
     this.deleteStartTime = startTime;
     this.deleteEndTime = endTime;
     this.paths.add(path);
@@ -62,7 +76,7 @@ public class DeletePlan extends PhysicalPlan {
    * @param paths time series paths in List structure
    */
   public DeletePlan(long startTime, long endTime, List<PartialPath> paths) {
-    super(false, Operator.OperatorType.DELETE);
+    super(Operator.OperatorType.DELETE);
     this.deleteStartTime = startTime;
     this.deleteEndTime = endTime;
     this.paths = paths;
@@ -102,6 +116,14 @@ public class DeletePlan extends PhysicalPlan {
     this.paths = paths;
   }
 
+  public TimePartitionFilter getPartitionFilter() {
+    return partitionFilter;
+  }
+
+  public void setPartitionFilter(TimePartitionFilter partitionFilter) {
+    this.partitionFilter = partitionFilter;
+  }
+
   @Override
   public int hashCode() {
     return Objects.hash(deleteStartTime, deleteEndTime, paths);
@@ -122,6 +144,15 @@ public class DeletePlan extends PhysicalPlan {
   }
 
   @Override
+  public int serializedSize() {
+    int size = FIXED_SERIALIZED_SIZE;
+    for (PartialPath path : paths) {
+      size += ReadWriteIOUtils.sizeToWrite(path.getFullPath());
+    }
+    return size;
+  }
+
+  @Override
   public void serialize(DataOutputStream stream) throws IOException {
     int type = PhysicalPlanType.DELETE.ordinal();
     stream.writeByte((byte) type);
@@ -136,7 +167,7 @@ public class DeletePlan extends PhysicalPlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     int type = PhysicalPlanType.DELETE.ordinal();
     buffer.put((byte) type);
     buffer.putLong(deleteStartTime);
@@ -147,6 +178,32 @@ public class DeletePlan extends PhysicalPlan {
     }
 
     buffer.putLong(index);
+  }
+
+  @Override
+  public void serializeToWAL(IWALByteBufferView buffer) {
+    int type = PhysicalPlanType.DELETE.ordinal();
+    buffer.put((byte) type);
+    buffer.putLong(deleteStartTime);
+    buffer.putLong(deleteEndTime);
+    buffer.putInt(paths.size());
+    for (PartialPath path : paths) {
+      WALWriteUtils.write(path.getFullPath(), buffer);
+    }
+    buffer.putLong(index);
+  }
+
+  @Override
+  public void deserialize(DataInputStream stream) throws IOException, IllegalPathException {
+    this.deleteStartTime = stream.readLong();
+    this.deleteEndTime = stream.readLong();
+    int pathSize = stream.readInt();
+    this.paths = new ArrayList<>();
+    for (int i = 0; i < pathSize; i++) {
+      paths.add(new PartialPath(ReadWriteIOUtils.readString(stream)));
+    }
+
+    this.index = stream.readLong();
   }
 
   @Override

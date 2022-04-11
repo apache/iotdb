@@ -19,14 +19,16 @@
 package org.apache.iotdb.db.engine.memtable;
 
 import org.apache.iotdb.db.utils.datastructure.TVList;
+import org.apache.iotdb.db.wal.buffer.WALEntryValue;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
+import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.List;
 
-public interface IWritableMemChunk {
+public interface IWritableMemChunk extends WALEntryValue {
 
   void putLong(long t, long v);
 
@@ -40,27 +42,42 @@ public interface IWritableMemChunk {
 
   void putBoolean(long t, boolean v);
 
-  void putVector(long t, Object[] v);
+  void putAlignedValue(long t, Object[] v, int[] columnIndexArray);
 
-  void putLongs(long[] t, BitMap bitMap, long[] v, int start, int end);
+  void putLongs(long[] t, long[] v, BitMap bitMap, int start, int end);
 
-  void putInts(long[] t, BitMap bitMap, int[] v, int start, int end);
+  void putInts(long[] t, int[] v, BitMap bitMap, int start, int end);
 
-  void putFloats(long[] t, BitMap bitMap, float[] v, int start, int end);
+  void putFloats(long[] t, float[] v, BitMap bitMap, int start, int end);
 
-  void putDoubles(long[] t, BitMap bitMap, double[] v, int start, int end);
+  void putDoubles(long[] t, double[] v, BitMap bitMap, int start, int end);
 
-  void putBinaries(long[] t, BitMap bitMap, Binary[] v, int start, int end);
+  void putBinaries(long[] t, Binary[] v, BitMap bitMap, int start, int end);
 
-  void putBooleans(long[] t, BitMap bitMap, boolean[] v, int start, int end);
+  void putBooleans(long[] t, boolean[] v, BitMap bitMap, int start, int end);
 
-  void putVectors(long[] t, BitMap[] bitMaps, Object[] v, int start, int end);
+  void putAlignedValues(
+      long[] t, Object[] v, BitMap[] bitMaps, int[] columnIndexArray, int start, int end);
 
   void write(long insertTime, Object objectValue);
 
-  /** [start, end) */
+  void writeAlignedValue(
+      long insertTime, Object[] objectValue, List<IMeasurementSchema> schemaList);
+
+  /**
+   * write data in the range [start, end). Null value in the valueList will be replaced by the
+   * subsequent non-null value, e.g., {1, null, 3, null, 5} will be {1, 3, 5, null, 5}
+   */
   void write(
-      long[] times, Object bitMaps, Object valueList, TSDataType dataType, int start, int end);
+      long[] times, Object valueList, BitMap bitMap, TSDataType dataType, int start, int end);
+
+  void writeAlignedValues(
+      long[] times,
+      Object[] valueList,
+      BitMap[] bitMaps,
+      List<IMeasurementSchema> schemaList,
+      int start,
+      int end);
 
   long count();
 
@@ -78,6 +95,8 @@ public interface IWritableMemChunk {
    *
    * <p>the mechanism is just like copy on write
    *
+   * <p>This interface should be synchronized for concurrent with sortTvListForFlush
+   *
    * @return sorted tv list
    */
   TVList getSortedTvListForQuery();
@@ -87,18 +106,19 @@ public interface IWritableMemChunk {
    *
    * <p>the mechanism is just like copy on write
    *
-   * @param columnIndexList indices of queried columns in the full VectorTVList
+   * <p>This interface should be synchronized for concurrent with sortTvListForFlush
+   *
    * @return sorted tv list
    */
-  TVList getSortedTvListForQuery(List<Integer> columnIndexList);
+  TVList getSortedTvListForQuery(List<IMeasurementSchema> schemaList);
 
   /**
    * served for flush requests. The logic is just same as getSortedTVListForQuery, but without add
    * reference count
    *
-   * @return sorted tv list
+   * <p>This interface should be synchronized for concurrent with getSortedTvListForQuery
    */
-  TVList getSortedTvListForFlush();
+  void sortTvListForFlush();
 
   default TVList getTVList() {
     return null;
@@ -111,6 +131,13 @@ public interface IWritableMemChunk {
   /** @return how many points are deleted */
   int delete(long lowerBound, long upperBound);
 
-  // For delete one column in the vector
-  int delete(long lowerBound, long upperBound, int columnIndex);
+  IChunkWriter createIChunkWriter();
+
+  void encode(IChunkWriter chunkWriter);
+
+  void release();
+
+  long getFirstPoint();
+
+  long getLastPoint();
 }

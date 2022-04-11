@@ -18,22 +18,24 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.BatchPlan;
 import org.apache.iotdb.db.utils.StatusUtils;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 public class InsertRowsPlan extends InsertPlan implements BatchPlan {
 
@@ -57,6 +59,9 @@ public class InsertRowsPlan extends InsertPlan implements BatchPlan {
   /** record the result of insert rows */
   private Map<Integer, TSStatus> results = new HashMap<>();
 
+  private List<PartialPath> paths;
+  private List<PartialPath> prefixPaths;
+
   public InsertRowsPlan() {
     super(OperatorType.BATCH_INSERT_ROWS);
     insertRowPlanList = new ArrayList<>();
@@ -76,11 +81,27 @@ public class InsertRowsPlan extends InsertPlan implements BatchPlan {
 
   @Override
   public List<PartialPath> getPaths() {
-    List<PartialPath> result = new ArrayList<>();
-    for (InsertRowPlan insertRowPlan : insertRowPlanList) {
-      result.addAll(insertRowPlan.getPaths());
+    if (paths != null) {
+      return paths;
     }
-    return result;
+    Set<PartialPath> pathSet = new HashSet<>();
+    for (InsertRowPlan plan : insertRowPlanList) {
+      pathSet.addAll(plan.getPaths());
+    }
+    paths = new ArrayList<>(pathSet);
+    return paths;
+  }
+
+  @Override
+  public List<PartialPath> getPrefixPaths() {
+    if (prefixPaths != null) {
+      return prefixPaths;
+    }
+    prefixPaths = new ArrayList<>(insertRowPlanList.size());
+    for (InsertRowPlan insertRowPlan : insertRowPlanList) {
+      prefixPaths.add(insertRowPlan.getDevicePath());
+    }
+    return prefixPaths;
   }
 
   @Override
@@ -147,7 +168,7 @@ public class InsertRowsPlan extends InsertPlan implements BatchPlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     int type = PhysicalPlanType.BATCH_INSERT_ROWS.ordinal();
     buffer.put((byte) type);
     buffer.putInt(insertRowPlanList.size());
@@ -197,6 +218,7 @@ public class InsertRowsPlan extends InsertPlan implements BatchPlan {
     }
   }
 
+  @Override
   public Map<Integer, TSStatus> getResults() {
     return results;
   }
@@ -219,7 +241,7 @@ public class InsertRowsPlan extends InsertPlan implements BatchPlan {
   }
 
   public PartialPath getFirstDeviceId() {
-    return insertRowPlanList.get(0).getDeviceId();
+    return insertRowPlanList.get(0).getDevicePath();
   }
 
   @Override

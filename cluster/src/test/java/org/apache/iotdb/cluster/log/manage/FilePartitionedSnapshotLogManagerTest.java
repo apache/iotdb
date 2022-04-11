@@ -32,7 +32,7 @@ import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -41,6 +41,7 @@ import org.junit.After;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -91,7 +92,12 @@ public class FilePartitionedSnapshotLogManagerTest extends IoTDBTest {
       PlanExecutor executor = new PlanExecutor();
       executor.processNonQuery(plan);
 
-      manager.takeSnapshot();
+      List<Integer> requireSlots = new ArrayList<>();
+      ((SlotPartitionTable) manager.partitionTable)
+          .getAllNodeSlots()
+          .values()
+          .forEach(requireSlots::addAll);
+      manager.takeSnapshotForSpecificSlots(requireSlots, true);
       PartitionedSnapshot snapshot = (PartitionedSnapshot) manager.getSnapshot();
       for (int i = 1; i < 4; i++) {
         FileSnapshot fileSnapshot =

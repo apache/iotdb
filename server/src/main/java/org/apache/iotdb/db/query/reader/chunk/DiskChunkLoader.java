@@ -20,29 +20,40 @@
 package org.apache.iotdb.db.query.reader.chunk;
 
 import org.apache.iotdb.db.engine.cache.ChunkCache;
-import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.reader.IChunkReader;
+import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 
 import java.io.IOException;
 
 /** To read one chunk from disk, and only used in iotdb server module */
 public class DiskChunkLoader implements IChunkLoader {
 
-  private final QueryContext context;
+  private final boolean debug;
 
-  public DiskChunkLoader(QueryContext context) {
-    this.context = context;
+  public DiskChunkLoader(boolean debug) {
+    this.debug = debug;
   }
 
   @Override
   public Chunk loadChunk(ChunkMetadata chunkMetaData) throws IOException {
-    return ChunkCache.getInstance().get(chunkMetaData, context.isDebug());
+    return ChunkCache.getInstance().get(chunkMetaData, debug);
   }
 
   @Override
   public void close() {
     // do nothing
+  }
+
+  @Override
+  public IChunkReader getChunkReader(IChunkMetadata chunkMetaData, Filter timeFilter)
+      throws IOException {
+    Chunk chunk = ChunkCache.getInstance().get((ChunkMetadata) chunkMetaData, debug);
+    chunk.setFromOldFile(chunkMetaData.isFromOldTsFile());
+    return new ChunkReader(chunk, timeFilter);
   }
 }

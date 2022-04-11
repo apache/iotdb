@@ -74,60 +74,73 @@ public class DatetimeQueryDataSetUtilsTest {
   /** Test time precision is ms. */
   @Test
   public void convertDurationStrToLongTest1() {
-    Assert.assertEquals(7000L, DatetimeUtils.convertDurationStrToLong(7, "s", "ms"));
-    Assert.assertEquals(420000L, DatetimeUtils.convertDurationStrToLong(7, "m", "ms"));
-    Assert.assertEquals(25200000L, DatetimeUtils.convertDurationStrToLong(7, "h", "ms"));
-    Assert.assertEquals(604800000L, DatetimeUtils.convertDurationStrToLong(7, "d", "ms"));
-    Assert.assertEquals(4233600000L, DatetimeUtils.convertDurationStrToLong(7, "w", "ms"));
-    Assert.assertEquals(18144000000L, DatetimeUtils.convertDurationStrToLong(7, "mo", "ms"));
-    Assert.assertEquals(220752000000L, DatetimeUtils.convertDurationStrToLong(7, "y", "ms"));
-    Assert.assertEquals(7L, DatetimeUtils.convertDurationStrToLong(7, "ms", "ms"));
-    Assert.assertEquals(7L, DatetimeUtils.convertDurationStrToLong(7000, "us", "ms"));
-    Assert.assertEquals(7L, DatetimeUtils.convertDurationStrToLong(7000000, "ns", "ms"));
+    Assert.assertEquals(7000L, DatetimeUtils.convertDurationStrToLongForTest(7, "s", "ms"));
+    Assert.assertEquals(420000L, DatetimeUtils.convertDurationStrToLongForTest(7, "m", "ms"));
+    Assert.assertEquals(25200000L, DatetimeUtils.convertDurationStrToLongForTest(7, "h", "ms"));
+    Assert.assertEquals(604800000L, DatetimeUtils.convertDurationStrToLongForTest(7, "d", "ms"));
+    Assert.assertEquals(4233600000L, DatetimeUtils.convertDurationStrToLongForTest(7, "w", "ms"));
+    Assert.assertEquals(18144000000L, DatetimeUtils.convertDurationStrToLongForTest(7, "mo", "ms"));
+    Assert.assertEquals(220752000000L, DatetimeUtils.convertDurationStrToLongForTest(7, "y", "ms"));
+    Assert.assertEquals(7L, DatetimeUtils.convertDurationStrToLongForTest(7, "ms", "ms"));
+    Assert.assertEquals(7L, DatetimeUtils.convertDurationStrToLongForTest(7000, "us", "ms"));
+    Assert.assertEquals(7L, DatetimeUtils.convertDurationStrToLongForTest(7000000, "ns", "ms"));
   }
 
   /** Test time precision is us. */
   @Test
   public void convertDurationStrToLongTest2() {
-    Assert.assertEquals(7000000L, DatetimeUtils.convertDurationStrToLong(7, "s", "us"));
-    Assert.assertEquals(420000000L, DatetimeUtils.convertDurationStrToLong(7, "m", "us"));
-    Assert.assertEquals(25200000000L, DatetimeUtils.convertDurationStrToLong(7, "h", "us"));
-    Assert.assertEquals(604800000000L, DatetimeUtils.convertDurationStrToLong(7, "d", "us"));
-    Assert.assertEquals(4233600000000L, DatetimeUtils.convertDurationStrToLong(7, "w", "us"));
-    Assert.assertEquals(18144000000000L, DatetimeUtils.convertDurationStrToLong(7, "mo", "us"));
-    Assert.assertEquals(220752000000000L, DatetimeUtils.convertDurationStrToLong(7, "y", "us"));
-    Assert.assertEquals(7000L, DatetimeUtils.convertDurationStrToLong(7, "ms", "us"));
-    Assert.assertEquals(7L, DatetimeUtils.convertDurationStrToLong(7, "us", "us"));
-    Assert.assertEquals(7L, DatetimeUtils.convertDurationStrToLong(7000, "ns", "us"));
+    Assert.assertEquals(7000000L, DatetimeUtils.convertDurationStrToLongForTest(7, "s", "us"));
+    Assert.assertEquals(420000000L, DatetimeUtils.convertDurationStrToLongForTest(7, "m", "us"));
+    Assert.assertEquals(25200000000L, DatetimeUtils.convertDurationStrToLongForTest(7, "h", "us"));
+    Assert.assertEquals(604800000000L, DatetimeUtils.convertDurationStrToLongForTest(7, "d", "us"));
+    Assert.assertEquals(
+        4233600000000L, DatetimeUtils.convertDurationStrToLongForTest(7, "w", "us"));
+    Assert.assertEquals(
+        18144000000000L, DatetimeUtils.convertDurationStrToLongForTest(7, "mo", "us"));
+    Assert.assertEquals(
+        220752000000000L, DatetimeUtils.convertDurationStrToLongForTest(7, "y", "us"));
+    Assert.assertEquals(7000L, DatetimeUtils.convertDurationStrToLongForTest(7, "ms", "us"));
+    Assert.assertEquals(7L, DatetimeUtils.convertDurationStrToLongForTest(7, "us", "us"));
+    Assert.assertEquals(7L, DatetimeUtils.convertDurationStrToLongForTest(7000, "ns", "us"));
   }
 
   /** Test time precision is ns. */
   @Test
   public void convertDurationStrToLongTest3() {
-    Assert.assertEquals(7000000000L, DatetimeUtils.convertDurationStrToLong(7, "s", "ns"));
-    Assert.assertEquals(420000000000L, DatetimeUtils.convertDurationStrToLong(7, "m", "ns"));
-    Assert.assertEquals(25200000000000L, DatetimeUtils.convertDurationStrToLong(7, "h", "ns"));
-    Assert.assertEquals(604800000000000L, DatetimeUtils.convertDurationStrToLong(7, "d", "ns"));
-    Assert.assertEquals(4233600000000000L, DatetimeUtils.convertDurationStrToLong(7, "w", "ns"));
-    Assert.assertEquals(18144000000000000L, DatetimeUtils.convertDurationStrToLong(7, "mo", "ns"));
-    Assert.assertEquals(220752000000000000L, DatetimeUtils.convertDurationStrToLong(7, "y", "ns"));
-    Assert.assertEquals(7000000L, DatetimeUtils.convertDurationStrToLong(7, "ms", "ns"));
-    Assert.assertEquals(7000L, DatetimeUtils.convertDurationStrToLong(7, "us", "ns"));
-    Assert.assertEquals(7L, DatetimeUtils.convertDurationStrToLong(7, "ns", "ns"));
+    Assert.assertEquals(7000000000L, DatetimeUtils.convertDurationStrToLongForTest(7, "s", "ns"));
+    Assert.assertEquals(420000000000L, DatetimeUtils.convertDurationStrToLongForTest(7, "m", "ns"));
+    Assert.assertEquals(
+        25200000000000L, DatetimeUtils.convertDurationStrToLongForTest(7, "h", "ns"));
+    Assert.assertEquals(
+        604800000000000L, DatetimeUtils.convertDurationStrToLongForTest(7, "d", "ns"));
+    Assert.assertEquals(
+        4233600000000000L, DatetimeUtils.convertDurationStrToLongForTest(7, "w", "ns"));
+    Assert.assertEquals(
+        18144000000000000L, DatetimeUtils.convertDurationStrToLongForTest(7, "mo", "ns"));
+    Assert.assertEquals(
+        220752000000000000L, DatetimeUtils.convertDurationStrToLongForTest(7, "y", "ns"));
+    Assert.assertEquals(7000000L, DatetimeUtils.convertDurationStrToLongForTest(7, "ms", "ns"));
+    Assert.assertEquals(7000L, DatetimeUtils.convertDurationStrToLongForTest(7, "us", "ns"));
+    Assert.assertEquals(7L, DatetimeUtils.convertDurationStrToLongForTest(7, "ns", "ns"));
   }
 
   @Test
   public void getInstantWithPrecisionTest() {
-    Assert.assertEquals(7000000000L, DatetimeUtils.convertDurationStrToLong(7, "s", "ns"));
-    Assert.assertEquals(420000000000L, DatetimeUtils.convertDurationStrToLong(7, "m", "ns"));
-    Assert.assertEquals(25200000000000L, DatetimeUtils.convertDurationStrToLong(7, "h", "ns"));
-    Assert.assertEquals(604800000000000L, DatetimeUtils.convertDurationStrToLong(7, "d", "ns"));
-    Assert.assertEquals(4233600000000000L, DatetimeUtils.convertDurationStrToLong(7, "w", "ns"));
-    Assert.assertEquals(18144000000000000L, DatetimeUtils.convertDurationStrToLong(7, "mo", "ns"));
-    Assert.assertEquals(220752000000000000L, DatetimeUtils.convertDurationStrToLong(7, "y", "ns"));
-    Assert.assertEquals(7000000L, DatetimeUtils.convertDurationStrToLong(7, "ms", "ns"));
-    Assert.assertEquals(7000L, DatetimeUtils.convertDurationStrToLong(7, "us", "ns"));
-    Assert.assertEquals(7L, DatetimeUtils.convertDurationStrToLong(7, "ns", "ns"));
+    Assert.assertEquals(7000000000L, DatetimeUtils.convertDurationStrToLongForTest(7, "s", "ns"));
+    Assert.assertEquals(420000000000L, DatetimeUtils.convertDurationStrToLongForTest(7, "m", "ns"));
+    Assert.assertEquals(
+        25200000000000L, DatetimeUtils.convertDurationStrToLongForTest(7, "h", "ns"));
+    Assert.assertEquals(
+        604800000000000L, DatetimeUtils.convertDurationStrToLongForTest(7, "d", "ns"));
+    Assert.assertEquals(
+        4233600000000000L, DatetimeUtils.convertDurationStrToLongForTest(7, "w", "ns"));
+    Assert.assertEquals(
+        18144000000000000L, DatetimeUtils.convertDurationStrToLongForTest(7, "mo", "ns"));
+    Assert.assertEquals(
+        220752000000000000L, DatetimeUtils.convertDurationStrToLongForTest(7, "y", "ns"));
+    Assert.assertEquals(7000000L, DatetimeUtils.convertDurationStrToLongForTest(7, "ms", "ns"));
+    Assert.assertEquals(7000L, DatetimeUtils.convertDurationStrToLongForTest(7, "us", "ns"));
+    Assert.assertEquals(7L, DatetimeUtils.convertDurationStrToLongForTest(7, "ns", "ns"));
   }
 
   /** Test convert duration including natural month unit. Time includes: 1970-01-01 ~ 1970-12-01 */

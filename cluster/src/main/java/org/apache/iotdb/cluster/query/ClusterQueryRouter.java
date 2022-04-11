@@ -27,11 +27,12 @@ import org.apache.iotdb.cluster.query.last.ClusterLastQueryExecutor;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
+import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByWithValueFilterDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByWithoutValueFilterDataSet;
@@ -40,11 +41,10 @@ import org.apache.iotdb.db.query.executor.FillQueryExecutor;
 import org.apache.iotdb.db.query.executor.LastQueryExecutor;
 import org.apache.iotdb.db.query.executor.QueryRouter;
 import org.apache.iotdb.db.query.executor.RawDataQueryExecutor;
-import org.apache.iotdb.db.query.executor.fill.IFill;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.expression.ExpressionType;
+import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
-import java.util.List;
-import java.util.Map;
+import java.io.IOException;
 
 public class ClusterQueryRouter extends QueryRouter {
 
@@ -55,31 +55,26 @@ public class ClusterQueryRouter extends QueryRouter {
   }
 
   @Override
-  protected FillQueryExecutor getFillExecutor(
-      List<PartialPath> fillPaths,
-      List<TSDataType> dataTypes,
-      long queryTime,
-      Map<TSDataType, IFill> fillType) {
-    return new ClusterFillExecutor(fillPaths, dataTypes, queryTime, fillType, metaGroupMember);
+  protected FillQueryExecutor getFillExecutor(FillQueryPlan plan) {
+    return new ClusterFillExecutor(plan, metaGroupMember);
   }
 
   @Override
   protected GroupByWithoutValueFilterDataSet getGroupByWithoutValueFilterDataSet(
-      QueryContext context, GroupByTimePlan plan)
-      throws StorageEngineException, QueryProcessException {
+      QueryContext context, GroupByTimePlan plan) {
     return new ClusterGroupByNoVFilterDataSet(context, plan, metaGroupMember);
   }
 
   @Override
   protected GroupByWithValueFilterDataSet getGroupByWithValueFilterDataSet(
-      QueryContext context, GroupByTimePlan plan)
-      throws StorageEngineException, QueryProcessException {
+      QueryContext context, GroupByTimePlan plan) {
     return new ClusterGroupByVFilterDataSet(context, plan, metaGroupMember);
   }
 
   @Override
-  protected AggregationExecutor getAggregationExecutor(AggregationPlan aggregationPlan) {
-    return new ClusterAggregateExecutor(aggregationPlan, metaGroupMember);
+  protected AggregationExecutor getAggregationExecutor(
+      QueryContext context, AggregationPlan aggregationPlan) {
+    return new ClusterAggregateExecutor(context, aggregationPlan, metaGroupMember);
   }
 
   @Override
@@ -90,5 +85,25 @@ public class ClusterQueryRouter extends QueryRouter {
   @Override
   protected LastQueryExecutor getLastQueryExecutor(LastQueryPlan lastQueryPlan) {
     return new ClusterLastQueryExecutor(lastQueryPlan, metaGroupMember);
+  }
+
+  @Override
+  public QueryDataSet udtfQuery(UDTFPlan udtfPlan, QueryContext context)
+      throws StorageEngineException, QueryProcessException, IOException, InterruptedException {
+    boolean withValueFilter =
+        udtfPlan.getExpression() != null
+            && udtfPlan.getExpression().getType() != ExpressionType.GLOBAL_TIME;
+    ClusterUDTFQueryExecutor clusterUDTFQueryExecutor =
+        new ClusterUDTFQueryExecutor(udtfPlan, metaGroupMember);
+
+    if (udtfPlan.isAlignByTime()) {
+      return withValueFilter
+          ? clusterUDTFQueryExecutor.executeWithValueFilterAlignByTime(context)
+          : clusterUDTFQueryExecutor.executeWithoutValueFilterAlignByTime(context);
+    } else {
+      return withValueFilter
+          ? clusterUDTFQueryExecutor.executeWithValueFilterNonAlign(context)
+          : clusterUDTFQueryExecutor.executeWithoutValueFilterNonAlign(context);
+    }
   }
 }

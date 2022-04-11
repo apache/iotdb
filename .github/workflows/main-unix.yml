@@ -8,19 +8,22 @@ on:
     branches:
       - master
       - 'rel/*'
-      - Vector
+      - "new_*"
     paths-ignore:
       - 'docs/**'
   pull_request:
     branches:
       - master
       - 'rel/*'
-      - cluster_new
-      - Vector
+      - "new_*"
     paths-ignore:
       - 'docs/**'
   # allow manually run the action:
   workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   MAVEN_OPTS: -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.http.retryHandler.class=standard -Dmaven.wagon.http.retryHandler.count=3
@@ -31,7 +34,7 @@ jobs:
       fail-fast: false
       max-parallel: 20
       matrix:
-        java: [ 8, 11, 16 ]
+        java: [ 8, 11, 17 ]
         os: [ ubuntu-latest, macos-latest ]
     runs-on: ${{ matrix.os}}
 
@@ -52,4 +55,5 @@ jobs:
       - name: IT/UT Test
         shell: bash
         # we do not compile client-cpp for saving time, it is tested in client.yml
-        run:  mvn -B clean post-integration-test -Dtest.port.closed=true
+        # we can skip influxdb-protocol because it has been tested separately in influxdb-protocol.yml
+        run: mvn -B clean verify -Dtest.port.closed=true -P '!testcontainer,!influxdb-protocol'

@@ -21,6 +21,8 @@ package org.apache.iotdb.cluster.log.applier;
 
 import org.apache.iotdb.cluster.common.IoTDBTest;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
+import org.apache.iotdb.cluster.common.TestUtils;
+import org.apache.iotdb.cluster.coordinator.Coordinator;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
@@ -29,7 +31,7 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.utils.Constants;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.service.IoTDB;
@@ -56,13 +58,13 @@ public class MetaLogApplierTest extends IoTDBTest {
   private TestMetaGroupMember testMetaGroupMember =
       new TestMetaGroupMember() {
         @Override
-        public void applyAddNode(Node newNode) {
-          nodes.add(newNode);
+        public void applyAddNode(AddNodeLog addNodeLog) {
+          nodes.add(addNodeLog.getNewNode());
         }
 
         @Override
-        public void applyRemoveNode(Node oldNode) {
-          nodes.remove(oldNode);
+        public void applyRemoveNode(RemoveNodeLog removeNodeLog) {
+          nodes.remove(removeNodeLog.getRemovedNode());
         }
       };
 
@@ -79,9 +81,12 @@ public class MetaLogApplierTest extends IoTDBTest {
   @Test
   public void testApplyAddNode() {
     nodes.clear();
+    testMetaGroupMember.setCoordinator(new Coordinator());
+    testMetaGroupMember.setPartitionTable(TestUtils.getPartitionTable(3));
     Node node = new Node("localhost", 1111, 0, 2222, Constants.RPC_PORT, "localhost");
     AddNodeLog log = new AddNodeLog();
     log.setNewNode(node);
+    log.setPartitionTable(TestUtils.getSeralizePartitionTable());
     applier.apply(log);
 
     assertTrue(nodes.contains(node));
@@ -93,6 +98,7 @@ public class MetaLogApplierTest extends IoTDBTest {
 
     Node node = testMetaGroupMember.getThisNode();
     RemoveNodeLog log = new RemoveNodeLog();
+    log.setPartitionTable(TestUtils.getSeralizePartitionTable());
     log.setRemovedNode(node);
     applier.apply(log);
 
@@ -107,7 +113,7 @@ public class MetaLogApplierTest extends IoTDBTest {
     physicalPlanLog.setPlan(setStorageGroupPlan);
 
     applier.apply(physicalPlanLog);
-    assertTrue(IoTDB.metaManager.isPathExist(new PartialPath("root.applyMeta")));
+    assertTrue(IoTDB.schemaProcessor.isPathExist(new PartialPath("root.applyMeta")));
 
     CreateTimeSeriesPlan createTimeSeriesPlan =
         new CreateTimeSeriesPlan(
@@ -121,9 +127,9 @@ public class MetaLogApplierTest extends IoTDBTest {
             null);
     physicalPlanLog.setPlan(createTimeSeriesPlan);
     applier.apply(physicalPlanLog);
-    assertTrue(IoTDB.metaManager.isPathExist(new PartialPath("root.applyMeta.s1")));
+    assertTrue(IoTDB.schemaProcessor.isPathExist(new PartialPath("root.applyMeta.s1")));
     assertEquals(
         TSDataType.DOUBLE,
-        IoTDB.metaManager.getSeriesType(new PartialPath("root" + ".applyMeta.s1")));
+        IoTDB.schemaProcessor.getSeriesType(new PartialPath("root" + ".applyMeta.s1")));
   }
 }

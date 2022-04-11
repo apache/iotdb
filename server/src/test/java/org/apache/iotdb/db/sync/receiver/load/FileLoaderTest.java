@@ -18,18 +18,17 @@
  */
 package org.apache.iotdb.db.sync.receiver.load;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.virtualSg.HashVirtualPartitioner;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.sync.conf.SyncConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -62,11 +61,13 @@ public class FileLoaderTest {
   private String dataDir;
   private IFileLoader fileLoader;
 
+  private int prevVirtualPartitionNum;
+
   @Before
   public void setUp() throws Exception {
+    prevVirtualPartitionNum = IoTDBDescriptor.getInstance().getConfig().getDataRegionNum();
+    IoTDBDescriptor.getInstance().getConfig().setDataRegionNum(1);
     IoTDBDescriptor.getInstance().getConfig().setSyncEnable(true);
-    HashVirtualPartitioner.getInstance().setStorageGroupNum(1);
-    EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
     dataDir =
         new File(DirectoryManager.getInstance().getNextFolderForSequenceFile())
@@ -76,19 +77,17 @@ public class FileLoaderTest {
   }
 
   private void initMetadata() throws MetadataException {
-    MManager mmanager = IoTDB.metaManager;
-    mmanager.init();
-    mmanager.setStorageGroup(new PartialPath("root.sg0"));
-    mmanager.setStorageGroup(new PartialPath("root.sg1"));
-    mmanager.setStorageGroup(new PartialPath("root.sg2"));
+    LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
+    schemaProcessor.setStorageGroup(new PartialPath("root.sg0"));
+    schemaProcessor.setStorageGroup(new PartialPath("root.sg1"));
+    schemaProcessor.setStorageGroup(new PartialPath("root.sg2"));
   }
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
     EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance().getConfig().setSyncEnable(false);
-    HashVirtualPartitioner.getInstance()
-        .setStorageGroupNum(IoTDBDescriptor.getInstance().getConfig().getVirtualStorageGroupNum());
+    IoTDBDescriptor.getInstance().getConfig().setDataRegionNum(prevVirtualPartitionNum);
   }
 
   @Test
@@ -165,9 +164,8 @@ public class FileLoaderTest {
     }
 
     for (int i = 0; i < 3; i++) {
-      StorageGroupProcessor processor =
-          StorageEngine.getInstance().getProcessor(new PartialPath(SG_NAME + i));
-      assertTrue(processor.getSequenceFileTreeSet().isEmpty());
+      DataRegion processor = StorageEngine.getInstance().getProcessor(new PartialPath(SG_NAME + i));
+      assertTrue(processor.getSequenceFileList().isEmpty());
       assertTrue(processor.getUnSequenceFileList().isEmpty());
     }
 
@@ -198,11 +196,10 @@ public class FileLoaderTest {
     assertFalse(new File(getReceiverFolderFile(), SyncConstant.RECEIVER_DATA_FOLDER_NAME).exists());
     Map<String, Set<String>> sequenceLoadedFileMap = new HashMap<>();
     for (int i = 0; i < 3; i++) {
-      StorageGroupProcessor processor =
-          StorageEngine.getInstance().getProcessor(new PartialPath(SG_NAME + i));
+      DataRegion processor = StorageEngine.getInstance().getProcessor(new PartialPath(SG_NAME + i));
       sequenceLoadedFileMap.putIfAbsent(SG_NAME + i, new HashSet<>());
-      assertEquals(10, processor.getSequenceFileTreeSet().size());
-      for (TsFileResource tsFileResource : processor.getSequenceFileTreeSet()) {
+      assertEquals(10, processor.getSequenceFileList().size());
+      for (TsFileResource tsFileResource : processor.getSequenceFileList()) {
         sequenceLoadedFileMap.get(SG_NAME + i).add(tsFileResource.getTsFile().getAbsolutePath());
       }
       assertTrue(processor.getUnSequenceFileList().isEmpty());
@@ -284,9 +281,8 @@ public class FileLoaderTest {
     }
 
     for (int i = 0; i < 3; i++) {
-      StorageGroupProcessor processor =
-          StorageEngine.getInstance().getProcessor(new PartialPath(SG_NAME + i));
-      assertTrue(processor.getSequenceFileTreeSet().isEmpty());
+      DataRegion processor = StorageEngine.getInstance().getProcessor(new PartialPath(SG_NAME + i));
+      assertTrue(processor.getSequenceFileList().isEmpty());
       assertTrue(processor.getUnSequenceFileList().isEmpty());
     }
 
@@ -317,11 +313,10 @@ public class FileLoaderTest {
     assertFalse(new File(getReceiverFolderFile(), SyncConstant.RECEIVER_DATA_FOLDER_NAME).exists());
     Map<String, Set<String>> loadedFileMap = new HashMap<>();
     for (int i = 0; i < 3; i++) {
-      StorageGroupProcessor processor =
-          StorageEngine.getInstance().getProcessor(new PartialPath(SG_NAME + i));
+      DataRegion processor = StorageEngine.getInstance().getProcessor(new PartialPath(SG_NAME + i));
       loadedFileMap.putIfAbsent(SG_NAME + i, new HashSet<>());
-      assertEquals(25, processor.getSequenceFileTreeSet().size());
-      for (TsFileResource tsFileResource : processor.getSequenceFileTreeSet()) {
+      assertEquals(25, processor.getSequenceFileList().size());
+      for (TsFileResource tsFileResource : processor.getSequenceFileList()) {
         loadedFileMap.get(SG_NAME + i).add(tsFileResource.getTsFile().getAbsolutePath());
       }
       assertTrue(processor.getUnSequenceFileList().isEmpty());
@@ -375,10 +370,9 @@ public class FileLoaderTest {
 
     loadedFileMap.clear();
     for (int i = 0; i < 3; i++) {
-      StorageGroupProcessor processor =
-          StorageEngine.getInstance().getProcessor(new PartialPath(SG_NAME + i));
+      DataRegion processor = StorageEngine.getInstance().getProcessor(new PartialPath(SG_NAME + i));
       loadedFileMap.putIfAbsent(SG_NAME + i, new HashSet<>());
-      for (TsFileResource tsFileResource : processor.getSequenceFileTreeSet()) {
+      for (TsFileResource tsFileResource : processor.getSequenceFileList()) {
         loadedFileMap.get(SG_NAME + i).add(tsFileResource.getTsFile().getAbsolutePath());
       }
       assertTrue(processor.getUnSequenceFileList().isEmpty());

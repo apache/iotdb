@@ -27,7 +27,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.record.Tablet;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.util.ArrayList;
@@ -89,7 +88,7 @@ public class DataMigrationExample {
     int count = 0;
     while (schemaIter.next()) {
       count++;
-      Path currentPath = new Path(schemaIter.getString("timeseries"));
+      Path currentPath = new Path(schemaIter.getString("timeseries"), true);
       Future future =
           executorService.submit(
               new LoadThread(
@@ -122,14 +121,14 @@ public class DataMigrationExample {
       this.measurement = series.getMeasurement();
       this.dataType = dataType;
       this.series = series;
-      List<IMeasurementSchema> schemaList = new ArrayList<>();
-      schemaList.add(new MeasurementSchema(measurement, dataType));
-      tablet = new Tablet(device, schemaList, 300000);
     }
 
     @Override
     public Void call() {
 
+      List<MeasurementSchema> schemaList = new ArrayList<>();
+      schemaList.add(new MeasurementSchema(measurement, dataType));
+      tablet = new Tablet(device, schemaList, 300000);
       SessionDataSetWrapper dataSet = null;
 
       try {

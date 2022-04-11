@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.sql;
 
 import org.apache.iotdb.jdbc.Config;
+import org.apache.iotdb.session.Session;
 
 import org.junit.After;
 import org.junit.Before;
@@ -30,6 +31,7 @@ import org.testcontainers.containers.DockerComposeContainer;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
+import java.util.concurrent.TimeUnit;
 
 // do not add tests here.
 // add tests into Cases.java instead.
@@ -81,6 +83,16 @@ public abstract class ClusterIT extends Cases {
               "jdbc:iotdb://" + readIps[i] + ":" + readPorts[i], "root", "root");
       readStatements[i] = readConnections[i].createStatement();
     }
+    session =
+        new Session.Builder()
+            .host(getWriteRpcIp())
+            .port(getWriteRpcPort())
+            .username("root")
+            .password("root")
+            .enableCacheLeader(false)
+            .build();
+    session.open();
+    TimeUnit.MILLISECONDS.sleep(3000);
   }
 
   @After

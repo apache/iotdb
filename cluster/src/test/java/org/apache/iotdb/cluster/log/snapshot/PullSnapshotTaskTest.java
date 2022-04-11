@@ -34,16 +34,15 @@ import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.utils.IOUtils;
+import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
-import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
@@ -82,24 +81,17 @@ public class PullSnapshotTaskTest extends DataSnapshotTest {
   private List<TsFileResource> tsFileResources;
   private boolean hintRegistered;
   private int requiredRetries;
-  private CompactionStrategy defaultCompaction =
-      IoTDBDescriptor.getInstance().getConfig().getCompactionStrategy();
+  private int defaultCompactionThread =
+      IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
 
   @Override
   @Before
   public void setUp() throws MetadataException, StartupException {
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
+    IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(0);
     super.setUp();
     hintRegistered = false;
     sourceMember =
         new TestDataGroupMember() {
-          @Override
-          public AsyncClient getAsyncClient(Node node, boolean activatedOnly) {
-            return getAsyncClient(node);
-          }
-
           @Override
           public AsyncClient getAsyncClient(Node node) {
             try {
@@ -181,7 +173,7 @@ public class PullSnapshotTaskTest extends DataSnapshotTest {
                       }
 
                       @Override
-                      public void updateKnownMessageSize(long size) throws TTransportException {}
+                      public void updateKnownMessageSize(long size) {}
 
                       @Override
                       public void checkReadBytesAvailable(long numBytes)
@@ -197,6 +189,7 @@ public class PullSnapshotTaskTest extends DataSnapshotTest {
           }
         };
     sourceMember.setMetaGroupMember(metaGroupMember);
+    sourceMember.setLogManager(new TestLogManager(0));
     sourceMember.setThisNode(TestUtils.getNode(0));
     targetMember =
         new TestDataGroupMember() {
@@ -296,12 +289,13 @@ public class PullSnapshotTaskTest extends DataSnapshotTest {
     task.call();
 
     for (TimeseriesSchema timeseriesSchema : timeseriesSchemas) {
-      assertTrue(IoTDB.metaManager.isPathExist(new PartialPath(timeseriesSchema.getFullPath())));
+      assertTrue(
+          IoTDB.schemaProcessor.isPathExist(new PartialPath(timeseriesSchema.getFullPath())));
     }
-    StorageGroupProcessor processor =
+    DataRegion processor =
         StorageEngine.getInstance().getProcessor(new PartialPath(TestUtils.getTestSg(0)));
     assertEquals(9, processor.getPartitionMaxFileVersions(0));
-    List<TsFileResource> loadedFiles = processor.getSequenceFileTreeSet();
+    List<TsFileResource> loadedFiles = processor.getSequenceFileList();
     assertEquals(tsFileResources.size(), loadedFiles.size());
     for (int i = 0; i < 9; i++) {
       if (i != loadedFiles.get(i).getMaxPlanIndex()) {
@@ -312,7 +306,7 @@ public class PullSnapshotTaskTest extends DataSnapshotTest {
             loadedFiles.get(i).getMaxPlanIndex(),
             loadedFiles.get(i).getTsFile().getAbsolutePath());
       }
-      assertEquals(i, loadedFiles.get(i).getMaxPlanIndex());
+      assertEquals(-1, loadedFiles.get(i).getMaxPlanIndex());
     }
     assertEquals(0, processor.getUnSequenceFileList().size());
 
@@ -336,6 +330,8 @@ public class PullSnapshotTaskTest extends DataSnapshotTest {
     sourceMember.stop();
     targetMember.stop();
     super.tearDown();
-    IoTDBDescriptor.getInstance().getConfig().setCompactionStrategy(defaultCompaction);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setConcurrentCompactionThread(defaultCompactionThread);
   }
 }

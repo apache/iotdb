@@ -19,11 +19,13 @@
 package org.apache.iotdb.tsfile.read.query.dataset;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Set;
 
 public abstract class QueryDataSet {
 
@@ -41,6 +43,17 @@ public abstract class QueryDataSet {
    *  we need to redirect the query to any data group which has some data to speed up query.
    */
   protected EndPoint endPoint = null;
+
+  /** if any column is null, we don't need that row */
+  protected boolean withoutAnyNull;
+
+  /** Only if all columns are null, we don't need that row */
+  protected boolean withoutAllNull;
+
+  /** index set that withoutNullColumns for output data columns */
+  protected Set<Integer> withoutNullColumnsIndex;
+
+  protected int columnNum;
 
   /** For redirect query. Need keep consistent with EndPoint in rpc.thrift. */
   public static class EndPoint {
@@ -91,13 +104,31 @@ public abstract class QueryDataSet {
     this.paths = paths;
     this.dataTypes = dataTypes;
     this.ascending = ascending;
+    this.columnNum = 0;
+    if (paths != null) {
+      for (Path p : paths) {
+        columnNum += p.getColumnNum();
+      }
+    }
+  }
+
+  public Set<Integer> getWithoutNullColumnsIndex() {
+    return withoutNullColumnsIndex;
+  }
+
+  public void setWithoutNullColumnsIndex(Set<Integer> withoutNullColumnsIndex) {
+    this.withoutNullColumnsIndex = withoutNullColumnsIndex;
   }
 
   public boolean hasNext() throws IOException {
     // proceed to the OFFSET row by skipping rows
     while (rowOffset > 0) {
       if (hasNextWithoutConstraint()) {
-        nextWithoutConstraint(); // DO NOT use next()
+        RowRecord rowRecord = nextWithoutConstraint(); // DO NOT use next()
+        // filter rows whose columns are null according to the rule
+        if (withoutNullFilter(rowRecord)) {
+          continue;
+        }
         rowOffset--;
       } else {
         return false;
@@ -110,6 +141,43 @@ public abstract class QueryDataSet {
     }
 
     return hasNextWithoutConstraint();
+  }
+
+  /**
+   * check rowRecord whether satisfy without null condition
+   *
+   * @param rowRecord rowRecord
+   * @return true satisfy false don't satisfy
+   */
+  public boolean withoutNullFilter(RowRecord rowRecord) {
+    boolean
+        anyNullFlag =
+            (withoutNullColumnsIndex == null)
+                ? rowRecord.hasNullField()
+                : (withoutNullColumnsIndex.isEmpty() && rowRecord.hasNullField()),
+        allNullFlag = (withoutNullColumnsIndex != null) || rowRecord.isAllNull();
+
+    if (withoutNullColumnsIndex != null) {
+      for (int index : withoutNullColumnsIndex) {
+        Field field = rowRecord.getFields().get(index);
+        if (field == null || field.getDataType() == null) {
+          anyNullFlag = true;
+          if (withoutAnyNull) {
+            break;
+          }
+        } else {
+          allNullFlag = false;
+          if (withoutAllNull) {
+            break;
+          }
+        }
+      }
+    }
+
+    if (withoutNullColumnsIndex != null && withoutNullColumnsIndex.isEmpty()) {
+      allNullFlag = rowRecord.isAllNull();
+    }
+    return (withoutAllNull && allNullFlag) || (withoutAnyNull && anyNullFlag);
   }
 
   public abstract boolean hasNextWithoutConstraint() throws IOException;
@@ -166,5 +234,29 @@ public abstract class QueryDataSet {
 
   public void setEndPoint(EndPoint endPoint) {
     this.endPoint = endPoint;
+  }
+
+  public boolean isWithoutAnyNull() {
+    return withoutAnyNull;
+  }
+
+  public void setWithoutAnyNull(boolean withoutAnyNull) {
+    this.withoutAnyNull = withoutAnyNull;
+  }
+
+  public boolean isWithoutAllNull() {
+    return withoutAllNull;
+  }
+
+  public void setWithoutAllNull(boolean withoutAllNull) {
+    this.withoutAllNull = withoutAllNull;
+  }
+
+  public void decreaseAlreadyReturnedRowNum() {
+    alreadyReturnedRowNum--;
+  }
+
+  public int getColumnNum() {
+    return columnNum;
   }
 }

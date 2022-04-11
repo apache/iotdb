@@ -39,7 +39,10 @@ public class UDFQueryRowTransformer extends UDFQueryTransformer {
     if (!layerRowReader.next()) {
       return false;
     }
-    executor.execute(layerRowReader.currentRow());
+    if (layerRowReader.isCurrentNull()) {
+      currentNull = true;
+    }
+    executor.execute(layerRowReader.currentRow(), currentNull);
     layerRowReader.readyForNext();
     return true;
   }

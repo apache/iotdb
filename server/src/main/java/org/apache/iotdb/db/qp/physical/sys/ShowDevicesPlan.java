@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.qp.physical.sys;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -37,8 +37,8 @@ public class ShowDevicesPlan extends ShowPlan {
     super(ShowContentType.DEVICES, path);
   }
 
-  public ShowDevicesPlan(PartialPath path, int limit, int offset, int fetchSize, boolean hasSgCol) {
-    super(ShowContentType.DEVICES, path, limit, offset, fetchSize);
+  public ShowDevicesPlan(PartialPath path, int limit, int offset, boolean hasSgCol) {
+    super(ShowContentType.DEVICES, path, limit, offset);
     this.hasSgCol = hasSgCol;
   }
 

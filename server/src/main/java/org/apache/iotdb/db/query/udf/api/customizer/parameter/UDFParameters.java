@@ -20,12 +20,15 @@
 package org.apache.iotdb.db.query.udf.api.customizer.parameter;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
 import org.apache.iotdb.db.query.udf.api.UDTF;
 import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
-import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -43,30 +46,37 @@ import java.util.Map;
  */
 public class UDFParameters {
 
+  private final List<Expression> expressions;
   private final List<PartialPath> paths;
   private final Map<String, String> attributes;
+  private final List<TSDataType> dataTypes;
 
-  private List<TSDataType> dataTypes;
+  public UDFParameters(
+      FunctionExpression functionExpression, Map<Expression, TSDataType> expressionDataTypeMap)
+      throws QueryProcessException {
+    expressions = functionExpression.getExpressions();
+    paths = functionExpression.getPaths();
+    attributes = functionExpression.getFunctionAttributes();
+    dataTypes = new ArrayList<>();
+    for (Expression expression : expressions) {
+      dataTypes.add(expressionDataTypeMap.get(expression));
+    }
+  }
 
-  public UDFParameters(List<PartialPath> paths, Map<String, String> attributes) {
-    this.paths = paths;
-    this.attributes = attributes;
-    dataTypes = null;
+  public List<Expression> getExpressions() {
+    return expressions;
   }
 
   public List<PartialPath> getPaths() {
     return paths;
   }
 
-  public List<TSDataType> getDataTypes() throws MetadataException {
-    if (dataTypes == null) {
-      dataTypes = SchemaUtils.getSeriesTypesByPaths(paths);
-    }
-    return dataTypes;
-  }
-
   public Map<String, String> getAttributes() {
     return attributes;
+  }
+
+  public List<TSDataType> getDataTypes() throws MetadataException {
+    return dataTypes;
   }
 
   public PartialPath getPath(int index) {
@@ -74,18 +84,7 @@ public class UDFParameters {
   }
 
   public TSDataType getDataType(int index) throws MetadataException {
-    if (dataTypes == null) {
-      dataTypes = SchemaUtils.getSeriesTypesByPaths(paths);
-    }
     return dataTypes.get(index);
-  }
-
-  public TSDataType getDataType(String path) throws MetadataException {
-    return SchemaUtils.getSeriesTypeByPath(new PartialPath(path));
-  }
-
-  public TSDataType getDataType(PartialPath path) throws MetadataException {
-    return SchemaUtils.getSeriesTypeByPath(path);
   }
 
   public boolean hasAttribute(String attributeKey) {

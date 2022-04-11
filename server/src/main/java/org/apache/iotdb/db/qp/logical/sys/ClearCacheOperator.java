@@ -18,12 +18,22 @@
  */
 package org.apache.iotdb.db.qp.logical.sys;
 
-import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.ClearCachePlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
-public class ClearCacheOperator extends RootOperator {
+public class ClearCacheOperator extends Operator {
 
   public ClearCacheOperator(int tokenIntType) {
     super(tokenIntType);
     operatorType = OperatorType.CLEAR_CACHE;
+  }
+
+  @Override
+  public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
+      throws QueryProcessException {
+    return new ClearCachePlan();
   }
 }

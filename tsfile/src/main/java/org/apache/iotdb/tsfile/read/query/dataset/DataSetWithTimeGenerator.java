@@ -23,6 +23,7 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderByTimestamp;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.io.IOException;
 import java.util.List;
@@ -73,14 +74,24 @@ public class DataSetWithTimeGenerator extends QueryDataSet {
       // get value from readers in time generator
       if (cached.get(i)) {
         Object value = timeGenerator.getValue(paths.get(i));
-        rowRecord.addField(value, dataTypes.get(i));
+        if (dataTypes.get(i) == TSDataType.VECTOR) {
+          TsPrimitiveType v = ((TsPrimitiveType[]) value)[0];
+          rowRecord.addField(v.getValue(), v.getDataType());
+        } else {
+          rowRecord.addField(value, dataTypes.get(i));
+        }
         continue;
       }
 
       // get value from series reader without filter
       FileSeriesReaderByTimestamp fileSeriesReaderByTimestamp = readers.get(i);
       Object value = fileSeriesReaderByTimestamp.getValueInTimestamp(timestamp);
-      rowRecord.addField(value, dataTypes.get(i));
+      if (dataTypes.get(i) == TSDataType.VECTOR) {
+        TsPrimitiveType v = ((TsPrimitiveType[]) value)[0];
+        rowRecord.addField(v.getValue(), v.getDataType());
+      } else {
+        rowRecord.addField(value, dataTypes.get(i));
+      }
     }
 
     return rowRecord;

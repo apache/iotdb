@@ -18,8 +18,9 @@
  */
 package org.apache.iotdb.db.exception.query;
 
-import org.apache.iotdb.db.exception.IoTDBException;
-import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.db.qp.constant.FilterConstant;
+import org.apache.iotdb.db.qp.constant.FilterConstant.FilterType;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 /** This exception is thrown while meeting error in optimizing logical operator. */
@@ -31,11 +32,11 @@ public class LogicalOptimizeException extends LogicalOperatorException {
     super(message, TSStatusCode.LOGICAL_OPTIMIZE_ERROR.getStatusCode());
   }
 
-  public LogicalOptimizeException(String filterOperator, int tokenInt) {
+  public LogicalOptimizeException(String filterOperator, FilterType filterType) {
     super(
         String.format(
             "Unknown token in [%s]: [%s], [%s].",
-            filterOperator, tokenInt, SQLConstant.tokenNames.get(tokenInt)),
+            filterOperator, filterType, FilterConstant.filterNames.get(filterType)),
         TSStatusCode.LOGICAL_OPTIMIZE_ERROR.getStatusCode());
   }
 

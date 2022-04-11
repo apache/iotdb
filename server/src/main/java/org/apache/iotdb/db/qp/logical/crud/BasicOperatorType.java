@@ -19,8 +19,9 @@
 package org.apache.iotdb.db.qp.logical.crud;
 
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
-import org.apache.iotdb.db.exception.runtime.SQLParserException;
-import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.db.exception.sql.SQLParserException;
+import org.apache.iotdb.db.qp.constant.FilterConstant;
+import org.apache.iotdb.db.qp.constant.FilterConstant.FilterType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IUnaryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
@@ -29,7 +30,7 @@ import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.TIME;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.TIME;
 
 /** all basic operator in filter. */
 public enum BasicOperatorType {
@@ -157,27 +158,28 @@ public enum BasicOperatorType {
   /**
    * BasicOperatorType Constructor.
    *
-   * @param tokenIntType token in Int Type
+   * @param filterType token in Int Type
    * @return basic operator type
    * @throws LogicalOperatorException Logical Operator Exception
    */
-  public static BasicOperatorType getBasicOpBySymbol(int tokenIntType) throws SQLParserException {
-    switch (tokenIntType) {
-      case SQLConstant.EQUAL:
+  public static BasicOperatorType getBasicOpBySymbol(FilterType filterType)
+      throws SQLParserException {
+    switch (filterType) {
+      case EQUAL:
         return EQ;
-      case SQLConstant.LESSTHANOREQUALTO:
+      case LESSTHANOREQUALTO:
         return LTEQ;
-      case SQLConstant.LESSTHAN:
+      case LESSTHAN:
         return LT;
-      case SQLConstant.GREATERTHANOREQUALTO:
+      case GREATERTHANOREQUALTO:
         return GTEQ;
-      case SQLConstant.GREATERTHAN:
+      case GREATERTHAN:
         return GT;
-      case SQLConstant.NOTEQUAL:
+      case NOTEQUAL:
         return NOTEQUAL;
       default:
         throw new SQLParserException(
-            "unsupported type:{}" + SQLConstant.tokenNames.get(tokenIntType));
+            "unsupported type:{}" + FilterConstant.filterNames.get(filterType));
     }
   }
 

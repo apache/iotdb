@@ -23,15 +23,16 @@ import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.exception.SnapshotInstallationException;
 import org.apache.iotdb.cluster.partition.slot.SlotManager.SlotStatus;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -39,6 +40,9 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -74,7 +78,7 @@ public class PartitionedSnapshotTest extends DataSnapshotTest {
   }
 
   @Test
-  public void testInstall()
+  public void testInstallSuccessfully()
       throws IOException, WriteProcessException, SnapshotInstallationException,
           IllegalPathException, StorageEngineException {
     List<TsFileResource> tsFileResources = TestUtils.prepareTsFileResources(0, 10, 10, 10, true);
@@ -96,19 +100,20 @@ public class PartitionedSnapshotTest extends DataSnapshotTest {
     for (int i = 0; i < 10; i++) {
       dataGroupMember.getSlotManager().setToPulling(i, TestUtils.getNode(0));
     }
-    defaultInstaller.install(snapshot, -1);
+    defaultInstaller.install(snapshot, -1, false);
     // after installation, the slot should be available again
     for (int i = 0; i < 10; i++) {
       assertEquals(SlotStatus.NULL, dataGroupMember.getSlotManager().getStatus(i));
     }
 
     for (TimeseriesSchema timeseriesSchema : timeseriesSchemas) {
-      assertTrue(IoTDB.metaManager.isPathExist(new PartialPath(timeseriesSchema.getFullPath())));
+      assertTrue(
+          IoTDB.schemaProcessor.isPathExist(new PartialPath(timeseriesSchema.getFullPath())));
     }
-    StorageGroupProcessor processor =
+    DataRegion processor =
         StorageEngine.getInstance().getProcessor(new PartialPath(TestUtils.getTestSg(0)));
     assertEquals(9, processor.getPartitionMaxFileVersions(0));
-    List<TsFileResource> loadedFiles = processor.getSequenceFileTreeSet();
+    List<TsFileResource> loadedFiles = processor.getSequenceFileList();
     assertEquals(tsFileResources.size(), loadedFiles.size());
     for (int i = 0; i < 9; i++) {
       assertEquals(i, loadedFiles.get(i).getMaxPlanIndex());
@@ -118,6 +123,82 @@ public class PartitionedSnapshotTest extends DataSnapshotTest {
     for (TsFileResource tsFileResource : tsFileResources) {
       // source files should be deleted after being pulled
       assertFalse(tsFileResource.getTsFile().exists());
+    }
+  }
+
+  @Test
+  public void testInstallOmitted()
+      throws IOException, WriteProcessException, SnapshotInstallationException,
+          IllegalPathException, StorageEngineException, InterruptedException {
+    List<TsFileResource> tsFileResources = TestUtils.prepareTsFileResources(0, 10, 10, 10, true);
+    PartitionedSnapshot snapshot = new PartitionedSnapshot(FileSnapshot.Factory.INSTANCE);
+    List<TimeseriesSchema> timeseriesSchemas = new ArrayList<>();
+    for (int i = 0; i < 10; i++) {
+      FileSnapshot fileSnapshot = new FileSnapshot();
+      fileSnapshot.addFile(tsFileResources.get(i), TestUtils.getNode(i));
+      timeseriesSchemas.add(TestUtils.getTestTimeSeriesSchema(0, i));
+      fileSnapshot.setTimeseriesSchemas(
+          Collections.singletonList(TestUtils.getTestTimeSeriesSchema(0, i)));
+      snapshot.putSnapshot(i, fileSnapshot);
+    }
+    snapshot.setLastLogIndex(10);
+    snapshot.setLastLogTerm(5);
+
+    AtomicBoolean isLocked = new AtomicBoolean(false);
+    Lock snapshotLock = dataGroupMember.getSnapshotApplyLock();
+    Lock signalLock = new ReentrantLock();
+    signalLock.lock();
+    try {
+      // Simulate another snapshot being installed
+      new Thread(
+              () -> {
+                boolean localLocked = snapshotLock.tryLock();
+                if (localLocked) {
+                  isLocked.set(true);
+                  // Use signalLock to make sure this thread can hold the snapshotLock as long as
+                  // possible
+                  signalLock.lock();
+                  signalLock.unlock();
+                  snapshotLock.unlock();
+                }
+              })
+          .start();
+      // Waiting another thread locking the snapshotLock
+      for (int i = 0; i < 10; i++) {
+        Thread.sleep(100);
+        if (isLocked.get()) {
+          break;
+        }
+      }
+      Assert.assertTrue(isLocked.get());
+
+      SnapshotInstaller<PartitionedSnapshot> defaultInstaller =
+          snapshot.getDefaultInstaller(dataGroupMember);
+      for (int i = 0; i < 10; i++) {
+        dataGroupMember.getSlotManager().setToPulling(i, TestUtils.getNode(0));
+      }
+      defaultInstaller.install(snapshot, -1, false);
+      // after installation, the slot should be unchanged
+      for (int i = 0; i < 10; i++) {
+        assertEquals(SlotStatus.PULLING, dataGroupMember.getSlotManager().getStatus(i));
+      }
+
+      for (TimeseriesSchema timeseriesSchema : timeseriesSchemas) {
+        assertFalse(
+            IoTDB.schemaProcessor.isPathExist(new PartialPath(timeseriesSchema.getFullPath())));
+      }
+      DataRegion processor =
+          StorageEngine.getInstance().getProcessor(new PartialPath(TestUtils.getTestSg(0)));
+      assertEquals(-1, processor.getPartitionMaxFileVersions(0));
+      List<TsFileResource> loadedFiles = processor.getSequenceFileList();
+      assertEquals(0, loadedFiles.size());
+      assertEquals(0, processor.getUnSequenceFileList().size());
+
+      for (TsFileResource tsFileResource : tsFileResources) {
+        assertTrue(tsFileResource.getTsFile().exists());
+      }
+    } finally {
+      signalLock.unlock();
     }
   }
 }

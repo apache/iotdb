@@ -18,8 +18,7 @@
  */
 package org.apache.iotdb.db.sync.sender.manage;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.engine.merge.task.MergeTask;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.service.IoTDB;
@@ -48,14 +47,14 @@ public class SyncFileManager implements ISyncFileManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(SyncFileManager.class);
 
   /**
-   * All storage groups on the disk where the current sync task is executed logicalSg -> <virtualSg,
-   * timeRangeId>
+   * All storage groups on the disk where the current sync task is executed logicalSg ->
+   * <dataregion, timeRangeId>
    */
   private Map<String, Map<Long, Set<Long>>> allSGs;
 
   /**
    * Key is storage group, value is all sealed tsfiles in the storage group. Inner key is time range
-   * id, inner value is the set of current sealed tsfiles. logicalSg -> <virtualSg, <timeRangeId,
+   * id, inner value is the set of current sealed tsfiles. logicalSg -> <dataregion, <timeRangeId,
    * tsfiles>>
    */
   private Map<String, Map<Long, Map<Long, Set<File>>>> currentSealedLocalFilesMap;
@@ -63,26 +62,26 @@ public class SyncFileManager implements ISyncFileManager {
   /**
    * Key is storage group, value is all last local tsfiles in the storage group, which doesn't
    * contains those tsfiles which are not synced successfully. Inner key is time range id, inner
-   * value is the set of last local tsfiles. logicalSg -> <virtualSg, <timeRangeId, tsfiles>>
+   * value is the set of last local tsfiles. logicalSg -> <dataregion, <timeRangeId, tsfiles>>
    */
   private Map<String, Map<Long, Map<Long, Set<File>>>> lastLocalFilesMap;
 
   /**
    * Key is storage group, value is all deleted tsfiles which need to be synced to receiver end in
    * the storage group. Inner key is time range id, inner value is the valid set of sealed tsfiles.
-   * logicalSg -> <virtualSg, <timeRangeId, tsfiles>>
+   * logicalSg -> <dataregion, <timeRangeId, tsfiles>>
    */
   private Map<String, Map<Long, Map<Long, Set<File>>>> deletedFilesMap;
 
   /**
    * Key is storage group, value is all new tsfiles which need to be synced to receiver end in the
    * storage group. Inner key is time range id, inner value is the valid set of new tsfiles.
-   * logicalSg -> <virtualSg, <timeRangeId, tsfiles>>
+   * logicalSg -> <dataregion, <timeRangeId, tsfiles>>
    */
   private Map<String, Map<Long, Map<Long, Set<File>>>> toBeSyncedFilesMap;
 
   private SyncFileManager() {
-    IoTDB.metaManager.init();
+    IoTDB.configManager.init();
   }
 
   public static SyncFileManager getInstance() {
@@ -167,7 +166,8 @@ public class SyncFileManager implements ISyncFileManager {
   private boolean checkFileValidity(File file) {
     return new File(file.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX).exists()
         && !new File(file.getAbsolutePath() + ModificationFile.FILE_SUFFIX).exists()
-        && !new File(file.getAbsolutePath() + MergeTask.MERGE_SUFFIX).exists();
+        && !new File(file.getAbsolutePath() + IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX)
+            .exists();
   }
 
   @Override

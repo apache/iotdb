@@ -31,7 +31,9 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.metadata.template.TemplateManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SerializeUtils;
 
@@ -46,6 +48,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.locks.Lock;
 
 /** MetaSimpleSnapshot also records all storage groups. */
 public class MetaSimpleSnapshot extends Snapshot {
@@ -54,12 +57,14 @@ public class MetaSimpleSnapshot extends Snapshot {
   private Map<PartialPath, Long> storageGroupTTLMap;
   private Map<String, User> userMap;
   private Map<String, Role> roleMap;
+  private Map<String, Template> templateMap;
   private ByteBuffer partitionTableBuffer;
 
   public MetaSimpleSnapshot() {
     storageGroupTTLMap = Collections.emptyMap();
     userMap = Collections.emptyMap();
     roleMap = Collections.emptyMap();
+    templateMap = Collections.emptyMap();
     partitionTableBuffer = null;
   }
 
@@ -67,10 +72,12 @@ public class MetaSimpleSnapshot extends Snapshot {
       Map<PartialPath, Long> storageGroupTTLMap,
       Map<String, User> userMap,
       Map<String, Role> roleMap,
+      Map<String, Template> templateMap,
       ByteBuffer partitionTableBuffer) {
     this.storageGroupTTLMap = storageGroupTTLMap;
     this.userMap = userMap;
     this.roleMap = roleMap;
+    this.templateMap = templateMap;
     this.partitionTableBuffer = partitionTableBuffer;
   }
 
@@ -84,6 +91,10 @@ public class MetaSimpleSnapshot extends Snapshot {
 
   public Map<String, Role> getRoleMap() {
     return roleMap;
+  }
+
+  public Map<String, Template> getTemplateMap() {
+    return templateMap;
   }
 
   public ByteBuffer getPartitionTableBuffer() {
@@ -104,14 +115,21 @@ public class MetaSimpleSnapshot extends Snapshot {
       dataOutputStream.writeInt(userMap.size());
       for (Map.Entry<String, User> entry : userMap.entrySet()) {
         SerializeUtils.serialize(entry.getKey(), dataOutputStream);
-        logger.info("A user into snapshot: {}", entry.getValue());
+        logger.debug("A user into snapshot: {}", entry.getValue());
         dataOutputStream.write(entry.getValue().serialize().array());
       }
 
       dataOutputStream.writeInt(roleMap.size());
       for (Map.Entry<String, Role> entry : roleMap.entrySet()) {
         SerializeUtils.serialize(entry.getKey(), dataOutputStream);
-        logger.info("A role into snapshot: {}", entry.getValue());
+        logger.debug("A role into snapshot: {}", entry.getValue());
+        dataOutputStream.write(entry.getValue().serialize().array());
+      }
+
+      dataOutputStream.writeInt(templateMap.size());
+      for (Map.Entry<String, Template> entry : templateMap.entrySet()) {
+        SerializeUtils.serialize(entry.getKey(), dataOutputStream);
+        logger.debug("A template into snapshot: {}", entry.getValue());
         dataOutputStream.write(entry.getValue().serialize().array());
       }
 
@@ -157,6 +175,15 @@ public class MetaSimpleSnapshot extends Snapshot {
       roleMap.put(userName, role);
     }
 
+    int templateSize = buffer.getInt();
+    templateMap = new HashMap<>(templateSize);
+    for (int i = 0; i < templateSize; i++) {
+      String templateName = SerializeUtils.deserializeString(buffer);
+      Template template = new Template();
+      template.deserialize(buffer);
+      templateMap.put(templateName, template);
+    }
+
     setLastLogIndex(buffer.getLong());
     setLastLogTerm(buffer.getLong());
 
@@ -178,12 +205,12 @@ public class MetaSimpleSnapshot extends Snapshot {
     }
 
     @Override
-    public void install(MetaSimpleSnapshot snapshot, int slot) {
+    public void install(MetaSimpleSnapshot snapshot, int slot, boolean isDataMigration) {
       installSnapshot(snapshot);
     }
 
     @Override
-    public void install(Map<Integer, MetaSimpleSnapshot> snapshotMap) {
+    public void install(Map<Integer, MetaSimpleSnapshot> snapshotMap, boolean isDataMigration) {
       throw new UnsupportedOperationException("Method unimplemented");
     }
 
@@ -192,51 +219,63 @@ public class MetaSimpleSnapshot extends Snapshot {
      * authentication info, and last log term/index in the snapshot.
      */
     private void installSnapshot(MetaSimpleSnapshot snapshot) {
-      synchronized (metaGroupMember.getSnapshotApplyLock()) {
-        // 1.  register all storage groups
-        for (Map.Entry<PartialPath, Long> entry : snapshot.getStorageGroupTTLMap().entrySet()) {
-          PartialPath sgPath = entry.getKey();
-          try {
-            IoTDB.metaManager.setStorageGroup(sgPath);
-          } catch (StorageGroupAlreadySetException e) {
-            // ignore
-          } catch (MetadataException e) {
-            logger.error(
-                "{}: Cannot add storage group {} in snapshot, errMessage:{}",
-                metaGroupMember.getName(),
-                entry.getKey(),
-                e.getMessage());
-          }
-
-          // 2. register ttl in the snapshot
-          try {
-            IoTDB.metaManager.setTTL(sgPath, entry.getValue());
-            StorageEngine.getInstance().setTTL(sgPath, entry.getValue());
-          } catch (MetadataException | IOException e) {
-            logger.error(
-                "{}: Cannot set ttl in storage group {} , errMessage: {}",
-                metaGroupMember.getName(),
-                entry.getKey(),
-                e.getMessage());
-          }
-        }
-
-        // 3. replace all users and roles
+      Lock lock = metaGroupMember.getSnapshotApplyLock();
+      if (lock.tryLock()) {
         try {
-          IAuthorizer authorizer = BasicAuthorizer.getInstance();
-          installSnapshotUsers(authorizer, snapshot);
-          installSnapshotRoles(authorizer, snapshot);
-        } catch (AuthException e) {
-          logger.error(
-              "{}: Cannot get authorizer instance, error is: ", metaGroupMember.getName(), e);
-        }
+          // 1.  register all storage groups
+          for (Map.Entry<PartialPath, Long> entry : snapshot.getStorageGroupTTLMap().entrySet()) {
+            PartialPath sgPath = entry.getKey();
+            try {
+              IoTDB.schemaProcessor.setStorageGroup(sgPath);
+            } catch (StorageGroupAlreadySetException e) {
+              // ignore
+            } catch (MetadataException e) {
+              logger.error(
+                  "{}: Cannot add storage group {} in snapshot, errMessage:{}",
+                  metaGroupMember.getName(),
+                  entry.getKey(),
+                  e.getMessage());
+            }
 
-        // 4. accept partition table
-        metaGroupMember.acceptPartitionTable(snapshot.getPartitionTableBuffer(), true);
+            // 2. register ttl in the snapshot
+            try {
+              IoTDB.schemaProcessor.setTTL(sgPath, entry.getValue());
+              StorageEngine.getInstance().setTTL(sgPath, entry.getValue());
+            } catch (MetadataException | IOException e) {
+              logger.error(
+                  "{}: Cannot set ttl in storage group {} , errMessage: {}",
+                  metaGroupMember.getName(),
+                  entry.getKey(),
+                  e.getMessage());
+            }
+          }
 
-        synchronized (metaGroupMember.getLogManager()) {
-          metaGroupMember.getLogManager().applySnapshot(snapshot);
+          // 3. replace all users and roles
+          try {
+            IAuthorizer authorizer = BasicAuthorizer.getInstance();
+            installSnapshotUsers(authorizer, snapshot);
+            installSnapshotRoles(authorizer, snapshot);
+          } catch (AuthException e) {
+            logger.error(
+                "{}: Cannot get authorizer instance, error is: ", metaGroupMember.getName(), e);
+          }
+          // 4. accept template map
+          TemplateManager.getInstance().setTemplateMap(snapshot.templateMap);
+
+          // 5. accept partition table
+          metaGroupMember.acceptVerifiedPartitionTable(snapshot.getPartitionTableBuffer(), true);
+
+          synchronized (metaGroupMember.getLogManager()) {
+            metaGroupMember.getLogManager().applySnapshot(snapshot);
+          }
+        } finally {
+          lock.unlock();
         }
+      } else {
+        logger.info(
+            "{}: is under snapshot installation now. This request is omitted. MetaSimpleSnapshot: {}",
+            metaGroupMember.getName(),
+            snapshot);
       }
     }
 
@@ -269,12 +308,13 @@ public class MetaSimpleSnapshot extends Snapshot {
     return Objects.equals(storageGroupTTLMap, that.storageGroupTTLMap)
         && Objects.equals(userMap, that.userMap)
         && Objects.equals(roleMap, that.roleMap)
+        && Objects.equals(templateMap, that.templateMap)
         && Objects.equals(partitionTableBuffer, that.partitionTableBuffer);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(storageGroupTTLMap, userMap, roleMap, partitionTableBuffer);
+    return Objects.hash(storageGroupTTLMap, userMap, roleMap, templateMap, partitionTableBuffer);
   }
 
   public static class Factory implements SnapshotFactory<MetaSimpleSnapshot> {
@@ -294,6 +334,7 @@ public class MetaSimpleSnapshot extends Snapshot {
       metaSimpleSnapshot.partitionTableBuffer = origin.partitionTableBuffer.duplicate();
       metaSimpleSnapshot.roleMap = new HashMap<>(origin.roleMap);
       metaSimpleSnapshot.userMap = new HashMap<>(origin.userMap);
+      metaSimpleSnapshot.templateMap = new HashMap<>(origin.templateMap);
       metaSimpleSnapshot.storageGroupTTLMap = new HashMap<>(origin.storageGroupTTLMap);
       return metaSimpleSnapshot;
     }

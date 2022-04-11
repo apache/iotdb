@@ -19,19 +19,27 @@
 
 package org.apache.iotdb.db.qp.physical.sys;
 
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
 public class DropFunctionPlan extends PhysicalPlan {
 
-  private final String udfName;
+  private String udfName;
+
+  public DropFunctionPlan() {
+    super(OperatorType.DROP_FUNCTION);
+  }
 
   public DropFunctionPlan(String udfName) {
-    super(false, OperatorType.DROP_FUNCTION);
+    super(OperatorType.DROP_FUNCTION);
     this.udfName = udfName;
   }
 
@@ -42,5 +50,20 @@ public class DropFunctionPlan extends PhysicalPlan {
   @Override
   public List<PartialPath> getPaths() {
     return new ArrayList<>();
+  }
+
+  @Override
+  public void serialize(DataOutputStream outputStream) throws IOException {
+    outputStream.writeByte((byte) PhysicalPlanType.DROP_FUNCTION.ordinal());
+
+    putString(outputStream, udfName);
+    outputStream.writeLong(index);
+  }
+
+  @Override
+  public void deserialize(ByteBuffer buffer) throws IllegalPathException {
+
+    udfName = readString(buffer);
+    this.index = buffer.getLong();
   }
 }

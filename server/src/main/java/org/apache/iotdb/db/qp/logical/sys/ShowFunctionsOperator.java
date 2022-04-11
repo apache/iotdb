@@ -19,19 +19,20 @@
 
 package org.apache.iotdb.db.qp.logical.sys;
 
-public class ShowFunctionsOperator extends ShowOperator {
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowFunctionsPlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
-  private boolean showTemporary;
+public class ShowFunctionsOperator extends ShowOperator {
 
   public ShowFunctionsOperator(int tokenIntType) {
     super(tokenIntType);
   }
 
-  public void setShowTemporary(boolean showTemporary) {
-    this.showTemporary = showTemporary;
-  }
-
-  public boolean showTemporary() {
-    return showTemporary;
+  @Override
+  public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
+      throws QueryProcessException {
+    return new ShowFunctionsPlan();
   }
 }

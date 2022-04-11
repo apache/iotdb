@@ -42,14 +42,14 @@ for /f tokens^=2-5^ delims^=.-_+^" %%j in ('java -fullversion 2^>^&1') do (
 
 set JAVA_VERSION=%MAJOR_VERSION%
 
-@REM we do not check jdk that version less than 1.6 because they are too stale...
+@REM we do not check jdk that version less than 1.8 because they are too stale...
 IF "%JAVA_VERSION%" == "6" (
-		echo IoTDB only supports jdk >= 8, please check your java version.
-		goto finally
+	echo IoTDB only supports jdk >= 8, please check your java version.
+	goto finally
 )
 IF "%JAVA_VERSION%" == "7" (
-		echo IoTDB only supports jdk >= 8, please check your java version.
-		goto finally
+	echo IoTDB only supports jdk >= 8, please check your java version.
+	goto finally
 )
 
 if "%OS%" == "Windows_NT" setlocal
@@ -110,7 +110,7 @@ goto :eof
 
 rem echo CLASSPATH: %CLASSPATH%
 
-"%JAVA_HOME%\bin\java" %JAVA_OPTS% %IOTDB_HEAP_OPTS% -cp %CLASSPATH% %IOTDB_JMX_OPTS% %MAIN_CLASS% %CONF_PARAMS%
+"%JAVA_HOME%\bin\java" %ILLEGAL_ACCESS_PARAMS% %JAVA_OPTS% %IOTDB_HEAP_OPTS% -cp %CLASSPATH% %IOTDB_JMX_OPTS% %MAIN_CLASS% %CONF_PARAMS%
 goto finally
 
 :err

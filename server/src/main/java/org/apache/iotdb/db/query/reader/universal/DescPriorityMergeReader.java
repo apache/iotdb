@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.query.reader.universal;
 
+import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 
 import java.io.IOException;
@@ -36,14 +37,9 @@ public class DescPriorityMergeReader extends PriorityMergeReader {
             });
   }
 
-  /**
-   * @param reader
-   * @param priority
-   * @param endTime
-   * @throws IOException
-   */
   @Override
-  public void addReader(IPointReader reader, MergeReaderPriority priority, long endTime)
+  public void addReader(
+      IPointReader reader, MergeReaderPriority priority, long endTime, QueryContext context)
       throws IOException {
     if (reader.hasNextTimeValuePair()) {
       heap.add(new Element(reader, reader.nextTimeValuePair(), priority));

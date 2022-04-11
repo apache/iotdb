@@ -18,7 +18,14 @@
  */
 package org.apache.iotdb.db.qp.logical.sys;
 
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.exception.query.LogicalOperatorException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.CountPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
 /** CountOperator is used to count time-series and count nodes. */
 public class CountOperator extends ShowOperator {
@@ -42,5 +49,25 @@ public class CountOperator extends ShowOperator {
 
   public int getLevel() {
     return this.level;
+  }
+
+  @Override
+  public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
+      throws QueryProcessException {
+    switch (tokenIntType) {
+      case SQLConstant.TOK_COUNT_DEVICES:
+        return new CountPlan(ShowContentType.COUNT_DEVICES, path);
+      case SQLConstant.TOK_COUNT_STORAGE_GROUP:
+        return new CountPlan(ShowContentType.COUNT_STORAGE_GROUP, path);
+      case SQLConstant.TOK_COUNT_NODE_TIMESERIES:
+        return new CountPlan(ShowContentType.COUNT_NODE_TIMESERIES, path, level);
+      case SQLConstant.TOK_COUNT_NODES:
+        return new CountPlan(ShowContentType.COUNT_NODES, path, level);
+      case SQLConstant.TOK_COUNT_TIMESERIES:
+        return new CountPlan(ShowContentType.COUNT_TIMESERIES, path);
+      default:
+        throw new LogicalOperatorException(
+            String.format("not supported operator type %s in show operation.", operatorType));
+    }
   }
 }

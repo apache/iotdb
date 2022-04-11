@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.query.reader.universal;
 
+import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.tracing.TracingManager;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 
@@ -27,6 +29,7 @@ import java.util.Objects;
 import java.util.PriorityQueue;
 
 /** This class implements {@link IPointReader} for data sources with different priorities. */
+@SuppressWarnings("ConstantConditions") // heap is ensured by hasNext non-empty
 public class PriorityMergeReader implements IPointReader {
 
   // max time of all added readers in PriorityMergeReader
@@ -69,14 +72,24 @@ public class PriorityMergeReader implements IPointReader {
     }
   }
 
-  public void addReader(IPointReader reader, MergeReaderPriority priority, long endTime)
+  public void addReader(
+      IPointReader reader, MergeReaderPriority priority, long endTime, QueryContext context)
       throws IOException {
     if (reader.hasNextTimeValuePair()) {
       heap.add(new Element(reader, reader.nextTimeValuePair(), priority));
       currentReadStopTime = Math.max(currentReadStopTime, endTime);
+
+      // for tracing: try to calculate the number of overlapped pages
+      if (context.isEnableTracing()) {
+        addOverlappedPageNum(context.getQueryId());
+      }
     } else {
       reader.close();
     }
+  }
+
+  private void addOverlappedPageNum(long queryId) {
+    TracingManager.getInstance().addOverlappedPageNum(queryId);
   }
 
   public long getCurrentReadStopTime() {
@@ -97,8 +110,7 @@ public class PriorityMergeReader implements IPointReader {
       top.next();
       topNext = top.currPair();
     }
-    long topNextTime = topNext == null ? Long.MAX_VALUE : topNext.getTimestamp();
-    updateHeap(ret.getTimestamp(), topNextTime);
+    updateHeap(ret, topNext);
     if (topNext != null) {
       top.timeValuePair = topNext;
       heap.add(top);
@@ -111,17 +123,25 @@ public class PriorityMergeReader implements IPointReader {
     return heap.peek().getTimeValuePair();
   }
 
-  protected void updateHeap(long topTime, long topNextTime) throws IOException {
+  /**
+   * remove all the TimeValuePair that shares the same timestamp if it's an aligned path we may need
+   * to use those records that share the same timestamp to fill the null sub sensor value in current
+   * TimeValuePair
+   */
+  protected void updateHeap(TimeValuePair ret, TimeValuePair topNext) throws IOException {
+    long topTime = ret.getTimestamp();
+    long topNextTime = (topNext == null ? Long.MAX_VALUE : topNext.getTimestamp());
     while (!heap.isEmpty() && heap.peek().currTime() == topTime) {
       Element e = heap.poll();
+      fillNullValue(ret, e.getTimeValuePair());
       if (!e.hasNext()) {
         e.reader.close();
         continue;
       }
-
       e.next();
       if (e.currTime() == topNextTime) {
         // if the next value of the peek will be overwritten by the next of the top, skip it
+        fillNullValue(topNext, e.getTimeValuePair());
         if (e.hasNext()) {
           e.next();
           heap.add(e);
@@ -133,6 +153,11 @@ public class PriorityMergeReader implements IPointReader {
         heap.add(e);
       }
     }
+  }
+
+  /** this method only take effect for aligned time series, so the override version */
+  protected void fillNullValue(TimeValuePair v, TimeValuePair c) {
+    // do nothing for non-aligned time series
   }
 
   @Override

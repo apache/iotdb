@@ -18,19 +18,19 @@
  */
 package org.apache.iotdb.db.sync.sender.manage;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.sync.conf.SyncSenderConfig;
 import org.apache.iotdb.db.sync.conf.SyncSenderDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.SyncUtils;
+import org.apache.iotdb.tsfile.utils.FilePathUtils;
 
 import org.junit.After;
 import org.junit.Before;
@@ -76,7 +76,7 @@ public class SyncFileManagerTest {
 
     Random r = new Random(0);
     for (int i = 0; i < 3; i++) {
-      IoTDB.metaManager.setStorageGroup(new PartialPath(getSgName(i)));
+      IoTDB.schemaProcessor.setStorageGroup(new PartialPath(getSgName(i)));
     }
     for (int i = 0; i < 3; i++) {
       for (int j = 0; j < 5; j++) {

@@ -24,9 +24,10 @@ import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogParser;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
+import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -49,6 +50,23 @@ import java.util.Map;
 import static org.junit.Assert.assertEquals;
 
 public class SerializeUtilTest {
+
+  @Test
+  public void testSlotPartitionTable() {
+    List<Node> nodes = new ArrayList<>();
+    nodes.add(TestUtils.getNode(0));
+    nodes.add(TestUtils.getNode(1));
+    nodes.add(TestUtils.getNode(2));
+    SlotPartitionTable slotPartitionTable1 = new SlotPartitionTable(nodes, TestUtils.getNode(0));
+    SlotPartitionTable slotPartitionTable2 = new SlotPartitionTable(nodes, TestUtils.getNode(0));
+    SlotPartitionTable slotPartitionTable3 = new SlotPartitionTable(nodes, TestUtils.getNode(0));
+    slotPartitionTable1.removeNode(TestUtils.getNode(0));
+    slotPartitionTable2.deserialize(slotPartitionTable1.serialize());
+    assertEquals(slotPartitionTable2, slotPartitionTable1);
+    slotPartitionTable1.addNode(TestUtils.getNode(0));
+    slotPartitionTable3.deserialize(slotPartitionTable1.serialize());
+    assertEquals(slotPartitionTable3, slotPartitionTable1);
+  }
 
   @Test
   public void testStrToNode() {
@@ -97,8 +115,6 @@ public class SerializeUtilTest {
     tabletPlan.setTimes(times);
     tabletPlan.setColumns(columns);
     tabletPlan.setRowCount(times.length);
-    tabletPlan.setStart(0);
-    tabletPlan.setEnd(4);
 
     Log log = new PhysicalPlanLog(tabletPlan);
     log.setCurrLogTerm(1);

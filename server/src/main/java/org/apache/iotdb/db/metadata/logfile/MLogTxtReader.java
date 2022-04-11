@@ -40,7 +40,7 @@ public class MLogTxtReader implements AutoCloseable {
   public MLogTxtReader(String schemaDir, String logFileName) throws IOException {
     File metadataDir = SystemFileFactory.INSTANCE.getFile(schemaDir);
     if (!metadataDir.exists()) {
-      logger.error("no mlog.txt to init MManager.");
+      logger.error("no mlog.txt to init SchemaRegion.");
       throw new IOException("mlog.txt does not exist.");
     }
 

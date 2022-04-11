@@ -18,13 +18,13 @@
  */
 package org.apache.iotdb.db.sync.receiver;
 
-import org.apache.iotdb.db.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.service.ServiceType;
+import org.apache.iotdb.commons.service.ThriftService;
+import org.apache.iotdb.commons.service.ThriftServiceThread;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.StartupException;
-import org.apache.iotdb.db.service.ServiceType;
-import org.apache.iotdb.db.service.thrift.ThriftService;
-import org.apache.iotdb.db.service.thrift.ThriftServiceThread;
 import org.apache.iotdb.db.sync.receiver.load.FileLoaderManager;
 import org.apache.iotdb.db.sync.receiver.recover.SyncReceiverLogAnalyzer;
 import org.apache.iotdb.db.sync.receiver.transfer.SyncServiceImpl;
@@ -61,6 +61,7 @@ public class SyncServerManager extends ThriftService implements SyncServerManage
 
   @Override
   public void initTProcessor() {
+    initSyncedServiceImpl(null);
     serviceImpl = new SyncServiceImpl();
     processor = new SyncService.Processor<>(serviceImpl);
   }
@@ -90,6 +91,11 @@ public class SyncServerManager extends ThriftService implements SyncServerManage
   @Override
   public int getBindPort() {
     return IoTDBDescriptor.getInstance().getConfig().getSyncServerPort();
+  }
+
+  @Override
+  public int getRPCPort() {
+    return getBindPort();
   }
 
   @Override

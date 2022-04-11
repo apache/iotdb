@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.qp.physical.sys;
 
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
@@ -35,17 +35,17 @@ public class MNodePlan extends PhysicalPlan {
   protected int childSize;
 
   public MNodePlan() {
-    super(false, Operator.OperatorType.MNODE);
+    super(Operator.OperatorType.MNODE);
+  }
+
+  public MNodePlan(Operator.OperatorType operatorType) {
+    super(operatorType);
   }
 
   public MNodePlan(String name, int childSize) {
-    super(false, Operator.OperatorType.MNODE);
+    super(Operator.OperatorType.MNODE);
     this.name = name;
     this.childSize = childSize;
-  }
-
-  public MNodePlan(boolean isQuery, Operator.OperatorType operatorType) {
-    super(isQuery, operatorType);
   }
 
   @Override
@@ -70,7 +70,7 @@ public class MNodePlan extends PhysicalPlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     buffer.put((byte) PhysicalPlanType.MNODE.ordinal());
     putString(buffer, name);
     buffer.putInt(childSize);

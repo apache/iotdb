@@ -60,7 +60,7 @@ public class PrepareStatementDemo {
       preparedStatement.execute();
       preparedStatement.clearParameters();
 
-      try (ResultSet resultSet = preparedStatement.executeQuery("select * from root")) {
+      try (ResultSet resultSet = preparedStatement.executeQuery("select ** from root")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         while (resultSet.next()) {
           StringBuilder builder = new StringBuilder();

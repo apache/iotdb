@@ -19,33 +19,33 @@
 
 package org.apache.iotdb.cluster.client.async;
 
+import org.apache.iotdb.cluster.client.ClientCategory;
+import org.apache.iotdb.cluster.client.IClientManager;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.rpc.thrift.RaftService;
-import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.AsyncClient;
-import org.apache.iotdb.cluster.server.RaftServer;
+import org.apache.iotdb.cluster.rpc.thrift.TSMetaService;
+import org.apache.iotdb.cluster.utils.ClientUtils;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.rpc.TNonblockingSocketWrapper;
 
+import org.apache.commons.pool2.PooledObject;
+import org.apache.commons.pool2.impl.DefaultPooledObject;
 import org.apache.thrift.async.TAsyncClientManager;
 import org.apache.thrift.async.TAsyncMethodCall;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TNonblockingTransport;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.Date;
 
 /**
  * Notice: Because a client will be returned to a pool immediately after a successful request, you
- * should not cache it anywhere else or there may be conflicts.
+ * should not cache it anywhere else.
  */
-// the two classes does not share a common parent and Java does not allow multiple extension
-@SuppressWarnings("common-java:DuplicatedBlocks")
-public class AsyncMetaClient extends AsyncClient {
+public class AsyncMetaClient extends TSMetaService.AsyncClient {
 
-  private static final Logger logger = LoggerFactory.getLogger(AsyncMetaClient.class);
-  Node node;
-  AsyncClientPool pool;
+  private Node node;
+  private ClientCategory category;
+  private IClientManager clientManager;
 
   public AsyncMetaClient(
       TProtocolFactory protocolFactory,
@@ -58,55 +58,58 @@ public class AsyncMetaClient extends AsyncClient {
       TProtocolFactory protocolFactory,
       TAsyncClientManager clientManager,
       Node node,
-      AsyncClientPool pool)
+      ClientCategory category)
       throws IOException {
     // the difference of the two clients lies in the port
     super(
         protocolFactory,
         clientManager,
         TNonblockingSocketWrapper.wrap(
-            node.getInternalIp(), node.getMetaPort(), RaftServer.getConnectionTimeoutInMS()));
+            node.getInternalIp(),
+            ClientUtils.getPort(node, category),
+            ClusterConstant.getConnectionTimeoutInMS()));
     this.node = node;
-    this.pool = pool;
+    this.category = category;
+  }
+
+  public AsyncMetaClient(
+      TProtocolFactory protocolFactory,
+      TAsyncClientManager clientManager,
+      Node node,
+      ClientCategory category,
+      IClientManager manager)
+      throws IOException {
+    this(protocolFactory, clientManager, node, category);
+    this.clientManager = manager;
+  }
+
+  /**
+   * return self if clientManager is not null, the method doesn't need to call by user, it will
+   * trigger once client transport complete.
+   */
+  public void returnSelf() {
+    if (clientManager != null) {
+      clientManager.returnAsyncClient(this, node, category);
+    }
   }
 
   @Override
   public void onComplete() {
     super.onComplete();
-    // return itself to the pool if the job is done
-    if (pool != null) {
-      pool.putClient(node, this);
-      pool.onComplete(node);
-    }
-  }
-
-  @SuppressWarnings("squid:S1135")
-  @Override
-  public void onError(Exception e) {
-    super.onError(e);
-    pool.recreateClient(node);
-    // TODO: if e instance of network failure
-    pool.onError(node);
-  }
-
-  public static class FactoryAsync extends AsyncClientFactory {
-
-    public FactoryAsync(org.apache.thrift.protocol.TProtocolFactory protocolFactory) {
-      this.protocolFactory = protocolFactory;
-    }
-
-    @Override
-    public RaftService.AsyncClient getAsyncClient(Node node, AsyncClientPool pool)
-        throws IOException {
-      TAsyncClientManager manager = managers[clientCnt.incrementAndGet() % managers.length];
-      manager = manager == null ? new TAsyncClientManager() : manager;
-      return new AsyncMetaClient(protocolFactory, manager, node, pool);
-    }
+    returnSelf();
   }
 
   @Override
   public String toString() {
-    return "MetaClient{" + "node=" + node + '}';
+    return "Async"
+        + category.getName()
+        + "{"
+        + "node="
+        + node
+        + ","
+        + "port="
+        + ClientUtils.getPort(node, category)
+        + '}';
   }
 
   public void close() {
@@ -118,18 +121,58 @@ public class AsyncMetaClient extends AsyncClient {
     return node;
   }
 
+  @TestOnly
   public boolean isReady() {
-    if (___currentMethod != null) {
-      logger.warn(
-          "Client {} is running {} and will timeout at {}",
-          hashCode(),
-          ___currentMethod,
-          new Date(___currentMethod.getTimeoutTimestamp()));
+    try {
+      checkReady();
+      return true;
+    } catch (Exception e) {
+      return false;
     }
-    return ___currentMethod == null;
   }
 
+  public boolean isValid() {
+    return ___transport != null;
+  }
+
+  @TestOnly
   TAsyncMethodCall<Object> getCurrMethod() {
     return ___currentMethod;
+  }
+
+  public static class AsyncMetaClientFactory extends AsyncBaseFactory<Node, AsyncMetaClient> {
+
+    public AsyncMetaClientFactory(TProtocolFactory protocolFactory, ClientCategory category) {
+      super(protocolFactory, category);
+    }
+
+    public AsyncMetaClientFactory(
+        TProtocolFactory protocolFactory, ClientCategory category, IClientManager clientManager) {
+      super(protocolFactory, category, clientManager);
+    }
+
+    @Override
+    public void activateObject(Node node, PooledObject<AsyncMetaClient> pooledObject) {}
+
+    @Override
+    public void destroyObject(Node node, PooledObject<AsyncMetaClient> pooledObject) {
+      pooledObject.getObject().close();
+    }
+
+    @Override
+    public PooledObject<AsyncMetaClient> makeObject(Node node) throws Exception {
+      TAsyncClientManager manager = managers[clientCnt.incrementAndGet() % managers.length];
+      manager = manager == null ? new TAsyncClientManager() : manager;
+      return new DefaultPooledObject<>(
+          new AsyncMetaClient(protocolFactory, manager, node, category, clientPoolManager));
+    }
+
+    @Override
+    public void passivateObject(Node node, PooledObject<AsyncMetaClient> pooledObject) {}
+
+    @Override
+    public boolean validateObject(Node node, PooledObject<AsyncMetaClient> pooledObject) {
+      return pooledObject != null && pooledObject.getObject().isValid();
+    }
   }
 }

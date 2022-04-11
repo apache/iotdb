@@ -16,82 +16,162 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.db.query.dataset.groupby;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.qp.physical.crud.GroupByTimeFillPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.utils.FilePathUtils;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.db.query.executor.groupby.SlidingWindowGroupByExecutor;
+import org.apache.iotdb.db.utils.timerangeiterator.ITimeRangeIterator;
+import org.apache.iotdb.db.utils.timerangeiterator.TimeRangeIteratorFactory;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
 
-public class GroupByTimeDataSet extends QueryDataSet {
+import static org.apache.iotdb.db.qp.utils.DatetimeUtils.MS_TO_MONTH;
 
-  private static final Logger logger = LoggerFactory.getLogger(GroupByTimeDataSet.class);
-
-  private List<RowRecord> records = new ArrayList<>();
-  private int index = 0;
+public abstract class GroupByTimeDataSet extends QueryDataSet {
 
   protected long queryId;
-  private GroupByTimePlan groupByTimePlan;
-  private QueryContext context;
+  protected long interval;
+  protected long slidingStep;
+  // total query [startTime, endTime)
+  protected long startTime;
+  protected long endTime;
 
-  public GroupByTimeDataSet(
-      QueryContext context, GroupByTimePlan plan, GroupByEngineDataSet dataSet)
-      throws QueryProcessException, IOException {
+  // current interval of aggregation window [curStartTime, curEndTime)
+  protected long curStartTime;
+  protected long curEndTime;
+  protected boolean hasCachedTimeInterval;
+
+  // current interval of pre-aggregation window [curStartTime, curEndTime)
+  protected long curPreAggrStartTime;
+  protected long curPreAggrEndTime;
+
+  protected boolean leftCRightO;
+  protected boolean isIntervalByMonth = false;
+  protected boolean isSlidingStepByMonth = false;
+
+  ITimeRangeIterator aggrWindowIterator;
+  ITimeRangeIterator preAggrWindowIterator;
+
+  protected AggregateResult[] curAggregateResults;
+  protected SlidingWindowGroupByExecutor[] slidingWindowGroupByExecutors;
+
+  public GroupByTimeDataSet() {}
+
+  /** groupBy query. */
+  public GroupByTimeDataSet(QueryContext context, GroupByTimePlan groupByTimePlan) {
+    super(
+        new ArrayList<>(groupByTimePlan.getDeduplicatedPaths()),
+        groupByTimePlan.getDeduplicatedDataTypes(),
+        groupByTimePlan.isAscending());
+
+    // find the startTime of the first aggregation interval
+    initGroupByTimeDataSetFields(context, groupByTimePlan);
+  }
+
+  protected void initGroupByTimeDataSetFields(
+      QueryContext context, GroupByTimePlan groupByTimePlan) {
     this.queryId = context.getQueryId();
-    this.paths = new ArrayList<>(plan.getDeduplicatedPaths());
-    this.dataTypes = plan.getDeduplicatedDataTypes();
-    this.groupByTimePlan = plan;
-    this.context = context;
+    this.interval = groupByTimePlan.getInterval();
+    this.slidingStep = groupByTimePlan.getSlidingStep();
+    if (groupByTimePlan instanceof GroupByTimeFillPlan) {
+      this.startTime = ((GroupByTimeFillPlan) groupByTimePlan).getQueryStartTime();
+      this.endTime = ((GroupByTimeFillPlan) groupByTimePlan).getQueryEndTime();
+    } else {
+      this.startTime = groupByTimePlan.getStartTime();
+      this.endTime = groupByTimePlan.getEndTime();
+    }
+    this.leftCRightO = groupByTimePlan.isLeftCRightO();
+    this.ascending = groupByTimePlan.isAscending();
+    this.isIntervalByMonth = groupByTimePlan.isIntervalByMonth();
+    this.isSlidingStepByMonth = groupByTimePlan.isSlidingStepByMonth();
 
-    if (logger.isDebugEnabled()) {
-      logger.debug("paths " + this.paths + " level:" + plan.getLevel());
+    if (isIntervalByMonth) {
+      interval = interval / MS_TO_MONTH;
     }
 
-    Map<String, AggregateResult> finalPaths = plan.getAggPathByLevel();
-
-    // get all records from GroupByDataSet, then we merge every record
-    if (logger.isDebugEnabled()) {
-      logger.debug("only group by level, paths:" + groupByTimePlan.getPaths());
-    }
-    while (dataSet != null && dataSet.hasNextWithoutConstraint()) {
-      RowRecord rawRecord = dataSet.nextWithoutConstraint();
-      RowRecord curRecord = new RowRecord(rawRecord.getTimestamp());
-      List<AggregateResult> mergedAggResults =
-          FilePathUtils.mergeRecordByPath(plan, rawRecord, finalPaths);
-      for (AggregateResult resultData : mergedAggResults) {
-        TSDataType dataType = resultData.getResultDataType();
-        curRecord.addField(resultData.getResult(), dataType);
-      }
-      records.add(curRecord);
+    if (isSlidingStepByMonth) {
+      slidingStep = slidingStep / MS_TO_MONTH;
     }
 
-    this.dataTypes = new ArrayList<>();
-    this.paths = new ArrayList<>();
-    for (int i = 0; i < finalPaths.size(); i++) {
-      this.dataTypes.add(TSDataType.INT64);
-    }
+    // init TimeRangeIterator
+    aggrWindowIterator =
+        TimeRangeIteratorFactory.getTimeRangeIterator(
+            startTime,
+            endTime,
+            interval,
+            slidingStep,
+            ascending,
+            isIntervalByMonth,
+            isSlidingStepByMonth,
+            false);
+
+    preAggrWindowIterator =
+        TimeRangeIteratorFactory.getTimeRangeIterator(
+            startTime,
+            endTime,
+            interval,
+            slidingStep,
+            ascending,
+            isIntervalByMonth,
+            isSlidingStepByMonth,
+            true);
+
+    // find the first aggregation interval
+    Pair<Long, Long> retTimeRange;
+    retTimeRange = aggrWindowIterator.getFirstTimeRange();
+
+    curStartTime = retTimeRange.left;
+    curEndTime = retTimeRange.right;
+
+    // find the first pre-aggregation interval
+    Pair<Long, Long> retPerAggrTimeRange;
+    retPerAggrTimeRange = preAggrWindowIterator.getFirstTimeRange();
+
+    curPreAggrStartTime = retPerAggrTimeRange.left;
+    curPreAggrEndTime = retPerAggrTimeRange.right;
+
+    this.hasCachedTimeInterval = true;
+
+    slidingWindowGroupByExecutors = new SlidingWindowGroupByExecutor[paths.size()];
   }
 
   @Override
   public boolean hasNextWithoutConstraint() {
-    return index < records.size();
+    // has cached
+    if (hasCachedTimeInterval) {
+      return true;
+    }
+
+    // find the next aggregation interval
+    Pair<Long, Long> nextTimeRange = aggrWindowIterator.getNextTimeRange(curStartTime);
+    if (nextTimeRange == null) {
+      return false;
+    }
+    curStartTime = nextTimeRange.left;
+    curEndTime = nextTimeRange.right;
+
+    hasCachedTimeInterval = true;
+    return true;
   }
 
   @Override
-  public RowRecord nextWithoutConstraint() {
-    return records.get(index++);
+  public abstract RowRecord nextWithoutConstraint() throws IOException;
+
+  public long getStartTime() {
+    return startTime;
+  }
+
+  @TestOnly
+  public Pair<Long, Long> nextTimePartition() {
+    hasCachedTimeInterval = false;
+    return new Pair<>(curStartTime, curEndTime);
   }
 }

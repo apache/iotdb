@@ -17,7 +17,7 @@
  * under the License.
  */
 
-include "rpc.thrift"
+include "common.thrift"
 namespace java org.apache.iotdb.cluster.rpc.thrift
 namespace py iotdb.thrift.cluster
 
@@ -40,7 +40,7 @@ struct HeartBeatRequest {
 
   // because a data server may play many data groups members, this is used to identify which
   // member should process the request or response. Only used in data group communication.
-  8: optional Node header
+  8: optional RaftNode header
 }
 
 // follower -> leader
@@ -56,6 +56,7 @@ struct HeartBeatResponse {
   // because a data server may play many data groups members, this is used to identify which
   // member should process the request or response. Only used in data group communication.
   7: optional Node header
+  8: required bool installingSnapshot // whether the follower is installing snapshot now
 }
 
 struct RequestCommitIndexResponse {
@@ -73,9 +74,7 @@ struct ElectionRequest {
 
   // because a data server may play many data groups members, this is used to identify which
   // member should process the request or response. Only used in data group communication.
-  5: optional Node header
-  6: optional long dataLogLastIndex
-  7: optional long dataLogLastTerm
+  5: optional RaftNode header
 }
 
 // leader -> follower
@@ -89,7 +88,7 @@ struct AppendEntryRequest {
 
   // because a data server may play many data groups members, this is used to identify which
   // member should process the request or response. Only used in data group communication.
-  7: optional Node header
+  7: optional RaftNode header
 }
 
 // leader -> follower
@@ -103,7 +102,7 @@ struct AppendEntriesRequest {
 
   // because a data server may play many data groups members, this is used to identify which
   // member should process the request or response. Only used in data group communication.
-  7: optional Node header
+  7: optional RaftNode header
 }
 
 struct AddNodeResponse {
@@ -126,6 +125,11 @@ struct Node {
   6: required string clientIp
 }
 
+struct RaftNode {
+  1: required Node node
+  2: required int raftId
+}
+
 // leader -> follower
 struct StartUpStatus {
   1: required long partitionInterval
@@ -133,6 +137,7 @@ struct StartUpStatus {
   3: required int replicationNumber
   4: required list<Node> seedNodeList
   5: required string clusterName
+  6: required int multiRaftFactor
 }
 
 // follower -> leader
@@ -142,18 +147,19 @@ struct CheckStatusResponse {
   3: required bool replicationNumEquals
   4: required bool seedNodeEquals
   5: required bool clusterNameEquals
+  6: required bool multiRaftFactorEquals
 }
 
 struct SendSnapshotRequest {
   1: required binary snapshotBytes
   // for data group
-  2: optional Node header
+  2: optional RaftNode header
 }
 
 struct PullSnapshotRequest {
   1: required list<int> requiredSlots
   // for data group
-  2: optional Node header
+  2: optional RaftNode header
   // set to true if the previous holder has been removed from the cluster.
   // This will make the previous holder read-only so that different new
   // replicas can pull the same snapshot.
@@ -166,12 +172,12 @@ struct PullSnapshotResp {
 
 struct ExecutNonQueryReq {
   1: required binary planBytes
-  2: optional Node header
+  2: optional RaftNode header
 }
 
 struct PullSchemaRequest {
   1: required list<string> prefixPaths
-  2: optional Node header
+  2: optional RaftNode header
 }
 
 struct PullSchemaResp {
@@ -184,12 +190,13 @@ struct SingleSeriesQueryRequest {
   3: optional binary valueFilterBytes
   4: required long queryId
   5: required Node requester
-  6: required Node header
+  6: required RaftNode header
   7: required int dataTypeOrdinal
   8: required set<string> deviceMeasurements
   9: required bool ascending
   10: required int fetchSize
   11: required int deduplicatedPathNum
+  12: optional set<int> requiredSlots
 }
 
 struct MultSeriesQueryRequest {
@@ -198,7 +205,7 @@ struct MultSeriesQueryRequest {
   3: optional binary valueFilterBytes
   4: required long queryId
   5: required Node requester
-  6: required Node header
+  6: required RaftNode header
   7: required list<int> dataTypeOrdinal
   8: required map<string,set<string>> deviceMeasurements
   9: required bool ascending
@@ -212,7 +219,7 @@ struct PreviousFillRequest {
   3: required long beforeRange
   4: required long queryId
   5: required Node requester
-  6: required Node header
+  6: required RaftNode header
   7: required int dataTypeOrdinal
   8: required set<string> deviceMeasurements
 }
@@ -227,7 +234,7 @@ struct GetAggrResultRequest {
   2: required list<string> aggregations
   3: required int dataTypeOrdinal
   4: optional binary timeFilterBytes
-  5: required Node header
+  5: required RaftNode header
   6: required long queryId
   7: required Node requestor
   8: required set<string> deviceMeasurements
@@ -240,7 +247,7 @@ struct GroupByRequest {
   3: optional binary timeFilterBytes
   4: required long queryId
   5: required list<int> aggregationTypeOrdinals
-  6: required Node header
+  6: required RaftNode header
   7: required Node requestor
   8: required set<string> deviceMeasurements
   9: required bool ascending
@@ -252,13 +259,22 @@ struct LastQueryRequest {
   3: required long queryId
   4: required map<string, set<string>> deviceMeasurements
   5: optional binary filterBytes
-  6: required Node header
+  6: required RaftNode header
   7: required Node requestor
 }
 
 struct GetAllPathsResult {
   1: required list<string> paths
-  2: optional list<string> aliasList
+  2: required list<byte> dataTypes
+  3: optional list<string> aliasList
+  4: required list<bool> underAlignedEntity
+}
+
+struct MeasurementSchemaRequest {
+  1: required long queryId
+  2: required RaftNode header
+  3: required Node requester
+  4: required binary planBinary
 }
 
 
@@ -311,14 +327,13 @@ service RaftService {
   /**
   * Execute a binarized non-query PhysicalPlan
   **/
-  rpc.TSStatus executeNonQueryPlan(1:ExecutNonQueryReq request)
+  common.TSStatus executeNonQueryPlan(1:ExecutNonQueryReq request)
 
   /**
   * Ask the leader for its commit index, used to check whether the node has caught up with the
   * leader.
   **/
-  RequestCommitIndexResponse requestCommitIndex(1:Node header)
-
+  RequestCommitIndexResponse requestCommitIndex(1:RaftNode header)
 
   /**
   * Read a chunk of a file from the client. If the remaining of the file does not have enough
@@ -330,7 +345,7 @@ service RaftService {
   /**
   * Test if a log of "index" and "term" exists.
   **/
-  bool matchTerm(1:long index, 2:long term, 3:Node header)
+  bool matchTerm(1:long index, 2:long term, 3:RaftNode header)
 
   /**
   * When a follower finds that it already has a file in a snapshot locally, it calls this
@@ -338,7 +353,6 @@ service RaftService {
   **/
   void removeHardLink(1: string hardLinkPath)
 }
-
 
 
 service TSDataService extends RaftService {
@@ -361,14 +375,14 @@ service TSDataService extends RaftService {
   * @return a ByteBuffer containing the serialized time-value pairs or an empty buffer if there
   * are not more results.
   **/
-  binary fetchSingleSeries(1:Node header, 2:long readerId)
+  binary fetchSingleSeries(1:RaftNode header, 2:long readerId)
 
     /**
     * Fetch mult series at max fetchSize time-value pairs using the resultSetId generated by querySingleSeries.
     * @return a map containing key-value,the serialized time-value pairs or an empty buffer if there
     * are not more results.
     **/
-    map<string,binary> fetchMultSeries(1:Node header, 2:long readerId, 3:list<string> paths)
+    map<string,binary> fetchMultSeries(1:RaftNode header, 2:long readerId, 3:list<string> paths)
 
    /**
    * Query a time series and generate an IReaderByTimestamp.
@@ -382,42 +396,42 @@ service TSDataService extends RaftService {
    * @return a ByteBuffer containing the serialized value or an empty buffer if there
    * are not more results.
    **/
-   binary fetchSingleSeriesByTimestamps(1:Node header, 2:long readerId, 3:list<long> timestamps)
+   binary fetchSingleSeriesByTimestamps(1:RaftNode header, 2:long readerId, 3:list<long> timestamps)
 
   /**
   * Find the local query established for the remote query and release all its resource.
   **/
-  void endQuery(1:Node header, 2:Node thisNode, 3:long queryId)
+  void endQuery(1:RaftNode header, 3:Node thisNode, 4:long queryId)
 
   /**
   * Given path patterns (paths with wildcard), return all paths they match.
   **/
-  GetAllPathsResult getAllPaths(1:Node header, 2:list<string> path, 3:bool withAlias)
+  GetAllPathsResult getAllPaths(1:RaftNode header, 2:list<string> paths, 3:bool withAlias)
 
   /**
    * Given path patterns (paths with wildcard), return all devices they match.
    **/
-  set<string> getAllDevices(1:Node header, 2:list<string> path)
+  set<string> getAllDevices(1:RaftNode header, 2:list<string> path, 3: bool isPrefixMatch)
 
   /**
    * Get the devices from the header according to the showDevicesPlan
    **/
-  binary getDevices(1:Node header, 2: binary planBinary)
+  binary getDevices(1:RaftNode header, 2: binary planBinary)
 
-  list<string> getNodeList(1:Node header, 2:string path, 3:int nodeLevel)
+  list<string> getNodeList(1:RaftNode header, 2:string path, 3:int nodeLevel)
 
   /**
    * Given path patterns(paths with wildcard), return all children nodes they match
    **/
-  set<string> getChildNodeInNextLevel(1: Node header, 2: string path)
+  set<string> getChildNodeInNextLevel(1: RaftNode header, 2: string path)
 
-  set<string> getChildNodePathInNextLevel(1: Node header, 2: string path)
+  set<string> getChildNodePathInNextLevel(1: RaftNode header, 2: string path)
 
-  binary getAllMeasurementSchema(1: Node header, 2: binary planBinary)
+  binary getAllMeasurementSchema(1:MeasurementSchemaRequest request)
 
   list<binary> getAggrResult(1:GetAggrResultRequest request)
 
-  list<string> getUnregisteredTimeseries(1: Node header, 2: list<string> timeseriesList)
+  list<string> getUnregisteredTimeseries(1: RaftNode header, 2: list<string> timeseriesList)
 
   PullSnapshotResp pullSnapshot(1:PullSnapshotRequest request)
 
@@ -432,7 +446,7 @@ service TSDataService extends RaftService {
   * @return the serialized AggregationResults, each is the result of one of the previously
   * required aggregations, and their orders are the same.
   **/
-  list<binary> getGroupByResult(1:Node header, 2:long executorId, 3:long startTime, 4:long endTime)
+  list<binary> getGroupByResult(1:RaftNode header, 3:long executorId, 4:long startTime, 5:long endTime)
 
 
   /**
@@ -457,15 +471,17 @@ service TSDataService extends RaftService {
   **/
   binary last(1: LastQueryRequest request)
 
-  int getPathCount(1: Node header 2: list<string> pathsToQuery 3: int level)
+  int getPathCount(1: RaftNode header, 2: list<string> pathsToQuery, 3: int level)
+
+  int getDeviceCount(1: RaftNode header, 2: list<string> pathsToQuery)
 
   /**
   * During slot transfer, when a member has pulled snapshot from a group, the member will use this
   * method to inform the group that one replica of such slots has been pulled.
   **/
-  bool onSnapshotApplied(1: Node header 2: list<int> slots)
+  bool onSnapshotApplied(1: RaftNode header, 2: list<int> slots)
 
-  binary peekNextNotNullValue(1: Node header, 2: long executorId, 3: long startTime, 4: long
+  binary peekNextNotNullValue(1: RaftNode header, 2: long executorId, 3: long startTime, 4: long
   endTime)
 
 }
@@ -482,7 +498,7 @@ service TSMetaService extends RaftService {
   AddNodeResponse addNode(1: Node node, 2: StartUpStatus startUpStatus)
 
 
-  CheckStatusResponse  checkStatus(1: StartUpStatus startUpStatus)
+  CheckStatusResponse checkStatus(1: StartUpStatus startUpStatus)
 
   /**
   * Remove a node from the cluster. If the node is not in the cluster or the cluster size will
@@ -496,11 +512,19 @@ service TSMetaService extends RaftService {
   * the commit command by heartbeat since it has been removed, so the leader should tell it
   * directly that it is no longer in the cluster.
   **/
-  void exile()
+  void exile(1: binary removeNodeLog)
 
   TNodeStatus queryNodeStatus()
 
+  /**
+  * Check whether this node is alive.
+  **/
   Node checkAlive()
+
+  /**
+  * Collect the info of data migration, which will decide that if users can change membership.
+  **/
+  binary collectMigrationStatus()
 
   /**
   * When a node starts, it send handshakes to all other nodes so they know the node is alive
@@ -547,9 +571,9 @@ service ClusterInfoService {
     /**
      * Get status of all nodes
      *
-     * @return key: node, value: live or not
+     * @return key: node, value: 0(live), 1(offline), 2(joining), 3(leaving)
      */
-    map<Node, bool> getAllNodeStatus();
+    map<Node, int> getAllNodeStatus();
 
     /**
      * @return A multi-line string with each line representing the total time consumption, invocation

@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.qp.sql;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.runtime.SQLParserException;
+import org.apache.iotdb.db.exception.sql.SQLParserException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 
 import org.junit.After;
@@ -48,7 +48,7 @@ public class IoTDBsqlVisitorTest {
 
   @Test
   public void testParseTimeFormatNow() {
-    long now = visitor.parseTimeFormat(SQLConstant.NOW_FUNC);
+    long now = visitor.parseDateFormat(SQLConstant.NOW_FUNC);
     for (int i = 0; i <= 12; i++) {
       ZoneOffset offset1, offset2;
       if (i < 10) {
@@ -71,15 +71,15 @@ public class IoTDBsqlVisitorTest {
   public void testParseTimeFormatNowPrecision() {
     String timePrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
     IoTDBDescriptor.getInstance().getConfig().setTimestampPrecision("ms");
-    long now_ms = visitor.parseTimeFormat(SQLConstant.NOW_FUNC);
+    long now_ms = visitor.parseDateFormat(SQLConstant.NOW_FUNC);
     String ms_str = String.valueOf(now_ms);
 
     IoTDBDescriptor.getInstance().getConfig().setTimestampPrecision("us");
-    long now_us = visitor.parseTimeFormat(SQLConstant.NOW_FUNC);
+    long now_us = visitor.parseDateFormat(SQLConstant.NOW_FUNC);
     String us_str = String.valueOf(now_us);
 
     IoTDBDescriptor.getInstance().getConfig().setTimestampPrecision("ns");
-    long now_ns = visitor.parseTimeFormat(SQLConstant.NOW_FUNC);
+    long now_ns = visitor.parseDateFormat(SQLConstant.NOW_FUNC);
     String ns_str = String.valueOf(now_ns);
 
     assertEquals(ms_str.length() + 3, (us_str).length());
@@ -89,11 +89,11 @@ public class IoTDBsqlVisitorTest {
 
   @Test(expected = SQLParserException.class)
   public void testParseTimeFormatFail1() {
-    visitor.parseTimeFormat(null);
+    visitor.parseDateFormat(null);
   }
 
   @Test(expected = SQLParserException.class)
   public void testParseTimeFormatFail2() {
-    visitor.parseTimeFormat("");
+    visitor.parseDateFormat("");
   }
 }

@@ -18,26 +18,34 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
+import org.apache.iotdb.commons.exception.ShutdownException;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
-import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
+import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
+import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompactionTask;
+import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
+import org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger;
+import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
-import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
-import org.apache.iotdb.db.exception.StorageGroupProcessorException;
+import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.TriggerExecutionException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.rescon.MemTableManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -52,30 +60,33 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class StorageGroupProcessorTest {
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static Logger logger = LoggerFactory.getLogger(StorageGroupProcessorTest.class);
 
   private String storageGroup = "root.vehicle.d0";
   private String systemDir = TestConstant.OUTPUT_DATA_DIR.concat("info");
   private String deviceId = "root.vehicle.d0";
   private String measurementId = "s0";
-  private StorageGroupProcessor processor;
+  private DataRegion processor;
   private QueryContext context = EnvironmentUtils.TEST_QUERY_CONTEXT;
 
   @Before
   public void setUp() throws Exception {
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
     MetadataManagerHelper.initMetadata();
     EnvironmentUtils.envSetUp();
     processor = new DummySGP(systemDir, storageGroup);
-    MergeManager.getINSTANCE().start();
+    CompactionTaskManager.getInstance().start();
   }
 
   @After
@@ -83,11 +94,8 @@ public class StorageGroupProcessorTest {
     processor.syncDeleteDataFiles();
     EnvironmentUtils.cleanEnv();
     EnvironmentUtils.cleanDir(TestConstant.OUTPUT_DATA_DIR);
-    MergeManager.getINSTANCE().stop();
+    CompactionTaskManager.getInstance().stop();
     EnvironmentUtils.cleanEnv();
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setCompactionStrategy(CompactionStrategy.LEVEL_COMPACTION);
   }
 
   private void insertToStorageGroupProcessor(TSRecord record)
@@ -120,26 +128,29 @@ public class StorageGroupProcessorTest {
       processor.insert(new InsertRowPlan(record));
     }
 
-    processor.delete(new PartialPath(deviceId, measurementId), 0, 15L, -1);
+    PartialPath fullPath =
+        new MeasurementPath(
+            deviceId,
+            measurementId,
+            new MeasurementSchema(
+                measurementId,
+                TSDataType.INT32,
+                TSEncoding.RLE,
+                CompressionType.UNCOMPRESSED,
+                Collections.emptyMap()));
+
+    processor.delete(new PartialPath(deviceId, measurementId), 0, 15L, -1, null);
 
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
     for (TsFileProcessor tsfileProcessor : processor.getWorkUnsequenceTsFileProcessors()) {
       tsfileProcessor.query(
-          deviceId,
-          measurementId,
-          new MeasurementSchema(
-              measurementId,
-              TSDataType.INT32,
-              TSEncoding.RLE,
-              CompressionType.UNCOMPRESSED,
-              Collections.emptyMap()),
-          new QueryContext(),
+          Collections.singletonList(fullPath),
+          EnvironmentUtils.TEST_QUERY_CONTEXT,
           tsfileResourcesForQuery);
     }
 
     Assert.assertEquals(1, tsfileResourcesForQuery.size());
-    Assert.assertEquals(0, tsfileResourcesForQuery.get(0).getChunkMetadataList().size());
-    List<ReadOnlyMemChunk> memChunks = tsfileResourcesForQuery.get(0).getReadOnlyMemChunk();
+    List<ReadOnlyMemChunk> memChunks = tsfileResourcesForQuery.get(0).getReadOnlyMemChunk(fullPath);
     long time = 16;
     for (ReadOnlyMemChunk memChunk : memChunks) {
       IPointReader iterator = memChunk.getPointReader();
@@ -168,7 +179,12 @@ public class StorageGroupProcessorTest {
     }
     processor.syncCloseAllWorkingTsFileProcessors();
     QueryDataSource queryDataSource =
-        processor.query(new PartialPath(deviceId, measurementId), context, null, null);
+        processor.query(
+            Collections.singletonList(new PartialPath(deviceId, measurementId)),
+            deviceId,
+            context,
+            null,
+            null);
     Assert.assertEquals(10, queryDataSource.getSeqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
       Assert.assertTrue(resource.isClosed());
@@ -198,7 +214,12 @@ public class StorageGroupProcessorTest {
     processor.syncCloseAllWorkingTsFileProcessors();
 
     QueryDataSource queryDataSource =
-        processor.query(new PartialPath(deviceId, measurementId), context, null, null);
+        processor.query(
+            Collections.singletonList(new PartialPath(deviceId, measurementId)),
+            deviceId,
+            context,
+            null,
+            null);
     Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
   }
 
@@ -212,12 +233,12 @@ public class StorageGroupProcessorTest {
     dataTypes.add(TSDataType.INT32.ordinal());
     dataTypes.add(TSDataType.INT64.ordinal());
 
-    MeasurementMNode[] measurementMNodes = new MeasurementMNode[2];
+    IMeasurementMNode[] measurementMNodes = new IMeasurementMNode[2];
     measurementMNodes[0] =
-        new MeasurementMNode(
+        MeasurementMNode.getMeasurementMNode(
             null, "s0", new MeasurementSchema("s0", TSDataType.INT32, TSEncoding.PLAIN), null);
     measurementMNodes[1] =
-        new MeasurementMNode(
+        MeasurementMNode.getMeasurementMNode(
             null, "s1", new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN), null);
 
     InsertTabletPlan insertTabletPlan1 =
@@ -259,7 +280,12 @@ public class StorageGroupProcessorTest {
     processor.syncCloseAllWorkingTsFileProcessors();
 
     QueryDataSource queryDataSource =
-        processor.query(new PartialPath(deviceId, measurementId), context, null, null);
+        processor.query(
+            Collections.singletonList(new PartialPath(deviceId, measurementId)),
+            deviceId,
+            context,
+            null,
+            null);
 
     Assert.assertEquals(2, queryDataSource.getSeqResources().size());
     Assert.assertEquals(1, queryDataSource.getUnseqResources().size());
@@ -290,7 +316,12 @@ public class StorageGroupProcessorTest {
     processor.syncCloseAllWorkingTsFileProcessors();
 
     QueryDataSource queryDataSource =
-        processor.query(new PartialPath(deviceId, measurementId), context, null, null);
+        processor.query(
+            Collections.singletonList(new PartialPath(deviceId, measurementId)),
+            deviceId,
+            context,
+            null,
+            null);
     Assert.assertEquals(10, queryDataSource.getSeqResources().size());
     Assert.assertEquals(10, queryDataSource.getUnseqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
@@ -305,7 +336,6 @@ public class StorageGroupProcessorTest {
   public void testEnableDiscardOutOfOrderDataForInsertRowPlan()
       throws WriteProcessException, QueryProcessException, IllegalPathException, IOException,
           TriggerExecutionException {
-    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     boolean defaultValue = config.isEnableDiscardOutOfOrderData();
     config.setEnableDiscardOutOfOrderData(true);
 
@@ -331,7 +361,12 @@ public class StorageGroupProcessorTest {
     }
 
     QueryDataSource queryDataSource =
-        processor.query(new PartialPath(deviceId, measurementId), context, null, null);
+        processor.query(
+            Collections.singletonList(new PartialPath(deviceId, measurementId)),
+            deviceId,
+            context,
+            null,
+            null);
     Assert.assertEquals(10, queryDataSource.getSeqResources().size());
     Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
@@ -347,7 +382,6 @@ public class StorageGroupProcessorTest {
   @Test
   public void testEnableDiscardOutOfOrderDataForInsertTablet1()
       throws QueryProcessException, IllegalPathException, IOException, TriggerExecutionException {
-    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     boolean defaultEnableDiscard = config.isEnableDiscardOutOfOrderData();
     long defaultTimePartition = config.getPartitionInterval();
     boolean defaultEnablePartition = config.isEnablePartition();
@@ -362,12 +396,12 @@ public class StorageGroupProcessorTest {
     dataTypes.add(TSDataType.INT32.ordinal());
     dataTypes.add(TSDataType.INT64.ordinal());
 
-    MeasurementMNode[] measurementMNodes = new MeasurementMNode[2];
+    IMeasurementMNode[] measurementMNodes = new IMeasurementMNode[2];
     measurementMNodes[0] =
-        new MeasurementMNode(
+        MeasurementMNode.getMeasurementMNode(
             null, "s0", new MeasurementSchema("s0", TSDataType.INT32, TSEncoding.PLAIN), null);
     measurementMNodes[1] =
-        new MeasurementMNode(
+        MeasurementMNode.getMeasurementMNode(
             null, "s1", new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN), null);
 
     InsertTabletPlan insertTabletPlan1 =
@@ -413,7 +447,12 @@ public class StorageGroupProcessorTest {
     }
 
     QueryDataSource queryDataSource =
-        processor.query(new PartialPath(deviceId, measurementId), context, null, null);
+        processor.query(
+            Collections.singletonList(new PartialPath(deviceId, measurementId)),
+            deviceId,
+            context,
+            null,
+            null);
 
     Assert.assertEquals(2, queryDataSource.getSeqResources().size());
     Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
@@ -429,7 +468,6 @@ public class StorageGroupProcessorTest {
   @Test
   public void testEnableDiscardOutOfOrderDataForInsertTablet2()
       throws QueryProcessException, IllegalPathException, IOException, TriggerExecutionException {
-    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     boolean defaultEnableDiscard = config.isEnableDiscardOutOfOrderData();
     long defaultTimePartition = config.getPartitionInterval();
     boolean defaultEnablePartition = config.isEnablePartition();
@@ -444,12 +482,12 @@ public class StorageGroupProcessorTest {
     dataTypes.add(TSDataType.INT32.ordinal());
     dataTypes.add(TSDataType.INT64.ordinal());
 
-    MeasurementMNode[] measurementMNodes = new MeasurementMNode[2];
+    IMeasurementMNode[] measurementMNodes = new IMeasurementMNode[2];
     measurementMNodes[0] =
-        new MeasurementMNode(
+        MeasurementMNode.getMeasurementMNode(
             null, "s0", new MeasurementSchema("s0", TSDataType.INT32, TSEncoding.PLAIN), null);
     measurementMNodes[1] =
-        new MeasurementMNode(
+        MeasurementMNode.getMeasurementMNode(
             null, "s1", new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN), null);
 
     InsertTabletPlan insertTabletPlan1 =
@@ -495,7 +533,12 @@ public class StorageGroupProcessorTest {
     }
 
     QueryDataSource queryDataSource =
-        processor.query(new PartialPath(deviceId, measurementId), context, null, null);
+        processor.query(
+            Collections.singletonList(new PartialPath(deviceId, measurementId)),
+            deviceId,
+            context,
+            null,
+            null);
 
     Assert.assertEquals(2, queryDataSource.getSeqResources().size());
     Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
@@ -511,7 +554,6 @@ public class StorageGroupProcessorTest {
   @Test
   public void testEnableDiscardOutOfOrderDataForInsertTablet3()
       throws QueryProcessException, IllegalPathException, IOException, TriggerExecutionException {
-    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     boolean defaultEnableDiscard = config.isEnableDiscardOutOfOrderData();
     long defaultTimePartition = config.getPartitionInterval();
     boolean defaultEnablePartition = config.isEnablePartition();
@@ -526,12 +568,12 @@ public class StorageGroupProcessorTest {
     dataTypes.add(TSDataType.INT32.ordinal());
     dataTypes.add(TSDataType.INT64.ordinal());
 
-    MeasurementMNode[] measurementMNodes = new MeasurementMNode[2];
+    IMeasurementMNode[] measurementMNodes = new IMeasurementMNode[2];
     measurementMNodes[0] =
-        new MeasurementMNode(
+        MeasurementMNode.getMeasurementMNode(
             null, "s0", new MeasurementSchema("s0", TSDataType.INT32, TSEncoding.PLAIN), null);
     measurementMNodes[1] =
-        new MeasurementMNode(
+        MeasurementMNode.getMeasurementMNode(
             null, "s1", new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN), null);
 
     InsertTabletPlan insertTabletPlan1 =
@@ -577,7 +619,12 @@ public class StorageGroupProcessorTest {
     }
 
     QueryDataSource queryDataSource =
-        processor.query(new PartialPath(deviceId, measurementId), context, null, null);
+        processor.query(
+            Collections.singletonList(new PartialPath(deviceId, measurementId)),
+            deviceId,
+            context,
+            null,
+            null);
 
     Assert.assertEquals(2, queryDataSource.getSeqResources().size());
     Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
@@ -594,6 +641,15 @@ public class StorageGroupProcessorTest {
   public void testMerge()
       throws WriteProcessException, QueryProcessException, IllegalPathException,
           TriggerExecutionException {
+    int originCandidateFileNum =
+        IoTDBDescriptor.getInstance().getConfig().getMaxInnerCompactionCandidateFileNum();
+    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(9);
+    boolean originEnableSeqSpaceCompaction =
+        IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
+    boolean originEnableUnseqSpaceCompaction =
+        IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction();
+    IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
+    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(true);
     for (int j = 21; j <= 30; j++) {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
@@ -610,30 +666,204 @@ public class StorageGroupProcessorTest {
     }
 
     processor.syncCloseAllWorkingTsFileProcessors();
-    processor.merge(IoTDBDescriptor.getInstance().getConfig().isForceFullMerge());
-    while (processor.getTsFileManagement().isUnseqMerging) {
+    processor.compact();
+    long totalWaitingTime = 0;
+    while (CompactionTaskManager.getInstance().getExecutingTaskCount() > 0) {
       // wait
+      try {
+        Thread.sleep(100);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+      totalWaitingTime += 100;
+      if (totalWaitingTime % 1000 == 0) {
+        logger.warn("has waited for {} seconds", totalWaitingTime / 1000);
+      }
+      if (totalWaitingTime > 120_000) {
+        Assert.fail();
+        break;
+      }
     }
 
     QueryDataSource queryDataSource =
-        processor.query(new PartialPath(deviceId, measurementId), context, null, null);
-    Assert.assertEquals(10, queryDataSource.getSeqResources().size());
+        processor.query(
+            Collections.singletonList(new PartialPath(deviceId, measurementId)),
+            deviceId,
+            context,
+            null,
+            null);
+    Assert.assertEquals(2, queryDataSource.getSeqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
       Assert.assertTrue(resource.isClosed());
     }
     for (TsFileResource resource : queryDataSource.getUnseqResources()) {
       Assert.assertTrue(resource.isClosed());
     }
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setMaxInnerCompactionCandidateFileNum(originCandidateFileNum);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setEnableSeqSpaceCompaction(originEnableSeqSpaceCompaction);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setEnableUnseqSpaceCompaction(originEnableUnseqSpaceCompaction);
   }
 
-  class DummySGP extends StorageGroupProcessor {
+  @Test
+  public void testDeleteStorageGroupWhenCompacting() throws Exception {
+    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(10);
+    try {
+      for (int j = 0; j < 10; j++) {
+        TSRecord record = new TSRecord(j, deviceId);
+        record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
+        processor.insert(new InsertRowPlan(record));
+        processor.asyncCloseAllWorkingTsFileProcessors();
+      }
+      processor.syncCloseAllWorkingTsFileProcessors();
+      SizeTieredCompactionTask task =
+          new SizeTieredCompactionTask(
+              storageGroup,
+              "0",
+              0,
+              processor.getTsFileManager(),
+              processor.getSequenceFileList(),
+              true,
+              new AtomicInteger(0));
+      CompactionTaskManager.getInstance().submitTask(task);
+      Thread.sleep(20);
+      StorageEngine.getInstance().deleteStorageGroup(new PartialPath(storageGroup));
+      Thread.sleep(500);
 
-    DummySGP(String systemInfoDir, String storageGroupName) throws StorageGroupProcessorException {
-      super(
-          systemInfoDir,
-          storageGroupName,
-          new TsFileFlushPolicy.DirectFlushPolicy(),
-          storageGroupName);
+      for (TsFileResource resource : processor.getSequenceFileList()) {
+        Assert.assertFalse(resource.getTsFile().exists());
+      }
+      TsFileResource targetTsFileResource =
+          TsFileNameGenerator.getInnerCompactionTargetFileResource(
+              processor.getSequenceFileList(), true);
+      Assert.assertFalse(targetTsFileResource.getTsFile().exists());
+      String dataDirectory = targetTsFileResource.getTsFile().getParent();
+      File logFile =
+          new File(
+              dataDirectory
+                  + File.separator
+                  + targetTsFileResource.getTsFile().getName()
+                  + CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX);
+      Assert.assertFalse(logFile.exists());
+      Assert.assertFalse(IoTDBDescriptor.getInstance().getConfig().isReadOnly());
+      Assert.assertTrue(processor.getTsFileManager().isAllowCompaction());
+    } finally {
+      new CompactionConfigRestorer().restoreCompactionConfig();
+    }
+  }
+
+  @Test
+  public void testTimedFlushSeqMemTable()
+      throws IllegalPathException, InterruptedException, WriteProcessException,
+          TriggerExecutionException, ShutdownException {
+    // create one sequence memtable
+    TSRecord record = new TSRecord(10000, deviceId);
+    record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(1000)));
+    processor.insert(new InsertRowPlan(record));
+    Assert.assertEquals(1, MemTableManager.getInstance().getCurrentMemtableNumber());
+
+    // change config & reboot timed service
+    boolean prevEnableTimedFlushSeqMemtable = config.isEnableTimedFlushSeqMemtable();
+    long preFLushInterval = config.getSeqMemtableFlushInterval();
+    config.setEnableTimedFlushSeqMemtable(true);
+    config.setSeqMemtableFlushInterval(5);
+    StorageEngine.getInstance().rebootTimedService();
+
+    Thread.sleep(500);
+
+    Assert.assertEquals(1, processor.getWorkSequenceTsFileProcessors().size());
+    TsFileProcessor tsFileProcessor = processor.getWorkSequenceTsFileProcessors().iterator().next();
+    FlushManager flushManager = FlushManager.getInstance();
+
+    // flush the sequence memtable
+    processor.timedFlushSeqMemTable();
+
+    // wait until memtable flush task is done
+    int waitCnt = 0;
+    while (tsFileProcessor.getFlushingMemTableSize() != 0
+        || tsFileProcessor.isManagedByFlushManager()
+        || flushManager.getNumberOfPendingTasks() != 0
+        || flushManager.getNumberOfPendingSubTasks() != 0
+        || flushManager.getNumberOfWorkingTasks() != 0
+        || flushManager.getNumberOfWorkingSubTasks() != 0) {
+      Thread.sleep(500);
+      ++waitCnt;
+      if (waitCnt % 10 == 0) {
+        logger.info("already wait {} s", waitCnt / 2);
+      }
+    }
+
+    Assert.assertEquals(0, MemTableManager.getInstance().getCurrentMemtableNumber());
+
+    config.setEnableTimedFlushSeqMemtable(prevEnableTimedFlushSeqMemtable);
+    config.setSeqMemtableFlushInterval(preFLushInterval);
+  }
+
+  @Test
+  public void testTimedFlushUnseqMemTable()
+      throws IllegalPathException, InterruptedException, WriteProcessException,
+          TriggerExecutionException, ShutdownException {
+    // create one sequence memtable & close
+    TSRecord record = new TSRecord(10000, deviceId);
+    record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(1000)));
+    processor.insert(new InsertRowPlan(record));
+    Assert.assertEquals(1, MemTableManager.getInstance().getCurrentMemtableNumber());
+    processor.syncCloseAllWorkingTsFileProcessors();
+    Assert.assertEquals(0, MemTableManager.getInstance().getCurrentMemtableNumber());
+
+    // create one unsequence memtable
+    record = new TSRecord(1, deviceId);
+    record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(1000)));
+    processor.insert(new InsertRowPlan(record));
+    Assert.assertEquals(1, MemTableManager.getInstance().getCurrentMemtableNumber());
+
+    // change config & reboot timed service
+    boolean prevEnableTimedFlushUnseqMemtable = config.isEnableTimedFlushUnseqMemtable();
+    long preFLushInterval = config.getUnseqMemtableFlushInterval();
+    config.setEnableTimedFlushUnseqMemtable(true);
+    config.setUnseqMemtableFlushInterval(5);
+    StorageEngine.getInstance().rebootTimedService();
+
+    Thread.sleep(500);
+
+    Assert.assertEquals(1, processor.getWorkUnsequenceTsFileProcessors().size());
+    TsFileProcessor tsFileProcessor =
+        processor.getWorkUnsequenceTsFileProcessors().iterator().next();
+    FlushManager flushManager = FlushManager.getInstance();
+
+    // flush the unsequence memtable
+    processor.timedFlushUnseqMemTable();
+
+    // wait until memtable flush task is done
+    int waitCnt = 0;
+    while (tsFileProcessor.getFlushingMemTableSize() != 0
+        || tsFileProcessor.isManagedByFlushManager()
+        || flushManager.getNumberOfPendingTasks() != 0
+        || flushManager.getNumberOfPendingSubTasks() != 0
+        || flushManager.getNumberOfWorkingTasks() != 0
+        || flushManager.getNumberOfWorkingSubTasks() != 0) {
+      Thread.sleep(500);
+      ++waitCnt;
+      if (waitCnt % 10 == 0) {
+        logger.info("already wait {} s", waitCnt / 2);
+      }
+    }
+
+    Assert.assertEquals(0, MemTableManager.getInstance().getCurrentMemtableNumber());
+
+    config.setEnableTimedFlushUnseqMemtable(prevEnableTimedFlushUnseqMemtable);
+    config.setUnseqMemtableFlushInterval(preFLushInterval);
+  }
+
+  class DummySGP extends DataRegion {
+
+    DummySGP(String systemInfoDir, String storageGroupName) throws DataRegionException {
+      super(systemInfoDir, "0", new TsFileFlushPolicy.DirectFlushPolicy(), storageGroupName);
     }
   }
 }

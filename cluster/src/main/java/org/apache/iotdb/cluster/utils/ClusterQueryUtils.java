@@ -19,50 +19,66 @@
 
 package org.apache.iotdb.cluster.utils;
 
-import org.apache.iotdb.cluster.metadata.CMManager;
+import org.apache.iotdb.cluster.metadata.MetaPuller;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
-import java.util.List;
 
 public class ClusterQueryUtils {
+
+  private static final Logger logger = LoggerFactory.getLogger(ClusterQueryUtils.class);
 
   private ClusterQueryUtils() {
     // util class
   }
 
-  /**
-   * Check if the given path exists locally or can be pulled from a remote node.
-   *
-   * @param path
-   * @throws QueryProcessException
-   */
-  public static void checkPathExistence(String path) throws QueryProcessException {
-    try {
-      checkPathExistence(new PartialPath(path));
-    } catch (IllegalPathException e) {
-      throw new QueryProcessException(e);
-    }
-  }
-
   public static void checkPathExistence(PartialPath path) throws QueryProcessException {
-    if (!IoTDB.metaManager.isPathExist(path)) {
+    if (!IoTDB.schemaProcessor.isPathExist(path)) {
       try {
-        ((CMManager) IoTDB.metaManager)
-            .pullTimeSeriesSchemas(Collections.singletonList(path), null);
+        MetaPuller.getInstance().pullTimeSeriesSchemas(Collections.singletonList(path), null);
       } catch (MetadataException e) {
         throw new QueryProcessException(e);
       }
     }
   }
 
-  public static void checkPathExistence(List<PartialPath> paths) throws QueryProcessException {
-    for (PartialPath path : paths) {
-      checkPathExistence(path);
+  /**
+   * Generate path string list for RPC request.
+   *
+   * <p>If vector path, return its vectorId with all subSensors. Else just return path string. TODO
+   * aligned path
+   */
+  public static String getPathStrListForRequest(Path path) {
+    // TODO aligned Path
+    return path.getFullPath();
+  }
+
+  /**
+   * Deserialize an assembled Path from path string list that's from RPC request.
+   *
+   * <p>This method is corresponding to getPathStringListForRequest().
+   */
+  public static MeasurementPath getAssembledPathFromRequest(String pathString, byte dataType) {
+    // TODO aligned path
+    try {
+      MeasurementPath matchedPath = new MeasurementPath(pathString);
+      matchedPath.setMeasurementSchema(
+          new MeasurementSchema(matchedPath.getMeasurement(), TSDataType.deserialize(dataType)));
+      return matchedPath;
+    } catch (IllegalPathException e) {
+      logger.error("Failed to create partial path, fullPath is {}.", pathString, e);
+      return null;
     }
   }
 }

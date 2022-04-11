@@ -21,9 +21,9 @@ package org.apache.iotdb.db.qp.logical.crud;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.qp.constant.FilterConstant;
+import org.apache.iotdb.db.qp.constant.FilterConstant.FilterType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.IUnaryExpression;
@@ -37,23 +37,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static org.apache.iotdb.db.qp.constant.SQLConstant.KW_AND;
-import static org.apache.iotdb.db.qp.constant.SQLConstant.KW_OR;
-
 /**
- * This class is for filter operator and implements {@link Operator} . It may consist of more than
- * two child FilterOperators, but if it's not a leaf operator, the relation is the same among all of
- * its children (AND or OR), which is identified by tokenType.
+ * This class is for filter in where clause. It may consist of more than two child FilterOperators,
+ * but if it's not a leaf operator, the relation is the same among all of its children (AND or OR),
+ * which is identified by tokenType.
  */
-public class FilterOperator extends Operator implements Comparable<FilterOperator> {
+public class FilterOperator implements Comparable<FilterOperator> {
 
-  // it is the symbol of token. e.g. AND is & and OR is |
-  String tokenSymbol;
+  protected FilterType filterType;
 
-  private List<FilterOperator> childOperators;
+  private List<FilterOperator> childOperators = new ArrayList<>();
   // leaf filter operator means it doesn't have left and right child filterOperator. Leaf filter
   // should set FunctionOperator.
-  protected boolean isLeaf;
+  protected boolean isLeaf = false;
   // isSingle being true means all recursive children of this filter belong to one seriesPath.
   boolean isSingle = false;
   // if isSingle = false, singlePath must be null
@@ -61,29 +57,31 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
   // all paths involved in this filter
   Set<PartialPath> pathSet;
 
-  public FilterOperator(int tokenType) {
-    super(tokenType);
-    operatorType = OperatorType.FILTER;
-    childOperators = new ArrayList<>();
-    this.tokenIntType = tokenType;
-    isLeaf = false;
-    tokenSymbol = SQLConstant.tokenSymbol.get(tokenType);
+  public FilterOperator() {}
+
+  public FilterOperator(FilterType filterType) {
+    this.filterType = filterType;
   }
 
-  public FilterOperator(int tokenType, boolean isSingle) {
-    this(tokenType);
+  public FilterOperator(FilterType filterType, boolean isSingle) {
+    this.filterType = filterType;
     this.isSingle = isSingle;
   }
 
-  @Override
-  public int getTokenIntType() {
-    return tokenIntType;
+  public FilterType getFilterType() {
+    return filterType;
   }
 
-  public void setTokenIntType(int intType) {
-    this.tokenIntType = intType;
-    this.tokenName = SQLConstant.tokenNames.get(tokenIntType);
-    this.tokenSymbol = SQLConstant.tokenSymbol.get(tokenIntType);
+  public void setFilterType(FilterType filterType) {
+    this.filterType = filterType;
+  }
+
+  public String getFilterName() {
+    return FilterConstant.filterNames.get(filterType);
+  }
+
+  public String getFilterSymbol() {
+    return FilterConstant.filterSymbol.get(filterType);
   }
 
   public List<FilterOperator> getChildren() {
@@ -106,9 +104,8 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
     this.singlePath = singlePath;
   }
 
-  public boolean addChildOperator(FilterOperator op) {
+  public void addChildOperator(FilterOperator op) {
     childOperators.add(op);
-    return true;
   }
 
   public void setPathSet(Set<PartialPath> pathSet) {
@@ -139,13 +136,13 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
     } else {
       if (childOperators.isEmpty()) {
         throw new LogicalOperatorException(
-            String.valueOf(tokenIntType), "this filter is not leaf, but it's empty");
+            String.valueOf(filterType), "this filter is not leaf, but it's empty");
       }
       IExpression retFilter = childOperators.get(0).transformToExpression(pathTSDataTypeHashMap);
       IExpression currentFilter;
       for (int i = 1; i < childOperators.size(); i++) {
         currentFilter = childOperators.get(i).transformToExpression(pathTSDataTypeHashMap);
-        switch (tokenIntType) {
+        switch (filterType) {
           case KW_AND:
             retFilter = BinaryExpression.and(retFilter, currentFilter);
             break;
@@ -154,8 +151,7 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
             break;
           default:
             throw new LogicalOperatorException(
-                String.valueOf(tokenIntType),
-                "Maybe it means " + SQLConstant.tokenNames.get(tokenIntType));
+                String.valueOf(filterType), "Maybe it means " + getFilterName());
         }
       }
       return retFilter;
@@ -175,7 +171,7 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
       throws LogicalOperatorException, MetadataException {
     if (childOperators.isEmpty()) {
       throw new LogicalOperatorException(
-          String.valueOf(tokenIntType),
+          String.valueOf(filterType),
           "TransformToSingleFilter: this filter is not a leaf, but it's empty.");
     }
     Pair<IUnaryExpression, String> currentPair =
@@ -193,7 +189,7 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
                 + ", another is: "
                 + currentPair.right);
       }
-      switch (tokenIntType) {
+      switch (filterType) {
         case KW_AND:
           retFilter.setFilter(
               FilterFactory.and(retFilter.getFilter(), currentPair.left.getFilter()));
@@ -204,8 +200,7 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
           break;
         default:
           throw new LogicalOperatorException(
-              String.valueOf(tokenIntType),
-              "Maybe it means " + SQLConstant.tokenNames.get(tokenIntType));
+              String.valueOf(filterType), "Maybe it means " + getFilterName());
       }
     }
     return new Pair<>(retFilter, path);
@@ -233,13 +228,13 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
     }
     // if child is leaf, will execute BasicFunctionOperator.equals()
     FilterOperator operator = (FilterOperator) fil;
-    return this.tokenIntType == operator.tokenIntType
+    return this.filterType == operator.filterType
         && this.getChildren().equals(operator.getChildren());
   }
 
   @Override
   public int hashCode() {
-    return tokenSymbol.hashCode();
+    return getFilterSymbol().hashCode();
   }
 
   public boolean isLeaf() {
@@ -259,7 +254,7 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
     for (int i = 0; i < spaceNum; i++) {
       sc.addTail("  ");
     }
-    sc.addTail(this.tokenName);
+    sc.addTail(getFilterName());
     if (isSingle) {
       sc.addTail("[single:", getSinglePath().getFullPath(), "]");
     }
@@ -273,7 +268,7 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
   @Override
   public String toString() {
     StringContainer sc = new StringContainer();
-    sc.addTail("[", this.tokenName);
+    sc.addTail("[", FilterConstant.filterNames.get(filterType));
     if (isSingle) {
       sc.addTail("[single:", getSinglePath().getFullPath(), "]");
     }
@@ -286,12 +281,11 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
   }
 
   public FilterOperator copy() {
-    FilterOperator ret = new FilterOperator(this.tokenIntType);
-    ret.tokenSymbol = tokenSymbol;
+    FilterOperator ret = new FilterOperator(this.filterType);
     ret.isLeaf = isLeaf;
     ret.isSingle = isSingle;
     if (singlePath != null) {
-      ret.singlePath = new PartialPath(singlePath.getNodes().clone());
+      ret.singlePath = singlePath.clone();
     }
     for (FilterOperator filterOperator : this.childOperators) {
       ret.addChildOperator(filterOperator.copy());

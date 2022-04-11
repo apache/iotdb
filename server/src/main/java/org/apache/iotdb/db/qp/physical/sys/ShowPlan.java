@@ -19,7 +19,7 @@
  */
 package org.apache.iotdb.db.qp.physical.sys;
 
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
@@ -35,9 +35,9 @@ public class ShowPlan extends PhysicalPlan {
   private boolean hasLimit;
 
   public ShowPlan(ShowContentType showContentType) {
-    super(true);
+    super(OperatorType.SHOW);
+    setQuery(true);
     this.showContentType = showContentType;
-    setOperatorType(OperatorType.SHOW);
   }
 
   public ShowPlan(ShowContentType showContentType, PartialPath path) {
@@ -45,8 +45,7 @@ public class ShowPlan extends PhysicalPlan {
     this.path = path;
   }
 
-  public ShowPlan(
-      ShowContentType showContentType, PartialPath path, int limit, int offset, int fetchSize) {
+  public ShowPlan(ShowContentType showContentType, PartialPath path, int limit, int offset) {
     this(showContentType, path);
     this.limit = limit;
     this.offset = offset;
@@ -99,6 +98,11 @@ public class ShowPlan extends PhysicalPlan {
     return String.format("%s %s", getOperatorType(), showContentType);
   }
 
+  @Override
+  public String getOperatorName() {
+    return String.format("%s: %s", getOperatorType(), showContentType);
+  }
+
   public enum ShowContentType {
     FLUSH_TASK_INFO,
     TTL,
@@ -111,11 +115,17 @@ public class ShowPlan extends PhysicalPlan {
     COUNT_TIMESERIES,
     COUNT_NODE_TIMESERIES,
     COUNT_NODES,
-    MERGE_STATUS,
     FUNCTIONS,
     COUNT_DEVICES,
     COUNT_STORAGE_GROUP,
     QUERY_PROCESSLIST,
-    TRIGGERS
+    TRIGGERS,
+    LOCK_INFO,
+    CONTINUOUS_QUERY,
+    QUERY_RESOURCE,
+    SCHEMA_TEMPLATE,
+    NODES_IN_SCHEMA_TEMPLATE,
+    PATHS_SET_SCHEMA_TEMPLATE,
+    PATHS_USING_SCHEMA_TEMPLATE
   }
 }

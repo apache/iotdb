@@ -18,10 +18,13 @@
  */
 package org.apache.iotdb.db.qp.logical.sys;
 
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
-public class SetStorageGroupOperator extends RootOperator {
+public class SetStorageGroupOperator extends Operator {
 
   private PartialPath path;
 
@@ -36,5 +39,10 @@ public class SetStorageGroupOperator extends RootOperator {
 
   public void setPath(PartialPath path) {
     this.path = path;
+  }
+
+  @Override
+  public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator) {
+    return new SetStorageGroupPlan(path);
   }
 }

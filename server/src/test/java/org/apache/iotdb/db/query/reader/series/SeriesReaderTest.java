@@ -22,8 +22,8 @@ package org.apache.iotdb.db.query.reader.series;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -56,7 +56,8 @@ public class SeriesReaderTest {
 
   @Before
   public void setUp() throws MetadataException, IOException, WriteProcessException {
-    SeriesReaderTestUtil.setUp(measurementSchemas, deviceIds, seqResources, unseqResources);
+    SeriesReaderTestUtil.setUp(
+        measurementSchemas, deviceIds, seqResources, unseqResources, SERIES_READER_TEST_SG);
   }
 
   @After
@@ -74,7 +75,7 @@ public class SeriesReaderTest {
               new PartialPath(SERIES_READER_TEST_SG + ".device0.sensor0"),
               allSensors,
               TSDataType.INT32,
-              new QueryContext(),
+              EnvironmentUtils.TEST_QUERY_CONTEXT,
               seqResources,
               unseqResources,
               null,
@@ -118,7 +119,7 @@ public class SeriesReaderTest {
               new PartialPath(SERIES_READER_TEST_SG + ".device0.sensor0"),
               allSensors,
               TSDataType.INT32,
-              new QueryContext(),
+              EnvironmentUtils.TEST_QUERY_CONTEXT,
               seqResources,
               unseqResources,
               null,
@@ -157,7 +158,7 @@ public class SeriesReaderTest {
               new PartialPath(SERIES_READER_TEST_SG + ".device0.sensor0"),
               allSensors,
               TSDataType.INT32,
-              new QueryContext(),
+              EnvironmentUtils.TEST_QUERY_CONTEXT,
               seqResources,
               unseqResources,
               null,

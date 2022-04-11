@@ -22,6 +22,7 @@ package org.apache.iotdb.db.engine.modification;
 import org.apache.iotdb.db.engine.modification.io.LocalTextModificationAccessor;
 import org.apache.iotdb.db.engine.modification.io.ModificationReader;
 import org.apache.iotdb.db.engine.modification.io.ModificationWriter;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 
@@ -46,7 +47,9 @@ public class ModificationFile implements AutoCloseable {
 
   private static final Logger logger = LoggerFactory.getLogger(ModificationFile.class);
   public static final String FILE_SUFFIX = ".mods";
+  public static final String COMPACTION_FILE_SUFFIX = ".compaction.mods";
 
+  // lazy loaded, set null when closed
   private List<Modification> modifications;
   private ModificationWriter writer;
   private ModificationReader reader;
@@ -88,8 +91,8 @@ public class ModificationFile implements AutoCloseable {
 
   public void abort() throws IOException {
     synchronized (this) {
-      if (!modifications.isEmpty()) {
-        writer.abort();
+      writer.abort();
+      if (modifications != null && !modifications.isEmpty()) {
         modifications.remove(modifications.size() - 1);
       }
     }
@@ -104,9 +107,10 @@ public class ModificationFile implements AutoCloseable {
    */
   public void write(Modification mod) throws IOException {
     synchronized (this) {
-      checkInit();
       writer.write(mod);
-      modifications.add(mod);
+      if (modifications != null) {
+        modifications.add(mod);
+      }
     }
   }
 
@@ -166,5 +170,14 @@ public class ModificationFile implements AutoCloseable {
         return null;
       }
     }
+  }
+
+  public static ModificationFile getNormalMods(TsFileResource tsFileResource) {
+    return new ModificationFile(tsFileResource.getTsFilePath() + ModificationFile.FILE_SUFFIX);
+  }
+
+  public static ModificationFile getCompactionMods(TsFileResource tsFileResource) {
+    return new ModificationFile(
+        tsFileResource.getTsFilePath() + ModificationFile.COMPACTION_FILE_SUFFIX);
   }
 }

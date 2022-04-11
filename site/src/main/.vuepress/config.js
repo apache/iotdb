@@ -17,12 +17,24 @@
  */
 
 var config = {
+    plugins: [
+        ['@vuepress/plugin-html-redirect', {
+          countdown: 0,
+        }],
+      ],
     head: [
 		['link', { rel: 'icon', href: '/favicon.ico' }],
 		["meta", {name: "Description", content: "Apache IoTDB: Time Series Database for IoT"}],
         ["meta", {name: "Keywords", content: "TSDB, time series, time series database, IoTDB, IoT database, IoT data management,时序数据库, 时间序列管理, IoTDB, 物联网数据库, 实时数据库, 物联网数据管理, 物联网数据"}],
         ["meta", {name: "baidu-site-verification", content: "wfKETzB3OT"}],
         ["meta", {name: "google-site-verification", content: "mZWAoRY0yj_HAr-s47zHCGHzx5Ju-RVm5wDbPnwQYFo"}],
+		["script", {async: true, src: "https://www.googletagmanager.com/gtag/js?id=G-5MM3J6X84E"}],
+		['script', {}, `
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'G-5MM3J6X84E');`
+		],
       ],
 
     // 静态网站部署的目录
@@ -45,7 +57,7 @@ var config = {
         repo: 'https://github.com/apache/iotdb.git',
 
         // github 地址的链接名
-        repoLabel: 'gitHub',
+        repoLabel: 'GitHub',
 
 		logo: '/img/logo.png',
 
@@ -70,19 +82,20 @@ var config = {
 			algolia: {},
 			nav: [
 				 {
-					text: 'Document',
+					text: 'Documentation',
 					items: [
-						{ text: 'In progress', link: '/UserGuide/Master/QuickStart/QuickStart' },
-						{ text: 'V0.12.x', link: '/UserGuide/V0.12.x/QuickStart/QuickStart' },
-						{ text: 'V0.11.x', link: '/UserGuide/V0.11.x/Get Started/QuickStart' },
-						{ text: 'V0.10.x', link: '/UserGuide/V0.10.x/Get Started/QuickStart' },
-						{ text: 'V0.9.x', link: '/UserGuide/V0.9.x/0-Get Started/1-QuickStart' },
-						{ text: 'V0.8.x', link: '/UserGuide/V0.8.x/0-Get Started/1-QuickStart'},
+						{ text: 'latest', link: '/UserGuide/Master/QuickStart/QuickStart' },
+						{ text: 'v0.13.x', link: '/UserGuide/V0.13.x/QuickStart/QuickStart' },
+						{ text: 'v0.12.x', link: '/UserGuide/V0.12.x/QuickStart/QuickStart' },
+						{ text: 'v0.11.x', link: '/UserGuide/V0.11.x/Get Started/QuickStart' },
+						{ text: 'v0.10.x', link: '/UserGuide/V0.10.x/Get Started/QuickStart' },
+						{ text: 'v0.9.x', link: '/UserGuide/V0.9.x/0-Get Started/1-QuickStart' },
+						{ text: 'v0.8.x', link: '/UserGuide/V0.8.x/0-Get Started/1-QuickStart'},
 					]
 				  },
 				  {
-					text: 'System design',
-					link: '/SystemDesign/Architecture/Architecture'
+					text: 'Design',
+					link: 'https://cwiki.apache.org/confluence/display/IOTDB/System+Design'
 				  },
 				  {
 					text: 'Download',
@@ -91,12 +104,13 @@ var config = {
 				  {
 					text: 'Community',
 					items: [
+					  { text: 'About', link: '/Community/About'},
 					  { text: 'Wiki', link: 'https://cwiki.apache.org/confluence/display/iotdb'},
 					  { text: 'People', link: '/Community/Community-Project Committers'},
 					  { text: 'Powered By', link: '/Community/Community-Powered By'},
 					  { text: 'Resources', link: '/Community/Materials'},
-						{ text: 'Feedback', link: '/Community/Feedback'},
-					]
+					  { text: 'Feedback', link: '/Community/Feedback'},
+				]
 				  },
 				  {
 					text: 'Development',
@@ -109,13 +123,13 @@ var config = {
 					  { text: 'Changelist of RPC', link: '/Development/rpc-changelist'},
 					]
 				  },
-				{
-					text: 'Blog',
-					items: [
-						{ text: 'Overview', link: '/Blog/Index'},
-						{ text: 'Some Notes on Release 0.9.3 and upcoming 0.10.0', link: '/Blog/Release0_93'}
-					]
-				},
+				// {
+				// 	text: 'Blog',
+				// 	items: [
+				// 		{ text: 'Overview', link: '/Blog/Index'},
+				// 		{ text: 'Some Notes on Release 0.9.3 and upcoming 0.10.0', link: '/Blog/Release0_93'}
+				// 	]
+				// },
 				  {
 					text: 'ASF',
 					items: [
@@ -551,10 +565,10 @@ var config = {
 					{
 						title: 'API',
 						children: [
-							['API/Programming-JDBC','JDBC'],
 							['API/Programming-Native-API','Native API'],
 							['API/Programming-Other-Languages','Other Languages'],
-							['API/Programming-TsFile-API','TsFile API']
+							['API/Programming-TsFile-API','TsFile API'],
+							['API/Programming-JDBC','JDBC (Not Recommend)']
 						]
 					},
 					{
@@ -581,7 +595,8 @@ var config = {
 							['System-Tools/MLogParser-Tool','MLogParser Tool'],
 							['System-Tools/NodeTool','Node Tool'],
 							['System-Tools/Query-History-Visualization-Tool','Query History Visualization Tool'],
-							['System-Tools/Watermark-Tool','Watermark Tool']
+							['System-Tools/Watermark-Tool','Watermark Tool'],
+							['System-Tools/TsFile-Split-Tool','TsFile Split Tool']
 						]
 					},
 					{
@@ -608,7 +623,7 @@ var config = {
 						title: 'Cluster Setup',
 						children: [
 							['Cluster/Cluster-Setup','Cluster Setup'],
-							['Cluster/Cluster-Setup-Example','Cluster Setup Example']
+							//['Cluster/Cluster-Setup-Example','Cluster Setup Example']
 						]
 					},
 					{
@@ -632,9 +647,9 @@ var config = {
 						]
 					}
 				],
-				'/UserGuide/Master/': [
+				'/UserGuide/V0.13.x/': [
 					{
-						title:'IoTDB User Guide (In progress)',
+						title:'IoTDB User Guide (latest)',
 						collapsable: false,
 					},
 					{
@@ -650,25 +665,93 @@ var config = {
 					{
 						title: 'Quick Start',
 						children: [
-							['QuickStart/QuickStart','QuickStart'],
-							['QuickStart/Files','Storage Path Setting'],
-							['QuickStart/WayToGetIoTDB','Get IoTDB Binary files']
+							['QuickStart/QuickStart','Quick Start'],
+							['QuickStart/Files','Data storage'],
+							['QuickStart/WayToGetIoTDB','Download and Setup'],
+							['QuickStart/Command-Line-Interface','Command Line Interface'],
 						]
 					},
 					{
 						title: 'Data Concept',
+						sidebarDepth: 1,
 						children: [
 							['Data-Concept/Data-Model-and-Terminology','Data Model and Terminology'],
+							['Data-Concept/Schema-Template','Schema Template'],
 							['Data-Concept/Data-Type','Data Type'],
 							['Data-Concept/Encoding','Encoding'],
 							['Data-Concept/Compression','Compression'],
-							['Data-Concept/SDT','SDT']
+							['Data-Concept/Time-Partition','Time Partition'],
+							['Data-Concept/Time-zone','Time zone']
 						]
 					},
 					{
-						title: 'CLI',
+						title: 'Syntax Conventions',
+						sidebarDepth: 2,
 						children: [
-							['CLI/Command-Line-Interface','Command Line Interface']
+							['Reference/Syntax-Conventions','Syntax Conventions'],
+						]
+					},
+					{
+						title: 'API',
+						children: [
+							['API/Programming-Java-Native-API','Java Native API'],
+							['API/Programming-Python-Native-API','Python Native API'],
+							['API/Programming-Cpp-Native-API','C++ Native API'],
+							['API/Programming-Go-Native-API','Go Native API'],
+							['API/Programming-JDBC','JDBC (Not Recommend)'],
+							['API/Programming-MQTT','MQTT'],
+							['API/RestService','REST API'],
+							['API/Programming-TsFile-API','TsFile API'],
+							['API/Status-Codes','Status Codes']
+						]
+					},
+					{
+						title: 'Operate Metadata',
+						sidebarDepth: 1,
+						children: [
+							['Operate-Metadata/Storage-Group','Storage Group'],
+							['Operate-Metadata/Node','Node'],
+							['Operate-Metadata/Timeseries','Timeseries'],
+							['Operate-Metadata/Template','Schema Template'],
+							['Operate-Metadata/TTL','TTL'],
+							['Operate-Metadata/Auto-Create-MetaData','Auto Create Metadata']
+						]
+					},
+					{
+						title: 'Write and Delete Data',
+						sidebarDepth: 1,
+						children: [
+							['Write-And-Delete-Data/Write-Data','Write Data'],
+							['Write-And-Delete-Data/Load-External-Tsfile','Load External Tsfile'],
+							['Write-And-Delete-Data/CSV-Tool','CSV Tool'],
+							['Write-And-Delete-Data/Delete-Data','Delete Data']
+						]
+					},
+					{
+						title: 'Query Data',
+						sidebarDepth: 1,
+						children: [
+							['Query-Data/Overview.md','Overview'],
+							['Query-Data/Select-Expression.md','Select Expression'],
+							['Query-Data/Query-Filter.md','Query Filter'],
+							['Query-Data/Pagination.md','Pagination'],
+							['Query-Data/Result-Format.md','Query Result Formats'],
+							['Query-Data/Aggregate-Query.md','Aggregate Query'],
+							['Query-Data/Last-Query.md','Last Query'],
+							['Query-Data/Fill-Null-Value.md','Fill Null Value'],
+							['Query-Data/Without-Null.md','Without Null'],
+							['Query-Data/Tracing-Tool.md','Tracing Tool']
+						]
+					},
+					{
+						title: 'Process Data',
+						sidebarDepth: 1,
+						children: [
+							['Process-Data/UDF-User-Defined-Function','UDF (User Defined Function)'],
+							['Process-Data/Select-Into','Query Write-back (SELECT INTO)'],
+							['Process-Data/Continuous-Query','CQ (Continuous Query)'],
+							['Process-Data/Triggers','Triggers'],
+							['Process-Data/Alerting','Alerting'],
 						]
 					},
 					{
@@ -678,65 +761,26 @@ var config = {
 						]
 					},
 					{
-						title: 'IoTDB-SQL Language',
+						title: 'Maintenance Tools',
 						children: [
-							['IoTDB-SQL-Language/DDL-Data-Definition-Language','DDL (Data Definition Language)'],
-							['IoTDB-SQL-Language/DML-Data-Manipulation-Language','DML (Data Manipulation Language)'],
-							['IoTDB-SQL-Language/Maintenance-Command','Maintenance Command']
-						]
-					},
-					{
-						title: 'API',
-						children: [
-							['API/Programming-JDBC','JDBC'],
-							['API/Programming-Java-Native-API','Java Native API'],
-							['API/Programming-Python-Native-API','Python Native API'],
-							['API/Programming-Cpp-Native-API','C++ Native API'],
-							['API/Programming-Go-Native-API','Go Native API'],
-							['API/Programming-TsFile-API','TsFile API']
-						]
-					},
-					{
-						title: 'Advanced Features',
-						children: [
-							['Advanced-Features/UDF-User-Defined-Function','UDF (User Defined Function)'],
-							// The trigger module has not been implemented yet,
-							// so the website should not show users how to use it to avoid misleading.
-							// ['Advanced-Features/Triggers','Trigger']
-						]
-					},
-					{
-						title: 'Communication Service Protocol',
-						children: [
-							['Communication-Service-Protocol/Programming-Thrift','Thrift'],
-							['Communication-Service-Protocol/Programming-MQTT','MQTT'],
-						]
-					},
-					{
-						title: 'System Tools',
-						children: [
-							['System-Tools/Load-External-Tsfile','Load External Tsfile'],
-							['System-Tools/Performance-Tracing-Tool','Performance Tracing Tool'],
-							['System-Tools/CSV-Tool','CSV Tool'],
-							['System-Tools/Monitor-and-Log-Tools','Monitor and Log Tools'],
-							['System-Tools/JMX-Tool','JMX Tool'],
-							['System-Tools/MLogParser-Tool','MLogParser Tool'],
-							['System-Tools/NodeTool','Node Tool'],
-							['System-Tools/Query-History-Visualization-Tool','Query History Visualization Tool'],
-							['System-Tools/Watermark-Tool','Watermark Tool']
-						]
-					},
-					{
-						title: 'Collaboration of Edge and Cloud',
-						children: [
-							['Collaboration-of-Edge-and-Cloud/Sync-Tool','Sync Tool']
+							['Maintenance-Tools/Maintenance-Command','Maintenance Command'],
+							['Maintenance-Tools/Monitor-and-Log-Tools','Monitor and Log Tools'],
+							['Maintenance-Tools/JMX-Tool','JMX Tool'],
+							['Maintenance-Tools/MLogParser-Tool','MLogParser Tool'],
+							['Maintenance-Tools/NodeTool','Node Tool'],
+							['Maintenance-Tools/Watermark-Tool','Watermark Tool'],
+							['Maintenance-Tools/Metric-Tool','Metric Tool'],
+							['Maintenance-Tools/Sync-Tool','Sync Tool'],
+							['Maintenance-Tools/TsFile-Split-Tool','TsFile Split Tool']
 						]
 					},
 					{
 						title: 'Ecosystem Integration',
 						children: [
-							['Ecosystem Integration/Grafana','Grafana'],
+							['Ecosystem Integration/Grafana Plugin','Grafana Plugin'],
+							['Ecosystem Integration/Grafana Connector','Grafana Connector (Not Recommended)'],
 							['Ecosystem Integration/Zeppelin-IoTDB','Zeppelin-IoTDB'],
+							['Ecosystem Integration/DBeaver','DBeaver-IoTDB'],
 							['Ecosystem Integration/MapReduce TsFile','MapReduce TsFile'],
 							['Ecosystem Integration/Spark TsFile','Spark TsFile'],
 							['Ecosystem Integration/Spark IoTDB','Spark IoTDB'],
@@ -754,106 +798,205 @@ var config = {
 						]
 					},
 					{
-						title: 'FAQ',
-						children: [
-							['FAQ/Frequently-asked-questions','Frequently asked questions']
-						]
+					    title: 'UDF Library',
+					    sidebarDepth: 1,
+					    children: [
+					        ['UDF-Library/Quick-Start', 'Quick Start'],
+					        ['UDF-Library/Data-Profiling', 'Data Profiling'],
+					        ['UDF-Library/Anomaly-Detection', 'Anomaly Detection'],
+					        ['UDF-Library/Data-Matching', 'Data Matching'],
+					        ['UDF-Library/Frequency-Domain', 'Frequency Domain Analysis'],
+					        ['UDF-Library/Data-Quality', 'Data Quality'],
+					        ['UDF-Library/Data-Repairing', 'Data Repairing'],
+					        ['UDF-Library/Series-Discovery', 'Series Discovery'],
+                            ['UDF-Library/String-Processing', 'String Processing'],
+                            ['UDF-Library/M4', 'M4']
+					    ]
 					},
 					{
-						title: 'Appendix',
+						title: 'Reference',
 						children: [
-							['Appendix/Config-Manual','Config Manual'],
-							['Appendix/SQL-Reference','SQL Reference'],
-							['Appendix/Status-Codes','Status Codes']
+							['Reference/Config-Manual','Config Manual'],
+							['Reference/Keywords','Keywords'],
+							['Reference/Frequently-asked-questions','Frequently asked questions'],
+							['Reference/TSDB-Comparison','TSDB Comparison']
 						]
 					},
-					{
-						title: 'Comparison with TSDBs',
-						children: [
-							['Comparison/TSDB-Comparison','Comparison']
-						]
-					}
 				],
-				'/SystemDesign/': [
+				'/UserGuide/Master/': [
 					{
-						title: 'System design',
+						title:'IoTDB User Guide (latest)',
 						collapsable: false,
 					},
 					{
-						title: 'Architecture',
+						title: 'IoTDB Introduction',
 						children: [
-							['Architecture/Architecture','Architecture']
+							['IoTDB-Introduction/What-is-IoTDB','What is IoTDB'],
+							['IoTDB-Introduction/Architecture','Architecture'],
+							['IoTDB-Introduction/Scenario','Scenario'],
+							['IoTDB-Introduction/Features','Features'],
+							['IoTDB-Introduction/Publication','Publication']
 						]
 					},
 					{
-						title: 'TsFile',
+						title: 'Quick Start',
 						children: [
-							['TsFile/TsFile','TsFile'],
-							['TsFile/Format','Format'],
-							['TsFile/Write','Write'],
-							['TsFile/Read','Read']
+							['QuickStart/QuickStart','Quick Start'],
+							['QuickStart/Files','Data storage'],
+							['QuickStart/WayToGetIoTDB','Download and Setup'],
+							['QuickStart/Command-Line-Interface','Command Line Interface'],
 						]
 					},
 					{
-						title: 'QueryEngine',
+						title: 'Data Concept',
+						sidebarDepth: 1,
 						children: [
-							['QueryEngine/QueryEngine','QueryEngine'],
-							['QueryEngine/Planner','Planner'],
-							['QueryEngine/PlanExecutor','PlanExecutor'],
-							['QueryEngine/ResultSetConstruction','ResultSetConstruction']
+							['Data-Concept/Data-Model-and-Terminology','Data Model and Terminology'],
+							['Data-Concept/Schema-Template','Schema Template'],
+							['Data-Concept/Data-Type','Data Type'],
+							['Data-Concept/Encoding','Encoding'],
+							['Data-Concept/Compression','Compression'],
+							['Data-Concept/Time-Partition','Time Partition'],
+							['Data-Concept/Time-zone','Time zone']
 						]
 					},
 					{
-						title: 'SchemaManager',
+						title: 'Syntax Conventions',
+						sidebarDepth: 1,
 						children: [
-							['SchemaManager/SchemaManager','SchemaManager'],
+							['Reference/Syntax-Conventions','Syntax Conventions'],
 						]
 					},
 					{
-						title: 'StorageEngine',
+						title: 'API',
 						children: [
-							['StorageEngine/StorageEngine','StorageEngine'],
-							['StorageEngine/WAL','WAL'],
-							['StorageEngine/FlushManager','FlushManager'],
-							['StorageEngine/MergeManager','MergeManager'],
-							['StorageEngine/DataPartition','DataPartition'],
-							['StorageEngine/DataManipulation','DataManipulation'],
-							['StorageEngine/Recover','Recover']
+							['API/Programming-Java-Native-API','Java Native API'],
+							['API/Programming-Python-Native-API','Python Native API'],
+							['API/Programming-Cpp-Native-API','C++ Native API'],
+							['API/Programming-Go-Native-API','Go Native API'],
+							['API/Programming-JDBC','JDBC (Not Recommend)'],
+							['API/Programming-MQTT','MQTT'],
+							['API/RestService','REST API'],
+							['API/Programming-TsFile-API','TsFile API'],
+							['API/InfluxDB-Protocol','InfluxDB Protocol'],
+							['API/Status-Codes','Status Codes']
 						]
 					},
 					{
-						title: 'DataQuery',
+						title: 'Operate Metadata',
+						sidebarDepth: 1,
 						children: [
-							['DataQuery/DataQuery','DataQuery'],
-							['DataQuery/QueryFundamentals','QueryFundamentals'],
-							['DataQuery/SeriesReader','SeriesReader'],
-							['DataQuery/RawDataQuery','RawDataQuery'],
-							['DataQuery/AggregationQuery','AggregationQuery'],
-							['DataQuery/GroupByQuery','GroupByQuery'],
-							['DataQuery/LastQuery','LastQuery'],
-							['DataQuery/AlignByDeviceQuery','AlignByDeviceQuery'],
-							['DataQuery/FillFunction','FillFunction'],
-							['DataQuery/GroupByFillQuery', 'GroupByFillQuery']
+							['Operate-Metadata/Storage-Group','Storage Group'],
+							['Operate-Metadata/Node','Node'],
+							['Operate-Metadata/Timeseries','Timeseries'],
+							['Operate-Metadata/Template','Schema Template'],
+							['Operate-Metadata/TTL','TTL'],
+							['Operate-Metadata/Auto-Create-MetaData','Auto Create Metadata']
 						]
 					},
 					{
-						title: 'Tools',
+						title: 'Write and Delete Data',
+						sidebarDepth: 1,
 						children: [
-							['Tools/Sync','Sync']
+							['Write-And-Delete-Data/Write-Data','Write Data'],
+							['Write-And-Delete-Data/Load-External-Tsfile','Load External Tsfile'],
+							['Write-And-Delete-Data/CSV-Tool','CSV Tool'],
+							['Write-And-Delete-Data/Delete-Data','Delete Data']
 						]
 					},
 					{
-						title: 'Connector',
+						title: 'Query Data',
+						sidebarDepth: 1,
 						children: [
-							['Connector/Hive-TsFile','Hive-TsFile'],
-							['Connector/Spark-TsFile','Spark-TsFile'],
-							['Connector/Spark-IOTDB','Spark-IOTDB']
+							['Query-Data/Overview.md','Overview'],
+							['Query-Data/Select-Expression.md','Select Expression'],
+							['Query-Data/Query-Filter.md','Query Filter'],
+							['Query-Data/Pagination.md','Pagination'],
+							['Query-Data/Result-Format.md','Query Result Formats'],
+							['Query-Data/Aggregate-Query.md','Aggregate Query'],
+							['Query-Data/Last-Query.md','Last Query'],
+							['Query-Data/Fill-Null-Value.md','Fill Null Value'],
+							['Query-Data/Without-Null.md','Without Null'],
+							['Query-Data/Tracing-Tool.md','Tracing Tool']
 						]
 					},
 					{
-						title: 'Client',
+						title: 'Process Data',
+						sidebarDepth: 1,
 						children: [
-							['Client/RPC','RPC']
+							['Process-Data/UDF-User-Defined-Function','UDF (User Defined Function)'],
+							['Process-Data/Select-Into','Query Write-back (SELECT INTO)'],
+							['Process-Data/Continuous-Query','CQ (Continuous Query)'],
+							['Process-Data/Triggers','Triggers'],
+							['Process-Data/Alerting','Alerting'],
+						]
+					},
+					{
+						title: 'Administration Management',
+						children: [
+							['Administration-Management/Administration','Administration']
+						]
+					},
+					{
+						title: 'Maintenance Tools',
+						children: [
+							['Maintenance-Tools/Maintenance-Command','Maintenance Command'],
+							['Maintenance-Tools/Monitor-and-Log-Tools','Monitor and Log Tools'],
+							['Maintenance-Tools/JMX-Tool','JMX Tool'],
+							['Maintenance-Tools/MLogParser-Tool','MLogParser Tool'],
+							['Maintenance-Tools/NodeTool','Node Tool'],
+							['Maintenance-Tools/Watermark-Tool','Watermark Tool'],
+							['Maintenance-Tools/Metric-Tool','Metric Tool'],
+							['Maintenance-Tools/Sync-Tool','Sync Tool'],
+							['Maintenance-Tools/TsFile-Split-Tool','TsFile Split Tool']
+						]
+					},
+					{
+						title: 'Ecosystem Integration',
+						children: [
+							['Ecosystem Integration/Grafana Plugin','Grafana Plugin'],
+							['Ecosystem Integration/Grafana Connector','Grafana Connector (Not Recommended)'],
+							['Ecosystem Integration/Zeppelin-IoTDB','Zeppelin-IoTDB'],
+							['Ecosystem Integration/DBeaver','DBeaver-IoTDB'],
+							['Ecosystem Integration/MapReduce TsFile','MapReduce TsFile'],
+							['Ecosystem Integration/Spark TsFile','Spark TsFile'],
+							['Ecosystem Integration/Spark IoTDB','Spark IoTDB'],
+							['Ecosystem Integration/Hive TsFile','Hive TsFile'],
+							['Ecosystem Integration/Flink IoTDB','Flink IoTDB'],
+							['Ecosystem Integration/Flink TsFile','Flink TsFile'],
+							['Ecosystem Integration/Writing Data on HDFS','Writing Data on HDFS']
+						]
+					},
+					{
+						title: 'Cluster Setup',
+						children: [
+							['Cluster/Cluster-Setup','Cluster Setup'],
+							['Cluster/Cluster-Setup-Example','Cluster Setup Example']
+						]
+					},
+					{
+					    title: 'UDF Library',
+					    sidebarDepth: 1,
+					    children: [
+					        ['UDF-Library/Quick-Start', 'Quick Start'],
+					        ['UDF-Library/Data-Profiling', 'Data Profiling'],
+					        ['UDF-Library/Anomaly-Detection', 'Anomaly Detection'],
+					        ['UDF-Library/Data-Matching', 'Data Matching'],
+					        ['UDF-Library/Frequency-Domain', 'Frequency Domain Analysis'],
+					        ['UDF-Library/Data-Quality', 'Data Quality'],
+					        ['UDF-Library/Data-Repairing', 'Data Repairing'],
+					        ['UDF-Library/Series-Discovery', 'Series Discovery'],
+                            ['UDF-Library/String-Processing', 'String Processing'],
+                            ['UDF-Library/M4', 'M4']
+					    ]
+					},
+					{
+						title: 'Reference',
+						children: [
+							['Reference/Config-Manual','Config Manual'],
+							['Reference/Keywords','Keywords'],
+							['Reference/Frequently-asked-questions','Frequently asked questions'],
+							['Reference/TSDB-Comparison','TSDB Comparison']
 						]
 					},
 				],
@@ -880,17 +1023,18 @@ var config = {
 				 {
 					text: '文档',
 					items: [
-						{ text: 'In progress', link: '/zh/UserGuide/Master/QuickStart/QuickStart' },
-						{ text: 'V0.12.x', link: '/zh/UserGuide/V0.12.x/QuickStart/QuickStart' },
-						{ text: 'V0.11.x', link: '/zh/UserGuide/V0.11.x/Get Started/QuickStart' },
-						{ text: 'V0.10.x', link: '/zh/UserGuide/V0.10.x/Get Started/QuickStart' },
-					  { text: 'V0.9.x', link: '/zh/UserGuide/V0.9.x/0-Get Started/1-QuickStart' },
-					  { text: 'V0.8.x', link: '/zh/UserGuide/V0.8.x/0-Get Started/1-QuickStart'},
+						{ text: 'latest', link: '/zh/UserGuide/Master/QuickStart/QuickStart' },
+						{ text: 'v0.13.x', link: '/zh/UserGuide/V0.13.x/QuickStart/QuickStart' },
+						{ text: 'v0.12.x', link: '/zh/UserGuide/V0.12.x/QuickStart/QuickStart' },
+						{ text: 'v0.11.x', link: '/zh/UserGuide/V0.11.x/Get Started/QuickStart' },
+						{ text: 'v0.10.x', link: '/zh/UserGuide/V0.10.x/Get Started/QuickStart' },
+					  { text: 'v0.9.x', link: '/zh/UserGuide/V0.9.x/0-Get Started/1-QuickStart' },
+					  { text: 'v0.8.x', link: '/zh/UserGuide/V0.8.x/0-Get Started/1-QuickStart'},
 					]
 				  },
 				  	{
 					text: '系统设计',
-					link: '/zh/SystemDesign/Architecture/Architecture'
+					link: 'https://cwiki.apache.org/confluence/pages/viewpage.action?pageId=177051872'
 				  },
 				  {
 					text: '下载',
@@ -899,11 +1043,12 @@ var config = {
 				  {
 					text: '社区',
 					items: [
+						{ text: '关于社区', link: '/zh/Community/About'},
 						{ text: 'Wiki', link: 'https://cwiki.apache.org/confluence/display/iotdb'},
 					    { text: '开发人员', link: '/zh/Community/Community-Project Committers'},
 					    { text: '技术支持', link: '/zh/Community/Community-Powered By'},
-							{ text: '活动与报告', link: '/Community/Materials'},
-							{ text: '交流与反馈', link: '/zh/Community/Feedback'},
+						{ text: '活动与报告', link: '/Community/Materials'},
+						{ text: '交流与反馈', link: '/zh/Community/Feedback'},
 					]
 				  },
 				  {
@@ -1346,10 +1491,10 @@ var config = {
 					{
 						title: '应用编程接口',
 						children: [
-							['API/Programming-JDBC','JDBC'],
 							['API/Programming-Native-API','Java 原生接口'],
 							['API/Programming-Other-Languages','其他语言原生接口'],
-							['API/Programming-TsFile-API','TsFile API']
+							['API/Programming-TsFile-API','TsFile API'],
+							['API/Programming-JDBC','JDBC (不推荐)']
 						]
 					},
 					{
@@ -1377,6 +1522,7 @@ var config = {
 							['System-Tools/NodeTool','节点工具'],
 							['System-Tools/Query-History-Visualization-Tool','查询历史可视化工具'],
 							['System-Tools/Watermark-Tool','水印工具'],
+							['System-Tools/TsFile-Split-Tool','TsFile 拆分工具']
 						]
 					},
 					{
@@ -1403,7 +1549,7 @@ var config = {
 						title: '集群搭建',
 						children: [
 							['Cluster/Cluster-Setup','集群搭建'],
-							['Cluster/Cluster-Setup-Example','集群搭建示例']
+							//['Cluster/Cluster-Setup-Example','集群搭建示例']
 						]
 					},
 					{
@@ -1418,6 +1564,182 @@ var config = {
 							['Appendix/Config-Manual','附录1: 配置参数'],
 							['Appendix/SQL-Reference','附录2: SQL 参考文档'],
 							['Appendix/Status-Codes','附录3: 状态码']
+						]
+					}
+				],
+				'/zh/UserGuide/V0.13.x/': [
+					{
+						title: 'IoTDB用户手册 (In progress)',
+						collapsable: false,
+					},
+					{
+						title: 'IoTDB简介',
+						children: [
+							['IoTDB-Introduction/What-is-IoTDB','IoTDB简介'],
+							['IoTDB-Introduction/Features','主要功能特点'],
+							['IoTDB-Introduction/Architecture','系统架构'],
+							['IoTDB-Introduction/Scenario','应用场景'],
+							['IoTDB-Introduction/Publication','研究论文']
+						]
+					},
+					{
+						title: '快速上手',
+						children: [
+							['QuickStart/QuickStart','快速上手'],
+							['QuickStart/Files','数据文件存储'],
+							['QuickStart/WayToGetIoTDB','下载与安装'],
+							['QuickStart/Command-Line-Interface','SQL命令行终端(CLI)']
+						]
+					},
+					{
+						title: '数据模式与概念',
+						sidebarDepth: 1,
+						children: [
+							['Data-Concept/Data-Model-and-Terminology','数据模型'],
+							['Data-Concept/Schema-Template','元数据模板'],
+							['Data-Concept/Data-Type','数据类型'],
+							['Data-Concept/Encoding','编码方式'],
+							['Data-Concept/Compression','压缩方式'],
+							['Data-Concept/Time-Partition','时间分区'],
+							['Data-Concept/Time-zone','时区']
+						]
+					},
+					{
+						title: '语法约定',
+						sidebarDepth: 1,
+						children: [
+							['Reference/Syntax-Conventions', '语法约定'],
+						]
+					},
+					{
+						title: '应用编程接口',
+						children: [
+							['API/Programming-Java-Native-API','Java 原生接口'],
+							['API/Programming-Python-Native-API','Python 原生接口'],
+							['API/Programming-Cpp-Native-API','C++ 原生接口'],
+							['API/Programming-Go-Native-API','Go 原生接口'],
+							['API/Programming-JDBC','JDBC (不推荐)'],
+							['API/Programming-MQTT','MQTT'],
+							['API/RestService','REST API'],
+							['API/Programming-TsFile-API','TsFile API'],
+							['API/Status-Codes','状态码']
+						]
+					},
+					{
+						title: '元数据操作',
+						sidebarDepth: 1,
+						children: [
+							['Operate-Metadata/Storage-Group','存储组操作'],
+							['Operate-Metadata/Node','节点操作'],
+							['Operate-Metadata/Timeseries','时间序列操作'],
+							['Operate-Metadata/Template','元数据模板'],
+							['Operate-Metadata/TTL','TTL'],
+							['Operate-Metadata/Auto-Create-MetaData','自动创建元数据']
+						]
+					},
+					{
+						title: '数据写入和删除',
+						sidebarDepth: 1,
+						children: [
+							['Write-And-Delete-Data/Write-Data','写入数据'],
+							['Write-And-Delete-Data/Load-External-Tsfile','加载 TsFile'],
+							['Write-And-Delete-Data/CSV-Tool','导入导出 CSV'],
+							['Write-And-Delete-Data/Delete-Data','删除数据']
+						]
+					},
+					{
+						title: '数据查询',
+						sidebarDepth: 1,
+						children: [
+							['Query-Data/Overview.md','概述'],
+							['Query-Data/Select-Expression.md','选择表达式'],
+							['Query-Data/Query-Filter.md','查询过滤条件'],
+							['Query-Data/Pagination.md','查询结果分页'],
+							['Query-Data/Result-Format.md','查询结果对齐格式'],
+							['Query-Data/Aggregate-Query.md','聚合查询'],
+							['Query-Data/Last-Query.md','最新点查询'],
+							['Query-Data/Fill-Null-Value.md','空值填充'],
+							['Query-Data/Without-Null.md','空值过滤'],
+							['Query-Data/Tracing-Tool.md','查询性能追踪']
+						]
+					},
+					{
+						title: '数据处理',
+						sidebarDepth: 1,
+						children: [
+							['Process-Data/UDF-User-Defined-Function','用户定义函数(UDF)'],
+							['Process-Data/Select-Into','查询写回(SELECT INTO)'],
+							['Process-Data/Continuous-Query','连续查询(CQ)'],
+							['Process-Data/Triggers','触发器'],
+							['Process-Data/Alerting','告警机制'],
+						]
+					},
+					{
+						title: '权限管理',
+						children: [
+							['Administration-Management/Administration','权限管理']
+						]
+					},
+					{
+						title: '运维工具',
+						children: [
+							['Maintenance-Tools/Maintenance-Command','运维命令'],
+							['Maintenance-Tools/Monitor-and-Log-Tools','监控工具和系统日志'],
+							['Maintenance-Tools/JMX-Tool','JMX 工具'],
+							['Maintenance-Tools/MLogParser-Tool','Mlog解析工具'],
+							['Maintenance-Tools/NodeTool','节点工具'],
+							['Maintenance-Tools/Watermark-Tool','水印工具'],
+							['Maintenance-Tools/Metric-Tool','监控工具'],
+							['Maintenance-Tools/Sync-Tool','TsFile 同步工具'],
+							['Maintenance-Tools/TsFile-Split-Tool','TsFile 拆分工具']
+						]
+					},
+					{
+						title: '系统集成',
+						children: [
+							['Ecosystem Integration/Grafana Plugin','Grafana Plugin'],
+							['Ecosystem Integration/Grafana Connector','Grafana Connector（不推荐）'],
+							['Ecosystem Integration/Zeppelin-IoTDB','Zeppelin-IoTDB'],
+							['Ecosystem Integration/DBeaver','DBeaver-IoTDB'],
+							['Ecosystem Integration/Spark TsFile','Spark TsFile'],
+							['Ecosystem Integration/MapReduce TsFile','Hadoop-TsFile'],
+							['Ecosystem Integration/Spark IoTDB','Spark-IoTDB'],
+							['Ecosystem Integration/Hive TsFile','Hive-TsFile'],
+							['Ecosystem Integration/Flink TsFile','Flink-TsFile'],
+							['Ecosystem Integration/Flink IoTDB','Flink-IoTDB'],
+							['Ecosystem Integration/Writing Data on HDFS','HDFS集成'],
+						]
+					},
+					{
+						title: '集群搭建',
+						children: [
+							['Cluster/Cluster-Setup','集群搭建'],
+							['Cluster/Cluster-Setup-Example','集群搭建示例']
+						]
+					},
+					{
+                        title: 'UDF 资料库',
+                        sidebarDepth: 1,
+                        children: [
+                            ['UDF-Library/Quick-Start', '快速开始'],
+                            ['UDF-Library/Data-Profiling', '数据画像'],
+                            ['UDF-Library/Anomaly-Detection', '异常检测'],
+                            ['UDF-Library/Data-Matching', '数据匹配'],
+                            ['UDF-Library/Frequency-Domain', '频域分析'],
+                            ['UDF-Library/Data-Quality', '数据质量'],
+                            ['UDF-Library/Data-Repairing', '数据修复'],
+                            ['UDF-Library/Series-Discovery', '序列发现'],
+                            ['UDF-Library/String-Processing', '字符串处理'],
+                            ['UDF-Library/M4', 'M4']
+                        ]
+                    },
+					{
+						title: '参考',
+						children: [
+							['Reference/Config-Manual','配置参数'],
+							['Reference/Keywords','关键字'],
+							['Reference/Frequently-asked-questions','常见问题'],
+							['Reference/TSDB-Comparison','时间序列数据库比较']
 						]
 					}
 				],
@@ -1440,24 +1762,93 @@ var config = {
 						title: '快速上手',
 						children: [
 							['QuickStart/QuickStart','快速上手'],
-							['QuickStart/Files','存储路径设置'],
-							['QuickStart/WayToGetIoTDB','获取IoTDB二进制文件途径']
+							['QuickStart/Files','数据文件存储'],
+							['QuickStart/WayToGetIoTDB','下载与安装'],
+							['QuickStart/Command-Line-Interface','SQL命令行终端(CLI)']
 						]
 					},
 					{
 						title: '数据模式与概念',
+						sidebarDepth: 1,
 						children: [
 							['Data-Concept/Data-Model-and-Terminology','数据模型'],
+							['Data-Concept/Schema-Template','元数据模板'],
 							['Data-Concept/Data-Type','数据类型'],
 							['Data-Concept/Encoding','编码方式'],
 							['Data-Concept/Compression','压缩方式'],
-							['Data-Concept/SDT','旋转门压缩']
+							['Data-Concept/Time-Partition','时间分区'],
+							['Data-Concept/Time-zone','时区']
 						]
 					},
 					{
-						title: 'SQL命令行终端(CLI)',
+						title: '语法约定',
+						sidebarDepth: 1,
 						children: [
-							['CLI/Command-Line-Interface','SQL命令行终端(CLI)']
+							['Reference/Syntax-Conventions', '语法约定'],
+						]
+					},
+					{
+						title: '应用编程接口',
+						children: [
+							['API/Programming-Java-Native-API','Java 原生接口'],
+							['API/Programming-Python-Native-API','Python 原生接口'],
+							['API/Programming-Cpp-Native-API','C++ 原生接口'],
+							['API/Programming-Go-Native-API','Go 原生接口'],
+							['API/Programming-JDBC','JDBC (不推荐)'],
+							['API/Programming-MQTT','MQTT'],
+							['API/RestService','REST API'],
+							['API/Programming-TsFile-API','TsFile API'],
+							['API/InfluxDB-Protocol','InfluxDB 协议适配器'],
+							['API/Status-Codes','状态码']
+						]
+					},
+					{
+						title: '元数据操作',
+						sidebarDepth: 1,
+						children: [
+							['Operate-Metadata/Storage-Group','存储组操作'],
+							['Operate-Metadata/Node','节点操作'],
+							['Operate-Metadata/Timeseries','时间序列操作'],
+							['Operate-Metadata/Template','元数据模板'],
+							['Operate-Metadata/TTL','TTL'],
+							['Operate-Metadata/Auto-Create-MetaData','自动创建元数据']
+						]
+					},
+					{
+						title: '数据写入和删除',
+						sidebarDepth: 1,
+						children: [
+							['Write-And-Delete-Data/Write-Data','写入数据'],
+							['Write-And-Delete-Data/Load-External-Tsfile','加载 TsFile'],
+							['Write-And-Delete-Data/CSV-Tool','导入导出 CSV'],
+							['Write-And-Delete-Data/Delete-Data','删除数据']
+						]
+					},
+					{
+						title: '数据查询',
+						sidebarDepth: 1,
+						children: [
+							['Query-Data/Overview.md','概述'],
+							['Query-Data/Select-Expression.md','选择表达式'],
+							['Query-Data/Query-Filter.md','查询过滤条件'],
+							['Query-Data/Pagination.md','查询结果分页'],
+							['Query-Data/Result-Format.md','查询结果对齐格式'],
+							['Query-Data/Aggregate-Query.md','聚合查询'],
+							['Query-Data/Last-Query.md','最新点查询'],
+							['Query-Data/Fill-Null-Value.md','空值填充'],
+							['Query-Data/Without-Null.md','空值过滤'],
+							['Query-Data/Tracing-Tool.md','查询性能追踪']
+						]
+					},
+					{
+						title: '数据处理',
+						sidebarDepth: 1,
+						children: [
+							['Process-Data/UDF-User-Defined-Function','用户定义函数(UDF)'],
+							['Process-Data/Select-Into','查询写回(SELECT INTO)'],
+							['Process-Data/Continuous-Query','连续查询(CQ)'],
+							['Process-Data/Triggers','触发器'],
+							['Process-Data/Alerting','告警机制'],
 						]
 					},
 					{
@@ -1467,65 +1858,26 @@ var config = {
 						]
 					},
 					{
-						title: 'IoTDB-SQL 语言',
+						title: '运维工具',
 						children: [
-							['IoTDB-SQL-Language/DDL-Data-Definition-Language','数据定义语言（DDL）'],
-							['IoTDB-SQL-Language/DML-Data-Manipulation-Language','数据操作语言（DML）'],
-							['IoTDB-SQL-Language/Maintenance-Command','运维命令']
-						]
-					},
-					{
-						title: '应用编程接口',
-						children: [
-							['API/Programming-JDBC','JDBC'],
-							['API/Programming-Java-Native-API','Java 原生接口'],
-							['API/Programming-Python-Native-API','Python 原生接口'],
-							['API/Programming-Cpp-Native-API','C++ 原生接口'],
-							['API/Programming-Go-Native-API','Go 原生接口'],
-							['API/Programming-TsFile-API','TsFile API']
-						]
-					},
-					{
-						title: '高级功能',
-						children: [
-							['Advanced-Features/UDF-User-Defined-Function','用户定义函数(UDF)'],
-              // The trigger module has not been implemented yet,
-              // so the website should not show users how to use it to avoid misleading.
-              // ['Advanced-Features/Triggers','触发器']
-						]
-					},
-					{
-						title: '通信服务协议',
-						children: [
-							['Communication-Service-Protocol/Programming-Thrift','Thrift'],
-							['Communication-Service-Protocol/Programming-MQTT','MQTT'],
-						]
-					},
-					{
-						title: '系统工具',
-						children: [
-							['System-Tools/Load-External-Tsfile','加载 TsFile'],
-							['System-Tools/Performance-Tracing-Tool','查询性能追踪'],
-							['System-Tools/CSV-Tool','导入导出 CSV'],
-							['System-Tools/Monitor-and-Log-Tools','监控工具和系统日志'],
-							['System-Tools/JMX-Tool','JMX 工具'],
-							['System-Tools/MLogParser-Tool','Mlog解析工具'],
-							['System-Tools/NodeTool','节点工具'],
-							['System-Tools/Query-History-Visualization-Tool','查询历史可视化工具'],
-							['System-Tools/Watermark-Tool','水印工具'],
-						]
-					},
-					{
-						title: '端云协同',
-						children: [
-							['Collaboration-of-Edge-and-Cloud/Sync-Tool','TsFile 同步工具']
+							['Maintenance-Tools/Maintenance-Command','运维命令'],
+							['Maintenance-Tools/Monitor-and-Log-Tools','监控工具和系统日志'],
+							['Maintenance-Tools/JMX-Tool','JMX 工具'],
+							['Maintenance-Tools/MLogParser-Tool','Mlog解析工具'],
+							['Maintenance-Tools/NodeTool','节点工具'],
+							['Maintenance-Tools/Watermark-Tool','水印工具'],
+							['Maintenance-Tools/Metric-Tool','监控工具'],
+							['Maintenance-Tools/Sync-Tool','TsFile 同步工具'],
+							['Maintenance-Tools/TsFile-Split-Tool','TsFile 拆分工具']
 						]
 					},
 					{
 						title: '系统集成',
 						children: [
-							['Ecosystem Integration/Grafana','Grafana-IoTDB'],
+							['Ecosystem Integration/Grafana Plugin','Grafana Plugin'],
+							['Ecosystem Integration/Grafana Connector','Grafana Connector（不推荐）'],
 							['Ecosystem Integration/Zeppelin-IoTDB','Zeppelin-IoTDB'],
+							['Ecosystem Integration/DBeaver','DBeaver-IoTDB'],
 							['Ecosystem Integration/Spark TsFile','Spark TsFile'],
 							['Ecosystem Integration/MapReduce TsFile','Hadoop-TsFile'],
 							['Ecosystem Integration/Spark IoTDB','Spark-IoTDB'],
@@ -1543,105 +1895,30 @@ var config = {
 						]
 					},
 					{
-						title: '常见问题',
-						children: [
-							['FAQ/Frequently-asked-questions','常见问题']
-						]
-					},
+                        title: 'UDF 资料库',
+                        sidebarDepth: 1,
+                        children: [
+                            ['UDF-Library/Quick-Start', '快速开始'],
+                            ['UDF-Library/Data-Profiling', '数据画像'],
+                            ['UDF-Library/Anomaly-Detection', '异常检测'],
+                            ['UDF-Library/Data-Matching', '数据匹配'],
+                            ['UDF-Library/Frequency-Domain', '频域分析'],
+                            ['UDF-Library/Data-Quality', '数据质量'],
+                            ['UDF-Library/Data-Repairing', '数据修复'],
+                            ['UDF-Library/Series-Discovery', '序列发现'],
+                            ['UDF-Library/String-Processing', '字符串处理'],
+                            ['UDF-Library/M4', 'M4']
+                        ]
+                    },
 					{
-						title: '附录',
+						title: '参考',
 						children: [
-							['Appendix/Config-Manual','附录1: 配置参数'],
-							['Appendix/SQL-Reference','附录2: SQL 参考文档'],
-							['Appendix/Status-Codes','附录3: 状态码']
+							['Reference/Config-Manual','配置参数'],
+							['Reference/Keywords','关键字'],
+							['Reference/Frequently-asked-questions','常见问题'],
+							['Reference/TSDB-Comparison','时间序列数据库比较']
 						]
 					}
-				],
-				'/zh/SystemDesign/': [
-					{
-						title: '系统设计',
-						collapsable: false,
-					},
-					{
-						title: '应用概览',
-						children: [
-							['Architecture/Architecture','应用概览']
-						]
-					},
-					{
-						title: 'TsFile',
-						children: [
-							['TsFile/TsFile','TsFile'],
-							['TsFile/Format','格式'],
-							['TsFile/Write','写流程'],
-							['TsFile/Read','读流程']
-						]
-					},
-					{
-						title: '查询引擎',
-						children: [
-							['QueryEngine/QueryEngine','查询引擎'],
-							['QueryEngine/Planner','执行计划生成器'],
-							['QueryEngine/PlanExecutor','计划执行器'],
-							['QueryEngine/ResultSetConstruction','结果集构造']
-						]
-					},
-					{
-						title: '元数据管理',
-						children: [
-							['SchemaManager/SchemaManager','元数据管理']
-						]
-					},
-					{
-						title: '存储引擎',
-						children: [
-							['StorageEngine/FileLists','磁盘文件汇总'],
-							['StorageEngine/StorageEngine','存储引擎'],
-							['StorageEngine/WAL','写前日志'],
-							['StorageEngine/FlushManager','FlushManager'],
-							['StorageEngine/MergeManager','文件合并机制'],
-							['StorageEngine/DataPartition','数据分区'],
-							['StorageEngine/DataManipulation','数据增删改'],
-							['StorageEngine/Recover','重启恢复'],
-							['StorageEngine/Compaction','文件合并']
-						]
-					},
-					{
-						title: '数据查询',
-						children: [
-							['DataQuery/DataQuery','数据查询'],
-							['DataQuery/QueryFundamentals','查询基础介绍'],
-							['DataQuery/SeriesReader','查询基础组件'],
-							['DataQuery/RawDataQuery','原始数据查询'],
-							['DataQuery/AggregationQuery','聚合查询'],
-							['DataQuery/GroupByQuery','降采样查询'],
-							['DataQuery/LastQuery','最近时间戳 Last 查询'],
-							['DataQuery/AlignByDeviceQuery','按设备对齐查询'],
-							['DataQuery/FillFunction','空值填充'],
-							['DataQuery/GroupByFillQuery', '降采样补空值查询'],
-							['DataQuery/OrderByTimeQuery', '按时间倒序查询']
-						]
-					},
-					{
-						title: '工具',
-						children: [
-							['Tools/Sync','同步工具']
-						]
-					},
-					{
-						title: '连接器',
-						children: [
-							['Connector/Hive-TsFile','Hive-TsFile'],
-							['Connector/Spark-TsFile','Spark-TsFile'],
-							['Connector/Spark-IOTDB','Spark-IOTDB']
-						]
-					},
-					{
-						title: '客户端',
-						children: [
-							['Client/RPC','RPC']
-						]
-					},
 				],
 			}
 		  }

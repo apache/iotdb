@@ -22,17 +22,20 @@ package org.apache.iotdb.cluster.query;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.qp.logical.crud.FromOperator;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.qp.logical.crud.FromComponent;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
-import org.apache.iotdb.db.qp.logical.crud.SelectOperator;
+import org.apache.iotdb.db.qp.logical.crud.SelectComponent;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
+import org.apache.iotdb.db.query.expression.ResultColumn;
+import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 
 import org.junit.Before;
 import org.junit.Test;
 
 import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 
@@ -49,20 +52,21 @@ public class ClusterPhysicalGeneratorTest extends BaseQueryTest {
 
   @Test
   public void test() throws QueryProcessException, IllegalPathException {
-    QueryOperator operator = new QueryOperator(SQLConstant.TOK_QUERY);
+    QueryOperator operator = new QueryOperator();
 
-    SelectOperator selectOperator =
-        new SelectOperator(SQLConstant.TOK_SELECT, ZoneId.systemDefault());
-    selectOperator.setSuffixPathList(pathList);
-    FromOperator fromOperator = new FromOperator(SQLConstant.TOK_FROM);
-    fromOperator.addPrefixTablePath(new PartialPath(TestUtils.getTestSg(0)));
+    SelectComponent selectComponent = new SelectComponent(ZoneId.systemDefault());
+    List<ResultColumn> resultColumns = new ArrayList<>();
+    for (PartialPath partialPath : pathList) {
+      resultColumns.add(new ResultColumn(new TimeSeriesOperand(partialPath)));
+    }
+    selectComponent.setResultColumns(resultColumns);
+    FromComponent fromComponent = new FromComponent();
+    fromComponent.addPrefixTablePath(new PartialPath(TestUtils.getTestSg(0)));
 
-    operator.setSelectOperator(selectOperator);
-    operator.setFromOperator(fromOperator);
-    RawDataQueryPlan plan =
-        (RawDataQueryPlan) physicalGenerator.transformToPhysicalPlan(operator, 1024);
+    operator.setSelectComponent(selectComponent);
+    operator.setFromComponent(fromComponent);
+    RawDataQueryPlan plan = (RawDataQueryPlan) physicalGenerator.transformToPhysicalPlan(operator);
 
     assertEquals(pathList, plan.getDeduplicatedPaths());
-    assertEquals(dataTypes, plan.getDeduplicatedDataTypes());
   }
 }

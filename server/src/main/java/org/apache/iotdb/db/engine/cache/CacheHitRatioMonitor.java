@@ -18,14 +18,14 @@
  */
 package org.apache.iotdb.db.engine.cache;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.service.IService;
+import org.apache.iotdb.commons.service.JMXService;
+import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.db.engine.flush.FlushManager;
-import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.rescon.MemTableManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
-import org.apache.iotdb.db.service.IService;
-import org.apache.iotdb.db.service.JMXService;
-import org.apache.iotdb.db.service.ServiceType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,8 +61,8 @@ public class CacheHitRatioMonitor implements CacheHitRatioMonitorMXBean, IServic
   }
 
   @Override
-  public long getChunkCacheUsedMemory() {
-    return ChunkCache.getInstance().getUsedMemory();
+  public long getChunkEvictionCount() {
+    return ChunkCache.getInstance().getEvictionCount();
   }
 
   @Override
@@ -71,8 +71,8 @@ public class CacheHitRatioMonitor implements CacheHitRatioMonitorMXBean, IServic
   }
 
   @Override
-  public double getChunkCacheUsedMemoryProportion() {
-    return ChunkCache.getInstance().getUsedMemoryProportion();
+  public double getChunkCacheAverageLoadPenalty() {
+    return ChunkCache.getInstance().getAverageLoadPenalty();
   }
 
   @Override
@@ -86,8 +86,8 @@ public class CacheHitRatioMonitor implements CacheHitRatioMonitorMXBean, IServic
   }
 
   @Override
-  public long getTimeSeriesMetadataCacheUsedMemory() {
-    return TimeSeriesMetadataCache.getInstance().getUsedMemory();
+  public long getTimeSeriesMetadataCacheEvictionCount() {
+    return TimeSeriesMetadataCache.getInstance().getEvictionCount();
   }
 
   @Override
@@ -96,13 +96,38 @@ public class CacheHitRatioMonitor implements CacheHitRatioMonitorMXBean, IServic
   }
 
   @Override
-  public double getTimeSeriesCacheUsedMemoryProportion() {
-    return TimeSeriesMetadataCache.getInstance().getUsedMemoryProportion();
+  public double getTimeSeriesCacheAverageLoadPenalty() {
+    return TimeSeriesMetadataCache.getInstance().getAverageLoadPenalty();
   }
 
   @Override
   public long getTimeSeriesMetaDataCacheAverageSize() {
     return TimeSeriesMetadataCache.getInstance().getAverageSize();
+  }
+
+  @Override
+  public double getBloomFilterHitRatio() {
+    return BloomFilterCache.getInstance().calculateChunkHitRatio();
+  }
+
+  @Override
+  public long getBloomFilterCacheEvictionCount() {
+    return BloomFilterCache.getInstance().getEvictionCount();
+  }
+
+  @Override
+  public long getBloomFilterCacheMaxMemory() {
+    return BloomFilterCache.getInstance().getMaxMemory();
+  }
+
+  @Override
+  public double getBloomFilterCacheAverageLoadPenalty() {
+    return BloomFilterCache.getInstance().getAverageLoadPenalty();
+  }
+
+  @Override
+  public long getBloomFilterCacheAverageSize() {
+    return BloomFilterCache.getInstance().getAverageSize();
   }
 
   public static CacheHitRatioMonitor getInstance() {

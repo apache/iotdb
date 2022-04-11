@@ -19,12 +19,16 @@
 
 package org.apache.iotdb.db.qp.logical.sys;
 
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
 import java.util.Map;
 
-public class AlterTimeSeriesOperator extends RootOperator {
+public class AlterTimeSeriesOperator extends Operator {
 
   private PartialPath path;
 
@@ -93,6 +97,12 @@ public class AlterTimeSeriesOperator extends RootOperator {
 
   public void setAlias(String alias) {
     this.alias = alias;
+  }
+
+  @Override
+  public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
+      throws QueryProcessException {
+    return new AlterTimeSeriesPlan(path, alterType, alterMap, alias, tagsMap, attributesMap);
   }
 
   public enum AlterType {

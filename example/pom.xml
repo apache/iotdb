@@ -24,7 +24,7 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-parent</artifactId>
-        <version>0.13.0-SNAPSHOT</version>
+        <version>0.14.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <packaging>pom</packaging>
@@ -42,9 +42,11 @@
         <module>hadoop</module>
         <module>flink</module>
         <module>mqtt</module>
+        <module>mqtt-customize</module>
         <module>pulsar</module>
         <module>udf</module>
         <module>trigger</module>
+        <module>rabbitmq</module>
     </modules>
     <build>
         <pluginManagement>
@@ -86,6 +88,11 @@
                 <groupId>org.apache.zookeeper</groupId>
                 <artifactId>zookeeper</artifactId>
                 <version>${zookeeper.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.rabbitmq</groupId>
+                <artifactId>amqp-client</artifactId>
+                <version>5.12.0</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

@@ -21,24 +21,22 @@
 
 ## Hive-TsFile
 
+### 什么是 TsFile 的 Hive 连接器
 
-### 什么是TsFile的Hive连接器
-
-TsFile的Hive连接器实现了对Hive读取外部Tsfile类型的文件格式的支持，
-使用户能够通过Hive操作Tsfile。
+TsFile 的 Hive 连接器实现了对 Hive 读取外部 Tsfile 类型的文件格式的支持，
+使用户能够通过 Hive 操作 Tsfile。
 
 有了这个连接器，用户可以
-* 将单个Tsfile文件加载进Hive，不论文件是存储在本地文件系统或者是HDFS中
-* 将某个特定目录下的所有文件加载进Hive，不论文件是存储在本地文件系统或者是HDFS中
-* 使用HQL查询tsfile
-* 到现在为止, 写操作在hive-connector中还没有被支持. 所以, HQL中的insert操作是不被允许的
+* 将单个 Tsfile 文件加载进 Hive，不论文件是存储在本地文件系统或者是 HDFS 中
+* 将某个特定目录下的所有文件加载进 Hive，不论文件是存储在本地文件系统或者是 HDFS 中
+* 使用 HQL 查询 tsfile
+* 到现在为止，写操作在 hive-connector 中还没有被支持。所以，HQL 中的 insert 操作是不被允许的
 
 ### 系统环境要求
 
 |Hadoop Version |Hive Version | Java Version | TsFile |
 |-------------  |------------ | ------------ |------------ |
-| `2.7.3` or `3.2.1`       |    `2.3.6` or `3.1.2`  | `1.8`        | `0.13.0-SNAPSHOT+`|
-
+| `2.7.3` or `3.2.1`       |    `2.3.6` or `3.1.2`  | `1.8`        | `0.14.0-SNAPSHOT+`|
 
 ### 数据类型对应关系
 
@@ -51,36 +49,34 @@ TsFile的Hive连接器实现了对Hive读取外部Tsfile类型的文件格式的
 | DOUBLE      	   | Double          |
 | TEXT      	   | STRING          |
 
+### 为 Hive 添加依赖 jar 包
 
-### 为Hive添加依赖jar包
+为了在 Hive 中使用 Tsfile 的 hive 连接器，我们需要把 hive 连接器的 jar 导入进 hive。
 
-为了在Hive中使用Tsfile的hive连接器，我们需要把hive连接器的jar导入进hive。
+从 <https://github.com/apache/iotdb>下载完 iotdb 后，你可以使用 `mvn clean package -pl hive-connector -am -Dmaven.test.skip=true -P get-jar-with-dependencies`命令得到一个 `hive-connector-X.X.X-SNAPSHOT-jar-with-dependencies.jar`。
 
-从 <https://github.com/apache/iotdb>下载完iotdb后, 你可以使用 `mvn clean package -pl hive-connector -am -Dmaven.test.skip=true -P get-jar-with-dependencies`命令得到一个 `hive-connector-X.X.X-SNAPSHOT-jar-with-dependencies.jar`。
-
-然后在hive的命令行中，使用`add jar XXX`命令添加依赖。例如:
+然后在 hive 的命令行中，使用`add jar XXX`命令添加依赖。例如：
 
 ```shell
-hive> add jar /Users/hive/iotdb/hive-connector/target/hive-connector-0.13.0-SNAPSHOT-jar-with-dependencies.jar;
+hive> add jar /Users/hive/iotdb/hive-connector/target/hive-connector-0.14.0-SNAPSHOT-jar-with-dependencies.jar;
 
-Added [/Users/hive/iotdb/hive-connector/target/hive-connector-0.13.0-SNAPSHOT-jar-with-dependencies.jar] to class path
-Added resources: [/Users/hive/iotdb/hive-connector/target/hive-connector-0.13.0-SNAPSHOT-jar-with-dependencies.jar]
+Added [/Users/hive/iotdb/hive-connector/target/hive-connector-0.14.0-SNAPSHOT-jar-with-dependencies.jar] to class path
+Added resources: [/Users/hive/iotdb/hive-connector/target/hive-connector-0.14.0-SNAPSHOT-jar-with-dependencies.jar]
 ```
 
+### 创建 Tsfile-backed 的 Hive 表
 
-### 创建Tsfile-backed的Hive表
-
-为了创建一个Tsfile-backed的表，需要将`serde`指定为`org.apache.iotdb.hive.TsFileSerDe`，
+为了创建一个 Tsfile-backed 的表，需要将`serde`指定为`org.apache.iotdb.hive.TsFileSerDe`，
 将`inputformat`指定为`org.apache.iotdb.hive.TSFHiveInputFormat`，
 将`outputformat`指定为`org.apache.iotdb.hive.TSFHiveOutputFormat`。
 
-同时要提供一个只包含两个字段的Schema，这两个字段分别是`time_stamp`和`sensor_id`。
-`time_stamp`代表的是时间序列的时间值，`sensor_id`是你想要从tsfile文件中提取出来分析的传感器名称，比如说`sensor_1`。
-表的名字可以是hive所支持的任何表名。
+同时要提供一个只包含两个字段的 Schema，这两个字段分别是`time_stamp`和`sensor_id`。
+`time_stamp`代表的是时间序列的时间值，`sensor_id`是你想要从 tsfile 文件中提取出来分析的传感器名称，比如说`sensor_1`。
+表的名字可以是 hive 所支持的任何表名。
 
-需要提供一个路径供hive-connector从其中拉取最新的数据。
+需要提供一个路径供 hive-connector 从其中拉取最新的数据。
 
-这个路径必须是一个指定的文件夹，这个文件夹可以在你的本地文件系统上，也可以在HDFS上，如果你启动了Hadoop的话。
+这个路径必须是一个指定的文件夹，这个文件夹可以在你的本地文件系统上，也可以在 HDFS 上，如果你启动了 Hadoop 的话。
 如果是本地文件系统，要以这样的形式`file:///data/data/sequence/root.baic2.WWS.leftfrontdoor/`
 
 最后需要在`TBLPROPERTIES`里指明`device_id`
@@ -110,21 +106,20 @@ sensor_1            	bigint              	from deserializer
 Time taken: 0.053 seconds, Fetched: 2 row(s)
 ```
 
-到目前为止, Tsfile-backed的表已经可以像hive中其他表一样被操作了。
+到目前为止，Tsfile-backed 的表已经可以像 hive 中其他表一样被操作了。
 
+### 从 Tsfile-backed 的 Hive 表中查询
 
-### 从Tsfile-backed的Hive表中查询
-
-在做任何查询之前，我们需要通过如下命令，在hive中设置`hive.input.format`：
+在做任何查询之前，我们需要通过如下命令，在 hive 中设置`hive.input.format`：
 
 ```
 hive> set hive.input.format=org.apache.hadoop.hive.ql.io.HiveInputFormat;
 ```
 
-现在，我们已经在hive中有了一个名为`only_sensor_1`的外部表。
-我们可以使用HQL做任何查询来分析其中的数据。
+现在，我们已经在 hive 中有了一个名为`only_sensor_1`的外部表。
+我们可以使用 HQL 做任何查询来分析其中的数据。
 
-例如:
+例如：
 
 #### 选择查询语句示例
 
@@ -170,5 +165,3 @@ OK
 1000000
 Time taken: 11.334 seconds, Fetched: 1 row(s)
 ```
-
-

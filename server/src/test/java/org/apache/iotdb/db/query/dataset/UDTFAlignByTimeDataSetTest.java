@@ -22,7 +22,7 @@ package org.apache.iotdb.db.query.dataset;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.executor.IPlanExecutor;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
@@ -78,38 +78,38 @@ public class UDTFAlignByTimeDataSetTest {
   @BeforeClass
   public static void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
-    IoTDB.metaManager.setStorageGroup(new PartialPath("root.vehicle"));
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaProcessor.setStorageGroup(new PartialPath("root.vehicle"));
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.vehicle.d1.s1"),
         TSDataType.FLOAT,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.vehicle.d1.s2"),
         TSDataType.FLOAT,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.vehicle.d2.s1"),
         TSDataType.FLOAT,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.vehicle.d2.s2"),
         TSDataType.FLOAT,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.vehicle.d3.s1"),
         TSDataType.FLOAT,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.vehicle.d3.s2"),
         TSDataType.FLOAT,
         TSEncoding.PLAIN,
@@ -119,7 +119,7 @@ public class UDTFAlignByTimeDataSetTest {
     queryExecutor.processNonQuery(
         processor.parseSQLToPhysicalPlan(
             String.format(
-                "create function udf as \"%s\"", "org.apache.iotdb.db.query.udf.example.Adder")));
+                "create function udf as '%s'", "org.apache.iotdb.db.query.udf.example.Adder")));
   }
 
   private static void generateData() throws Exception {
@@ -171,7 +171,7 @@ public class UDTFAlignByTimeDataSetTest {
         Path path = queryPlan.getPaths().get(i);
         String columnName =
             path == null
-                ? queryPlan.getExecutorByOriginalOutputColumnIndex(i).getContext().getColumnName()
+                ? queryPlan.getResultColumns().get(i).getExpression().toString()
                 : path.getFullPath();
         originalIndex2FieldIndex.add(path2Index.get(columnName));
       }
@@ -233,7 +233,7 @@ public class UDTFAlignByTimeDataSetTest {
         Path path = queryPlan.getPaths().get(i);
         String columnName =
             path == null
-                ? queryPlan.getExecutorByOriginalOutputColumnIndex(i).getContext().getColumnName()
+                ? queryPlan.getResultColumns().get(i).getExpression().toString()
                 : path.getFullPath();
         originalIndex2FieldIndex.add(path2Index.get(columnName));
       }
@@ -280,7 +280,7 @@ public class UDTFAlignByTimeDataSetTest {
         Path path = queryPlan.getPaths().get(i);
         String columnName =
             path == null
-                ? queryPlan.getExecutorByOriginalOutputColumnIndex(i).getContext().getColumnName()
+                ? queryPlan.getResultColumns().get(i).getExpression().toString()
                 : path.getFullPath();
         originalIndex2FieldIndex.add(path2Index.get(columnName));
       }
@@ -326,7 +326,7 @@ public class UDTFAlignByTimeDataSetTest {
   public void testHasNextAndNextWithoutValueFilter4() {
     try {
       String sqlStr =
-          "select udf(*, *, \"addend\"=\"" + ADDEND + "\"), *, udf(*, *) from root.vehicle.d1";
+          "select udf(*, *, 'addend'='" + ADDEND + "'), *, udf(*, *) from root.vehicle.d1";
       UDTFPlan queryPlan = (UDTFPlan) processor.parseSQLToPhysicalPlan(sqlStr);
       QueryDataSet dataSet =
           queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
@@ -339,7 +339,7 @@ public class UDTFAlignByTimeDataSetTest {
         Path path = queryPlan.getPaths().get(i);
         String columnName =
             path == null
-                ? queryPlan.getExecutorByOriginalOutputColumnIndex(i).getContext().getColumnName()
+                ? queryPlan.getResultColumns().get(i).getExpression().toString()
                 : path.getFullPath();
         originalIndex2FieldIndex.add(path2Index.get(columnName));
       }
@@ -412,7 +412,7 @@ public class UDTFAlignByTimeDataSetTest {
         Path path = queryPlan.getPaths().get(i);
         String columnName =
             path == null
-                ? queryPlan.getExecutorByOriginalOutputColumnIndex(i).getContext().getColumnName()
+                ? queryPlan.getResultColumns().get(i).getExpression().toString()
                 : path.getFullPath();
         originalIndex2FieldIndex.add(path2Index.get(columnName));
       }
@@ -450,9 +450,9 @@ public class UDTFAlignByTimeDataSetTest {
   public void testHasNextAndNextWithValueFilter2() {
     try {
       String sqlStr =
-          "select udf(*, *, \"addend\"=\""
+          "select udf(*, *, 'addend'='"
               + ADDEND
-              + "\"), *, udf(*, *) from root.vehicle.d2"
+              + "'), *, udf(*, *) from root.vehicle.d2"
               + String.format(
                   " where s1 >= %d and s2 < %d",
                   (int) (0.25 * ITERATION_TIMES), (int) (0.75 * ITERATION_TIMES));
@@ -468,7 +468,7 @@ public class UDTFAlignByTimeDataSetTest {
         Path path = queryPlan.getPaths().get(i);
         String columnName =
             path == null
-                ? queryPlan.getExecutorByOriginalOutputColumnIndex(i).getContext().getColumnName()
+                ? queryPlan.getResultColumns().get(i).getExpression().toString()
                 : path.getFullPath();
         originalIndex2FieldIndex.add(path2Index.get(columnName));
       }
@@ -533,7 +533,7 @@ public class UDTFAlignByTimeDataSetTest {
         Path path = queryPlan.getPaths().get(i);
         String columnName =
             path == null
-                ? queryPlan.getExecutorByOriginalOutputColumnIndex(i).getContext().getColumnName()
+                ? queryPlan.getResultColumns().get(i).getExpression().toString()
                 : path.getFullPath();
         originalIndex2FieldIndex.add(path2Index.get(columnName));
       }
@@ -604,7 +604,7 @@ public class UDTFAlignByTimeDataSetTest {
         Path path = queryPlan.getPaths().get(i);
         String columnName =
             path == null
-                ? queryPlan.getExecutorByOriginalOutputColumnIndex(i).getContext().getColumnName()
+                ? queryPlan.getResultColumns().get(i).getExpression().toString()
                 : path.getFullPath();
         originalIndex2FieldIndex.add(path2Index.get(columnName));
       }
@@ -657,7 +657,7 @@ public class UDTFAlignByTimeDataSetTest {
         Path path = queryPlan.getPaths().get(i);
         String columnName =
             path == null
-                ? queryPlan.getExecutorByOriginalOutputColumnIndex(i).getContext().getColumnName()
+                ? queryPlan.getResultColumns().get(i).getExpression().toString()
                 : path.getFullPath();
         originalIndex2FieldIndex.add(path2Index.get(columnName));
       }

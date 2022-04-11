@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.rpc;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
@@ -50,7 +50,7 @@ public class IoTDBRpcDataSet {
   public boolean isClosed = false;
   public TSIService.Iface client;
   public List<String> columnNameList; // no deduplication
-  public List<TSDataType> columnTypeList; // no deduplication
+  public List<String> columnTypeList; // no deduplication
   public Map<String, Integer>
       columnOrdinalMap; // used because the server returns deduplicated columns
   public List<TSDataType> columnTypeDeduplicatedList; // deduplicated from columnTypeList
@@ -105,7 +105,7 @@ public class IoTDBRpcDataSet {
     this.columnTypeList = new ArrayList<>();
     if (!ignoreTimeStamp) {
       this.columnNameList.add(TIMESTAMP_STR);
-      this.columnTypeList.add(TSDataType.INT64);
+      this.columnTypeList.add(String.valueOf(TSDataType.INT64));
     }
     // deduplicate and map
     this.columnOrdinalMap = new HashMap<>();
@@ -122,7 +122,7 @@ public class IoTDBRpcDataSet {
       for (int i = 0; i < columnNameList.size(); i++) {
         String name = columnNameList.get(i);
         this.columnNameList.add(name);
-        this.columnTypeList.add(TSDataType.valueOf(columnTypeList.get(i)));
+        this.columnTypeList.add(columnTypeList.get(i));
         if (!columnOrdinalMap.containsKey(name)) {
           int index = columnNameIndex.get(name);
           columnOrdinalMap.put(name, index + START_INDEX);
@@ -135,7 +135,7 @@ public class IoTDBRpcDataSet {
       for (int i = 0; i < columnNameList.size(); i++) {
         String name = columnNameList.get(i);
         this.columnNameList.add(name);
-        this.columnTypeList.add(TSDataType.valueOf(columnTypeList.get(i)));
+        this.columnTypeList.add(columnTypeList.get(i));
         if (!columnOrdinalMap.containsKey(name)) {
           columnOrdinalMap.put(name, index++);
           columnTypeDeduplicatedList.add(TSDataType.valueOf(columnTypeList.get(i)));
@@ -200,6 +200,7 @@ public class IoTDBRpcDataSet {
 
   public boolean next() throws StatementExecutionException, IoTDBConnectionException {
     if (hasCachedResults()) {
+      lastReadWasNull = false;
       constructOneRow();
       return true;
     }

@@ -18,26 +18,27 @@
  */
 package org.apache.iotdb.db.engine.flush;
 
-import org.apache.iotdb.db.concurrent.WrappedRunnable;
+import org.apache.iotdb.commons.concurrent.WrappedRunnable;
+import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.service.IService;
+import org.apache.iotdb.commons.service.JMXService;
+import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.flush.pool.FlushSubTaskPoolManager;
 import org.apache.iotdb.db.engine.flush.pool.FlushTaskPoolManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
-import org.apache.iotdb.db.exception.StartupException;
-import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.monitor.StatMonitor;
-import org.apache.iotdb.db.service.IService;
-import org.apache.iotdb.db.service.JMXService;
-import org.apache.iotdb.db.service.ServiceType;
+import org.apache.iotdb.db.rescon.AbstractPoolManager;
+import org.apache.iotdb.db.service.metrics.Metric;
+import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.Tag;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.ConcurrentLinkedDeque;
-
-import static java.io.File.separator;
 
 public class FlushManager implements FlushManagerMBean, IService {
 
@@ -52,9 +53,34 @@ public class FlushManager implements FlushManagerMBean, IService {
   @Override
   public void start() throws StartupException {
     FlushSubTaskPoolManager.getInstance().start();
-    FlushTaskPoolManager.getInstance().start();
+    flushPool.start();
     try {
       JMXService.registerMBean(this, ServiceType.FLUSH_SERVICE.getJmxName());
+      if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
+        MetricsService.getInstance()
+            .getMetricManager()
+            .getOrCreateAutoGauge(
+                Metric.QUEUE.toString(),
+                MetricLevel.IMPORTANT,
+                flushPool,
+                AbstractPoolManager::getWaitingTasksNumber,
+                Tag.NAME.toString(),
+                "flush",
+                Tag.STATUS.toString(),
+                "waiting");
+        MetricsService.getInstance()
+            .getMetricManager()
+            .getOrCreateAutoGauge(
+                Metric.QUEUE.toString(),
+                MetricLevel.IMPORTANT,
+                flushPool,
+                AbstractPoolManager::getWorkingTasksNumber,
+                Tag.NAME.toString(),
+                "flush",
+                Tag.STATUS.toString(),
+                "running");
+      }
+
     } catch (Exception e) {
       throw new StartupException(this.getID().getName(), e.getMessage());
     }
@@ -92,6 +118,7 @@ public class FlushManager implements FlushManagerMBean, IService {
     return FlushSubTaskPoolManager.getInstance().getWaitingTasksNumber();
   }
 
+  /** a flush thread handles flush task */
   class FlushThread extends WrappedRunnable {
 
     @Override
@@ -109,19 +136,14 @@ public class FlushManager implements FlushManagerMBean, IService {
             tsFileProcessor.getTsFileResource().getTsFile().getAbsolutePath());
       }
       registerTsFileProcessor(tsFileProcessor);
-      // update stat monitor cache to system during each flush()
-      if (config.isEnableStatMonitor() && config.isEnableMonitorSeriesWrite()) {
-        try {
-          StatMonitor.getInstance()
-              .saveStatValue(tsFileProcessor.getStorageGroupName().split(separator)[0]);
-        } catch (StorageEngineException | MetadataException e) {
-          LOGGER.error("Inserting monitor series data error.", e);
-        }
-      }
     }
   }
 
-  /** Add TsFileProcessor to asyncTryToFlush manager */
+  /**
+   * Add tsFileProcessor to asyncTryToFlush manager
+   *
+   * @param tsFileProcessor tsFileProcessor to be flushed
+   */
   @SuppressWarnings("squid:S2445")
   public void registerTsFileProcessor(TsFileProcessor tsFileProcessor) {
     synchronized (tsFileProcessor) {
@@ -166,6 +188,7 @@ public class FlushManager implements FlushManagerMBean, IService {
     private static FlushManager instance = new FlushManager();
   }
 
+  @Override
   public String toString() {
     return String.format(
         "TSProcessors in the queue: %d, TaskPool size %d + %d,",

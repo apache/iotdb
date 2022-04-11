@@ -30,6 +30,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
@@ -38,7 +39,7 @@ import java.util.Set;
 public class TimeSeriesMetadataReadTest {
 
   private static final String FILE_PATH =
-      TestConstant.BASE_OUTPUT_PATH.concat("TimeSeriesMetadataReadTest.tsfile");
+      TestConstant.BASE_OUTPUT_PATH.concat("TimeseriesMetadataReadTest.tsfile");
   private final TSFileConfig conf = TSFileDescriptor.getInstance().getConfig();
   private int maxDegreeOfIndexNode;
 
@@ -54,6 +55,10 @@ public class TimeSeriesMetadataReadTest {
   public void after() {
     FileGenerator.after();
     conf.setMaxDegreeOfIndexNode(maxDegreeOfIndexNode);
+    File file = new File(FILE_PATH);
+    if (file.exists()) {
+      file.delete();
+    }
   }
 
   @Test

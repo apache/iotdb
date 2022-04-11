@@ -23,8 +23,8 @@ import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.server.member.BaseMember;
 import org.apache.iotdb.cluster.server.monitor.NodeStatusManager;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
@@ -50,8 +50,9 @@ import static org.junit.Assert.assertNull;
  */
 public class BaseQueryTest extends BaseMember {
 
-  List<PartialPath> pathList;
-  List<TSDataType> dataTypes;
+  protected List<PartialPath> pathList;
+  protected int defaultCompactionThread =
+      IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
 
   protected static void checkAggregations(
       List<AggregateResult> aggregationResults, Object[] answer) {
@@ -72,15 +73,12 @@ public class BaseQueryTest extends BaseMember {
   @Override
   @Before
   public void setUp() throws Exception {
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
+    IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(0);
     super.setUp();
     pathList = new ArrayList<>();
-    dataTypes = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
-      pathList.add(new PartialPath(TestUtils.getTestSeries(i, 0)));
-      dataTypes.add(TSDataType.DOUBLE);
+      MeasurementPath path = new MeasurementPath(TestUtils.getTestSeries(i, 0), TSDataType.DOUBLE);
+      pathList.add(path);
     }
     NodeStatusManager.getINSTANCE().setMetaGroupMember(testMetaMember);
     TestUtils.prepareData();
@@ -93,7 +91,7 @@ public class BaseQueryTest extends BaseMember {
     NodeStatusManager.getINSTANCE().setMetaGroupMember(null);
     IoTDBDescriptor.getInstance()
         .getConfig()
-        .setCompactionStrategy(CompactionStrategy.LEVEL_COMPACTION);
+        .setConcurrentCompactionThread(defaultCompactionThread);
   }
 
   void checkSequentialDataset(QueryDataSet dataSet, int offset, int size) throws IOException {

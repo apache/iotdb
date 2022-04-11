@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.qp.physical.crud;
 
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
@@ -33,7 +33,7 @@ public class DeletePartitionPlan extends PhysicalPlan {
   private Set<Long> partitionId;
 
   public DeletePartitionPlan(PartialPath storageGroupName, Set<Long> partitionId) {
-    super(false, OperatorType.DELETE_PARTITION);
+    super(OperatorType.DELETE_PARTITION);
     this.storageGroupName = storageGroupName;
     this.partitionId = partitionId;
   }

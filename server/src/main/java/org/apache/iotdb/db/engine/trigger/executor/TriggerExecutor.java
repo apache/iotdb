@@ -19,14 +19,14 @@
 
 package org.apache.iotdb.db.engine.trigger.executor;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.engine.trigger.api.Trigger;
 import org.apache.iotdb.db.engine.trigger.api.TriggerAttributes;
 import org.apache.iotdb.db.engine.trigger.service.TriggerClassLoader;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationInformation;
 import org.apache.iotdb.db.exception.TriggerExecutionException;
 import org.apache.iotdb.db.exception.TriggerManagementException;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
-import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 
@@ -39,7 +39,7 @@ public class TriggerExecutor {
 
   private final TriggerClassLoader classLoader;
 
-  private final MeasurementMNode measurementMNode;
+  private final IMeasurementMNode measurementMNode;
   private final TSDataType seriesDataType;
 
   private final Trigger trigger;
@@ -47,7 +47,7 @@ public class TriggerExecutor {
   public TriggerExecutor(
       TriggerRegistrationInformation registrationInformation,
       TriggerClassLoader classLoader,
-      MeasurementMNode measurementMNode)
+      IMeasurementMNode measurementMNode)
       throws TriggerManagementException {
     this.registrationInformation = registrationInformation;
     attributes = new TriggerAttributes(registrationInformation.getAttributes());
@@ -231,7 +231,7 @@ public class TriggerExecutor {
     return registrationInformation;
   }
 
-  public MeasurementMNode getMeasurementMNode() {
+  public IMeasurementMNode getMeasurementMNode() {
     return measurementMNode;
   }
 

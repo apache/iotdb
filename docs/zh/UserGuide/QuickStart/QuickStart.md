@@ -21,25 +21,23 @@
 
 # 快速上手
 
-
-本文将介绍关于IoTDB使用的基本流程，如果需要更多信息，请浏览我们官网的[指引](../IoTDB-Introduction/What-is-IoTDB.md).
+本文将介绍关于 IoTDB 使用的基本流程，如果需要更多信息，请浏览我们官网的 [指引](../IoTDB-Introduction/What-is-IoTDB.md).
 
 ## 安装环境
 
-安装前需要保证设备上配有JDK>=1.8的运行环境，并配置好JAVA_HOME环境变量。
+安装前需要保证设备上配有 JDK>=1.8 的运行环境，并配置好 JAVA_HOME 环境变量。
 
-设置最大文件打开数为65535。
+设置最大文件打开数为 65535。
 
 ## 安装步骤
 
-IoTDB支持多种安装途径。用户可以使用三种方式对IoTDB进行安装——下载二进制可运行程序、使用源码、使用docker镜像。
+IoTDB 支持多种安装途径。用户可以使用三种方式对 IoTDB 进行安装——下载二进制可运行程序、使用源码、使用 docker 镜像。
 
 * 使用源码：您可以从代码仓库下载源码并编译，具体编译方法见下方。
 
-* 二进制可运行程序：请从[下载](https://iotdb.apache.org/Download/)页面下载最新的安装包，解压后即完成安装。
+* 二进制可运行程序：请从 [下载](https://iotdb.apache.org/Download/) 页面下载最新的安装包，解压后即完成安装。
 
-* 使用Docker镜像：dockerfile 文件位于 https://github.com/apache/iotdb/blob/master/docker/src/main
-
+* 使用 Docker 镜像：dockerfile 文件位于 https://github.com/apache/iotdb/blob/master/docker/src/main
 
 ## 软件目录结构
 
@@ -48,16 +46,15 @@ IoTDB支持多种安装途径。用户可以使用三种方式对IoTDB进行安�
 *  tools 系统工具目录
 *  lib 依赖包目录
 
-## IoTDB试用
+## IoTDB 试用
 
-用户可以根据以下操作对IoTDB进行简单的试用，若以下操作均无误，则说明IoTDB安装成功。
+用户可以根据以下操作对 IoTDB 进行简单的试用，若以下操作均无误，则说明 IoTDB 安装成功。
 
+### 启动 IoTDB
 
-### 启动IoTDB
+用户可以使用 sbin 文件夹下的 start-server 脚本启动 IoTDB。
 
-用户可以使用sbin文件夹下的start-server脚本启动IoTDB。
-
-Linux系统与MacOS系统启动命令如下：
+Linux 系统与 MacOS 系统启动命令如下：
 
 ```
 > nohup sbin/start-server.sh >/dev/null 2>&1 &
@@ -65,7 +62,7 @@ or
 > nohup sbin/start-server.sh -c <conf_path> -rpc_port <rpc_port> >/dev/null 2>&1 &
 ```
 
-Windows系统启动命令如下：
+Windows 系统启动命令如下：
 
 ```
 > sbin\start-server.bat -c <conf_path> -rpc_port <rpc_port>
@@ -73,25 +70,23 @@ Windows系统启动命令如下：
 - "-c" and "-rpc_port" 都是可选的。
 - 选项 "-c" 指定了配置文件所在的文件夹。
 - 选项 "-rpc_port" 指定了启动的 rpc port。
-- 如果两个选项同时指定，那么*rpc_port*将会覆盖*conf_path*下面的配置。
+- 如果两个选项同时指定，那么* rpc_port *将会覆盖* conf_path *下面的配置。
 
+### 使用 Cli 工具
 
+IoTDB 为用户提供多种与服务器交互的方式，在此我们介绍使用 Cli 工具进行写入、查询数据的基本步骤。
 
-### 使用Cli工具
-
-IoTDB为用户提供多种与服务器交互的方式，在此我们介绍使用Cli工具进行写入、查询数据的基本步骤。
-
-初始安装后的IoTDB中有一个默认用户：root，默认密码为root。用户可以使用该用户运行Cli工具操作IoTDB。Cli工具启动脚本为sbin文件夹下的start-cli脚本。启动脚本时需要指定运行ip、port、username和password。若脚本未给定对应参数,则默认参数为"-h 127.0.0.1 -p 6667 -u root -pw -root"
+初始安装后的 IoTDB 中有一个默认用户：root，默认密码为 root。用户可以使用该用户运行 Cli 工具操作 IoTDB。Cli 工具启动脚本为 sbin 文件夹下的 start-cli 脚本。启动脚本时需要指定运行 ip、port、username 和 password。若脚本未给定对应参数，则默认参数为"-h 127.0.0.1 -p 6667 -u root -pw -root"
 
 以下启动语句为服务器在本机运行，且用户未更改运行端口号的示例。
 
-Linux系统与MacOS系统启动命令如下：
+Linux 系统与 MacOS 系统启动命令如下：
 
 ```
 > sbin/start-cli.sh -h 127.0.0.1 -p 6667 -u root -pw root
 ```
 
-Windows系统启动命令如下：
+Windows 系统启动命令如下：
 
 ```
 > sbin\start-cli.bat -h 127.0.0.1 -p 6667 -u root -pw root
@@ -107,22 +102,21 @@ Windows系统启动命令如下：
  _| |_| \__. | _| |_    _| |_.' /_| |__) |
 |_____|'.__.' |_____|  |______.'|_______/  version x.x.x
 
-
 IoTDB> login successfully
 IoTDB>
 ```
 
-### IoTDB的基本操作
+### IoTDB 的基本操作
 
-在这里，我们首先介绍一下使用Cli工具创建时间序列、插入数据并查看数据的方法。
+在这里，我们首先介绍一下使用 Cli 工具创建时间序列、插入数据并查看数据的方法。
 
-数据在IoTDB中的组织形式是以时间序列为单位，每一个时间序列中有若干个数据-时间点对，每一个时间序列属于一个存储组。在定义时间序列之前，要首先使用SET STORAGE GROUP语句定义存储组。SQL语句如下：
+数据在 IoTDB 中的组织形式是以时间序列为单位，每一个时间序列中有若干个数据-时间点对，每一个时间序列属于一个存储组。在定义时间序列之前，要首先使用 SET STORAGE GROUP 语句定义存储组。SQL 语句如下：
 
 ``` 
 IoTDB> SET STORAGE GROUP TO root.ln
 ```
 
-我们可以使用SHOW STORAGE GROUP语句来查看系统当前所有的存储组，SQL语句如下：
+我们可以使用 SHOW STORAGE GROUP 语句来查看系统当前所有的存储组，SQL 语句如下：
 
 ```
 IoTDB> SHOW STORAGE GROUP
@@ -139,16 +133,16 @@ IoTDB> SHOW STORAGE GROUP
 Total line number = 1
 ```
 
-存储组设定后，使用CREATE TIMESERIES语句可以创建新的时间序列，创建时间序列时需要定义数据的类型和编码方式。此处我们创建两个时间序列，SQL语句如下：
+存储组设定后，使用 CREATE TIMESERIES 语句可以创建新的时间序列，创建时间序列时需要定义数据的类型和编码方式。此处我们创建两个时间序列，SQL 语句如下：
 
 ```
 IoTDB> CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN
 IoTDB> CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE
 ```
 
-为了查看指定的时间序列，我们可以使用SHOW TIMESERIES \<Path\>语句，其中\<Path\>表示时间序列对应的路径，默认值为空，表示查看系统中所有的时间序列。下面是两个例子：
+为了查看指定的时间序列，我们可以使用 SHOW TIMESERIES \<Path\>语句，其中、<Path\>表示时间序列对应的路径，默认值为空，表示查看系统中所有的时间序列。下面是两个例子：
 
-使用SHOW TIMESERIES语句查看系统中存在的所有时间序列，SQL语句如下：
+使用 SHOW TIMESERIES 语句查看系统中存在的所有时间序列，SQL 语句如下：
 
 ``` 
 IoTDB> SHOW TIMESERIES
@@ -166,7 +160,7 @@ IoTDB> SHOW TIMESERIES
 Total line number = 2
 ```
 
-查看具体的时间序列root.ln.wf01.wt01.status的SQL语句如下：
+查看具体的时间序列 root.ln.wf01.wt01.status 的 SQL 语句如下：
 
 ```
 IoTDB> SHOW TIMESERIES root.ln.wf01.wt01.status
@@ -183,8 +177,7 @@ IoTDB> SHOW TIMESERIES root.ln.wf01.wt01.status
 Total line number = 1
 ```
 
-
-接下来，我们使用INSERT语句向root.ln.wf01.wt01.status时间序列中插入数据，在插入数据时需要首先指定时间戳和路径后缀名称：
+接下来，我们使用 INSERT 语句向 root.ln.wf01.wt01.status 时间序列中插入数据，在插入数据时需要首先指定时间戳和路径后缀名称：
 
 ```
 IoTDB> INSERT INTO root.ln.wf01.wt01(timestamp,status) values(100,true);
@@ -196,7 +189,7 @@ IoTDB> INSERT INTO root.ln.wf01.wt01(timestamp,status) values(100,true);
 IoTDB> INSERT INTO root.ln.wf01.wt01(timestamp,status,temperature) values(200,false,20.71)
 ```
 
-最后，我们查询之前插入的数据。使用SELECT语句我们可以查询指定的时间序列的数据结果，SQL语句如下：
+最后，我们查询之前插入的数据。使用 SELECT 语句我们可以查询指定的时间序列的数据结果，SQL 语句如下：
 
 ```
 IoTDB> SELECT status FROM root.ln.wf01.wt01
@@ -214,7 +207,7 @@ IoTDB> SELECT status FROM root.ln.wf01.wt01
 Total line number = 2
 ```
 
-我们也可以查询多个时间序列的数据结果，SQL语句如下：
+我们也可以查询多个时间序列的数据结果，SQL 语句如下：
 
 ```
 IoTDB> SELECT * FROM root.ln.wf01.wt01
@@ -232,7 +225,7 @@ IoTDB> SELECT * FROM root.ln.wf01.wt01
 Total line number = 2
 ```
 
-输入quit或exit可退出Cli结束本次会话。
+输入 quit 或 exit 可退出 Cli 结束本次会话。
 
 ```
 IoTDB> quit
@@ -243,19 +236,19 @@ IoTDB> quit
 IoTDB> exit
 ```
 
-想要浏览更多IoTDB数据库支持的命令，请浏览[SQL Reference](../Appendix/SQL-Reference.md).
+想要浏览更多 IoTDB 数据库支持的命令，请浏览 [SQL Reference](../Reference/SQL-Reference.md).
 
-### 停止IoTDB
+### 停止 IoTDB
 
-用户可以使用$IOTDB_HOME/sbin文件夹下的stop-server脚本停止IoTDB。
+用户可以使用$IOTDB_HOME/sbin 文件夹下的 stop-server 脚本停止 IoTDB。
 
-Linux系统与MacOS系统停止命令如下：
+Linux 系统与 MacOS 系统停止命令如下：
 
 ```
 > $sbin/stop-server.sh
 ```
 
-Windows系统停止命令如下：
+Windows 系统停止命令如下：
 
 ```
 > $sbin\stop-server.bat
@@ -268,4 +261,3 @@ Windows系统停止命令如下：
   * 环境配置模块 (`iotdb-env.bat`, `iotdb-env.sh`), 
   * 系统配置模块 (`iotdb-engine.properties`)
   * 日志配置模块 (`logback.xml`). 
-

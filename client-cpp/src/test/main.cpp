@@ -18,6 +18,7 @@
  */
 
 #define CATCH_CONFIG_MAIN
+
 #include <catch.hpp>
 #include "Session.h"
 
@@ -27,14 +28,15 @@ struct SessionListener : Catch::TestEventListenerBase {
 
     using TestEventListenerBase::TestEventListenerBase;
 
-    void testCaseStarting( Catch::TestCaseInfo const& testInfo ) override {
+    void testCaseStarting(Catch::TestCaseInfo const &testInfo) override {
         // Perform some setup before a test case is run
         session->open(false);
     }
 
-    void testCaseEnded( Catch::TestCaseStats const& testCaseStats ) override {
+    void testCaseEnded(Catch::TestCaseStats const &testCaseStats) override {
         // Tear-down after a test case is run
         session->close();
     }
 };
+
 CATCH_REGISTER_LISTENER( SessionListener )

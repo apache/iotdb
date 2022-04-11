@@ -1,27 +1,33 @@
 # This workflow will build a Java project with Maven
 # For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-maven
 
-name: Sonar-Coveralls(Ignore this on folk Repos)
+name: Sonar-Coveralls
 
 on:
   push:
     branches:
       - master
       - "rel/*"
+      - "new_*"
     paths-ignore:
       - "docs/**"
   pull_request:
     branches:
       - master
       - "rel/*"
-      - cluster_new
+      - "new_*"
     paths-ignore:
       - "docs/**"
   # allow manually run the action:
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   MAVEN_OPTS: -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.http.retryHandler.class=standard -Dmaven.wagon.http.retryHandler.count=3
+  PR_NUMBER: ${{ github.event.number }}
 
 jobs:
   ubuntu:
@@ -41,9 +47,9 @@ jobs:
           restore-keys: ${{ runner.os }}-m2-
       - name: IT/UT Test
         # we do not compile client-cpp for saving time, it is tested in client.yml
-        run: mvn -B clean post-integration-test -Dtest.port.closed=true -Pcode-coverage
+        run: mvn -B clean compile post-integration-test -Dtest.port.closed=true -Pcode-coverage -P '!testcontainer,!influxdb-protocol'
       - name: Code Coverage (Coveralls)
-        if: ${{ success() && (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == 'apache/iotdb' || github.event_name == 'push') }}
+        if: ${{ success() && (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == 'apache/iotdb' || github.event_name == 'push')}}
         run: |
           mvn -B post-integration-test -Pcode-coverage -pl code-coverage
           mvn -B coveralls:report \
@@ -51,9 +57,9 @@ jobs:
           -Dbranch=$BRANCH_NAME \
           -DpullRequest=$PR_NUMBER \
           -DrepoToken=${{ secrets.COVERALL_TOKEN }} \
-          -Pcode-coverage
+          -Pcode-coverage -P '!testcontainer'
       - name: SonarCloud Report
-        if: ${{ success() && (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == 'apache/iotdb' || github.event_name == 'push') }}
+        if: ${{ success() && (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == 'apache/iotdb' || github.event_name == 'push')}}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONARCLOUD_TOKEN }}
@@ -63,4 +69,4 @@ jobs:
           -Dsonar.projectKey=apache_incubator-iotdb \
           -Dsonar.host.url=https://sonarcloud.io \
           -Dsonar.login=${{ secrets.SONARCLOUD_TOKEN }} \
-          -DskipTests -pl '!distribution' -am
+          -DskipTests -pl '!distribution'  -P '!testcontainer' -am

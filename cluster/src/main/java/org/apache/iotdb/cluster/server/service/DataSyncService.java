@@ -20,14 +20,16 @@
 package org.apache.iotdb.cluster.server.service;
 
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.ReaderNotFoundException;
-import org.apache.iotdb.cluster.metadata.CMManager;
+import org.apache.iotdb.cluster.metadata.CSchemaProcessor;
 import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
 import org.apache.iotdb.cluster.rpc.thrift.GetAllPathsResult;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
 import org.apache.iotdb.cluster.rpc.thrift.LastQueryRequest;
+import org.apache.iotdb.cluster.rpc.thrift.MeasurementSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.MultSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PreviousFillRequest;
@@ -35,6 +37,7 @@ import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotResp;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.TSDataService;
@@ -46,7 +49,10 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 
+import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -94,7 +100,8 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   private PullSnapshotResp forwardPullSnapshot(PullSnapshotRequest request) throws TException {
     // if this node has been set readOnly, then it must have been synchronized with the leader
     // otherwise forward the request to the leader
-    if (dataGroupMember.getLeader() != null) {
+    if (dataGroupMember.getLeader() != null
+        && !ClusterConstant.EMPTY_NODE.equals(dataGroupMember.getLeader())) {
       logger.debug(
           "{} forwarding a pull snapshot request to the leader {}",
           name,
@@ -134,7 +141,14 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
       try {
         return dataGroupMember.getLocalQueryExecutor().queryTimeSeriesSchema(request);
       } catch (CheckConsistencyException | MetadataException e) {
-        throw new TException(e);
+        // maybe the partition table of this node is not up-to-date, try again after updating
+        // partition table
+        try {
+          dataGroupMember.getMetaGroupMember().syncLeaderWithConsistencyCheck(false);
+          return dataGroupMember.getLocalQueryExecutor().queryTimeSeriesSchema(request);
+        } catch (CheckConsistencyException | MetadataException ex) {
+          throw new TException(ex);
+        }
       }
     }
 
@@ -169,8 +183,15 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
     if (dataGroupMember.getCharacter() == NodeCharacter.LEADER) {
       try {
         return dataGroupMember.getLocalQueryExecutor().queryMeasurementSchema(request);
-      } catch (CheckConsistencyException | IllegalPathException e) {
-        throw new TException(e);
+      } catch (CheckConsistencyException | MetadataException e) {
+        // maybe the partition table of this node is not up-to-date, try again after updating
+        // partition table
+        try {
+          dataGroupMember.getMetaGroupMember().syncLeaderWithConsistencyCheck(false);
+          return dataGroupMember.getLocalQueryExecutor().queryMeasurementSchema(request);
+        } catch (CheckConsistencyException | MetadataException ex) {
+          throw new TException(ex);
+        }
       }
     }
 
@@ -221,7 +242,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   }
 
   @Override
-  public void endQuery(Node header, Node requester, long queryId) throws TException {
+  public void endQuery(RaftNode header, Node requester, long queryId) throws TException {
     try {
       dataGroupMember.getQueryManager().endQuery(requester, queryId);
     } catch (StorageEngineException e) {
@@ -230,7 +251,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   }
 
   @Override
-  public ByteBuffer fetchSingleSeries(Node header, long readerId) throws TException {
+  public ByteBuffer fetchSingleSeries(RaftNode header, long readerId) throws TException {
     try {
       return dataGroupMember.getLocalQueryExecutor().fetchSingleSeries(readerId);
     } catch (ReaderNotFoundException | IOException e) {
@@ -239,7 +260,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   }
 
   @Override
-  public Map<String, ByteBuffer> fetchMultSeries(Node header, long readerId, List<String> paths)
+  public Map<String, ByteBuffer> fetchMultSeries(RaftNode header, long readerId, List<String> paths)
       throws TException {
     try {
       return dataGroupMember.getLocalQueryExecutor().fetchMultSeries(readerId, paths);
@@ -249,8 +270,8 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   }
 
   @Override
-  public ByteBuffer fetchSingleSeriesByTimestamps(Node header, long readerId, List<Long> timestamps)
-      throws TException {
+  public ByteBuffer fetchSingleSeriesByTimestamps(
+      RaftNode header, long readerId, List<Long> timestamps) throws TException {
     try {
       return dataGroupMember
           .getLocalQueryExecutor()
@@ -262,28 +283,29 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   }
 
   @Override
-  public GetAllPathsResult getAllPaths(Node header, List<String> paths, boolean withAlias)
+  public GetAllPathsResult getAllPaths(RaftNode header, List<String> paths, boolean withAlias)
       throws TException {
     try {
       dataGroupMember.syncLeaderWithConsistencyCheck(false);
-      return ((CMManager) IoTDB.metaManager).getAllPaths(paths, withAlias);
+      return ((CSchemaProcessor) IoTDB.schemaProcessor).getAllPaths(paths, withAlias);
     } catch (MetadataException | CheckConsistencyException e) {
       throw new TException(e);
     }
   }
 
   @Override
-  public Set<String> getAllDevices(Node header, List<String> path) throws TException {
+  public Set<String> getAllDevices(RaftNode header, List<String> path, boolean isPrefixMatch)
+      throws TException {
     try {
       dataGroupMember.syncLeaderWithConsistencyCheck(false);
-      return ((CMManager) IoTDB.metaManager).getAllDevices(path);
+      return ((CSchemaProcessor) IoTDB.schemaProcessor).getAllDevices(path, isPrefixMatch);
     } catch (MetadataException | CheckConsistencyException e) {
       throw new TException(e);
     }
   }
 
   @Override
-  public ByteBuffer getDevices(Node header, ByteBuffer planBinary) throws TException {
+  public ByteBuffer getDevices(RaftNode header, ByteBuffer planBinary) throws TException {
     try {
       return dataGroupMember.getLocalQueryExecutor().getDevices(planBinary);
     } catch (CheckConsistencyException | IOException | MetadataException e) {
@@ -292,39 +314,39 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   }
 
   @Override
-  public List<String> getNodeList(Node header, String path, int nodeLevel) throws TException {
+  public List<String> getNodeList(RaftNode header, String path, int nodeLevel) throws TException {
     try {
       dataGroupMember.syncLeaderWithConsistencyCheck(false);
-      return ((CMManager) IoTDB.metaManager).getNodeList(path, nodeLevel);
+      return ((CSchemaProcessor) IoTDB.schemaProcessor).getNodeList(path, nodeLevel);
     } catch (CheckConsistencyException | MetadataException e) {
       throw new TException(e);
     }
   }
 
   @Override
-  public Set<String> getChildNodeInNextLevel(Node header, String path) throws TException {
+  public Set<String> getChildNodeInNextLevel(RaftNode header, String path) throws TException {
     try {
       dataGroupMember.syncLeaderWithConsistencyCheck(false);
-      return ((CMManager) IoTDB.metaManager).getChildNodeInNextLevel(path);
+      return ((CSchemaProcessor) IoTDB.schemaProcessor).getChildNodeInNextLevel(path);
     } catch (CheckConsistencyException | MetadataException e) {
       throw new TException(e);
     }
   }
 
   @Override
-  public Set<String> getChildNodePathInNextLevel(Node header, String path) throws TException {
+  public Set<String> getChildNodePathInNextLevel(RaftNode header, String path) throws TException {
     try {
       dataGroupMember.syncLeaderWithConsistencyCheck(false);
-      return ((CMManager) IoTDB.metaManager).getChildNodePathInNextLevel(path);
+      return ((CSchemaProcessor) IoTDB.schemaProcessor).getChildNodePathInNextLevel(path);
     } catch (CheckConsistencyException | MetadataException e) {
       throw new TException(e);
     }
   }
 
   @Override
-  public ByteBuffer getAllMeasurementSchema(Node header, ByteBuffer planBinary) throws TException {
+  public ByteBuffer getAllMeasurementSchema(MeasurementSchemaRequest request) throws TException {
     try {
-      return dataGroupMember.getLocalQueryExecutor().getAllMeasurementSchema(planBinary);
+      return dataGroupMember.getLocalQueryExecutor().getAllMeasurementSchema(request);
     } catch (CheckConsistencyException | IOException | MetadataException e) {
       throw new TException(e);
     }
@@ -334,13 +356,17 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   public List<ByteBuffer> getAggrResult(GetAggrResultRequest request) throws TException {
     try {
       return dataGroupMember.getLocalQueryExecutor().getAggrResult(request);
-    } catch (StorageEngineException | QueryProcessException | IOException e) {
-      throw new TException(e);
+    } catch (StorageEngineException
+        | QueryProcessException
+        | IOException
+        | StatisticsClassException
+        | UnSupportedDataTypeException e) {
+      throw new TApplicationException(e.getMessage());
     }
   }
 
   @Override
-  public List<String> getUnregisteredTimeseries(Node header, List<String> timeseriesList)
+  public List<String> getUnregisteredTimeseries(RaftNode header, List<String> timeseriesList)
       throws TException {
     try {
       return dataGroupMember.getLocalQueryExecutor().getUnregisteredTimeseries(timeseriesList);
@@ -360,7 +386,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
 
   @Override
   public List<ByteBuffer> getGroupByResult(
-      Node header, long executorId, long startTime, long endTime) throws TException {
+      RaftNode header, long executorId, long startTime, long endTime) throws TException {
     try {
       return dataGroupMember
           .getLocalQueryExecutor()
@@ -390,13 +416,13 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
         | QueryProcessException
         | IOException
         | StorageEngineException
-        | IllegalPathException e) {
+        | MetadataException e) {
       throw new TException(e);
     }
   }
 
   @Override
-  public int getPathCount(Node header, List<String> pathsToQuery, int level) throws TException {
+  public int getPathCount(RaftNode header, List<String> pathsToQuery, int level) throws TException {
     try {
       return dataGroupMember.getLocalQueryExecutor().getPathCount(pathsToQuery, level);
     } catch (CheckConsistencyException | MetadataException e) {
@@ -405,13 +431,22 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   }
 
   @Override
-  public boolean onSnapshotApplied(Node header, List<Integer> slots) {
+  public int getDeviceCount(RaftNode header, List<String> pathsToQuery) throws TException {
+    try {
+      return dataGroupMember.getLocalQueryExecutor().getDeviceCount(pathsToQuery);
+    } catch (CheckConsistencyException | MetadataException e) {
+      throw new TException(e);
+    }
+  }
+
+  @Override
+  public boolean onSnapshotApplied(RaftNode header, List<Integer> slots) {
     return dataGroupMember.onSnapshotInstalled(slots);
   }
 
   @Override
-  public ByteBuffer peekNextNotNullValue(Node header, long executorId, long startTime, long endTime)
-      throws TException {
+  public ByteBuffer peekNextNotNullValue(
+      RaftNode header, long executorId, long startTime, long endTime) throws TException {
     try {
       return dataGroupMember
           .getLocalQueryExecutor()

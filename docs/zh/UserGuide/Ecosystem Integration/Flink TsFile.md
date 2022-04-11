@@ -23,11 +23,11 @@
 
 ###  关于 TsFile-Flink 连接器
 
-TsFile-Flink-Connector 对Tsfile类型的外部数据源实现 Flink 的支持。 这使用户可以通过 Flink DataStream/DataSet 进行读取，写入和查询。
+TsFile-Flink-Connector 对 Tsfile 类型的外部数据源实现 Flink 的支持。 这使用户可以通过 Flink DataStream/DataSet 进行读取，写入和查询。
 
 使用此连接器，您可以
 
-* 从本地文件系统或 hdfs 加载单个或多个 TsFile （只支持以DataSet的形式）到 Flink 。
+* 从本地文件系统或 hdfs 加载单个或多个 TsFile （只支持以 DataSet 的形式）到 Flink 。
 * 将本地文件系统或 hdfs 中特定目录中的所有文件加载到 Flink 中。
 
 ###  快速开始
@@ -50,7 +50,7 @@ TypeInformation[] typeInformations = new TypeInformation[] {
 	Types.LONG,
 	Types.FLOAT,
 	Types.INT,
-	Types.INT,
+    Types.INT,
 	Types.FLOAT,
 	Types.INT,
 	Types.INT
@@ -107,11 +107,11 @@ String[] filedNames = {
 	"device_2.sensor_3"
 };
 TypeInformation[] typeInformations = new TypeInformation[] {
-	Types.LONG,
-	Types.LONG,
-	Types.LONG,
-	Types.LONG,
-	Types.LONG,
+    Types.LONG,
+    Types.LONG,
+    Types.LONG,
+    Types.LONG,
+    Types.LONG,
 	Types.LONG,
 	Types.LONG
 };
@@ -176,4 +176,3 @@ source.map(t -> {
 }).returns(rowTypeInfo).write(outputFormat, path);
 env.execute();
 ```
-

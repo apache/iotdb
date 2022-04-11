@@ -20,8 +20,8 @@ package org.apache.iotdb.db.qp.logical.crud;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.qp.constant.FilterConstant.FilterType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IUnaryExpression;
@@ -51,13 +51,12 @@ public class InOperator extends FunctionOperator {
   /**
    * In Operator Constructor.
    *
-   * @param tokenIntType token in Int Type
+   * @param filterType filter Type
    * @param path path
    * @param values values
    */
-  public InOperator(int tokenIntType, PartialPath path, boolean not, Set<String> values) {
-    super(tokenIntType);
-    operatorType = Operator.OperatorType.IN;
+  public InOperator(FilterType filterType, PartialPath path, boolean not, Set<String> values) {
+    super(filterType);
     this.singlePath = path;
     this.values = values;
     this.not = not;
@@ -67,6 +66,10 @@ public class InOperator extends FunctionOperator {
 
   public Set<String> getValues() {
     return values;
+  }
+
+  public boolean getNot() {
+    return not;
   }
 
   @Override
@@ -146,19 +149,14 @@ public class InOperator extends FunctionOperator {
     for (int i = 0; i < spaceNum; i++) {
       sc.addTail("  ");
     }
-    sc.addTail(singlePath.getFullPath(), this.tokenSymbol, not, values, ", single\n");
+    sc.addTail(singlePath.getFullPath(), getFilterSymbol(), not, values, ", single\n");
     return sc.toString();
   }
 
   @Override
   public InOperator copy() {
     InOperator ret =
-        new InOperator(
-            this.tokenIntType,
-            new PartialPath(singlePath.getNodes().clone()),
-            not,
-            new HashSet<>(values));
-    ret.tokenSymbol = tokenSymbol;
+        new InOperator(this.filterType, singlePath.clone(), not, new HashSet<>(values));
     ret.isLeaf = isLeaf;
     ret.isSingle = isSingle;
     ret.pathSet = pathSet;
@@ -169,7 +167,7 @@ public class InOperator extends FunctionOperator {
   public String toString() {
     List<String> valuesList = new ArrayList<>(values);
     Collections.sort(valuesList);
-    return "[" + singlePath.getFullPath() + tokenSymbol + not + valuesList + "]";
+    return "[" + singlePath.getFullPath() + getFilterSymbol() + not + valuesList + "]";
   }
 
   @Override
@@ -196,7 +194,7 @@ public class InOperator extends FunctionOperator {
 
     public static <T extends Comparable<T>> IUnaryExpression getUnaryExpression(
         Path path, Set<T> values, boolean not) {
-      if (path.equals("time")) {
+      if (path != null && path.toString().equals("time")) {
         return new GlobalTimeExpression(TimeFilter.in((Set<Long>) values, not));
       } else {
         return new SingleSeriesExpression(path, ValueFilter.in(values, not));

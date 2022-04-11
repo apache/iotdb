@@ -20,13 +20,17 @@
 package org.apache.iotdb.db.qp.logical.sys;
 
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEvent;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTriggerPlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
 import java.util.HashMap;
 import java.util.Map;
 
-public class CreateTriggerOperator extends RootOperator {
+public class CreateTriggerOperator extends Operator {
 
   private String triggerName;
   private TriggerEvent event;
@@ -78,5 +82,11 @@ public class CreateTriggerOperator extends RootOperator {
 
   public Map<String, String> getAttributes() {
     return attributes;
+  }
+
+  @Override
+  public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
+      throws QueryProcessException {
+    return new CreateTriggerPlan(triggerName, event, fullPath, className, attributes);
   }
 }

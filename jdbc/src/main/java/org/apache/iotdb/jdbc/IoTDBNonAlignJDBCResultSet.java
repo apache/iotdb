@@ -25,6 +25,7 @@ import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
 import org.apache.iotdb.service.rpc.thrift.TSQueryNonAlignDataSet;
+import org.apache.iotdb.service.rpc.thrift.TSTracingInfo;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
@@ -36,6 +37,7 @@ import java.nio.ByteBuffer;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -48,10 +50,10 @@ public class IoTDBNonAlignJDBCResultSet extends AbstractIoTDBJDBCResultSet {
 
   private static final int TIMESTAMP_STR_LENGTH = 4;
   private static final String EMPTY_STR = "";
-
+  private String operationType = "";
   private TSQueryNonAlignDataSet tsQueryNonAlignDataSet;
   private byte[][] times; // used for disable align
-
+  private List<String> sgColumns = null;
   // for disable align clause
   IoTDBNonAlignJDBCResultSet(
       Statement statement,
@@ -64,7 +66,11 @@ public class IoTDBNonAlignJDBCResultSet extends AbstractIoTDBJDBCResultSet {
       long queryId,
       long sessionId,
       TSQueryNonAlignDataSet dataset,
-      long timeout)
+      TSTracingInfo tracingInfo,
+      long timeout,
+      String operationType,
+      List<String> sgColumns,
+      BitSet aliasColumnMap)
       throws SQLException {
     super(
         statement,
@@ -76,11 +82,13 @@ public class IoTDBNonAlignJDBCResultSet extends AbstractIoTDBJDBCResultSet {
         sql,
         queryId,
         sessionId,
-        timeout);
-
+        timeout,
+        sgColumns,
+        aliasColumnMap);
     times = new byte[columnNameList.size()][Long.BYTES];
-
+    this.operationType = operationType;
     ioTDBRpcDataSet.columnNameList = new ArrayList<>();
+    ioTDBRpcDataSet.columnTypeList = new ArrayList<>();
     // deduplicate and map
     ioTDBRpcDataSet.columnOrdinalMap = new HashMap<>();
     ioTDBRpcDataSet.columnOrdinalMap.put(TIMESTAMP_STR, 1);
@@ -89,10 +97,22 @@ public class IoTDBNonAlignJDBCResultSet extends AbstractIoTDBJDBCResultSet {
     for (int i = 0; i < columnNameIndex.size(); i++) {
       ioTDBRpcDataSet.columnTypeDeduplicatedList.add(null);
     }
+    List<String> newSgColumns = new ArrayList<>();
     for (int i = 0; i < columnNameList.size(); i++) {
-      String name = columnNameList.get(i);
+      String name = "";
+      if (sgColumns != null && sgColumns.size() > 0) {
+        name = sgColumns.get(i) + "." + columnNameList.get(i);
+        newSgColumns.add(sgColumns.get(i));
+        newSgColumns.add(sgColumns.get(i));
+      } else {
+        name = columnNameList.get(i);
+        newSgColumns.add("");
+        newSgColumns.add("");
+      }
       ioTDBRpcDataSet.columnNameList.add(TIMESTAMP_STR + name);
       ioTDBRpcDataSet.columnNameList.add(name);
+      ioTDBRpcDataSet.columnTypeList.add(String.valueOf(TSDataType.INT64));
+      ioTDBRpcDataSet.columnTypeList.add(columnTypeList.get(i));
       if (!ioTDBRpcDataSet.columnOrdinalMap.containsKey(name)) {
         int index = columnNameIndex.get(name);
         ioTDBRpcDataSet.columnOrdinalMap.put(name, index + START_INDEX);
@@ -100,7 +120,12 @@ public class IoTDBNonAlignJDBCResultSet extends AbstractIoTDBJDBCResultSet {
             index, TSDataType.valueOf(columnTypeList.get(i)));
       }
     }
+    this.sgColumns = newSgColumns;
     this.tsQueryNonAlignDataSet = dataset;
+    if (tracingInfo != null) {
+      ioTDBRpcTracingInfo = new IoTDBTracingInfo();
+      ioTDBRpcTracingInfo.setTsTracingInfo(tracingInfo);
+    }
   }
 
   @Override
@@ -276,5 +301,13 @@ public class IoTDBNonAlignJDBCResultSet extends AbstractIoTDBJDBCResultSet {
     }
     return ioTDBRpcDataSet.getObject(
         index, ioTDBRpcDataSet.columnTypeDeduplicatedList.get(index), ioTDBRpcDataSet.values);
+  }
+
+  public String getOperationType() {
+    return this.operationType;
+  }
+
+  public List<String> getSgColumns() {
+    return sgColumns;
   }
 }

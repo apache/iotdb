@@ -18,10 +18,10 @@
  */
 package org.apache.iotdb.db.auth.user;
 
+import org.apache.iotdb.commons.concurrent.HashLock;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.entity.User;
-import org.apache.iotdb.db.concurrent.HashLock;
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.AuthUtils;
 
 import org.slf4j.Logger;
@@ -66,15 +66,17 @@ public abstract class BasicUserManager implements IUserManager {
   private void initAdmin() throws AuthException {
     User admin;
     try {
-      admin = getUser(IoTDBConstant.ADMIN_NAME);
+      admin = getUser(IoTDBDescriptor.getInstance().getConfig().getAdminName());
     } catch (AuthException e) {
       logger.warn("Cannot load admin, Creating a new one.", e);
       admin = null;
     }
 
     if (admin == null) {
-      createUser(IoTDBConstant.ADMIN_NAME, IoTDBConstant.ADMIN_PW);
-      setUserUseWaterMark(IoTDBConstant.ADMIN_NAME, false);
+      createUser(
+          IoTDBDescriptor.getInstance().getConfig().getAdminName(),
+          IoTDBDescriptor.getInstance().getConfig().getAdminPassword());
+      setUserUseWaterMark(IoTDBDescriptor.getInstance().getConfig().getAdminName(), false);
     }
     logger.info("Admin initialized");
   }

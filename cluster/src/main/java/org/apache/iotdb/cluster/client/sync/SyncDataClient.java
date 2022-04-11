@@ -19,39 +19,47 @@
 
 package org.apache.iotdb.cluster.client.sync;
 
+import org.apache.iotdb.cluster.client.BaseFactory;
+import org.apache.iotdb.cluster.client.ClientCategory;
+import org.apache.iotdb.cluster.client.IClientManager;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.rpc.thrift.TSDataService.Client;
-import org.apache.iotdb.cluster.server.RaftServer;
-import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.cluster.rpc.thrift.TSDataService;
+import org.apache.iotdb.cluster.utils.ClientUtils;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.TConfigurationConst;
 import org.apache.iotdb.rpc.TimeoutChangeableTransport;
 
+import org.apache.commons.pool2.PooledObject;
+import org.apache.commons.pool2.impl.DefaultPooledObject;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransportException;
 
-import java.io.Closeable;
 import java.net.SocketException;
 
 /**
  * Notice: Because a client will be returned to a pool immediately after a successful request, you
- * should not cache it anywhere else or there may be conflicts.
+ * should not cache it anywhere else.
  */
-// the two classes does not share a common parent and Java does not allow multiple extension
-@SuppressWarnings("common-java:DuplicatedBlocks")
-public class SyncDataClient extends Client implements Closeable {
+// TODO: Refine the interfaces of TSDataService. TSDataService interfaces doesn't need extends
+// RaftService interfaces.
+public class SyncDataClient extends TSDataService.Client {
 
-  Node node;
-  SyncClientPool pool;
+  private Node node;
+  private ClientCategory category;
+  private IClientManager clientManager;
 
+  @TestOnly
   public SyncDataClient(TProtocol prot) {
     super(prot);
   }
 
-  public SyncDataClient(TProtocolFactory protocolFactory, Node node, SyncClientPool pool)
+  public SyncDataClient(TProtocolFactory protocolFactory, Node node, ClientCategory category)
       throws TTransportException {
+
     // the difference of the two clients lies in the port
     super(
         protocolFactory.getProtocol(
@@ -59,11 +67,24 @@ public class SyncDataClient extends Client implements Closeable {
                 new TSocket(
                     TConfigurationConst.defaultTConfiguration,
                     node.getInternalIp(),
-                    node.getDataPort(),
-                    RaftServer.getConnectionTimeoutInMS()))));
+                    ClientUtils.getPort(node, category),
+                    ClusterConstant.getConnectionTimeoutInMS()))));
     this.node = node;
-    this.pool = pool;
+    this.category = category;
     getInputProtocol().getTransport().open();
+  }
+
+  public SyncDataClient(
+      TProtocolFactory protocolFactory, Node node, ClientCategory category, IClientManager manager)
+      throws TTransportException {
+    this(protocolFactory, node, category);
+    this.clientManager = manager;
+  }
+
+  public void returnSelf() {
+    if (clientManager != null) {
+      clientManager.returnSyncClient(this, node, category);
+    }
   }
 
   public void setTimeout(int timeout) {
@@ -71,48 +92,63 @@ public class SyncDataClient extends Client implements Closeable {
     ((TimeoutChangeableTransport) (getInputProtocol().getTransport())).setTimeout(timeout);
   }
 
+  public void close() {
+    getInputProtocol().getTransport().close();
+  }
+
   @TestOnly
   public int getTimeout() throws SocketException {
     return ((TimeoutChangeableTransport) getInputProtocol().getTransport()).getTimeOut();
   }
 
-  public void putBack() {
-    if (pool != null) {
-      pool.putClient(node, this);
-    } else {
-      TProtocol inputProtocol = getInputProtocol();
-      if (inputProtocol != null) {
-        inputProtocol.getTransport().close();
-      }
-    }
-  }
-
-  /** put the client to pool, instead of close client. */
-  @Override
-  public void close() {
-    putBack();
-  }
-
-  public static class FactorySync implements SyncClientFactory {
-
-    private TProtocolFactory protocolFactory;
-
-    public FactorySync(TProtocolFactory protocolFactory) {
-      this.protocolFactory = protocolFactory;
-    }
-
-    @Override
-    public SyncDataClient getSyncClient(Node node, SyncClientPool pool) throws TTransportException {
-      return new SyncDataClient(protocolFactory, node, pool);
-    }
-  }
-
   @Override
   public String toString() {
-    return "DataClient{" + "node=" + node + '}';
+    return "Sync"
+        + category.getName()
+        + "{"
+        + "node="
+        + node
+        + ","
+        + "port="
+        + ClientUtils.getPort(node, category)
+        + '}';
   }
 
   public Node getNode() {
     return node;
+  }
+
+  public static class SyncDataClientFactory extends BaseFactory<Node, SyncDataClient> {
+
+    public SyncDataClientFactory(TProtocolFactory protocolFactory, ClientCategory category) {
+      super(protocolFactory, category);
+    }
+
+    public SyncDataClientFactory(
+        TProtocolFactory protocolFactory, ClientCategory category, IClientManager clientManager) {
+      super(protocolFactory, category, clientManager);
+    }
+
+    @Override
+    public void activateObject(Node node, PooledObject<SyncDataClient> pooledObject) {
+      pooledObject.getObject().setTimeout(ClusterConstant.getConnectionTimeoutInMS());
+    }
+
+    @Override
+    public void destroyObject(Node node, PooledObject<SyncDataClient> pooledObject) {
+      pooledObject.getObject().close();
+    }
+
+    @Override
+    public PooledObject<SyncDataClient> makeObject(Node node) throws Exception {
+      return new DefaultPooledObject<>(
+          new SyncDataClient(protocolFactory, node, category, clientPoolManager));
+    }
+
+    @Override
+    public boolean validateObject(Node node, PooledObject<SyncDataClient> pooledObject) {
+      return pooledObject.getObject() != null
+          && pooledObject.getObject().getInputProtocol().getTransport().isOpen();
+    }
   }
 }

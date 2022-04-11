@@ -32,6 +32,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.WritableByteChannel;
@@ -57,7 +58,7 @@ public class PageWriter {
    * statistic of current page. It will be reset after calling {@code
    * writePageHeaderAndDataIntoBuff()}
    */
-  private Statistics<?> statistics;
+  private Statistics<? extends Serializable> statistics;
 
   public PageWriter() {
     this(null, null);
@@ -215,6 +216,10 @@ public class PageWriter {
 
     if (compressor.getType().equals(CompressionType.UNCOMPRESSED)) {
       compressedSize = uncompressedSize;
+    } else if (compressor.getType().equals(CompressionType.GZIP)) {
+      compressedBytes =
+          compressor.compress(pageData.array(), pageData.position(), uncompressedSize);
+      compressedSize = compressedBytes.length;
     } else {
       compressedBytes = new byte[compressor.getMaxBytesForCompression(uncompressedSize)];
       // data is never a directByteBuffer now, so we can use data.array()
@@ -285,7 +290,7 @@ public class PageWriter {
     return statistics.getCount();
   }
 
-  public Statistics<?> getStatistics() {
+  public Statistics<? extends Serializable> getStatistics() {
     return statistics;
   }
 }

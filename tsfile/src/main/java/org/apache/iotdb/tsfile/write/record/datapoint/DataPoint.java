@@ -23,10 +23,9 @@ import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.StringContainer;
-import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
+import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 
 import java.io.IOException;
-import java.math.BigDecimal;
 
 /**
  * This is a abstract class representing a data point. DataPoint consists of a measurement id and a
@@ -101,7 +100,7 @@ public abstract class DataPoint {
    * @param writer writer
    * @throws IOException exception in IO
    */
-  public abstract void writeTo(long time, IChunkWriter writer) throws IOException;
+  public abstract void writeTo(long time, ChunkWriterImpl writer) throws IOException;
 
   public String getMeasurementId() {
     return measurementId;
@@ -142,9 +141,5 @@ public abstract class DataPoint {
 
   public void setString(Binary value) {
     throw new UnsupportedOperationException("set String not support in DataPoint");
-  }
-
-  public void setBigDecimal(BigDecimal value) {
-    throw new UnsupportedOperationException("set BigDecimal not support in DataPoint");
   }
 }

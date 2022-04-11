@@ -37,22 +37,24 @@ public class VectorTVListTest {
     for (int i = 0; i < 5; i++) {
       dataTypes.add(TSDataType.INT64);
     }
-    VectorTVList tvList = new VectorTVList(dataTypes);
+    AlignedTVList tvList = new AlignedTVList(dataTypes);
     for (long i = 0; i < 1000; i++) {
       Object[] value = new Object[5];
+      int[] columnOrder = new int[5];
       for (int j = 0; j < 5; j++) {
         value[j] = i;
+        columnOrder[j] = j;
       }
-      tvList.putVector(i, value);
+      tvList.putAlignedValue(i, value, columnOrder);
     }
-    for (int i = 0; i < tvList.size; i++) {
+    for (int i = 0; i < tvList.rowCount; i++) {
       StringBuilder builder = new StringBuilder("[");
       builder.append(String.valueOf(i));
       for (int j = 1; j < 5; j++) {
         builder.append(", ").append(String.valueOf(i));
       }
       builder.append("]");
-      Assert.assertEquals(builder.toString(), tvList.getVector(i).toString());
+      Assert.assertEquals(builder.toString(), tvList.getAlignedValue(i).toString());
       Assert.assertEquals(i, tvList.getTime(i));
     }
   }
@@ -66,7 +68,7 @@ public class VectorTVListTest {
     dataTypes.add(TSDataType.FLOAT);
     dataTypes.add(TSDataType.DOUBLE);
     dataTypes.add(TSDataType.TEXT);
-    VectorTVList tvList = new VectorTVList(dataTypes);
+    AlignedTVList tvList = new AlignedTVList(dataTypes);
     for (int i = 1000; i >= 0; i--) {
       Object[] value = new Object[6];
       value[0] = false;
@@ -75,14 +77,18 @@ public class VectorTVListTest {
       value[3] = 0.1f;
       value[4] = 0.2d;
       value[5] = new Binary("Test");
-      tvList.putVector(i, value);
+      int[] columnOrder = new int[6];
+      for (int j = 0; j < 6; j++) {
+        columnOrder[j] = j;
+      }
+      tvList.putAlignedValue(i, value, columnOrder);
     }
     tvList.sort();
-    for (int i = 0; i < tvList.size; i++) {
+    for (int i = 0; i < tvList.rowCount; i++) {
       StringBuilder builder = new StringBuilder("[");
       builder.append("false, 100, 1000, 0.1, 0.2, Test");
       builder.append("]");
-      Assert.assertEquals(builder.toString(), tvList.getVector(i).toString());
+      Assert.assertEquals(builder.toString(), tvList.getAlignedValue(i).toString());
       Assert.assertEquals(i, tvList.getTime(i));
     }
   }
@@ -93,20 +99,27 @@ public class VectorTVListTest {
     for (int i = 0; i < 5; i++) {
       dataTypes.add(TSDataType.INT64);
     }
-    VectorTVList tvList = new VectorTVList(dataTypes);
+    AlignedTVList tvList = new AlignedTVList(dataTypes);
     long[][] vectorArray = new long[5][1001];
     List<Long> timeList = new ArrayList<>();
+    int[] columnOrder = new int[5];
     for (int i = 1000; i >= 0; i--) {
       timeList.add((long) i);
       for (int j = 0; j < 5; j++) {
         vectorArray[j][i] = (long) i;
+        columnOrder[j] = j;
       }
     }
 
-    tvList.putVectors(
-        ArrayUtils.toPrimitive(timeList.toArray(new Long[0])), null, vectorArray, 0, 1000);
-    for (long i = 0; i < tvList.size; i++) {
-      Assert.assertEquals(tvList.size - i, tvList.getTime((int) i));
+    tvList.putAlignedValues(
+        ArrayUtils.toPrimitive(timeList.toArray(new Long[0])),
+        vectorArray,
+        null,
+        columnOrder,
+        0,
+        1000);
+    for (long i = 0; i < tvList.rowCount; i++) {
+      Assert.assertEquals(tvList.rowCount - i, tvList.getTime((int) i));
     }
   }
 
@@ -118,8 +131,9 @@ public class VectorTVListTest {
       dataTypes.add(TSDataType.INT64);
       bitMaps[i] = new BitMap(1001);
     }
-    VectorTVList tvList = new VectorTVList(dataTypes);
+    AlignedTVList tvList = new AlignedTVList(dataTypes);
     long[][] vectorArray = new long[5][1001];
+    int[] columnOrder = new int[5];
     List<Long> timeList = new ArrayList<>();
     for (int i = 1000; i >= 0; i--) {
       timeList.add((long) i);
@@ -128,15 +142,66 @@ public class VectorTVListTest {
         if (i % 100 == 0) {
           bitMaps[j].mark(i);
         }
+        columnOrder[j] = j;
       }
     }
 
-    tvList.putVectors(
-        ArrayUtils.toPrimitive(timeList.toArray(new Long[0])), bitMaps, vectorArray, 0, 1000);
-    for (long i = 0; i < tvList.size; i++) {
-      Assert.assertEquals(tvList.size - i, tvList.getTime((int) i));
+    tvList.putAlignedValues(
+        ArrayUtils.toPrimitive(timeList.toArray(new Long[0])),
+        vectorArray,
+        bitMaps,
+        columnOrder,
+        0,
+        1000);
+    for (long i = 0; i < tvList.rowCount; i++) {
+      Assert.assertEquals(tvList.rowCount - i, tvList.getTime((int) i));
       if (i % 100 == 0) {
-        Assert.assertEquals("[null, null, null, null, null]", tvList.getVector((int) i).toString());
+        Assert.assertEquals(
+            "[null, null, null, null, null]", tvList.getAlignedValue((int) i).toString());
+      }
+    }
+  }
+
+  @Test
+  public void testClone() {
+    List<TSDataType> dataTypes = new ArrayList<>();
+    BitMap[] bitMaps = new BitMap[5];
+    for (int i = 0; i < 5; i++) {
+      dataTypes.add(TSDataType.INT64);
+      bitMaps[i] = new BitMap(1001);
+    }
+    AlignedTVList tvList = new AlignedTVList(dataTypes);
+    long[][] vectorArray = new long[5][1001];
+    int[] columnOrder = new int[5];
+    List<Long> timeList = new ArrayList<>();
+    for (int i = 1000; i >= 0; i--) {
+      timeList.add((long) i);
+      for (int j = 0; j < 5; j++) {
+        vectorArray[j][i] = (long) i;
+        if (i % 100 == 0) {
+          bitMaps[j].mark(i);
+        }
+        columnOrder[j] = j;
+      }
+    }
+
+    tvList.putAlignedValues(
+        ArrayUtils.toPrimitive(timeList.toArray(new Long[0])),
+        vectorArray,
+        bitMaps,
+        columnOrder,
+        0,
+        1000);
+
+    AlignedTVList clonedTvList = tvList.clone();
+    for (long i = 0; i < tvList.rowCount; i++) {
+      Assert.assertEquals(tvList.getTime((int) i), clonedTvList.getTime((int) i));
+      Assert.assertEquals(
+          tvList.getAlignedValue((int) i).toString(),
+          clonedTvList.getAlignedValue((int) i).toString());
+      for (int column = 0; i < 5; i++) {
+        Assert.assertEquals(
+            tvList.isValueMarked((int) i, column), clonedTvList.isValueMarked((int) i, column));
       }
     }
   }

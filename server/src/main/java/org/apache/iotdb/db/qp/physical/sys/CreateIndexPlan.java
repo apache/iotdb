@@ -20,7 +20,7 @@ package org.apache.iotdb.db.qp.physical.sys;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.index.common.IndexType;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -41,13 +41,13 @@ public class CreateIndexPlan extends PhysicalPlan {
   private IndexType indexType;
 
   public CreateIndexPlan() {
-    super(false, OperatorType.CREATE_INDEX);
+    super(OperatorType.CREATE_INDEX);
     canBeSplit = false;
   }
 
   public CreateIndexPlan(
       List<PartialPath> paths, Map<String, String> props, long startTime, IndexType indexType) {
-    super(false, OperatorType.CREATE_INDEX);
+    super(OperatorType.CREATE_INDEX);
     this.paths = paths;
     this.props = props;
     time = startTime;
@@ -112,7 +112,7 @@ public class CreateIndexPlan extends PhysicalPlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     int type = PhysicalPlanType.CREATE_INDEX.ordinal();
     buffer.put((byte) type);
     buffer.put((byte) indexType.serialize());

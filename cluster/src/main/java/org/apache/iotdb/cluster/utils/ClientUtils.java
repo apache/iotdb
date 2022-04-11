@@ -19,16 +19,11 @@
 
 package org.apache.iotdb.cluster.utils;
 
-import org.apache.iotdb.cluster.client.async.AsyncDataClient;
-import org.apache.iotdb.cluster.client.async.AsyncDataHeartbeatClient;
-import org.apache.iotdb.cluster.client.async.AsyncMetaClient;
-import org.apache.iotdb.cluster.client.async.AsyncMetaHeartbeatClient;
+import org.apache.iotdb.cluster.client.ClientCategory;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
-import org.apache.iotdb.cluster.client.sync.SyncDataHeartbeatClient;
 import org.apache.iotdb.cluster.client.sync.SyncMetaClient;
-import org.apache.iotdb.cluster.client.sync.SyncMetaHeartbeatClient;
-import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
-import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
+import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 
 public class ClientUtils {
 
@@ -36,35 +31,36 @@ public class ClientUtils {
     // util class
   }
 
-  public static boolean isHeartbeatClientReady(AsyncClient client) {
-    if (client instanceof AsyncDataHeartbeatClient) {
-      return ((AsyncDataHeartbeatClient) client).isReady();
-    } else {
-      return ((AsyncMetaHeartbeatClient) client).isReady();
+  public static int getPort(Node node, ClientCategory category) {
+    int port = -1;
+    switch (category) {
+      case DATA:
+        port = node.getDataPort();
+        break;
+      case DATA_HEARTBEAT:
+        port = node.getDataPort() + ClusterUtils.DATA_HEARTBEAT_PORT_OFFSET;
+        break;
+      case META:
+        port = node.getMetaPort();
+        break;
+      case META_HEARTBEAT:
+        port = node.getMetaPort() + ClusterUtils.META_HEARTBEAT_PORT_OFFSET;
+        break;
+      case DATA_ASYNC_APPEND_CLIENT:
+        // special data client type
+        port = node.getDataPort();
+        break;
+      default:
+        break;
     }
+    return port;
   }
 
-  public static void putBackSyncHeartbeatClient(Client client) {
-    if (client instanceof SyncMetaHeartbeatClient) {
-      ((SyncMetaHeartbeatClient) client).putBack();
-    } else {
-      ((SyncDataHeartbeatClient) client).putBack();
-    }
-  }
-
-  public static void putBackSyncClient(Client client) {
-    if (client instanceof SyncDataClient) {
-      ((SyncDataClient) client).putBack();
-    } else if (client instanceof SyncMetaClient) {
-      ((SyncMetaClient) client).putBack();
-    }
-  }
-
-  public static boolean isClientReady(AsyncClient client) {
-    if (client instanceof AsyncDataClient) {
-      return ((AsyncDataClient) client).isReady();
-    } else {
-      return ((AsyncMetaClient) client).isReady();
+  public static void putBackSyncClient(RaftService.Client client) {
+    if (client instanceof SyncMetaClient) {
+      ((SyncMetaClient) client).returnSelf();
+    } else if (client instanceof SyncDataClient) {
+      ((SyncDataClient) client).returnSelf();
     }
   }
 }

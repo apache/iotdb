@@ -50,10 +50,10 @@ pub   rsa4096/28662AC6 2019-12-23 [SC]
 下载公钥
 
 ```
-gpg2 --receive-keys 10F3B3F8A1201B79AA43F2E00FC7F131CAA00430 (或 28662AC6)
+gpg2 --receive-keys 10F3B3F8A1201B79AA43F2E00FC7F131CAA00430 （或 28662AC6)
 
-或 (指定 keyserver) 
-gpg2 --keyserver p80.pool.sks-keyservers.net --recv-keys 10F3B3F8A1201B79AA43F2E00FC7F131CAA00430 (或 28662AC6)
+或 （指定 keyserver) 
+gpg2 --keyserver p80.pool.sks-keyservers.net --recv-keys 10F3B3F8A1201B79AA43F2E00FC7F131CAA00430 （或 28662AC6)
 ```
 
 ### 第二种方法
@@ -178,7 +178,6 @@ select * from root;
 Thanks,
 xxx
 ```
-
 
 ## 小工具
 

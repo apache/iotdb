@@ -19,28 +19,30 @@
 
 package org.apache.iotdb.db.qp.physical.sys;
 
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
 public class CreateFunctionPlan extends PhysicalPlan {
 
-  private final boolean isTemporary;
-  private final String udfName;
-  private final String className;
+  private String udfName;
+  private String className;
 
-  public CreateFunctionPlan(boolean isTemporary, String udfName, String className) {
-    super(false, OperatorType.CREATE_FUNCTION);
-    this.isTemporary = isTemporary;
-    this.udfName = udfName;
-    this.className = className;
+  public CreateFunctionPlan() {
+    super(OperatorType.CREATE_FUNCTION);
   }
 
-  public boolean isTemporary() {
-    return isTemporary;
+  public CreateFunctionPlan(String udfName, String className) {
+    super(OperatorType.CREATE_FUNCTION);
+    this.udfName = udfName;
+    this.className = className;
   }
 
   public String getUdfName() {
@@ -51,8 +53,29 @@ public class CreateFunctionPlan extends PhysicalPlan {
     return className;
   }
 
+  public void setClassName(String className) {
+    this.className = className;
+  }
+
   @Override
   public List<PartialPath> getPaths() {
     return new ArrayList<>();
+  }
+
+  @Override
+  public void serialize(DataOutputStream outputStream) throws IOException {
+    outputStream.writeByte((byte) PhysicalPlanType.CREATE_FUNCTION.ordinal());
+
+    putString(outputStream, udfName);
+    putString(outputStream, className);
+    outputStream.writeLong(index);
+  }
+
+  @Override
+  public void deserialize(ByteBuffer buffer) throws IllegalPathException {
+
+    udfName = readString(buffer);
+    className = readString(buffer);
+    this.index = buffer.getLong();
   }
 }

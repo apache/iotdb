@@ -52,8 +52,14 @@ public class HeartbeatHandler implements AsyncMethodCallback<HeartBeatResponse> 
 
   @Override
   public void onComplete(HeartBeatResponse resp) {
-    logger.trace("{}: Received a heartbeat response", memberName);
     long followerTerm = resp.getTerm();
+    if (logger.isDebugEnabled()) {
+      logger.debug(
+          "{}: Received a heartbeat response {} for last log index {}",
+          memberName,
+          followerTerm,
+          resp.getLastLogIndex());
+    }
     if (followerTerm == RESPONSE_AGREE) {
       // current leadership is still valid
       handleNormalHeartbeatResponse(resp);
@@ -83,14 +89,16 @@ public class HeartbeatHandler implements AsyncMethodCallback<HeartBeatResponse> 
     long lastLogTerm = resp.getLastLogTerm();
     long localLastLogIdx = localMember.getLogManager().getLastLogIndex();
     long localLastLogTerm = localMember.getLogManager().getLastLogTerm();
-    logger.trace(
-        "{}: Node {} is still alive, log index: {}/{}, log term: {}/{}",
-        memberName,
-        follower,
-        lastLogIdx,
-        localLastLogIdx,
-        lastLogTerm,
-        localLastLogTerm);
+    if (logger.isDebugEnabled()) {
+      logger.debug(
+          "{}: Node {} is still alive, log index: {}/{}, log term: {}/{}",
+          memberName,
+          follower,
+          lastLogIdx,
+          localLastLogIdx,
+          lastLogTerm,
+          localLastLogTerm);
+    }
 
     Peer peer =
         localMember
@@ -107,8 +115,8 @@ public class HeartbeatHandler implements AsyncMethodCallback<HeartBeatResponse> 
       }
 
       // only start a catch up when the follower's lastLogIndex remains stall and unchanged for 5
-      // heartbeats
-      if (lastLogIdx == peer.getLastHeartBeatIndex()) {
+      // heartbeats. If the follower is installing snapshot currently, we reset the counter.
+      if (lastLogIdx == peer.getLastHeartBeatIndex() && !resp.isInstallingSnapshot()) {
         // the follower's lastLogIndex is unchanged, increase inconsistent counter
         int inconsistentNum = peer.incInconsistentHeartbeatNum();
         if (inconsistentNum >= 5) {

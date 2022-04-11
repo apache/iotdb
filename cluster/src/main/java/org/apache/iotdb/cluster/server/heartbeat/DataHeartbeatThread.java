@@ -55,19 +55,13 @@ public class DataHeartbeatThread extends HeartbeatThread {
   void startElection() {
     // skip first few elections to let the header have a larger chance to become the leader, so
     // possibly each node will only be one leader at the same time
-    if (!dataGroupMember.getThisNode().equals(dataGroupMember.getHeader())
+    if (!dataGroupMember.getThisNode().equals(dataGroupMember.getHeader().getNode())
         && skippedElectionNumber < MAX_ELECTIONS_TO_SKIP
         && !hasHadLeader) {
       skippedElectionNumber++;
       return;
     }
     electionRequest.setHeader(dataGroupMember.getHeader());
-    electionRequest.setLastLogTerm(
-        dataGroupMember.getMetaGroupMember().getLogManager().getLastLogTerm());
-    electionRequest.setLastLogIndex(
-        dataGroupMember.getMetaGroupMember().getLogManager().getLastLogIndex());
-    electionRequest.setDataLogLastIndex(dataGroupMember.getLogManager().getLastLogIndex());
-    electionRequest.setDataLogLastTerm(dataGroupMember.getLogManager().getLastLogTerm());
 
     super.startElection();
   }

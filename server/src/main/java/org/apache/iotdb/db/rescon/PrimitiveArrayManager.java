@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.db.rescon;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -30,82 +29,181 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayDeque;
 import java.util.Arrays;
-import java.util.EnumMap;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
-/** Manage all primitive data list in memory, including get and release operation. */
+/** Manage all primitive data lists in memory, including get and release operations. */
 public class PrimitiveArrayManager {
 
-  /** data type -> ArrayDeque of primitive arrays. */
-  private static final Map<TSDataType, ArrayDeque<Object>> bufferedArraysMap =
-      new EnumMap<>(TSDataType.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PrimitiveArrayManager.class);
 
-  /** data type -> current number of buffered arrays */
-  private static final Map<TSDataType, Integer> bufferedArraysNumMap =
-      new EnumMap<>(TSDataType.class);
+  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
-  /** data type -> ratio of data type in schema, which could be seen as recommended ratio */
-  private static final Map<TSDataType, Double> bufferedArraysNumRatio =
-      new EnumMap<>(TSDataType.class);
-
-  private static final Logger logger = LoggerFactory.getLogger(PrimitiveArrayManager.class);
-
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-
-  public static final int ARRAY_SIZE = config.getPrimitiveArraySize();
-
-  /** threshold total size of arrays for all data types */
-  private static final double BUFFERED_ARRAY_SIZE_THRESHOLD =
-      config.getAllocateMemoryForWrite() * config.getBufferedArraysMemoryProportion();
-
-  /** total size of buffered arrays */
-  private static AtomicLong bufferedArraysRamSize = new AtomicLong();
-
-  /** total size of out of buffer arrays */
-  private static AtomicLong outOfBufferArraysRamSize = new AtomicLong();
-
-  static {
-    bufferedArraysMap.put(TSDataType.BOOLEAN, new ArrayDeque<>());
-    bufferedArraysMap.put(TSDataType.INT32, new ArrayDeque<>());
-    bufferedArraysMap.put(TSDataType.INT64, new ArrayDeque<>());
-    bufferedArraysMap.put(TSDataType.FLOAT, new ArrayDeque<>());
-    bufferedArraysMap.put(TSDataType.DOUBLE, new ArrayDeque<>());
-    bufferedArraysMap.put(TSDataType.TEXT, new ArrayDeque<>());
-    bufferedArraysMap.put(TSDataType.VECTOR, new ArrayDeque<>());
-  }
-
-  private PrimitiveArrayManager() {
-    logger.info("BufferedArraySizeThreshold is {}", BUFFERED_ARRAY_SIZE_THRESHOLD);
-  }
+  public static final int ARRAY_SIZE = CONFIG.getPrimitiveArraySize();
 
   /**
-   * Get primitive data lists according to type
+   * The actual used memory will be 50% larger than the statistic, so we need to limit the size of
+   * POOLED_ARRAYS_MEMORY_THRESHOLD, make it smaller than its actual allowed value.
+   */
+  private static final double AMPLIFICATION_FACTOR = 1.5;
+
+  /** threshold total size of arrays for all data types */
+  private static final double POOLED_ARRAYS_MEMORY_THRESHOLD =
+      CONFIG.getAllocateMemoryForWrite()
+          * CONFIG.getBufferedArraysMemoryProportion()
+          / AMPLIFICATION_FACTOR;
+
+  /** TSDataType#serialize() -> ArrayDeque<Array>, VECTOR is ignored */
+  private static final ArrayDeque[] POOLED_ARRAYS = new ArrayDeque[TSDataType.values().length - 1];
+
+  /** TSDataType#serialize() -> max size of ArrayDeque<Array>, VECTOR is ignored */
+  private static final int[] LIMITS = new int[TSDataType.values().length - 1];
+
+  /** LIMITS should be updated if (TOTAL_ALLOCATION_REQUEST_COUNT.get() > limitUpdateThreshold) */
+  private static long limitUpdateThreshold;
+
+  /** TSDataType#serialize() -> count of allocation requests, VECTOR is ignored */
+  private static final AtomicLong[] ALLOCATION_REQUEST_COUNTS =
+      new AtomicLong[] {
+        new AtomicLong(0),
+        new AtomicLong(0),
+        new AtomicLong(0),
+        new AtomicLong(0),
+        new AtomicLong(0),
+        new AtomicLong(0)
+      };
+
+  private static final AtomicLong TOTAL_ALLOCATION_REQUEST_COUNT = new AtomicLong(0);
+
+  static {
+    init();
+  }
+
+  private static void init() {
+    LOGGER.info("BufferedArraySizeThreshold is {}", POOLED_ARRAYS_MEMORY_THRESHOLD);
+
+    // POOLED_ARRAYS_MEMORY_THRESHOLD = ∑(datatype[i].getDataTypeSize() * ARRAY_SIZE * LIMITS[i])
+    // we init all LIMITS[i] with the same value, so we have
+    // => LIMITS[i] = POOLED_ARRAYS_MEMORY_THRESHOLD / ARRAY_SIZE / ∑(datatype[i].getDataTypeSize())
+    int totalDataTypeSize = 0;
+    for (TSDataType dataType : TSDataType.values()) {
+      // VECTOR is ignored
+      if (dataType.equals(TSDataType.VECTOR)) {
+        continue;
+      }
+      totalDataTypeSize += dataType.getDataTypeSize();
+    }
+    @SuppressWarnings("squid:S3518") // totalDataTypeSize can not be zero
+    double limit = POOLED_ARRAYS_MEMORY_THRESHOLD / ARRAY_SIZE / totalDataTypeSize;
+    Arrays.fill(LIMITS, (int) limit);
+
+    // limitUpdateThreshold = ∑(LIMITS[i])
+    limitUpdateThreshold = (long) ((TSDataType.values().length - 1) * limit);
+
+    for (int i = 0; i < POOLED_ARRAYS.length; ++i) {
+      POOLED_ARRAYS[i] = new ArrayDeque<>((int) limit);
+    }
+
+    for (AtomicLong allocationRequestCount : ALLOCATION_REQUEST_COUNTS) {
+      allocationRequestCount.set(0);
+    }
+
+    TOTAL_ALLOCATION_REQUEST_COUNT.set(0);
+  }
+
+  private PrimitiveArrayManager() {}
+
+  /**
+   * Get or allocate primitive data lists according to type.
    *
-   * @param dataType data type
    * @return an array
    */
-  public static Object getPrimitiveArraysByType(TSDataType dataType) {
-    // check memory of buffered array, if already full, generate OOB
-    if (bufferedArraysRamSize.get() + ARRAY_SIZE * dataType.getDataTypeSize()
-        > BUFFERED_ARRAY_SIZE_THRESHOLD) {
-      // return an out of buffer array
-      outOfBufferArraysRamSize.addAndGet((long) ARRAY_SIZE * dataType.getDataTypeSize());
-      return createPrimitiveArray(dataType);
+  public static Object allocate(TSDataType dataType) {
+    if (dataType.equals(TSDataType.VECTOR)) {
+      throw new UnSupportedDataTypeException(TSDataType.VECTOR.name());
     }
 
-    synchronized (bufferedArraysMap.get(dataType)) {
-      // try to get a buffered array
-      Object dataArray = bufferedArraysMap.get(dataType).poll();
-      if (dataArray != null) {
-        return dataArray;
+    if (TOTAL_ALLOCATION_REQUEST_COUNT.get() > limitUpdateThreshold) {
+      synchronized (TOTAL_ALLOCATION_REQUEST_COUNT) {
+        if (TOTAL_ALLOCATION_REQUEST_COUNT.get() > limitUpdateThreshold) {
+          updateLimits();
+        }
       }
-      // no buffered array, create one
-      bufferedArraysNumMap.put(dataType, bufferedArraysNumMap.getOrDefault(dataType, 0) + 1);
-      bufferedArraysRamSize.addAndGet((long) ARRAY_SIZE * dataType.getDataTypeSize());
     }
 
-    return createPrimitiveArray(dataType);
+    int order = dataType.serialize();
+
+    ALLOCATION_REQUEST_COUNTS[order].incrementAndGet();
+    TOTAL_ALLOCATION_REQUEST_COUNT.incrementAndGet();
+
+    Object array;
+    synchronized (POOLED_ARRAYS[order]) {
+      array = POOLED_ARRAYS[order].poll();
+    }
+    if (array == null) {
+      array = createPrimitiveArray(dataType);
+    }
+    return array;
+  }
+
+  private static void updateLimits() {
+    // we want to update LIMITS[i] according to ratios[i]
+    double[] ratios = new double[ALLOCATION_REQUEST_COUNTS.length];
+    for (int i = 0; i < ALLOCATION_REQUEST_COUNTS.length; ++i) {
+      ratios[i] =
+          ALLOCATION_REQUEST_COUNTS[i].get() / (double) TOTAL_ALLOCATION_REQUEST_COUNT.get();
+    }
+
+    // initially we have:
+    //   POOLED_ARRAYS_MEMORY_THRESHOLD = ∑(datatype[i].getDataTypeSize() * LIMITS[i]) * ARRAY_SIZE
+    // we can find a number called limitBase which satisfies:
+    //   LIMITS[i] = limitBase * ratios[i]
+
+    // => POOLED_ARRAYS_MEMORY_THRESHOLD =
+    //     limitBase * ∑(datatype[i].getDataTypeSize() * ratios[i]) * ARRAY_SIZE
+    // => limitBase = POOLED_ARRAYS_MEMORY_THRESHOLD / ARRAY_SIZE
+    //     / ∑(datatype[i].getDataTypeSize() * ratios[i])
+    double weightedSumOfRatios = 0;
+    for (TSDataType dataType : TSDataType.values()) {
+      // VECTOR is ignored
+      if (dataType.equals(TSDataType.VECTOR)) {
+        continue;
+      }
+      weightedSumOfRatios += dataType.getDataTypeSize() * ratios[dataType.serialize()];
+    }
+    @SuppressWarnings("squid:S3518") // weightedSumOfRatios can not be zero
+    double limitBase = POOLED_ARRAYS_MEMORY_THRESHOLD / ARRAY_SIZE / weightedSumOfRatios;
+
+    // LIMITS[i] = limitBase * ratios[i]
+    for (int i = 0; i < LIMITS.length; ++i) {
+      int oldLimit = LIMITS[i];
+      int newLimit = (int) (limitBase * ratios[i]);
+      LIMITS[i] = newLimit;
+
+      if (LOGGER.isInfoEnabled() && oldLimit != newLimit) {
+        LOGGER.info(
+            "limit of {} array deque size updated: {} -> {}",
+            TSDataType.deserialize((byte) i).name(),
+            oldLimit,
+            newLimit);
+      }
+    }
+
+    long oldLimitUpdateThreshold = limitUpdateThreshold;
+    // limitUpdateThreshold = ∑(LIMITS[i])
+    limitUpdateThreshold = 0;
+    for (int limit : LIMITS) {
+      limitUpdateThreshold += limit;
+    }
+    LOGGER.info(
+        "limitUpdateThreshold of PrimitiveArrayManager updated: {} -> {}",
+        oldLimitUpdateThreshold,
+        limitUpdateThreshold);
+
+    for (AtomicLong allocationRequestCount : ALLOCATION_REQUEST_COUNTS) {
+      allocationRequestCount.set(0);
+    }
+
+    TOTAL_ALLOCATION_REQUEST_COUNT.set(0);
   }
 
   private static Object createPrimitiveArray(TSDataType dataType) {
@@ -129,14 +227,47 @@ public class PrimitiveArrayManager {
       case TEXT:
         dataArray = new Binary[ARRAY_SIZE];
         break;
-      case VECTOR:
-        dataArray = new byte[ARRAY_SIZE][];
-        break;
       default:
-        throw new UnSupportedDataTypeException(dataType.toString());
+        throw new UnSupportedDataTypeException(dataType.name());
     }
 
     return dataArray;
+  }
+
+  /**
+   * This method is called when bringing back data array
+   *
+   * @param array data array to be released
+   */
+  public static void release(Object array) {
+    int order;
+    if (array instanceof boolean[]) {
+      order = TSDataType.BOOLEAN.serialize();
+    } else if (array instanceof int[]) {
+      order = TSDataType.INT32.serialize();
+    } else if (array instanceof long[]) {
+      order = TSDataType.INT64.serialize();
+    } else if (array instanceof float[]) {
+      order = TSDataType.FLOAT.serialize();
+    } else if (array instanceof double[]) {
+      order = TSDataType.DOUBLE.serialize();
+    } else if (array instanceof Binary[]) {
+      Arrays.fill((Binary[]) array, null);
+      order = TSDataType.TEXT.serialize();
+    } else {
+      throw new UnSupportedDataTypeException(array.getClass().toString());
+    }
+
+    synchronized (POOLED_ARRAYS[order]) {
+      ArrayDeque<Object> arrays = POOLED_ARRAYS[order];
+      if (arrays.size() < LIMITS[order]) {
+        arrays.add(array);
+      }
+    }
+  }
+
+  public static void close() {
+    init();
   }
 
   /**
@@ -186,132 +317,7 @@ public class PrimitiveArrayManager {
         }
         return binaries;
       default:
-        return null;
+        throw new UnSupportedDataTypeException(dataType.name());
     }
-  }
-
-  /**
-   * This method is called when bringing back data array
-   *
-   * @param dataArray data array
-   */
-  public static void release(Object dataArray) {
-    TSDataType dataType;
-    if (dataArray instanceof boolean[]) {
-      dataType = TSDataType.BOOLEAN;
-    } else if (dataArray instanceof int[]) {
-      dataType = TSDataType.INT32;
-    } else if (dataArray instanceof long[]) {
-      dataType = TSDataType.INT64;
-    } else if (dataArray instanceof float[]) {
-      dataType = TSDataType.FLOAT;
-    } else if (dataArray instanceof double[]) {
-      dataType = TSDataType.DOUBLE;
-    } else if (dataArray instanceof Binary[]) {
-      Arrays.fill((Binary[]) dataArray, null);
-      dataType = TSDataType.TEXT;
-    } else {
-      throw new UnSupportedDataTypeException("Unknown data array type");
-    }
-
-    // Check out of buffer array num
-    if (outOfBufferArraysRamSize.get() > 0 && isCurrentDataTypeExceeded(dataType)) {
-      // release an out of buffer array
-      bringBackOOBArray(dataType, ARRAY_SIZE);
-    } else if (outOfBufferArraysRamSize.get() > 0 && !isCurrentDataTypeExceeded(dataType)) {
-      // if the ratio of buffered arrays of this data type does not exceed the schema ratio,
-      // choose one replaced array who has larger ratio than schema recommended ratio
-      TSDataType replacedDataType = null;
-      for (Map.Entry<TSDataType, Integer> entry : bufferedArraysNumMap.entrySet()) {
-        if (isCurrentDataTypeExceeded(entry.getKey())) {
-          replacedDataType = entry.getKey();
-          // bring back the replaced array as OOB array
-          bringBackOOBArray(replacedDataType, ARRAY_SIZE);
-          break;
-        }
-      }
-      if (replacedDataType != null) {
-        // if we find a replaced array, bring back the original array as a buffered array
-        if (logger.isDebugEnabled()) {
-          logger.debug(
-              "The ratio of {} in buffered array has not reached the schema ratio. Replaced by {}",
-              dataType,
-              replacedDataType);
-        }
-        bringBackBufferedArray(dataType, dataArray);
-      } else {
-        // or else bring back the original array as OOB array
-        bringBackOOBArray(dataType, ARRAY_SIZE);
-      }
-    } else {
-      // if there is no out of buffer array, bring back as buffered array directly
-      bringBackBufferedArray(dataType, dataArray);
-    }
-  }
-
-  /**
-   * Bring back a buffered array
-   *
-   * @param dataType data type
-   * @param dataArray data array
-   */
-  private static void bringBackBufferedArray(TSDataType dataType, Object dataArray) {
-    synchronized (bufferedArraysMap.get(dataType)) {
-      bufferedArraysMap.get(dataType).add(dataArray);
-      bufferedArraysNumMap.put(dataType, bufferedArraysNumMap.getOrDefault(dataType, 0) + 1);
-    }
-    bufferedArraysRamSize.addAndGet((long) -ARRAY_SIZE * dataType.getDataTypeSize());
-  }
-
-  /**
-   * Bring back out of buffered array
-   *
-   * @param dataType data type
-   * @param size capacity
-   */
-  private static void bringBackOOBArray(TSDataType dataType, int size) {
-    outOfBufferArraysRamSize.addAndGet((long) -size * dataType.getDataTypeSize());
-  }
-
-  /**
-   * @param schemaDataTypeNumMap schema DataType Num Map (for each series, increase a long and a
-   *     specific type)
-   * @param total current DataType Total Num (twice of number of time series)
-   */
-  public static void updateSchemaDataTypeNum(
-      Map<TSDataType, Integer> schemaDataTypeNumMap, long total) {
-    for (Map.Entry<TSDataType, Integer> entry : schemaDataTypeNumMap.entrySet()) {
-      TSDataType dataType = entry.getKey();
-      bufferedArraysNumRatio.put(dataType, (double) schemaDataTypeNumMap.get(dataType) / total);
-    }
-  }
-
-  /**
-   * check whether the ratio of buffered array of specific data type reaches the ratio in schema (as
-   * recommended ratio)
-   *
-   * @param dataType data type
-   * @return true if the buffered array ratio exceeds the recommend ratio
-   */
-  private static boolean isCurrentDataTypeExceeded(TSDataType dataType) {
-    int total = 0;
-    for (int num : bufferedArraysNumMap.values()) {
-      total += num;
-    }
-    return total != 0
-        && ((double) bufferedArraysNumMap.getOrDefault(dataType, 0) / total
-            > bufferedArraysNumRatio.getOrDefault(dataType, 0.0));
-  }
-
-  public static void close() {
-    for (ArrayDeque<Object> dataListQueue : bufferedArraysMap.values()) {
-      dataListQueue.clear();
-    }
-
-    bufferedArraysNumMap.clear();
-    bufferedArraysNumRatio.clear();
-
-    bufferedArraysRamSize.set(0);
-    outOfBufferArraysRamSize.set(0);
   }
 }

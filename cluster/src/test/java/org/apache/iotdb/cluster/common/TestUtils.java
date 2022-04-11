@@ -28,6 +28,7 @@ import org.apache.iotdb.cluster.log.logtypes.LargeTestLog;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.rpc.thrift.StartUpStatus;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -36,8 +37,9 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -59,6 +61,7 @@ import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -66,6 +69,15 @@ import java.util.List;
 public class TestUtils {
 
   public static long TEST_TIME_OUT_MS = 200;
+
+  private static ByteBuffer seralizePartitionTable = getPartitionTable(3).serialize();
+
+  // we need to reset the bytebuffer's position because it may be changed. e.g., in
+  // MetaLogApplierTest.testApplyAddNode()
+  public static ByteBuffer getSeralizePartitionTable() {
+    seralizePartitionTable.rewind();
+    return seralizePartitionTable;
+  }
 
   private TestUtils() {
     // util class
@@ -82,11 +94,16 @@ public class TestUtils {
     return node;
   }
 
+  public static RaftNode getRaftNode(int nodeNum, int raftId) {
+    return new RaftNode(getNode(nodeNum), raftId);
+  }
+
   public static List<Log> prepareNodeLogs(int logNum) {
     List<Log> logList = new ArrayList<>();
     for (int i = 0; i < logNum; i++) {
       AddNodeLog log = new AddNodeLog();
       log.setNewNode(getNode(i));
+      log.setPartitionTable(getSeralizePartitionTable());
       log.setCurrLogIndex(i);
       log.setCurrLogTerm(i);
       logList.add(log);
@@ -102,6 +119,8 @@ public class TestUtils {
     startUpStatus.setReplicationNumber(
         ClusterDescriptor.getInstance().getConfig().getReplicationNum());
     startUpStatus.setClusterName(ClusterDescriptor.getInstance().getConfig().getClusterName());
+    startUpStatus.setMultiRaftFactor(
+        ClusterDescriptor.getInstance().getConfig().getMultiRaftFactor());
     List<Node> seedNodeList = new ArrayList<>();
     for (int i = 0; i < 100; i += 10) {
       seedNodeList.add(getNode(i));
@@ -199,7 +218,7 @@ public class TestUtils {
         Collections.emptyMap());
   }
 
-  public static MeasurementMNode getTestMeasurementMNode(int seriesNum) {
+  public static IMeasurementMNode getTestMeasurementMNode(int seriesNum) {
     TSDataType dataType = TSDataType.DOUBLE;
     TSEncoding encoding = IoTDBDescriptor.getInstance().getConfig().getDefaultDoubleEncoding();
     IMeasurementSchema measurementSchema =
@@ -209,7 +228,7 @@ public class TestUtils {
             encoding,
             CompressionType.UNCOMPRESSED,
             Collections.emptyMap());
-    return new MeasurementMNode(
+    return MeasurementMNode.getMeasurementMNode(
         null, measurementSchema.getMeasurementId(), measurementSchema, null);
   }
 
@@ -288,9 +307,9 @@ public class TestUtils {
     // data for raw data query and aggregation
     // 10 devices (storage groups)
     for (int j = 0; j < 10; j++) {
-      insertPlan.setDeviceId(new PartialPath(getTestSg(j)));
+      insertPlan.setDevicePath(new PartialPath(getTestSg(j)));
       String[] measurements = new String[10];
-      MeasurementMNode[] mNodes = new MeasurementMNode[10];
+      IMeasurementMNode[] mNodes = new IMeasurementMNode[10];
       // 10 series each device, all double
       for (int i = 0; i < 10; i++) {
         measurements[i] = getTestMeasurement(i);
@@ -341,9 +360,9 @@ public class TestUtils {
     }
 
     // data for fill
-    insertPlan.setDeviceId(new PartialPath(getTestSg(0)));
+    insertPlan.setDevicePath(new PartialPath(getTestSg(0)));
     String[] measurements = new String[] {getTestMeasurement(10)};
-    MeasurementMNode[] schemas = new MeasurementMNode[] {TestUtils.getTestMeasurementMNode(10)};
+    IMeasurementMNode[] schemas = new IMeasurementMNode[] {TestUtils.getTestMeasurementMNode(10)};
     insertPlan.setMeasurements(measurements);
     insertPlan.setNeedInferType(true);
     insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
@@ -359,7 +378,7 @@ public class TestUtils {
 
   /**
    * The TsFileResource's path should be consist with the {@link
-   * org.apache.iotdb.db.utils.FilePathUtils#splitTsFilePath(TsFileResource)}
+   * org.apache.iotdb.tsfile.utils.FilePathUtils#splitTsFilePath(String)}
    */
   public static List<TsFileResource> prepareTsFileResources(
       int sgNum, int fileNum, int seriesNum, int ptNum, boolean asHardLink)
@@ -378,7 +397,7 @@ public class TestUtils {
                       + File.separator
                       + 0
                       + File.separator
-                      + "0-%d-0"
+                      + "0-%d-0-0"
                       + TsFileConstant.TSFILE_SUFFIX,
                   i);
       if (asHardLink) {
@@ -388,8 +407,8 @@ public class TestUtils {
       file.getParentFile().mkdirs();
       try (TsFileWriter writer = new TsFileWriter(file)) {
         for (int k = 0; k < seriesNum; k++) {
-          IMeasurementSchema schema = getTestMeasurementSchema(k);
-          writer.registerTimeseries(new Path(getTestSg(sgNum), schema.getMeasurementId()), schema);
+          MeasurementSchema schema = (MeasurementSchema) getTestMeasurementSchema(k);
+          writer.registerTimeseries(new Path(getTestSg(sgNum)), schema);
         }
 
         for (int j = 0; j < ptNum; j++) {

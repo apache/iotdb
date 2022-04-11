@@ -20,16 +20,17 @@
 package org.apache.iotdb.cluster.common;
 
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
@@ -37,13 +38,13 @@ import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.After;
 import org.junit.Before;
@@ -67,7 +68,6 @@ public abstract class IoTDBTest {
     ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(true);
     prevEnableAutoSchema = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
     IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(false);
-    EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
     planExecutor = new PlanExecutor();
     prepareSchema();
@@ -100,12 +100,12 @@ public abstract class IoTDBTest {
   protected void prepareData(int sgNum, int timeOffset, int size)
       throws QueryProcessException, IllegalPathException {
     InsertRowPlan insertPlan = new InsertRowPlan();
-    insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(sgNum)));
+    insertPlan.setDevicePath(new PartialPath(TestUtils.getTestSg(sgNum)));
     String[] measurements = new String[10];
     for (int i = 0; i < measurements.length; i++) {
       measurements[i] = TestUtils.getTestMeasurement(i);
     }
-    MeasurementMNode[] schemas = new MeasurementMNode[10];
+    IMeasurementMNode[] schemas = new IMeasurementMNode[10];
     for (int i = 0; i < measurements.length; i++) {
       schemas[i] = TestUtils.getTestMeasurementMNode(i);
     }
@@ -158,22 +158,17 @@ public abstract class IoTDBTest {
   protected QueryDataSet query(List<String> pathStrs, IExpression expression)
       throws QueryProcessException, QueryFilterOptimizationException, StorageEngineException,
           IOException, MetadataException, InterruptedException {
-    QueryContext context =
-        new QueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
+    QueryContext context = new QueryContext(QueryResourceManager.getInstance().assignQueryId(true));
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
     queryPlan.setExpression(expression);
     List<PartialPath> paths = new ArrayList<>();
     for (String pathStr : pathStrs) {
-      paths.add(new PartialPath(pathStr));
+      MeasurementPath path = new MeasurementPath(pathStr);
+      path.setMeasurementSchema(new MeasurementSchema(path.getMeasurement(), TSDataType.DOUBLE));
+      paths.add(path);
     }
     queryPlan.setDeduplicatedPathsAndUpdate(paths);
     queryPlan.setPaths(paths);
-    List<TSDataType> dataTypes = new ArrayList<>();
-    for (PartialPath path : paths) {
-      dataTypes.add(IoTDB.metaManager.getSeriesType(path));
-    }
-    queryPlan.setDeduplicatedDataTypes(dataTypes);
-    queryPlan.setDataTypes(dataTypes);
     queryPlan.setExpression(expression);
 
     return planExecutor.processQuery(queryPlan, context);

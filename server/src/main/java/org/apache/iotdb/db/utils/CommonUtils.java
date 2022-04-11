@@ -18,10 +18,10 @@
  */
 package org.apache.iotdb.db.utils;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 import com.google.common.base.Throwables;
@@ -34,61 +34,14 @@ import io.airlift.airline.ParseCommandUnrecognizedException;
 import io.airlift.airline.ParseOptionConversionException;
 import io.airlift.airline.ParseOptionMissingException;
 import io.airlift.airline.ParseOptionMissingValueException;
+import org.apache.commons.lang3.StringUtils;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
-import java.util.stream.Stream;
 
 @SuppressWarnings("java:S106") // for console outputs
 public class CommonUtils {
 
-  private static final int CPUS = Runtime.getRuntime().availableProcessors();
-
-  /** Default executor pool maximum size. */
-  public static final int MAX_EXECUTOR_POOL_SIZE = Math.max(100, getCpuCores() * 5);
-
   private CommonUtils() {}
-
-  /**
-   * get JDK version.
-   *
-   * @return JDK version (int type)
-   */
-  public static int getJdkVersion() {
-    String[] javaVersionElements = System.getProperty("java.version").split("\\.");
-    if (Integer.parseInt(javaVersionElements[0]) == 1) {
-      return Integer.parseInt(javaVersionElements[1]);
-    } else {
-      return Integer.parseInt(javaVersionElements[0]);
-    }
-  }
-
-  /**
-   * NOTICE: This method is currently used only for data dir, thus using FSFactory to get file
-   *
-   * @param dir directory path
-   * @return
-   */
-  public static long getUsableSpace(String dir) {
-    File dirFile = FSFactoryProducer.getFSFactory().getFile(dir);
-    dirFile.mkdirs();
-    return dirFile.getFreeSpace();
-  }
-
-  public static boolean hasSpace(String dir) {
-    return getUsableSpace(dir) > 0;
-  }
-
-  public static long getOccupiedSpace(String folderPath) throws IOException {
-    Path folder = Paths.get(folderPath);
-    try (Stream<Path> s = Files.walk(folder)) {
-      return s.filter(p -> p.toFile().isFile()).mapToLong(p -> p.toFile().length()).sum();
-    }
-  }
 
   public static Object parseValue(TSDataType dataType, String value) throws QueryProcessException {
     try {
@@ -99,13 +52,21 @@ public class CommonUtils {
         case BOOLEAN:
           return parseBoolean(value);
         case INT32:
-          return Integer.parseInt(value);
+          return Integer.parseInt(StringUtils.trim(value));
         case INT64:
-          return Long.parseLong(value);
+          return Long.parseLong(StringUtils.trim(value));
         case FLOAT:
-          return Float.parseFloat(value);
+          float f = Float.parseFloat(value);
+          if (Float.isInfinite(f)) {
+            throw new NumberFormatException("The input float value is Infinity");
+          }
+          return f;
         case DOUBLE:
-          return Double.parseDouble(value);
+          double d = Double.parseDouble(value);
+          if (Double.isInfinite(d)) {
+            throw new NumberFormatException("The input double value is Infinity");
+          }
+          return d;
         case TEXT:
           if ((value.startsWith(SQLConstant.QUOTE) && value.endsWith(SQLConstant.QUOTE))
               || (value.startsWith(SQLConstant.DQUOTE) && value.endsWith(SQLConstant.DQUOTE))) {
@@ -161,14 +122,6 @@ public class CommonUtils {
     throw new QueryProcessException("The BOOLEAN should be true/TRUE, false/FALSE or 0/1");
   }
 
-  public static int getCpuCores() {
-    return CPUS;
-  }
-
-  public static int getMaxExecutorPoolSize() {
-    return MAX_EXECUTOR_POOL_SIZE;
-  }
-
   public static int runCli(
       List<Class<? extends Runnable>> commands,
       String[] args,
@@ -203,8 +156,8 @@ public class CommonUtils {
   }
 
   private static void badUse(Exception e) {
-    System.out.println("memory-tool: " + e.getMessage());
-    System.out.println("See 'memory-tool help' or 'memory-tool help <command>'.");
+    System.out.println("node-tool: " + e.getMessage());
+    System.out.println("See 'node-tool help' or 'node-tool help <command>'.");
   }
 
   private static void err(Throwable e) {

@@ -19,21 +19,24 @@
 
 package org.apache.iotdb.cluster.integration;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.Statement;
 import java.util.Arrays;
 import java.util.List;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
 public class SingleNodeTest extends BaseSingleNodeTest {
 
@@ -49,10 +52,10 @@ public class SingleNodeTest extends BaseSingleNodeTest {
   @Override
   @After
   public void tearDown() throws Exception {
-    super.tearDown();
     if (session != null) {
       session.close();
     }
+    super.tearDown();
   }
 
   @Test
@@ -92,5 +95,34 @@ public class SingleNodeTest extends BaseSingleNodeTest {
     assertTrue(session.checkTimeseriesExists("root.sg1.d1.t1"));
     assertFalse(session.checkTimeseriesExists("root.sg1.d1.t2"));
     assertFalse(session.checkTimeseriesExists("root.sg1.d1.t3"));
+  }
+
+  @Test
+  public void testUserPrivilege() throws ClassNotFoundException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute("create user user1 '1234'");
+      try (Connection connection1 =
+              DriverManager.getConnection(
+                  Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "user1", "1234");
+          Statement userStatement = connection1.createStatement()) {
+        userStatement.addBatch("create timeseries root.sg1.d1.s1 with datatype=int32");
+        userStatement.addBatch("create timeseries root.sg2.d1.s1 with datatype=int32");
+        userStatement.executeBatch();
+      } catch (Exception e) {
+        assertEquals(
+            System.lineSeparator()
+                + "No permissions for this operation CREATE_TIMESERIES for SQL: \"create timeseries root.sg1.d1.s1 with datatype=int32\""
+                + System.lineSeparator()
+                + "No permissions for this operation CREATE_TIMESERIES for SQL: \"create timeseries root.sg2.d1.s1 with datatype=int32\""
+                + System.lineSeparator(),
+            e.getMessage());
+      }
+    } catch (Exception e) {
+      Assert.fail(e.getMessage());
+    }
   }
 }

@@ -18,14 +18,22 @@
  */
 package org.apache.iotdb.db.qp.logical.sys;
 
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.index.common.IndexType;
-import org.apache.iotdb.db.qp.logical.crud.SFWOperator;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateIndexPlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 /** this operator is to create a certain index on some time series. */
-public class CreateIndexOperator extends SFWOperator {
+public class CreateIndexOperator extends Operator {
 
+  private final List<PartialPath> paths;
   private Map<String, String> props;
   private long time;
   private IndexType indexType;
@@ -33,6 +41,15 @@ public class CreateIndexOperator extends SFWOperator {
   public CreateIndexOperator(int tokenIntType) {
     super(tokenIntType);
     operatorType = OperatorType.CREATE_INDEX;
+    paths = new ArrayList<>();
+  }
+
+  public List<PartialPath> getPaths() {
+    return paths;
+  }
+
+  public void addPath(PartialPath path) {
+    paths.add(path);
   }
 
   public long getTime() {
@@ -57,5 +74,11 @@ public class CreateIndexOperator extends SFWOperator {
 
   public void setIndexType(IndexType indexType) {
     this.indexType = indexType;
+  }
+
+  @Override
+  public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
+      throws QueryProcessException {
+    return new CreateIndexPlan(paths, props, time, indexType);
   }
 }

@@ -22,6 +22,8 @@ package org.apache.iotdb.cross.tests.tools.importCsv;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 
+import org.apache.commons.csv.CSVRecord;
+import org.apache.commons.lang3.StringUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -36,15 +38,12 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class ImportCsvTestIT extends AbstractScript {
-
-  private final String CSV_FILE = "target" + File.separator + "test.csv";
 
   private static final String[] sqls =
       new String[] {
@@ -58,54 +57,52 @@ public class ImportCsvTestIT extends AbstractScript {
         "CREATE TIMESERIES root.fit.p.s1 WITH DATATYPE=INT32,ENCODING=RLE",
       };
 
-  private final String[] noDataOutputForWindows = {
+  private final String[] noDataOutput = {
     "````````````````````````````````````````````````",
     "Starting IoTDB Client Import Script",
     "````````````````````````````````````````````````",
     "Start to import data from: test.csv",
-    "",
-    "Import from: test.csv   0% │         │ 0/2 (0:00:00 / ?) Importing...",
-    "Meet error when insert csv because 411: sub plan are empty."
+    "No records!"
   };
 
-  private final String[] noDataOutputForUnix = {
-    "------------------------------------------",
-    "Starting IoTDB Client Import Script",
-    "------------------------------------------",
-    "Start to import data from: test.csv",
-    "",
-    "Import from: test.csv   0% │         │ 0/2 (0:00:00 / ?) Importing...",
-    "Meet error when insert csv because 411: sub plan are empty."
-  };
-
-  private final String[] hasDataOutputForWindows = {
+  private final String[] noHeaderOutput = {
     "````````````````````````````````````````````````",
     "Starting IoTDB Client Import Script",
     "````````````````````````````````````````````````",
-    "Start to import data from: test.csv",
-    "",
-    "Import from: test.csv",
-    "Import from: test.csv 100%"
+    "No headers!"
   };
 
-  private final String[] hasDataOutputForUnix = {
-    "------------------------------------------",
+  private final String[] emptyOutput = {
+    "````````````````````````````````````````````````",
     "Starting IoTDB Client Import Script",
-    "------------------------------------------",
-    "Start to import data from: test.csv",
-    "",
-    "Import from: test.csv",
-    "Import from: test.csv 100%"
+    "````````````````````````````````````````````````",
+    "Empty file!"
   };
 
   @Before
   public void setUp() {
-    EnvironmentUtils.closeStatMonitor();
+    // start an IotDB server environment
     EnvironmentUtils.envSetUp();
+    // choose an execute command by system.
+    String os = System.getProperty("os.name").toLowerCase();
+    if (os.startsWith("windows")) {
+      command =
+          new String[] {
+            "cmd.exe",
+            "/c",
+            getCliPath() + File.separator + "tools" + File.separator + "import-csv.bat"
+          };
+    } else {
+      command =
+          new String[] {
+            "sh", getCliPath() + File.separator + "tools" + File.separator + "import-csv.sh"
+          };
+    }
   }
 
   @After
   public void tearDown() throws Exception {
+    // shutdown IotDB server environment
     EnvironmentUtils.cleanEnv();
   }
 
@@ -124,40 +121,66 @@ public class ImportCsvTestIT extends AbstractScript {
     }
   }
 
+  /**
+   * test the situation that the schema has not been created and CSV file has no records
+   *
+   * @throws IOException
+   */
+  @Test
+  public void testImportNoRecordsCSV() throws IOException {
+    assertTrue(generateTestCSV(false, false, true, false, false));
+    String[] params = {"-f", CSV_FILE};
+    testMethod(params, noDataOutput);
+    File file = new File(CSV_FILE);
+    if (file.exists()) {
+      file.delete();
+    }
+  }
+
+  /**
+   * test the situation that the CSV file has no headers
+   *
+   * @throws IOException
+   */
+  @Test
+  public void testNoHeader() throws IOException {
+    assertTrue(generateTestCSV(false, true, false, false, false));
+    String[] params = {"-f", CSV_FILE};
+    testMethod(params, noHeaderOutput);
+  }
+
+  /**
+   * test the situation that the CSV file is an empty file
+   *
+   * @throws IOException
+   */
+  @Test
+  public void testEmptyCSV() throws IOException {
+    assertTrue(generateTestCSV(true, false, false, false, false));
+    String[] params = {"-f", CSV_FILE};
+    testMethod(params, emptyOutput);
+  }
+
+  /**
+   * test the situation that the schema has been created and CSV file has no problem
+   *
+   * @throws IOException
+   */
   @Test
   public void test() throws IOException, ClassNotFoundException {
-    createSchema();
-    String os = System.getProperty("os.name").toLowerCase();
-    assertTrue(generateTestCSV());
-    if (os.startsWith("windows")) {
-      testOnWindows(hasDataOutputForWindows);
-    } else {
-      testOnUnix(hasDataOutputForUnix);
-    }
-    File file = new File(CSV_FILE);
-    if (file.exists()) {
-      file.delete();
-    }
-  }
-
-  @Test
-  public void testWithoutCreateSchema() throws IOException, ClassNotFoundException {
-    String os = System.getProperty("os.name").toLowerCase();
-    assertTrue(generateTestCSV());
-    if (os.startsWith("windows")) {
-      testOnWindows(hasDataOutputForWindows);
-    } else {
-      testOnUnix(hasDataOutputForUnix);
-    }
+    assertTrue(generateTestCSV(false, false, false, false, false));
+    String[] params = {"-f", CSV_FILE};
+    testMethod(params, null);
     File file = new File(CSV_FILE);
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      if (statement.execute("select * from root")) {
+      if (statement.execute("select * from root.**")) {
         ResultSet resultSet = statement.getResultSet();
         testResult(resultSet, 6, 3);
+        resultSet.close();
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -167,24 +190,26 @@ public class ImportCsvTestIT extends AbstractScript {
     }
   }
 
+  /**
+   * test the situation that the schema has not been created and CSV file has no problem
+   *
+   * @throws IOException
+   */
   @Test
-  public void testBigCsvFile() throws IOException, ClassNotFoundException {
-    String os = System.getProperty("os.name").toLowerCase();
-    assertTrue(generateBigCsvFile());
-    if (os.startsWith("windows")) {
-      testOnWindows(hasDataOutputForWindows);
-    } else {
-      testOnUnix(hasDataOutputForUnix);
-    }
+  public void testWithoutCreateSchema() throws IOException, ClassNotFoundException {
+    assertTrue(generateTestCSV(false, false, false, false, false));
+    String[] params = {"-f", CSV_FILE};
+    testMethod(params, null);
     File file = new File(CSV_FILE);
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      if (statement.execute("select s1 from root.fit.d1")) {
+      if (statement.execute("select * from root.**")) {
         ResultSet resultSet = statement.getResultSet();
-        testResult(resultSet, 2, 25000);
+        testResult(resultSet, 6, 3);
+        resultSet.close();
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -194,6 +219,81 @@ public class ImportCsvTestIT extends AbstractScript {
     }
   }
 
+  /**
+   * test the situation that the schema has not been created and CSV file has no data type
+   *
+   * @throws IOException
+   * @throws ClassNotFoundException
+   */
+  @Test
+  public void testWithDataType() throws IOException, ClassNotFoundException {
+    assertTrue(generateTestCSV(false, false, false, false, true));
+    String[] params = {"-f", CSV_FILE};
+    testMethod(params, null);
+    File file = new File(CSV_FILE);
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      if (statement.execute("select * from root.**")) {
+        ResultSet resultSet = statement.getResultSet();
+        testResult(resultSet, 6, 3);
+        resultSet.close();
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+    if (file.exists()) {
+      file.delete();
+    }
+  }
+
+  /**
+   * test the situation that the schema has not been created and CSV file has no data type
+   *
+   * @throws IOException
+   * @throws ClassNotFoundException
+   */
+  @Test
+  public void testWithException() throws IOException, ClassNotFoundException {
+    assertTrue(generateTestCSV(false, false, false, true, true));
+    String[] params = {"-f", CSV_FILE};
+    testMethod(params, null);
+    File file = new File(CSV_FILE);
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      if (statement.execute("select ** from root")) {
+        ResultSet resultSet = statement.getResultSet();
+        testResult(resultSet, 6, 3);
+        resultSet.close();
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+    if (file.exists()) {
+      file.delete();
+    }
+    // check the failed file
+    List<CSVRecord> records = readCsvFile(CSV_FILE + ".failed").getRecords();
+    String[] realRecords = {
+      "Time,root.fit.d1.s1(INT32),root.fit.d1.s2(TEXT),root.fit.d2.s1(INT32),root.fit.d2.s3(INT32),root.fit.p.s1(INT32)",
+      "1,100,\"hello\",200,\"300\",400"
+    };
+    for (int i = 0; i < records.size(); i++) {
+      String record = StringUtils.join(records.get(i).toList(), ',');
+      assertEquals(realRecords[i], record);
+    }
+  }
+
+  /**
+   * test whether the shape of data is correct
+   *
+   * @throws IOException
+   */
   private static void testResult(
       ResultSet resultSet, int expectedColumnNumber, int expectedRowNumber) throws SQLException {
     if (resultSet != null) {
@@ -208,28 +308,80 @@ public class ImportCsvTestIT extends AbstractScript {
     }
   }
 
-  @Test
-  public void testImportHeaderCSV() throws IOException {
-    String os = System.getProperty("os.name").toLowerCase();
-    assertTrue(generateHeaderTestCSV());
-    if (os.startsWith("windows")) {
-      testOnWindows(noDataOutputForWindows);
+  /**
+   * generate the test CSV file by setting parameters
+   *
+   * @param isEmpty
+   * @param isHeaderEmpty
+   * @param isRecordsEmpty
+   * @param isException
+   * @param dataType
+   * @return
+   */
+  private boolean generateTestCSV(
+      Boolean isEmpty,
+      Boolean isHeaderEmpty,
+      Boolean isRecordsEmpty,
+      Boolean isException,
+      Boolean dataType) {
+    String[] csvText;
+    if (isEmpty) {
+      csvText = new String[] {};
     } else {
-      testOnUnix(noDataOutputForUnix);
+      if (isHeaderEmpty) {
+        csvText =
+            new String[] {
+              "1,100,\"hello\",200,300,400",
+              "2,500,\"\",600,700,800",
+              "3,900,\"Io\"TDB\",1000,1100,1200"
+            };
+      } else {
+        if (isRecordsEmpty) {
+          csvText =
+              new String[] {
+                "Time,root.fit.d1.s1(INT32),root.fit.d1.s2(TEXT),root.fit.d2.s1(INT32),root.fit.d2.s3(INT32),root.fit.p.s1(INT32)"
+              };
+        } else {
+          if (dataType) {
+            if (isException) {
+              csvText =
+                  new String[] {
+                    "Time,root.fit.d1.s1(INT32),root.fit.d1.s2(TEXT),root.fit.d2.s1(INT32),root.fit.d2.s3(INT32),root.fit.p.s1(INT32)",
+                    "1,100,\"hello\",200,\"300\",400",
+                    "2,500,\"\",600,700,800",
+                    "3,900,\"Io\"TDB\",1000,1100,1200"
+                  };
+            } else {
+              csvText =
+                  new String[] {
+                    "Time,root.fit.d1.s1(INT32),root.fit.d1.s2(TEXT),root.fit.d2.s1(INT32),root.fit.d2.s3(INT32),root.fit.p.s1(INT32)",
+                    "1,100,\"hello\",200,300,400",
+                    "2,500,\"\",600,700,800",
+                    "3,900,\"Io\"TDB\",1000,1100,1200"
+                  };
+            }
+          } else {
+            if (isException) {
+              csvText =
+                  new String[] {
+                    "Time,root.fit.d1.s1,root.fit.d1.s2,root.fit.d2.s1,root.fit.d2.s3,root.fit.p.s1",
+                    "1,100,\"hello\",200,\"300\",400",
+                    "2,500,\"\",600,700,800",
+                    "3,900,\"Io\"TDB\",1000,1100,1200"
+                  };
+            } else {
+              csvText =
+                  new String[] {
+                    "Time,root.fit.d1.s1,root.fit.d1.s2,root.fit.d2.s1,root.fit.d2.s3,root.fit.p.s1",
+                    "1,100,\"hello\",200,300,400",
+                    "2,500,\"\",600,700,800",
+                    "3,900,\"Io\"TDB\",1000,1100,1200"
+                  };
+            }
+          }
+        }
+      }
     }
-    File file = new File(CSV_FILE);
-    if (file.exists()) {
-      file.delete();
-    }
-  }
-
-  private boolean generateTestCSV() {
-    String[] csvText = {
-      "Time,root.fit.d1.s1,root.fit.d1.s2,root.fit.d2.s1,root.fit.d2.s3,root.fit.p.s1",
-      "1,100,'hello',200,300,400",
-      "2,500,'',600,700,800",
-      "3,900,'Io\"TDB',1000,1100,1200"
-    };
     BufferedWriter writer;
     try {
       writer = new BufferedWriter(new FileWriter(CSV_FILE));
@@ -245,91 +397,5 @@ public class ImportCsvTestIT extends AbstractScript {
       System.out.println("failed to create test csv");
     }
     return false;
-  }
-
-  private boolean generateBigCsvFile() {
-    List<String> csvText = new ArrayList<>();
-    csvText.add("Time,root.fit.d1.s1,root.fit.d1.s2,root.fit.d2.s1");
-    for (int i = 0; i < 25000; i++) {
-      csvText.add(i + "," + i + "," + i + "," + i);
-    }
-    BufferedWriter writer;
-    try {
-      writer = new BufferedWriter(new FileWriter(CSV_FILE));
-      writer.write("");
-      for (String s : csvText) {
-        writer.write(s);
-        writer.newLine();
-      }
-      writer.flush();
-      writer.close();
-      return true;
-    } catch (IOException e) {
-      System.out.println("failed to create test csv");
-    }
-    return false;
-  }
-
-  private boolean generateHeaderTestCSV() {
-    String[] csvText = {
-      "Time,root.fit.d1.\"s1\",root.fit.d1.s2,root.fit.d2.s1,root.fit.d2.s3,root.fit.p.s1"
-    };
-    BufferedWriter writer;
-    try {
-      writer = new BufferedWriter(new FileWriter(CSV_FILE));
-      writer.write("");
-      for (String s : csvText) {
-        writer.write(s);
-        writer.newLine();
-      }
-      writer.flush();
-      writer.close();
-      return true;
-    } catch (IOException e) {
-      System.out.println("failed to create test csv");
-    }
-    return false;
-  }
-
-  @Override
-  protected void testOnWindows(String[] output) throws IOException {
-    String dir = getCliPath();
-    ProcessBuilder builder =
-        new ProcessBuilder(
-            "cmd.exe",
-            "/c",
-            dir + File.separator + "tools" + File.separator + "import-csv.bat",
-            "-h",
-            "127.0.0.1",
-            "-p",
-            "6667",
-            "-u",
-            "root",
-            "-pw",
-            "root",
-            "-f",
-            CSV_FILE);
-    testOutput(builder, output);
-  }
-
-  @Override
-  protected void testOnUnix(String[] output) throws IOException {
-
-    String dir = getCliPath();
-    ProcessBuilder builder =
-        new ProcessBuilder(
-            "sh",
-            dir + File.separator + "tools" + File.separator + "import-csv.sh",
-            "-h",
-            "127.0.0.1",
-            "-p",
-            "6667",
-            "-u",
-            "root",
-            "-pw",
-            "root",
-            "-f",
-            CSV_FILE);
-    testOutput(builder, output);
   }
 }

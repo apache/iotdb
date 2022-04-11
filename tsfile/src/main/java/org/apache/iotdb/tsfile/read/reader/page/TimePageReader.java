@@ -25,6 +25,7 @@ import org.apache.iotdb.tsfile.read.common.TimeRange;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 
 public class TimePageReader {
@@ -52,13 +53,37 @@ public class TimePageReader {
     this.timeBuffer = pageData;
   }
 
-  public long[] nexTimeBatch() throws IOException {
+  public boolean hasNextTime() throws IOException {
+    return timeDecoder.hasNext(timeBuffer);
+  }
+
+  public long nextTime() {
+    return timeDecoder.readLong(timeBuffer);
+  }
+
+  public long[] nextTimeBatch() throws IOException {
     long[] timeBatch = new long[(int) pageHeader.getStatistics().getCount()];
     int index = 0;
     while (timeDecoder.hasNext(timeBuffer)) {
       timeBatch[index++] = timeDecoder.readLong(timeBuffer);
     }
     return timeBatch;
+  }
+
+  /**
+   * In case that we use sequence read, and the page doesn't have statistics, so we won't know time
+   * array's length at first
+   */
+  public long[] getNextTimeBatch() throws IOException {
+    if (pageHeader.getStatistics() != null) {
+      return nextTimeBatch();
+    } else {
+      List<Long> timeList = new ArrayList<>();
+      while (timeDecoder.hasNext(timeBuffer)) {
+        timeList.add(timeDecoder.readLong(timeBuffer));
+      }
+      return timeList.stream().mapToLong(t -> t).toArray();
+    }
   }
 
   public TimeStatistics getStatistics() {

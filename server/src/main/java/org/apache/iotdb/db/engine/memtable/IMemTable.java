@@ -18,14 +18,20 @@
  */
 package org.apache.iotdb.db.engine.memtable;
 
+import org.apache.iotdb.db.engine.flush.FlushStatus;
+import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.db.wal.buffer.WALEntryValue;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import java.io.IOException;
@@ -40,13 +46,28 @@ import java.util.Map;
  * i.e., Writing and querying operations must already have gotten writeLock and readLock
  * respectively.<br>
  */
-public interface IMemTable {
+public interface IMemTable extends WALEntryValue {
 
-  Map<String, Map<String, IWritableMemChunk>> getMemTableMap();
+  Map<IDeviceID, IWritableMemChunkGroup> getMemTableMap();
 
-  void write(String deviceId, IMeasurementSchema schema, long insertTime, Object objectValue);
+  void write(
+      IDeviceID deviceId,
+      List<IMeasurementSchema> schemaList,
+      long insertTime,
+      Object[] objectValue);
 
+  void writeAlignedRow(
+      IDeviceID deviceId,
+      List<IMeasurementSchema> schemaList,
+      long insertTime,
+      Object[] objectValue);
+  /**
+   * write data in the range [start, end). Null value in each column values will be replaced by the
+   * subsequent non-null value, e.g., {1, null, 3, null, 5} will be {1, 3, 5, null, 5}
+   */
   void write(InsertTabletPlan insertTabletPlan, int start, int end);
+
+  void writeAlignedTablet(InsertTabletPlan insertTabletPlan, int start, int end);
 
   /** @return the number of points */
   long size();
@@ -56,6 +77,9 @@ public interface IMemTable {
 
   /** only used when mem control enabled */
   void addTVListRamCost(long cost);
+
+  /** only used when mem control enabled */
+  void releaseTVListRamCost(long cost);
 
   /** only used when mem control enabled */
   long getTVListsRamCost();
@@ -71,18 +95,42 @@ public interface IMemTable {
 
   long getTotalPointsNum();
 
+  /**
+   * insert into this memtable
+   *
+   * @param insertRowPlan insertRowPlan
+   */
   void insert(InsertRowPlan insertRowPlan);
 
-  /** [start, end) */
+  void insertAlignedRow(InsertRowPlan insertRowPlan);
+
+  void insert(InsertRowNode insertRowNode);
+
+  void insertAlignedRow(InsertRowNode insertRowNode);
+
+  /**
+   * insert tablet into this memtable. The rows to be inserted are in the range [start, end). Null
+   * value in each column values will be replaced by the subsequent non-null value, e.g., {1, null,
+   * 3, null, 5} will be {1, 3, 5, null, 5}
+   *
+   * @param insertTabletPlan insertTabletPlan
+   * @param start included
+   * @param end excluded
+   */
   void insertTablet(InsertTabletPlan insertTabletPlan, int start, int end)
       throws WriteProcessException;
 
+  void insertAlignedTablet(InsertTabletPlan insertTabletPlan, int start, int end)
+      throws WriteProcessException;
+
+  void insertTablet(InsertTabletNode insertTabletNode, int start, int end)
+      throws WriteProcessException;
+
+  void insertAlignedTablet(InsertTabletNode insertTabletNode, int start, int end)
+      throws WriteProcessException;
+
   ReadOnlyMemChunk query(
-      String deviceId,
-      String measurement,
-      IMeasurementSchema schema,
-      long timeLowerBound,
-      List<TimeRange> deletionList)
+      PartialPath fullPath, long ttlLowerBound, List<Pair<Modification, IMemTable>> modsToMemtable)
       throws IOException, QueryProcessException, MetadataException;
 
   /** putBack all the memory resources. */
@@ -114,18 +162,30 @@ public interface IMemTable {
 
   boolean shouldFlush();
 
+  /** release resource of this memtable */
   void release();
 
   /** must guarantee the device exists in the work memtable only used when mem control enabled */
-  boolean checkIfChunkDoesNotExist(String deviceId, String measurement);
+  boolean checkIfChunkDoesNotExist(IDeviceID deviceId, String measurement);
 
   /** only used when mem control enabled */
-  int getCurrentChunkPointNum(String deviceId, String measurement);
+  long getCurrentTVListSize(IDeviceID deviceId, String measurement);
 
   /** only used when mem control enabled */
   void addTextDataSize(long textDataIncrement);
 
+  /** only used when mem control enabled */
+  void releaseTextDataSize(long textDataDecrement);
+
   long getMaxPlanIndex();
 
   long getMinPlanIndex();
+
+  int getMemTableId();
+
+  long getCreatedTime();
+
+  FlushStatus getFlushStatus();
+
+  void setFlushStatus(FlushStatus flushStatus);
 }

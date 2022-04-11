@@ -19,15 +19,14 @@
 
 package org.apache.iotdb.cluster.log.applier;
 
+import org.apache.iotdb.cluster.exception.ChangeMembershipException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
+import org.apache.iotdb.cluster.log.logtypes.EmptyContentLog;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
 import org.apache.iotdb.cluster.log.logtypes.RemoveNodeLog;
-import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
-import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,22 +47,44 @@ public class MetaLogApplier extends BaseApplier {
     try {
       logger.debug("MetaMember [{}] starts applying Log {}", metaGroupMember.getName(), log);
       if (log instanceof AddNodeLog) {
-        AddNodeLog addNodeLog = (AddNodeLog) log;
-        Node newNode = addNodeLog.getNewNode();
-        member.applyAddNode(newNode);
+        applyAddNodeLog((AddNodeLog) log);
       } else if (log instanceof PhysicalPlanLog) {
         applyPhysicalPlan(((PhysicalPlanLog) log).getPlan(), null);
       } else if (log instanceof RemoveNodeLog) {
-        RemoveNodeLog removeNodeLog = ((RemoveNodeLog) log);
-        member.applyRemoveNode(removeNodeLog.getRemovedNode());
+        applyRemoveNodeLog((RemoveNodeLog) log);
+      } else if (log instanceof EmptyContentLog) {
+        // Do nothing
       } else {
         logger.error("Unsupported log: {} {}", log.getClass().getName(), log);
       }
-    } catch (StorageEngineException | StorageGroupNotSetException | QueryProcessException e) {
+    } catch (Exception e) {
       logger.debug("Exception occurred when executing {}", log, e);
       log.setException(e);
     } finally {
       log.setApplied(true);
     }
+  }
+
+  private void applyAddNodeLog(AddNodeLog log) throws ChangeMembershipException {
+    if (!metaGroupMember.getPartitionTable().deserialize(log.getPartitionTable())) {
+      logger.info("Ignore previous change membership log");
+      // ignore previous change membership log
+      return;
+    }
+    if (metaGroupMember.getCharacter() == NodeCharacter.LEADER) {
+      metaGroupMember.getCoordinator().sendLogToAllDataGroups(log);
+    }
+    member.applyAddNode(log);
+  }
+
+  private void applyRemoveNodeLog(RemoveNodeLog log) throws ChangeMembershipException {
+    if (!metaGroupMember.getPartitionTable().deserialize(log.getPartitionTable())) {
+      // ignore previous change membership log
+      return;
+    }
+    if (metaGroupMember.getCharacter() == NodeCharacter.LEADER) {
+      metaGroupMember.getCoordinator().sendLogToAllDataGroups(log);
+    }
+    member.applyRemoveNode(log);
   }
 }

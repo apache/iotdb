@@ -20,21 +20,21 @@
 package org.apache.iotdb.cluster.partition.slot;
 
 import org.apache.iotdb.cluster.partition.NodeAdditionResult;
-import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 
 import java.util.Map;
 import java.util.Set;
 
 public class SlotNodeAdditionResult extends NodeAdditionResult {
 
-  /** What slots will the old data groups transfer to the new one. */
-  private Map<Node, Set<Integer>> lostSlots;
+  /** which slots will the old data groups transfer to the new one. */
+  private Map<RaftNode, Set<Integer>> lostSlots;
 
-  public Map<Node, Set<Integer>> getLostSlots() {
+  public Map<RaftNode, Set<Integer>> getLostSlots() {
     return lostSlots;
   }
 
-  public void setLostSlots(Map<Node, Set<Integer>> lostSlots) {
+  public void setLostSlots(Map<RaftNode, Set<Integer>> lostSlots) {
     this.lostSlots = lostSlots;
   }
 }

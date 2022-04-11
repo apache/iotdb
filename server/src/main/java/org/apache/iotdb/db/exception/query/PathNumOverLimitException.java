@@ -19,19 +19,14 @@
 
 package org.apache.iotdb.db.exception.query;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+
 public class PathNumOverLimitException extends QueryProcessException {
 
-  public PathNumOverLimitException(long maxDeduplicatedPathNum, long deduplicatedPathNum) {
+  public PathNumOverLimitException() {
     super(
         String.format(
-            "Too many paths in one query! Currently allowed max deduplicated path number is %d, this query contains %d deduplicated path. Please use slimit to choose what you real want or adjust max_deduplicated_path_num in iotdb-engine.properties.",
-            maxDeduplicatedPathNum, deduplicatedPathNum));
-  }
-
-  public PathNumOverLimitException(long maxDeduplicatedPathNum) {
-    super(
-        String.format(
-            "Too many paths in one query! Currently allowed max deduplicated path number is %d, this query contains unknown deduplicated path. Please use slimit to choose what you real want or adjust max_deduplicated_path_num in iotdb-engine.properties.",
-            maxDeduplicatedPathNum));
+            "Too many paths in one query! Currently allowed max deduplicated path number is %d. Please use slimit or adjust max_deduplicated_path_num in iotdb-engine.properties.",
+            IoTDBDescriptor.getInstance().getConfig().getMaxQueryDeduplicatedPathNum()));
   }
 }

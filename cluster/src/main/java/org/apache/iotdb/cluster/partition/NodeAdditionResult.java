@@ -19,16 +19,19 @@
 
 package org.apache.iotdb.cluster.partition;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class NodeAdditionResult {
 
-  /** A new data group headed by the new node. */
-  private PartitionGroup newGroup;
+  /** new data groups(multi raft) headed by the new node. */
+  private final List<PartitionGroup> newGroupList = new ArrayList<>();
 
-  public PartitionGroup getNewGroup() {
-    return newGroup;
+  public List<PartitionGroup> getNewGroupList() {
+    return newGroupList;
   }
 
-  public void setNewGroup(PartitionGroup newGroup) {
-    this.newGroup = newGroup;
+  public void addNewGroup(PartitionGroup newGroup) {
+    this.newGroupList.add(newGroup);
   }
 }

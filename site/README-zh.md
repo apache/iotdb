@@ -29,7 +29,7 @@
 
 ## 如何建立
 
-跑`mvn compile -DskipTests  -P compile-site -P download-site` 
+跑`mvn compile -DskipTests  -P compile-site -P download-site`
 
 ## 如何调试
 
@@ -55,6 +55,13 @@ npm run build
 Apache ID和密码是必须的
 
 或直接运行`mvn compile scm-publish:publish-scm -Dusername={你的Apache ID} -Dpassword={你的Apache账号密码}  -P compile-site`
+
+## 上传并预览
+
+## Preview your website
+
+在上传命令中增加 `-Dscm-branch=asf-staging`, 则网站会被发布到 https://iotdb.staged.apache.org， 用于预览。
+
 
 ## 常见问题
 

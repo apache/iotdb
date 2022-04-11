@@ -79,7 +79,7 @@ public abstract class UDTFSelectK implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector collector)
-      throws UDFInputSeriesDataTypeNotValidException {
+      throws UDFInputSeriesDataTypeNotValidException, IOException {
     switch (dataType) {
       case INT32:
         transformInt(row.getTime(), row.getInt(0));

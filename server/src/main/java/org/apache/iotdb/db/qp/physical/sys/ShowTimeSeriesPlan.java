@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.qp.physical.sys;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -56,8 +56,8 @@ public class ShowTimeSeriesPlan extends ShowPlan {
     this.orderByHeat = orderByHeat;
   }
 
-  public ShowTimeSeriesPlan(PartialPath path, int limit, int offset, int fetchSize) {
-    super(ShowContentType.TIMESERIES, path, limit, offset, fetchSize);
+  public ShowTimeSeriesPlan(PartialPath path, int limit, int offset) {
+    super(ShowContentType.TIMESERIES, path, limit, offset);
   }
 
   public ShowTimeSeriesPlan() {

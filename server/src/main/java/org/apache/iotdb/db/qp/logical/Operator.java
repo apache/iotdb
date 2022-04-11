@@ -18,23 +18,30 @@
  */
 package org.apache.iotdb.db.qp.logical;
 
+import org.apache.iotdb.db.exception.query.LogicalOperatorException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
 /** This class is a superclass of all operator. */
 public abstract class Operator {
 
   // operator type in int format
   protected int tokenIntType;
-  // operator type in String format
-  protected String tokenName;
   // flag of "explain"
   protected boolean isDebug;
 
   protected OperatorType operatorType = OperatorType.NULL;
 
+  /**
+   * Since IoTDB v0.13, all DDL and DML use patternMatch as default. Before IoTDB v0.13, all DDL and
+   * DML use prefixMatch.
+   */
+  protected boolean isPrefixMatchPath = false;
+
   protected Operator(int tokenIntType) {
     this.tokenIntType = tokenIntType;
-    this.tokenName = SQLConstant.tokenNames.get(tokenIntType);
     this.isDebug = false;
   }
 
@@ -50,10 +57,6 @@ public abstract class Operator {
     return tokenIntType;
   }
 
-  public String getTokenName() {
-    return tokenName;
-  }
-
   public void setOperatorType(OperatorType operatorType) {
     this.operatorType = operatorType;
   }
@@ -66,34 +69,30 @@ public abstract class Operator {
     isDebug = debug;
   }
 
+  public boolean isPrefixMatchPath() {
+    return isPrefixMatchPath;
+  }
+
+  public void setPrefixMatchPath(boolean prefixMatchPath) {
+    isPrefixMatchPath = prefixMatchPath;
+  }
+
   @Override
   public String toString() {
-    return tokenName;
+    return SQLConstant.tokenNames.get(tokenIntType);
+  }
+
+  public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
+      throws QueryProcessException {
+    throw new LogicalOperatorException(operatorType.toString(), "");
   }
 
   /** If you want to add new OperatorType, you must add it in the last. */
   public enum OperatorType {
-    SFW,
-    FILTER,
-    GROUPBYTIME,
-    SELECT,
     NULL,
-    INSERT,
-    BATCHINSERT,
-    DELETE,
-    BASIC_FUNC,
-    IN,
-    QUERY,
-    AGGREGATION,
+
     AUTHOR,
-    FROM,
-    FUNC,
-    LOADDATA,
-    METADATA,
-    FILL,
-    SET_STORAGE_GROUP,
-    CREATE_TIMESERIES,
-    DELETE_TIMESERIES,
+    LOAD_DATA,
     CREATE_USER,
     DELETE_USER,
     MODIFY_PASSWORD,
@@ -113,49 +112,88 @@ public abstract class Operator {
     LIST_ROLE_USERS,
     GRANT_WATERMARK_EMBEDDING,
     REVOKE_WATERMARK_EMBEDDING,
-    TTL,
+
+    SET_STORAGE_GROUP,
     DELETE_STORAGE_GROUP,
-    LOAD_CONFIGURATION,
-    SHOW,
-    LOAD_FILES,
-    REMOVE_FILE,
-    MOVE_FILE,
-    LAST,
-    GROUP_BY_FILL,
-    ALTER_TIMESERIES,
-    FLUSH,
-    MERGE,
-    FULL_MERGE,
-    CLEAR_CACHE,
-    SHOW_MERGE_STATUS,
-    CREATE_SCHEMA_SNAPSHOT,
-    TRACING,
-    DELETE_PARTITION,
-    UDAF,
-    UDTF,
-    CREATE_FUNCTION,
-    DROP_FUNCTION,
+    CREATE_TIMESERIES,
     CREATE_ALIGNED_TIMESERIES,
     CREATE_MULTI_TIMESERIES,
-    AUTO_CREATE_DEVICE_MNODE,
+    DELETE_TIMESERIES,
+    ALTER_TIMESERIES,
+    CHANGE_ALIAS,
+    CHANGE_TAG_OFFSET,
+
+    INSERT,
+    BATCH_INSERT,
+    BATCH_INSERT_ROWS,
+    BATCH_INSERT_ONE_DEVICE,
+    MULTI_BATCH_INSERT,
+
+    DELETE,
+
+    QUERY,
+    LAST,
+    GROUP_BY_TIME,
+    GROUP_BY_FILL,
+    AGGREGATION,
+    FILL,
+    UDAF,
+    UDTF,
+
+    SELECT_INTO,
+
+    CREATE_FUNCTION,
+    DROP_FUNCTION,
+
+    SHOW,
+    SHOW_MERGE_STATUS,
+
     CREATE_INDEX,
     DROP_INDEX,
     QUERY_INDEX,
-    KILL,
-    CHANGE_TAG_OFFSET,
-    CHANGE_ALIAS,
-    MNODE,
-    MEASUREMENT_MNODE,
-    STORAGE_GROUP_MNODE,
-    BATCH_INSERT_ONE_DEVICE,
-    MULTI_BATCH_INSERT,
-    BATCH_INSERT_ROWS,
+
+    LOAD_FILES,
+    REMOVE_FILE,
+    UNLOAD_FILE,
+
     CREATE_TRIGGER,
     DROP_TRIGGER,
     START_TRIGGER,
     STOP_TRIGGER,
+
     CREATE_TEMPLATE,
-    SET_DEVICE_TEMPLATE,
-    SET_USING_DEVICE_TEMPLATE,
+    SET_TEMPLATE,
+    ACTIVATE_TEMPLATE,
+
+    MERGE,
+    FULL_MERGE,
+
+    MNODE,
+    MEASUREMENT_MNODE,
+    STORAGE_GROUP_MNODE,
+    AUTO_CREATE_DEVICE_MNODE,
+
+    TTL,
+    KILL,
+    FLUSH,
+    TRACING,
+    CLEAR_CACHE,
+    DELETE_PARTITION,
+    LOAD_CONFIGURATION,
+    CREATE_SCHEMA_SNAPSHOT,
+
+    CREATE_CONTINUOUS_QUERY,
+    DROP_CONTINUOUS_QUERY,
+    SHOW_CONTINUOUS_QUERIES,
+    SET_SYSTEM_MODE,
+
+    SETTLE,
+
+    UNSET_TEMPLATE,
+    PRUNE_TEMPLATE,
+    APPEND_TEMPLATE,
+    DROP_TEMPLATE,
+
+    SHOW_QUERY_RESOURCE
   }
 }

@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.tsfile.encoding.encoder;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -68,6 +67,12 @@ public abstract class TSEncodingBuilder {
         return new Regular();
       case GORILLA:
         return new GorillaV2();
+      case DICTIONARY:
+        return new Dictionary();
+      case FREQ:
+        return new Freq();
+      case ZIGZAG:
+        return new Zigzag();
       default:
         throw new UnsupportedOperationException(type.toString());
     }
@@ -118,6 +123,68 @@ public abstract class TSEncodingBuilder {
           logger.warn(
               "cannot set max string length to negative value, replaced with default value:{}",
               maxStringLength);
+        }
+      }
+    }
+  }
+
+  /** for INT32, INT64, FLOAT, DOUBLE. */
+  public static class Freq extends TSEncodingBuilder {
+
+    private double snr = TSFileDescriptor.getInstance().getConfig().getFreqEncodingSNR();
+    private int blockSize = TSFileDescriptor.getInstance().getConfig().getFreqEncodingBlockSize();
+
+    @Override
+    public Encoder getEncoder(TSDataType type) {
+      switch (type) {
+        case INT32:
+        case INT64:
+        case FLOAT:
+        case DOUBLE:
+          return new FreqEncoder(blockSize, snr);
+        default:
+          throw new UnSupportedDataTypeException("FREQ doesn't support data type: " + type);
+      }
+    }
+
+    @Override
+    public void initFromProps(Map<String, String> props) {
+      // set SNR from initialized map or default value if not set
+      if (props == null || !props.containsKey(FreqEncoder.FREQ_ENCODING_SNR)) {
+        snr = TSFileDescriptor.getInstance().getConfig().getFreqEncodingSNR();
+      } else {
+        try {
+          snr = Double.parseDouble(props.get(FreqEncoder.FREQ_ENCODING_SNR));
+        } catch (NumberFormatException e) {
+          logger.warn(
+              "The format of FREQ encoding SNR {} is not correct."
+                  + " Using default FREQ encoding SNR.",
+              props.get(FreqEncoder.FREQ_ENCODING_SNR));
+        }
+        if (snr < 0) {
+          snr = TSFileDescriptor.getInstance().getConfig().getFreqEncodingSNR();
+          logger.warn(
+              "cannot set FREQ encoding SNR to negative value, replaced with default value:{}",
+              snr);
+        }
+      }
+      // set block size from initialized map or default value if not set
+      if (props == null || !props.containsKey(FreqEncoder.FREQ_ENCODING_BLOCK_SIZE)) {
+        blockSize = TSFileDescriptor.getInstance().getConfig().getFreqEncodingBlockSize();
+      } else {
+        try {
+          blockSize = Integer.parseInt(props.get(FreqEncoder.FREQ_ENCODING_BLOCK_SIZE));
+        } catch (NumberFormatException e) {
+          logger.warn(
+              "The format of FREQ encoding block size {} is not correct."
+                  + " Using default FREQ encoding block size.",
+              props.get(FreqEncoder.FREQ_ENCODING_BLOCK_SIZE));
+        }
+        if (blockSize < 0) {
+          blockSize = TSFileDescriptor.getInstance().getConfig().getFreqEncodingBlockSize();
+          logger.warn(
+              "cannot set FREQ encoding block size to negative value, replaced with default value:{}",
+              blockSize);
         }
       }
     }
@@ -294,6 +361,42 @@ public abstract class TSEncodingBuilder {
     @Override
     public void initFromProps(Map<String, String> props) {
       // allowed do nothing
+    }
+  }
+
+  public static class Dictionary extends TSEncodingBuilder {
+
+    @Override
+    public Encoder getEncoder(TSDataType type) {
+      if (type == TSDataType.TEXT) {
+        return new DictionaryEncoder();
+      }
+      throw new UnSupportedDataTypeException("DICTIONARY doesn't support data type: " + type);
+    }
+
+    @Override
+    public void initFromProps(Map<String, String> props) {
+      // do nothing
+    }
+  }
+
+  public static class Zigzag extends TSEncodingBuilder {
+
+    @Override
+    public Encoder getEncoder(TSDataType type) {
+      switch (type) {
+        case INT32:
+          return new IntZigzagEncoder();
+        case INT64:
+          return new LongZigzagEncoder();
+        default:
+          throw new UnSupportedDataTypeException("GORILLA doesn't support data type: " + type);
+      }
+    }
+
+    @Override
+    public void initFromProps(Map<String, String> props) {
+      // do nothing
     }
   }
 }

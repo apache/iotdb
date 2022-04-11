@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.qp.physical.sys;
 
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
@@ -32,22 +32,37 @@ public class OperateFilePlan extends PhysicalPlan {
   private File targetDir;
   private boolean autoCreateSchema;
   private int sgLevel;
+  private boolean verifyMetadata;
 
   public OperateFilePlan(File file, OperatorType operatorType) {
-    super(false, operatorType);
+    super(operatorType);
     this.file = file;
   }
 
+  /**
+   * used for generate loading tsfile physical plan.
+   *
+   * @param file the loading file
+   * @param operatorType the operator type
+   * @param autoCreateSchema auto create schema if needed
+   * @param sgLevel the level of sg
+   * @param verifyMetadata metadata check if needed
+   */
   public OperateFilePlan(
-      File file, OperatorType operatorType, boolean autoCreateSchema, int sgLevel) {
-    super(false, operatorType);
+      File file,
+      OperatorType operatorType,
+      boolean autoCreateSchema,
+      int sgLevel,
+      boolean verifyMetadata) {
+    super(operatorType);
     this.file = file;
     this.autoCreateSchema = autoCreateSchema;
     this.sgLevel = sgLevel;
+    this.verifyMetadata = verifyMetadata;
   }
 
   public OperateFilePlan(File file, File targetDir, OperatorType operatorType) {
-    super(false, operatorType);
+    super(operatorType);
     this.file = file;
     this.targetDir = targetDir;
   }
@@ -73,6 +88,10 @@ public class OperateFilePlan extends PhysicalPlan {
     return sgLevel;
   }
 
+  public boolean getVerifyMetadata() {
+    return verifyMetadata;
+  }
+
   @Override
   public String toString() {
     return "OperateFilePlan{"
@@ -84,6 +103,8 @@ public class OperateFilePlan extends PhysicalPlan {
         + autoCreateSchema
         + ", sgLevel="
         + sgLevel
+        + ", verify="
+        + verifyMetadata
         + ", operatorType="
         + getOperatorType()
         + '}';

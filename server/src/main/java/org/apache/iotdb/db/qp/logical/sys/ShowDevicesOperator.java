@@ -19,7 +19,11 @@
  */
 package org.apache.iotdb.db.qp.logical.sys;
 
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
 public class ShowDevicesOperator extends ShowOperator {
 
@@ -59,5 +63,11 @@ public class ShowDevicesOperator extends ShowOperator {
 
   public boolean hasSgCol() {
     return hasSgCol;
+  }
+
+  @Override
+  public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
+      throws QueryProcessException {
+    return new ShowDevicesPlan(path, limit, offset, hasSgCol);
   }
 }

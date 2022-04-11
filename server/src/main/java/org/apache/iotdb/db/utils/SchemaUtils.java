@@ -23,8 +23,10 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -66,6 +68,8 @@ public class SchemaUtils {
     intSet.add(TSEncoding.RLE);
     intSet.add(TSEncoding.TS_2DIFF);
     intSet.add(TSEncoding.GORILLA);
+    intSet.add(TSEncoding.ZIGZAG);
+    intSet.add(TSEncoding.FREQ);
     schemaChecker.put(TSDataType.INT32, intSet);
     schemaChecker.put(TSDataType.INT64, intSet);
 
@@ -75,11 +79,13 @@ public class SchemaUtils {
     floatSet.add(TSEncoding.TS_2DIFF);
     floatSet.add(TSEncoding.GORILLA_V1);
     floatSet.add(TSEncoding.GORILLA);
+    floatSet.add(TSEncoding.FREQ);
     schemaChecker.put(TSDataType.FLOAT, floatSet);
     schemaChecker.put(TSDataType.DOUBLE, floatSet);
 
     Set<TSEncoding> textSet = new HashSet<>();
     textSet.add(TSEncoding.PLAIN);
+    textSet.add(TSEncoding.DICTIONARY);
     schemaChecker.put(TSDataType.TEXT, textSet);
   }
 
@@ -92,7 +98,7 @@ public class SchemaUtils {
       TSDataType dataType = schema.getType();
       TSEncoding encoding = schema.getEncodingType();
       CompressionType compressionType = schema.getCompressor();
-      IoTDB.metaManager.createTimeseries(
+      IoTDB.schemaProcessor.createTimeseries(
           path, dataType, encoding, compressionType, Collections.emptyMap());
     } catch (PathAlreadyExistException ignored) {
       // ignore added timeseries
@@ -118,34 +124,15 @@ public class SchemaUtils {
     IMeasurementSchema measurementSchema =
         new MeasurementSchema(path.getMeasurement(), dataType, encoding, compressionType);
 
-    MeasurementMNode measurementMNode =
-        new MeasurementMNode(null, path.getMeasurement(), measurementSchema, null);
-    IoTDB.metaManager.cacheMeta(path, measurementMNode, true);
+    IMeasurementMNode measurementMNode =
+        MeasurementMNode.getMeasurementMNode(null, path.getMeasurement(), measurementSchema, null);
+    IoTDB.schemaProcessor.cacheMeta(path, measurementMNode, true);
   }
 
-  public static List<TSDataType> getSeriesTypesByPaths(Collection<PartialPath> paths)
-      throws MetadataException {
+  public static List<TSDataType> getSeriesTypesByPaths(Collection<? extends PartialPath> paths) {
     List<TSDataType> dataTypes = new ArrayList<>();
     for (PartialPath path : paths) {
-      dataTypes.add(path == null ? null : IoTDB.metaManager.getSeriesType(path));
-    }
-    return dataTypes;
-  }
-
-  /**
-   * @param paths time series paths
-   * @param aggregation aggregation function, may be null
-   * @return The data type of aggregation or (data type of paths if aggregation is null)
-   */
-  public static List<TSDataType> getSeriesTypesByPaths(
-      Collection<PartialPath> paths, String aggregation) throws MetadataException {
-    TSDataType dataType = getAggregationType(aggregation);
-    if (dataType != null) {
-      return Collections.nCopies(paths.size(), dataType);
-    }
-    List<TSDataType> dataTypes = new ArrayList<>();
-    for (PartialPath path : paths) {
-      dataTypes.add(path == null ? null : IoTDB.metaManager.getSeriesType(path));
+      dataTypes.add(path == null ? null : path.getSeriesType());
     }
     return dataTypes;
   }
@@ -168,12 +155,8 @@ public class SchemaUtils {
     return measurementDataType;
   }
 
-  public static TSDataType getSeriesTypeByPath(PartialPath path) throws MetadataException {
-    return IoTDB.metaManager.getSeriesType(path);
-  }
-
   public static List<TSDataType> getSeriesTypesByPaths(
-      List<PartialPath> paths, List<String> aggregations) throws MetadataException {
+      List<MeasurementPath> paths, List<String> aggregations) {
     List<TSDataType> tsDataTypes = new ArrayList<>();
     for (int i = 0; i < paths.size(); i++) {
       String aggrStr = aggregations != null ? aggregations.get(i) : null;
@@ -182,10 +165,19 @@ public class SchemaUtils {
         tsDataTypes.add(dataType);
       } else {
         PartialPath path = paths.get(i);
-        tsDataTypes.add(path == null ? null : IoTDB.metaManager.getSeriesType(path));
+        tsDataTypes.add(path == null ? null : path.getSeriesType());
       }
     }
     return tsDataTypes;
+  }
+
+  public static TSDataType getSeriesTypeByPath(PartialPath path, String aggregation) {
+    TSDataType dataType = getAggregationType(aggregation);
+    if (dataType != null) {
+      return dataType;
+    } else {
+      return path.getSeriesType();
+    }
   }
 
   /**

@@ -20,6 +20,7 @@ package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.engine.upgrade.UpgradeCheckStatus;
 import org.apache.iotdb.db.engine.upgrade.UpgradeLog;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -118,20 +119,10 @@ public class UpgradeUtils {
       if (fsFactory.getFile(partitionDir, newModsFile.getName()).exists()) {
         upgradedResource.getModFile();
       }
-      upgradedResource.setClosed(true);
+      upgradedResource.setStatus(TsFileResourceStatus.CLOSED);
       upgradedResource.serialize();
       // delete generated temp resource file
       Files.delete(tempResourceFile.toPath());
-      // delete tmp partition folder when it is empty
-      File tmpPartitionDir = upgradedFile.getParentFile();
-      if (tmpPartitionDir.isDirectory() && tmpPartitionDir.listFiles().length == 0) {
-        Files.delete(tmpPartitionDir.toPath());
-      }
-      // delete upgrade folder when it is empty
-      File upgradeDir = tmpPartitionDir.getParentFile();
-      if (upgradeDir.isDirectory() && upgradeDir.listFiles().length == 0) {
-        Files.delete(upgradeDir.toPath());
-      }
     }
   }
 

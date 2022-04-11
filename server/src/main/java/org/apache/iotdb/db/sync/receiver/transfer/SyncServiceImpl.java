@@ -18,9 +18,8 @@
  */
 package org.apache.iotdb.db.sync.receiver.transfer;
 
-import org.apache.iotdb.db.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -28,6 +27,7 @@ import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.SyncDeviceOwnerConflictException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
+import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.sync.conf.SyncConstant;
@@ -36,11 +36,11 @@ import org.apache.iotdb.db.sync.receiver.load.FileLoaderManager;
 import org.apache.iotdb.db.sync.receiver.load.IFileLoader;
 import org.apache.iotdb.db.sync.receiver.recover.SyncReceiverLogAnalyzer;
 import org.apache.iotdb.db.sync.receiver.recover.SyncReceiverLogger;
-import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.SyncUtils;
 import org.apache.iotdb.service.sync.thrift.ConfirmInfo;
 import org.apache.iotdb.service.sync.thrift.SyncService;
 import org.apache.iotdb.service.sync.thrift.SyncStatus;
+import org.apache.iotdb.tsfile.utils.FilePathUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -78,11 +78,11 @@ public class SyncServiceImpl implements SyncService.Iface {
   public SyncStatus check(ConfirmInfo info) {
     String ipAddress = info.address, uuid = info.uuid;
     Thread.currentThread().setName(ThreadName.SYNC_SERVER.getName());
-    if (!info.version.equals(IoTDBConstant.VERSION)) {
+    if (!config.getIoTDBMajorVersion(info.version).equals(config.getIoTDBMajorVersion())) {
       return getErrorResult(
           String.format(
               "Version mismatch: the sender <%s>, the receiver <%s>",
-              info.version, IoTDBConstant.VERSION));
+              info.version, config.getIoTDBVersion()));
     }
     if (info.partitionInterval
         != IoTDBDescriptor.getInstance().getConfig().getPartitionInterval()) {
@@ -164,33 +164,42 @@ public class SyncServiceImpl implements SyncService.Iface {
   }
 
   @Override
-  public SyncStatus syncDeletedFileName(String fileName) {
+  public SyncStatus syncDeletedFileName(String fileInfo) {
+    String filePath = currentSG.get() + File.separator + getFilePathByFileInfo(fileInfo);
     try {
-      syncLog
-          .get()
-          .finishSyncDeletedFileName(
-              new File(getSyncDataPath(), currentSG.get() + File.separatorChar + fileName));
+      syncLog.get().startSyncDeletedFilesName();
+      syncLog.get().finishSyncDeletedFileName(new File(getSyncDataPath(), filePath));
       FileLoaderManager.getInstance()
           .getFileLoader(senderName.get())
-          .addDeletedFileName(
-              new File(getSyncDataPath(), currentSG.get() + File.separatorChar + fileName));
+          .addDeletedFileName(new File(getSyncDataPath(), filePath));
     } catch (IOException e) {
       logger.error("Can not sync deleted file", e);
       return getErrorResult(
-          String.format("Can not sync deleted file %s because %s", fileName, e.getMessage()));
+          String.format("Can not sync deleted file %s because %s", filePath, e.getMessage()));
     }
     return getSuccessResult();
   }
 
+  private String getFilePathByFileInfo(String fileInfo) { // for different os
+    String filePath = "";
+    String[] fileInfos = fileInfo.split(SyncConstant.SYNC_DIR_NAME_SEPARATOR);
+    for (int i = 0; i < fileInfos.length - 1; i++) {
+      filePath += fileInfos[i] + File.separator;
+    }
+    return filePath + fileInfos[fileInfos.length - 1];
+  }
+
   @SuppressWarnings("squid:S2095") // Suppress unclosed resource warning
   @Override
-  public SyncStatus initSyncData(String filename) {
+  public SyncStatus initSyncData(String fileInfo) {
+    File file;
+    String filePath = fileInfo;
     try {
-      File file;
-      if (currentSG.get() == null) { // schema mlog.txt file
-        file = new File(getSyncDataPath(), filename);
+      if (fileInfo.equals(MetadataConstant.METADATA_LOG)) { // schema mlog.txt file
+        file = new File(getSyncDataPath(), filePath);
       } else {
-        file = new File(getSyncDataPath(), currentSG.get() + File.separatorChar + filename);
+        filePath = currentSG.get() + File.separator + getFilePathByFileInfo(fileInfo);
+        file = new File(getSyncDataPath(), filePath);
       }
       file.delete();
       currentFile.set(file);
@@ -204,10 +213,10 @@ public class SyncServiceImpl implements SyncService.Iface {
       syncLog.get().startSyncTsFiles();
       messageDigest.set(MessageDigest.getInstance(SyncConstant.MESSAGE_DIGIT_NAME));
     } catch (IOException | NoSuchAlgorithmException e) {
-      logger.error("Can not init sync resource for file {}", filename, e);
+      logger.error("Can not init sync resource for file {}", filePath, e);
       return getErrorResult(
           String.format(
-              "Can not init sync resource for file %s because %s", filename, e.getMessage()));
+              "Can not init sync resource for file %s because %s", filePath, e.getMessage()));
     }
     return getSuccessResult();
   }
@@ -290,7 +299,11 @@ public class SyncServiceImpl implements SyncService.Iface {
             if (plan == null) {
               continue;
             }
-            IoTDB.metaManager.operation(plan);
+            if (plan.getOperatorType() != Operator.OperatorType.CREATE_CONTINUOUS_QUERY
+                && plan.getOperatorType() != Operator.OperatorType.DROP_CONTINUOUS_QUERY
+                && plan.getOperatorType() != Operator.OperatorType.CHANGE_TAG_OFFSET) {
+              IoTDB.schemaProcessor.operation(plan);
+            }
           } catch (Exception e) {
             logger.error(
                 "Can not operate metadata operation {} for err:{}",

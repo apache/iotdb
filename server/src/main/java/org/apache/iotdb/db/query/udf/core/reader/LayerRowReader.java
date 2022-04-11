@@ -33,7 +33,10 @@ public interface LayerRowReader {
 
   TSDataType[] getDataTypes();
 
-  long currentTime();
+  long currentTime() throws IOException;
 
   Row currentRow();
+
+  /** whether current row fields are all null */
+  boolean isCurrentNull() throws IOException;
 }

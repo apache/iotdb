@@ -21,6 +21,11 @@ package org.apache.iotdb.cluster.server.handlers.caller;
 
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.RaftMember;
+import org.apache.iotdb.db.service.metrics.Metric;
+import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.Tag;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
@@ -32,6 +37,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.cluster.server.Response.RESPONSE_AGREE;
 import static org.apache.iotdb.cluster.server.Response.RESPONSE_LEADER_STILL_ONLINE;
+import static org.apache.iotdb.cluster.server.Response.RESPONSE_NODE_IS_NOT_IN_GROUP;
 
 /**
  * ElectionHandler checks the result from a voter and decides whether the election goes on, succeeds
@@ -72,6 +78,7 @@ public class ElectionHandler implements AsyncMethodCallback<Long> {
   @Override
   public void onComplete(Long resp) {
     long voterResp = resp;
+    String result = "fail";
     synchronized (raftMember.getTerm()) {
       if (terminated.get()) {
         // a voter has rejected this election, which means the term or the log id falls behind
@@ -97,6 +104,7 @@ public class ElectionHandler implements AsyncMethodCallback<Long> {
           terminated.set(true);
           raftMember.getTerm().notifyAll();
           raftMember.onElectionWins();
+          result = "win";
           logger.info("{}: Election {} is won", memberName, currTerm);
         }
         // still need more votes
@@ -104,6 +112,9 @@ public class ElectionHandler implements AsyncMethodCallback<Long> {
         if (voterResp < currTerm) {
           // the rejection from a node with a smaller term means the log of this node falls behind
           logger.info("{}: Election {} rejected: code {}", memberName, currTerm, voterResp);
+          onFail();
+        } else if (voterResp == RESPONSE_NODE_IS_NOT_IN_GROUP) {
+          logger.info("{}: This node has removed from the group", memberName);
           onFail();
         } else {
           // the election is rejected by a node with a bigger term, update current term to it
@@ -119,6 +130,18 @@ public class ElectionHandler implements AsyncMethodCallback<Long> {
           raftMember.getTerm().notifyAll();
         }
       }
+    }
+    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
+      MetricsService.getInstance()
+          .getMetricManager()
+          .count(
+              1,
+              Metric.CLUSTER_ELECT.toString(),
+              MetricLevel.IMPORTANT,
+              Tag.NAME.toString(),
+              raftMember.getThisNode().internalIp,
+              Tag.STATUS.toString(),
+              result);
     }
   }
 

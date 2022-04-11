@@ -29,14 +29,13 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
 import org.apache.iotdb.cluster.server.NodeCharacter;
-import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.handlers.caller.LogCatchUpHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.LogCatchUpInBatchHandler;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.cluster.utils.ClientUtils;
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.utils.TestOnly;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -53,24 +52,27 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class LogCatchUpTask implements Callable<Boolean> {
 
   // sending logs may take longer than normal communications
-  private static final long SEND_LOGS_WAIT_MS = RaftServer.getWriteOperationTimeoutMS();
+  private static final long SEND_LOGS_WAIT_MS = ClusterConstant.getWriteOperationTimeoutMS();
   private static final Logger logger = LoggerFactory.getLogger(LogCatchUpTask.class);
   Node node;
   RaftMember raftMember;
   private List<Log> logs;
   private boolean useBatch = ClusterDescriptor.getInstance().getConfig().isUseBatchInLogCatchUp();
   boolean abort = false;
+  private int raftId;
 
-  LogCatchUpTask(List<Log> logs, Node node, RaftMember raftMember) {
+  LogCatchUpTask(List<Log> logs, Node node, int raftId, RaftMember raftMember) {
     this.logs = logs;
     this.node = node;
+    this.raftId = raftId;
     this.raftMember = raftMember;
   }
 
   @TestOnly
-  LogCatchUpTask(List<Log> logs, Node node, RaftMember raftMember, boolean useBatch) {
+  LogCatchUpTask(List<Log> logs, Node node, int raftId, RaftMember raftMember, boolean useBatch) {
     this.logs = logs;
     this.node = node;
+    this.raftId = raftId;
     this.raftMember = raftMember;
     this.useBatch = useBatch;
   }
@@ -126,7 +128,7 @@ public class LogCatchUpTask implements Callable<Boolean> {
       }
       client.appendEntry(request, handler);
       raftMember.getLastCatchUpResponseTime().put(node, System.currentTimeMillis());
-      handler.getAppendSucceed().wait(RaftServer.getWriteOperationTimeoutMS());
+      handler.getAppendSucceed().wait(ClusterConstant.getWriteOperationTimeoutMS());
     }
     return handler.getAppendSucceed().get();
   }

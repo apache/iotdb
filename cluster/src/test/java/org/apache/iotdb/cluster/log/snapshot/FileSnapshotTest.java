@@ -27,12 +27,12 @@ import org.apache.iotdb.cluster.partition.slot.SlotManager.SlotStatus;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
-import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
@@ -109,17 +109,18 @@ public class FileSnapshotTest extends DataSnapshotTest {
     SnapshotInstaller<FileSnapshot> defaultInstaller =
         snapshot.getDefaultInstaller(dataGroupMember);
     dataGroupMember.getSlotManager().setToPulling(0, TestUtils.getNode(0));
-    defaultInstaller.install(snapshot, 0);
+    defaultInstaller.install(snapshot, 0, false);
     // after installation, the slot should be available again
     assertEquals(SlotStatus.NULL, dataGroupMember.getSlotManager().getStatus(0));
 
     for (TimeseriesSchema timeseriesSchema : timeseriesSchemas) {
-      assertTrue(IoTDB.metaManager.isPathExist(new PartialPath(timeseriesSchema.getFullPath())));
+      assertTrue(
+          IoTDB.schemaProcessor.isPathExist(new PartialPath(timeseriesSchema.getFullPath())));
     }
-    StorageGroupProcessor processor =
+    DataRegion processor =
         StorageEngine.getInstance().getProcessor(new PartialPath(TestUtils.getTestSg(0)));
     assertEquals(9, processor.getPartitionMaxFileVersions(0));
-    List<TsFileResource> loadedFiles = processor.getSequenceFileTreeSet();
+    List<TsFileResource> loadedFiles = processor.getSequenceFileList();
     assertEquals(tsFileResources.size(), loadedFiles.size());
     for (int i = 0; i < 9; i++) {
       assertEquals(i, loadedFiles.get(i).getMaxPlanIndex());
@@ -152,17 +153,18 @@ public class FileSnapshotTest extends DataSnapshotTest {
       SnapshotInstaller<FileSnapshot> defaultInstaller =
           snapshot.getDefaultInstaller(dataGroupMember);
       dataGroupMember.getSlotManager().setToPulling(0, TestUtils.getNode(0));
-      defaultInstaller.install(snapshot, 0);
+      defaultInstaller.install(snapshot, 0, false);
       // after installation, the slot should be available again
       assertEquals(SlotStatus.NULL, dataGroupMember.getSlotManager().getStatus(0));
 
       for (TimeseriesSchema timeseriesSchema : timeseriesSchemas) {
-        assertTrue(IoTDB.metaManager.isPathExist(new PartialPath(timeseriesSchema.getFullPath())));
+        assertTrue(
+            IoTDB.schemaProcessor.isPathExist(new PartialPath(timeseriesSchema.getFullPath())));
       }
-      StorageGroupProcessor processor =
+      DataRegion processor =
           StorageEngine.getInstance().getProcessor(new PartialPath(TestUtils.getTestSg(0)));
       assertEquals(9, processor.getPartitionMaxFileVersions(0));
-      List<TsFileResource> loadedFiles = processor.getSequenceFileTreeSet();
+      List<TsFileResource> loadedFiles = processor.getSequenceFileList();
       assertEquals(tsFileResources.size(), loadedFiles.size());
       for (int i = 0; i < 9; i++) {
         assertEquals(i, loadedFiles.get(i).getMaxPlanIndex());
@@ -201,17 +203,18 @@ public class FileSnapshotTest extends DataSnapshotTest {
     SnapshotInstaller<FileSnapshot> defaultInstaller =
         fileSnapshot.getDefaultInstaller(dataGroupMember);
     dataGroupMember.getSlotManager().setToPulling(0, TestUtils.getNode(0));
-    defaultInstaller.install(fileSnapshot, 0);
+    defaultInstaller.install(fileSnapshot, 0, false);
     // after installation, the slot should be available again
     assertEquals(SlotStatus.NULL, dataGroupMember.getSlotManager().getStatus(0));
 
     for (TimeseriesSchema timeseriesSchema : timeseriesSchemas) {
-      assertTrue(IoTDB.metaManager.isPathExist(new PartialPath(timeseriesSchema.getFullPath())));
+      assertTrue(
+          IoTDB.schemaProcessor.isPathExist(new PartialPath(timeseriesSchema.getFullPath())));
     }
-    StorageGroupProcessor processor =
+    DataRegion processor =
         StorageEngine.getInstance().getProcessor(new PartialPath(TestUtils.getTestSg(0)));
     assertEquals(9, processor.getPartitionMaxFileVersions(0));
-    List<TsFileResource> loadedFiles = processor.getSequenceFileTreeSet();
+    List<TsFileResource> loadedFiles = processor.getSequenceFileList();
     assertEquals(tsFileResources.size(), loadedFiles.size());
     for (int i = 0; i < 9; i++) {
       assertEquals(i, loadedFiles.get(i).getMaxPlanIndex());
@@ -245,13 +248,13 @@ public class FileSnapshotTest extends DataSnapshotTest {
 
     SnapshotInstaller<FileSnapshot> defaultInstaller =
         snapshotMap.get(0).getDefaultInstaller(dataGroupMember);
-    defaultInstaller.install(snapshotMap);
+    defaultInstaller.install(snapshotMap, false);
 
     for (int j = 0; j < 10; j++) {
-      StorageGroupProcessor processor =
+      DataRegion processor =
           StorageEngine.getInstance().getProcessor(new PartialPath(TestUtils.getTestSg(j)));
       assertEquals(9, processor.getPartitionMaxFileVersions(0));
-      List<TsFileResource> loadedFiles = processor.getSequenceFileTreeSet();
+      List<TsFileResource> loadedFiles = processor.getSequenceFileList();
       assertEquals(10, loadedFiles.size());
       for (int i = 0; i < 9; i++) {
         assertEquals(i, loadedFiles.get(i).getMaxPlanIndex());
@@ -273,7 +276,7 @@ public class FileSnapshotTest extends DataSnapshotTest {
       timeseriesSchemas.add(TestUtils.getTestTimeSeriesSchema(0, i));
     }
     for (int i = 0; i < 5; i++) {
-      StorageGroupProcessor processor =
+      DataRegion processor =
           StorageEngine.getInstance().getProcessor(new PartialPath(TestUtils.getTestSg(0)));
       TsFileResource resource = tsFileResources.get(i);
       String pathWithoutHardlinkSuffix =
@@ -288,19 +291,20 @@ public class FileSnapshotTest extends DataSnapshotTest {
 
     SnapshotInstaller<FileSnapshot> defaultInstaller =
         snapshot.getDefaultInstaller(dataGroupMember);
-    defaultInstaller.install(snapshot, 0);
+    defaultInstaller.install(snapshot, 0, false);
 
     for (TimeseriesSchema timeseriesSchema : timeseriesSchemas) {
-      assertTrue(IoTDB.metaManager.isPathExist(new PartialPath(timeseriesSchema.getFullPath())));
+      assertTrue(
+          IoTDB.schemaProcessor.isPathExist(new PartialPath(timeseriesSchema.getFullPath())));
     }
-    StorageGroupProcessor processor =
+    DataRegion processor =
         StorageEngine.getInstance().getProcessor(new PartialPath(TestUtils.getTestSg(0)));
-    assertEquals(9, processor.getPartitionMaxFileVersions(0));
-    List<TsFileResource> loadedFiles = processor.getSequenceFileTreeSet();
+    assertEquals(10, processor.getPartitionMaxFileVersions(0));
+    List<TsFileResource> loadedFiles = processor.getSequenceFileList();
     assertEquals(tsFileResources.size(), loadedFiles.size());
     for (int i = 0; i < 9; i++) {
       assertEquals(i, loadedFiles.get(i).getMaxPlanIndex());
     }
-    assertEquals(0, processor.getUnSequenceFileList().size());
+    assertEquals(1, processor.getUnSequenceFileList().size());
   }
 }

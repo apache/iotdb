@@ -20,36 +20,34 @@
 package org.apache.iotdb.cluster.utils;
 
 import org.apache.iotdb.cluster.config.ClusterConfig;
-import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.ConfigInconsistentException;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
+import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.CheckStatusResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.StartUpStatus;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.utils.CommonUtils;
-import org.apache.iotdb.rpc.RpcTransportFactory;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.service.IoTDB;
 
-import org.apache.thrift.TProcessor;
-import org.apache.thrift.protocol.TProtocolFactory;
-import org.apache.thrift.server.TServer;
-import org.apache.thrift.server.TThreadPoolServer;
-import org.apache.thrift.transport.TServerTransport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Objects;
-import java.util.concurrent.SynchronousQueue;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
 public class ClusterUtils {
 
@@ -88,6 +86,7 @@ public class ClusterUtils {
     boolean replicationNumEquals = true;
     boolean seedNodeListEquals = true;
     boolean clusterNameEqual = true;
+    boolean multiRaftFactorEqual = true;
 
     if (localStartUpStatus.getPartitionInterval() != remoteStartUpStatus.getPartitionInterval()) {
       partitionIntervalEquals = false;
@@ -95,6 +94,13 @@ public class ClusterUtils {
           "Remote partition interval conflicts with local. local: {}, remote: {}",
           localStartUpStatus.getPartitionInterval(),
           remoteStartUpStatus.getPartitionInterval());
+    }
+    if (localStartUpStatus.getMultiRaftFactor() != remoteStartUpStatus.getMultiRaftFactor()) {
+      multiRaftFactorEqual = false;
+      logger.error(
+          "Remote multi-raft factor conflicts with local. local: {}, remote: {}",
+          localStartUpStatus.getMultiRaftFactor(),
+          remoteStartUpStatus.getMultiRaftFactor());
     }
     if (localStartUpStatus.getHashSalt() != remoteStartUpStatus.getHashSalt()) {
       hashSaltEquals = false;
@@ -134,7 +140,8 @@ public class ClusterUtils {
         hashSaltEquals,
         replicationNumEquals,
         seedNodeListEquals,
-        clusterNameEqual);
+        clusterNameEqual,
+        multiRaftFactorEqual);
   }
 
   public static boolean checkSeedNodes(
@@ -166,12 +173,7 @@ public class ClusterUtils {
     if (ipCompare != 0) {
       return ipCompare;
     } else {
-      int metaPortCompare = thisSeedNode.getMetaPort() - thatSeedNode.getMetaPort();
-      if (metaPortCompare != 0) {
-        return metaPortCompare;
-      } else {
-        return thisSeedNode.getDataPort() - thatSeedNode.getDataPort();
-      }
+      return thisSeedNode.getMetaPort() - thatSeedNode.getMetaPort();
     }
   }
 
@@ -252,43 +254,6 @@ public class ClusterUtils {
     }
   }
 
-  public static TServer createTThreadPoolServer(
-      TServerTransport socket,
-      String clientThreadPrefix,
-      TProcessor processor,
-      TProtocolFactory protocolFactory) {
-    ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
-    int maxConcurrentClientNum =
-        Math.max(CommonUtils.getCpuCores(), config.getMaxConcurrentClientNum());
-    TThreadPoolServer.Args poolArgs =
-        new TThreadPoolServer.Args(socket)
-            .maxWorkerThreads(maxConcurrentClientNum)
-            .minWorkerThreads(CommonUtils.getCpuCores());
-
-    poolArgs.executorService(
-        new ThreadPoolExecutor(
-            poolArgs.minWorkerThreads,
-            poolArgs.maxWorkerThreads,
-            poolArgs.stopTimeoutVal,
-            poolArgs.stopTimeoutUnit,
-            new SynchronousQueue<>(),
-            new ThreadFactory() {
-              private AtomicLong threadIndex = new AtomicLong(0);
-
-              @Override
-              public Thread newThread(Runnable r) {
-                return new Thread(r, clientThreadPrefix + threadIndex.incrementAndGet());
-              }
-            }));
-    poolArgs.processor(processor);
-    poolArgs.protocolFactory(protocolFactory);
-    // async service requires FramedTransport
-    poolArgs.transportFactory(RpcTransportFactory.INSTANCE);
-
-    // run the thrift server in a separate thread so that the main thread is not blocked
-    return new TThreadPoolServer(poolArgs);
-  }
-
   /**
    * Convert a string representation of a Node to an object.
    *
@@ -352,5 +317,60 @@ public class ClusterUtils {
       partitionGroup = metaGroupMember.getPartitionTable().partitionByPathTime(prefixPath, 0);
     }
     return partitionGroup;
+  }
+
+  public static int getSlotByPathTimeWithSync(
+      PartialPath prefixPath, MetaGroupMember metaGroupMember) throws MetadataException {
+    int slot;
+    try {
+      PartialPath storageGroup = IoTDB.schemaProcessor.getBelongedStorageGroup(prefixPath);
+      slot =
+          SlotPartitionTable.getSlotStrategy()
+              .calculateSlotByPartitionNum(storageGroup.getFullPath(), 0, ClusterConstant.SLOT_NUM);
+    } catch (StorageGroupNotSetException e) {
+      // the storage group is not found locally, but may be found in the leader, retry after
+      // synchronizing with the leader
+      try {
+        metaGroupMember.syncLeaderWithConsistencyCheck(true);
+      } catch (CheckConsistencyException checkConsistencyException) {
+        throw new MetadataException(checkConsistencyException.getMessage());
+      }
+      PartialPath storageGroup = IoTDB.schemaProcessor.getBelongedStorageGroup(prefixPath);
+      slot =
+          SlotPartitionTable.getSlotStrategy()
+              .calculateSlotByPartitionNum(storageGroup.getFullPath(), 0, ClusterConstant.SLOT_NUM);
+    }
+    return slot;
+  }
+
+  public static ByteBuffer serializeMigrationStatus(Map<PartitionGroup, Integer> migrationStatus) {
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    try (DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
+      dataOutputStream.writeInt(migrationStatus.size());
+      for (Entry<PartitionGroup, Integer> entry : migrationStatus.entrySet()) {
+        entry.getKey().serialize(dataOutputStream);
+        dataOutputStream.writeInt(entry.getValue());
+      }
+    } catch (IOException e) {
+      // ignored
+    }
+    return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+  }
+
+  public static Map<PartitionGroup, Integer> deserializeMigrationStatus(ByteBuffer buffer) {
+    Map<PartitionGroup, Integer> migrationStatus = new HashMap<>();
+    int size = buffer.getInt();
+    while (size-- > 0) {
+      PartitionGroup partitionGroup = new PartitionGroup();
+      partitionGroup.deserialize(buffer);
+      migrationStatus.put(partitionGroup, buffer.getInt());
+    }
+    return migrationStatus;
+  }
+
+  public static boolean nodeEqual(Node node1, Node node2) {
+    ClusterNode clusterNode1 = new ClusterNode(node1);
+    ClusterNode clusterNode2 = new ClusterNode(node2);
+    return clusterNode1.equals(clusterNode2);
   }
 }

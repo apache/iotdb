@@ -22,19 +22,9 @@ package org.apache.iotdb.db.query.factory;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
-import org.apache.iotdb.db.query.aggregation.impl.AvgAggrResult;
-import org.apache.iotdb.db.query.aggregation.impl.CountAggrResult;
-import org.apache.iotdb.db.query.aggregation.impl.FirstValueAggrResult;
-import org.apache.iotdb.db.query.aggregation.impl.FirstValueDescAggrResult;
-import org.apache.iotdb.db.query.aggregation.impl.LastValueAggrResult;
-import org.apache.iotdb.db.query.aggregation.impl.LastValueDescAggrResult;
-import org.apache.iotdb.db.query.aggregation.impl.MaxTimeAggrResult;
-import org.apache.iotdb.db.query.aggregation.impl.MaxTimeDescAggrResult;
-import org.apache.iotdb.db.query.aggregation.impl.MaxValueAggrResult;
-import org.apache.iotdb.db.query.aggregation.impl.MinTimeAggrResult;
-import org.apache.iotdb.db.query.aggregation.impl.MinTimeDescAggrResult;
-import org.apache.iotdb.db.query.aggregation.impl.MinValueAggrResult;
-import org.apache.iotdb.db.query.aggregation.impl.SumAggrResult;
+import org.apache.iotdb.db.query.aggregation.impl.*;
+import org.apache.iotdb.db.query.executor.groupby.*;
+import org.apache.iotdb.db.query.executor.groupby.impl.*;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 /** Easy factory pattern to build AggregateFunction. */
@@ -63,6 +53,8 @@ public class AggregateResultFactory {
         return new MinValueAggrResult(dataType);
       case SQLConstant.MAX_VALUE:
         return new MaxValueAggrResult(dataType);
+      case SQLConstant.EXTREME:
+        return new ExtremeAggrResult(dataType);
       case SQLConstant.COUNT:
         return new CountAggrResult();
       case SQLConstant.AVG:
@@ -96,6 +88,8 @@ public class AggregateResultFactory {
         return new MinValueAggrResult(dataType);
       case SQLConstant.MAX_VALUE:
         return new MaxValueAggrResult(dataType);
+      case SQLConstant.EXTREME:
+        return new ExtremeAggrResult(dataType);
       case SQLConstant.COUNT:
         return new CountAggrResult();
       case SQLConstant.AVG:
@@ -136,6 +130,8 @@ public class AggregateResultFactory {
         return new MaxValueAggrResult(dataType);
       case MIN_VALUE:
         return new MinValueAggrResult(dataType);
+      case EXTREME:
+        return new ExtremeAggrResult(dataType);
       default:
         throw new IllegalArgumentException("Invalid Aggregation Type: " + aggregationType.name());
     }

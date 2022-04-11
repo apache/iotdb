@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.cluster.utils;
 
+import org.apache.iotdb.common.rpc.thrift.EndPoint;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.EndPoint;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 public class StatusUtils {
 
@@ -45,6 +45,7 @@ public class StatusUtils {
   public static final TSStatus TIMESERIES_NOT_EXIST_ERROR =
       getStatus(TSStatusCode.TIMESERIES_NOT_EXIST);
   public static final TSStatus NO_CONNECTION = getStatus(TSStatusCode.NO_CONNECTION);
+  public static final TSStatus PARSE_LOG_ERROR = getStatus(TSStatusCode.PARSE_LOG_ERROR);
   public static final TSStatus DUPLICATED_TEMPLATE = getStatus(TSStatusCode.DUPLICATED_TEMPLATE);
 
   public static TSStatus getStatus(TSStatusCode statusCode) {
@@ -107,7 +108,7 @@ public class StatusUtils {
       case SYNC_CONNECTION_EXCEPTION:
         status.setMessage("Meet error while sync connecting. ");
         break;
-      case STORAGE_GROUP_PROCESSOR_ERROR:
+      case DATA_REGION_ERROR:
         status.setMessage("Storage group processor related error. ");
         break;
       case STORAGE_GROUP_ERROR:
@@ -171,7 +172,7 @@ public class StatusUtils {
         status.setMessage("Meet error in close operation. ");
         break;
       case READ_ONLY_SYSTEM_ERROR:
-        status.setMessage("Operating system is read only. ");
+        status.setMessage("Database is read-only. ");
         break;
       case DISK_SPACE_INSUFFICIENT_ERROR:
         status.setMessage("Disk space is insufficient. ");
@@ -197,10 +198,19 @@ public class StatusUtils {
       case NO_CONNECTION:
         status.setMessage("Node cannot be reached.");
         break;
+      case PARSE_LOG_ERROR:
+        status.setMessage("Parse log error.");
+        break;
       default:
         status.setMessage("");
         break;
     }
+    return status;
+  }
+
+  public static TSStatus getStatus(TSStatusCode statusCode, EndPoint redirectedNode) {
+    TSStatus status = getStatus(statusCode);
+    status.setRedirectNode(redirectedNode);
     return status;
   }
 

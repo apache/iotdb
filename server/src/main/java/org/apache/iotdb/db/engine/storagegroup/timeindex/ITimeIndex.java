@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.storagegroup.timeindex;
 
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.PartitionViolationException;
 
 import java.io.IOException;
@@ -62,16 +63,16 @@ public interface ITimeIndex {
    *
    * @return device names
    */
-  Set<String> getDevices();
+  Set<String> getDevices(String tsFilePath, TsFileResource tsFileResource);
 
   /** @return whether end time is empty (Long.MIN_VALUE) */
   boolean endTimeEmpty();
 
   /**
-   * @param timeLowerBound time lower bound
+   * @param ttlLowerBound time lower bound
    * @return whether any of the device lives over the given time bound
    */
-  boolean stillLives(long timeLowerBound);
+  boolean stillLives(long ttlLowerBound);
 
   /** @return Calculate file index ram size */
   long calculateRamSize();
@@ -147,4 +148,42 @@ public interface ITimeIndex {
    * @return end time
    */
   long getEndTime(String deviceId);
+
+  /**
+   * check whether deviceId exists in TsFile
+   *
+   * @param deviceId device name
+   * @return true if the deviceId may exist in TsFile, otherwise false.
+   */
+  boolean checkDeviceIdExist(String deviceId);
+
+  /**
+   * get min start time of device
+   *
+   * @return min start time
+   */
+  long getMinStartTime();
+
+  /**
+   * get max end time of device
+   *
+   * @return max end time
+   */
+  long getMaxEndTime();
+
+  /**
+   * compare the priority of two ITimeIndex
+   *
+   * @param timeIndex another timeIndex
+   * @return value is less than 0 if the priority of this timeIndex is higher than the argument,
+   *     value is equal to 0 if the priority of this timeIndex is equal to the argument, value is
+   *     larger than 0 if the priority of this timeIndex is less than the argument
+   */
+  int compareDegradePriority(ITimeIndex timeIndex);
+
+  /**
+   * Whether this TsFile contains this device, if false, it must not contain this device, if true,
+   * it may or may not contain this device
+   */
+  boolean mayContainsDevice(String device);
 }

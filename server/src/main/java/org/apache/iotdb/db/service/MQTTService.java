@@ -18,10 +18,12 @@
  */
 package org.apache.iotdb.db.service;
 
+import org.apache.iotdb.commons.service.IService;
+import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.mqtt.BrokerAuthenticator;
-import org.apache.iotdb.db.mqtt.PublishHandler;
+import org.apache.iotdb.db.protocol.mqtt.BrokerAuthenticator;
+import org.apache.iotdb.db.protocol.mqtt.PublishHandler;
 
 import com.google.common.collect.Lists;
 import io.moquette.BrokerConstants;

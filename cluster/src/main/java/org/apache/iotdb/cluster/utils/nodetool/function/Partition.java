@@ -92,10 +92,10 @@ public class Partition extends NodeToolCmd {
           (timeRange, raftGroup) ->
               msgPrintln(
                   String.format(
-                      "DATA<%s, %d, %d>\t->\t%s",
+                      "DATA<%s, %s, %s>\t->\t%s",
                       path,
-                      (long) timeRange.getKey(0),
-                      (long) timeRange.getKey(1),
+                      timeRange.getKey(0),
+                      timeRange.getKey(1),
                       partitionGroupToString(raftGroup))));
     }
   }

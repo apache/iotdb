@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.db.qp.physical.sys;
 
+import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
+import org.apache.iotdb.db.exception.TriggerManagementException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
@@ -34,13 +36,15 @@ public class StopTriggerPlan extends PhysicalPlan {
 
   private String triggerName;
 
+  private PartialPath authPath;
+
   public StopTriggerPlan() {
-    super(false, OperatorType.STOP_TRIGGER);
+    super(OperatorType.STOP_TRIGGER);
     canBeSplit = false;
   }
 
   public StopTriggerPlan(String triggerName) {
-    super(false, OperatorType.STOP_TRIGGER);
+    super(OperatorType.STOP_TRIGGER);
     this.triggerName = triggerName;
     canBeSplit = false;
   }
@@ -62,7 +66,7 @@ public class StopTriggerPlan extends PhysicalPlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     buffer.put((byte) PhysicalPlanType.STOP_TRIGGER.ordinal());
 
     putString(buffer, triggerName);
@@ -71,5 +75,28 @@ public class StopTriggerPlan extends PhysicalPlan {
   @Override
   public void deserialize(ByteBuffer buffer) throws IllegalPathException {
     triggerName = readString(buffer);
+  }
+
+  @Override
+  public boolean isAuthenticationRequired() {
+    if (authPath == null) {
+      try {
+        authPath =
+            TriggerRegistrationService.getInstance()
+                .getRegistrationInformation(triggerName)
+                .getFullPath();
+      } catch (TriggerManagementException e) {
+        // The trigger does not exist.
+        return false;
+      }
+    }
+    return true;
+  }
+
+  @Override
+  public List<? extends PartialPath> getAuthPaths() {
+    return isAuthenticationRequired()
+        ? Collections.singletonList(authPath)
+        : Collections.emptyList();
   }
 }

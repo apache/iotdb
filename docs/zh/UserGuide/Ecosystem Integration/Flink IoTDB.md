@@ -21,7 +21,7 @@
 
 ## Flink IoTDB 连接器
 
-IoTDB 与 [Apache Flink](https://flink.apache.org/) 的集成. 此模块包含了 iotdb sink，允许 flink job 将时序数据写入IoTDB。
+IoTDB 与 [Apache Flink](https://flink.apache.org/) 的集成。此模块包含了 iotdb sink，允许 flink job 将时序数据写入 IoTDB。
 
 ### IoTDBSink
 
@@ -33,7 +33,7 @@ IoTDB 与 [Apache Flink](https://flink.apache.org/) 的集成. 此模块包含�
 
 - 一个模拟的 Source  `SensorSource` 每秒钟产生一个数据点。
 
-- Flink使用 `IoTDBSink` 消费产生的数据并写入 IoTDB 。
+- Flink 使用 `IoTDBSink` 消费产生的数据并写入 IoTDB 。
 
   ```java
   import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -114,7 +114,6 @@ IoTDB 与 [Apache Flink](https://flink.apache.org/) 的集成. 此模块包含�
   ```
 
   
-
 
 ### 运行方法
 

@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.sink;
 
+import org.apache.iotdb.db.engine.trigger.sink.local.LocalIoTDBConfiguration;
+import org.apache.iotdb.db.engine.trigger.sink.local.LocalIoTDBEvent;
+import org.apache.iotdb.db.engine.trigger.sink.local.LocalIoTDBHandler;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.sink.local.LocalIoTDBConfiguration;
-import org.apache.iotdb.db.sink.local.LocalIoTDBEvent;
-import org.apache.iotdb.db.sink.local.LocalIoTDBHandler;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -76,7 +76,7 @@ public class LocalIoTDBSinkTest {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      Assert.assertTrue(statement.execute("select * from root"));
+      Assert.assertTrue(statement.execute("select * from root.**"));
 
       try (ResultSet resultSet = statement.getResultSet()) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
@@ -138,7 +138,7 @@ public class LocalIoTDBSinkTest {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      Assert.assertTrue(statement.execute("select * from root"));
+      Assert.assertTrue(statement.execute("select * from root.**"));
 
       try (ResultSet resultSet = statement.getResultSet()) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();

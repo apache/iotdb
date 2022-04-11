@@ -20,10 +20,9 @@ package org.apache.iotdb.db.engine.storagegroup;
 
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -67,11 +66,11 @@ public class FileNodeManagerBenchmark {
   }
 
   private static void prepare() throws MetadataException {
-    MManager manager = IoTDB.metaManager;
-    manager.setStorageGroup(new PartialPath(prefix));
+    LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
+    schemaProcessor.setStorageGroup(new PartialPath(prefix));
     for (String device : devices) {
       for (String measurement : measurements) {
-        manager.createTimeseries(
+        schemaProcessor.createTimeseries(
             new PartialPath(device + "." + measurement),
             TSDataType.INT64,
             TSEncoding.PLAIN,
@@ -123,7 +122,7 @@ public class FileNodeManagerBenchmark {
           TSRecord tsRecord = getRecord(deltaObject, time);
           StorageEngine.getInstance().insert(new InsertRowPlan(tsRecord));
         }
-      } catch (StorageEngineException | IllegalPathException e) {
+      } catch (StorageEngineException | MetadataException e) {
         e.printStackTrace();
       } finally {
         latch.countDown();

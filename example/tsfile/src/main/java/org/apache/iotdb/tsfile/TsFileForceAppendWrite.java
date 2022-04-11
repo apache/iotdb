@@ -46,18 +46,19 @@ public class TsFileForceAppendWrite {
     if (f.exists()) {
       Files.delete(f.toPath());
     }
+
     try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
 
       // add measurements into file schema
       for (int i = 0; i < 4; i++) {
         tsFileWriter.registerTimeseries(
-            new Path(Constant.DEVICE_PREFIX + i, Constant.SENSOR_1),
+            new Path(Constant.DEVICE_PREFIX + i),
             new MeasurementSchema(Constant.SENSOR_1, TSDataType.INT64, TSEncoding.RLE));
         tsFileWriter.registerTimeseries(
-            new Path(Constant.DEVICE_PREFIX + i, Constant.SENSOR_2),
+            new Path(Constant.DEVICE_PREFIX + i),
             new MeasurementSchema(Constant.SENSOR_2, TSDataType.INT64, TSEncoding.RLE));
         tsFileWriter.registerTimeseries(
-            new Path(Constant.DEVICE_PREFIX + i, Constant.SENSOR_3),
+            new Path(Constant.DEVICE_PREFIX + i),
             new MeasurementSchema(Constant.SENSOR_3, TSDataType.INT64, TSEncoding.RLE));
       }
 
@@ -85,13 +86,13 @@ public class TsFileForceAppendWrite {
       // add measurements into file schema
       for (int i = 0; i < 4; i++) {
         tsFileWriter1.registerTimeseries(
-            new Path(Constant.DEVICE_PREFIX + i, Constant.SENSOR_1),
+            new Path(Constant.DEVICE_PREFIX + i),
             new MeasurementSchema(Constant.SENSOR_1, TSDataType.INT64, TSEncoding.RLE));
         tsFileWriter1.registerTimeseries(
-            new Path(Constant.DEVICE_PREFIX + i, Constant.SENSOR_2),
+            new Path(Constant.DEVICE_PREFIX + i),
             new MeasurementSchema(Constant.SENSOR_2, TSDataType.INT64, TSEncoding.RLE));
         tsFileWriter1.registerTimeseries(
-            new Path(Constant.DEVICE_PREFIX + i, Constant.SENSOR_3),
+            new Path(Constant.DEVICE_PREFIX + i),
             new MeasurementSchema(Constant.SENSOR_3, TSDataType.INT64, TSEncoding.RLE));
       }
       // construct TSRecord

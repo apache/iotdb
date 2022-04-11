@@ -26,6 +26,7 @@ import org.apache.iotdb.tsfile.v2.file.metadata.statistics.StatisticsV2;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.Serializable;
 import java.nio.ByteBuffer;
 
 public class PageHeaderV2 {
@@ -36,14 +37,14 @@ public class PageHeaderV2 {
       throws IOException {
     int uncompressedSize = ReadWriteIOUtils.readInt(inputStream);
     int compressedSize = ReadWriteIOUtils.readInt(inputStream);
-    Statistics<?> statistics = StatisticsV2.deserialize(inputStream, dataType);
+    Statistics<? extends Serializable> statistics = StatisticsV2.deserialize(inputStream, dataType);
     return new PageHeader(uncompressedSize, compressedSize, statistics);
   }
 
   public static PageHeader deserializeFrom(ByteBuffer buffer, TSDataType dataType) {
     int uncompressedSize = ReadWriteIOUtils.readInt(buffer);
     int compressedSize = ReadWriteIOUtils.readInt(buffer);
-    Statistics<?> statistics = StatisticsV2.deserialize(buffer, dataType);
+    Statistics<? extends Serializable> statistics = StatisticsV2.deserialize(buffer, dataType);
     return new PageHeader(uncompressedSize, compressedSize, statistics);
   }
 }

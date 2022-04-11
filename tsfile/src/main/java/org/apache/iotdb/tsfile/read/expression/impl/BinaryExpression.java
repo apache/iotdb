@@ -21,8 +21,11 @@ package org.apache.iotdb.tsfile.read.expression.impl;
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
 import org.apache.iotdb.tsfile.read.expression.IBinaryExpression;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.Serializable;
+import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public abstract class BinaryExpression implements IBinaryExpression, Serializable {
 
@@ -80,8 +83,34 @@ public abstract class BinaryExpression implements IBinaryExpression, Serializabl
     }
 
     @Override
+    public void serialize(ByteBuffer byteBuffer) {
+      ReadWriteIOUtils.write((byte) getType().ordinal(), byteBuffer);
+      left.serialize(byteBuffer);
+      right.serialize(byteBuffer);
+    }
+
+    @Override
     public String toString() {
       return "[" + left + " && " + right + "]";
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+
+      AndExpression that = (AndExpression) o;
+      return Objects.equals(toString(), that.toString());
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(toString());
     }
   }
 
@@ -126,8 +155,34 @@ public abstract class BinaryExpression implements IBinaryExpression, Serializabl
     }
 
     @Override
+    public void serialize(ByteBuffer byteBuffer) {
+      ReadWriteIOUtils.write((byte) getType().ordinal(), byteBuffer);
+      left.serialize(byteBuffer);
+      right.serialize(byteBuffer);
+    }
+
+    @Override
     public String toString() {
       return "[" + left + " || " + right + "]";
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+
+      OrExpression that = (OrExpression) o;
+      return Objects.equals(toString(), that.toString());
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(toString());
     }
   }
 }

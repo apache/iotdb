@@ -25,7 +25,8 @@ import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -47,10 +48,10 @@ public class MergeGroupByExecutorTest extends BaseQueryTest {
   @Test
   public void testNoTimeFilter()
       throws QueryProcessException, IOException, IllegalPathException, StorageEngineException {
-    PartialPath path = new PartialPath(TestUtils.getTestSeries(0, 0));
+    PartialPath path = new MeasurementPath(TestUtils.getTestSeries(0, 0), TSDataType.DOUBLE);
     TSDataType dataType = TSDataType.DOUBLE;
     QueryContext context =
-        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
+        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
     try {
       Filter timeFilter = null;
       Set<String> deviceMeasurements = new HashSet<>();
@@ -58,20 +59,20 @@ public class MergeGroupByExecutorTest extends BaseQueryTest {
 
       MergeGroupByExecutor groupByExecutor =
           new MergeGroupByExecutor(
-              path, deviceMeasurements, dataType, context, timeFilter, testMetaMember, true);
+              path, deviceMeasurements, context, timeFilter, testMetaMember, true);
       AggregationType[] types = AggregationType.values();
       for (AggregationType type : types) {
         groupByExecutor.addAggregateResult(
             AggregateResultFactory.getAggrResultByType(type, TSDataType.DOUBLE, true));
       }
-
       Object[] answers;
       List<AggregateResult> aggregateResults;
-      answers = new Object[] {5.0, 2.0, 10.0, 0.0, 4.0, 4.0, 0.0, 4.0, 0.0};
+
+      answers = new Object[] {5.0, 2.0, 10.0, 0.0, 4.0, 4.0, 0.0, 4.0, 0.0, 4.0};
       aggregateResults = groupByExecutor.calcResult(0, 5);
       checkAggregations(aggregateResults, answers);
 
-      answers = new Object[] {5.0, 7.0, 35.0, 5.0, 9.0, 9.0, 5.0, 9.0, 5.0};
+      answers = new Object[] {5.0, 7.0, 35.0, 5.0, 9.0, 9.0, 5.0, 9.0, 5.0, 9.0};
       aggregateResults = groupByExecutor.calcResult(5, 10);
       checkAggregations(aggregateResults, answers);
     } finally {
@@ -82,10 +83,10 @@ public class MergeGroupByExecutorTest extends BaseQueryTest {
   @Test
   public void testTimeFilter()
       throws QueryProcessException, IOException, IllegalPathException, StorageEngineException {
-    PartialPath path = new PartialPath(TestUtils.getTestSeries(0, 0));
+    PartialPath path = new MeasurementPath(TestUtils.getTestSeries(0, 0), TSDataType.DOUBLE);
     TSDataType dataType = TSDataType.DOUBLE;
     QueryContext context =
-        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
+        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
     try {
       Filter timeFilter = TimeFilter.gtEq(3);
       Set<String> deviceMeasurements = new HashSet<>();
@@ -93,7 +94,7 @@ public class MergeGroupByExecutorTest extends BaseQueryTest {
 
       MergeGroupByExecutor groupByExecutor =
           new MergeGroupByExecutor(
-              path, deviceMeasurements, dataType, context, timeFilter, testMetaMember, true);
+              path, deviceMeasurements, context, timeFilter, testMetaMember, true);
       AggregationType[] types = AggregationType.values();
       for (AggregationType type : types) {
         groupByExecutor.addAggregateResult(
@@ -102,11 +103,11 @@ public class MergeGroupByExecutorTest extends BaseQueryTest {
 
       Object[] answers;
       List<AggregateResult> aggregateResults;
-      answers = new Object[] {2.0, 3.5, 7.0, 3.0, 4.0, 4.0, 3.0, 4.0, 3.0};
+      answers = new Object[] {2.0, 3.5, 7.0, 3.0, 4.0, 4.0, 3.0, 4.0, 3.0, 4.0};
       aggregateResults = groupByExecutor.calcResult(0, 5);
       checkAggregations(aggregateResults, answers);
 
-      answers = new Object[] {5.0, 7.0, 35.0, 5.0, 9.0, 9.0, 5.0, 9.0, 5.0};
+      answers = new Object[] {5.0, 7.0, 35.0, 5.0, 9.0, 9.0, 5.0, 9.0, 5.0, 9.0};
       aggregateResults = groupByExecutor.calcResult(5, 10);
       checkAggregations(aggregateResults, answers);
     } finally {

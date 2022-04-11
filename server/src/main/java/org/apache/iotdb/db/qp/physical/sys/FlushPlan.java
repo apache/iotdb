@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.qp.physical.sys;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -57,11 +57,11 @@ public class FlushPlan extends PhysicalPlan {
 
   /** only for deserialize */
   public FlushPlan() {
-    super(false, OperatorType.FLUSH);
+    super(OperatorType.FLUSH);
   }
 
   public FlushPlan(Boolean isSeq, List<PartialPath> storageGroups) {
-    super(false, OperatorType.FLUSH);
+    super(OperatorType.FLUSH);
     if (storageGroups == null) {
       this.storageGroupPartitionIds = null;
     } else {
@@ -78,7 +78,7 @@ public class FlushPlan extends PhysicalPlan {
       Boolean isSeq,
       boolean isSync,
       Map<PartialPath, List<Pair<Long, Boolean>>> storageGroupPartitionIds) {
-    super(false, OperatorType.FLUSH);
+    super(OperatorType.FLUSH);
     this.storageGroupPartitionIds = storageGroupPartitionIds;
     this.isSeq = isSeq;
     this.isSync = isSync;
@@ -148,7 +148,7 @@ public class FlushPlan extends PhysicalPlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     int type = PhysicalPlanType.FLUSH.ordinal();
     buffer.put((byte) type);
     if (isSeq == null) {

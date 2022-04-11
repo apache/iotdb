@@ -23,7 +23,7 @@ import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
 
 import java.io.IOException;
 
-public class StorageGroupMNode extends MNode {
+public class StorageGroupMNode extends InternalMNode implements IStorageGroupMNode {
 
   private static final long serialVersionUID = 7999036474525817732L;
 
@@ -33,34 +33,37 @@ public class StorageGroupMNode extends MNode {
    */
   private long dataTTL;
 
-  private int alignedTimeseriesIndex;
-
-  public StorageGroupMNode(MNode parent, String name, long dataTTL) {
+  public StorageGroupMNode(IMNode parent, String name, long dataTTL) {
     super(parent, name);
     this.dataTTL = dataTTL;
-    this.alignedTimeseriesIndex = 0;
   }
 
-  public StorageGroupMNode(MNode parent, String name, long dataTTL, int alignedTimeseriesIndex) {
-    super(parent, name);
-    this.dataTTL = dataTTL;
-    this.alignedTimeseriesIndex = alignedTimeseriesIndex;
+  @Override
+  public String getFullPath() {
+    if (fullPath == null) {
+      fullPath = concatFullPath().intern();
+    }
+    return fullPath;
   }
 
+  @Override
   public long getDataTTL() {
     return dataTTL;
   }
 
+  @Override
   public void setDataTTL(long dataTTL) {
     this.dataTTL = dataTTL;
   }
 
-  public int getAlignedTimeseriesIndex() {
-    return alignedTimeseriesIndex;
+  @Override
+  public void moveDataToNewMNode(IMNode newMNode) {
+    super.moveDataToNewMNode(newMNode);
   }
 
-  public void addAlignedTimeseriesIndex() {
-    this.alignedTimeseriesIndex++;
+  @Override
+  public boolean isStorageGroup() {
+    return true;
   }
 
   @Override
@@ -71,15 +74,10 @@ public class StorageGroupMNode extends MNode {
   }
 
   public static StorageGroupMNode deserializeFrom(StorageGroupMNodePlan plan) {
-    return new StorageGroupMNode(
-        null, plan.getName(), plan.getDataTTL(), plan.getAlignedTimeseriesIndex());
+    return new StorageGroupMNode(null, plan.getName(), plan.getDataTTL());
   }
 
   public static StorageGroupMNode deserializeFrom(String[] nodeInfo) {
-    return new StorageGroupMNode(
-        null,
-        nodeInfo[1],
-        Long.parseLong(nodeInfo[2]),
-        nodeInfo.length == 4 ? Integer.parseInt(nodeInfo[3]) : 0);
+    return new StorageGroupMNode(null, nodeInfo[1], Long.parseLong(nodeInfo[2]));
   }
 }

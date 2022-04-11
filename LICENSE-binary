@@ -230,6 +230,7 @@ com.fasterxml.jackson.core:jackson-databind:2.10.0
 javax.inject:javax.inject:1
 net.jpountz.lz4:1.3.0
 com.github.stephenc.jcip:jcip-annotations:1.0-1
+com.github.ben-manes.caffeine:caffeine:2.9.1
 org.eclipse.jetty:jetty-http:9.4.24.v20191120
 org.eclipse.jetty:jetty-io:9.4.24.v20191120
 org.eclipse.jetty:jetty-security:9.4.24.v20191120
@@ -250,17 +251,17 @@ io.dropwizard.metrics:metrics-core:3.2.6
 io.dropwizard.metrics:metrics-json:3.2.6
 io.dropwizard.metrics:metrics-jvm:3.2.6
 com.librato.metrics:metrics-librato:5.1.0
-io.moquette:moquette-broker:0.13
-io.netty:netty-buffer:4.1.27.Final
-io.netty:netty-codec:4.1.27.Final
-io.netty:netty-codec-http:4.1.27.Final
-io.netty:netty-codec-mqtt:4.1.27.Final
-io.netty:netty-common:4.1.27.Final
-io.netty:netty-handler:4.1.27.Final
-io.netty:netty-resolver:4.1.27.Final
-io.netty:netty-transport:4.1.27.Final
-io.netty:netty-transport-native-epoll:4.1.27.Final:linux-x86_64
-io.netty:netty-transport-native-unix-common:4.1.27.Final
+de.fraunhofer.iosb.io.moquette:moquette-broker:0.14.3
+io.netty:netty-buffer:4.1.53.Final
+io.netty:netty-codec:4.1.53.Final
+io.netty:netty-codec-http:4.1.53.Final
+io.netty:netty-codec-mqtt:4.1.53.Final
+io.netty:netty-common:4.1.53.Final
+io.netty:netty-handler:4.1.53.Final
+io.netty:netty-resolver:4.1.53.Final
+io.netty:netty-transport:4.1.53.Final
+io.netty:netty-transport-native-epoll:4.1.53.Final:linux-x86_64
+io.netty:netty-transport-native-unix-common:4.1.53.Final
 com.nimbusds:nimbus-jose-jwt:8.14.1
 com.nimbusds:oauth2-oidc-sdk:8.3
 org.osgi:org.osgi.core:6.0.0
@@ -271,16 +272,11 @@ io.airlift.airline:0.8
 net.minidev:accessors-smart:1.2
 
 
-BSD 2-Clause
-------------
-jline:jline:2.14.5
-
-
 BSD 3-Clause
 ------------
 org.antlr:antlr-runtime:4.8-1
 org.ow2.asm:asm:5.0.4
-org.jline:jline:3.10.0
+org.jline:jline:3.21.0
 
 
 MIT License
@@ -294,8 +290,8 @@ org.slf4j:jcl-over-slf4j:1.7.25
 EPL 1.0
 ------------
 com.h2database:h2-mvstore:1.4.199
-ch.qos.logback:logback-classic:1.2.3
-ch.qos.logback:logback-core:1.2.3
+ch.qos.logback:logback-classic:1.2.10
+ch.qos.logback:logback-core:1.2.10
 
 
 CDDL 1.1

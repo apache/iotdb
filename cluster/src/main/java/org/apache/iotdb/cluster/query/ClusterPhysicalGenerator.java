@@ -20,21 +20,20 @@
 package org.apache.iotdb.cluster.query;
 
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
-import org.apache.iotdb.cluster.metadata.CMManager;
+import org.apache.iotdb.cluster.metadata.CSchemaProcessor;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.qp.logical.crud.SFWOperator;
+import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator.LoadConfigurationOperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan.LoadConfigurationPlanType;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,61 +44,36 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.util.List;
-import java.util.Map;
 import java.util.Properties;
-import java.util.Set;
 
 public class ClusterPhysicalGenerator extends PhysicalGenerator {
 
   private static final Logger logger = LoggerFactory.getLogger(ClusterPhysicalGenerator.class);
 
-  private CMManager getCMManager() {
-    return ((CMManager) IoTDB.metaManager);
+  private CSchemaProcessor getCSchemaProcessor() {
+    return ((CSchemaProcessor) IoTDB.schemaProcessor);
   }
 
   @Override
-  protected Pair<List<TSDataType>, List<TSDataType>> getSeriesTypes(
-      List<PartialPath> paths, String aggregation) throws MetadataException {
-    return getCMManager().getSeriesTypesByPaths(paths, aggregation);
+  public List<PartialPath> groupVectorPaths(List<PartialPath> paths) throws MetadataException {
+    return MetaUtils.groupAlignedPaths(paths);
   }
 
   @Override
-  protected List<TSDataType> getSeriesTypes(List<PartialPath> paths) throws MetadataException {
-    return getCMManager().getSeriesTypesByPaths(paths, null).left;
-  }
-
-  @Override
-  protected Pair<List<PartialPath>, Map<String, Integer>> getSeriesSchema(List<PartialPath> paths)
-      throws MetadataException {
-    return getCMManager().getSeriesSchemas(paths);
-  }
-
-  @Override
-  protected List<PartialPath> getMatchedTimeseries(PartialPath path) throws MetadataException {
-    return getCMManager().getMatchedPaths(path);
-  }
-
-  @Override
-  protected Set<PartialPath> getMatchedDevices(PartialPath path) throws MetadataException {
-    return getCMManager().getMatchedDevices(path);
-  }
-
-  @Override
-  public PhysicalPlan transformToPhysicalPlan(Operator operator, int fetchSize)
-      throws QueryProcessException {
+  public PhysicalPlan transformToPhysicalPlan(Operator operator) throws QueryProcessException {
     // update storage groups before parsing query plans
-    if (operator instanceof SFWOperator) {
+    if (operator instanceof QueryOperator) {
       try {
-        getCMManager().syncMetaLeader();
+        getCSchemaProcessor().syncMetaLeader();
       } catch (MetadataException e) {
         throw new QueryProcessException(e);
       }
     }
-    return super.transformToPhysicalPlan(operator, fetchSize);
+    return super.transformToPhysicalPlan(operator);
   }
 
   @Override
-  protected PhysicalPlan generateLoadConfigurationPlan(LoadConfigurationOperatorType type)
+  public PhysicalPlan generateLoadConfigurationPlan(LoadConfigurationOperatorType type)
       throws QueryProcessException {
     if (type == LoadConfigurationOperatorType.GLOBAL) {
       Properties[] properties = new Properties[2];

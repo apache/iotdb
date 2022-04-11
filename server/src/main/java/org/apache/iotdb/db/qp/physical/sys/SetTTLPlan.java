@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.qp.physical.sys;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
@@ -36,12 +36,12 @@ public class SetTTLPlan extends PhysicalPlan {
   private long dataTTL;
 
   public SetTTLPlan() {
-    super(false, OperatorType.TTL);
+    super(OperatorType.TTL);
   }
 
   public SetTTLPlan(PartialPath storageGroup, long dataTTL) {
     // set TTL
-    super(false, OperatorType.TTL);
+    super(OperatorType.TTL);
     this.storageGroup = storageGroup;
     this.dataTTL = dataTTL;
   }
@@ -67,7 +67,7 @@ public class SetTTLPlan extends PhysicalPlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     int type = PhysicalPlanType.TTL.ordinal();
     buffer.put((byte) type);
     buffer.putLong(dataTTL);
