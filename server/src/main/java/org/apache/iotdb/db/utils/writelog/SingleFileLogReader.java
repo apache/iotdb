@@ -25,6 +25,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.BufferedInputStream;
 import java.io.DataInputStream;
+import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -70,12 +71,16 @@ public class SingleFileLogReader implements ILogReader {
         return true;
       }
 
-      if (logStream.available() < LEAST_LOG_SIZE) {
+      int logSize;
+      try {
+        logSize = logStream.readInt();
+      } catch (EOFException e) {
+        truncateBrokenLogs();
         return false;
       }
 
-      int logSize = logStream.readInt();
       if (logSize <= 0) {
+        truncateBrokenLogs();
         return false;
       }
       buffer = new byte[logSize];

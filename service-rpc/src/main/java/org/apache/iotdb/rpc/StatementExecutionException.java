@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.rpc;
 
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 
 public class StatementExecutionException extends Exception {
 

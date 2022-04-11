@@ -16,16 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.metadata.multimode;
 
-package org.apache.iotdb.db.exception.metadata;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
-import org.apache.iotdb.rpc.TSStatusCode;
-
-public class UndefinedTemplateException extends MetadataException {
-  public UndefinedTemplateException(String path) {
-    super(
-        String.format("Undefined template name: " + path),
-        TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode(),
-        true);
+public class SchemaPartialMemoryTest extends SchemaDiskModeTest {
+  @Override
+  protected void setMemSize() {
+    IoTDBDescriptor.getInstance().getConfig().setCachedMNodeSizeInSchemaFileMode(5);
   }
 }

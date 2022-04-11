@@ -17,7 +17,7 @@
  * under the License.
  */
 
-include "rpc.thrift"
+include "common.thrift"
 namespace java org.apache.iotdb.cluster.rpc.thrift
 namespace py iotdb.thrift.cluster
 
@@ -327,7 +327,7 @@ service RaftService {
   /**
   * Execute a binarized non-query PhysicalPlan
   **/
-  rpc.TSStatus executeNonQueryPlan(1:ExecutNonQueryReq request)
+  common.TSStatus executeNonQueryPlan(1:ExecutNonQueryReq request)
 
   /**
   * Ask the leader for its commit index, used to check whether the node has caught up with the

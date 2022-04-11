@@ -1727,6 +1727,10 @@ public class RSchemaRegion implements ISchemaRegion {
 
     IMNode deviceMNode = getDeviceNodeWithAutoCreate(devicePath, plan.isAligned());
 
+    if (deviceMNode == null) {
+      throw new MetadataException(
+          String.format("Failed to create deviceMNode,device path:[%s]", plan.getDevicePath()));
+    }
     // check insert non-aligned InsertPlan for aligned timeseries
     if (deviceMNode.isEntity()) {
       if (plan.isAligned() && !deviceMNode.getAsEntityMNode().isAligned()) {

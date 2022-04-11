@@ -18,23 +18,17 @@
  *
  */
 
-package org.apache.iotdb.db.exception.metadata;
+package org.apache.iotdb.db.exception.metadata.template;
 
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-public class TemplateImcompatibeException extends MetadataException {
+public class NoTemplateOnMNodeException extends MetadataException {
 
-  public TemplateImcompatibeException(String path, String templateName) {
+  public NoTemplateOnMNodeException(String path) {
     super(
-        String.format("Path [%s] already exists in [%s]", path, templateName),
-        TSStatusCode.TEMPLATE_IMCOMPATIBLE.getStatusCode());
-    this.isUserException = true;
-  }
-
-  public TemplateImcompatibeException(String path, String templateName, String overlapNodeName) {
-    super(
-        String.format("Path [%s] overlaps with [%s] on [%s]", path, templateName, overlapNodeName),
-        TSStatusCode.TEMPLATE_IMCOMPATIBLE.getStatusCode());
-    this.isUserException = true;
+        String.format("NO template on " + path),
+        TSStatusCode.NO_TEMPLATE_ON_MNODE.getStatusCode(),
+        true);
   }
 }

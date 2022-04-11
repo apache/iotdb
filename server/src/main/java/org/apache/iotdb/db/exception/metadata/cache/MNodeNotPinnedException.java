@@ -15,19 +15,15 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- *
  */
 
-package org.apache.iotdb.db.exception.metadata;
+package org.apache.iotdb.db.exception.metadata.cache;
 
-import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 
-public class NoTemplateOnMNodeException extends MetadataException {
+public class MNodeNotPinnedException extends MetadataException {
 
-  public NoTemplateOnMNodeException(String path) {
-    super(
-        String.format("NO template on " + path),
-        TSStatusCode.NO_TEMPLATE_ON_MNODE.getStatusCode(),
-        true);
+  public MNodeNotPinnedException() {
+    super("MNode has not been pinned.");
   }
 }

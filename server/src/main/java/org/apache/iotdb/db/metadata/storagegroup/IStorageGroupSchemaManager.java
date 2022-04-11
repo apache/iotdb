@@ -33,7 +33,7 @@ import java.util.Set;
 // This class declares all the interfaces for storage group management.
 public interface IStorageGroupSchemaManager {
 
-  void init() throws IOException;
+  void init() throws MetadataException, IOException;
 
   void forceLog();
 
