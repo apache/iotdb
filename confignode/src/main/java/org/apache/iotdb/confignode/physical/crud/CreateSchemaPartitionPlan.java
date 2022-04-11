@@ -16,23 +16,24 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.hash;
+package org.apache.iotdb.confignode.physical.crud;
 
-public class SDBMHashExecutor extends DeviceGroupHashExecutor {
+import org.apache.iotdb.confignode.physical.PhysicalPlan;
+import org.apache.iotdb.confignode.physical.PhysicalPlanType;
 
-  public SDBMHashExecutor(int deviceGroupCount) {
-    super(deviceGroupCount);
+import java.io.IOException;
+import java.nio.ByteBuffer;
+
+/** TODO: Reconstruct this interface after PatterTree is moved to node-commons */
+public class CreateSchemaPartitionPlan extends PhysicalPlan {
+
+  public CreateSchemaPartitionPlan(PhysicalPlanType type) {
+    super(type);
   }
 
   @Override
-  public int getDeviceGroupID(String device) {
-    int hash = 0;
+  protected void serializeImpl(ByteBuffer buffer) {}
 
-    for (int i = 0; i < device.length(); i++) {
-      hash = ((int) device.charAt(i) + (hash << 6) + (hash << 16) - hash);
-    }
-    hash &= Integer.MAX_VALUE;
-
-    return hash % deviceGroupCount;
-  }
+  @Override
+  protected void deserializeImpl(ByteBuffer buffer) throws IOException {}
 }

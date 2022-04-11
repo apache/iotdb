@@ -16,67 +16,42 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.partition;
-
-import org.apache.iotdb.commons.cluster.Endpoint;
+package org.apache.iotdb.commons.cluster;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Objects;
 
 public class DataNodeLocation {
 
-  private int dataNodeID;
+  private int dataNodeId;
   private Endpoint endPoint;
-
-  private List<Integer> schemaRegionGroupIDs;
-  private List<Integer> dataRegionGroupIDs;
 
   public DataNodeLocation() {}
 
-  public DataNodeLocation(int dataNodeID, Endpoint endPoint) {
-    this.dataNodeID = dataNodeID;
+  public DataNodeLocation(int dataNodeId, Endpoint endPoint) {
+    this.dataNodeId = dataNodeId;
     this.endPoint = endPoint;
-    dataRegionGroupIDs = new ArrayList<>();
-    schemaRegionGroupIDs = new ArrayList<>();
   }
 
-  public int getDataNodeID() {
-    return dataNodeID;
+  public int getDataNodeId() {
+    return dataNodeId;
   }
 
-  public void setDataNodeID(int dataNodeID) {
-    this.dataNodeID = dataNodeID;
+  public void setDataNodeId(int dataNodeId) {
+    this.dataNodeId = dataNodeId;
   }
 
   public Endpoint getEndPoint() {
     return endPoint;
   }
 
-  public void addSchemaRegionGroup(int id) {
-    schemaRegionGroupIDs.add(id);
-  }
-
-  public List<Integer> getSchemaRegionGroupIDs() {
-    return schemaRegionGroupIDs;
-  }
-
-  public void addDataRegionGroup(int id) {
-    dataRegionGroupIDs.add(id);
-  }
-
-  public List<Integer> getDataRegionGroupIDs() {
-    return dataRegionGroupIDs;
-  }
-
   public void serializeImpl(ByteBuffer buffer) {
-    buffer.putInt(dataNodeID);
+    buffer.putInt(dataNodeId);
     endPoint.serializeImpl(buffer);
   }
 
   public void deserializeImpl(ByteBuffer buffer) {
-    dataNodeID = buffer.getInt();
+    dataNodeId = buffer.getInt();
     endPoint = new Endpoint();
     endPoint.deserializeImpl(buffer);
   }
@@ -90,15 +65,15 @@ public class DataNodeLocation {
       return false;
     }
     DataNodeLocation that = (DataNodeLocation) o;
-    return dataNodeID == that.dataNodeID && Objects.equals(endPoint, that.endPoint);
+    return dataNodeId == that.dataNodeId && Objects.equals(endPoint, that.endPoint);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(dataNodeID, endPoint);
+    return Objects.hash(dataNodeId, endPoint);
   }
 
   public String toString() {
-    return String.format("DataNode[%d, %s]", dataNodeID, endPoint);
+    return String.format("DataNode[%d, %s]", dataNodeId, endPoint);
   }
 }

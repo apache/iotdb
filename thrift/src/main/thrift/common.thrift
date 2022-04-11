@@ -33,7 +33,16 @@ namespace py iotdb.thrift.common
    4: optional EndPoint redirectNode
  }
 
- struct RegionReplicaSet {
+ struct TRegionReplicaSet {
      1: required i32 regionId
-     2: required list<EndPoint> endpoint
+     2: required string groupType
+     3: required list<EndPoint> endpoint
+ }
+
+ struct TSeriesPartitionSlot {
+     1: required i32 slotId
+ }
+
+ struct TTimePartitionSlot {
+     1: required i64 startTime
  }
