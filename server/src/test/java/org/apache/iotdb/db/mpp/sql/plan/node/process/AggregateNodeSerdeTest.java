@@ -46,6 +46,6 @@ public class AggregateNodeSerdeTest {
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
     aggregateNode.serialize(byteBuffer);
     byteBuffer.flip();
-    assertEquals(PlanNodeDeserializeHelper.deserialize(byteBuffer), aggregateNode);
+    assertEquals((AggregateNode) PlanNodeDeserializeHelper.deserialize(byteBuffer), aggregateNode);
   }
 }

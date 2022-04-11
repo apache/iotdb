@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
+import java.util.Objects;
 import org.apache.iotdb.db.mpp.common.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
@@ -113,7 +114,7 @@ public class AggregateNode extends ProcessNode {
     }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     AggregateNode aggregateNode =
-        new AggregateNode(planNodeId, new HashMap<>(), new ArrayList<>(), columnNames);
+        new AggregateNode(planNodeId, null, new ArrayList<>(), columnNames);
     return aggregateNode;
   }
 }
