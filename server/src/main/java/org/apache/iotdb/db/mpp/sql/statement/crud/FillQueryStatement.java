@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.sql.statement.crud;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
 import org.apache.iotdb.db.mpp.sql.constant.FilterConstant;
+import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.component.FillComponent;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 
@@ -47,7 +48,7 @@ public class FillQueryStatement extends QueryStatement {
   public void selfCheck() {
     super.selfCheck();
 
-    if (DisableAlign()) {
+    if (disableAlign()) {
       throw new SemanticException("FILL doesn't support disable align clause.");
     }
 
@@ -69,5 +70,9 @@ public class FillQueryStatement extends QueryStatement {
     } else if (!queryFilter.isSingle()) {
       throw new SemanticException("Slice query must select a single time point");
     }
+  }
+
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitFillQuery(this, context);
   }
 }

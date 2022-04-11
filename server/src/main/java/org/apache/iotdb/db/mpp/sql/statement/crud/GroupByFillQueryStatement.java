@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.sql.statement.crud;
 
+import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.component.FillComponent;
 
 public class GroupByFillQueryStatement extends GroupByQueryStatement {
@@ -39,5 +40,9 @@ public class GroupByFillQueryStatement extends GroupByQueryStatement {
 
   public void setFillComponent(FillComponent fillComponent) {
     this.fillComponent = fillComponent;
+  }
+
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitGroupByFillQuery(this, context);
   }
 }

@@ -450,8 +450,6 @@ public class TsFileProcessorTest {
     insertTabletPlan.setColumns(columns);
     insertTabletPlan.setRowCount(times.length);
     insertTabletPlan.setMeasurementMNodes(mNodes);
-    insertTabletPlan.setStart(0);
-    insertTabletPlan.setEnd(10);
     insertTabletPlan.setAligned(isAligned);
 
     return insertTabletPlan;

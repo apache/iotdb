@@ -19,17 +19,19 @@
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.mpp.sql.planner.plan.IOutputPlanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.ColumnHeader;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullPolicy;
+import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullComponent;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * DeviceMergeOperator is responsible for constructing a device-based view of a set of series. And
@@ -40,7 +42,8 @@ import java.util.Map;
  * same between these TsBlocks. If the input TsBlock contains n columns, the device-based view will
  * contain n+1 columns where the new column is Device column.
  */
-public class DeviceMergeNode extends ProcessNode {
+public class DeviceMergeNode extends ProcessNode implements IOutputPlanNode {
+
   // The result output order that this operator
   private OrderBy mergeOrder;
 
@@ -48,15 +51,15 @@ public class DeviceMergeNode extends ProcessNode {
   // The without policy is able to be push down to the DeviceMergeNode because we can know whether a
   // row contains
   // null or not.
-  private FilterNullPolicy filterNullPolicy;
+  private FilterNullComponent filterNullComponent;
 
   // The map from deviceName to corresponding query result node responsible for that device.
   // DeviceNode means the node whose output TsBlock contains the data belonged to one device.
-  private Map<String, PlanNode> childDeviceNodeMap;
+  private Map<String, PlanNode> childDeviceNodeMap = new HashMap<>();
 
   private List<PlanNode> children;
 
-  private List<String> columnNames;
+  private final List<ColumnHeader> columnHeaders = new ArrayList<>();;
 
   public DeviceMergeNode(PlanNodeId id) {
     super(id);
@@ -80,7 +83,7 @@ public class DeviceMergeNode extends ProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new DeviceMergeNode(getId(), mergeOrder);
+    return new DeviceMergeNode(getPlanNodeId(), mergeOrder);
   }
 
   @Override
@@ -88,9 +91,35 @@ public class DeviceMergeNode extends ProcessNode {
     return CHILD_COUNT_NO_LIMIT;
   }
 
+  public void addChildDeviceNode(String deviceName, PlanNode childNode) {
+    this.childDeviceNodeMap.put(deviceName, childNode);
+    this.children.add(childNode);
+    updateColumnHeaders(childNode);
+  }
+
+  private void updateColumnHeaders(PlanNode childNode) {
+    List<ColumnHeader> childColumnHeaders = ((IOutputPlanNode) childNode).getOutputColumnHeaders();
+    for (ColumnHeader columnHeader : childColumnHeaders) {
+      ColumnHeader tmpColumnHeader = columnHeader.replacePathWithMeasurement();
+      if (!columnHeaders.contains(tmpColumnHeader)) {
+        columnHeaders.add(tmpColumnHeader);
+      }
+    }
+  }
+
+  @Override
+  public List<ColumnHeader> getOutputColumnHeaders() {
+    return columnHeaders;
+  }
+
   @Override
   public List<String> getOutputColumnNames() {
-    return columnNames;
+    return columnHeaders.stream().map(ColumnHeader::getColumnName).collect(Collectors.toList());
+  }
+
+  @Override
+  public List<TSDataType> getOutputColumnTypes() {
+    return columnHeaders.stream().map(ColumnHeader::getColumnType).collect(Collectors.toList());
   }
 
   public OrderBy getMergeOrder() {
@@ -109,20 +138,9 @@ public class DeviceMergeNode extends ProcessNode {
   @Override
   public void serialize(ByteBuffer byteBuffer) {}
 
-  public DeviceMergeNode(PlanNodeId id, Map<String, PlanNode> deviceNodeMap) {
-    this(id);
-    this.childDeviceNodeMap = deviceNodeMap;
-    this.children.addAll(deviceNodeMap.values());
-  }
-
-  public void addChildDeviceNode(String deviceName, PlanNode childNode) {
-    this.childDeviceNodeMap.put(deviceName, childNode);
-    this.children.add(childNode);
-  }
-
   @TestOnly
   public Pair<String, List<String>> print() {
-    String title = String.format("[DeviceMergeNode (%s)]", this.getId());
+    String title = String.format("[DeviceMergeNode (%s)]", this.getPlanNodeId());
     List<String> attributes = new ArrayList<>();
     attributes.add("MergeOrder: " + (this.getMergeOrder() == null ? "null" : this.getMergeOrder()));
     return new Pair<>(title, attributes);
@@ -130,5 +148,26 @@ public class DeviceMergeNode extends ProcessNode {
 
   public void setChildren(List<PlanNode> children) {
     this.children = children;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+
+    DeviceMergeNode that = (DeviceMergeNode) o;
+    return mergeOrder == that.mergeOrder
+        && filterNullComponent == that.filterNullComponent
+        && Objects.equals(childDeviceNodeMap, that.childDeviceNodeMap);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(mergeOrder, filterNullComponent, childDeviceNodeMap);
   }
 }

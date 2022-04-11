@@ -1580,14 +1580,14 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |默认值| 604800 |
 |改后生效方式|仅允许在第一次启动服务前修改|
 
-* virtual\_storage\_group\_num
+* data\_region\_num
 
-|名字| virtual\_storage\_group\_num |
-|:---:|:---|
-|描述| 每一个用户定义存储组下虚拟存储组的数量, 虚拟存储组是内存中写入的并行单位，每一个虚拟存储组内的写入请求是串行的，推荐值为： [virtual storage group number] = [CPU core number] / [user-defined storage group number]|
-|类型| INT32 |
-|默认值| 1 |
-|改后生效方式|仅允许在第一次启动服务前修改|
+|   名字   | data\_region\_num                                                                                                                                                    |
+|:------:|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|   描述   | 每一个用户定义存储组下 data region 的数量, data region 是内存中写入的并行单位，每一个 data region 内的写入请求是串行的，推荐值为： [data region number] = [CPU core number] / [user-defined storage group number] |
+|   类型   | INT32                                                                                                                                                                |
+|  默认值   | 1                                                                                                                                                                    |
+| 改后生效方式 | 仅允许在第一次启动服务前修改                                                                                                                                                       |
 
 <!--
 * enable\_id\_table

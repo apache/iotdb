@@ -20,9 +20,14 @@
 package org.apache.iotdb.db.engine.memtable;
 
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
+import org.apache.iotdb.db.wal.utils.WALWriteUtils;
 import org.apache.iotdb.tsfile.utils.BitMap;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
+import java.io.DataInputStream;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -133,5 +138,37 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
   @Override
   public long getCurrentTVListSize(String measurement) {
     return memChunkMap.get(measurement).getTVList().rowCount();
+  }
+
+  @Override
+  public int serializedSize() {
+    int size = 0;
+    size += Integer.BYTES;
+    for (Map.Entry<String, IWritableMemChunk> entry : memChunkMap.entrySet()) {
+      size += ReadWriteIOUtils.sizeToWrite(entry.getKey());
+      size += entry.getValue().serializedSize();
+    }
+    return size;
+  }
+
+  @Override
+  public void serializeToWAL(IWALByteBufferView buffer) {
+    buffer.putInt(memChunkMap.size());
+    for (Map.Entry<String, IWritableMemChunk> entry : memChunkMap.entrySet()) {
+      WALWriteUtils.write(entry.getKey(), buffer);
+      IWritableMemChunk memChunk = entry.getValue();
+      memChunk.serializeToWAL(buffer);
+    }
+  }
+
+  public static WritableMemChunkGroup deserialize(DataInputStream stream) throws IOException {
+    WritableMemChunkGroup memChunkGroup = new WritableMemChunkGroup();
+    int memChunkMapSize = stream.readInt();
+    for (int i = 0; i < memChunkMapSize; ++i) {
+      String measurement = ReadWriteIOUtils.readString(stream);
+      IWritableMemChunk memChunk = WritableMemChunk.deserialize(stream);
+      memChunkGroup.memChunkMap.put(measurement, memChunk);
+    }
+    return memChunkGroup;
   }
 }
