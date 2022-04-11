@@ -32,19 +32,10 @@ public interface ColumnEncoder {
   void writeColumn(DataOutputStream output, Column column) throws IOException;
 
   static void serializeNullIndicators(DataOutputStream output, Column column) throws IOException {
-    boolean[] nullIndicators = null;
-    if (column.mayHaveNull()) {
-      nullIndicators = new boolean[column.getPositionCount()];
-      for (int i = 0; i < column.getPositionCount(); i++) {
-        nullIndicators[i] = column.isNull(i);
-      }
-    }
-
-    if (nullIndicators == null) {
-      output.writeByte(0);
+    boolean mayHaveNull = column.mayHaveNull();
+    output.writeBoolean(mayHaveNull);
+    if (!mayHaveNull) {
       return;
-    } else {
-      output.writeByte(1);
     }
 
     int positionCount = column.getPositionCount();
