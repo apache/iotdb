@@ -24,10 +24,10 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -94,7 +94,10 @@ public class PathPatternTree {
     nodes.add(curNode.getName());
     if (curNode.isLeaf()) {
       pathPatternList.add(parseNodesToString(nodes));
+      nodes.remove(nodes.size() - 1);
+      return;
     }
+
     for (PathPatternNode childNode : curNode.getChildren().values()) {
       findAllPaths(childNode, nodes, pathPatternList);
     }
@@ -167,22 +170,22 @@ public class PathPatternTree {
     }
   }
 
-  public void serialize(ByteBuffer buffer) throws IOException {
+  public void serialize(PublicBAOS outputStream) throws IOException {
     constructTree();
-    ReadWriteIOUtils.write(isPrefixMatchPath, buffer);
-    root.serialize(buffer);
+    ReadWriteIOUtils.write(isPrefixMatchPath, outputStream);
+    root.serialize(outputStream);
   }
 
-  public void deserialize(ByteBuffer buffer) throws IOException {
-    this.isPrefixMatchPath = ReadWriteIOUtils.readBool(buffer);
-    this.root = deserializeNode(buffer);
+  public void deserialize(ByteArrayInputStream inputStream) throws IOException {
+    this.isPrefixMatchPath = ReadWriteIOUtils.readBool(inputStream);
+    this.root = deserializeNode(inputStream);
   }
 
-  private PathPatternNode deserializeNode(ByteBuffer buffer) {
-    PathPatternNode node = new PathPatternNode(ReadWriteIOUtils.readString(buffer));
-    int childrenSize = ReadWriteIOUtils.readInt(buffer);
+  private PathPatternNode deserializeNode(ByteArrayInputStream inputStream) throws IOException {
+    PathPatternNode node = new PathPatternNode(ReadWriteIOUtils.readString(inputStream));
+    int childrenSize = ReadWriteIOUtils.readInt(inputStream);
     while (childrenSize > 0) {
-      PathPatternNode tmpNode = deserializeNode(buffer);
+      PathPatternNode tmpNode = deserializeNode(inputStream);
       node.addChild(tmpNode);
       childrenSize--;
     }

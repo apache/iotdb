@@ -22,12 +22,13 @@ package org.apache.iotdb.db.mpp.common;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -136,10 +137,10 @@ public class PathPatternTreeTest {
         patternTree.findAllPaths().stream().sorted().collect(Collectors.toList()));
 
     PathPatternTree tmpPathPatternTree = new PathPatternTree();
-    ByteBuffer buffer = ByteBuffer.allocate(1024 * 1024);
-    resultPatternTree.serialize(buffer);
-    buffer.flip();
-    tmpPathPatternTree.deserialize(buffer);
+    PublicBAOS outputStream = new PublicBAOS();
+    resultPatternTree.serialize(outputStream);
+    ByteArrayInputStream inputStream = new ByteArrayInputStream(outputStream.toByteArray());
+    tmpPathPatternTree.deserialize(inputStream);
     Assert.assertTrue(resultPatternTree.equalWith(tmpPathPatternTree));
   }
 }

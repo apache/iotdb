@@ -20,10 +20,10 @@
 package org.apache.iotdb.db.mpp.common.schematree;
 
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -85,15 +85,15 @@ public class PathPatternNode {
     return true;
   }
 
-  public void serialize(ByteBuffer buffer) throws IOException {
-    ReadWriteIOUtils.write(name, buffer);
-    ReadWriteIOUtils.write(children.size(), buffer);
-    serializeChildren(buffer);
+  public void serialize(PublicBAOS outputStream) throws IOException {
+    ReadWriteIOUtils.write(name, outputStream);
+    ReadWriteIOUtils.write(children.size(), outputStream);
+    serializeChildren(outputStream);
   }
 
-  void serializeChildren(ByteBuffer buffer) throws IOException {
+  void serializeChildren(PublicBAOS outputStream) throws IOException {
     for (PathPatternNode childNode : children.values()) {
-      childNode.serialize(buffer);
+      childNode.serialize(outputStream);
     }
   }
 }
