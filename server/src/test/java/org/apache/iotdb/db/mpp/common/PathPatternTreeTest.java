@@ -44,7 +44,8 @@ public class PathPatternTreeTest {
             new PartialPath("root.sg1.d1.s2"),
             new PartialPath("root.sg1.d1.*"),
             new PartialPath("root.sg1.d1.s3")),
-        Collections.singletonList(new PartialPath("root.sg1.d1.*")));
+        Collections.singletonList(new PartialPath("root.sg1.d1.*")),
+        Collections.singletonList(new PartialPath("root.sg1.d1")));
   }
 
   @Test
@@ -59,7 +60,11 @@ public class PathPatternTreeTest {
         Arrays.asList(
             new PartialPath("root.sg1.d1.s2"),
             new PartialPath("root.sg1.d1.t1.s1"),
-            new PartialPath("root.sg1.*.s1")));
+            new PartialPath("root.sg1.*.s1")),
+        Arrays.asList(
+            new PartialPath("root.sg1.d1"),
+            new PartialPath("root.sg1.d1.t1"),
+            new PartialPath("root.sg1.*")));
   }
 
   @Test
@@ -75,6 +80,7 @@ public class PathPatternTreeTest {
             new PartialPath("root.sg1.d1.s2"),
             new PartialPath("root.sg1.d1.t1.s1"),
             new PartialPath("root.sg1.d2.s3")),
+        Collections.singletonList(new PartialPath("root.**")),
         Collections.singletonList(new PartialPath("root.**")));
   }
 
@@ -87,7 +93,8 @@ public class PathPatternTreeTest {
             new PartialPath("root.sg1.d1.t1.s1"),
             new PartialPath("root.sg1.d2.s1"),
             new PartialPath("root.sg1.**.s1")),
-        Arrays.asList(new PartialPath("root.sg1.d1.s2"), new PartialPath("root.sg1.**.s1")));
+        Arrays.asList(new PartialPath("root.sg1.d1.s2"), new PartialPath("root.sg1.**.s1")),
+        Arrays.asList(new PartialPath("root.sg1.d1"), new PartialPath("root.sg1.**")));
   }
 
   @Test
@@ -110,10 +117,18 @@ public class PathPatternTreeTest {
             new PartialPath("root.sg1.d2.*"),
             new PartialPath("root.sg1.**.s1"),
             new PartialPath("root.sg1.*.s2"),
-            new PartialPath("root.sg1.d3.t1.s2")));
+            new PartialPath("root.sg1.d3.t1.s2")),
+        Arrays.asList(
+            new PartialPath("root.sg1.d2"),
+            new PartialPath("root.sg1.**"),
+            new PartialPath("root.sg1.*"),
+            new PartialPath("root.sg1.d3.t1")));
   }
 
-  public void checkPathPatternTree(List<PartialPath> paths, List<PartialPath> compressedPaths)
+  public void checkPathPatternTree(
+      List<PartialPath> paths,
+      List<PartialPath> compressedPaths,
+      List<PartialPath> compressedDevicePaths)
       throws IOException {
     PathPatternTree patternTree = new PathPatternTree();
     for (PartialPath path : paths) {
@@ -130,11 +145,11 @@ public class PathPatternTreeTest {
     Assert.assertTrue(resultPatternTree.equalWith(patternTree));
 
     Assert.assertEquals(
-        compressedPaths.stream()
+        compressedDevicePaths.stream()
             .map(PartialPath::getFullPath)
             .sorted()
             .collect(Collectors.toList()),
-        patternTree.findAllPaths().stream().sorted().collect(Collectors.toList()));
+        patternTree.findAllDevicePaths().stream().sorted().collect(Collectors.toList()));
 
     PathPatternTree tmpPathPatternTree = new PathPatternTree();
     PublicBAOS outputStream = new PublicBAOS();

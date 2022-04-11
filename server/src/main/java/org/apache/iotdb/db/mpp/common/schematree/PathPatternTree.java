@@ -68,25 +68,28 @@ public class PathPatternTree {
     this.root = root;
   }
 
-  /** @return all path patterns in the path pattern tree. */
-  public List<String> findAllPaths() {
+  /** @return all device path patterns in the path pattern tree. */
+  public List<String> findAllDevicePaths() {
     List<String> nodes = new ArrayList<>();
     List<String> pathPatternList = new ArrayList<>();
-    findAllPaths(root, nodes, pathPatternList);
+    findAllDevicePaths(root, nodes, pathPatternList);
     return pathPatternList;
   }
 
-  private void findAllPaths(
+  private void findAllDevicePaths(
       PathPatternNode curNode, List<String> nodes, List<String> pathPatternList) {
     nodes.add(curNode.getName());
     if (curNode.isLeaf()) {
-      pathPatternList.add(parseNodesToString(nodes));
+      if (!curNode.getName().equals("**")) {
+        pathPatternList.add(parseNodesToString(nodes.subList(0, nodes.size() - 1)));
+      } else {
+        pathPatternList.add(parseNodesToString(nodes));
+      }
       nodes.remove(nodes.size() - 1);
       return;
     }
-
     for (PathPatternNode childNode : curNode.getChildren().values()) {
-      findAllPaths(childNode, nodes, pathPatternList);
+      findAllDevicePaths(childNode, nodes, pathPatternList);
     }
     nodes.remove(nodes.size() - 1);
   }
