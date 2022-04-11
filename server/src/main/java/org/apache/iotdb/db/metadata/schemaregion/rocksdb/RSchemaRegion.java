@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.metadata.schemaregion.rocksdb;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -106,7 +107,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Queue;
 import java.util.Set;
-import java.util.Stack;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
@@ -275,7 +275,8 @@ public class RSchemaRegion implements ISchemaRegion {
             "Acquire lock timeout when creating timeseries: " + plan.getPath().getFullPath());
       }
     } catch (InterruptedException e) {
-      throw new MetadataException(e);
+      logger.warn("Acquire lock interrupted", e);
+      Thread.currentThread().interrupt();
     } finally {
       deleteUpdateLock.readLock().unlock();
     }
@@ -332,17 +333,13 @@ public class RSchemaRegion implements ISchemaRegion {
 
     try {
       createTimeSeriesRecursively(
-          nodes,
-          nodes.length,
-          storageGroupPathLevel,
-          schema,
-          alias,
-          tags,
-          attributes,
-          new Stack<>());
+          nodes, nodes.length, storageGroupPathLevel, schema, alias, tags, attributes);
       // TODO: load tags to memory
-    } catch (RocksDBException | InterruptedException | IOException e) {
+    } catch (RocksDBException | IOException e) {
       throw new MetadataException(e);
+    } catch (InterruptedException e) {
+      logger.warn("Acquire lock interrupted", e);
+      Thread.currentThread().interrupt();
     }
   }
 
@@ -353,8 +350,7 @@ public class RSchemaRegion implements ISchemaRegion {
       IMeasurementSchema schema,
       String alias,
       Map<String, String> tags,
-      Map<String, String> attributes,
-      Stack<Lock> lockedLocks)
+      Map<String, String> attributes)
       throws InterruptedException, MetadataException, RocksDBException, IOException {
     if (start <= end) {
       // "ROOT" node must exist and don't need to check
@@ -363,12 +359,10 @@ public class RSchemaRegion implements ISchemaRegion {
     String levelPath = RSchemaUtils.getLevelPath(nodes, start - 1);
     Lock lock = locksPool.computeIfAbsent(levelPath, x -> new ReentrantLock());
     if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
-      lockedLocks.push(lock);
       try {
         CheckKeyResult checkResult = readWriteHandler.keyExistByAllTypes(levelPath);
         if (!checkResult.existAnyKey()) {
-          createTimeSeriesRecursively(
-              nodes, start - 1, end, schema, alias, tags, attributes, lockedLocks);
+          createTimeSeriesRecursively(nodes, start - 1, end, schema, alias, tags, attributes);
           if (start == nodes.length) {
             createTimeSeriesNode(nodes, levelPath, schema, alias, tags, attributes);
           } else if (start == nodes.length - 1) {
@@ -404,20 +398,11 @@ public class RSchemaRegion implements ISchemaRegion {
                 RSchemaUtils.getPathByLevelPath(levelPath), MetadataConstant.INTERNAL_MNODE_TYPE);
           }
         }
-      } catch (Exception e) {
-        while (!lockedLocks.isEmpty()) {
-          lockedLocks.pop().unlock();
-        }
-        throw e;
       } finally {
-        if (!lockedLocks.isEmpty()) {
-          lockedLocks.pop().unlock();
-        }
+        lock.unlock();
       }
     } else {
-      while (!lockedLocks.isEmpty()) {
-        lockedLocks.pop().unlock();
-      }
+      lock.unlock();
       throw new AcquireLockTimeoutException("acquire lock timeout: " + levelPath);
     }
   }
@@ -463,6 +448,7 @@ public class RSchemaRegion implements ISchemaRegion {
             lock.unlock();
           }
         } else {
+          lock.unlock();
           throw new AcquireLockTimeoutException("acquire lock timeout: " + levelPath);
         }
       } else {
@@ -493,11 +479,7 @@ public class RSchemaRegion implements ISchemaRegion {
 
     try (WriteBatch batch = new WriteBatch()) {
       createEntityRecursively(
-          prefixPath.getNodes(),
-          prefixPath.getNodeLength(),
-          storageGroupPathLevel + 1,
-          true,
-          new Stack<>());
+          prefixPath.getNodes(), prefixPath.getNodeLength(), storageGroupPathLevel + 1, true);
       String[] locks = new String[measurements.size()];
       for (int i = 0; i < measurements.size(); i++) {
         String measurement = measurements.get(i);
@@ -510,29 +492,29 @@ public class RSchemaRegion implements ISchemaRegion {
         batch.put(key, value);
       }
 
-      Stack<Lock> acquiredLock = new Stack<>();
-      try {
-        for (String lockKey : locks) {
-          Lock lock = locksPool.computeIfAbsent(lockKey, x -> new ReentrantLock());
-          if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
-            acquiredLock.push(lock);
+      for (String lockKey : locks) {
+        Lock lock = locksPool.computeIfAbsent(lockKey, x -> new ReentrantLock());
+        if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
+          try {
             if (readWriteHandler.keyExistByAllTypes(lockKey).existAnyKey()) {
               throw new PathAlreadyExistException(lockKey);
             }
-          } else {
-            throw new AcquireLockTimeoutException("acquire lock timeout: " + lockKey);
+          } finally {
+            lock.unlock();
           }
-        }
-        readWriteHandler.executeBatch(batch);
-      } finally {
-        while (!acquiredLock.isEmpty()) {
-          Lock lock = acquiredLock.pop();
+        } else {
           lock.unlock();
+          throw new AcquireLockTimeoutException("acquire lock timeout: " + lockKey);
         }
       }
+      readWriteHandler.executeBatch(batch);
+
       // TODO: update cache if necessary
-    } catch (InterruptedException | RocksDBException | IOException e) {
+    } catch (RocksDBException | IOException e) {
       throw new MetadataException(e);
+    } catch (InterruptedException e) {
+      logger.warn("Acquire lock interrupted", e);
+      Thread.currentThread().interrupt();
     }
   }
 
@@ -556,14 +538,14 @@ public class RSchemaRegion implements ISchemaRegion {
             "Acquire lock timeout when do createAlignedTimeSeries: " + prefixPath.getFullPath());
       }
     } catch (InterruptedException e) {
-      throw new MetadataException(e);
+      logger.warn("Acquire lock interrupted", e);
+      Thread.currentThread().interrupt();
     } finally {
       deleteUpdateLock.readLock().unlock();
     }
   }
 
-  private void createEntityRecursively(
-      String[] nodes, int start, int end, boolean aligned, Stack<Lock> lockedLocks)
+  private void createEntityRecursively(String[] nodes, int start, int end, boolean aligned)
       throws RocksDBException, MetadataException, InterruptedException {
     if (start <= end) {
       // "ROOT" must exist
@@ -575,7 +557,7 @@ public class RSchemaRegion implements ISchemaRegion {
       try {
         CheckKeyResult checkResult = readWriteHandler.keyExistByAllTypes(levelPath);
         if (!checkResult.existAnyKey()) {
-          createEntityRecursively(nodes, start - 1, end, aligned, lockedLocks);
+          createEntityRecursively(nodes, start - 1, end, aligned);
           if (start == nodes.length) {
             byte[] nodeKey = RSchemaUtils.toEntityNodeKey(levelPath);
             byte[] value = aligned ? DEFAULT_ALIGNED_ENTITY_VALUE : DEFAULT_NODE_VALUE;
@@ -608,20 +590,11 @@ public class RSchemaRegion implements ISchemaRegion {
                 RSchemaUtils.getPathByLevelPath(levelPath), MetadataConstant.ENTITY_MNODE_TYPE);
           }
         }
-      } catch (Exception e) {
-        while (!lockedLocks.isEmpty()) {
-          lockedLocks.pop().unlock();
-        }
-        throw e;
       } finally {
-        if (!lockedLocks.isEmpty()) {
-          lockedLocks.pop().unlock();
-        }
+        lock.unlock();
       }
     } else {
-      while (!lockedLocks.isEmpty()) {
-        lockedLocks.pop().unlock();
-      }
+      lock.unlock();
       throw new AcquireLockTimeoutException("acquire lock timeout: " + levelPath);
     }
   }
@@ -714,7 +687,9 @@ public class RSchemaRegion implements ISchemaRegion {
             "acquire lock timeout when delete timeseries: " + pathPattern);
       }
     } catch (InterruptedException e) {
-      throw new MetadataException(e);
+      logger.warn("Acquire lock interrupted", e);
+      Thread.currentThread().interrupt();
+      return new Pair<>(0, null);
     } finally {
       deleteUpdateLock.writeLock().unlock();
     }
@@ -843,7 +818,7 @@ public class RSchemaRegion implements ISchemaRegion {
 
   private IMNode getDeviceNodeWithAutoCreate(PartialPath devicePath, boolean autoCreateSchema)
       throws MetadataException {
-    IMNode node;
+    IMNode node = null;
     try {
       node = getDeviceNode(devicePath);
       return node;
@@ -853,14 +828,13 @@ public class RSchemaRegion implements ISchemaRegion {
       }
       try {
         createEntityRecursively(
-            devicePath.getNodes(),
-            devicePath.getNodeLength(),
-            storageGroupPathLevel,
-            false,
-            new Stack<>());
+            devicePath.getNodes(), devicePath.getNodeLength(), storageGroupPathLevel, false);
         node = getDeviceNode(devicePath);
-      } catch (RocksDBException | InterruptedException ex) {
+      } catch (RocksDBException ex) {
         throw new MetadataException(ex);
+      } catch (InterruptedException ex) {
+        logger.warn("Acquire lock interrupted", ex);
+        Thread.currentThread().interrupt();
       }
     }
     return node;
@@ -1311,11 +1285,8 @@ public class RSchemaRegion implements ISchemaRegion {
                 Lock newAliasLock =
                     locksPool.computeIfAbsent(newAliasLevel, x -> new ReentrantLock());
                 Lock oldAliasLock = null;
-                boolean lockedOldAlias = false;
-                boolean lockedNewAlias = false;
                 try (WriteBatch batch = new WriteBatch()) {
                   if (newAliasLock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
-                    lockedNewAlias = true;
                     if (readWriteHandler.keyExistByAllTypes(newAliasLevel).existAnyKey()) {
                       throw new PathAlreadyExistException("Alias node has exist: " + newAliasLevel);
                     }
@@ -1329,7 +1300,6 @@ public class RSchemaRegion implements ISchemaRegion {
                       oldAliasLock =
                           locksPool.computeIfAbsent(oldAliasLevel, x -> new ReentrantLock());
                       if (oldAliasLock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
-                        lockedOldAlias = true;
                         if (!readWriteHandler.keyExist(oldAliasKey)) {
                           logger.error(
                               "origin node [{}] has alias but alias node [{}] doesn't exist ",
@@ -1348,10 +1318,8 @@ public class RSchemaRegion implements ISchemaRegion {
                   // TODO: need application lock
                   readWriteHandler.executeBatch(batch);
                 } finally {
-                  if (lockedNewAlias) {
-                    newAliasLock.unlock();
-                  }
-                  if (oldAliasLock != null && lockedOldAlias) {
+                  newAliasLock.unlock();
+                  if (oldAliasLock != null) {
                     oldAliasLock.unlock();
                   }
                 }
@@ -1388,9 +1356,10 @@ public class RSchemaRegion implements ISchemaRegion {
               rawKeyLock.unlock();
             }
           } else {
+            rawKeyLock.unlock();
             throw new AcquireLockTimeoutException("acquire lock timeout: " + levelPath);
           }
-        } catch (RocksDBException | InterruptedException e) {
+        } catch (RocksDBException e) {
           throw new MetadataException(e);
         }
       } else {
@@ -1398,7 +1367,8 @@ public class RSchemaRegion implements ISchemaRegion {
             "acquire lock timeout when do upsertTagsAndAttributes: " + path.getFullPath());
       }
     } catch (InterruptedException e) {
-      throw new MetadataException(e);
+      logger.warn("Acquire lock interrupted", e);
+      Thread.currentThread().interrupt();
     } finally {
       deleteUpdateLock.readLock().unlock();
     }
@@ -1444,9 +1414,10 @@ public class RSchemaRegion implements ISchemaRegion {
               lock.unlock();
             }
           } else {
+            lock.unlock();
             throw new AcquireLockTimeoutException("acquire lock timeout: " + levelPath);
           }
-        } catch (RocksDBException | InterruptedException e) {
+        } catch (RocksDBException e) {
           throw new MetadataException(e);
         }
       } else {
@@ -1454,7 +1425,8 @@ public class RSchemaRegion implements ISchemaRegion {
             "acquire lock timeout when do addAttributes: " + path.getFullPath());
       }
     } catch (InterruptedException e) {
-      throw new MetadataException(e);
+      logger.warn("Acquire lock interrupted", e);
+      Thread.currentThread().interrupt();
     } finally {
       deleteUpdateLock.readLock().unlock();
     }
@@ -1510,9 +1482,10 @@ public class RSchemaRegion implements ISchemaRegion {
               lock.unlock();
             }
           } else {
+            lock.unlock();
             throw new AcquireLockTimeoutException("acquire lock timeout: " + levelPath);
           }
-        } catch (RocksDBException | InterruptedException e) {
+        } catch (RocksDBException e) {
           throw new MetadataException(e);
         }
       } else {
@@ -1520,7 +1493,8 @@ public class RSchemaRegion implements ISchemaRegion {
             "acquire lock timeout when do addTags: " + path.getFullPath());
       }
     } catch (InterruptedException e) {
-      throw new MetadataException(e);
+      logger.warn("Acquire lock interrupted", e);
+      Thread.currentThread().interrupt();
     } finally {
       deleteUpdateLock.readLock().unlock();
     }
@@ -1579,9 +1553,10 @@ public class RSchemaRegion implements ISchemaRegion {
               lock.unlock();
             }
           } else {
+            lock.unlock();
             throw new AcquireLockTimeoutException("acquire lock timeout: " + levelPath);
           }
-        } catch (RocksDBException | InterruptedException e) {
+        } catch (RocksDBException e) {
           throw new MetadataException(e);
         }
       } else {
@@ -1589,7 +1564,8 @@ public class RSchemaRegion implements ISchemaRegion {
             "acquire lock timeout when do dropTagsOrAttributes: " + path.getFullPath());
       }
     } catch (InterruptedException e) {
-      throw new MetadataException(e);
+      logger.warn("Acquire lock interrupted", e);
+      Thread.currentThread().interrupt();
     } finally {
       deleteUpdateLock.readLock().unlock();
     }
@@ -1644,9 +1620,10 @@ public class RSchemaRegion implements ISchemaRegion {
               lock.unlock();
             }
           } else {
+            lock.unlock();
             throw new AcquireLockTimeoutException("acquire lock timeout: " + levelPath);
           }
-        } catch (RocksDBException | InterruptedException e) {
+        } catch (RocksDBException e) {
           throw new MetadataException(e);
         }
       } else {
@@ -1654,7 +1631,8 @@ public class RSchemaRegion implements ISchemaRegion {
             "acquire lock timeout when do setTagsOrAttributesValue: " + path.getFullPath());
       }
     } catch (InterruptedException e) {
-      throw new MetadataException(e);
+      logger.warn("Acquire lock interrupted", e);
+      Thread.currentThread().interrupt();
     } finally {
       deleteUpdateLock.readLock().unlock();
     }
@@ -1709,9 +1687,10 @@ public class RSchemaRegion implements ISchemaRegion {
               lock.unlock();
             }
           } else {
+            lock.unlock();
             throw new AcquireLockTimeoutException("acquire lock timeout: " + levelPath);
           }
-        } catch (RocksDBException | InterruptedException e) {
+        } catch (RocksDBException e) {
           throw new MetadataException(e);
         }
       } else {
@@ -1719,7 +1698,8 @@ public class RSchemaRegion implements ISchemaRegion {
             "acquire lock timeout when do renameTagOrAttributeKey: " + path.getFullPath());
       }
     } catch (InterruptedException e) {
-      throw new MetadataException(e);
+      logger.warn("Acquire lock interrupted", e);
+      Thread.currentThread().interrupt();
     } finally {
       deleteUpdateLock.readLock().unlock();
     }
@@ -1915,8 +1895,11 @@ public class RSchemaRegion implements ISchemaRegion {
       try {
         Thread.sleep(5);
         readWriteHandler.close();
-      } catch (RocksDBException | InterruptedException e1) {
+      } catch (RocksDBException e1) {
         logger.error(String.format("This schemaRegion [%s] closed failed.", this), e);
+      } catch (InterruptedException e1) {
+        logger.warn("Close RocksdDB instance interrupted", e1);
+        Thread.currentThread().interrupt();
       }
     }
   }
