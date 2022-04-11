@@ -17,30 +17,23 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.utils;
+namespace java org.apache.iotdb.common.rpc.thrift
+namespace py iotdb.thrift.common
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.rpc.RpcUtils;
+ struct EndPoint {
+   1: required string ip
+   2: required i32 port
+ }
 
-import java.util.Arrays;
-import java.util.Map;
+ // The return status code and message in each response.
+ struct TSStatus {
+   1: required i32 code
+   2: optional string message
+   3: optional list<TSStatus> subStatus
+   4: optional EndPoint redirectNode
+ }
 
-public class StatusUtils {
-  private StatusUtils() {}
-
-  /**
-   * @param statusMap index -> status
-   * @param size the total number of status to generate
-   */
-  public static TSStatus[] getFailingStatus(Map<Integer, TSStatus> statusMap, int size) {
-    if (statusMap == null || statusMap.isEmpty()) {
-      return new TSStatus[0];
-    }
-    TSStatus[] failingStatus = new TSStatus[size];
-    Arrays.fill(failingStatus, RpcUtils.SUCCESS_STATUS);
-    for (Map.Entry<Integer, TSStatus> status : statusMap.entrySet()) {
-      failingStatus[status.getKey()] = status.getValue();
-    }
-    return failingStatus;
-  }
-}
+ struct RegionReplicaSet {
+     1: required i32 regionId
+     2: required list<EndPoint> endpoint
+ }
