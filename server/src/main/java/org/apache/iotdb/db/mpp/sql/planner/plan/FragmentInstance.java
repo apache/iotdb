@@ -33,10 +33,10 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public class FragmentInstance implements IConsensusRequest {
-  private FragmentInstanceId id;
+  private final FragmentInstanceId id;
 
   // The reference of PlanFragment which this instance is generated from
-  private PlanFragment fragment;
+  private final PlanFragment fragment;
 
   // The Region where the FragmentInstance should run
   private RegionReplicaSet regionReplicaSet;
@@ -96,6 +96,10 @@ public class FragmentInstance implements IConsensusRequest {
           sink.getDownStreamPlanNodeId());
     }
     return "<No downstream>";
+  }
+
+  public void setTimeFilter(Filter timeFilter) {
+    this.timeFilter = timeFilter;
   }
 
   public Filter getTimeFilter() {

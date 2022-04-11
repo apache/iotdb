@@ -18,15 +18,16 @@
  */
 package org.apache.iotdb.confignode.consensus;
 
+import org.apache.iotdb.common.rpc.thrift.EndPoint;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
-import org.apache.iotdb.confignode.rpc.thrift.DataNodeMessage;
-import org.apache.iotdb.confignode.rpc.thrift.DataNodeRegisterReq;
-import org.apache.iotdb.confignode.rpc.thrift.DataNodeRegisterResp;
-import org.apache.iotdb.confignode.rpc.thrift.SetStorageGroupReq;
-import org.apache.iotdb.confignode.rpc.thrift.StorageGroupMessage;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeMessageResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
+import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupMessage;
+import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupMessageResp;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.EndPoint;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -85,10 +86,9 @@ public class RatisConsensusDemo {
     // DataNodes can connect to any ConfigNode and send write requests
     for (int i = 0; i < 10; i++) {
       EndPoint endPoint = new EndPoint("0.0.0.0", 6667 + i);
-      DataNodeRegisterReq req = new DataNodeRegisterReq(endPoint);
-      DataNodeRegisterResp resp = clients[0].registerDataNode(req);
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), resp.registerResult.getCode());
+      TDataNodeRegisterReq req = new TDataNodeRegisterReq(endPoint);
+      TDataNodeRegisterResp resp = clients[0].registerDataNode(req);
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), resp.getStatus().getCode());
       Assert.assertEquals(i, resp.getDataNodeID());
       System.out.printf(
           "\nRegister DataNode successful. DataNodeID: %d, %s\n", resp.getDataNodeID(), endPoint);
@@ -103,7 +103,7 @@ public class RatisConsensusDemo {
 
     // DataNodes can connect to any ConfigNode and send read requests
     for (int i = 0; i < 3; i++) {
-      Map<Integer, DataNodeMessage> msgMap = clients[i].getDataNodesMessage(-1);
+      TDataNodeMessageResp msgMap = clients[i].getDataNodesMessage(-1);
       System.out.printf(
           "\nQuery DataNode message from ConfigNode 0.0.0.0:%d. Result: %s\n",
           22277 + i * 2, msgMap);
@@ -112,7 +112,7 @@ public class RatisConsensusDemo {
 
   private void setStorageGroups() throws TException, InterruptedException {
     for (int i = 0; i < 10; i++) {
-      SetStorageGroupReq req = new SetStorageGroupReq("root.sg" + i);
+      TSetStorageGroupReq req = new TSetStorageGroupReq("root.sg" + i);
       clients[0].setStorageGroup(req);
       System.out.printf("\nSet StorageGroup successful. StorageGroup: %s\n", "root.sg" + i);
       TimeUnit.SECONDS.sleep(1);
@@ -124,10 +124,11 @@ public class RatisConsensusDemo {
     TimeUnit.SECONDS.sleep(1);
 
     for (int i = 0; i < 3; i++) {
-      Map<String, StorageGroupMessage> msgMap = clients[i].getStorageGroupsMessage();
+      TStorageGroupMessageResp msgMap = clients[i].getStorageGroupsMessage();
       System.out.printf(
           "\nQuery StorageGroup message from ConfigNode 0.0.0.0:%d. Result: {\n", 22277 + i * 2);
-      for (Map.Entry<String, StorageGroupMessage> entry : msgMap.entrySet()) {
+      for (Map.Entry<String, TStorageGroupMessage> entry :
+          msgMap.getStorageGroupMessageMap().entrySet()) {
         System.out.printf("  Key(%s)=%s\n", entry.getKey(), entry.getValue().toString());
       }
       System.out.println("}");
