@@ -28,11 +28,13 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.IUnaryExpression;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.utils.StringContainer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.Objects;
 
@@ -167,5 +169,23 @@ public class BasicFunctionFilter extends FunctionFilter {
   @Override
   public int hashCode() {
     return Objects.hash(super.hashCode(), singlePath, value, funcToken);
+  }
+
+  public void serialize(ByteBuffer byteBuffer) {
+    FilterTypes.BasicFunction.serialize(byteBuffer);
+    super.serializeWithoutType(byteBuffer);
+    ReadWriteIOUtils.write(value, byteBuffer);
+    ReadWriteIOUtils.write(funcToken.ordinal(), byteBuffer);
+  }
+
+  public static BasicFunctionFilter deserialize(ByteBuffer byteBuffer) {
+    QueryFilter queryFilter = QueryFilter.deserialize(byteBuffer);
+    BasicFunctionFilter basicFunctionFilter =
+        new BasicFunctionFilter(
+            queryFilter.filterType,
+            queryFilter.singlePath,
+            ReadWriteIOUtils.readString(byteBuffer));
+    basicFunctionFilter.funcToken = BasicFilterType.values()[ReadWriteIOUtils.readInt(byteBuffer)];
+    return basicFunctionFilter;
   }
 }

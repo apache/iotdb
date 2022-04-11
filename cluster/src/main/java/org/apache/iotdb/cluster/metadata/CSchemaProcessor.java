@@ -44,7 +44,6 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
@@ -1381,7 +1380,7 @@ public class CSchemaProcessor extends LocalSchemaProcessor {
 
   @Override
   protected IMeasurementMNode getMeasurementMNode(IMNode deviceMNode, String measurementName)
-      throws PathAlreadyExistException {
+      throws MetadataException {
     IMeasurementMNode child = super.getMeasurementMNode(deviceMNode, measurementName);
     if (child == null) {
       child = mRemoteMetaCache.get(deviceMNode.getPartialPath().concatNode(measurementName));

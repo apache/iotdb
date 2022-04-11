@@ -24,12 +24,12 @@ typedef i32 int
 typedef i64 long
 
 struct CreateSchemaRegionReq {
-    1: required common.RegionReplicaSet regionReplicaSet
+    1: required common.TRegionReplicaSet regionReplicaSet
     2: required string storageGroup
 }
 
 struct CreateDataRegionReq {
-    1: required common.RegionReplicaSet regionReplicaSet
+    1: required common.TRegionReplicaSet regionReplicaSet
     2: required string storageGroup
     3: optional long ttl
 }

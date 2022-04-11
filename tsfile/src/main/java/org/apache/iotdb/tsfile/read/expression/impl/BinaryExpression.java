@@ -21,8 +21,10 @@ package org.apache.iotdb.tsfile.read.expression.impl;
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
 import org.apache.iotdb.tsfile.read.expression.IBinaryExpression;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.Serializable;
+import java.nio.ByteBuffer;
 import java.util.Objects;
 
 public abstract class BinaryExpression implements IBinaryExpression, Serializable {
@@ -78,6 +80,13 @@ public abstract class BinaryExpression implements IBinaryExpression, Serializabl
     @Override
     public IExpression clone() {
       return new AndExpression(left.clone(), right.clone());
+    }
+
+    @Override
+    public void serialize(ByteBuffer byteBuffer) {
+      ReadWriteIOUtils.write((byte) getType().ordinal(), byteBuffer);
+      left.serialize(byteBuffer);
+      right.serialize(byteBuffer);
     }
 
     @Override
@@ -143,6 +152,13 @@ public abstract class BinaryExpression implements IBinaryExpression, Serializabl
     @Override
     public IExpression clone() {
       return new OrExpression(left.clone(), right.clone());
+    }
+
+    @Override
+    public void serialize(ByteBuffer byteBuffer) {
+      ReadWriteIOUtils.write((byte) getType().ordinal(), byteBuffer);
+      left.serialize(byteBuffer);
+      right.serialize(byteBuffer);
     }
 
     @Override

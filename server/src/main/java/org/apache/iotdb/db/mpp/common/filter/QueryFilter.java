@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.common.filter;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
 import org.apache.iotdb.db.mpp.sql.constant.FilterConstant;
 import org.apache.iotdb.db.mpp.sql.constant.FilterConstant.FilterType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -29,9 +30,12 @@ import org.apache.iotdb.tsfile.read.expression.IUnaryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.utils.StringContainer;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -290,5 +294,61 @@ public class QueryFilter implements Comparable<QueryFilter> {
       ret.addChildOperator(filterOperator.copy());
     }
     return ret;
+  }
+
+  public void serialize(ByteBuffer byteBuffer) {
+    FilterTypes.Query.serialize(byteBuffer);
+    serializeWithoutType(byteBuffer);
+  }
+
+  protected void serializeWithoutType(ByteBuffer byteBuffer) {
+    ReadWriteIOUtils.write(filterType.ordinal(), byteBuffer);
+    ReadWriteIOUtils.write(childOperators.size(), byteBuffer);
+    for (QueryFilter queryFilter : childOperators) {
+      queryFilter.serialize(byteBuffer);
+    }
+    ReadWriteIOUtils.write(isLeaf, byteBuffer);
+    ReadWriteIOUtils.write(isSingle, byteBuffer);
+    if (isSingle) {
+      singlePath.serialize(byteBuffer);
+    }
+    if (pathSet == null) {
+      ReadWriteIOUtils.write(-1, byteBuffer);
+    } else {
+      ReadWriteIOUtils.write(pathSet.size(), byteBuffer);
+      for (PartialPath partialPath : pathSet) {
+        partialPath.serialize(byteBuffer);
+      }
+    }
+  }
+
+  public static QueryFilter deserialize(ByteBuffer byteBuffer) {
+    int filterTypeIndex = ReadWriteIOUtils.readInt(byteBuffer);
+    int childSize = ReadWriteIOUtils.readInt(byteBuffer);
+    List<QueryFilter> queryFilters = new ArrayList<>();
+    for (int i = 0; i < childSize; i++) {
+      queryFilters.add(FilterDeserializeUtil.deserialize(byteBuffer));
+    }
+    boolean isLeaf = ReadWriteIOUtils.readBool(byteBuffer);
+    boolean isSingle = ReadWriteIOUtils.readBool(byteBuffer);
+    PartialPath singlePath = null;
+    if (isSingle) {
+      singlePath = (PartialPath) PathDeserializeUtil.deserialize(byteBuffer);
+    }
+    int pathSetSize = ReadWriteIOUtils.readInt(byteBuffer);
+    Set<PartialPath> pathSet = null;
+    if (pathSetSize != -1) {
+      pathSet = new HashSet<>();
+    }
+    for (int i = 0; i < pathSetSize; i++) {
+      pathSet.add((PartialPath) PathDeserializeUtil.deserialize(byteBuffer));
+    }
+
+    QueryFilter queryFilter = new QueryFilter(FilterType.values()[filterTypeIndex], isSingle);
+    queryFilter.setChildren(queryFilters);
+    queryFilter.setPathSet(pathSet);
+    queryFilter.setSinglePath(singlePath);
+    queryFilter.isLeaf = isLeaf;
+    return queryFilter;
   }
 }

@@ -21,82 +21,79 @@ include "common.thrift"
 namespace java org.apache.iotdb.confignode.rpc.thrift
 namespace py iotdb.thrift.confignode
 
-struct DataNodeRegisterReq {
+// DataNode
+struct TDataNodeRegisterReq {
     1: required common.EndPoint endPoint
 }
 
-struct DataNodeRegisterResp {
-    1: required common.TSStatus registerResult
-    2: optional i32 dataNodeID
+struct TGlobalConfig {
+    1: optional string dataNodeConsensusProtocolClass
+    2: optional i32 seriesPartitionSlotNum
+    3: optional string seriesPartitionExecutorClass
 }
 
-struct DataNodeMessage {
-  1: required i32 dataNodeID
+struct TDataNodeRegisterResp {
+    1: required common.TSStatus status
+    2: optional i32 dataNodeID
+    3: optional TGlobalConfig globalConfig
+}
+
+struct TDataNodeMessageResp {
+  1: required common.TSStatus status
+  // map<DataNodeId, DataNodeMessage>
+  2: optional map<i32, TDataNodeMessage> dataNodeMessageMap
+}
+
+struct TDataNodeMessage {
+  1: required i32 dataNodeId
   2: required common.EndPoint endPoint
 }
 
-struct SetStorageGroupReq {
+// StorageGroup
+struct TSetStorageGroupReq {
+    1: required string storageGroup
+    2: optional i64 ttl
+}
+
+struct TDeleteStorageGroupReq {
     1: required string storageGroup
 }
 
-struct DeleteStorageGroupReq {
+struct TStorageGroupMessageResp {
+  1: required common.TSStatus status
+  // map<string, StorageGroupMessage>
+  2: optional map<string, TStorageGroupMessage> storageGroupMessageMap
+}
+
+struct TStorageGroupMessage {
     1: required string storageGroup
 }
 
-struct StorageGroupMessage {
-    1: required string storageGroup
+// Schema
+struct TSchemaPartitionReq {
+    1: required binary pathPatternTree
 }
 
-struct GetDeviceGroupIDReq {
-    1: required string device
+struct TSchemaPartitionResp {
+  1: required common.TSStatus status
+    // map<StorageGroupName, map<TSeriesPartitionSlot, TRegionReplicaSet>>
+  2: optional map<string, map<common.TSeriesPartitionSlot, common.TRegionReplicaSet>> schemaRegionMap
 }
 
-struct GetSchemaPartitionReq {
-    1: required string storageGroup
-    2: required list<i32> deviceGroupIDs
+// Data
+struct TDataPartitionReq {
+    // map<StorageGroupName, map<TSeriesPartitionSlot, list<TTimePartitionSlot>>>
+    1: required map<string, map<common.TSeriesPartitionSlot, list<common.TTimePartitionSlot>>> partitionSlotsMap
 }
 
-struct SchemaPartitionInfo {
-    1: required map<string, map<i32, common.RegionReplicaSet>> schemaRegionDataNodesMap
+struct TDataPartitionResp {
+  1: required common.TSStatus status
+  // map<StorageGroupName, map<TSeriesPartitionSlot, map<TTimePartitionSlot, list<TRegionReplicaSet>>>>
+  2: optional map<string, map<common.TSeriesPartitionSlot, map<common.TTimePartitionSlot, list<common.TRegionReplicaSet>>>> dataPartitionMap
 }
 
-struct DataPartitionInfo {
-    1: required map<string, map<i64, map<i32, list<common.RegionReplicaSet>>>> deviceGroupStartTimeDataRegionGroupMap
-}
-
-struct GetDataPartitionReq {
-    1: required string storageGroup
-    2: required map<i32, list<i64>> deviceGroupStartTimeMap
-}
-
-struct DeviceGroupHashInfo {
-    1: required i32 deviceGroupCount
-    2: required string hashClass
-}
-
-struct FetchDataPartitionReq {
-    1: required map<i32, list<i64>> deviceGroupIDToStartTimeMap
-}
-
-struct FetchSchemaPartitionReq {
-    1: required list<string> devicePaths
-}
-
-struct FetchPartitionReq {
-    1: required map<i32, list<i64>> deviceGroupIDToStartTimeMap
-}
-
-struct RegionInfo {
-    1: required i32 regionId
-    2: required list<common.EndPoint> endPointList
-}
-
-struct DataPartitionInfoResp {
-    // Map<StorageGroup, Map<DeviceGroupID, Map<TimePartitionId, List<DataRegionReplicaInfo>>>>
-    1: required map<string, map<i32, map<i64, list<RegionInfo>>>> dataPartitionMap
-}
-
-struct AuthorizerReq{
+// Authorize
+struct TAuthorizerReq {
     1: required i32 authorType
     2: required string userName
     3: required string roleName
@@ -106,51 +103,35 @@ struct AuthorizerReq{
     7: required string nodeName
 }
 
-struct SchemaPartitionInfoResp {
-    // Map<StorageGroup, Map<DeviceGroupID, SchemaRegionPlaceInfo>>
-    1: required map<string, map<i32, RegionInfo>> schemaPartitionInfo
-}
-
-struct PartitionInfoResp {
-    // Map<StorageGroup, Map<DeviceGroupID, Map<TimePartitionId, List<DataRegionReplicaInfo>>>>
-    1: required map<string, map<i32, map<i64, list<RegionInfo>>>> dataPartitionMap
-    // Map<StorageGroup, Map<DeviceGroupID, SchemaRegionPlaceInfo>>
-    2: required map<string, map<i32, RegionInfo>> schemaPartitionInfo
-}
-
 service ConfigIService {
-  // Return TSStatusCode.SUCCESS_STATUS and the register DataNode id when successful registered.
-  // Otherwise, return TSStatusCode.INTERNAL_SERVER_ERROR
-  DataNodeRegisterResp registerDataNode(DataNodeRegisterReq req)
 
-  map<i32, DataNodeMessage> getDataNodesMessage(i32 dataNodeID)
+  /* DataNode */
 
-  common.TSStatus setStorageGroup(SetStorageGroupReq req)
+  TDataNodeRegisterResp registerDataNode(TDataNodeRegisterReq req)
 
-  common.TSStatus deleteStorageGroup(DeleteStorageGroupReq req)
+  TDataNodeMessageResp getDataNodesMessage(i32 dataNodeID)
 
-  map<string, StorageGroupMessage> getStorageGroupsMessage()
+  /* StorageGroup */
 
-  // Gets SchemaRegions for DeviceGroups in a StorageGroup
-  SchemaPartitionInfo getSchemaPartition(GetSchemaPartitionReq req)
+  common.TSStatus setStorageGroup(TSetStorageGroupReq req)
 
-  // Gets DataRegions for DeviceGroups in a StorageGroup at different starttime
-  DataPartitionInfo getDataPartition(GetDataPartitionReq req)
+  common.TSStatus deleteStorageGroup(TDeleteStorageGroupReq req)
 
-  DeviceGroupHashInfo getDeviceGroupHashInfo()
+  TStorageGroupMessageResp getStorageGroupsMessage()
 
-  // apply data partition when write data
-  DataPartitionInfo applyDataPartition(GetDataPartitionReq req)
+  /* Schema */
 
-  // apply schema partition when create schema
-  SchemaPartitionInfo applySchemaPartition(GetSchemaPartitionReq req)
+  TSchemaPartitionResp getSchemaPartition(TSchemaPartitionReq req)
 
-  DataPartitionInfoResp fetchDataPartitionInfo(FetchDataPartitionReq req)
+  TSchemaPartitionResp getOrCreateSchemaPartition(TSchemaPartitionReq req)
 
-  SchemaPartitionInfoResp fetchSchemaPartitionInfo(FetchSchemaPartitionReq req)
+  /* Data */
 
-  PartitionInfoResp fetchPartitionInfo(FetchPartitionReq req)
+  TDataPartitionResp getDataPartition(TDataPartitionReq req)
 
-   common.TSStatus operatePermission(AuthorizerReq req)
+  TDataPartitionResp getOrCreateDataPartition(TDataPartitionReq req)
+
+  /* Authorize */
+  common.TSStatus operatePermission(TAuthorizerReq req)
 
 }

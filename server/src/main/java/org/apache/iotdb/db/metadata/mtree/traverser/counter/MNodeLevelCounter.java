@@ -20,6 +20,7 @@ package org.apache.iotdb.db.metadata.mtree.traverser.counter;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 
 import java.util.HashSet;
@@ -40,9 +41,9 @@ public class MNodeLevelCounter extends CounterTraverser {
 
   private Set<IMNode> processedNodes = new HashSet<>();
 
-  public MNodeLevelCounter(IMNode startNode, PartialPath path, int targetLevel)
+  public MNodeLevelCounter(IMNode startNode, PartialPath path, IMTreeStore store, int targetLevel)
       throws MetadataException {
-    super(startNode, path);
+    super(startNode, path, store);
     this.targetLevel = targetLevel;
   }
 
