@@ -46,9 +46,9 @@ import org.apache.iotdb.db.engine.upgrade.UpgradeLog;
 import org.apache.iotdb.db.engine.version.SimpleFileVersionController;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.BatchProcessException;
+import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.LoadFileException;
-import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.TriggerExecutionException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
@@ -129,7 +129,7 @@ import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.TEMP_SUFFIX
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 /**
- * For sequence data, a StorageGroupProcessor has some TsFileProcessors, in which there is only one
+ * For sequence data, a DataRegion has some TsFileProcessors, in which there is only one
  * TsFileProcessor in the working status. <br>
  *
  * <p>There are two situations to set the working TsFileProcessor to closing status:<br>
@@ -148,7 +148,7 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFF
  * <p>When a TsFileProcessor is closed, the closeUnsealedTsFileProcessorCallBack() method will be
  * called as a callback.
  */
-public class VirtualStorageGroupProcessor {
+public class DataRegion {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
@@ -159,7 +159,7 @@ public class VirtualStorageGroupProcessor {
    */
   private static final int MERGE_MOD_START_VERSION_NUM = 1;
 
-  private static final Logger logger = LoggerFactory.getLogger(VirtualStorageGroupProcessor.class);
+  private static final Logger logger = LoggerFactory.getLogger(DataRegion.class);
 
   /** indicating the file to be loaded overlap with some files. */
   private static final int POS_OVERLAP = -3;
@@ -199,8 +199,8 @@ public class VirtualStorageGroupProcessor {
 
   private AtomicBoolean isSettling = new AtomicBoolean();
 
-  /** virtual storage group id */
-  private String virtualStorageGroupId;
+  /** data region id */
+  private String dataRegionId;
   /** logical storage group name */
   private String logicalStorageGroupName;
   /** storage group system directory */
@@ -260,24 +260,23 @@ public class VirtualStorageGroupProcessor {
    * constrcut a storage group processor
    *
    * @param systemDir system dir path
-   * @param virtualStorageGroupId virtual storage group id e.g. 1
+   * @param dataRegionId data region id e.g. 1
    * @param fileFlushPolicy file flush policy
    * @param logicalStorageGroupName logical storage group name e.g. root.sg1
    */
-  public VirtualStorageGroupProcessor(
+  public DataRegion(
       String systemDir,
-      String virtualStorageGroupId,
+      String dataRegionId,
       TsFileFlushPolicy fileFlushPolicy,
       String logicalStorageGroupName)
-      throws StorageGroupProcessorException {
-    this.virtualStorageGroupId = virtualStorageGroupId;
+      throws DataRegionException {
+    this.dataRegionId = dataRegionId;
     this.logicalStorageGroupName = logicalStorageGroupName;
     this.fileFlushPolicy = fileFlushPolicy;
 
-    storageGroupSysDir = SystemFileFactory.INSTANCE.getFile(systemDir, virtualStorageGroupId);
+    storageGroupSysDir = SystemFileFactory.INSTANCE.getFile(systemDir, dataRegionId);
     this.tsFileManager =
-        new TsFileManager(
-            logicalStorageGroupName, virtualStorageGroupId, storageGroupSysDir.getPath());
+        new TsFileManager(logicalStorageGroupName, dataRegionId, storageGroupSysDir.getPath());
     if (storageGroupSysDir.mkdirs()) {
       logger.info(
           "Storage Group system Directory {} doesn't exist, create it",
@@ -339,7 +338,7 @@ public class VirtualStorageGroupProcessor {
   }
 
   /** this class is used to store recovering context */
-  private class VSGRecoveryContext {
+  private class DataRegionRecoveryContext {
     /** number of files to be recovered */
     private final long numOfFilesToRecover;
     /** when the change of recoveredFilesNum exceeds this, log check will be triggered */
@@ -351,7 +350,7 @@ public class VirtualStorageGroupProcessor {
     /** last recovery log files num */
     private long lastLogCheckFilesNum;
 
-    public VSGRecoveryContext(long numOfFilesToRecover) {
+    public DataRegionRecoveryContext(long numOfFilesToRecover) {
       this.numOfFilesToRecover = numOfFilesToRecover;
       this.recoveredFilesNum = 0;
       this.filesNumLogCheckTrigger = this.numOfFilesToRecover / 100;
@@ -367,10 +366,8 @@ public class VirtualStorageGroupProcessor {
         // log only when log interval exceeds recovery log interval
         if (lastLogTime + config.getRecoveryLogIntervalInMs() < System.currentTimeMillis()) {
           logger.info(
-              "The virtual storage group {}[{}] has recovered {}%, please wait a moment.",
-              logicalStorageGroupName,
-              virtualStorageGroupId,
-              recoveredFilesNum * 1.0 / numOfFilesToRecover);
+              "The data region {}[{}] has recovered {}%, please wait a moment.",
+              logicalStorageGroupName, dataRegionId, recoveredFilesNum * 1.0 / numOfFilesToRecover);
           lastLogTime = System.currentTimeMillis();
         }
       }
@@ -378,11 +375,11 @@ public class VirtualStorageGroupProcessor {
   }
 
   /** recover from file */
-  private void recover() throws StorageGroupProcessorException {
+  private void recover() throws DataRegionException {
     try {
       recoverCompaction();
     } catch (Exception e) {
-      throw new StorageGroupProcessorException(e);
+      throw new DataRegionException(e);
     }
 
     try {
@@ -404,8 +401,8 @@ public class VirtualStorageGroupProcessor {
 
       // split by partition so that we can find the last file of each partition and decide to
       // close it or not
-      VSGRecoveryContext VSGRecoveryContext =
-          new VSGRecoveryContext(tmpSeqTsFiles.size() + tmpUnseqTsFiles.size());
+      DataRegionRecoveryContext DataRegionRecoveryContext =
+          new DataRegionRecoveryContext(tmpSeqTsFiles.size() + tmpUnseqTsFiles.size());
       Map<Long, List<TsFileResource>> partitionTmpSeqTsFiles =
           splitResourcesByPartition(tmpSeqTsFiles);
       Map<Long, List<TsFileResource>> partitionTmpUnseqTsFiles =
@@ -421,7 +418,7 @@ public class VirtualStorageGroupProcessor {
           } else {
             value.remove(value.size() - 1);
             WALRecoverListener recoverListener =
-                recoverUnsealedTsFile(tsFileResource, VSGRecoveryContext, true);
+                recoverUnsealedTsFile(tsFileResource, DataRegionRecoveryContext, true);
             recoverListeners.add(recoverListener);
           }
         }
@@ -435,21 +432,21 @@ public class VirtualStorageGroupProcessor {
           } else {
             value.remove(value.size() - 1);
             WALRecoverListener recoverListener =
-                recoverUnsealedTsFile(tsFileResource, VSGRecoveryContext, false);
+                recoverUnsealedTsFile(tsFileResource, DataRegionRecoveryContext, false);
             recoverListeners.add(recoverListener);
           }
         }
       }
-      WALRecoverManager.getInstance().getAllVsgScannedLatch().countDown();
+      WALRecoverManager.getInstance().getAllDataRegionScannedLatch().countDown();
       // recover sealed TsFiles
       for (List<TsFileResource> value : partitionTmpSeqTsFiles.values()) {
         for (TsFileResource tsFileResource : value) {
-          recoverSealedTsFiles(tsFileResource, VSGRecoveryContext, true);
+          recoverSealedTsFiles(tsFileResource, DataRegionRecoveryContext, true);
         }
       }
       for (List<TsFileResource> value : partitionTmpUnseqTsFiles.values()) {
         for (TsFileResource tsFileResource : value) {
-          recoverSealedTsFiles(tsFileResource, VSGRecoveryContext, false);
+          recoverSealedTsFiles(tsFileResource, DataRegionRecoveryContext, false);
         }
       }
       // wait until all unsealed TsFiles have been recovered
@@ -461,7 +458,7 @@ public class VirtualStorageGroupProcessor {
               recoverListener.getCause());
         }
         // update VSGRecoveryContext
-        VSGRecoveryContext.incrementRecoveredFilesNum();
+        DataRegionRecoveryContext.incrementRecoveredFilesNum();
       }
       for (TsFileResource resource : tsFileManager.getTsFileList(true)) {
         long partitionNum = resource.getTimePartition();
@@ -481,7 +478,7 @@ public class VirtualStorageGroupProcessor {
       }
       updateLatestFlushedTime();
     } catch (IOException e) {
-      throw new StorageGroupProcessorException(e);
+      throw new DataRegionException(e);
     }
 
     List<TsFileResource> seqTsFileResources = tsFileManager.getTsFileList(true);
@@ -501,9 +498,7 @@ public class VirtualStorageGroupProcessor {
     initCompaction();
 
     logger.info(
-        "The virtual storage group {}[{}] is recovered successfully",
-        logicalStorageGroupName,
-        virtualStorageGroupId);
+        "The data region {}[{}] is recovered successfully", logicalStorageGroupName, dataRegionId);
   }
 
   private void initCompaction() {
@@ -513,7 +508,7 @@ public class VirtualStorageGroupProcessor {
                 + "-"
                 + logicalStorageGroupName
                 + "-"
-                + virtualStorageGroupId);
+                + dataRegionId);
     timedCompactionScheduleTask.scheduleWithFixedDelay(
         this::executeCompaction,
         COMPACTION_TASK_SUBMIT_DELAY,
@@ -523,7 +518,7 @@ public class VirtualStorageGroupProcessor {
 
   private void recoverCompaction() throws Exception {
     CompactionRecoverManager compactionRecoverManager =
-        new CompactionRecoverManager(tsFileManager, logicalStorageGroupName, virtualStorageGroupId);
+        new CompactionRecoverManager(tsFileManager, logicalStorageGroupName, dataRegionId);
     compactionRecoverManager.recoverInnerSpaceCompaction(true);
     compactionRecoverManager.recoverInnerSpaceCompaction(false);
     compactionRecoverManager.recoverCrossSpaceCompaction();
@@ -581,13 +576,12 @@ public class VirtualStorageGroupProcessor {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private Pair<List<TsFileResource>, List<TsFileResource>> getAllFiles(List<String> folders)
-      throws IOException, StorageGroupProcessorException {
+      throws IOException, DataRegionException {
     List<File> tsFiles = new ArrayList<>();
     List<File> upgradeFiles = new ArrayList<>();
     for (String baseDir : folders) {
       File fileFolder =
-          fsFactory.getFile(
-              baseDir + File.separator + logicalStorageGroupName, virtualStorageGroupId);
+          fsFactory.getFile(baseDir + File.separator + logicalStorageGroupName, dataRegionId);
       if (!fileFolder.exists()) {
         continue;
       }
@@ -658,17 +652,17 @@ public class VirtualStorageGroupProcessor {
   }
 
   /** check if the tsfile's time is smaller than system current time */
-  private void checkTsFileTime(File tsFile) throws StorageGroupProcessorException {
+  private void checkTsFileTime(File tsFile) throws DataRegionException {
     String[] items = tsFile.getName().replace(TSFILE_SUFFIX, "").split(FILE_NAME_SEPARATOR);
     long fileTime = Long.parseLong(items[0]);
     long currentTime = System.currentTimeMillis();
     if (fileTime > currentTime) {
-      throw new StorageGroupProcessorException(
+      throw new DataRegionException(
           String.format(
-              "virtual storage group %s[%s] is down, because the time of tsfile %s is larger than system current time, "
+              "data region %s[%s] is down, because the time of tsfile %s is larger than system current time, "
                   + "file time is %d while system current time is %d, please check it.",
               logicalStorageGroupName,
-              virtualStorageGroupId,
+              dataRegionId,
               tsFile.getAbsolutePath(),
               fileTime,
               currentTime));
@@ -677,7 +671,7 @@ public class VirtualStorageGroupProcessor {
 
   /** submit unsealed TsFile to WALRecoverManager */
   private WALRecoverListener recoverUnsealedTsFile(
-      TsFileResource unsealedTsFile, VSGRecoveryContext context, boolean isSeq) {
+      TsFileResource unsealedTsFile, DataRegionRecoveryContext context, boolean isSeq) {
     UnsealedTsFileRecoverPerformer recoverPerformer =
         new UnsealedTsFileRecoverPerformer(
             unsealedTsFile, isSeq, idTable, this::callbackAfterUnsealedTsFileRecovered);
@@ -703,7 +697,7 @@ public class VirtualStorageGroupProcessor {
       boolean isSeq = recoverPerformer.isSequence();
       TsFileProcessor tsFileProcessor =
           new TsFileProcessor(
-              virtualStorageGroupId,
+              dataRegionId,
               storageGroupInfo,
               tsFileResource,
               this::closeUnsealedTsFileProcessorCallBack,
@@ -740,7 +734,7 @@ public class VirtualStorageGroupProcessor {
 
   /** recover sealed TsFile */
   private void recoverSealedTsFiles(
-      TsFileResource sealedTsFile, VSGRecoveryContext context, boolean isSeq) {
+      TsFileResource sealedTsFile, DataRegionRecoveryContext context, boolean isSeq) {
     try (SealedTsFileRecoverPerformer recoverPerformer =
         new SealedTsFileRecoverPerformer(sealedTsFile)) {
       recoverPerformer.recover();
@@ -758,7 +752,7 @@ public class VirtualStorageGroupProcessor {
       sealedTsFile.close();
       tsFileManager.add(sealedTsFile, isSeq);
       tsFileResourceManager.registerSealedTsFileResource(sealedTsFile);
-    } catch (StorageGroupProcessorException | IOException e) {
+    } catch (DataRegionException | IOException e) {
       logger.error("Fail to recover sealed TsFile {}, skip it.", sealedTsFile.getTsFilePath(), e);
     } finally {
       // update recovery context
@@ -1399,7 +1393,7 @@ public class VirtualStorageGroupProcessor {
         TsFileNameGenerator.generateNewTsFilePathWithMkdir(
             sequence,
             logicalStorageGroupName,
-            virtualStorageGroupId,
+            dataRegionId,
             timePartitionId,
             System.currentTimeMillis(),
             version,
@@ -1415,7 +1409,7 @@ public class VirtualStorageGroupProcessor {
     if (sequence) {
       tsFileProcessor =
           new TsFileProcessor(
-              logicalStorageGroupName + File.separator + virtualStorageGroupId,
+              logicalStorageGroupName + File.separator + dataRegionId,
               fsFactory.getFileWithParent(filePath),
               storageGroupInfo,
               this::closeUnsealedTsFileProcessorCallBack,
@@ -1424,7 +1418,7 @@ public class VirtualStorageGroupProcessor {
     } else {
       tsFileProcessor =
           new TsFileProcessor(
-              logicalStorageGroupName + File.separator + virtualStorageGroupId,
+              logicalStorageGroupName + File.separator + dataRegionId,
               fsFactory.getFileWithParent(filePath),
               storageGroupInfo,
               this::closeUnsealedTsFileProcessorCallBack,
@@ -1477,7 +1471,7 @@ public class VirtualStorageGroupProcessor {
           if (System.currentTimeMillis() - startTime > 60_000) {
             logger.warn(
                 "{} has spent {}s to wait for closing one tsfile.",
-                logicalStorageGroupName + "-" + this.virtualStorageGroupId,
+                logicalStorageGroupName + "-" + this.dataRegionId,
                 (System.currentTimeMillis() - startTime) / 1000);
           }
         }
@@ -1486,7 +1480,7 @@ public class VirtualStorageGroupProcessor {
         logger.error(
             "syncCloseOneTsFileProcessor error occurs while waiting for closing the storage "
                 + "group {}",
-            logicalStorageGroupName + "-" + virtualStorageGroupId,
+            logicalStorageGroupName + "-" + dataRegionId,
             e);
       }
     }
@@ -1521,8 +1515,7 @@ public class VirtualStorageGroupProcessor {
         timePartitionIdVersionControllerMap.remove(tsFileProcessor.getTimeRangeId());
       }
       logger.info(
-          "close a sequence tsfile processor {}",
-          logicalStorageGroupName + "-" + virtualStorageGroupId);
+          "close a sequence tsfile processor {}", logicalStorageGroupName + "-" + dataRegionId);
     } else {
       closingUnSequenceTsFileProcessor.add(tsFileProcessor);
       tsFileProcessor.asyncClose();
@@ -1544,12 +1537,11 @@ public class VirtualStorageGroupProcessor {
   public void deleteFolder(String systemDir) {
     logger.info(
         "{} will close all files for deleting data folder {}",
-        logicalStorageGroupName + "-" + virtualStorageGroupId,
+        logicalStorageGroupName + "-" + dataRegionId,
         systemDir);
     writeLock("deleteFolder");
     try {
-      File storageGroupFolder =
-          SystemFileFactory.INSTANCE.getFile(systemDir, virtualStorageGroupId);
+      File storageGroupFolder = SystemFileFactory.INSTANCE.getFile(systemDir, dataRegionId);
       if (storageGroupFolder.exists()) {
         org.apache.iotdb.db.utils.FileUtils.deleteDirectory(storageGroupFolder);
       }
@@ -1580,7 +1572,7 @@ public class VirtualStorageGroupProcessor {
   public void syncDeleteDataFiles() {
     logger.info(
         "{} will close all files for deleting data files",
-        logicalStorageGroupName + "-" + virtualStorageGroupId);
+        logicalStorageGroupName + "-" + dataRegionId);
     writeLock("syncDeleteDataFiles");
     try {
 
@@ -1606,8 +1598,7 @@ public class VirtualStorageGroupProcessor {
   private void deleteAllSGFolders(List<String> folder) {
     for (String tsfilePath : folder) {
       File storageGroupFolder =
-          fsFactory.getFile(
-              tsfilePath, logicalStorageGroupName + File.separator + virtualStorageGroupId);
+          fsFactory.getFile(tsfilePath, logicalStorageGroupName + File.separator + dataRegionId);
       if (storageGroupFolder.exists()) {
         org.apache.iotdb.db.utils.FileUtils.deleteDirectory(storageGroupFolder);
       }
@@ -1618,14 +1609,13 @@ public class VirtualStorageGroupProcessor {
   public synchronized void checkFilesTTL() {
     if (dataTTL == Long.MAX_VALUE) {
       logger.debug(
-          "{}: TTL not set, ignore the check",
-          logicalStorageGroupName + "-" + virtualStorageGroupId);
+          "{}: TTL not set, ignore the check", logicalStorageGroupName + "-" + dataRegionId);
       return;
     }
     long ttlLowerBound = System.currentTimeMillis() - dataTTL;
     logger.debug(
         "{}: TTL removing files before {}",
-        logicalStorageGroupName + "-" + virtualStorageGroupId,
+        logicalStorageGroupName + "-" + dataRegionId,
         new Date(ttlLowerBound));
 
     // copy to avoid concurrent modification of deletion
@@ -1679,7 +1669,7 @@ public class VirtualStorageGroupProcessor {
               "Exceed sequence memtable flush interval, so flush working memtable of time partition {} in storage group {}[{}]",
               tsFileProcessor.getTimeRangeId(),
               logicalStorageGroupName,
-              virtualStorageGroupId);
+              dataRegionId);
           fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
         }
       }
@@ -1702,7 +1692,7 @@ public class VirtualStorageGroupProcessor {
               "Exceed unsequence memtable flush interval, so flush working memtable of time partition {} in storage group {}[{}]",
               tsFileProcessor.getTimeRangeId(),
               logicalStorageGroupName,
-              virtualStorageGroupId);
+              dataRegionId);
           fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
         }
       }
@@ -1723,7 +1713,7 @@ public class VirtualStorageGroupProcessor {
           if (System.currentTimeMillis() - startTime > 60_000) {
             logger.warn(
                 "{} has spent {}s to wait for closing all TsFiles.",
-                logicalStorageGroupName + "-" + this.virtualStorageGroupId,
+                logicalStorageGroupName + "-" + this.dataRegionId,
                 (System.currentTimeMillis() - startTime) / 1000);
           }
         }
@@ -1731,7 +1721,7 @@ public class VirtualStorageGroupProcessor {
         logger.error(
             "CloseFileNodeCondition error occurs while waiting for closing the storage "
                 + "group {}",
-            logicalStorageGroupName + "-" + virtualStorageGroupId,
+            logicalStorageGroupName + "-" + dataRegionId,
             e);
         Thread.currentThread().interrupt();
       }
@@ -1744,7 +1734,7 @@ public class VirtualStorageGroupProcessor {
     try {
       logger.info(
           "async force close all files in storage group: {}",
-          logicalStorageGroupName + "-" + virtualStorageGroupId);
+          logicalStorageGroupName + "-" + dataRegionId);
       // to avoid concurrent modification problem, we need a new array list
       for (TsFileProcessor tsFileProcessor :
           new ArrayList<>(workSequenceTsFileProcessors.values())) {
@@ -1766,7 +1756,7 @@ public class VirtualStorageGroupProcessor {
     try {
       logger.info(
           "force close all processors in storage group: {}",
-          logicalStorageGroupName + "-" + virtualStorageGroupId);
+          logicalStorageGroupName + "-" + dataRegionId);
       // to avoid concurrent modification problem, we need a new array list
       for (TsFileProcessor tsFileProcessor :
           new ArrayList<>(workSequenceTsFileProcessors.values())) {
@@ -2242,7 +2232,7 @@ public class VirtualStorageGroupProcessor {
     }
     logger.info(
         "signal closing storage group condition in {}",
-        logicalStorageGroupName + "-" + virtualStorageGroupId);
+        logicalStorageGroupName + "-" + dataRegionId);
   }
 
   private void executeCompaction() {
@@ -2791,7 +2781,7 @@ public class VirtualStorageGroupProcessor {
                 DirectoryManager.getInstance().getNextFolderForUnSequenceFile(),
                 logicalStorageGroupName
                     + File.separatorChar
-                    + virtualStorageGroupId
+                    + dataRegionId
                     + File.separatorChar
                     + filePartitionId
                     + File.separator
@@ -2813,7 +2803,7 @@ public class VirtualStorageGroupProcessor {
                 DirectoryManager.getInstance().getNextFolderForSequenceFile(),
                 logicalStorageGroupName
                     + File.separatorChar
-                    + virtualStorageGroupId
+                    + dataRegionId
                     + File.separatorChar
                     + filePartitionId
                     + File.separator
@@ -3045,13 +3035,13 @@ public class VirtualStorageGroupProcessor {
     return tsFileManager.getTsFileList(false);
   }
 
-  public String getVirtualStorageGroupId() {
-    return virtualStorageGroupId;
+  public String getDataRegionId() {
+    return dataRegionId;
   }
 
-  /** @return virtual storage group path, like root.sg1/0 */
+  /** @return data region path, like root.sg1/0 */
   public String getStorageGroupPath() {
-    return logicalStorageGroupName + File.separator + virtualStorageGroupId;
+    return logicalStorageGroupName + File.separator + dataRegionId;
   }
 
   public StorageGroupInfo getStorageGroupInfo() {
@@ -3148,7 +3138,7 @@ public class VirtualStorageGroupProcessor {
     tsFileManager.setAllowCompaction(false);
     List<AbstractCompactionTask> runningTasks =
         CompactionTaskManager.getInstance()
-            .abortCompaction(logicalStorageGroupName + "-" + virtualStorageGroupId);
+            .abortCompaction(logicalStorageGroupName + "-" + dataRegionId);
     while (CompactionTaskManager.getInstance().isAnyTaskInListStillRunning(runningTasks)) {
       try {
         TimeUnit.MILLISECONDS.sleep(10);

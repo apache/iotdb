@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
-import org.apache.iotdb.db.exception.StorageGroupProcessorException;
+import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.exception.WALRecoverException;
 import org.apache.iotdb.db.wal.node.WALNode;
@@ -49,7 +49,7 @@ public class WALRecoverManager {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   /** start recovery after all virtual storage groups have submitted unsealed zero-level TsFiles */
-  private volatile CountDownLatch allVsgScannedLatch;
+  private volatile CountDownLatch allDataRegionScannedLatch;
   /** threads to recover wal nodes */
   private ExecutorService recoverThreadPool;
   /** stores all UnsealedTsFileRecoverPerformer submitted by virtual storage group processors */
@@ -77,7 +77,7 @@ public class WALRecoverManager {
       // wait until all virtual storage groups have submitted their unsealed TsFiles,
       // which means walRecoverManger.addRecoverPerformer method won't be call anymore
       try {
-        allVsgScannedLatch.await();
+        allDataRegionScannedLatch.await();
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         throw new WALRecoverException("Fail to recover wal.", e);
@@ -106,7 +106,7 @@ public class WALRecoverManager {
           // skip redo logs because it doesn't belong to any wal node
           recoverPerformer.endRecovery();
           recoverPerformer.getRecoverListener().succeed();
-        } catch (StorageGroupProcessorException | IOException e) {
+        } catch (DataRegionException | IOException e) {
           logger.error(
               "Fail to recover unsealed TsFile {}, skip it.",
               recoverPerformer.getTsFileAbsolutePath(),
@@ -143,12 +143,12 @@ public class WALRecoverManager {
     return absolutePath2RecoverPerformer.remove(absolutePath);
   }
 
-  public CountDownLatch getAllVsgScannedLatch() {
-    return allVsgScannedLatch;
+  public CountDownLatch getAllDataRegionScannedLatch() {
+    return allDataRegionScannedLatch;
   }
 
-  public void setAllVsgScannedLatch(CountDownLatch allVsgScannedLatch) {
-    this.allVsgScannedLatch = allVsgScannedLatch;
+  public void setAllDataRegionScannedLatch(CountDownLatch allDataRegionScannedLatch) {
+    this.allDataRegionScannedLatch = allDataRegionScannedLatch;
   }
 
   @TestOnly

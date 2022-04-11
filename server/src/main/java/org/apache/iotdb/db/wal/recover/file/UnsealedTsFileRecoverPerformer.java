@@ -26,7 +26,7 @@ import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.StorageGroupProcessorException;
+import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
@@ -83,7 +83,7 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
    * Make preparation for recovery, including load .resource file (reconstruct when necessary) and
    * truncate the file to remaining corrected data.
    */
-  public void startRecovery() throws StorageGroupProcessorException, IOException {
+  public void startRecovery() throws DataRegionException, IOException {
     super.recoverWithWriter();
 
     if (hasCrashed()) {

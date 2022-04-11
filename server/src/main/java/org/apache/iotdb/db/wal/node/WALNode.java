@@ -25,7 +25,7 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.FlushStatus;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
-import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -260,13 +260,13 @@ public class WALNode implements IWALNode {
       // get memTable's virtual storage group processor
       File oldestTsFile =
           FSFactoryProducer.getFSFactory().getFile(oldestMemTableInfo.getTsFilePath());
-      VirtualStorageGroupProcessor vsgProcessor;
+      DataRegion dataRegion;
       try {
-        vsgProcessor =
+        dataRegion =
             StorageEngine.getInstance()
-                .getProcessorByVSGId(
+                .getProcessorByDataRegionId(
                     new PartialPath(TsFileUtils.getStorageGroup(oldestTsFile)),
-                    TsFileUtils.getVirtualStorageGroupId(oldestTsFile));
+                    TsFileUtils.getDataRegionId(oldestTsFile));
       } catch (IllegalPathException | StorageEngineException e) {
         logger.error("Fail to get virtual storage group processor for {}", oldestTsFile, e);
         return;
@@ -276,18 +276,17 @@ public class WALNode implements IWALNode {
       int snapshotCount = memTableSnapshotCount.getOrDefault(oldestMemTable.getMemTableId(), 0);
       if (snapshotCount >= MAX_WAL_MEM_TABLE_SNAPSHOT_NUM
           || oldestMemTable.getTVListsRamCost() > MEM_TABLE_SNAPSHOT_THRESHOLD_IN_BYTE) {
-        flushMemTable(vsgProcessor, oldestTsFile, oldestMemTable);
+        flushMemTable(dataRegion, oldestTsFile, oldestMemTable);
       } else {
-        snapshotMemTable(vsgProcessor, oldestTsFile, oldestMemTableInfo);
+        snapshotMemTable(dataRegion, oldestTsFile, oldestMemTableInfo);
       }
     }
 
-    private void flushMemTable(
-        VirtualStorageGroupProcessor vsgProcessor, File tsFile, IMemTable memTable) {
+    private void flushMemTable(DataRegion dataRegion, File tsFile, IMemTable memTable) {
       boolean shouldWait = true;
       if (memTable.getFlushStatus() == FlushStatus.WORKING) {
         shouldWait =
-            vsgProcessor.submitAFlushTask(
+            dataRegion.submitAFlushTask(
                 TsFileUtils.getTimePartition(tsFile), TsFileUtils.isSequence(tsFile));
         logger.info(
             "WAL node-{} flushes memTable-{} to TsFile {}, memTable size is {}.",
@@ -316,8 +315,7 @@ public class WALNode implements IWALNode {
       }
     }
 
-    private void snapshotMemTable(
-        VirtualStorageGroupProcessor vsgProcessor, File tsFile, MemTableInfo memTableInfo) {
+    private void snapshotMemTable(DataRegion dataRegion, File tsFile, MemTableInfo memTableInfo) {
       IMemTable memTable = memTableInfo.getMemTable();
       if (memTable.getFlushStatus() != FlushStatus.WORKING) {
         return;
@@ -339,8 +337,8 @@ public class WALNode implements IWALNode {
       memTableInfo.setFirstFileVersionId(buffer.getCurrentWALFileVersion());
       logger.info("Version id is {}", memTableInfo.getFirstFileVersionId());
 
-      // get vsg write lock to make sure no more writes to the memTable
-      vsgProcessor.writeLock(
+      // get dataRegion write lock to make sure no more writes to the memTable
+      dataRegion.writeLock(
           "CheckpointManager$DeleteOutdatedFileTask.snapshotOrFlushOldestMemTable");
       try {
         // log snapshot in a new .wal file
@@ -358,7 +356,7 @@ public class WALNode implements IWALNode {
             memTable.getMemTableId(),
             memTable.getTVListsRamCost());
       } finally {
-        vsgProcessor.writeUnlock();
+        dataRegion.writeUnlock();
       }
     }
   }

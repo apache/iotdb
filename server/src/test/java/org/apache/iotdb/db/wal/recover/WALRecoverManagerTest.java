@@ -277,7 +277,7 @@ public class WALRecoverManagerTest {
     // prepare tsFiles
     List<WALRecoverListener> recoverListeners = prepareCrashedTsFile();
     // recover
-    recoverManager.setAllVsgScannedLatch(new CountDownLatch(0));
+    recoverManager.setAllDataRegionScannedLatch(new CountDownLatch(0));
     recoverManager.recover();
     // check recover listeners
     for (WALRecoverListener recoverListener : recoverListeners) {

@@ -82,11 +82,6 @@ public class ExchangeNode extends PlanNode {
     this.upstreamPlanNodeId = nodeId;
   }
 
-  @Override
-  public List<String> getOutputColumnNames() {
-    return null;
-  }
-
   public static ExchangeNode deserialize(ByteBuffer byteBuffer) {
     return null;
   }
