@@ -19,8 +19,7 @@
 package org.apache.iotdb.db.mpp.common.filter;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.query.LogicalOperatorException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
 import org.apache.iotdb.db.mpp.sql.constant.FilterConstant;
@@ -128,18 +127,18 @@ public class QueryFilter implements Comparable<QueryFilter> {
    * @param pathTSDataTypeHashMap
    */
   public IExpression transformToExpression(Map<PartialPath, TSDataType> pathTSDataTypeHashMap)
-      throws QueryProcessException {
+      throws StatementAnalyzeException {
     if (isSingle) {
       Pair<IUnaryExpression, String> ret;
       try {
         ret = transformToSingleQueryFilter(pathTSDataTypeHashMap);
       } catch (MetadataException e) {
-        throw new QueryProcessException(e);
+        throw new StatementAnalyzeException("Meet error when transformToSingleQueryFilter");
       }
       return ret.left;
     } else {
       if (childOperators.isEmpty()) {
-        throw new LogicalOperatorException(
+        throw new StatementAnalyzeException(
             String.valueOf(filterType), "this filter is not leaf, but it's empty");
       }
       IExpression retFilter = childOperators.get(0).transformToExpression(pathTSDataTypeHashMap);
@@ -154,7 +153,7 @@ public class QueryFilter implements Comparable<QueryFilter> {
             retFilter = BinaryExpression.or(retFilter, currentFilter);
             break;
           default:
-            throw new LogicalOperatorException(
+            throw new StatementAnalyzeException(
                 String.valueOf(filterType), "Maybe it means " + getFilterName());
         }
       }
@@ -172,9 +171,9 @@ public class QueryFilter implements Comparable<QueryFilter> {
    */
   protected Pair<IUnaryExpression, String> transformToSingleQueryFilter(
       Map<PartialPath, TSDataType> pathTSDataTypeHashMap)
-      throws LogicalOperatorException, MetadataException {
+      throws StatementAnalyzeException, MetadataException {
     if (childOperators.isEmpty()) {
-      throw new LogicalOperatorException(
+      throw new StatementAnalyzeException(
           String.valueOf(filterType),
           "TransformToSingleFilter: this filter is not a leaf, but it's empty.");
     }
@@ -187,7 +186,7 @@ public class QueryFilter implements Comparable<QueryFilter> {
     for (int i = 1; i < childOperators.size(); i++) {
       currentPair = childOperators.get(i).transformToSingleQueryFilter(pathTSDataTypeHashMap);
       if (!path.equals(currentPair.right)) {
-        throw new LogicalOperatorException(
+        throw new StatementAnalyzeException(
             "TransformToSingleFilter: paths among children are not inconsistent: one is: "
                 + path
                 + ", another is: "
@@ -203,7 +202,7 @@ public class QueryFilter implements Comparable<QueryFilter> {
               FilterFactory.or(retFilter.getFilter(), currentPair.left.getFilter()));
           break;
         default:
-          throw new LogicalOperatorException(
+          throw new StatementAnalyzeException(
               String.valueOf(filterType), "Maybe it means " + getFilterName());
       }
     }

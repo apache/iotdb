@@ -157,14 +157,13 @@ public class CreateTimeSeriesNode extends PlanNode {
   }
 
   @Override
-  public List<String> getOutputColumnNames() {
-    return null;
-  }
-
-  @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     throw new NotImplementedException(
         "serializeAttributes of CreateTimeSeriesNode is not implemented");
+  }
+
+  public static CreateTimeSeriesNode deserialize(ByteBuffer byteBuffer) {
+    return null;
   }
 
   @Override
@@ -188,9 +187,5 @@ public class CreateTimeSeriesNode extends PlanNode {
         && ((props == null && that.props == null) || props.equals(that.props))
         && ((tags == null && that.tags == null) || tags.equals(that.tags))
         && ((attributes == null && that.attributes == null) || attributes.equals(that.attributes));
-  }
-
-  public static CreateTimeSeriesNode deserialize(ByteBuffer byteBuffer) {
-    return null;
   }
 }

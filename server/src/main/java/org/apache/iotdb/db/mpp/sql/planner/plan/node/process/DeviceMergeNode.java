@@ -19,19 +19,22 @@
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.mpp.sql.planner.plan.IOutputPlanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.PlanFragment;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.ColumnHeader;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullPolicy;
+import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullComponent;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * DeviceMergeOperator is responsible for constructing a device-based view of a set of series. And
@@ -42,7 +45,8 @@ import java.util.Map;
  * same between these TsBlocks. If the input TsBlock contains n columns, the device-based view will
  * contain n+1 columns where the new column is Device column.
  */
-public class DeviceMergeNode extends ProcessNode {
+public class DeviceMergeNode extends ProcessNode implements IOutputPlanNode {
+
   // The result output order that this operator
   private OrderBy mergeOrder;
 
@@ -50,15 +54,15 @@ public class DeviceMergeNode extends ProcessNode {
   // The without policy is able to be push down to the DeviceMergeNode because we can know whether a
   // row contains
   // null or not.
-  private FilterNullPolicy filterNullPolicy;
+  private FilterNullComponent filterNullComponent;
 
   // The map from deviceName to corresponding query result node responsible for that device.
   // DeviceNode means the node whose output TsBlock contains the data belonged to one device.
-  private Map<String, PlanNode> childDeviceNodeMap;
+  private Map<String, PlanNode> childDeviceNodeMap = new HashMap<>();
 
   private List<PlanNode> children;
 
-  private List<String> columnNames;
+  private final List<ColumnHeader> columnHeaders = new ArrayList<>();;
 
   public DeviceMergeNode(PlanNodeId id) {
     super(id);
@@ -71,8 +75,9 @@ public class DeviceMergeNode extends ProcessNode {
     this.children = new ArrayList<>();
   }
 
-  public void setFilterNullPolicy(FilterNullPolicy filterNullPolicy) {
-    this.filterNullPolicy = filterNullPolicy;
+  public void setFilterNullComponent(
+      FilterNullComponent filterNullComponent) {
+    this.filterNullComponent = filterNullComponent;
   }
 
   @Override
@@ -87,7 +92,7 @@ public class DeviceMergeNode extends ProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new DeviceMergeNode(getId(), mergeOrder);
+    return new DeviceMergeNode(getPlanNodeId(), mergeOrder);
   }
 
   @Override
@@ -95,13 +100,35 @@ public class DeviceMergeNode extends ProcessNode {
     return CHILD_COUNT_NO_LIMIT;
   }
 
-  @Override
-  public List<String> getOutputColumnNames() {
-    return columnNames;
+  public void addChildDeviceNode(String deviceName, PlanNode childNode) {
+    this.childDeviceNodeMap.put(deviceName, childNode);
+    this.children.add(childNode);
+    updateColumnHeaders(childNode);
   }
 
-  public void setColumnNames(List<String> columnNames) {
-    this.columnNames = columnNames;
+  private void updateColumnHeaders(PlanNode childNode) {
+    List<ColumnHeader> childColumnHeaders = ((IOutputPlanNode) childNode).getOutputColumnHeaders();
+    for (ColumnHeader columnHeader : childColumnHeaders) {
+      ColumnHeader tmpColumnHeader = columnHeader.replacePathWithMeasurement();
+      if (!columnHeaders.contains(tmpColumnHeader)) {
+        columnHeaders.add(tmpColumnHeader);
+      }
+    }
+  }
+
+  @Override
+  public List<ColumnHeader> getOutputColumnHeaders() {
+    return columnHeaders;
+  }
+
+  @Override
+  public List<String> getOutputColumnNames() {
+    return columnHeaders.stream().map(ColumnHeader::getColumnName).collect(Collectors.toList());
+  }
+
+  @Override
+  public List<TSDataType> getOutputColumnTypes() {
+    return columnHeaders.stream().map(ColumnHeader::getColumnType).collect(Collectors.toList());
   }
 
   public OrderBy getMergeOrder() {
@@ -117,45 +144,44 @@ public class DeviceMergeNode extends ProcessNode {
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.DEVICE_MERGE.serialize(byteBuffer);
     ReadWriteIOUtils.write(mergeOrder.ordinal(), byteBuffer);
-    ReadWriteIOUtils.write(filterNullPolicy.ordinal(), byteBuffer);
-    // TODO childDeviceNodeMap
-    ReadWriteIOUtils.write(columnNames.size(), byteBuffer);
-    for (String column : columnNames) {
-      ReadWriteIOUtils.write(column, byteBuffer);
+    filterNullComponent.serialize(byteBuffer);
+    ReadWriteIOUtils.write(childDeviceNodeMap.size(), byteBuffer);
+    for (Map.Entry<String, PlanNode> e : childDeviceNodeMap.entrySet()) {
+      ReadWriteIOUtils.write(e.getKey(), byteBuffer);
+      e.getValue().serialize(byteBuffer);
+    }
+    ReadWriteIOUtils.write(columnHeaders.size(), byteBuffer);
+    for (ColumnHeader columnHeader : columnHeaders) {
+      columnHeader.serialize(byteBuffer);
     }
   }
 
   public static DeviceMergeNode deserialize(ByteBuffer byteBuffer) {
     int orderByIndex = ReadWriteIOUtils.readInt(byteBuffer);
     OrderBy orderBy = OrderBy.values()[orderByIndex];
-    int filterNullPolicyIndex = ReadWriteIOUtils.readInt(byteBuffer);
-    FilterNullPolicy filterNullPolicy = FilterNullPolicy.values()[filterNullPolicyIndex];
-    // TODO deserialize childDeviceNodeMap
-    int columnSize = ReadWriteIOUtils.readInt(byteBuffer);
-    List<String> columnNames = new ArrayList<>(columnSize);
-    for (int i = 0; i < columnSize; i++) {
-      columnNames.add(ReadWriteIOUtils.readString(byteBuffer));
+    FilterNullComponent filterNullComponent = FilterNullComponent.deserialize(byteBuffer);
+    Map<String, PlanNode> childDeviceNodeMap = new HashMap<>();
+    int childDeviceNodeMapSize = ReadWriteIOUtils.readInt(byteBuffer);
+    for (int i = 0; i < childDeviceNodeMapSize; i ++) {
+      childDeviceNodeMap.put(ReadWriteIOUtils.readString(byteBuffer), PlanFragment.deserializeHelper(byteBuffer));
+    }
+
+    List<ColumnHeader> columnHeaders = new ArrayList<>();
+    int columnHeaderSize = ReadWriteIOUtils.readInt(byteBuffer);
+    for (int i = 0; i < columnHeaderSize; i ++) {
+      columnHeaders.add(ColumnHeader.deserialize(byteBuffer));
     }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     DeviceMergeNode deviceMergeNode = new DeviceMergeNode(planNodeId, orderBy);
-    deviceMergeNode.setColumnNames(columnNames);
+    deviceMergeNode.filterNullComponent = filterNullComponent;
+    deviceMergeNode.childDeviceNodeMap = childDeviceNodeMap;
+    deviceMergeNode.columnHeaders.addAll(columnHeaders);
     return deviceMergeNode;
-  }
-
-  public DeviceMergeNode(PlanNodeId id, Map<String, PlanNode> deviceNodeMap) {
-    this(id);
-    this.childDeviceNodeMap = deviceNodeMap;
-    this.children.addAll(deviceNodeMap.values());
-  }
-
-  public void addChildDeviceNode(String deviceName, PlanNode childNode) {
-    this.childDeviceNodeMap.put(deviceName, childNode);
-    this.children.add(childNode);
   }
 
   @TestOnly
   public Pair<String, List<String>> print() {
-    String title = String.format("[DeviceMergeNode (%s)]", this.getId());
+    String title = String.format("[DeviceMergeNode (%s)]", this.getPlanNodeId());
     List<String> attributes = new ArrayList<>();
     attributes.add("MergeOrder: " + (this.getMergeOrder() == null ? "null" : this.getMergeOrder()));
     return new Pair<>(title, attributes);
@@ -163,5 +189,26 @@ public class DeviceMergeNode extends ProcessNode {
 
   public void setChildren(List<PlanNode> children) {
     this.children = children;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+
+    DeviceMergeNode that = (DeviceMergeNode) o;
+    return mergeOrder == that.mergeOrder
+        && Objects.equals(filterNullComponent, that.filterNullComponent)
+        && Objects.equals(childDeviceNodeMap, that.childDeviceNodeMap);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(mergeOrder, filterNullComponent, childDeviceNodeMap);
   }
 }

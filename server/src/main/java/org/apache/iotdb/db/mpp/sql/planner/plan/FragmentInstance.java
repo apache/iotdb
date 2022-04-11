@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan;
 
+import java.util.Objects;
 import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
@@ -138,5 +139,26 @@ public class FragmentInstance implements IConsensusRequest {
     dataRegion.serializeImpl(buffer);
     hostEndpoint.serializeImpl(buffer);
     timeFilter.serialize(buffer);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    FragmentInstance that = (FragmentInstance) o;
+    return Objects.equals(id, that.id) &&
+        Objects.equals(fragment, that.fragment) &&
+        Objects.equals(dataRegion, that.dataRegion) &&
+        Objects.equals(hostEndpoint, that.hostEndpoint) &&
+        Objects.equals(timeFilter, that.timeFilter);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(id, fragment, dataRegion, hostEndpoint, timeFilter);
   }
 }

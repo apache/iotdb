@@ -38,8 +38,12 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullPolicy;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
+import org.apache.iotdb.tsfile.read.expression.IExpression;
+import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
+import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 
+import org.apache.iotdb.tsfile.read.filter.operator.Gt;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
@@ -54,21 +58,20 @@ public class FragmentInstanceSerdeTest {
     // create node
     OffsetNode offsetNode = new OffsetNode(new PlanNodeId("OffsetNode"), 100);
     LimitNode limitNode = new LimitNode(new PlanNodeId("LimitNode"), 100);
+
     FilterNullNode filterNullNode =
-        new FilterNullNode(new PlanNodeId("FilterNullNode"), FilterNullPolicy.CONTAINS_NULL);
-    QueryFilter queryFilter = new QueryFilter(FilterType.KW_AND);
-    BasicFunctionFilter leftQueryFilter =
-        new BasicFunctionFilter(FilterType.GREATERTHAN, new MeasurementPath("root.sg.d1.s2"), "10");
-    BasicFunctionFilter rightFilter =
-        new BasicFunctionFilter(FilterType.GREATERTHAN, new MeasurementPath("root.sg.d2.s2"), "10");
-    queryFilter.addChildOperator(leftQueryFilter);
-    queryFilter.addChildOperator(rightFilter);
-    FilterNode filterNode = new FilterNode(new PlanNodeId("FilterNode"), queryFilter);
+        new FilterNullNode(
+            new PlanNodeId("TestFilterNullNode"), null, FilterNullPolicy.ALL_NULL, null);
+    IExpression expression = BinaryExpression.and(new SingleSeriesExpression(new MeasurementPath("root.sg.d1.s2"), new Gt<Integer>(10,
+        org.apache.iotdb.tsfile.read.filter.factory.FilterType.VALUE_FILTER)), new SingleSeriesExpression(new MeasurementPath("root.sg.d2.s2"), new Gt<Integer>(10,
+        org.apache.iotdb.tsfile.read.filter.factory.FilterType.VALUE_FILTER)));
+
+    FilterNode filterNode = new FilterNode(new PlanNodeId("FilterNode"), expression);
 
     TimeJoinNode timeJoinNode =
         new TimeJoinNode(
-            new PlanNodeId("TimeJoinNode"), OrderBy.TIMESTAMP_DESC, FilterNullPolicy.CONTAINS_NULL);
-
+            new PlanNodeId("TimeJoinNode"), OrderBy.TIMESTAMP_DESC);
+    timeJoinNode.setWithoutPolicy(FilterNullPolicy.CONTAINS_NULL);
     SeriesScanNode seriesScanNode1 =
         new SeriesScanNode(new PlanNodeId("SeriesScanNode1"), new MeasurementPath("root.sg.d1.s2"));
     seriesScanNode1.setDataRegionReplicaSet(
@@ -84,9 +87,6 @@ public class FragmentInstanceSerdeTest {
     seriesScanNode3.setDataRegionReplicaSet(
         new RegionReplicaSet(new DataRegionId(3), new ArrayList<>()));
     seriesScanNode3.setScanOrder(OrderBy.TIMESTAMP_DESC);
-    seriesScanNode1.setColumnName("root.sg.d1.s2");
-    seriesScanNode2.setColumnName("root.sg.d2.s1");
-    seriesScanNode3.setColumnName("root.sg.d2.s2");
 
     // build tree
     timeJoinNode.addChild(seriesScanNode1);
@@ -109,6 +109,6 @@ public class FragmentInstanceSerdeTest {
     fragmentInstance.serializeRequest(byteBuffer);
     byteBuffer.flip();
     FragmentInstance deserializeFragmentInstance = FragmentInstance.deserializeFrom(byteBuffer);
-    assertEquals(deserializeFragmentInstance.toString(), fragmentInstance.toString());
+    assertEquals(deserializeFragmentInstance, fragmentInstance);
   }
 }

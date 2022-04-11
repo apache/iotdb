@@ -174,7 +174,6 @@ public class InsertRowStatement extends InsertBaseStatement {
     dataTypes[index] = null;
   }
 
-  @Override
   public List<TimePartitionSlot> getTimePartitionSlots() {
     return Collections.singletonList(StorageEngine.getTimePartitionSlot(time));
   }

@@ -18,12 +18,17 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
+import com.google.common.collect.ImmutableList;
+import java.util.HashMap;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.mpp.sql.planner.plan.IOutputPlanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.ColumnHeader;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -32,39 +37,48 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 /**
  * This node is responsible for the final aggregation merge operation. It will process the data from
  * TsBlock row by row. For one row, it will rollup the fields which have the same aggregate function
  * and belong to one bucket. Here, that two columns belong to one bucket means the partial paths of
- * device after rolling up in specific level are the same. For example, let's say there are two
- * columns `root.sg.d1.s1` and `root.sg.d2.s1`. If the group by level parameter is [0, 1], then
- * these two columns will belong to one bucket and the bucket name is `root.sg.*.s1`. If the group
- * by level parameter is [0, 2], then these two columns will not belong to one bucket. And the total
- * buckets are `root.*.d1.s1` and `root.*.d2.s1`
+ * device after rolling up in specific level are the same.
+ *
+ * <p>For example, let's say there are two columns `root.sg.d1.s1` and `root.sg.d2.s1`.
+ *
+ * <p>If the group by level parameter is [0, 1], then these two columns will belong to one bucket
+ * and the bucket name is `root.sg.*.s1`.
+ *
+ * <p>If the group by level parameter is [0, 2], then these two columns will not belong to one
+ * bucket. And the total buckets are `root.*.d1.s1` and `root.*.d2.s1`
  */
-public class GroupByLevelNode extends ProcessNode {
+public class GroupByLevelNode extends ProcessNode implements IOutputPlanNode {
+
+  private final int[] groupByLevels;
+
+  private final Map<ColumnHeader, ColumnHeader> groupedPathMap;
 
   private PlanNode child;
 
-  private int[] groupByLevels;
-
-  private List<String> columnNames;
-
-  private Map<String, String> groupedPathMap;
+  private final List<ColumnHeader> columnHeaders;
 
   public GroupByLevelNode(
-      PlanNodeId id, PlanNode child, int[] groupByLevels, Map<String, String> groupedPathMap) {
+      PlanNodeId id,
+      PlanNode child,
+      int[] groupByLevels,
+      Map<ColumnHeader, ColumnHeader> groupedPathMap) {
     super(id);
     this.child = child;
     this.groupByLevels = groupByLevels;
     this.groupedPathMap = groupedPathMap;
-    this.columnNames = new ArrayList<>(groupedPathMap.values());
+    this.columnHeaders = groupedPathMap.values().stream().distinct().collect(Collectors.toList());
   }
 
   @Override
   public List<PlanNode> getChildren() {
-    return child.getChildren();
+    return ImmutableList.of(child);
   }
 
   @Override
@@ -82,9 +96,23 @@ public class GroupByLevelNode extends ProcessNode {
     return CHILD_COUNT_NO_LIMIT;
   }
 
+  public int[] getGroupByLevels() {
+    return groupByLevels;
+  }
+
+  @Override
+  public List<ColumnHeader> getOutputColumnHeaders() {
+    return columnHeaders;
+  }
+
   @Override
   public List<String> getOutputColumnNames() {
-    return columnNames;
+    return columnHeaders.stream().map(ColumnHeader::getColumnName).collect(Collectors.toList());
+  }
+
+  @Override
+  public List<TSDataType> getOutputColumnTypes() {
+    return columnHeaders.stream().map(ColumnHeader::getColumnType).collect(Collectors.toList());
   }
 
   @Override
@@ -99,11 +127,11 @@ public class GroupByLevelNode extends ProcessNode {
     for (int i = 0; i < groupByLevels.length; i++) {
       ReadWriteIOUtils.write(groupByLevels[i], byteBuffer);
     }
-    ReadWriteIOUtils.write(columnNames.size(), byteBuffer);
-    for (int i = 0; i < columnNames.size(); i++) {
-      ReadWriteIOUtils.write(columnNames.get(i), byteBuffer);
+    ReadWriteIOUtils.write(groupedPathMap.size(), byteBuffer);
+    for (Map.Entry<ColumnHeader, ColumnHeader> e : groupedPathMap.entrySet()) {
+      e.getKey().serialize(byteBuffer);
+      e.getValue().serialize(byteBuffer);
     }
-    ReadWriteIOUtils.write(groupedPathMap, byteBuffer);
   }
 
   public static GroupByLevelNode deserialize(ByteBuffer byteBuffer) {
@@ -112,40 +140,44 @@ public class GroupByLevelNode extends ProcessNode {
     for (int i = 0; i < groupByLevelSize; i++) {
       groupByLevels[i] = ReadWriteIOUtils.readInt(byteBuffer);
     }
-    int columnNameSize = ReadWriteIOUtils.readInt(byteBuffer);
-    List<String> columnNames = new ArrayList<>();
-    for (int i = 0; i < columnNameSize; i++) {
-      columnNames.add(ReadWriteIOUtils.readString(byteBuffer));
+    int mapSize = ReadWriteIOUtils.readInt(byteBuffer);
+    Map<ColumnHeader, ColumnHeader> groupedPathMap = new HashMap<>();
+    for (int i = 0; i < mapSize; i ++) {
+      groupedPathMap.put(ColumnHeader.deserialize(byteBuffer), ColumnHeader.deserialize(byteBuffer));
     }
-    Map<String, String> mp = ReadWriteIOUtils.readMap(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    GroupByLevelNode groupByLevelNode = new GroupByLevelNode(planNodeId, null, groupByLevels, mp);
-    groupByLevelNode.setColumnNames(columnNames);
-    return groupByLevelNode;
-  }
-
-  public int[] getGroupByLevels() {
-    return groupByLevels;
-  }
-
-  public void setGroupByLevels(int[] groupByLevels) {
-    this.groupByLevels = groupByLevels;
-  }
-
-  public List<String> getColumnNames() {
-    return columnNames;
-  }
-
-  public void setColumnNames(List<String> columnNames) {
-    this.columnNames = columnNames;
+    return new GroupByLevelNode(planNodeId, null, groupByLevels, groupedPathMap);
   }
 
   @TestOnly
   public Pair<String, List<String>> print() {
-    String title = String.format("[GroupByLevelNode (%s)]", this.getId());
+    String title = String.format("[GroupByLevelNode (%s)]", this.getPlanNodeId());
     List<String> attributes = new ArrayList<>();
     attributes.add("GroupByLevels: " + Arrays.toString(this.getGroupByLevels()));
     attributes.add("ColumnNames: " + this.getOutputColumnNames());
     return new Pair<>(title, attributes);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+
+    GroupByLevelNode that = (GroupByLevelNode) o;
+    return Objects.equals(child, that.child)
+        && Arrays.equals(groupByLevels, that.groupByLevels)
+        && Objects.equals(groupedPathMap, that.groupedPathMap);
+  }
+
+  @Override
+  public int hashCode() {
+    int result = Objects.hash(child, groupedPathMap);
+    result = 31 * result + Arrays.hashCode(groupByLevels);
+    return result;
   }
 }

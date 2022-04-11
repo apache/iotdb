@@ -51,11 +51,6 @@ public class ShowDevicesNode extends ShowNode {
   }
 
   @Override
-  public List<String> getOutputColumnNames() {
-    return null;
-  }
-
-  @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.SHOW_DEVICES.serialize(byteBuffer);
   }

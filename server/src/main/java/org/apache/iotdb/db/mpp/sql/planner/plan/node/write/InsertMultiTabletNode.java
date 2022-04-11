@@ -55,11 +55,6 @@ public class InsertMultiTabletNode extends InsertNode {
     return NO_CHILD_ALLOWED;
   }
 
-  @Override
-  public List<String> getOutputColumnNames() {
-    return null;
-  }
-
   public static InsertMultiTabletNode deserialize(ByteBuffer byteBuffer) {
     return null;
   }

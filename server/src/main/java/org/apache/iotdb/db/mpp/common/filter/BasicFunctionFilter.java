@@ -19,8 +19,8 @@
 package org.apache.iotdb.db.mpp.common.filter;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.sql.SQLParserException;
+import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.constant.FilterConstant;
 import org.apache.iotdb.db.mpp.sql.constant.FilterConstant.FilterType;
@@ -77,7 +77,7 @@ public class BasicFunctionFilter extends FunctionFilter {
   @Override
   protected Pair<IUnaryExpression, String> transformToSingleQueryFilter(
       Map<PartialPath, TSDataType> pathTSDataTypeHashMap)
-      throws LogicalOperatorException, MetadataException {
+      throws StatementAnalyzeException, MetadataException {
     TSDataType type = pathTSDataTypeHashMap.get(singlePath);
     if (type == null) {
       throw new MetadataException(
@@ -111,12 +111,12 @@ public class BasicFunctionFilter extends FunctionFilter {
                       ? new Binary(value.substring(1, value.length() - 1))
                       : new Binary(value));
         } else {
-          throw new LogicalOperatorException(
+          throw new StatementAnalyzeException(
               "For Basic operator,TEXT type only support EQUAL or NOTEQUAL operator");
         }
         break;
       default:
-        throw new LogicalOperatorException(type.toString(), "");
+        throw new StatementAnalyzeException(type.toString(), "");
     }
 
     return new Pair<>(ret, singlePath.getFullPath());

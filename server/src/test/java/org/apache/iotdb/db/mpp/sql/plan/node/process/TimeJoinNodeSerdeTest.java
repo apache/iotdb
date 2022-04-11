@@ -18,11 +18,14 @@
  */
 package org.apache.iotdb.db.mpp.sql.plan.node.process;
 
+import java.util.HashSet;
+import java.util.Set;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.filter.RegexpFilter;
-import org.apache.iotdb.db.mpp.sql.constant.FilterConstant.FilterType;
 import org.apache.iotdb.db.mpp.sql.plan.node.PlanNodeDeserializeHelper;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.ColumnHeader;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.ShowDevicesNode;
@@ -37,9 +40,16 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.sql.statement.component.FillPolicy;
+import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullComponent;
 import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullPolicy;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 
+import org.apache.iotdb.db.query.aggregation.AggregationType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterType;
+import org.apache.iotdb.tsfile.read.filter.operator.Regexp;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
@@ -56,37 +66,44 @@ public class TimeJoinNodeSerdeTest {
     FilterNode filterNode =
         new FilterNode(
             new PlanNodeId("TestFilterNode"),
-            new RegexpFilter(FilterType.EQUAL, new MeasurementPath("s1"), "s1"));
+            new SingleSeriesExpression(new Path("root.sg.d1"), new Regexp("s1", org.apache.iotdb.tsfile.read.filter.factory.FilterType.VALUE_FILTER)));
 
     FillNode fillNode = new FillNode(new PlanNodeId("TestFillNode"), FillPolicy.PREVIOUS);
     DeviceMergeNode deviceMergeNode =
         new DeviceMergeNode(new PlanNodeId("TestDeviceMergeNode"), OrderBy.TIMESTAMP_ASC);
-    List<String> columnNames = new ArrayList<>();
-    columnNames.add("s1");
-    columnNames.add("s2");
-    deviceMergeNode.setColumnNames(columnNames);
 
-    List<PlanNode> planNodes = new ArrayList<>();
-    planNodes.add(new ShowDevicesNode(new PlanNodeId("TestShowDevice")));
-    List<String> columns = new ArrayList<>();
-    columns.add("s1");
-    columns.add("s2");
+    FilterNullComponent filterNullComponent = new FilterNullComponent();
+    deviceMergeNode.setFilterNullComponent(filterNullComponent);
+
+    Map<PartialPath, Set<AggregationType>> aggregateFuncMap = new HashMap<>();
+    Set<AggregationType> aggregationTypes = new HashSet<>();
+    aggregationTypes.add(AggregationType.MAX_TIME);
+    aggregateFuncMap.put(new MeasurementPath("root.sg.d1.s1", TSDataType.BOOLEAN), aggregationTypes);
     AggregateNode aggregateNode =
-        new AggregateNode(new PlanNodeId("TestAggregateNode"), null, planNodes, columnNames);
+        new AggregateNode(new PlanNodeId("TestAggregateNode"), null, aggregateFuncMap, null);
+    aggregateNode.addChild(new ShowDevicesNode(new PlanNodeId("TestShowDevice")));
+    deviceMergeNode.addChildDeviceNode("device", aggregateNode);
+
+    aggregateFuncMap = new HashMap<>();
+    aggregationTypes = new HashSet<>();
+    aggregationTypes.add(AggregationType.MAX_TIME);
+    aggregateFuncMap.put(new MeasurementPath("root.sg.d1.s1", TSDataType.BOOLEAN), aggregationTypes);
+    aggregateNode =
+        new AggregateNode(new PlanNodeId("TestAggregateNode"), null, aggregateFuncMap, null);
+    aggregateNode.addChild(new ShowDevicesNode(new PlanNodeId("TestShowDevice")));
     deviceMergeNode.addChild(aggregateNode);
     deviceMergeNode.addChild(new ShowDevicesNode(new PlanNodeId("TestShowDevice")));
-    deviceMergeNode.setFilterNullPolicy(FilterNullPolicy.CONTAINS_NULL);
-    fillNode.addChild(deviceMergeNode);
 
+    fillNode.addChild(deviceMergeNode);
     filterNode.addChild(fillNode);
 
     FilterNullNode filterNullNode =
         new FilterNullNode(
             new PlanNodeId("TestFilterNullNode"), filterNode, FilterNullPolicy.ALL_NULL, null);
 
-    Map<String, String> groupedPathMap = new HashMap<>();
-    groupedPathMap.put("s1", "s");
-    groupedPathMap.put("s2", "a");
+    Map<ColumnHeader, ColumnHeader> groupedPathMap = new HashMap<>();
+    groupedPathMap.put(new ColumnHeader("s1", TSDataType.INT32), new ColumnHeader("s", TSDataType.DOUBLE));
+    groupedPathMap.put(new ColumnHeader("s2", TSDataType.INT32), new ColumnHeader("a", TSDataType.DOUBLE));
     GroupByLevelNode groupByLevelNode =
         new GroupByLevelNode(
             new PlanNodeId("TestGroupByLevelNode"),
@@ -94,7 +111,7 @@ public class TimeJoinNodeSerdeTest {
             new int[] {1, 3},
             groupedPathMap);
 
-    LimitNode limitNode = new LimitNode(new PlanNodeId("TestLimitNode"), 3, groupByLevelNode);
+    LimitNode limitNode = new LimitNode(new PlanNodeId("TestLimitNode"), groupByLevelNode, 3);
     OffsetNode offsetNode = new OffsetNode(new PlanNodeId("TestOffsetNode"), limitNode, 2);
 
     List<String> orderByStr = new ArrayList<>();
@@ -105,8 +122,8 @@ public class TimeJoinNodeSerdeTest {
     TimeJoinNode timeJoinNode =
         new TimeJoinNode(
             new PlanNodeId("TestTimeJoinNode"),
-            OrderBy.TIMESTAMP_ASC,
-            FilterNullPolicy.CONTAINS_NULL);
+            OrderBy.TIMESTAMP_ASC);
+    timeJoinNode.setWithoutPolicy(FilterNullPolicy.CONTAINS_NULL);
     timeJoinNode.addChild(sortNode);
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
     timeJoinNode.serialize(byteBuffer);

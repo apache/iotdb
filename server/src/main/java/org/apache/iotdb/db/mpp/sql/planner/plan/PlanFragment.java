@@ -18,7 +18,9 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan;
 
+import java.util.Objects;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
@@ -81,7 +83,7 @@ public class PlanFragment {
   }
 
   private PlanNode getPlanNodeById(PlanNode root, PlanNodeId nodeId) {
-    if (root.getId().equals(nodeId)) {
+    if (root.getPlanNodeId().equals(nodeId)) {
       return root;
     }
     for (PlanNode child : root.getChildren()) {
@@ -110,5 +112,23 @@ public class PlanFragment {
       root.addChild(deserializeHelper(byteBuffer));
     }
     return root;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    PlanFragment that = (PlanFragment) o;
+    return Objects.equals(id, that.id) &&
+        Objects.equals(root, that.root);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(id, root);
   }
 }

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
+import java.util.Objects;
 import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.PlanFragment;
@@ -65,10 +66,10 @@ public class ExchangeNode extends PlanNode {
 
   @Override
   public PlanNode clone() {
-    ExchangeNode node = new ExchangeNode(getId());
+    ExchangeNode node = new ExchangeNode(getPlanNodeId());
     if (remoteSourceNode != null) {
       FragmentSinkNode remoteSourceNodeClone = (FragmentSinkNode) remoteSourceNode.clone();
-      remoteSourceNodeClone.setDownStreamPlanNodeId(node.getId());
+      remoteSourceNodeClone.setDownStreamPlanNodeId(node.getPlanNodeId());
       node.setRemoteSourceNode(remoteSourceNode);
     }
     return node;
@@ -83,11 +84,6 @@ public class ExchangeNode extends PlanNode {
     this.upstreamEndpoint = endPoint;
     this.upstreamInstanceId = instanceId;
     this.upstreamPlanNodeId = nodeId;
-  }
-
-  @Override
-  public List<String> getOutputColumnNames() {
-    return null;
   }
 
   public static ExchangeNode deserialize(ByteBuffer byteBuffer) {
@@ -123,7 +119,8 @@ public class ExchangeNode extends PlanNode {
   }
 
   public String toString() {
-    return String.format("ExchangeNode-%s: [SourceAddress:%s]", getId(), getSourceAddress());
+    return String.format(
+        "ExchangeNode-%s: [SourceAddress:%s]", getPlanNodeId(), getSourceAddress());
   }
 
   public String getSourceAddress() {
@@ -157,5 +154,31 @@ public class ExchangeNode extends PlanNode {
 
   public PlanNodeId getUpstreamPlanNodeId() {
     return upstreamPlanNodeId;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
+    ExchangeNode that = (ExchangeNode) o;
+    return Objects.equals(child, that.child) &&
+        Objects.equals(remoteSourceNode, that.remoteSourceNode) &&
+        Objects.equals(upstreamEndpoint, that.upstreamEndpoint) &&
+        Objects.equals(upstreamInstanceId, that.upstreamInstanceId) &&
+        Objects.equals(upstreamPlanNodeId, that.upstreamPlanNodeId);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects
+        .hash(super.hashCode(), child, remoteSourceNode, upstreamEndpoint, upstreamInstanceId,
+            upstreamPlanNodeId);
   }
 }

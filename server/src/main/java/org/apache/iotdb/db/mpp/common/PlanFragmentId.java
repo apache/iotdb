@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.common;
 
+import java.util.Objects;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
@@ -77,5 +78,24 @@ public class PlanFragmentId {
   public void serialize(ByteBuffer byteBuffer) {
     queryId.serialize(byteBuffer);
     ReadWriteIOUtils.write(id, byteBuffer);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    PlanFragmentId that = (PlanFragmentId) o;
+    return id == that.id &&
+        nextFragmentInstanceId == that.nextFragmentInstanceId &&
+        Objects.equals(queryId, that.queryId);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(queryId, id, nextFragmentInstanceId);
   }
 }

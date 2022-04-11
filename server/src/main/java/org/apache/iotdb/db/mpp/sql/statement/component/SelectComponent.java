@@ -24,9 +24,15 @@ import org.apache.iotdb.db.mpp.sql.statement.StatementNode;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
 import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
+import org.apache.iotdb.tsfile.read.common.Path;
 
 import java.time.ZoneId;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /** This class maintains information of {@code SELECT} clause. */
 public class SelectComponent extends StatementNode {
@@ -147,5 +153,13 @@ public class SelectComponent extends StatementNode {
       }
     }
     return deviceIdToPathsCache;
+  }
+
+  public List<Path> getDeduplicatedPaths() {
+    Set<Path> deduplicatedPaths = new HashSet<>();
+    for (ResultColumn resultColumn : resultColumns) {
+      deduplicatedPaths.addAll(resultColumn.collectPaths());
+    }
+    return new ArrayList<>(deduplicatedPaths);
   }
 }

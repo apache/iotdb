@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.sink;
 
+import java.util.Objects;
 import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
@@ -49,7 +50,7 @@ public class FragmentSinkNode extends SinkNode {
 
   @Override
   public PlanNode clone() {
-    FragmentSinkNode sinkNode = new FragmentSinkNode(getId());
+    FragmentSinkNode sinkNode = new FragmentSinkNode(getPlanNodeId());
     sinkNode.setDownStream(downStreamEndpoint, downStreamInstanceId, downStreamPlanNodeId);
     return sinkNode;
   }
@@ -73,11 +74,6 @@ public class FragmentSinkNode extends SinkNode {
   @Override
   public int allowedChildCount() {
     return ONE_CHILD;
-  }
-
-  @Override
-  public List<String> getOutputColumnNames() {
-    return null;
   }
 
   public static FragmentSinkNode deserialize(ByteBuffer byteBuffer) {
@@ -118,7 +114,8 @@ public class FragmentSinkNode extends SinkNode {
   }
 
   public String toString() {
-    return String.format("FragmentSinkNode-%s:[SendTo: (%s)]", getId(), getDownStreamAddress());
+    return String.format(
+        "FragmentSinkNode-%s:[SendTo: (%s)]", getPlanNodeId(), getDownStreamAddress());
   }
 
   public String getDownStreamAddress() {
@@ -150,5 +147,29 @@ public class FragmentSinkNode extends SinkNode {
 
   public PlanNodeId getDownStreamPlanNodeId() {
     return downStreamPlanNodeId;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
+    FragmentSinkNode that = (FragmentSinkNode) o;
+    return Objects.equals(child, that.child) &&
+        Objects.equals(downStreamEndpoint, that.downStreamEndpoint) &&
+        Objects.equals(downStreamInstanceId, that.downStreamInstanceId) &&
+        Objects.equals(downStreamPlanNodeId, that.downStreamPlanNodeId);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), child, downStreamEndpoint, downStreamInstanceId,
+        downStreamPlanNodeId);
   }
 }

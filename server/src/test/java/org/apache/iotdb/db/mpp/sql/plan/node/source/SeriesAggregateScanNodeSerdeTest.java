@@ -18,14 +18,19 @@
  */
 package org.apache.iotdb.db.mpp.sql.plan.node.source;
 
+import java.util.List;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.sql.plan.node.PlanNodeDeserializeHelper;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregateScanNode;
+import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
+import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.operator.In;
 
 import org.junit.Test;
@@ -41,13 +46,15 @@ import static org.junit.Assert.assertEquals;
 public class SeriesAggregateScanNodeSerdeTest {
   @Test
   public void TestSerializeAndDeserialize() throws QueryProcessException, IllegalPathException {
-    Set<String> st = new HashSet<String>();
+    Set<String> st = new HashSet<>();
     st.add("s1");
     st.add("s2");
+    List<AggregationType> aggregateFuncList = new ArrayList<>();
+    aggregateFuncList.add(AggregationType.MAX_TIME);
     SeriesAggregateScanNode seriesAggregateScanNode =
         new SeriesAggregateScanNode(
-            new PlanNodeId("TestSeriesAggregateScanNode"), new FunctionExpression("add"), null);
-    seriesAggregateScanNode.setFilter(new In<String>(st, VALUE_FILTER, true));
+            new PlanNodeId("TestSeriesAggregateScanNode"), new MeasurementPath("root.sg.d1.s1", TSDataType.BOOLEAN), aggregateFuncList,
+            OrderBy.TIMESTAMP_ASC, new In<String>(st, VALUE_FILTER, true), null);
     seriesAggregateScanNode.setDataRegionReplicaSet(
         new RegionReplicaSet(new DataRegionId(1), new ArrayList<>()));
 

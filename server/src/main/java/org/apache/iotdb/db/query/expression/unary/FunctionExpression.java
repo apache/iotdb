@@ -25,9 +25,6 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregateScanNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SourceNode;
 import org.apache.iotdb.db.mpp.sql.rewriter.WildcardsRemover;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
@@ -236,14 +233,6 @@ public class FunctionExpression extends Expression {
     for (Expression expression : expressions) {
       expression.collectPaths(pathSet);
     }
-  }
-
-  @Override
-  public void collectPlanNode(Set<SourceNode> planNodeSet, PlanNodeId nodeId) {
-    if (isBuiltInAggregationFunctionExpression) {
-      planNodeSet.add(new SeriesAggregateScanNode(nodeId, this));
-    }
-    // TODO: support UDF
   }
 
   @Override

@@ -108,7 +108,7 @@ public class StatusUtils {
       case SYNC_CONNECTION_EXCEPTION:
         status.setMessage("Meet error while sync connecting. ");
         break;
-      case STORAGE_GROUP_PROCESSOR_ERROR:
+      case DATA_REGION_ERROR:
         status.setMessage("Storage group processor related error. ");
         break;
       case STORAGE_GROUP_ERROR:

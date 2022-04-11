@@ -172,7 +172,7 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
     AbstractCompactionTask compactionTask =
         taskFactory.createTask(
             logicalStorageGroupName,
-            virtualStorageGroupName,
+            dataRegionName,
             timePartition,
             tsFileManager,
             selectedFileList,

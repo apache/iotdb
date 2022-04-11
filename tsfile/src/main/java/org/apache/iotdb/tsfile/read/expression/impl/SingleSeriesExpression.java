@@ -27,6 +27,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.Serializable;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class SingleSeriesExpression implements IUnaryExpression, Serializable {
 
@@ -77,5 +78,24 @@ public class SingleSeriesExpression implements IUnaryExpression, Serializable {
 
   public void setSeriesPath(Path seriesPath) {
     this.seriesPath = seriesPath;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+
+    SingleSeriesExpression that = (SingleSeriesExpression) o;
+    return Objects.equals(toString(), that.toString());
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(toString());
   }
 }
