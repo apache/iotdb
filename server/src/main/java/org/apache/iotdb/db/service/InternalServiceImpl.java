@@ -45,8 +45,11 @@ import java.io.IOException;
 public class InternalServiceImpl implements InternalService.Iface {
   private static final Logger LOGGER = LoggerFactory.getLogger(InternalServiceImpl.class);
 
-  public InternalServiceImpl() {
+  private final ConsensusManager consensusManager;
+
+  public InternalServiceImpl() throws IOException {
     super();
+    consensusManager = new ConsensusManager();
   }
 
   @Override
@@ -62,29 +65,21 @@ public class InternalServiceImpl implements InternalService.Iface {
       response.setMessage(e.getMessage());
       return response;
     }
-    ConsensusManager consensusManager;
-    try {
-      if (fragmentInstance.getRegionReplicaSet() != null) {
-        consensusManager =
-            new ConsensusManager(
-                    fragmentInstance.getRegionReplicaSet().getConsensusGroupId().getType())
-                .setRegionReplicaSet(fragmentInstance.getRegionReplicaSet());
-      } else {
-        LOGGER.error("Unknown regions to write.");
-        response.setAccepted(false);
-        response.setMessage("Unknown regions to write.");
-        return response;
-      }
-    } catch (IOException e) {
-      LOGGER.error("IOException occurs. ", e);
+
+    if (fragmentInstance.getRegionReplicaSet() == null
+        || fragmentInstance.getRegionReplicaSet().isEmpty()) {
+      String msg = "Unknown regions to write, since getRegionReplicaSet is empty.";
+      LOGGER.error(msg);
       response.setAccepted(false);
-      response.setMessage("IOException occurs. " + e.getMessage());
+      response.setMessage(msg);
       return response;
     }
-    consensusManager
-        .setConsensusGroupId(fragmentInstance.getRegionReplicaSet().getConsensusGroupId())
-        .addConsensusGroup();
-    TSStatus status = consensusManager.write(fragmentInstance).getStatus();
+
+    consensusManager.addConsensusGroup(fragmentInstance.getRegionReplicaSet());
+    TSStatus status =
+        consensusManager
+            .write(fragmentInstance.getRegionReplicaSet().getConsensusGroupId(), fragmentInstance)
+            .getStatus();
     // TODO need consider more status
     if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == status.getCode()) {
       response.setAccepted(true);
@@ -119,5 +114,9 @@ public class InternalServiceImpl implements InternalService.Iface {
   @Override
   public SchemaFetchResponse fetchSchema(SchemaFetchRequest req) throws TException {
     throw new UnsupportedOperationException();
+  }
+
+  public void close() throws IOException {
+    consensusManager.close();
   }
 }

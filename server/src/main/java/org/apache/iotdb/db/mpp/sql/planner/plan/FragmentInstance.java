@@ -131,6 +131,7 @@ public class FragmentInstance implements IConsensusRequest {
 
   @Override
   public void serializeRequest(ByteBuffer byteBuffer) {
+    byteBuffer.mark();
     // PlanFragment
     fragment.serialize(byteBuffer);
 
@@ -139,5 +140,6 @@ public class FragmentInstance implements IConsensusRequest {
 
     // RegionReplicaSet
     regionReplicaSet.serializeImpl(byteBuffer);
+    byteBuffer.flip();
   }
 }

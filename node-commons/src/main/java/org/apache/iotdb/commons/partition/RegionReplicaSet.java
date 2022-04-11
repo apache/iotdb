@@ -97,4 +97,8 @@ public class RegionReplicaSet {
   public int hashCode() {
     return Objects.hash(consensusGroupId, dataNodeList);
   }
+
+  public boolean isEmpty() {
+    return dataNodeList == null || dataNodeList.isEmpty();
+  }
 }

@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.partition.DataNodeLocation;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
@@ -38,28 +40,35 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
+import org.apache.ratis.util.FileUtils;
 import org.apache.thrift.TException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.File;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
 public class InternalServiceImplTest {
+  private static final IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
+  InternalServiceImpl internalServiceImpl;
 
   @Before
   public void setUp() throws Exception {
     IoTDB.configManager.init();
+    internalServiceImpl = new InternalServiceImpl();
   }
 
   @After
   public void tearDown() throws Exception {
     IoTDB.configManager.clear();
     EnvironmentUtils.cleanEnv();
+    internalServiceImpl.close();
+    FileUtils.deleteFully(new File("data" + File.separator + "consensus"));
   }
 
   @Test
@@ -91,22 +100,20 @@ public class InternalServiceImplTest {
             "meter1");
 
     List<DataNodeLocation> dataNodeList = new ArrayList<>();
-
-    dataNodeList.add(new DataNodeLocation(6667, new Endpoint("0.0.0.0", 6667)));
-    dataNodeList.add(new DataNodeLocation(6668, new Endpoint("0.0.0.0", 6668)));
-    dataNodeList.add(new DataNodeLocation(6669, new Endpoint("0.0.0.0", 6669)));
+    dataNodeList.add(
+        new DataNodeLocation(
+            conf.getConsensusPort(), new Endpoint(conf.getInternalIp(), conf.getConsensusPort())));
 
     // construct fragmentInstance
-    SchemaRegionId schemaRegionId = new SchemaRegionId(0);
+    SchemaRegionId schemaRegionId = new SchemaRegionId(1);
     RegionReplicaSet regionReplicaSet = new RegionReplicaSet(schemaRegionId, dataNodeList);
     PlanFragment planFragment = new PlanFragment(new PlanFragmentId("2", 3), createTimeSeriesNode);
     FragmentInstance fragmentInstance = new FragmentInstance(planFragment, 4);
     fragmentInstance.setRegionReplicaSet(regionReplicaSet);
 
     // serialize fragmentInstance
-    ByteBuffer byteBuffer = ByteBuffer.allocate(10000);
+    ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
     fragmentInstance.serializeRequest(byteBuffer);
-    byteBuffer.flip();
 
     // put serialized fragmentInstance to TSendFragmentInstanceReq
     TSendFragmentInstanceReq request = new TSendFragmentInstanceReq();
@@ -115,7 +122,6 @@ public class InternalServiceImplTest {
     request.setFragmentInstance(tFragmentInstance);
 
     // Use consensus layer to execute request
-    InternalServiceImpl internalServiceImpl = new InternalServiceImpl();
     TSendFragmentInstanceResp response = internalServiceImpl.sendFragmentInstance(request);
 
     Assert.assertTrue(response.accepted);

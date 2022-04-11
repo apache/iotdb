@@ -19,16 +19,14 @@
 
 package org.apache.iotdb.db.consensus;
 
-import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
-import org.apache.iotdb.commons.consensus.GroupType;
+import org.apache.iotdb.commons.partition.DataNodeLocation;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.Peer;
+import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
 
 import org.slf4j.Logger;
@@ -42,87 +40,33 @@ import java.util.List;
 public class ConsensusManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(ConsensusManager.class);
 
-  //  private static final IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
-  //
-  //  private static final String rpcAddress = conf.getRpcAddress();
-  //
-  //  private static final int rpcPort = conf.getRpcPort();
-  //
-  //  private static final ConsensusType consensusType = conf.getConsensusType();
-  //
-  //  private static final String consensusDir = conf.getConsensusDir();
-
   private IConsensus consensusImpl;
 
-  private ConsensusGroupId consensusGroupId;
-
-  private RegionReplicaSet regionReplicaSet;
-
-  public ConsensusManager(GroupType groupType) throws IOException {
-    // either GroupType.DataRegion or GroupType.SchemaRegion
+  public ConsensusManager() throws IOException {
     consensusImpl = ConsensusImpl.getInstance();
     consensusImpl.start();
   }
 
-  public ConsensusGroupId getConsensusGroupId() {
-    return consensusGroupId;
-  }
-
-  public ConsensusManager setConsensusGroupId(ConsensusGroupId consensusGroupId) {
-    this.consensusGroupId = consensusGroupId;
-    return this;
-  }
-
-  public RegionReplicaSet getRegionReplicaSet() {
-    return regionReplicaSet;
-  }
-
-  public ConsensusManager setRegionReplicaSet(RegionReplicaSet regionReplicaSet) {
-    this.regionReplicaSet = regionReplicaSet;
-    return this;
-  }
-
-  public void addConsensusGroup() {
-    //    switch (consensusImpl.getClass()) {
-    //      case STANDALONE:
-    //        consensusImpl.addConsensusGroup(
-    //            consensusGroupId,
-    //            Collections.singletonList(
-    //                new Peer(consensusGroupId, new Endpoint(rpcAddress, rpcPort))));
-    //        break;
-    //      case RATIS:
-    //        List<Peer> peerList = new ArrayList<>();
-    //        for (DataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeList()) {
-    //          peerList.add(new Peer(consensusGroupId, dataNodeLocation.getEndPoint()));
-    //        }
-    //        consensusImpl.addConsensusGroup(consensusGroupId, peerList);
-    //        break;
-    //      default:
-    //        throw new IllegalArgumentException(
-    //            "Unrecongnized ConsensusType: " + consensusType.getTypeName());
-    //    }
-    IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
-
+  public void addConsensusGroup(RegionReplicaSet regionReplicaSet) {
+    ConsensusGroupId consensusGroupId = regionReplicaSet.getConsensusGroupId();
     List<Peer> peerList = new ArrayList<>();
-    peerList.add(
-        new Peer(consensusGroupId, new Endpoint(conf.getInternalIp(), conf.getConsensusPort())));
-    //    for (DataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeList()) {
-    //      peerList.add(new Peer(consensusGroupId, dataNodeLocation.getEndPoint()));
-    //    }
+    for (DataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeList()) {
+      peerList.add(new Peer(consensusGroupId, dataNodeLocation.getEndPoint()));
+    }
     consensusImpl.addConsensusGroup(consensusGroupId, peerList);
   }
 
-  //  public ConsensusType getConsensusType() {
-  //    return consensusType;
-  //  }
-
   /** Transmit FragmentInstance to datanode.consensus.statemachine */
-  public ConsensusWriteResponse write(FragmentInstance plan) {
+  public ConsensusWriteResponse write(ConsensusGroupId consensusGroupId, IConsensusRequest plan) {
     return consensusImpl.write(consensusGroupId, plan);
   }
 
   /** Transmit FragmentInstance to datanode.consensus.statemachine */
-  public ConsensusReadResponse read(FragmentInstance plan) {
+  public ConsensusReadResponse read(ConsensusGroupId consensusGroupId, FragmentInstance plan) {
     return consensusImpl.read(consensusGroupId, plan);
+  }
+
+  public void close() throws IOException {
+    consensusImpl.stop();
   }
 }
