@@ -27,8 +27,8 @@ import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -139,8 +139,10 @@ public class PathPatternTreeTest {
     PathPatternTree tmpPathPatternTree = new PathPatternTree();
     PublicBAOS outputStream = new PublicBAOS();
     resultPatternTree.serialize(outputStream);
-    ByteArrayInputStream inputStream = new ByteArrayInputStream(outputStream.toByteArray());
-    tmpPathPatternTree.deserialize(inputStream);
+    ByteBuffer buffer = ByteBuffer.allocate(outputStream.size() * 8);
+    buffer.put(outputStream.getBuf());
+    buffer.flip();
+    tmpPathPatternTree.deserialize(buffer);
     Assert.assertTrue(resultPatternTree.equalWith(tmpPathPatternTree));
   }
 }
