@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.metadata.schemaregion;
 
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.SchemaEngineType;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;

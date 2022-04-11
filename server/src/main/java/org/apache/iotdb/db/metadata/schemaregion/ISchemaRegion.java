@@ -52,7 +52,6 @@ import java.util.Set;
 
 public interface ISchemaRegion {
 
-  // Because the writer will be used later and should not be closed here.
   @SuppressWarnings("squid:S2093")
   void init(IStorageGroupMNode storageGroupMNode) throws MetadataException;
 
