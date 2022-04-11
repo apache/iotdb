@@ -20,13 +20,11 @@
 package org.apache.iotdb.confignode.consensus.response;
 
 import org.apache.iotdb.common.rpc.thrift.EndPoint;
-import org.apache.iotdb.common.rpc.thrift.RegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.partition.SchemaPartition;
-import org.apache.iotdb.confignode.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionResp;
 import org.apache.iotdb.consensus.common.DataSet;
-import org.apache.iotdb.service.rpc.thrift.EndPoint;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import java.util.ArrayList;
 import java.util.HashMap;

@@ -18,10 +18,10 @@
  */
 package org.apache.iotdb.confignode.consensus.response;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.consensus.common.DataSet;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 public class DataNodeConfigurationDataSet implements DataSet {
 

@@ -21,24 +21,9 @@ include "common.thrift"
 namespace java org.apache.iotdb.confignode.rpc.thrift
 namespace py iotdb.thrift.confignode
 
-// TODO: using thrift-common
-struct TRegionReplicaSet {
-    1: required i32 regionId
-    2: required string groupType
-    3: required list<rpc.EndPoint> endpoint
-}
-
-struct TSeriesPartitionSlot {
-    1: required i32 slotId
-}
-
-struct TTimePartitionSlot {
-    1: required i64 startTime
-}
-
 // DataNode
 struct TDataNodeRegisterReq {
-    1: required rpc.EndPoint endPoint
+    1: required common.EndPoint endPoint
 }
 
 struct TGlobalConfig {
@@ -48,20 +33,20 @@ struct TGlobalConfig {
 }
 
 struct TDataNodeRegisterResp {
-    1: required rpc.TSStatus status
+    1: required common.TSStatus status
     2: optional i32 dataNodeID
     3: optional TGlobalConfig globalConfig
 }
 
 struct TDataNodeMessageResp {
-  1: required rpc.TSStatus status
+  1: required common.TSStatus status
   // map<DataNodeId, DataNodeMessage>
   2: optional map<i32, TDataNodeMessage> dataNodeMessageMap
 }
 
 struct TDataNodeMessage {
   1: required i32 dataNodeId
-  2: required rpc.EndPoint endPoint
+  2: required common.EndPoint endPoint
 }
 
 // StorageGroup
@@ -75,7 +60,7 @@ struct TDeleteStorageGroupReq {
 }
 
 struct TStorageGroupMessageResp {
-  1: required rpc.TSStatus status
+  1: required common.TSStatus status
   // map<string, StorageGroupMessage>
   2: optional map<string, TStorageGroupMessage> storageGroupMessageMap
 }
@@ -90,21 +75,21 @@ struct TSchemaPartitionReq {
 }
 
 struct TSchemaPartitionResp {
-  1: required rpc.TSStatus status
+  1: required common.TSStatus status
     // map<StorageGroupName, map<TSeriesPartitionSlot, TRegionReplicaSet>>
-  2: optional map<string, map<TSeriesPartitionSlot, TRegionReplicaSet>> schemaRegionMap
+  2: optional map<string, map<common.TSeriesPartitionSlot, common.TRegionReplicaSet>> schemaRegionMap
 }
 
 // Data
 struct TDataPartitionReq {
     // map<StorageGroupName, map<TSeriesPartitionSlot, list<TTimePartitionSlot>>>
-    1: required map<string, map<TSeriesPartitionSlot, list<TTimePartitionSlot>>> partitionSlotsMap
+    1: required map<string, map<common.TSeriesPartitionSlot, list<common.TTimePartitionSlot>>> partitionSlotsMap
 }
 
 struct TDataPartitionResp {
-  1: required rpc.TSStatus status
+  1: required common.TSStatus status
   // map<StorageGroupName, map<TSeriesPartitionSlot, map<TTimePartitionSlot, list<TRegionReplicaSet>>>>
-  2: optional map<string, map<TSeriesPartitionSlot, map<TTimePartitionSlot, list<TRegionReplicaSet>>>> dataPartitionMap
+  2: optional map<string, map<common.TSeriesPartitionSlot, map<common.TTimePartitionSlot, list<common.TRegionReplicaSet>>>> dataPartitionMap
 }
 
 // Authorize
@@ -128,9 +113,9 @@ service ConfigIService {
 
   /* StorageGroup */
 
-  rpc.TSStatus setStorageGroup(TSetStorageGroupReq req)
+  common.TSStatus setStorageGroup(TSetStorageGroupReq req)
 
-  rpc.TSStatus deleteStorageGroup(TDeleteStorageGroupReq req)
+  common.TSStatus deleteStorageGroup(TDeleteStorageGroupReq req)
 
   TStorageGroupMessageResp getStorageGroupsMessage()
 
@@ -147,6 +132,6 @@ service ConfigIService {
   TDataPartitionResp getOrCreateDataPartition(TDataPartitionReq req)
 
   /* Authorize */
-  rpc.TSStatus operatePermission(TAuthorizerReq req)
+  common.TSStatus operatePermission(TAuthorizerReq req)
 
 }
