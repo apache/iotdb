@@ -30,8 +30,8 @@ import java.util.Objects;
 
 public class PathPatternNode {
 
-  private String name;
-  private Map<String, PathPatternNode> children;
+  private final String name;
+  private final Map<String, PathPatternNode> children;
 
   public PathPatternNode(String name) {
     this.name = name;
@@ -42,24 +42,12 @@ public class PathPatternNode {
     return name;
   }
 
-  public void setName(String name) {
-    this.name = name;
-  }
-
   public PathPatternNode getChildren(String nodeName) {
     return children.getOrDefault(nodeName, null);
   }
 
   public Map<String, PathPatternNode> getChildren() {
     return children;
-  }
-
-  public void setChildren(Map<String, PathPatternNode> children) {
-    this.children = children;
-  }
-
-  public void addChild(String nodeName, PathPatternNode newNode) {
-    this.children.put(nodeName, newNode);
   }
 
   public void addChild(PathPatternNode tmpNode) {
@@ -104,11 +92,8 @@ public class PathPatternNode {
   }
 
   void serializeChildren(ByteBuffer buffer) throws IOException {
-    if (children == null) {
-      return;
-    }
-    for (Map.Entry<String, PathPatternNode> entry : children.entrySet()) {
-      entry.getValue().serialize(buffer);
+    for (PathPatternNode childNode : children.values()) {
+      childNode.serialize(buffer);
     }
   }
 }

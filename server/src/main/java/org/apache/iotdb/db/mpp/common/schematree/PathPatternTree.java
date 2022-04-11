@@ -162,7 +162,7 @@ public class PathPatternTree {
   private void appendTree(PathPatternNode curNode, String[] pathNodes, int pos) {
     for (int i = pos; i < pathNodes.length; i++) {
       PathPatternNode newNode = new PathPatternNode(pathNodes[i]);
-      curNode.addChild(newNode.getName(), newNode);
+      curNode.addChild(newNode);
       curNode = newNode;
     }
   }
