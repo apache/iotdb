@@ -185,4 +185,9 @@ public interface ISchemaRegion {
   void unsetSchemaTemplate(UnsetTemplatePlan plan) throws MetadataException;
 
   void setUsingSchemaTemplate(ActivateTemplatePlan plan) throws MetadataException;
+
+  IMeasurementMNode getMeasurementMNodeForTrigger(PartialPath fullPath) throws MetadataException;
+
+  void releaseMeasurementMNodeAfterDropTrigger(IMeasurementMNode measurementMNode)
+      throws MetadataException;
 }

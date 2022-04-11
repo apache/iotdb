@@ -1939,6 +1939,18 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
+  public IMeasurementMNode getMeasurementMNodeForTrigger(PartialPath fullPath)
+      throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void releaseMeasurementMNodeAfterDropTrigger(IMeasurementMNode measurementMNode)
+      throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public String toString() {
     return String.format("storage group:[%s]", storageGroupFullPath);
   }

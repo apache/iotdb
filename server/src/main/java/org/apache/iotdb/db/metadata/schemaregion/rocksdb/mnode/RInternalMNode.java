@@ -22,6 +22,7 @@ package org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaReadWriteHandler;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaUtils;
@@ -30,7 +31,6 @@ import org.apache.iotdb.db.metadata.template.Template;
 import org.rocksdb.RocksDBException;
 
 import java.io.IOException;
-import java.util.Map;
 
 public class RInternalMNode extends RMNode {
 
@@ -118,7 +118,7 @@ public class RInternalMNode extends RMNode {
 
   /** delete a child */
   @Override
-  public void deleteChild(String name) {
+  public IMNode deleteChild(String name) {
     String childPathName = fullPath.concat(RSchemaConstants.PATH_SEPARATOR).concat(name);
     int nodeNameMaxLevel = RSchemaUtils.getLevelByPartialPath(childPathName);
     for (RMNodeType type : RMNodeType.values()) {
@@ -128,12 +128,16 @@ public class RInternalMNode extends RMNode {
       try {
         if (readWriteHandler.keyExist(childInnerName)) {
           readWriteHandler.deleteByKey(childInnerName);
-          return;
+          return null;
         }
       } catch (RocksDBException e) {
         logger.error(e.getMessage());
       }
     }
+    // The return value from this method is used to estimate memory size
+    // When based on Rocksdb, mNodes are not held in memory for long periods
+    // Therefore, the return value here is meaningless
+    return null;
   }
 
   /**
@@ -152,12 +156,7 @@ public class RInternalMNode extends RMNode {
   }
 
   @Override
-  public Map<String, IMNode> getChildren() {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public void setChildren(Map<String, IMNode> children) {
+  public IMNodeContainer getChildren() {
     throw new UnsupportedOperationException();
   }
 
