@@ -20,10 +20,15 @@
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.Executor.NoQueryExecutor;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.schemaregion.SchemaRegion;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -36,7 +41,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-public class CreateAlignedTimeSeriesNode extends PlanNode {
+public class CreateAlignedTimeSeriesNode extends PlanNode implements NoQueryExecutor {
   private PartialPath devicePath;
   private List<String> measurements;
   private List<TSDataType> dataTypes;
@@ -342,5 +347,23 @@ public class CreateAlignedTimeSeriesNode extends PlanNode {
         aliasList,
         tagsList,
         attributesList);
+  }
+
+  @Override
+  public PhysicalPlan transferToPhysicalPlan() {
+    return new CreateAlignedTimeSeriesPlan(
+        getDevicePath(),
+        getMeasurements(),
+        getDataTypes(),
+        getEncodings(),
+        getCompressors(),
+        getAliasList(),
+        getTagsList(),
+        getAttributesList());
+  }
+
+  @Override
+  public void executor(SchemaRegion schemaRegion) throws MetadataException {
+    schemaRegion.createAlignedTimeSeries((CreateAlignedTimeSeriesPlan) transferToPhysicalPlan());
   }
 }

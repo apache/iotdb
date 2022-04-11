@@ -25,7 +25,8 @@ import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.LocalConfigManager;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
@@ -56,11 +57,13 @@ import java.util.List;
 public class InternalServiceImplTest {
   private static final IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
   InternalServiceImpl internalServiceImpl;
+  LocalConfigManager configManager;
 
   @Before
   public void setUp() throws Exception {
     IoTDB.configManager.init();
     internalServiceImpl = new InternalServiceImpl();
+    configManager = LocalConfigManager.getInstance();
   }
 
   @After
@@ -72,7 +75,8 @@ public class InternalServiceImplTest {
   }
 
   @Test
-  public void createTimeseriesTest() throws IllegalPathException, TException {
+  public void createTimeseriesTest() throws MetadataException, TException {
+    configManager.getBelongedSchemaRegionWithAutoCreate(new PartialPath("root.ln"));
     CreateTimeSeriesNode createTimeSeriesNode =
         new CreateTimeSeriesNode(
             new PlanNodeId("0"),
@@ -105,7 +109,7 @@ public class InternalServiceImplTest {
             conf.getConsensusPort(), new Endpoint(conf.getInternalIp(), conf.getConsensusPort())));
 
     // construct fragmentInstance
-    SchemaRegionId schemaRegionId = new SchemaRegionId(1);
+    SchemaRegionId schemaRegionId = new SchemaRegionId(0);
     RegionReplicaSet regionReplicaSet = new RegionReplicaSet(schemaRegionId, dataNodeList);
     PlanFragment planFragment = new PlanFragment(new PlanFragmentId("2", 3), createTimeSeriesNode);
     FragmentInstance fragmentInstance = new FragmentInstance(planFragment, 4);

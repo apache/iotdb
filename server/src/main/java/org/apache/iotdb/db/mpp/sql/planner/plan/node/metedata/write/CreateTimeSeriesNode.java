@@ -19,7 +19,10 @@
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.Executor.NoQueryExecutor;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.schemaregion.SchemaRegion;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
@@ -32,11 +35,12 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-public class CreateTimeSeriesNode extends PlanNode {
+public class CreateTimeSeriesNode extends PlanNode implements NoQueryExecutor {
   private PartialPath path;
   private TSDataType dataType;
   private TSEncoding encoding;
@@ -202,20 +206,30 @@ public class CreateTimeSeriesNode extends PlanNode {
       alias = ReadWriteIOUtils.readString(byteBuffer);
     }
 
+    byte label = byteBuffer.get();
     // props
-    if (byteBuffer.get() == 1) {
+    if (label == 0) {
+      props = new HashMap<>();
+    } else if (label == 1) {
       props = ReadWriteIOUtils.readMap(byteBuffer);
     }
 
     // tags
-    if (byteBuffer.get() == 1) {
+    label = byteBuffer.get();
+    if (label == 0) {
+      tags = new HashMap<>();
+    } else if (label == 1) {
       tags = ReadWriteIOUtils.readMap(byteBuffer);
     }
 
     // attributes
-    if (byteBuffer.get() == 1) {
+    label = byteBuffer.get();
+    if (label == 0) {
+      attributes = new HashMap<>();
+    } else if (label == 1) {
       attributes = ReadWriteIOUtils.readMap(byteBuffer);
     }
+
     return new CreateTimeSeriesNode(
         new PlanNodeId(id), path, dataType, encoding, compressor, props, tags, attributes, alias);
   }
@@ -241,30 +255,41 @@ public class CreateTimeSeriesNode extends PlanNode {
     }
 
     // props
-    if (props != null && !props.isEmpty()) {
+    if (props == null) {
+      byteBuffer.put((byte) -1);
+    } else if (props.isEmpty()) {
+      byteBuffer.put((byte) 0);
+    } else {
       byteBuffer.put((byte) 1);
       ReadWriteIOUtils.write(props, byteBuffer);
-    } else {
-      byteBuffer.put((byte) 0);
     }
 
     // tags
-    if (tags != null && !tags.isEmpty()) {
+    if (tags == null) {
+      byteBuffer.put((byte) -1);
+    } else if (tags.isEmpty()) {
+      byteBuffer.put((byte) 0);
+    } else {
       byteBuffer.put((byte) 1);
       ReadWriteIOUtils.write(tags, byteBuffer);
-    } else {
-      byteBuffer.put((byte) 0);
     }
 
     // attributes
-    if (attributes != null && !attributes.isEmpty()) {
+    if (attributes == null) {
+      byteBuffer.put((byte) -1);
+    } else if (attributes.isEmpty()) {
+      byteBuffer.put((byte) 0);
+    } else {
       byteBuffer.put((byte) 1);
       ReadWriteIOUtils.write(attributes, byteBuffer);
-    } else {
-      byteBuffer.put((byte) 0);
     }
 
     // no children node, need to set 0
     byteBuffer.putInt(0);
+  }
+
+  @Override
+  public void executor(SchemaRegion schemaRegion) throws MetadataException {
+    schemaRegion.createTimeseries((CreateTimeSeriesPlan) transferToPhysicalPlan());
   }
 }
