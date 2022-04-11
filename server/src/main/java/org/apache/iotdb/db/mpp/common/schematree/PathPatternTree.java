@@ -23,10 +23,12 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -44,15 +46,17 @@ public class PathPatternTree {
   protected boolean isPrefixMatchPath;
 
   public PathPatternTree(PartialPath deivcePath, String[] measurements) {
-    // TODO
     this.root = new PathPatternNode(SQLConstant.ROOT);
     this.pathList = new ArrayList<>();
+    appendPaths(deivcePath, Arrays.asList(measurements));
   }
 
-  public PathPatternTree(Map<PartialPath, List<String>> devices) {
-    // TODO
+  public PathPatternTree(Map<PartialPath, List<String>> deviceToMeasurementsMap) {
     this.root = new PathPatternNode(SQLConstant.ROOT);
     this.pathList = new ArrayList<>();
+    for (Map.Entry<PartialPath, List<String>> entry : deviceToMeasurementsMap.entrySet()) {
+      appendPaths(entry.getKey(), entry.getValue());
+    }
   };
 
   public PathPatternTree() {
@@ -136,11 +140,24 @@ public class PathPatternTree {
 
   public void serialize(ByteBuffer buffer) throws IOException {
     constructTree();
-    // TODO
+    ReadWriteIOUtils.write(isPrefixMatchPath, buffer);
+    root.serialize(buffer);
   }
 
   public void deserialize(ByteBuffer buffer) throws IOException {
-    // TODO
+    this.isPrefixMatchPath = ReadWriteIOUtils.readBool(buffer);
+    this.root = deserializeNode(buffer);
+  }
+
+  private PathPatternNode deserializeNode(ByteBuffer buffer) {
+    PathPatternNode node = new PathPatternNode(ReadWriteIOUtils.readString(buffer));
+    int childrenSize = ReadWriteIOUtils.readInt(buffer);
+    while (childrenSize > 0) {
+      PathPatternNode tmpNode = deserializeNode(buffer);
+      node.addChild(tmpNode);
+      childrenSize--;
+    }
+    return node;
   }
 
   @TestOnly

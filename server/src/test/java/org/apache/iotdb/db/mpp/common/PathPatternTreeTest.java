@@ -26,106 +26,112 @@ import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
 public class PathPatternTreeTest {
 
   @Test
-  public void pathPatternTreeTest1() throws IllegalPathException {
-    PathPatternTree patternTree = new PathPatternTree();
-    patternTree.appendPath(new PartialPath("root.sg1.d1.s1"));
-    patternTree.appendPath(new PartialPath("root.sg1.d1.s2"));
-    patternTree.appendPath(new PartialPath("root.sg1.d1.*"));
-    patternTree.appendPath(new PartialPath("root.sg1.d1.s3"));
-    patternTree.constructTree();
-
-    PathPatternTree resultPatternTree = new PathPatternTree();
-    resultPatternTree.appendPath(new PartialPath("root.sg1.d1.*"));
-    resultPatternTree.constructTree();
-
-    Assert.assertTrue(resultPatternTree.equalWith(patternTree));
+  public void pathPatternTreeTest1() throws IllegalPathException, IOException {
+    checkPathPatternTree(
+        Arrays.asList(
+            new PartialPath("root.sg1.d1.s1"),
+            new PartialPath("root.sg1.d1.s2"),
+            new PartialPath("root.sg1.d1.*"),
+            new PartialPath("root.sg1.d1.s3")),
+        Collections.singletonList(new PartialPath("root.sg1.d1.*")));
   }
 
   @Test
-  public void pathPatternTreeTest2() throws IllegalPathException {
-    PathPatternTree patternTree = new PathPatternTree();
-    patternTree.appendPath(new PartialPath("root.sg1.d1.s1"));
-    patternTree.appendPath(new PartialPath("root.sg1.d1.s2"));
-    patternTree.appendPath(new PartialPath("root.sg1.d1.t1.s1"));
-    patternTree.appendPath(new PartialPath("root.sg1.*.s1"));
-    patternTree.appendPath(new PartialPath("root.sg1.d2.s1"));
-    patternTree.constructTree();
-
-    PathPatternTree resultPatternTree = new PathPatternTree();
-    resultPatternTree.appendPath(new PartialPath("root.sg1.d1.s2"));
-    resultPatternTree.appendPath(new PartialPath("root.sg1.d1.t1.s1"));
-    resultPatternTree.appendPath(new PartialPath("root.sg1.*.s1"));
-    resultPatternTree.constructTree();
-
-    Assert.assertTrue(resultPatternTree.equalWith(patternTree));
+  public void pathPatternTreeTest2() throws IllegalPathException, IOException {
+    checkPathPatternTree(
+        Arrays.asList(
+            new PartialPath("root.sg1.d1.s1"),
+            new PartialPath("root.sg1.d1.s2"),
+            new PartialPath("root.sg1.d1.t1.s1"),
+            new PartialPath("root.sg1.*.s1"),
+            new PartialPath("root.sg1.d2.s1")),
+        Arrays.asList(
+            new PartialPath("root.sg1.d1.s2"),
+            new PartialPath("root.sg1.d1.t1.s1"),
+            new PartialPath("root.sg1.*.s1")));
   }
 
   @Test
-  public void pathPatternTreeTest3() throws IllegalPathException {
-    PathPatternTree patternTree = new PathPatternTree();
-    patternTree.appendPath(new PartialPath("root.sg1.d1.s1"));
-    patternTree.appendPath(new PartialPath("root.sg1.d1.s2"));
-    patternTree.appendPath(new PartialPath("root.sg1.d1.t1.s1"));
-    patternTree.appendPath(new PartialPath("root.sg1.d2.s3"));
-    patternTree.appendPath(new PartialPath("root.**"));
-    patternTree.appendPath(new PartialPath("root.sg1.d1.s1"));
-    patternTree.appendPath(new PartialPath("root.sg1.d1.s2"));
-    patternTree.appendPath(new PartialPath("root.sg1.d1.t1.s1"));
-    patternTree.appendPath(new PartialPath("root.sg1.d2.s3"));
-    patternTree.constructTree();
-
-    PathPatternTree resultPatternTree = new PathPatternTree();
-    resultPatternTree.appendPath(new PartialPath("root.**"));
-    resultPatternTree.constructTree();
-
-    Assert.assertTrue(resultPatternTree.equalWith(patternTree));
+  public void pathPatternTreeTest3() throws IllegalPathException, IOException {
+    checkPathPatternTree(
+        Arrays.asList(
+            new PartialPath("root.sg1.d1.s1"),
+            new PartialPath("root.sg1.d1.s2"),
+            new PartialPath("root.sg1.d1.t1.s1"),
+            new PartialPath("root.sg1.d2.s3"),
+            new PartialPath("root.**"),
+            new PartialPath("root.sg1.d1.s1"),
+            new PartialPath("root.sg1.d1.s2"),
+            new PartialPath("root.sg1.d1.t1.s1"),
+            new PartialPath("root.sg1.d2.s3")),
+        Collections.singletonList(new PartialPath("root.**")));
   }
 
   @Test
-  public void pathPatternTreeTest4() throws IllegalPathException {
-    PathPatternTree patternTree = new PathPatternTree();
-    patternTree.appendPath(new PartialPath("root.sg1.d1.s1"));
-    patternTree.appendPath(new PartialPath("root.sg1.d1.s2"));
-    patternTree.appendPath(new PartialPath("root.sg1.d1.t1.s1"));
-    patternTree.appendPath(new PartialPath("root.sg1.d2.s1"));
-    patternTree.appendPath(new PartialPath("root.sg1.**.s1"));
-    patternTree.constructTree();
-
-    PathPatternTree resultPatternTree = new PathPatternTree();
-    resultPatternTree.appendPath(new PartialPath("root.sg1.d1.s2"));
-    resultPatternTree.appendPath(new PartialPath("root.sg1.**.s1"));
-    resultPatternTree.constructTree();
-
-    Assert.assertTrue(resultPatternTree.equalWith(patternTree));
+  public void pathPatternTreeTest4() throws IllegalPathException, IOException {
+    checkPathPatternTree(
+        Arrays.asList(
+            new PartialPath("root.sg1.d1.s1"),
+            new PartialPath("root.sg1.d1.s2"),
+            new PartialPath("root.sg1.d1.t1.s1"),
+            new PartialPath("root.sg1.d2.s1"),
+            new PartialPath("root.sg1.**.s1")),
+        Arrays.asList(new PartialPath("root.sg1.d1.s2"), new PartialPath("root.sg1.**.s1")));
   }
 
   @Test
-  public void pathPatternTreeTest5() throws IllegalPathException {
+  public void pathPatternTreeTest5() throws IllegalPathException, IOException {
+    checkPathPatternTree(
+        Arrays.asList(
+            new PartialPath("root.sg1.d1.s1"),
+            new PartialPath("root.sg1.d1.s2"),
+            new PartialPath("root.sg1.d1.t1.s1"),
+            new PartialPath("root.sg1.d2.s1"),
+            new PartialPath("root.sg1.d2.s2"),
+            new PartialPath("root.sg1.d2.*"),
+            new PartialPath("root.sg1.**.s1"),
+            new PartialPath("root.sg1.*.s2"),
+            new PartialPath("root.sg1.d3.s1"),
+            new PartialPath("root.sg1.d3.s2"),
+            new PartialPath("root.sg1.d3.t1.s1"),
+            new PartialPath("root.sg1.d3.t1.s2")),
+        Arrays.asList(
+            new PartialPath("root.sg1.d2.*"),
+            new PartialPath("root.sg1.**.s1"),
+            new PartialPath("root.sg1.*.s2"),
+            new PartialPath("root.sg1.d3.t1.s2")));
+  }
+
+  public void checkPathPatternTree(List<PartialPath> paths, List<PartialPath> compressedPaths)
+      throws IOException {
     PathPatternTree patternTree = new PathPatternTree();
-    patternTree.appendPath(new PartialPath("root.sg1.d1.s1"));
-    patternTree.appendPath(new PartialPath("root.sg1.d1.s2"));
-    patternTree.appendPath(new PartialPath("root.sg1.d1.t1.s1"));
-    patternTree.appendPath(new PartialPath("root.sg1.d2.s1"));
-    patternTree.appendPath(new PartialPath("root.sg1.d2.s2"));
-    patternTree.appendPath(new PartialPath("root.sg1.d2.*"));
-    patternTree.appendPath(new PartialPath("root.sg1.**.s1"));
-    patternTree.appendPath(new PartialPath("root.sg1.*.s2"));
-    patternTree.appendPath(new PartialPath("root.sg1.d3.s1"));
-    patternTree.appendPath(new PartialPath("root.sg1.d3.s2"));
-    patternTree.appendPath(new PartialPath("root.sg1.d3.t1.s1"));
-    patternTree.appendPath(new PartialPath("root.sg1.d3.t1.s2"));
+    for (PartialPath path : paths) {
+      patternTree.appendPath(path);
+    }
     patternTree.constructTree();
 
     PathPatternTree resultPatternTree = new PathPatternTree();
-    resultPatternTree.appendPath(new PartialPath("root.sg1.d2.*"));
-    resultPatternTree.appendPath(new PartialPath("root.sg1.**.s1"));
-    resultPatternTree.appendPath(new PartialPath("root.sg1.*.s2"));
-    resultPatternTree.appendPath(new PartialPath("root.sg1.d3.t1.s2"));
+    for (PartialPath path : compressedPaths) {
+      resultPatternTree.appendPath(path);
+    }
     resultPatternTree.constructTree();
 
     Assert.assertTrue(resultPatternTree.equalWith(patternTree));
+
+    PathPatternTree tmpPathPatternTree = new PathPatternTree();
+    ByteBuffer buffer = ByteBuffer.allocate(1024 * 1024);
+    resultPatternTree.serialize(buffer);
+    buffer.flip();
+    tmpPathPatternTree.deserialize(buffer);
+    Assert.assertTrue(resultPatternTree.equalWith(tmpPathPatternTree));
   }
 }
