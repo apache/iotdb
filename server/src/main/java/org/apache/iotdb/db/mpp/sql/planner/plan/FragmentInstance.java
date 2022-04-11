@@ -101,10 +101,6 @@ public class FragmentInstance implements IConsensusRequest {
     return timeFilter;
   }
 
-  public void setTimeFilter(Filter timeFilter) {
-    this.timeFilter = timeFilter;
-  }
-
   public String toString() {
     StringBuilder ret = new StringBuilder();
     ret.append(
