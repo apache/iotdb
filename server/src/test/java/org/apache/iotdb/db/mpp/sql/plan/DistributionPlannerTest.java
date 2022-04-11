@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.cluster.DataNodeLocation;
 import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
-import org.apache.iotdb.commons.partition.DataNodeLocation;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.commons.partition.SchemaPartition;
@@ -343,7 +342,7 @@ public class DistributionPlannerTest {
     schemaRegionMap.put(new SeriesPartitionSlot(device2.length()), schemaRegion2);
     schemaRegionMap.put(new SeriesPartitionSlot(device3.length()), schemaRegion2);
     schemaPartitionMap.put("root.sg", schemaRegionMap);
-    schemaPartition.setSchemaPartition(schemaPartitionMap);
+    schemaPartition.setSchemaPartitionMap(schemaPartitionMap);
 
     analysis.setDataPartitionInfo(dataPartition);
     analysis.setSchemaPartitionInfo(schemaPartition);

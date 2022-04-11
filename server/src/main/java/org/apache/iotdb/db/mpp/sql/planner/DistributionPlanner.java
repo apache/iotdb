@@ -142,7 +142,7 @@ public class DistributionPlanner {
           new TreeSet<>(Comparator.comparingInt(region -> region.getId().getId()));
       analysis
           .getSchemaPartitionInfo()
-          .getSchemaPartition()
+          .getSchemaPartitionMap()
           .forEach(
               (storageGroup, deviceGroup) -> {
                 deviceGroup.forEach(

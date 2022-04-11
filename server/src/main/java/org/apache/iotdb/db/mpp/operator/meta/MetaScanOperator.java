@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.mpp.operator.meta;
 
-import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.operator.source.SourceOperator;
@@ -89,9 +88,6 @@ public abstract class MetaScanOperator implements SourceOperator {
     hasCachedTsBlock = false;
     return tsBlock;
   }
-
-  @Override
-  public void initQueryDataSource(QueryDataSource dataSource) {}
 
   @Override
   public boolean hasNext() {
