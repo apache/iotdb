@@ -16,10 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.tools.virtualsg;
+package org.apache.iotdb.db.tools.dataregion;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.storagegroup.virtualSg.HashVirtualPartitioner;
+import org.apache.iotdb.db.engine.storagegroup.dataregion.HashVirtualPartitioner;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -54,8 +54,7 @@ public class DeviceMappingViewer {
           "--------------------- mapping from device to virtual storage group ID ---------------------");
       System.out.println("Format is: device name -> virtual storage group ID");
       for (PartialPath partialPath : partialPathSet) {
-        System.out.println(
-            partialPath + " -> " + partitioner.deviceToVirtualStorageGroupId(partialPath));
+        System.out.println(partialPath + " -> " + partitioner.deviceToDataRegionId(partialPath));
       }
     }
 

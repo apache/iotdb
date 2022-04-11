@@ -51,7 +51,7 @@ public class TsFileIdentifierUT {
     Assert.assertEquals(firstInfo.getFilename(), "1-1-0-0.tsfile");
     Assert.assertEquals(firstInfo.getLogicalStorageGroupName(), "root.test.sg");
     Assert.assertEquals(firstInfo.getTimePartitionId(), "0");
-    Assert.assertEquals(firstInfo.getVirtualStorageGroupId(), "0");
+    Assert.assertEquals(firstInfo.getDataRegionId(), "0");
     Assert.assertTrue(firstInfo.isSequence());
 
     String secondPath =
@@ -69,7 +69,7 @@ public class TsFileIdentifierUT {
     Assert.assertEquals(secondInfo.getFilename(), "999-3-24-12.tsfile");
     Assert.assertEquals(secondInfo.getLogicalStorageGroupName(), "root.test.sg");
     Assert.assertEquals(secondInfo.getTimePartitionId(), "426");
-    Assert.assertEquals(secondInfo.getVirtualStorageGroupId(), "0");
+    Assert.assertEquals(secondInfo.getDataRegionId(), "0");
     Assert.assertFalse(secondInfo.isSequence());
 
     String illegalPath =
@@ -95,7 +95,7 @@ public class TsFileIdentifierUT {
     TsFileIdentifier firstInfo = TsFileIdentifier.getFileIdentifierFromInfoString(firstInfoString);
     Assert.assertEquals(firstInfo.getFilename(), "1-1-0-0.tsfile");
     Assert.assertEquals(firstInfo.getTimePartitionId(), "0");
-    Assert.assertEquals(firstInfo.getVirtualStorageGroupId(), "0");
+    Assert.assertEquals(firstInfo.getDataRegionId(), "0");
     Assert.assertEquals(firstInfo.getLogicalStorageGroupName(), "root.test.sg");
     Assert.assertTrue(firstInfo.isSequence());
 
@@ -106,7 +106,7 @@ public class TsFileIdentifierUT {
         TsFileIdentifier.getFileIdentifierFromInfoString(secondInfoString);
     Assert.assertEquals(secondInfo.getFilename(), "666-888-222-131.tsfile");
     Assert.assertEquals(secondInfo.getTimePartitionId(), "425");
-    Assert.assertEquals(secondInfo.getVirtualStorageGroupId(), "0");
+    Assert.assertEquals(secondInfo.getDataRegionId(), "0");
     Assert.assertEquals(secondInfo.getLogicalStorageGroupName(), "root.test.sg");
     Assert.assertFalse(secondInfo.isSequence());
 

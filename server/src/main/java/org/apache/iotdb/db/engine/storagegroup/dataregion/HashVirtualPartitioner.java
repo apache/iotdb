@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.storagegroup.virtualSg;
+package org.apache.iotdb.db.engine.storagegroup.dataregion;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -25,7 +25,7 @@ public class HashVirtualPartitioner implements VirtualPartitioner {
 
   /** total number of virtual storage groups */
   public static int STORAGE_GROUP_NUM =
-      IoTDBDescriptor.getInstance().getConfig().getVirtualStorageGroupNum();
+      IoTDBDescriptor.getInstance().getConfig().getDataRegionNum();
 
   private HashVirtualPartitioner() {}
 
@@ -34,7 +34,7 @@ public class HashVirtualPartitioner implements VirtualPartitioner {
   }
 
   @Override
-  public int deviceToVirtualStorageGroupId(PartialPath deviceId) {
+  public int deviceToDataRegionId(PartialPath deviceId) {
     return toStorageGroupId(deviceId);
   }
 

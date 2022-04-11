@@ -39,17 +39,17 @@ The number of storage groups may be small which makes the parallelism of data in
 
 Our idea is to group devices into buckets and change the granularity of synchronization from storage group level to device buckets level.
 
-In detail, we use hash to group different devices into buckets called virtual storage group. 
-For example, one device called "root.sg.d"(assume it's storage group is "root.sg") is belonged to virtual storage group "root.sg.[hash("root.sg.d") mod num_of_virtual_storage_group]"
+In detail, we use hash to group different devices into buckets called data region. 
+For example, one device called "root.sg.d"(assume it's storage group is "root.sg") is belonged to data region "root.sg.[hash("root.sg.d") mod num_of_data_region]"
 
 # Usage
 
-To use virtual storage group, you can set this config below:
+To use data region, you can set this config below:
 
 ```
-virtual_storage_group_num
+data_region_num
 ```
 
-Recommended value is [virtual storage group number] = [CPU core number] / [user-defined storage group number]
+Recommended value is [data region number] = [CPU core number] / [user-defined storage group number]
 
 For more information, you can refer to [this page](../Reference/Config-Manual.md).

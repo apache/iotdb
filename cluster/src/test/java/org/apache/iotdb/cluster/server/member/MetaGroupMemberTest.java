@@ -85,7 +85,7 @@ import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
 import org.apache.iotdb.db.auth.entity.Role;
 import org.apache.iotdb.db.auth.entity.User;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -613,7 +613,7 @@ public class MetaGroupMemberTest extends BaseMember {
     ExecutorService testThreadPool = Executors.newFixedThreadPool(4);
     assertTrue(testMetaMember.closePartition(TestUtils.getTestSg(0), 0, true));
 
-    VirtualStorageGroupProcessor processor =
+    DataRegion processor =
         StorageEngine.getInstance().getProcessor(new PartialPath(TestUtils.getTestSg(0)));
     assertTrue(processor.getWorkSequenceTsFileProcessors().isEmpty());
 

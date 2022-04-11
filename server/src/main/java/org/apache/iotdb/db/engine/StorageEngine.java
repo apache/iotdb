@@ -21,7 +21,6 @@ package org.apache.iotdb.db.engine;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
-import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.ShutdownException;
 import org.apache.iotdb.commons.partition.TimePartitionSlot;
 import org.apache.iotdb.commons.service.IService;
@@ -35,15 +34,15 @@ import org.apache.iotdb.db.engine.flush.CloseFileListener;
 import org.apache.iotdb.db.engine.flush.FlushListener;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy.DirectFlushPolicy;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion.TimePartitionFilter;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
-import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor.TimePartitionFilter;
-import org.apache.iotdb.db.engine.storagegroup.virtualSg.StorageGroupManager;
+import org.apache.iotdb.db.engine.storagegroup.dataregion.StorageGroupManager;
 import org.apache.iotdb.db.exception.BatchProcessException;
+import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
@@ -56,7 +55,6 @@ import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.mpp.common.DataRegion;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
@@ -139,8 +137,6 @@ public class StorageEngine implements IService {
   // add customized listeners here for flush and close events
   private List<CloseFileListener> customCloseFileListeners = new ArrayList<>();
   private List<FlushListener> customFlushListeners = new ArrayList<>();
-
-  private final Map<DataRegionId, DataRegion> regionMap = new ConcurrentHashMap<>();
 
   private StorageEngine() {}
 
@@ -242,8 +238,8 @@ public class StorageEngine implements IService {
     List<IStorageGroupMNode> sgNodes = IoTDB.schemaProcessor.getAllStorageGroupNodes();
     // init wal recover manager
     WALRecoverManager.getInstance()
-        .setAllVsgScannedLatch(
-            new CountDownLatch(sgNodes.size() * config.getVirtualStorageGroupNum()));
+        .setAllDataRegionScannedLatch(
+            new CountDownLatch(sgNodes.size() * config.getDataRegionNum()));
     // recover all logic storage groups
     List<Future<Void>> futures = new LinkedList<>();
     for (IStorageGroupMNode storageGroup : sgNodes) {
@@ -455,14 +451,13 @@ public class StorageEngine implements IService {
    * @param path storage group path
    * @return storage group processor
    */
-  public VirtualStorageGroupProcessor getProcessorDirectly(PartialPath path)
-      throws StorageEngineException {
+  public DataRegion getProcessorDirectly(PartialPath path) throws StorageEngineException {
     PartialPath storageGroupPath;
     try {
       IStorageGroupMNode storageGroupMNode = IoTDB.schemaProcessor.getStorageGroupNodeByPath(path);
       storageGroupPath = storageGroupMNode.getPartialPath();
       return getStorageGroupProcessorByPath(storageGroupPath, storageGroupMNode);
-    } catch (StorageGroupProcessorException | MetadataException e) {
+    } catch (DataRegionException | MetadataException e) {
       throw new StorageEngineException(e);
     }
   }
@@ -473,21 +468,22 @@ public class StorageEngine implements IService {
    * @param path device path
    * @return storage group processor
    */
-  public VirtualStorageGroupProcessor getProcessor(PartialPath path) throws StorageEngineException {
+  public DataRegion getProcessor(PartialPath path) throws StorageEngineException {
     try {
       IStorageGroupMNode storageGroupMNode = IoTDB.schemaProcessor.getStorageGroupNodeByPath(path);
       return getStorageGroupProcessorByPath(path, storageGroupMNode);
-    } catch (StorageGroupProcessorException | MetadataException e) {
+    } catch (DataRegionException | MetadataException e) {
       throw new StorageEngineException(e);
     }
   }
 
-  public VirtualStorageGroupProcessor getProcessorByVSGId(PartialPath path, int vsgId)
+  public DataRegion getProcessorByDataRegionId(PartialPath path, int dataRegionId)
       throws StorageEngineException {
     try {
       IStorageGroupMNode storageGroupMNode = IoTDB.schemaProcessor.getStorageGroupNodeByPath(path);
-      return getStorageGroupManager(storageGroupMNode).getProcessor(storageGroupMNode, vsgId);
-    } catch (StorageGroupProcessorException | MetadataException e) {
+      return getStorageGroupManager(storageGroupMNode)
+          .getProcessor(storageGroupMNode, dataRegionId);
+    } catch (DataRegionException | MetadataException e) {
       throw new StorageEngineException(e);
     }
   }
@@ -503,12 +499,11 @@ public class StorageEngine implements IService {
       for (PartialPath path : pathList) {
         IStorageGroupMNode storageGroupMNode =
             IoTDB.schemaProcessor.getStorageGroupNodeByPath(path);
-        VirtualStorageGroupProcessor virtualStorageGroupProcessor =
-            getStorageGroupProcessorByPath(path, storageGroupMNode);
-        lockHolderList.add(virtualStorageGroupProcessor.getInsertWriteLockHolder());
+        DataRegion dataRegion = getStorageGroupProcessorByPath(path, storageGroupMNode);
+        lockHolderList.add(dataRegion.getInsertWriteLockHolder());
       }
       return lockHolderList;
-    } catch (StorageGroupProcessorException | MetadataException e) {
+    } catch (DataRegionException | MetadataException e) {
       throw new StorageEngineException(e);
     }
   }
@@ -521,9 +516,9 @@ public class StorageEngine implements IService {
    *     modification in mtree
    * @return found or new storage group processor
    */
-  private VirtualStorageGroupProcessor getStorageGroupProcessorByPath(
+  private DataRegion getStorageGroupProcessorByPath(
       PartialPath devicePath, IStorageGroupMNode storageGroupMNode)
-      throws StorageGroupProcessorException, StorageEngineException {
+      throws DataRegionException, StorageEngineException {
     return getStorageGroupManager(storageGroupMNode).getProcessor(devicePath, storageGroupMNode);
   }
 
@@ -556,18 +551,18 @@ public class StorageEngine implements IService {
    * @param virtualStorageGroupId virtual storage group id e.g. 1
    * @param logicalStorageGroupName logical storage group name e.g. root.sg1
    */
-  public VirtualStorageGroupProcessor buildNewStorageGroupProcessor(
+  public DataRegion buildNewStorageGroupProcessor(
       PartialPath logicalStorageGroupName,
       IStorageGroupMNode storageGroupMNode,
       String virtualStorageGroupId)
-      throws StorageGroupProcessorException {
-    VirtualStorageGroupProcessor processor;
+      throws DataRegionException {
+    DataRegion processor;
     logger.info(
         "construct a processor instance, the storage group is {}, Thread is {}",
         logicalStorageGroupName,
         Thread.currentThread().getId());
     processor =
-        new VirtualStorageGroupProcessor(
+        new DataRegion(
             systemDir + File.separator + logicalStorageGroupName,
             virtualStorageGroupId,
             fileFlushPolicy,
@@ -600,9 +595,8 @@ public class StorageEngine implements IService {
       }
     }
 
-    VirtualStorageGroupProcessor virtualStorageGroupProcessor =
-        getProcessor(insertRowPlan.getDevicePath());
-    getSeriesSchemas(insertRowPlan, virtualStorageGroupProcessor);
+    DataRegion dataRegion = getProcessor(insertRowPlan.getDevicePath());
+    getSeriesSchemas(insertRowPlan, dataRegion);
     try {
       insertRowPlan.transferType();
     } catch (QueryProcessException e) {
@@ -610,7 +604,7 @@ public class StorageEngine implements IService {
     }
 
     try {
-      virtualStorageGroupProcessor.insert(insertRowPlan);
+      dataRegion.insert(insertRowPlan);
     } catch (WriteProcessException e) {
       throw new StorageEngineException(e);
     }
@@ -626,18 +620,17 @@ public class StorageEngine implements IService {
       }
     }
 
-    VirtualStorageGroupProcessor virtualStorageGroupProcessor =
-        getProcessor(insertRowsOfOneDevicePlan.getDevicePath());
+    DataRegion dataRegion = getProcessor(insertRowsOfOneDevicePlan.getDevicePath());
 
     for (InsertRowPlan plan : insertRowsOfOneDevicePlan.getRowPlans()) {
       plan.setMeasurementMNodes(new IMeasurementMNode[plan.getMeasurements().length]);
       // check whether types are match
-      getSeriesSchemas(plan, virtualStorageGroupProcessor);
+      getSeriesSchemas(plan, dataRegion);
     }
 
     // TODO monitor: update statistics
     try {
-      virtualStorageGroupProcessor.insert(insertRowsOfOneDevicePlan);
+      dataRegion.insert(insertRowsOfOneDevicePlan);
     } catch (WriteProcessException e) {
       throw new StorageEngineException(e);
     }
@@ -655,9 +648,9 @@ public class StorageEngine implements IService {
         throw new BatchProcessException(results);
       }
     }
-    VirtualStorageGroupProcessor virtualStorageGroupProcessor;
+    DataRegion dataRegion;
     try {
-      virtualStorageGroupProcessor = getProcessor(insertTabletPlan.getDevicePath());
+      dataRegion = getProcessor(insertTabletPlan.getDevicePath());
     } catch (StorageEngineException e) {
       throw new StorageEngineException(
           String.format(
@@ -666,8 +659,8 @@ public class StorageEngine implements IService {
           e);
     }
 
-    getSeriesSchemas(insertTabletPlan, virtualStorageGroupProcessor);
-    virtualStorageGroupProcessor.insertTablet(insertTabletPlan);
+    getSeriesSchemas(insertTabletPlan, dataRegion);
+    dataRegion.insertTablet(insertTabletPlan);
   }
 
   /** flush command Sync asyncCloseOneProcessor all file node processors. */
@@ -798,16 +791,17 @@ public class StorageEngine implements IService {
       List<TsFileResource> unseqResourcesToBeSettled,
       List<String> tsFilePaths)
       throws StorageEngineException {
-    StorageGroupManager vsg = processorMap.get(sgPath);
-    if (vsg == null) {
+    StorageGroupManager storageGroupManager = processorMap.get(sgPath);
+    if (storageGroupManager == null) {
       throw new StorageEngineException(
           "The Storage Group " + sgPath.toString() + " is not existed.");
     }
-    if (!vsg.getIsSettling().compareAndSet(false, true)) {
+    if (!storageGroupManager.getIsSettling().compareAndSet(false, true)) {
       throw new StorageEngineException(
           "Storage Group " + sgPath.getFullPath() + " is already being settled now.");
     }
-    vsg.getResourcesToBeSettled(seqResourcesToBeSettled, unseqResourcesToBeSettled, tsFilePaths);
+    storageGroupManager.getResourcesToBeSettled(
+        seqResourcesToBeSettled, unseqResourcesToBeSettled, tsFilePaths);
   }
 
   public void setSettling(PartialPath sgPath, boolean isSettling) {
@@ -1040,37 +1034,36 @@ public class StorageEngine implements IService {
   }
 
   /** get all merge lock of the storage group processor related to the query */
-  public Pair<
-          List<VirtualStorageGroupProcessor>, Map<VirtualStorageGroupProcessor, List<PartialPath>>>
-      mergeLock(List<PartialPath> pathList) throws StorageEngineException {
-    Map<VirtualStorageGroupProcessor, List<PartialPath>> map = new HashMap<>();
+  public Pair<List<DataRegion>, Map<DataRegion, List<PartialPath>>> mergeLock(
+      List<PartialPath> pathList) throws StorageEngineException {
+    Map<DataRegion, List<PartialPath>> map = new HashMap<>();
     for (PartialPath path : pathList) {
       map.computeIfAbsent(getProcessor(path.getDevicePath()), key -> new ArrayList<>()).add(path);
     }
-    List<VirtualStorageGroupProcessor> list =
+    List<DataRegion> list =
         map.keySet().stream()
-            .sorted(Comparator.comparing(VirtualStorageGroupProcessor::getVirtualStorageGroupId))
+            .sorted(Comparator.comparing(DataRegion::getDataRegionId))
             .collect(Collectors.toList());
-    list.forEach(VirtualStorageGroupProcessor::readLock);
+    list.forEach(DataRegion::readLock);
 
     return new Pair<>(list, map);
   }
 
   /** unlock all merge lock of the storage group processor related to the query */
-  public void mergeUnLock(List<VirtualStorageGroupProcessor> list) {
-    list.forEach(VirtualStorageGroupProcessor::readUnlock);
+  public void mergeUnLock(List<DataRegion> list) {
+    list.forEach(DataRegion::readUnlock);
   }
 
   /** @return virtual storage group name, like root.sg1/0 */
   public String getStorageGroupPath(PartialPath path) throws StorageEngineException {
     PartialPath deviceId = path.getDevicePath();
-    VirtualStorageGroupProcessor storageGroupProcessor = getProcessor(deviceId);
+    DataRegion storageGroupProcessor = getProcessor(deviceId);
     return storageGroupProcessor.getLogicalStorageGroupName()
         + File.separator
-        + storageGroupProcessor.getVirtualStorageGroupId();
+        + storageGroupProcessor.getDataRegionId();
   }
 
-  protected void getSeriesSchemas(InsertPlan insertPlan, VirtualStorageGroupProcessor processor)
+  protected void getSeriesSchemas(InsertPlan insertPlan, DataRegion processor)
       throws StorageEngineException, MetadataException {
     try {
       if (config.isEnableIDTable()) {
@@ -1083,17 +1076,6 @@ public class StorageEngine implements IService {
     } catch (IOException e) {
       throw new StorageEngineException(e);
     }
-  }
-
-  // When registering a new region, the coordinator needs to register the corresponding region with
-  // the local engine before adding the corresponding consensusGroup to the consensus layer
-  // TODO implement it
-  public DataRegion createDataRegion(DataRegionId regionId, String sg, long ttl) {
-    return null;
-  }
-
-  public DataRegion getDataRegion(DataRegionId regionId) {
-    return regionMap.get(regionId);
   }
 
   static class InstanceHolder {

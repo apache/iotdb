@@ -16,17 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.storagegroup.virtualSg;
+package org.apache.iotdb.db.engine.storagegroup.dataregion;
 
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion.TimePartitionFilter;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
-import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor.TimePartitionFilter;
+import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.StorageGroupNotReadyException;
-import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -59,16 +59,16 @@ public class StorageGroupManager {
   VirtualPartitioner partitioner = HashVirtualPartitioner.getInstance();
 
   /** all virtual storage group processor */
-  VirtualStorageGroupProcessor[] virtualStorageGroupProcessor;
+  DataRegion[] dataRegion;
 
   /**
    * recover status of each virtual storage group processor, null if this logical storage group is
    * new created
    */
-  private AtomicBoolean[] isVsgReady;
+  private AtomicBoolean[] isDataRegionReady;
 
   /** number of ready virtual storage group processors */
-  private AtomicInteger readyVsgNum;
+  private AtomicInteger readyDataRegionNum;
 
   private AtomicBoolean isSettling = new AtomicBoolean();
 
@@ -80,61 +80,55 @@ public class StorageGroupManager {
   }
 
   public StorageGroupManager(boolean needRecovering) {
-    virtualStorageGroupProcessor =
-        new VirtualStorageGroupProcessor[partitioner.getPartitionCount()];
-    isVsgReady = new AtomicBoolean[partitioner.getPartitionCount()];
+    dataRegion = new DataRegion[partitioner.getPartitionCount()];
+    isDataRegionReady = new AtomicBoolean[partitioner.getPartitionCount()];
     boolean recoverReady = !needRecovering;
     for (int i = 0; i < partitioner.getPartitionCount(); i++) {
-      isVsgReady[i] = new AtomicBoolean(recoverReady);
+      isDataRegionReady[i] = new AtomicBoolean(recoverReady);
     }
   }
 
   /** push forceCloseAllWorkingTsFileProcessors down to all sg */
   public void forceCloseAllWorkingTsFileProcessors() throws TsFileProcessorException {
-    for (VirtualStorageGroupProcessor virtualStorageGroupProcessor :
-        this.virtualStorageGroupProcessor) {
-      if (virtualStorageGroupProcessor != null) {
-        virtualStorageGroupProcessor.forceCloseAllWorkingTsFileProcessors();
+    for (DataRegion dataRegion : this.dataRegion) {
+      if (dataRegion != null) {
+        dataRegion.forceCloseAllWorkingTsFileProcessors();
       }
     }
   }
 
   /** push syncCloseAllWorkingTsFileProcessors down to all sg */
   public void syncCloseAllWorkingTsFileProcessors() {
-    for (VirtualStorageGroupProcessor virtualStorageGroupProcessor :
-        this.virtualStorageGroupProcessor) {
-      if (virtualStorageGroupProcessor != null) {
-        virtualStorageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
+    for (DataRegion dataRegion : this.dataRegion) {
+      if (dataRegion != null) {
+        dataRegion.syncCloseAllWorkingTsFileProcessors();
       }
     }
   }
 
   /** push check ttl down to all sg */
   public void checkTTL() {
-    for (VirtualStorageGroupProcessor virtualStorageGroupProcessor :
-        this.virtualStorageGroupProcessor) {
-      if (virtualStorageGroupProcessor != null) {
-        virtualStorageGroupProcessor.checkFilesTTL();
+    for (DataRegion dataRegion : this.dataRegion) {
+      if (dataRegion != null) {
+        dataRegion.checkFilesTTL();
       }
     }
   }
 
   /** push check sequence memtable flush interval down to all sg */
   public void timedFlushSeqMemTable() {
-    for (VirtualStorageGroupProcessor virtualStorageGroupProcessor :
-        this.virtualStorageGroupProcessor) {
-      if (virtualStorageGroupProcessor != null) {
-        virtualStorageGroupProcessor.timedFlushSeqMemTable();
+    for (DataRegion dataRegion : this.dataRegion) {
+      if (dataRegion != null) {
+        dataRegion.timedFlushSeqMemTable();
       }
     }
   }
 
   /** push check unsequence memtable flush interval down to all sg */
   public void timedFlushUnseqMemTable() {
-    for (VirtualStorageGroupProcessor virtualStorageGroupProcessor :
-        this.virtualStorageGroupProcessor) {
-      if (virtualStorageGroupProcessor != null) {
-        virtualStorageGroupProcessor.timedFlushUnseqMemTable();
+    for (DataRegion dataRegion : this.dataRegion) {
+      if (dataRegion != null) {
+        dataRegion.timedFlushUnseqMemTable();
       }
     }
   }
@@ -145,31 +139,30 @@ public class StorageGroupManager {
    * @param partialPath device path
    * @return virtual storage group processor
    */
-  public VirtualStorageGroupProcessor getProcessor(
-      PartialPath partialPath, IStorageGroupMNode storageGroupMNode)
-      throws StorageGroupProcessorException, StorageEngineException {
-    int vsgId = partitioner.deviceToVirtualStorageGroupId(partialPath);
-    return getProcessor(storageGroupMNode, vsgId);
+  public DataRegion getProcessor(PartialPath partialPath, IStorageGroupMNode storageGroupMNode)
+      throws DataRegionException, StorageEngineException {
+    int dataRegionId = partitioner.deviceToDataRegionId(partialPath);
+    return getProcessor(storageGroupMNode, dataRegionId);
   }
 
   @SuppressWarnings("java:S2445")
   // actually storageGroupMNode is a unique object on the mtree, synchronize it is reasonable
-  public VirtualStorageGroupProcessor getProcessor(IStorageGroupMNode storageGroupMNode, int vsgId)
-      throws StorageGroupProcessorException, StorageEngineException {
-    VirtualStorageGroupProcessor processor = virtualStorageGroupProcessor[vsgId];
+  public DataRegion getProcessor(IStorageGroupMNode storageGroupMNode, int dataRegionId)
+      throws DataRegionException, StorageEngineException {
+    DataRegion processor = dataRegion[dataRegionId];
     if (processor == null) {
       // if finish recover
-      if (isVsgReady[vsgId].get()) {
+      if (isDataRegionReady[dataRegionId].get()) {
         synchronized (storageGroupMNode) {
-          processor = virtualStorageGroupProcessor[vsgId];
+          processor = dataRegion[dataRegionId];
           if (processor == null) {
             processor =
                 StorageEngine.getInstance()
                     .buildNewStorageGroupProcessor(
                         storageGroupMNode.getPartialPath(),
                         storageGroupMNode,
-                        String.valueOf(vsgId));
-            virtualStorageGroupProcessor[vsgId] = processor;
+                        String.valueOf(dataRegionId));
+            dataRegion[dataRegionId] = processor;
           }
         }
       } else {
@@ -191,13 +184,13 @@ public class StorageGroupManager {
    */
   public void asyncRecover(
       IStorageGroupMNode storageGroupMNode, ExecutorService pool, List<Future<Void>> futures) {
-    readyVsgNum = new AtomicInteger(0);
+    readyDataRegionNum = new AtomicInteger(0);
     for (int i = 0; i < partitioner.getPartitionCount(); i++) {
       int cur = i;
       Callable<Void> recoverVsgTask =
           () -> {
-            isVsgReady[cur].set(false);
-            VirtualStorageGroupProcessor processor = null;
+            isDataRegionReady[cur].set(false);
+            DataRegion processor = null;
             try {
               processor =
                   StorageEngine.getInstance()
@@ -205,7 +198,7 @@ public class StorageGroupManager {
                           storageGroupMNode.getPartialPath(),
                           storageGroupMNode,
                           String.valueOf(cur));
-            } catch (StorageGroupProcessorException e) {
+            } catch (DataRegionException e) {
               logger.error(
                   "Failed to recover virtual storage group {}[{}]",
                   storageGroupMNode.getFullPath(),
@@ -213,12 +206,12 @@ public class StorageGroupManager {
                   e);
             }
 
-            virtualStorageGroupProcessor[cur] = processor;
-            isVsgReady[cur].set(true);
+            dataRegion[cur] = processor;
+            isDataRegionReady[cur].set(true);
             logger.info(
                 "Storage Group {} has been recovered {}/{}",
                 storageGroupMNode.getFullPath(),
-                readyVsgNum.incrementAndGet(),
+                readyDataRegionNum.incrementAndGet(),
                 partitioner.getPartitionCount());
             return null;
           };
@@ -240,7 +233,7 @@ public class StorageGroupManager {
 
   /** push closeStorageGroupProcessor operation down to all virtual storage group processors */
   public void closeStorageGroupProcessor(boolean isSeq, boolean isSync) {
-    for (VirtualStorageGroupProcessor processor : virtualStorageGroupProcessor) {
+    for (DataRegion processor : dataRegion) {
       if (processor == null) {
         continue;
       }
@@ -249,7 +242,7 @@ public class StorageGroupManager {
         logger.info(
             "{} closing sg processor is called for closing {}, seq = {}",
             isSync ? "sync" : "async",
-            processor.getVirtualStorageGroupId() + "-" + processor.getLogicalStorageGroupName(),
+            processor.getDataRegionId() + "-" + processor.getLogicalStorageGroupName(),
             isSeq);
       }
 
@@ -284,11 +277,11 @@ public class StorageGroupManager {
 
   /** push closeStorageGroupProcessor operation down to all virtual storage group processors */
   public void closeStorageGroupProcessor(long partitionId, boolean isSeq, boolean isSync) {
-    for (VirtualStorageGroupProcessor processor : virtualStorageGroupProcessor) {
+    for (DataRegion processor : dataRegion) {
       if (processor != null) {
         logger.info(
             "async closing sg processor is called for closing {}, seq = {}, partitionId = {}",
-            processor.getVirtualStorageGroupId() + "-" + processor.getLogicalStorageGroupName(),
+            processor.getDataRegionId() + "-" + processor.getLogicalStorageGroupName(),
             isSeq,
             partitionId);
         processor.writeLock("VirtualCloseStorageGroupProcessor-242");
@@ -323,11 +316,9 @@ public class StorageGroupManager {
       long planIndex,
       TimePartitionFilter timePartitionFilter)
       throws IOException {
-    for (VirtualStorageGroupProcessor virtualStorageGroupProcessor :
-        this.virtualStorageGroupProcessor) {
-      if (virtualStorageGroupProcessor != null) {
-        virtualStorageGroupProcessor.delete(
-            path, startTime, endTime, planIndex, timePartitionFilter);
+    for (DataRegion dataRegion : this.dataRegion) {
+      if (dataRegion != null) {
+        dataRegion.delete(path, startTime, endTime, planIndex, timePartitionFilter);
       }
     }
   }
@@ -335,10 +326,9 @@ public class StorageGroupManager {
   /** push countUpgradeFiles operation down to all virtual storage group processors */
   public int countUpgradeFiles() {
     int totalUpgradeFileNum = 0;
-    for (VirtualStorageGroupProcessor virtualStorageGroupProcessor :
-        this.virtualStorageGroupProcessor) {
-      if (virtualStorageGroupProcessor != null) {
-        totalUpgradeFileNum += virtualStorageGroupProcessor.countUpgradeFiles();
+    for (DataRegion dataRegion : this.dataRegion) {
+      if (dataRegion != null) {
+        totalUpgradeFileNum += dataRegion.countUpgradeFiles();
       }
     }
 
@@ -347,10 +337,9 @@ public class StorageGroupManager {
 
   /** push upgradeAll operation down to all virtual storage group processors */
   public void upgradeAll() {
-    for (VirtualStorageGroupProcessor virtualStorageGroupProcessor :
-        this.virtualStorageGroupProcessor) {
-      if (virtualStorageGroupProcessor != null) {
-        virtualStorageGroupProcessor.upgrade();
+    for (DataRegion dataRegion : this.dataRegion) {
+      if (dataRegion != null) {
+        dataRegion.upgrade();
       }
     }
   }
@@ -359,10 +348,9 @@ public class StorageGroupManager {
       List<TsFileResource> seqResourcesToBeSettled,
       List<TsFileResource> unseqResourcesToBeSettled,
       List<String> tsFilePaths) {
-    for (VirtualStorageGroupProcessor virtualStorageGroupProcessor :
-        this.virtualStorageGroupProcessor) {
-      if (virtualStorageGroupProcessor != null) {
-        virtualStorageGroupProcessor.addSettleFilesToList(
+    for (DataRegion dataRegion : this.dataRegion) {
+      if (dataRegion != null) {
+        dataRegion.addSettleFilesToList(
             seqResourcesToBeSettled, unseqResourcesToBeSettled, tsFilePaths);
       }
     }
@@ -370,37 +358,34 @@ public class StorageGroupManager {
 
   /** push mergeAll operation down to all virtual storage group processors */
   public void mergeAll() {
-    for (VirtualStorageGroupProcessor virtualStorageGroupProcessor :
-        this.virtualStorageGroupProcessor) {
-      if (virtualStorageGroupProcessor != null) {
-        virtualStorageGroupProcessor.compact();
+    for (DataRegion dataRegion : this.dataRegion) {
+      if (dataRegion != null) {
+        dataRegion.compact();
       }
     }
   }
 
   /** push syncDeleteDataFiles operation down to all virtual storage group processors */
   public void syncDeleteDataFiles() {
-    for (VirtualStorageGroupProcessor virtualStorageGroupProcessor :
-        this.virtualStorageGroupProcessor) {
-      if (virtualStorageGroupProcessor != null) {
-        virtualStorageGroupProcessor.syncDeleteDataFiles();
+    for (DataRegion dataRegion : this.dataRegion) {
+      if (dataRegion != null) {
+        dataRegion.syncDeleteDataFiles();
       }
     }
   }
 
   /** push setTTL operation down to all virtual storage group processors */
   public void setTTL(long dataTTL) {
-    for (VirtualStorageGroupProcessor virtualStorageGroupProcessor :
-        this.virtualStorageGroupProcessor) {
-      if (virtualStorageGroupProcessor != null) {
-        virtualStorageGroupProcessor.setDataTTL(dataTTL);
+    for (DataRegion dataRegion : this.dataRegion) {
+      if (dataRegion != null) {
+        dataRegion.setDataTTL(dataTTL);
       }
     }
   }
 
   /** push deleteStorageGroup operation down to all virtual storage group processors */
   public void deleteStorageGroupSystemFolder(String path) {
-    for (VirtualStorageGroupProcessor processor : virtualStorageGroupProcessor) {
+    for (DataRegion processor : dataRegion) {
       if (processor != null) {
         processor.deleteFolder(path);
       }
@@ -410,11 +395,10 @@ public class StorageGroupManager {
   /** push getAllClosedStorageGroupTsFile operation down to all virtual storage group processors */
   public void getAllClosedStorageGroupTsFile(
       PartialPath storageGroupName, Map<PartialPath, Map<Long, List<TsFileResource>>> ret) {
-    for (VirtualStorageGroupProcessor virtualStorageGroupProcessor :
-        this.virtualStorageGroupProcessor) {
-      if (virtualStorageGroupProcessor != null) {
-        List<TsFileResource> allResources = virtualStorageGroupProcessor.getSequenceFileList();
-        allResources.addAll(virtualStorageGroupProcessor.getUnSequenceFileList());
+    for (DataRegion dataRegion : this.dataRegion) {
+      if (dataRegion != null) {
+        List<TsFileResource> allResources = dataRegion.getSequenceFileList();
+        allResources.addAll(dataRegion.getUnSequenceFileList());
         for (TsFileResource tsfile : allResources) {
           if (!tsfile.isClosed()) {
             continue;
@@ -430,20 +414,18 @@ public class StorageGroupManager {
 
   /** push setPartitionVersionToMax operation down to all virtual storage group processors */
   public void setPartitionVersionToMax(long partitionId, long newMaxVersion) {
-    for (VirtualStorageGroupProcessor virtualStorageGroupProcessor :
-        this.virtualStorageGroupProcessor) {
-      if (virtualStorageGroupProcessor != null) {
-        virtualStorageGroupProcessor.setPartitionFileVersionToMax(partitionId, newMaxVersion);
+    for (DataRegion dataRegion : this.dataRegion) {
+      if (dataRegion != null) {
+        dataRegion.setPartitionFileVersionToMax(partitionId, newMaxVersion);
       }
     }
   }
 
   /** push removePartitions operation down to all virtual storage group processors */
   public void removePartitions(TimePartitionFilter filter) {
-    for (VirtualStorageGroupProcessor virtualStorageGroupProcessor :
-        this.virtualStorageGroupProcessor) {
-      if (virtualStorageGroupProcessor != null) {
-        virtualStorageGroupProcessor.removePartitions(filter);
+    for (DataRegion dataRegion : this.dataRegion) {
+      if (dataRegion != null) {
+        dataRegion.removePartitions(filter);
       }
     }
   }
@@ -453,18 +435,15 @@ public class StorageGroupManager {
    */
   public void getWorkingStorageGroupPartitions(
       String storageGroupName, Map<String, List<Pair<Long, Boolean>>> res) {
-    for (VirtualStorageGroupProcessor virtualStorageGroupProcessor :
-        this.virtualStorageGroupProcessor) {
-      if (virtualStorageGroupProcessor != null) {
+    for (DataRegion dataRegion : this.dataRegion) {
+      if (dataRegion != null) {
         List<Pair<Long, Boolean>> partitionIdList = new ArrayList<>();
-        for (TsFileProcessor tsFileProcessor :
-            virtualStorageGroupProcessor.getWorkSequenceTsFileProcessors()) {
+        for (TsFileProcessor tsFileProcessor : dataRegion.getWorkSequenceTsFileProcessors()) {
           Pair<Long, Boolean> tmpPair = new Pair<>(tsFileProcessor.getTimeRangeId(), true);
           partitionIdList.add(tmpPair);
         }
 
-        for (TsFileProcessor tsFileProcessor :
-            virtualStorageGroupProcessor.getWorkUnsequenceTsFileProcessors()) {
+        for (TsFileProcessor tsFileProcessor : dataRegion.getWorkUnsequenceTsFileProcessors()) {
           Pair<Long, Boolean> tmpPair = new Pair<>(tsFileProcessor.getTimeRangeId(), false);
           partitionIdList.add(tmpPair);
         }
@@ -476,11 +455,11 @@ public class StorageGroupManager {
 
   /** only for test */
   public void reset() {
-    Arrays.fill(virtualStorageGroupProcessor, null);
+    Arrays.fill(dataRegion, null);
   }
 
   public void stopSchedulerPool() {
-    for (VirtualStorageGroupProcessor vsg : this.virtualStorageGroupProcessor) {
+    for (DataRegion vsg : this.dataRegion) {
       if (vsg != null) {
         ThreadUtils.stopThreadPool(
             vsg.getTimedCompactionScheduleTask(), ThreadName.COMPACTION_SCHEDULE);
@@ -493,13 +472,13 @@ public class StorageGroupManager {
   }
 
   public void setAllowCompaction(boolean allowCompaction) {
-    for (VirtualStorageGroupProcessor processor : virtualStorageGroupProcessor) {
+    for (DataRegion processor : dataRegion) {
       processor.setAllowCompaction(allowCompaction);
     }
   }
 
   public void abortCompaction() {
-    for (VirtualStorageGroupProcessor processor : virtualStorageGroupProcessor) {
+    for (DataRegion processor : dataRegion) {
       processor.abortCompaction();
     }
   }
