@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.tsfile.common.block;
 
+import org.apache.iotdb.tsfile.read.common.block.column.FloatColumn;
+import org.apache.iotdb.tsfile.read.common.block.column.FloatColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.Int32ArrayColumnEncoder;
 import org.apache.iotdb.tsfile.read.common.block.column.IntColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.IntColumnBuilder;
@@ -73,6 +75,39 @@ public class Int32ArrayColumnEncoderTest {
 
   @Test
   public void testFloatColumn() {
-    // TODO: implement.
+    final int positionCount = 10;
+
+    boolean[] nullIndicators = new boolean[positionCount];
+    float[] values = new float[positionCount];
+    for (int i = 0; i < positionCount; i++) {
+      nullIndicators[i] = i % 2 == 0;
+      if (i % 2 != 0) {
+        values[i] = i + i / 10F;
+      }
+    }
+    FloatColumn input = new FloatColumn(positionCount, Optional.of(nullIndicators), values);
+    Int32ArrayColumnEncoder serde = new Int32ArrayColumnEncoder();
+
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    DataOutputStream dos = new DataOutputStream(byteArrayOutputStream);
+    try {
+      serde.writeColumn(dos, input);
+    } catch (IOException e) {
+      e.printStackTrace();
+      Assert.fail();
+    }
+
+    ByteBuffer buffer = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+    FloatColumnBuilder floatColumnBuilder = new FloatColumnBuilder(null, positionCount);
+    serde.readColumn(floatColumnBuilder, buffer, positionCount);
+    FloatColumn output = (FloatColumn) floatColumnBuilder.build();
+    Assert.assertEquals(positionCount, output.getPositionCount());
+    Assert.assertTrue(output.mayHaveNull());
+    for (int i = 0; i < positionCount; i++) {
+      Assert.assertEquals(i % 2 == 0, output.isNull(i));
+      if (i % 2 != 0) {
+        Assert.assertEquals(i + i / 10F, output.getFloat(i), 0.001F);
+      }
+    }
   }
 }

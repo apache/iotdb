@@ -45,7 +45,7 @@ public class Int64ArrayColumnEncoder implements ColumnEncoder {
     TSDataType dataType = columnBuilder.getDataType();
     if (INT64.equals(dataType)) {
       for (int i = 0; i < positionCount; i++) {
-        if (nullIndicators != null && !nullIndicators[i]) {
+        if (nullIndicators == null || !nullIndicators[i]) {
           columnBuilder.writeLong(input.getLong());
         } else {
           columnBuilder.appendNull();
@@ -53,7 +53,7 @@ public class Int64ArrayColumnEncoder implements ColumnEncoder {
       }
     } else if (DOUBLE.equals(dataType)) {
       for (int i = 0; i < positionCount; i++) {
-        if (nullIndicators != null && !nullIndicators[i]) {
+        if (nullIndicators == null || !nullIndicators[i]) {
           columnBuilder.writeDouble(Double.longBitsToDouble(input.getLong()));
         } else {
           columnBuilder.appendNull();
