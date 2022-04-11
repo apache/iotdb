@@ -56,7 +56,7 @@ public class DataTypeUtils {
   }
 
   public static TSStatus RPCStatusToInfluxDBTSStatus(
-      org.apache.iotdb.service.rpc.thrift.TSStatus status) {
+      org.apache.iotdb.common.rpc.thrift.TSStatus status) {
     TSStatus tsStatus = new TSStatus();
     tsStatus.setCode(status.code);
     tsStatus.setMessage(status.message);

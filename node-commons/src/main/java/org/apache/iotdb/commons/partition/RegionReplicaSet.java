@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.commons.partition;
 
+import org.apache.iotdb.commons.cluster.DataNodeLocation;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 
 import java.io.IOException;

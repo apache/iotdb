@@ -18,83 +18,94 @@
  */
 package org.apache.iotdb.confignode.manager;
 
-import org.apache.iotdb.commons.partition.DataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.cluster.DataNodeLocation;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationDataSet;
 import org.apache.iotdb.confignode.consensus.response.DataNodesInfoDataSet;
 import org.apache.iotdb.confignode.persistence.DataNodeInfoPersistence;
 import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
 import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
+import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
+import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /** Manager server info of data node, add node or remove node */
 public class DataNodeManager {
+
   private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeManager.class);
 
-  private DataNodeInfoPersistence dataNodeInfo = DataNodeInfoPersistence.getInstance();
+  private static final DataNodeInfoPersistence dataNodeInfoPersistence =
+      DataNodeInfoPersistence.getInstance();
 
-  private Manager configManager;
+  private final Manager configManager;
 
   /** TODO:do some operate after add node or remove node */
-  private List<ChangeServerListener> listeners = new CopyOnWriteArrayList<>();
-
-  private final ReentrantReadWriteLock dataNodeInfoReadWriteLock;
-
-  private int nextDataNodeId;
+  private final List<ChangeServerListener> listeners = new CopyOnWriteArrayList<>();
 
   public DataNodeManager(Manager configManager) {
     this.configManager = configManager;
-    this.dataNodeInfoReadWriteLock = new ReentrantReadWriteLock();
+  }
+
+  private void setGlobalConfig(DataNodeConfigurationDataSet dataSet) {
+    // Set TGlobalConfig
+    TGlobalConfig globalConfig = new TGlobalConfig();
+    globalConfig.setDataNodeConsensusProtocolClass(
+        ConfigNodeDescriptor.getInstance().getConf().getDataNodeConsensusProtocolClass());
+    globalConfig.setSeriesPartitionSlotNum(
+        ConfigNodeDescriptor.getInstance().getConf().getSeriesPartitionSlotNum());
+    globalConfig.setSeriesPartitionExecutorClass(
+        ConfigNodeDescriptor.getInstance().getConf().getSeriesPartitionExecutorClass());
+    dataSet.setGlobalConfig(globalConfig);
   }
 
   /**
-   * register dta node info when data node start
+   * Register DataNode
    *
    * @param plan RegisterDataNodePlan
-   * @return success if data node regist first
+   * @return DataNodeConfigurationDataSet. The TSStatus will be set to SUCCESS_STATUS when register
+   *     success, and DATANODE_ALREADY_REGISTERED when the DataNode is already exist.
    */
-  public TSStatus registerDataNode(RegisterDataNodePlan plan) {
-    TSStatus result;
-    DataNodeLocation info = plan.getInfo();
-    dataNodeInfoReadWriteLock.writeLock().lock();
-    try {
-      if (dataNodeInfo.containsValue(info)) {
-        // TODO: optimize
-        result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-        result.setMessage(String.valueOf(dataNodeInfo.getDataNodeInfo(info)));
-      } else {
-        info.setDataNodeID(nextDataNodeId);
-        ConsensusWriteResponse consensusWriteResponse = getConsensusManager().write(plan);
-        nextDataNodeId += 1;
-        return consensusWriteResponse.getStatus();
-      }
-    } finally {
-      dataNodeInfoReadWriteLock.writeLock().unlock();
+  public DataSet registerDataNode(RegisterDataNodePlan plan) {
+    DataNodeConfigurationDataSet dataSet = new DataNodeConfigurationDataSet();
+
+    if (DataNodeInfoPersistence.getInstance().containsValue(plan.getInfo())) {
+      dataSet.setStatus(new TSStatus(TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode()));
+    } else {
+      plan.getInfo().setDataNodeId(DataNodeInfoPersistence.getInstance().generateNextDataNodeId());
+      ConsensusWriteResponse resp = getConsensusManager().write(plan);
+      dataSet.setStatus(resp.getStatus());
     }
-    return result;
+
+    dataSet.setDataNodeId(plan.getInfo().getDataNodeId());
+    setGlobalConfig(dataSet);
+    return dataSet;
   }
 
   /**
-   * get dta node info
+   * Get DataNode info
    *
    * @param plan QueryDataNodeInfoPlan
-   * @return all data node info if dataNodeId of plan is -1
+   * @return The specific DataNode's info or all DataNode info if dataNodeId in
+   *     QueryDataNodeInfoPlan is -1
    */
   public DataNodesInfoDataSet getDataNodeInfo(QueryDataNodeInfoPlan plan) {
     return (DataNodesInfoDataSet) getConsensusManager().read(plan).getDataset();
   }
 
-  public Set<Integer> getDataNodeId() {
-    return dataNodeInfo.getDataNodeIds();
+  public int getOnlineDataNodeCount() {
+    return dataNodeInfoPersistence.getOnlineDataNodeCount();
+  }
+
+  public List<DataNodeLocation> getOnlineDataNodes() {
+    return dataNodeInfoPersistence.getOnlineDataNodes();
   }
 
   private ConsensusManager getConsensusManager() {
@@ -112,10 +123,6 @@ public class DataNodeManager {
   /** TODO: wait data node register, wait */
   public void waitForDataNodes() {
     listeners.stream().forEach(serverListener -> serverListener.waiting());
-  }
-
-  public Map<Integer, DataNodeLocation> getOnlineDataNodes() {
-    return dataNodeInfo.getOnlineDataNodes();
   }
 
   private class ServerStartListenerThread extends Thread implements ChangeServerListener {

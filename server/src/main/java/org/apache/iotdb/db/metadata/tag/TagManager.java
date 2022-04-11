@@ -73,8 +73,14 @@ public class TagManager {
     tagLogFile = new TagLogFile(sgSchemaDirPath, MetadataConstant.TAG_LOG);
   }
 
-  public void recoverIndex(long offset, IMeasurementMNode measurementMNode) throws IOException {
-    addIndex(tagLogFile.readTag(config.getTagAttributeTotalSize(), offset), measurementMNode);
+  public boolean recoverIndex(long offset, IMeasurementMNode measurementMNode) throws IOException {
+    Map<String, String> tags = tagLogFile.readTag(config.getTagAttributeTotalSize(), offset);
+    if (tags == null || tags.isEmpty()) {
+      return false;
+    } else {
+      addIndex(tags, measurementMNode);
+      return true;
+    }
   }
 
   public void addIndex(String tagKey, String tagValue, IMeasurementMNode measurementMNode) {

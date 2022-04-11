@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.sql.planner;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
+import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
 import org.apache.iotdb.db.mpp.sql.optimization.PlanOptimizer;
 import org.apache.iotdb.db.mpp.sql.planner.plan.LogicalQueryPlan;
@@ -34,6 +35,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
+import org.apache.iotdb.db.mpp.sql.statement.crud.*;
 import org.apache.iotdb.db.mpp.sql.statement.crud.AggregationQueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.FillQueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.GroupByFillQueryStatement;
@@ -229,12 +231,13 @@ public class LogicalPlanner {
         InsertTabletStatement insertTabletStatement, MPPQueryContext context) {
       // set schema in insert node
       // convert insert statement to insert node
-      List<MeasurementSchema> measurementSchemas =
+      DeviceSchemaInfo deviceSchemaInfo =
           analysis
               .getSchemaTree()
-              .searchMeasurementSchema(
+              .searchDeviceSchemaInfo(
                   insertTabletStatement.getDevicePath(),
                   Arrays.asList(insertTabletStatement.getMeasurements()));
+      List<MeasurementSchema> measurementSchemas = deviceSchemaInfo.getMeasurementSchemaList();
       return new InsertTabletNode(
           context.getQueryId().genPlanNodeId(),
           insertTabletStatement.getDevicePath(),
@@ -251,12 +254,13 @@ public class LogicalPlanner {
     public PlanNode visitInsertRow(InsertRowStatement insertRowStatement, MPPQueryContext context) {
       // set schema in insert node
       // convert insert statement to insert node
-      List<MeasurementSchema> measurementSchemas =
+      DeviceSchemaInfo deviceSchemaInfo =
           analysis
               .getSchemaTree()
-              .searchMeasurementSchema(
+              .searchDeviceSchemaInfo(
                   insertRowStatement.getDevicePath(),
                   Arrays.asList(insertRowStatement.getMeasurements()));
+      List<MeasurementSchema> measurementSchemas = deviceSchemaInfo.getMeasurementSchemaList();
       return new InsertRowNode(
           context.getQueryId().genPlanNodeId(),
           insertRowStatement.getDevicePath(),
@@ -431,12 +435,13 @@ public class LogicalPlanner {
       for (int i = 0; i < insertRowsStatement.getInsertRowStatementList().size(); i++) {
         InsertRowStatement insertRowStatement =
             insertRowsStatement.getInsertRowStatementList().get(i);
-        List<MeasurementSchema> measurementSchemas =
+        DeviceSchemaInfo deviceSchemaInfo =
             analysis
                 .getSchemaTree()
-                .searchMeasurementSchema(
+                .searchDeviceSchemaInfo(
                     insertRowStatement.getDevicePath(),
                     Arrays.asList(insertRowStatement.getMeasurements()));
+        List<MeasurementSchema> measurementSchemas = deviceSchemaInfo.getMeasurementSchemaList();
         insertRowsNode.addOneInsertRowNode(
             new InsertRowNode(
                 insertRowsNode.getPlanNodeId(),
@@ -462,12 +467,13 @@ public class LogicalPlanner {
       for (int i = 0; i < insertMultiTabletsStatement.getInsertTabletStatementList().size(); i++) {
         InsertTabletStatement insertTabletStatement =
             insertMultiTabletsStatement.getInsertTabletStatementList().get(i);
-        List<MeasurementSchema> measurementSchemas =
+        DeviceSchemaInfo deviceSchemaInfo =
             analysis
                 .getSchemaTree()
-                .searchMeasurementSchema(
+                .searchDeviceSchemaInfo(
                     insertTabletStatement.getDevicePath(),
                     Arrays.asList(insertTabletStatement.getMeasurements()));
+        List<MeasurementSchema> measurementSchemas = deviceSchemaInfo.getMeasurementSchemaList();
         insertTabletNodeList.add(
             new InsertTabletNode(
                 insertMultiTabletsNode.getPlanNodeId(),
@@ -493,12 +499,13 @@ public class LogicalPlanner {
       for (int i = 0; i < insertRowsOfOneDeviceStatement.getInsertRowStatementList().size(); i++) {
         InsertRowStatement insertRowStatement =
             insertRowsOfOneDeviceStatement.getInsertRowStatementList().get(i);
-        List<MeasurementSchema> measurementSchemas =
+        DeviceSchemaInfo deviceSchemaInfo =
             analysis
                 .getSchemaTree()
-                .searchMeasurementSchema(
+                .searchDeviceSchemaInfo(
                     insertRowStatement.getDevicePath(),
                     Arrays.asList(insertRowStatement.getMeasurements()));
+        List<MeasurementSchema> measurementSchemas = deviceSchemaInfo.getMeasurementSchemaList();
         insertRowsNode.addOneInsertRowNode(
             new InsertRowNode(
                 insertRowsNode.getPlanNodeId(),
