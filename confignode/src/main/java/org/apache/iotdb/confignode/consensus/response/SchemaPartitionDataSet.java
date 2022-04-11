@@ -85,7 +85,7 @@ public class SchemaPartitionDataSet implements DataSet {
                     regionMessage.setEndpoint(endPointList);
                     schemaRegionMap
                         .get(storageGroup)
-                        .put(seriesPartitionSlot.getDeviceGroupId(), regionMessage);
+                        .put(seriesPartitionSlot.getSlotId(), regionMessage);
                   }));
             });
 

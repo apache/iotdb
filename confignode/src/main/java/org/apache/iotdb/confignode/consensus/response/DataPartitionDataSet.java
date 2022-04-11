@@ -75,7 +75,7 @@ public class DataPartitionDataSet implements DataSet {
                   ((seriesPartitionSlot, timePartitionSlotReplicaSetListMap) -> {
                     // Extract TSeriesPartitionSlot
                     TSeriesPartitionSlot tSeriesPartitionSlot =
-                        new TSeriesPartitionSlot(seriesPartitionSlot.getDeviceGroupId());
+                        new TSeriesPartitionSlot(seriesPartitionSlot.getSlotId());
                     dataPartitionMap
                         .get(storageGroup)
                         .putIfAbsent(tSeriesPartitionSlot, new HashMap<>());

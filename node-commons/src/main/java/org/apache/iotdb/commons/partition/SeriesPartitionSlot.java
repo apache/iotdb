@@ -21,40 +21,40 @@ package org.apache.iotdb.commons.partition;
 import java.nio.ByteBuffer;
 
 public class SeriesPartitionSlot {
-  private int deviceGroupId;
+  private int slotId;
 
   public SeriesPartitionSlot() {
     // Empty constructor
   }
 
-  public SeriesPartitionSlot(int deviceGroupId) {
-    this.deviceGroupId = deviceGroupId;
+  public SeriesPartitionSlot(int slotId) {
+    this.slotId = slotId;
   }
 
-  public int getDeviceGroupId() {
-    return deviceGroupId;
+  public int getSlotId() {
+    return slotId;
   }
 
-  public void setDeviceGroupId(int deviceGroupId) {
-    this.deviceGroupId = deviceGroupId;
+  public void setSlotId(int slotId) {
+    this.slotId = slotId;
   }
 
   @Override
   public int hashCode() {
-    return new Integer(deviceGroupId).hashCode();
+    return new Integer(slotId).hashCode();
   }
 
   @Override
   public boolean equals(Object obj) {
     return obj instanceof SeriesPartitionSlot
-        && this.deviceGroupId == ((SeriesPartitionSlot) obj).deviceGroupId;
+        && this.slotId == ((SeriesPartitionSlot) obj).slotId;
   }
 
   public void serializeImpl(ByteBuffer buffer) {
-    buffer.putInt(deviceGroupId);
+    buffer.putInt(slotId);
   }
 
   public void deserializeImpl(ByteBuffer buffer) {
-    deviceGroupId = buffer.getInt();
+    slotId = buffer.getInt();
   }
 }

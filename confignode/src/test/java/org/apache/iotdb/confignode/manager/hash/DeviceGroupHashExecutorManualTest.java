@@ -69,7 +69,7 @@ public class DeviceGroupHashExecutorManualTest {
       List<String> devices = genBatchDevices();
       totalTime -= System.currentTimeMillis();
       for (String device : devices) {
-        bucket[manager.getSeriesPartitionSlot(device).getDeviceGroupId()] += 1;
+        bucket[manager.getSeriesPartitionSlot(device).getSlotId()] += 1;
       }
       totalTime += System.currentTimeMillis();
     }
