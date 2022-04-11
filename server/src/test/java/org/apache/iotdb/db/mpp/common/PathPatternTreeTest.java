@@ -163,13 +163,12 @@ public class PathPatternTreeTest {
             .collect(Collectors.toList()),
         patternTree.findAllDevicePaths().stream().sorted().collect(Collectors.toList()));
 
-    PathPatternTree tmpPathPatternTree = new PathPatternTree();
     PublicBAOS outputStream = new PublicBAOS();
     resultPatternTree.serialize(outputStream);
     ByteBuffer buffer = ByteBuffer.allocate(outputStream.size() * 8);
     buffer.put(outputStream.getBuf());
     buffer.flip();
-    tmpPathPatternTree.deserialize(buffer);
+    PathPatternTree tmpPathPatternTree = PathPatternTree.deserialize(buffer);
     Assert.assertTrue(resultPatternTree.equalWith(tmpPathPatternTree));
   }
 }

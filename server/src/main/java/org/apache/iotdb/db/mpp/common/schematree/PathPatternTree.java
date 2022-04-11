@@ -39,7 +39,11 @@ public class PathPatternTree {
 
   private PathPatternNode root;
 
-  private final List<PartialPath> pathList;
+  private List<PartialPath> pathList;
+
+  public PathPatternTree(PathPatternNode root) {
+    this.root = root;
+  }
 
   public PathPatternTree(PartialPath deivcePath, String[] measurements) {
     this.root = new PathPatternNode(SQLConstant.ROOT);
@@ -170,11 +174,12 @@ public class PathPatternTree {
     root.serialize(outputStream);
   }
 
-  public void deserialize(ByteBuffer buffer) throws IOException {
-    this.root = deserializeNode(buffer);
+  public static PathPatternTree deserialize(ByteBuffer buffer) {
+    PathPatternNode root = deserializeNode(buffer);
+    return new PathPatternTree(root);
   }
 
-  private PathPatternNode deserializeNode(ByteBuffer buffer) {
+  private static PathPatternNode deserializeNode(ByteBuffer buffer) {
     PathPatternNode node = new PathPatternNode(ReadWriteIOUtils.readString(buffer));
     int childrenSize = ReadWriteIOUtils.readInt(buffer);
     while (childrenSize > 0) {
