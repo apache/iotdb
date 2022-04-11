@@ -28,6 +28,7 @@ import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
 
 import org.slf4j.Logger;
@@ -104,7 +105,7 @@ public class ConsensusManager {
 
     List<Peer> peerList = new ArrayList<>();
     peerList.add(
-        new Peer(consensusGroupId, new Endpoint(conf.getInternalIp(), conf.getInternalPort())));
+        new Peer(consensusGroupId, new Endpoint(conf.getInternalIp(), conf.getConsensusPort())));
     //    for (DataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeList()) {
     //      peerList.add(new Peer(consensusGroupId, dataNodeLocation.getEndPoint()));
     //    }
