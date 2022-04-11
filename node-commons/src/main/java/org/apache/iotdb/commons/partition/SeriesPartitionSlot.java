@@ -46,8 +46,7 @@ public class SeriesPartitionSlot {
 
   @Override
   public boolean equals(Object obj) {
-    return obj instanceof SeriesPartitionSlot
-        && this.slotId == ((SeriesPartitionSlot) obj).slotId;
+    return obj instanceof SeriesPartitionSlot && this.slotId == ((SeriesPartitionSlot) obj).slotId;
   }
 
   public void serializeImpl(ByteBuffer buffer) {
