@@ -22,11 +22,17 @@ package org.apache.iotdb.db.consensus.statemachine;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
+import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
-import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.*;
+import org.apache.iotdb.db.utils.StatusUtils;
+import org.apache.iotdb.rpc.RpcUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Arrays;
 
 public class DataRegionStateMachine extends BaseStateMachine {
 
@@ -47,7 +53,28 @@ public class DataRegionStateMachine extends BaseStateMachine {
   @Override
   protected TSStatus write(FragmentInstance fragmentInstance) {
     logger.info("Execute write plan in DataRegionStateMachine");
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    PlanNode insertNode = fragmentInstance.getFragment().getRoot();
+    try {
+      if (insertNode instanceof InsertRowNode) {
+        region.insert((InsertRowNode) insertNode);
+      } else if (insertNode instanceof InsertTabletNode) {
+        region.insertTablet((InsertTabletNode) insertNode);
+      } else if (insertNode instanceof InsertRowsNode) {
+        region.insert((InsertRowsNode) insertNode);
+      } else if (insertNode instanceof InsertMultiTabletsNode) {
+        region.insertTablets((InsertMultiTabletsNode) (insertNode));
+      } else if (insertNode instanceof InsertRowsOfOneDeviceNode) {
+        region.insert((InsertRowsOfOneDeviceNode) insertNode);
+      } else {
+        logger.error("Unsupported plan node for writing to data region : {}", insertNode);
+        return StatusUtils.UNSUPPORTED_OPERATION;
+      }
+    } catch (BatchProcessException e) {
+      return RpcUtils.getStatus(Arrays.asList(e.getFailingStatus()));
+    } catch (Exception e) {
+      return StatusUtils.EXECUTE_STATEMENT_ERROR;
+    }
+    return StatusUtils.OK;
   }
 
   @Override
