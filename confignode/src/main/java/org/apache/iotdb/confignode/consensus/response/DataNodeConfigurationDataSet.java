@@ -19,33 +19,35 @@
 package org.apache.iotdb.confignode.consensus.response;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.cluster.DataNodeLocation;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.consensus.common.DataSet;
 
-import java.util.List;
-
-public class DataNodesInfoDataSet implements DataSet {
+public class DataNodeConfigurationDataSet implements DataSet {
 
   private TSStatus status;
-  private List<DataNodeLocation> dataNodeList;
+  private int dataNodeId;
+  private TGlobalConfig globalConfig;
 
-  public DataNodesInfoDataSet() {
-    // empty constructor
+  public DataNodeConfigurationDataSet() {
+    // Empty constructor
   }
 
   public void setStatus(TSStatus status) {
     this.status = status;
   }
 
-  public TSStatus getStatus() {
-    return status;
+  public void setDataNodeId(int dataNodeId) {
+    this.dataNodeId = dataNodeId;
   }
 
-  public void setDataNodeList(List<DataNodeLocation> dataNodeList) {
-    this.dataNodeList = dataNodeList;
+  public void setGlobalConfig(TGlobalConfig globalConfig) {
+    this.globalConfig = globalConfig;
   }
 
-  public List<DataNodeLocation> getDataNodeList() {
-    return this.dataNodeList;
+  public void convertToRpcDataNodeRegisterResp(TDataNodeRegisterResp resp) {
+    resp.setStatus(status);
+    resp.setDataNodeID(dataNodeId);
+    resp.setGlobalConfig(globalConfig);
   }
 }

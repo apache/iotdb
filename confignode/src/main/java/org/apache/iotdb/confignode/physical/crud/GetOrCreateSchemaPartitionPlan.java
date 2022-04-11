@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.physical.sys;
+package org.apache.iotdb.confignode.physical.crud;
 
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
@@ -29,40 +29,41 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/** Get DataNodeInfo by the specific DataNode's id. And return all when dataNodeID is set to -1. */
-public class SchemaPartitionPlan extends PhysicalPlan {
+/** Query or apply SchemaPartition by the specific storageGroup and the deviceGroupStartTimeMap. */
+public class GetOrCreateSchemaPartitionPlan extends PhysicalPlan {
   private String storageGroup;
-  private List<Integer> deviceGroupIDs;
-  private Map<Integer, RegionReplicaSet> deviceGroupIdReplicaSets;
+  private List<Integer> seriesPartitionSlots;
+  private Map<Integer, RegionReplicaSet> schemaPartitionReplicaSets;
 
-  public SchemaPartitionPlan(PhysicalPlanType physicalPlanType) {
+  public GetOrCreateSchemaPartitionPlan(PhysicalPlanType physicalPlanType) {
     super(physicalPlanType);
   }
 
-  public SchemaPartitionPlan(
-      PhysicalPlanType physicalPlanType, String storageGroup, List<Integer> deviceGroupIDs) {
+  public GetOrCreateSchemaPartitionPlan(
+      PhysicalPlanType physicalPlanType, String storageGroup, List<Integer> seriesPartitionSlots) {
     this(physicalPlanType);
     this.storageGroup = storageGroup;
-    this.deviceGroupIDs = deviceGroupIDs;
+    this.seriesPartitionSlots = seriesPartitionSlots;
   }
 
-  public void setDeviceGroupIdReplicaSet(Map<Integer, RegionReplicaSet> deviceGroupIdReplicaSets) {
-    this.deviceGroupIdReplicaSets = deviceGroupIdReplicaSets;
+  public void setSchemaPartitionReplicaSet(
+      Map<Integer, RegionReplicaSet> deviceGroupIdReplicaSets) {
+    this.schemaPartitionReplicaSets = deviceGroupIdReplicaSets;
   }
 
-  public Map<Integer, RegionReplicaSet> getDeviceGroupIdReplicaSets() {
-    return deviceGroupIdReplicaSets;
+  public Map<Integer, RegionReplicaSet> getSchemaPartitionReplicaSets() {
+    return schemaPartitionReplicaSets;
   }
 
   @Override
   protected void serializeImpl(ByteBuffer buffer) {
-    buffer.putInt(PhysicalPlanType.QueryDataPartition.ordinal());
+    buffer.putInt(PhysicalPlanType.GetDataPartition.ordinal());
     SerializeDeserializeUtil.write(storageGroup, buffer);
-    buffer.putInt(deviceGroupIDs.size());
-    deviceGroupIDs.forEach(id -> SerializeDeserializeUtil.write(id, buffer));
+    buffer.putInt(seriesPartitionSlots.size());
+    seriesPartitionSlots.forEach(id -> SerializeDeserializeUtil.write(id, buffer));
 
-    buffer.putInt(deviceGroupIdReplicaSets.size());
-    for (Map.Entry<Integer, RegionReplicaSet> entry : deviceGroupIdReplicaSets.entrySet()) {
+    buffer.putInt(schemaPartitionReplicaSets.size());
+    for (Map.Entry<Integer, RegionReplicaSet> entry : schemaPartitionReplicaSets.entrySet()) {
       buffer.putInt(entry.getKey());
       entry.getValue().serializeImpl(buffer);
     }
@@ -73,18 +74,17 @@ public class SchemaPartitionPlan extends PhysicalPlan {
     storageGroup = SerializeDeserializeUtil.readString(buffer);
     int idSize = SerializeDeserializeUtil.readInt(buffer);
     for (int i = 0; i < idSize; i++) {
-      deviceGroupIDs.add(SerializeDeserializeUtil.readInt(buffer));
+      seriesPartitionSlots.add(SerializeDeserializeUtil.readInt(buffer));
     }
 
-    if (deviceGroupIdReplicaSets == null) {
-      deviceGroupIdReplicaSets = new HashMap<>();
+    if (schemaPartitionReplicaSets == null) {
+      schemaPartitionReplicaSets = new HashMap<>();
     }
     int size = buffer.getInt();
-
     for (int i = 0; i < size; i++) {
       RegionReplicaSet schemaRegionReplicaSet = new RegionReplicaSet();
       schemaRegionReplicaSet.deserializeImpl(buffer);
-      deviceGroupIdReplicaSets.put(buffer.getInt(), schemaRegionReplicaSet);
+      schemaPartitionReplicaSets.put(buffer.getInt(), schemaRegionReplicaSet);
     }
   }
 
@@ -92,7 +92,7 @@ public class SchemaPartitionPlan extends PhysicalPlan {
     return storageGroup;
   }
 
-  public List<Integer> getDeviceGroupIDs() {
-    return deviceGroupIDs;
+  public List<Integer> getSeriesPartitionSlots() {
+    return seriesPartitionSlots;
   }
 }

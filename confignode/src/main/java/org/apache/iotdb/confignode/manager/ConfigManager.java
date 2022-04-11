@@ -20,17 +20,17 @@
 package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.confignode.conf.ConfigNodeConf;
-import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationDataSet;
 import org.apache.iotdb.confignode.consensus.response.DataNodesInfoDataSet;
+import org.apache.iotdb.confignode.consensus.response.DataPartitionDataSet;
+import org.apache.iotdb.confignode.consensus.response.SchemaPartitionDataSet;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
+import org.apache.iotdb.confignode.physical.crud.GetOrCreateDataPartitionPlan;
+import org.apache.iotdb.confignode.physical.crud.GetOrCreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.physical.sys.AuthorPlan;
-import org.apache.iotdb.confignode.physical.sys.DataPartitionPlan;
 import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
 import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
-import org.apache.iotdb.confignode.physical.sys.SchemaPartitionPlan;
 import org.apache.iotdb.confignode.physical.sys.SetStorageGroupPlan;
-import org.apache.iotdb.confignode.rpc.thrift.DeviceGroupHashInfo;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -38,7 +38,7 @@ import java.io.IOException;
 
 /** Entry of all management, AssignPartitionManager,AssignRegionManager. */
 public class ConfigManager implements Manager {
-  private static final ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();
+
   private static final TSStatus ERROR_TSSTATUS =
       new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
 
@@ -74,15 +74,21 @@ public class ConfigManager implements Manager {
   }
 
   @Override
-  public TSStatus registerDataNode(PhysicalPlan physicalPlan) {
+  public DataSet registerDataNode(PhysicalPlan physicalPlan) {
+
+    // TODO: Only leader can register DataNode
+
     if (physicalPlan instanceof RegisterDataNodePlan) {
       return dataNodeManager.registerDataNode((RegisterDataNodePlan) physicalPlan);
     }
-    return ERROR_TSSTATUS;
+    return new DataNodeConfigurationDataSet();
   }
 
   @Override
   public DataSet getDataNodeInfo(PhysicalPlan physicalPlan) {
+
+    // TODO: Only leader can get DataNodeInfo
+
     if (physicalPlan instanceof QueryDataNodeInfoPlan) {
       return dataNodeManager.getDataNodeInfo((QueryDataNodeInfoPlan) physicalPlan);
     }
@@ -91,15 +97,66 @@ public class ConfigManager implements Manager {
 
   @Override
   public DataSet getStorageGroupSchema() {
+
+    // TODO: Only leader can get StorageGroupSchema
+
     return regionManager.getStorageGroupSchema();
   }
 
   @Override
   public TSStatus setStorageGroup(PhysicalPlan physicalPlan) {
+
+    // TODO: Only leader can set StorageGroup
+
     if (physicalPlan instanceof SetStorageGroupPlan) {
       return regionManager.setStorageGroup((SetStorageGroupPlan) physicalPlan);
     }
     return ERROR_TSSTATUS;
+  }
+
+  @Override
+  public DataSet getSchemaPartition(PhysicalPlan physicalPlan) {
+
+    // TODO: Only leader can query SchemaPartition
+
+    if (physicalPlan instanceof GetOrCreateSchemaPartitionPlan) {
+      return partitionManager.getSchemaPartition((GetOrCreateSchemaPartitionPlan) physicalPlan);
+    }
+    return new SchemaPartitionDataSet();
+  }
+
+  @Override
+  public DataSet getOrCreateSchemaPartition(PhysicalPlan physicalPlan) {
+
+    // TODO: Only leader can apply SchemaPartition
+
+    if (physicalPlan instanceof GetOrCreateSchemaPartitionPlan) {
+      return partitionManager.getOrCreateSchemaPartition(
+          (GetOrCreateSchemaPartitionPlan) physicalPlan);
+    }
+    return new SchemaPartitionDataSet();
+  }
+
+  @Override
+  public DataSet getDataPartition(PhysicalPlan physicalPlan) {
+
+    // TODO: Only leader can query DataPartition
+
+    if (physicalPlan instanceof GetOrCreateDataPartitionPlan) {
+      return partitionManager.getDataPartition((GetOrCreateDataPartitionPlan) physicalPlan);
+    }
+    return new DataPartitionDataSet();
+  }
+
+  @Override
+  public DataSet getOrCreateDataPartition(PhysicalPlan physicalPlan) {
+
+    // TODO: only leader can apply DataPartition
+
+    if (physicalPlan instanceof GetOrCreateDataPartitionPlan) {
+      return partitionManager.getOrCreateDataPartition((GetOrCreateDataPartitionPlan) physicalPlan);
+    }
+    return new DataPartitionDataSet();
   }
 
   @Override
@@ -108,46 +165,8 @@ public class ConfigManager implements Manager {
   }
 
   @Override
-  public DataSet getDataPartition(PhysicalPlan physicalPlan) {
-    if (physicalPlan instanceof DataPartitionPlan) {
-      return partitionManager.getDataPartition((DataPartitionPlan) physicalPlan);
-    }
-    return new DataNodesInfoDataSet();
-  }
-
-  @Override
-  public DataSet getSchemaPartition(PhysicalPlan physicalPlan) {
-    if (physicalPlan instanceof SchemaPartitionPlan) {
-      return partitionManager.getSchemaPartition((SchemaPartitionPlan) physicalPlan);
-    }
-    return new DataNodesInfoDataSet();
-  }
-
-  @Override
   public RegionManager getRegionManager() {
     return regionManager;
-  }
-
-  @Override
-  public DataSet applySchemaPartition(PhysicalPlan physicalPlan) {
-    if (physicalPlan instanceof SchemaPartitionPlan) {
-      return partitionManager.applySchemaPartition((SchemaPartitionPlan) physicalPlan);
-    }
-    return new DataNodesInfoDataSet();
-  }
-
-  @Override
-  public DataSet applyDataPartition(PhysicalPlan physicalPlan) {
-    if (physicalPlan instanceof DataPartitionPlan) {
-      return partitionManager.applyDataPartition((DataPartitionPlan) physicalPlan);
-    }
-    return new DataNodesInfoDataSet();
-  }
-
-  @Override
-  public DeviceGroupHashInfo getDeviceGroupHashInfo() {
-    return new DeviceGroupHashInfo(
-        conf.getDeviceGroupCount(), conf.getDeviceGroupHashExecutorClass());
   }
 
   @Override

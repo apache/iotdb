@@ -33,8 +33,13 @@
     </dependencySets>
     <fileSets>
         <fileSet>
-            <directory>src/assembly/resources</directory>
-            <outputDirectory>${file.separator}</outputDirectory>
+            <directory>src/assembly/resources/conf</directory>
+            <outputDirectory>conf</outputDirectory>
+        </fileSet>
+        <fileSet>
+            <directory>src/assembly/resources/sbin</directory>
+            <outputDirectory>sbin</outputDirectory>
+            <fileMode>0755</fileMode>
         </fileSet>
     </fileSets>
 </assembly>
