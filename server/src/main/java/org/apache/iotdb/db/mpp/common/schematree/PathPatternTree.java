@@ -23,14 +23,12 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class PathPatternTree {
@@ -78,6 +76,33 @@ public class PathPatternTree {
 
   public void setPrefixMatchPath(boolean prefixMatchPath) {
     isPrefixMatchPath = prefixMatchPath;
+  }
+
+  public List<String> findAllPaths() {
+    List<String> nodes = new ArrayList<>();
+    List<String> pathPatternList = new ArrayList<>();
+    findAllPaths(root, nodes, pathPatternList);
+    return pathPatternList;
+  }
+
+  private void findAllPaths(
+      PathPatternNode curNode, List<String> nodes, List<String> pathPatternList) {
+    nodes.add(curNode.getName());
+    if (curNode.isLeaf()) {
+      pathPatternList.add(parseNodesToString(nodes));
+    }
+    for (PathPatternNode childNode : curNode.getChildren().values()) {
+      findAllPaths(childNode, nodes, pathPatternList);
+    }
+    nodes.remove(nodes.size() - 1);
+  }
+
+  private String parseNodesToString(List<String> nodes) {
+    StringBuilder fullPathBuilder = new StringBuilder(nodes.get(0));
+    for (int i = 1; i < nodes.size(); i++) {
+      fullPathBuilder.append(TsFileConstant.PATH_SEPARATOR).append(nodes.get(i));
+    }
+    return fullPathBuilder.toString();
   }
 
   // append path to pathList

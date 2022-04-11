@@ -31,6 +31,7 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class PathPatternTreeTest {
 
@@ -126,6 +127,13 @@ public class PathPatternTreeTest {
     resultPatternTree.constructTree();
 
     Assert.assertTrue(resultPatternTree.equalWith(patternTree));
+
+    Assert.assertEquals(
+        compressedPaths.stream()
+            .map(PartialPath::getFullPath)
+            .sorted()
+            .collect(Collectors.toList()),
+        patternTree.findAllPaths().stream().sorted().collect(Collectors.toList()));
 
     PathPatternTree tmpPathPatternTree = new PathPatternTree();
     ByteBuffer buffer = ByteBuffer.allocate(1024 * 1024);
