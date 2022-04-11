@@ -19,6 +19,19 @@
 
 -->
 
+## 0.引入依赖
+
+```xml
+    <dependency>
+        <groupId>org.apache.iotdb</groupId>
+        <artifactId>influxdb-protocol</artifactId>
+        <version>0.14.0-SNAPSHOT</version>
+    </dependency>
+```
+
+这里是一些使用 InfluxDB-Protocol 适配器连接 IoTDB 的示例：https://github.com/apache/iotdb/tree/master/influxdb-protocol/src/main/java/org/apache/iotdb/influxdb/example
+
+
 ## 1.切换方案
 
 假如您原先接入 InfluxDB 的业务代码如下：
@@ -37,7 +50,7 @@ InfluxDB influxDB = IoTDBInfluxDBFactory.connect(openurl, username, password);
 
 ### 2.1 InfluxDB-Protocol适配器
 
-该适配器以 IoTDB Java Session 接口为底层基础，实现了 InfluxDB 的 Java 接口 `interface InfluxDB`，对用户提供了所有 InfluxDB 的接口方法，最终用户可以无感知地使用 InfluxDB 协议向 IoTDB 发起写入和读取请求。
+该适配器以 IoTDB Java ServiceProvider 接口为底层基础，实现了 InfluxDB 的 Java 接口 `interface InfluxDB`，对用户提供了所有 InfluxDB 的接口方法，最终用户可以无感知地使用 InfluxDB 协议向 IoTDB 发起写入和读取请求。
 
 ![architecture-design](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/API/IoTDB-InfluxDB/architecture-design.png?raw=true)
 
@@ -90,7 +103,7 @@ storage group 和 measurement 之间的每一层都代表一个 tag。如果 tag
 
 例如：`insert factory, workshop=A1, production=B1 temperature=16.9` 和 `insert factory, production=B1, workshop=A1 temperature=16.9` 两条 InfluxDB SQL 的含义（以及执行结果）相等。
 
-但在 IoTDB 中，上述插入的数据点可以存储在 `root.monitor.factory.A1.B1.temperature` 下，也可以存储在 `root.monitor.factory.B1.A1.temperature` 下。因此，IoTDB 路径中储存的 InfluxDB 的 tag 的顺序是需要被特别考虑的，因为 `root.monitor.factory.A1.B1.temperature` 和 
+但在 IoTDB 中，上述插入的数据点可以存储在 `root.monitor.factory.A1.B1.temperature` 下，也可以存储在 `root.monitor.factory.B1.A1.temperature` 下。因此，IoTDB 路径中储存的 InfluxDB 的 tag 的顺序是需要被特别考虑的，因为 `root.monitor.factory.A1.B1.temperature` 和
 `root.monitor.factory.B1.A1.temperature` 是两条不同的序列。我们可以认为，IoTDB 元数据模型对 tag 顺序的处理是“敏感”的。
 
 基于上述的考虑，我们还需要在 IoTDB 中记录 InfluxDB 每个 tag 对应在 IoTDB 路径中的层级顺序，以确保在执行 InfluxDB SQL 时，不论 InfluxDB SQL 中  tag 出现的顺序如何，只要该 SQL 表达的是对同一个时间序列上的操作，那么适配器都可以唯一对应到 IoTDB 中的一条时间序列上进行操作。
@@ -110,14 +123,14 @@ storage group 和 measurement 之间的每一层都代表一个 tag。如果 tag
 可以看出 Map 是一个两层的结构。
 
 第一层的 Key 是 String 类型的 InfluxDB measurement，第一层的 Value 是一个 <String, Integer> 结构的 Map。
-   
+
 第二层的 Key 是 String 类型的 InfluxDB tag key，第二层的 Value 是 Integer 类型的 tag order，也就是 tag 在 IoTDB 路径层级上的顺序。
 
 使用时，就可以先通过 InfluxDB measurement 定位，再通过 InfluxDB tag key 定位，最后就可以获得  tag 在 IoTDB 路径层级上的顺序了。
- 
+
 **tag key 对应顺序关系的持久化方案**
 
-存储组为`root.TAG_INFO`，分别用存储组下的 `database_name`, `measurement_name`, `tag_name` 和 `tag_order` 测点来存储 tag key 极其对应的顺序关系。
+存储组为`root.TAG_INFO`，分别用存储组下的 `database_name`, `measurement_name`, `tag_name` 和 `tag_order` 测点来存储 tag key及其对应的顺序关系。
 
 ```
 +-----------------------------+---------------------------+------------------------------+----------------------+-----------------------+
@@ -137,10 +150,10 @@ storage group 和 measurement 之间的每一层都代表一个 tag。如果 tag
 #### 2.3.1 插入数据
 
 1. 假定按照以下的顺序插入三条数据到 InfluxDB 中 (database=monitor)：
-   
+
    (1)`insert student,name=A,phone=B,sex=C score=99`
 
-   (2)`insert student,address=D score=98` 
+   (2)`insert student,address=D score=98`
 
    (3)`insert student,name=A,phone=B,sex=C,address=D score=97`
 
@@ -188,11 +201,11 @@ time                address name phone sex socre
 4. (1)第一条插入数据对应 IoTDB 时序为 root.monitor.student.A.B.C
 
    (2)第二条插入数据对应 IoTDB 时序为 root.monitor.student.PH.PH.PH.D (其中PH表示占位符)。
-    
+
    需要注意的是，由于该条数据的 tag key=address 是第四个出现的，但是自身却没有对应的前三个 tag 值，因此需要用 PH 占位符来代替。这样做的目的是保证每条数据中的 tag 顺序不会乱，是符合当前顺序表中的顺序，从而查询数据的时候可以进行指定 tag 过滤。
 
-   (3)第三条插入数据对应 IoTDB 时序为 root.monitor.student.A.B.C.D 
-  
+   (3)第三条插入数据对应 IoTDB 时序为 root.monitor.student.A.B.C.D
+
    对应的 IoTDB 的实际存储为：
 
 ```
@@ -212,19 +225,19 @@ time                address name phone sex socre
 #### 2.3.2 查询数据
 
 1. 查询student中phone=B的数据。在database=monitor,measurement=student中tag=phone的顺序为1，order最大值是3，对应到IoTDB的查询为：
- 
+
    ```sql 
    select * from root.monitor.student.*.B
    ```
 
 2. 查询student中phone=B且score>97的数据，对应到IoTDB的查询为：
- 
+
    ```sql
    select * from root.monitor.student.*.B where score>97 
    ```
 
 3. 查询student中phone=B且score>97且时间在最近七天内的的数据，对应到IoTDB的查询为：
- 
+
    ```sql
    select * from root.monitor.student.*.B where score>97 and time > now()-7d 
    ```
@@ -247,3 +260,86 @@ time                address name phone sex socre
    ```
    最后手动对上面三次查询结果求并集。
 
+## 3 支持情况
+
+### 3.1 InfluxDB版本支持情况
+
+目前支持InfluxDB 1.x 版本，暂不支持InfluxDB 2.x 版本。
+
+### 3.2 函数接口支持情况
+
+目前支持的接口函数如下：
+
+```java
+public Pong ping();
+
+public String version();
+
+public void flush();
+
+public void close();
+
+public InfluxDB setDatabase(final String database);
+
+public QueryResult query(final Query query);
+
+public void write(final Point point);
+
+public void write(final String records);
+
+public void write(final List<String> records);
+
+public void write(final String database,final String retentionPolicy,final Point point);
+
+public void write(final int udpPort,final Point point);
+
+public void write(final BatchPoints batchPoints);
+
+public void write(final String database,final String retentionPolicy,
+final ConsistencyLevel consistency,final String records);
+
+public void write(final String database,final String retentionPolicy,
+final ConsistencyLevel consistency,final TimeUnit precision,final String records);
+
+public void write(final String database,final String retentionPolicy,
+final ConsistencyLevel consistency,final List<String> records);
+
+public void write(final String database,final String retentionPolicy,
+final ConsistencyLevel consistency,final TimeUnit precision,final List<String> records);
+
+public void write(final int udpPort,final String records);
+
+public void write(final int udpPort,final List<String> records);
+```
+
+### 3.3 查询语法支持情况
+
+目前支持的查询sql语法为
+
+```sql
+SELECT <field_key>[, <field_key>, <tag_key>]
+FROM <measurement_name>
+WHERE <conditional_expression > [( AND | OR) <conditional_expression > [...]]
+```
+
+WHERE子句在`field`，`tag`和`timestamp`上支持`conditional_expressions`.
+
+#### field
+
+```sql
+field_key <operator> ['string' | boolean | float | integer]
+```
+
+#### tag
+
+```sql
+tag_key <operator> ['tag_value']
+```
+
+#### timestamp
+
+```sql
+timestamp <operator> ['time']
+```
+
+目前timestamp的过滤条件只支持now()有关表达式，如:now()-7D，具体的时间戳暂不支持。

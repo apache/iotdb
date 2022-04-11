@@ -19,8 +19,8 @@
 package org.apache.iotdb.db.mpp.execution;
 
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -142,7 +142,7 @@ public class DataDriverTest {
           new LimitOperator(
               fragmentInstanceContext.getOperatorContexts().get(3), 250, timeJoinOperator);
 
-      VirtualStorageGroupProcessor dataRegion = Mockito.mock(VirtualStorageGroupProcessor.class);
+      DataRegion dataRegion = Mockito.mock(DataRegion.class);
 
       List<PartialPath> pathList = ImmutableList.of(measurementPath1, measurementPath2);
       String deviceId = DATA_DRIVER_TEST_SG + ".device0";

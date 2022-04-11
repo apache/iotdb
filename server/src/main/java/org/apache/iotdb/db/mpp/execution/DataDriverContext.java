@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.execution;
 
-import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.operator.source.DataSourceOperator;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -28,14 +28,14 @@ import java.util.List;
 public class DataDriverContext extends DriverContext {
   private final List<PartialPath> paths;
   private final Filter timeFilter;
-  private final VirtualStorageGroupProcessor dataRegion;
+  private final DataRegion dataRegion;
   private final List<DataSourceOperator> sourceOperators;
 
   public DataDriverContext(
       FragmentInstanceContext fragmentInstanceContext,
       List<PartialPath> paths,
       Filter timeFilter,
-      VirtualStorageGroupProcessor dataRegion,
+      DataRegion dataRegion,
       List<DataSourceOperator> sourceOperators) {
     super(fragmentInstanceContext);
     this.paths = paths;
@@ -52,7 +52,7 @@ public class DataDriverContext extends DriverContext {
     return timeFilter;
   }
 
-  public VirtualStorageGroupProcessor getDataRegion() {
+  public DataRegion getDataRegion() {
     return dataRegion;
   }
 

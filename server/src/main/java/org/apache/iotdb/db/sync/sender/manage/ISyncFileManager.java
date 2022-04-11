@@ -57,7 +57,7 @@ public interface ISyncFileManager {
 
   /*
    * the following 4 maps share same map structure
-   * logicalSg -> <virtualSg, <timeRangeId, tsfiles>>
+   * logicalSg -> <dataregion, <timeRangeId, tsfiles>>
    */
   Map<String, Map<Long, Map<Long, Set<File>>>> getCurrentSealedLocalFilesMap();
 
@@ -67,6 +67,6 @@ public interface ISyncFileManager {
 
   Map<String, Map<Long, Map<Long, Set<File>>>> getToBeSyncedFilesMap();
 
-  // logicalSg -> <virtualSg, Set<timeRangeId>>
+  // logicalSg -> <dataregion, Set<timeRangeId>>
   Map<String, Map<Long, Set<Long>>> getAllSGs();
 }

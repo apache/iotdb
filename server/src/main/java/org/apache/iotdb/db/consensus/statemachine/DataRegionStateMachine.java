@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.consensus.statemachine;
 
 import org.apache.iotdb.consensus.common.DataSet;
-import org.apache.iotdb.db.mpp.common.DataRegion;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.mpp.execution.FragmentInstanceManager;
 import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -56,8 +56,6 @@ public class DataRegionStateMachine extends BaseStateMachine {
 
   @Override
   protected DataSet read(FragmentInstance fragmentInstance) {
-    // TODO here we need to change after VSG being renamed to DataRegion
-    //    return INSTANCE_MANAGER.execDataQueryFragmentInstance(fragmentInstance, region);
-    return null;
+    return INSTANCE_MANAGER.execDataQueryFragmentInstance(fragmentInstance, region);
   }
 }

@@ -23,6 +23,8 @@ import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
+import java.util.List;
+
 public class StandaloneSchemaFetcher implements ISchemaFetcher {
 
   private StandaloneSchemaFetcher() {}
@@ -39,6 +41,12 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
   @Override
   public SchemaTree fetchSchemaWithAutoCreate(
       PartialPath devicePath, String[] measurements, TSDataType[] tsDataTypes) {
+    return null;
+  }
+
+  @Override
+  public SchemaTree fetchSchemaListWithAutoCreate(
+      List<PartialPath> devicePath, List<String[]> measurements, List<TSDataType[]> tsDataTypes) {
     return null;
   }
 }

@@ -156,11 +156,6 @@ public class CreateTimeSeriesNode extends PlanNode {
     return NO_CHILD_ALLOWED;
   }
 
-  @Override
-  public List<String> getOutputColumnNames() {
-    return null;
-  }
-
   public static CreateTimeSeriesNode deserialize(ByteBuffer byteBuffer) {
     return null;
   }

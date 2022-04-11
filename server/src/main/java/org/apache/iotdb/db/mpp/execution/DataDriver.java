@@ -19,8 +19,8 @@
 package org.apache.iotdb.db.mpp.execution;
 
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -197,7 +197,7 @@ public class DataDriver implements Driver {
    * QueryDataSource needed for this query
    */
   public QueryDataSource initQueryDataSourceCache() throws QueryProcessException {
-    VirtualStorageGroupProcessor dataRegion = driverContext.getDataRegion();
+    DataRegion dataRegion = driverContext.getDataRegion();
     dataRegion.readLock();
     try {
       List<PartialPath> pathList =
