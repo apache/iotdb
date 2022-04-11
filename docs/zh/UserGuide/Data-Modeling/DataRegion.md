@@ -35,19 +35,19 @@
 
 # 解决方案
 
-我们的方案是将一个存储组下的设备分为若干个设备组（称为虚拟存储组），将同步粒度从存储组级别改为虚拟存储组粒度。
+我们的方案是将一个存储组下的设备分为若干个设备组（称为 data region），将同步粒度从存储组级别改为 data region 粒度。
 
-更具体的，我们使用哈希将设备分到不同的虚拟存储组下，例如：
-对于一个名为"root.sg.d"的设备（假设其存储组为"root.sg"），它属于的虚拟存储组为"root.sg.[hash("root.sg.d") mod num_of_virtual_storage_group]"
+更具体的，我们使用哈希将设备分到不同的 data region 下，例如：
+对于一个名为"root.sg.d"的设备（假设其存储组为"root.sg"），它属于的 data region 为"root.sg.[hash("root.sg.d") mod num_of_data_region]"
 
 # 使用方法
 
-通过改变如下配置来设置每一个存储组下虚拟存储组的数量：
+通过改变如下配置来设置每一个存储组下 data region 的数量：
 
 ```
-virtual_storage_group_num
+data_region_num
 ```
 
-推荐值为[virtual storage group number] = [CPU core number] / [user-defined storage group number]
+推荐值为[data region number] = [CPU core number] / [user-defined storage group number]
 
 参考[配置手册](../Reference/Config-Manual.md)以获取更多信息。

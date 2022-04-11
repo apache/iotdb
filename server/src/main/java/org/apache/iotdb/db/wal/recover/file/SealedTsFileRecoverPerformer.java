@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.wal.recover.file;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.StorageGroupProcessorException;
+import org.apache.iotdb.db.exception.DataRegionException;
 
 import java.io.IOException;
 
@@ -35,7 +35,7 @@ public class SealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerformer
    * Recover sealed TsFile, including load .resource file (reconstruct when necessary) and truncate
    * the file to remaining corrected data
    */
-  public void recover() throws StorageGroupProcessorException, IOException {
+  public void recover() throws DataRegionException, IOException {
     super.recoverWithWriter();
 
     if (hasCrashed()) {
@@ -43,7 +43,7 @@ public class SealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerformer
       try {
         reconstructResourceFile();
       } catch (IOException e) {
-        throw new StorageGroupProcessorException(
+        throw new DataRegionException(
             "Failed recover the resource file: "
                 + tsFileResource.getTsFilePath()
                 + RESOURCE_SUFFIX
