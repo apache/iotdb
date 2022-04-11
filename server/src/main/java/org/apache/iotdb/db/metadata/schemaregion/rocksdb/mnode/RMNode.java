@@ -19,13 +19,14 @@
 
 package org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
+import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
+import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheEntry;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaReadWriteHandler;
@@ -142,16 +143,6 @@ public abstract class RMNode implements IMNode {
   }
 
   @Override
-  public boolean isEmptyInternal() {
-    return !IoTDBConstant.PATH_ROOT.equals(name)
-        && !isStorageGroup()
-        && !isMeasurement()
-        && getSchemaTemplate() == null
-        && !isUseTemplate()
-        && getChildren().size() == 0;
-  }
-
-  @Override
   public boolean isUseTemplate() {
     return false;
   }
@@ -225,5 +216,19 @@ public abstract class RMNode implements IMNode {
     throw new UnsupportedOperationException("Temporarily unsupported");
   }
 
+  @Override
+  public CacheEntry getCacheEntry() {
+    throw new UnsupportedOperationException("Temporarily unsupported");
+  }
+
+  @Override
+  public void setCacheEntry(CacheEntry cacheEntry) {
+    throw new UnsupportedOperationException("Temporarily unsupported");
+  }
+
+  @Override
+  public void setChildren(IMNodeContainer children) {
+    throw new UnsupportedOperationException("Temporarily unsupported");
+  }
   // end
 }

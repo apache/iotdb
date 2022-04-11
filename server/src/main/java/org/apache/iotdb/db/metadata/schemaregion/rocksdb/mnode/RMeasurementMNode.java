@@ -26,6 +26,7 @@ import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaReadWriteHandler;
@@ -204,21 +205,17 @@ public class RMeasurementMNode extends RMNode implements IMeasurementMNode {
   }
 
   @Override
-  public void deleteChild(String name) {
+  public IMNode deleteChild(String name) {
     // Do nothing
+    return null;
   }
 
   @Override
   public void replaceChild(String oldChildName, IMNode newChildNode) {}
 
   @Override
-  public Map<String, IMNode> getChildren() {
+  public IMNodeContainer getChildren() {
     throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public void setChildren(Map<String, IMNode> children) {
-    // Do nothing
   }
 
   @Override
