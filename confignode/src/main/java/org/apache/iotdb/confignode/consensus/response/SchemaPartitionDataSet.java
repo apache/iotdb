@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.confignode.consensus.response;
 
+import org.apache.iotdb.common.rpc.thrift.EndPoint;
+import org.apache.iotdb.common.rpc.thrift.RegionReplicaSet;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionResp;

@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.service.thrift.impl;
 
+import org.apache.iotdb.common.rpc.thrift.EndPoint;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.auth.AuthException;
@@ -40,19 +42,11 @@ import org.apache.iotdb.db.mpp.execution.Coordinator;
 import org.apache.iotdb.db.mpp.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
 import org.apache.iotdb.db.mpp.sql.parser.StatementGenerator;
-import org.apache.iotdb.db.mpp.sql.statement.crud.InsertRowStatement;
-import org.apache.iotdb.db.mpp.sql.statement.crud.InsertTabletStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.*;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
-import org.apache.iotdb.db.qp.physical.crud.SelectIntoPlan;
-import org.apache.iotdb.db.qp.physical.crud.UDFPlan;
+import org.apache.iotdb.db.qp.physical.crud.*;
+import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletsPlan;
 import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
@@ -85,7 +79,6 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.service.rpc.thrift.TSAppendSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSCancelOperationReq;
@@ -125,7 +118,6 @@ import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateResp;
 import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.service.rpc.thrift.TSTracingInfo;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -982,19 +974,19 @@ public class TSServiceImpl implements TSIService.Iface {
 
   private TSStatus insertTabletsInternally(
       List<InsertTabletPlan> insertTabletPlans, long sessionId) {
-    InsertMultiTabletPlan insertMultiTabletPlan = new InsertMultiTabletPlan();
+    InsertMultiTabletsPlan insertMultiTabletsPlan = new InsertMultiTabletsPlan();
     for (int i = 0; i < insertTabletPlans.size(); i++) {
       InsertTabletPlan insertTabletPlan = insertTabletPlans.get(i);
       TSStatus status = SESSION_MANAGER.checkAuthority(insertTabletPlan, sessionId);
 
       if (status != null) {
         // not authorized
-        insertMultiTabletPlan.getResults().put(i, status);
+        insertMultiTabletsPlan.getResults().put(i, status);
       }
     }
-    insertMultiTabletPlan.setInsertTabletPlanList(insertTabletPlans);
+    insertMultiTabletsPlan.setInsertTabletPlanList(insertTabletPlans);
 
-    return executeNonQueryPlan(insertMultiTabletPlan);
+    return executeNonQueryPlan(insertMultiTabletsPlan);
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
@@ -1236,6 +1228,46 @@ public class TSServiceImpl implements TSIService.Iface {
         allCheckSuccess, tsStatus, insertRowsPlan.getResults(), req.prefixPaths.size());
   }
 
+  public TSStatus insertRecordsV2(TSInsertRecordsReq req) {
+    long t1 = System.currentTimeMillis();
+    try {
+      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+        return getNotLoggedInStatus();
+      }
+
+      if (AUDIT_LOGGER.isDebugEnabled()) {
+        AUDIT_LOGGER.debug(
+            "Session {} insertRecords, first device {}, first time {}",
+            SESSION_MANAGER.getCurrSessionId(),
+            req.prefixPaths.get(0),
+            req.getTimestamps().get(0));
+      }
+
+      // Step 1: TODO(INSERT) transfer from TSInsertTabletsReq to Statement
+      InsertRowsStatement statement = (InsertRowsStatement) StatementGenerator.createStatement(req);
+
+      // Step 2: call the coordinator
+      long queryId = SESSION_MANAGER.requestQueryId(false);
+      ExecutionResult result =
+          coordinator.execute(
+              statement,
+              new QueryId(String.valueOf(queryId)),
+              QueryType.WRITE,
+              SESSION_MANAGER.getSessionInfo(req.sessionId),
+              "");
+
+      // TODO(INSERT) do this check in analyze
+      //      TSStatus status = serviceProvider.checkAuthority(insertTabletPlan,
+      // req.getSessionId());
+      return result.status;
+    } catch (Exception e) {
+      return onNPEOrUnexpectedException(
+          e, OperationType.INSERT_TABLET, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+    } finally {
+      addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
+    }
+  }
+
   private TSStatus judgeFinalTsStatus(
       boolean allCheckSuccess,
       TSStatus executeTsStatus,
@@ -1303,6 +1335,47 @@ public class TSServiceImpl implements TSIService.Iface {
     return resp;
   }
 
+  public TSStatus insertRecordsOfOneDeviceV2(TSInsertRecordsOfOneDeviceReq req) {
+    long t1 = System.currentTimeMillis();
+    try {
+      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+        return getNotLoggedInStatus();
+      }
+
+      if (AUDIT_LOGGER.isDebugEnabled()) {
+        AUDIT_LOGGER.debug(
+            "Session {} insertRecords, device {}, first time {}",
+            SESSION_MANAGER.getCurrSessionId(),
+            req.prefixPath,
+            req.getTimestamps().get(0));
+      }
+
+      // Step 1: TODO(INSERT) transfer from TSInsertTabletsReq to Statement
+      InsertRowsOfOneDeviceStatement statement =
+          (InsertRowsOfOneDeviceStatement) StatementGenerator.createStatement(req);
+
+      // Step 2: call the coordinator
+      long queryId = SESSION_MANAGER.requestQueryId(false);
+      ExecutionResult result =
+          coordinator.execute(
+              statement,
+              new QueryId(String.valueOf(queryId)),
+              QueryType.WRITE,
+              SESSION_MANAGER.getSessionInfo(req.sessionId),
+              "");
+
+      // TODO(INSERT) do this check in analyze
+      //      TSStatus status = serviceProvider.checkAuthority(insertTabletPlan,
+      // req.getSessionId());
+      return result.status;
+    } catch (Exception e) {
+      return onNPEOrUnexpectedException(
+          e, OperationType.INSERT_TABLET, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+    } finally {
+      addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
+    }
+  }
+
   @Override
   public TSStatus insertStringRecordsOfOneDevice(TSInsertStringRecordsOfOneDeviceReq req) {
     if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
@@ -1361,6 +1434,47 @@ public class TSServiceImpl implements TSIService.Iface {
         allCheckSuccess, tsStatus, insertRowsPlan.getResults(), req.timestamps.size());
   }
 
+  public TSStatus insertStringRecordsOfOneDeviceV2(TSInsertStringRecordsOfOneDeviceReq req) {
+    long t1 = System.currentTimeMillis();
+    try {
+      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+        return getNotLoggedInStatus();
+      }
+
+      if (AUDIT_LOGGER.isDebugEnabled()) {
+        AUDIT_LOGGER.debug(
+            "Session {} insertRecords, device {}, first time {}",
+            SESSION_MANAGER.getCurrSessionId(),
+            req.prefixPath,
+            req.getTimestamps().get(0));
+      }
+
+      // Step 1: TODO(INSERT) transfer from TSInsertTabletsReq to Statement
+      InsertRowsOfOneDeviceStatement statement =
+          (InsertRowsOfOneDeviceStatement) StatementGenerator.createStatement(req);
+
+      // Step 2: call the coordinator
+      long queryId = SESSION_MANAGER.requestQueryId(false);
+      ExecutionResult result =
+          coordinator.execute(
+              statement,
+              new QueryId(String.valueOf(queryId)),
+              QueryType.WRITE,
+              SESSION_MANAGER.getSessionInfo(req.sessionId),
+              "");
+
+      // TODO(INSERT) do this check in analyze
+      //      TSStatus status = serviceProvider.checkAuthority(insertTabletPlan,
+      // req.getSessionId());
+      return result.status;
+    } catch (Exception e) {
+      return onNPEOrUnexpectedException(
+          e, OperationType.INSERT_TABLET, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+    } finally {
+      addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
+    }
+  }
+
   @Override
   public TSStatus insertStringRecords(TSInsertStringRecordsReq req) {
     if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
@@ -1412,6 +1526,44 @@ public class TSServiceImpl implements TSIService.Iface {
 
     return judgeFinalTsStatus(
         allCheckSuccess, tsStatus, insertRowsPlan.getResults(), req.prefixPaths.size());
+  }
+
+  public TSStatus insertStringRecordsV2(TSInsertStringRecordsReq req) {
+    long t1 = System.currentTimeMillis();
+    try {
+      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+        return getNotLoggedInStatus();
+      }
+
+      if (AUDIT_LOGGER.isDebugEnabled()) {
+        AUDIT_LOGGER.debug(
+            "Session {} insertRecords, first device {}, first time {}",
+            SESSION_MANAGER.getCurrSessionId(),
+            req.prefixPaths.get(0),
+            req.getTimestamps().get(0));
+      }
+
+      InsertRowsStatement statement = (InsertRowsStatement) StatementGenerator.createStatement(req);
+
+      long queryId = SESSION_MANAGER.requestQueryId(false);
+      ExecutionResult result =
+          coordinator.execute(
+              statement,
+              new QueryId(String.valueOf(queryId)),
+              QueryType.WRITE,
+              SESSION_MANAGER.getSessionInfo(req.sessionId),
+              "");
+
+      // TODO(INSERT) do this check in analyze
+      //      TSStatus status = serviceProvider.checkAuthority(insertTabletPlan,
+      // req.getSessionId());
+      return result.status;
+    } catch (Exception e) {
+      return onNPEOrUnexpectedException(
+          e, OperationType.INSERT_TABLET, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+    } finally {
+      addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
+    }
   }
 
   private void addMeasurementAndValue(
@@ -1572,6 +1724,43 @@ public class TSServiceImpl implements TSIService.Iface {
     }
   }
 
+  public TSStatus insertStringRecordV2(TSInsertStringRecordReq req) {
+    long t1 = System.currentTimeMillis();
+    try {
+      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+        return getNotLoggedInStatus();
+      }
+
+      AUDIT_LOGGER.debug(
+          "Session {} insertRecord, device {}, time {}",
+          SESSION_MANAGER.getCurrSessionId(),
+          req.getPrefixPath(),
+          req.getTimestamp());
+
+      InsertRowStatement statement = (InsertRowStatement) StatementGenerator.createStatement(req);
+
+      // Step 2: call the coordinator
+      long queryId = SESSION_MANAGER.requestQueryId(false);
+      ExecutionResult result =
+          coordinator.execute(
+              statement,
+              new QueryId(String.valueOf(queryId)),
+              QueryType.WRITE,
+              SESSION_MANAGER.getSessionInfo(req.sessionId),
+              "");
+
+      // TODO(INSERT) do this check in analyze
+      //      TSStatus status = serviceProvider.checkAuthority(insertTabletPlan,
+      // req.getSessionId());
+      return result.status;
+    } catch (Exception e) {
+      return onNPEOrUnexpectedException(
+          e, OperationType.INSERT_TABLET, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+    } finally {
+      addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
+    }
+  }
+
   @Override
   public TSStatus deleteData(TSDeleteDataReq req) {
     try {
@@ -1610,7 +1799,7 @@ public class TSServiceImpl implements TSIService.Iface {
           new InsertTabletPlan(new PartialPath(req.getPrefixPath()), req.measurements);
       insertTabletPlan.setTimes(QueryDataSetUtils.readTimesFromBuffer(req.timestamps, req.size));
       insertTabletPlan.setColumns(
-          QueryDataSetUtils.readValuesFromBuffer(
+          QueryDataSetUtils.readTabletValuesFromBuffer(
               req.values, req.types, req.types.size(), req.size));
       insertTabletPlan.setBitMaps(
           QueryDataSetUtils.readBitMapsFromBuffer(req.values, req.types.size(), req.size));
@@ -1685,6 +1874,38 @@ public class TSServiceImpl implements TSIService.Iface {
     }
   }
 
+  public TSStatus insertTabletsV2(TSInsertTabletsReq req) {
+    long t1 = System.currentTimeMillis();
+    try {
+      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+        return getNotLoggedInStatus();
+      }
+
+      // Step 1: TODO(INSERT) transfer from TSInsertTabletsReq to Statement
+      InsertMultiTabletsStatement statement =
+          (InsertMultiTabletsStatement) StatementGenerator.createStatement(req);
+      // Step 2: call the coordinator
+      long queryId = SESSION_MANAGER.requestQueryId(false);
+      ExecutionResult result =
+          coordinator.execute(
+              statement,
+              new QueryId(String.valueOf(queryId)),
+              QueryType.WRITE,
+              SESSION_MANAGER.getSessionInfo(req.sessionId),
+              "");
+
+      // TODO(INSERT) do this check in analyze
+      //      TSStatus status = serviceProvider.checkAuthority(insertTabletPlan,
+      // req.getSessionId());
+      return result.status;
+    } catch (Exception e) {
+      return onNPEOrUnexpectedException(
+          e, OperationType.INSERT_TABLET, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+    } finally {
+      addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
+    }
+  }
+
   private InsertTabletPlan constructInsertTabletPlan(TSInsertTabletsReq req, int i)
       throws IllegalPathException {
     InsertTabletPlan insertTabletPlan =
@@ -1692,7 +1913,7 @@ public class TSServiceImpl implements TSIService.Iface {
     insertTabletPlan.setTimes(
         QueryDataSetUtils.readTimesFromBuffer(req.timestampsList.get(i), req.sizeList.get(i)));
     insertTabletPlan.setColumns(
-        QueryDataSetUtils.readValuesFromBuffer(
+        QueryDataSetUtils.readTabletValuesFromBuffer(
             req.valuesList.get(i),
             req.typesList.get(i),
             req.measurementsList.get(i).size(),
@@ -1706,22 +1927,22 @@ public class TSServiceImpl implements TSIService.Iface {
     return insertTabletPlan;
   }
 
-  /** construct one InsertMultiTabletPlan and process it */
+  /** construct one InsertMultiTabletsPlan and process it */
   public TSStatus insertTabletsInternally(TSInsertTabletsReq req) throws IllegalPathException {
     List<InsertTabletPlan> insertTabletPlanList = new ArrayList<>();
-    InsertMultiTabletPlan insertMultiTabletPlan = new InsertMultiTabletPlan();
+    InsertMultiTabletsPlan insertMultiTabletsPlan = new InsertMultiTabletsPlan();
     for (int i = 0; i < req.prefixPaths.size(); i++) {
       InsertTabletPlan insertTabletPlan = constructInsertTabletPlan(req, i);
       TSStatus status = SESSION_MANAGER.checkAuthority(insertTabletPlan, req.getSessionId());
       if (status != null) {
         // not authorized
-        insertMultiTabletPlan.getResults().put(i, status);
+        insertMultiTabletsPlan.getResults().put(i, status);
       }
       insertTabletPlanList.add(insertTabletPlan);
     }
 
-    insertMultiTabletPlan.setInsertTabletPlanList(insertTabletPlanList);
-    return executeNonQueryPlan(insertMultiTabletPlan);
+    insertMultiTabletsPlan.setInsertTabletPlanList(insertTabletPlanList);
+    return executeNonQueryPlan(insertMultiTabletsPlan);
   }
 
   @Override

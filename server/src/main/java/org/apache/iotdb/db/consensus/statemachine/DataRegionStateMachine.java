@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.db.consensus.statemachine;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.consensus.common.DataSet;
-import org.apache.iotdb.db.mpp.common.DataRegion;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

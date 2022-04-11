@@ -39,7 +39,8 @@ public abstract class InsertNode extends PlanNode {
   protected PartialPath devicePath;
 
   protected boolean isAligned;
-  protected MeasurementSchema[] measurements;
+  protected MeasurementSchema[] measurementSchemas;
+  protected String[] measurements;
   protected TSDataType[] dataTypes;
   // TODO(INSERT) need to change it to a function handle to update last time value
   //  protected IMeasurementMNode[] measurementMNodes;
@@ -61,12 +62,12 @@ public abstract class InsertNode extends PlanNode {
       PlanNodeId id,
       PartialPath devicePath,
       boolean isAligned,
-      MeasurementSchema[] measurements,
+      MeasurementSchema[] measurementSchemas,
       TSDataType[] dataTypes) {
     super(id);
     this.devicePath = devicePath;
     this.isAligned = isAligned;
-    this.measurements = measurements;
+    this.measurementSchemas = measurementSchemas;
     this.dataTypes = dataTypes;
   }
 
@@ -94,12 +95,22 @@ public abstract class InsertNode extends PlanNode {
     isAligned = aligned;
   }
 
-  public MeasurementSchema[] getMeasurements() {
-    return measurements;
+  public MeasurementSchema[] getMeasurementSchemas() {
+    return measurementSchemas;
   }
 
-  public void setMeasurements(MeasurementSchema[] measurements) {
-    this.measurements = measurements;
+  public void setMeasurementSchemas(MeasurementSchema[] measurementSchemas) {
+    this.measurementSchemas = measurementSchemas;
+  }
+
+  public String[] getMeasurements() {
+    if (measurements == null) {
+      measurements = new String[measurementSchemas.length];
+      for (int i = 0; i < measurementSchemas.length; i++) {
+        measurements[i] = measurementSchemas[i].getMeasurementId();
+      }
+    }
+    return measurements;
   }
 
   public TSDataType[] getDataTypes() {

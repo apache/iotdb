@@ -21,7 +21,7 @@ package org.apache.iotdb.db.metadata.tag;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -138,11 +138,9 @@ public class TagManager {
     // if ordered by heat, we sort all the timeseries by the descending order of the last insert
     // timestamp
     if (plan.isOrderByHeat()) {
-      List<VirtualStorageGroupProcessor> list;
+      List<DataRegion> list;
       try {
-        Pair<
-                List<VirtualStorageGroupProcessor>,
-                Map<VirtualStorageGroupProcessor, List<PartialPath>>>
+        Pair<List<DataRegion>, Map<DataRegion, List<PartialPath>>>
             lockListAndProcessorToSeriesMapPair =
                 StorageEngine.getInstance()
                     .mergeLock(
@@ -150,7 +148,7 @@ public class TagManager {
                             .map(IMeasurementMNode::getMeasurementPath)
                             .collect(toList()));
         list = lockListAndProcessorToSeriesMapPair.left;
-        Map<VirtualStorageGroupProcessor, List<PartialPath>> processorToSeriesMap =
+        Map<DataRegion, List<PartialPath>> processorToSeriesMap =
             lockListAndProcessorToSeriesMapPair.right;
 
         try {

@@ -671,8 +671,6 @@ public class SchemaRegion {
       if (!isRecovering) {
         if (emptyStorageGroup != null) {
           StorageEngine.getInstance().deleteAllDataFilesInOneStorageGroup(emptyStorageGroup);
-          StorageEngine.getInstance()
-              .releaseWalDirectByteBufferPoolInOneStorageGroup(emptyStorageGroup);
         }
         deleteTimeSeriesPlan.setDeletePathList(Collections.singletonList(p));
         logWriter.deleteTimeseries(deleteTimeSeriesPlan);

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.qp.executor;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -34,9 +35,9 @@ import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.cq.ContinuousQueryService;
 import org.apache.iotdb.db.engine.flush.pool.FlushTaskPoolManager;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion.TimePartitionFilter;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
-import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor.TimePartitionFilter;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.ContinuousQueryException;
@@ -61,25 +62,8 @@ import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
-import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
-import org.apache.iotdb.db.qp.physical.crud.DeletePartitionPlan;
-import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
-import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
-import org.apache.iotdb.db.qp.physical.crud.GroupByTimeFillPlan;
-import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
-import org.apache.iotdb.db.qp.physical.crud.QueryIndexPlan;
-import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
-import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
-import org.apache.iotdb.db.qp.physical.crud.UDAFPlan;
-import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
+import org.apache.iotdb.db.qp.physical.crud.*;
+import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletsPlan;
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
@@ -145,9 +129,9 @@ import org.apache.iotdb.db.utils.AuthUtils;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
+import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -281,7 +265,7 @@ public class PlanExecutor implements IPlanExecutor {
         insertTablet((InsertTabletPlan) plan);
         return true;
       case MULTI_BATCH_INSERT:
-        insertTablet((InsertMultiTabletPlan) plan);
+        insertTablet((InsertMultiTabletsPlan) plan);
         return true;
       case CREATE_ROLE:
       case DELETE_ROLE:
@@ -537,6 +521,7 @@ public class PlanExecutor implements IPlanExecutor {
   private void operateFlush(FlushPlan plan) throws StorageGroupNotSetException {
     if (plan.getPaths().isEmpty()) {
       StorageEngine.getInstance().syncCloseAllProcessor();
+      WALManager.getInstance().deleteOutdatedWALFiles();
     } else {
       flushSpecifiedStorageGroups(plan);
     }
@@ -1649,48 +1634,48 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   @Override
-  public void insertTablet(InsertMultiTabletPlan insertMultiTabletPlan)
+  public void insertTablet(InsertMultiTabletsPlan insertMultiTabletsPlan)
       throws QueryProcessException {
-    if (insertMultiTabletPlan.isEnableMultiThreading()) {
-      insertTabletParallel(insertMultiTabletPlan);
+    if (insertMultiTabletsPlan.isEnableMultiThreading()) {
+      insertTabletParallel(insertMultiTabletsPlan);
     } else {
-      insertTabletSerial(insertMultiTabletPlan);
+      insertTabletSerial(insertMultiTabletsPlan);
     }
   }
 
-  private void insertTabletSerial(InsertMultiTabletPlan insertMultiTabletPlan)
+  private void insertTabletSerial(InsertMultiTabletsPlan insertMultiTabletsPlan)
       throws BatchProcessException {
-    for (int i = 0; i < insertMultiTabletPlan.getInsertTabletPlanList().size(); i++) {
-      if (insertMultiTabletPlan.getResults().containsKey(i)
-          || insertMultiTabletPlan.isExecuted(i)) {
+    for (int i = 0; i < insertMultiTabletsPlan.getInsertTabletPlanList().size(); i++) {
+      if (insertMultiTabletsPlan.getResults().containsKey(i)
+          || insertMultiTabletsPlan.isExecuted(i)) {
         continue;
       }
       try {
-        insertTablet(insertMultiTabletPlan.getInsertTabletPlanList().get(i));
+        insertTablet(insertMultiTabletsPlan.getInsertTabletPlanList().get(i));
       } catch (QueryProcessException e) {
-        insertMultiTabletPlan
+        insertMultiTabletsPlan
             .getResults()
             .put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
       }
     }
-    if (!insertMultiTabletPlan.getResults().isEmpty()) {
-      throw new BatchProcessException(insertMultiTabletPlan.getFailingStatus());
+    if (!insertMultiTabletsPlan.getResults().isEmpty()) {
+      throw new BatchProcessException(insertMultiTabletsPlan.getFailingStatus());
     }
   }
 
-  private void insertTabletParallel(InsertMultiTabletPlan insertMultiTabletPlan)
+  private void insertTabletParallel(InsertMultiTabletsPlan insertMultiTabletsPlan)
       throws BatchProcessException {
-    updateInsertTabletsPool(insertMultiTabletPlan.getDifferentStorageGroupsCount());
+    updateInsertTabletsPool(insertMultiTabletsPlan.getDifferentStorageGroupsCount());
 
-    List<InsertTabletPlan> planList = insertMultiTabletPlan.getInsertTabletPlanList();
+    List<InsertTabletPlan> planList = insertMultiTabletsPlan.getInsertTabletPlanList();
     List<Future<?>> futureList = new ArrayList<>();
 
-    Map<Integer, TSStatus> results = insertMultiTabletPlan.getResults();
+    Map<Integer, TSStatus> results = insertMultiTabletsPlan.getResults();
 
     List<InsertTabletPlan> runPlanList = new ArrayList<>();
     Map<Integer, Integer> runIndexToRealIndex = new HashMap<>();
     for (int i = 0; i < planList.size(); i++) {
-      if (!(results.containsKey(i) || insertMultiTabletPlan.isExecuted(i))) {
+      if (!(results.containsKey(i) || insertMultiTabletsPlan.isExecuted(i))) {
         runPlanList.add(planList.get(i));
         runIndexToRealIndex.put(runPlanList.size() - 1, i);
       }
@@ -1721,7 +1706,7 @@ public class PlanExecutor implements IPlanExecutor {
     }
 
     if (!results.isEmpty()) {
-      throw new BatchProcessException(insertMultiTabletPlan.getFailingStatus());
+      throw new BatchProcessException(insertMultiTabletsPlan.getFailingStatus());
     }
   }
 

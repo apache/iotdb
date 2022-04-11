@@ -23,6 +23,7 @@ import org.apache.iotdb.tsfile.read.expression.IBinaryExpression;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 
 import java.io.Serializable;
+import java.util.Objects;
 
 public abstract class BinaryExpression implements IBinaryExpression, Serializable {
 
@@ -83,6 +84,25 @@ public abstract class BinaryExpression implements IBinaryExpression, Serializabl
     public String toString() {
       return "[" + left + " && " + right + "]";
     }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+
+      AndExpression that = (AndExpression) o;
+      return Objects.equals(toString(), that.toString());
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(toString());
+    }
   }
 
   protected static class OrExpression extends BinaryExpression {
@@ -128,6 +148,25 @@ public abstract class BinaryExpression implements IBinaryExpression, Serializabl
     @Override
     public String toString() {
       return "[" + left + " || " + right + "]";
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+
+      OrExpression that = (OrExpression) o;
+      return Objects.equals(toString(), that.toString());
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(toString());
     }
   }
 }

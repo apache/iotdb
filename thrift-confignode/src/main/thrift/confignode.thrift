@@ -17,7 +17,7 @@
  * under the License.
  */
 
-include "rpc.thrift"
+include "common.thrift"
 namespace java org.apache.iotdb.confignode.rpc.thrift
 namespace py iotdb.thrift.confignode
 

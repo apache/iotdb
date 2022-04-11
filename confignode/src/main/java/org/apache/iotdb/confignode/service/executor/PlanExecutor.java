@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.confignode.service.executor;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeException;
 import org.apache.iotdb.confignode.persistence.AuthorInfoPersistence;
 import org.apache.iotdb.confignode.persistence.DataNodeInfoPersistence;
@@ -34,7 +35,6 @@ import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.auth.AuthException;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 public class PlanExecutor {
 
