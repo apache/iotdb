@@ -22,7 +22,6 @@ package org.apache.iotdb.db.metadata.schemaregion;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.SchemaEngineType;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaRegion;
@@ -38,7 +37,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class SchemaEngine {
 
   private Map<SchemaRegionId, ISchemaRegion> schemaRegionMap;
-  private SchemaEngineType schemaRegionStoredType;
+  private SchemaEngineMode schemaRegionStoredMode;
   private static final Logger logger = LoggerFactory.getLogger(SchemaEngine.class);
 
   private static class SchemaEngineManagerHolder {
@@ -55,8 +54,9 @@ public class SchemaEngine {
 
   public void init() {
     schemaRegionMap = new ConcurrentHashMap<>();
-    schemaRegionStoredType = IoTDBDescriptor.getInstance().getConfig().getMetadataManagerType();
-    logger.info("used schema engine type: {}.", schemaRegionStoredType);
+    schemaRegionStoredMode =
+        SchemaEngineMode.valueOf(IoTDBDescriptor.getInstance().getConfig().getSchemaEngineMode());
+    logger.info("used schema engine mode: {}.", schemaRegionStoredMode);
   }
 
   public void clear() {
@@ -81,18 +81,18 @@ public class SchemaEngine {
     if (schemaRegion != null) {
       return schemaRegion;
     }
-    switch (schemaRegionStoredType) {
-      case MEMORY_BASED:
+    switch (schemaRegionStoredMode) {
+      case Memory:
         schemaRegion = new SchemaRegion(storageGroup, schemaRegionId, storageGroupMNode);
         break;
-      case ROCKSDB_BASED:
+      case Rocksdb_based:
         schemaRegion = new RSchemaRegion(storageGroup, schemaRegionId, storageGroupMNode);
         break;
       default:
         throw new UnsupportedOperationException(
             String.format(
-                "This type [%s] is not supported. Please check and modify it.",
-                schemaRegionStoredType));
+                "This mode [%s] is not supported. Please check and modify it.",
+                schemaRegionStoredMode));
     }
     schemaRegionMap.put(schemaRegionId, schemaRegion);
     return schemaRegion;

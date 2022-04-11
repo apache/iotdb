@@ -26,7 +26,6 @@ import org.apache.iotdb.db.engine.compaction.inner.InnerCompactionStrategy;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
-import org.apache.iotdb.db.metadata.SchemaEngineType;
 import org.apache.iotdb.db.service.thrift.impl.InfluxDBServiceImpl;
 import org.apache.iotdb.db.service.thrift.impl.TSServiceImpl;
 import org.apache.iotdb.db.wal.utils.WALMode;
@@ -831,8 +830,6 @@ public class IoTDBConfig {
 
   /** cache size for pages in one schema file */
   private int pageCacheSizeInSchemaFile = 1024;
-
-  private SchemaEngineType schemaEngineType = SchemaEngineType.MEMORY_BASED;
 
   /**
    * Ip and port of config nodes. each one is a {internalIp | domain name}:{meta port} string tuple.
@@ -2650,16 +2647,8 @@ public class IoTDBConfig {
     this.pageCacheSizeInSchemaFile = pageCacheSizeInSchemaFile;
   }
 
-  public SchemaEngineType getMetadataManagerType() {
-    return schemaEngineType;
-  }
-
   public List<String> getConfigNodeUrls() {
     return configNodeUrls;
-  }
-
-  public void setMetadataManagerType(String metadataManagerType) {
-    this.schemaEngineType = SchemaEngineType.of(metadataManagerType);
   }
 
   public void setConfigNodeUrls(List<String> configNodeUrls) {
