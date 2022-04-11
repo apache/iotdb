@@ -59,4 +59,11 @@ public class FragmentInstanceId {
   public TFragmentInstanceId toThrift() {
     return new TFragmentInstanceId(queryId.getId(), String.valueOf(fragmentId.getId()), instanceId);
   }
+
+  public static FragmentInstanceId fromThrift(TFragmentInstanceId tFragmentInstanceId) {
+    return new FragmentInstanceId(
+        new PlanFragmentId(
+            tFragmentInstanceId.queryId, Integer.parseInt(tFragmentInstanceId.fragmentId)),
+        tFragmentInstanceId.instanceId);
+  }
 }

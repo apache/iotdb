@@ -20,6 +20,7 @@ package org.apache.iotdb.db.mpp.sql.planner.plan;
 
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
+import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeUtil;
@@ -38,6 +39,7 @@ import java.util.Map;
 public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
 
   private SubPlan subPlan;
+  private Analysis analysis;
 
   // Record all the FragmentInstances belonged to same PlanFragment
   Map<PlanFragmentId, FragmentInstance> instanceMap;
@@ -45,8 +47,9 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
   Map<PlanNodeId, PlanFragmentId> planNodeMap;
   List<FragmentInstance> fragmentInstanceList;
 
-  public SimpleFragmentParallelPlanner(SubPlan subPlan) {
+  public SimpleFragmentParallelPlanner(SubPlan subPlan, Analysis analysis) {
     this.subPlan = subPlan;
+    this.analysis = analysis;
     this.instanceMap = new HashMap<>();
     this.planNodeMap = new HashMap<>();
     this.fragmentInstanceList = new ArrayList<>();

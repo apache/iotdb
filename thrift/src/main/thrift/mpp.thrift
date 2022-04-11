@@ -61,8 +61,15 @@ struct TFragmentInstance {
   1: required binary body
 }
 
+struct TConsensusGroupId {
+  1: required i32 id
+  2: required string type
+}
+
 struct TSendFragmentInstanceReq {
   1: required TFragmentInstance fragmentInstance
+  2: required TConsensusGroupId consensusGroupId
+  3: required string queryType
 }
 
 struct TSendFragmentInstanceResp {
