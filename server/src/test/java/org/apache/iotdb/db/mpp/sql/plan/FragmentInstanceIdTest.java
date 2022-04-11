@@ -29,7 +29,7 @@ public class FragmentInstanceIdTest {
   @Test
   public void TestFromThrift() {
     String queryId = "test_query";
-    TFragmentInstanceId tId = new TFragmentInstanceId(queryId, "1", "0");
+    TFragmentInstanceId tId = new TFragmentInstanceId(queryId, 1, "0");
     FragmentInstanceId id = FragmentInstanceId.fromThrift(tId);
     Assert.assertEquals(queryId, id.getQueryId().getId());
     Assert.assertEquals(1, id.getFragmentId().getId());
