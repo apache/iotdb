@@ -191,8 +191,7 @@ public class AuthorNode extends PlanNode {
     byteBuffer.putInt(0);
   }
 
-  public static AuthorNode deserialize(ByteBuffer byteBuffer)
-      throws IllegalPathException, AuthException {
+  public static AuthorNode deserialize(ByteBuffer byteBuffer) throws IllegalPathException {
     String id;
     AuthorOperator.AuthorType authorType;
     String userName;
@@ -224,15 +223,19 @@ public class AuthorNode extends PlanNode {
     } else {
       nodeName = new PartialPath(ReadWriteIOUtils.readString(byteBuffer));
     }
-    return new AuthorNode(
-        new PlanNodeId(id),
-        authorType,
-        userName,
-        roleName,
-        password,
-        newPassword,
-        permissions,
-        nodeName);
+    try {
+      return new AuthorNode(
+          new PlanNodeId(id),
+          authorType,
+          userName,
+          roleName,
+          password,
+          newPassword,
+          permissions,
+          nodeName);
+    } catch (AuthException e) {
+      throw new IllegalArgumentException(e.getMessage());
+    }
   }
 
   public Set<Integer> strToPermissions(String[] privilegeList) throws AuthException {
@@ -257,9 +260,9 @@ public class AuthorNode extends PlanNode {
     return result;
   }
 
-  private int getPlanType(AuthorOperator.AuthorType AuthorType) {
+  private int getPlanType(AuthorOperator.AuthorType authorType) {
     int type;
-    switch (AuthorType) {
+    switch (authorType) {
       case CREATE_USER:
         type = AuthorOperator.AuthorType.CREATE_USER.ordinal();
         break;
