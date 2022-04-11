@@ -83,6 +83,7 @@ public class SchemaEngine {
     }
     switch (schemaRegionStoredMode) {
       case Memory:
+      case Schema_File:
         schemaRegion = new SchemaRegion(storageGroup, schemaRegionId, storageGroupMNode);
         break;
       case Rocksdb_based:
