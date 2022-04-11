@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
+import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.mpp.sql.planner.plan.PlanFragment;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
@@ -101,12 +102,15 @@ public class FragmentInstanceSerdeTest {
     offsetNode.addChild(limitNode);
 
     FragmentInstance fragmentInstance =
-        new FragmentInstance(new PlanFragment(new PlanFragmentId("test", -1), offsetNode), -1);
+        new FragmentInstance(
+            new PlanFragment(new PlanFragmentId("test", -1), offsetNode),
+            -1,
+            new GroupByFilter(1, 2, 3, 4),
+            QueryType.READ);
     RegionReplicaSet regionReplicaSet =
         new RegionReplicaSet(new DataRegionId(1), new ArrayList<>());
     fragmentInstance.setDataRegionId(regionReplicaSet);
     fragmentInstance.setHostEndpoint(new Endpoint("127.0.0.1", 6666));
-    fragmentInstance.setTimeFilter(new GroupByFilter(1, 2, 3, 4));
 
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
     fragmentInstance.serializeRequest(byteBuffer);
