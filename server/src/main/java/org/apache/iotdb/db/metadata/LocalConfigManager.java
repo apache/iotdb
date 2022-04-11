@@ -21,8 +21,7 @@ package org.apache.iotdb.db.metadata;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.consensus.ConsensusGroupId;
-import org.apache.iotdb.commons.consensus.GroupType;
+import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -163,9 +162,8 @@ public class LocalConfigManager {
       }
 
       for (File schemaRegionDir : schemaRegionDirs) {
-        ConsensusGroupId schemaRegionId =
-            new ConsensusGroupId(
-                GroupType.SchemaRegion, Integer.parseInt(schemaRegionDir.getName()));
+        SchemaRegionId schemaRegionId =
+            new SchemaRegionId(Integer.parseInt(schemaRegionDir.getName()));
         localCreateSchemaRegion(storageGroup, schemaRegionId);
         partitionTable.putSchemaRegionId(storageGroup, schemaRegionId);
       }
@@ -508,27 +506,27 @@ public class LocalConfigManager {
 
   // region Interfaces for SchemaRegion Management
 
-  public void createSchemaRegion(PartialPath storageGroup, ConsensusGroupId schemaRegionId)
+  public void createSchemaRegion(PartialPath storageGroup, SchemaRegionId schemaRegionId)
       throws MetadataException {
     ensureStorageGroup(storageGroup, false);
     localCreateSchemaRegion(storageGroup, schemaRegionId);
     partitionTable.putSchemaRegionId(storageGroup, schemaRegionId);
   }
 
-  public ISchemaRegion getSchemaRegion(PartialPath storageGroup, ConsensusGroupId schemaRegionId)
+  public ISchemaRegion getSchemaRegion(PartialPath storageGroup, SchemaRegionId schemaRegionId)
       throws MetadataException {
     return schemaEngine.getSchemaRegion(schemaRegionId);
   }
 
-  public void deleteSchemaRegion(PartialPath storageGroup, ConsensusGroupId schemaRegionId)
+  public void deleteSchemaRegion(PartialPath storageGroup, SchemaRegionId schemaRegionId)
       throws MetadataException {
     partitionTable.removeSchemaRegionId(storageGroup, schemaRegionId);
     schemaEngine.deleteSchemaRegion(schemaRegionId);
   }
 
   private void deleteSchemaRegionsInStorageGroup(
-      PartialPath storageGroup, Set<ConsensusGroupId> schemaRegionIdSet) throws MetadataException {
-    for (ConsensusGroupId schemaRegionId : schemaRegionIdSet) {
+      PartialPath storageGroup, Set<SchemaRegionId> schemaRegionIdSet) throws MetadataException {
+    for (SchemaRegionId schemaRegionId : schemaRegionIdSet) {
       schemaEngine.deleteSchemaRegion(schemaRegionId);
     }
 
@@ -545,7 +543,7 @@ public class LocalConfigManager {
   }
 
   private ISchemaRegion localCreateSchemaRegion(
-      PartialPath storageGroup, ConsensusGroupId schemaRegionId) throws MetadataException {
+      PartialPath storageGroup, SchemaRegionId schemaRegionId) throws MetadataException {
     return schemaEngine.createSchemaRegion(
         storageGroup,
         schemaRegionId,
@@ -561,7 +559,7 @@ public class LocalConfigManager {
    */
   public ISchemaRegion getBelongedSchemaRegion(PartialPath path) throws MetadataException {
     PartialPath storageGroup = storageGroupSchemaManager.getBelongedStorageGroup(path);
-    ConsensusGroupId schemaRegionId = partitionTable.getSchemaRegionId(storageGroup, path);
+    SchemaRegionId schemaRegionId = partitionTable.getSchemaRegionId(storageGroup, path);
     ISchemaRegion schemaRegion = schemaEngine.getSchemaRegion(schemaRegionId);
     if (schemaRegion == null) {
       schemaRegion = localCreateSchemaRegion(storageGroup, schemaRegionId);
@@ -588,7 +586,7 @@ public class LocalConfigManager {
     List<ISchemaRegion> result = new ArrayList<>();
     for (PartialPath storageGroup :
         storageGroupSchemaManager.getInvolvedStorageGroups(pathPattern, isPrefixMatch)) {
-      for (ConsensusGroupId schemaRegionId :
+      for (SchemaRegionId schemaRegionId :
           partitionTable.getInvolvedSchemaRegionIds(storageGroup, pathPattern, isPrefixMatch)) {
         result.add(schemaEngine.getSchemaRegion(schemaRegionId));
       }
@@ -600,7 +598,7 @@ public class LocalConfigManager {
   public List<ISchemaRegion> getSchemaRegionsByStorageGroup(PartialPath storageGroup)
       throws MetadataException {
     List<ISchemaRegion> result = new ArrayList<>();
-    for (ConsensusGroupId schemaRegionId :
+    for (SchemaRegionId schemaRegionId :
         partitionTable.getSchemaRegionIdsByStorageGroup(storageGroup)) {
       result.add(schemaEngine.getSchemaRegion(schemaRegionId));
     }
@@ -623,7 +621,7 @@ public class LocalConfigManager {
 
     Template template = templateManager.getTemplate(plan.getName());
 
-    for (ConsensusGroupId schemaRegionId : template.getRelatedSchemaRegion()) {
+    for (SchemaRegionId schemaRegionId : template.getRelatedSchemaRegion()) {
       if (!schemaEngine
           .getSchemaRegion(schemaRegionId)
           .isTemplateAppendable(template, plan.getMeasurements())) {
@@ -713,7 +711,7 @@ public class LocalConfigManager {
         result.addAll(schemaRegion.getPathsSetTemplate(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
       }
     } else {
-      for (ConsensusGroupId schemaRegionId :
+      for (SchemaRegionId schemaRegionId :
           templateManager.getTemplate(templateName).getRelatedSchemaRegion()) {
         result.addAll(
             schemaEngine.getSchemaRegion(schemaRegionId).getPathsSetTemplate(templateName));
@@ -730,7 +728,7 @@ public class LocalConfigManager {
         result.addAll(schemaRegion.getPathsUsingTemplate(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
       }
     } else {
-      for (ConsensusGroupId schemaRegionId :
+      for (SchemaRegionId schemaRegionId :
           templateManager.getTemplate(templateName).getRelatedSchemaRegion()) {
         result.addAll(
             schemaEngine.getSchemaRegion(schemaRegionId).getPathsUsingTemplate(templateName));
@@ -784,5 +782,4 @@ public class LocalConfigManager {
   }
 
   // endregion
-
 }

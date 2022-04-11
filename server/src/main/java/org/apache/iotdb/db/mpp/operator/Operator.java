@@ -41,10 +41,10 @@ public interface Operator extends AutoCloseable {
   }
 
   /** Gets next tsBlock from this operator. If no data is currently available, return null. */
-  TsBlock next() throws IOException;
+  TsBlock next();
 
   /** @return true if the operator has more data, otherwise false */
-  boolean hasNext() throws IOException;
+  boolean hasNext();
 
   /** This method will always be called before releasing the Operator reference. */
   @Override

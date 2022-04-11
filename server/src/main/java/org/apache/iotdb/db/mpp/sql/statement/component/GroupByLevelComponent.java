@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.sql.statement.component;
 
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.ColumnHeader;
 import org.apache.iotdb.db.mpp.sql.statement.StatementNode;
 
 import java.util.Map;
@@ -47,5 +48,9 @@ public class GroupByLevelComponent extends StatementNode {
 
   public Map<String, String> getGroupedPathMap() {
     return groupByLevelController.getGroupedPathMap();
+  }
+
+  public Map<ColumnHeader, ColumnHeader> getGroupedHeaderMap() {
+    return groupByLevelController.getGroupedHeaderMap();
   }
 }

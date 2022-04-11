@@ -73,7 +73,7 @@ import java.util.stream.Collectors;
  *
  * <p>See jira [IOTDB-2674](https://issues.apache.org/jira/browse/IOTDB-2674) for more details.
  */
-public class RatisConsensus implements IConsensus {
+class RatisConsensus implements IConsensus {
   // the unique net communication endpoint
   private final RaftPeer myself;
 
@@ -89,41 +89,36 @@ public class RatisConsensus implements IConsensus {
   private static final int LEADER_PRIORITY = 1;
 
   private Logger logger = LoggerFactory.getLogger(RatisConsensus.class);
-  /**
-   * This function will use the previous client for groupId to query the latest group info It will
-   * update the new group info into the groupMap and rebuild its client
-   *
-   * @throws ConsensusGroupNotExistException when cannot get the group info
-   */
-  private void syncGroupInfoAndRebuildClient(ConsensusGroupId groupId)
-      throws ConsensusGroupNotExistException {
-    RaftGroupId raftGroupId = Utils.toRatisGroupId(groupId);
-    RaftClient current = clientMap.get(raftGroupId);
-    try {
-      GroupInfoReply reply = current.getGroupManagementApi(myself.getId()).info(raftGroupId);
 
-      if (!reply.isSuccess()) {
-        throw new ConsensusGroupNotExistException(groupId);
-      }
+  public RatisConsensus(Endpoint endpoint, File ratisStorageDir, IStateMachine.Registry registry)
+      throws IOException {
 
-      raftGroupMap.put(raftGroupId, reply.getGroup());
-      buildClientAndCache(raftGroupMap.get(raftGroupId));
-    } catch (IOException e) {
-      throw new ConsensusGroupNotExistException(groupId);
-    }
-  }
+    this.clientMap = new ConcurrentHashMap<>();
+    this.raftGroupMap = new ConcurrentHashMap<>();
+    this.localFakeId = ClientId.randomId();
+    this.localFakeCallId = new AtomicLong(0);
 
-  private RaftClientReply sendReconfiguration(RaftGroupId raftGroupId, List<RaftPeer> peers)
-      throws RatisRequestFailedException {
-    RaftClient client = clientMap.get(raftGroupId);
-    // notify the group leader of configuration change
-    RaftClientReply reply = null;
-    try {
-      reply = client.admin().setConfiguration(peers);
-    } catch (IOException e) {
-      throw new RatisRequestFailedException(e);
-    }
-    return reply;
+    // create a RaftPeer as endpoint of comm
+    String address = Utils.IPAddress(endpoint);
+    myself = Utils.toRaftPeer(endpoint, DEFAULT_PRIORITY);
+
+    RaftProperties properties = new RaftProperties();
+
+    RaftServerConfigKeys.setStorageDir(properties, Collections.singletonList(ratisStorageDir));
+
+    // set the port which server listen to in RaftProperty object
+    final int port = NetUtils.createSocketAddr(address).getPort();
+    GrpcConfigKeys.Server.setPort(properties, port);
+
+    server =
+        RaftServer.newBuilder()
+            .setServerId(myself.getId())
+            .setProperties(properties)
+            .setStateMachineRegistry(
+                raftGroupId ->
+                    new ApplicationStateMachineProxy(
+                        registry.apply(Utils.toConsensusGroupId(raftGroupId))))
+            .build();
   }
 
   @Override
@@ -517,71 +512,40 @@ public class RatisConsensus implements IConsensus {
     }
   }
 
-  private RatisConsensus(Endpoint endpoint, File ratisStorageDir, IStateMachine.Registry registry)
-      throws IOException {
+  /**
+   * This function will use the previous client for groupId to query the latest group info It will
+   * update the new group info into the groupMap and rebuild its client
+   *
+   * @throws ConsensusGroupNotExistException when cannot get the group info
+   */
+  private void syncGroupInfoAndRebuildClient(ConsensusGroupId groupId)
+      throws ConsensusGroupNotExistException {
+    RaftGroupId raftGroupId = Utils.toRatisGroupId(groupId);
+    RaftClient current = clientMap.get(raftGroupId);
+    try {
+      GroupInfoReply reply = current.getGroupManagementApi(myself.getId()).info(raftGroupId);
 
-    this.clientMap = new ConcurrentHashMap<>();
-    this.raftGroupMap = new ConcurrentHashMap<>();
-    this.localFakeId = ClientId.randomId();
-    this.localFakeCallId = new AtomicLong(0);
+      if (!reply.isSuccess()) {
+        throw new ConsensusGroupNotExistException(groupId);
+      }
 
-    // create a RaftPeer as endpoint of comm
-    String address = Utils.IPAddress(endpoint);
-    myself = Utils.toRaftPeer(endpoint, DEFAULT_PRIORITY);
-
-    RaftProperties properties = new RaftProperties();
-
-    // set the storage directory (different for each peer) in RaftProperty object
-    if (ratisStorageDir == null || !ratisStorageDir.isDirectory()) {
-      ratisStorageDir = new File("./" + myself.getId().toString());
+      raftGroupMap.put(raftGroupId, reply.getGroup());
+      buildClientAndCache(raftGroupMap.get(raftGroupId));
+    } catch (IOException e) {
+      throw new ConsensusGroupNotExistException(groupId);
     }
-    RaftServerConfigKeys.setStorageDir(properties, Collections.singletonList(ratisStorageDir));
-
-    // set the port which server listen to in RaftProperty object
-    final int port = NetUtils.createSocketAddr(address).getPort();
-    GrpcConfigKeys.Server.setPort(properties, port);
-
-    server =
-        RaftServer.newBuilder()
-            .setServerId(myself.getId())
-            .setProperties(properties)
-            .setStateMachineRegistry(
-                raftGroupId ->
-                    new ApplicationStateMachineProxy(
-                        registry.apply(Utils.toConsensusGroupId(raftGroupId))))
-            .build();
   }
 
-  public static Builder newBuilder() {
-    return new Builder();
-  }
-
-  public static class Builder {
-    private Endpoint endpoint;
-    private IStateMachine.Registry registry;
-    private File storageDir;
-
-    public Builder() {
-      storageDir = null;
+  private RaftClientReply sendReconfiguration(RaftGroupId raftGroupId, List<RaftPeer> peers)
+      throws RatisRequestFailedException {
+    RaftClient client = clientMap.get(raftGroupId);
+    // notify the group leader of configuration change
+    RaftClientReply reply;
+    try {
+      reply = client.admin().setConfiguration(peers);
+    } catch (IOException e) {
+      throw new RatisRequestFailedException(e);
     }
-
-    public Builder setEndpoint(Endpoint endpoint) {
-      this.endpoint = endpoint;
-      return this;
-    }
-
-    public Builder setStateMachineRegistry(IStateMachine.Registry registry) {
-      this.registry = registry;
-      return this;
-    }
-
-    public Builder setStorageDir(File dir) {
-      this.storageDir = dir;
-      return this;
-    }
-
-    public RatisConsensus build() throws IOException {
-      return new RatisConsensus(endpoint, storageDir, registry);
-    }
+    return reply;
   }
 }

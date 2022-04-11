@@ -19,95 +19,48 @@
 
 package org.apache.iotdb.db.mpp.sql.plan;
 
+import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
+import org.apache.iotdb.db.mpp.sql.analyze.Analyzer;
 import org.apache.iotdb.db.mpp.sql.parser.StatementGenerator;
 import org.apache.iotdb.db.mpp.sql.planner.LogicalPlanner;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AlterTimeSeriesNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AuthorNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement;
+import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
+import java.nio.ByteBuffer;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
+import static org.apache.iotdb.db.mpp.sql.plan.QueryLogicalPlanUtil.querySQLs;
+import static org.apache.iotdb.db.mpp.sql.plan.QueryLogicalPlanUtil.sqlToPlanMap;
 import static org.junit.Assert.fail;
 
 public class LogicalPlannerTest {
 
-  LogicalPlanPrinter planPrinter = new LogicalPlanPrinter();
-
-  @Before
-  public void setUp() {}
-
   @Test
-  @Ignore
-  public void rawDataQueryTest() {
-    PlanNode root =
-        parseSQLToPlanNode(
-            "SELECT s1,s2 FROM root.sg1.d1 WHERE time > 10 and s2 > 100 WITHOUT NULL ANY(s1) LIMIT 1 OFFSET 10");
-    System.out.println(planPrinter.print(root));
-    // TODO: replace all paths to full paths
-    Assert.assertEquals(
-        "[OffsetNode (7)]\n"
-            + " │   RowOffset: 10\n"
-            + " └─[LimitNode (6)]\n"
-            + "    │   RowLimit: 1\n"
-            + "    └─[FilterNullNode (5)]\n"
-            + "       │   FilterNullPolicy: CONTAINS_NULL\n"
-            + "       │   FilterNullColumnNames: [s1]\n"
-            + "       └─[FilterNode (4)]\n"
-            + "          │   QueryFilter: [and [time>10][s2>100]]\n"
-            + "          └─[TimeJoinNode (3)]\n"
-            + "             │   MergeOrder: TIMESTAMP_ASC\n"
-            + "             │   FilterNullPolicy: null\n"
-            + "             └─[SeriesScanNode (1)]\n"
-            + "                │   SeriesPath: s1\n"
-            + "                │   scanOrder: TIMESTAMP_ASC\n"
-            + "               [SeriesScanNode (2)]\n"
-            + "                │   SeriesPath: s2\n"
-            + "                │   scanOrder: TIMESTAMP_ASC\n",
-        planPrinter.print(root));
-  }
-
-  @Test
-  @Ignore
-  public void aggregationQueryTest() {
-    PlanNode root =
-        parseSQLToPlanNode(
-            "SELECT sum(s1), avg(s2) FROM root.sg1.d1 WHERE time > 10 LIMIT 1 OFFSET 10");
-    System.out.println(planPrinter.print(root));
-    // TODO: replace all paths to full paths
-    Assert.assertEquals(
-        "[OffsetNode (6)]\n"
-            + " │   RowOffset: 10\n"
-            + " └─[LimitNode (5)]\n"
-            + "    │   RowLimit: 1\n"
-            + "    └─[FilterNode (4)]\n"
-            + "       │   QueryFilter: [time>10]\n"
-            + "       └─[TimeJoinNode (3)]\n"
-            + "          │   MergeOrder: TIMESTAMP_ASC\n"
-            + "          │   FilterNullPolicy: null\n"
-            + "          └─[SeriesAggregateScanNode (2)]\n"
-            + "             │   AggregateFunction: avg(s2)\n"
-            + "            [SeriesAggregateScanNode (1)]\n"
-            + "             │   AggregateFunction: sum(s1)\n",
-        planPrinter.print(root));
+  public void queryPlanTest() {
+    for (String sql : querySQLs) {
+      Assert.assertEquals(sqlToPlanMap.get(sql), parseSQLToPlanNode(sql));
+    }
   }
 
   @Test
@@ -213,6 +166,15 @@ public class LogicalPlannerTest {
             }
           },
           createAlignedTimeSeriesNode.getTagsList());
+
+      // Test serialize and deserialize
+      ByteBuffer byteBuffer = ByteBuffer.allocate(1000);
+      createAlignedTimeSeriesNode.serialize(byteBuffer);
+      byteBuffer.flip();
+
+      CreateAlignedTimeSeriesNode createAlignedTimeSeriesNode1 =
+          (CreateAlignedTimeSeriesNode) PlanNodeType.deserialize(byteBuffer);
+      Assert.assertTrue(createAlignedTimeSeriesNode.equals(createAlignedTimeSeriesNode1));
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
@@ -235,6 +197,15 @@ public class LogicalPlannerTest {
             }
           },
           alterTimeSeriesNode.getAlterMap());
+
+      // Test serialize and deserialize
+      ByteBuffer byteBuffer = ByteBuffer.allocate(1000);
+      alterTimeSeriesNode.serialize(byteBuffer);
+      byteBuffer.flip();
+
+      AlterTimeSeriesNode alterTimeSeriesNode1 =
+          (AlterTimeSeriesNode) PlanNodeType.deserialize(byteBuffer);
+      Assert.assertTrue(alterTimeSeriesNode.equals(alterTimeSeriesNode1));
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
@@ -255,6 +226,15 @@ public class LogicalPlannerTest {
             }
           },
           alterTimeSeriesNode.getAlterMap());
+
+      // Test serialize and deserialize
+      ByteBuffer byteBuffer = ByteBuffer.allocate(1000);
+      alterTimeSeriesNode.serialize(byteBuffer);
+      byteBuffer.flip();
+
+      AlterTimeSeriesNode alterTimeSeriesNode1 =
+          (AlterTimeSeriesNode) PlanNodeType.deserialize(byteBuffer);
+      Assert.assertTrue(alterTimeSeriesNode.equals(alterTimeSeriesNode1));
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
@@ -275,6 +255,15 @@ public class LogicalPlannerTest {
             }
           },
           alterTimeSeriesNode.getAlterMap());
+
+      // Test serialize and deserialize
+      ByteBuffer byteBuffer = ByteBuffer.allocate(1000);
+      alterTimeSeriesNode.serialize(byteBuffer);
+      byteBuffer.flip();
+
+      AlterTimeSeriesNode alterTimeSeriesNode1 =
+          (AlterTimeSeriesNode) PlanNodeType.deserialize(byteBuffer);
+      Assert.assertTrue(alterTimeSeriesNode.equals(alterTimeSeriesNode1));
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
@@ -295,6 +284,15 @@ public class LogicalPlannerTest {
             }
           },
           alterTimeSeriesNode.getAlterMap());
+
+      // Test serialize and deserialize
+      ByteBuffer byteBuffer = ByteBuffer.allocate(1000);
+      alterTimeSeriesNode.serialize(byteBuffer);
+      byteBuffer.flip();
+
+      AlterTimeSeriesNode alterTimeSeriesNode1 =
+          (AlterTimeSeriesNode) PlanNodeType.deserialize(byteBuffer);
+      Assert.assertTrue(alterTimeSeriesNode.equals(alterTimeSeriesNode1));
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
@@ -315,6 +313,15 @@ public class LogicalPlannerTest {
             }
           },
           alterTimeSeriesNode.getAlterMap());
+
+      // Test serialize and deserialize
+      ByteBuffer byteBuffer = ByteBuffer.allocate(1000);
+      alterTimeSeriesNode.serialize(byteBuffer);
+      byteBuffer.flip();
+
+      AlterTimeSeriesNode alterTimeSeriesNode1 =
+          (AlterTimeSeriesNode) PlanNodeType.deserialize(byteBuffer);
+      Assert.assertTrue(alterTimeSeriesNode.equals(alterTimeSeriesNode1));
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
@@ -344,10 +351,165 @@ public class LogicalPlannerTest {
             }
           },
           alterTimeSeriesNode.getAttributesMap());
+
+      // Test serialize and deserialize
+      ByteBuffer byteBuffer = ByteBuffer.allocate(1000);
+      alterTimeSeriesNode.serialize(byteBuffer);
+      byteBuffer.flip();
+
+      AlterTimeSeriesNode alterTimeSeriesNode1 =
+          (AlterTimeSeriesNode) PlanNodeType.deserialize(byteBuffer);
+      Assert.assertTrue(alterTimeSeriesNode.equals(alterTimeSeriesNode1));
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
     }
+  }
+
+  @Test
+  public void authorTest() throws AuthException {
+
+    String sql = null;
+    AuthorNode authorNode = null;
+    String[] privilegesList = {"DELETE_TIMESERIES"};
+
+    // create user
+    sql = "CREATE USER thulab 'passwd';";
+    authorNode = (AuthorNode) parseSQLToPlanNode(sql);
+    Assert.assertNotNull(authorNode);
+    Assert.assertEquals(AuthorOperator.AuthorType.CREATE_USER, authorNode.getAuthorType());
+    Assert.assertEquals("thulab", authorNode.getUserName());
+    Assert.assertEquals("passwd", authorNode.getPassword());
+
+    // create role
+    sql = "CREATE ROLE admin;";
+    authorNode = (AuthorNode) parseSQLToPlanNode(sql);
+    Assert.assertNotNull(authorNode);
+    Assert.assertEquals(AuthorOperator.AuthorType.CREATE_ROLE, authorNode.getAuthorType());
+    Assert.assertEquals("admin", authorNode.getRoleName());
+
+    // alter user
+    sql = "ALTER USER tempuser SET PASSWORD 'newpwd';";
+    authorNode = (AuthorNode) parseSQLToPlanNode(sql);
+    Assert.assertNotNull(authorNode);
+    Assert.assertEquals(AuthorOperator.AuthorType.UPDATE_USER, authorNode.getAuthorType());
+    Assert.assertEquals("tempuser", authorNode.getUserName());
+    Assert.assertEquals("newpwd", authorNode.getNewPassword());
+
+    // grant user
+    sql = "GRANT USER tempuser PRIVILEGES DELETE_TIMESERIES on root.ln;";
+    authorNode = (AuthorNode) parseSQLToPlanNode(sql);
+    Assert.assertNotNull(authorNode);
+    Assert.assertEquals(AuthorOperator.AuthorType.GRANT_USER, authorNode.getAuthorType());
+    Assert.assertEquals("tempuser", authorNode.getUserName());
+    Assert.assertEquals(authorNode.strToPermissions(privilegesList), authorNode.getPermissions());
+    Assert.assertEquals("root.ln", authorNode.getNodeName().getFullPath());
+
+    // grant role
+    sql = "GRANT ROLE temprole PRIVILEGES DELETE_TIMESERIES ON root.ln;";
+    authorNode = (AuthorNode) parseSQLToPlanNode(sql);
+    Assert.assertNotNull(authorNode);
+    Assert.assertEquals(AuthorOperator.AuthorType.GRANT_ROLE, authorNode.getAuthorType());
+    Assert.assertEquals("temprole", authorNode.getRoleName());
+    Assert.assertEquals(authorNode.strToPermissions(privilegesList), authorNode.getPermissions());
+    Assert.assertEquals("root.ln", authorNode.getNodeName().getFullPath());
+
+    // grant role to user
+    sql = "GRANT temprole TO tempuser;";
+    authorNode = (AuthorNode) parseSQLToPlanNode(sql);
+    Assert.assertNotNull(authorNode);
+    Assert.assertEquals(AuthorOperator.AuthorType.GRANT_ROLE_TO_USER, authorNode.getAuthorType());
+    Assert.assertEquals("temprole", authorNode.getRoleName());
+    Assert.assertEquals("tempuser", authorNode.getUserName());
+
+    // revoke user
+    sql = "REVOKE USER tempuser PRIVILEGES DELETE_TIMESERIES on root.ln;";
+    authorNode = (AuthorNode) parseSQLToPlanNode(sql);
+    Assert.assertNotNull(authorNode);
+    Assert.assertEquals(AuthorOperator.AuthorType.REVOKE_USER, authorNode.getAuthorType());
+    Assert.assertEquals("tempuser", authorNode.getUserName());
+    Assert.assertEquals(authorNode.strToPermissions(privilegesList), authorNode.getPermissions());
+    Assert.assertEquals("root.ln", authorNode.getNodeName().getFullPath());
+
+    // revoke role
+    sql = "REVOKE ROLE temprole PRIVILEGES DELETE_TIMESERIES ON root.ln;";
+    authorNode = (AuthorNode) parseSQLToPlanNode(sql);
+    Assert.assertNotNull(authorNode);
+    Assert.assertEquals(AuthorOperator.AuthorType.REVOKE_ROLE, authorNode.getAuthorType());
+    Assert.assertEquals("temprole", authorNode.getRoleName());
+    Assert.assertEquals(authorNode.strToPermissions(privilegesList), authorNode.getPermissions());
+    Assert.assertEquals("root.ln", authorNode.getNodeName().getFullPath());
+
+    // revoke role from user
+    sql = "REVOKE temprole FROM tempuser;";
+    authorNode = (AuthorNode) parseSQLToPlanNode(sql);
+    Assert.assertNotNull(authorNode);
+    Assert.assertEquals(
+        AuthorOperator.AuthorType.REVOKE_ROLE_FROM_USER, authorNode.getAuthorType());
+    Assert.assertEquals("temprole", authorNode.getRoleName());
+    Assert.assertEquals("tempuser", authorNode.getUserName());
+
+    // drop user
+    sql = "DROP USER xiaoming;";
+    authorNode = (AuthorNode) parseSQLToPlanNode(sql);
+    Assert.assertNotNull(authorNode);
+    Assert.assertEquals(AuthorOperator.AuthorType.DROP_USER, authorNode.getAuthorType());
+    Assert.assertEquals("xiaoming", authorNode.getUserName());
+
+    // drop role
+    sql = "DROP ROLE admin;";
+    authorNode = (AuthorNode) parseSQLToPlanNode(sql);
+    Assert.assertNotNull(authorNode);
+    Assert.assertEquals(AuthorOperator.AuthorType.DROP_ROLE, authorNode.getAuthorType());
+    Assert.assertEquals("admin", authorNode.getRoleName());
+
+    // list user
+    sql = "LIST USER";
+    authorNode = (AuthorNode) parseSQLToPlanNode(sql);
+    Assert.assertNotNull(authorNode);
+    Assert.assertEquals(AuthorOperator.AuthorType.LIST_USER, authorNode.getAuthorType());
+
+    // list role
+    sql = "LIST ROLE";
+    authorNode = (AuthorNode) parseSQLToPlanNode(sql);
+    Assert.assertNotNull(authorNode);
+    Assert.assertEquals(AuthorOperator.AuthorType.LIST_ROLE, authorNode.getAuthorType());
+
+    // list privileges user
+    sql = "LIST PRIVILEGES USER sgcc_wirte_user ON root.sgcc;";
+    authorNode = (AuthorNode) parseSQLToPlanNode(sql);
+    Assert.assertNotNull(authorNode);
+    Assert.assertEquals(AuthorOperator.AuthorType.LIST_USER_PRIVILEGE, authorNode.getAuthorType());
+
+    // list privileges role
+    sql = "LIST PRIVILEGES ROLE wirte_role ON root.sgcc;";
+    authorNode = (AuthorNode) parseSQLToPlanNode(sql);
+    Assert.assertNotNull(authorNode);
+    Assert.assertEquals(AuthorOperator.AuthorType.LIST_ROLE_PRIVILEGE, authorNode.getAuthorType());
+
+    // list user privileges
+    sql = "LIST USER PRIVILEGES tempuser;";
+    authorNode = (AuthorNode) parseSQLToPlanNode(sql);
+    Assert.assertNotNull(authorNode);
+    Assert.assertEquals(AuthorOperator.AuthorType.LIST_USER_PRIVILEGE, authorNode.getAuthorType());
+
+    // list role privileges
+    sql = "LIST ROLE PRIVILEGES actor;";
+    authorNode = (AuthorNode) parseSQLToPlanNode(sql);
+    Assert.assertNotNull(authorNode);
+    Assert.assertEquals(AuthorOperator.AuthorType.LIST_ROLE_PRIVILEGE, authorNode.getAuthorType());
+
+    // list all role of user
+    sql = "LIST ALL ROLE OF USER tempuser;";
+    authorNode = (AuthorNode) parseSQLToPlanNode(sql);
+    Assert.assertNotNull(authorNode);
+    Assert.assertEquals(AuthorOperator.AuthorType.LIST_USER_ROLES, authorNode.getAuthorType());
+
+    // list all user of role
+    sql = "LIST ALL USER OF ROLE roleuser;";
+    authorNode = (AuthorNode) parseSQLToPlanNode(sql);
+    Assert.assertNotNull(authorNode);
+    Assert.assertEquals(AuthorOperator.AuthorType.LIST_ROLE_USERS, authorNode.getAuthorType());
   }
 
   private PlanNode parseSQLToPlanNode(String sql) {
@@ -356,11 +518,8 @@ public class LogicalPlannerTest {
       Statement statement =
           StatementGenerator.createStatement(sql, ZonedDateTime.now().getOffset());
       MPPQueryContext context = new MPPQueryContext(new QueryId("test_query"));
-      // TODO: do analyze after implementing ISchemaFetcher and IPartitionFetcher
-      //      Analyzer analyzer = new Analyzer(context);
-      //      Analysis analysis = analyzer.analyze(statement);
-      Analysis analysis = new Analysis();
-      analysis.setStatement(statement);
+      Analyzer analyzer = new Analyzer(context);
+      Analysis analysis = analyzer.analyze(statement);
       LogicalPlanner planner = new LogicalPlanner(context, new ArrayList<>());
       planNode = planner.plan(analysis).getRootNode();
     } catch (Exception e) {

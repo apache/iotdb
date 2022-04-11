@@ -49,7 +49,7 @@ import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.db.service.basic.StandaloneServiceProvider;
 import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.sync.receiver.SyncServerManager;
-import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
+import org.apache.iotdb.db.wal.WALManager;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -131,10 +131,10 @@ public class IoTDB implements IoTDBMBean {
     initConfigManager();
     registerManager.register(JMXService.getInstance());
     registerManager.register(FlushManager.getInstance());
-    registerManager.register(MultiFileLogNodeManager.getInstance());
     registerManager.register(CacheHitRatioMonitor.getInstance());
     registerManager.register(CompactionTaskManager.getInstance());
     JMXService.registerMBean(getInstance(), mbeanName);
+    registerManager.register(WALManager.getInstance());
     registerManager.register(StorageEngine.getInstance());
     registerManager.register(TemporaryQueryDataFileService.getInstance());
     registerManager.register(UDFClassLoaderManager.getInstance());

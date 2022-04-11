@@ -32,7 +32,11 @@ import java.util.List;
 
 public class SchemaTree {
 
-  private SchemaNode root;
+  private final SchemaNode root;
+
+  public SchemaTree(SchemaNode root) {
+    this.root = root;
+  }
 
   /**
    * Return all measurement paths for given path pattern and filter the result by slimit and offset.

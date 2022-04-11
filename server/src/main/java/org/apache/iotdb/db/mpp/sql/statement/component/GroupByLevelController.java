@@ -22,11 +22,13 @@ package org.apache.iotdb.db.mpp.sql.statement.component;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.ColumnHeader;
 import org.apache.iotdb.db.mpp.sql.statement.crud.AggregationQueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.QueryStatement;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.*;
 
@@ -49,6 +51,8 @@ public class GroupByLevelController {
   int prevSize = 0;
   /** count(root.sg.d1.s1) with level = 1 -> count(root.*.d1.s1) */
   private final Map<String, String> groupedPathMap;
+
+  private final Map<ColumnHeader, ColumnHeader> groupedHeaderMap;
   /** count(root.*.d1.s1) -> alias */
   private Map<String, String> columnToAliasMap;
   /**
@@ -63,6 +67,7 @@ public class GroupByLevelController {
     this.limitPaths = seriesLimit > 0 ? new HashSet<>() : null;
     this.offsetPaths = seriesOffset > 0 ? new HashSet<>() : null;
     this.groupedPathMap = new LinkedHashMap<>();
+    this.groupedHeaderMap = new LinkedHashMap<>();
     this.levels =
         ((AggregationQueryStatement) queryStatement).getGroupByLevelComponent().getLevels();
   }
@@ -103,11 +108,17 @@ public class GroupByLevelController {
           boolean isCountStar = countWildcardIterIndices.contains(idx++);
           String groupedPath =
               generatePartialPathByLevel(isCountStar, paths.get(0).getNodes(), levels);
+          TSDataType dataType = paths.get(0).getSeriesType();
           String rawPath = String.format("%s(%s)", functionName, paths.get(0).getFullPath());
           String pathWithFunction = String.format("%s(%s)", functionName, groupedPath);
 
+          ColumnHeader rawPathHeader =
+              new ColumnHeader(paths.get(0).getFullPath(), functionName, dataType);
+          ColumnHeader groupedPathHeader = new ColumnHeader(groupedPath, functionName, dataType);
+
           if (seriesLimit == 0 && seriesOffset == 0) {
             groupedPathMap.put(rawPath, pathWithFunction);
+            groupedHeaderMap.put(rawPathHeader, groupedPathHeader);
             checkAliasAndUpdateAliasMap(rawColumn, pathWithFunction);
           } else {
             // We cannot judge whether the path after grouping exists until we add it to set
@@ -126,6 +137,7 @@ public class GroupByLevelController {
                 limitPaths.remove(pathWithFunction);
               } else {
                 groupedPathMap.put(rawPath, pathWithFunction);
+                groupedHeaderMap.put(rawPathHeader, groupedPathHeader);
                 checkAliasAndUpdateAliasMap(rawColumn, pathWithFunction);
               }
             } else {
@@ -221,5 +233,9 @@ public class GroupByLevelController {
 
   public Map<String, String> getGroupedPathMap() {
     return groupedPathMap;
+  }
+
+  public Map<ColumnHeader, ColumnHeader> getGroupedHeaderMap() {
+    return groupedHeaderMap;
   }
 }
