@@ -89,6 +89,7 @@
         <module>thrift-influxdb</module>
         <module>service-rpc</module>
         <module>jdbc</module>
+        <module>influxdb-protocol</module>
         <module>session</module>
         <module>cli</module>
         <module>openapi</module>

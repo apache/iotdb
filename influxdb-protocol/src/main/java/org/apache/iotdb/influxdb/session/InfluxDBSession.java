@@ -182,7 +182,7 @@ public class InfluxDBSession {
     try {
       TSQueryResultRsp tsQueryResultRsp = client.query(request);
       RpcUtils.verifySuccess(tsQueryResultRsp.status);
-      return new Gson().fromJson(tsQueryResultRsp.ResultJsonString, QueryResult.class);
+      return new Gson().fromJson(tsQueryResultRsp.resultJsonString, QueryResult.class);
     } catch (TException e) {
       e.printStackTrace();
       logger.error(e.getMessage());
@@ -191,7 +191,7 @@ public class InfluxDBSession {
           request.setSessionId(sessionId);
           TSQueryResultRsp tsQueryResultRsp = client.query(request);
           RpcUtils.verifySuccess(tsQueryResultRsp.status);
-          return new Gson().fromJson(tsQueryResultRsp.ResultJsonString, QueryResult.class);
+          return new Gson().fromJson(tsQueryResultRsp.resultJsonString, QueryResult.class);
         } catch (TException e1) {
           throw new IoTDBConnectionException(e1);
         }
