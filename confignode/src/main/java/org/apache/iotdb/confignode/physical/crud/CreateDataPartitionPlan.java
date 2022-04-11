@@ -31,14 +31,15 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class CreateDataPartitionPlan extends PhysicalPlan {
 
   private Map<String, Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>>
       assignedDataPartition;
 
-  public CreateDataPartitionPlan(PhysicalPlanType type) {
-    super(type);
+  public CreateDataPartitionPlan() {
+    super(PhysicalPlanType.CreateDataPartition);
   }
 
   public Map<String, Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>>
@@ -110,5 +111,18 @@ public class CreateDataPartitionPlan extends PhysicalPlan {
         }
       }
     }
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    CreateDataPartitionPlan that = (CreateDataPartitionPlan) o;
+    return assignedDataPartition.equals(that.assignedDataPartition);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(assignedDataPartition);
   }
 }

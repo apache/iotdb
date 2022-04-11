@@ -50,7 +50,8 @@ public class ConfigNodeConf {
   private int seriesPartitionSlotNum = 10000;
 
   /** SeriesPartitionSlot executor class */
-  private String seriesPartitionExecutorClass = "org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor";
+  private String seriesPartitionExecutorClass =
+      "org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor";
 
   /** Max concurrent client number */
   private int rpcMaxConcurrentClientNum = 65535;

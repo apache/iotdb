@@ -19,14 +19,13 @@
 package org.apache.iotdb.confignode.partition;
 
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
-import org.apache.iotdb.commons.consensus.DataRegionId;
-import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.confignode.util.SerializeDeserializeUtil;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class StorageGroupSchema {
 
@@ -94,5 +93,20 @@ public class StorageGroupSchema {
       ConsensusGroupId dataRegionId = ConsensusGroupId.Factory.create(buffer);
       dataRegionGroupIds.add(dataRegionId);
     }
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    StorageGroupSchema that = (StorageGroupSchema) o;
+    return name.equals(that.name)
+        && schemaRegionGroupIds.equals(that.schemaRegionGroupIds)
+        && dataRegionGroupIds.equals(that.dataRegionGroupIds);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(name, schemaRegionGroupIds, dataRegionGroupIds);
   }
 }

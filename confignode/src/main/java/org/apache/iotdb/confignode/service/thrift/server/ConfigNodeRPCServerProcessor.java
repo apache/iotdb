@@ -20,13 +20,12 @@ package org.apache.iotdb.confignode.service.thrift.server;
 
 import org.apache.iotdb.commons.cluster.DataNodeLocation;
 import org.apache.iotdb.commons.cluster.Endpoint;
-import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationDataSet;
 import org.apache.iotdb.confignode.consensus.response.DataNodesInfoDataSet;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionDataSet;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaDataSet;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.partition.StorageGroupSchema;
-import org.apache.iotdb.confignode.persistence.DataNodeInfoPersistence;
 import org.apache.iotdb.confignode.physical.PhysicalPlanType;
 import org.apache.iotdb.confignode.physical.crud.GetOrCreateDataPartitionPlan;
 import org.apache.iotdb.confignode.physical.sys.AuthorPlan;
@@ -42,7 +41,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupReq;
-import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
@@ -78,45 +76,18 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
 
   @Override
   public TDataNodeRegisterResp registerDataNode(TDataNodeRegisterReq req) throws TException {
-
-    // TODO: Only leader can register DataNode
-
+    RegisterDataNodePlan plan =
+        new RegisterDataNodePlan(
+            new DataNodeLocation(
+                -1, new Endpoint(req.getEndPoint().getIp(), req.getEndPoint().getPort())));
+    DataNodeConfigurationDataSet dataSet =
+        (DataNodeConfigurationDataSet) configManager.registerDataNode(plan);
     TDataNodeRegisterResp resp = new TDataNodeRegisterResp();
-    DataNodeLocation dataNodeLocation =
-        new DataNodeLocation(
-            -1, new Endpoint(req.getEndPoint().getIp(), req.getEndPoint().getPort()));
-    if (DataNodeInfoPersistence.getInstance().containsValue(dataNodeLocation)) {
-      resp.setStatus(new TSStatus(TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode()));
-      resp.setDataNodeID(dataNodeLocation.getDataNodeID());
-    } else {
-      resp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
-      dataNodeLocation.setDataNodeID(
-          DataNodeInfoPersistence.getInstance().generateNextDataNodeId());
-      resp.setDataNodeID(dataNodeLocation.getDataNodeID());
-
-      RegisterDataNodePlan plan = new RegisterDataNodePlan(dataNodeLocation);
-      configManager.registerDataNode(plan);
-    }
-
-    if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        || resp.getStatus().getCode() == TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode()) {
-      // Set TGlobalConfig
-      TGlobalConfig globalConfig = new TGlobalConfig();
-      globalConfig.setDataNodeConsensusProtocolClass(
-          ConfigNodeDescriptor.getInstance().getConf().getDataNodeConsensusProtocolClass());
-      globalConfig.setSeriesPartitionSlotNum(
-          ConfigNodeDescriptor.getInstance().getConf().getSeriesPartitionSlotNum());
-      globalConfig.setSeriesPartitionExecutorClass(
-          ConfigNodeDescriptor.getInstance().getConf().getSeriesPartitionExecutorClass());
-      resp.setGlobalConfig(globalConfig);
-      LOGGER.info(
-          "Register DataNode successful. DataNodeID: {}, {}",
-          resp.getDataNodeID(),
-          req.getEndPoint().toString());
-    } else {
-      LOGGER.error("Register DataNode failed. {}", resp.getStatus().getMessage());
-    }
-
+    dataSet.convertToRpcDataNodeRegisterResp(resp);
+    LOGGER.info(
+        "Register DataNode successful. DataNodeID: {}, {}",
+        resp.getDataNodeID(),
+        req.getEndPoint().toString());
     return resp;
   }
 
@@ -131,9 +102,9 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
       Map<Integer, TDataNodeMessage> msgMap = new HashMap<>();
       for (DataNodeLocation info : dataSet.getDataNodeList()) {
         msgMap.put(
-            info.getDataNodeID(),
+            info.getDataNodeId(),
             new TDataNodeMessage(
-                info.getDataNodeID(),
+                info.getDataNodeId(),
                 new EndPoint(info.getEndPoint().getIp(), info.getEndPoint().getPort())));
         resp.setDataNodeMessageMap(msgMap);
       }

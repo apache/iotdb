@@ -63,7 +63,7 @@ public class DataNodeInfoPersistence {
       for (Map.Entry<Integer, DataNodeLocation> entry : onlineDataNodes.entrySet()) {
         if (entry.getValue().getEndPoint().equals(info.getEndPoint())) {
           result = true;
-          info.setDataNodeID(entry.getKey());
+          info.setDataNodeId(entry.getKey());
           break;
         }
       }
@@ -89,8 +89,8 @@ public class DataNodeInfoPersistence {
     DataNodeLocation info = plan.getInfo();
     dataNodeInfoReadWriteLock.writeLock().lock();
     try {
-      nextDataNodeId = Math.max(nextDataNodeId, info.getDataNodeID());
-      onlineDataNodes.put(info.getDataNodeID(), info);
+      nextDataNodeId = Math.max(nextDataNodeId, info.getDataNodeId());
+      onlineDataNodes.put(info.getDataNodeId(), info);
       result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } finally {
       dataNodeInfoReadWriteLock.writeLock().unlock();

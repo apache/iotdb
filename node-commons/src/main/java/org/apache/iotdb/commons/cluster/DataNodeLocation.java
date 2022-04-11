@@ -23,22 +23,22 @@ import java.util.Objects;
 
 public class DataNodeLocation {
 
-  private int dataNodeID;
+  private int dataNodeId;
   private Endpoint endPoint;
 
   public DataNodeLocation() {}
 
-  public DataNodeLocation(int dataNodeID, Endpoint endPoint) {
-    this.dataNodeID = dataNodeID;
+  public DataNodeLocation(int dataNodeId, Endpoint endPoint) {
+    this.dataNodeId = dataNodeId;
     this.endPoint = endPoint;
   }
 
-  public int getDataNodeID() {
-    return dataNodeID;
+  public int getDataNodeId() {
+    return dataNodeId;
   }
 
-  public void setDataNodeID(int dataNodeID) {
-    this.dataNodeID = dataNodeID;
+  public void setDataNodeId(int dataNodeId) {
+    this.dataNodeId = dataNodeId;
   }
 
   public Endpoint getEndPoint() {
@@ -46,12 +46,12 @@ public class DataNodeLocation {
   }
 
   public void serializeImpl(ByteBuffer buffer) {
-    buffer.putInt(dataNodeID);
+    buffer.putInt(dataNodeId);
     endPoint.serializeImpl(buffer);
   }
 
   public void deserializeImpl(ByteBuffer buffer) {
-    dataNodeID = buffer.getInt();
+    dataNodeId = buffer.getInt();
     endPoint = new Endpoint();
     endPoint.deserializeImpl(buffer);
   }
@@ -65,15 +65,15 @@ public class DataNodeLocation {
       return false;
     }
     DataNodeLocation that = (DataNodeLocation) o;
-    return dataNodeID == that.dataNodeID && Objects.equals(endPoint, that.endPoint);
+    return dataNodeId == that.dataNodeId && Objects.equals(endPoint, that.endPoint);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(dataNodeID, endPoint);
+    return Objects.hash(dataNodeId, endPoint);
   }
 
   public String toString() {
-    return String.format("DataNode[%d, %s]", dataNodeID, endPoint);
+    return String.format("DataNode[%d, %s]", dataNodeId, endPoint);
   }
 }

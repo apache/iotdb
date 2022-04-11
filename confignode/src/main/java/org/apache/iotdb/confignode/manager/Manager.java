@@ -57,32 +57,32 @@ public interface Manager {
   RegionManager getRegionManager();
 
   /**
-   * register data node
+   * Register DataNode
    *
-   * @param physicalPlan physical plan
-   * @return status
+   * @param physicalPlan RegisterDataNodePlan
+   * @return DataNodeConfigurationDataSet
    */
-  TSStatus registerDataNode(PhysicalPlan physicalPlan);
+  DataSet registerDataNode(PhysicalPlan physicalPlan);
 
   /**
-   * get data node info
+   * Get DataNode info
    *
-   * @param physicalPlan physical plan
-   * @return data set
+   * @param physicalPlan QueryDataNodeInfoPlan
+   * @return DataNodesInfoDataSet
    */
   DataSet getDataNodeInfo(PhysicalPlan physicalPlan);
 
   /**
-   * get storage group schema
+   * Get StorageGroupSchemas
    *
-   * @return data set
+   * @return StorageGroupSchemaDataSet
    */
   DataSet getStorageGroupSchema();
 
   /**
-   * set storage group
+   * Set StorageGroup
    *
-   * @param physicalPlan physical plan
+   * @param physicalPlan SetStorageGroupPlan
    * @return status
    */
   TSStatus setStorageGroup(PhysicalPlan physicalPlan);

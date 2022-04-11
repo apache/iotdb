@@ -25,7 +25,6 @@ import org.apache.iotdb.confignode.consensus.response.DataPartitionDataSet;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionDataSet;
 import org.apache.iotdb.confignode.persistence.PartitionInfoPersistence;
 import org.apache.iotdb.confignode.persistence.RegionInfoPersistence;
-import org.apache.iotdb.confignode.physical.PhysicalPlanType;
 import org.apache.iotdb.confignode.physical.crud.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.physical.crud.GetOrCreateDataPartitionPlan;
 import org.apache.iotdb.confignode.physical.crud.GetOrCreateSchemaPartitionPlan;
@@ -156,8 +155,7 @@ public class PartitionManager {
       // Allocate DataPartition
       Map<String, Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>>
           assignedDataPartition = allocateDataPartition(noAssignedDataPartitionSlots);
-      CreateDataPartitionPlan createPlan =
-          new CreateDataPartitionPlan(PhysicalPlanType.CreateDataPartition);
+      CreateDataPartitionPlan createPlan = new CreateDataPartitionPlan();
       createPlan.setAssignedDataPartition(assignedDataPartition);
 
       // Persistence DataPartition

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationDataSet;
 import org.apache.iotdb.confignode.consensus.response.DataNodesInfoDataSet;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionDataSet;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionDataSet;
@@ -73,14 +74,14 @@ public class ConfigManager implements Manager {
   }
 
   @Override
-  public TSStatus registerDataNode(PhysicalPlan physicalPlan) {
+  public DataSet registerDataNode(PhysicalPlan physicalPlan) {
 
     // TODO: Only leader can register DataNode
 
     if (physicalPlan instanceof RegisterDataNodePlan) {
       return dataNodeManager.registerDataNode((RegisterDataNodePlan) physicalPlan);
     }
-    return ERROR_TSSTATUS;
+    return new DataNodeConfigurationDataSet();
   }
 
   @Override

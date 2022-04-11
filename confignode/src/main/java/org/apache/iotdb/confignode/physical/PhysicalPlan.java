@@ -19,6 +19,7 @@
 package org.apache.iotdb.confignode.physical;
 
 import org.apache.iotdb.confignode.physical.crud.CreateDataPartitionPlan;
+import org.apache.iotdb.confignode.physical.crud.CreateRegionsPlan;
 import org.apache.iotdb.confignode.physical.crud.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.physical.crud.GetOrCreateDataPartitionPlan;
 import org.apache.iotdb.confignode.physical.crud.GetOrCreateSchemaPartitionPlan;
@@ -100,14 +101,8 @@ public abstract class PhysicalPlan implements IConsensusRequest {
         case QueryStorageGroupSchema:
           plan = new QueryStorageGroupSchemaPlan();
           break;
-        case GetDataPartition:
-          plan = new GetOrCreateDataPartitionPlan(PhysicalPlanType.GetDataPartition);
-          break;
-        case CreateDataPartition:
-          plan = new CreateDataPartitionPlan(PhysicalPlanType.CreateDataPartition);
-          break;
-        case GetOrCreateDataPartition:
-          plan = new GetOrCreateDataPartitionPlan(PhysicalPlanType.GetOrCreateDataPartition);
+        case CreateRegions:
+          plan = new CreateRegionsPlan();
           break;
         case GetSchemaPartition:
           plan = new GetOrCreateSchemaPartitionPlan(PhysicalPlanType.GetSchemaPartition);
@@ -117,6 +112,15 @@ public abstract class PhysicalPlan implements IConsensusRequest {
           break;
         case GetOrCreateSchemaPartition:
           plan = new GetOrCreateSchemaPartitionPlan(PhysicalPlanType.GetOrCreateSchemaPartition);
+          break;
+        case GetDataPartition:
+          plan = new GetOrCreateDataPartitionPlan(PhysicalPlanType.GetDataPartition);
+          break;
+        case CreateDataPartition:
+          plan = new CreateDataPartitionPlan();
+          break;
+        case GetOrCreateDataPartition:
+          plan = new GetOrCreateDataPartitionPlan(PhysicalPlanType.GetOrCreateDataPartition);
           break;
         case LIST_USER:
         case LIST_ROLE:

@@ -23,12 +23,14 @@ import org.apache.iotdb.commons.partition.TimePartitionSlot;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
 import org.apache.iotdb.confignode.physical.PhysicalPlanType;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
+import org.apache.iotdb.confignode.util.SerializeDeserializeUtil;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /** Query or apply DataPartition by the specific storageGroup and the deviceGroupStartTimeMap. */
 public class GetOrCreateDataPartitionPlan extends PhysicalPlan {
@@ -41,6 +43,11 @@ public class GetOrCreateDataPartitionPlan extends PhysicalPlan {
 
   public Map<String, Map<SeriesPartitionSlot, List<TimePartitionSlot>>> getPartitionSlotsMap() {
     return partitionSlotsMap;
+  }
+
+  public void setPartitionSlotsMap(
+      Map<String, Map<SeriesPartitionSlot, List<TimePartitionSlot>>> partitionSlotsMap) {
+    this.partitionSlotsMap = partitionSlotsMap;
   }
 
   /**
@@ -79,8 +86,54 @@ public class GetOrCreateDataPartitionPlan extends PhysicalPlan {
   @Override
   protected void serializeImpl(ByteBuffer buffer) {
     buffer.putInt(PhysicalPlanType.GetDataPartition.ordinal());
+
+    buffer.putInt(partitionSlotsMap.size());
+    partitionSlotsMap.forEach(
+        ((storageGroup, seriesPartitionTimePartitionSlots) -> {
+          SerializeDeserializeUtil.write(storageGroup, buffer);
+          buffer.putInt(seriesPartitionTimePartitionSlots.size());
+          seriesPartitionTimePartitionSlots.forEach(
+              ((seriesPartitionSlot, timePartitionSlots) -> {
+                seriesPartitionSlot.serializeImpl(buffer);
+                buffer.putInt(timePartitionSlots.size());
+                timePartitionSlots.forEach(
+                    timePartitionSlot -> timePartitionSlot.serializeImpl(buffer));
+              }));
+        }));
   }
 
   @Override
-  protected void deserializeImpl(ByteBuffer buffer) {}
+  protected void deserializeImpl(ByteBuffer buffer) {
+    partitionSlotsMap = new HashMap<>();
+    int storageGroupNum = buffer.getInt();
+    for (int i = 0; i < storageGroupNum; i++) {
+      String storageGroup = SerializeDeserializeUtil.readString(buffer);
+      partitionSlotsMap.put(storageGroup, new HashMap<>());
+      int seriesPartitionSlotNum = buffer.getInt();
+      for (int j = 0; j < seriesPartitionSlotNum; j++) {
+        SeriesPartitionSlot seriesPartitionSlot = new SeriesPartitionSlot();
+        seriesPartitionSlot.deserializeImpl(buffer);
+        partitionSlotsMap.get(storageGroup).put(seriesPartitionSlot, new ArrayList<>());
+        int timePartitionSlotNum = buffer.getInt();
+        for (int k = 0; k < timePartitionSlotNum; k++) {
+          TimePartitionSlot timePartitionSlot = new TimePartitionSlot();
+          timePartitionSlot.deserializeImpl(buffer);
+          partitionSlotsMap.get(storageGroup).get(seriesPartitionSlot).add(timePartitionSlot);
+        }
+      }
+    }
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    GetOrCreateDataPartitionPlan that = (GetOrCreateDataPartitionPlan) o;
+    return partitionSlotsMap.equals(that.partitionSlotsMap);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(partitionSlotsMap);
+  }
 }

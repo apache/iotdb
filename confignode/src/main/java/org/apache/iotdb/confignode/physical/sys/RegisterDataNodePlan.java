@@ -24,6 +24,7 @@ import org.apache.iotdb.confignode.physical.PhysicalPlan;
 import org.apache.iotdb.confignode.physical.PhysicalPlanType;
 
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class RegisterDataNodePlan extends PhysicalPlan {
 
@@ -45,7 +46,7 @@ public class RegisterDataNodePlan extends PhysicalPlan {
   @Override
   protected void serializeImpl(ByteBuffer buffer) {
     buffer.putInt(PhysicalPlanType.RegisterDataNode.ordinal());
-    buffer.putInt(info.getDataNodeID());
+    buffer.putInt(info.getDataNodeId());
     buffer.putInt(info.getEndPoint().getIp().length());
     buffer.put(info.getEndPoint().getIp().getBytes());
     buffer.putInt(info.getEndPoint().getPort());
@@ -61,5 +62,18 @@ public class RegisterDataNodePlan extends PhysicalPlan {
     int port = buffer.getInt();
 
     this.info = new DataNodeLocation(dataNodeID, new Endpoint(ip, port));
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    RegisterDataNodePlan plan = (RegisterDataNodePlan) o;
+    return info.equals(plan.info);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(info);
   }
 }

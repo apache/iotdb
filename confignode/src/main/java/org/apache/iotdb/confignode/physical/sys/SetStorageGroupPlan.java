@@ -24,6 +24,7 @@ import org.apache.iotdb.confignode.physical.PhysicalPlanType;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class SetStorageGroupPlan extends PhysicalPlan {
 
@@ -56,5 +57,18 @@ public class SetStorageGroupPlan extends PhysicalPlan {
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     schema.deserialize(buffer);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    SetStorageGroupPlan that = (SetStorageGroupPlan) o;
+    return schema.equals(that.schema);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(schema);
   }
 }

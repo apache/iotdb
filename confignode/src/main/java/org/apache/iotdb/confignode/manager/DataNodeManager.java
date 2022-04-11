@@ -19,10 +19,16 @@
 package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.commons.cluster.DataNodeLocation;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationDataSet;
 import org.apache.iotdb.confignode.consensus.response.DataNodesInfoDataSet;
 import org.apache.iotdb.confignode.persistence.DataNodeInfoPersistence;
 import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
 import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
+import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
+import org.apache.iotdb.consensus.common.DataSet;
+import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import org.slf4j.Logger;
@@ -48,14 +54,39 @@ public class DataNodeManager {
     this.configManager = configManager;
   }
 
+  private void setGlobalConfig(DataNodeConfigurationDataSet dataSet) {
+    // Set TGlobalConfig
+    TGlobalConfig globalConfig = new TGlobalConfig();
+    globalConfig.setDataNodeConsensusProtocolClass(
+        ConfigNodeDescriptor.getInstance().getConf().getDataNodeConsensusProtocolClass());
+    globalConfig.setSeriesPartitionSlotNum(
+        ConfigNodeDescriptor.getInstance().getConf().getSeriesPartitionSlotNum());
+    globalConfig.setSeriesPartitionExecutorClass(
+        ConfigNodeDescriptor.getInstance().getConf().getSeriesPartitionExecutorClass());
+    dataSet.setGlobalConfig(globalConfig);
+  }
+
   /**
    * Register DataNode
    *
    * @param plan RegisterDataNodePlan
-   * @return SUCCESS_STATUS
+   * @return DataNodeConfigurationDataSet. The TSStatus will be set to SUCCESS_STATUS when register
+   *     success, and DATANODE_ALREADY_REGISTERED when the DataNode is already exist.
    */
-  public TSStatus registerDataNode(RegisterDataNodePlan plan) {
-    return getConsensusManager().write(plan).getStatus();
+  public DataSet registerDataNode(RegisterDataNodePlan plan) {
+    DataNodeConfigurationDataSet dataSet = new DataNodeConfigurationDataSet();
+
+    if (DataNodeInfoPersistence.getInstance().containsValue(plan.getInfo())) {
+      dataSet.setStatus(new TSStatus(TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode()));
+    } else {
+      plan.getInfo().setDataNodeId(DataNodeInfoPersistence.getInstance().generateNextDataNodeId());
+      ConsensusWriteResponse resp = getConsensusManager().write(plan);
+      dataSet.setStatus(resp.getStatus());
+    }
+
+    dataSet.setDataNodeId(plan.getInfo().getDataNodeId());
+    setGlobalConfig(dataSet);
+    return dataSet;
   }
 
   /**

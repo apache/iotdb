@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class CreateRegionsPlan extends PhysicalPlan {
 
@@ -77,5 +78,19 @@ public class CreateRegionsPlan extends PhysicalPlan {
       regionReplicaSet.deserializeImpl(buffer);
       regionReplicaSets.add(regionReplicaSet);
     }
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    CreateRegionsPlan that = (CreateRegionsPlan) o;
+    return storageGroup.equals(that.storageGroup)
+        && regionReplicaSets.equals(that.regionReplicaSets);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(storageGroup, regionReplicaSets);
   }
 }
