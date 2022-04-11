@@ -20,9 +20,11 @@ package org.apache.iotdb.confignode.physical.sys;
 
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
 import org.apache.iotdb.confignode.physical.PhysicalPlanType;
+import org.apache.iotdb.confignode.util.SerializeDeserializeUtil;
 import org.apache.iotdb.db.auth.AuthException;
 
 import java.nio.ByteBuffer;
+import java.util.HashSet;
 import java.util.Set;
 
 public class AuthorPlan extends PhysicalPlan {
@@ -128,57 +130,40 @@ public class AuthorPlan extends PhysicalPlan {
 
   @Override
   protected void serializeImpl(ByteBuffer buffer) {
-    buffer.putInt(getPlanTypeOrdinal(authorType));
-    buffer.putInt(userName.length());
-    buffer.put(userName.getBytes());
-    buffer.putInt(roleName.length());
-    buffer.put(roleName.getBytes());
-    buffer.putInt(password.length());
-    buffer.put(password.getBytes());
-    buffer.putInt(newPassword.length());
-    buffer.put(newPassword.getBytes());
-    if (permissions == null && permissions.size() == 0) {
-      buffer.put("false".getBytes());
+    SerializeDeserializeUtil.write(getPlanTypeOrdinal(authorType), buffer);
+    SerializeDeserializeUtil.write(userName, buffer);
+    SerializeDeserializeUtil.write(roleName, buffer);
+    SerializeDeserializeUtil.write(password, buffer);
+    SerializeDeserializeUtil.write(newPassword, buffer);
+    if (permissions == null) {
+      buffer.put((byte) 0);
     } else {
-      buffer.put("true".getBytes());
+      buffer.put((byte) 1);
       buffer.putInt(permissions.size());
-      for (Integer permission : permissions) {
+      for (int permission : permissions) {
         buffer.putInt(permission);
       }
     }
-    if (nodeName == null && nodeName.equals("")) {
-      buffer.put("false".getBytes());
-    } else {
-      buffer.put("true".getBytes());
-      buffer.putInt(nodeName.length());
-      buffer.put(nodeName.getBytes());
-    }
+    SerializeDeserializeUtil.write(nodeName, buffer);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) {
-    userName = getAuthorInfo(buffer);
-    roleName = getAuthorInfo(buffer);
-    password = getAuthorInfo(buffer);
-    newPassword = getAuthorInfo(buffer);
-    String permissionIsNull = getAuthorInfo(buffer);
-    if ("true".equals(permissionIsNull)) {
-      int permissionSize = buffer.getInt();
-      for (int i = 0; i < permissionSize; i++) {
+    userName = SerializeDeserializeUtil.readString(buffer);
+    roleName = SerializeDeserializeUtil.readString(buffer);
+    password = SerializeDeserializeUtil.readString(buffer);
+    newPassword = SerializeDeserializeUtil.readString(buffer);
+    byte hasPermissions = buffer.get();
+    if (hasPermissions == (byte) 0) {
+      this.permissions = null;
+    } else {
+      int permissionsSize = buffer.getInt();
+      this.permissions = new HashSet<>();
+      for (int i = 0; i < permissionsSize; i++) {
         permissions.add(buffer.getInt());
       }
     }
-    String nodeNameIsNull = getAuthorInfo(buffer);
-    if ("true".equals(nodeNameIsNull)) {
-      nodeName = getAuthorInfo(buffer);
-    }
-  }
-
-  private String getAuthorInfo(ByteBuffer buffer) {
-    int infoSize = buffer.getInt();
-    byte[] byteInfo = new byte[infoSize];
-    buffer.get(byteInfo, 0, infoSize);
-    return new String(byteInfo, 0, infoSize);
+    nodeName = SerializeDeserializeUtil.readString(buffer);
   }
 
   private int getPlanTypeOrdinal(PhysicalPlanType physicalPlanType) {

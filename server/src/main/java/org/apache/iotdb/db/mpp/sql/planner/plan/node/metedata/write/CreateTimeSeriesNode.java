@@ -162,11 +162,6 @@ public class CreateTimeSeriesNode extends PlanNode {
   }
 
   @Override
-  public List<String> getOutputColumnNames() {
-    return null;
-  }
-
-  @Override
   public PhysicalPlan transferToPhysicalPlan() {
     return new CreateTimeSeriesPlan(
         getPath(),

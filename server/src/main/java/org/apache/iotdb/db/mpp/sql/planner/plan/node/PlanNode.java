@@ -41,11 +41,11 @@ public abstract class PlanNode {
     this.id = id;
   }
 
-  public PlanNodeId getId() {
+  public PlanNodeId getPlanNodeId() {
     return id;
   }
 
-  public void setId(PlanNodeId id) {
+  public void setPlanNodeId(PlanNodeId id) {
     this.id = id;
   }
 
@@ -75,8 +75,6 @@ public abstract class PlanNode {
   }
 
   public abstract int allowedChildCount();
-
-  public abstract List<String> getOutputColumnNames();
 
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
     return visitor.visitPlan(this, context);

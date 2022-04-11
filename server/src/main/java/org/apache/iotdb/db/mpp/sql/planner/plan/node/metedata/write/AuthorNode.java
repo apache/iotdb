@@ -24,6 +24,7 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
+import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
 import java.nio.ByteBuffer;
 import java.util.HashSet;
@@ -126,7 +127,7 @@ public class AuthorNode extends PlanNode {
 
   @Override
   public PlanNode clone() {
-    return null;
+    throw new NotImplementedException("Clone of AuthorNode is not implemented");
   }
 
   @Override
@@ -137,11 +138,6 @@ public class AuthorNode extends PlanNode {
   @Override
   public int allowedChildCount() {
     return 0;
-  }
-
-  @Override
-  public List<String> getOutputColumnNames() {
-    return null;
   }
 
   @Override

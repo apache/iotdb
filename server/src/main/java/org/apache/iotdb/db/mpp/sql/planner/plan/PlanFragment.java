@@ -82,7 +82,7 @@ public class PlanFragment {
   }
 
   private PlanNode getPlanNodeById(PlanNode root, PlanNodeId nodeId) {
-    if (root.getId().equals(nodeId)) {
+    if (root.getPlanNodeId().equals(nodeId)) {
       return root;
     }
     for (PlanNode child : root.getChildren()) {

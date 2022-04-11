@@ -35,4 +35,24 @@ public class TsFileUtils {
       return reader.isComplete();
     }
   }
+
+  public static long getTimePartition(File tsFile) {
+    File timePartitionFolder = tsFile.getParentFile();
+    return Long.parseLong(timePartitionFolder.getName());
+  }
+
+  public static int getDataRegionId(File tsFile) {
+    File dataRegionFolder = tsFile.getParentFile().getParentFile();
+    return Integer.parseInt(dataRegionFolder.getName());
+  }
+
+  public static String getStorageGroup(File tsFile) {
+    File vsgFolder = tsFile.getParentFile().getParentFile().getParentFile();
+    return vsgFolder.getName();
+  }
+
+  public static boolean isSequence(File tsFile) {
+    File folder = tsFile.getParentFile().getParentFile().getParentFile().getParentFile();
+    return folder.getName().equals("sequence");
+  }
 }

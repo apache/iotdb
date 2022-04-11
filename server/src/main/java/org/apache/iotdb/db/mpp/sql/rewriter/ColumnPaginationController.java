@@ -32,6 +32,9 @@ public class ColumnPaginationController {
   // series offset for result set. The default value is 0
   private final int seriesOffset;
 
+  // for ALIGN BY DEVICE / DISABLE ALIGN / GROUP BY LEVEL / LAST, controller does is disabled
+  private final boolean isDisabled;
+
   private int curLimit =
       IoTDBDescriptor.getInstance().getConfig().getMaxQueryDeduplicatedPathNum() + 1;
   private int curOffset;
@@ -39,17 +42,26 @@ public class ColumnPaginationController {
   // records the path number that the SchemaTree totally returned
   private int consumed = 0;
 
-  public ColumnPaginationController(int seriesLimit, int seriesOffset) {
+  public ColumnPaginationController(int seriesLimit, int seriesOffset, boolean isDisabled) {
     // for series limit, the default value is 0, which means no limit
     this.curLimit = seriesLimit == 0 ? this.curLimit : Math.min(seriesLimit, this.curLimit);
     this.seriesOffset = this.curOffset = seriesOffset;
+    this.isDisabled = isDisabled;
   }
 
   public int getCurLimit() {
+    if (isDisabled) {
+      return 0;
+    }
+
     return curLimit;
   }
 
   public int getCurOffset() {
+    if (isDisabled) {
+      return 0;
+    }
+
     return curOffset;
   }
 
@@ -60,11 +72,19 @@ public class ColumnPaginationController {
         > IoTDBDescriptor.getInstance().getConfig().getMaxQueryDeduplicatedPathNum()) {
       throw new PathNumOverLimitException();
     }
+    if (isDisabled) {
+      return false;
+    }
+
     return curLimit == 0;
   }
 
   public void checkIfSoffsetIsExceeded(List<ResultColumn> resultColumns)
       throws StatementAnalyzeException {
+    if (isDisabled) {
+      return;
+    }
+
     if (consumed == 0 ? seriesOffset != 0 : resultColumns.isEmpty()) {
       throw new StatementAnalyzeException(
           String.format(
@@ -74,28 +94,52 @@ public class ColumnPaginationController {
   }
 
   public void consume(int limit, int offset) {
+    if (isDisabled) {
+      return;
+    }
+
     consumed += offset;
     curOffset -= Math.min(curOffset, offset);
     curLimit -= limit;
   }
 
   public boolean hasCurOffset() {
+    if (isDisabled) {
+      return false;
+    }
+
     return curOffset != 0;
   }
 
   public boolean hasCurLimit() {
+    if (isDisabled) {
+      return true;
+    }
+
     return curLimit != 0;
   }
 
   public void decCurOffset() {
+    if (isDisabled) {
+      return;
+    }
+
     curOffset--;
   }
 
   public void decCurLimit() {
+    if (isDisabled) {
+      return;
+    }
+
     curLimit--;
   }
 
   public void incConsumed(int num) {
+    if (isDisabled) {
+      return;
+    }
+
     consumed += num;
   }
 }

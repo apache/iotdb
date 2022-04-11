@@ -19,10 +19,7 @@
 
 package org.apache.iotdb.db.mpp.sql.statement;
 
-import org.apache.iotdb.db.mpp.sql.statement.crud.InsertRowStatement;
-import org.apache.iotdb.db.mpp.sql.statement.crud.InsertStatement;
-import org.apache.iotdb.db.mpp.sql.statement.crud.InsertTabletStatement;
-import org.apache.iotdb.db.mpp.sql.statement.crud.QueryStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.*;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
@@ -74,6 +71,34 @@ public abstract class StatementVisitor<R, C> {
   // Select Statement
   public R visitQuery(QueryStatement queryStatement, C context) {
     return visitStatement(queryStatement, context);
+  }
+
+  public R visitAggregationQuery(AggregationQueryStatement queryStatement, C context) {
+    return visitQuery(queryStatement, context);
+  }
+
+  public R visitFillQuery(FillQueryStatement queryStatement, C context) {
+    return visitQuery(queryStatement, context);
+  }
+
+  public R visitGroupByQuery(GroupByQueryStatement queryStatement, C context) {
+    return visitQuery(queryStatement, context);
+  }
+
+  public R visitGroupByFillQuery(GroupByFillQueryStatement queryStatement, C context) {
+    return visitQuery(queryStatement, context);
+  }
+
+  public R visitLastQuery(LastQueryStatement queryStatement, C context) {
+    return visitQuery(queryStatement, context);
+  }
+
+  public R visitUDTFQuery(UDTFQueryStatement queryStatement, C context) {
+    return visitQuery(queryStatement, context);
+  }
+
+  public R visitUDAFQuery(UDAFQueryStatement queryStatement, C context) {
+    return visitQuery(queryStatement, context);
   }
 
   // Insert Statement
@@ -184,5 +209,19 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitInsertRow(InsertRowStatement insertRowStatement, C context) {
     return visitStatement(insertRowStatement, context);
+  }
+
+  public R visitInsertRows(InsertRowsStatement insertRowsStatement, C context) {
+    return visitStatement(insertRowsStatement, context);
+  }
+
+  public R visitInsertMultiTablets(
+      InsertMultiTabletsStatement insertMultiTabletsStatement, C context) {
+    return visitStatement(insertMultiTabletsStatement, context);
+  }
+
+  public R visitInsertRowsOfOneDevice(
+      InsertRowsOfOneDeviceStatement insertRowsOfOneDeviceStatement, C context) {
+    return visitStatement(insertRowsOfOneDeviceStatement, context);
   }
 }
