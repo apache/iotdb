@@ -23,11 +23,13 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.IOutputPlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.ColumnHeader;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullPolicy;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -108,12 +110,33 @@ public class TimeJoinNode extends ProcessNode implements IOutputPlanNode {
     return visitor.visitTimeJoin(this, context);
   }
 
-  public static TimeJoinNode deserialize(ByteBuffer byteBuffer) {
-    return null;
+  @Override
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    PlanNodeType.TIME_JOIN.serialize(byteBuffer);
+    ReadWriteIOUtils.write(mergeOrder.ordinal(), byteBuffer);
+    ReadWriteIOUtils.write(filterNullPolicy.ordinal(), byteBuffer);
+    ReadWriteIOUtils.write(columnHeaders.size(), byteBuffer);
+    for (ColumnHeader columnHeader : columnHeaders) {
+      columnHeader.serialize(byteBuffer);
+    }
   }
 
-  @Override
-  public void serialize(ByteBuffer byteBuffer) {}
+  public static TimeJoinNode deserialize(ByteBuffer byteBuffer) {
+    OrderBy orderBy = OrderBy.values()[ReadWriteIOUtils.readInt(byteBuffer)];
+    FilterNullPolicy filterNullPolicy =
+        FilterNullPolicy.values()[ReadWriteIOUtils.readInt(byteBuffer)];
+    int columnHeaderSize = ReadWriteIOUtils.readInt(byteBuffer);
+    List<ColumnHeader> columnHeaders = new ArrayList<>();
+    for (int i = 0; i < columnHeaderSize; i++) {
+      columnHeaders.add(ColumnHeader.deserialize(byteBuffer));
+    }
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+    TimeJoinNode timeJoinNode = new TimeJoinNode(planNodeId, orderBy);
+    timeJoinNode.columnHeaders.addAll(columnHeaders);
+    timeJoinNode.filterNullPolicy = filterNullPolicy;
+
+    return timeJoinNode;
+  }
 
   @Override
   public void addChild(PlanNode child) {

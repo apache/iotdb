@@ -21,20 +21,26 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.source;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
 import org.apache.iotdb.db.mpp.sql.planner.plan.IOutputPlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.ColumnHeader;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.collect.ImmutableList;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -175,17 +181,82 @@ public class SeriesScanNode extends SourceNode implements IOutputPlanNode {
     return scanOrder;
   }
 
+  public void setScanOrder(OrderBy scanOrder) {
+    this.scanOrder = scanOrder;
+  }
+
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
     return visitor.visitSeriesScan(this, context);
   }
 
   public static SeriesScanNode deserialize(ByteBuffer byteBuffer) {
-    return null;
+    PartialPath partialPath = (PartialPath) PathDeserializeUtil.deserialize(byteBuffer);
+    int size = ReadWriteIOUtils.readInt(byteBuffer);
+    Set<String> allSensors = null;
+    if (size != -1) {
+      allSensors = new HashSet<>();
+      for (int i = 0; i < size; i++) {
+        allSensors.add(ReadWriteIOUtils.readString(byteBuffer));
+      }
+    }
+    OrderBy scanOrder = OrderBy.values()[ReadWriteIOUtils.readInt(byteBuffer)];
+    byte isNull = ReadWriteIOUtils.readByte(byteBuffer);
+    Filter timeFilter = null;
+    if (isNull == 1) timeFilter = FilterFactory.deserialize(byteBuffer);
+    isNull = ReadWriteIOUtils.readByte(byteBuffer);
+    Filter valueFilter = null;
+    if (isNull == 1) valueFilter = FilterFactory.deserialize(byteBuffer);
+    int limit = ReadWriteIOUtils.readInt(byteBuffer);
+    int offset = ReadWriteIOUtils.readInt(byteBuffer);
+    RegionReplicaSet dataRegionReplicaSet = new RegionReplicaSet();
+    try {
+      dataRegionReplicaSet.deserializeImpl(byteBuffer);
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+    SeriesScanNode seriesScanNode = new SeriesScanNode(planNodeId, partialPath);
+    seriesScanNode.allSensors = allSensors;
+    seriesScanNode.limit = limit;
+    seriesScanNode.offset = offset;
+    seriesScanNode.scanOrder = scanOrder;
+    seriesScanNode.regionReplicaSet = dataRegionReplicaSet;
+    seriesScanNode.timeFilter = timeFilter;
+    seriesScanNode.valueFilter = valueFilter;
+    return seriesScanNode;
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {}
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    PlanNodeType.SERIES_SCAN.serialize(byteBuffer);
+    seriesPath.serialize(byteBuffer);
+    if (allSensors == null) {
+      ReadWriteIOUtils.write(-1, byteBuffer);
+    } else {
+      ReadWriteIOUtils.write(allSensors.size(), byteBuffer);
+      for (String sensor : allSensors) {
+        ReadWriteIOUtils.write(sensor, byteBuffer);
+      }
+    }
+    ReadWriteIOUtils.write(scanOrder.ordinal(), byteBuffer);
+    if (timeFilter == null) {
+      ReadWriteIOUtils.write((byte) 0, byteBuffer);
+    } else {
+      ReadWriteIOUtils.write((byte) 1, byteBuffer);
+      timeFilter.serialize(byteBuffer);
+    }
+
+    if (valueFilter == null) {
+      ReadWriteIOUtils.write((byte) 0, byteBuffer);
+    } else {
+      ReadWriteIOUtils.write((byte) 1, byteBuffer);
+      valueFilter.serialize(byteBuffer);
+    }
+    ReadWriteIOUtils.write(limit, byteBuffer);
+    ReadWriteIOUtils.write(offset, byteBuffer);
+    regionReplicaSet.serializeImpl(byteBuffer);
+  }
 
   public PartialPath getSeriesPath() {
     return seriesPath;
