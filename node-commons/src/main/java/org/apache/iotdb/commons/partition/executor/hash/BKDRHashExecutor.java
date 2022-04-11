@@ -16,36 +16,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.consensus.response;
+package org.apache.iotdb.commons.partition.executor.hash;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.cluster.DataNodeLocation;
-import org.apache.iotdb.consensus.common.DataSet;
+import org.apache.iotdb.commons.partition.SeriesPartitionSlot;
+import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 
-import java.util.List;
+public class BKDRHashExecutor extends SeriesPartitionExecutor {
 
-public class DataNodesInfoDataSet implements DataSet {
+  private static final int seed = 131;
 
-  private TSStatus status;
-  private List<DataNodeLocation> dataNodeList;
-
-  public DataNodesInfoDataSet() {
-    // empty constructor
+  public BKDRHashExecutor(int deviceGroupCount) {
+    super(deviceGroupCount);
   }
 
-  public void setStatus(TSStatus status) {
-    this.status = status;
-  }
+  @Override
+  public SeriesPartitionSlot getSeriesPartitionSlot(String device) {
+    int hash = 0;
 
-  public TSStatus getStatus() {
-    return status;
-  }
+    for (int i = 0; i < device.length(); i++) {
+      hash = hash * seed + (int) device.charAt(i);
+    }
+    hash &= Integer.MAX_VALUE;
 
-  public void setDataNodeList(List<DataNodeLocation> dataNodeList) {
-    this.dataNodeList = dataNodeList;
-  }
-
-  public List<DataNodeLocation> getDataNodeList() {
-    return this.dataNodeList;
+    return new SeriesPartitionSlot(hash % seriesPartitionSlotNum);
   }
 }

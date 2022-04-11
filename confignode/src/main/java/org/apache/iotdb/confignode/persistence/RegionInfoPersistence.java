@@ -20,15 +20,14 @@
 package org.apache.iotdb.confignode.persistence;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
-import org.apache.iotdb.commons.partition.DataNodeLocation;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaDataSet;
-import org.apache.iotdb.confignode.partition.DataRegionInfo;
-import org.apache.iotdb.confignode.partition.SchemaRegionInfo;
 import org.apache.iotdb.confignode.partition.StorageGroupSchema;
+import org.apache.iotdb.confignode.physical.crud.CreateRegionsPlan;
 import org.apache.iotdb.confignode.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -37,148 +36,159 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.stream.Collectors;
 
 /** manage data partition and schema partition */
 public class RegionInfoPersistence {
 
-  /** partition read write lock */
-  private final ReentrantReadWriteLock partitionReadWriteLock;
-
   // TODO: Serialize and Deserialize
-  // storageGroupName -> StorageGroupSchema
+  // Map<StorageGroupName, StorageGroupSchema>
   private final Map<String, StorageGroupSchema> storageGroupsMap;
 
+  // Region allocate lock
+  private final ReentrantReadWriteLock regionAllocateLock;
   // TODO: Serialize and Deserialize
-  private int nextSchemaRegionGroup = 0;
-  // TODO: Serialize and Deserialize
-  private int nextDataRegionGroup = 0;
+  private int nextRegionGroupId = 0;
 
-  // TODO: Serialize and Deserialize
-  private final SchemaRegionInfo schemaRegion;
-
-  // TODO: Serialize and Deserialize
-  private final DataRegionInfo dataRegion;
+  // Region read write lock
+  private final ReentrantReadWriteLock regionReadWriteLock;
+  // Map<ConsensusGroupId, RegionReplicaSet>
+  private final Map<ConsensusGroupId, RegionReplicaSet> regionMap;
 
   public RegionInfoPersistence() {
-    this.partitionReadWriteLock = new ReentrantReadWriteLock();
+    this.regionAllocateLock = new ReentrantReadWriteLock();
+    this.regionReadWriteLock = new ReentrantReadWriteLock();
     this.storageGroupsMap = new HashMap<>();
-    this.schemaRegion = new SchemaRegionInfo();
-    this.dataRegion = new DataRegionInfo();
+    this.regionMap = new HashMap<>();
   }
 
   /**
-   * 1. region allocation 2. add to storage group map
+   * Persistence new StorageGroupSchema
    *
    * @param plan SetStorageGroupPlan
-   * @return TSStatusCode.SUCCESS_STATUS if region allocate
+   * @return SUCCESS_STATUS
    */
   public TSStatus setStorageGroup(SetStorageGroupPlan plan) {
     TSStatus result;
-    partitionReadWriteLock.writeLock().lock();
+    regionReadWriteLock.writeLock().lock();
     try {
-      if (storageGroupsMap.containsKey(plan.getSchema().getName())) {
-        result = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
-        result.setMessage(
-            String.format("StorageGroup %s is already set.", plan.getSchema().getName()));
-      } else {
-        StorageGroupSchema schema = new StorageGroupSchema(plan.getSchema().getName());
-        storageGroupsMap.put(schema.getName(), schema);
-
-        plan.getSchemaRegionInfo()
-            .getSchemaRegionDataNodesMap()
-            .entrySet()
-            .forEach(
-                entity -> {
-                  schemaRegion.addSchemaRegion(entity.getKey(), entity.getValue());
-                  entity
-                      .getValue()
-                      .forEach(
-                          dataNodeId -> {
-                            DataNodeInfoPersistence.getInstance()
-                                .addSchemaRegionGroup(dataNodeId, entity.getKey());
-                          });
-                });
-
-        plan.getDataRegionInfo()
-            .getDataRegionDataNodesMap()
-            .entrySet()
-            .forEach(
-                entity -> {
-                  dataRegion.createDataRegion(entity.getKey(), entity.getValue());
-                  entity
-                      .getValue()
-                      .forEach(
-                          dataNodeId -> {
-                            DataNodeInfoPersistence.getInstance()
-                                .addDataRegionGroup(dataNodeId, entity.getKey());
-                          });
-                });
-
-        result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-      }
+      StorageGroupSchema schema = plan.getSchema();
+      storageGroupsMap.put(schema.getName(), schema);
+      result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } finally {
-      partitionReadWriteLock.writeLock().unlock();
+      regionReadWriteLock.writeLock().unlock();
     }
     return result;
   }
 
   public StorageGroupSchemaDataSet getStorageGroupSchema() {
     StorageGroupSchemaDataSet result = new StorageGroupSchemaDataSet();
-    partitionReadWriteLock.readLock().lock();
+    regionReadWriteLock.readLock().lock();
     try {
       result.setSchemaList(new ArrayList<>(storageGroupsMap.values()));
     } finally {
-      partitionReadWriteLock.readLock().unlock();
+      regionReadWriteLock.readLock().unlock();
+      result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
     }
     return result;
   }
 
-  /** @return key is schema region id, value is endpoint list */
-  public List<RegionReplicaSet> getSchemaRegionEndPoint() {
-    List<RegionReplicaSet> schemaRegionEndPoints = new ArrayList<>();
+  /**
+   * Persistence allocation result of new Regions
+   *
+   * @param plan CreateRegionsPlan
+   * @return SUCCESS_STATUS
+   */
+  public TSStatus createRegions(CreateRegionsPlan plan) {
+    TSStatus result;
+    regionReadWriteLock.writeLock().lock();
+    regionAllocateLock.writeLock().lock();
+    try {
+      StorageGroupSchema schema = storageGroupsMap.get(plan.getStorageGroup());
 
-    schemaRegion
-        .getSchemaRegionDataNodesMap()
-        .entrySet()
-        .forEach(
-            entity -> {
-              RegionReplicaSet schemaRegionReplicaSet = new RegionReplicaSet();
-              List<Endpoint> endPoints = new ArrayList<>();
-              entity
-                  .getValue()
-                  .forEach(
-                      dataNodeId -> {
-                        if (DataNodeInfoPersistence.getInstance()
-                            .getOnlineDataNodes()
-                            .containsKey(dataNodeId)) {
-                          endPoints.add(
-                              DataNodeInfoPersistence.getInstance()
-                                  .getOnlineDataNodes()
-                                  .get(dataNodeId)
-                                  .getEndPoint());
-                        }
-                      });
-              schemaRegionReplicaSet.setId(new SchemaRegionId(entity.getKey()));
-              // TODO: (xingtanzjr) We cannot get the dataNodeId here, use 0 as the placeholder
-              schemaRegionReplicaSet.setDataNodeList(
-                  endPoints.stream()
-                      .map(endpoint -> new DataNodeLocation(0, endpoint))
-                      .collect(Collectors.toList()));
-              schemaRegionEndPoints.add(schemaRegionReplicaSet);
-            });
+      for (RegionReplicaSet regionReplicaSet : plan.getRegionReplicaSets()) {
+        nextRegionGroupId = Math.max(nextRegionGroupId, regionReplicaSet.getId().getId());
+        regionMap.put(regionReplicaSet.getId(), regionReplicaSet);
+        if (regionReplicaSet.getId() instanceof DataRegionId) {
+          schema.addDataRegionGroup(regionReplicaSet.getId());
+        } else if (regionReplicaSet.getId() instanceof SchemaRegionId) {
+          schema.addSchemaRegionGroup(regionReplicaSet.getId());
+        }
+      }
+
+      result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } finally {
+      regionAllocateLock.writeLock().unlock();
+      regionReadWriteLock.writeLock().unlock();
+    }
+    return result;
+  }
+
+  /** @return The SchemaRegion ReplicaSets in the specific StorageGroup */
+  public List<RegionReplicaSet> getSchemaRegionEndPoint(String storageGroup) {
+    List<RegionReplicaSet> schemaRegionEndPoints = new ArrayList<>();
+    regionReadWriteLock.readLock().lock();
+    try {
+      if (storageGroupsMap.containsKey(storageGroup)) {
+        List<ConsensusGroupId> schemaRegionIds =
+            storageGroupsMap.get(storageGroup).getSchemaRegionGroupIds();
+        for (ConsensusGroupId consensusGroupId : schemaRegionIds) {
+          schemaRegionEndPoints.add(regionMap.get(consensusGroupId));
+        }
+      }
+    } finally {
+      regionReadWriteLock.readLock().unlock();
+    }
+
     return schemaRegionEndPoints;
   }
 
+  /** @return The DataRegion ReplicaSets in the specific StorageGroup */
+  public List<RegionReplicaSet> getDataRegionEndPoint(String storageGroup) {
+    List<RegionReplicaSet> dataRegionEndPoints = new ArrayList<>();
+    regionReadWriteLock.readLock().lock();
+    try {
+      if (storageGroupsMap.containsKey(storageGroup)) {
+        List<ConsensusGroupId> dataRegionIds =
+            storageGroupsMap.get(storageGroup).getDataRegionGroupIds();
+        for (ConsensusGroupId consensusGroupId : dataRegionIds) {
+          dataRegionEndPoints.add(regionMap.get(consensusGroupId));
+        }
+      }
+    } finally {
+      regionReadWriteLock.readLock().unlock();
+    }
+
+    return dataRegionEndPoints;
+  }
+
+  public int generateNextRegionGroupId() {
+    int result;
+    regionAllocateLock.writeLock().lock();
+    try {
+      result = nextRegionGroupId;
+      nextRegionGroupId += 1;
+    } finally {
+      regionAllocateLock.writeLock().unlock();
+    }
+    return result;
+  }
+
   public boolean containsStorageGroup(String storageName) {
-    return storageGroupsMap.containsKey(storageName);
+    boolean result;
+    regionReadWriteLock.readLock().lock();
+    try {
+      result = storageGroupsMap.containsKey(storageName);
+    } finally {
+      regionReadWriteLock.readLock().unlock();
+    }
+    return result;
   }
 
   @TestOnly
   public void clear() {
+    nextRegionGroupId = 0;
     storageGroupsMap.clear();
-    schemaRegion.getSchemaRegionDataNodesMap().clear();
-    dataRegion.getDataRegionDataNodesMap().clear();
+    regionMap.clear();
   }
 
   private static class RegionInfoPersistenceHolder {
