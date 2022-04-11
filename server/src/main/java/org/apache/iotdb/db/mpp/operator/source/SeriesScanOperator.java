@@ -29,15 +29,17 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import java.io.IOException;
 import java.util.Set;
 
-public class SeriesScanOperator implements SourceOperator {
+public class SeriesScanOperator implements DataSourceOperator {
 
   private final OperatorContext operatorContext;
   private final SeriesScanUtil seriesScanUtil;
+  private final PlanNodeId sourceId;
   private TsBlock tsBlock;
   private boolean hasCachedTsBlock = false;
   private boolean finished = false;
 
   public SeriesScanOperator(
+      PlanNodeId sourceId,
       PartialPath seriesPath,
       Set<String> allSensors,
       TSDataType dataType,
@@ -45,6 +47,7 @@ public class SeriesScanOperator implements SourceOperator {
       Filter timeFilter,
       Filter valueFilter,
       boolean ascending) {
+    this.sourceId = sourceId;
     this.operatorContext = context;
     this.seriesScanUtil =
         new SeriesScanUtil(
@@ -140,7 +143,7 @@ public class SeriesScanOperator implements SourceOperator {
 
   @Override
   public PlanNodeId getSourceId() {
-    return null;
+    return sourceId;
   }
 
   @Override
