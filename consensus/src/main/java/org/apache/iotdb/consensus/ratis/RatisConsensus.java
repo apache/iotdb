@@ -456,7 +456,7 @@ class RatisConsensus implements IConsensus {
     if (client == null) {
       return null;
     }
-    Endpoint leaderEndpoint =  Utils.parseFromRatisId(client.getLeaderId().toString());
+    Endpoint leaderEndpoint = Utils.parseFromRatisId(client.getLeaderId().toString());
     return new Peer(groupId, leaderEndpoint);
   }
 
