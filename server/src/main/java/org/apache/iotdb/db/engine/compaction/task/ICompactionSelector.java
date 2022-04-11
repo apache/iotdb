@@ -31,12 +31,20 @@ import java.util.List;
  */
 public interface ICompactionSelector {
   /*
-   * This method should be implemented by all SequenceSpaceInnerSelector and UnsequenceSpaceInnerSelector. It takes the list of tsfile in a time partition as input, and returns a list of list. Each list in the returned list is the source files of one compaction tasks.
+   * This method should be implemented by all SequenceSpaceInnerSelector and UnsequenceSpaceInnerSelector.
+   * It takes the list of tsfile in a time partition as input, and returns a list of list. Each list in
+   * the returned list is the source files of one compaction tasks.
    */
   default List<List<TsFileResource>> selectInnerSpaceTask(List<TsFileResource> resources) {
     throw new RuntimeException("This kind of selector cannot be used to select inner space task");
   }
 
+  /*
+   * This method should be implemented by all CrossSpaceSelector. It takes the list of sequence files and
+   * list of unsequence files as input, and returns a list of pair of list and list. Each pair in the returned
+   * list contains two list: the left one is the selected sequence files, the right one is the selected
+   * unsequence files. Each pair is corresponding to a cross space compaction task.
+   */
   default List<Pair<List<TsFileResource>, List<TsFileResource>>> selectCrossSpaceTask(
       List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
     {
