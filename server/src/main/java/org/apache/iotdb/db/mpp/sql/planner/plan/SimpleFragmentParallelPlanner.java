@@ -77,7 +77,7 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
 
     // Get the target region for origin PlanFragment, then its instance will be distributed one
     // of them.
-    RegionReplicaSet regionReplicaSet = fragment.getTargetDataRegion();
+    RegionReplicaSet regionReplicaSet = fragment.getTargetRegion();
 
     // Set DataRegion and target host for the instance
     // We need to store all the replica host in case of the scenario that the instance need to be

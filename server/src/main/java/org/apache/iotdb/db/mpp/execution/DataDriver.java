@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.execution;
 
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -284,7 +285,7 @@ public class DataDriver implements Driver {
     }
   }
 
-  private ListenableFuture<Void> processInternal() throws IOException {
+  private ListenableFuture<Void> processInternal() throws IOException, IoTDBException {
     ListenableFuture<Void> blocked = root.isBlocked();
     if (!blocked.isDone()) {
       return blocked;

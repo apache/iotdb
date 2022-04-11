@@ -23,7 +23,6 @@ import org.apache.iotdb.db.mpp.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.operator.process.ProcessOperator;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
-import java.io.IOException;
 import java.util.List;
 
 public class MetaMergeOperator implements ProcessOperator {
@@ -32,7 +31,7 @@ public class MetaMergeOperator implements ProcessOperator {
   protected int limit;
   protected int offset;
   private final boolean[] noMoreTsBlocks;
-  private int count;
+  private boolean isFinished;
 
   private List<Operator> children;
 
@@ -48,7 +47,7 @@ public class MetaMergeOperator implements ProcessOperator {
   }
 
   @Override
-  public TsBlock next() throws IOException {
+  public TsBlock next() {
     // ToDo consider SHOW LATEST
 
     for (int i = 0; i < children.size(); i++) {
@@ -64,7 +63,7 @@ public class MetaMergeOperator implements ProcessOperator {
   }
 
   @Override
-  public boolean hasNext() throws IOException {
+  public boolean hasNext() {
     for (int i = 0; i < children.size(); i++) {
       if (!noMoreTsBlocks[i] && children.get(i).hasNext()) {
         return true;
@@ -74,7 +73,7 @@ public class MetaMergeOperator implements ProcessOperator {
   }
 
   @Override
-  public boolean isFinished() throws IOException {
-    return false;
+  public boolean isFinished() {
+    return !hasNext();
   }
 }

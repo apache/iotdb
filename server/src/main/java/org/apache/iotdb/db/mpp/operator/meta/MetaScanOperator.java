@@ -18,13 +18,12 @@
  */
 package org.apache.iotdb.db.mpp.operator.meta;
 
-import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.operator.source.SourceOperator;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
-import java.io.IOException;
 import java.util.List;
 
 public abstract class MetaScanOperator implements SourceOperator {
@@ -54,7 +53,7 @@ public abstract class MetaScanOperator implements SourceOperator {
     this.columns = columns;
   }
 
-  protected abstract TsBlock createTsBlock() throws MetadataException;
+  protected abstract TsBlock createTsBlock();
 
   public PartialPath getPartialPath() {
     return partialPath;
@@ -86,23 +85,27 @@ public abstract class MetaScanOperator implements SourceOperator {
   }
 
   @Override
-  public TsBlock next() throws IOException {
+  public TsBlock next() {
     hasCachedTsBlock = false;
     return tsBlock;
   }
 
   @Override
-  public boolean hasNext() throws IOException {
-    try {
-      if (tsBlock == null) {
-        tsBlock = createTsBlock();
-        if (tsBlock.getPositionCount() > 0) {
-          hasCachedTsBlock = true;
-        }
+  public void initQueryDataSource(QueryDataSource dataSource) {}
+
+  @Override
+  public boolean hasNext() {
+    if (tsBlock == null) {
+      tsBlock = createTsBlock();
+      if (tsBlock.getPositionCount() > 0) {
+        hasCachedTsBlock = true;
       }
-      return hasCachedTsBlock;
-    } catch (MetadataException e) {
-      throw new IOException(e);
     }
+    return hasCachedTsBlock;
+  }
+
+  @Override
+  public boolean isFinished() {
+    return !hasNext();
   }
 }

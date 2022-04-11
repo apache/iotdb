@@ -33,6 +33,7 @@ import org.apache.iotdb.db.mpp.execution.SchemaDriver;
 import org.apache.iotdb.db.mpp.execution.SchemaDriverContext;
 import org.apache.iotdb.db.mpp.operator.Operator;
 import org.apache.iotdb.db.mpp.operator.OperatorContext;
+import org.apache.iotdb.db.mpp.operator.meta.DevicesMetaScanOperator;
 import org.apache.iotdb.db.mpp.operator.meta.MetaMergeOperator;
 import org.apache.iotdb.db.mpp.operator.meta.TimeSeriesMetaScanOperator;
 import org.apache.iotdb.db.mpp.operator.process.LimitOperator;
@@ -41,6 +42,7 @@ import org.apache.iotdb.db.mpp.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.mpp.operator.source.SourceOperator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.DevicesMetaScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.MetaMergeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesMetaScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.AggregateNode;
@@ -158,7 +160,7 @@ public class LocalExecutionPlanner {
       OperatorContext operatorContext =
           context.instanceContext.addOperatorContext(
               context.getNextOperatorId(),
-              node.getId(),
+              node.getPlanNodeId(),
               TimeSeriesMetaScanOperator.class.getSimpleName());
       return new TimeSeriesMetaScanOperator(
           operatorContext,
@@ -174,6 +176,24 @@ public class LocalExecutionPlanner {
     }
 
     @Override
+    public Operator visitDevicesMetaScan(
+        DevicesMetaScanNode node, LocalExecutionPlanContext context) {
+      OperatorContext operatorContext =
+          context.instanceContext.addOperatorContext(
+              context.getNextOperatorId(),
+              node.getPlanNodeId(),
+              DevicesMetaScanOperator.class.getSimpleName());
+      return new DevicesMetaScanOperator(
+          operatorContext,
+          node.getLimit(),
+          node.getOffset(),
+          node.getPath(),
+          node.isPrefixPath(),
+          node.isHasSgCol(),
+          node.getOutputColumnNames());
+    }
+
+    @Override
     public Operator visitMetaMerge(MetaMergeNode node, LocalExecutionPlanContext context) {
       List<Operator> children =
           node.getChildren().stream()
@@ -181,7 +201,9 @@ public class LocalExecutionPlanner {
               .collect(Collectors.toList());
       OperatorContext operatorContext =
           context.instanceContext.addOperatorContext(
-              context.getNextOperatorId(), node.getId(), MetaMergeOperator.class.getSimpleName());
+              context.getNextOperatorId(),
+              node.getPlanNodeId(),
+              MetaMergeOperator.class.getSimpleName());
       return new MetaMergeOperator(operatorContext, children);
     }
 

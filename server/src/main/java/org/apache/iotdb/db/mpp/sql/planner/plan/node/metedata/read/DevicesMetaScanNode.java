@@ -18,17 +18,24 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read;
 
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.tsfile.exception.NotImplementedException;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.List;
+
+import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_DEVICES;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_IS_ALIGNED;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_STORAGE_GROUP;
 
 public class DevicesMetaScanNode extends MetaScanNode {
 
-  private boolean hasSgCol;
+  private final boolean hasSgCol;
 
   public DevicesMetaScanNode(
       PlanNodeId id,
@@ -45,10 +52,6 @@ public class DevicesMetaScanNode extends MetaScanNode {
     return hasSgCol;
   }
 
-  public void setHasSgCol(boolean hasSgCol) {
-    this.hasSgCol = hasSgCol;
-  }
-
   @Override
   public List<PlanNode> getChildren() {
     return null;
@@ -59,7 +62,7 @@ public class DevicesMetaScanNode extends MetaScanNode {
 
   @Override
   public PlanNode clone() {
-    throw new NotImplementedException("Clone of ShowDevicesNode is not implemented");
+    return new DevicesMetaScanNode(getPlanNodeId(), path, limit, offset, isPrefixPath, hasSgCol);
   }
 
   @Override
@@ -67,10 +70,34 @@ public class DevicesMetaScanNode extends MetaScanNode {
     return NO_CHILD_ALLOWED;
   }
 
-  public static ShowDevicesNode deserialize(ByteBuffer byteBuffer) {
-    return null;
+  @Override
+  public List<String> getOutputColumnNames() {
+    if (hasSgCol) {
+      return Arrays.asList(COLUMN_DEVICES, COLUMN_STORAGE_GROUP, COLUMN_IS_ALIGNED);
+    }
+    return Arrays.asList(COLUMN_DEVICES, COLUMN_IS_ALIGNED);
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {}
+  public void serialize(ByteBuffer byteBuffer) {
+    PlanNodeType.DEVICES_META_SCAN.serialize(byteBuffer);
+    ReadWriteIOUtils.write(getPlanNodeId().getId(), byteBuffer);
+    ReadWriteIOUtils.write(path.getFullPath(), byteBuffer);
+    ReadWriteIOUtils.write(limit, byteBuffer);
+    ReadWriteIOUtils.write(offset, byteBuffer);
+    ReadWriteIOUtils.write(isPrefixPath, byteBuffer);
+    ReadWriteIOUtils.write(hasSgCol, byteBuffer);
+  }
+
+  public static DevicesMetaScanNode deserialize(ByteBuffer byteBuffer) throws IllegalPathException {
+    String id = ReadWriteIOUtils.readString(byteBuffer);
+    PlanNodeId planNodeId = new PlanNodeId(id);
+    String fullPath = ReadWriteIOUtils.readString(byteBuffer);
+    PartialPath path = new PartialPath(fullPath);
+    int limit = ReadWriteIOUtils.readInt(byteBuffer);
+    int offset = ReadWriteIOUtils.readInt(byteBuffer);
+    boolean isPrefixPath = ReadWriteIOUtils.readBool(byteBuffer);
+    boolean hasSgCol = ReadWriteIOUtils.readBool(byteBuffer);
+    return new DevicesMetaScanNode(planNodeId, path, limit, offset, isPrefixPath, hasSgCol);
+  }
 }

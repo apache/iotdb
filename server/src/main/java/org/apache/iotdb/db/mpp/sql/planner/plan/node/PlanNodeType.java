@@ -21,8 +21,6 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.DevicesMetaScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesMetaScanNode;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.ShowDevicesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AlterTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AuthorNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
@@ -136,7 +134,7 @@ public enum PlanNodeType {
         return CreateAlignedTimeSeriesNode.deserialize(buffer);
       case 24:
         return TimeSeriesMetaScanNode.deserialize(buffer);
-        default:
+      default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }
   }

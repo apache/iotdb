@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.mpp.operator.meta;
 
-import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.execution.SchemaDriverContext;
@@ -31,7 +30,6 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -91,16 +89,21 @@ public class TimeSeriesMetaScanOperator extends MetaScanOperator {
   }
 
   @Override
-  protected TsBlock createTsBlock() throws MetadataException {
+  protected TsBlock createTsBlock() {
     TsBlockBuilder builder = new TsBlockBuilder(Arrays.asList(resourceTypes));
-    ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
-        .getSchemaRegion()
-        .showTimeseries(convertToPhysicalPlan(), operatorContext.getInstanceContext())
-        .left
-        .forEach(series -> setColumns(series, builder));
+    try {
+      ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
+          .getSchemaRegion()
+          .showTimeseries(convertToPhysicalPlan(), operatorContext.getInstanceContext())
+          .left
+          .forEach(series -> setColumns(series, builder));
+    } catch (MetadataException e) {
+      throw new RuntimeException(e.getMessage(), e);
+    }
     return builder.build();
   }
 
+  // ToDo @xinzhongtianxia remove this temporary converter after mpp online
   private ShowTimeSeriesPlan convertToPhysicalPlan() {
     return new ShowTimeSeriesPlan(partialPath, isContains, key, value, limit, offset, orderByHeat);
   }
@@ -135,13 +138,5 @@ public class TimeSeriesMetaScanOperator extends MetaScanOperator {
   @Override
   public PlanNodeId getSourceId() {
     return null;
-  }
-
-  @Override
-  public void initQueryDataSource(QueryDataSource dataSource) {}
-
-  @Override
-  public boolean isFinished() throws IOException {
-    return false;
   }
 }

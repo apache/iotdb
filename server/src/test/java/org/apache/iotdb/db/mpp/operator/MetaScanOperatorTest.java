@@ -19,14 +19,17 @@
 package org.apache.iotdb.db.mpp.operator;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.LocalConfigManager;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.schemaregion.SchemaRegion;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.FragmentInstanceContext;
+import org.apache.iotdb.db.mpp.execution.FragmentInstanceState;
+import org.apache.iotdb.db.mpp.execution.SchemaDriverContext;
+import org.apache.iotdb.db.mpp.operator.meta.DevicesMetaScanOperator;
 import org.apache.iotdb.db.mpp.operator.meta.MetaScanOperator;
 import org.apache.iotdb.db.mpp.operator.meta.TimeSeriesMetaScanOperator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
@@ -50,8 +53,11 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_ATTRIBUTES;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_DEVICES;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_IS_ALIGNED;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_STORAGE_GROUP;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TAGS;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES;
@@ -60,6 +66,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_COMP
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_DATATYPE;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_ENCODING;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -83,16 +90,84 @@ public class MetaScanOperatorTest {
   }
 
   @Test
-  public void TimeSeriesMetaScanOperatorTest() {
+  public void testDeviceMetaScanOperator() {
     try {
-      MeasurementPath measurementPath =
-          new MeasurementPath(META_SCAN_OPERATOR_TEST_SG + ".device0.sensor0", TSDataType.INT32);
       QueryId queryId = new QueryId("stub_query");
+      AtomicReference<FragmentInstanceState> state =
+          new AtomicReference<>(FragmentInstanceState.RUNNING);
       FragmentInstanceContext fragmentInstanceContext =
           new FragmentInstanceContext(
-              new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance"));
-      fragmentInstanceContext.addOperatorContext(
-          1, new PlanNodeId("1"), MetaScanOperator.class.getSimpleName());
+              new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance"), state);
+      OperatorContext operatorContext =
+          fragmentInstanceContext.addOperatorContext(
+              1, new PlanNodeId("1"), MetaScanOperator.class.getSimpleName());
+      PartialPath partialPath = new PartialPath(META_SCAN_OPERATOR_TEST_SG + ".device0");
+      SchemaRegion schemaRegion =
+          LocalConfigManager.getInstance().getBelongedSchemaRegion(partialPath);
+      operatorContext
+          .getInstanceContext()
+          .setDriverContext(new SchemaDriverContext(fragmentInstanceContext, schemaRegion));
+      List<String> columns = Arrays.asList(COLUMN_DEVICES, COLUMN_STORAGE_GROUP, COLUMN_IS_ALIGNED);
+      DevicesMetaScanOperator deviceMetaScanOperator =
+          new DevicesMetaScanOperator(
+              fragmentInstanceContext.getOperatorContexts().get(0),
+              10,
+              0,
+              partialPath,
+              false,
+              true,
+              columns);
+      while (deviceMetaScanOperator.hasNext()) {
+        TsBlock tsBlock = deviceMetaScanOperator.next();
+        assertEquals(3, tsBlock.getValueColumnCount());
+        assertTrue(tsBlock.getColumn(0) instanceof BinaryColumn);
+        assertEquals(1, tsBlock.getPositionCount());
+        for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+          Assert.assertEquals(0, tsBlock.getTimeByIndex(i));
+          for (int j = 0; j < columns.size(); j++) {
+            switch (j) {
+              case 0:
+                assertEquals(
+                    tsBlock.getColumn(j).getBinary(i).toString(),
+                    META_SCAN_OPERATOR_TEST_SG + ".device0");
+                break;
+              case 1:
+                assertEquals(
+                    tsBlock.getColumn(j).getBinary(i).toString(), META_SCAN_OPERATOR_TEST_SG);
+                break;
+              case 2:
+                assertFalse(tsBlock.getColumn(j).getBoolean(i));
+                break;
+              default:
+                break;
+            }
+          }
+        }
+      }
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+  @Test
+  public void testTimeSeriesMetaScanOperator() {
+    try {
+      QueryId queryId = new QueryId("stub_query");
+      AtomicReference<FragmentInstanceState> state =
+          new AtomicReference<>(FragmentInstanceState.RUNNING);
+      FragmentInstanceContext fragmentInstanceContext =
+          new FragmentInstanceContext(
+              new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance"), state);
+      OperatorContext operatorContext =
+          fragmentInstanceContext.addOperatorContext(
+              1, new PlanNodeId("1"), MetaScanOperator.class.getSimpleName());
+      PartialPath partialPath = new PartialPath(META_SCAN_OPERATOR_TEST_SG + ".device0.*");
+      SchemaRegion schemaRegion =
+          LocalConfigManager.getInstance().getBelongedSchemaRegion(partialPath);
+      operatorContext
+          .getInstanceContext()
+          .setDriverContext(new SchemaDriverContext(fragmentInstanceContext, schemaRegion));
       List<String> columns =
           Arrays.asList(
               COLUMN_TIMESERIES,
@@ -108,7 +183,7 @@ public class MetaScanOperatorTest {
               fragmentInstanceContext.getOperatorContexts().get(0),
               10,
               0,
-              new PartialPath(META_SCAN_OPERATOR_TEST_SG + ".device0.*"),
+              partialPath,
               null,
               null,
               false,
@@ -154,7 +229,7 @@ public class MetaScanOperatorTest {
           }
         }
       }
-    } catch (IOException | IllegalPathException e) {
+    } catch (MetadataException e) {
       e.printStackTrace();
       fail();
     }

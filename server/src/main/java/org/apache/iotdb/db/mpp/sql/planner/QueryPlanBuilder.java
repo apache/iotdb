@@ -22,6 +22,9 @@ package org.apache.iotdb.db.mpp.sql.planner;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.DevicesMetaScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.MetaMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesMetaScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.*;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregateScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
@@ -273,5 +276,44 @@ public class QueryPlanBuilder {
     }
 
     this.root = new OffsetNode(context.getQueryId().genPlanNodeId(), this.getRoot(), rowOffset);
+  }
+
+  /** Meta Query* */
+  public void planTimeSeriesMetaSource(
+      PartialPath pathPattern,
+      String key,
+      String value,
+      int limit,
+      int offset,
+      boolean orderByHeat,
+      boolean contains,
+      boolean prefixPath) {
+    TimeSeriesMetaScanNode timeSeriesMetaScanNode =
+        new TimeSeriesMetaScanNode(
+            context.getQueryId().genPlanNodeId(),
+            pathPattern,
+            key,
+            value,
+            limit,
+            offset,
+            orderByHeat,
+            contains,
+            prefixPath);
+    this.root = timeSeriesMetaScanNode;
+  }
+
+  public void planDeviceMetaSource(
+      PartialPath pathPattern, int limit, int offset, boolean prefixPath, boolean hasSgCol) {
+    DevicesMetaScanNode devicesMetaScanNode =
+        new DevicesMetaScanNode(
+            context.getQueryId().genPlanNodeId(), pathPattern, limit, offset, prefixPath, hasSgCol);
+    this.root = devicesMetaScanNode;
+  }
+
+  public void planMetaMerge(boolean orderByHeat) {
+    MetaMergeNode metaMergeNode =
+        new MetaMergeNode(context.getQueryId().genPlanNodeId(), orderByHeat);
+    metaMergeNode.addChild(this.getRoot());
+    this.root = metaMergeNode;
   }
 }

@@ -31,8 +31,6 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.SimpleFragmentParallelPlanner;
 import org.apache.iotdb.db.mpp.sql.planner.plan.SubPlan;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeIdAllocator;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.SimplePlanNodeRewriter;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.MetaMergeNode;
@@ -184,7 +182,7 @@ public class DistributionPlanner {
           for (RegionReplicaSet dataRegion : dataDistribution) {
             SeriesScanNode split = (SeriesScanNode) handle.clone();
             split.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
-            split.setDataRegionReplicaSet(dataRegion);
+            split.setRegionReplicaSet(dataRegion);
             sources.add(split);
           }
         } else if (child instanceof SeriesAggregateScanNode) {
@@ -270,13 +268,14 @@ public class DistributionPlanner {
           new NodeDistribution(NodeDistributionType.DIFFERENT_FROM_ALL_CHILDREN);
       PlanNode newNode = node.clone();
       nodeDistribution.region = calculateSchemaRegionByChildren(node.getChildren(), context);
-      context.putNodeDistribution(newNode.getId(), nodeDistribution);
+      context.putNodeDistribution(newNode.getPlanNodeId(), nodeDistribution);
       node.getChildren()
           .forEach(
               child -> {
                 if (!nodeDistribution.region.equals(
-                    context.getNodeDistribution(child.getId()).region)) {
-                  ExchangeNode exchangeNode = new ExchangeNode(PlanNodeIdAllocator.generateId());
+                    context.getNodeDistribution(child.getPlanNodeId()).region)) {
+                  ExchangeNode exchangeNode =
+                      new ExchangeNode(context.queryContext.getQueryId().genPlanNodeId());
                   exchangeNode.addChild(child);
                   newNode.addChild(exchangeNode);
                 } else {
@@ -290,7 +289,7 @@ public class DistributionPlanner {
     public PlanNode visitMetaScan(MetaScanNode node, NodeGroupContext context) {
       NodeDistribution nodeDistribution = new NodeDistribution(NodeDistributionType.NO_CHILD);
       nodeDistribution.region = node.getRegionReplicaSet();
-      context.putNodeDistribution(node.getId(), nodeDistribution);
+      context.putNodeDistribution(node.getPlanNodeId(), nodeDistribution);
       return node;
     }
 
@@ -360,7 +359,7 @@ public class DistributionPlanner {
     private RegionReplicaSet calculateSchemaRegionByChildren(
         List<PlanNode> children, NodeGroupContext context) {
       // We always make the schemaRegion of MetaMergeNode to be the same as its first child.
-      return context.getNodeDistribution(children.get(0).getId()).region;
+      return context.getNodeDistribution(children.get(0).getPlanNodeId()).region;
     }
 
     private boolean nodeDistributionIsSame(List<PlanNode> children, NodeGroupContext context) {
@@ -368,7 +367,7 @@ public class DistributionPlanner {
       NodeDistribution first = context.getNodeDistribution(children.get(0).getPlanNodeId());
       for (int i = 1; i < children.size(); i++) {
         NodeDistribution next = context.getNodeDistribution(children.get(i).getPlanNodeId());
-        if (first.dataRegion == null || !first.region.equals(next.region)) {
+        if (first.region == null || !first.region.equals(next.region)) {
           return false;
         }
       }
@@ -382,11 +381,11 @@ public class DistributionPlanner {
 
   private class NodeGroupContext {
     private MPPQueryContext queryContext;
-    private Map<PlanNodeId, NodeDistribution> nodeDistribution;
+    private Map<PlanNodeId, NodeDistribution> nodeDistributionMap;
 
     public NodeGroupContext(MPPQueryContext queryContext) {
       this.queryContext = queryContext;
-      this.nodeDistribution = new HashMap<>();
+      this.nodeDistributionMap = new HashMap<>();
     }
 
     public void putNodeDistribution(PlanNodeId nodeId, NodeDistribution distribution) {

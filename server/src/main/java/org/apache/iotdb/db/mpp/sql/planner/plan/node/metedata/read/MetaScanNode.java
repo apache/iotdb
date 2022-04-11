@@ -24,12 +24,14 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SourceNode;
 
+import java.util.List;
+
 public abstract class MetaScanNode extends SourceNode {
   protected int limit;
   protected int offset;
   protected PartialPath path;
   private boolean hasLimit;
-  private boolean isPrefixPath;
+  protected boolean isPrefixPath;
 
   private RegionReplicaSet schemaRegionReplicaSet;
 
@@ -48,16 +50,6 @@ public abstract class MetaScanNode extends SourceNode {
   @Override
   public int allowedChildCount() {
     return NO_CHILD_ALLOWED;
-  }
-
-  @Override
-  public String getDeviceName() {
-    return null;
-  }
-
-  @Override
-  protected String getExpressionString() {
-    return path.getFullPath();
   }
 
   @Override
@@ -113,6 +105,8 @@ public abstract class MetaScanNode extends SourceNode {
   public void setHasLimit(boolean hasLimit) {
     this.hasLimit = hasLimit;
   }
+
+  public abstract List<String> getOutputColumnNames();
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {

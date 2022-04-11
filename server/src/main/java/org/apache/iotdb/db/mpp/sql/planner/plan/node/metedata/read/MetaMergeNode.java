@@ -20,7 +20,6 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read;
 
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeIdAllocator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ProcessNode;
 
@@ -56,17 +55,12 @@ public class MetaMergeNode extends ProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new MetaMergeNode(PlanNodeIdAllocator.generateId(), this.orderByHeat);
+    return new MetaMergeNode(getPlanNodeId(), this.orderByHeat);
   }
 
   @Override
   public int allowedChildCount() {
     return CHILD_COUNT_NO_LIMIT;
-  }
-
-  @Override
-  public List<String> getOutputColumnNames() {
-    return null;
   }
 
   @Override

@@ -22,7 +22,6 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeIdAllocator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -42,12 +41,12 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_ENCO
 
 public class TimeSeriesMetaScanNode extends MetaScanNode {
 
-  private String key;
-  private String value;
-  private boolean isContains;
+  private final String key;
+  private final String value;
+  private final boolean isContains;
 
   // if is true, the result will be sorted according to the inserting frequency of the timeseries
-  private boolean orderByHeat;
+  private final boolean orderByHeat;
 
   public TimeSeriesMetaScanNode(
       PlanNodeId id,
@@ -69,7 +68,7 @@ public class TimeSeriesMetaScanNode extends MetaScanNode {
   @Override
   public void serialize(ByteBuffer byteBuffer) {
     PlanNodeType.TIME_SERIES_META_SCAN.serialize(byteBuffer);
-    ReadWriteIOUtils.write(getId().getId(), byteBuffer);
+    ReadWriteIOUtils.write(getPlanNodeId().getId(), byteBuffer);
     ReadWriteIOUtils.write(path.getFullPath(), byteBuffer);
     ReadWriteIOUtils.write(key, byteBuffer);
     ReadWriteIOUtils.write(value, byteBuffer);
@@ -77,7 +76,7 @@ public class TimeSeriesMetaScanNode extends MetaScanNode {
     ReadWriteIOUtils.write(offset, byteBuffer);
     ReadWriteIOUtils.write(orderByHeat, byteBuffer);
     ReadWriteIOUtils.write(isContains, byteBuffer);
-    ReadWriteIOUtils.write(isPrefixPath(), byteBuffer);
+    ReadWriteIOUtils.write(isPrefixPath, byteBuffer);
   }
 
   public static TimeSeriesMetaScanNode deserialize(ByteBuffer byteBuffer)
@@ -101,32 +100,16 @@ public class TimeSeriesMetaScanNode extends MetaScanNode {
     return key;
   }
 
-  public void setKey(String key) {
-    this.key = key;
-  }
-
   public String getValue() {
     return value;
-  }
-
-  public void setValue(String value) {
-    this.value = value;
   }
 
   public boolean isContains() {
     return isContains;
   }
 
-  public void setContains(boolean contains) {
-    isContains = contains;
-  }
-
   public boolean isOrderByHeat() {
     return orderByHeat;
-  }
-
-  public void setOrderByHeat(boolean orderByHeat) {
-    this.orderByHeat = orderByHeat;
   }
 
   @Override
@@ -140,15 +123,7 @@ public class TimeSeriesMetaScanNode extends MetaScanNode {
   @Override
   public PlanNode clone() {
     return new TimeSeriesMetaScanNode(
-        PlanNodeIdAllocator.generateId(),
-        path,
-        key,
-        value,
-        limit,
-        offset,
-        orderByHeat,
-        isContains,
-        isPrefixPath());
+        getPlanNodeId(), path, key, value, limit, offset, orderByHeat, isContains, isPrefixPath);
   }
 
   @Override

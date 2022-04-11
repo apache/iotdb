@@ -200,6 +200,7 @@ public class SeriesScanNode extends SourceNode implements IOutputPlanNode {
     return valueFilter;
   }
 
+  @Override
   public String toString() {
     return String.format(
         "SeriesScanNode-%s:[SeriesPath: %s, DataRegion: %s]",

@@ -30,8 +30,6 @@ import org.apache.iotdb.db.mpp.sql.parser.StatementGenerator;
 import org.apache.iotdb.db.mpp.sql.planner.LogicalPlanner;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeIdAllocator;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.DevicesMetaScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.MetaMergeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesMetaScanNode;
@@ -374,7 +372,7 @@ public class LogicalPlannerTest {
   }
 
   @Test
-  public void testShowTimeSeriesNodeTests() {
+  public void testShowTimeSeries() {
     String sql =
         "SHOW LATEST TIMESERIES root.ln.wf01.wt01.status WHERE tagK = tagV limit 20 offset 10";
 
@@ -421,7 +419,7 @@ public class LogicalPlannerTest {
   }
 
   @Test
-  public void testDevicesNodeTests() {
+  public void testShowDevices() {
     String sql = "SHOW DEVICES root.ln.wf01.wt01 WITH STORAGE GROUP limit 20 offset 10";
     try {
       LimitNode limitNode = (LimitNode) parseSQLToPlanNode(sql);
@@ -435,6 +433,18 @@ public class LogicalPlannerTest {
       Assert.assertEquals(20, showDevicesNode.getLimit());
       Assert.assertEquals(10, showDevicesNode.getOffset());
       Assert.assertTrue(showDevicesNode.isHasLimit());
+
+      // test serialize and deserialize
+      ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
+      showDevicesNode.serialize(byteBuffer);
+      byteBuffer.flip();
+      DevicesMetaScanNode showDevicesNode2 =
+          (DevicesMetaScanNode) PlanNodeType.deserialize(byteBuffer);
+      Assert.assertNotNull(showDevicesNode2);
+      Assert.assertEquals(new PartialPath("root.ln.wf01.wt01"), showDevicesNode2.getPath());
+      Assert.assertEquals(20, showDevicesNode2.getLimit());
+      Assert.assertEquals(10, showDevicesNode2.getOffset());
+      Assert.assertTrue(showDevicesNode2.isHasLimit());
     } catch (Exception e) {
       e.printStackTrace();
       fail();

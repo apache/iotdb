@@ -47,14 +47,14 @@ import org.apache.iotdb.db.mpp.sql.statement.crud.*;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowDevicesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.util.ExpressionOptimizer;
-import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowDevicesStatement;
-import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowTimeSeriesStatement;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -286,7 +286,6 @@ public class Analyzer {
       return analysis;
     }
 
-    @Override
     @Override
     public Analysis visitCreateUser(AuthorStatement authorStatement, MPPQueryContext context) {
       Analysis analysis = new Analysis();
