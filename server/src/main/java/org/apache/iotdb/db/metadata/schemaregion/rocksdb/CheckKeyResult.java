@@ -44,10 +44,6 @@ public class CheckKeyResult {
     nodeType = NODE_TYPE_ARRAY[type];
   }
 
-  public RMNodeType getExistType() {
-    return nodeType;
-  }
-
   public boolean getResult(RMNodeType type) {
     return type == nodeType;
   }
