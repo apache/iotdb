@@ -33,7 +33,6 @@ import org.apache.iotdb.db.exception.metadata.template.UndefinedTemplateExceptio
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.rescon.SchemaResourceManager;
-import org.apache.iotdb.db.metadata.rescon.TimeseriesStatistics;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.metadata.storagegroup.IStorageGroupSchemaManager;
@@ -517,7 +516,7 @@ public class LocalConfigManager {
     partitionTable.putSchemaRegionId(storageGroup, schemaRegionId);
   }
 
-  public ISchemaRegion getSchemaRegion(SchemaRegionId schemaRegionId) throws MetadataException{
+  public ISchemaRegion getSchemaRegion(SchemaRegionId schemaRegionId) throws MetadataException {
     return schemaEngine.getSchemaRegion(schemaRegionId);
   }
 
