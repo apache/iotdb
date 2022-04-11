@@ -79,7 +79,7 @@ public class DataNodeInfoPersistence {
   }
 
   /**
-   * Persistence DataNode info
+   * Persist DataNode info
    *
    * @param plan RegisterDataNodePlan
    * @return SUCCESS_STATUS
@@ -89,6 +89,7 @@ public class DataNodeInfoPersistence {
     DataNodeLocation info = plan.getInfo();
     dataNodeInfoReadWriteLock.writeLock().lock();
     try {
+      nextDataNodeId = Math.max(nextDataNodeId, info.getDataNodeID());
       onlineDataNodes.put(info.getDataNodeID(), info);
       result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } finally {

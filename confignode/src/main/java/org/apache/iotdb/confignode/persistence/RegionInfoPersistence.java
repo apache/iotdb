@@ -101,10 +101,12 @@ public class RegionInfoPersistence {
   public TSStatus createRegions(CreateRegionsPlan plan) {
     TSStatus result;
     regionReadWriteLock.writeLock().lock();
+    regionAllocateLock.writeLock().lock();
     try {
       StorageGroupSchema schema = storageGroupsMap.get(plan.getStorageGroup());
 
       for (RegionReplicaSet regionReplicaSet : plan.getRegionReplicaSets()) {
+        nextRegionGroupId = Math.max(nextRegionGroupId, regionReplicaSet.getId().getId());
         regionMap.put(regionReplicaSet.getId(), regionReplicaSet);
         if (regionReplicaSet.getId() instanceof DataRegionId) {
           schema.addDataRegionGroup(regionReplicaSet.getId());
@@ -115,6 +117,7 @@ public class RegionInfoPersistence {
 
       result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } finally {
+      regionAllocateLock.writeLock().unlock();
       regionReadWriteLock.writeLock().unlock();
     }
     return result;

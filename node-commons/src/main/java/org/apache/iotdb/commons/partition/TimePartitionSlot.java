@@ -19,8 +19,10 @@
 package org.apache.iotdb.commons.partition;
 
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class TimePartitionSlot {
+
   private long startTime;
 
   public TimePartitionSlot() {
@@ -39,22 +41,24 @@ public class TimePartitionSlot {
     this.startTime = startTime;
   }
 
-  @Override
-  public int hashCode() {
-    return new Long(this.startTime).hashCode();
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    return o instanceof TimePartitionSlot
-        && ((TimePartitionSlot) o).getStartTime() == this.startTime;
-  }
-
   public void serializeImpl(ByteBuffer buffer) {
     buffer.putLong(startTime);
   }
 
   public void deserializeImpl(ByteBuffer buffer) {
     startTime = buffer.getLong();
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    TimePartitionSlot that = (TimePartitionSlot) o;
+    return startTime == that.startTime;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(startTime);
   }
 }

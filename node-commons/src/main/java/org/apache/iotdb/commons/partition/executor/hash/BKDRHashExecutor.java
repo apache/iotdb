@@ -16,9 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.hash;
+package org.apache.iotdb.commons.partition.executor.hash;
 
-public class BKDRHashExecutor extends DeviceGroupHashExecutor {
+import org.apache.iotdb.commons.partition.SeriesPartitionSlot;
+import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
+
+public class BKDRHashExecutor extends SeriesPartitionExecutor {
 
   private static final int seed = 131;
 
@@ -27,7 +30,7 @@ public class BKDRHashExecutor extends DeviceGroupHashExecutor {
   }
 
   @Override
-  public int getDeviceGroupID(String device) {
+  public SeriesPartitionSlot getSeriesPartitionSlot(String device) {
     int hash = 0;
 
     for (int i = 0; i < device.length(); i++) {
@@ -35,6 +38,6 @@ public class BKDRHashExecutor extends DeviceGroupHashExecutor {
     }
     hash &= Integer.MAX_VALUE;
 
-    return hash % deviceGroupCount;
+    return new SeriesPartitionSlot(hash % seriesPartitionSlotNum);
   }
 }

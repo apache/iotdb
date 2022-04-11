@@ -16,16 +16,30 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.hash;
+package org.apache.iotdb.commons.partition.executor.hash;
 
-/** All DeviceGroup hash algorithm executors must be subclasses of DeviceGroupHashExecutor */
-public abstract class DeviceGroupHashExecutor {
+import org.apache.iotdb.commons.partition.SeriesPartitionSlot;
+import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 
-  protected final int deviceGroupCount;
+public class APHashExecutor extends SeriesPartitionExecutor {
 
-  public DeviceGroupHashExecutor(int deviceGroupCount) {
-    this.deviceGroupCount = deviceGroupCount;
+  public APHashExecutor(int deviceGroupCount) {
+    super(deviceGroupCount);
   }
 
-  public abstract int getDeviceGroupID(String device);
+  @Override
+  public SeriesPartitionSlot getSeriesPartitionSlot(String device) {
+    int hash = 0;
+
+    for (int i = 0; i < device.length(); i++) {
+      if ((i & 1) == 0) {
+        hash ^= ((hash << 7) ^ (int) device.charAt(i) ^ (hash >> 3));
+      } else {
+        hash ^= (~((hash << 11) ^ (int) device.charAt(i) ^ (hash >> 5)));
+      }
+    }
+    hash &= Integer.MAX_VALUE;
+
+    return new SeriesPartitionSlot(hash % seriesPartitionSlotNum);
+  }
 }

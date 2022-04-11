@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.confignode.util.SerializeDeserializeUtil;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -79,20 +80,18 @@ public class StorageGroupSchema {
     }
   }
 
-  public void deserialize(ByteBuffer buffer) {
+  public void deserialize(ByteBuffer buffer) throws IOException {
     name = SerializeDeserializeUtil.readString(buffer);
 
     int length = buffer.getInt();
     for (int i = 0; i < length; i++) {
-      SchemaRegionId schemaRegionId = new SchemaRegionId();
-      schemaRegionId.deserializeImpl(buffer);
+      ConsensusGroupId schemaRegionId = ConsensusGroupId.Factory.create(buffer);
       schemaRegionGroupIds.add(schemaRegionId);
     }
 
     length = buffer.getInt();
     for (int i = 0; i < length; i++) {
-      DataRegionId dataRegionId = new DataRegionId();
-      dataRegionId.deserializeImpl(buffer);
+      ConsensusGroupId dataRegionId = ConsensusGroupId.Factory.create(buffer);
       dataRegionGroupIds.add(dataRegionId);
     }
   }
