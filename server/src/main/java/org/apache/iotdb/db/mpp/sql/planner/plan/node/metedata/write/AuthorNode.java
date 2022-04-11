@@ -32,6 +32,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.nio.ByteBuffer;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 public class AuthorNode extends PlanNode {
@@ -321,26 +322,21 @@ public class AuthorNode extends PlanNode {
   }
 
   @Override
-  public String toString() {
-    return "AuthorNode{"
-        + "authorType="
-        + authorType
-        + ", userName='"
-        + userName
-        + '\''
-        + ", roleName='"
-        + roleName
-        + '\''
-        + ", password='"
-        + password
-        + '\''
-        + ", newPassword='"
-        + newPassword
-        + '\''
-        + ", permissions="
-        + permissions
-        + ", nodeName="
-        + nodeName
-        + '}';
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    AuthorNode that = (AuthorNode) o;
+    return this.getPlanNodeId().equals(that.getPlanNodeId())
+        && Objects.equals(authorType, that.authorType)
+        && Objects.equals(userName, that.userName)
+        && Objects.equals(roleName, that.roleName)
+        && Objects.equals(password, that.password)
+        && Objects.equals(newPassword, that.newPassword)
+        && Objects.equals(permissions, that.permissions)
+        && Objects.equals(nodeName, that.nodeName);
   }
 }
