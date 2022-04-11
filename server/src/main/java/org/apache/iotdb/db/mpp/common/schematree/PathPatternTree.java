@@ -81,6 +81,7 @@ public class PathPatternTree {
     isPrefixMatchPath = prefixMatchPath;
   }
 
+  /** @return all path patterns in the path pattern tree. */
   public List<String> findAllPaths() {
     List<String> nodes = new ArrayList<>();
     List<String> pathPatternList = new ArrayList<>();
