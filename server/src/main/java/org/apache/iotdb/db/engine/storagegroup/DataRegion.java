@@ -287,12 +287,8 @@ public class DataRegion {
 
     // if use id table, we use id table flush time manager
     if (config.isEnableIDTable()) {
-      try {
-        idTable = IDTableManager.getInstance().getIDTable(new PartialPath(logicalStorageGroupName));
-        lastFlushTimeManager = new IDTableFlushTimeManager(idTable);
-      } catch (IllegalPathException e) {
-        logger.error("failed to create id table");
-      }
+      idTable = IDTableManager.getInstance().getIDTableDirectly(logicalStorageGroupName);
+      lastFlushTimeManager = new IDTableFlushTimeManager(idTable);
     } else {
       lastFlushTimeManager = new LastFlushTimeManager();
     }

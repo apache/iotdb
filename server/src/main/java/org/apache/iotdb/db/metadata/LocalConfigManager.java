@@ -29,10 +29,10 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.exception.metadata.UndefinedTemplateException;
+import org.apache.iotdb.db.exception.metadata.template.UndefinedTemplateException;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.metadata.rescon.TimeseriesStatistics;
+import org.apache.iotdb.db.metadata.rescon.SchemaResourceManager;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaRegion;
 import org.apache.iotdb.db.metadata.storagegroup.IStorageGroupSchemaManager;
@@ -79,8 +79,6 @@ public class LocalConfigManager {
 
   private ScheduledExecutorService timedForceMLogThread;
 
-  private TimeseriesStatistics timeseriesStatistics = TimeseriesStatistics.getInstance();
-
   private IStorageGroupSchemaManager storageGroupSchemaManager =
       StorageGroupSchemaManager.getInstance();
   private TemplateManager templateManager = TemplateManager.getInstance();
@@ -119,7 +117,7 @@ public class LocalConfigManager {
     }
 
     try {
-      timeseriesStatistics.init();
+      SchemaResourceManager.initSchemaResource();
 
       templateManager.init();
       storageGroupSchemaManager.init();
@@ -176,7 +174,12 @@ public class LocalConfigManager {
     }
 
     try {
-      timeseriesStatistics.clear();
+      SchemaResourceManager.clearSchemaResource();
+
+      if (timedForceMLogThread != null) {
+        timedForceMLogThread.shutdownNow();
+        timedForceMLogThread = null;
+      }
 
       partitionTable.clear();
 
@@ -188,10 +191,6 @@ public class LocalConfigManager {
       storageGroupSchemaManager.clear();
       templateManager.clear();
 
-      if (timedForceMLogThread != null) {
-        timedForceMLogThread.shutdownNow();
-        timedForceMLogThread = null;
-      }
     } catch (IOException e) {
       logger.error("Error occurred when clearing LocalConfigManager:", e);
     }
@@ -199,7 +198,7 @@ public class LocalConfigManager {
     initialized = false;
   }
 
-  public void forceMlog() {
+  public synchronized void forceMlog() {
     if (!initialized) {
       return;
     }
@@ -239,9 +238,8 @@ public class LocalConfigManager {
   }
 
   public void deleteStorageGroup(PartialPath storageGroup) throws MetadataException {
-    storageGroupSchemaManager.deleteStorageGroup(storageGroup);
     deleteSchemaRegionsInStorageGroup(
-        storageGroup, partitionTable.deleteStorageGroup(storageGroup));
+        storageGroup, partitionTable.getSchemaRegionIdsByStorageGroup(storageGroup));
 
     for (Template template : templateManager.getTemplateMap().values()) {
       templateManager.unmarkStorageGroup(template, storageGroup.getFullPath());
@@ -250,6 +248,11 @@ public class LocalConfigManager {
     if (!config.isEnableMemControl()) {
       MemTableManager.getInstance().addOrDeleteStorageGroup(-1);
     }
+
+    partitionTable.deleteStorageGroup(storageGroup);
+
+    // delete storage group after all related resources have been cleared
+    storageGroupSchemaManager.deleteStorageGroup(storageGroup);
   }
 
   /**
@@ -513,8 +516,7 @@ public class LocalConfigManager {
     partitionTable.putSchemaRegionId(storageGroup, schemaRegionId);
   }
 
-  public SchemaRegion getSchemaRegion(PartialPath storageGroup, SchemaRegionId schemaRegionId)
-      throws MetadataException {
+  public SchemaRegion getSchemaRegion(SchemaRegionId schemaRegionId) {
     return schemaEngine.getSchemaRegion(schemaRegionId);
   }
 

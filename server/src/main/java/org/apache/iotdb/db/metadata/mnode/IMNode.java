@@ -19,12 +19,13 @@
 package org.apache.iotdb.db.metadata.mnode;
 
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
+import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
+import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheEntry;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.Template;
 
 import java.io.IOException;
 import java.io.Serializable;
-import java.util.Map;
 
 /** This interface defines a MNode's operation interfaces. */
 public interface IMNode extends Serializable {
@@ -51,7 +52,7 @@ public interface IMNode extends Serializable {
 
   IMNode addChild(IMNode child);
 
-  void deleteChild(String name);
+  IMNode deleteChild(String name);
 
   // this method will replace the oldChild with the newChild, the data of oldChild will be moved to
   // newChild
@@ -60,9 +61,9 @@ public interface IMNode extends Serializable {
   // this method will move all the reference or value of current node's attributes to newMNode
   void moveDataToNewMNode(IMNode newMNode);
 
-  Map<String, IMNode> getChildren();
+  IMNodeContainer getChildren();
 
-  void setChildren(Map<String, IMNode> children);
+  void setChildren(IMNodeContainer children);
 
   boolean isUseTemplate();
 
@@ -73,10 +74,6 @@ public interface IMNode extends Serializable {
   Template getSchemaTemplate();
 
   void setSchemaTemplate(Template schemaTemplate);
-
-  // EmptyInternal means there's no child or template under this node
-  // and this node is not the root nor a storageGroup nor a measurement.
-  boolean isEmptyInternal();
 
   boolean isStorageGroup();
 
@@ -91,4 +88,8 @@ public interface IMNode extends Serializable {
   IMeasurementMNode getAsMeasurementMNode();
 
   void serializeTo(MLogWriter logWriter) throws IOException;
+
+  CacheEntry getCacheEntry();
+
+  void setCacheEntry(CacheEntry cacheEntry);
 }
