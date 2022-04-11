@@ -69,7 +69,7 @@ public class FloatColumn implements Column {
 
   @Override
   public TSDataType getDataType() {
-    return TSDataType.DOUBLE;
+    return TSDataType.FLOAT;
   }
 
   @Override
