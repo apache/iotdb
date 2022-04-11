@@ -192,7 +192,7 @@ public class AuthorNode extends PlanNode {
     byteBuffer.putInt(0);
   }
 
-  public static AuthorNode deserialize(ByteBuffer byteBuffer) throws IllegalPathException {
+  public static AuthorNode deserialize(ByteBuffer byteBuffer) {
     String id;
     AuthorOperator.AuthorType authorType;
     String userName;
@@ -222,7 +222,11 @@ public class AuthorNode extends PlanNode {
     if (hasNodeName == (byte) 0) {
       nodeName = null;
     } else {
-      nodeName = new PartialPath(ReadWriteIOUtils.readString(byteBuffer));
+      try {
+        nodeName = new PartialPath(ReadWriteIOUtils.readString(byteBuffer));
+      } catch (IllegalPathException e) {
+        throw new IllegalArgumentException("Can not deserialize AuthorNode", e);
+      }
     }
     try {
       return new AuthorNode(
@@ -238,10 +242,10 @@ public class AuthorNode extends PlanNode {
       throw new IllegalArgumentException(e.getMessage());
     }
   }
-  
+
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    throw new NotImplementedException();
+    throw new NotImplementedException("serializeAttributes of AuthorNode is not implemented");
   }
 
   public Set<Integer> strToPermissions(String[] privilegeList) throws AuthException {
