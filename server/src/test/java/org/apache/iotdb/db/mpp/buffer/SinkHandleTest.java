@@ -83,7 +83,7 @@ public class SinkHandleTest {
             mockLocalMemoryManager,
             Executors.newSingleThreadExecutor(),
             mockClient,
-            new TsBlockSerde(),
+            Utils.createMockTsBlockSerde(mockTsBlockSize),
             mockSinkHandleListener);
     Assert.assertTrue(sinkHandle.isFull().isDone());
     Assert.assertFalse(sinkHandle.isFinished());
@@ -125,7 +125,12 @@ public class SinkHandleTest {
 
     // Get tsblocks.
     for (int i = 0; i < numOfMockTsBlock; i++) {
-      sinkHandle.getSerializedTsBlock(i);
+      try {
+        sinkHandle.getSerializedTsBlock(i);
+      } catch (IOException e) {
+        e.printStackTrace();
+        Assert.fail();
+      }
       Assert.assertTrue(sinkHandle.isFull().isDone());
     }
     Assert.assertFalse(sinkHandle.isFinished());
@@ -210,7 +215,7 @@ public class SinkHandleTest {
             mockLocalMemoryManager,
             Executors.newSingleThreadExecutor(),
             mockClient,
-            new TsBlockSerde(),
+            Utils.createMockTsBlockSerde(mockTsBlockSize),
             mockSinkHandleListener);
     Assert.assertTrue(sinkHandle.isFull().isDone());
     Assert.assertFalse(sinkHandle.isFinished());
@@ -251,7 +256,12 @@ public class SinkHandleTest {
 
     // Get tsblocks.
     for (int i = 0; i < numOfMockTsBlock; i++) {
-      sinkHandle.getSerializedTsBlock(i);
+      try {
+        sinkHandle.getSerializedTsBlock(i);
+      } catch (IOException e) {
+        e.printStackTrace();
+        Assert.fail();
+      }
       Assert.assertFalse(sinkHandle.isFull().isDone());
     }
     Assert.assertFalse(sinkHandle.isFinished());
@@ -324,7 +334,12 @@ public class SinkHandleTest {
 
     // Get tsblocks after the SinkHandle is closed.
     for (int i = numOfMockTsBlock; i < numOfMockTsBlock * 2; i++) {
-      sinkHandle.getSerializedTsBlock(i);
+      try {
+        sinkHandle.getSerializedTsBlock(i);
+      } catch (IOException e) {
+        e.printStackTrace();
+        Assert.fail();
+      }
     }
     Assert.assertFalse(sinkHandle.isFinished());
 
@@ -382,7 +397,7 @@ public class SinkHandleTest {
             mockLocalMemoryManager,
             Executors.newSingleThreadExecutor(),
             mockClient,
-            new TsBlockSerde(),
+            Utils.createMockTsBlockSerde(mockTsBlockSize),
             mockSinkHandleListener);
     Assert.assertTrue(sinkHandle.isFull().isDone());
     Assert.assertFalse(sinkHandle.isFinished());
