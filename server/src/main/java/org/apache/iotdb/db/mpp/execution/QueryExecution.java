@@ -213,6 +213,7 @@ public class QueryExecution implements IQueryExecution {
                   context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift(),
                   context.getResultNodeContext().getVirtualResultNodeId().getId(),
                   context.getResultNodeContext().getUpStreamEndpoint().getIp(),
+                  context.getResultNodeContext().getUpStreamEndpoint().getPort(),
                   context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift());
     }
   }
