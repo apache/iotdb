@@ -183,4 +183,12 @@ class StandAloneConsensus implements IConsensus {
   public boolean isLeader(ConsensusGroupId groupId) {
     return true;
   }
+
+  @Override
+  public Peer getLeader(ConsensusGroupId groupId) {
+    if (!stateMachineMap.containsKey(groupId)) {
+      return null;
+    }
+    return new Peer(groupId, thisNode);
+  }
 }

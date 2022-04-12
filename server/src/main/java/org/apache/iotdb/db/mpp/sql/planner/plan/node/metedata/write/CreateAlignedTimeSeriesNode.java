@@ -232,8 +232,7 @@ public class CreateAlignedTimeSeriesNode extends PlanNode implements NoQueryExec
     byteBuffer.putInt(0);
   }
 
-  public static CreateAlignedTimeSeriesNode deserialize(ByteBuffer byteBuffer)
-      throws IllegalPathException {
+  public static CreateAlignedTimeSeriesNode deserialize(ByteBuffer byteBuffer) {
     String id;
     PartialPath devicePath = null;
     List<String> measurements;
@@ -248,7 +247,11 @@ public class CreateAlignedTimeSeriesNode extends PlanNode implements NoQueryExec
     int length = byteBuffer.getInt();
     byte[] bytes = new byte[length];
     byteBuffer.get(bytes);
-    devicePath = new PartialPath(new String(bytes));
+    try {
+      devicePath = new PartialPath(new String(bytes));
+    } catch (IllegalPathException e) {
+      throw new IllegalArgumentException("Can not deserialize CreateAlignedTimeSeriesNode", e);
+    }
 
     measurements = new ArrayList<>();
     int size = byteBuffer.getInt();
@@ -335,6 +338,11 @@ public class CreateAlignedTimeSeriesNode extends PlanNode implements NoQueryExec
   }
 
   @Override
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    throw new NotImplementedException(
+        "serializeAttributes of CreateAlignedTimeSeriesNode is not implemented");
+  }
+
   public int hashCode() {
     return Objects.hash(
         this.getPlanNodeId(),

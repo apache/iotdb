@@ -28,9 +28,11 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.sink.FragmentSinkNode;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class FragmentInstance implements IConsensusRequest {
   private final FragmentInstanceId id;
@@ -45,15 +47,11 @@ public class FragmentInstance implements IConsensusRequest {
 
   private Filter timeFilter;
 
-  // The index to generate this FragmentInstanceId
-  private int index;
-
   // We can add some more params for a specific FragmentInstance
   // So that we can make different FragmentInstance owns different data range.
 
   public FragmentInstance(PlanFragment fragment, int index) {
     this.fragment = fragment;
-    this.index = index;
     this.id = generateId(fragment.getId(), index);
   }
 
@@ -124,26 +122,47 @@ public class FragmentInstance implements IConsensusRequest {
     return ret.toString();
   }
 
-  /** TODO need to be implemented */
-  public static FragmentInstance deserializeFrom(ByteBuffer byteBuffer)
+  public static FragmentInstance deserializeFrom(ByteBuffer buffer)
       throws IllegalPathException, IOException {
+    FragmentInstanceId id = FragmentInstanceId.deserialize(buffer);
     FragmentInstance fragmentInstance =
-        new FragmentInstance(PlanFragment.deserialize(byteBuffer), byteBuffer.getInt());
-    fragmentInstance.setRegionReplicaSet(RegionReplicaSet.deserializeImpl(byteBuffer));
+        new FragmentInstance(
+            PlanFragment.deserialize(buffer), Integer.parseInt(id.getInstanceId()));
+    fragmentInstance.regionReplicaSet = RegionReplicaSet.deserializeImpl(buffer);
+    fragmentInstance.hostEndpoint = Endpoint.deserializeImpl(buffer);
+    fragmentInstance.timeFilter = FilterFactory.deserialize(buffer);
+
     return fragmentInstance;
   }
 
   @Override
-  public void serializeRequest(ByteBuffer byteBuffer) {
-    byteBuffer.mark();
-    // PlanFragment
-    fragment.serialize(byteBuffer);
+  public void serializeRequest(ByteBuffer buffer) {
+    buffer.mark();
+    id.serialize(buffer);
+    fragment.serialize(buffer);
+    regionReplicaSet.serializeImpl(buffer);
+    hostEndpoint.serializeImpl(buffer);
+    timeFilter.serialize(buffer);
+  }
 
-    // index
-    byteBuffer.putInt(index);
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    FragmentInstance that = (FragmentInstance) o;
+    return Objects.equals(id, that.id)
+        && Objects.equals(fragment, that.fragment)
+        && Objects.equals(regionReplicaSet, that.regionReplicaSet)
+        && Objects.equals(hostEndpoint, that.hostEndpoint)
+        && Objects.equals(timeFilter, that.timeFilter);
+  }
 
-    // RegionReplicaSet
-    regionReplicaSet.serializeImpl(byteBuffer);
-    byteBuffer.flip();
+  @Override
+  public int hashCode() {
+    return Objects.hash(id, fragment, regionReplicaSet, hostEndpoint, timeFilter);
   }
 }

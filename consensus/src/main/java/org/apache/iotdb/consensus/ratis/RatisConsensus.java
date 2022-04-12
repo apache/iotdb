@@ -450,6 +450,21 @@ class RatisConsensus implements IConsensus {
   }
 
   @Override
+  public Peer getLeader(ConsensusGroupId groupId) {
+    if (isLeader(groupId)) {
+      return new Peer(groupId, Utils.parseFromRatisId(myself.getId().toString()));
+    }
+
+    RaftGroupId raftGroupId = Utils.toRatisGroupId(groupId);
+    RaftClient client = clientMap.getOrDefault(raftGroupId, null);
+    if (client == null) {
+      return null;
+    }
+    Endpoint leaderEndpoint = Utils.parseFromRatisId(client.getLeaderId().toString());
+    return new Peer(groupId, leaderEndpoint);
+  }
+
+  @Override
   public ConsensusGenericResponse triggerSnapshot(ConsensusGroupId groupId) {
     return ConsensusGenericResponse.newBuilder().setSuccess(false).build();
   }

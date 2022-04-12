@@ -22,6 +22,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.Objects;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
@@ -77,5 +78,24 @@ public class PlanFragmentId {
   public static PlanFragmentId deserialize(ByteBuffer byteBuffer) {
     return new PlanFragmentId(
         QueryId.deserialize(byteBuffer), ReadWriteIOUtils.readInt(byteBuffer));
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    PlanFragmentId that = (PlanFragmentId) o;
+    return id == that.id
+        && nextFragmentInstanceId == that.nextFragmentInstanceId
+        && Objects.equals(queryId, that.queryId);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(queryId, id, nextFragmentInstanceId);
   }
 }

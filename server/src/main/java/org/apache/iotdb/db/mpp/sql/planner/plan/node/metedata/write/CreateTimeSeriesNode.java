@@ -289,7 +289,32 @@ public class CreateTimeSeriesNode extends PlanNode implements NoQueryExecutor {
   }
 
   @Override
+  protected void serializeAttributes(ByteBuffer byteBuffer) {}
+
+  @Override
   public void executor(SchemaRegion schemaRegion) throws MetadataException {
     schemaRegion.createTimeseries((CreateTimeSeriesPlan) transferToPhysicalPlan());
+  }
+
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
+    CreateTimeSeriesNode that = (CreateTimeSeriesNode) o;
+    return tagOffset == that.tagOffset
+        && path.equals(that.path)
+        && dataType == that.dataType
+        && encoding == that.encoding
+        && compressor == that.compressor
+        && ((alias == null && that.alias == null) || alias.equals(that.alias))
+        && ((props == null && that.props == null) || props.equals(that.props))
+        && ((tags == null && that.tags == null) || tags.equals(that.tags))
+        && ((attributes == null && that.attributes == null) || attributes.equals(that.attributes));
   }
 }

@@ -40,6 +40,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceResp;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 
 import org.apache.ratis.util.FileUtils;
 import org.apache.thrift.TException;
@@ -114,11 +115,13 @@ public class InternalServiceImplTest {
     PlanFragment planFragment = new PlanFragment(new PlanFragmentId("2", 3), createTimeSeriesNode);
     FragmentInstance fragmentInstance = new FragmentInstance(planFragment, 4);
     fragmentInstance.setRegionReplicaSet(regionReplicaSet);
+    fragmentInstance.setHostEndpoint(new Endpoint("127.0.0.1", 6666));
+    fragmentInstance.setTimeFilter(new GroupByFilter(1, 2, 3, 4));
 
     // serialize fragmentInstance
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
     fragmentInstance.serializeRequest(byteBuffer);
-
+    byteBuffer.flip();
     // put serialized fragmentInstance to TSendFragmentInstanceReq
     TSendFragmentInstanceReq request = new TSendFragmentInstanceReq();
     TFragmentInstance tFragmentInstance = new TFragmentInstance();

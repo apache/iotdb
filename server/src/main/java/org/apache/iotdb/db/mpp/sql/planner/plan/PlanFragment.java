@@ -27,6 +27,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SourceNode;
 
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 /** PlanFragment contains a sub-query of distributed query. */
 public class PlanFragment {
@@ -104,12 +105,29 @@ public class PlanFragment {
   }
 
   // deserialize the plan node recursively
-  private static PlanNode deserializeHelper(ByteBuffer byteBuffer) throws IllegalPathException {
+  public static PlanNode deserializeHelper(ByteBuffer byteBuffer) throws IllegalPathException {
     PlanNode root = PlanNodeType.deserialize(byteBuffer);
     int childrenCount = byteBuffer.getInt();
     for (int i = 0; i < childrenCount; i++) {
       root.addChild(deserializeHelper(byteBuffer));
     }
     return root;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    PlanFragment that = (PlanFragment) o;
+    return Objects.equals(id, that.id) && Objects.equals(root, that.root);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(id, root);
   }
 }

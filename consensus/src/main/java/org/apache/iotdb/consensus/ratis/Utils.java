@@ -71,11 +71,19 @@ public class Utils {
     return String.format("%s-%d", groupTypeAbbr, consensusGroupId.getId());
   }
 
+  public static String RatisPeerId(Endpoint endpoint) {
+    return String.format("%s-%d", endpoint.getIp(), endpoint.getPort());
+  }
+
+  public static Endpoint parseFromRatisId(String ratisId) {
+    String[] items = ratisId.split("-");
+    return new Endpoint(items[0], Integer.parseInt(items[1]));
+  }
+
   // priority is used as ordinal of leader election
   public static RaftPeer toRaftPeer(Endpoint endpoint, int priority) {
-    String Id = String.format("%s-%d", endpoint.getIp(), endpoint.getPort());
     return RaftPeer.newBuilder()
-        .setId(Id)
+        .setId(RatisPeerId(endpoint))
         .setAddress(IPAddress(endpoint))
         .setPriority(priority)
         .build();
