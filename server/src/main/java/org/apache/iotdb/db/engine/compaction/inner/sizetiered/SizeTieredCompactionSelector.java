@@ -86,6 +86,7 @@ public class SizeTieredCompactionSelector
    */
   @Override
   public List<List<TsFileResource>> selectInnerSpaceTask(List<TsFileResource> tsFileResources) {
+    this.tsFileResources = tsFileResources;
     PriorityQueue<Pair<List<TsFileResource>, Long>> taskPriorityQueue =
         new PriorityQueue<>(new SizeTieredCompactionTaskComparator());
     try {
