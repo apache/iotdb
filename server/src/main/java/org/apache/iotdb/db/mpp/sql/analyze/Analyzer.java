@@ -40,16 +40,26 @@ import org.apache.iotdb.db.mpp.sql.rewriter.RemoveNotOptimizer;
 import org.apache.iotdb.db.mpp.sql.rewriter.WildcardsRemover;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
+import org.apache.iotdb.db.mpp.sql.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.sql.statement.component.WhereCondition;
-import org.apache.iotdb.db.mpp.sql.statement.crud.InsertRowStatement;
-import org.apache.iotdb.db.mpp.sql.statement.crud.InsertStatement;
-import org.apache.iotdb.db.mpp.sql.statement.crud.InsertTabletStatement;
-import org.apache.iotdb.db.mpp.sql.statement.crud.QueryStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.*;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.sys.AuthorStatement;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.expression.IExpression;
+import org.apache.iotdb.tsfile.read.expression.util.ExpressionOptimizer;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /** Analyze the statement and generate Analysis. */
 public class Analyzer {
@@ -95,16 +105,27 @@ public class Analyzer {
         SchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree);
 
         // bind metadata, remove wildcards, and apply SLIMIT & SOFFSET
-        Map<String, Set<PartialPath>> deviceIdToPathsMap = new HashMap<>();
         rewrittenStatement =
-            (QueryStatement)
-                new WildcardsRemover().rewrite(rewrittenStatement, schemaTree, deviceIdToPathsMap);
+            (QueryStatement) new WildcardsRemover().rewrite(rewrittenStatement, schemaTree);
 
         // fetch partition information
+        Set<String> devicePathSet = new HashSet<>();
+        for (ResultColumn resultColumn : queryStatement.getSelectComponent().getResultColumns()) {
+          devicePathSet.addAll(
+              resultColumn.collectPaths().stream()
+                  .map(PartialPath::getDevice)
+                  .collect(Collectors.toList()));
+        }
+        if (queryStatement.getWhereCondition() != null) {
+          devicePathSet.addAll(
+              queryStatement.getWhereCondition().getQueryFilter().getPathSet().stream()
+                  .map(PartialPath::getDevice)
+                  .collect(Collectors.toList()));
+        }
         List<DataPartitionQueryParam> dataPartitionQueryParams = new ArrayList<>();
-        for (String deviceId : deviceIdToPathsMap.keySet()) {
+        for (String devicePath : devicePathSet) {
           DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
-          dataPartitionQueryParam.setDevicePath(deviceId);
+          dataPartitionQueryParam.setDevicePath(devicePath);
           dataPartitionQueryParams.add(dataPartitionQueryParam);
         }
         DataPartition dataPartition =
@@ -117,13 +138,29 @@ public class Analyzer {
           filter = new RemoveNotOptimizer().optimize(filter);
           filter = new DnfFilterOptimizer().optimize(filter);
           filter = new MergeSingleFilterOptimizer().optimize(filter);
-          whereCondition.setQueryFilter(filter);
+
+          // transform QueryFilter to expression
+          List<PartialPath> filterPaths = new ArrayList<>(filter.getPathSet());
+          HashMap<PartialPath, TSDataType> pathTSDataTypeHashMap = new HashMap<>();
+          for (PartialPath filterPath : filterPaths) {
+            pathTSDataTypeHashMap.put(
+                filterPath,
+                SQLConstant.isReservedPath(filterPath)
+                    ? TSDataType.INT64
+                    : filterPath.getSeriesType());
+          }
+          IExpression expression = filter.transformToExpression(pathTSDataTypeHashMap);
+          expression =
+              ExpressionOptimizer.getInstance()
+                  .optimize(expression, queryStatement.getSelectComponent().getDeduplicatedPaths());
+          analysis.setQueryFilter(expression);
         }
         analysis.setStatement(rewrittenStatement);
         analysis.setSchemaTree(schemaTree);
-        analysis.setDeviceIdToPathsMap(deviceIdToPathsMap);
         analysis.setDataPartitionInfo(dataPartition);
-      } catch (StatementAnalyzeException | PathNumOverLimitException e) {
+      } catch (StatementAnalyzeException
+          | PathNumOverLimitException
+          | QueryFilterOptimizationException e) {
         e.printStackTrace();
       }
       return analysis;
@@ -204,7 +241,8 @@ public class Analyzer {
               ? schemaFetcher.fetchSchemaWithAutoCreate(
                   insertTabletStatement.getDevicePath(),
                   insertTabletStatement.getMeasurements(),
-                  insertTabletStatement.getDataTypes())
+                  insertTabletStatement.getDataTypes(),
+                  insertTabletStatement.isAligned())
               : schemaFetcher.fetchSchema(
                   new PathPatternTree(
                       insertTabletStatement.getDevicePath(),
@@ -222,6 +260,147 @@ public class Analyzer {
       return analysis;
     }
 
+    @Override
+    public Analysis visitCreateUser(AuthorStatement authorStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(authorStatement);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitCreateRole(AuthorStatement authorStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(authorStatement);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitAlterUser(AuthorStatement authorStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(authorStatement);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitGrantUser(AuthorStatement authorStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(authorStatement);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitGrantRole(AuthorStatement authorStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(authorStatement);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitGrantRoleToUser(AuthorStatement authorStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(authorStatement);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitRevokeUser(AuthorStatement authorStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(authorStatement);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitRevokeRole(AuthorStatement authorStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(authorStatement);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitRevokeRoleFromUser(
+        AuthorStatement authorStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(authorStatement);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitDropUser(AuthorStatement authorStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(authorStatement);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitDropRole(AuthorStatement authorStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(authorStatement);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitListUser(AuthorStatement authorStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(authorStatement);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitListRole(AuthorStatement authorStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(authorStatement);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitListPrivilegesUser(
+        AuthorStatement authorStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(authorStatement);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitListPrivilegesRole(
+        AuthorStatement authorStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(authorStatement);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitListUserPrivileges(
+        AuthorStatement authorStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(authorStatement);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitListRolePrivileges(
+        AuthorStatement authorStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(authorStatement);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitListAllRoleOfUser(
+        AuthorStatement authorStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(authorStatement);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitListAllUserOfRole(
+        AuthorStatement authorStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(authorStatement);
+      return analysis;
+    }
+
+    @Override
     public Analysis visitInsertRow(InsertRowStatement insertRowStatement, MPPQueryContext context) {
       DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
       dataPartitionQueryParam.setDevicePath(insertRowStatement.getDevicePath().getFullPath());
@@ -233,7 +412,8 @@ public class Analyzer {
               ? schemaFetcher.fetchSchemaWithAutoCreate(
                   insertRowStatement.getDevicePath(),
                   insertRowStatement.getMeasurements(),
-                  insertRowStatement.getDataTypes())
+                  insertRowStatement.getDataTypes(),
+                  insertRowStatement.isAligned())
               : schemaFetcher.fetchSchema(
                   new PathPatternTree(
                       insertRowStatement.getDevicePath(), insertRowStatement.getMeasurements()));
@@ -254,6 +434,157 @@ public class Analyzer {
       analysis.setStatement(insertRowStatement);
       analysis.setDataPartitionInfo(partitionInfo.getDataPartitionInfo());
       analysis.setSchemaPartitionInfo(partitionInfo.getSchemaPartitionInfo());
+
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitInsertRows(
+        InsertRowsStatement insertRowsStatement, MPPQueryContext context) {
+      // TODO remove duplicate
+      List<DataPartitionQueryParam> dataPartitionQueryParams = new ArrayList<>();
+      for (InsertRowStatement insertRowStatement :
+          insertRowsStatement.getInsertRowStatementList()) {
+        DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
+        dataPartitionQueryParam.setDevicePath(insertRowStatement.getDevicePath().getFullPath());
+        dataPartitionQueryParam.setTimePartitionSlotList(
+            insertRowStatement.getTimePartitionSlots());
+        dataPartitionQueryParams.add(dataPartitionQueryParam);
+      }
+
+      PartitionInfo partitionInfo = partitionFetcher.fetchPartitionInfos(dataPartitionQueryParams);
+
+      SchemaTree schemaTree = null;
+      if (IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
+        schemaTree =
+            schemaFetcher.fetchSchemaListWithAutoCreate(
+                insertRowsStatement.getDevicePaths(),
+                insertRowsStatement.getMeasurementsList(),
+                insertRowsStatement.getDataTypesList(),
+                insertRowsStatement.getAlignedList());
+      } else {
+        PathPatternTree patternTree = new PathPatternTree();
+        for (InsertRowStatement insertRowStatement :
+            insertRowsStatement.getInsertRowStatementList()) {
+          patternTree.appendPaths(
+              insertRowStatement.getDevicePath(),
+              Arrays.asList(insertRowStatement.getMeasurements()));
+        }
+        schemaFetcher.fetchSchema(patternTree);
+      }
+      Analysis analysis = new Analysis();
+      analysis.setSchemaTree(schemaTree);
+
+      try {
+        insertRowsStatement.transferType(schemaTree);
+      } catch (QueryProcessException e) {
+        throw new SemanticException(e.getMessage());
+      }
+
+      if (!insertRowsStatement.checkDataType(schemaTree)) {
+        throw new SemanticException("Data type mismatch");
+      }
+
+      analysis.setStatement(insertRowsStatement);
+      analysis.setDataPartitionInfo(partitionInfo.getDataPartitionInfo());
+      analysis.setSchemaPartitionInfo(partitionInfo.getSchemaPartitionInfo());
+
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitInsertMultiTablets(
+        InsertMultiTabletsStatement insertMultiTabletsStatement, MPPQueryContext context) {
+      // TODO remove duplicate
+      List<DataPartitionQueryParam> dataPartitionQueryParams = new ArrayList<>();
+      for (InsertTabletStatement insertTabletStatement :
+          insertMultiTabletsStatement.getInsertTabletStatementList()) {
+        DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
+        dataPartitionQueryParam.setDevicePath(insertTabletStatement.getDevicePath().getFullPath());
+        dataPartitionQueryParam.setTimePartitionSlotList(
+            insertTabletStatement.getTimePartitionSlots());
+        dataPartitionQueryParams.add(dataPartitionQueryParam);
+      }
+
+      PartitionInfo partitionInfo = partitionFetcher.fetchPartitionInfos(dataPartitionQueryParams);
+
+      SchemaTree schemaTree = null;
+      if (IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
+        schemaTree =
+            schemaFetcher.fetchSchemaListWithAutoCreate(
+                insertMultiTabletsStatement.getDevicePaths(),
+                insertMultiTabletsStatement.getMeasurementsList(),
+                insertMultiTabletsStatement.getDataTypesList(),
+                insertMultiTabletsStatement.getAlignedList());
+      } else {
+        PathPatternTree patternTree = new PathPatternTree();
+        for (InsertTabletStatement insertTabletStatement :
+            insertMultiTabletsStatement.getInsertTabletStatementList()) {
+          patternTree.appendPaths(
+              insertTabletStatement.getDevicePath(),
+              Arrays.asList(insertTabletStatement.getMeasurements()));
+        }
+        schemaFetcher.fetchSchema(patternTree);
+      }
+      Analysis analysis = new Analysis();
+      analysis.setSchemaTree(schemaTree);
+
+      if (!insertMultiTabletsStatement.checkDataType(schemaTree)) {
+        throw new SemanticException("Data type mismatch");
+      }
+      analysis.setStatement(insertMultiTabletsStatement);
+      analysis.setDataPartitionInfo(partitionInfo.getDataPartitionInfo());
+      analysis.setSchemaPartitionInfo(partitionInfo.getSchemaPartitionInfo());
+
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitInsertRowsOfOneDevice(
+        InsertRowsOfOneDeviceStatement insertRowsOfOneDeviceStatement, MPPQueryContext context) {
+      DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
+      dataPartitionQueryParam.setDevicePath(
+          insertRowsOfOneDeviceStatement.getDevicePath().getFullPath());
+      dataPartitionQueryParam.setTimePartitionSlotList(
+          insertRowsOfOneDeviceStatement.getTimePartitionSlots());
+
+      PartitionInfo partitionInfo = partitionFetcher.fetchPartitionInfo(dataPartitionQueryParam);
+
+      SchemaTree schemaTree = null;
+      if (IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
+        schemaTree =
+            schemaFetcher.fetchSchemaWithAutoCreate(
+                insertRowsOfOneDeviceStatement.getDevicePath(),
+                insertRowsOfOneDeviceStatement.getMeasurements(),
+                insertRowsOfOneDeviceStatement.getDataTypes(),
+                insertRowsOfOneDeviceStatement.isAligned());
+      } else {
+        PathPatternTree patternTree = new PathPatternTree();
+        for (InsertRowStatement insertRowStatement :
+            insertRowsOfOneDeviceStatement.getInsertRowStatementList()) {
+          patternTree.appendPaths(
+              insertRowStatement.getDevicePath(),
+              Arrays.asList(insertRowStatement.getMeasurements()));
+        }
+        schemaFetcher.fetchSchema(patternTree);
+      }
+      Analysis analysis = new Analysis();
+      analysis.setSchemaTree(schemaTree);
+
+      try {
+        insertRowsOfOneDeviceStatement.transferType(schemaTree);
+      } catch (QueryProcessException e) {
+        throw new SemanticException(e.getMessage());
+      }
+
+      if (!insertRowsOfOneDeviceStatement.checkDataType(schemaTree)) {
+        throw new SemanticException("Data type mismatch");
+      }
+
+      analysis.setStatement(insertRowsOfOneDeviceStatement);
+      analysis.setDataPartitionInfo(partitionInfo.getDataPartitionInfo());
+      analysis.setSchemaPartitionInfo(partitionInfo.getSchemaPartitionInfo());
+
       return analysis;
     }
   }

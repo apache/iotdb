@@ -21,6 +21,7 @@ package org.apache.iotdb.tsfile.read.filter.basic;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterSerializeId;
 
+import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.nio.ByteBuffer;
 
@@ -61,6 +62,13 @@ public interface Filter {
   Filter copy();
 
   void serialize(DataOutputStream outputStream);
+
+  default void serialize(ByteBuffer buffer) {
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    this.serialize(dataOutputStream);
+    buffer.put(byteArrayOutputStream.toByteArray());
+  }
 
   void deserialize(ByteBuffer buffer);
 

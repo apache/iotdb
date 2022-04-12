@@ -103,14 +103,14 @@ public class ConfigNodeDescriptor {
       Properties properties = new Properties();
       properties.load(inputStream);
 
-      conf.setDeviceGroupCount(
+      conf.setSeriesPartitionSlotNum(
           Integer.parseInt(
               properties.getProperty(
-                  "device_group_count", String.valueOf(conf.getDeviceGroupCount()))));
+                  "series_partition_slot_num", String.valueOf(conf.getSeriesPartitionSlotNum()))));
 
-      conf.setDeviceGroupHashExecutorClass(
+      conf.setSeriesPartitionExecutorClass(
           properties.getProperty(
-              "device_group_hash_executor_class", conf.getDeviceGroupHashExecutorClass()));
+              "series_partition_executor_class", conf.getSeriesPartitionExecutorClass()));
 
       conf.setRpcAddress(properties.getProperty("config_node_rpc_address", conf.getRpcAddress()));
 

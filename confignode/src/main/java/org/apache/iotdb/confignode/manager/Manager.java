@@ -18,13 +18,12 @@
  */
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
-import org.apache.iotdb.confignode.rpc.thrift.DeviceGroupHashInfo;
 import org.apache.iotdb.consensus.common.DataSet;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 /**
- * a subset of services provided by {@ConfigManager}. For use internally only, pased to Managers,
+ * a subset of services provided by {@ConfigManager}. For use internally only, passed to Managers,
  * services.
  */
 public interface Manager {
@@ -34,38 +33,7 @@ public interface Manager {
    *
    * @return true if service stopped
    */
-  public boolean isStopped();
-
-  /**
-   * register data node
-   *
-   * @param physicalPlan physical plan
-   * @return status
-   */
-  public TSStatus registerDataNode(PhysicalPlan physicalPlan);
-
-  /**
-   * get data node info
-   *
-   * @param physicalPlan physical plan
-   * @return data set
-   */
-  DataSet getDataNodeInfo(PhysicalPlan physicalPlan);
-
-  /**
-   * get storage group schema
-   *
-   * @return data set
-   */
-  DataSet getStorageGroupSchema();
-
-  /**
-   * set storage group
-   *
-   * @param physicalPlan physical plan
-   * @return status
-   */
-  TSStatus setStorageGroup(PhysicalPlan physicalPlan);
+  boolean isStopped();
 
   /**
    * get data node info manager
@@ -75,20 +43,11 @@ public interface Manager {
   DataNodeManager getDataNodeManager();
 
   /**
-   * get data partition
+   * get consensus manager
    *
-   * @param physicalPlan physical plan
-   * @return data set
+   * @return ConsensusManager instance
    */
-  DataSet getDataPartition(PhysicalPlan physicalPlan);
-
-  /**
-   * get schema partition
-   *
-   * @param physicalPlan physical plan
-   * @return data set
-   */
-  DataSet getSchemaPartition(PhysicalPlan physicalPlan);
+  ConsensusManager getConsensusManager();
 
   /**
    * get assign region manager
@@ -98,22 +57,73 @@ public interface Manager {
   RegionManager getRegionManager();
 
   /**
-   * apply schema partition
+   * Register DataNode
    *
-   * @param physicalPlan physical plan
-   * @return data set
+   * @param physicalPlan RegisterDataNodePlan
+   * @return DataNodeConfigurationDataSet
    */
-  DataSet applySchemaPartition(PhysicalPlan physicalPlan);
+  DataSet registerDataNode(PhysicalPlan physicalPlan);
 
   /**
-   * apply data partition
+   * Get DataNode info
    *
-   * @param physicalPlan physical plan
-   * @return data set
+   * @param physicalPlan QueryDataNodeInfoPlan
+   * @return DataNodesInfoDataSet
    */
-  DataSet applyDataPartition(PhysicalPlan physicalPlan);
+  DataSet getDataNodeInfo(PhysicalPlan physicalPlan);
 
-  DeviceGroupHashInfo getDeviceGroupHashInfo();
+  /**
+   * Get StorageGroupSchemas
+   *
+   * @return StorageGroupSchemaDataSet
+   */
+  DataSet getStorageGroupSchema();
 
-  ConsensusManager getConsensusManager();
+  /**
+   * Set StorageGroup
+   *
+   * @param physicalPlan SetStorageGroupPlan
+   * @return status
+   */
+  TSStatus setStorageGroup(PhysicalPlan physicalPlan);
+
+  /**
+   * Get SchemaPartition
+   *
+   * @param physicalPlan SchemaPartitionPlan
+   * @return SchemaPartitionDataSet
+   */
+  DataSet getSchemaPartition(PhysicalPlan physicalPlan);
+
+  /**
+   * Get or create SchemaPartition
+   *
+   * @param physicalPlan SchemaPartitionPlan
+   * @return SchemaPartitionDataSet
+   */
+  DataSet getOrCreateSchemaPartition(PhysicalPlan physicalPlan);
+
+  /**
+   * Get DataPartition
+   *
+   * @param physicalPlan DataPartitionPlan
+   * @return DataPartitionDataSet
+   */
+  DataSet getDataPartition(PhysicalPlan physicalPlan);
+
+  /**
+   * Get or create DataPartition
+   *
+   * @param physicalPlan DataPartitionPlan
+   * @return DataPartitionDataSet
+   */
+  DataSet getOrCreateDataPartition(PhysicalPlan physicalPlan);
+
+  /**
+   * operate permission
+   *
+   * @param physicalPlan
+   * @return
+   */
+  TSStatus operatePermission(PhysicalPlan physicalPlan);
 }

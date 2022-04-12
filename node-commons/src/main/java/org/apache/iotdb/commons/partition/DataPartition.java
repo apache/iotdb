@@ -18,7 +18,12 @@
  */
 package org.apache.iotdb.commons.partition;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 public class DataPartition {
@@ -26,6 +31,16 @@ public class DataPartition {
   // Map<StorageGroup, Map<DeviceGroupID, Map<TimePartitionId, List<DataRegionPlaceInfo>>>>
   private Map<String, Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>>
       dataPartitionMap;
+
+  public DataPartition() {
+    // Empty constructor
+  }
+
+  public DataPartition(
+      Map<String, Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>>
+          dataPartitionMap) {
+    this.dataPartitionMap = dataPartitionMap;
+  }
 
   public Map<String, Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>>
       getDataPartitionMap() {
@@ -49,7 +64,7 @@ public class DataPartition {
   }
 
   public List<RegionReplicaSet> getDataRegionReplicaSetForWriting(
-      String deviceName, List<TimePartitionSlot> timePartitionIdList) {
+      String deviceName, List<TimePartitionSlot> timePartitionSlotList) {
     // A list of data region replica sets will store data in a same time partition.
     // We will insert data to the last set in the list.
     // TODO return the latest dataRegionReplicaSet for each time partition
@@ -57,7 +72,7 @@ public class DataPartition {
   }
 
   public RegionReplicaSet getDataRegionReplicaSetForWriting(
-      String deviceName, TimePartitionSlot timePartitionIdList) {
+      String deviceName, TimePartitionSlot timePartitionSlot) {
     // A list of data region replica sets will store data in a same time partition.
     // We will insert data to the last set in the list.
     // TODO return the latest dataRegionReplicaSet for each time partition
@@ -77,5 +92,116 @@ public class DataPartition {
     }
     // TODO: (xingtanzjr) how to handle this exception in IoTDB
     return null;
+  }
+
+  /* Interfaces for ConfigNode */
+
+  /**
+   * Get DataPartition by partitionSlotsMap
+   *
+   * @param partitionSlotsMap Map<StorageGroupName, Map<SeriesPartitionSlot,
+   *     List<TimePartitionSlot>>>
+   * @return Map<StorageGroupName, Map<SeriesPartitionSlot, Map<TimePartitionSlot,
+   *     List<RegionReplicaSet>>>>
+   */
+  public DataPartition getDataPartition(
+      Map<String, Map<SeriesPartitionSlot, List<TimePartitionSlot>>> partitionSlotsMap) {
+    Map<String, Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>> result =
+        new HashMap<>();
+
+    for (String storageGroupName : partitionSlotsMap.keySet()) {
+      // Compare StorageGroupName
+      if (dataPartitionMap.containsKey(storageGroupName)) {
+        Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>
+            seriesTimePartitionSlotMap = dataPartitionMap.get(storageGroupName);
+        for (SeriesPartitionSlot seriesPartitionSlot :
+            partitionSlotsMap.get(storageGroupName).keySet()) {
+          // Compare SeriesPartitionSlot
+          if (seriesTimePartitionSlotMap.containsKey(seriesPartitionSlot)) {
+            Map<TimePartitionSlot, List<RegionReplicaSet>> timePartitionSlotMap =
+                seriesTimePartitionSlotMap.get(seriesPartitionSlot);
+            for (TimePartitionSlot timePartitionSlot :
+                partitionSlotsMap.get(storageGroupName).get(seriesPartitionSlot)) {
+              // Compare TimePartitionSlot
+              if (timePartitionSlotMap.containsKey(timePartitionSlot)) {
+                result
+                    .computeIfAbsent(storageGroupName, key -> new HashMap<>())
+                    .computeIfAbsent(seriesPartitionSlot, key -> new HashMap<>())
+                    .put(
+                        timePartitionSlot,
+                        new ArrayList<>(timePartitionSlotMap.get(timePartitionSlot)));
+              }
+            }
+          }
+        }
+      }
+    }
+
+    return new DataPartition(result);
+  }
+
+  /**
+   * Filter out unassigned PartitionSlots
+   *
+   * @param partitionSlotsMap Map<StorageGroupName, Map<SeriesPartitionSlot,
+   *     List<TimePartitionSlot>>>
+   * @return Map<StorageGroupName, Map<SeriesPartitionSlot, List<TimePartitionSlot>>>, unassigned
+   *     PartitionSlots
+   */
+  public Map<String, Map<SeriesPartitionSlot, List<TimePartitionSlot>>>
+      filterNoAssignedDataPartitionSlots(
+          Map<String, Map<SeriesPartitionSlot, List<TimePartitionSlot>>> partitionSlotsMap) {
+    Map<String, Map<SeriesPartitionSlot, List<TimePartitionSlot>>> result = new HashMap<>();
+
+    for (String storageGroupName : partitionSlotsMap.keySet()) {
+      // Compare StorageGroupName
+      if (dataPartitionMap.containsKey(storageGroupName)) {
+        Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>
+            seriesTimePartitionSlotMap = dataPartitionMap.get(storageGroupName);
+        for (SeriesPartitionSlot seriesPartitionSlot :
+            partitionSlotsMap.get(storageGroupName).keySet()) {
+          // Compare SeriesPartitionSlot
+          if (seriesTimePartitionSlotMap.containsKey(seriesPartitionSlot)) {
+            Map<TimePartitionSlot, List<RegionReplicaSet>> timePartitionSlotMap =
+                seriesTimePartitionSlotMap.get(seriesPartitionSlot);
+            for (TimePartitionSlot timePartitionSlot :
+                partitionSlotsMap.get(storageGroupName).get(seriesPartitionSlot)) {
+              // Compare TimePartitionSlot
+              if (!timePartitionSlotMap.containsKey(timePartitionSlot)) {
+                result
+                    .computeIfAbsent(storageGroupName, key -> new HashMap<>())
+                    .computeIfAbsent(seriesPartitionSlot, key -> new ArrayList<>())
+                    .add(timePartitionSlot);
+              }
+            }
+          } else {
+            // Clone all if SeriesPartitionSlot not assigned
+            result
+                .computeIfAbsent(storageGroupName, key -> new HashMap<>())
+                .put(
+                    seriesPartitionSlot,
+                    new ArrayList<>(
+                        partitionSlotsMap.get(storageGroupName).get(seriesPartitionSlot)));
+          }
+        }
+      } else {
+        // Clone all if StorageGroupName not assigned
+        result.put(storageGroupName, new HashMap<>(partitionSlotsMap.get(storageGroupName)));
+      }
+    }
+
+    return result;
+  }
+
+  /** Create a DataPartition by ConfigNode */
+  public void createDataPartition(
+      String storageGroup,
+      SeriesPartitionSlot seriesPartitionSlot,
+      TimePartitionSlot timePartitionSlot,
+      RegionReplicaSet regionReplicaSet) {
+    dataPartitionMap
+        .computeIfAbsent(storageGroup, key -> new HashMap<>())
+        .computeIfAbsent(seriesPartitionSlot, key -> new HashMap<>())
+        .put(timePartitionSlot, Collections.singletonList(regionReplicaSet));
   }
 }

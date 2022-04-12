@@ -171,7 +171,7 @@ public class SchemaUtils {
     return tsDataTypes;
   }
 
-  public static TSDataType getSeriesTypeByPath(MeasurementPath path, String aggregation) {
+  public static TSDataType getSeriesTypeByPath(PartialPath path, String aggregation) {
     TSDataType dataType = getAggregationType(aggregation);
     if (dataType != null) {
       return dataType;

@@ -25,6 +25,8 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
+import org.apache.iotdb.db.wal.buffer.WALEntryValue;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -34,7 +36,7 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import java.nio.ByteBuffer;
 import java.util.*;
 
-public class InsertTabletNode extends InsertNode {
+public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
   private long[] times; // times should be sorted. It is done in the session API.
 
@@ -62,13 +64,13 @@ public class InsertTabletNode extends InsertNode {
       PlanNodeId id,
       PartialPath devicePath,
       boolean isAligned,
-      MeasurementSchema[] measurements,
+      MeasurementSchema[] measurementSchemas,
       TSDataType[] dataTypes,
       long[] times,
       BitMap[] bitMaps,
       Object[] columns,
       int rowCount) {
-    super(id, devicePath, isAligned, measurements, dataTypes);
+    super(id, devicePath, isAligned, measurementSchemas, dataTypes);
     this.times = times;
     this.bitMaps = bitMaps;
     this.columns = columns;
@@ -134,16 +136,17 @@ public class InsertTabletNode extends InsertNode {
   }
 
   @Override
-  public List<String> getOutputColumnNames() {
-    return null;
-  }
-
-  public static InsertTabletNode deserialize(ByteBuffer byteBuffer) {
-    return null;
+  public int serializedSize() {
+    return 0;
   }
 
   @Override
   public void serialize(ByteBuffer byteBuffer) {}
+
+  @Override
+  public void serializeToWAL(IWALByteBufferView buffer) {}
+
+  public void serializeToWAL(IWALByteBufferView buffer, int start, int end) {}
 
   @Override
   public List<InsertNode> splitByPartition(Analysis analysis) {
@@ -225,10 +228,10 @@ public class InsertTabletNode extends InsertNode {
       }
       InsertTabletNode subNode =
           new InsertTabletNode(
-              getId(),
+              getPlanNodeId(),
               devicePath,
               isAligned,
-              measurements,
+              measurementSchemas,
               dataTypes,
               subTimes,
               bitMaps,
@@ -274,5 +277,9 @@ public class InsertTabletNode extends InsertNode {
       bitMaps[i] = new BitMap(rowSize);
     }
     return bitMaps;
+  }
+
+  public static InsertTabletNode deserialize(ByteBuffer byteBuffer) {
+    return null;
   }
 }

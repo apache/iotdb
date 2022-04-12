@@ -21,8 +21,8 @@ package org.apache.iotdb.cluster;
 
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
-import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,10 +56,7 @@ public class ClusterFileFlushPolicy implements TsFileFlushPolicy {
   }
 
   @Override
-  public void apply(
-      VirtualStorageGroupProcessor virtualStorageGroupProcessor,
-      TsFileProcessor processor,
-      boolean isSeq) {
+  public void apply(DataRegion dataRegion, TsFileProcessor processor, boolean isSeq) {
     logger.info(
         "The memtable size reaches the threshold, async flush it to tsfile: {}",
         processor.getTsFileResource().getTsFile().getAbsolutePath());
@@ -70,9 +67,7 @@ public class ClusterFileFlushPolicy implements TsFileFlushPolicy {
       closePartitionExecutor.submit(
           () ->
               metaGroupMember.closePartition(
-                  virtualStorageGroupProcessor.getVirtualStorageGroupId(),
-                  processor.getTimeRangeId(),
-                  isSeq));
+                  dataRegion.getDataRegionId(), processor.getTimeRangeId(), isSeq));
     }
     // flush the memtable anyway to avoid the insertion trigger the policy again
     processor.asyncFlush();

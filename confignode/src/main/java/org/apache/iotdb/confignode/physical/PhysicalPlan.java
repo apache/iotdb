@@ -18,11 +18,15 @@
  */
 package org.apache.iotdb.confignode.physical;
 
-import org.apache.iotdb.confignode.physical.sys.DataPartitionPlan;
+import org.apache.iotdb.confignode.physical.crud.CreateDataPartitionPlan;
+import org.apache.iotdb.confignode.physical.crud.CreateRegionsPlan;
+import org.apache.iotdb.confignode.physical.crud.CreateSchemaPartitionPlan;
+import org.apache.iotdb.confignode.physical.crud.GetOrCreateDataPartitionPlan;
+import org.apache.iotdb.confignode.physical.crud.GetOrCreateSchemaPartitionPlan;
+import org.apache.iotdb.confignode.physical.sys.AuthorPlan;
 import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
 import org.apache.iotdb.confignode.physical.sys.QueryStorageGroupSchemaPlan;
 import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
-import org.apache.iotdb.confignode.physical.sys.SchemaPartitionPlan;
 import org.apache.iotdb.confignode.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 
@@ -97,17 +101,45 @@ public abstract class PhysicalPlan implements IConsensusRequest {
         case QueryStorageGroupSchema:
           plan = new QueryStorageGroupSchemaPlan();
           break;
-        case QueryDataPartition:
-          plan = new DataPartitionPlan(PhysicalPlanType.QueryDataPartition);
+        case CreateRegions:
+          plan = new CreateRegionsPlan();
           break;
-        case ApplyDataPartition:
-          plan = new DataPartitionPlan(PhysicalPlanType.ApplyDataPartition);
+        case GetSchemaPartition:
+          plan = new GetOrCreateSchemaPartitionPlan(PhysicalPlanType.GetSchemaPartition);
           break;
-        case QuerySchemaPartition:
-          plan = new SchemaPartitionPlan(PhysicalPlanType.QuerySchemaPartition);
+        case CreateSchemaPartition:
+          plan = new CreateSchemaPartitionPlan(PhysicalPlanType.CreateSchemaPartition);
           break;
-        case ApplySchemaPartition:
-          plan = new SchemaPartitionPlan(PhysicalPlanType.ApplySchemaPartition);
+        case GetOrCreateSchemaPartition:
+          plan = new GetOrCreateSchemaPartitionPlan(PhysicalPlanType.GetOrCreateSchemaPartition);
+          break;
+        case GetDataPartition:
+          plan = new GetOrCreateDataPartitionPlan(PhysicalPlanType.GetDataPartition);
+          break;
+        case CreateDataPartition:
+          plan = new CreateDataPartitionPlan();
+          break;
+        case GetOrCreateDataPartition:
+          plan = new GetOrCreateDataPartitionPlan(PhysicalPlanType.GetOrCreateDataPartition);
+          break;
+        case LIST_USER:
+        case LIST_ROLE:
+        case LIST_USER_PRIVILEGE:
+        case LIST_ROLE_PRIVILEGE:
+        case LIST_USER_ROLES:
+        case LIST_ROLE_USERS:
+        case CREATE_USER:
+        case CREATE_ROLE:
+        case DROP_USER:
+        case DROP_ROLE:
+        case GRANT_ROLE:
+        case GRANT_USER:
+        case GRANT_ROLE_TO_USER:
+        case REVOKE_USER:
+        case REVOKE_ROLE:
+        case REVOKE_ROLE_FROM_USER:
+        case UPDATE_USER:
+          plan = new AuthorPlan(type);
           break;
         default:
           throw new IOException("unknown PhysicalPlan type: " + typeNum);

@@ -29,15 +29,17 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import java.io.IOException;
 import java.util.Set;
 
-public class SeriesScanOperator implements SourceOperator {
+public class SeriesScanOperator implements DataSourceOperator {
 
   private final OperatorContext operatorContext;
   private final SeriesScanUtil seriesScanUtil;
+  private final PlanNodeId sourceId;
   private TsBlock tsBlock;
   private boolean hasCachedTsBlock = false;
   private boolean finished = false;
 
   public SeriesScanOperator(
+      PlanNodeId sourceId,
       PartialPath seriesPath,
       Set<String> allSensors,
       TSDataType dataType,
@@ -45,6 +47,7 @@ public class SeriesScanOperator implements SourceOperator {
       Filter timeFilter,
       Filter valueFilter,
       boolean ascending) {
+    this.sourceId = sourceId;
     this.operatorContext = context;
     this.seriesScanUtil =
         new SeriesScanUtil(
@@ -63,47 +66,51 @@ public class SeriesScanOperator implements SourceOperator {
   }
 
   @Override
-  public TsBlock next() throws IOException {
+  public TsBlock next() {
     if (hasCachedTsBlock || hasNext()) {
       hasCachedTsBlock = false;
       return tsBlock;
     }
-    throw new IOException("no next batch");
+    throw new IllegalStateException("no next batch");
   }
 
   @Override
-  public boolean hasNext() throws IOException {
+  public boolean hasNext() {
 
-    if (hasCachedTsBlock) {
-      return true;
-    }
+    try {
+      if (hasCachedTsBlock) {
+        return true;
+      }
 
-    /*
-     * consume page data firstly
-     */
-    if (readPageData()) {
-      hasCachedTsBlock = true;
-      return true;
-    }
+      /*
+       * consume page data firstly
+       */
+      if (readPageData()) {
+        hasCachedTsBlock = true;
+        return true;
+      }
 
-    /*
-     * consume chunk data secondly
-     */
-    if (readChunkData()) {
-      hasCachedTsBlock = true;
-      return true;
-    }
-
-    /*
-     * consume next file finally
-     */
-    while (seriesScanUtil.hasNextFile()) {
+      /*
+       * consume chunk data secondly
+       */
       if (readChunkData()) {
         hasCachedTsBlock = true;
         return true;
       }
+
+      /*
+       * consume next file finally
+       */
+      while (seriesScanUtil.hasNextFile()) {
+        if (readChunkData()) {
+          hasCachedTsBlock = true;
+          return true;
+        }
+      }
+      return hasCachedTsBlock;
+    } catch (IOException e) {
+      throw new RuntimeException("Error happened while scanning the file", e);
     }
-    return hasCachedTsBlock;
   }
 
   @Override
@@ -136,7 +143,7 @@ public class SeriesScanOperator implements SourceOperator {
 
   @Override
   public PlanNodeId getSourceId() {
-    return null;
+    return sourceId;
   }
 
   @Override

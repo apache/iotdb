@@ -19,11 +19,12 @@
 
 package org.apache.iotdb.db.consensus.statemachine;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.consensus.common.DataSet;
-import org.apache.iotdb.db.metadata.schemaregion.SchemaRegion;
+import org.apache.iotdb.db.metadata.Executor.SchemaVisitor;
+import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
-import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,10 +33,10 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
 
   private static final Logger logger = LoggerFactory.getLogger(SchemaRegionStateMachine.class);
 
-  private final SchemaRegion region;
+  private final ISchemaRegion schemaRegion;
 
-  public SchemaRegionStateMachine(SchemaRegion region) {
-    this.region = region;
+  public SchemaRegionStateMachine(ISchemaRegion schemaRegion) {
+    this.schemaRegion = schemaRegion;
   }
 
   @Override
@@ -47,7 +48,9 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
   @Override
   protected TSStatus write(FragmentInstance fragmentInstance) {
     logger.info("Execute write plan in SchemaRegionStateMachine");
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    PlanNode planNode = fragmentInstance.getFragment().getRoot();
+    TSStatus status = planNode.accept(new SchemaVisitor(), schemaRegion);
+    return status;
   }
 
   @Override

@@ -19,8 +19,8 @@
 package org.apache.iotdb.db.mpp.execution;
 
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -97,16 +97,19 @@ public class DataDriverTest {
       FragmentInstanceContext fragmentInstanceContext =
           new FragmentInstanceContext(
               new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance"), state);
+      PlanNodeId planNodeId1 = new PlanNodeId("1");
       fragmentInstanceContext.addOperatorContext(
-          1, new PlanNodeId("1"), SeriesScanOperator.class.getSimpleName());
+          1, planNodeId1, SeriesScanOperator.class.getSimpleName());
+      PlanNodeId planNodeId2 = new PlanNodeId("2");
       fragmentInstanceContext.addOperatorContext(
-          2, new PlanNodeId("2"), SeriesScanOperator.class.getSimpleName());
+          2, planNodeId2, SeriesScanOperator.class.getSimpleName());
       fragmentInstanceContext.addOperatorContext(
           3, new PlanNodeId("3"), TimeJoinOperator.class.getSimpleName());
       fragmentInstanceContext.addOperatorContext(
           4, new PlanNodeId("4"), LimitOperator.class.getSimpleName());
       SeriesScanOperator seriesScanOperator1 =
           new SeriesScanOperator(
+              planNodeId1,
               measurementPath1,
               allSensors,
               TSDataType.INT32,
@@ -119,6 +122,7 @@ public class DataDriverTest {
           new MeasurementPath(DATA_DRIVER_TEST_SG + ".device0.sensor1", TSDataType.INT32);
       SeriesScanOperator seriesScanOperator2 =
           new SeriesScanOperator(
+              planNodeId2,
               measurementPath2,
               allSensors,
               TSDataType.INT32,
@@ -138,7 +142,7 @@ public class DataDriverTest {
           new LimitOperator(
               fragmentInstanceContext.getOperatorContexts().get(3), 250, timeJoinOperator);
 
-      VirtualStorageGroupProcessor dataRegion = Mockito.mock(VirtualStorageGroupProcessor.class);
+      DataRegion dataRegion = Mockito.mock(DataRegion.class);
 
       List<PartialPath> pathList = ImmutableList.of(measurementPath1, measurementPath2);
       String deviceId = DATA_DRIVER_TEST_SG + ".device0";

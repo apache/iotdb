@@ -22,7 +22,6 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEvent;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SQLParserException;
 import org.apache.iotdb.db.index.common.IndexType;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -2595,7 +2594,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
           // if client version is before 0.13, node name in expression may be a constant
           return new TimeSeriesOperand(convertConstantToPath(context.constant().getText()));
         }
-      } catch (QueryProcessException | IllegalPathException e) {
+      } catch (IllegalPathException e) {
         throw new SQLParserException(e.getMessage());
       }
     }

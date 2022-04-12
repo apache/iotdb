@@ -22,8 +22,12 @@ import org.apache.iotdb.tsfile.read.expression.ExpressionType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.IUnaryExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.Serializable;
+import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class GlobalTimeExpression implements IUnaryExpression, Serializable {
 
@@ -55,7 +59,36 @@ public class GlobalTimeExpression implements IUnaryExpression, Serializable {
   }
 
   @Override
+  public void serialize(ByteBuffer byteBuffer) {
+    ReadWriteIOUtils.write((byte) getType().ordinal(), byteBuffer);
+    filter.serialize(byteBuffer);
+  }
+
+  public static GlobalTimeExpression deserialize(ByteBuffer byteBuffer) {
+    return new GlobalTimeExpression(FilterFactory.deserialize(byteBuffer));
+  }
+
+  @Override
   public String toString() {
     return "[" + this.filter + "]";
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+
+    GlobalTimeExpression that = (GlobalTimeExpression) o;
+    return Objects.equals(toString(), that.toString());
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(toString());
   }
 }

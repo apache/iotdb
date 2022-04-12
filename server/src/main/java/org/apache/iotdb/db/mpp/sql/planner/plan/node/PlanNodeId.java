@@ -18,6 +18,10 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node;
 
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import java.nio.ByteBuffer;
+
 public class PlanNodeId {
   private String id;
 
@@ -34,14 +38,24 @@ public class PlanNodeId {
     return this.id;
   }
 
+  @Override
   public int hashCode() {
     return this.id.hashCode();
   }
 
+  @Override
   public boolean equals(Object obj) {
     if (obj instanceof PlanNodeId) {
       return this.id.equals(((PlanNodeId) obj).getId());
     }
     return false;
+  }
+
+  public static PlanNodeId deserialize(ByteBuffer byteBuffer) {
+    return new PlanNodeId(ReadWriteIOUtils.readString(byteBuffer));
+  }
+
+  public void serialize(ByteBuffer byteBuffer) {
+    ReadWriteIOUtils.write(id, byteBuffer);
   }
 }
