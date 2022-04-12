@@ -46,7 +46,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupMessageResp;
 import org.apache.iotdb.db.auth.AuthException;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -78,18 +77,6 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
     DataNodeConfigurationDataSet dataSet =
         (DataNodeConfigurationDataSet) configManager.registerDataNode(plan);
 
-    if (dataSet.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.info(
-          "Register DataNode successful. DataNodeId: {}, Endpoint: {}",
-          dataSet.getDataNodeId(),
-          req.getEndPoint().toString());
-    } else {
-      LOGGER.warn(
-          "Register DataNode {} failed. {}",
-          req.getEndPoint().toString(),
-          dataSet.getStatus().getMessage());
-    }
-
     TDataNodeRegisterResp resp = new TDataNodeRegisterResp();
     dataSet.convertToRpcDataNodeRegisterResp(resp);
     return resp;
@@ -110,13 +97,7 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
     SetStorageGroupPlan plan =
         new SetStorageGroupPlan(new StorageGroupSchema(req.getStorageGroup()));
 
-    TSStatus resp = configManager.setStorageGroup(plan);
-    if (resp.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.info("Set StorageGroup {} successful.", req.getStorageGroup());
-    } else {
-      LOGGER.error("Set StorageGroup {} failed. {}", req.getStorageGroup(), resp.getMessage());
-    }
-    return resp;
+    return configManager.setStorageGroup(plan);
   }
 
   @Override
