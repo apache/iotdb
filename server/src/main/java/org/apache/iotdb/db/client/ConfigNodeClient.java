@@ -19,11 +19,18 @@
 
 package org.apache.iotdb.db.client;
 
+import org.apache.iotdb.common.rpc.thrift.EndPoint;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.commons.exception.BadNodeUrlException;
+import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.utils.CommonUtils;
 import org.apache.iotdb.confignode.rpc.thrift.*;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TConfigurationConst;
 import org.apache.iotdb.service.rpc.thrift.*;
 import org.apache.iotdb.session.Config;
 import org.apache.iotdb.session.Session;
@@ -32,18 +39,19 @@ import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocol;
+import org.apache.thrift.protocol.TProtocolFactory;
+import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.ZoneId;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
-import java.util.concurrent.locks.ReentrantLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-public class ConfigNodeClient extends ConfigIService.Client{
+public class ConfigNodeClient {
     private static final Logger logger = LoggerFactory.getLogger(ConfigNodeClient.class);
 
     private static final int TIMEOUT_MS = 2000;
@@ -54,52 +62,23 @@ public class ConfigNodeClient extends ConfigIService.Client{
 
     private TTransport transport;
 
-    private static EndPoint configLeader;
-    // TestOnly
-    public ConfigNodeClient() {}
+    private EndPoint configLeader;
 
-    public ConfigNodeClient(Session session, EndPoint endPoint, ZoneId zoneId)
-            throws IoTDBConnectionException {
-//        this.session = session;
-//        this.endPoint = endPoint;
-//        endPointList.add(endPoint);
-//        this.zoneId = zoneId == null ? ZoneId.systemDefault() : zoneId;
-//        init(endPoint);
-    }
+    private List<Endpoint> configNodes;
 
-    public ConfigNodeClientn(Session session, ZoneId zoneId) throws IoTDBConnectionException {
-//        this.session = session;
-//        this.zoneId = zoneId == null ? ZoneId.systemDefault() : zoneId;
-//        this.endPointList = SessionUtils.parseSeedNodeUrls(session.nodeUrls);
-//        initClusterConn();
-    }
-
-    private void init(EndPoint endPoint) throws IoTDBConnectionException {
-        try {
-            transport =
-                    RpcTransportFactory.INSTANCE.getTransport(
-                            // as there is a try-catch already, we do not need to use TSocket.wrap
-                            endPoint.getIp(), endPoint.getPort(), TIMEOUT_MS);
-            transport.open();
-        } catch (TTransportException e) {
-            throw new IoTDBConnectionException(e);
-        }
-
-        if (enableRPCCompression) {
-            initTProtocol(new TCompactProtocol(transport));
-        } else {
-            initTProtocol(new TBinaryProtocol(transport));
-        }
+    public ConfigNodeClient() throws BadNodeUrlException{
+        //Read config nodes from configuration
+        configNodes = CommonUtils.parseNodeUrls(IoTDBDescriptor.getInstance().getConfig().getConfigNodeUrls());
+        Random random = new Random();
+        Endpoint configNode = configNodes.get(random.nextInt(configNodes.size()));
+        client = createClient(configNode);
     }
 
     public void connect(){
-        ConfigLeader = new EndPoint();
-        ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
-        ReentrantLock lock1 = new ReentrantLock();
-        lock1.
+
     }
 
-    private boolean reconnect(EndPoint endPoint) {
+    private boolean reconnect() {
         if(transport != null){
             transport.close();
         }
@@ -119,73 +98,88 @@ public class ConfigNodeClient extends ConfigIService.Client{
         this.oprot_ = tProtocol;
     }
 
-    @Override
-    public DataNodeRegisterResp registerDataNode(DataNodeRegisterReq req) throws TException {
-        return super.registerDataNode(req);
+    private ConfigIService.Client createClient(Endpoint endpoint) throws IoTDBConnectionException {
+        TTransport transport;
+        try {
+            transport =
+                    RpcTransportFactory.INSTANCE.getTransport(
+                            // as there is a try-catch already, we do not need to use TSocket.wrap
+                            endpoint.getIp(), endpoint.getPort(), 2000);
+            transport.open();
+        } catch (TTransportException e) {
+            throw new IoTDBConnectionException(e);
+        }
+
+        ConfigIService.Client client;
+        if (IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable()) {
+            client = new ConfigIService.Client(new TCompactProtocol(transport));
+        } else {
+            client = new ConfigIService.Client(new TBinaryProtocol(transport));
+        }
+        return client;
     }
 
-    @Override
-    public Map<Integer, DataNodeMessage> getDataNodesMessage(int dataNodeID) throws TException {
+    private void verifySuccess
+    public TDataNodeRegisterResp registerDataNode(TDataNodeRegisterReq req) {
+        try {
+            TDataNodeRegisterResp resp = client.registerDataNode(req);
+        }catch (TException e){
+            if(reconnect()){
+
+            }
+        }
+        return resp;
+    }
+
+    public TDataNodeMessageResp getDataNodesMessage(int dataNodeID) throws TException {
         return super.getDataNodesMessage(dataNodeID);
     }
 
-    @Override
-    public TSStatus setStorageGroup(SetStorageGroupReq req) throws TException {
+    public TSStatus setStorageGroup(TSetStorageGroupReq req) throws TException {
         return super.setStorageGroup(req);
     }
 
-    @Override
-    public TSStatus deleteStorageGroup(DeleteStorageGroupReq req) throws TException {
+    public TSStatus deleteStorageGroup(TDeleteStorageGroupReq req) throws TException {
         return super.deleteStorageGroup(req);
     }
 
-    @Override
-    public Map<String, StorageGroupMessage> getStorageGroupsMessage() throws TException {
+    public TStorageGroupMessageResp getStorageGroupsMessage() throws TException {
         return super.getStorageGroupsMessage();
     }
 
-    @Override
-    public SchemaPartitionInfo getSchemaPartition(GetSchemaPartitionReq req) throws TException {
+    public TSchemaPartitionResp getSchemaPartition(TSchemaPartitionReq req) throws TException {
         return super.getSchemaPartition(req);
     }
 
-    @Override
-    public DataPartitionInfo getDataPartition(GetDataPartitionReq req) throws TException {
+    public TSchemaPartitionResp getOrCreateSchemaPartition(TSchemaPartitionReq req) throws TException {
+        return super.getOrCreateSchemaPartition(req);
+    }
+
+    public TDataPartitionResp getDataPartition(TDataPartitionReq req) throws TException {
         return super.getDataPartition(req);
     }
 
-    @Override
-    public DeviceGroupHashInfo getDeviceGroupHashInfo() throws TException {
-        return super.getDeviceGroupHashInfo();
+    public TDataPartitionResp getOrCreateDataPartition(TDataPartitionReq req) throws TException {
+        return super.getOrCreateDataPartition(req);
     }
 
-    @Override
-    public DataPartitionInfo applyDataPartition(GetDataPartitionReq req) throws TException {
-        return super.applyDataPartition(req);
-    }
-
-    @Override
-    public SchemaPartitionInfo applySchemaPartition(GetSchemaPartitionReq req) throws TException {
-        return super.applySchemaPartition(req);
-    }
-
-    @Override
-    public DataPartitionInfoResp fetchDataPartitionInfo(FetchDataPartitionReq req) throws TException {
-        return super.fetchDataPartitionInfo(req);
-    }
-
-    @Override
-    public SchemaPartitionInfoResp fetchSchemaPartitionInfo(FetchSchemaPartitionReq req) throws TException {
-        return super.fetchSchemaPartitionInfo(req);
-    }
-
-    @Override
-    public PartitionInfoResp fetchPartitionInfo(FetchPartitionReq req) throws TException {
-        return super.fetchPartitionInfo(req);
-    }
-
-    @Override
-    public TSStatus operatePermission(AuthorizerReq req) throws TException {
+    public TSStatus operatePermission(TAuthorizerReq req) throws TException {
         return super.operatePermission(req);
+    }
+
+    public static class ConfigNodeFactory{
+        private static TProtocolFactory protocolFactory = IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable()
+                ? new TCompactProtocol.Factory()
+                : new TBinaryProtocol.Factory();
+
+        public static ConfigNodeClient createClient(EndPoint endpoint) throws TTransportException {
+                    return new ConfigNodeClient(protocolFactory.getProtocol(
+                            RpcTransportFactory.INSTANCE.getTransport(
+                                    new TSocket(
+                                            TConfigurationConst.defaultTConfiguration,
+                                            endpoint.getIp(),
+                                            endpoint.getPort(),
+                                            TIMEOUT_MS))),endpoint);
+        }
     }
 }
