@@ -890,12 +890,6 @@ public class StorageEngine implements IService {
     manager.abortCompaction();
   }
 
-  public void loadNewTsFileForSync(TsFileResource newTsFileResource)
-      throws StorageEngineException, LoadFileException, IllegalPathException {
-    getProcessorDirectly(new PartialPath(getSgByEngineFile(newTsFileResource.getTsFile(), false)))
-        .loadNewTsFileForSync(newTsFileResource);
-  }
-
   public void loadNewTsFile(TsFileResource newTsFileResource)
       throws LoadFileException, StorageEngineException, MetadataException {
     Set<String> deviceSet = newTsFileResource.getDevices();
@@ -906,12 +900,6 @@ public class StorageEngine implements IService {
     PartialPath devicePath = new PartialPath(device);
     PartialPath storageGroupPath = IoTDB.schemaProcessor.getBelongedStorageGroup(devicePath);
     getProcessorDirectly(storageGroupPath).loadNewTsFile(newTsFileResource);
-  }
-
-  public boolean deleteTsfileForSync(File deletedTsfile)
-      throws StorageEngineException, IllegalPathException {
-    return getProcessorDirectly(new PartialPath(getSgByEngineFile(deletedTsfile, false)))
-        .deleteTsfile(deletedTsfile);
   }
 
   public boolean deleteTsfile(File deletedTsfile)

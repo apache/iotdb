@@ -18,9 +18,13 @@
  */
 package org.apache.iotdb.db.newsync.conf;
 
+import org.apache.iotdb.rpc.RpcUtils;
+
 public class SyncConstant {
   /** common */
   public static final String PIPE_LOG_DIR_NAME = "pipe-log";
+
+  public static final String SYNC_DIR_NAME_SEPARATOR = "_";
 
   /** sender */
   public static final String DEFAULT_PIPE_SINK_IP = "127.0.0.1";
@@ -53,6 +57,12 @@ public class SyncConstant {
   public static Long getSerialNumberFromPipeLogName(String pipeLogName) {
     return Long.parseLong(pipeLogName.split("_")[0]);
   }
+
+  /** transport */
+
+  // Split data file, block size at each transmission */
+  public static final int DATA_CHUNK_SIZE =
+      Math.min(64 * 1024 * 1024, RpcUtils.THRIFT_FRAME_MAX_SIZE);
 
   /** receiver */
   public static final String SYNC_SYS_DIR = "sys";

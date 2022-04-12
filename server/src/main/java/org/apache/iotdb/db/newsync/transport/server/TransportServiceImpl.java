@@ -50,12 +50,12 @@ import java.security.NoSuchAlgorithmException;
 import java.text.DecimalFormat;
 import java.util.Arrays;
 
+import static org.apache.iotdb.db.newsync.conf.SyncConstant.DATA_CHUNK_SIZE;
 import static org.apache.iotdb.db.newsync.transport.conf.TransportConstant.CONFLICT_CODE;
 import static org.apache.iotdb.db.newsync.transport.conf.TransportConstant.ERROR_CODE;
 import static org.apache.iotdb.db.newsync.transport.conf.TransportConstant.REBASE_CODE;
 import static org.apache.iotdb.db.newsync.transport.conf.TransportConstant.RETRY_CODE;
 import static org.apache.iotdb.db.newsync.transport.conf.TransportConstant.SUCCESS_CODE;
-import static org.apache.iotdb.db.sync.conf.SyncConstant.DATA_CHUNK_SIZE;
 
 public class TransportServiceImpl implements TransportService.Iface {
   private static Logger logger = LoggerFactory.getLogger(TransportServiceImpl.class);

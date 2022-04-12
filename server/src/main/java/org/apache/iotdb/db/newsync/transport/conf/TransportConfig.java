@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.newsync.transport.conf;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.db.sync.conf.SyncConstant;
 
 import java.io.File;
 
@@ -40,18 +39,6 @@ public class TransportConfig {
       }
     }
     return dir;
-  }
-
-  public static String getSyncedDir(String ipAddress, String uuid) {
-    return DEFAULT_BASE_DIR
-        + File.separator
-        + SyncConstant.SYNC_RECEIVER
-        + File.separator
-        + ipAddress
-        + SyncConstant.SYNC_DIR_NAME_SEPARATOR
-        + uuid
-        + File.separator
-        + SyncConstant.RECEIVER_DATA_FOLDER_NAME;
   }
 
   public static boolean isCheckFileDegistAgain = false;

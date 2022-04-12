@@ -2275,47 +2275,6 @@ public class VirtualStorageGroupProcessor {
     }
   }
 
-  /**
-   * Load a new tsfile to storage group processor. The file may have overlap with other files.
-   *
-   * <p>or unsequence list.
-   *
-   * <p>Secondly, execute the loading process by the type.
-   *
-   * <p>Finally, update the latestTimeForEachDevice and partitionLatestFlushedTimeForEachDevice.
-   *
-   * @param newTsFileResource tsfile resource @UsedBy sync module.
-   */
-  public void loadNewTsFileForSync(TsFileResource newTsFileResource) throws LoadFileException {
-    File tsfileToBeInserted = newTsFileResource.getTsFile();
-    long newFilePartitionId = newTsFileResource.getTimePartitionWithCheck();
-    writeLock("loadNewTsFileForSync");
-    try {
-      if (loadTsFileByType(
-          LoadTsFileType.LOAD_SEQUENCE,
-          tsfileToBeInserted,
-          newTsFileResource,
-          newFilePartitionId,
-          tsFileManager.getSequenceListByTimePartition(newFilePartitionId).size() - 1)) {
-        updateLatestTimeMap(newTsFileResource);
-      }
-      resetLastCacheWhenLoadingTsfile(newTsFileResource);
-    } catch (DiskSpaceInsufficientException e) {
-      logger.error(
-          "Failed to append the tsfile {} to storage group processor {} because the disk space is insufficient.",
-          tsfileToBeInserted.getAbsolutePath(),
-          tsfileToBeInserted.getParentFile().getName());
-      IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
-      throw new LoadFileException(e);
-    } catch (IllegalPathException e) {
-      logger.error(
-          "Failed to reset last cache when loading file {}", newTsFileResource.getTsFilePath());
-      throw new LoadFileException(e);
-    } finally {
-      writeUnlock();
-    }
-  }
-
   private void resetLastCacheWhenLoadingTsfile(TsFileResource newTsFileResource)
       throws IllegalPathException {
     for (String device : newTsFileResource.getDevices()) {
