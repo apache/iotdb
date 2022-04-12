@@ -64,6 +64,14 @@ public class InsertMultiTabletsStatement extends InsertBaseStatement {
     return dataTypesList;
   }
 
+  public List<Boolean> getAlignedList() {
+    List<Boolean> alignedList = new ArrayList<>();
+    for (InsertTabletStatement insertTabletStatement : insertTabletStatementList) {
+      alignedList.add(insertTabletStatement.isAligned);
+    }
+    return alignedList;
+  }
+
   @Override
   public boolean checkDataType(SchemaTree schemaTree) {
     for (InsertTabletStatement insertTabletStatement : insertTabletStatementList) {

@@ -22,8 +22,12 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionPriority;
-import org.apache.iotdb.db.engine.compaction.cross.CrossCompactionStrategy;
-import org.apache.iotdb.db.engine.compaction.inner.InnerCompactionStrategy;
+import org.apache.iotdb.db.engine.compaction.constant.CrossCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.constant.CrossCompactionSelector;
+import org.apache.iotdb.db.engine.compaction.constant.InnerSeqCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.constant.InnerSequenceCompactionSelector;
+import org.apache.iotdb.db.engine.compaction.constant.InnerUnseqCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.constant.InnerUnsequenceCompactionSelector;
 import org.apache.iotdb.db.exception.BadNodeUrlFormatException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
@@ -359,15 +363,35 @@ public class IoTDBDescriptor {
                   "enable_unseq_space_compaction",
                   Boolean.toString(conf.isEnableUnseqSpaceCompaction()))));
 
-      conf.setCrossCompactionStrategy(
-          CrossCompactionStrategy.getCrossCompactionStrategy(
+      conf.setCrossCompactionSelector(
+          CrossCompactionSelector.getCrossCompactionStrategy(
               properties.getProperty(
-                  "cross_compaction_strategy", conf.getCrossCompactionStrategy().toString())));
+                  "cross_selector", conf.getCrossCompactionSelector().toString())));
 
-      conf.setInnerCompactionStrategy(
-          InnerCompactionStrategy.getInnerCompactionStrategy(
+      conf.setInnerSequenceCompactionSelector(
+          InnerSequenceCompactionSelector.getInnerSequenceCompactionStrategy(
               properties.getProperty(
-                  "inner_compaction_strategy", conf.getInnerCompactionStrategy().toString())));
+                  "inner_seq_selector", conf.getInnerSequenceCompactionSelector().toString())));
+
+      conf.setInnerUnsequenceCompactionSelector(
+          InnerUnsequenceCompactionSelector.getInnerUnsequenceCompactionStrategy(
+              properties.getProperty(
+                  "inner_unseq_selector", conf.getInnerUnsequenceCompactionSelector().toString())));
+
+      conf.setInnerSeqCompactionPerformer(
+          InnerSeqCompactionPerformer.getInnerSeqCompactionPerformer(
+              properties.getProperty(
+                  "inner_seq_performer", conf.getInnerUnseqCompactionPerformer().toString())));
+
+      conf.setInnerUnseqCompactionPerformer(
+          InnerUnseqCompactionPerformer.getInnerUnseqCompactionPerformer(
+              properties.getProperty(
+                  "inner_unseq_performer", conf.getInnerUnseqCompactionPerformer().toString())));
+
+      conf.setCrossCompactionPerformer(
+          CrossCompactionPerformer.getCrossCompactionPerformer(
+              properties.getProperty(
+                  "cross_performer", conf.getCrossCompactionPerformer().toString())));
 
       conf.setCompactionPriority(
           CompactionPriority.valueOf(

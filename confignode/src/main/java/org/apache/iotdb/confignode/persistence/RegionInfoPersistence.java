@@ -106,12 +106,13 @@ public class RegionInfoPersistence {
       StorageGroupSchema schema = storageGroupsMap.get(plan.getStorageGroup());
 
       for (RegionReplicaSet regionReplicaSet : plan.getRegionReplicaSets()) {
-        nextRegionGroupId = Math.max(nextRegionGroupId, regionReplicaSet.getId().getId());
-        regionMap.put(regionReplicaSet.getId(), regionReplicaSet);
-        if (regionReplicaSet.getId() instanceof DataRegionId) {
-          schema.addDataRegionGroup(regionReplicaSet.getId());
-        } else if (regionReplicaSet.getId() instanceof SchemaRegionId) {
-          schema.addSchemaRegionGroup(regionReplicaSet.getId());
+        nextRegionGroupId =
+            Math.max(nextRegionGroupId, regionReplicaSet.getConsensusGroupId().getId());
+        regionMap.put(regionReplicaSet.getConsensusGroupId(), regionReplicaSet);
+        if (regionReplicaSet.getConsensusGroupId() instanceof DataRegionId) {
+          schema.addDataRegionGroup(regionReplicaSet.getConsensusGroupId());
+        } else if (regionReplicaSet.getConsensusGroupId() instanceof SchemaRegionId) {
+          schema.addSchemaRegionGroup(regionReplicaSet.getConsensusGroupId());
         }
       }
 

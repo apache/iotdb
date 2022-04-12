@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.mpp.sql.plan.node.sink;
 
 import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.sql.plan.node.PlanNodeDeserializeHelper;
@@ -35,7 +36,7 @@ import static org.junit.Assert.assertEquals;
 public class FragmentSinkNodeSerdeTest {
 
   @Test
-  public void TestSerializeAndDeserialize() {
+  public void TestSerializeAndDeserialize() throws IllegalPathException {
     FragmentSinkNode fragmentSinkNode =
         new FragmentSinkNode(new PlanNodeId("TestFragmentSinkNode"));
     fragmentSinkNode.addChild(new ShowDevicesNode(new PlanNodeId("TestShowDevicesNode")));
