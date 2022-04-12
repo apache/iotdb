@@ -955,14 +955,6 @@ public class IoTDBDescriptor {
 
     conf.setWalDirs(properties.getProperty("wal_dirs", conf.getWalDirs()[0]).split(","));
 
-    long fsyncWalDelayInMs =
-        Long.parseLong(
-            properties.getProperty(
-                "fsync_wal_delay_in_ms", Long.toString(conf.getFsyncWalDelayInMs())));
-    if (fsyncWalDelayInMs > 0) {
-      conf.setFsyncWalDelayInMs(fsyncWalDelayInMs);
-    }
-
     int maxWalNodesNum =
         Integer.parseInt(
             properties.getProperty(
@@ -995,6 +987,27 @@ public class IoTDBDescriptor {
       conf.setWalBufferQueueCapacity(walBufferQueueCapacity);
     }
 
+    long deleteWalFilesPeriod =
+        Long.parseLong(
+            properties.getProperty(
+                "delete_wal_files_period_in_ms",
+                Long.toString(conf.getDeleteWalFilesPeriodInMs())));
+    if (deleteWalFilesPeriod > 0) {
+      conf.setDeleteWalFilesPeriodInMs(deleteWalFilesPeriod);
+    }
+
+    loadWALHotModifiedProps(properties);
+  }
+
+  private void loadWALHotModifiedProps(Properties properties) {
+    long fsyncWalDelayInMs =
+        Long.parseLong(
+            properties.getProperty(
+                "fsync_wal_delay_in_ms", Long.toString(conf.getFsyncWalDelayInMs())));
+    if (fsyncWalDelayInMs > 0) {
+      conf.setFsyncWalDelayInMs(fsyncWalDelayInMs);
+    }
+
     long walFileSizeThreshold =
         Long.parseLong(
             properties.getProperty(
@@ -1009,6 +1022,15 @@ public class IoTDBDescriptor {
             properties.getProperty("wal_file_ttl_in_ms", Long.toString(conf.getWalFileTTLInMs())));
     if (walFileTTL > 0) {
       conf.setWalFileTTLInMs(walFileTTL);
+    }
+
+    long walNodeMaxStorageSpaceInMb =
+        Long.parseLong(
+            properties.getProperty(
+                "wal_node_max_storage_space_in_mb",
+                Long.toString(conf.getWalNodeMaxStorageSpaceInMb())));
+    if (walNodeMaxStorageSpaceInMb > 0) {
+      conf.setWalNodeMaxStorageSpaceInMb(walNodeMaxStorageSpaceInMb);
     }
 
     long walMemTableSnapshotThreshold =
@@ -1027,15 +1049,6 @@ public class IoTDBDescriptor {
                 Integer.toString(conf.getMaxWalMemTableSnapshotNum())));
     if (maxWalMemTableSnapshotNum > 0) {
       conf.setMaxWalMemTableSnapshotNum(maxWalMemTableSnapshotNum);
-    }
-
-    long deleteWalFilesPeriod =
-        Long.parseLong(
-            properties.getProperty(
-                "delete_wal_files_period_in_ms",
-                Long.toString(conf.getDeleteWalFilesPeriodInMs())));
-    if (deleteWalFilesPeriod > 0) {
-      conf.setDeleteWalFilesPeriodInMs(deleteWalFilesPeriod);
     }
   }
 

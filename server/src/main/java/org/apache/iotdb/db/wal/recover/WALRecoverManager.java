@@ -59,6 +59,7 @@ public class WALRecoverManager {
   private WALRecoverManager() {}
 
   public void recover() throws WALRecoverException {
+    logger.info("Start recovering wal.");
     try {
       // collect wal nodes' information
       List<File> walNodeDirs = new ArrayList<>();
@@ -82,6 +83,8 @@ public class WALRecoverManager {
         Thread.currentThread().interrupt();
         throw new WALRecoverException("Fail to recover wal.", e);
       }
+      logger.info(
+          "Data regions have submitted all unsealed TsFiles, start recovering TsFiles in each wal node.");
       // recover each wal node's TsFiles
       if (!walNodeDirs.isEmpty()) {
         recoverThreadPool =
@@ -132,6 +135,7 @@ public class WALRecoverManager {
       }
       clear();
     }
+    logger.info("Successfully recover all wal nodes.");
   }
 
   public WALRecoverListener addRecoverPerformer(UnsealedTsFileRecoverPerformer recoverPerformer) {

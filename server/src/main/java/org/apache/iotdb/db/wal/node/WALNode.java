@@ -34,6 +34,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.utils.FileUtils;
 import org.apache.iotdb.db.wal.buffer.IWALBuffer;
 import org.apache.iotdb.db.wal.buffer.SignalWALEntry;
 import org.apache.iotdb.db.wal.buffer.WALBuffer;
@@ -64,10 +65,6 @@ public class WALNode implements IWALNode {
 
   private static final Logger logger = LoggerFactory.getLogger(WALNode.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static final long WAL_FILE_TTL_IN_MS = config.getWalFileTTLInMs();
-  private static final long MEM_TABLE_SNAPSHOT_THRESHOLD_IN_BYTE =
-      config.getWalMemTableSnapshotThreshold();
-  private static final int MAX_WAL_MEM_TABLE_SNAPSHOT_NUM = config.getMaxWalMemTableSnapshotNum();
 
   /** unique identifier of this WALNode */
   private final String identifier;
@@ -200,8 +197,7 @@ public class WALNode implements IWALNode {
       // delete outdated files
       File[] filesToDelete = deleteOutdatedFiles();
 
-      // exceed time limit, update first valid version id by snapshotting or flushing memTable,
-      // then delete old .wal files again
+      // get first file created time
       if (filesToDelete != null && filesToDelete.length == 0) {
         File firstWALFile =
             SystemFileFactory.INSTANCE.getFile(
@@ -216,8 +212,13 @@ public class WALNode implements IWALNode {
           } catch (IOException e) {
             logger.warn("Fail to get creation time of wal file {}", firstWALFile, e);
           }
+          // exceed time limit or disk space limit
+          // update first valid version id by snapshotting or flushing memTable,
+          // then delete old .wal files again
           long currentTime = System.currentTimeMillis();
-          if (fileCreatedTime + WAL_FILE_TTL_IN_MS < currentTime) {
+          if (fileCreatedTime + config.getWalFileTTLInMs() < currentTime
+              || FileUtils.getDirSize(logDirectory)
+                  >= config.getWalNodeMaxStorageSpaceInMb() * 1024 * 1024) {
             snapshotOrFlushMemTable();
             run();
           }
@@ -274,8 +275,8 @@ public class WALNode implements IWALNode {
 
       // snapshot or flush memTable
       int snapshotCount = memTableSnapshotCount.getOrDefault(oldestMemTable.getMemTableId(), 0);
-      if (snapshotCount >= MAX_WAL_MEM_TABLE_SNAPSHOT_NUM
-          || oldestMemTable.getTVListsRamCost() > MEM_TABLE_SNAPSHOT_THRESHOLD_IN_BYTE) {
+      if (snapshotCount >= config.getMaxWalMemTableSnapshotNum()
+          || oldestMemTable.getTVListsRamCost() > config.getWalMemTableSnapshotThreshold()) {
         flushMemTable(dataRegion, oldestTsFile, oldestMemTable);
       } else {
         snapshotMemTable(dataRegion, oldestTsFile, oldestMemTableInfo);
