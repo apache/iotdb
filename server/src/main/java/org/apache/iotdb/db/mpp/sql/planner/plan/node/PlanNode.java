@@ -114,8 +114,4 @@ public abstract class PlanNode {
   public int hashCode() {
     return Objects.hash(id);
   }
-
-  public List<String> getBoxString() {
-    return ImmutableList.of(String.format("PlanNode-%s", getPlanNodeId().getId()));
-  }
 }
