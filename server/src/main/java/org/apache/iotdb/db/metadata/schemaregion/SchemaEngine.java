@@ -20,9 +20,14 @@
 package org.apache.iotdb.db.metadata.schemaregion;
 
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaRegion;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 import java.util.Map;
@@ -31,7 +36,9 @@ import java.util.concurrent.ConcurrentHashMap;
 // manage all the schemaRegion in this dataNode
 public class SchemaEngine {
 
-  private Map<SchemaRegionId, SchemaRegion> schemaRegionMap;
+  private Map<SchemaRegionId, ISchemaRegion> schemaRegionMap;
+  private SchemaEngineMode schemaRegionStoredMode;
+  private static final Logger logger = LoggerFactory.getLogger(SchemaEngine.class);
 
   private static class SchemaEngineManagerHolder {
     private static final SchemaEngine INSTANCE = new SchemaEngine();
@@ -47,6 +54,9 @@ public class SchemaEngine {
 
   public void init() {
     schemaRegionMap = new ConcurrentHashMap<>();
+    schemaRegionStoredMode =
+        SchemaEngineMode.valueOf(IoTDBDescriptor.getInstance().getConfig().getSchemaEngineMode());
+    logger.info("used schema engine mode: {}.", schemaRegionStoredMode);
   }
 
   public void clear() {
@@ -56,22 +66,35 @@ public class SchemaEngine {
     }
   }
 
-  public SchemaRegion getSchemaRegion(SchemaRegionId regionId) {
+  public ISchemaRegion getSchemaRegion(SchemaRegionId regionId) {
     return schemaRegionMap.get(regionId);
   }
 
-  public Collection<SchemaRegion> getAllSchemaRegions() {
+  public Collection<ISchemaRegion> getAllSchemaRegions() {
     return schemaRegionMap.values();
   }
 
-  public synchronized SchemaRegion createSchemaRegion(
+  public synchronized ISchemaRegion createSchemaRegion(
       PartialPath storageGroup, SchemaRegionId schemaRegionId, IStorageGroupMNode storageGroupMNode)
       throws MetadataException {
-    SchemaRegion schemaRegion = schemaRegionMap.get(schemaRegionId);
+    ISchemaRegion schemaRegion = schemaRegionMap.get(schemaRegionId);
     if (schemaRegion != null) {
       return schemaRegion;
     }
-    schemaRegion = new SchemaRegion(storageGroup, schemaRegionId, storageGroupMNode);
+    switch (schemaRegionStoredMode) {
+      case Memory:
+      case Schema_File:
+        schemaRegion = new SchemaRegion(storageGroup, schemaRegionId, storageGroupMNode);
+        break;
+      case Rocksdb_based:
+        schemaRegion = new RSchemaRegion(storageGroup, schemaRegionId, storageGroupMNode);
+        break;
+      default:
+        throw new UnsupportedOperationException(
+            String.format(
+                "This mode [%s] is not supported. Please check and modify it.",
+                schemaRegionStoredMode));
+    }
     schemaRegionMap.put(schemaRegionId, schemaRegion);
     return schemaRegion;
   }

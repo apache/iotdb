@@ -17,10 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.metadata.schemaregion;
+package org.apache.iotdb.db.exception.metadata;
 
-public enum SchemaEngineMode {
-  Memory,
-  Schema_File,
-  Rocksdb_based
+public class AcquireLockTimeoutException extends MetadataException {
+  public AcquireLockTimeoutException(String msg) {
+    super(msg);
+  }
 }

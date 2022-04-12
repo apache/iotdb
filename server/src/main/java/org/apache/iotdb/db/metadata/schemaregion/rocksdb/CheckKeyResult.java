@@ -17,10 +17,34 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.metadata.schemaregion;
+package org.apache.iotdb.db.metadata.schemaregion.rocksdb;
 
-public enum SchemaEngineMode {
-  Memory,
-  Schema_File,
-  Rocksdb_based
+import org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode.RMNodeType;
+
+import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaUtils.NODE_TYPE_ARRAY;
+
+public class CheckKeyResult {
+
+  private byte[] value;
+  private RMNodeType nodeType;
+
+  public boolean existAnyKey() {
+    return nodeType != null;
+  }
+
+  public byte[] getValue() {
+    return value;
+  }
+
+  public void setValue(byte[] value) {
+    this.value = value;
+  }
+
+  public void setExistType(char type) {
+    nodeType = NODE_TYPE_ARRAY[type];
+  }
+
+  public boolean getResult(RMNodeType type) {
+    return type == nodeType;
+  }
 }
