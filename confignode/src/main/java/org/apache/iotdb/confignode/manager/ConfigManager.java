@@ -21,9 +21,8 @@ package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.EndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.partition.RegionReplicaSet;
-import org.apache.iotdb.commons.partition.SeriesPartitionSlot;
 import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.commons.partition.SeriesPartitionSlot;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationDataSet;
 import org.apache.iotdb.confignode.consensus.response.DataNodesInfoDataSet;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionDataSet;
@@ -43,7 +42,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -135,73 +133,93 @@ public class ConfigManager implements Manager {
 
   @Override
   public DataSet getSchemaPartition(PathPatternTree patternTree) {
-    List<String> devicePaths = patternTree.findAllDevicePaths();
-    List<String> storageGroups = getRegionManager().getStorageGroupNames();
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      List<String> devicePaths = patternTree.findAllDevicePaths();
+      List<String> storageGroups = getRegionManager().getStorageGroupNames();
 
-    GetOrCreateSchemaPartitionPlan getSchemaPartitionPlan =
-      new GetOrCreateSchemaPartitionPlan(PhysicalPlanType.GetSchemaPartition);
-    Map<String, List<SeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
+      GetOrCreateSchemaPartitionPlan getSchemaPartitionPlan =
+          new GetOrCreateSchemaPartitionPlan(PhysicalPlanType.GetSchemaPartition);
+      Map<String, List<SeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
 
-    boolean getAll = false;
-    Set<String> getAllSet = new HashSet<>();
-    for (String devicePath : devicePaths) {
-      boolean matchStorageGroup = false;
-      for (String storageGroup : storageGroups) {
-        if (devicePath.contains(storageGroup)) {
-          matchStorageGroup = true;
-          if (devicePath.contains("*")) {
-            getAllSet.add(storageGroup);
-          } else {
-            SeriesPartitionSlot seriesPartitionSlot = getPartitionManager().getSeriesPartitionSlot(devicePath);
-            partitionSlotsMap.computeIfAbsent(storageGroup, key -> new ArrayList<>()).add(seriesPartitionSlot);
+      boolean getAll = false;
+      Set<String> getAllSet = new HashSet<>();
+      for (String devicePath : devicePaths) {
+        boolean matchStorageGroup = false;
+        for (String storageGroup : storageGroups) {
+          if (devicePath.contains(storageGroup)) {
+            matchStorageGroup = true;
+            if (devicePath.contains("*")) {
+              // Get all SchemaPartitions of this StorageGroup if the devicePath contains "*"
+              getAllSet.add(storageGroup);
+            } else {
+              // Get the specific SchemaPartition
+              partitionSlotsMap
+                  .computeIfAbsent(storageGroup, key -> new ArrayList<>())
+                  .add(getPartitionManager().getSeriesPartitionSlot(devicePath));
+            }
+            break;
           }
-          break;
+        }
+        if (!matchStorageGroup && devicePath.contains("**")) {
+          // Get all SchemaPartitions if there exists one devicePath that contains "**"
+          getAll = true;
         }
       }
-      if (!matchStorageGroup && devicePath.contains("**")) {
-        getAll = true;
-      }
-    }
 
-    if (getAll) {
-      partitionSlotsMap = new HashMap<>();
+      if (getAll) {
+        partitionSlotsMap = new HashMap<>();
+      } else {
+        for (String storageGroup : getAllSet) {
+          if (partitionSlotsMap.containsKey(storageGroup)) {
+            partitionSlotsMap.replace(storageGroup, new ArrayList<>());
+          } else {
+            partitionSlotsMap.put(storageGroup, new ArrayList<>());
+          }
+        }
+      }
+
+      getSchemaPartitionPlan.setPartitionSlotsMap(partitionSlotsMap);
+      return partitionManager.getSchemaPartition(getSchemaPartitionPlan);
     } else {
-      for (String storageGroup : getAllSet) {
-        if (partitionSlotsMap.containsKey(storageGroup)) {
-          partitionSlotsMap.replace(storageGroup, new ArrayList<>());
-        } else {
-          partitionSlotsMap.put(storageGroup, new ArrayList<>());
-        }
-      }
+      SchemaPartitionDataSet dataSet = new SchemaPartitionDataSet();
+      dataSet.setStatus(status);
+      return dataSet;
     }
-
-    getSchemaPartitionPlan.setPartitionSlotsMap(partitionSlotsMap);
-    return partitionManager.getSchemaPartition(getSchemaPartitionPlan);
   }
 
   @Override
   public DataSet getOrCreateSchemaPartition(PathPatternTree patternTree) {
-    List<String> devicePaths = patternTree.findAllDevicePaths();
-    List<String> storageGroups = getRegionManager().getStorageGroupNames();
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      List<String> devicePaths = patternTree.findAllDevicePaths();
+      List<String> storageGroups = getRegionManager().getStorageGroupNames();
 
-    GetOrCreateSchemaPartitionPlan getOrCreateSchemaPartitionPlan =
-      new GetOrCreateSchemaPartitionPlan(PhysicalPlanType.GetOrCreateSchemaPartition);
-    Map<String, List<SeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
+      GetOrCreateSchemaPartitionPlan getOrCreateSchemaPartitionPlan =
+          new GetOrCreateSchemaPartitionPlan(PhysicalPlanType.GetOrCreateSchemaPartition);
+      Map<String, List<SeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
 
-    for (String device : devicePaths) {
-      if (!device.contains("*")) {
-        for (String storageGroup : storageGroups) {
-          if (device.contains(storageGroup)) {
-            SeriesPartitionSlot seriesPartitionSlot = getPartitionManager().getSeriesPartitionSlot(device);
-            partitionSlotsMap.computeIfAbsent(storageGroup, key -> new ArrayList<>()).add(seriesPartitionSlot);
-            break;
+      for (String devicePath : devicePaths) {
+        if (!devicePath.contains("*")) {
+          // Only check devicePaths that without "*"
+          for (String storageGroup : storageGroups) {
+            if (devicePath.contains(storageGroup)) {
+              partitionSlotsMap
+                  .computeIfAbsent(storageGroup, key -> new ArrayList<>())
+                  .add(getPartitionManager().getSeriesPartitionSlot(devicePath));
+              break;
+            }
           }
         }
       }
-    }
 
-    getOrCreateSchemaPartitionPlan.setPartitionSlotsMap(partitionSlotsMap);
-    return partitionManager.getOrCreateSchemaPartition(getOrCreateSchemaPartitionPlan);
+      getOrCreateSchemaPartitionPlan.setPartitionSlotsMap(partitionSlotsMap);
+      return partitionManager.getOrCreateSchemaPartition(getOrCreateSchemaPartitionPlan);
+    } else {
+      SchemaPartitionDataSet dataSet = new SchemaPartitionDataSet();
+      dataSet.setStatus(status);
+      return dataSet;
+    }
   }
 
   @Override

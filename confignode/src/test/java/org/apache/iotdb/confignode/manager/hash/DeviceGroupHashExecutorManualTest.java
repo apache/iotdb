@@ -19,7 +19,6 @@
 package org.apache.iotdb.confignode.manager.hash;
 
 import org.apache.iotdb.confignode.manager.ConfigManager;
-import org.apache.iotdb.confignode.manager.ConsensusManager;
 import org.apache.iotdb.confignode.manager.PartitionManager;
 
 import java.io.IOException;

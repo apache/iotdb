@@ -29,12 +29,11 @@ import org.apache.iotdb.confignode.consensus.response.SchemaPartitionDataSet;
 import org.apache.iotdb.confignode.persistence.PartitionInfoPersistence;
 import org.apache.iotdb.confignode.persistence.RegionInfoPersistence;
 import org.apache.iotdb.confignode.physical.crud.CreateDataPartitionPlan;
+import org.apache.iotdb.confignode.physical.crud.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.physical.crud.GetOrCreateDataPartitionPlan;
 import org.apache.iotdb.confignode.physical.crud.GetOrCreateSchemaPartitionPlan;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
-import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,7 +70,7 @@ public class PartitionManager {
   /**
    * Get SchemaPartition
    *
-   * @param physicalPlan SchemaPartitionPlan with PatternTree
+   * @param physicalPlan SchemaPartitionPlan with partitionSlotsMap
    * @return SchemaPartitionDataSet that contains only existing SchemaPartition
    */
   public DataSet getSchemaPartition(GetOrCreateSchemaPartitionPlan physicalPlan) {
@@ -84,52 +83,56 @@ public class PartitionManager {
   /**
    * Get SchemaPartition and create a new one if it does not exist
    *
-   * @param physicalPlan SchemaPartitionPlan with PatternTree
+   * @param physicalPlan SchemaPartitionPlan with partitionSlotsMap
    * @return SchemaPartitionDataSet
    */
   public DataSet getOrCreateSchemaPartition(GetOrCreateSchemaPartitionPlan physicalPlan) {
-    String storageGroup = physicalPlan.getStorageGroup();
-    List<Integer> seriesPartitionSlots = physicalPlan.getSeriesPartitionSlots();
-    List<Integer> noAssignedSeriesPartitionSlots =
-        partitionInfoPersistence.filterSchemaRegionNoAssignedPartitionSlots(
-            storageGroup, seriesPartitionSlots);
+    Map<String, List<SeriesPartitionSlot>> noAssignedSchemaPartitionSlots =
+        partitionInfoPersistence.filterNoAssignedSchemaPartitionSlots(
+            physicalPlan.getPartitionSlotsMap());
 
-    if (noAssignedSeriesPartitionSlots.size() > 0) {
-      // allocate partition by storage group and device group id
-      Map<Integer, RegionReplicaSet> schemaPartitionReplicaSets =
-          allocateSchemaPartition(storageGroup, noAssignedSeriesPartitionSlots);
-      physicalPlan.setSchemaPartitionReplicaSet(schemaPartitionReplicaSets);
+    if (noAssignedSchemaPartitionSlots.size() > 0) {
+      // Allocate SchemaPartition
+      Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> assignedSchemaPartition =
+          allocateSchemaPartition(noAssignedSchemaPartitionSlots);
 
-      ConsensusWriteResponse consensusWriteResponse = getConsensusManager().write(physicalPlan);
-      if (consensusWriteResponse.getStatus().getCode()
-          == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.info("Allocate schema partition to {}.", schemaPartitionReplicaSets);
-      }
+      // Persist SchemaPartition
+      CreateSchemaPartitionPlan createPlan = new CreateSchemaPartitionPlan();
+      createPlan.setAssignedSchemaPartition(assignedSchemaPartition);
+      getConsensusManager().write(physicalPlan);
     }
 
-    physicalPlan.setSchemaPartitionReplicaSet(new HashMap<>());
     return getSchemaPartition(physicalPlan);
   }
 
   /**
    * TODO: allocate schema partition by LoadManager
    *
-   * @param storageGroup StorageGroupName
-   * @param noAssignedSeriesPartitionSlots not assigned SeriesPartitionSlots
-   * @return assign result
+   * @param noAssignedSchemaPartitionSlotsMap Map<StorageGroupName, List<SeriesPartitionSlot>>
+   * @return assign result, Map<StorageGroupName, Map<SeriesPartitionSlot, RegionReplicaSet>>
    */
-  private Map<Integer, RegionReplicaSet> allocateSchemaPartition(
-      String storageGroup, List<Integer> noAssignedSeriesPartitionSlots) {
-    List<RegionReplicaSet> schemaRegionEndPoints =
-        RegionInfoPersistence.getInstance().getSchemaRegionEndPoint(storageGroup);
-    Random random = new Random();
-    Map<Integer, RegionReplicaSet> schemaPartitionReplicaSets = new HashMap<>();
-    for (Integer seriesPartitionSlot : noAssignedSeriesPartitionSlots) {
-      RegionReplicaSet schemaRegionReplicaSet =
-          schemaRegionEndPoints.get(random.nextInt(schemaRegionEndPoints.size()));
-      schemaPartitionReplicaSets.put(seriesPartitionSlot, schemaRegionReplicaSet);
+  private Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> allocateSchemaPartition(
+      Map<String, List<SeriesPartitionSlot>> noAssignedSchemaPartitionSlotsMap) {
+    Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> result = new HashMap<>();
+
+    for (String storageGroup : noAssignedSchemaPartitionSlotsMap.keySet()) {
+      List<SeriesPartitionSlot> noAssignedPartitionSlots =
+          noAssignedSchemaPartitionSlotsMap.get(storageGroup);
+      List<RegionReplicaSet> schemaRegionEndPoints =
+          RegionInfoPersistence.getInstance().getSchemaRegionEndPoint(storageGroup);
+      Random random = new Random();
+
+      Map<SeriesPartitionSlot, RegionReplicaSet> allocateResult = new HashMap<>();
+      noAssignedPartitionSlots.forEach(
+          seriesPartitionSlot ->
+              allocateResult.put(
+                  seriesPartitionSlot,
+                  schemaRegionEndPoints.get(random.nextInt(schemaRegionEndPoints.size()))));
+
+      result.put(storageGroup, allocateResult);
     }
-    return schemaPartitionReplicaSets;
+
+    return result;
   }
 
   /**
@@ -162,15 +165,11 @@ public class PartitionManager {
       // Allocate DataPartition
       Map<String, Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>>
           assignedDataPartition = allocateDataPartition(noAssignedDataPartitionSlots);
+
+      // Persist DataPartition
       CreateDataPartitionPlan createPlan = new CreateDataPartitionPlan();
       createPlan.setAssignedDataPartition(assignedDataPartition);
-
-      // Persistence DataPartition
-      ConsensusWriteResponse consensusWriteResponse = getConsensusManager().write(createPlan);
-      if (consensusWriteResponse.getStatus().getCode()
-          == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.info("Allocate data partition to {}.", assignedDataPartition);
-      }
+      getConsensusManager().write(createPlan);
     }
 
     return getDataPartition(physicalPlan);
@@ -224,21 +223,27 @@ public class PartitionManager {
       Class<?> executor = Class.forName(conf.getSeriesPartitionExecutorClass());
       Constructor<?> executorConstructor = executor.getConstructor(int.class);
       this.executor =
-        (SeriesPartitionExecutor)
-          executorConstructor.newInstance(conf.getSeriesPartitionSlotNum());
+          (SeriesPartitionExecutor)
+              executorConstructor.newInstance(conf.getSeriesPartitionSlotNum());
     } catch (ClassNotFoundException
-      | NoSuchMethodException
-      | InstantiationException
-      | IllegalAccessException
-      | InvocationTargetException e) {
+        | NoSuchMethodException
+        | InstantiationException
+        | IllegalAccessException
+        | InvocationTargetException e) {
       LOGGER.error(
-        "Couldn't Constructor SeriesPartitionExecutor class: {}",
-        conf.getSeriesPartitionExecutorClass(),
-        e);
+          "Couldn't Constructor SeriesPartitionExecutor class: {}",
+          conf.getSeriesPartitionExecutorClass(),
+          e);
       executor = null;
     }
   }
 
+  /**
+   * Get SeriesPartitionSlot
+   *
+   * @param devicePath Full path ending with device name
+   * @return SeriesPartitionSlot
+   */
   public SeriesPartitionSlot getSeriesPartitionSlot(String devicePath) {
     return executor.getSeriesPartitionSlot(devicePath);
   }

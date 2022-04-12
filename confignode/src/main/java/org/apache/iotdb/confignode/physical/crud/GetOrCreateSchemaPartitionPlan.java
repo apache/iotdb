@@ -18,9 +18,7 @@
  */
 package org.apache.iotdb.confignode.physical.crud;
 
-import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.commons.partition.SeriesPartitionSlot;
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
 import org.apache.iotdb.confignode.physical.PhysicalPlanType;
 import org.apache.iotdb.confignode.util.SerializeDeserializeUtil;
@@ -31,13 +29,14 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /** Get or create SchemaPartition by the specific partitionSlotsMap. */
 public class GetOrCreateSchemaPartitionPlan extends PhysicalPlan {
 
   // Map<StorageGroup, List<SeriesPartitionSlot>>
-  // Return all SchemaPartitions when the partitionSlotsMap is empty
-  // Return all exists SchemaPartitions in one StorageGroup when the SeriesPartitionSlot is empty
+  // Get all SchemaPartitions when the partitionSlotsMap is empty
+  // Get all exists SchemaPartitions in one StorageGroup when the SeriesPartitionSlot is empty
   private Map<String, List<SeriesPartitionSlot>> partitionSlotsMap;
 
   public GetOrCreateSchemaPartitionPlan(PhysicalPlanType physicalPlanType) {
@@ -49,14 +48,48 @@ public class GetOrCreateSchemaPartitionPlan extends PhysicalPlan {
     this.partitionSlotsMap = partitionSlotsMap;
   }
 
+  public Map<String, List<SeriesPartitionSlot>> getPartitionSlotsMap() {
+    return partitionSlotsMap;
+  }
+
   @Override
   protected void serializeImpl(ByteBuffer buffer) {
     buffer.putInt(PhysicalPlanType.GetDataPartition.ordinal());
-    // TODO:
+
+    buffer.putInt(partitionSlotsMap.size());
+    partitionSlotsMap.forEach(
+        (storageGroup, seriesPartitionSlots) -> {
+          SerializeDeserializeUtil.write(storageGroup, buffer);
+          buffer.putInt(seriesPartitionSlots.size());
+          seriesPartitionSlots.forEach(
+              seriesPartitionSlot -> seriesPartitionSlot.serializeImpl(buffer));
+        });
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    // TODO:
+    int storageGroupNum = buffer.getInt();
+    for (int i = 0; i < storageGroupNum; i++) {
+      String storageGroup = SerializeDeserializeUtil.readString(buffer);
+      partitionSlotsMap.put(storageGroup, new ArrayList<>());
+      int seriesPartitionSlotNum = buffer.getInt();
+      for (int j = 0; j < seriesPartitionSlotNum; j++) {
+        SeriesPartitionSlot seriesPartitionSlot = new SeriesPartitionSlot();
+        partitionSlotsMap.get(storageGroup).add(seriesPartitionSlot);
+      }
+    }
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    GetOrCreateSchemaPartitionPlan that = (GetOrCreateSchemaPartitionPlan) o;
+    return partitionSlotsMap.equals(that.partitionSlotsMap);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(partitionSlotsMap);
   }
 }

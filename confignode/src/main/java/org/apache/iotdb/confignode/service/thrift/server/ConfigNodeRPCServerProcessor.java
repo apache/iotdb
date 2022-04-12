@@ -30,7 +30,6 @@ import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.partition.StorageGroupSchema;
 import org.apache.iotdb.confignode.physical.PhysicalPlanType;
 import org.apache.iotdb.confignode.physical.crud.GetOrCreateDataPartitionPlan;
-import org.apache.iotdb.confignode.physical.crud.GetOrCreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.physical.sys.AuthorPlan;
 import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
 import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
@@ -56,8 +55,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.HashMap;
-import java.util.Map;
 
 /** ConfigNodeRPCServer exposes the interface that interacts with the DataNode */
 public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
@@ -124,9 +121,10 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
 
   @Override
   public TSchemaPartitionResp getSchemaPartition(TSchemaPartitionReq req) throws TException {
-
-    PathPatternTree patternTree = PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
-    SchemaPartitionDataSet dataSet = (SchemaPartitionDataSet) configManager.getSchemaPartition(patternTree);
+    PathPatternTree patternTree =
+        PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
+    SchemaPartitionDataSet dataSet =
+        (SchemaPartitionDataSet) configManager.getSchemaPartition(patternTree);
 
     TSchemaPartitionResp resp = new TSchemaPartitionResp();
     dataSet.convertToRpcSchemaPartitionResp(resp);
@@ -136,10 +134,10 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
   @Override
   public TSchemaPartitionResp getOrCreateSchemaPartition(TSchemaPartitionReq req)
       throws TException {
-
-    PathPatternTree patternTree = PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
+    PathPatternTree patternTree =
+        PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
     SchemaPartitionDataSet dataSet =
-      (SchemaPartitionDataSet) configManager.getOrCreateSchemaPartition(patternTree);
+        (SchemaPartitionDataSet) configManager.getOrCreateSchemaPartition(patternTree);
 
     TSchemaPartitionResp resp = new TSchemaPartitionResp();
     dataSet.convertToRpcSchemaPartitionResp(resp);
