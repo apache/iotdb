@@ -75,4 +75,8 @@ public class PartitionRegionId implements ConsensusGroupId {
   public int hashCode() {
     return Objects.hash(id, GroupType.PartitionRegion);
   }
+
+  public String toString() {
+    return String.format("%s-%d", getType(), id);
+  }
 }

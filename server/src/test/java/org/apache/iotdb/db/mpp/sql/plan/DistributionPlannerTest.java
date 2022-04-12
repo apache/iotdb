@@ -34,6 +34,7 @@ import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
 import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
 import org.apache.iotdb.db.mpp.sql.planner.DistributionPlanner;
 import org.apache.iotdb.db.mpp.sql.planner.plan.DistributedQueryPlan;
+import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.mpp.sql.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.mpp.sql.planner.plan.SubPlan;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanGraphPrinter;
@@ -161,7 +162,6 @@ public class DistributionPlannerTest {
         new DistributionPlanner(analysis, new LogicalQueryPlan(context, root));
     PlanNode rootAfterRewrite = planner.rewriteSource();
     PlanNode rootWithExchange = planner.addExchangeNode(rootAfterRewrite);
-    PlanGraphPrinter.print(rootWithExchange);
     SubPlan subPlan = planner.splitFragment(rootWithExchange);
     assertEquals(subPlan.getChildren().size(), 2);
   }
@@ -199,7 +199,6 @@ public class DistributionPlannerTest {
     DistributionPlanner planner =
         new DistributionPlanner(analysis, new LogicalQueryPlan(context, root));
     DistributedQueryPlan plan = planner.planFragments();
-    plan.getInstances().forEach(System.out::println);
     assertEquals(3, plan.getInstances().size());
   }
 

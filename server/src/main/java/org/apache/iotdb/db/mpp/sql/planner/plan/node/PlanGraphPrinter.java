@@ -20,6 +20,11 @@
 package org.apache.iotdb.db.mpp.sql.planner.plan.node;
 
 import org.apache.commons.lang3.Validate;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ExchangeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.LimitNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.sink.FragmentSinkNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -46,6 +51,45 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   public List<String> visitPlan(PlanNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("PlanNode-%s", node.getPlanNodeId().getId()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitSeriesScan(SeriesScanNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("SeriesScanNode-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("Series: %s", node.getSeriesPath()));
+    boxValue.add(String.format("Region: %s", node.getDataRegionReplicaSet().getId()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitExchange(ExchangeNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("ExchangeNode-%s", node.getPlanNodeId().getId()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitTimeJoin(TimeJoinNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("TimeJoinNode-%s", node.getPlanNodeId().getId()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitLimit(LimitNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("Limit-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("Count: %d", node.getLimit()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitFragmentSink(FragmentSinkNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("FragmentSinkNode-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("Destination: %s", node.getDownStreamPlanNodeId()));
     return render(node, boxValue, context);
   }
 

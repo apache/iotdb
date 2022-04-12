@@ -75,4 +75,8 @@ public class SchemaRegionId implements ConsensusGroupId {
   public int hashCode() {
     return Objects.hash(id, GroupType.SchemaRegion);
   }
+
+  public String toString() {
+    return String.format("%s-%d", getType(), id);
+  }
 }
