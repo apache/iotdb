@@ -19,17 +19,28 @@
 package org.apache.iotdb.confignode.persistence;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.response.PermissionInfoDataSet;
 import org.apache.iotdb.confignode.physical.PhysicalPlanType;
 import org.apache.iotdb.confignode.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
+import org.apache.iotdb.db.auth.entity.PathPrivilege;
+import org.apache.iotdb.db.auth.entity.PrivilegeType;
+import org.apache.iotdb.db.auth.entity.Role;
+import org.apache.iotdb.db.auth.entity.User;
+import org.apache.iotdb.db.utils.AuthUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class AuthorInfoPersistence {
@@ -42,7 +53,7 @@ public class AuthorInfoPersistence {
     try {
       authorizer = BasicAuthorizer.getInstance();
     } catch (AuthException e) {
-      logger.error("get user or role info failed", e);
+      logger.error("get user or role permissionInfo failed", e);
     }
   }
 
@@ -106,29 +117,128 @@ public class AuthorInfoPersistence {
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
-  /** TODO: Construct the query result as a DataSet and return it */
-  public PermissionInfoDataSet executeListRole(AuthorPlan plan) throws AuthException {
-    return null;
+  public PermissionInfoDataSet executeListRole() throws AuthException {
+    PermissionInfoDataSet result = new PermissionInfoDataSet();
+    List<String> roleList = authorizer.listAllRoles();
+    Map<String, List<String>> permissionInfo = new HashMap<>();
+    permissionInfo.put(ConfigNodeConstant.COLUMN_ROLE, roleList);
+    result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    result.setPermissionInfo(permissionInfo);
+    return result;
   }
 
-  public PermissionInfoDataSet executeListUser(AuthorPlan plan) throws AuthException {
-    return null;
+  public PermissionInfoDataSet executeListUser() throws AuthException {
+    PermissionInfoDataSet result = new PermissionInfoDataSet();
+    List<String> userList = authorizer.listAllUsers();
+    Map<String, List<String>> permissionInfo = new HashMap<>();
+    permissionInfo.put(ConfigNodeConstant.COLUMN_USER, userList);
+    result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    result.setPermissionInfo(permissionInfo);
+    return result;
   }
 
   public PermissionInfoDataSet executeListRoleUsers(AuthorPlan plan) throws AuthException {
-    return null;
+    PermissionInfoDataSet result = new PermissionInfoDataSet();
+    Role role = authorizer.getRole(plan.getRoleName());
+    if (role == null) {
+      throw new AuthException("No such role : " + plan.getRoleName());
+    }
+    List<String> roleUsersList = new ArrayList<>();
+    List<String> userList = authorizer.listAllUsers();
+    for (String userN : userList) {
+      User userObj = authorizer.getUser(userN);
+      if (userObj != null && userObj.hasRole(plan.getRoleName())) {
+        roleUsersList.add(userN);
+      }
+    }
+    Map<String, List<String>> permissionInfo = new HashMap<>();
+    permissionInfo.put(ConfigNodeConstant.COLUMN_USER, roleUsersList);
+    result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    result.setPermissionInfo(permissionInfo);
+    return result;
   }
 
   public PermissionInfoDataSet executeListUserRoles(AuthorPlan plan) throws AuthException {
-    return null;
+    PermissionInfoDataSet result = new PermissionInfoDataSet();
+    User user = authorizer.getUser(plan.getUserName());
+    if (user == null) {
+      throw new AuthException("No such user : " + plan.getUserName());
+    }
+    List<String> userRoleList = new ArrayList<>();
+    for (String roleN : user.getRoleList()) {
+      userRoleList.add(roleN);
+    }
+    Map<String, List<String>> permissionInfo = new HashMap<>();
+    permissionInfo.put(ConfigNodeConstant.COLUMN_ROLE, userRoleList);
+    result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    result.setPermissionInfo(permissionInfo);
+    return result;
   }
 
   public PermissionInfoDataSet executeListRolePrivileges(AuthorPlan plan) throws AuthException {
-    return null;
+    PermissionInfoDataSet result = new PermissionInfoDataSet();
+    Role role = authorizer.getRole(plan.getRoleName());
+    if (role == null) {
+      throw new AuthException("No such role : " + plan.getRoleName());
+    }
+    List<String> rolePrivilegesList = new ArrayList<>();
+    for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
+      if (plan.getNodeName().equals("")
+          || AuthUtils.pathBelongsTo(plan.getNodeName(), pathPrivilege.getPath())) {
+        rolePrivilegesList.add(pathPrivilege.toString());
+      }
+    }
+    Map<String, List<String>> permissionInfo = new HashMap<>();
+    permissionInfo.put(ConfigNodeConstant.COLUMN_PRIVILEGE, rolePrivilegesList);
+    result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    result.setPermissionInfo(permissionInfo);
+    return result;
   }
 
   public PermissionInfoDataSet executeListUserPrivileges(AuthorPlan plan) throws AuthException {
-    return null;
+    PermissionInfoDataSet result = new PermissionInfoDataSet();
+    User user = authorizer.getUser(plan.getUserName());
+    if (user == null) {
+      throw new AuthException("No such user : " + plan.getUserName());
+    }
+    List<String> userPrivilegesList = new ArrayList<>();
+    Map<String, List<String>> permissionInfo = new HashMap<>();
+    if (ConfigNodeDescriptor.getInstance().getConf().getAdminName().equals(plan.getUserName())) {
+      for (PrivilegeType privilegeType : PrivilegeType.values()) {
+        userPrivilegesList.add(privilegeType.toString());
+      }
+      permissionInfo.put(ConfigNodeConstant.COLUMN_PRIVILEGE, userPrivilegesList);
+      result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+      result.setPermissionInfo(permissionInfo);
+      return result;
+    } else {
+      List<String> rolePrivileges = new ArrayList<>();
+      for (PathPrivilege pathPrivilege : user.getPrivilegeList()) {
+        if (plan.getNodeName().equals("")
+            || AuthUtils.pathBelongsTo(plan.getNodeName(), pathPrivilege.getPath())) {
+          rolePrivileges.add("");
+          userPrivilegesList.add(pathPrivilege.toString());
+        }
+      }
+      for (String roleN : user.getRoleList()) {
+        Role role = authorizer.getRole(roleN);
+        if (roleN == null) {
+          continue;
+        }
+        for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
+          if (plan.getNodeName().equals("")
+              || AuthUtils.pathBelongsTo(plan.getNodeName(), pathPrivilege.getPath())) {
+            rolePrivileges.add(roleN);
+            userPrivilegesList.add(pathPrivilege.toString());
+          }
+        }
+      }
+      permissionInfo.put(ConfigNodeConstant.COLUMN_ROLE, rolePrivileges);
+      permissionInfo.put(ConfigNodeConstant.COLUMN_PRIVILEGE, userPrivilegesList);
+      result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+      result.setPermissionInfo(permissionInfo);
+      return result;
+    }
   }
 
   private static class AuthorInfoPersistenceHolder {

@@ -19,8 +19,37 @@
 
 package org.apache.iotdb.confignode.consensus.response;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.consensus.common.DataSet;
 
+import java.util.List;
+import java.util.Map;
+
 public class PermissionInfoDataSet implements DataSet {
-  // TODO: Store the returned result
+
+  private TSStatus status;
+  private Map<String, List<String>> permissionInfo;
+
+  public PermissionInfoDataSet() {}
+
+  public PermissionInfoDataSet(TSStatus status, Map<String, List<String>> permissionInfo) {
+    this.status = status;
+    this.permissionInfo = permissionInfo;
+  }
+
+  public Map<String, List<String>> getPermissionInfo() {
+    return permissionInfo;
+  }
+
+  public void setPermissionInfo(Map<String, List<String>> permissionInfo) {
+    this.permissionInfo = permissionInfo;
+  }
+
+  public TSStatus getStatus() {
+    return status;
+  }
+
+  public void setStatus(TSStatus status) {
+    this.status = status;
+  }
 }

@@ -126,4 +126,12 @@ public interface Manager {
    * @return
    */
   TSStatus operatePermission(PhysicalPlan physicalPlan);
+
+  /**
+   * query Permission
+   *
+   * @param physicalPlan
+   * @return
+   */
+  DataSet queryPermission(PhysicalPlan physicalPlan);
 }

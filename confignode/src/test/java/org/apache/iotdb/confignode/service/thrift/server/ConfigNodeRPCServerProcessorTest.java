@@ -23,10 +23,14 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.persistence.DataNodeInfoPersistence;
 import org.apache.iotdb.confignode.persistence.PartitionInfoPersistence;
 import org.apache.iotdb.confignode.persistence.RegionInfoPersistence;
+import org.apache.iotdb.confignode.physical.PhysicalPlanType;
+import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeMessage;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeMessageResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
@@ -38,6 +42,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupMessage;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupMessageResp;
+import org.apache.iotdb.db.auth.entity.PrivilegeType;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.ratis.util.FileUtils;
@@ -52,8 +57,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 public class ConfigNodeRPCServerProcessorTest {
@@ -420,5 +427,335 @@ public class ConfigNodeRPCServerProcessorTest {
         seriesPartitionSlotNum,
         timePartitionSlotNum,
         dataPartitionResp.getDataPartitionMap());
+  }
+
+  @Test
+  public void permissionTest() throws TException {
+    TSStatus status;
+
+    // register DataNodes
+    TDataNodeRegisterReq registerReq0 = new TDataNodeRegisterReq(new EndPoint("0.0.0.0", 6667));
+    TDataNodeRegisterReq registerReq1 = new TDataNodeRegisterReq(new EndPoint("0.0.0.0", 6668));
+    TDataNodeRegisterReq registerReq2 = new TDataNodeRegisterReq(new EndPoint("0.0.0.0", 6669));
+    status = processor.registerDataNode(registerReq0).getStatus();
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    status = processor.registerDataNode(registerReq1).getStatus();
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    status = processor.registerDataNode(registerReq2).getStatus();
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+    List<String> userList = new ArrayList<>();
+    userList.add("root");
+    userList.add("tempuser0");
+    userList.add("tempuser1");
+    List<String> roleList = new ArrayList<>();
+    roleList.add("temprole0");
+    roleList.add("temprole1");
+    TAuthorizerReq authorizerReq;
+    TAuthorizerResp authorizerResp;
+    Set<Integer> privilegeList = new HashSet<>();
+    privilegeList.add(PrivilegeType.DELETE_USER.ordinal());
+    privilegeList.add(PrivilegeType.CREATE_USER.ordinal());
+    Set<Integer> revokePrivilege = new HashSet<>();
+    revokePrivilege.add(PrivilegeType.DELETE_USER.ordinal());
+    Map<String, List<String>> permissionInfo;
+    List<String> privilege = new ArrayList<>();
+    privilege.add("root : CREATE_USER");
+    privilege.add("root : CREATE_USER");
+
+    cleanUserAndRole();
+
+    // create user
+    authorizerReq =
+        new TAuthorizerReq(
+            PhysicalPlanType.CREATE_USER.ordinal(),
+            "tempuser0",
+            "",
+            "passwd",
+            "",
+            new HashSet<>(),
+            "");
+    status = processor.operatePermission(authorizerReq);
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    authorizerReq.setUserName("tempuser1");
+    status = processor.operatePermission(authorizerReq);
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+    // drop user
+    authorizerReq =
+        new TAuthorizerReq(
+            PhysicalPlanType.DROP_USER.ordinal(), "tempuser1", "", "", "", new HashSet<>(), "");
+    status = processor.operatePermission(authorizerReq);
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+    // list user
+    authorizerReq =
+        new TAuthorizerReq(
+            PhysicalPlanType.LIST_USER.ordinal(), "", "", "", "", new HashSet<>(), "");
+    authorizerResp = processor.queryPermission(authorizerReq);
+    status = authorizerResp.getStatus();
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    userList.remove("tempuser1");
+    Assert.assertEquals(
+        userList, authorizerResp.getAuthorizerInfo().get(ConfigNodeConstant.COLUMN_USER));
+
+    // create role
+    authorizerReq =
+        new TAuthorizerReq(
+            PhysicalPlanType.CREATE_ROLE.ordinal(), "", "temprole0", "", "", new HashSet<>(), "");
+    status = processor.operatePermission(authorizerReq);
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    authorizerReq.setRoleName("temprole1");
+    status = processor.operatePermission(authorizerReq);
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+    // drop role
+    authorizerReq =
+        new TAuthorizerReq(
+            PhysicalPlanType.DROP_ROLE.ordinal(), "", "temprole1", "", "", new HashSet<>(), "");
+    status = processor.operatePermission(authorizerReq);
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+    // list role
+    authorizerReq =
+        new TAuthorizerReq(
+            PhysicalPlanType.LIST_ROLE.ordinal(), "", "", "", "", new HashSet<>(), "");
+    authorizerResp = processor.queryPermission(authorizerReq);
+    status = authorizerResp.getStatus();
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    roleList.remove("temprole1");
+    Assert.assertEquals(
+        roleList, authorizerResp.getAuthorizerInfo().get(ConfigNodeConstant.COLUMN_ROLE));
+
+    // alter user
+    authorizerReq =
+        new TAuthorizerReq(
+            PhysicalPlanType.UPDATE_USER.ordinal(),
+            "tempuser0",
+            "",
+            "",
+            "newpwd",
+            new HashSet<>(),
+            "");
+    status = processor.operatePermission(authorizerReq);
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+    // grant user
+    authorizerReq =
+        new TAuthorizerReq(
+            PhysicalPlanType.GRANT_USER.ordinal(),
+            "tempuser0",
+            "",
+            "",
+            "",
+            privilegeList,
+            "root.ln");
+    status = processor.operatePermission(authorizerReq);
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+    // grant role
+    authorizerReq =
+        new TAuthorizerReq(
+            PhysicalPlanType.GRANT_ROLE.ordinal(),
+            "",
+            "temprole0",
+            "",
+            "",
+            privilegeList,
+            "root.ln");
+    status = processor.operatePermission(authorizerReq);
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+    // grant role to user
+    authorizerReq =
+        new TAuthorizerReq(
+            PhysicalPlanType.GRANT_ROLE_TO_USER.ordinal(),
+            "tempuser0",
+            "temprole0",
+            "",
+            "",
+            new HashSet<>(),
+            "");
+    status = processor.operatePermission(authorizerReq);
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+    // revoke user
+    authorizerReq =
+        new TAuthorizerReq(
+            PhysicalPlanType.REVOKE_USER.ordinal(),
+            "tempuser0",
+            "",
+            "",
+            "",
+            revokePrivilege,
+            "root.ln");
+    status = processor.operatePermission(authorizerReq);
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+    // revoke role
+    authorizerReq =
+        new TAuthorizerReq(
+            PhysicalPlanType.REVOKE_ROLE.ordinal(),
+            "",
+            "temprole0",
+            "",
+            "",
+            revokePrivilege,
+            "root.ln");
+    status = processor.operatePermission(authorizerReq);
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+    // list privileges user
+    authorizerReq =
+        new TAuthorizerReq(
+            PhysicalPlanType.LIST_USER_PRIVILEGE.ordinal(),
+            "tempuser0",
+            "",
+            "",
+            "",
+            new HashSet<>(),
+            "root.ln");
+    authorizerResp = processor.queryPermission(authorizerReq);
+    status = authorizerResp.getStatus();
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    Assert.assertEquals(
+        privilege, authorizerResp.getAuthorizerInfo().get(ConfigNodeConstant.COLUMN_PRIVILEGE));
+
+    // list user privileges
+    authorizerReq =
+        new TAuthorizerReq(
+            PhysicalPlanType.LIST_USER_PRIVILEGE.ordinal(),
+            "tempuser0",
+            "",
+            "",
+            "",
+            new HashSet<>(),
+            "");
+    authorizerResp = processor.queryPermission(authorizerReq);
+    status = authorizerResp.getStatus();
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    Assert.assertEquals(
+        privilege, authorizerResp.getAuthorizerInfo().get(ConfigNodeConstant.COLUMN_PRIVILEGE));
+
+    // list privileges role
+    authorizerReq =
+        new TAuthorizerReq(
+            PhysicalPlanType.LIST_ROLE_PRIVILEGE.ordinal(),
+            "",
+            "temprole0",
+            "",
+            "",
+            new HashSet<>(),
+            "root.ln");
+    authorizerResp = processor.queryPermission(authorizerReq);
+    status = authorizerResp.getStatus();
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    privilege.remove(0);
+    Assert.assertEquals(
+        privilege, authorizerResp.getAuthorizerInfo().get(ConfigNodeConstant.COLUMN_PRIVILEGE));
+
+    // list role privileges
+    authorizerReq =
+        new TAuthorizerReq(
+            PhysicalPlanType.LIST_ROLE_PRIVILEGE.ordinal(),
+            "",
+            "temprole0",
+            "",
+            "",
+            new HashSet<>(),
+            "");
+    authorizerResp = processor.queryPermission(authorizerReq);
+    status = authorizerResp.getStatus();
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    Assert.assertEquals(
+        privilege, authorizerResp.getAuthorizerInfo().get(ConfigNodeConstant.COLUMN_PRIVILEGE));
+
+    // list all role of user
+    authorizerReq =
+        new TAuthorizerReq(
+            PhysicalPlanType.LIST_USER_ROLES.ordinal(),
+            "tempuser0",
+            "",
+            "",
+            "",
+            new HashSet<>(),
+            "");
+    authorizerResp = processor.queryPermission(authorizerReq);
+    status = authorizerResp.getStatus();
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    roleList.remove("temprole1");
+    Assert.assertEquals(
+        roleList, authorizerResp.getAuthorizerInfo().get(ConfigNodeConstant.COLUMN_ROLE));
+
+    // list all user of role
+    authorizerReq =
+        new TAuthorizerReq(
+            PhysicalPlanType.LIST_ROLE_USERS.ordinal(),
+            "",
+            "temprole0",
+            "",
+            "",
+            new HashSet<>(),
+            "");
+    authorizerResp = processor.queryPermission(authorizerReq);
+    status = authorizerResp.getStatus();
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    userList.remove("tempuser1");
+    userList.remove("root");
+    Assert.assertEquals(
+        userList, authorizerResp.getAuthorizerInfo().get(ConfigNodeConstant.COLUMN_USER));
+
+    // revoke role from user
+    authorizerReq =
+        new TAuthorizerReq(
+            PhysicalPlanType.REVOKE_ROLE_FROM_USER.ordinal(),
+            "tempuser0",
+            "temprole0",
+            "",
+            "",
+            new HashSet<>(),
+            "");
+    status = processor.operatePermission(authorizerReq);
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+  }
+
+  private void cleanUserAndRole() throws TException {
+    TSStatus status;
+
+    // clean user
+    TAuthorizerReq authorizerReq =
+        new TAuthorizerReq(
+            PhysicalPlanType.LIST_USER.ordinal(), "", "", "", "", new HashSet<>(), "");
+    TAuthorizerResp authorizerResp = processor.queryPermission(authorizerReq);
+    status = authorizerResp.getStatus();
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+    List<String> allUsers = authorizerResp.getAuthorizerInfo().get(ConfigNodeConstant.COLUMN_USER);
+    for (String user : allUsers) {
+      if (!user.equals("root")) {
+        authorizerReq =
+            new TAuthorizerReq(
+                PhysicalPlanType.DROP_USER.ordinal(), user, "", "", "", new HashSet<>(), "");
+        status = processor.operatePermission(authorizerReq);
+        Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      }
+    }
+
+    // clean role
+    authorizerReq =
+        new TAuthorizerReq(
+            PhysicalPlanType.LIST_ROLE.ordinal(), "", "", "", "", new HashSet<>(), "");
+    authorizerResp = processor.queryPermission(authorizerReq);
+    status = authorizerResp.getStatus();
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+    List<String> roleList = authorizerResp.getAuthorizerInfo().get(ConfigNodeConstant.COLUMN_ROLE);
+    for (String roleN : roleList) {
+      authorizerReq =
+          new TAuthorizerReq(
+              PhysicalPlanType.DROP_ROLE.ordinal(), "", roleN, "", "", new HashSet<>(), "");
+      status = processor.operatePermission(authorizerReq);
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    }
   }
 }

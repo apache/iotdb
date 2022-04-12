@@ -43,6 +43,10 @@ public class ConfigNodeConstant {
   public static final String CONF_DIR = "conf";
   public static final String CONSENSUS_FOLDER = "consensus";
 
+  public static final String COLUMN_ROLE = "role";
+  public static final String COLUMN_USER = "user";
+  public static final String COLUMN_PRIVILEGE = "privilege";
+
   public static final int MIN_SUPPORTED_JDK_VERSION = 8;
 
   private ConfigNodeConstant() {

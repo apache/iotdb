@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationDataSet;
 import org.apache.iotdb.confignode.consensus.response.DataNodesInfoDataSet;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionDataSet;
+import org.apache.iotdb.confignode.consensus.response.PermissionInfoDataSet;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaDataSet;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.partition.StorageGroupSchema;
@@ -35,6 +36,7 @@ import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeMessageResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
@@ -197,6 +199,29 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
       LOGGER.error(e.getMessage());
     }
     return configManager.operatePermission(plan);
+  }
+
+  @Override
+  public TAuthorizerResp queryPermission(TAuthorizerReq req) throws TException {
+    if (req.getAuthorType() < 0 || req.getAuthorType() >= PhysicalPlanType.values().length) {
+      throw new IndexOutOfBoundsException("Invalid ordinal");
+    }
+    AuthorPlan plan = null;
+    try {
+      plan =
+          new AuthorPlan(
+              PhysicalPlanType.values()[req.getAuthorType()],
+              req.getUserName(),
+              req.getRoleName(),
+              req.getPassword(),
+              req.getNewPassword(),
+              req.getPermissions(),
+              req.getNodeName());
+    } catch (AuthException e) {
+      LOGGER.error(e.getMessage());
+    }
+    PermissionInfoDataSet dataSet = (PermissionInfoDataSet) configManager.queryPermission(plan);
+    return new TAuthorizerResp(dataSet.getStatus(), dataSet.getPermissionInfo());
   }
 
   public void handleClientExit() {}

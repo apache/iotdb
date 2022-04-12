@@ -67,9 +67,9 @@ public class PlanExecutor {
       case GetOrCreateSchemaPartition:
         return partitionInfoPersistence.getSchemaPartition((GetOrCreateSchemaPartitionPlan) plan);
       case LIST_USER:
-        return authorInfoPersistence.executeListUser((AuthorPlan) plan);
+        return authorInfoPersistence.executeListUser();
       case LIST_ROLE:
-        return authorInfoPersistence.executeListRole((AuthorPlan) plan);
+        return authorInfoPersistence.executeListRole();
       case LIST_USER_PRIVILEGE:
         return authorInfoPersistence.executeListUserPrivileges((AuthorPlan) plan);
       case LIST_ROLE_PRIVILEGE:

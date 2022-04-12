@@ -88,6 +88,8 @@ public class ConfigNodeConf {
   private int schemaRegionCount = 1;
   private int dataRegionCount = 1;
 
+  private String adminName = "root";
+
   public ConfigNodeConf() {
     // empty constructor
   }
@@ -274,5 +276,13 @@ public class ConfigNodeConf {
 
   public void setRegionReplicaCount(int regionReplicaCount) {
     this.regionReplicaCount = regionReplicaCount;
+  }
+
+  public String getAdminName() {
+    return adminName;
+  }
+
+  public void setAdminName(String adminName) {
+    this.adminName = adminName;
   }
 }

@@ -208,4 +208,12 @@ public class ConfigManager implements Manager {
     }
     return ERROR_TSSTATUS;
   }
+
+  @Override
+  public DataSet queryPermission(PhysicalPlan physicalPlan) {
+    if (physicalPlan instanceof AuthorPlan) {
+      return permissionManager.queryPermission((AuthorPlan) physicalPlan);
+    }
+    return new DataPartitionDataSet();
+  }
 }
