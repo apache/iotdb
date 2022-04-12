@@ -37,7 +37,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -60,14 +59,16 @@ public class CompactionTaskManager implements IService {
   // The thread pool that executes the compaction task. The default number of threads for this pool
   // is 10.
   private WrappedScheduledExecutorService taskExecutionPool;
+
+  // The thread pool that executes the sub compaction task.
+  private ScheduledExecutorService subCompactionTaskExecutionPool;
+
   public static volatile AtomicInteger currentTaskNum = new AtomicInteger(0);
   private FixedPriorityBlockingQueue<AbstractCompactionTask> candidateCompactionTaskQueue =
       new FixedPriorityBlockingQueue<>(1024, new CompactionTaskComparator());
   // <logicalStorageGroupName,futureSet>, it is used to terminate all compaction tasks under the
   // logicalStorageGroup
   private Map<String, Set<Future<Void>>> storageGroupTasks = new ConcurrentHashMap<>();
-  private Map<String, Map<Long, Set<Future<Void>>>> compactionTaskFutures =
-      new ConcurrentHashMap<>();
   private List<AbstractCompactionTask> runningCompactionTaskList = new ArrayList<>();
 
   // The thread pool that periodically fetches and executes the compaction task from
@@ -93,6 +94,11 @@ public class CompactionTaskManager implements IService {
               IoTDBThreadPoolFactory.newScheduledThreadPool(
                   IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread(),
                   ThreadName.COMPACTION_SERVICE.getName());
+      this.subCompactionTaskExecutionPool =
+          IoTDBThreadPoolFactory.newScheduledThreadPool(
+              IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread()
+                  * IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum(),
+              ThreadName.COMPACTION_SUB_SERVICE.getName());
       currentTaskNum = new AtomicInteger(0);
       compactionTaskSubmissionThreadPool =
           IoTDBThreadPoolFactory.newScheduledThreadPool(1, ThreadName.COMPACTION_SERVICE.getName());
@@ -243,7 +249,7 @@ public class CompactionTaskManager implements IService {
             task, CompactionTaskStatus.POLL_FROM_QUEUE, candidateCompactionTaskQueue.size());
 
         if (task != null && task.checkValidAndSetMerging()) {
-          submitTask(task.getFullStorageGroupName(), task.getTimePartition(), task);
+          submitTask(task);
           runningCompactionTaskList.add(task);
           CompactionMetricsManager.recordTaskInfo(
               task, CompactionTaskStatus.READY_TO_EXECUTE, runningCompactionTaskList.size());
@@ -293,15 +299,10 @@ public class CompactionTaskManager implements IService {
    *
    * @throws RejectedExecutionException
    */
-  public synchronized void submitTask(
-      String fullStorageGroupName, long timePartition, Callable<Void> compactionMergeTask)
+  public synchronized void submitTask(Callable<Void> compactionMergeTask)
       throws RejectedExecutionException {
     if (taskExecutionPool != null && !taskExecutionPool.isTerminated()) {
-      Future<Void> future = taskExecutionPool.submit(compactionMergeTask);
-      compactionTaskFutures
-          .computeIfAbsent(fullStorageGroupName, k -> new ConcurrentHashMap<>())
-          .computeIfAbsent(timePartition, k -> new HashSet<>())
-          .add(future);
+      taskExecutionPool.submit(compactionMergeTask);
       return;
     }
     logger.warn(
@@ -309,6 +310,14 @@ public class CompactionTaskManager implements IService {
         taskExecutionPool == null
             ? "taskExecutionPool is null"
             : "taskExecutionPool is terminated");
+  }
+
+  public synchronized Future<Void> submitSubTask(Callable<Void> subCompactionTask) {
+    if (subCompactionTaskExecutionPool != null && !subCompactionTaskExecutionPool.isTerminated()) {
+      Future<Void> future = subCompactionTaskExecutionPool.submit(subCompactionTask);
+      return future;
+    }
+    return null;
   }
 
   /**

@@ -184,6 +184,7 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
       Thread.sleep(10);
     }
     seqResources.get(0).readLock();
+
     // an invalid task can be submitted to waiting queue, but should not be submitted to thread pool
     Assert.assertTrue(manager.addTaskToWaitingQueue(task2));
     manager.submitTaskFromTaskQueue();

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.tools.settle;
 import org.apache.iotdb.db.engine.settle.SettleLog;
 import org.apache.iotdb.db.engine.settle.SettleLog.SettleCheckStatus;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.tools.TsFileRewriteTool;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -66,7 +67,7 @@ public class TsFileAndModSettleTool {
     for (Map.Entry<String, Integer> entry : getInstance().recoverSettleFileMap.entrySet()) {
       String path = entry.getKey();
       TsFileResource resource = new TsFileResource(new File(path));
-      resource.setClosed(true);
+      resource.setStatus(TsFileResourceStatus.CLOSED);
       oldTsFileResources.put(resource.getTsFile().getName(), resource);
     }
     List<File> tsFiles = checkArgs(args);
@@ -74,7 +75,7 @@ public class TsFileAndModSettleTool {
       if (!oldTsFileResources.containsKey(file.getName())) {
         if (new File(file + TsFileResource.RESOURCE_SUFFIX).exists()) {
           TsFileResource resource = new TsFileResource(file);
-          resource.setClosed(true);
+          resource.setStatus(TsFileResourceStatus.CLOSED);
           oldTsFileResources.put(file.getName(), resource);
         }
       }
@@ -215,7 +216,7 @@ public class TsFileAndModSettleTool {
       tsFileRewriteTool.parseAndRewriteFile(settledResources);
     }
     if (settledResources.size() == 0) {
-      resourceToBeSettled.setDeleted(true);
+      resourceToBeSettled.setStatus(TsFileResourceStatus.DELETED);
     }
   }
 
@@ -336,7 +337,7 @@ public class TsFileAndModSettleTool {
 
         // move .resource File
         newTsFileResource.setFile(fsFactory.getFile(oldTsFile.getParent(), newTsFile.getName()));
-        newTsFileResource.setClosed(true);
+        newTsFileResource.setStatus(TsFileResourceStatus.CLOSED);
         try {
           newTsFileResource.serialize();
         } catch (IOException e) {
