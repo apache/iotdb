@@ -143,7 +143,7 @@ public class ConfigNodeClient {
 
   private boolean verifyNeedRedirect(TSStatus status) throws StatementExecutionException {
     if (status.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
-      if (status.getRedirectNode() != null) {
+      if (status.isSetRedirectNode()) {
         configLeader =
             new Endpoint(status.getRedirectNode().getIp(), status.getRedirectNode().getPort());
       } else {
