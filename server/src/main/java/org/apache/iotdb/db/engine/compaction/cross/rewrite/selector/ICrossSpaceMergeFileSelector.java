@@ -30,6 +30,4 @@ import java.util.List;
 public interface ICrossSpaceMergeFileSelector {
 
   List[] select() throws MergeException;
-
-  int getConcurrentMergeNum();
 }

@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.engine.compaction.cross.rewrite.selector;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.manage.CrossSpaceCompactionResource;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.RewriteCrossSpaceCompactionResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;
 import org.apache.iotdb.db.utils.MergeUtils;
@@ -46,7 +46,7 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
   private static final Logger logger = LoggerFactory.getLogger(RewriteCompactionFileSelector.class);
   private static final String LOG_FILE_COST = "Memory cost of file {} is {}";
 
-  CrossSpaceCompactionResource resource;
+  RewriteCrossSpaceCompactionResource resource;
 
   long totalCost;
   private long memoryBudget;
@@ -70,7 +70,8 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
   private boolean[] seqSelected;
   private int seqSelectedNum;
 
-  public RewriteCompactionFileSelector(CrossSpaceCompactionResource resource, long memoryBudget) {
+  public RewriteCompactionFileSelector(
+      RewriteCrossSpaceCompactionResource resource, long memoryBudget) {
     this.resource = resource;
     this.memoryBudget = memoryBudget;
     this.maxCrossCompactionFileNum =
@@ -390,10 +391,5 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
     long multiSeriesCost = concurrentMergeNum * singleSeriesCost;
     long maxCost = unseqFile.getTsFileSize();
     return Math.min(multiSeriesCost, maxCost);
-  }
-
-  @Override
-  public int getConcurrentMergeNum() {
-    return concurrentMergeNum;
   }
 }

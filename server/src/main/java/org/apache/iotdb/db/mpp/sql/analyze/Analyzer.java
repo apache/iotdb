@@ -242,7 +242,8 @@ public class Analyzer {
               ? schemaFetcher.fetchSchemaWithAutoCreate(
                   insertTabletStatement.getDevicePath(),
                   insertTabletStatement.getMeasurements(),
-                  insertTabletStatement.getDataTypes())
+                  insertTabletStatement.getDataTypes(),
+                  insertTabletStatement.isAligned())
               : schemaFetcher.fetchSchema(
                   new PathPatternTree(
                       insertTabletStatement.getDevicePath(),
@@ -412,7 +413,8 @@ public class Analyzer {
               ? schemaFetcher.fetchSchemaWithAutoCreate(
                   insertRowStatement.getDevicePath(),
                   insertRowStatement.getMeasurements(),
-                  insertRowStatement.getDataTypes())
+                  insertRowStatement.getDataTypes(),
+                  insertRowStatement.isAligned())
               : schemaFetcher.fetchSchema(
                   new PathPatternTree(
                       insertRowStatement.getDevicePath(), insertRowStatement.getMeasurements()));
@@ -459,7 +461,8 @@ public class Analyzer {
             schemaFetcher.fetchSchemaListWithAutoCreate(
                 insertRowsStatement.getDevicePaths(),
                 insertRowsStatement.getMeasurementsList(),
-                insertRowsStatement.getDataTypesList());
+                insertRowsStatement.getDataTypesList(),
+                insertRowsStatement.getAlignedList());
       } else {
         PathPatternTree patternTree = new PathPatternTree();
         for (InsertRowStatement insertRowStatement :
@@ -512,7 +515,8 @@ public class Analyzer {
             schemaFetcher.fetchSchemaListWithAutoCreate(
                 insertMultiTabletsStatement.getDevicePaths(),
                 insertMultiTabletsStatement.getMeasurementsList(),
-                insertMultiTabletsStatement.getDataTypesList());
+                insertMultiTabletsStatement.getDataTypesList(),
+                insertMultiTabletsStatement.getAlignedList());
       } else {
         PathPatternTree patternTree = new PathPatternTree();
         for (InsertTabletStatement insertTabletStatement :
@@ -553,7 +557,8 @@ public class Analyzer {
             schemaFetcher.fetchSchemaWithAutoCreate(
                 insertRowsOfOneDeviceStatement.getDevicePath(),
                 insertRowsOfOneDeviceStatement.getMeasurements(),
-                insertRowsOfOneDeviceStatement.getDataTypes());
+                insertRowsOfOneDeviceStatement.getDataTypes(),
+                insertRowsOfOneDeviceStatement.isAligned());
       } else {
         PathPatternTree patternTree = new PathPatternTree();
         for (InsertRowStatement insertRowStatement :

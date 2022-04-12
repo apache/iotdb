@@ -45,6 +45,7 @@ import org.apache.iotdb.tsfile.read.filter.operator.Gt;
 
 import org.junit.Test;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 
@@ -53,7 +54,7 @@ import static org.junit.Assert.assertEquals;
 public class FragmentInstanceSerdeTest {
 
   @Test
-  public void TestSerializeAndDeserializeForTree1() throws IllegalPathException {
+  public void TestSerializeAndDeserializeForTree1() throws IllegalPathException, IOException {
     FragmentInstance fragmentInstance =
         new FragmentInstance(
             new PlanFragment(new PlanFragmentId("test", -1), constructPlanNodeTree()),
@@ -62,7 +63,7 @@ public class FragmentInstanceSerdeTest {
             QueryType.READ);
     RegionReplicaSet regionReplicaSet =
         new RegionReplicaSet(new DataRegionId(1), new ArrayList<>());
-    fragmentInstance.setDataRegionId(regionReplicaSet);
+    fragmentInstance.setRegionReplicaSet(regionReplicaSet);
     fragmentInstance.setHostEndpoint(new Endpoint("127.0.0.1", 6666));
 
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
@@ -73,7 +74,7 @@ public class FragmentInstanceSerdeTest {
   }
 
   @Test
-  public void TestSerializeAndDeserializeWithNullFilter() throws IllegalPathException {
+  public void TestSerializeAndDeserializeWithNullFilter() throws IllegalPathException, IOException {
     FragmentInstance fragmentInstance =
         new FragmentInstance(
             new PlanFragment(new PlanFragmentId("test2", 1), constructPlanNodeTree()),
@@ -82,7 +83,7 @@ public class FragmentInstanceSerdeTest {
             QueryType.READ);
     RegionReplicaSet regionReplicaSet =
         new RegionReplicaSet(new DataRegionId(1), new ArrayList<>());
-    fragmentInstance.setDataRegionId(regionReplicaSet);
+    fragmentInstance.setRegionReplicaSet(regionReplicaSet);
     fragmentInstance.setHostEndpoint(new Endpoint("127.0.0.2", 6667));
 
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
