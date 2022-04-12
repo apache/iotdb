@@ -74,8 +74,10 @@ public abstract class MetricService {
 
     collectFileSystemInfo();
 
+    //Collect process monitoring information
     collectProcessInfo();
 
+    //Collect system monitoring information
     collectSystemInfo();
   }
 

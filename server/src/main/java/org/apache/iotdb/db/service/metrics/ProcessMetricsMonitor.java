@@ -34,6 +34,7 @@ public class ProcessMetricsMonitor {
 
   private MetricManager metricManager = MetricsService.getInstance().getMetricManager();
   private OperatingSystemMXBean sunOsMXBean;
+  private Runtime runtime;
 
   public void collectProcessCPUInfo() {
     metricManager.getOrCreateAutoGauge(
@@ -43,6 +44,7 @@ public class ProcessMetricsMonitor {
         a -> (long) (sunOsMXBean.getProcessCpuLoad() * 100),
         Tag.NAME.toString(),
         "process");
+
     metricManager.getOrCreateAutoGauge(
         Metric.PROCESS_CPU_TIME.toString(),
         MetricLevel.IMPORTANT,
@@ -75,11 +77,37 @@ public class ProcessMetricsMonitor {
         a -> runtime.freeMemory(),
         Tag.NAME.toString(),
         "process");
+    metricManager.getOrCreateAutoGauge(
+        Metric.PROCESS_USED_MEM.toString(),
+        MetricLevel.IMPORTANT,
+        this,
+        a -> getProcessUsedMemory(),
+        Tag.NAME.toString(),
+        "process");
+    metricManager.getOrCreateAutoGauge(
+        Metric.PROCESS_MEM_RATIO.toString(),
+        MetricLevel.IMPORTANT,
+        this,
+        a -> Math.round(getProcessMemoryRatio()),
+        Tag.NAME.toString(),
+        "process");
   }
 
   private ProcessMetricsMonitor() {
     sunOsMXBean =
         (com.sun.management.OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
+    runtime = Runtime.getRuntime();
+  }
+
+  private long getProcessUsedMemory() {
+    return runtime.totalMemory() - runtime.freeMemory();
+  }
+
+  private double getProcessMemoryRatio() {
+    long processUsedMemory = getProcessUsedMemory();
+    long totalPhysicalMemorySize = sunOsMXBean.getTotalPhysicalMemorySize();
+    double ratio = (double) processUsedMemory / (double) totalPhysicalMemorySize * 100;
+    return ratio;
   }
 
   public static ProcessMetricsMonitor getInstance() {

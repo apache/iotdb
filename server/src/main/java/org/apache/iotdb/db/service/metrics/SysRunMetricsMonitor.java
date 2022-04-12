@@ -32,7 +32,7 @@ import java.lang.management.ManagementFactory;
  */
 public class SysRunMetricsMonitor {
   private MetricManager metricManager = MetricsService.getInstance().getMetricManager();
-  private static com.sun.management.OperatingSystemMXBean osMXBean;
+  private com.sun.management.OperatingSystemMXBean osMXBean;
 
   private SysRunMetricsMonitor() {
     osMXBean = (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
