@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.service;
 
+import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
+import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.utils.MemUtils;
 
 import org.slf4j.Logger;
@@ -29,6 +31,10 @@ public class IoTDBShutdownHook extends Thread {
 
   @Override
   public void run() {
+    // close rocksdb if possible to avoid lose data
+    for (ISchemaRegion schemaRegion : SchemaEngine.getInstance().getAllSchemaRegions()) {
+      schemaRegion.clear();
+    }
     if (logger.isInfoEnabled()) {
       logger.info(
           "IoTDB exits. Jvm memory usage: {}",
