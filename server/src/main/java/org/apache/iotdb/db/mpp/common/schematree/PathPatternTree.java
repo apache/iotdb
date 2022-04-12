@@ -24,7 +24,6 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -134,13 +133,14 @@ public class PathPatternTree {
     }
   }
 
-  public void serialize(ByteBuffer buffer) throws IOException {
+  public void serialize(ByteBuffer buffer) {
     constructTree();
     // TODO
   }
 
-  public void deserialize(ByteBuffer buffer) throws IOException {
+  public static PathPatternTree deserialize(ByteBuffer buffer) {
     // TODO
+    return null;
   }
 
   @TestOnly

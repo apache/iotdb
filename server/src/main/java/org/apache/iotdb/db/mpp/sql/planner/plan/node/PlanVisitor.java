@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node;
 
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaFetchNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.AggregateNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.DeviceMergeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ExchangeNode;
@@ -94,6 +95,10 @@ public abstract class PlanVisitor<R, C> {
   }
 
   public R visitFragmentSink(FragmentSinkNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitSchemaFetch(SchemaFetchNode node, C context) {
     return visitPlan(node, context);
   }
 }

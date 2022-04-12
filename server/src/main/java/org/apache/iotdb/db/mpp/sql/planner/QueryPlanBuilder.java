@@ -21,7 +21,9 @@ package org.apache.iotdb.db.mpp.sql.planner;
 
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
+import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaFetchNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.*;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregateScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
@@ -273,5 +275,9 @@ public class QueryPlanBuilder {
     }
 
     this.root = new OffsetNode(context.getQueryId().genPlanNodeId(), this.getRoot(), rowOffset);
+  }
+
+  public void planSchemaFetchSource(PathPatternTree patternTree) {
+    this.root = new SchemaFetchNode(context.getQueryId().genPlanNodeId(), patternTree);
   }
 }

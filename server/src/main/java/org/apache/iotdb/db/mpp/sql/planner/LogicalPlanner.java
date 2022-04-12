@@ -44,6 +44,7 @@ import org.apache.iotdb.db.mpp.sql.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.SchemaFetchStatement;
 import org.apache.iotdb.db.mpp.sql.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
@@ -471,6 +472,14 @@ public class LogicalPlanner {
             i);
       }
       return insertRowsNode;
+    }
+
+    @Override
+    public PlanNode visitSchemaFetch(
+        SchemaFetchStatement schemaFetchStatement, MPPQueryContext context) {
+      QueryPlanBuilder planBuilder = new QueryPlanBuilder(context);
+      planBuilder.planSchemaFetchSource(schemaFetchStatement.getPatternTree());
+      return planBuilder.getRoot();
     }
   }
 }

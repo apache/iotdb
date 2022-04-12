@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.sql.analyze;
 import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.partition.*;
+import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 
 import java.util.*;
 
@@ -103,6 +104,11 @@ public class FakePartitionFetcherImpl implements IPartitionFetcher {
 
   @Override
   public SchemaPartition fetchSchemaPartitionInfos(List<String> devicePath) {
+    return null;
+  }
+
+  @Override
+  public SchemaPartition fetchSchemaPartitionInfos(PathPatternTree patternTree) {
     return null;
   }
 

@@ -46,6 +46,7 @@ import org.apache.iotdb.db.mpp.sql.statement.crud.*;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.SchemaFetchStatement;
 import org.apache.iotdb.db.mpp.sql.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -580,6 +581,16 @@ public class Analyzer {
       analysis.setDataPartitionInfo(partitionInfo.getDataPartitionInfo());
       analysis.setSchemaPartitionInfo(partitionInfo.getSchemaPartitionInfo());
 
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitSchemaFetch(
+        SchemaFetchStatement schemaFetchStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(schemaFetchStatement);
+      analysis.setSchemaPartitionInfo(
+          partitionFetcher.fetchSchemaPartitionInfos(schemaFetchStatement.getPatternTree()));
       return analysis;
     }
   }
