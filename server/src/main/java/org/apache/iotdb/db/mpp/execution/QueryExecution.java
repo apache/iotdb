@@ -155,7 +155,7 @@ public class QueryExecution implements IQueryExecution {
    */
   public TsBlock getBatchResult() {
     try {
-      initialResultHandle();
+      initResultHandle();
       ListenableFuture<Void> blocked = resultHandle.isBlocked();
       blocked.get();
       return resultHandle.receive();
@@ -168,6 +168,23 @@ public class QueryExecution implements IQueryExecution {
       Thread.currentThread().interrupt();
       throw new RuntimeException(new SQLException("ResultSet thread was interrupted", e));
     }
+  }
+
+  /** @return true if there is more tsblocks, otherwise false */
+  public boolean hasNextResult() {
+    try {
+      initResultHandle();
+      return resultHandle.isFinished();
+    } catch (IOException e) {
+      throwIfUnchecked(e.getCause());
+      throw new RuntimeException(e.getCause());
+    }
+  }
+
+  /** return the result column count without the time column */
+  public int getOutputValueColumnCount() {
+    // TODO need return the actual size while there exists output columns in Analysis
+    return 1;
   }
 
   /**
@@ -204,7 +221,7 @@ public class QueryExecution implements IQueryExecution {
     }
   }
 
-  private synchronized void initialResultHandle() throws IOException {
+  private void initResultHandle() throws IOException {
     if (this.resultHandle == null) {
       this.resultHandle =
           DataBlockService.getInstance()

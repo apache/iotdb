@@ -99,7 +99,8 @@ public class DataPartitionDataSet implements DataSet {
                                   TRegionReplicaSet tRegionReplicaSet = new TRegionReplicaSet();
 
                                   // Set TRegionReplicaSet's RegionId
-                                  tRegionReplicaSet.setRegionId(regionReplicaSet.getId().getId());
+                                  tRegionReplicaSet.setRegionId(
+                                      regionReplicaSet.getConsensusGroupId().getId());
 
                                   // Set TRegionReplicaSet's GroupType
                                   tRegionReplicaSet.setGroupType("DataRegion");

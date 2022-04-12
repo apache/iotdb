@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.sql.planner.plan;
 import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
@@ -40,8 +41,10 @@ public class FragmentInstance implements IConsensusRequest {
   private final QueryType type;
   // The reference of PlanFragment which this instance is generated from
   private final PlanFragment fragment;
-  // The DataRegion where the FragmentInstance should run
+
+  // The Region where the FragmentInstance should run
   private RegionReplicaSet regionReplicaSet;
+
   private Endpoint hostEndpoint;
 
   private Filter timeFilter;
@@ -64,8 +67,8 @@ public class FragmentInstance implements IConsensusRequest {
     return regionReplicaSet;
   }
 
-  public void setRegionReplicaSet(RegionReplicaSet dataRegion) {
-    this.regionReplicaSet = dataRegion;
+  public void setRegionReplicaSet(RegionReplicaSet regionReplicaSet) {
+    this.regionReplicaSet = regionReplicaSet;
   }
 
   public Endpoint getHostEndpoint() {
@@ -111,16 +114,24 @@ public class FragmentInstance implements IConsensusRequest {
 
   public String toString() {
     StringBuilder ret = new StringBuilder();
-    ret.append(
-        String.format(
-            "FragmentInstance-%s:[Host: %s/%s]\n",
-            getId(), getHostEndpoint().getIp(), getRegionReplicaSet().getId()));
+    ret.append(String.format("FragmentInstance-%s:", getId()));
+    if (getHostEndpoint() == null) {
+      ret.append(String.format("host endpoint has not set."));
+    } else {
+      ret.append(String.format("host endpoint: %s.", getHostEndpoint().toString()));
+    }
+    if (getRegionReplicaSet() == null) {
+      ret.append(String.format("Region Replica set has not set.\n"));
+    } else {
+      ret.append(String.format("Region Replica set: %s.\n", getRegionReplicaSet().toString()));
+    }
     ret.append("---- Plan Node Tree ----\n");
     ret.append(PlanNodeUtil.nodeToString(getFragment().getRoot()));
     return ret.toString();
   }
 
-  public static FragmentInstance deserializeFrom(ByteBuffer buffer) {
+  public static FragmentInstance deserializeFrom(ByteBuffer buffer)
+      throws IllegalPathException, IOException {
     FragmentInstanceId id = FragmentInstanceId.deserialize(buffer);
     PlanFragment planFragment = PlanFragment.deserialize(buffer);
     boolean hasTimeFilter = ReadWriteIOUtils.readBool(buffer);
@@ -129,22 +140,15 @@ public class FragmentInstance implements IConsensusRequest {
     FragmentInstance fragmentInstance =
         new FragmentInstance(
             planFragment, Integer.parseInt(id.getInstanceId()), timeFilter, queryType);
-    RegionReplicaSet regionReplicaSet = new RegionReplicaSet();
-    try {
-      regionReplicaSet.deserializeImpl(buffer);
-    } catch (IOException e) {
-      e.printStackTrace();
-    }
-    Endpoint endpoint = new Endpoint();
-    endpoint.deserializeImpl(buffer);
-    fragmentInstance.regionReplicaSet = regionReplicaSet;
-    fragmentInstance.hostEndpoint = endpoint;
+    fragmentInstance.regionReplicaSet = RegionReplicaSet.deserializeImpl(buffer);
+    fragmentInstance.hostEndpoint = Endpoint.deserializeImpl(buffer);
 
     return fragmentInstance;
   }
 
   @Override
   public void serializeRequest(ByteBuffer buffer) {
+    buffer.mark();
     id.serialize(buffer);
     fragment.serialize(buffer);
     ReadWriteIOUtils.write(timeFilter != null, buffer);
@@ -153,6 +157,7 @@ public class FragmentInstance implements IConsensusRequest {
     }
     ReadWriteIOUtils.write(type.ordinal(), buffer);
     regionReplicaSet.serializeImpl(buffer);
+
     hostEndpoint.serializeImpl(buffer);
   }
 
