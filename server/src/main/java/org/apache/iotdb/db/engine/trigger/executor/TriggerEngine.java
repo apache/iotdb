@@ -53,7 +53,6 @@ public class TriggerEngine {
     Object[] values = insertRowPlan.getValues();
 
     for (int i = 0; i < size; ++i) {
-      long s = System.currentTimeMillis();
       IMeasurementMNode mNode = mNodes[i];
       if (mNode == null) {
         continue;
