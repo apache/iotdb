@@ -242,7 +242,6 @@ public class StorageEngineV2 implements IService {
         continue;
       }
       String sg = sgDir.getName();
-      // TODO: need to get TTL Info from config node
       long ttl = Long.MAX_VALUE;
       for (File dataRegionDir : sgDir.listFiles()) {
         if (!dataRegionDir.isDirectory()) {
