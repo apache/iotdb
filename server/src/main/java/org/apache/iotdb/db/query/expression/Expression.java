@@ -64,6 +64,10 @@ public abstract class Expression {
     return false;
   }
 
+  public void bindInputColumnIndex(int inputColumnIndex) {
+    this.inputColumnIndex = inputColumnIndex;
+  }
+
   public abstract void concat(
       List<PartialPath> prefixPaths,
       List<Expression> resultExpressions,
