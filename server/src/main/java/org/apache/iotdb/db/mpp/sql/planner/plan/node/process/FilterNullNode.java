@@ -23,10 +23,12 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.IOutputPlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.ColumnHeader;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullPolicy;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.collect.ImmutableList;
 
@@ -109,12 +111,34 @@ public class FilterNullNode extends ProcessNode implements IOutputPlanNode {
     return visitor.visitFilterNull(this, context);
   }
 
-  public static FilterNullNode deserialize(ByteBuffer byteBuffer) {
-    return null;
+  @Override
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    PlanNodeType.FILTER_NULL.serialize(byteBuffer);
+    ReadWriteIOUtils.write(discardPolicy.ordinal(), byteBuffer);
+    if (filterNullColumnNames == null) {
+      ReadWriteIOUtils.write(-1, byteBuffer);
+    } else {
+      ReadWriteIOUtils.write(filterNullColumnNames.size(), byteBuffer);
+      for (String filterNullColumnName : filterNullColumnNames) {
+        ReadWriteIOUtils.write(filterNullColumnName, byteBuffer);
+      }
+    }
   }
 
-  @Override
-  public void serialize(ByteBuffer byteBuffer) {}
+  public static FilterNullNode deserialize(ByteBuffer byteBuffer) {
+    FilterNullPolicy filterNullPolicy =
+        FilterNullPolicy.values()[ReadWriteIOUtils.readInt(byteBuffer)];
+    int size = ReadWriteIOUtils.readInt(byteBuffer);
+    List<String> filterNullColumnNames = null;
+    if (size != -1) {
+      filterNullColumnNames = new ArrayList<>();
+      for (int i = 0; i < size; i++) {
+        filterNullColumnNames.add(ReadWriteIOUtils.readString(byteBuffer));
+      }
+    }
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+    return new FilterNullNode(planNodeId, filterNullPolicy, filterNullColumnNames);
+  }
 
   @TestOnly
   public Pair<String, List<String>> print() {

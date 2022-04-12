@@ -21,7 +21,8 @@ package org.apache.iotdb.confignode.manager;
 import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
-import org.apache.iotdb.commons.hash.DeviceGroupHashExecutor;
+import org.apache.iotdb.commons.partition.SeriesPartitionSlot;
+import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.statemachine.PartitionRegionStateMachine;
@@ -48,14 +49,13 @@ public class ConsensusManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(ConsensusManager.class);
   private static final ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();
 
+  private ConsensusGroupId consensusGroupId;
   private IConsensus consensusImpl;
 
-  private ConsensusGroupId consensusGroupId;
-
-  private DeviceGroupHashExecutor hashExecutor;
+  private SeriesPartitionExecutor executor;
 
   public ConsensusManager() throws IOException {
-    setHashExecutor();
+    setSeriesPartitionExecutor();
     setConsensusLayer();
   }
 
@@ -64,27 +64,28 @@ public class ConsensusManager {
   }
 
   /** Build DeviceGroupHashExecutor */
-  private void setHashExecutor() {
+  private void setSeriesPartitionExecutor() {
     try {
-      Class<?> executor = Class.forName(conf.getDeviceGroupHashExecutorClass());
+      Class<?> executor = Class.forName(conf.getSeriesPartitionExecutorClass());
       Constructor<?> executorConstructor = executor.getConstructor(int.class);
-      hashExecutor =
-          (DeviceGroupHashExecutor) executorConstructor.newInstance(conf.getDeviceGroupCount());
+      this.executor =
+          (SeriesPartitionExecutor)
+              executorConstructor.newInstance(conf.getSeriesPartitionSlotNum());
     } catch (ClassNotFoundException
         | NoSuchMethodException
         | InstantiationException
         | IllegalAccessException
         | InvocationTargetException e) {
       LOGGER.error(
-          "Couldn't Constructor DeviceGroupHashExecutor class: {}",
-          conf.getDeviceGroupHashExecutorClass(),
+          "Couldn't Constructor SeriesPartitionExecutor class: {}",
+          conf.getSeriesPartitionExecutorClass(),
           e);
-      hashExecutor = null;
+      executor = null;
     }
   }
 
-  public int getDeviceGroupID(String device) {
-    return hashExecutor.getDeviceGroupID(device);
+  public SeriesPartitionSlot getSeriesPartitionSlot(String device) {
+    return executor.getSeriesPartitionSlot(device);
   }
 
   /** Build ConfigNodeGroup ConsensusLayer */
@@ -126,6 +127,14 @@ public class ConsensusManager {
   /** Transmit PhysicalPlan to confignode.consensus.statemachine */
   public ConsensusReadResponse read(PhysicalPlan plan) {
     return consensusImpl.read(consensusGroupId, plan);
+  }
+
+  public boolean isLeader() {
+    return consensusImpl.isLeader(consensusGroupId);
+  }
+
+  public Endpoint getLeader() {
+    return consensusImpl.getLeader(consensusGroupId).getEndpoint();
   }
 
   // TODO: Interfaces for LoadBalancer control

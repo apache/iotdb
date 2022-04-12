@@ -20,6 +20,7 @@ package org.apache.iotdb.db.metadata.mtree.traverser.counter;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.traverser.Traverser;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 
@@ -36,9 +37,10 @@ public class MeasurementGroupByLevelCounter extends Traverser {
   // path representing current branch and matching the pattern and level
   private PartialPath path;
 
-  public MeasurementGroupByLevelCounter(IMNode startNode, PartialPath path, int groupByLevel)
+  public MeasurementGroupByLevelCounter(
+      IMNode startNode, PartialPath path, IMTreeStore store, int groupByLevel)
       throws MetadataException {
-    super(startNode, path);
+    super(startNode, path, store);
     this.groupByLevel = groupByLevel;
     checkLevelAboveSG();
   }

@@ -113,14 +113,13 @@ public class ReadWriteIOUtils {
     return readBool(buffer);
   }
 
-  public static int write(Map<String, String> map, DataOutputStream stream) throws IOException {
+  public static int write(Map<String, String> map, OutputStream stream) throws IOException {
     if (map == null) {
       return write(NO_BYTE_TO_READ, stream);
     }
 
     int length = 0;
-    stream.writeInt(map.size());
-    length += 4;
+    length += write(map.size(), stream);
     for (Entry<String, String> entry : map.entrySet()) {
       length += write(entry.getKey(), stream);
       length += write(entry.getValue(), stream);
@@ -128,8 +127,7 @@ public class ReadWriteIOUtils {
     return length;
   }
 
-  public static void write(List<Map<String, String>> maps, DataOutputStream stream)
-      throws IOException {
+  public static void write(List<Map<String, String>> maps, OutputStream stream) throws IOException {
     for (Map<String, String> map : maps) {
       write(map, stream);
     }
@@ -903,6 +901,37 @@ public class ReadWriteIOUtils {
       }
     } catch (IOException ignored) {
       // ignored
+    }
+  }
+
+  public static void writeObject(Object value, ByteBuffer byteBuffer) {
+    if (value instanceof Long) {
+      byteBuffer.putInt(LONG.ordinal());
+      byteBuffer.putLong((Long) value);
+    } else if (value instanceof Double) {
+      byteBuffer.putInt(DOUBLE.ordinal());
+      byteBuffer.putDouble((Double) value);
+    } else if (value instanceof Integer) {
+      byteBuffer.putInt(INTEGER.ordinal());
+      byteBuffer.putInt((Integer) value);
+    } else if (value instanceof Float) {
+      byteBuffer.putInt(FLOAT.ordinal());
+      byteBuffer.putFloat((Float) value);
+    } else if (value instanceof Binary) {
+      byteBuffer.putInt(BINARY.ordinal());
+      byte[] bytes = ((Binary) value).getValues();
+      byteBuffer.putInt(bytes.length);
+      byteBuffer.put(bytes);
+    } else if (value instanceof Boolean) {
+      byteBuffer.putInt(BOOLEAN.ordinal());
+      byteBuffer.put(Boolean.TRUE.equals(value) ? (byte) 1 : (byte) 0);
+    } else if (value == null) {
+      byteBuffer.putInt(NULL.ordinal());
+    } else {
+      byteBuffer.putInt(STRING.ordinal());
+      byte[] bytes = value.toString().getBytes();
+      byteBuffer.putInt(bytes.length);
+      byteBuffer.put(bytes);
     }
   }
 

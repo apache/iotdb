@@ -50,6 +50,11 @@ public class DataRegionId implements ConsensusGroupId {
   }
 
   @Override
+  public void setId(int id) {
+    this.id = id;
+  }
+
+  @Override
   public GroupType getType() {
     return GroupType.DataRegion;
   }

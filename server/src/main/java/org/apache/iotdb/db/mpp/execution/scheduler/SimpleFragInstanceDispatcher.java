@@ -21,9 +21,13 @@ package org.apache.iotdb.db.mpp.execution.scheduler;
 
 import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
 import org.apache.iotdb.mpp.rpc.thrift.InternalService;
+import org.apache.iotdb.mpp.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstance;
+import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceReq;
 
 import org.apache.thrift.TException;
 
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -45,8 +49,18 @@ public class SimpleFragInstanceDispatcher implements IFragInstanceDispatcher {
               InternalService.Client client =
                   InternalServiceClientFactory.getInternalServiceClient(
                       instance.getHostEndpoint().getIp(), instance.getHostEndpoint().getPort());
-              // TODO: (xingtanzjr) add request construction
-              client.sendFragmentInstance(null);
+              // TODO: (xingtanzjr) consider how to handle the buffer here
+              ByteBuffer buffer = ByteBuffer.allocate(1024 * 1024);
+              instance.serializeRequest(buffer);
+              buffer.flip();
+              TConsensusGroupId groupId =
+                  new TConsensusGroupId(
+                      instance.getDataRegionId().getId().getId(),
+                      instance.getDataRegionId().getId().getType().toString());
+              TSendFragmentInstanceReq req =
+                  new TSendFragmentInstanceReq(
+                      new TFragmentInstance(buffer), groupId, instance.getType().toString());
+              client.sendFragmentInstance(req);
             }
           } catch (TException e) {
             // TODO: (xingtanzjr) add more details

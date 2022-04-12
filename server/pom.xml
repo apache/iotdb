@@ -84,11 +84,6 @@
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-thrift-datanode</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-thrift-confignode</artifactId>
             <version>${project.version}</version>
         </dependency>
@@ -266,6 +261,11 @@
             <artifactId>commons-lang</artifactId>
             <version>2.6</version>
             <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.rocksdb</groupId>
+            <artifactId>rocksdbjni</artifactId>
+            <version>6.27.3</version>
         </dependency>
     </dependencies>
     <build>

@@ -22,8 +22,12 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionPriority;
-import org.apache.iotdb.db.engine.compaction.cross.CrossCompactionStrategy;
-import org.apache.iotdb.db.engine.compaction.inner.InnerCompactionStrategy;
+import org.apache.iotdb.db.engine.compaction.constant.CrossCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.constant.CrossCompactionSelector;
+import org.apache.iotdb.db.engine.compaction.constant.InnerSeqCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.constant.InnerSequenceCompactionSelector;
+import org.apache.iotdb.db.engine.compaction.constant.InnerUnseqCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.constant.InnerUnsequenceCompactionSelector;
 import org.apache.iotdb.db.exception.BadNodeUrlFormatException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
@@ -323,11 +327,6 @@ public class IoTDBDescriptor {
                   "max_waiting_time_when_insert_blocked",
                   Integer.toString(conf.getMaxWaitingTimeWhenInsertBlocked()))));
 
-      conf.setEstimatedSeriesSize(
-          Integer.parseInt(
-              properties.getProperty(
-                  "estimated_series_size", Integer.toString(conf.getEstimatedSeriesSize()))));
-
       conf.setIoTaskQueueSizeForFlushing(
           Integer.parseInt(
               properties.getProperty(
@@ -364,15 +363,35 @@ public class IoTDBDescriptor {
                   "enable_unseq_space_compaction",
                   Boolean.toString(conf.isEnableUnseqSpaceCompaction()))));
 
-      conf.setCrossCompactionStrategy(
-          CrossCompactionStrategy.getCrossCompactionStrategy(
+      conf.setCrossCompactionSelector(
+          CrossCompactionSelector.getCrossCompactionStrategy(
               properties.getProperty(
-                  "cross_compaction_strategy", conf.getCrossCompactionStrategy().toString())));
+                  "cross_selector", conf.getCrossCompactionSelector().toString())));
 
-      conf.setInnerCompactionStrategy(
-          InnerCompactionStrategy.getInnerCompactionStrategy(
+      conf.setInnerSequenceCompactionSelector(
+          InnerSequenceCompactionSelector.getInnerSequenceCompactionStrategy(
               properties.getProperty(
-                  "inner_compaction_strategy", conf.getInnerCompactionStrategy().toString())));
+                  "inner_seq_selector", conf.getInnerSequenceCompactionSelector().toString())));
+
+      conf.setInnerUnsequenceCompactionSelector(
+          InnerUnsequenceCompactionSelector.getInnerUnsequenceCompactionStrategy(
+              properties.getProperty(
+                  "inner_unseq_selector", conf.getInnerUnsequenceCompactionSelector().toString())));
+
+      conf.setInnerSeqCompactionPerformer(
+          InnerSeqCompactionPerformer.getInnerSeqCompactionPerformer(
+              properties.getProperty(
+                  "inner_seq_performer", conf.getInnerUnseqCompactionPerformer().toString())));
+
+      conf.setInnerUnseqCompactionPerformer(
+          InnerUnseqCompactionPerformer.getInnerUnseqCompactionPerformer(
+              properties.getProperty(
+                  "inner_unseq_performer", conf.getInnerUnseqCompactionPerformer().toString())));
+
+      conf.setCrossCompactionPerformer(
+          CrossCompactionPerformer.getCrossCompactionPerformer(
+              properties.getProperty(
+                  "cross_performer", conf.getCrossCompactionPerformer().toString())));
 
       conf.setCompactionPriority(
           CompactionPriority.valueOf(
@@ -471,11 +490,12 @@ public class IoTDBDescriptor {
                   "raw_query_blocking_queue_capacity",
                   Integer.toString(conf.getRawQueryBlockingQueueCapacity()))));
 
-      conf.setSchemaRegionCacheSize(
+      conf.setSchemaRegionDeviceNodeCacheSize(
           Integer.parseInt(
               properties
                   .getProperty(
-                      "metadata_node_cache_size", Integer.toString(conf.getSchemaRegionCacheSize()))
+                      "schema_region_device_node_cache_size",
+                      Integer.toString(conf.getSchemaRegionDeviceNodeCacheSize()))
                   .trim()));
 
       conf.setmRemoteSchemaCacheSize(
@@ -732,6 +752,33 @@ public class IoTDBDescriptor {
           Boolean.parseBoolean(
               properties.getProperty(
                   "enable_id_table_log_file", String.valueOf(conf.isEnableIDTableLogFile()))));
+
+      conf.setSchemaEngineMode(
+          properties.getProperty("schema_engine_mode", String.valueOf(conf.getSchemaEngineMode())));
+
+      conf.setCachedMNodeSizeInSchemaFileMode(
+          Integer.parseInt(
+              properties.getProperty(
+                  "cached_mnode_size_in_schema_file_mode",
+                  String.valueOf(conf.getCachedMNodeSizeInSchemaFileMode()))));
+
+      conf.setMaxSchemaFlushThreadNum(
+          Integer.parseInt(
+              properties.getProperty(
+                  "max_schema_flush_thread", String.valueOf(conf.getMaxSchemaFlushThreadNum()))));
+
+      conf.setMinimumSegmentInSchemaFile(
+          Short.parseShort(
+              properties.getProperty(
+                  "minimum_schema_file_segment_in_bytes",
+                  String.valueOf(conf.getMinimumSegmentInSchemaFile()))));
+
+      conf.setPageCacheSizeInSchemaFile(
+          Short.parseShort(
+              properties.getProperty(
+                  "page_cache_in_schema_file",
+                  String.valueOf(conf.getPageCacheSizeInSchemaFile()))));
+
       // mqtt
       loadMqttProps(properties);
 

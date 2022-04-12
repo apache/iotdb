@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.consensus.common.response;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.consensus.exception.ConsensusException;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 public class ConsensusWriteResponse extends ConsensusResponse {
 
@@ -45,7 +45,7 @@ public class ConsensusWriteResponse extends ConsensusResponse {
   }
 
   public static class Builder {
-    private org.apache.iotdb.service.rpc.thrift.TSStatus status;
+    private TSStatus status;
     private ConsensusException exception;
 
     public ConsensusWriteResponse build() {
@@ -57,7 +57,7 @@ public class ConsensusWriteResponse extends ConsensusResponse {
       return this;
     }
 
-    public Builder setStatus(org.apache.iotdb.service.rpc.thrift.TSStatus status) {
+    public Builder setStatus(TSStatus status) {
       this.status = status;
       return this;
     }

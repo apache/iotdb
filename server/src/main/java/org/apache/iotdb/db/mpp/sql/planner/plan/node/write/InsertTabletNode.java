@@ -135,10 +135,6 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     return NO_CHILD_ALLOWED;
   }
 
-  public static InsertTabletNode deserialize(ByteBuffer byteBuffer) {
-    return null;
-  }
-
   @Override
   public int serializedSize() {
     return 0;
@@ -281,5 +277,9 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
       bitMaps[i] = new BitMap(rowSize);
     }
     return bitMaps;
+  }
+
+  public static InsertTabletNode deserialize(ByteBuffer byteBuffer) {
+    return null;
   }
 }
