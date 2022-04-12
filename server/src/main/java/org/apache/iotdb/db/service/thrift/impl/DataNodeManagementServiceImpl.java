@@ -23,8 +23,8 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.LocalConfigManager;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.*;
 
@@ -34,7 +34,7 @@ import org.slf4j.LoggerFactory;
 
 public class DataNodeManagementServiceImpl implements ManagementIService.Iface {
   private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeManagementServiceImpl.class);
-  private static LocalConfigManager localConfigManager = LocalConfigManager.getInstance();
+  private SchemaEngine schemaEngine = SchemaEngine.getInstance();
 
   @Override
   public TSStatus createSchemaRegion(CreateSchemaRegionReq req) throws TException {
@@ -42,7 +42,7 @@ public class DataNodeManagementServiceImpl implements ManagementIService.Iface {
     try {
       PartialPath storageGroupPartitionPath = new PartialPath(req.getStorageGroup());
       SchemaRegionId schemaRegionId = new SchemaRegionId(req.getRegionReplicaSet().getRegionId());
-      localConfigManager.createSchemaRegion(storageGroupPartitionPath, schemaRegionId);
+      schemaEngine.createSchemaRegion(storageGroupPartitionPath, schemaRegionId);
       tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (IllegalPathException e1) {
       LOGGER.error(
