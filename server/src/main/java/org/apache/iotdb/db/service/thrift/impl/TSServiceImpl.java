@@ -25,6 +25,13 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.OperationType;
+import org.apache.iotdb.db.doublewrite.DoubleWriteConsumer;
+import org.apache.iotdb.db.doublewrite.DoubleWriteEProtector;
+import org.apache.iotdb.db.doublewrite.DoubleWriteLogService;
+import org.apache.iotdb.db.doublewrite.DoubleWriteNIProtector;
+import org.apache.iotdb.db.doublewrite.DoubleWritePlanTypeUtils;
+import org.apache.iotdb.db.doublewrite.DoubleWriteProducer;
+import org.apache.iotdb.db.doublewrite.DoubleWriteTask;
 import org.apache.iotdb.db.engine.selectinto.InsertTabletPlansIterator;
 import org.apache.iotdb.db.exception.IoTDBException;
 import org.apache.iotdb.db.exception.QueryInBatchStatementException;
@@ -106,6 +113,7 @@ import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsOfOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
+import org.apache.iotdb.service.rpc.thrift.TSInternalSyncWriteReq;
 import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
@@ -120,6 +128,7 @@ import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.service.rpc.thrift.TSTracingInfo;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
+import org.apache.iotdb.session.pool.SessionPool;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -127,11 +136,14 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.sql.SQLException;
@@ -142,6 +154,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
@@ -302,9 +316,61 @@ public class TSServiceImpl implements TSIService.Iface {
 
   protected final ServiceProvider serviceProvider;
 
+  /* Double write module */
+  private static final boolean isEnableDoubleWrite =
+      IoTDBDescriptor.getInstance().getConfig().isEnableDoubleWrite();
+  private final SessionPool doubleWriteSessionPool;
+  private final DoubleWriteProducer doubleWriteProducer;
+  private final DoubleWriteEProtector doubleWriteEProtector;
+  private final DoubleWriteLogService doubleWriteELogService;
+
   public TSServiceImpl() {
     super();
     serviceProvider = IoTDB.serviceProvider;
+
+    if (isEnableDoubleWrite) {
+      /* Open double write */
+      IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+      // create SessionPool for double write
+      doubleWriteSessionPool =
+          new SessionPool(
+              config.getSecondaryAddress(),
+              config.getSecondaryPort(),
+              config.getSecondaryUser(),
+              config.getSecondaryPassword(),
+              5);
+
+      // create DoubleWriteEProtector and DoubleWriteELogService
+      doubleWriteEProtector = new DoubleWriteEProtector(doubleWriteSessionPool);
+      new Thread(doubleWriteEProtector).start();
+      doubleWriteELogService = new DoubleWriteLogService("ELog", doubleWriteEProtector);
+      new Thread(doubleWriteELogService).start();
+
+      // create DoubleWriteProducer
+      BlockingQueue<Pair<ByteBuffer, DoubleWritePlanTypeUtils.DoubleWritePlanType>> blockingQueue =
+          new ArrayBlockingQueue<>(config.getDoubleWriteProducerCacheSize());
+      doubleWriteProducer = new DoubleWriteProducer(blockingQueue);
+
+      // create DoubleWriteNIProtector and DoubleWriteNILogService
+      DoubleWriteNIProtector doubleWriteNIProtector =
+          new DoubleWriteNIProtector(doubleWriteEProtector, doubleWriteProducer);
+      new Thread(doubleWriteNIProtector).start();
+      DoubleWriteLogService doubleWriteNILogService =
+          new DoubleWriteLogService("NILog", doubleWriteNIProtector);
+      new Thread(doubleWriteNILogService).start();
+
+      // create DoubleWriteConsumer
+      for (int i = 0; i < config.getDoubleWriteConsumerConcurrencySize(); i++) {
+        DoubleWriteConsumer consumer =
+            new DoubleWriteConsumer(blockingQueue, doubleWriteSessionPool, doubleWriteNILogService);
+        new Thread(consumer).start();
+      }
+    } else {
+      doubleWriteSessionPool = null;
+      doubleWriteProducer = null;
+      doubleWriteEProtector = null;
+      doubleWriteELogService = null;
+    }
   }
 
   @Override
@@ -1484,7 +1550,12 @@ public class TSServiceImpl implements TSIService.Iface {
               req.values,
               req.isAligned);
       TSStatus status = serviceProvider.checkAuthority(plan, req.getSessionId());
-      return status != null ? status : executeNonQueryPlan(plan);
+
+      if (status != null) {
+        return status;
+      }
+
+      return executeNonQueryPlan(plan);
     } catch (IoTDBException e) {
       return onIoTDBException(e, OperationType.INSERT_RECORD, e.getErrorCode());
     } catch (Exception e) {
@@ -1515,7 +1586,12 @@ public class TSServiceImpl implements TSIService.Iface {
       plan.setNeedInferType(true);
       plan.setAligned(req.isAligned);
       TSStatus status = serviceProvider.checkAuthority(plan, req.getSessionId());
-      return status != null ? status : executeNonQueryPlan(plan);
+
+      if (status != null) {
+        return status;
+      }
+
+      return executeNonQueryPlan(plan);
     } catch (IoTDBException e) {
       return onIoTDBException(e, OperationType.INSERT_STRING_RECORD, e.getErrorCode());
     } catch (Exception e) {
@@ -1571,7 +1647,11 @@ public class TSServiceImpl implements TSIService.Iface {
       insertTabletPlan.setAligned(req.isAligned);
       TSStatus status = serviceProvider.checkAuthority(insertTabletPlan, req.getSessionId());
 
-      return status != null ? status : executeNonQueryPlan(insertTabletPlan);
+      if (status != null) {
+        return status;
+      }
+
+      return executeNonQueryPlan(insertTabletPlan);
     } catch (IoTDBException e) {
       return onIoTDBException(e, OperationType.INSERT_TABLET, e.getErrorCode());
     } catch (Exception e) {
@@ -2057,7 +2137,86 @@ public class TSServiceImpl implements TSIService.Iface {
     return status != null ? status : executeNonQueryPlan(plan);
   }
 
+  @Override
+  public TSStatus executeDoubleWrite(TSInternalSyncWriteReq req) {
+    PhysicalPlan physicalPlan = null;
+    try {
+      ByteBuffer planBuffer = req.physicalPlan;
+      planBuffer.position(0);
+      physicalPlan = PhysicalPlan.Factory.create(req.physicalPlan);
+    } catch (IllegalPathException | IOException e) {
+      LOGGER.error("double write deserialization failed.", e);
+    }
+
+    DoubleWritePlanTypeUtils.DoubleWritePlanType planType =
+        DoubleWritePlanTypeUtils.getDoubleWritePlanType(physicalPlan);
+    if (planType == null) {
+      LOGGER.error(
+          "DoubleWrite receive unsupported PhysicalPlan type: {}", physicalPlan.getOperatorName());
+      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
+    }
+    // LOGGER.info("DoubleWrite receive:{}", physicalPlan.getPaths().toString());
+
+    try {
+      return serviceProvider.executeNonQuery(physicalPlan)
+          ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully")
+          : RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
+    } catch (Exception e) {
+      return onNonQueryException(e, OperationType.EXECUTE_NON_QUERY_PLAN);
+    }
+  }
+
+  private void transmitDoubleWrite(PhysicalPlan physicalPlan) {
+
+    DoubleWritePlanTypeUtils.DoubleWritePlanType planType =
+        DoubleWritePlanTypeUtils.getDoubleWritePlanType(physicalPlan);
+    if (planType == null) {
+      // Don't need DoubleWrite
+      return;
+    }
+
+    // LOGGER.info("DoubleWrite transmit: {}", physicalPlan.getPaths().toString());
+
+    // serialize physical plan
+    ByteBuffer buffer;
+    try {
+      int size = physicalPlan.getSerializedSize();
+      ByteArrayOutputStream doubleWriteByteStream = new ByteArrayOutputStream(size);
+      DataOutputStream doubleWriteSerializeStream = new DataOutputStream(doubleWriteByteStream);
+      physicalPlan.serialize(doubleWriteSerializeStream);
+      buffer = ByteBuffer.wrap(doubleWriteByteStream.toByteArray());
+    } catch (IOException e) {
+      LOGGER.error("DoubleWrite can't serialize PhysicalPlan", e);
+      return;
+    }
+
+    switch (planType) {
+      case EPlan:
+        // Create DoubleWriteTask and wait
+        Thread taskThread =
+            new Thread(
+                new DoubleWriteTask(
+                    buffer, doubleWriteSessionPool, doubleWriteEProtector, doubleWriteELogService));
+        taskThread.start();
+        try {
+          taskThread.join();
+        } catch (InterruptedException e) {
+          LOGGER.error("DoubleWriteTask been interrupted", e);
+        }
+        break;
+      case IPlan:
+      case NPlan:
+        // Put into DoubleWriteProducer
+        doubleWriteProducer.put(new Pair<>(buffer, planType));
+    }
+  }
+
   protected TSStatus executeNonQueryPlan(PhysicalPlan plan) {
+    if (isEnableDoubleWrite) {
+      // DoubleWrite should transmit before execute
+      transmitDoubleWrite(plan);
+    }
+
     try {
       return serviceProvider.executeNonQuery(plan)
           ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully")

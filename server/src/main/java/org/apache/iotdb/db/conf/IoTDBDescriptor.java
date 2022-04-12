@@ -783,6 +783,61 @@ public class IoTDBDescriptor {
               "iotdb_server_encrypt_decrypt_provider_parameter",
               conf.getEncryptDecryptProviderParameter()));
 
+      // set DoubleWrite config
+      conf.setEnableDoubleWrite(
+          Boolean.parseBoolean(
+              properties.getProperty(
+                  "enable_double_write", String.valueOf(conf.isEnableDoubleWrite()))));
+
+      conf.setSecondaryAddress(
+          properties.getProperty("secondary_address", conf.getSecondaryAddress()));
+
+      conf.setSecondaryPort(
+          Integer.parseInt(
+              properties.getProperty("secondary_port", String.valueOf(conf.getSecondaryPort()))));
+
+      conf.setSecondaryUser(properties.getProperty("secondary_user", conf.getSecondaryUser()));
+
+      conf.setSecondaryPassword(
+          properties.getProperty("secondary_password", conf.getSecondaryPassword()));
+
+      conf.setDoubleWriteSessionConcurrencySize(
+          Integer.parseInt(
+              properties.getProperty(
+                  "double_write_session_concurrency_size",
+                  String.valueOf(conf.getDoubleWriteSessionConcurrencySize()))));
+
+      conf.setDoubleWriteLogDir(
+          properties.getProperty("double_write_log_dir", conf.getDoubleWriteLogDir()));
+
+      conf.setDoubleWriteLogValidity(
+          Integer.parseInt(
+              properties.getProperty(
+                  "double_write_log_file_validity",
+                  String.valueOf(conf.getDoubleWriteLogValidity()))));
+
+      conf.setDoubleWriteLogNum(
+          Integer.parseInt(
+              properties.getProperty(
+                  "double_write_log_file_num", String.valueOf(conf.getDoubleWriteLogNum()))));
+
+      conf.setDoubleWriteMaxLogSize(
+          Long.parseLong(
+              properties.getProperty(
+                  "double_write_max_log_size", String.valueOf(conf.getDoubleWriteMaxLogSize()))));
+
+      conf.setDoubleWriteProducerCacheSize(
+          Integer.parseInt(
+              properties.getProperty(
+                  "double_write_producer_cache_size",
+                  String.valueOf(conf.getDoubleWriteProducerCacheSize()))));
+
+      conf.setDoubleWriteConsumerConcurrencySize(
+          Integer.parseInt(
+              properties.getProperty(
+                  "double_write_consumer_concurrency_size",
+                  String.valueOf(conf.getDoubleWriteConsumerConcurrencySize()))));
+
       // At the same time, set TSFileConfig
       TSFileDescriptor.getInstance()
           .getConfig()

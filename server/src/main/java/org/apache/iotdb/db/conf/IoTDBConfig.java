@@ -814,6 +814,33 @@ public class IoTDBConfig {
   /** Encryption provided class parameter */
   private String encryptDecryptProviderParameter;
 
+  // DoubleWrite Config
+  private boolean enableDoubleWrite = false;
+
+  // Secondary IoTDB
+  private String secondaryAddress = "127.0.0.1";
+  private int secondaryPort = 6668;
+  private String secondaryUser = "root";
+  private String secondaryPassword = "root";
+
+  // The transmitting concurrency size of double write SessionPool
+  private int doubleWriteSessionConcurrencySize = 8;
+
+  // DoubleWriteLog dir
+  private String doubleWriteLogDir =
+      DEFAULT_BASE_DIR + File.separator + IoTDBConstant.DOUBLEWRITE_FOLDER_NAME;
+  // The validity of each DoubleWriteLog
+  private int doubleWriteLogValidity = 30;
+  // The maximum id of DoubleWriteLog
+  private int doubleWriteLogNum = 32767;
+  // The max size of all the DoubleWriteLog. Default is 100GB
+  private long doubleWriteMaxLogSize = 107374182400L;
+
+  // DoubleWrite InsertPlan cache size
+  private int doubleWriteProducerCacheSize = 1024;
+  // DoubleWriteConsumer concurrency size
+  private int doubleWriteConsumerConcurrencySize = 4;
+
   public IoTDBConfig() {
     // empty constructor
   }
@@ -947,6 +974,7 @@ public class IoTDBConfig {
     extDir = addHomeDir(extDir);
     udfDir = addHomeDir(udfDir);
     triggerDir = addHomeDir(triggerDir);
+    doubleWriteLogDir = addHomeDir(doubleWriteLogDir);
 
     if (TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs().equals(FSType.HDFS)) {
       String hdfsDir = getHdfsDir();
@@ -2550,5 +2578,101 @@ public class IoTDBConfig {
 
   public void setEncryptDecryptProviderParameter(String encryptDecryptProviderParameter) {
     this.encryptDecryptProviderParameter = encryptDecryptProviderParameter;
+  }
+
+  public boolean isEnableDoubleWrite() {
+    return enableDoubleWrite;
+  }
+
+  public void setEnableDoubleWrite(boolean enableDoubleWrite) {
+    this.enableDoubleWrite = enableDoubleWrite;
+  }
+
+  public String getSecondaryAddress() {
+    return secondaryAddress;
+  }
+
+  public void setSecondaryAddress(String secondaryAddress) {
+    this.secondaryAddress = secondaryAddress;
+  }
+
+  public int getSecondaryPort() {
+    return secondaryPort;
+  }
+
+  public void setSecondaryPort(int secondaryPort) {
+    this.secondaryPort = secondaryPort;
+  }
+
+  public String getSecondaryUser() {
+    return secondaryUser;
+  }
+
+  public void setSecondaryUser(String secondaryUser) {
+    this.secondaryUser = secondaryUser;
+  }
+
+  public String getSecondaryPassword() {
+    return secondaryPassword;
+  }
+
+  public void setSecondaryPassword(String secondaryPassword) {
+    this.secondaryPassword = secondaryPassword;
+  }
+
+  public int getDoubleWriteSessionConcurrencySize() {
+    return doubleWriteSessionConcurrencySize;
+  }
+
+  public void setDoubleWriteSessionConcurrencySize(int doubleWriteSessionConcurrencySize) {
+    this.doubleWriteSessionConcurrencySize = doubleWriteSessionConcurrencySize;
+  }
+
+  public String getDoubleWriteLogDir() {
+    return doubleWriteLogDir;
+  }
+
+  public void setDoubleWriteLogDir(String doubleWriteLogDir) {
+    this.doubleWriteLogDir = doubleWriteLogDir;
+  }
+
+  public int getDoubleWriteLogValidity() {
+    return doubleWriteLogValidity;
+  }
+
+  public void setDoubleWriteLogValidity(int doubleWriteLogValidity) {
+    this.doubleWriteLogValidity = doubleWriteLogValidity;
+  }
+
+  public int getDoubleWriteLogNum() {
+    return doubleWriteLogNum;
+  }
+
+  public void setDoubleWriteLogNum(int doubleWriteLogNum) {
+    this.doubleWriteLogNum = doubleWriteLogNum;
+  }
+
+  public long getDoubleWriteMaxLogSize() {
+    return doubleWriteMaxLogSize;
+  }
+
+  public void setDoubleWriteMaxLogSize(long doubleWriteMaxLogSize) {
+    this.doubleWriteMaxLogSize = doubleWriteMaxLogSize;
+  }
+
+  public int getDoubleWriteProducerCacheSize() {
+    return doubleWriteProducerCacheSize;
+  }
+
+  public void setDoubleWriteProducerCacheSize(int doubleWriteProducerCacheSize) {
+    this.doubleWriteProducerCacheSize = doubleWriteProducerCacheSize;
+  }
+
+  public int getDoubleWriteConsumerConcurrencySize() {
+    return doubleWriteConsumerConcurrencySize;
+  }
+
+  public void setDoubleWriteConsumerConcurrencySize(int doubleWriteConsumerConcurrencySize) {
+    this.doubleWriteConsumerConcurrencySize = doubleWriteConsumerConcurrencySize;
   }
 }

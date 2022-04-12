@@ -47,6 +47,7 @@
         <module>udf</module>
         <module>trigger</module>
         <module>rabbitmq</module>
+        <module>doublewrite</module>
     </modules>
     <build>
         <pluginManagement>

@@ -154,6 +154,9 @@ public class IoTDBConstant {
   public static final String UDF_FOLDER_NAME = "udf";
   public static final String TRIGGER_FOLDER_NAME = "trigger";
 
+  // doublewrite folder name
+  public static final String DOUBLEWRITE_FOLDER_NAME = "doublewrite";
+
   // mqtt
   public static final String ENABLE_MQTT = "enable_mqtt_service";
   public static final String MQTT_HOST_NAME = "mqtt_host";
