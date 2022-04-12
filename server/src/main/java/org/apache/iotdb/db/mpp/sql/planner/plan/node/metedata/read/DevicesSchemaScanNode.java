@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read;
 
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
@@ -81,17 +82,18 @@ public class DevicesSchemaScanNode extends SchemaScanNode {
   public void serialize(ByteBuffer byteBuffer) {
     PlanNodeType.DEVICES_SCHEMA_SCAN.serialize(byteBuffer);
     ReadWriteIOUtils.write(getPlanNodeId().getId(), byteBuffer);
-    path.serialize(byteBuffer);
+    ReadWriteIOUtils.write(path.getFullPath(), byteBuffer);
     ReadWriteIOUtils.write(limit, byteBuffer);
     ReadWriteIOUtils.write(offset, byteBuffer);
     ReadWriteIOUtils.write(isPrefixPath, byteBuffer);
     ReadWriteIOUtils.write(hasSgCol, byteBuffer);
   }
 
-  public static DevicesSchemaScanNode deserialize(ByteBuffer byteBuffer) {
+  public static DevicesSchemaScanNode deserialize(ByteBuffer byteBuffer) throws IllegalPathException {
     String id = ReadWriteIOUtils.readString(byteBuffer);
     PlanNodeId planNodeId = new PlanNodeId(id);
-    PartialPath path = PartialPath.deserialize(byteBuffer);
+    String fullPath = ReadWriteIOUtils.readString(byteBuffer);
+    PartialPath path = new PartialPath(fullPath);
     int limit = ReadWriteIOUtils.readInt(byteBuffer);
     int offset = ReadWriteIOUtils.readInt(byteBuffer);
     boolean isPrefixPath = ReadWriteIOUtils.readBool(byteBuffer);

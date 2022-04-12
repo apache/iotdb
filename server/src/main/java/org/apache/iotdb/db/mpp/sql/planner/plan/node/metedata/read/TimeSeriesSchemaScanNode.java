@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read;
 
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
@@ -68,7 +69,7 @@ public class TimeSeriesSchemaScanNode extends SchemaScanNode {
   public void serialize(ByteBuffer byteBuffer) {
     PlanNodeType.TIME_SERIES_SCHEMA_SCAN.serialize(byteBuffer);
     ReadWriteIOUtils.write(getPlanNodeId().getId(), byteBuffer);
-    path.serialize(byteBuffer);
+    ReadWriteIOUtils.write(path.getFullPath(), byteBuffer);
     ReadWriteIOUtils.write(key, byteBuffer);
     ReadWriteIOUtils.write(value, byteBuffer);
     ReadWriteIOUtils.write(limit, byteBuffer);
@@ -78,10 +79,12 @@ public class TimeSeriesSchemaScanNode extends SchemaScanNode {
     ReadWriteIOUtils.write(isPrefixPath, byteBuffer);
   }
 
-  public static TimeSeriesSchemaScanNode deserialize(ByteBuffer byteBuffer) {
+  public static TimeSeriesSchemaScanNode deserialize(ByteBuffer byteBuffer)
+      throws IllegalPathException {
     String id = ReadWriteIOUtils.readString(byteBuffer);
     PlanNodeId planNodeId = new PlanNodeId(id);
-    PartialPath path = PartialPath.deserialize(byteBuffer);
+    String fullPath = ReadWriteIOUtils.readString(byteBuffer);
+    PartialPath path = new PartialPath(fullPath);
     String key = ReadWriteIOUtils.readString(byteBuffer);
     String value = ReadWriteIOUtils.readString(byteBuffer);
     int limit = ReadWriteIOUtils.readInt(byteBuffer);

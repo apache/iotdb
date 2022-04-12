@@ -140,7 +140,7 @@ public class DistributionPlanner {
       SchemaMergeNode root = (SchemaMergeNode) node.clone();
       SchemaScanNode seed = (SchemaScanNode) node.getChildren().get(0);
       TreeSet<RegionReplicaSet> schemaRegions =
-          new TreeSet<>(Comparator.comparingInt(region -> region.getId().getId()));
+          new TreeSet<>(Comparator.comparingInt(region -> region.getConsensusGroupId().getId()));
       analysis
           .getSchemaPartitionInfo()
           .getSchemaPartitionMap()
