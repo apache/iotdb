@@ -170,6 +170,22 @@ public class QueryExecution implements IQueryExecution {
     }
   }
 
+  /** @return true if there is more tsblocks, otherwise false */
+  public boolean hasNextResult() {
+    try {
+      initialResultHandle();
+      return resultHandle.isFinished();
+    } catch (IOException e) {
+      throwIfUnchecked(e.getCause());
+      throw new RuntimeException(e.getCause());
+    }
+  }
+
+  /** return the result column count without the time column */
+  public int getOutputValueColumnCount() {
+    return 1;
+  }
+
   /**
    * This method is a synchronized method. For READ, it will block until all the FragmentInstances
    * have been submitted. For WRITE, it will block until all the FragmentInstances have finished.
@@ -204,7 +220,7 @@ public class QueryExecution implements IQueryExecution {
     }
   }
 
-  private synchronized void initialResultHandle() throws IOException {
+  private void initialResultHandle() throws IOException {
     if (this.resultHandle == null) {
       this.resultHandle =
           DataBlockService.getInstance()
