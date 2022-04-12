@@ -200,10 +200,7 @@ public class LocalConfigNode {
 
     storageGroupSchemaManager.forceLog();
     templateManager.forceLog();
-
-    for (SchemaRegion schemaRegion : schemaEngine.getAllSchemaRegions()) {
-      schemaRegion.forceMlog();
-    }
+    schemaEngine.forceMlog();
   }
 
   // endregion
@@ -737,9 +734,7 @@ public class LocalConfigNode {
   public void setUsingSchemaTemplate(ActivateTemplatePlan plan) throws MetadataException {
     PartialPath path = plan.getPrefixPath();
     try {
-      schemaEngine
-          .getSchemaRegion(getBelongedSchemaRegionId(path))
-          .setUsingSchemaTemplate(plan);
+      schemaEngine.getSchemaRegion(getBelongedSchemaRegionId(path)).setUsingSchemaTemplate(plan);
     } catch (StorageGroupNotSetException e) {
       throw new MetadataException(
           String.format(

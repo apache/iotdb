@@ -56,6 +56,14 @@ public class SchemaEngine {
     schemaRegionMap = new ConcurrentHashMap<>();
   }
 
+  public void forceMlog() {
+    if (schemaRegionMap != null) {
+      for (SchemaRegion schemaRegion : schemaRegionMap.values()) {
+        schemaRegion.forceMlog();
+      }
+    }
+  }
+
   public void clear() {
     if (schemaRegionMap != null) {
       for (SchemaRegion schemaRegion : schemaRegionMap.values()) {
