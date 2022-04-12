@@ -45,6 +45,7 @@ public class UDTFEqualBucketSample implements UDTF {
   private String aggMethodType;
   private double proportion;
   private int bucketSize;
+  private int bucketSampleNum;
   private Random random;
 
   @Override
@@ -52,20 +53,17 @@ public class UDTFEqualBucketSample implements UDTF {
     method = validator.getParameters().getStringOrDefault("method", "random").toLowerCase();
     proportion = validator.getParameters().getDoubleOrDefault("proportion", 0.1);
     aggMethodType = validator.getParameters().getStringOrDefault("type", "avg").toLowerCase();
+    bucketSampleNum = validator.getParameters().getIntOrDefault("- bucket_sample_num", 10);
     validator
         .validateInputSeriesNumber(1)
         .validateInputSeriesDataType(
-            0,
-            TSDataType.INT32,
-            TSDataType.INT64,
-            TSDataType.FLOAT,
-            TSDataType.DOUBLE)
+            0, TSDataType.INT32, TSDataType.INT64, TSDataType.FLOAT, TSDataType.DOUBLE)
         .validate(
             method ->
-                "random".equals(method) ||
-                    "aggregation".equals(method) ||
-                    "m4".equals(method) ||
-                    "outlier".equals(method),
+                "random".equals(method)
+                    || "aggregation".equals(method)
+                    || "m4".equals(method)
+                    || "outlier".equals(method),
             "Illegal equal bucket sampling method.",
             method)
         .validate(
@@ -73,16 +71,18 @@ public class UDTFEqualBucketSample implements UDTF {
             "Illegal sample proportion.",
             proportion)
         .validate(
-            type ->
-                "avg".equals(type) ||
-                    "max".equals(type) ||
-                    "min".equals(type),
+            type -> "avg".equals(type) || "max".equals(type) || "min".equals(type),
             "Illegal aggregation method.",
-            aggMethodType);
+            aggMethodType)
+        .validate(
+            bucketSampleNum -> (int) bucketSampleNum >= 1,
+            "Illegal aggregation method.",
+            bucketSampleNum);
   }
 
   @Override
-  public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) throws MetadataException {
+  public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
+      throws MetadataException {
     inputDataType = parameters.getDataType(0);
     random = new Random();
     outputDataType = inputDataType;
@@ -95,13 +95,18 @@ public class UDTFEqualBucketSample implements UDTF {
     if ("m4".equals(method)) {
       bucketSize *= 4;
     }
+    if ("outlier".equals(method)) {
+      // TODO do not justify the upper bound of bucketSampleNum
+      bucketSize *= bucketSampleNum;
+    }
     configurations
         .setAccessStrategy(new SlidingSizeWindowAccessStrategy(bucketSize))
         .setOutputDataType(outputDataType);
   }
 
   @Override
-  public void transform(RowWindow rowWindow, PointCollector collector) throws UDFParameterNotValidException, IOException {
+  public void transform(RowWindow rowWindow, PointCollector collector)
+      throws UDFParameterNotValidException, IOException {
     switch (method) {
       case "random":
         randomSample(rowWindow, collector);
@@ -126,71 +131,9 @@ public class UDTFEqualBucketSample implements UDTF {
     UDTF.super.terminate(collector);
   }
 
-  public void randomSample(RowWindow rowWindow, PointCollector collector) throws IOException, UDFInputSeriesDataTypeNotValidException {
-    putRow(collector, rowWindow, random.nextInt(bucketSize));
-  }
-
-  public void outlierSample(RowWindow rowWindow, PointCollector collector) {
-//    int[] arr = new int[]
-  }
-
-  public void m4Sample(RowWindow rowWindow, PointCollector collector) throws IOException, UDFInputSeriesDataTypeNotValidException {
-    int minIndex = 0, maxIndex = 0;
-    double maxValue = rowWindow.getRow(0).getDouble(0);
-    double minValue = rowWindow.getRow(0).getDouble(0);
-    for (int i = 1; i < bucketSize; i++) {
-      double value = rowWindow.getRow(i).getDouble(0);
-      if (minValue > value) {
-        minValue = value;
-        minIndex = i;
-      }
-      if (maxValue < value) {
-        maxValue = value;
-        maxIndex = i;
-      }
-    }
-    int[] arr = new int[]{0, minIndex, maxIndex, bucketSize - 1};
-    // avoid duplicated index
-    Arrays.sort(arr);
-    putRow(collector, rowWindow, 0);
-    for (int i = 1; i < 4; i++) {
-      if (arr[i] > arr[i - 1]) {
-        putRow(collector, rowWindow, arr[i]);
-      }
-    }
-  }
-
-  public void aggregationSample(RowWindow rowWindow, PointCollector collector) throws IOException, UDFInputSeriesDataTypeNotValidException {
-    long time = rowWindow.getRow(0).getTime();
-    if ("avg".equals(aggMethodType)) {
-      double sum = 0;
-      for (int i = 0; i < bucketSize; i++) {
-        sum += rowWindow.getRow(i).getDouble(0) / bucketSize;
-      }
-      putValue(collector, time, sum);
-    } else if ("max".equals(aggMethodType)) {
-      double maxValue = rowWindow.getRow(0).getDouble(0);
-      for (int i = 1; i < bucketSize; i++) {
-        double value = rowWindow.getRow(i).getDouble(0);
-        if (maxValue < value) {
-          maxValue = value;
-        }
-      }
-      putValue(collector, time, maxValue);
-    } else if ("min".equals(aggMethodType)) {
-      double minValue = rowWindow.getRow(0).getDouble(0);
-      for (int i = 1; i < bucketSize; i++) {
-        double value = rowWindow.getRow(i).getDouble(0);
-        if (minValue > value) {
-          minValue = value;
-        }
-      }
-      putValue(collector, time, minValue);
-    }
-  }
-
-  public void putRow(PointCollector collector, RowWindow rowWindow, int index) throws UDFInputSeriesDataTypeNotValidException, IOException {
-    Row row = rowWindow.getRow(index);
+  public void randomSample(RowWindow rowWindow, PointCollector collector)
+      throws IOException, UDFInputSeriesDataTypeNotValidException {
+    Row row = rowWindow.getRow(random.nextInt(rowWindow.windowSize()));
     switch (outputDataType) {
       case INT32:
         collector.putInt(row.getTime(), row.getInt(0));
@@ -206,27 +149,297 @@ public class UDTFEqualBucketSample implements UDTF {
       default:
         // This will not happen
         throw new UDFInputSeriesDataTypeNotValidException(
-            0, outputDataType, TSDataType.INT32, TSDataType.INT64, TSDataType.FLOAT, TSDataType.DOUBLE);
+            0,
+            outputDataType,
+            TSDataType.INT32,
+            TSDataType.INT64,
+            TSDataType.FLOAT,
+            TSDataType.DOUBLE);
     }
   }
 
-  public void putValue(PointCollector collector, long time, Object value) throws UDFInputSeriesDataTypeNotValidException, IOException {
+  public void outlierSample(RowWindow rowWindow, PointCollector collector) {
+    //    int[] arr = new int[]
+  }
+
+  public void m4Sample(RowWindow rowWindow, PointCollector collector)
+      throws IOException, UDFInputSeriesDataTypeNotValidException {
+    int minIndex = 0, maxIndex = 0;
     switch (outputDataType) {
-      case INT32:
-        collector.putInt(time, (int) value);
+      case INT32: {
+        int maxValue = rowWindow.getRow(0).getInt(0);
+        int minValue = rowWindow.getRow(0).getInt(0);
+        for (int i = 1; i < rowWindow.windowSize(); i++) {
+          int value = rowWindow.getRow(i).getInt(0);
+          if (minValue > value) {
+            minValue = value;
+            minIndex = i;
+          }
+          if (maxValue < value) {
+            maxValue = value;
+            maxIndex = i;
+          }
+        }
+        int[] arr = new int[]{0, minIndex, maxIndex, rowWindow.windowSize() - 1};
+        // avoid duplicated index
+        Arrays.sort(arr);
+        Row row = rowWindow.getRow(0);
+        collector.putInt(row.getTime(), row.getInt(0));
+        for (int i = 1; i < 4; i++) {
+          if (arr[i] > arr[i - 1]) {
+            row = rowWindow.getRow(arr[i]);
+            collector.putInt(row.getTime(), row.getInt(0));
+          }
+        }
         break;
-      case INT64:
-        collector.putLong(time, (long) value);
+      }
+      case INT64: {
+        long maxValue = rowWindow.getRow(0).getLong(0);
+        long minValue = rowWindow.getRow(0).getLong(0);
+        for (int i = 1; i < rowWindow.windowSize(); i++) {
+          long value = rowWindow.getRow(i).getLong(0);
+          if (minValue > value) {
+            minValue = value;
+            minIndex = i;
+          }
+          if (maxValue < value) {
+            maxValue = value;
+            maxIndex = i;
+          }
+        }
+        int[] arr = new int[]{0, minIndex, maxIndex, rowWindow.windowSize() - 1};
+        // avoid duplicated index
+        Arrays.sort(arr);
+        Row row = rowWindow.getRow(0);
+        collector.putLong(row.getTime(), row.getLong(0));
+        for (int i = 1; i < 4; i++) {
+          if (arr[i] > arr[i - 1]) {
+            row = rowWindow.getRow(arr[i]);
+            collector.putLong(row.getTime(), row.getLong(0));
+          }
+        }
         break;
-      case FLOAT:
-        collector.putFloat(time, (float) value);
+      }
+      case FLOAT: {
+        float maxValue = rowWindow.getRow(0).getFloat(0);
+        float minValue = rowWindow.getRow(0).getFloat(0);
+        for (int i = 1; i < rowWindow.windowSize(); i++) {
+          float value = rowWindow.getRow(i).getFloat(0);
+          if (minValue > value) {
+            minValue = value;
+            minIndex = i;
+          }
+          if (maxValue < value) {
+            maxValue = value;
+            maxIndex = i;
+          }
+        }
+        int[] arr = new int[]{0, minIndex, maxIndex, rowWindow.windowSize() - 1};
+        // avoid duplicated index
+        Arrays.sort(arr);
+        Row row = rowWindow.getRow(0);
+        collector.putFloat(row.getTime(), row.getFloat(0));
+        for (int i = 1; i < 4; i++) {
+          if (arr[i] > arr[i - 1]) {
+            row = rowWindow.getRow(arr[i]);
+            collector.putFloat(row.getTime(), row.getFloat(0));
+          }
+        }
         break;
-      case DOUBLE:
-        collector.putDouble(time, (double) value);
+      }
+      case DOUBLE: {
+        double maxValue = rowWindow.getRow(0).getDouble(0);
+        double minValue = rowWindow.getRow(0).getDouble(0);
+        for (int i = 1; i < rowWindow.windowSize(); i++) {
+          double value = rowWindow.getRow(i).getDouble(0);
+          if (minValue > value) {
+            minValue = value;
+            minIndex = i;
+          }
+          if (maxValue < value) {
+            maxValue = value;
+            maxIndex = i;
+          }
+        }
+        int[] arr = new int[]{0, minIndex, maxIndex, rowWindow.windowSize() - 1};
+        // avoid duplicated index
+        Arrays.sort(arr);
+        Row row = rowWindow.getRow(0);
+        collector.putDouble(row.getTime(), row.getDouble(0));
+        for (int i = 1; i < 4; i++) {
+          if (arr[i] > arr[i - 1]) {
+            row = rowWindow.getRow(arr[i]);
+            collector.putDouble(row.getTime(), row.getDouble(0));
+          }
+        }
+        break;
+      }
       default:
         // This will not happen
         throw new UDFInputSeriesDataTypeNotValidException(
-            0, outputDataType, TSDataType.INT32, TSDataType.INT64, TSDataType.FLOAT, TSDataType.DOUBLE);
+            0,
+            outputDataType,
+            TSDataType.INT32,
+            TSDataType.INT64,
+            TSDataType.FLOAT,
+            TSDataType.DOUBLE);
+    }
+  }
+
+  public void aggregationSample(RowWindow rowWindow, PointCollector collector)
+      throws IOException, UDFInputSeriesDataTypeNotValidException {
+    long time = rowWindow.getRow(0).getTime();
+    int windowSize = rowWindow.windowSize();
+    if ("avg".equals(aggMethodType)) {
+      double sum = 0;
+      switch (outputDataType) {
+        case INT32:{
+          for (int i = 0; i < windowSize; i++) {
+            sum += rowWindow.getRow(i).getInt(0) * 1.0 / windowSize;
+          }
+          break;
+        }
+        case INT64:{
+          for (int i = 0; i < windowSize; i++) {
+            sum += rowWindow.getRow(i).getLong(0) * 1.0 / windowSize;
+          }
+          break;
+        }
+        case FLOAT:{
+          for (int i = 0; i < windowSize; i++) {
+            sum += rowWindow.getRow(i).getFloat(0) / windowSize;
+          }
+          break;
+        }
+        case DOUBLE:{
+          for (int i = 0; i < windowSize; i++) {
+            sum += rowWindow.getRow(i).getDouble(0) / windowSize;
+          }
+          break;
+        }
+        default:
+          // This will not happen
+          throw new UDFInputSeriesDataTypeNotValidException(
+              0,
+              outputDataType,
+              TSDataType.INT32,
+              TSDataType.INT64,
+              TSDataType.FLOAT,
+              TSDataType.DOUBLE);
+      }
+      collector.putDouble(time, sum);
+    } else if ("max".equals(aggMethodType)) {
+      switch (outputDataType) {
+        case INT32:{
+          int maxValue = rowWindow.getRow(0).getInt(0);
+          for (int i = 1; i < windowSize; i++) {
+            int value = rowWindow.getRow(i).getInt(0);
+            if (maxValue < value) {
+              maxValue = value;
+            }
+          }
+          collector.putInt(time, maxValue);
+          break;
+        }
+        case INT64:{
+          long maxValue = rowWindow.getRow(0).getLong(0);
+          for (int i = 1; i < windowSize; i++) {
+            long value = rowWindow.getRow(i).getLong(0);
+            if (maxValue < value) {
+              maxValue = value;
+            }
+          }
+          collector.putLong(time, maxValue);
+          break;
+        }
+        case FLOAT:{
+          float maxValue = rowWindow.getRow(0).getFloat(0);
+          for (int i = 1; i < windowSize; i++) {
+            float value = rowWindow.getRow(i).getFloat(0);
+            if (maxValue < value) {
+              maxValue = value;
+            }
+          }
+          collector.putFloat(time, maxValue);
+          break;
+        }
+        case DOUBLE:{
+          double maxValue = rowWindow.getRow(0).getDouble(0);
+          for (int i = 1; i < windowSize; i++) {
+            double value = rowWindow.getRow(i).getDouble(0);
+            if (maxValue < value) {
+              maxValue = value;
+            }
+          }
+          collector.putDouble(time, maxValue);
+          break;
+        }
+        default:
+          // This will not happen
+          throw new UDFInputSeriesDataTypeNotValidException(
+              0,
+              outputDataType,
+              TSDataType.INT32,
+              TSDataType.INT64,
+              TSDataType.FLOAT,
+              TSDataType.DOUBLE);
+      }
+    } else if ("min".equals(aggMethodType)) {
+      switch (outputDataType) {
+        case INT32:{
+          int minValue = rowWindow.getRow(0).getInt(0);
+          for (int i = 1; i < windowSize; i++) {
+            int value = rowWindow.getRow(i).getInt(0);
+            if (minValue > value) {
+              minValue = value;
+            }
+          }
+          collector.putInt(time, minValue);
+          break;
+        }
+        case INT64:{
+          long minValue = rowWindow.getRow(0).getLong(0);
+          for (int i = 1; i < windowSize; i++) {
+            long value = rowWindow.getRow(i).getLong(0);
+            if (minValue > value) {
+              minValue = value;
+            }
+          }
+          collector.putLong(time, minValue);
+          break;
+        }
+        case FLOAT:{
+          float minValue = rowWindow.getRow(0).getFloat(0);
+          for (int i = 1; i < windowSize; i++) {
+            float value = rowWindow.getRow(i).getFloat(0);
+            if (minValue > value) {
+              minValue = value;
+            }
+          }
+          collector.putFloat(time, minValue);
+          break;
+        }
+        case DOUBLE:{
+          double minValue = rowWindow.getRow(0).getDouble(0);
+          for (int i = 1; i < windowSize; i++) {
+            double value = rowWindow.getRow(i).getDouble(0);
+            if (minValue > value) {
+              minValue = value;
+            }
+          }
+          collector.putDouble(time, minValue);
+          break;
+        }
+        default:
+          // This will not happen
+          throw new UDFInputSeriesDataTypeNotValidException(
+              0,
+              outputDataType,
+              TSDataType.INT32,
+              TSDataType.INT64,
+              TSDataType.FLOAT,
+              TSDataType.DOUBLE);
+      }
     }
   }
 }
