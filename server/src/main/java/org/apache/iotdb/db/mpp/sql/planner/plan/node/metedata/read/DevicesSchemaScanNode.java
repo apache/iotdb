@@ -89,7 +89,8 @@ public class DevicesSchemaScanNode extends SchemaScanNode {
     ReadWriteIOUtils.write(hasSgCol, byteBuffer);
   }
 
-  public static DevicesSchemaScanNode deserialize(ByteBuffer byteBuffer) throws IllegalPathException {
+  public static DevicesSchemaScanNode deserialize(ByteBuffer byteBuffer)
+      throws IllegalPathException {
     String id = ReadWriteIOUtils.readString(byteBuffer);
     PlanNodeId planNodeId = new PlanNodeId(id);
     String fullPath = ReadWriteIOUtils.readString(byteBuffer);
