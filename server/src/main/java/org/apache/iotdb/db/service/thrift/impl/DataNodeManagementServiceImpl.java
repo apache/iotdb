@@ -20,14 +20,43 @@
 package org.apache.iotdb.db.service.thrift.impl;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.consensus.SchemaRegionId;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.LocalConfigManager;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.*;
 
 import org.apache.thrift.TException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class DataNodeManagementServiceImpl implements ManagementIService.Iface {
+  private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeManagementServiceImpl.class);
+  private static LocalConfigManager localConfigManager = LocalConfigManager.getInstance();
+
   @Override
   public TSStatus createSchemaRegion(CreateSchemaRegionReq req) throws TException {
-    return null;
+    TSStatus tsStatus;
+    try {
+      PartialPath storageGroupPartitionPath = new PartialPath(req.getStorageGroup());
+      SchemaRegionId schemaRegionId = new SchemaRegionId(req.getRegionReplicaSet().getRegionId());
+      localConfigManager.createSchemaRegion(storageGroupPartitionPath, schemaRegionId);
+      tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } catch (IllegalPathException e1) {
+      LOGGER.error(
+          "Create Schema Region {} failed because path is illegal.", req.getStorageGroup());
+      tsStatus = new TSStatus(TSStatusCode.PATH_ILLEGAL.getStatusCode());
+      tsStatus.setMessage("Create Schema Region failed because storageGroup path is illegal.");
+    } catch (MetadataException e2) {
+      LOGGER.error(
+          "Create Schema Region {} failed because {}", req.getStorageGroup(), e2.getMessage());
+      tsStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      tsStatus.setMessage(
+          String.format("Create Schema Region failed because of %s", e2.getMessage()));
+    }
+    return tsStatus;
   }
 
   @Override
