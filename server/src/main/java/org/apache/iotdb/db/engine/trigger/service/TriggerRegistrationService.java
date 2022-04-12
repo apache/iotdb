@@ -136,17 +136,12 @@ public class TriggerRegistrationService implements IService {
 
   private IMNode tryGetMNode(CreateTriggerPlan plan) throws TriggerManagementException {
     try {
-      IMNode sgPath = IoTDB.schemaProcessor.getNodeByPath(plan.getFullPath());
-      if (sgPath == null) {
+      IMNode imNode = IoTDB.schemaProcessor.getNodeByPath(plan.getFullPath());
+      if (imNode == null) {
         throw new TriggerManagementException(
             String.format("Path [%s] does not exist", plan.getFullPath().getFullPath()));
       }
-      if (plan.getFullPath().getFullPath().equals(sgPath.getFullPath())) {
-        return sgPath;
-      } else {
-        throw new TriggerManagementException(
-            String.format("Path [%s] does not exist", plan.getFullPath().getFullPath()));
-      }
+      return imNode;
     } catch (MetadataException e) {
       throw new TriggerManagementException(e.getMessage(), e);
     }
