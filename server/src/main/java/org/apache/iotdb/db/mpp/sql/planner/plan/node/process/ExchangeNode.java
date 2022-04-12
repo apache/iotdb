@@ -21,14 +21,18 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
 import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
+import org.apache.iotdb.db.mpp.sql.planner.plan.PlanFragment;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.sink.FragmentSinkNode;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.collect.ImmutableList;
 
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.Objects;
 
 public class ExchangeNode extends PlanNode {
   private PlanNode child;
@@ -83,11 +87,28 @@ public class ExchangeNode extends PlanNode {
   }
 
   public static ExchangeNode deserialize(ByteBuffer byteBuffer) {
-    return null;
+    FragmentSinkNode fragmentSinkNode =
+        (FragmentSinkNode) PlanFragment.deserializeHelper(byteBuffer);
+    Endpoint endPoint =
+        new Endpoint(ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readInt(byteBuffer));
+    FragmentInstanceId fragmentInstanceId = FragmentInstanceId.deserialize(byteBuffer);
+    PlanNodeId upstreamPlanNodeId = PlanNodeId.deserialize(byteBuffer);
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+    ExchangeNode exchangeNode = new ExchangeNode(planNodeId);
+    exchangeNode.setUpstream(endPoint, fragmentInstanceId, upstreamPlanNodeId);
+    exchangeNode.setRemoteSourceNode(fragmentSinkNode);
+    return exchangeNode;
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {}
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    PlanNodeType.EXCHANGE.serialize(byteBuffer);
+    remoteSourceNode.serialize(byteBuffer);
+    ReadWriteIOUtils.write(upstreamEndpoint.getIp(), byteBuffer);
+    ReadWriteIOUtils.write(upstreamEndpoint.getPort(), byteBuffer);
+    upstreamInstanceId.serialize(byteBuffer);
+    upstreamPlanNodeId.serialize(byteBuffer);
+  }
 
   public PlanNode getChild() {
     return child;
@@ -134,5 +155,35 @@ public class ExchangeNode extends PlanNode {
 
   public PlanNodeId getUpstreamPlanNodeId() {
     return upstreamPlanNodeId;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
+    ExchangeNode that = (ExchangeNode) o;
+    return Objects.equals(child, that.child)
+        && Objects.equals(remoteSourceNode, that.remoteSourceNode)
+        && Objects.equals(upstreamEndpoint, that.upstreamEndpoint)
+        && Objects.equals(upstreamInstanceId, that.upstreamInstanceId)
+        && Objects.equals(upstreamPlanNodeId, that.upstreamPlanNodeId);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(
+        super.hashCode(),
+        child,
+        remoteSourceNode,
+        upstreamEndpoint,
+        upstreamInstanceId,
+        upstreamPlanNodeId);
   }
 }

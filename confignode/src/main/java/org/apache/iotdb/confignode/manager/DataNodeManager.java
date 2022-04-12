@@ -77,7 +77,9 @@ public class DataNodeManager {
     DataNodeConfigurationDataSet dataSet = new DataNodeConfigurationDataSet();
 
     if (DataNodeInfoPersistence.getInstance().containsValue(plan.getInfo())) {
-      dataSet.setStatus(new TSStatus(TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode()));
+      TSStatus status = new TSStatus(TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode());
+      status.setMessage("DataNode already registered.");
+      dataSet.setStatus(status);
     } else {
       plan.getInfo().setDataNodeId(DataNodeInfoPersistence.getInstance().generateNextDataNodeId());
       ConsensusWriteResponse resp = getConsensusManager().write(plan);

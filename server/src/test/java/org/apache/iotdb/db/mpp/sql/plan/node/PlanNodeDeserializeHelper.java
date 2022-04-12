@@ -16,21 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.mpp.sql.plan.node;
 
-package org.apache.iotdb.db.mpp.buffer;
-
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 
 import java.nio.ByteBuffer;
 
-public class TsBlockSerde {
-  public ByteBuffer serialized(TsBlock tsBlock) {
-    // TODO: implement
-    return null;
-  }
+public class PlanNodeDeserializeHelper {
 
-  public TsBlock deserialize(ByteBuffer buffer) {
-    // TODO: implement
-    return null;
+  public static PlanNode deserialize(ByteBuffer byteBuffer) {
+    PlanNode root = PlanNodeType.deserialize(byteBuffer);
+    int childrenCount = byteBuffer.getInt();
+    for (int i = 0; i < childrenCount; i++) {
+      root.addChild(deserialize(byteBuffer));
+    }
+    return root;
   }
 }

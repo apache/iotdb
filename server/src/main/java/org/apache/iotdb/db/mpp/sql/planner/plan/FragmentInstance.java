@@ -23,18 +23,21 @@ import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
+import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.sink.FragmentSinkNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class FragmentInstance implements IConsensusRequest {
   private final FragmentInstanceId id;
-
+  private final QueryType type;
   // The reference of PlanFragment which this instance is generated from
   private final PlanFragment fragment;
   // The DataRegion where the FragmentInstance should run
@@ -46,9 +49,11 @@ public class FragmentInstance implements IConsensusRequest {
   // We can add some more params for a specific FragmentInstance
   // So that we can make different FragmentInstance owns different data range.
 
-  public FragmentInstance(PlanFragment fragment, int index) {
+  public FragmentInstance(PlanFragment fragment, int index, Filter timeFilter, QueryType type) {
     this.fragment = fragment;
+    this.timeFilter = timeFilter;
     this.id = generateId(fragment.getId(), index);
+    this.type = type;
   }
 
   public static FragmentInstanceId generateId(PlanFragmentId id, int index) {
@@ -100,6 +105,10 @@ public class FragmentInstance implements IConsensusRequest {
     return timeFilter;
   }
 
+  public QueryType getType() {
+    return type;
+  }
+
   public String toString() {
     StringBuilder ret = new StringBuilder();
     ret.append(
@@ -111,16 +120,57 @@ public class FragmentInstance implements IConsensusRequest {
     return ret.toString();
   }
 
-  /** TODO need to be implemented */
   public static FragmentInstance deserializeFrom(ByteBuffer buffer) {
-    return new FragmentInstance(
-        new PlanFragment(
-            new PlanFragmentId("null", -1), new InsertTabletNode(new PlanNodeId("-1"))),
-        -1);
+    FragmentInstanceId id = FragmentInstanceId.deserialize(buffer);
+    PlanFragment planFragment = PlanFragment.deserialize(buffer);
+    boolean hasTimeFilter = ReadWriteIOUtils.readBool(buffer);
+    Filter timeFilter = hasTimeFilter ? FilterFactory.deserialize(buffer) : null;
+    QueryType queryType = QueryType.values()[ReadWriteIOUtils.readInt(buffer)];
+    FragmentInstance fragmentInstance =
+        new FragmentInstance(
+            planFragment, Integer.parseInt(id.getInstanceId()), timeFilter, queryType);
+    RegionReplicaSet regionReplicaSet = new RegionReplicaSet();
+    try {
+      regionReplicaSet.deserializeImpl(buffer);
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+    Endpoint endpoint = new Endpoint();
+    endpoint.deserializeImpl(buffer);
+    fragmentInstance.dataRegion = regionReplicaSet;
+    fragmentInstance.hostEndpoint = endpoint;
+
+    return fragmentInstance;
   }
 
   @Override
   public void serializeRequest(ByteBuffer buffer) {
-    // TODO serialize itself to a ByteBuffer
+    id.serialize(buffer);
+    fragment.serialize(buffer);
+    ReadWriteIOUtils.write(timeFilter != null, buffer);
+    if (timeFilter != null) {
+      timeFilter.serialize(buffer);
+    }
+    ReadWriteIOUtils.write(type.ordinal(), buffer);
+    dataRegion.serializeImpl(buffer);
+    hostEndpoint.serializeImpl(buffer);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    FragmentInstance instance = (FragmentInstance) o;
+    return Objects.equals(id, instance.id)
+        && type == instance.type
+        && Objects.equals(fragment, instance.fragment)
+        && Objects.equals(dataRegion, instance.dataRegion)
+        && Objects.equals(hostEndpoint, instance.hostEndpoint)
+        && Objects.equals(timeFilter, instance.timeFilter);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(id, type, fragment, dataRegion, hostEndpoint, timeFilter);
   }
 }

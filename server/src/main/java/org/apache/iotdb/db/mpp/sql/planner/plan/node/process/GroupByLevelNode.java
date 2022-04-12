@@ -23,14 +23,19 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.IOutputPlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.ColumnHeader;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import com.google.common.collect.ImmutableList;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -56,7 +61,7 @@ public class GroupByLevelNode extends ProcessNode implements IOutputPlanNode {
 
   private final Map<ColumnHeader, ColumnHeader> groupedPathMap;
 
-  private final PlanNode child;
+  private PlanNode child;
 
   private final List<ColumnHeader> columnHeaders;
 
@@ -74,12 +79,12 @@ public class GroupByLevelNode extends ProcessNode implements IOutputPlanNode {
 
   @Override
   public List<PlanNode> getChildren() {
-    return child.getChildren();
+    return ImmutableList.of(child);
   }
 
   @Override
   public void addChild(PlanNode child) {
-    throw new NotImplementedException("addChild of GroupByLevelNode is not implemented");
+    this.child = child;
   }
 
   @Override
@@ -116,12 +121,35 @@ public class GroupByLevelNode extends ProcessNode implements IOutputPlanNode {
     return visitor.visitGroupByLevel(this, context);
   }
 
-  public static GroupByLevelNode deserialize(ByteBuffer byteBuffer) {
-    return null;
+  @Override
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    PlanNodeType.GROUP_BY_LEVEL.serialize(byteBuffer);
+    ReadWriteIOUtils.write(groupByLevels.length, byteBuffer);
+    for (int i = 0; i < groupByLevels.length; i++) {
+      ReadWriteIOUtils.write(groupByLevels[i], byteBuffer);
+    }
+    ReadWriteIOUtils.write(groupedPathMap.size(), byteBuffer);
+    for (Map.Entry<ColumnHeader, ColumnHeader> e : groupedPathMap.entrySet()) {
+      e.getKey().serialize(byteBuffer);
+      e.getValue().serialize(byteBuffer);
+    }
   }
 
-  @Override
-  public void serialize(ByteBuffer byteBuffer) {}
+  public static GroupByLevelNode deserialize(ByteBuffer byteBuffer) {
+    int groupByLevelSize = ReadWriteIOUtils.readInt(byteBuffer);
+    int[] groupByLevels = new int[groupByLevelSize];
+    for (int i = 0; i < groupByLevelSize; i++) {
+      groupByLevels[i] = ReadWriteIOUtils.readInt(byteBuffer);
+    }
+    int mapSize = ReadWriteIOUtils.readInt(byteBuffer);
+    Map<ColumnHeader, ColumnHeader> groupedPathMap = new HashMap<>();
+    for (int i = 0; i < mapSize; i++) {
+      groupedPathMap.put(
+          ColumnHeader.deserialize(byteBuffer), ColumnHeader.deserialize(byteBuffer));
+    }
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+    return new GroupByLevelNode(planNodeId, null, groupByLevels, groupedPathMap);
+  }
 
   @TestOnly
   public Pair<String, List<String>> print() {
