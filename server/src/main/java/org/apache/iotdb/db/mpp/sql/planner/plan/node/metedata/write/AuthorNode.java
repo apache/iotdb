@@ -20,15 +20,19 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write;
 
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.entity.PrivilegeType;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 public class AuthorNode extends PlanNode {
@@ -58,6 +62,26 @@ public class AuthorNode extends PlanNode {
     this.password = password;
     this.newPassword = newPassword;
     this.permissions = strToPermissions(privilegeList);
+    this.nodeName = nodeName;
+  }
+
+  public AuthorNode(
+      PlanNodeId id,
+      AuthorOperator.AuthorType authorType,
+      String userName,
+      String roleName,
+      String password,
+      String newPassword,
+      Set<Integer> permissions,
+      PartialPath nodeName)
+      throws AuthException {
+    super(id);
+    this.authorType = authorType;
+    this.userName = userName;
+    this.roleName = roleName;
+    this.password = password;
+    this.newPassword = newPassword;
+    this.permissions = permissions;
     this.nodeName = nodeName;
   }
 
@@ -141,49 +165,95 @@ public class AuthorNode extends PlanNode {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
-    buffer.putInt(getPlanType(authorType));
-    buffer.putInt(userName.length());
-    buffer.put(userName.getBytes());
-    buffer.putInt(roleName.length());
-    buffer.put(roleName.getBytes());
-    buffer.putInt(password.length());
-    buffer.put(password.getBytes());
-    buffer.putInt(newPassword.length());
-    buffer.put(newPassword.getBytes());
-    if (permissions == null && permissions.size() == 0) {
-      buffer.put("false".getBytes());
+  public void serialize(ByteBuffer byteBuffer) {
+    byteBuffer.putShort((short) PlanNodeType.AUTHOR.ordinal());
+    ReadWriteIOUtils.write(this.getPlanNodeId().getId(), byteBuffer);
+    ReadWriteIOUtils.write(getPlanType(authorType), byteBuffer);
+    ReadWriteIOUtils.write(userName, byteBuffer);
+    ReadWriteIOUtils.write(roleName, byteBuffer);
+    ReadWriteIOUtils.write(password, byteBuffer);
+    ReadWriteIOUtils.write(newPassword, byteBuffer);
+    if (permissions == null) {
+      byteBuffer.put((byte) 0);
     } else {
-      buffer.put("true".getBytes());
-      buffer.putInt(permissions.size());
-      for (Integer permission : permissions) {
-        buffer.putInt(permission);
+      byteBuffer.put((byte) 1);
+      byteBuffer.putInt(permissions.size());
+      for (int permission : permissions) {
+        byteBuffer.putInt(permission);
       }
     }
-    if (nodeName == null && nodeName.equals("")) {
-      buffer.put("false".getBytes());
+    if (nodeName == null) {
+      byteBuffer.put((byte) 0);
     } else {
-      buffer.put("true".getBytes());
-      buffer.putInt(nodeName.getFullPath().length());
-      buffer.put(nodeName.getFullPath().getBytes());
+      byteBuffer.put((byte) 1);
+      ReadWriteIOUtils.write(nodeName.getFullPath(), byteBuffer);
+    }
+    // no children node, need to set 0
+    byteBuffer.putInt(0);
+  }
+
+  public static AuthorNode deserialize(ByteBuffer byteBuffer) {
+    String id;
+    AuthorOperator.AuthorType authorType;
+    String userName;
+    String roleName;
+    String password;
+    String newPassword;
+    Set<Integer> permissions;
+    PartialPath nodeName;
+
+    id = ReadWriteIOUtils.readString(byteBuffer);
+    authorType = AuthorOperator.AuthorType.values()[ReadWriteIOUtils.readInt(byteBuffer)];
+    userName = ReadWriteIOUtils.readString(byteBuffer);
+    roleName = ReadWriteIOUtils.readString(byteBuffer);
+    password = ReadWriteIOUtils.readString(byteBuffer);
+    newPassword = ReadWriteIOUtils.readString(byteBuffer);
+    byte hasPermissions = byteBuffer.get();
+    if (hasPermissions == (byte) 0) {
+      permissions = null;
+    } else {
+      int permissionsSize = byteBuffer.getInt();
+      permissions = new HashSet<>();
+      for (int i = 0; i < permissionsSize; i++) {
+        permissions.add(ReadWriteIOUtils.readInt(byteBuffer));
+      }
+    }
+    byte hasNodeName = byteBuffer.get();
+    if (hasNodeName == (byte) 0) {
+      nodeName = null;
+    } else {
+      try {
+        nodeName = new PartialPath(ReadWriteIOUtils.readString(byteBuffer));
+      } catch (IllegalPathException e) {
+        throw new IllegalArgumentException("Can not deserialize AuthorNode", e);
+      }
+    }
+    try {
+      return new AuthorNode(
+          new PlanNodeId(id),
+          authorType,
+          userName,
+          roleName,
+          password,
+          newPassword,
+          permissions,
+          nodeName);
+    } catch (AuthException e) {
+      throw new IllegalArgumentException(e.getMessage());
     }
   }
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    throw new NotImplementedException();
+    throw new NotImplementedException("serializeAttributes of AuthorNode is not implemented");
   }
 
-  public static AuthorNode deserialize(ByteBuffer buffer) {
-    return null;
-  }
-
-  public Set<Integer> strToPermissions(String[] authorizationList) throws AuthException {
+  public Set<Integer> strToPermissions(String[] privilegeList) throws AuthException {
     Set<Integer> result = new HashSet<>();
-    if (authorizationList == null) {
+    if (privilegeList == null) {
       return result;
     }
-    for (String s : authorizationList) {
+    for (String s : privilegeList) {
       PrivilegeType[] types = PrivilegeType.values();
       boolean legal = false;
       for (PrivilegeType privilegeType : types) {
@@ -200,16 +270,9 @@ public class AuthorNode extends PlanNode {
     return result;
   }
 
-  private static String getAuthorInfo(ByteBuffer buffer) {
-    int infoSize = buffer.getInt();
-    byte[] byteInfo = new byte[infoSize];
-    buffer.get(byteInfo, 0, infoSize);
-    return new String(byteInfo, 0, infoSize);
-  }
-
-  private int getPlanType(AuthorOperator.AuthorType physicalPlanType) {
+  private int getPlanType(AuthorOperator.AuthorType authorType) {
     int type;
-    switch (physicalPlanType) {
+    switch (authorType) {
       case CREATE_USER:
         type = AuthorOperator.AuthorType.CREATE_USER.ordinal();
         break;
@@ -262,8 +325,27 @@ public class AuthorNode extends PlanNode {
         type = AuthorOperator.AuthorType.LIST_ROLE_USERS.ordinal();
         break;
       default:
-        throw new IllegalArgumentException("Unknown operator: " + physicalPlanType);
+        throw new IllegalArgumentException("Unknown operator: " + authorType);
     }
     return type;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    AuthorNode that = (AuthorNode) o;
+    return this.getPlanNodeId().equals(that.getPlanNodeId())
+        && Objects.equals(authorType, that.authorType)
+        && Objects.equals(userName, that.userName)
+        && Objects.equals(roleName, that.roleName)
+        && Objects.equals(password, that.password)
+        && Objects.equals(newPassword, that.newPassword)
+        && Objects.equals(permissions, that.permissions)
+        && Objects.equals(nodeName, that.nodeName);
   }
 }

@@ -22,19 +22,29 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.consensus.common.DataSet;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 public class DataNodeConfigurationDataSet implements DataSet {
 
   private TSStatus status;
-  private int dataNodeId;
+  private Integer dataNodeId;
   private TGlobalConfig globalConfig;
 
   public DataNodeConfigurationDataSet() {
-    // Empty constructor
+    this.dataNodeId = null;
+    this.globalConfig = null;
+  }
+
+  public TSStatus getStatus() {
+    return status;
   }
 
   public void setStatus(TSStatus status) {
     this.status = status;
+  }
+
+  public Integer getDataNodeId() {
+    return dataNodeId;
   }
 
   public void setDataNodeId(int dataNodeId) {
@@ -47,7 +57,10 @@ public class DataNodeConfigurationDataSet implements DataSet {
 
   public void convertToRpcDataNodeRegisterResp(TDataNodeRegisterResp resp) {
     resp.setStatus(status);
-    resp.setDataNodeID(dataNodeId);
-    resp.setGlobalConfig(globalConfig);
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        || status.getCode() == TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode()) {
+      resp.setDataNodeID(dataNodeId);
+      resp.setGlobalConfig(globalConfig);
+    }
   }
 }

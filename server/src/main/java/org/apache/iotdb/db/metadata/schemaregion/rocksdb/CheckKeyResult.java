@@ -17,20 +17,34 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.buffer;
+package org.apache.iotdb.db.metadata.schemaregion.rocksdb;
 
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode.RMNodeType;
 
-import java.nio.ByteBuffer;
+import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaUtils.NODE_TYPE_ARRAY;
 
-public class TsBlockSerde {
-  public ByteBuffer serialized(TsBlock tsBlock) {
-    // TODO: implement
-    return null;
+public class CheckKeyResult {
+
+  private byte[] value;
+  private RMNodeType nodeType;
+
+  public boolean existAnyKey() {
+    return nodeType != null;
   }
 
-  public TsBlock deserialize(ByteBuffer buffer) {
-    // TODO: implement
-    return null;
+  public byte[] getValue() {
+    return value;
+  }
+
+  public void setValue(byte[] value) {
+    this.value = value;
+  }
+
+  public void setExistType(char type) {
+    nodeType = NODE_TYPE_ARRAY[type];
+  }
+
+  public boolean getResult(RMNodeType type) {
+    return type == nodeType;
   }
 }
