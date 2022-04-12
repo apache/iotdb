@@ -139,6 +139,7 @@ public class DataNode implements DataNodeMBean {
           return;
         }
 
+        // wait 5s to start the next try
         Thread.sleep(IoTDBDescriptor.getInstance().getConfig().getJoinClusterTimeOutMs());
       } catch (StatementExecutionException | IoTDBConnectionException e) {
         logger.warn("Cannot join the cluster, because:", e);

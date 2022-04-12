@@ -107,7 +107,7 @@ public class ConfigNodeClient {
         connect(configLeader);
         return;
       } catch (IoTDBConnectionException e) {
-        logger.error("The current node may have been down {},try next node", configLeader);
+        logger.warn("The current node may have been down {},try next node", configLeader);
         configLeader = null;
       }
     }
@@ -131,7 +131,7 @@ public class ConfigNodeClient {
         connect(tryEndpoint);
         return;
       } catch (IoTDBConnectionException e) {
-        logger.error("The current node may have been down {},try next node", tryEndpoint);
+        logger.warn("The current node may have been down {},try next node", tryEndpoint);
       }
     }
     throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
@@ -143,8 +143,12 @@ public class ConfigNodeClient {
 
   private boolean verifyNeedRedirect(TSStatus status) throws StatementExecutionException {
     if (status.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
-      configLeader =
-          new Endpoint(status.getRedirectNode().getIp(), status.getRedirectNode().getPort());
+      if (status.getRedirectNode() != null) {
+        configLeader =
+            new Endpoint(status.getRedirectNode().getIp(), status.getRedirectNode().getPort());
+      } else {
+        configLeader = null;
+      }
       return true;
     }
     if (status.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
