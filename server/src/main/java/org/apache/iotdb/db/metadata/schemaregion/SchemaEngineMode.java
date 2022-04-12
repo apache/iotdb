@@ -21,5 +21,6 @@ package org.apache.iotdb.db.metadata.schemaregion;
 
 public enum SchemaEngineMode {
   Memory,
-  Schema_File
+  Schema_File,
+  Rocksdb_based
 }

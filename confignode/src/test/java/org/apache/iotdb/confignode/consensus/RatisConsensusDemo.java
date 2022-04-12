@@ -70,6 +70,11 @@ public class RatisConsensusDemo {
     queryStorageGroups();
   }
 
+  public void ratisConsensusLeaderRedirectDemo() throws TException {
+    createClients();
+    registerDataNodeOnLeader();
+  }
+
   private void createClients() throws TTransportException {
     // Create clients for these three ConfigNodes
     // to simulate DataNodes to send RPC requests
@@ -132,6 +137,15 @@ public class RatisConsensusDemo {
         System.out.printf("  Key(%s)=%s\n", entry.getKey(), entry.getValue().toString());
       }
       System.out.println("}");
+    }
+  }
+
+  private void registerDataNodeOnLeader() throws TException {
+    for (int i = 0; i < 3; i++) {
+      EndPoint endPoint = new EndPoint("0.0.0.0", 6667);
+      TDataNodeRegisterReq req = new TDataNodeRegisterReq(endPoint);
+      TDataNodeRegisterResp resp = clients[i].registerDataNode(req);
+      System.out.println(resp);
     }
   }
 }
