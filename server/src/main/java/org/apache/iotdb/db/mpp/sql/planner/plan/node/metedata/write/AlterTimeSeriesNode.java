@@ -20,21 +20,26 @@
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.schemaregion.SchemaRegion;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.SchemaPlanNode;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement.AlterType;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-public class AlterTimeSeriesNode extends PlanNode {
+public class AlterTimeSeriesNode extends SchemaPlanNode {
   private PartialPath path;
   private AlterType alterType;
 
@@ -236,6 +241,41 @@ public class AlterTimeSeriesNode extends PlanNode {
     }
     return new AlterTimeSeriesNode(
         new PlanNodeId(id), path, alterType, alterMap, alias, tagsMap, attributesMap);
+  }
+
+  @Override
+  public void executeOn(SchemaRegion schemaRegion) throws MetadataException, QueryProcessException {
+    try {
+      switch (getAlterType()) {
+        case RENAME:
+          String beforeName = alterMap.keySet().iterator().next();
+          String currentName = alterMap.get(beforeName);
+          schemaRegion.renameTagOrAttributeKey(beforeName, currentName, path);
+          break;
+        case SET:
+          schemaRegion.setTagsOrAttributesValue(alterMap, path);
+          break;
+        case DROP:
+          schemaRegion.dropTagsOrAttributes(alterMap.keySet(), path);
+          break;
+        case ADD_TAGS:
+          schemaRegion.addTags(alterMap, path);
+          break;
+        case ADD_ATTRIBUTES:
+          schemaRegion.addAttributes(alterMap, path);
+          break;
+        case UPSERT:
+          schemaRegion.upsertTagsAndAttributes(getAlias(), getTagsMap(), getAttributesMap(), path);
+          break;
+      }
+    } catch (MetadataException e) {
+      throw new QueryProcessException(e);
+    } catch (IOException e) {
+      throw new QueryProcessException(
+          String.format(
+              "Something went wrong while read/write the [%s]'s tag/attribute info.",
+              path.getFullPath()));
+    }
   }
 
   @Override

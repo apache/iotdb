@@ -23,6 +23,7 @@ import org.apache.iotdb.db.auth.entity.PrivilegeType;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.SchemaPlanNode;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
@@ -31,7 +32,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-public class AuthorNode extends PlanNode {
+public class AuthorNode extends SchemaPlanNode {
 
   private AuthorOperator.AuthorType authorType;
   private String userName;

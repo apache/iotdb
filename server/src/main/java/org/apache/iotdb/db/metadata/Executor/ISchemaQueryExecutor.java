@@ -20,8 +20,15 @@
 package org.apache.iotdb.db.metadata.Executor;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaRegion;
+import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
-public interface NoQueryExecutor {
-  void executor(SchemaRegion schemaRegion) throws MetadataException;
+/** SchemaQueryExecutor interface to do schema write and read operation */
+public interface ISchemaQueryExecutor {
+  // write
+  void executeOn(SchemaRegion schemaRegion) throws MetadataException, QueryProcessException;
+
+  // read
+  QueryDataSet queryOn(SchemaRegion schemaRegion);
 }

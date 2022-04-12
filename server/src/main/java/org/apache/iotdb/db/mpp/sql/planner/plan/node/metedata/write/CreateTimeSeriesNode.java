@@ -20,12 +20,12 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.Executor.NoQueryExecutor;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaRegion;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.SchemaPlanNode;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
@@ -40,7 +40,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-public class CreateTimeSeriesNode extends PlanNode implements NoQueryExecutor {
+public class CreateTimeSeriesNode extends SchemaPlanNode {
   private PartialPath path;
   private TSDataType dataType;
   private TSEncoding encoding;
@@ -292,7 +292,7 @@ public class CreateTimeSeriesNode extends PlanNode implements NoQueryExecutor {
   protected void serializeAttributes(ByteBuffer byteBuffer) {}
 
   @Override
-  public void executor(SchemaRegion schemaRegion) throws MetadataException {
+  public void executeOn(SchemaRegion schemaRegion) throws MetadataException {
     schemaRegion.createTimeseries((CreateTimeSeriesPlan) transferToPhysicalPlan());
   }
 

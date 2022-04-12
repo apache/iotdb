@@ -21,12 +21,12 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.Executor.NoQueryExecutor;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaRegion;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.SchemaPlanNode;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
@@ -41,7 +41,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-public class CreateAlignedTimeSeriesNode extends PlanNode implements NoQueryExecutor {
+public class CreateAlignedTimeSeriesNode extends SchemaPlanNode {
   private PartialPath devicePath;
   private List<String> measurements;
   private List<TSDataType> dataTypes;
@@ -371,7 +371,7 @@ public class CreateAlignedTimeSeriesNode extends PlanNode implements NoQueryExec
   }
 
   @Override
-  public void executor(SchemaRegion schemaRegion) throws MetadataException {
+  public void executeOn(SchemaRegion schemaRegion) throws MetadataException {
     schemaRegion.createAlignedTimeSeries((CreateAlignedTimeSeriesPlan) transferToPhysicalPlan());
   }
 }

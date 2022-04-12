@@ -122,6 +122,7 @@ public class InternalServiceImplTest {
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
     fragmentInstance.serializeRequest(byteBuffer);
     byteBuffer.flip();
+
     // put serialized fragmentInstance to TSendFragmentInstanceReq
     TSendFragmentInstanceReq request = new TSendFragmentInstanceReq();
     TFragmentInstance tFragmentInstance = new TFragmentInstance();

@@ -23,8 +23,8 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.Executor.NoQueryExecutor;
-import org.apache.iotdb.db.metadata.Executor.NoQueryExecutorProxy;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.Executor.ISchemaQueryExecutor;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaRegion;
 import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
@@ -55,25 +55,35 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
     logger.info("Execute write plan in SchemaRegionStateMachine");
 
     PlanNode planNode = fragmentInstance.getFragment().getRoot();
-    if (planNode instanceof NoQueryExecutor) {
-      NoQueryExecutorProxy executorServiceProxy =
-          new NoQueryExecutorProxy((NoQueryExecutor) planNode);
+    if (planNode instanceof ISchemaQueryExecutor) {
       try {
-        executorServiceProxy.executor(schemaRegion);
+        ((ISchemaQueryExecutor) planNode).executeOn(schemaRegion);
       } catch (MetadataException e) {
         logger.error("{}: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
         return RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, e.getMessage());
+      } catch (QueryProcessException e) {
+        logger.error("meet error while processing non-query. ", e);
+        return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+      } catch (Exception e) {
+        logger.error("{}: server Internal Error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
+        return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
       }
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully");
     } else {
-      logger.error("{}: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME);
-      return RpcUtils.getStatus(TSStatusCode.METADATA_ERROR);
+      String msg = "PlanNode does not belong schema query.";
+      logger.error(msg);
+      return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, msg);
     }
   }
 
   @Override
   protected DataSet read(FragmentInstance fragmentInstance) {
+    // TODO Set an example, maybe read operation is different from write
     logger.info("Execute read plan in SchemaRegionStateMachine");
+    PlanNode planNode = fragmentInstance.getFragment().getRoot();
+    if (planNode instanceof ISchemaQueryExecutor) {
+      ((ISchemaQueryExecutor) planNode).queryOn(schemaRegion);
+    }
     return null;
   }
 }
