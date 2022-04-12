@@ -19,14 +19,14 @@ import java.util.ArrayList;
 public class EncodeTest {
 
     public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
-        String inputPath = "C:\\Users\\xiaoj\\Desktop\\long", Output = "C:\\Users\\xiaoj\\Desktop\\UncompressedSpeedResult_long.csv";
+        String inputPath = "C:\\Users\\xiaoj\\Desktop\\int", Output = "C:\\Users\\xiaoj\\Desktop\\UncompressedSpeedResult_testint.csv";
         if (args.length >= 2) inputPath = args[1];
         if (args.length >= 3) Output = args[2];
 
         File file = new File(inputPath);
         File[] tempList = file.listFiles();
         TSEncoding[] schemeList = {TSEncoding.PLAIN, TSEncoding.TS_2DIFF, TSEncoding.RLE,
-                TSEncoding.SPRINTZ, TSEncoding.RLBE, TSEncoding.GORILLA,TSEncoding.RAKE};
+                TSEncoding.SPRINTZ, TSEncoding.GORILLA,TSEncoding.RAKE};
 //        TSEncoding[] schemeList = { TSEncoding.RLBE,TSEncoding.PLAIN};
 //        CompressionType[] compressList = {CompressionType.LZ4, CompressionType.GZIP, CompressionType.SNAPPY};
         CompressionType[] compressList = {CompressionType.UNCOMPRESSED};//
@@ -35,7 +35,7 @@ public class EncodeTest {
         String[] head = {"Encoding", "Compress", "Encoding Time", "Compress Time", "Uncompress Time", "Decoding Time",
                 "Compression Ratio"};
         writer.writeRecord(head);
-        int repeatTime = 50;
+        int repeatTime = 10;
 
         assert tempList != null;
         int fileRepeat = 0;
@@ -50,7 +50,7 @@ public class EncodeTest {
 
             loader.readHeaders();
             while (loader.readRecord()) {
-                data.add(loader.getValues()[1]);
+                data.add(loader.getValues()[2]);
             }
             loader.close();
             inputStream.close();
