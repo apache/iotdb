@@ -22,13 +22,11 @@ package org.apache.iotdb.db.metadata.schemaregion;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.LocalSchemaPartitionTable;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaRegion;
 import org.apache.iotdb.db.metadata.storagegroup.IStorageGroupSchemaManager;
 import org.apache.iotdb.db.metadata.storagegroup.StorageGroupSchemaManager;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,8 +43,6 @@ public class SchemaEngine {
   private Map<SchemaRegionId, ISchemaRegion> schemaRegionMap;
   private SchemaEngineMode schemaRegionStoredMode;
   private static final Logger logger = LoggerFactory.getLogger(SchemaEngine.class);
-
-  private LocalSchemaPartitionTable partitionTable = LocalSchemaPartitionTable.getInstance();
 
   private static class SchemaEngineManagerHolder {
     private static final SchemaEngine INSTANCE = new SchemaEngine();
