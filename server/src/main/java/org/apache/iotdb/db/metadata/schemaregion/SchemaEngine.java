@@ -117,12 +117,9 @@ public class SchemaEngine {
                 schemaRegionStoredMode));
     }
     schemaRegionMap.put(schemaRegionId, schemaRegion);
-    partitionTable.putSchemaRegionId(storageGroup, schemaRegionId);
   }
 
-  public void deleteSchemaRegion(PartialPath storageGroup, SchemaRegionId schemaRegionId)
-      throws MetadataException {
-    partitionTable.removeSchemaRegionId(storageGroup, schemaRegionId);
+  public void deleteSchemaRegion(SchemaRegionId schemaRegionId) throws MetadataException {
     schemaRegionMap.get(schemaRegionId).deleteSchemaRegion();
     schemaRegionMap.remove(schemaRegionId);
   }

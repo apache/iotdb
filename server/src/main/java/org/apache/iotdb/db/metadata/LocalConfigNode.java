@@ -251,7 +251,7 @@ public class LocalConfigNode {
   private void deleteSchemaRegionsInStorageGroup(
       PartialPath storageGroup, List<SchemaRegionId> schemaRegionIdSet) throws MetadataException {
     for (SchemaRegionId schemaRegionId : schemaRegionIdSet) {
-      schemaEngine.deleteSchemaRegion(storageGroup, schemaRegionId);
+      schemaEngine.deleteSchemaRegion(schemaRegionId);
     }
 
     File sgDir = new File(config.getSchemaDir() + File.separator + storageGroup.getFullPath());
@@ -528,6 +528,11 @@ public class LocalConfigNode {
    */
   public SchemaRegionId getBelongedSchemaRegionId(PartialPath path) throws MetadataException {
     PartialPath storageGroup = storageGroupSchemaManager.getBelongedStorageGroup(path);
+    SchemaRegionId schemaRegionId = partitionTable.getSchemaRegionId(storageGroup, path);
+    ISchemaRegion schemaRegion = schemaEngine.getSchemaRegion(schemaRegionId);
+    if (schemaRegion == null) {
+      schemaEngine.createSchemaRegion(storageGroup, schemaRegionId);
+    }
     return partitionTable.getSchemaRegionId(storageGroup, path);
   }
 
