@@ -116,7 +116,7 @@ public class SerializeDeserializeUT {
     String storageGroup = "root.sg0";
     SeriesPartitionSlot seriesPartitionSlot = new SeriesPartitionSlot(10);
     RegionReplicaSet regionReplicaSet = new RegionReplicaSet();
-    regionReplicaSet.setId(new SchemaRegionId(0));
+    regionReplicaSet.setConsensusGroupId(new SchemaRegionId(0));
     regionReplicaSet.setDataNodeList(
         Collections.singletonList(new DataNodeLocation(0, new Endpoint("0.0.0.0", 6667))));
 

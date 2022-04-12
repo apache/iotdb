@@ -101,13 +101,11 @@ public class CreateDataPartitionPlan extends PhysicalPlan {
               .put(timePartitionSlot, new ArrayList<>());
           int regionReplicaSetNum = buffer.getInt();
           for (int l = 0; l < regionReplicaSetNum; l++) {
-            RegionReplicaSet regionReplicaSet = new RegionReplicaSet();
-            regionReplicaSet.deserializeImpl(buffer);
             assignedDataPartition
                 .get(storageGroupName)
                 .get(seriesPartitionSlot)
                 .get(timePartitionSlot)
-                .add(regionReplicaSet);
+                .add(RegionReplicaSet.deserializeImpl(buffer));
           }
         }
       }

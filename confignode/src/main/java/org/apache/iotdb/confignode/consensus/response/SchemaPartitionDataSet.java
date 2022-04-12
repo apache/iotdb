@@ -79,7 +79,7 @@ public class SchemaPartitionDataSet implements DataSet {
                       TRegionReplicaSet tRegionReplicaSet = new TRegionReplicaSet();
                       // Set TRegionReplicaSet's RegionId
                       ByteBuffer buffer = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES);
-                      regionReplicaSet.getId().serializeImpl(buffer);
+                      regionReplicaSet.getConsensusGroupId().serializeImpl(buffer);
                       buffer.flip();
                       tRegionReplicaSet.setRegionId(buffer);
                       // Set TRegionReplicaSet's EndPoints

@@ -75,9 +75,7 @@ public class CreateRegionsPlan extends PhysicalPlan {
 
     int length = buffer.getInt();
     for (int i = 0; i < length; i++) {
-      RegionReplicaSet regionReplicaSet = new RegionReplicaSet();
-      regionReplicaSet.deserializeImpl(buffer);
-      regionReplicaSets.add(regionReplicaSet);
+      regionReplicaSets.add(RegionReplicaSet.deserializeImpl(buffer));
     }
   }
 

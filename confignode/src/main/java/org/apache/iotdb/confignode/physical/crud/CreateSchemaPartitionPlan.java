@@ -77,9 +77,9 @@ public class CreateSchemaPartitionPlan extends PhysicalPlan {
       for (int j = 0; j < seriesPartitionSlotNum; j++) {
         SeriesPartitionSlot seriesPartitionSlot = new SeriesPartitionSlot();
         seriesPartitionSlot.deserializeImpl(buffer);
-        RegionReplicaSet regionReplicaSet = new RegionReplicaSet();
-        regionReplicaSet.deserializeImpl(buffer);
-        assignedSchemaPartition.get(storageGroup).put(seriesPartitionSlot, regionReplicaSet);
+        assignedSchemaPartition
+            .get(storageGroup)
+            .put(seriesPartitionSlot, RegionReplicaSet.deserializeImpl(buffer));
       }
     }
   }
