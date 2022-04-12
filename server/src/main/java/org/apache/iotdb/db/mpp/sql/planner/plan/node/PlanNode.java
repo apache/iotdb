@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.commons.lang.Validate;
@@ -112,5 +114,9 @@ public abstract class PlanNode {
   @Override
   public int hashCode() {
     return Objects.hash(id);
+  }
+
+  public List<String> getBoxString() {
+    return ImmutableList.of(String.format("PlanNode-%s", getPlanNodeId().getId()));
   }
 }

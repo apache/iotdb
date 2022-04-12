@@ -48,7 +48,7 @@ public class QueryId {
   }
 
   public PlanNodeId genPlanNodeId() {
-    return new PlanNodeId(String.format("%s_%d", id, nextPlanNodeIndex++));
+    return new PlanNodeId(String.format("%d", nextPlanNodeIndex++));
   }
 
   public PlanFragmentId genPlanFragmentId() {

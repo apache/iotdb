@@ -36,6 +36,7 @@ import org.apache.iotdb.db.mpp.sql.planner.DistributionPlanner;
 import org.apache.iotdb.db.mpp.sql.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.mpp.sql.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.mpp.sql.planner.plan.SubPlan;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanGraphPrinter;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
@@ -160,6 +161,7 @@ public class DistributionPlannerTest {
         new DistributionPlanner(analysis, new LogicalQueryPlan(context, root));
     PlanNode rootAfterRewrite = planner.rewriteSource();
     PlanNode rootWithExchange = planner.addExchangeNode(rootAfterRewrite);
+    PlanGraphPrinter.print(rootWithExchange);
     SubPlan subPlan = planner.splitFragment(rootWithExchange);
     assertEquals(subPlan.getChildren().size(), 2);
   }
