@@ -25,6 +25,7 @@ import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.sql.rewriter.WildcardsRemover;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.query.udf.core.executor.UDTFContext;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
 import org.apache.iotdb.db.query.udf.core.layer.ConstantIntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.layer.IntermediateLayer;
@@ -103,6 +104,11 @@ public class ConstantOperand extends Expression {
   }
 
   @Override
+  public void bindInputLayerColumnIndexWithExpression(UDTFPlan udtfPlan) {
+    // Do nothing
+  }
+
+  @Override
   public void updateStatisticsForMemoryAssigner(LayerMemoryAssigner memoryAssigner) {
     // Do nothing
   }
@@ -110,7 +116,7 @@ public class ConstantOperand extends Expression {
   @Override
   public IntermediateLayer constructIntermediateLayer(
       long queryId,
-      UDTFPlan udtfPlan,
+      UDTFContext udtfContext,
       RawQueryInputLayer rawTimeSeriesInputLayer,
       Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
       Map<Expression, TSDataType> expressionDataTypeMap,

@@ -25,9 +25,7 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 import org.apache.iotdb.db.query.expression.ResultColumn;
-import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
-import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
-import org.apache.iotdb.db.query.udf.service.UDFClassLoaderManager;
+import org.apache.iotdb.db.query.udf.core.executor.UDTFContext;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -43,15 +41,14 @@ import java.util.Set;
 
 public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
 
-  protected final ZoneId zoneId;
+  protected final UDTFContext udtfContext;
 
-  protected Map<String, UDTFExecutor> expressionName2Executor = new HashMap<>();
-  protected Map<Integer, Integer> datasetOutputIndexToResultColumnIndex = new HashMap<>();
-  protected Map<String, Integer> pathNameToReaderIndex = new HashMap<>();
+  protected final Map<Integer, Integer> datasetOutputIndexToResultColumnIndex = new HashMap<>();
+  protected final Map<String, Integer> pathNameToReaderIndex = new HashMap<>();
 
   public UDTFPlan(ZoneId zoneId) {
     super();
-    this.zoneId = zoneId;
+    udtfContext = new UDTFContext(zoneId);
     setOperatorType(Operator.OperatorType.UDTF);
   }
 
@@ -128,35 +125,23 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
 
   @Override
   public void constructUdfExecutors(List<ResultColumn> resultColumns) {
-    for (ResultColumn resultColumn : resultColumns) {
-      resultColumn.getExpression().constructUdfExecutors(expressionName2Executor, zoneId);
-    }
+    udtfContext.constructUdfExecutors(resultColumns);
   }
 
   @Override
   public void finalizeUDFExecutors(long queryId) {
-    try {
-      for (UDTFExecutor executor : expressionName2Executor.values()) {
-        executor.beforeDestroy();
-      }
-    } finally {
-      UDFClassLoaderManager.getInstance().finalizeUDFQuery(queryId);
-    }
+    udtfContext.finalizeUDFExecutors(queryId);
   }
 
   public ResultColumn getResultColumnByDatasetOutputIndex(int datasetOutputIndex) {
     return resultColumns.get(datasetOutputIndexToResultColumnIndex.get(datasetOutputIndex));
   }
 
-  public UDTFExecutor getExecutorByFunctionExpression(FunctionExpression functionExpression) {
-    return expressionName2Executor.get(functionExpression.getExpressionString());
-  }
-
-  public int getReaderIndex(String pathName) {
-    return pathNameToReaderIndex.get(pathName);
-  }
-
-  public int getReaderIndexByExpressionName(String expressionName) {
+  public Integer getReaderIndexByExpressionName(String expressionName) {
     return pathNameToReaderIndex.get(expressionName);
+  }
+
+  public UDTFContext getUdtfContext() {
+    return udtfContext;
   }
 }
