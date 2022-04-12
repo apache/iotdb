@@ -24,8 +24,7 @@ import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion.TimePartitionFilter;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
-import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor.TimePartitionFilter;
+import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.StorageGroupNotReadyException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
@@ -458,7 +457,7 @@ public class StorageGroupManager {
   /** collect all tsfiles whose memtable == null for sync */
   public List<File> collectHistoryTsFileForSync(long dataStartTime) {
     List<File> historyTsFiles = new ArrayList<>();
-    for (VirtualStorageGroupProcessor processor : virtualStorageGroupProcessor) {
+    for (DataRegion processor : this.dataRegion) {
       historyTsFiles.addAll(processor.collectHistoryTsFileForSync(dataStartTime));
     }
     return historyTsFiles;

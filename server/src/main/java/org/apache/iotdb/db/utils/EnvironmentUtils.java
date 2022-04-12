@@ -353,8 +353,6 @@ public class EnvironmentUtils {
     // create sg dir
     String sgDir = FilePathUtils.regularizePath(config.getSystemDir()) + "storage_groups";
     createDir(sgDir);
-    // create wal
-    createDir(config.getWalDir());
     // create sync
     createDir(config.getSyncDir());
     // create query
