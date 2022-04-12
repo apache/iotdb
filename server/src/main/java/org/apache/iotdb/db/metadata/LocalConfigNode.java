@@ -728,9 +728,7 @@ public class LocalConfigNode {
   public synchronized void unsetSchemaTemplate(UnsetTemplatePlan plan) throws MetadataException {
     PartialPath path = new PartialPath(plan.getPrefixPath());
     try {
-      schemaEngine
-          .getSchemaRegion(getBelongedSchemaRegionIdWithAutoCreate(path))
-          .unsetSchemaTemplate(plan);
+      schemaEngine.getSchemaRegion(getBelongedSchemaRegionId(path)).unsetSchemaTemplate(plan);
     } catch (StorageGroupNotSetException e) {
       throw new PathNotExistException(plan.getPrefixPath());
     }
@@ -739,7 +737,9 @@ public class LocalConfigNode {
   public void setUsingSchemaTemplate(ActivateTemplatePlan plan) throws MetadataException {
     PartialPath path = plan.getPrefixPath();
     try {
-      schemaEngine.getSchemaRegion(getBelongedSchemaRegionId(path)).setUsingSchemaTemplate(plan);
+      schemaEngine
+          .getSchemaRegion(getBelongedSchemaRegionIdWithAutoCreate(path))
+          .setUsingSchemaTemplate(plan);
     } catch (StorageGroupNotSetException e) {
       throw new MetadataException(
           String.format(
