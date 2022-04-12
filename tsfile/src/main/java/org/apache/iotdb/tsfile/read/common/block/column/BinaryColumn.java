@@ -75,6 +75,11 @@ public class BinaryColumn implements Column {
   }
 
   @Override
+  public Object getObject(int position) {
+    return getBinary(position);
+  }
+
+  @Override
   public TsPrimitiveType getTsPrimitiveType(int position) {
     checkReadablePosition(position);
     return new TsPrimitiveType.TsBinary(getBinary(position));

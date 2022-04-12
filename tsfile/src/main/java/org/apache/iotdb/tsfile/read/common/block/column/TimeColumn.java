@@ -63,6 +63,11 @@ public class TimeColumn implements Column {
   }
 
   @Override
+  public Object getObject(int position) {
+    return getLong(position);
+  }
+
+  @Override
   public boolean isNull(int position) {
     return false;
   }

@@ -73,6 +73,11 @@ public class FloatColumn implements Column {
   }
 
   @Override
+  public Object getObject(int position) {
+    return getFloat(position);
+  }
+
+  @Override
   public TsPrimitiveType getTsPrimitiveType(int position) {
     checkReadablePosition(position);
     return new TsPrimitiveType.TsFloat(getFloat(position));
