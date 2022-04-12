@@ -20,6 +20,7 @@ package org.apache.iotdb.confignode.physical.crud;
 
 import org.apache.iotdb.commons.partition.SeriesPartitionSlot;
 import org.apache.iotdb.commons.partition.TimePartitionSlot;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
 import org.apache.iotdb.confignode.physical.PhysicalPlanType;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
@@ -32,7 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-/** Query or apply DataPartition by the specific storageGroup and the deviceGroupStartTimeMap. */
+/** Get or create DataPartition by the specific partitionSlotsMap. */
 public class GetOrCreateDataPartitionPlan extends PhysicalPlan {
 
   private Map<String, Map<SeriesPartitionSlot, List<TimePartitionSlot>>> partitionSlotsMap;
@@ -45,6 +46,7 @@ public class GetOrCreateDataPartitionPlan extends PhysicalPlan {
     return partitionSlotsMap;
   }
 
+  @TestOnly
   public void setPartitionSlotsMap(
       Map<String, Map<SeriesPartitionSlot, List<TimePartitionSlot>>> partitionSlotsMap) {
     this.partitionSlotsMap = partitionSlotsMap;

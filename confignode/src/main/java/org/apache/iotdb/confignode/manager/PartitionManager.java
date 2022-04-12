@@ -21,6 +21,9 @@ package org.apache.iotdb.confignode.manager;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.commons.partition.SeriesPartitionSlot;
 import org.apache.iotdb.commons.partition.TimePartitionSlot;
+import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
+import org.apache.iotdb.confignode.conf.ConfigNodeConf;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionDataSet;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionDataSet;
 import org.apache.iotdb.confignode.persistence.PartitionInfoPersistence;
@@ -36,6 +39,8 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -52,8 +57,11 @@ public class PartitionManager {
 
   private final Manager configNodeManager;
 
+  private SeriesPartitionExecutor executor;
+
   public PartitionManager(Manager configNodeManager) {
     this.configNodeManager = configNodeManager;
+    setSeriesPartitionExecutor();
   }
 
   private ConsensusManager getConsensusManager() {
@@ -61,7 +69,7 @@ public class PartitionManager {
   }
 
   /**
-   * TODO: Reconstruct this interface after PatterTree is moved to node-commons Get SchemaPartition
+   * Get SchemaPartition
    *
    * @param physicalPlan SchemaPartitionPlan with PatternTree
    * @return SchemaPartitionDataSet that contains only existing SchemaPartition
@@ -74,8 +82,7 @@ public class PartitionManager {
   }
 
   /**
-   * TODO: Reconstruct this interface after PatterTree is moved to node-commons Get SchemaPartition
-   * and create a new one if it does not exist
+   * Get SchemaPartition and create a new one if it does not exist
    *
    * @param physicalPlan SchemaPartitionPlan with PatternTree
    * @return SchemaPartitionDataSet
@@ -208,5 +215,31 @@ public class PartitionManager {
       result.put(storageGroup, allocateResult);
     }
     return result;
+  }
+
+  /** Construct SeriesPartitionExecutor by iotdb-confignode.propertis */
+  private void setSeriesPartitionExecutor() {
+    ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();
+    try {
+      Class<?> executor = Class.forName(conf.getSeriesPartitionExecutorClass());
+      Constructor<?> executorConstructor = executor.getConstructor(int.class);
+      this.executor =
+        (SeriesPartitionExecutor)
+          executorConstructor.newInstance(conf.getSeriesPartitionSlotNum());
+    } catch (ClassNotFoundException
+      | NoSuchMethodException
+      | InstantiationException
+      | IllegalAccessException
+      | InvocationTargetException e) {
+      LOGGER.error(
+        "Couldn't Constructor SeriesPartitionExecutor class: {}",
+        conf.getSeriesPartitionExecutorClass(),
+        e);
+      executor = null;
+    }
+  }
+
+  public SeriesPartitionSlot getSeriesPartitionSlot(String devicePath) {
+    return executor.getSeriesPartitionSlot(devicePath);
   }
 }

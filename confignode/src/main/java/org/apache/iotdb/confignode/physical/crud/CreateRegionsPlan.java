@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+/** Create regions for specific StorageGroup */
 public class CreateRegionsPlan extends PhysicalPlan {
 
   private String storageGroup;

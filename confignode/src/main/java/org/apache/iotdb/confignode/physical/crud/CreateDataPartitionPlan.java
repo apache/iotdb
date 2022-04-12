@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+/** Create DataPartition by assignedDataPartition */
 public class CreateDataPartitionPlan extends PhysicalPlan {
 
   private Map<String, Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>>

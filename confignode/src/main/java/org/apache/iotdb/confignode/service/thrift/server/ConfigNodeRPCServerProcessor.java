@@ -25,11 +25,13 @@ import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationDataSet;
 import org.apache.iotdb.confignode.consensus.response.DataNodesInfoDataSet;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionDataSet;
+import org.apache.iotdb.confignode.consensus.response.SchemaPartitionDataSet;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaDataSet;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.partition.StorageGroupSchema;
 import org.apache.iotdb.confignode.physical.PhysicalPlanType;
 import org.apache.iotdb.confignode.physical.crud.GetOrCreateDataPartitionPlan;
+import org.apache.iotdb.confignode.physical.crud.GetOrCreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.physical.sys.AuthorPlan;
 import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
 import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
@@ -49,6 +51,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupMessage;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupMessageResp;
 import org.apache.iotdb.db.auth.AuthException;
+import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
@@ -56,6 +59,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -153,37 +157,26 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
 
   @Override
   public TSchemaPartitionResp getSchemaPartition(TSchemaPartitionReq req) throws TException {
-    // TODO: Get SchemaPartition by specific PatternTree
 
-    //    SchemaPartitionPlan querySchemaPartitionPlan =
-    //        new SchemaPartitionPlan(
-    //            PhysicalPlanType.QuerySchemaPartition, req.getStorageGroup(),
-    // req.getDeviceGroupIDs());
-    //    DataSet dataSet = configManager.getSchemaPartition(querySchemaPartitionPlan);
-    //    return ((SchemaPartitionDataSet) dataSet).convertRpcSchemaPartitionInfo();
-    return null;
+    PathPatternTree patternTree = PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
+    SchemaPartitionDataSet dataSet = (SchemaPartitionDataSet) configManager.getSchemaPartition(patternTree);
+
+    TSchemaPartitionResp resp = new TSchemaPartitionResp();
+    dataSet.convertToRpcSchemaPartitionResp(resp);
+    return resp;
   }
 
   @Override
   public TSchemaPartitionResp getOrCreateSchemaPartition(TSchemaPartitionReq req)
       throws TException {
-    // TODO: Get or create SchemaPartition by specific PatternTree
 
-    //    SchemaPartitionPlan applySchemaPartitionPlan =
-    //        new SchemaPartitionPlan(
-    //            PhysicalPlanType.ApplySchemaPartition,
-    //            req.getStorageGroup(),
-    //            req.getSeriesPartitionSlots());
-    //    SchemaPartitionDataSet dataSet =
-    //        (SchemaPartitionDataSet) configManager.applySchemaPartition(applySchemaPartitionPlan);
-    //
-    //    TSchemaPartitionResp resp = new TSchemaPartitionResp();
-    //    resp.setStatus(dataSet.getStatus());
-    //    if (dataSet.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-    //      dataSet.convertToRpcSchemaPartitionResp(resp);
-    //    }
-    //    return resp;
-    return null;
+    PathPatternTree patternTree = PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
+    SchemaPartitionDataSet dataSet =
+      (SchemaPartitionDataSet) configManager.getOrCreateSchemaPartition(patternTree);
+
+    TSchemaPartitionResp resp = new TSchemaPartitionResp();
+    dataSet.convertToRpcSchemaPartitionResp(resp);
+    return resp;
   }
 
   @Override

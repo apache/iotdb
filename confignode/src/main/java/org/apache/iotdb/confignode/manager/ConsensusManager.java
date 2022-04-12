@@ -52,40 +52,13 @@ public class ConsensusManager {
   private ConsensusGroupId consensusGroupId;
   private IConsensus consensusImpl;
 
-  private SeriesPartitionExecutor executor;
 
   public ConsensusManager() throws IOException {
-    setSeriesPartitionExecutor();
     setConsensusLayer();
   }
 
   public void close() throws IOException {
     consensusImpl.stop();
-  }
-
-  /** Build DeviceGroupHashExecutor */
-  private void setSeriesPartitionExecutor() {
-    try {
-      Class<?> executor = Class.forName(conf.getSeriesPartitionExecutorClass());
-      Constructor<?> executorConstructor = executor.getConstructor(int.class);
-      this.executor =
-          (SeriesPartitionExecutor)
-              executorConstructor.newInstance(conf.getSeriesPartitionSlotNum());
-    } catch (ClassNotFoundException
-        | NoSuchMethodException
-        | InstantiationException
-        | IllegalAccessException
-        | InvocationTargetException e) {
-      LOGGER.error(
-          "Couldn't Constructor SeriesPartitionExecutor class: {}",
-          conf.getSeriesPartitionExecutorClass(),
-          e);
-      executor = null;
-    }
-  }
-
-  public SeriesPartitionSlot getSeriesPartitionSlot(String device) {
-    return executor.getSeriesPartitionSlot(device);
   }
 
   /** Build ConfigNodeGroup ConsensusLayer */
