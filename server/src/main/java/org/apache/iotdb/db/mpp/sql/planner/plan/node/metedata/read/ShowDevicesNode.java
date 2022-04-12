@@ -20,6 +20,7 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read;
 
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
 import java.nio.ByteBuffer;
@@ -27,7 +28,7 @@ import java.util.List;
 
 public class ShowDevicesNode extends ShowNode {
 
-  protected ShowDevicesNode(PlanNodeId id) {
+  public ShowDevicesNode(PlanNodeId id) {
     super(id);
   }
 
@@ -49,10 +50,18 @@ public class ShowDevicesNode extends ShowNode {
     return NO_CHILD_ALLOWED;
   }
 
+  @Override
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    PlanNodeType.SHOW_DEVICES.serialize(byteBuffer);
+  }
+
   public static ShowDevicesNode deserialize(ByteBuffer byteBuffer) {
-    return null;
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+    return new ShowDevicesNode(planNodeId);
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {}
+  public boolean equals(Object o) {
+    return super.equals(o);
+  }
 }

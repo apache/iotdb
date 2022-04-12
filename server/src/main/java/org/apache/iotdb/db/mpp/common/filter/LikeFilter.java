@@ -28,8 +28,10 @@ import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.utils.StringContainer;
 
+import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.Objects;
 
@@ -130,5 +132,21 @@ public class LikeFilter extends FunctionFilter {
 
   public String getValue() {
     return value;
+  }
+
+  public void serialize(ByteBuffer byteBuffer) {
+    FilterTypes.Like.serialize(byteBuffer);
+    super.serializeWithoutType(byteBuffer);
+    ReadWriteIOUtils.write(value, byteBuffer);
+  }
+
+  public static LikeFilter deserialize(ByteBuffer byteBuffer) {
+    QueryFilter queryFilter = QueryFilter.deserialize(byteBuffer);
+    LikeFilter likeFilter =
+        new LikeFilter(
+            queryFilter.filterType,
+            queryFilter.singlePath,
+            ReadWriteIOUtils.readString(byteBuffer));
+    return likeFilter;
   }
 }

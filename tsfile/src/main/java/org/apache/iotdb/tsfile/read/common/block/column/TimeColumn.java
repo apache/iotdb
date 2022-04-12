@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.tsfile.read.common.block.column;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
 import org.openjdk.jol.info.ClassLayout;
 
 import static io.airlift.slice.SizeOf.sizeOf;
@@ -57,9 +59,24 @@ public class TimeColumn implements Column {
   }
 
   @Override
+  public TSDataType getDataType() {
+    return TSDataType.INT64;
+  }
+
+  @Override
+  public ColumnEncoding getEncoding() {
+    return ColumnEncoding.INT64_ARRAY;
+  }
+
+  @Override
   public long getLong(int position) {
     checkReadablePosition(position);
     return values[position + arrayOffset];
+  }
+
+  @Override
+  public boolean mayHaveNull() {
+    return false;
   }
 
   @Override
