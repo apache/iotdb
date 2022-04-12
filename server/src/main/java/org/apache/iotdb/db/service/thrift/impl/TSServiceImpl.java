@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.service.thrift.impl;
 
+import org.apache.iotdb.common.rpc.thrift.EndPoint;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.auth.AuthException;
@@ -77,7 +79,6 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.service.rpc.thrift.TSAppendSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSCancelOperationReq;
@@ -117,7 +118,6 @@ import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateResp;
 import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.service.rpc.thrift.TSTracingInfo;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -1799,7 +1799,7 @@ public class TSServiceImpl implements TSIService.Iface {
           new InsertTabletPlan(new PartialPath(req.getPrefixPath()), req.measurements);
       insertTabletPlan.setTimes(QueryDataSetUtils.readTimesFromBuffer(req.timestamps, req.size));
       insertTabletPlan.setColumns(
-          QueryDataSetUtils.readValuesFromBuffer(
+          QueryDataSetUtils.readTabletValuesFromBuffer(
               req.values, req.types, req.types.size(), req.size));
       insertTabletPlan.setBitMaps(
           QueryDataSetUtils.readBitMapsFromBuffer(req.values, req.types.size(), req.size));
@@ -1913,7 +1913,7 @@ public class TSServiceImpl implements TSIService.Iface {
     insertTabletPlan.setTimes(
         QueryDataSetUtils.readTimesFromBuffer(req.timestampsList.get(i), req.sizeList.get(i)));
     insertTabletPlan.setColumns(
-        QueryDataSetUtils.readValuesFromBuffer(
+        QueryDataSetUtils.readTabletValuesFromBuffer(
             req.valuesList.get(i),
             req.typesList.get(i),
             req.measurementsList.get(i).size(),

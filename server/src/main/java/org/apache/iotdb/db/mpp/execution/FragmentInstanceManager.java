@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.mpp.execution;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaRegion;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.schedule.FragmentInstanceScheduler;
@@ -78,7 +78,7 @@ public class FragmentInstanceManager {
   }
 
   public FragmentInstanceInfo execDataQueryFragmentInstance(
-      FragmentInstance instance, VirtualStorageGroupProcessor dataRegion) {
+      FragmentInstance instance, DataRegion dataRegion) {
     FragmentInstanceId instanceId = instance.getId();
 
     FragmentInstanceExecution execution =

@@ -136,11 +136,6 @@ public class AlterTimeSeriesNode extends PlanNode {
   }
 
   @Override
-  public List<String> getOutputColumnNames() {
-    return null;
-  }
-
-  @Override
   public void serialize(ByteBuffer byteBuffer) {
     byteBuffer.putShort((short) PlanNodeType.ALTER_TIME_SERIES.ordinal());
     ReadWriteIOUtils.write(this.getPlanNodeId().getId(), byteBuffer);
@@ -191,7 +186,7 @@ public class AlterTimeSeriesNode extends PlanNode {
     byteBuffer.putInt(0);
   }
 
-  public static AlterTimeSeriesNode deserialize(ByteBuffer byteBuffer) throws IllegalPathException {
+  public static AlterTimeSeriesNode deserialize(ByteBuffer byteBuffer) {
     String id;
     PartialPath path = null;
     AlterType alterType = null;
@@ -204,7 +199,11 @@ public class AlterTimeSeriesNode extends PlanNode {
     int length = byteBuffer.getInt();
     byte[] bytes = new byte[length];
     byteBuffer.get(bytes);
-    path = new PartialPath(new String(bytes));
+    try {
+      path = new PartialPath(new String(bytes));
+    } catch (IllegalPathException e) {
+      throw new IllegalArgumentException("Can not deserialize AlterTimeSeriesNode", e);
+    }
     alterType = AlterType.values()[byteBuffer.get()];
 
     // alias
@@ -240,6 +239,11 @@ public class AlterTimeSeriesNode extends PlanNode {
   }
 
   @Override
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    throw new NotImplementedException(
+        "serializeAttributes of AlterTimeSeriesNode is not implemented");
+  }
+
   public boolean equals(Object o) {
     if (this == o) {
       return true;

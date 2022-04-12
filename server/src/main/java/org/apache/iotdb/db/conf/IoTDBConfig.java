@@ -28,6 +28,7 @@ import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.service.thrift.impl.InfluxDBServiceImpl;
 import org.apache.iotdb.db.service.thrift.impl.TSServiceImpl;
+import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -73,6 +74,8 @@ public class IoTDBConfig {
       "([" + PATH_SEPARATOR + "])?" + NODE_NAME_MATCHER + "(" + PARTIAL_NODE_MATCHER + ")*";
 
   public static final Pattern NODE_PATTERN = Pattern.compile(NODE_MATCHER);
+
+  private volatile boolean readOnly = false;
 
   /** whether to enable the mqtt service. */
   private boolean enableMQTTService = false;
@@ -147,49 +150,51 @@ public class IoTDBConfig {
 
   /** When inserting rejected exceeds this, throw an exception. Unit: millisecond */
   private int maxWaitingTimeWhenInsertBlockedInMs = 10000;
-  /** Is the write ahead log enable. */
-  private boolean enableWal = true;
-
-  private volatile boolean readOnly = false;
-
-  private boolean enableDiscardOutOfOrderData = false;
-
-  /**
-   * When a certain amount of write ahead logs is reached, they will be flushed to the disk. It is
-   * possible to lose at most flush_wal_threshold operations.
-   */
-  private int flushWalThreshold = 10000;
 
   /** this variable set timestamp precision as millisecond, microsecond or nanosecond */
   private String timestampPrecision = "ms";
 
-  /**
-   * The cycle when write ahead log is periodically forced to be written to disk(in milliseconds) If
-   * set this parameter to 0 it means call channel.force(true) after every each insert. Unit:
-   * millisecond
-   */
-  private long forceWalPeriodInMs = 100;
+  // region Write Ahead Log Configuration
+  /** Write mode of wal */
+  private WALMode walMode = WALMode.ASYNC;
 
-  /**
-   * The size of the log buffer in each log node (in bytes). Due to the double buffer mechanism, if
-   * WAL is enabled and the size of the inserted plan is greater than one-half of this parameter,
-   * then the insert plan will be rejected by WAL. Unit: byte
-   */
+  /** WAL directories */
+  private String[] walDirs = {DEFAULT_BASE_DIR + File.separator + IoTDBConstant.WAL_FOLDER_NAME};
+
+  /** Duration a wal flush operation will wait before calling fsync. Unit: millisecond */
+  private long fsyncWalDelayInMs = 10;
+
+  /** Max number of wal nodes, each node corresponds to one wal directory */
+  private int maxWalNodesNum = 0;
+
+  /** Buffer size of each wal node. Unit: byte */
   private int walBufferSize = 16 * 1024 * 1024;
 
-  private int maxWalBytebufferNumForEachPartition = 6;
+  /** Buffer entry size of each wal buffer. Unit: byte */
+  private int walBufferEntrySize = 16 * 1024;
 
-  /** Unit: millisecond */
-  private long walPoolTrimIntervalInMS = 10_000;
+  /** Blocking queue capacity of each wal buffer */
+  private int walBufferQueueCapacity = 10_000;
 
-  /** if OOM occurs when registering bytebuffer, system will sleep awhile and then try again. */
-  private long registerBufferSleepIntervalInMs = 200;
+  /** Size threshold of each wal file. Unit: byte */
+  private long walFileSizeThresholdInByte = 10 * 1024 * 1024;
 
-  /** if total sleep time exceeds this, system will reject this write. */
-  private long registerBufferRejectThresholdInMs = 10_000;
+  /** TTL of wal file. Unit: ms */
+  private long walFileTTLInMs = 24 * 60 * 60 * 1000;
 
-  /** Unit: byte */
-  private int estimatedSeriesSize = 300;
+  /**
+   * MemTable size threshold for triggering MemTable snapshot in wal. When a memTable's size exceeds
+   * this, wal can flush this memtable to disk, otherwise wal will snapshot this memtable in wal.
+   * Unit: byte
+   */
+  private long walMemTableSnapshotThreshold = 128 * 1024 * 1024;
+
+  /** MemTable's max snapshot number in wal file */
+  private int maxWalMemTableSnapshotNum = 1;
+
+  /** The period when outdated wal files are periodically deleted. Unit: millisecond */
+  private long deleteWalFilesPeriodInMs = 10 * 60 * 1000;
+  // endregion
 
   /**
    * Size of log buffer for every MetaData operation. If the size of a MetaData operation plan is
@@ -254,14 +259,11 @@ public class IoTDBConfig {
   private String mqttDir =
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.MQTT_FOLDER_NAME;
 
-  /** Data directory of data. It can be settled as dataDirs = {"data1", "data2", "data3"}; */
-  private String[] dataDirs = {"data" + File.separator + "data"};
+  /** Data directories. It can be settled as dataDirs = {"data1", "data2", "data3"}; */
+  private String[] dataDirs = {DEFAULT_BASE_DIR + File.separator + IoTDBConstant.DATA_FOLDER_NAME};
 
   /** Strategy of multiple directories. */
   private String multiDirStrategyClassName = null;
-
-  /** Wal directory. */
-  private String walDir = DEFAULT_BASE_DIR + File.separator + "wal";
 
   /** Consensus directory. */
   private String consensusDir = DEFAULT_BASE_DIR + File.separator + "consensus";
@@ -356,18 +358,6 @@ public class IoTDBConfig {
 
   /** The interval to check whether unsequence memtables need flushing. Unit: ms */
   private long unseqMemtableFlushCheckInterval = 10 * 60 * 1000L;
-
-  /** Whether to timed close tsfiles. */
-  private boolean enableTimedCloseTsFile = true;
-
-  /**
-   * If a TsfileProcessor's last working memtable flush time is older than current time minus this
-   * and its working memtable is null, the TsfileProcessor will be closed. Unit: ms
-   */
-  private long closeTsFileIntervalAfterFlushing = 60 * 60 * 1000L;
-
-  /** The interval to check whether tsfiles need closing. Unit: ms */
-  private long closeTsFileCheckInterval = 10 * 60 * 1000L;
 
   /** When average series point number reaches this, flush the memtable to disk */
   private int avgSeriesPointNumberThreshold = 10000;
@@ -470,7 +460,7 @@ public class IoTDBConfig {
   private boolean enableMonitorSeriesWrite = false;
 
   /** Cache size of {@code checkAndGetDataTypeCache} in {@link LocalSchemaProcessor}. */
-  private int schemaRegionCacheSize = 10000;
+  private int schemaRegionDeviceNodeCacheSize = 10000;
 
   /** Cache size of {@code checkAndGetDataTypeCache} in {@link LocalSchemaProcessor}. */
   private int mRemoteSchemaCacheSize = 100000;
@@ -796,11 +786,13 @@ public class IoTDBConfig {
   /** the size of ioTaskQueue */
   private int ioTaskQueueSizeForFlushing = 10;
 
-  /** the number of virtual storage groups per user-defined storage group */
-  private int virtualStorageGroupNum = 1;
+  /** the number of data regions per user-defined storage group */
+  private int dataRegionNum = 1;
 
   /** the interval to log recover progress of each vsg when starting iotdb */
   private long recoveryLogIntervalInMs = 5_000L;
+
+  private boolean enableDiscardOutOfOrderData = false;
 
   private String adminName = "root";
 
@@ -823,6 +815,21 @@ public class IoTDBConfig {
 
   /** Encryption provided class parameter */
   private String encryptDecryptProviderParameter;
+
+  /** whether to use persistent schema mode */
+  private String schemaEngineMode = "Memory";
+
+  /** the memory used for metadata cache when using persistent schema */
+  private int cachedMNodeSizeInSchemaFileMode = -1;
+
+  /** the max num of thread used for flushing metadata to schema file */
+  private int maxSchemaFlushThreadNum = 15;
+
+  /** the minimum size (in bytes) of segment inside a schema file page */
+  private short minimumSegmentInSchemaFile = 0;
+
+  /** cache size for pages in one schema file */
+  private int pageCacheSizeInSchemaFile = 1024;
 
   /**
    * Ip and port of config nodes. each one is a {internalIp | domain name}:{meta port} string tuple.
@@ -970,13 +977,15 @@ public class IoTDBConfig {
     schemaDir = addHomeDir(schemaDir);
     syncDir = addHomeDir(syncDir);
     tracingDir = addHomeDir(tracingDir);
-    walDir = addHomeDir(walDir);
     consensusDir = addHomeDir(consensusDir);
     indexRootFolder = addHomeDir(indexRootFolder);
     extDir = addHomeDir(extDir);
     udfDir = addHomeDir(udfDir);
     triggerDir = addHomeDir(triggerDir);
     mqttDir = addHomeDir(mqttDir);
+    for (int i = 0; i < walDirs.length; i++) {
+      walDirs[i] = addHomeDir(walDirs[i]);
+    }
 
     if (TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs().equals(FSType.HDFS)) {
       String hdfsDir = getHdfsDir();
@@ -1097,36 +1106,12 @@ public class IoTDBConfig {
     this.timestampPrecision = timestampPrecision;
   }
 
-  public boolean isEnableWal() {
-    return enableWal;
-  }
-
-  public void setEnableWal(boolean enableWal) {
-    this.enableWal = enableWal;
-  }
-
   public boolean isEnableDiscardOutOfOrderData() {
     return enableDiscardOutOfOrderData;
   }
 
   public void setEnableDiscardOutOfOrderData(boolean enableDiscardOutOfOrderData) {
     this.enableDiscardOutOfOrderData = enableDiscardOutOfOrderData;
-  }
-
-  public int getFlushWalThreshold() {
-    return flushWalThreshold;
-  }
-
-  public void setFlushWalThreshold(int flushWalThreshold) {
-    this.flushWalThreshold = flushWalThreshold;
-  }
-
-  public long getForceWalPeriodInMs() {
-    return forceWalPeriodInMs;
-  }
-
-  public void setForceWalPeriodInMs(long forceWalPeriodInMs) {
-    this.forceWalPeriodInMs = forceWalPeriodInMs;
   }
 
   public String getSystemDir() {
@@ -1167,14 +1152,6 @@ public class IoTDBConfig {
 
   void setQueryDir(String queryDir) {
     this.queryDir = queryDir;
-  }
-
-  public String getWalDir() {
-    return walDir;
-  }
-
-  void setWalDir(String walDir) {
-    this.walDir = walDir;
   }
 
   public String getConsensusDir() {
@@ -1313,12 +1290,12 @@ public class IoTDBConfig {
     this.rpcMaxConcurrentClientNum = rpcMaxConcurrentClientNum;
   }
 
-  public int getSchemaRegionCacheSize() {
-    return schemaRegionCacheSize;
+  public int getSchemaRegionDeviceNodeCacheSize() {
+    return schemaRegionDeviceNodeCacheSize;
   }
 
-  void setSchemaRegionCacheSize(int schemaRegionCacheSize) {
-    this.schemaRegionCacheSize = schemaRegionCacheSize;
+  void setSchemaRegionDeviceNodeCacheSize(int schemaRegionDeviceNodeCacheSize) {
+    this.schemaRegionDeviceNodeCacheSize = schemaRegionDeviceNodeCacheSize;
   }
 
   public int getmRemoteSchemaCacheSize() {
@@ -1419,6 +1396,38 @@ public class IoTDBConfig {
     this.rpcImplClassName = rpcImplClassName;
   }
 
+  public WALMode getWalMode() {
+    return walMode;
+  }
+
+  public void setWalMode(WALMode walMode) {
+    this.walMode = walMode;
+  }
+
+  public String[] getWalDirs() {
+    return walDirs;
+  }
+
+  public void setWalDirs(String[] walDirs) {
+    this.walDirs = walDirs;
+  }
+
+  public long getFsyncWalDelayInMs() {
+    return fsyncWalDelayInMs;
+  }
+
+  void setFsyncWalDelayInMs(long fsyncWalDelayInMs) {
+    this.fsyncWalDelayInMs = fsyncWalDelayInMs;
+  }
+
+  public int getMaxWalNodesNum() {
+    return maxWalNodesNum;
+  }
+
+  void setMaxWalNodesNum(int maxWalNodesNum) {
+    this.maxWalNodesNum = maxWalNodesNum;
+  }
+
   public int getWalBufferSize() {
     return walBufferSize;
   }
@@ -1427,44 +1436,60 @@ public class IoTDBConfig {
     this.walBufferSize = walBufferSize;
   }
 
-  public int getMaxWalBytebufferNumForEachPartition() {
-    return maxWalBytebufferNumForEachPartition;
+  public int getWalBufferEntrySize() {
+    return walBufferEntrySize;
   }
 
-  public void setMaxWalBytebufferNumForEachPartition(int maxWalBytebufferNumForEachPartition) {
-    this.maxWalBytebufferNumForEachPartition = maxWalBytebufferNumForEachPartition;
+  void setWalBufferEntrySize(int walBufferEntrySize) {
+    this.walBufferEntrySize = walBufferEntrySize;
   }
 
-  public long getWalPoolTrimIntervalInMS() {
-    return walPoolTrimIntervalInMS;
+  public int getWalBufferQueueCapacity() {
+    return walBufferQueueCapacity;
   }
 
-  public void setWalPoolTrimIntervalInMS(long walPoolTrimIntervalInMS) {
-    this.walPoolTrimIntervalInMS = walPoolTrimIntervalInMS;
+  void setWalBufferQueueCapacity(int walBufferQueueCapacity) {
+    this.walBufferQueueCapacity = walBufferQueueCapacity;
   }
 
-  public long getRegisterBufferSleepIntervalInMs() {
-    return registerBufferSleepIntervalInMs;
+  public long getWalFileSizeThresholdInByte() {
+    return walFileSizeThresholdInByte;
   }
 
-  public void setRegisterBufferSleepIntervalInMs(long registerBufferSleepIntervalInMs) {
-    this.registerBufferSleepIntervalInMs = registerBufferSleepIntervalInMs;
+  void setWalFileSizeThresholdInByte(long walFileSizeThresholdInByte) {
+    this.walFileSizeThresholdInByte = walFileSizeThresholdInByte;
   }
 
-  public long getRegisterBufferRejectThresholdInMs() {
-    return registerBufferRejectThresholdInMs;
+  public long getWalFileTTLInMs() {
+    return walFileTTLInMs;
   }
 
-  public void setRegisterBufferRejectThresholdInMs(long registerBufferRejectThresholdInMs) {
-    this.registerBufferRejectThresholdInMs = registerBufferRejectThresholdInMs;
+  void setWalFileTTLInMs(long walFileTTLInMs) {
+    this.walFileTTLInMs = walFileTTLInMs;
   }
 
-  public int getEstimatedSeriesSize() {
-    return estimatedSeriesSize;
+  public long getWalMemTableSnapshotThreshold() {
+    return walMemTableSnapshotThreshold;
   }
 
-  public void setEstimatedSeriesSize(int estimatedSeriesSize) {
-    this.estimatedSeriesSize = estimatedSeriesSize;
+  void setWalMemTableSnapshotThreshold(long walMemTableSnapshotThreshold) {
+    this.walMemTableSnapshotThreshold = walMemTableSnapshotThreshold;
+  }
+
+  public int getMaxWalMemTableSnapshotNum() {
+    return maxWalMemTableSnapshotNum;
+  }
+
+  void setMaxWalMemTableSnapshotNum(int maxWalMemTableSnapshotNum) {
+    this.maxWalMemTableSnapshotNum = maxWalMemTableSnapshotNum;
+  }
+
+  public long getDeleteWalFilesPeriodInMs() {
+    return deleteWalFilesPeriodInMs;
+  }
+
+  void setDeleteWalFilesPeriodInMs(long deleteWalFilesPeriodInMs) {
+    this.deleteWalFilesPeriodInMs = deleteWalFilesPeriodInMs;
   }
 
   public boolean isChunkBufferPoolEnable() {
@@ -1543,7 +1568,7 @@ public class IoTDBConfig {
     return allocateMemoryForSchema;
   }
 
-  void setAllocateMemoryForSchema(long allocateMemoryForSchema) {
+  public void setAllocateMemoryForSchema(long allocateMemoryForSchema) {
     this.allocateMemoryForSchema = allocateMemoryForSchema;
   }
 
@@ -1723,30 +1748,6 @@ public class IoTDBConfig {
 
   public void setUnseqMemtableFlushCheckInterval(long unseqMemtableFlushCheckInterval) {
     this.unseqMemtableFlushCheckInterval = unseqMemtableFlushCheckInterval;
-  }
-
-  public boolean isEnableTimedCloseTsFile() {
-    return enableTimedCloseTsFile;
-  }
-
-  public void setEnableTimedCloseTsFile(boolean enableTimedCloseTsFile) {
-    this.enableTimedCloseTsFile = enableTimedCloseTsFile;
-  }
-
-  public long getCloseTsFileIntervalAfterFlushing() {
-    return closeTsFileIntervalAfterFlushing;
-  }
-
-  public void setCloseTsFileIntervalAfterFlushing(long closeTsFileIntervalAfterFlushing) {
-    this.closeTsFileIntervalAfterFlushing = closeTsFileIntervalAfterFlushing;
-  }
-
-  public long getCloseTsFileCheckInterval() {
-    return closeTsFileCheckInterval;
-  }
-
-  public void setCloseTsFileCheckInterval(long closeTsFileCheckInterval) {
-    this.closeTsFileCheckInterval = closeTsFileCheckInterval;
   }
 
   public int getAvgSeriesPointNumberThreshold() {
@@ -2341,12 +2342,12 @@ public class IoTDBConfig {
     this.defaultIndexWindowRange = defaultIndexWindowRange;
   }
 
-  public int getVirtualStorageGroupNum() {
-    return virtualStorageGroupNum;
+  public int getDataRegionNum() {
+    return dataRegionNum;
   }
 
-  public void setVirtualStorageGroupNum(int virtualStorageGroupNum) {
-    this.virtualStorageGroupNum = virtualStorageGroupNum;
+  public void setDataRegionNum(int dataRegionNum) {
+    this.dataRegionNum = dataRegionNum;
   }
 
   public long getRecoveryLogIntervalInMs() {
@@ -2604,6 +2605,46 @@ public class IoTDBConfig {
 
   public void setEncryptDecryptProviderParameter(String encryptDecryptProviderParameter) {
     this.encryptDecryptProviderParameter = encryptDecryptProviderParameter;
+  }
+
+  public String getSchemaEngineMode() {
+    return schemaEngineMode;
+  }
+
+  public void setSchemaEngineMode(String schemaEngineMode) {
+    this.schemaEngineMode = schemaEngineMode;
+  }
+
+  public int getCachedMNodeSizeInSchemaFileMode() {
+    return cachedMNodeSizeInSchemaFileMode;
+  }
+
+  public void setCachedMNodeSizeInSchemaFileMode(int cachedMNodeSizeInSchemaFileMode) {
+    this.cachedMNodeSizeInSchemaFileMode = cachedMNodeSizeInSchemaFileMode;
+  }
+
+  public int getMaxSchemaFlushThreadNum() {
+    return maxSchemaFlushThreadNum;
+  }
+
+  public void setMaxSchemaFlushThreadNum(int maxSchemaFlushThreadNum) {
+    this.maxSchemaFlushThreadNum = maxSchemaFlushThreadNum;
+  }
+
+  public short getMinimumSegmentInSchemaFile() {
+    return minimumSegmentInSchemaFile;
+  }
+
+  public void setMinimumSegmentInSchemaFile(short minimumSegmentInSchemaFile) {
+    this.minimumSegmentInSchemaFile = minimumSegmentInSchemaFile;
+  }
+
+  public int getPageCacheSizeInSchemaFile() {
+    return pageCacheSizeInSchemaFile;
+  }
+
+  public void setPageCacheSizeInSchemaFile(int pageCacheSizeInSchemaFile) {
+    this.pageCacheSizeInSchemaFile = pageCacheSizeInSchemaFile;
   }
 
   public List<String> getConfigNodeUrls() {

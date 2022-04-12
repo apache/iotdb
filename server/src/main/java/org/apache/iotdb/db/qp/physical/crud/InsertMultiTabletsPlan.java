@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -26,7 +27,6 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.BatchPlan;
 import org.apache.iotdb.db.utils.StatusUtils;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -271,7 +271,7 @@ public class InsertMultiTabletsPlan extends InsertPlan implements BatchPlan {
     buffer.put((byte) type);
     buffer.putInt(insertTabletPlanList.size());
     for (InsertTabletPlan insertTabletPlan : insertTabletPlanList) {
-      insertTabletPlan.subSerialize(buffer);
+      insertTabletPlan.subSerialize(buffer, 0, insertTabletPlan.getRowCount());
     }
 
     buffer.putInt(parentInsertTabletPlanIndexList.size());
@@ -286,7 +286,7 @@ public class InsertMultiTabletsPlan extends InsertPlan implements BatchPlan {
     stream.writeByte((byte) type);
     stream.writeInt(insertTabletPlanList.size());
     for (InsertTabletPlan insertTabletPlan : insertTabletPlanList) {
-      insertTabletPlan.subSerialize(stream);
+      insertTabletPlan.subSerialize(stream, 0, insertTabletPlan.getRowCount());
     }
 
     stream.writeInt(parentInsertTabletPlanIndexList.size());

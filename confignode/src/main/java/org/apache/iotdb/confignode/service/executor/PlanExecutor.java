@@ -18,21 +18,23 @@
  */
 package org.apache.iotdb.confignode.service.executor;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeException;
 import org.apache.iotdb.confignode.persistence.AuthorInfoPersistence;
 import org.apache.iotdb.confignode.persistence.DataNodeInfoPersistence;
 import org.apache.iotdb.confignode.persistence.PartitionInfoPersistence;
 import org.apache.iotdb.confignode.persistence.RegionInfoPersistence;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
+import org.apache.iotdb.confignode.physical.crud.CreateDataPartitionPlan;
+import org.apache.iotdb.confignode.physical.crud.CreateRegionsPlan;
+import org.apache.iotdb.confignode.physical.crud.GetOrCreateDataPartitionPlan;
+import org.apache.iotdb.confignode.physical.crud.GetOrCreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.physical.sys.AuthorPlan;
-import org.apache.iotdb.confignode.physical.sys.DataPartitionPlan;
 import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
 import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
-import org.apache.iotdb.confignode.physical.sys.SchemaPartitionPlan;
 import org.apache.iotdb.confignode.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.auth.AuthException;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 public class PlanExecutor {
 
@@ -58,14 +60,12 @@ public class PlanExecutor {
         return dataNodeInfoPersistence.getDataNodeInfo((QueryDataNodeInfoPlan) plan);
       case QueryStorageGroupSchema:
         return regionInfoPersistence.getStorageGroupSchema();
-      case QueryDataPartition:
-        return partitionInfoPersistence.getDataPartition((DataPartitionPlan) plan);
-      case QuerySchemaPartition:
-        return partitionInfoPersistence.getSchemaPartition((SchemaPartitionPlan) plan);
-      case ApplySchemaPartition:
-        return partitionInfoPersistence.applySchemaPartition((SchemaPartitionPlan) plan);
-      case ApplyDataPartition:
-        return partitionInfoPersistence.applyDataPartition((DataPartitionPlan) plan);
+      case GetDataPartition:
+      case GetOrCreateDataPartition:
+        return partitionInfoPersistence.getDataPartition((GetOrCreateDataPartitionPlan) plan);
+      case GetSchemaPartition:
+      case GetOrCreateSchemaPartition:
+        return partitionInfoPersistence.getSchemaPartition((GetOrCreateSchemaPartitionPlan) plan);
       case LIST_USER:
         return authorInfoPersistence.executeListUser((AuthorPlan) plan);
       case LIST_ROLE:
@@ -90,6 +90,13 @@ public class PlanExecutor {
         return dataNodeInfoPersistence.registerDataNode((RegisterDataNodePlan) plan);
       case SetStorageGroup:
         return regionInfoPersistence.setStorageGroup((SetStorageGroupPlan) plan);
+      case CreateRegions:
+        return regionInfoPersistence.createRegions((CreateRegionsPlan) plan);
+      case CreateSchemaPartition:
+        return partitionInfoPersistence.createSchemaPartition(
+            (GetOrCreateSchemaPartitionPlan) plan);
+      case CreateDataPartition:
+        return partitionInfoPersistence.createDataPartition((CreateDataPartitionPlan) plan);
       case CREATE_USER:
       case CREATE_ROLE:
       case DROP_USER:

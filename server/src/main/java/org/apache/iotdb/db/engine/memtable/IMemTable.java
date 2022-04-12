@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.memtable;
 
+import org.apache.iotdb.db.engine.flush.FlushStatus;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.WriteProcessException;
@@ -29,6 +30,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.wal.buffer.WALEntryValue;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
@@ -44,7 +46,7 @@ import java.util.Map;
  * i.e., Writing and querying operations must already have gotten writeLock and readLock
  * respectively.<br>
  */
-public interface IMemTable {
+public interface IMemTable extends WALEntryValue {
 
   Map<IDeviceID, IWritableMemChunkGroup> getMemTableMap();
 
@@ -179,5 +181,11 @@ public interface IMemTable {
 
   long getMinPlanIndex();
 
+  int getMemTableId();
+
   long getCreatedTime();
+
+  FlushStatus getFlushStatus();
+
+  void setFlushStatus(FlushStatus flushStatus);
 }

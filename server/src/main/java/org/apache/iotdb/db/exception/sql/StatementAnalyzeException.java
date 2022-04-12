@@ -36,4 +36,10 @@ public class StatementAnalyzeException extends IoTDBException {
             filterOperator, filterType, FilterConstant.filterNames.get(filterType)),
         TSStatusCode.LOGICAL_OPTIMIZE_ERROR.getStatusCode());
   }
+
+  public StatementAnalyzeException(String type, String message) {
+    super(
+        String.format("Unsupported type: [%s]. %s", type, message),
+        TSStatusCode.LOGICAL_OPTIMIZE_ERROR.getStatusCode());
+  }
 }

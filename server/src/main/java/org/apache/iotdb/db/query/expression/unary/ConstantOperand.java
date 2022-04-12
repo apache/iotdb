@@ -22,20 +22,21 @@ package org.apache.iotdb.db.query.expression.unary;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SourceNode;
 import org.apache.iotdb.db.mpp.sql.rewriter.WildcardsRemover;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.query.expression.ExpressionType;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
 import org.apache.iotdb.db.query.udf.core.layer.ConstantIntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.layer.IntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.layer.LayerMemoryAssigner;
 import org.apache.iotdb.db.query.udf.core.layer.RawQueryInputLayer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.commons.lang3.Validate;
 
+import java.nio.ByteBuffer;
 import java.time.ZoneId;
 import java.util.Collections;
 import java.util.List;
@@ -48,7 +49,7 @@ public class ConstantOperand extends Expression {
   private final String valueString;
   private final TSDataType dataType;
 
-  public ConstantOperand(TSDataType dataType, String str) throws QueryProcessException {
+  public ConstantOperand(TSDataType dataType, String str) {
     this.dataType = Validate.notNull(dataType);
     this.valueString = Validate.notNull(str);
   }
@@ -105,11 +106,6 @@ public class ConstantOperand extends Expression {
   }
 
   @Override
-  public void collectPlanNode(Set<SourceNode> planNodeSet, PlanNodeId nodeId) {
-    // Do nothing
-  }
-
-  @Override
   public void updateStatisticsForMemoryAssigner(LayerMemoryAssigner memoryAssigner) {
     // Do nothing
   }
@@ -136,5 +132,22 @@ public class ConstantOperand extends Expression {
   @Override
   public String getExpressionStringInternal() {
     return valueString;
+  }
+
+  public static ConstantOperand deserialize(ByteBuffer buffer) {
+    boolean isConstantOperandCache = ReadWriteIOUtils.readBool(buffer);
+    String valueStr = ReadWriteIOUtils.readString(buffer);
+    TSDataType tsDataType = TSDataType.deserializeFrom(buffer);
+    ConstantOperand constantOperand = new ConstantOperand(tsDataType, valueStr);
+    constantOperand.isConstantOperandCache = isConstantOperandCache;
+    return constantOperand;
+  }
+
+  @Override
+  public void serialize(ByteBuffer byteBuffer) {
+    ExpressionType.Constant.serialize(byteBuffer);
+    super.serialize(byteBuffer);
+    ReadWriteIOUtils.write(valueString, byteBuffer);
+    dataType.serializeTo(byteBuffer);
   }
 }

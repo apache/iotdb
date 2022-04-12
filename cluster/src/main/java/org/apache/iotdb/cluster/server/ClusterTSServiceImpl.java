@@ -20,10 +20,10 @@
 package org.apache.iotdb.cluster.server;
 
 import org.apache.iotdb.cluster.server.basic.ClusterServiceProvider;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.thrift.impl.TSServiceImpl;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 /**
  * ClusterTSServiceImpl is the cluster version of TSServiceImpl, which is responsible for the

@@ -25,14 +25,12 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregateScanNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SourceNode;
 import org.apache.iotdb.db.mpp.sql.rewriter.WildcardsRemover;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
 import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.query.expression.ExpressionType;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.AccessStrategy;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
 import org.apache.iotdb.db.query.udf.core.layer.IntermediateLayer;
@@ -47,8 +45,10 @@ import org.apache.iotdb.db.query.udf.core.transformer.UDFQueryRowTransformer;
 import org.apache.iotdb.db.query.udf.core.transformer.UDFQueryRowWindowTransformer;
 import org.apache.iotdb.db.query.udf.core.transformer.UDFQueryTransformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -233,14 +233,6 @@ public class FunctionExpression extends Expression {
     for (Expression expression : expressions) {
       expression.collectPaths(pathSet);
     }
-  }
-
-  @Override
-  public void collectPlanNode(Set<SourceNode> planNodeSet, PlanNodeId nodeId) {
-    if (isBuiltInAggregationFunctionExpression) {
-      planNodeSet.add(new SeriesAggregateScanNode(nodeId, this));
-    }
-    // TODO: support UDF
   }
 
   @Override
@@ -430,5 +422,33 @@ public class FunctionExpression extends Expression {
       parametersString = builder.toString();
     }
     return parametersString;
+  }
+
+  public static FunctionExpression deserialize(ByteBuffer buffer) {
+    boolean isConstantOperandCache = ReadWriteIOUtils.readBool(buffer);
+    String functionName = ReadWriteIOUtils.readString(buffer);
+    Map<String, String> functionAttributes = ReadWriteIOUtils.readMap(buffer);
+    int expressionSize = ReadWriteIOUtils.readInt(buffer);
+    List<Expression> expressions = new ArrayList<>();
+    for (int i = 0; i < expressionSize; i++) {
+      expressions.add(ExpressionType.deserialize(buffer));
+    }
+
+    FunctionExpression functionExpression =
+        new FunctionExpression(functionName, functionAttributes, expressions);
+    functionExpression.isConstantOperandCache = isConstantOperandCache;
+    return functionExpression;
+  }
+
+  @Override
+  public void serialize(ByteBuffer byteBuffer) {
+    ExpressionType.Function.serialize(byteBuffer);
+    super.serialize(byteBuffer);
+    ReadWriteIOUtils.write(functionName, byteBuffer);
+    ReadWriteIOUtils.write(functionAttributes, byteBuffer);
+    ReadWriteIOUtils.write(expressions.size(), byteBuffer);
+    for (Expression expression : expressions) {
+      expression.serialize(byteBuffer);
+    }
   }
 }

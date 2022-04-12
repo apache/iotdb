@@ -24,11 +24,10 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SourceNode;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.query.expression.ExpressionType;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
 import org.apache.iotdb.db.query.udf.core.layer.IntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.layer.LayerMemoryAssigner;
@@ -38,8 +37,10 @@ import org.apache.iotdb.db.query.udf.core.layer.SingleInputColumnSingleReference
 import org.apache.iotdb.db.query.udf.core.transformer.LogicNotTransformer;
 import org.apache.iotdb.db.query.udf.core.transformer.Transformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.time.ZoneId;
 import java.util.*;
 
@@ -130,11 +131,6 @@ public class LogicNotExpression extends Expression {
   }
 
   @Override
-  public void collectPlanNode(Set<SourceNode> planNodeSet, PlanNodeId nodeId) {
-    // TODO: support LogicNotExpression
-  }
-
-  @Override
   public void updateStatisticsForMemoryAssigner(LayerMemoryAssigner memoryAssigner) {
     expression.updateStatisticsForMemoryAssigner(memoryAssigner);
     memoryAssigner.increaseExpressionReference(this);
@@ -182,5 +178,20 @@ public class LogicNotExpression extends Expression {
   @Override
   public String getExpressionStringInternal() {
     return "!" + expression.toString();
+  }
+
+  public static LogicNotExpression deserialize(ByteBuffer buffer) {
+    boolean isConstantOperandCache = ReadWriteIOUtils.readBool(buffer);
+    Expression expression = ExpressionType.deserialize(buffer);
+    LogicNotExpression logicNotExpression = new LogicNotExpression(expression);
+    logicNotExpression.isConstantOperandCache = isConstantOperandCache;
+    return logicNotExpression;
+  }
+
+  @Override
+  public void serialize(ByteBuffer byteBuffer) {
+    ExpressionType.Logic_Not.serialize(byteBuffer);
+    super.serialize(byteBuffer);
+    expression.serialize(byteBuffer);
   }
 }

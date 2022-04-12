@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -36,7 +37,6 @@ import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -450,8 +450,6 @@ public class TsFileProcessorTest {
     insertTabletPlan.setColumns(columns);
     insertTabletPlan.setRowCount(times.length);
     insertTabletPlan.setMeasurementMNodes(mNodes);
-    insertTabletPlan.setStart(0);
-    insertTabletPlan.setEnd(10);
     insertTabletPlan.setAligned(isAligned);
 
     return insertTabletPlan;
