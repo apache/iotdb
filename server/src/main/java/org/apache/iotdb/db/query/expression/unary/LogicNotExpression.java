@@ -183,9 +183,9 @@ public class LogicNotExpression extends Expression {
     if (expression instanceof FunctionExpression
         || expression instanceof ConstantOperand
         || expression instanceof TimeSeriesOperand) {
-      return "! " + expression.toString();
+      return "!" + expression.toString();
     } else {
-      return "! (" + expression.toString() + ")";
+      return "!(" + expression.toString() + ")";
     }
   }
 }
