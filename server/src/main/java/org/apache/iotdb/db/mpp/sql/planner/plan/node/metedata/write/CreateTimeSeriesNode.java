@@ -19,13 +19,11 @@
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.metadata.schemaregion.SchemaRegion;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.SchemaPlanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
@@ -40,7 +38,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-public class CreateTimeSeriesNode extends SchemaPlanNode {
+public class CreateTimeSeriesNode extends PlanNode {
   private PartialPath path;
   private TSDataType dataType;
   private TSEncoding encoding;
@@ -292,8 +290,8 @@ public class CreateTimeSeriesNode extends SchemaPlanNode {
   protected void serializeAttributes(ByteBuffer byteBuffer) {}
 
   @Override
-  public void executeOn(SchemaRegion schemaRegion) throws MetadataException {
-    schemaRegion.createTimeseries((CreateTimeSeriesPlan) transferToPhysicalPlan());
+  public <R, C> R accept(PlanVisitor<R, C> visitor, C schemaRegion) {
+    return visitor.visitCreateTimeSeries(this, schemaRegion);
   }
 
   public boolean equals(Object o) {

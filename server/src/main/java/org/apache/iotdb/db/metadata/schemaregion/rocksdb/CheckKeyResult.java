@@ -17,18 +17,34 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.metadata.Executor;
+package org.apache.iotdb.db.metadata.schemaregion.rocksdb;
 
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.schemaregion.SchemaRegion;
-import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode.RMNodeType;
 
-/** SchemaQueryExecutor interface to do schema write and read operation */
-public interface ISchemaQueryExecutor {
-  // write
-  void executeOn(SchemaRegion schemaRegion) throws MetadataException, QueryProcessException;
+import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaUtils.NODE_TYPE_ARRAY;
 
-  // read
-  QueryDataSet queryOn(SchemaRegion schemaRegion);
+public class CheckKeyResult {
+
+  private byte[] value;
+  private RMNodeType nodeType;
+
+  public boolean existAnyKey() {
+    return nodeType != null;
+  }
+
+  public byte[] getValue() {
+    return value;
+  }
+
+  public void setValue(byte[] value) {
+    this.value = value;
+  }
+
+  public void setExistType(char type) {
+    nodeType = NODE_TYPE_ARRAY[type];
+  }
+
+  public boolean getResult(RMNodeType type) {
+    return type == nodeType;
+  }
 }
