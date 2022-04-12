@@ -29,6 +29,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionResp;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -40,16 +41,16 @@ public class DataPartitionDataSet implements DataSet {
 
   private DataPartition dataPartition;
 
+  public DataPartitionDataSet() {
+    // Empty constructor
+  }
+
   public TSStatus getStatus() {
     return status;
   }
 
   public void setStatus(TSStatus status) {
     this.status = status;
-  }
-
-  public DataPartition getDataPartition() {
-    return dataPartition;
   }
 
   public void setDataPartition(DataPartition dataPartition) {
@@ -65,6 +66,7 @@ public class DataPartitionDataSet implements DataSet {
     Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
         dataPartitionMap = new HashMap<>();
     resp.setStatus(status);
+
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       dataPartition
           .getDataPartitionMap()
@@ -82,7 +84,6 @@ public class DataPartitionDataSet implements DataSet {
                           .get(storageGroup)
                           .putIfAbsent(tSeriesPartitionSlot, new HashMap<>());
 
-                      // Extract Map<TimePartitionSlot, List<RegionReplicaSet>>
                       timePartitionSlotReplicaSetListMap.forEach(
                           ((timePartitionSlot, regionReplicaSets) -> {
                             // Extract TTimePartitionSlot
@@ -97,13 +98,12 @@ public class DataPartitionDataSet implements DataSet {
                             regionReplicaSets.forEach(
                                 regionReplicaSet -> {
                                   TRegionReplicaSet tRegionReplicaSet = new TRegionReplicaSet();
-
                                   // Set TRegionReplicaSet's RegionId
-                                  tRegionReplicaSet.setRegionId(regionReplicaSet.getId().getId());
-
-                                  // Set TRegionReplicaSet's GroupType
-                                  tRegionReplicaSet.setGroupType("DataRegion");
-
+                                  ByteBuffer buffer =
+                                      ByteBuffer.allocate(Byte.BYTES + Integer.BYTES);
+                                  regionReplicaSet.getId().serializeImpl(buffer);
+                                  buffer.flip();
+                                  tRegionReplicaSet.setRegionId(buffer);
                                   // Set TRegionReplicaSet's EndPoints
                                   List<EndPoint> endPointList = new ArrayList<>();
                                   regionReplicaSet

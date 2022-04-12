@@ -87,7 +87,7 @@ public class GetOrCreateDataPartitionPlan extends PhysicalPlan {
 
   @Override
   protected void serializeImpl(ByteBuffer buffer) {
-    buffer.putInt(PhysicalPlanType.GetDataPartition.ordinal());
+    buffer.putInt(getType().ordinal());
 
     buffer.putInt(partitionSlotsMap.size());
     partitionSlotsMap.forEach(

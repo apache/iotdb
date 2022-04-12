@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.service.thrift.server;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.DataNodeLocation;
 import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationDataSet;
 import org.apache.iotdb.confignode.consensus.response.DataNodesInfoDataSet;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionDataSet;
@@ -45,7 +46,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupMessageResp;
+import org.apache.iotdb.confignode.rpc.thrift.TSetTTLReq;
+import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 
@@ -100,6 +102,9 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
     SetStorageGroupPlan plan =
         new SetStorageGroupPlan(new StorageGroupSchema(req.getStorageGroup()));
 
+    // TODO: Set TTL by optional field TSetStorageGroupReq.TTL
+    plan.getSchema().setTTL(ConfigNodeDescriptor.getInstance().getConf().getDefaultTTL());
+
     return configManager.setStorageGroup(plan);
   }
 
@@ -110,12 +115,18 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
   }
 
   @Override
-  public TStorageGroupMessageResp getStorageGroupsMessage() throws TException {
+  public TSStatus setTTL(TSetTTLReq req) throws TException {
+    // TODO: Set TTL
+    return null;
+  }
+
+  @Override
+  public TStorageGroupSchemaResp getStorageGroupsSchema() throws TException {
     StorageGroupSchemaDataSet dataSet =
         (StorageGroupSchemaDataSet) configManager.getStorageGroupSchema();
 
-    TStorageGroupMessageResp resp = new TStorageGroupMessageResp();
-    dataSet.convertToRPCStorageGroupMessageResp(resp);
+    TStorageGroupSchemaResp resp = new TStorageGroupSchemaResp();
+    dataSet.convertToRPCStorageGroupSchemaResp(resp);
     return resp;
   }
 

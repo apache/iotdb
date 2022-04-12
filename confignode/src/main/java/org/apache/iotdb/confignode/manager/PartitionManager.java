@@ -99,7 +99,7 @@ public class PartitionManager {
       // Persist SchemaPartition
       CreateSchemaPartitionPlan createPlan = new CreateSchemaPartitionPlan();
       createPlan.setAssignedSchemaPartition(assignedSchemaPartition);
-      getConsensusManager().write(physicalPlan);
+      getConsensusManager().write(createPlan);
     }
 
     return getSchemaPartition(physicalPlan);

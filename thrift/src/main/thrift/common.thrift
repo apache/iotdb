@@ -20,29 +20,28 @@
 namespace java org.apache.iotdb.common.rpc.thrift
 namespace py iotdb.thrift.common
 
- struct EndPoint {
-   1: required string ip
-   2: required i32 port
- }
+struct EndPoint {
+  1: required string ip
+  2: required i32 port
+}
 
- // The return status code and message in each response.
- struct TSStatus {
-   1: required i32 code
-   2: optional string message
-   3: optional list<TSStatus> subStatus
-   4: optional EndPoint redirectNode
- }
+// The return status code and message in each response.
+struct TSStatus {
+  1: required i32 code
+  2: optional string message
+  3: optional list<TSStatus> subStatus
+  4: optional EndPoint redirectNode
+}
 
- struct TRegionReplicaSet {
-     1: required i32 regionId
-     2: required string groupType
-     3: required list<EndPoint> endpoint
- }
+struct TRegionReplicaSet {
+  1: required binary regionId
+  2: required list<EndPoint> endpoint
+}
 
- struct TSeriesPartitionSlot {
-     1: required i32 slotId
- }
+struct TSeriesPartitionSlot {
+  1: required i32 slotId
+}
 
- struct TTimePartitionSlot {
-     1: required i64 startTime
- }
+struct TTimePartitionSlot {
+  1: required i64 startTime
+}

@@ -41,7 +41,6 @@ public class GetOrCreateSchemaPartitionPlan extends PhysicalPlan {
 
   public GetOrCreateSchemaPartitionPlan(PhysicalPlanType physicalPlanType) {
     super(physicalPlanType);
-    partitionSlotsMap = new HashMap<>();
   }
 
   public void setPartitionSlotsMap(Map<String, List<SeriesPartitionSlot>> partitionSlotsMap) {
@@ -54,7 +53,7 @@ public class GetOrCreateSchemaPartitionPlan extends PhysicalPlan {
 
   @Override
   protected void serializeImpl(ByteBuffer buffer) {
-    buffer.putInt(PhysicalPlanType.GetDataPartition.ordinal());
+    buffer.putInt(getType().ordinal());
 
     buffer.putInt(partitionSlotsMap.size());
     partitionSlotsMap.forEach(
@@ -68,6 +67,7 @@ public class GetOrCreateSchemaPartitionPlan extends PhysicalPlan {
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
+    partitionSlotsMap = new HashMap<>();
     int storageGroupNum = buffer.getInt();
     for (int i = 0; i < storageGroupNum; i++) {
       String storageGroup = SerializeDeserializeUtil.readString(buffer);
@@ -75,6 +75,7 @@ public class GetOrCreateSchemaPartitionPlan extends PhysicalPlan {
       int seriesPartitionSlotNum = buffer.getInt();
       for (int j = 0; j < seriesPartitionSlotNum; j++) {
         SeriesPartitionSlot seriesPartitionSlot = new SeriesPartitionSlot();
+        seriesPartitionSlot.deserializeImpl(buffer);
         partitionSlotsMap.get(storageGroup).add(seriesPartitionSlot);
       }
     }
