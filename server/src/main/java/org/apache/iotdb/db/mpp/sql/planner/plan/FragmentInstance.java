@@ -122,12 +122,13 @@ public class FragmentInstance implements IConsensusRequest {
 
   public static FragmentInstance deserializeFrom(ByteBuffer buffer) {
     FragmentInstanceId id = FragmentInstanceId.deserialize(buffer);
+    PlanFragment planFragment = PlanFragment.deserialize(buffer);
+    boolean hasTimeFilter = ReadWriteIOUtils.readBool(buffer);
+    Filter timeFilter = hasTimeFilter ? FilterFactory.deserialize(buffer) : null;
+    QueryType queryType = QueryType.values()[ReadWriteIOUtils.readInt(buffer)];
     FragmentInstance fragmentInstance =
         new FragmentInstance(
-            PlanFragment.deserialize(buffer),
-            Integer.parseInt(id.getInstanceId()),
-            FilterFactory.deserialize(buffer),
-            QueryType.values()[ReadWriteIOUtils.readInt(buffer)]);
+            planFragment, Integer.parseInt(id.getInstanceId()), timeFilter, queryType);
     RegionReplicaSet regionReplicaSet = new RegionReplicaSet();
     try {
       regionReplicaSet.deserializeImpl(buffer);
@@ -146,7 +147,10 @@ public class FragmentInstance implements IConsensusRequest {
   public void serializeRequest(ByteBuffer buffer) {
     id.serialize(buffer);
     fragment.serialize(buffer);
-    timeFilter.serialize(buffer);
+    ReadWriteIOUtils.write(timeFilter != null, buffer);
+    if (timeFilter != null) {
+      timeFilter.serialize(buffer);
+    }
     ReadWriteIOUtils.write(type.ordinal(), buffer);
     dataRegion.serializeImpl(buffer);
     hostEndpoint.serializeImpl(buffer);

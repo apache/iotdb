@@ -28,6 +28,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.sink.FragmentSinkNode;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -80,11 +81,15 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
     // one by one
     int instanceIdx = 0;
     PlanNode rootCopy = PlanNodeUtil.deepCopy(fragment.getRoot());
+    Filter timeFilter =
+        analysis.getQueryFilter() == null
+            ? null
+            : ((GlobalTimeExpression) analysis.getQueryFilter()).getFilter();
     FragmentInstance fragmentInstance =
         new FragmentInstance(
             new PlanFragment(fragment.getId(), rootCopy),
             instanceIdx,
-            ((GlobalTimeExpression) analysis.getQueryFilter()).getFilter(),
+            timeFilter,
             queryContext.getQueryType());
 
     // Get the target DataRegion for origin PlanFragment, then its instance will be distributed one
