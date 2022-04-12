@@ -103,9 +103,10 @@ public class ConfigNodeConfCheck {
    * Therefore, store them in iotdb-confignode-special.properties at the first startup
    */
   private void writeSpecialProperties(File specialPropertiesFile) {
-    specialProperties.setProperty("device_group_count", String.valueOf(conf.getDeviceGroupCount()));
     specialProperties.setProperty(
-        "device_group_hash_executor_class", conf.getDeviceGroupHashExecutorClass());
+        "series_partition_slot_num", String.valueOf(conf.getSeriesPartitionSlotNum()));
+    specialProperties.setProperty(
+        "series_partition_executor_class", conf.getSeriesPartitionExecutorClass());
     try {
       specialProperties.store(new FileOutputStream(specialPropertiesFile), "");
     } catch (IOException e) {
@@ -116,26 +117,26 @@ public class ConfigNodeConfCheck {
 
   /** Ensure that special parameters are consistent with each startup except the first one */
   private void checkSpecialProperties() throws ConfigurationException {
-    int specialDeviceGroupCount =
+    int specialSeriesPartitionSlotNum =
         Integer.parseInt(
             specialProperties.getProperty(
-                "device_group_count", String.valueOf(conf.getDeviceGroupCount())));
-    if (specialDeviceGroupCount != conf.getDeviceGroupCount()) {
+                "series_partition_slot_num", String.valueOf(conf.getSeriesPartitionSlotNum())));
+    if (specialSeriesPartitionSlotNum != conf.getSeriesPartitionSlotNum()) {
       throw new ConfigurationException(
-          "device_group_count",
-          String.valueOf(conf.getDeviceGroupCount()),
-          String.valueOf(specialDeviceGroupCount));
+          "series_partition_slot_num",
+          String.valueOf(conf.getSeriesPartitionSlotNum()),
+          String.valueOf(specialSeriesPartitionSlotNum));
     }
 
-    String specialDeviceGroupHashExecutorClass =
+    String specialSeriesPartitionSlotExecutorClass =
         specialProperties.getProperty(
-            "device_group_hash_executor_class", conf.getDeviceGroupHashExecutorClass());
+            "series_partition_executor_class", conf.getSeriesPartitionExecutorClass());
     if (!Objects.equals(
-        specialDeviceGroupHashExecutorClass, conf.getDeviceGroupHashExecutorClass())) {
+        specialSeriesPartitionSlotExecutorClass, conf.getSeriesPartitionExecutorClass())) {
       throw new ConfigurationException(
-          "device_group_hash_executor_class",
-          conf.getDeviceGroupHashExecutorClass(),
-          specialDeviceGroupHashExecutorClass);
+          "series_partition_executor_class",
+          conf.getSeriesPartitionExecutorClass(),
+          specialSeriesPartitionSlotExecutorClass);
     }
   }
 

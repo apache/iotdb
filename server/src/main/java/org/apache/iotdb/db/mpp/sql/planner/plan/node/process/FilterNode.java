@@ -23,10 +23,13 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.IOutputPlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.ColumnHeader;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.utils.IExpressionDeserializeUtil;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.collect.ImmutableList;
 
@@ -96,17 +99,44 @@ public class FilterNode extends ProcessNode implements IOutputPlanNode {
     return columnHeaders.stream().map(ColumnHeader::getColumnType).collect(Collectors.toList());
   }
 
+  public void setColumnHeaders(List<ColumnHeader> columnHeaders) {
+    this.columnHeaders = columnHeaders;
+  }
+
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
     return visitor.visitFilter(this, context);
   }
 
   public static FilterNode deserialize(ByteBuffer byteBuffer) {
-    return null;
+    IExpression predicate = IExpressionDeserializeUtil.deserialize(byteBuffer);
+    int columnSize = ReadWriteIOUtils.readInt(byteBuffer);
+    List<ColumnHeader> columnHeaders = null;
+    if (columnSize != -1) {
+      columnHeaders = new ArrayList<>();
+      for (int i = 0; i < columnSize; i++) {
+        columnHeaders.add(ColumnHeader.deserialize(byteBuffer));
+      }
+    }
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+    FilterNode filterNode = new FilterNode(planNodeId, predicate);
+    filterNode.setColumnHeaders(columnHeaders);
+    return filterNode;
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {}
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    PlanNodeType.FILTER.serialize(byteBuffer);
+    predicate.serialize(byteBuffer);
+    if (columnHeaders == null) {
+      ReadWriteIOUtils.write(-1, byteBuffer);
+    } else {
+      ReadWriteIOUtils.write(columnHeaders.size(), byteBuffer);
+      for (ColumnHeader columnHeader : columnHeaders) {
+        columnHeader.serialize(byteBuffer);
+      }
+    }
+  }
 
   public IExpression getPredicate() {
     return predicate;

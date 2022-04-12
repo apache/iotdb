@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.rpc;
 
-import org.apache.iotdb.service.rpc.thrift.EndPoint;
+import org.apache.iotdb.common.rpc.thrift.EndPoint;
 
 import java.io.IOException;
 import java.util.Map;

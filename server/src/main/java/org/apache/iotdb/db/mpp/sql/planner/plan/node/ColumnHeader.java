@@ -22,7 +22,9 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.nio.ByteBuffer;
 import java.util.Objects;
 
 public class ColumnHeader {
@@ -64,6 +66,22 @@ public class ColumnHeader {
       return new ColumnHeader(measurement, functionName, dataType);
     }
     return new ColumnHeader(measurement, dataType);
+  }
+
+  public void serialize(ByteBuffer byteBuffer) {
+    ReadWriteIOUtils.write(pathName, byteBuffer);
+    ReadWriteIOUtils.write(functionName, byteBuffer);
+    dataType.serializeTo(byteBuffer);
+  }
+
+  public static ColumnHeader deserialize(ByteBuffer byteBuffer) {
+    String pathName = ReadWriteIOUtils.readString(byteBuffer);
+    String functionName = ReadWriteIOUtils.readString(byteBuffer);
+    TSDataType tsDataType = TSDataType.deserializeFrom(byteBuffer);
+    if (functionName == null) {
+      return new ColumnHeader(pathName, tsDataType);
+    }
+    return new ColumnHeader(pathName, functionName, tsDataType);
   }
 
   @Override

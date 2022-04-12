@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.commons.partition;
 
+import org.apache.iotdb.commons.cluster.DataNodeLocation;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 
 import java.io.IOException;
@@ -27,13 +28,13 @@ import java.util.List;
 import java.util.Objects;
 
 public class RegionReplicaSet {
-  private ConsensusGroupId id;
+  private ConsensusGroupId consensusGroupId;
   private List<DataNodeLocation> dataNodeList;
 
   public RegionReplicaSet() {}
 
-  public RegionReplicaSet(ConsensusGroupId id, List<DataNodeLocation> dataNodeList) {
-    this.id = id;
+  public RegionReplicaSet(ConsensusGroupId consensusGroupId, List<DataNodeLocation> dataNodeList) {
+    this.consensusGroupId = consensusGroupId;
     this.dataNodeList = dataNodeList;
   }
 
@@ -45,20 +46,22 @@ public class RegionReplicaSet {
     this.dataNodeList = dataNodeList;
   }
 
-  public ConsensusGroupId getId() {
-    return id;
+  public ConsensusGroupId getConsensusGroupId() {
+    return consensusGroupId;
   }
 
-  public void setId(ConsensusGroupId id) {
-    this.id = id;
+  public void setConsensusGroupId(ConsensusGroupId consensusGroupId) {
+    this.consensusGroupId = consensusGroupId;
   }
 
   public String toString() {
-    return String.format("RegionReplicaSet[%s-%s]: %s", id.getType(), id, dataNodeList);
+    return String.format(
+        "RegionReplicaSet[%s-%d]: %s",
+        consensusGroupId.getType(), consensusGroupId.getId(), dataNodeList);
   }
 
   public void serializeImpl(ByteBuffer buffer) {
-    id.serializeImpl(buffer);
+    consensusGroupId.serializeImpl(buffer);
     buffer.putInt(dataNodeList.size());
     dataNodeList.forEach(
         dataNode -> {
@@ -66,18 +69,16 @@ public class RegionReplicaSet {
         });
   }
 
-  public void deserializeImpl(ByteBuffer buffer) throws IOException {
-    id = ConsensusGroupId.Factory.create(buffer);
+  public static RegionReplicaSet deserializeImpl(ByteBuffer buffer) throws IOException {
+    ConsensusGroupId consensusGroupId = ConsensusGroupId.Factory.create(buffer);
 
     int size = buffer.getInt();
     // We should always make dataNodeList as a new Object when deserialization
-    dataNodeList = new ArrayList<>();
-
+    List<DataNodeLocation> dataNodeList = new ArrayList<>();
     for (int i = 0; i < size; i++) {
-      DataNodeLocation dataNode = new DataNodeLocation();
-      dataNode.deserializeImpl(buffer);
-      dataNodeList.add(dataNode);
+      dataNodeList.add(DataNodeLocation.deserializeImpl(buffer));
     }
+    return new RegionReplicaSet(consensusGroupId, dataNodeList);
   }
 
   @Override
@@ -89,11 +90,16 @@ public class RegionReplicaSet {
       return false;
     }
     RegionReplicaSet that = (RegionReplicaSet) o;
-    return Objects.equals(id, that.id) && Objects.equals(dataNodeList, that.dataNodeList);
+    return Objects.equals(consensusGroupId, that.consensusGroupId)
+        && Objects.equals(dataNodeList, that.dataNodeList);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(id, dataNodeList);
+    return Objects.hash(consensusGroupId, dataNodeList);
+  }
+
+  public boolean isEmpty() {
+    return dataNodeList == null || dataNodeList.isEmpty();
   }
 }

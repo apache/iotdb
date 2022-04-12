@@ -23,9 +23,11 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.IOutputPlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.ColumnHeader;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.collect.ImmutableList;
 
@@ -91,12 +93,17 @@ public class LimitNode extends ProcessNode implements IOutputPlanNode {
     return visitor.visitLimit(this, context);
   }
 
-  public static LimitNode deserialize(ByteBuffer byteBuffer) {
-    return null;
+  @Override
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    PlanNodeType.LIMIT.serialize(byteBuffer);
+    ReadWriteIOUtils.write(limit, byteBuffer);
   }
 
-  @Override
-  public void serialize(ByteBuffer byteBuffer) {}
+  public static LimitNode deserialize(ByteBuffer byteBuffer) {
+    int limit = ReadWriteIOUtils.readInt(byteBuffer);
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+    return new LimitNode(planNodeId, limit);
+  }
 
   public int getLimit() {
     return limit;

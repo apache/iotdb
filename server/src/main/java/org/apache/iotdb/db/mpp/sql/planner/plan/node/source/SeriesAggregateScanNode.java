@@ -21,21 +21,28 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.source;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
 import org.apache.iotdb.db.mpp.common.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.sql.planner.plan.IOutputPlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.ColumnHeader;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.collect.ImmutableList;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -156,12 +163,51 @@ public class SeriesAggregateScanNode extends SourceNode implements IOutputPlanNo
     return visitor.visitSeriesAggregate(this, context);
   }
 
-  public static SeriesAggregateScanNode deserialize(ByteBuffer byteBuffer) {
-    return null;
+  @Override
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    PlanNodeType.SERIES_AGGREGATE_SCAN.serialize(byteBuffer);
+    seriesPath.serialize(byteBuffer);
+    ReadWriteIOUtils.write(aggregateFuncList.size(), byteBuffer);
+    for (AggregationType aggregationType : aggregateFuncList) {
+      ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+      DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+      try {
+        aggregationType.serializeTo(dataOutputStream);
+      } catch (IOException ioException) {
+        ioException.printStackTrace();
+      }
+      byteBuffer.put(byteArrayOutputStream.toByteArray());
+    }
+    ReadWriteIOUtils.write(scanOrder.ordinal(), byteBuffer);
+    timeFilter.serialize(byteBuffer);
+    // TODO serialize groupByTimeParameter
+    regionReplicaSet.serializeImpl(byteBuffer);
   }
 
-  @Override
-  public void serialize(ByteBuffer byteBuffer) {}
+  public static SeriesAggregateScanNode deserialize(ByteBuffer byteBuffer) {
+    PartialPath partialPath = (PartialPath) PathDeserializeUtil.deserialize(byteBuffer);
+    int aggregateFuncSize = ReadWriteIOUtils.readInt(byteBuffer);
+    List<AggregationType> aggregateFuncList = new ArrayList<>();
+    for (int i = 0; i < aggregateFuncSize; i++) {
+      aggregateFuncList.add(AggregationType.deserialize(byteBuffer));
+    }
+    OrderBy scanOrder = OrderBy.values()[ReadWriteIOUtils.readInt(byteBuffer)];
+    Filter timeFilter = FilterFactory.deserialize(byteBuffer);
+
+    // TODO serialize groupByTimeParameter
+    RegionReplicaSet regionReplicaSet = new RegionReplicaSet();
+    try {
+      regionReplicaSet.deserializeImpl(byteBuffer);
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+    SeriesAggregateScanNode seriesAggregateScanNode =
+        new SeriesAggregateScanNode(
+            planNodeId, partialPath, aggregateFuncList, scanOrder, timeFilter, null);
+    seriesAggregateScanNode.regionReplicaSet = regionReplicaSet;
+    return seriesAggregateScanNode;
+  }
 
   public PartialPath getSeriesPath() {
     return seriesPath;

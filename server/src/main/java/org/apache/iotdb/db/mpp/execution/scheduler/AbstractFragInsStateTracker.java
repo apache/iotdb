@@ -67,7 +67,7 @@ public abstract class AbstractFragInsStateTracker implements IFragInstanceStateT
   private TFragmentInstanceId getTId(FragmentInstance instance) {
     return new TFragmentInstanceId(
         instance.getId().getQueryId().getId(),
-        String.valueOf(instance.getId().getFragmentId().getId()),
+        instance.getId().getFragmentId().getId(),
         instance.getId().getInstanceId());
   }
 }

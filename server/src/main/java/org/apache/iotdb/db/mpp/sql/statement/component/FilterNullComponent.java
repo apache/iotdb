@@ -21,9 +21,13 @@ package org.apache.iotdb.db.mpp.sql.statement.component;
 
 import org.apache.iotdb.db.mpp.sql.statement.StatementNode;
 import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.query.expression.ExpressionType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /** This class maintains information of {@code WITHOUT NULL} clause. */
 public class FilterNullComponent extends StatementNode {
@@ -50,5 +54,45 @@ public class FilterNullComponent extends StatementNode {
 
   public void setWithoutNullColumns(List<Expression> withoutNullColumns) {
     this.withoutNullColumns = withoutNullColumns;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    FilterNullComponent that = (FilterNullComponent) o;
+    return filterNullPolicy == that.filterNullPolicy
+        && Objects.equals(withoutNullColumns, that.withoutNullColumns);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(filterNullPolicy, withoutNullColumns);
+  }
+
+  public void serialize(ByteBuffer byteBuffer) {
+    ReadWriteIOUtils.write(filterNullPolicy.ordinal(), byteBuffer);
+    ReadWriteIOUtils.write(withoutNullColumns.size(), byteBuffer);
+    for (Expression expression : withoutNullColumns) {
+      expression.serialize(byteBuffer);
+    }
+  }
+
+  public static FilterNullComponent deserialize(ByteBuffer byteBuffer) {
+    FilterNullPolicy filterNullPolicy =
+        FilterNullPolicy.values()[ReadWriteIOUtils.readInt(byteBuffer)];
+    int withoutNullSize = ReadWriteIOUtils.readInt(byteBuffer);
+    List<Expression> withoutNullColumns = new ArrayList<>();
+    for (int i = 0; i < withoutNullSize; i++) {
+      withoutNullColumns.add(ExpressionType.deserialize(byteBuffer));
+    }
+    FilterNullComponent filterNullComponent = new FilterNullComponent();
+    filterNullComponent.withoutNullColumns = withoutNullColumns;
+    filterNullComponent.filterNullPolicy = filterNullPolicy;
+    return filterNullComponent;
   }
 }

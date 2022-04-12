@@ -23,10 +23,12 @@ import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.sql.rewriter.WildcardsRemover;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.query.expression.ExpressionType;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFContext;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
 import org.apache.iotdb.db.query.udf.core.layer.IntermediateLayer;
@@ -36,7 +38,9 @@ import org.apache.iotdb.db.query.udf.core.layer.SingleInputColumnMultiReferenceI
 import org.apache.iotdb.db.query.udf.core.layer.SingleInputColumnSingleReferenceIntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.nio.ByteBuffer;
 import java.time.ZoneId;
 import java.util.Collections;
 import java.util.List;
@@ -157,5 +161,20 @@ public class TimeSeriesOperand extends Expression {
 
   public String getExpressionStringInternal() {
     return path.isMeasurementAliasExists() ? path.getFullPathWithAlias() : path.getFullPath();
+  }
+
+  public static TimeSeriesOperand deserialize(ByteBuffer buffer) {
+    boolean isConstantOperandCache = ReadWriteIOUtils.readBool(buffer);
+    PartialPath partialPath = (PartialPath) PathDeserializeUtil.deserialize(buffer);
+    TimeSeriesOperand timeSeriesOperand = new TimeSeriesOperand(partialPath);
+    timeSeriesOperand.isConstantOperandCache = isConstantOperandCache;
+    return timeSeriesOperand;
+  }
+
+  @Override
+  public void serialize(ByteBuffer byteBuffer) {
+    ExpressionType.TimeSeries.serialize(byteBuffer);
+    super.serialize(byteBuffer);
+    path.serialize(byteBuffer);
   }
 }

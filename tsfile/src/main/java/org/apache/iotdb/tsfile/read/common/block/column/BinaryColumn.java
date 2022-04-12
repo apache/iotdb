@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.read.common.block.column;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
@@ -69,6 +70,16 @@ public class BinaryColumn implements Column {
   }
 
   @Override
+  public TSDataType getDataType() {
+    return TSDataType.TEXT;
+  }
+
+  @Override
+  public ColumnEncoding getEncoding() {
+    return ColumnEncoding.BINARY_ARRAY;
+  }
+
+  @Override
   public Binary getBinary(int position) {
     checkReadablePosition(position);
     return values[position + arrayOffset];
@@ -83,6 +94,11 @@ public class BinaryColumn implements Column {
   public TsPrimitiveType getTsPrimitiveType(int position) {
     checkReadablePosition(position);
     return new TsPrimitiveType.TsBinary(getBinary(position));
+  }
+
+  @Override
+  public boolean mayHaveNull() {
+    return valueIsNull != null;
   }
 
   @Override

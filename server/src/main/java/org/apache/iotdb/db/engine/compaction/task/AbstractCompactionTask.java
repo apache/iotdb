@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.compaction.task;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
+import org.apache.iotdb.db.engine.compaction.performer.ICompactionPerformer;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 
 import org.slf4j.Logger;
@@ -45,6 +46,7 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
   protected long timeCost = 0L;
   protected volatile boolean ran = false;
   protected volatile boolean finished = false;
+  protected ICompactionPerformer performer;
 
   public AbstractCompactionTask(
       String fullStorageGroupName,
@@ -72,7 +74,7 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
       LOGGER.error(e.getMessage(), e);
     } finally {
       this.currentTaskNum.decrementAndGet();
-      CompactionTaskManager.getInstance().removeRunningTaskFromList(this);
+      CompactionTaskManager.getInstance().removeRunningTaskFuture(this);
       timeCost = System.currentTimeMillis() - startTime;
       finished = true;
     }

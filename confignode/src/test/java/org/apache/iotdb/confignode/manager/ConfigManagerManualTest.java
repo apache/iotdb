@@ -18,13 +18,13 @@
  */
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.iotdb.common.rpc.thrift.EndPoint;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
-import org.apache.iotdb.confignode.rpc.thrift.DataNodeMessage;
-import org.apache.iotdb.confignode.rpc.thrift.DataNodeRegisterReq;
-import org.apache.iotdb.confignode.rpc.thrift.DataNodeRegisterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeMessage;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.EndPoint;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -74,10 +74,9 @@ public class ConfigManagerManualTest {
 
   private void registerDataNodes() throws TException {
     for (int i = 0; i < 3; i++) {
-      DataNodeRegisterReq req = new DataNodeRegisterReq(new EndPoint("0.0.0.0", 6667 + i));
-      DataNodeRegisterResp resp = clients[0].registerDataNode(req);
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), resp.registerResult.getCode());
+      TDataNodeRegisterReq req = new TDataNodeRegisterReq(new EndPoint("0.0.0.0", 6667 + i));
+      TDataNodeRegisterResp resp = clients[0].registerDataNode(req);
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), resp.getStatus().getCode());
       Assert.assertEquals(i, resp.getDataNodeID());
     }
   }
@@ -87,11 +86,12 @@ public class ConfigManagerManualTest {
     TimeUnit.SECONDS.sleep(1);
 
     for (int i = 0; i < 3; i++) {
-      Map<Integer, DataNodeMessage> msgMap = clients[i].getDataNodesMessage(-1);
+      Map<Integer, TDataNodeMessage> msgMap =
+          clients[i].getDataNodesMessage(-1).getDataNodeMessageMap();
       Assert.assertEquals(3, msgMap.size());
       for (int j = 0; j < 3; j++) {
         Assert.assertNotNull(msgMap.get(j));
-        Assert.assertEquals(j, msgMap.get(j).getDataNodeID());
+        Assert.assertEquals(j, msgMap.get(j).getDataNodeId());
         Assert.assertEquals(localhost, msgMap.get(j).getEndPoint().getIp());
         Assert.assertEquals(6667 + j, msgMap.get(j).getEndPoint().getPort());
       }
@@ -113,17 +113,18 @@ public class ConfigManagerManualTest {
       clients[i] = new ConfigIService.Client(new TBinaryProtocol(transport));
     }
 
-    DataNodeRegisterResp resp =
-        clients[1].registerDataNode(new DataNodeRegisterReq(new EndPoint("0.0.0.0", 6670)));
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), resp.registerResult.getCode());
+    TDataNodeRegisterResp resp =
+        clients[1].registerDataNode(new TDataNodeRegisterReq(new EndPoint("0.0.0.0", 6670)));
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), resp.getStatus().getCode());
     Assert.assertEquals(3, resp.getDataNodeID());
 
     for (int i = 0; i < 2; i++) {
-      Map<Integer, DataNodeMessage> msgMap = clients[i].getDataNodesMessage(-1);
+      Map<Integer, TDataNodeMessage> msgMap =
+          clients[i].getDataNodesMessage(-1).getDataNodeMessageMap();
       Assert.assertEquals(4, msgMap.size());
       for (int j = 0; j < 4; j++) {
         Assert.assertNotNull(msgMap.get(j));
-        Assert.assertEquals(j, msgMap.get(j).getDataNodeID());
+        Assert.assertEquals(j, msgMap.get(j).getDataNodeId());
         Assert.assertEquals(localhost, msgMap.get(j).getEndPoint().getIp());
         Assert.assertEquals(6667 + j, msgMap.get(j).getEndPoint().getPort());
       }

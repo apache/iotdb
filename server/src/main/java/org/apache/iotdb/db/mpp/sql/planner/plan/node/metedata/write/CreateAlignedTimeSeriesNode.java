@@ -24,6 +24,8 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -227,8 +229,7 @@ public class CreateAlignedTimeSeriesNode extends PlanNode {
     byteBuffer.putInt(0);
   }
 
-  public static CreateAlignedTimeSeriesNode deserialize(ByteBuffer byteBuffer)
-      throws IllegalPathException {
+  public static CreateAlignedTimeSeriesNode deserialize(ByteBuffer byteBuffer) {
     String id;
     PartialPath devicePath = null;
     List<String> measurements;
@@ -243,7 +244,11 @@ public class CreateAlignedTimeSeriesNode extends PlanNode {
     int length = byteBuffer.getInt();
     byte[] bytes = new byte[length];
     byteBuffer.get(bytes);
-    devicePath = new PartialPath(new String(bytes));
+    try {
+      devicePath = new PartialPath(new String(bytes));
+    } catch (IllegalPathException e) {
+      throw new IllegalArgumentException("Can not deserialize CreateAlignedTimeSeriesNode", e);
+    }
 
     measurements = new ArrayList<>();
     int size = byteBuffer.getInt();
@@ -330,6 +335,11 @@ public class CreateAlignedTimeSeriesNode extends PlanNode {
   }
 
   @Override
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    throw new NotImplementedException(
+        "serializeAttributes of CreateAlignedTimeSeriesNode is not implemented");
+  }
+
   public int hashCode() {
     return Objects.hash(
         this.getPlanNodeId(),
@@ -343,4 +353,24 @@ public class CreateAlignedTimeSeriesNode extends PlanNode {
         tagsList,
         attributesList);
   }
+
+  @Override
+  public PhysicalPlan transferToPhysicalPlan() {
+    return new CreateAlignedTimeSeriesPlan(
+        getDevicePath(),
+        getMeasurements(),
+        getDataTypes(),
+        getEncodings(),
+        getCompressors(),
+        getAliasList(),
+        getTagsList(),
+        getAttributesList());
+  }
+
+  //  @Override
+  //  public void executeOn(SchemaRegion schemaRegion) throws MetadataException {
+  //    schemaRegion.createAlignedTimeSeries((CreateAlignedTimeSeriesPlan)
+  // transferToPhysicalPlan());
+  //  }
+
 }

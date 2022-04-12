@@ -106,7 +106,9 @@ public class InsertTabletStatement extends InsertBaseStatement {
   @Override
   public boolean checkDataType(SchemaTree schemaTree) {
     List<MeasurementSchema> measurementSchemas =
-        schemaTree.searchMeasurementSchema(devicePath, Arrays.asList(measurements));
+        schemaTree
+            .searchDeviceSchemaInfo(devicePath, Arrays.asList(measurements))
+            .getMeasurementSchemaList();
     for (int i = 0; i < measurementSchemas.size(); i++) {
       if (dataTypes[i] != measurementSchemas.get(i).getType()) {
         if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {

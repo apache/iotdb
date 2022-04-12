@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.protocol.influxdb.handler;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -49,10 +50,9 @@ import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
 import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
-import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSQueryResultRsp;
+import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxQueryResultRsp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -76,7 +76,7 @@ import java.util.Map;
 
 public class QueryHandler {
 
-  public static TSQueryResultRsp queryInfluxDB(
+  public static InfluxQueryResultRsp queryInfluxDB(
       String database,
       InfluxQueryOperator queryOperator,
       long sessionId,
@@ -85,7 +85,7 @@ public class QueryHandler {
     // The list of fields under the current measurement and the order of the specified rules
     Map<String, Integer> fieldOrders = getFieldOrders(database, measurement, serviceProvider);
     QueryResult queryResult;
-    TSQueryResultRsp tsQueryResultRsp = new TSQueryResultRsp();
+    InfluxQueryResultRsp tsQueryResultRsp = new InfluxQueryResultRsp();
     try {
       // contain filter condition or have common query the result of by traversal.
       if (queryOperator.getWhereComponent() != null

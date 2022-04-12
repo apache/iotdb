@@ -18,10 +18,14 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node;
 
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 import org.apache.commons.lang.Validate;
 
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.Objects;
 
 import static java.util.Objects.requireNonNull;
 
@@ -78,5 +82,41 @@ public abstract class PlanNode {
     return visitor.visitPlan(this, context);
   }
 
-  public abstract void serialize(ByteBuffer byteBuffer);
+  public void serialize(ByteBuffer byteBuffer) {
+    serializeAttributes(byteBuffer);
+    id.serialize(byteBuffer);
+    List<PlanNode> planNodes = getChildren();
+    if (planNodes == null) {
+      ReadWriteIOUtils.write(0, byteBuffer);
+    } else {
+      ReadWriteIOUtils.write(planNodes.size(), byteBuffer);
+      for (PlanNode planNode : planNodes) {
+        planNode.serialize(byteBuffer);
+      }
+    }
+  }
+
+  protected abstract void serializeAttributes(ByteBuffer byteBuffer);
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    PlanNode planNode = (PlanNode) o;
+    return Objects.equals(id, planNode.id);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(id);
+  }
+
+  // TODO (yifuzhou) will remote later
+  public PhysicalPlan transferToPhysicalPlan() {
+    return null;
+  }
 }

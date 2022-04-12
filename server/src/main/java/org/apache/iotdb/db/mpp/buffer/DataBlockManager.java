@@ -27,6 +27,7 @@ import org.apache.iotdb.mpp.rpc.thrift.GetDataBlockRequest;
 import org.apache.iotdb.mpp.rpc.thrift.GetDataBlockResponse;
 import org.apache.iotdb.mpp.rpc.thrift.NewDataBlockEvent;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
+import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
 
 import org.apache.commons.lang3.Validate;
 import org.apache.thrift.TException;
@@ -79,8 +80,12 @@ public class DataBlockManager implements IDataBlockManager {
       GetDataBlockResponse resp = new GetDataBlockResponse();
       SinkHandle sinkHandle = sinkHandles.get(req.getSourceFragmentInstanceId());
       for (int i = req.getStartSequenceId(); i < req.getEndSequenceId(); i++) {
-        ByteBuffer serializedTsBlock = sinkHandle.getSerializedTsBlock(i);
-        resp.addToTsBlocks(serializedTsBlock);
+        try {
+          ByteBuffer serializedTsBlock = sinkHandle.getSerializedTsBlock(i);
+          resp.addToTsBlocks(serializedTsBlock);
+        } catch (IOException e) {
+          throw new TException(e);
+        }
       }
       return resp;
     }
@@ -241,6 +246,7 @@ public class DataBlockManager implements IDataBlockManager {
   public ISinkHandle createSinkHandle(
       TFragmentInstanceId localFragmentInstanceId,
       String remoteHostname,
+      int remotePort,
       TFragmentInstanceId remoteFragmentInstanceId,
       String remotePlanNodeId)
       throws IOException {
@@ -262,7 +268,7 @@ public class DataBlockManager implements IDataBlockManager {
             localFragmentInstanceId,
             localMemoryManager,
             executorService,
-            clientFactory.getDataBlockServiceClient(remoteHostname, 7777),
+            clientFactory.getDataBlockServiceClient(remoteHostname, remotePort),
             tsBlockSerdeFactory.get(),
             new SinkHandleListenerImpl());
     sinkHandles.put(localFragmentInstanceId, sinkHandle);
@@ -274,6 +280,7 @@ public class DataBlockManager implements IDataBlockManager {
       TFragmentInstanceId localFragmentInstanceId,
       String localPlanNodeId,
       String remoteHostname,
+      int remotePort,
       TFragmentInstanceId remoteFragmentInstanceId)
       throws IOException {
     if (sourceHandles.containsKey(localFragmentInstanceId)
@@ -300,8 +307,7 @@ public class DataBlockManager implements IDataBlockManager {
             localPlanNodeId,
             localMemoryManager,
             executorService,
-            // TODO: hard coded port.
-            clientFactory.getDataBlockServiceClient(remoteHostname, 7777),
+            clientFactory.getDataBlockServiceClient(remoteHostname, remotePort),
             tsBlockSerdeFactory.get(),
             new SourceHandleListenerImpl());
     sourceHandles

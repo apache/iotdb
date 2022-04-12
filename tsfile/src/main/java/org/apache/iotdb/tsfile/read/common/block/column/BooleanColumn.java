@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.read.common.block.column;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import org.openjdk.jol.info.ClassLayout;
@@ -68,6 +69,16 @@ public class BooleanColumn implements Column {
   }
 
   @Override
+  public TSDataType getDataType() {
+    return TSDataType.BOOLEAN;
+  }
+
+  @Override
+  public ColumnEncoding getEncoding() {
+    return ColumnEncoding.BYTE_ARRAY;
+  }
+
+  @Override
   public boolean getBoolean(int position) {
     checkReadablePosition(position);
     return values[position + arrayOffset];
@@ -82,6 +93,11 @@ public class BooleanColumn implements Column {
   public TsPrimitiveType getTsPrimitiveType(int position) {
     checkReadablePosition(position);
     return new TsPrimitiveType.TsBoolean(getBoolean(position));
+  }
+
+  @Override
+  public boolean mayHaveNull() {
+    return valueIsNull != null;
   }
 
   @Override
