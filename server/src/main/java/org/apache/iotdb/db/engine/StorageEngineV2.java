@@ -50,6 +50,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.utils.ThreadUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
+import org.apache.iotdb.db.wal.recover.WALRecoverManager;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
@@ -227,13 +228,22 @@ public class StorageEngineV2 implements IService {
   private void getLocalDataRegion() throws MetadataException, DataRegionException {
     File system = SystemFileFactory.INSTANCE.getFile(systemDir);
     File[] sgDirs = system.listFiles();
+    int sgCount = 0;
+    for (File sgDir : sgDirs) {
+      if (!sgDir.isDirectory()) {
+        sgCount++;
+      }
+    }
+    // init wal recover manager
+    WALRecoverManager.getInstance()
+        .setAllDataRegionScannedLatch(new CountDownLatch(sgCount * config.getDataRegionNum()));
     for (File sgDir : sgDirs) {
       if (!sgDir.isDirectory()) {
         continue;
       }
       String sg = sgDir.getName();
       // TODO: need to get TTL Info from config node
-      long ttl = Integer.MAX_VALUE;
+      long ttl = Long.MAX_VALUE;
       for (File dataRegionDir : sgDir.listFiles()) {
         if (!dataRegionDir.isDirectory()) {
           continue;
