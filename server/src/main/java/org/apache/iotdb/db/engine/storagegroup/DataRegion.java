@@ -62,7 +62,10 @@ import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.IDTableManager;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowsNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
@@ -817,6 +820,11 @@ public class DataRegion {
   }
 
   // TODO: (New Insert)
+  /**
+   * insert one row of data
+   *
+   * @param insertRowNode one row of data
+   */
   public void insert(InsertRowNode insertRowNode)
       throws WriteProcessException, TriggerExecutionException {
     // reject insertions that are out of ttl
@@ -3239,6 +3247,118 @@ public class DataRegion {
       }
     } finally {
       writeUnlock();
+    }
+  }
+
+  /**
+   * insert batch of rows belongs to one device
+   *
+   * @param insertRowsOfOneDeviceNode batch of rows belongs to one device
+   */
+  public void insert(InsertRowsOfOneDeviceNode insertRowsOfOneDeviceNode)
+      throws WriteProcessException, TriggerExecutionException, BatchProcessException {
+    writeLock("InsertRowsOfOneDevice");
+    try {
+      boolean isSequence = false;
+      for (int i = 0; i < insertRowsOfOneDeviceNode.getInsertRowNodeList().size(); i++) {
+        InsertRowNode insertRowNode = insertRowsOfOneDeviceNode.getInsertRowNodeList().get(i);
+        if (!isAlive(insertRowNode.getTime())) {
+          // we do not need to write these part of data, as they can not be queried
+          // or the sub-plan has already been executed, we are retrying other sub-plans
+          insertRowsOfOneDeviceNode
+              .getResults()
+              .put(
+                  i,
+                  RpcUtils.getStatus(
+                      TSStatusCode.OUT_OF_TTL_ERROR.getStatusCode(),
+                      String.format(
+                          "Insertion time [%s] is less than ttl time bound [%s]",
+                          new Date(insertRowNode.getTime()),
+                          new Date(System.currentTimeMillis() - dataTTL))));
+          continue;
+        }
+        // init map
+        long timePartitionId = StorageEngine.getTimePartition(insertRowNode.getTime());
+
+        lastFlushTimeManager.ensureFlushedTimePartition(timePartitionId);
+        // as the plans have been ordered, and we have get the write lock,
+        // So, if a plan is sequenced, then all the rest plans are sequenced.
+        //
+        if (!isSequence) {
+          isSequence =
+              insertRowNode.getTime()
+                  > lastFlushTimeManager.getFlushedTime(
+                      timePartitionId, insertRowNode.getDevicePath().getFullPath());
+        }
+        // is unsequence and user set config to discard out of order data
+        if (!isSequence
+            && IoTDBDescriptor.getInstance().getConfig().isEnableDiscardOutOfOrderData()) {
+          return;
+        }
+
+        lastFlushTimeManager.ensureLastTimePartition(timePartitionId);
+
+        // fire trigger before insertion
+        // TriggerEngine.fire(TriggerEvent.BEFORE_INSERT, plan);
+        // insert to sequence or unSequence file
+        try {
+          insertToTsFileProcessor(insertRowNode, isSequence, timePartitionId);
+        } catch (WriteProcessException e) {
+          insertRowsOfOneDeviceNode
+              .getResults()
+              .put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+        }
+        // fire trigger before insertion
+        // TriggerEngine.fire(TriggerEvent.AFTER_INSERT, plan);
+      }
+    } finally {
+      writeUnlock();
+    }
+    if (!insertRowsOfOneDeviceNode.getResults().isEmpty()) {
+      throw new BatchProcessException(insertRowsOfOneDeviceNode.getFailingStatus());
+    }
+  }
+
+  /**
+   * insert batch of rows belongs to multiple devices
+   *
+   * @param insertRowsNode batch of rows belongs to multiple devices
+   */
+  public void insert(InsertRowsNode insertRowsNode) throws BatchProcessException {
+    for (int i = 0; i < insertRowsNode.getInsertRowNodeList().size(); i++) {
+      InsertRowNode insertRowNode = insertRowsNode.getInsertRowNodeList().get(i);
+      try {
+        insert(insertRowNode);
+      } catch (WriteProcessException | TriggerExecutionException e) {
+        insertRowsNode.getResults().put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+      }
+    }
+
+    if (!insertRowsNode.getResults().isEmpty()) {
+      throw new BatchProcessException(insertRowsNode.getFailingStatus());
+    }
+  }
+
+  /**
+   * insert batch of tablets belongs to multiple devices
+   *
+   * @param insertMultiTabletsNode batch of tablets belongs to multiple devices
+   */
+  public void insertTablets(InsertMultiTabletsNode insertMultiTabletsNode)
+      throws BatchProcessException {
+    for (int i = 0; i < insertMultiTabletsNode.getInsertTabletNodeList().size(); i++) {
+      InsertTabletNode insertTabletNode = insertMultiTabletsNode.getInsertTabletNodeList().get(i);
+      try {
+        insertTablet(insertTabletNode);
+      } catch (TriggerExecutionException | BatchProcessException e) {
+        insertMultiTabletsNode
+            .getResults()
+            .put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+      }
+    }
+
+    if (!insertMultiTabletsNode.getResults().isEmpty()) {
+      throw new BatchProcessException(insertMultiTabletsNode.getFailingStatus());
     }
   }
 
