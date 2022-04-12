@@ -30,14 +30,17 @@ import org.apache.iotdb.commons.utils.CommonUtils;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
+import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConfigCheck;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.thrift.impl.DataNodeManagementServiceImpl;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcTransportFactory;
+import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.ratis.protocol.exceptions.StateMachineException;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
@@ -123,36 +126,31 @@ public class DataNode implements DataNodeMBean {
   }
 
   public void joinCluster() throws StartupException {
-    List<Endpoint> configNodes;
+    int retry = DEFAULT_JOIN_RETRY;
+    ConfigNodeClient configNodeClient = null;
     try {
-      configNodes =
-          CommonUtils.parseNodeUrls(IoTDBDescriptor.getInstance().getConfig().getConfigNodeUrls());
-    } catch (BadNodeUrlException e) {
+      configNodeClient = new ConfigNodeClient();
+    } catch (IoTDBConnectionException | BadNodeUrlException e) {
       throw new StartupException(e.getMessage());
     }
 
-    int retry = DEFAULT_JOIN_RETRY;
     while (retry > 0) {
-      // randomly pick up a config node to try
-      Random random = new Random();
-      Endpoint configNode = configNodes.get(random.nextInt(configNodes.size()));
-      logger.info("start joining the cluster with the help of {}", configNode);
+      logger.info("start joining the cluster.");
       try {
-        ConfigIService.Client client = createClient(configNode);
         TDataNodeRegisterResp dataNodeRegisterResp =
-            client.registerDataNode(
-                new TDataNodeRegisterReq(new EndPoint(thisNode.getIp(), thisNode.getPort())));
+                configNodeClient.registerDataNode(
+                        new TDataNodeRegisterReq(new EndPoint(thisNode.getIp(), thisNode.getPort())));
         if (dataNodeRegisterResp.getStatus().getCode()
-            == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           dataNodeID = dataNodeRegisterResp.getDataNodeID();
           logger.info("Joined a cluster successfully");
           return;
         }
-        // wait 5s to start the next try
+
         Thread.sleep(IoTDBDescriptor.getInstance().getConfig().getJoinClusterTimeOutMs());
-      } catch (TException | IoTDBConnectionException e) {
-        logger.warn("Cannot join the cluster from {}, because:", configNode, e);
-      } catch (InterruptedException e) {
+      }catch (StatementExecutionException | IoTDBConnectionException e ){
+        logger.warn("Cannot join the cluster, because:", e);
+      }catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         logger.warn("Unexpected interruption when waiting to join a cluster", e);
       }
@@ -201,24 +199,24 @@ public class DataNode implements DataNodeMBean {
     private DataNodeHolder() {}
   }
 
-  private ConfigIService.Client createClient(Endpoint endpoint) throws IoTDBConnectionException {
-    TTransport transport;
-    try {
-      transport =
-          RpcTransportFactory.INSTANCE.getTransport(
-              // as there is a try-catch already, we do not need to use TSocket.wrap
-              endpoint.getIp(), endpoint.getPort(), 2000);
-      transport.open();
-    } catch (TTransportException e) {
-      throw new IoTDBConnectionException(e);
-    }
-
-    ConfigIService.Client client;
-    if (IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable()) {
-      client = new ConfigIService.Client(new TCompactProtocol(transport));
-    } else {
-      client = new ConfigIService.Client(new TBinaryProtocol(transport));
-    }
-    return client;
-  }
+//  private ConfigIService.Client createClient(Endpoint endpoint) throws IoTDBConnectionException {
+//    TTransport transport;
+//    try {
+//      transport =
+//          RpcTransportFactory.INSTANCE.getTransport(
+//              // as there is a try-catch already, we do not need to use TSocket.wrap
+//              endpoint.getIp(), endpoint.getPort(), 2000);
+//      transport.open();
+//    } catch (TTransportException e) {
+//      throw new IoTDBConnectionException(e);
+//    }
+//
+//    ConfigIService.Client client;
+//    if (IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable()) {
+//      client = new ConfigIService.Client(new TCompactProtocol(transport));
+//    } else {
+//      client = new ConfigIService.Client(new TBinaryProtocol(transport));
+//    }
+//    return client;
+//  }
 }

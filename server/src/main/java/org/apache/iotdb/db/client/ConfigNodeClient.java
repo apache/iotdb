@@ -30,7 +30,9 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TConfigurationConst;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.*;
 import org.apache.iotdb.session.Config;
 import org.apache.iotdb.session.Session;
@@ -56,130 +58,257 @@ public class ConfigNodeClient {
 
     private static final int TIMEOUT_MS = 2000;
 
-    private boolean enableRPCCompression;
-    
+    private static final int RETRY_NUM = 5;
+
+    public static final String MSG_RECONNECTION_FAIL =
+            "Fail to connect to any config node. Please check server it";
+
     private ConfigIService.Iface client;
 
     private TTransport transport;
 
-    private EndPoint configLeader;
+    private Endpoint configLeader;
 
     private List<Endpoint> configNodes;
 
-    public ConfigNodeClient() throws BadNodeUrlException{
+    public ConfigNodeClient() throws BadNodeUrlException, IoTDBConnectionException {
         //Read config nodes from configuration
         configNodes = CommonUtils.parseNodeUrls(IoTDBDescriptor.getInstance().getConfig().getConfigNodeUrls());
-        Random random = new Random();
-        Endpoint configNode = configNodes.get(random.nextInt(configNodes.size()));
-        client = createClient(configNode);
+        init();
     }
 
-    public void connect(){
-
+    public ConfigNodeClient(List<Endpoint> configNodes) throws IoTDBConnectionException {
+        this.configNodes = configNodes;
+        init();
     }
 
-    private boolean reconnect() {
-        if(transport != null){
-            transport.close();
-        }
-
-        try {
-            init(endPoint);
-        } catch (IoTDBConnectionException e) {
-            logger.error("Can't connect with {}", endPoint);
-            return false;
-        }
-
-        return true;
+    public ConfigNodeClient(List<Endpoint> configNodes, Endpoint configLeader) throws IoTDBConnectionException {
+        this.configNodes = configNodes;
+        this.configLeader = configLeader;
+        init();
     }
 
-    private void initTProtocol(TProtocol tProtocol){
-        this.iprot_ = tProtocol;
-        this.oprot_ = tProtocol;
+    public void init() throws IoTDBConnectionException {
+        reconnect();
     }
 
-    private ConfigIService.Client createClient(Endpoint endpoint) throws IoTDBConnectionException {
-        TTransport transport;
+    public void connect(Endpoint endpoint) throws IoTDBConnectionException {
         try {
             transport =
                     RpcTransportFactory.INSTANCE.getTransport(
                             // as there is a try-catch already, we do not need to use TSocket.wrap
-                            endpoint.getIp(), endpoint.getPort(), 2000);
+                            endpoint.getIp(), endpoint.getPort(), TIMEOUT_MS);
             transport.open();
         } catch (TTransportException e) {
             throw new IoTDBConnectionException(e);
         }
 
-        ConfigIService.Client client;
         if (IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable()) {
             client = new ConfigIService.Client(new TCompactProtocol(transport));
         } else {
             client = new ConfigIService.Client(new TBinaryProtocol(transport));
         }
-        return client;
     }
 
-    private void verifySuccess
-    public TDataNodeRegisterResp registerDataNode(TDataNodeRegisterReq req) {
-        try {
-            TDataNodeRegisterResp resp = client.registerDataNode(req);
-        }catch (TException e){
-            if(reconnect()){
-
+    private void reconnect() throws IoTDBConnectionException {
+        if (configLeader != null) {
+            try {
+                connect(configLeader);
+                return;
+            }catch (IoTDBConnectionException e) {
+                logger.error("The current node may have been down {},try next node", configLeader);
+                configLeader = null;
             }
         }
-        return resp;
-    }
 
-    public TDataNodeMessageResp getDataNodesMessage(int dataNodeID) throws TException {
-        return super.getDataNodesMessage(dataNodeID);
-    }
-
-    public TSStatus setStorageGroup(TSetStorageGroupReq req) throws TException {
-        return super.setStorageGroup(req);
-    }
-
-    public TSStatus deleteStorageGroup(TDeleteStorageGroupReq req) throws TException {
-        return super.deleteStorageGroup(req);
-    }
-
-    public TStorageGroupMessageResp getStorageGroupsMessage() throws TException {
-        return super.getStorageGroupsMessage();
-    }
-
-    public TSchemaPartitionResp getSchemaPartition(TSchemaPartitionReq req) throws TException {
-        return super.getSchemaPartition(req);
-    }
-
-    public TSchemaPartitionResp getOrCreateSchemaPartition(TSchemaPartitionReq req) throws TException {
-        return super.getOrCreateSchemaPartition(req);
-    }
-
-    public TDataPartitionResp getDataPartition(TDataPartitionReq req) throws TException {
-        return super.getDataPartition(req);
-    }
-
-    public TDataPartitionResp getOrCreateDataPartition(TDataPartitionReq req) throws TException {
-        return super.getOrCreateDataPartition(req);
-    }
-
-    public TSStatus operatePermission(TAuthorizerReq req) throws TException {
-        return super.operatePermission(req);
-    }
-
-    public static class ConfigNodeFactory{
-        private static TProtocolFactory protocolFactory = IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable()
-                ? new TCompactProtocol.Factory()
-                : new TBinaryProtocol.Factory();
-
-        public static ConfigNodeClient createClient(EndPoint endpoint) throws TTransportException {
-                    return new ConfigNodeClient(protocolFactory.getProtocol(
-                            RpcTransportFactory.INSTANCE.getTransport(
-                                    new TSocket(
-                                            TConfigurationConst.defaultTConfiguration,
-                                            endpoint.getIp(),
-                                            endpoint.getPort(),
-                                            TIMEOUT_MS))),endpoint);
+        Random random = new Random();
+        if (transport != null) {
+            transport.close();
         }
+        int currHostIndex = random.nextInt(configNodes.size());
+        int tryHostNum = 0;
+        for (int j = currHostIndex; j < configNodes.size(); j++) {
+            if (tryHostNum == configNodes.size()) {
+                break;
+            }
+            Endpoint tryEndpoint = configNodes.get(j);
+            if (j == configNodes.size() - 1) {
+                j = -1;
+            }
+            tryHostNum++;
+            try {
+                connect(tryEndpoint);
+                return;
+            } catch (IoTDBConnectionException e) {
+                logger.error("The current node may have been down {},try next node", tryEndpoint);
+            }
+        }
+        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
     }
+
+    public void close() {
+        transport.close();
+    }
+
+    private boolean verifyNeedRedirect(TSStatus status) throws StatementExecutionException {
+        if (status.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
+            configLeader = new Endpoint(status.getRedirectNode().getIp(),status.getRedirectNode().getPort());
+            return true;
+        }
+        if (status.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            return false;
+        }
+        throw new StatementExecutionException(status);
+    }
+
+    public TDataNodeRegisterResp registerDataNode(TDataNodeRegisterReq req) throws StatementExecutionException, IoTDBConnectionException {
+        for (int i=0;i<RETRY_NUM;i++){
+            try {
+                TDataNodeRegisterResp resp = client.registerDataNode(req);
+                if (!verifyNeedRedirect(resp.status)){
+                    return resp;
+                }
+            } catch (TException e) {
+                configLeader = null;
+            }
+            reconnect();
+        }
+        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+    }
+
+    public TDataNodeMessageResp getDataNodesMessage(int dataNodeID) throws StatementExecutionException, IoTDBConnectionException {
+        for (int i=0;i<RETRY_NUM;i++){
+            try {
+                TDataNodeMessageResp resp= client.getDataNodesMessage(dataNodeID);
+                if (!verifyNeedRedirect(resp.status)){
+                    return resp;
+                }
+            } catch (TException e) {
+                configLeader = null;
+            }
+            reconnect();
+        }
+        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+    }
+
+    public TSStatus setStorageGroup(TSetStorageGroupReq req) throws StatementExecutionException, IoTDBConnectionException{
+        for (int i=0;i<RETRY_NUM;i++){
+            try {
+                TSStatus status= client.setStorageGroup(req);
+                if (!verifyNeedRedirect(status)){
+                    return status;
+                }
+            } catch (TException e) {
+                configLeader = null;
+            }
+            reconnect();
+        }
+        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+    }
+
+    public TSStatus deleteStorageGroup(TDeleteStorageGroupReq req) throws StatementExecutionException, IoTDBConnectionException {
+        for (int i=0;i<RETRY_NUM;i++){
+            try {
+                TSStatus status= client.deleteStorageGroup(req);
+                if (!verifyNeedRedirect(status)){
+                    return status;
+                }
+            } catch (TException e) {
+                configLeader = null;
+            }
+            reconnect();
+        }
+        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+    }
+
+    public TStorageGroupMessageResp getStorageGroupsMessage() throws StatementExecutionException, IoTDBConnectionException {
+        for (int i=0;i<RETRY_NUM;i++){
+            try {
+                TStorageGroupMessageResp resp= client.getStorageGroupsMessage();
+                if (!verifyNeedRedirect(resp.status)){
+                    return resp;
+                }
+            } catch (TException e) {
+                configLeader = null;
+            }
+            reconnect();
+        }
+        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+    }
+
+    public TSchemaPartitionResp getSchemaPartition(TSchemaPartitionReq req) throws StatementExecutionException, IoTDBConnectionException {
+        for (int i=0;i<RETRY_NUM;i++){
+            try {
+                TSchemaPartitionResp resp= client.getSchemaPartition(req);
+                if (!verifyNeedRedirect(resp.status)){
+                    return resp;
+                }
+            } catch (TException e) {
+                configLeader = null;
+            }
+            reconnect();
+        }
+        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+    }
+
+    public TSchemaPartitionResp getOrCreateSchemaPartition(TSchemaPartitionReq req) throws StatementExecutionException, IoTDBConnectionException{
+        for (int i=0;i<RETRY_NUM;i++){
+            try {
+                TSchemaPartitionResp resp= client.getOrCreateSchemaPartition(req);
+                if (!verifyNeedRedirect(resp.status)){
+                    return resp;
+                }
+            } catch (TException e) {
+                configLeader = null;
+            }
+            reconnect();
+        }
+        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+    }
+
+    public TDataPartitionResp getDataPartition(TDataPartitionReq req) throws StatementExecutionException, IoTDBConnectionException {
+        for (int i=0;i<RETRY_NUM;i++){
+            try {
+                TDataPartitionResp resp= client.getDataPartition(req);
+                if (!verifyNeedRedirect(resp.status)){
+                    return resp;
+                }
+            } catch (TException e) {
+                configLeader = null;
+            }
+            reconnect();
+        }
+        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+    }
+
+    public TDataPartitionResp getOrCreateDataPartition(TDataPartitionReq req) throws StatementExecutionException, IoTDBConnectionException {
+        for (int i=0;i<RETRY_NUM;i++){
+            try {
+                TDataPartitionResp resp= client.getOrCreateDataPartition(req);
+                if (!verifyNeedRedirect(resp.status)){
+                    return resp;
+                }
+            } catch (TException e) {
+                configLeader = null;
+            }
+            reconnect();
+        }
+        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+    }
+
+    public TSStatus operatePermission(TAuthorizerReq req) throws StatementExecutionException, IoTDBConnectionException {
+        for (int i=0;i<RETRY_NUM;i++){
+            try {
+                TSStatus status= client.operatePermission(req);
+                if (!verifyNeedRedirect(status)){
+                    return status;
+                }
+            } catch (TException e) {
+                configLeader = null;
+            }
+            reconnect();
+        }
+        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+    }
+
 }
