@@ -73,7 +73,7 @@ public class IoTDBTriggerExecutionIT {
               ++count;
               statement.execute(
                   String.format(
-                      "insert into root.vehicle.d1(timestamp,s1,s2,s3,s4,s5,s6) values(%d,%d,%d,%d,%d,%s,'%d')",
+                      "insert into root.vehicle.a.b.c.d1(timestamp,s1,s2,s3,s4,s5,s6) values(%d,%d,%d,%d,%d,%s,'%d')",
                       count, count, count, count, count, count % 2 == 0 ? "true" : "false", count));
             } while (!isInterrupted());
           } catch (Exception e) {
@@ -102,37 +102,37 @@ public class IoTDBTriggerExecutionIT {
 
   private void createTimeseries() throws MetadataException {
     IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath("root.vehicle.d1.s1"),
+        new PartialPath("root.vehicle.a.b.c.d1.s1"),
         TSDataType.INT32,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
     IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath("root.vehicle.d1.s2"),
+        new PartialPath("root.vehicle.a.b.c.d1.s2"),
         TSDataType.INT64,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
     IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath("root.vehicle.d1.s3"),
+        new PartialPath("root.vehicle.a.b.c.d1.s3"),
         TSDataType.FLOAT,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
     IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath("root.vehicle.d1.s4"),
+        new PartialPath("root.vehicle.a.b.c.d1.s4"),
         TSDataType.DOUBLE,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
     IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath("root.vehicle.d1.s5"),
+        new PartialPath("root.vehicle.a.b.c.d1.s5"),
         TSDataType.BOOLEAN,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
     IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath("root.vehicle.d1.s6"),
+        new PartialPath("root.vehicle.a.b.c.d1.s6"),
         TSDataType.TEXT,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
@@ -158,17 +158,17 @@ public class IoTDBTriggerExecutionIT {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute(
-          "create trigger trigger_1 before insert on root.vehicle.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+          "create trigger trigger_1 before insert on root.vehicle.a.b.c.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger_2 after insert on root.vehicle.d1.s2 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+          "create trigger trigger_2 after insert on root.vehicle.a.b.c.d1.s2 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger_3 before insert on root.vehicle.d1.s3 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+          "create trigger trigger_3 before insert on root.vehicle.a.b.c.d1.s3 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger_4 after insert on root.vehicle.d1.s4 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+          "create trigger trigger_4 after insert on root.vehicle.a.b.c.d1.s4 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger_5 before insert on root.vehicle.d1.s5 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+          "create trigger trigger_5 before insert on root.vehicle.a.b.c.d1.s5 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger_6 after insert on root.vehicle.d1.s6 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+          "create trigger trigger_6 after insert on root.vehicle.a.b.c.d1.s6 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
 
       int[] counters1 = getCounters(6);
       LOGGER.info(Arrays.toString(counters1));
@@ -209,11 +209,11 @@ public class IoTDBTriggerExecutionIT {
       waitCountIncreaseBy(500);
 
       statement.execute(
-          "create trigger trigger_1 before insert on root.vehicle.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+          "create trigger trigger_1 before insert on root.vehicle.a.b.c.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger_2 after insert on root.vehicle.d1.s2 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+          "create trigger trigger_2 after insert on root.vehicle.a.b.c.d1.s2 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger_3 before insert on root.vehicle.d1.s3 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+          "create trigger trigger_3 before insert on root.vehicle.a.b.c.d1.s3 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
 
       waitCountIncreaseBy(500);
 
@@ -230,11 +230,11 @@ public class IoTDBTriggerExecutionIT {
       waitCountIncreaseBy(500);
 
       statement.execute(
-          "create trigger trigger_4 after insert on root.vehicle.d1.s4 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+          "create trigger trigger_4 after insert on root.vehicle.a.b.c.d1.s4 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger_5 before insert on root.vehicle.d1.s5 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+          "create trigger trigger_5 before insert on root.vehicle.a.b.c.d1.s5 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger_6 after insert on root.vehicle.d1.s6 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+          "create trigger trigger_6 after insert on root.vehicle.a.b.c.d1.s6 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
 
       // IOTDB-1825: if the background data generator's connection is closed, the following checks
       // will be meaningless, in which case we ignore the checks
@@ -264,11 +264,11 @@ public class IoTDBTriggerExecutionIT {
       waitCountIncreaseBy(500);
 
       statement.execute(
-          "create trigger trigger_1 before insert on root.vehicle.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+          "create trigger trigger_1 before insert on root.vehicle.a.b.c.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger_2 after insert on root.vehicle.d1.s2 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+          "create trigger trigger_2 after insert on root.vehicle.a.b.c.d1.s2 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger_3 before insert on root.vehicle.d1.s3 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+          "create trigger trigger_3 before insert on root.vehicle.a.b.c.d1.s3 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
 
       waitCountIncreaseBy(500);
 
@@ -289,22 +289,22 @@ public class IoTDBTriggerExecutionIT {
       statement.execute("drop trigger trigger_3");
       waitCountIncreaseBy(100);
       statement.execute(
-          "create trigger trigger_1 before insert on root.vehicle.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+          "create trigger trigger_1 before insert on root.vehicle.a.b.c.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger_2 after insert on root.vehicle.d1.s2 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+          "create trigger trigger_2 after insert on root.vehicle.a.b.c.d1.s2 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger_3 before insert on root.vehicle.d1.s3 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+          "create trigger trigger_3 before insert on root.vehicle.a.b.c.d1.s3 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       waitCountIncreaseBy(100);
       statement.execute("drop trigger trigger_1");
       statement.execute("drop trigger trigger_2");
       statement.execute("drop trigger trigger_3");
       waitCountIncreaseBy(100);
       statement.execute(
-          "create trigger trigger_1 before insert on root.vehicle.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+          "create trigger trigger_1 before insert on root.vehicle.a.b.c.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger_2 after insert on root.vehicle.d1.s2 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+          "create trigger trigger_2 after insert on root.vehicle.a.b.c.d1.s2 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger_3 before insert on root.vehicle.d1.s3 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+          "create trigger trigger_3 before insert on root.vehicle.a.b.c.d1.s3 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
 
       waitCountIncreaseBy(500);
 
@@ -336,17 +336,17 @@ public class IoTDBTriggerExecutionIT {
       waitCountIncreaseBy(500);
 
       statement.execute(
-          "create trigger trigger_1 before insert on root.vehicle.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+          "create trigger trigger_1 before insert on root.vehicle.a.b.c.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger_2 after insert on root.vehicle.d1.s2 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+          "create trigger trigger_2 after insert on root.vehicle.a.b.c.d1.s2 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger_3 before insert on root.vehicle.d1.s3 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+          "create trigger trigger_3 before insert on root.vehicle.a.b.c.d1.s3 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger_4 after insert on root.vehicle.d1.s4 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+          "create trigger trigger_4 after insert on root.vehicle.a.b.c.d1.s4 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger_5 before insert on root.vehicle.d1.s5 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+          "create trigger trigger_5 before insert on root.vehicle.a.b.c.d1.s5 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger_6 after insert on root.vehicle.d1.s6 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+          "create trigger trigger_6 after insert on root.vehicle.a.b.c.d1.s6 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
 
       waitCountIncreaseBy(500);
 
@@ -460,17 +460,17 @@ public class IoTDBTriggerExecutionIT {
       waitCountIncreaseBy(500);
 
       statement.execute(
-          "create trigger trigger_1 before insert on root.vehicle.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+          "create trigger trigger_1 before insert on root.vehicle.a.b.c.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger_2 after insert on root.vehicle.d1.s2 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+          "create trigger trigger_2 after insert on root.vehicle.a.b.c.d1.s2 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger_3 before insert on root.vehicle.d1.s3 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+          "create trigger trigger_3 before insert on root.vehicle.a.b.c.d1.s3 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger_4 after insert on root.vehicle.d1.s4 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+          "create trigger trigger_4 after insert on root.vehicle.a.b.c.d1.s4 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger_5 before insert on root.vehicle.d1.s5 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+          "create trigger trigger_5 before insert on root.vehicle.a.b.c.d1.s5 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger_6 after insert on root.vehicle.d1.s6 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+          "create trigger trigger_6 after insert on root.vehicle.a.b.c.d1.s6 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
 
       waitCountIncreaseBy(500);
 
@@ -487,12 +487,12 @@ public class IoTDBTriggerExecutionIT {
 
       stopDataGenerator();
 
-      IoTDB.schemaProcessor.deleteTimeseries(new PartialPath("root.vehicle.d1.s1"));
-      IoTDB.schemaProcessor.deleteTimeseries(new PartialPath("root.vehicle.d1.s2"));
-      IoTDB.schemaProcessor.deleteTimeseries(new PartialPath("root.vehicle.d1.s3"));
-      IoTDB.schemaProcessor.deleteTimeseries(new PartialPath("root.vehicle.d1.s4"));
-      IoTDB.schemaProcessor.deleteTimeseries(new PartialPath("root.vehicle.d1.s5"));
-      IoTDB.schemaProcessor.deleteTimeseries(new PartialPath("root.vehicle.d1.s6"));
+      IoTDB.schemaProcessor.deleteTimeseries(new PartialPath("root.vehicle.a.b.c.d1.s1"));
+      IoTDB.schemaProcessor.deleteTimeseries(new PartialPath("root.vehicle.a.b.c.d1.s2"));
+      IoTDB.schemaProcessor.deleteTimeseries(new PartialPath("root.vehicle.a.b.c.d1.s3"));
+      IoTDB.schemaProcessor.deleteTimeseries(new PartialPath("root.vehicle.a.b.c.d1.s4"));
+      IoTDB.schemaProcessor.deleteTimeseries(new PartialPath("root.vehicle.a.b.c.d1.s5"));
+      IoTDB.schemaProcessor.deleteTimeseries(new PartialPath("root.vehicle.a.b.c.d1.s6"));
 
       for (int i = 0; i < 6; ++i) {
         try {
@@ -515,17 +515,17 @@ public class IoTDBTriggerExecutionIT {
       }
 
       statement.execute(
-          "create trigger trigger_1 before insert on root.vehicle.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+          "create trigger trigger_1 before insert on root.vehicle.a.b.c.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger_2 after insert on root.vehicle.d1.s2 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+          "create trigger trigger_2 after insert on root.vehicle.a.b.c.d1.s2 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger_3 before insert on root.vehicle.d1.s3 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+          "create trigger trigger_3 before insert on root.vehicle.a.b.c.d1.s3 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger_4 after insert on root.vehicle.d1.s4 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+          "create trigger trigger_4 after insert on root.vehicle.a.b.c.d1.s4 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger_5 before insert on root.vehicle.d1.s5 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+          "create trigger trigger_5 before insert on root.vehicle.a.b.c.d1.s5 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger_6 after insert on root.vehicle.d1.s6 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+          "create trigger trigger_6 after insert on root.vehicle.a.b.c.d1.s6 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
 
       Thread.sleep(500);
 
@@ -550,17 +550,17 @@ public class IoTDBTriggerExecutionIT {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute(
-          "create trigger trigger_1 before insert on root.vehicle.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+          "create trigger trigger_1 before insert on root.vehicle.a.b.c.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger_2 after insert on root.vehicle.d1.s2 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+          "create trigger trigger_2 after insert on root.vehicle.a.b.c.d1.s2 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger_3 before insert on root.vehicle.d1.s3 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+          "create trigger trigger_3 before insert on root.vehicle.a.b.c.d1.s3 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger_4 after insert on root.vehicle.d1.s4 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+          "create trigger trigger_4 after insert on root.vehicle.a.b.c.d1.s4 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger_5 before insert on root.vehicle.d1.s5 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+          "create trigger trigger_5 before insert on root.vehicle.a.b.c.d1.s5 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger_6 after insert on root.vehicle.d1.s6 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+          "create trigger trigger_6 after insert on root.vehicle.a.b.c.d1.s6 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
 
       waitCountIncreaseBy(500);
 
@@ -590,17 +590,17 @@ public class IoTDBTriggerExecutionIT {
       }
 
       statement.execute(
-          "create trigger trigger_1 before insert on root.vehicle.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+          "create trigger trigger_1 before insert on root.vehicle.a.b.c.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger_2 after insert on root.vehicle.d1.s2 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+          "create trigger trigger_2 after insert on root.vehicle.a.b.c.d1.s2 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger_3 before insert on root.vehicle.d1.s3 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+          "create trigger trigger_3 before insert on root.vehicle.a.b.c.d1.s3 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger_4 after insert on root.vehicle.d1.s4 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+          "create trigger trigger_4 after insert on root.vehicle.a.b.c.d1.s4 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger_5 before insert on root.vehicle.d1.s5 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+          "create trigger trigger_5 before insert on root.vehicle.a.b.c.d1.s5 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger_6 after insert on root.vehicle.d1.s6 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+          "create trigger trigger_6 after insert on root.vehicle.a.b.c.d1.s6 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
 
       Thread.sleep(500);
 
@@ -610,6 +610,66 @@ public class IoTDBTriggerExecutionIT {
         assertEquals(Counter.BASE, counters1[2]);
       }
     } catch (SQLException | TriggerManagementException | MetadataException e) {
+      fail(e.getMessage());
+    } finally {
+      stopDataGenerator();
+    }
+  }
+
+  @Test
+  public void testCreateMultipleLevelTriggersMultipleTimesWhileInserting()
+      throws InterruptedException {
+
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          "create trigger trigger_1 before insert on root.vehicle.a.b.c.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+      statement.execute(
+          "create trigger trigger_2 before insert on root.vehicle.a.b.c.d1.s2 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+      statement.execute(
+          "create trigger trigger_3 before insert on root.vehicle.a.b.c.d1.s3 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+      statement.execute(
+          "create trigger trigger_4 before insert on root.vehicle.a.b.c.d1.s4 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+      statement.execute(
+          "create trigger trigger_5 before insert on root.vehicle.a.b.c.d1.s5 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+      statement.execute(
+          "create trigger trigger_6 before insert on root.vehicle.a.b.c.d1.s6 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+
+      statement.execute(
+          "create trigger trigger_7 before insert on root.vehicle.a.b.c.d1 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+      statement.execute(
+          "create trigger trigger_8 before insert on root.vehicle.a.b.c as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+      statement.execute(
+          "create trigger trigger_9 after insert on root.vehicle.a.b as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+      statement.execute(
+          "create trigger trigger_10 before insert on root.vehicle.a as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+      statement.execute(
+          "create trigger trigger_11 after insert on root.vehicle as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+
+      startDataGenerator();
+      waitCountIncreaseBy(500);
+      stopDataGenerator();
+      int[] counters = getCounters(11);
+      assertEquals(counters[0], counters[1]);
+      assertEquals(counters[3], counters[4]);
+      int sumCount =
+          counters[0]
+              + counters[1]
+              + counters[2]
+              + counters[3]
+              + counters[4]
+              + counters[5]
+              - 6 * Counter.BASE;
+      assertEquals(sumCount, (counters[6] - Counter.BASE));
+      assertEquals(sumCount, (counters[7] - Counter.BASE));
+      assertEquals(sumCount, (counters[8] - Counter.BASE));
+      assertEquals(sumCount, (counters[9] - Counter.BASE));
+      assertEquals(sumCount, (counters[10] - Counter.BASE));
+      LOGGER.info(Arrays.toString(counters));
+
+    } catch (SQLException | TriggerManagementException e) {
       fail(e.getMessage());
     } finally {
       stopDataGenerator();

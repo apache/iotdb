@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.db.engine.trigger.executor;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationInformation;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.TriggerExecutionException;
 import org.apache.iotdb.db.exception.TriggerManagementException;
+import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
@@ -40,6 +42,10 @@ public class TriggerEngine {
 
   public static void fire(TriggerEvent event, InsertRowPlan insertRowPlan)
       throws TriggerExecutionException {
+    if (TriggerRegistrationService.getInstance().executorSize() == 0) {
+      return;
+    }
+
     IMeasurementMNode[] mNodes = insertRowPlan.getMeasurementMNodes();
     int size = mNodes.length;
 
@@ -47,20 +53,29 @@ public class TriggerEngine {
     Object[] values = insertRowPlan.getValues();
 
     for (int i = 0; i < size; ++i) {
+      long s = System.currentTimeMillis();
       IMeasurementMNode mNode = mNodes[i];
       if (mNode == null) {
         continue;
       }
-      TriggerExecutor executor = mNode.getTriggerExecutor();
-      if (executor == null) {
-        continue;
+      IMNode currentNode = mNode;
+      while (currentNode != null && !IoTDBConstant.PATH_ROOT.equals(currentNode.getName())) {
+        TriggerExecutor executor = currentNode.getTriggerExecutor();
+        currentNode = currentNode.getParent();
+        if (executor == null) {
+          continue;
+        }
+        executor.fireIfActivated(event, timestamp, values[i], mNode.getSchema().getType());
       }
-      executor.fireIfActivated(event, timestamp, values[i]);
     }
   }
 
   public static void fire(TriggerEvent event, InsertTabletPlan insertTabletPlan, int firePosition)
       throws TriggerExecutionException {
+    if (TriggerRegistrationService.getInstance().executorSize() == 0) {
+      return;
+    }
+
     IMeasurementMNode[] mNodes = insertTabletPlan.getMeasurementMNodes();
     int size = mNodes.length;
 
@@ -76,11 +91,15 @@ public class TriggerEngine {
       if (mNode == null) {
         continue;
       }
-      TriggerExecutor executor = mNode.getTriggerExecutor();
-      if (executor == null) {
-        continue;
+      IMNode currentNode = mNode;
+      while (currentNode != null && !IoTDBConstant.PATH_ROOT.equals(currentNode.getName())) {
+        TriggerExecutor executor = currentNode.getTriggerExecutor();
+        currentNode = currentNode.getParent();
+        if (executor == null) {
+          continue;
+        }
+        executor.fireIfActivated(event, timestamps, columns[i], mNode.getSchema().getType());
       }
-      executor.fireIfActivated(event, timestamps, columns[i]);
     }
   }
 

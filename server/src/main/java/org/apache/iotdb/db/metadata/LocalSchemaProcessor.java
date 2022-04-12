@@ -938,6 +938,14 @@ public class LocalSchemaProcessor {
     }
   }
 
+  public IMNode getNodeByPath(PartialPath path) throws MetadataException {
+    try {
+      return getBelongedSchemaRegion(path).getNodeByPath(path);
+    } catch (StorageGroupNotSetException e) {
+      throw new PathNotExistException(path.getFullPath());
+    }
+  }
+
   /**
    * Invoked during insertPlan process. Get target MeasurementMNode from given EntityMNode. If the
    * result is not null and is not MeasurementMNode, it means a timeseries with same path cannot be

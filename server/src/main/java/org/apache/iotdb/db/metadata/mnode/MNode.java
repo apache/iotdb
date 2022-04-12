@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.metadata.mnode;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.engine.trigger.executor.TriggerExecutor;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 
 import java.util.ArrayList;
@@ -34,6 +35,9 @@ public abstract class MNode implements IMNode {
 
   /** from root to this node, only be set when used once for InternalMNode */
   protected String fullPath;
+
+  /** registered trigger */
+  protected TriggerExecutor triggerExecutor;
 
   /** Constructor of MNode. */
   public MNode(IMNode parent, String name) {
@@ -161,6 +165,16 @@ public abstract class MNode implements IMNode {
     } else {
       throw new UnsupportedOperationException("Wrong MNode Type");
     }
+  }
+
+  @Override
+  public TriggerExecutor getTriggerExecutor() {
+    return triggerExecutor;
+  }
+
+  @Override
+  public void setTriggerExecutor(TriggerExecutor triggerExecutor) {
+    this.triggerExecutor = triggerExecutor;
   }
 
   @Override
