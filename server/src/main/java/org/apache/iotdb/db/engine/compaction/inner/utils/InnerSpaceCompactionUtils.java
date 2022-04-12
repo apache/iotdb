@@ -25,11 +25,11 @@ import org.apache.iotdb.db.engine.compaction.cross.CrossCompactionStrategy;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.manage.CrossSpaceCompactionResource;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.ICrossSpaceMergeFileSelector;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.RewriteCompactionFileSelector;
-import org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -235,7 +235,7 @@ public class InnerSpaceCompactionUtils {
   public static boolean deleteTsFile(TsFileResource seqFile) {
     try {
       FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getTsFilePath());
-      seqFile.setDeleted(true);
+      seqFile.setStatus(TsFileResourceStatus.DELETED);
       seqFile.delete();
     } catch (IOException e) {
       logger.error(e.getMessage(), e);
@@ -253,16 +253,6 @@ public class InnerSpaceCompactionUtils {
         return new RewriteCompactionFileSelector(resource, budget);
       default:
         throw new UnsupportedOperationException("Unknown CrossSpaceFileStrategy " + strategy);
-    }
-  }
-
-  public static File[] findInnerSpaceCompactionLogs(String directory) {
-    File timePartitionDir = new File(directory);
-    if (timePartitionDir.exists()) {
-      return timePartitionDir.listFiles(
-          (dir, name) -> name.endsWith(CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX));
-    } else {
-      return new File[0];
     }
   }
 

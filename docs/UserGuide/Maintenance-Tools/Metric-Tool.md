@@ -103,13 +103,14 @@ Next, we will choose Prometheus format data as samples to describe each kind of 
 
 #### 4.3.4. Compaction
 
-| Metric                  | Tag                                                                     | level  | Description                                                         | Sample                                               |
-| ----------------------- | ----------------------------------------------------------------------- | ------ | ------------------------------------------------------------------- | ---------------------------------------------------- |
-| queue                   | name="compaction_inner/compaction_cross",<br />status="running/waiting" | important | The count of current compaction tasks in running and waiting status | queue{name="compaction_inner",status="waiting",} 0.0 |
-| cost_task_seconds_count | name="compaction"                                                       | important | The total count of compaction occurs till now                       | cost_task_seconds_count{name="compaction",} 1.0      |
-| cost_task_seconds_max   | name="compaction"                                                       | important | The seconds of the longest compaction task takes till now           | cost_task_seconds_max{name="compaction",} 0.363      |
-| cost_task_seconds_sum   | name="compaction"                                                       | important | The total cost seconds of all compaction tasks till now             | cost_task_seconds_sum{name="compaction",} 0.363      |
-
+| Metric                  | Tag                                                                     | level       | Description                                                         | Sample                                                        |
+|-------------------------|-------------------------------------------------------------------------|-------------|---------------------------------------------------------------------|---------------------------------------------------------------|
+| queue                   | name="compaction_inner/compaction_cross",<br />status="running/waiting" | important   | The count of current compaction tasks in running and waiting status | queue{name="compaction_inner",status="waiting",} 0.0          |
+| cost_task_seconds_count | name="compaction"                                                       | important   | The total count of compaction occurs till now                       | cost_task_seconds_count{name="compaction",} 1.0               |
+| cost_task_seconds_max   | name="compaction"                                                       | important   | The seconds of the longest compaction task takes till now           | cost_task_seconds_max{name="compaction",} 0.363               |
+| cost_task_seconds_sum   | name="compaction"                                                       | important   | The total cost seconds of all compaction tasks till now             | cost_task_seconds_sum{name="compaction",} 0.363               |
+| data_written            | name="compaction", <br />type="aligned/not-aligned/total"               | important   | The size of data written in compaction                              | data_written{name="compaction",type="total",} 10240           |
+| data_read               | name="compaction"                                                       | important   | The size of data read in compaction                                 | data_read={name="compaction",} 10240                          |
 #### 4.3.5. Memory Usage
 
 | Metric | Tag                                     | level  | Description                                                           | Sample                            |
@@ -230,11 +231,17 @@ metricLevel: IMPORTANT
 predefinedMetrics:
   - JVM
 
-# Period time of push, only used by IoTDB Reporter
-pushPeriodInSecond: 5
-
 # The http server's port for prometheus exporter to get metric data.
 prometheusExporterPort: 9091
+
+# The config of iotdb reporter
+ioTDBReporterConfig:
+  host: 127.0.0.1
+  port: 6667
+  username: root
+  password: root
+  database: _metric
+  pushPeriodInSecond: 15
 ```
 
 Then you can get metrics data as follows

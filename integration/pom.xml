@@ -80,7 +80,7 @@
             <id>LocalStandalone</id>
             <properties>
                 <test.includedGroups>org.apache.iotdb.itbase.category.LocalStandaloneTest</test.includedGroups>
-                <test.excludedGroups />
+                <test.excludedGroups/>
             </properties>
             <activation>
                 <activeByDefault>true</activeByDefault>
@@ -142,7 +142,7 @@
             <id>Remote</id>
             <properties>
                 <test.includedGroups>org.apache.iotdb.itbase.category.RemoteTest</test.includedGroups>
-                <test.excludedGroups />
+                <test.excludedGroups/>
             </properties>
             <activation>
                 <activeByDefault>false</activeByDefault>
@@ -206,7 +206,7 @@
             <id>Cluster</id>
             <properties>
                 <test.includedGroups>org.apache.iotdb.itbase.category.ClusterTest</test.includedGroups>
-                <test.excludedGroups />
+                <test.excludedGroups/>
             </properties>
             <activation>
                 <activeByDefault>false</activeByDefault>

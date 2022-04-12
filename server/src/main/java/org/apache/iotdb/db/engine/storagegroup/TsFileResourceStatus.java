@@ -16,11 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.engine.storagegroup;
 
-package org.apache.iotdb.db.engine.compaction;
-
-public enum CompactionPriority {
-  INNER_CROSS,
-  CROSS_INNER,
-  BALANCE
+public enum TsFileResourceStatus {
+  UNCLOSED,
+  CLOSED,
+  COMPACTION_CANDIDATE,
+  COMPACTING,
+  DELETED
 }

@@ -32,7 +32,6 @@
             <groupId>org.apache.iotdb</groupId>
             <artifactId>metrics-interface</artifactId>
             <version>0.13.1-SNAPSHOT</version>
-            <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>io.dropwizard.metrics</groupId>
