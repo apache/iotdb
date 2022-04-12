@@ -33,6 +33,8 @@ public interface ConsensusGroupId {
   // return specific id
   int getId();
 
+  void setId(int id);
+
   // return specific type
   GroupType getType();
 
@@ -43,22 +45,33 @@ public interface ConsensusGroupId {
         throw new IOException("unrecognized id type " + index);
       }
       GroupType type = GroupType.values()[index];
-      ConsensusGroupId id;
+      ConsensusGroupId groupId = createEmpty(type);
+      groupId.deserializeImpl(buffer);
+      return groupId;
+    }
+
+    public static ConsensusGroupId createEmpty(GroupType type) {
+      ConsensusGroupId groupId;
       switch (type) {
         case DataRegion:
-          id = new DataRegionId();
+          groupId = new DataRegionId();
           break;
         case SchemaRegion:
-          id = new SchemaRegionId();
+          groupId = new SchemaRegionId();
           break;
         case PartitionRegion:
-          id = new PartitionRegionId();
+          groupId = new PartitionRegionId();
           break;
         default:
-          throw new IOException("unrecognized id type " + type);
+          throw new IllegalArgumentException("unrecognized id type " + type);
       }
-      id.deserializeImpl(buffer);
-      return id;
+      return groupId;
+    }
+
+    public static ConsensusGroupId create(int id, GroupType type) {
+      ConsensusGroupId groupId = createEmpty(type);
+      groupId.setId(id);
+      return groupId;
     }
   }
 }

@@ -19,13 +19,16 @@
 
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.iotdb.common.rpc.thrift.EndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.commons.partition.SeriesPartitionSlot;
+import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationDataSet;
 import org.apache.iotdb.confignode.consensus.response.DataNodesInfoDataSet;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionDataSet;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionDataSet;
+import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaDataSet;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
 import org.apache.iotdb.confignode.physical.PhysicalPlanType;
 import org.apache.iotdb.confignode.physical.crud.GetOrCreateDataPartitionPlan;
@@ -86,43 +89,48 @@ public class ConfigManager implements Manager {
 
   @Override
   public DataSet registerDataNode(PhysicalPlan physicalPlan) {
-
-    // TODO: Only leader can register DataNode
-
-    if (physicalPlan instanceof RegisterDataNodePlan) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return dataNodeManager.registerDataNode((RegisterDataNodePlan) physicalPlan);
+    } else {
+      DataNodeConfigurationDataSet dataSet = new DataNodeConfigurationDataSet();
+      dataSet.setStatus(status);
+      return dataSet;
     }
-    return new DataNodeConfigurationDataSet();
   }
 
   @Override
   public DataSet getDataNodeInfo(PhysicalPlan physicalPlan) {
-
-    // TODO: Only leader can get DataNodeInfo
-
-    if (physicalPlan instanceof QueryDataNodeInfoPlan) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return dataNodeManager.getDataNodeInfo((QueryDataNodeInfoPlan) physicalPlan);
+    } else {
+      DataNodesInfoDataSet dataSet = new DataNodesInfoDataSet();
+      dataSet.setStatus(status);
+      return dataSet;
     }
-    return new DataNodesInfoDataSet();
   }
 
   @Override
   public DataSet getStorageGroupSchema() {
-
-    // TODO: Only leader can get StorageGroupSchema
-
-    return regionManager.getStorageGroupSchema();
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return regionManager.getStorageGroupSchema();
+    } else {
+      StorageGroupSchemaDataSet dataSet = new StorageGroupSchemaDataSet();
+      dataSet.setStatus(status);
+      return dataSet;
+    }
   }
 
   @Override
   public TSStatus setStorageGroup(PhysicalPlan physicalPlan) {
-
-    // TODO: Only leader can set StorageGroup
-
-    if (physicalPlan instanceof SetStorageGroupPlan) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return regionManager.setStorageGroup((SetStorageGroupPlan) physicalPlan);
+    } else {
+      return status;
     }
-    return ERROR_TSSTATUS;
   }
 
   @Override
@@ -198,24 +206,43 @@ public class ConfigManager implements Manager {
 
   @Override
   public DataSet getDataPartition(PhysicalPlan physicalPlan) {
-
-    // TODO: Only leader can query DataPartition
-
-    if (physicalPlan instanceof GetOrCreateDataPartitionPlan) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return partitionManager.getDataPartition((GetOrCreateDataPartitionPlan) physicalPlan);
+    } else {
+      DataPartitionDataSet dataSet = new DataPartitionDataSet();
+      dataSet.setStatus(status);
+      return dataSet;
     }
-    return new DataPartitionDataSet();
   }
 
   @Override
   public DataSet getOrCreateDataPartition(PhysicalPlan physicalPlan) {
-
-    // TODO: only leader can apply DataPartition
-
-    if (physicalPlan instanceof GetOrCreateDataPartitionPlan) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return partitionManager.getOrCreateDataPartition((GetOrCreateDataPartitionPlan) physicalPlan);
+    } else {
+      DataPartitionDataSet dataSet = new DataPartitionDataSet();
+      dataSet.setStatus(status);
+      return dataSet;
     }
-    return new DataPartitionDataSet();
+  }
+
+  private TSStatus confirmLeader() {
+    if (getConsensusManager().isLeader()) {
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } else {
+      Endpoint endpoint = getConsensusManager().getLeader();
+      if (endpoint == null) {
+        return new TSStatus(TSStatusCode.NEED_REDIRECTION.getStatusCode())
+            .setMessage(
+                "The current ConfigNode is not leader. And ConfigNodeGroup is in leader election. Please redirect with a random ConfigNode.");
+      } else {
+        return new TSStatus(TSStatusCode.NEED_REDIRECTION.getStatusCode())
+            .setRedirectNode(new EndPoint(endpoint.getIp(), endpoint.getPort()))
+            .setMessage("The current ConfigNode is not leader. Please redirect.");
+      }
+    }
   }
 
   @Override
