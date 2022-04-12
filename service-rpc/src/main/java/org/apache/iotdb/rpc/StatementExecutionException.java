@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.rpc;
 
-import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxTSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxTSStatus;
 
 public class StatementExecutionException extends Exception {
 
