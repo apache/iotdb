@@ -21,14 +21,14 @@ package org.apache.iotdb.db.integration.sync;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.newsync.receiver.load.DeletionLoader;
-import org.apache.iotdb.db.newsync.receiver.load.ILoader;
-import org.apache.iotdb.db.newsync.receiver.load.SchemaLoader;
-import org.apache.iotdb.db.newsync.receiver.load.TsFileLoader;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.db.sync.receiver.load.DeletionLoader;
+import org.apache.iotdb.db.sync.receiver.load.ILoader;
+import org.apache.iotdb.db.sync.receiver.load.SchemaLoader;
+import org.apache.iotdb.db.sync.receiver.load.TsFileLoader;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -46,7 +46,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.sql.*;
 import java.util.*;
 
 @Category({LocalStandaloneTest.class})

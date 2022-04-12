@@ -225,17 +225,8 @@ public class IoTDBConfig {
           + File.separator
           + IoTDBConstant.SCHEMA_FOLDER_NAME;
 
-  /** Sync directory, including the lock file, uuid file, device owner map */
-  private String syncDir =
-      DEFAULT_BASE_DIR
-          + File.separator
-          + IoTDBConstant.SYSTEM_FOLDER_NAME
-          + File.separator
-          + IoTDBConstant.SYNC_FOLDER_NAME;
-
-  /** Sync directory, including the lock file, uuid file, device owner map */
-  // TODO: delete old syncDir and rename newSyncDir to syncDir
-  private String newSyncDir = DEFAULT_BASE_DIR + File.separator + IoTDBConstant.SYNC_FOLDER_NAME;
+  /** Sync directory, including the log and hardlink tsfiles */
+  private String syncDir = DEFAULT_BASE_DIR + File.separator + IoTDBConstant.SYNC_FOLDER_NAME;
 
   /** Performance tracing directory, stores performance tracing files */
   private String tracingDir = DEFAULT_BASE_DIR + File.separator + IoTDBConstant.TRACING_FOLDER_NAME;
@@ -482,17 +473,13 @@ public class IoTDBConfig {
    */
   private int externalSortThreshold = 1000;
 
-  /** Is this IoTDB instance a receiver of sync or not. */
-  private boolean isSyncEnable = false;
-
-  /** If this IoTDB instance is a receiver of sync, set the server port. */
-  private int syncServerPort = 5555;
-
   /** If this IoTDB instance is a receiver of sync, set the server port. */
   private int pipeServerPort = 6670;
 
+  /** White list for sync */
   private String ipWhiteList = "0.0.0.0/0";
 
+  /** The maximum number of retries when the sender fails to synchronize files to the receiver. */
   private int maxNumberOfSyncFileRetry = 5;
 
   /**
@@ -972,7 +959,6 @@ public class IoTDBConfig {
     systemDir = addHomeDir(systemDir);
     schemaDir = addHomeDir(schemaDir);
     syncDir = addHomeDir(syncDir);
-    newSyncDir = addHomeDir(newSyncDir);
     tracingDir = addHomeDir(tracingDir);
     walDir = addHomeDir(walDir);
     consensusDir = addHomeDir(consensusDir);
@@ -1157,14 +1143,6 @@ public class IoTDBConfig {
     this.syncDir = syncDir;
   }
 
-  public String getNewSyncDir() {
-    return newSyncDir;
-  }
-
-  void setNewSyncDir(String syncDir) {
-    this.newSyncDir = syncDir;
-  }
-
   public String getTracingDir() {
     return tracingDir;
   }
@@ -1339,22 +1317,6 @@ public class IoTDBConfig {
 
   public void setmRemoteSchemaCacheSize(int mRemoteSchemaCacheSize) {
     this.mRemoteSchemaCacheSize = mRemoteSchemaCacheSize;
-  }
-
-  public boolean isSyncEnable() {
-    return isSyncEnable;
-  }
-
-  public void setSyncEnable(boolean syncEnable) {
-    isSyncEnable = syncEnable;
-  }
-
-  public int getSyncServerPort() {
-    return syncServerPort;
-  }
-
-  void setSyncServerPort(int syncServerPort) {
-    this.syncServerPort = syncServerPort;
   }
 
   public int getPipeServerPort() {

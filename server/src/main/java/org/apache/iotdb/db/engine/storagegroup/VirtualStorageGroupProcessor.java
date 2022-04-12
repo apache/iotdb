@@ -61,7 +61,6 @@ import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.IDTableManager;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.newsync.sender.manager.TsFileSyncManager;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
@@ -75,6 +74,7 @@ import org.apache.iotdb.db.service.SettleService;
 import org.apache.iotdb.db.service.metrics.Metric;
 import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.service.metrics.Tag;
+import org.apache.iotdb.db.sync.sender.manager.TsFileSyncManager;
 import org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
 import org.apache.iotdb.db.utils.MmapUtil;
@@ -2270,47 +2270,6 @@ public class VirtualStorageGroupProcessor {
     writeLock("merge");
     try {
       executeCompaction();
-    } finally {
-      writeUnlock();
-    }
-  }
-
-  /**
-   * Load a new tsfile to storage group processor. The file may have overlap with other files.
-   *
-   * <p>or unsequence list.
-   *
-   * <p>Secondly, execute the loading process by the type.
-   *
-   * <p>Finally, update the latestTimeForEachDevice and partitionLatestFlushedTimeForEachDevice.
-   *
-   * @param newTsFileResource tsfile resource @UsedBy sync module.
-   */
-  public void loadNewTsFileForSync(TsFileResource newTsFileResource) throws LoadFileException {
-    File tsfileToBeInserted = newTsFileResource.getTsFile();
-    long newFilePartitionId = newTsFileResource.getTimePartitionWithCheck();
-    writeLock("loadNewTsFileForSync");
-    try {
-      if (loadTsFileByType(
-          LoadTsFileType.LOAD_SEQUENCE,
-          tsfileToBeInserted,
-          newTsFileResource,
-          newFilePartitionId,
-          tsFileManager.getSequenceListByTimePartition(newFilePartitionId).size() - 1)) {
-        updateLatestTimeMap(newTsFileResource);
-      }
-      resetLastCacheWhenLoadingTsfile(newTsFileResource);
-    } catch (DiskSpaceInsufficientException e) {
-      logger.error(
-          "Failed to append the tsfile {} to storage group processor {} because the disk space is insufficient.",
-          tsfileToBeInserted.getAbsolutePath(),
-          tsfileToBeInserted.getParentFile().getName());
-      IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
-      throw new LoadFileException(e);
-    } catch (IllegalPathException e) {
-      logger.error(
-          "Failed to reset last cache when loading file {}", newTsFileResource.getTsFilePath());
-      throw new LoadFileException(e);
     } finally {
       writeUnlock();
     }

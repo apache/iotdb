@@ -45,8 +45,6 @@ public enum ThreadName {
   INDEX_SERVICE("Index"),
   SYNC_CLIENT("Sync-Client"),
   SYNC_SERVER("Sync"),
-  SYNC_MONITOR("Sync-Monitor"),
-  LOAD_TSFILE("Load-TsFile"),
   TIME_COST_STATISTIC("TIME_COST_STATISTIC"),
   QUERY_SERVICE("Query"),
   SUB_RAW_QUERY_SERVICE("Sub_RawQuery"),

@@ -235,9 +235,6 @@ public class IoTDBDescriptor {
       conf.setSchemaDir(
           FilePathUtils.regularizePath(conf.getSystemDir()) + IoTDBConstant.SCHEMA_FOLDER_NAME);
 
-      conf.setSyncDir(
-          FilePathUtils.regularizePath(conf.getSystemDir()) + IoTDBConstant.SYNC_FOLDER_NAME);
-
       conf.setQueryDir(
           FilePathUtils.regularizePath(conf.getSystemDir() + IoTDBConstant.QUERY_FOLDER_NAME));
 
@@ -247,7 +244,7 @@ public class IoTDBDescriptor {
 
       conf.setWalDir(properties.getProperty("wal_dir", conf.getWalDir()));
 
-      conf.setNewSyncDir(properties.getProperty("newsync_dir", conf.getNewSyncDir()));
+      conf.setSyncDir(properties.getProperty("sync_dir", conf.getSyncDir()));
 
       conf.setConsensusDir(properties.getProperty("consensus_dir", conf.getConsensusDir()));
 
@@ -392,16 +389,6 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "session_timeout_threshold",
                   Integer.toString(conf.getSessionTimeoutThreshold()))));
-
-      conf.setSyncEnable(
-          Boolean.parseBoolean(
-              properties.getProperty("is_sync_enable", Boolean.toString(conf.isSyncEnable()))));
-
-      conf.setSyncServerPort(
-          Integer.parseInt(
-              properties
-                  .getProperty("sync_server_port", Integer.toString(conf.getSyncServerPort()))
-                  .trim()));
       conf.setPipeServerPort(
           Integer.parseInt(
               properties
