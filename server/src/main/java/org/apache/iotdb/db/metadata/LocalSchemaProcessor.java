@@ -396,7 +396,7 @@ public class LocalSchemaProcessor {
    * @param storageGroup root.node.(node)*
    */
   public void setStorageGroup(PartialPath storageGroup) throws MetadataException {
-    configManager.setStorageGroup(storageGroup, true);
+    configManager.setStorageGroup(storageGroup);
   }
 
   /**

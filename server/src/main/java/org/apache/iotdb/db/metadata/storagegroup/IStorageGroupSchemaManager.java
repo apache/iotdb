@@ -47,7 +47,7 @@ public interface IStorageGroupSchemaManager {
   void setStorageGroup(PartialPath path) throws MetadataException;
 
   /**
-   * different with LocalConfigManager.ensureStorageGroup, this method won't init storageGroup
+   * different with LocalConfigNode.ensureStorageGroup, this method won't init storageGroup
    * resources.
    *
    * @param path storage group path

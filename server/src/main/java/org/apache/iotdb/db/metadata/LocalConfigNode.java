@@ -187,7 +187,7 @@ public class LocalConfigNode {
       templateManager.clear();
 
     } catch (IOException e) {
-      logger.error("Error occurred when clearing LocalConfigManager:", e);
+      logger.error("Error occurred when clearing LocalConfigNode:", e);
     }
 
     initialized = false;
@@ -214,16 +214,12 @@ public class LocalConfigNode {
    *
    * @param storageGroup root.node.(node)*
    */
-  public void setStorageGroup(PartialPath storageGroup, boolean shouldAllocateSchemaRegion)
-      throws MetadataException {
+  public void setStorageGroup(PartialPath storageGroup) throws MetadataException {
     storageGroupSchemaManager.setStorageGroup(storageGroup);
     partitionTable.setStorageGroup(storageGroup);
 
-    // invoke from cluster doesn't need local allocate for the given storageGroup
-    if (shouldAllocateSchemaRegion) {
-      schemaEngine.createSchemaRegion(
-          storageGroup, partitionTable.allocateSchemaRegionId(storageGroup));
-    }
+    schemaEngine.createSchemaRegion(
+        storageGroup, partitionTable.allocateSchemaRegionId(storageGroup));
 
     if (!config.isEnableMemControl()) {
       MemTableManager.getInstance().addOrDeleteStorageGroup(1);
@@ -277,8 +273,7 @@ public class LocalConfigNode {
     }
   }
 
-  private void ensureStorageGroup(PartialPath path, boolean shouldAllocateSchemaRegion)
-      throws MetadataException {
+  private void ensureStorageGroup(PartialPath path) throws MetadataException {
     try {
       getBelongedStorageGroup(path);
     } catch (StorageGroupNotSetException e) {
@@ -288,7 +283,7 @@ public class LocalConfigNode {
       PartialPath storageGroupPath =
           MetaUtils.getStorageGroupPathByLevel(path, config.getDefaultStorageGroupLevel());
       try {
-        setStorageGroup(storageGroupPath, shouldAllocateSchemaRegion);
+        setStorageGroup(storageGroupPath);
       } catch (StorageGroupAlreadySetException storageGroupAlreadySetException) {
         // do nothing
         // concurrent timeseries creation may result concurrent ensureStorageGroup
@@ -505,7 +500,7 @@ public class LocalConfigNode {
   /** Get storage group node by path. the give path don't need to be storage group path. */
   public IStorageGroupMNode getStorageGroupNodeByPath(PartialPath path) throws MetadataException {
     // used for storage engine auto create storage group
-    ensureStorageGroup(path, true);
+    ensureStorageGroup(path);
     return storageGroupSchemaManager.getStorageGroupNodeByPath(path);
   }
 
@@ -539,7 +534,7 @@ public class LocalConfigNode {
   // This interface involves storage group auto creation
   public SchemaRegionId getBelongedSchemaRegionIdWithAutoCreate(PartialPath path)
       throws MetadataException {
-    ensureStorageGroup(path, true);
+    ensureStorageGroup(path);
     return getBelongedSchemaRegionId(path);
   }
 
