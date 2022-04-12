@@ -50,10 +50,9 @@ public class SourceHandleTest {
     final long mockTsBlockSize = 1024L * 1024L;
     final int numOfMockTsBlock = 10;
     final String remoteHostname = "remote";
-    final TFragmentInstanceId remoteFragmentInstanceId =
-        new TFragmentInstanceId(queryId, "f1", "0");
+    final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId, 1, "0");
     final String localPlanNodeId = "exchange_0";
-    final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, "f0", "0");
+    final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, 0, "0");
 
     // Construct a mock LocalMemoryManager that do not block any reservation.
     LocalMemoryManager mockLocalMemoryManager = Mockito.mock(LocalMemoryManager.class);
@@ -170,10 +169,9 @@ public class SourceHandleTest {
     final long mockTsBlockSize = 1024L * 1024L;
     final int numOfMockTsBlock = 10;
     final String remoteHostname = "remote";
-    final TFragmentInstanceId remoteFragmentInstanceId =
-        new TFragmentInstanceId(queryId, "f1", "0");
+    final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId, 1, "0");
     final String localPlanNodeId = "exchange_0";
-    final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, "f0", "0");
+    final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, 0, "0");
 
     // Construct a mock LocalMemoryManager with capacity 3 * mockTsBlockSize.
     LocalMemoryManager mockLocalMemoryManager = Mockito.mock(LocalMemoryManager.class);
@@ -316,10 +314,9 @@ public class SourceHandleTest {
     final long mockTsBlockSize = 1024L * 1024L;
     final int numOfMockTsBlock = 10;
     final String remoteHostname = "remote";
-    final TFragmentInstanceId remoteFragmentInstanceId =
-        new TFragmentInstanceId(queryId, "f1", "0");
+    final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId, 1, "0");
     final String localPlanNodeId = "exchange_0";
-    final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, "f0", "0");
+    final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, 0, "0");
 
     // Construct a mock LocalMemoryManager that returns unblocked futures.
     LocalMemoryManager mockLocalMemoryManager = Mockito.mock(LocalMemoryManager.class);
@@ -508,10 +505,9 @@ public class SourceHandleTest {
     final long mockTsBlockSize = 1024L * 1024L;
     final int numOfMockTsBlock = 10;
     final String remoteHostname = "remote";
-    final TFragmentInstanceId remoteFragmentInstanceId =
-        new TFragmentInstanceId(queryId, "f1", "0");
+    final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId, 1, "0");
     final String localPlanNodeId = "exchange_0";
-    final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, "f0", "0");
+    final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, 0, "0");
 
     // Construct a mock LocalMemoryManager that returns unblocked futures.
     LocalMemoryManager mockLocalMemoryManager = Mockito.mock(LocalMemoryManager.class);

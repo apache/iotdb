@@ -196,7 +196,7 @@ public class FragmentInstanceScheduler implements IFragmentInstanceScheduler, IS
       blockManager.forceDeregisterFragmentInstance(
           new TFragmentInstanceId(
               task.getId().getQueryId().getId(),
-              String.valueOf(task.getId().getFragmentId().getId()),
+              task.getId().getFragmentId().getId(),
               task.getId().getInstanceId()));
     }
     readyQueue.remove(task.getId());
