@@ -33,7 +33,7 @@
     <description>Zeppelin IoTDB support</description>
     <properties>
         <zeppelin.version>0.9.0-preview2</zeppelin.version>
-        <junit.version>4.11</junit.version>
+        <junit.version>4.13.1</junit.version>
     </properties>
     <dependencies>
         <dependency>
