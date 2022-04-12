@@ -216,6 +216,7 @@ public class PathPatternTree {
     for (PathPatternNode child : node.getChildren().values()) {
       searchFullPath(child, ancestors, fullPaths);
     }
+    ancestors.pop();
   }
 
   private PartialPath constructFullPath(PathPatternNode node, Deque<String> ancestors) {
