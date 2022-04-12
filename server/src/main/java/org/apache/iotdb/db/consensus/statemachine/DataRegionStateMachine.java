@@ -26,7 +26,11 @@ import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.mpp.execution.FragmentInstanceManager;
 import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.*;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertMultiTabletsNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowsNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowsOfOneDeviceNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.utils.StatusUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 
@@ -56,7 +60,6 @@ public class DataRegionStateMachine extends BaseStateMachine {
 
   @Override
   protected TSStatus write(FragmentInstance fragmentInstance) {
-    logger.info("Execute write plan in DataRegionStateMachine");
     PlanNode insertNode = fragmentInstance.getFragment().getRoot();
     try {
       if (insertNode instanceof InsertRowNode) {
@@ -76,6 +79,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
     } catch (BatchProcessException e) {
       return RpcUtils.getStatus(Arrays.asList(e.getFailingStatus()));
     } catch (Exception e) {
+      logger.error("Error in executing plan node: {}", insertNode);
       return StatusUtils.EXECUTE_STATEMENT_ERROR;
     }
     return StatusUtils.OK;
