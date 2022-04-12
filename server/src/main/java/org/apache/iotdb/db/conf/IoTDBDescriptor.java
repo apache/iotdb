@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionPriority;
@@ -1577,6 +1578,13 @@ public class IoTDBDescriptor {
       urlList.add(nodeUrl);
     }
     return urlList;
+  }
+
+  // These configurations are received from config node when registering
+  public void loadGlobalConfig(TGlobalConfig globalConfig) {
+    conf.setSeriesPartitionExecutorClass(globalConfig.getSeriesPartitionExecutorClass());
+    conf.setConsensusProtocolClass(globalConfig.getDataNodeConsensusProtocolClass());
+    conf.setSeriesPartitionSlotNum(globalConfig.getSeriesPartitionSlotNum());
   }
 
   private static class IoTDBDescriptorHolder {

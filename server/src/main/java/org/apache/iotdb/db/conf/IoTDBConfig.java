@@ -855,6 +855,17 @@ public class IoTDBConfig {
    */
   private String consensusProtocolClass = "org.apache.iotdb.consensus.ratis.RatisConsensus";
 
+  /**
+   * The series partition executor class. The Datanode should communicate with ConfigNode on startup
+   * and set this variable so that the correct class name can be obtained later when calculating the
+   * series partition
+   */
+  private String seriesPartitionExecutorClass =
+      "org.apache.iotdb.commons.partition.executor.hash.APHashExecutor";
+
+  /** The number of series partitions in a storage group */
+  private int seriesPartitionSlotNum = 10000;
+
   /** Port that data block manager thrift service listen to. */
   private int dataBlockManagerPort = 7777;
 
@@ -2693,6 +2704,22 @@ public class IoTDBConfig {
 
   public void setConsensusProtocolClass(String consensusProtocolClass) {
     this.consensusProtocolClass = consensusProtocolClass;
+  }
+
+  public String getSeriesPartitionExecutorClass() {
+    return seriesPartitionExecutorClass;
+  }
+
+  public void setSeriesPartitionExecutorClass(String seriesPartitionExecutorClass) {
+    this.seriesPartitionExecutorClass = seriesPartitionExecutorClass;
+  }
+
+  public int getSeriesPartitionSlotNum() {
+    return seriesPartitionSlotNum;
+  }
+
+  public void setSeriesPartitionSlotNum(int seriesPartitionSlotNum) {
+    this.seriesPartitionSlotNum = seriesPartitionSlotNum;
   }
 
   public int getMppPort() {
