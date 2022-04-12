@@ -19,30 +19,54 @@
 
 package org.apache.iotdb.db.service.thrift.impl;
 
+import org.apache.iotdb.common.rpc.thrift.EndPoint;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
+import org.apache.iotdb.consensus.IConsensus;
+import org.apache.iotdb.consensus.common.Peer;
+import org.apache.iotdb.db.consensus.ConsensusImpl;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.*;
+import org.apache.iotdb.service.rpc.thrift.CreateDataPartitionReq;
+import org.apache.iotdb.service.rpc.thrift.CreateDataRegionReq;
+import org.apache.iotdb.service.rpc.thrift.CreateSchemaRegionReq;
+import org.apache.iotdb.service.rpc.thrift.ManagementIService;
+import org.apache.iotdb.service.rpc.thrift.MigrateDataRegionReq;
+import org.apache.iotdb.service.rpc.thrift.MigrateSchemaRegionReq;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class DataNodeManagementServiceImpl implements ManagementIService.Iface {
   private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeManagementServiceImpl.class);
   private SchemaEngine schemaEngine = SchemaEngine.getInstance();
+  private IConsensus consensusImpl = ConsensusImpl.getInstance();
 
   @Override
   public TSStatus createSchemaRegion(CreateSchemaRegionReq req) throws TException {
     TSStatus tsStatus;
     try {
       PartialPath storageGroupPartitionPath = new PartialPath(req.getStorageGroup());
-      SchemaRegionId schemaRegionId = new SchemaRegionId(req.getRegionReplicaSet().getRegionId());
+      TRegionReplicaSet regionReplicaSet = req.getRegionReplicaSet();
+      SchemaRegionId schemaRegionId = new SchemaRegionId(regionReplicaSet.getRegionId());
       schemaEngine.createSchemaRegion(storageGroupPartitionPath, schemaRegionId);
+      ConsensusGroupId consensusGroupId = new SchemaRegionId(regionReplicaSet.getRegionId());
+      List<Peer> peers = new ArrayList<>();
+      for (EndPoint endPoint : regionReplicaSet.getEndpoint()) {
+        Endpoint endpoint = new Endpoint(endPoint.getIp(), endPoint.getPort());
+        peers.add(new Peer(consensusGroupId, endpoint));
+      }
+      consensusImpl.addConsensusGroup(consensusGroupId, peers);
       tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (IllegalPathException e1) {
       LOGGER.error(
