@@ -31,7 +31,7 @@
     <name>InfluxDB Protocol</name>
     <description>compatible with the protocol of influxdb.</description>
     <properties>
-        <influxdb.test.skip>true</influxdb.test.skip>
+        <influxdb.test.skip>false</influxdb.test.skip>
         <influxdb.it.skip>${influxdb.test.skip}</influxdb.it.skip>
         <influxdb.ut.skip>${influxdb.test.skip}</influxdb.ut.skip>
         <maven.compiler.source>8</maven.compiler.source>
