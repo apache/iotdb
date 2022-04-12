@@ -21,7 +21,6 @@ package org.apache.iotdb.db.mpp.sql.analyze;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
-import org.apache.iotdb.db.mpp.common.schematree.SchemaInternalNode;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.execution.Coordinator;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.SchemaFetchStatement;
@@ -31,7 +30,10 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class ClusterSchemaFetcher implements ISchemaFetcher {
 
@@ -44,19 +46,23 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
         new QueryId(String.valueOf(SessionManager.getInstance().requestQueryId(false)));
     coordinator.execute(schemaFetchStatement, queryId, QueryType.READ, null, "");
     TsBlock tsBlock = coordinator.getResultSet(queryId);
-    SchemaTree result = new SchemaTree(new SchemaInternalNode("root"));
-    while (tsBlock.hasNext()) {
-      Binary binary = tsBlock.getColumn(0).getBinary(0);
-      SchemaTree schemaTree = SchemaTree.deserialize(ByteBuffer.wrap(binary.getValues()));
-    }
+    SchemaTree result = new SchemaTree();
 
+    Binary binary;
+    SchemaTree fetchedSchemaTree;
+    while (tsBlock.hasNext()) {
+      binary = tsBlock.getColumn(0).getBinary(0);
+      fetchedSchemaTree = SchemaTree.deserialize(ByteBuffer.wrap(binary.getValues()));
+      result.mergeSchemaTree(fetchedSchemaTree);
+    }
     return result;
   }
 
   @Override
   public SchemaTree fetchSchemaWithAutoCreate(
       PartialPath devicePath, String[] measurements, TSDataType[] tsDataTypes, boolean aligned) {
-    return null;
+    // todo implement auto create schema
+    return fetchSchema(new PathPatternTree(devicePath, measurements));
   }
 
   @Override
@@ -65,6 +71,11 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       List<String[]> measurements,
       List<TSDataType[]> tsDataTypes,
       List<Boolean> aligned) {
-    return null;
+    Map<PartialPath, List<String>> deviceToMeasurementMap = new HashMap<>();
+    for (int i = 0; i < devicePath.size(); i++) {
+      deviceToMeasurementMap.put(devicePath.get(i), Arrays.asList(measurements.get(i)));
+    }
+    // todo implement auto create schema
+    return fetchSchema(new PathPatternTree(deviceToMeasurementMap));
   }
 }

@@ -50,7 +50,6 @@ import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.rescon.MemoryStatistics;
 import org.apache.iotdb.db.metadata.rescon.TimeseriesStatistics;
-import org.apache.iotdb.db.metadata.storagegroup.StorageGroupSchemaManager;
 import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
@@ -147,7 +146,7 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARA
 @SuppressWarnings("java:S1135") // ignore todos
 public class SchemaRegion implements ISchemaRegion {
 
-  private static final Logger logger = LoggerFactory.getLogger(StorageGroupSchemaManager.class);
+  private static final Logger logger = LoggerFactory.getLogger(SchemaRegion.class);
 
   protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 

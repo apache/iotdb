@@ -27,7 +27,7 @@ import java.nio.ByteBuffer;
 public class SchemaMeasurementNode extends SchemaNode {
 
   private String alias;
-  private final MeasurementSchema schema;
+  private MeasurementSchema schema;
 
   public SchemaMeasurementNode(String name, MeasurementSchema schema) {
     super(name);
@@ -44,6 +44,26 @@ public class SchemaMeasurementNode extends SchemaNode {
 
   public MeasurementSchema getSchema() {
     return schema;
+  }
+
+  @Override
+  public void replaceChild(String name, SchemaNode newChild) {
+    throw new UnsupportedOperationException(
+        "This operation is not supported in SchemaMeasurementNode.");
+  }
+
+  @Override
+  public void copyDataTo(SchemaNode schemaNode) {
+    if (!schemaNode.isMeasurement()) {
+      return;
+    }
+    SchemaMeasurementNode measurementNode = schemaNode.getAsMeasurementNode();
+    measurementNode.setSchema(schema);
+    measurementNode.setAlias(alias);
+  }
+
+  private void setSchema(MeasurementSchema schema) {
+    this.schema = schema;
   }
 
   @Override

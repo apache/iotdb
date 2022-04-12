@@ -19,29 +19,49 @@
 
 package org.apache.iotdb.db.mpp.operator.schema;
 
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
+import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.operator.source.SourceOperator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumn;
+import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
+import org.apache.iotdb.tsfile.utils.Binary;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Optional;
 
 public class SchemaFetchOperator implements SourceOperator {
+
+  private static final Logger logger = LoggerFactory.getLogger(SchemaFetchOperator.class);
 
   private final PlanNodeId sourceId;
   private final OperatorContext operatorContext;
   private final PathPatternTree patternTree;
+  private final ISchemaRegion schemaRegion;
 
   private TsBlock tsBlock;
   private boolean isFinished = false;
 
   public SchemaFetchOperator(
-      PlanNodeId planNodeId, OperatorContext context, PathPatternTree patternTree) {
+      PlanNodeId planNodeId,
+      OperatorContext context,
+      PathPatternTree patternTree,
+      ISchemaRegion schemaRegion) {
     this.sourceId = planNodeId;
     this.operatorContext = context;
     this.patternTree = patternTree;
+    this.schemaRegion = schemaRegion;
   }
 
   @Override
@@ -55,6 +75,12 @@ public class SchemaFetchOperator implements SourceOperator {
       throw new NoSuchElementException();
     }
     isFinished = true;
+    try {
+      fetchSchema();
+    } catch (MetadataException e) {
+      logger.error("Error occurred during execute SchemaFetchOperator {}", sourceId, e);
+      throw new RuntimeException(e);
+    }
     return tsBlock;
   }
 
@@ -73,7 +99,23 @@ public class SchemaFetchOperator implements SourceOperator {
     return sourceId;
   }
 
-  private void fetchSchema() {
-    // todo
+  private void fetchSchema() throws MetadataException {
+    SchemaTree schemaTree = new SchemaTree();
+    List<PartialPath> partialPathList = patternTree.splitToPathList();
+    for (PartialPath path : partialPathList) {
+      schemaTree.appendMeasurementPaths(schemaRegion.getMeasurementPaths(path, false));
+    }
+    ByteBuffer bufferWithMaxSize = ByteBuffer.allocate(1024 * 1024);
+    schemaTree.serialize(bufferWithMaxSize);
+    bufferWithMaxSize.flip();
+    ByteBuffer byteBuffer = ByteBuffer.allocate(bufferWithMaxSize.limit());
+    byteBuffer.put(bufferWithMaxSize);
+    this.tsBlock =
+        new TsBlock(
+            new TimeColumn(1, new long[] {0}),
+            new BinaryColumn(
+                1,
+                Optional.of(new boolean[] {false}),
+                new Binary[] {new Binary(byteBuffer.array())}));
   }
 }

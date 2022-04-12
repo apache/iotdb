@@ -281,7 +281,11 @@ public class LocalExecutionPlanner {
               context.getNextOperatorId(),
               node.getPlanNodeId(),
               SchemaFetchOperator.class.getSimpleName());
-      return new SchemaFetchOperator(node.getPlanNodeId(), operatorContext, node.getPatternTree());
+      return new SchemaFetchOperator(
+          node.getPlanNodeId(),
+          operatorContext,
+          node.getPatternTree(),
+          ((SchemaDriverContext) (context.instanceContext.getDriverContext())).getSchemaRegion());
     }
   }
 

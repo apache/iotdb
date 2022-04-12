@@ -60,6 +60,30 @@ public class SchemaEntityNode extends SchemaInternalNode {
   }
 
   @Override
+  public void replaceChild(String name, SchemaNode newChild) {
+    super.replaceChild(name, newChild);
+    if (newChild.isMeasurement()) {
+      SchemaMeasurementNode measurementNode = newChild.getAsMeasurementNode();
+      if (measurementNode.getAlias() != null) {
+        aliasChildren.replace(name, measurementNode);
+      }
+    }
+  }
+
+  @Override
+  public void copyDataTo(SchemaNode schemaNode) {
+    if (!schemaNode.isEntity()) {
+      return;
+    }
+    SchemaEntityNode entityNode = schemaNode.getAsEntityNode();
+    if (aliasChildren != null) {
+      for (SchemaMeasurementNode child : aliasChildren.values()) {
+        entityNode.addAliasChild(child.getAlias(), child);
+      }
+    }
+  }
+
+  @Override
   public boolean isEntity() {
     return true;
   }

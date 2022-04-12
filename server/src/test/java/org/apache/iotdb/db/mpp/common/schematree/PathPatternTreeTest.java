@@ -17,11 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.common;
+package org.apache.iotdb.db.mpp.common.schematree;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import org.junit.Assert;

@@ -29,8 +29,11 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Deque;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -45,10 +48,10 @@ public class PathPatternTree {
     this.root = root;
   }
 
-  public PathPatternTree(PartialPath deivcePath, String[] measurements) {
+  public PathPatternTree(PartialPath devicePath, String[] measurements) {
     this.root = new PathPatternNode(SQLConstant.ROOT);
     this.pathList = new ArrayList<>();
-    appendPaths(deivcePath, Arrays.asList(measurements));
+    appendPaths(devicePath, Arrays.asList(measurements));
   }
 
   public PathPatternTree(Map<PartialPath, List<String>> deviceToMeasurementsMap) {
@@ -193,6 +196,36 @@ public class PathPatternTree {
       childrenSize--;
     }
     return node;
+  }
+
+  public List<PartialPath> splitToPathList() {
+    List<PartialPath> result = new ArrayList<>();
+    Deque<String> ancestors = new ArrayDeque<>();
+    searchFullPath(root, ancestors, result);
+    return result;
+  }
+
+  private void searchFullPath(
+      PathPatternNode node, Deque<String> ancestors, List<PartialPath> fullPaths) {
+    if (node.isLeaf()) {
+      fullPaths.add(constructFullPath(node, ancestors));
+      return;
+    }
+
+    ancestors.push(node.getName());
+    for (PathPatternNode child : node.getChildren().values()) {
+      searchFullPath(child, ancestors, fullPaths);
+    }
+  }
+
+  private PartialPath constructFullPath(PathPatternNode node, Deque<String> ancestors) {
+    Iterator<String> iterator = ancestors.descendingIterator();
+    List<String> nodeList = new ArrayList<>(ancestors.size() + 1);
+    while (iterator.hasNext()) {
+      nodeList.add(iterator.next());
+    }
+    nodeList.add(node.getName());
+    return new PartialPath(nodeList.toArray(new String[0]));
   }
 
   @TestOnly
