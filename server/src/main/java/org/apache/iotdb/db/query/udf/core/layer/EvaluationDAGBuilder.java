@@ -32,10 +32,11 @@ import java.util.Map;
 public class EvaluationDAGBuilder {
 
   private final long queryId;
+
   private final RawQueryInputLayer inputLayer;
 
-  private final Expression[] resultColumnExpressions;
-  private final LayerPointReader[] resultColumnPointReaders;
+  private final Expression[] outputExpressions;
+  private final LayerPointReader[] outputPointReaders;
 
   private final UDTFContext udtfContext;
 
@@ -50,17 +51,17 @@ public class EvaluationDAGBuilder {
 
   public EvaluationDAGBuilder(
       long queryId,
-      Expression[] resultColumnExpressions,
       RawQueryInputLayer inputLayer,
+      Expression[] outputExpressions,
       UDTFContext udtfContext,
       float memoryBudgetInMB) {
     this.queryId = queryId;
-    this.resultColumnExpressions = resultColumnExpressions;
     this.inputLayer = inputLayer;
+    this.outputExpressions = outputExpressions;
     this.udtfContext = udtfContext;
 
     int size = inputLayer.getInputColumnCount();
-    resultColumnPointReaders = new LayerPointReader[size];
+    outputPointReaders = new LayerPointReader[size];
 
     memoryAssigner = new LayerMemoryAssigner(memoryBudgetInMB);
 
@@ -69,7 +70,7 @@ public class EvaluationDAGBuilder {
   }
 
   public EvaluationDAGBuilder buildLayerMemoryAssigner() {
-    for (Expression expression : resultColumnExpressions) {
+    for (Expression expression : outputExpressions) {
       expression.updateStatisticsForMemoryAssigner(memoryAssigner);
     }
     memoryAssigner.build();
@@ -78,9 +79,9 @@ public class EvaluationDAGBuilder {
 
   public EvaluationDAGBuilder buildResultColumnPointReaders()
       throws QueryProcessException, IOException {
-    for (int i = 0; i < resultColumnExpressions.length; ++i) {
-      resultColumnPointReaders[i] =
-          resultColumnExpressions[i]
+    for (int i = 0; i < outputExpressions.length; ++i) {
+      outputPointReaders[i] =
+          outputExpressions[i]
               .constructIntermediateLayer(
                   queryId,
                   udtfContext,
@@ -93,7 +94,7 @@ public class EvaluationDAGBuilder {
     return this;
   }
 
-  public LayerPointReader[] getResultColumnPointReaders() {
-    return resultColumnPointReaders;
+  public LayerPointReader[] getOutputPointReaders() {
+    return outputPointReaders;
   }
 }
