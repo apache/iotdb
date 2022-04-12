@@ -155,7 +155,7 @@ public class QueryExecution implements IQueryExecution {
    */
   public TsBlock getBatchResult() {
     try {
-      initialResultHandle();
+      initResultHandle();
       ListenableFuture<Void> blocked = resultHandle.isBlocked();
       blocked.get();
       return resultHandle.receive();
@@ -173,7 +173,7 @@ public class QueryExecution implements IQueryExecution {
   /** @return true if there is more tsblocks, otherwise false */
   public boolean hasNextResult() {
     try {
-      initialResultHandle();
+      initResultHandle();
       return resultHandle.isFinished();
     } catch (IOException e) {
       throwIfUnchecked(e.getCause());
@@ -221,7 +221,7 @@ public class QueryExecution implements IQueryExecution {
     }
   }
 
-  private void initialResultHandle() throws IOException {
+  private void initResultHandle() throws IOException {
     if (this.resultHandle == null) {
       this.resultHandle =
           DataBlockService.getInstance()
