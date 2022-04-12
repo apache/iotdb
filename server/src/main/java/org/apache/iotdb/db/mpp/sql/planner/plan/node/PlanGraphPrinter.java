@@ -19,12 +19,13 @@
 
 package org.apache.iotdb.db.mpp.sql.planner.plan.node;
 
-import org.apache.commons.lang3.Validate;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.sink.FragmentSinkNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
+
+import org.apache.commons.lang3.Validate;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -59,7 +60,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("SeriesScanNode-%s", node.getPlanNodeId().getId()));
     boxValue.add(String.format("Series: %s", node.getSeriesPath()));
-    boxValue.add(String.format("Region: %s", node.getDataRegionReplicaSet().getId()));
+    boxValue.add(String.format("Partition: %s", node.getDataRegionReplicaSet().getId()));
     return render(node, boxValue, context);
   }
 
@@ -74,6 +75,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   public List<String> visitTimeJoin(TimeJoinNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("TimeJoinNode-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("Order: %s", node.getMergeOrder()));
     return render(node, boxValue, context);
   }
 
@@ -96,7 +98,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   private List<String> render(PlanNode node, List<String> nodeBoxString, GraphContext context) {
     Box box = new Box(nodeBoxString);
     List<List<String>> children = new ArrayList<>();
-    for(PlanNode child : node.getChildren()) {
+    for (PlanNode child : node.getChildren()) {
       children.add(child.accept(this, context));
     }
     box.calculateBoxParams(children);
@@ -156,7 +158,8 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
       }
       StringBuilder line1 = new StringBuilder();
       for (int i = 0; i < box.lineWidth; i++) {
-        if (i < getChildMidPosition(children, 0) || i > getChildMidPosition(children, children.size() - 1)) {
+        if (i < getChildMidPosition(children, 0)
+            || i > getChildMidPosition(children, children.size() - 1)) {
           line1.append(INDENT);
           continue;
         }
@@ -281,7 +284,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
       int childrenWidth = 0;
       for (List<String> childBoxString : childBoxStrings) {
         Validate.isTrue(childBoxString.size() > 0, "Lines of box string should be greater than 0");
-        childrenWidth +=childBoxString.get(0).length();
+        childrenWidth += childBoxString.get(0).length();
       }
       childrenWidth += childBoxStrings.size() > 1 ? (childBoxStrings.size() - 1) * BOX_MARGIN : 0;
       this.lineWidth = Math.max(this.boxWidth, childrenWidth);
@@ -291,9 +294,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     }
   }
 
-  public static class GraphContext {
-
-  }
+  public static class GraphContext {}
 
   public static List<String> getGraph(PlanNode node) {
     return node.accept(new PlanGraphPrinter(), new PlanGraphPrinter.GraphContext());
@@ -301,10 +302,8 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
 
   public static void print(PlanNode node) {
     List<String> lines = getGraph(node);
-    for(String line : lines) {
+    for (String line : lines) {
       System.out.println(line);
     }
   }
 }
-
-
