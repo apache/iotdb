@@ -21,7 +21,7 @@ package org.apache.iotdb.db.mpp.sql.planner;
 import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.metadata.schemaregion.SchemaRegion;
+import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.mpp.buffer.DataBlockManager;
 import org.apache.iotdb.db.mpp.buffer.DataBlockService;
 import org.apache.iotdb.db.mpp.buffer.ISinkHandle;
@@ -104,7 +104,7 @@ public class LocalExecutionPlanner {
   }
 
   public SchemaDriver plan(
-      PlanNode plan, FragmentInstanceContext instanceContext, SchemaRegion schemaRegion) {
+      PlanNode plan, FragmentInstanceContext instanceContext, ISchemaRegion schemaRegion) {
 
     SchemaDriverContext schemaDriverContext =
         new SchemaDriverContext(instanceContext, schemaRegion);

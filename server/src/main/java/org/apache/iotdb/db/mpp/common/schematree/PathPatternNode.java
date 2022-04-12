@@ -24,6 +24,7 @@ import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -87,6 +88,18 @@ public class PathPatternNode {
       }
     }
     return true;
+  }
+
+  public void serialize(ByteBuffer buffer) {
+    ReadWriteIOUtils.write(name, buffer);
+    ReadWriteIOUtils.write(children.size(), buffer);
+    serializeChildren(buffer);
+  }
+
+  void serializeChildren(ByteBuffer buffer) {
+    for (PathPatternNode childNode : children.values()) {
+      childNode.serialize(buffer);
+    }
   }
 
   public void serialize(PublicBAOS outputStream) throws IOException {

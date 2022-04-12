@@ -174,6 +174,11 @@ public class PathPatternTree {
     root.serialize(outputStream);
   }
 
+  public void serialize(ByteBuffer buffer) {
+    constructTree();
+    root.serialize(buffer);
+  }
+
   public static PathPatternTree deserialize(ByteBuffer buffer) {
     PathPatternNode root = deserializeNode(buffer);
     return new PathPatternTree(root);

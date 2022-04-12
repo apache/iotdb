@@ -25,19 +25,23 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 import static org.apache.iotdb.db.mpp.common.schematree.SchemaNode.SCHEMA_ENTITY_NODE;
 import static org.apache.iotdb.db.mpp.common.schematree.SchemaNode.SCHEMA_MEASUREMENT_NODE;
 
 public class SchemaTree {
 
   private final SchemaNode root;
+
+  public SchemaTree() {
+    root = new SchemaInternalNode(PATH_ROOT);
+  }
 
   public SchemaTree(SchemaNode root) {
     this.root = root;
@@ -75,7 +79,31 @@ public class SchemaTree {
         devicePath, cur.getAsEntityNode().isAligned(), measurementSchemaList);
   }
 
-  public void serialize(ByteBuffer buffer) throws IOException {
+  public void mergeSchemaTree(SchemaTree schemaTree) {
+    traverseAndMerge(this.root, null, schemaTree.root, null);
+  }
+
+  private void traverseAndMerge(
+      SchemaNode thisNode, SchemaNode thisParent, SchemaNode thatNode, SchemaNode thatParent) {
+    if (thatNode.isMeasurement()) {
+      return;
+    }
+
+    SchemaNode thisChild;
+    for (SchemaNode thatChild : thatNode.getChildren().values()) {
+      thisChild = thisNode.getChild(thatChild.getName());
+      if (thisChild == null) {
+        thisNode.addChild(thatChild.getName(), thatChild);
+        if (thatChild.isMeasurement()) {
+          SchemaEntityNode entityNode = new SchemaEntityNode(thisNode.getName());
+        }
+      } else {
+        traverseAndMerge(thisChild, thisNode, thatChild, thatNode);
+      }
+    }
+  }
+
+  public void serialize(ByteBuffer buffer) {
     root.serialize(buffer);
   }
 

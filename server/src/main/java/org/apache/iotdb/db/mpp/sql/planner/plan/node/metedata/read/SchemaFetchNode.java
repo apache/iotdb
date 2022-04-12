@@ -60,9 +60,8 @@ public class SchemaFetchNode extends PlanNode {
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.SCHEMA_FETCH.serialize(byteBuffer);
-    ReadWriteIOUtils.write(getPlanNodeId().getId(), byteBuffer);
     patternTree.serialize(byteBuffer);
   }
 
