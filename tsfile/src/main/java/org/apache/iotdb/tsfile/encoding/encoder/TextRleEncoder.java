@@ -78,13 +78,13 @@ public class TextRleEncoder extends Encoder {
   public void flush(ByteArrayOutputStream out) throws IOException {}
 
   @Override
-  public int getOneItemMaxSize(){
-//    256*2
+  public int getOneItemMaxSize() {
+    //    256*2
     return 512;
   }
 
   @Override
-  public long getMaxByteSize(){
-    return 512*1000000;
+  public long getMaxByteSize() {
+    return 512 * 1000000;
   }
 }

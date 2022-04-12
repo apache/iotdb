@@ -108,7 +108,6 @@ public class PlainEncoder extends Encoder {
   public int getOneItemMaxSize() {
     switch (dataType) {
       case BOOLEAN:
-
         return 1;
       case INT32:
         return 4;
