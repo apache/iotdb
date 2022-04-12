@@ -19,21 +19,21 @@
 
 namespace java org.apache.iotdb.protocol.influxdb.rpc.thrift
 
-struct EndPoint {
+struct InfluxEndPoint {
   1: required string ip
   2: required i32 port
 }
 
 // The return status code and message in each response.
-struct TSStatus {
+struct InfluxTSStatus {
   1: required i32 code
   2: optional string message
-  3: optional list<TSStatus> subStatus
-  4: optional EndPoint redirectNode
+  3: optional list<InfluxTSStatus> subStatus
+  4: optional InfluxEndPoint redirectNode
 }
 
-struct TSOpenSessionResp {
-  1: required TSStatus status
+struct InfluxOpenSessionResp {
+  1: required InfluxTSStatus status
 
   // Session id
   2: optional i64 sessionId
@@ -44,7 +44,7 @@ struct TSOpenSessionResp {
 
 // OpenSession()
 // Open a session (connection) on the server against which operations may be executed.
-struct TSOpenSessionReq {
+struct InfluxOpenSessionReq {
   2: required string zoneId
   3: optional string username
   4: optional string password
@@ -55,13 +55,13 @@ struct TSOpenSessionReq {
 // CloseSession()
 // Closes the specified session and frees any resources currently allocated to that session.
 // Any open operations in that session will be canceled.
-struct TSCloseSessionReq {
+struct InfluxCloseSessionReq {
   1: required i64 sessionId
 }
 
 // WritePoints()
 // write points in influxdb
-struct TSWritePointsReq{
+struct InfluxWritePointsReq{
   // The session to execute the statement against
   1: required i64 sessionId
 
@@ -74,7 +74,7 @@ struct TSWritePointsReq{
 
 // CreateDatabase()
 // create database in influxdb
-struct TSCreateDatabaseReq{
+struct InfluxCreateDatabaseReq{
   // The session to execute the statement against
   1: required i64 sessionId
 
@@ -83,7 +83,7 @@ struct TSCreateDatabaseReq{
 
 // query()
 // query in influxdb
-struct TSQueryReq{
+struct InfluxQueryReq{
   // The session to execute the statement against
   1: required i64 sessionId
 
@@ -91,21 +91,21 @@ struct TSQueryReq{
   3: required string database
 }
 
-struct TSQueryResultRsp{
-  1: required TSStatus status
+struct InfluxQueryResultRsp{
+  1: required InfluxTSStatus status
 
   2: optional string resultJsonString
 
 }
 
 service InfluxDBService {
-  TSOpenSessionResp openSession(1:TSOpenSessionReq req);
+  InfluxOpenSessionResp openSession(1:InfluxOpenSessionReq req);
 
-  TSStatus closeSession(1:TSCloseSessionReq req);
+  InfluxTSStatus closeSession(1:InfluxCloseSessionReq req);
 
-  TSStatus writePoints(1:TSWritePointsReq req);
+  InfluxTSStatus writePoints(1:InfluxWritePointsReq req);
 
-  TSStatus createDatabase(1:TSCreateDatabaseReq req);
+  InfluxTSStatus createDatabase(1:InfluxCreateDatabaseReq req);
 
-  TSQueryResultRsp query(1:TSQueryReq req);
+  InfluxQueryResultRsp query(1:InfluxQueryReq req);
 }
