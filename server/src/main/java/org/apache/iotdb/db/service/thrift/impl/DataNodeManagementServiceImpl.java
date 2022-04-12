@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.Peer;
+import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.db.consensus.ConsensusImpl;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -66,8 +67,14 @@ public class DataNodeManagementServiceImpl implements ManagementIService.Iface {
         Endpoint endpoint = new Endpoint(endPoint.getIp(), endPoint.getPort());
         peers.add(new Peer(consensusGroupId, endpoint));
       }
-      consensusImpl.addConsensusGroup(consensusGroupId, peers);
-      tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      ConsensusGenericResponse consensusGenericResponse =
+          consensusImpl.addConsensusGroup(consensusGroupId, peers);
+      if (consensusGenericResponse.isSuccess()) {
+        tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      } else {
+        tsStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+        tsStatus.setMessage(consensusGenericResponse.getException().getMessage());
+      }
     } catch (IllegalPathException e1) {
       LOGGER.error(
           "Create Schema Region {} failed because path is illegal.", req.getStorageGroup());
