@@ -17,20 +17,24 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.buffer;
+package org.apache.iotdb.tsfile.read.common.block.column;
 
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import java.util.HashMap;
+import java.util.Map;
 
-import java.nio.ByteBuffer;
+public class ColumnEncoderFactory {
 
-public class TsBlockSerde {
-  public ByteBuffer serialized(TsBlock tsBlock) {
-    // TODO: implement
-    return null;
+  private static Map<ColumnEncoding, ColumnEncoder> encodingToEncoder = new HashMap<>();
+
+  static {
+    encodingToEncoder.put(ColumnEncoding.INT32_ARRAY, new Int32ArrayColumnEncoder());
+    encodingToEncoder.put(ColumnEncoding.INT64_ARRAY, new Int64ArrayColumnEncoder());
   }
 
-  public TsBlock deserialize(ByteBuffer buffer) {
-    // TODO: implement
-    return null;
+  public static ColumnEncoder get(ColumnEncoding columnEncoding) {
+    if (!encodingToEncoder.containsKey(columnEncoding)) {
+      throw new IllegalArgumentException("Unsupported column encoding: " + columnEncoding);
+    }
+    return encodingToEncoder.get(columnEncoding);
   }
 }
