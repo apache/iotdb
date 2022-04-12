@@ -72,7 +72,7 @@ public class SchemaPartitionDataSet implements DataSet {
               seriesPartitionSlotRegionReplicaSetMap.forEach(
                   ((seriesPartitionSlot, regionReplicaSet) -> {
                     TRegionReplicaSet regionMessage = new TRegionReplicaSet();
-                    regionMessage.setRegionId(regionReplicaSet.getId().getId());
+                    regionMessage.setRegionId(regionReplicaSet.getConsensusGroupId().getId());
                     List<EndPoint> endPointList = new ArrayList<>();
                     regionReplicaSet
                         .getDataNodeList()

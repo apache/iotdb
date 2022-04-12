@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.mpp.sql.planner.plan.IOutputPlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.PlanFragment;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.ColumnHeader;
@@ -155,7 +156,7 @@ public class DeviceMergeNode extends ProcessNode implements IOutputPlanNode {
     }
   }
 
-  public static DeviceMergeNode deserialize(ByteBuffer byteBuffer) {
+  public static DeviceMergeNode deserialize(ByteBuffer byteBuffer) throws IllegalPathException {
     int orderByIndex = ReadWriteIOUtils.readInt(byteBuffer);
     OrderBy orderBy = OrderBy.values()[orderByIndex];
     FilterNullComponent filterNullComponent = FilterNullComponent.deserialize(byteBuffer);

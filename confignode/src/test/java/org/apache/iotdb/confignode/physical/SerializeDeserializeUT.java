@@ -94,12 +94,12 @@ public class SerializeDeserializeUT {
     CreateRegionsPlan plan0 = new CreateRegionsPlan();
     plan0.setStorageGroup("sg");
     RegionReplicaSet dataRegionSet = new RegionReplicaSet();
-    dataRegionSet.setId(new DataRegionId(0));
+    dataRegionSet.setConsensusGroupId(new DataRegionId(0));
     dataRegionSet.setDataNodeList(
         Collections.singletonList(new DataNodeLocation(0, new Endpoint("0.0.0.0", 6667))));
     plan0.addRegion(dataRegionSet);
     RegionReplicaSet schemaRegionSet = new RegionReplicaSet();
-    schemaRegionSet.setId(new SchemaRegionId(1));
+    schemaRegionSet.setConsensusGroupId(new SchemaRegionId(1));
     schemaRegionSet.setDataNodeList(
         Collections.singletonList(new DataNodeLocation(0, new Endpoint("0.0.0.0", 6667))));
     plan0.addRegion(schemaRegionSet);
@@ -125,7 +125,7 @@ public class SerializeDeserializeUT {
     SeriesPartitionSlot seriesPartitionSlot = new SeriesPartitionSlot(10);
     TimePartitionSlot timePartitionSlot = new TimePartitionSlot(100);
     RegionReplicaSet regionReplicaSet = new RegionReplicaSet();
-    regionReplicaSet.setId(new DataRegionId(0));
+    regionReplicaSet.setConsensusGroupId(new DataRegionId(0));
     regionReplicaSet.setDataNodeList(
         Collections.singletonList(new DataNodeLocation(0, new Endpoint("0.0.0.0", 6667))));
 
