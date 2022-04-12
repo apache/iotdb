@@ -24,8 +24,10 @@ import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
+import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.mpp.sql.planner.plan.PlanFragment;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.FilterNullNode;
@@ -53,6 +55,45 @@ public class FragmentInstanceSerdeTest {
 
   @Test
   public void TestSerializeAndDeserializeForTree1() throws IllegalPathException, IOException {
+    FragmentInstance fragmentInstance =
+        new FragmentInstance(
+            new PlanFragment(new PlanFragmentId("test", -1), constructPlanNodeTree()),
+            -1,
+            new GroupByFilter(1, 2, 3, 4),
+            QueryType.READ);
+    RegionReplicaSet regionReplicaSet =
+        new RegionReplicaSet(new DataRegionId(1), new ArrayList<>());
+    fragmentInstance.setRegionReplicaSet(regionReplicaSet);
+    fragmentInstance.setHostEndpoint(new Endpoint("127.0.0.1", 6666));
+
+    ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
+    fragmentInstance.serializeRequest(byteBuffer);
+    byteBuffer.flip();
+    FragmentInstance deserializeFragmentInstance = FragmentInstance.deserializeFrom(byteBuffer);
+    assertEquals(deserializeFragmentInstance, fragmentInstance);
+  }
+
+  @Test
+  public void TestSerializeAndDeserializeWithNullFilter() throws IllegalPathException, IOException {
+    FragmentInstance fragmentInstance =
+        new FragmentInstance(
+            new PlanFragment(new PlanFragmentId("test2", 1), constructPlanNodeTree()),
+            -1,
+            null,
+            QueryType.READ);
+    RegionReplicaSet regionReplicaSet =
+        new RegionReplicaSet(new DataRegionId(1), new ArrayList<>());
+    fragmentInstance.setRegionReplicaSet(regionReplicaSet);
+    fragmentInstance.setHostEndpoint(new Endpoint("127.0.0.2", 6667));
+
+    ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
+    fragmentInstance.serializeRequest(byteBuffer);
+    byteBuffer.flip();
+    FragmentInstance deserializeFragmentInstance = FragmentInstance.deserializeFrom(byteBuffer);
+    assertEquals(deserializeFragmentInstance, fragmentInstance);
+  }
+
+  private PlanNode constructPlanNodeTree() throws IllegalPathException {
     // create node
     OffsetNode offsetNode = new OffsetNode(new PlanNodeId("OffsetNode"), 100);
     LimitNode limitNode = new LimitNode(new PlanNodeId("LimitNode"), 100);
@@ -101,18 +142,6 @@ public class FragmentInstanceSerdeTest {
     limitNode.addChild(filterNullNode);
     offsetNode.addChild(limitNode);
 
-    FragmentInstance fragmentInstance =
-        new FragmentInstance(new PlanFragment(new PlanFragmentId("test", -1), offsetNode), -1);
-    RegionReplicaSet regionReplicaSet =
-        new RegionReplicaSet(new DataRegionId(1), new ArrayList<>());
-    fragmentInstance.setRegionReplicaSet(regionReplicaSet);
-    fragmentInstance.setHostEndpoint(new Endpoint("127.0.0.1", 6666));
-    fragmentInstance.setTimeFilter(new GroupByFilter(1, 2, 3, 4));
-
-    ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
-    fragmentInstance.serializeRequest(byteBuffer);
-    byteBuffer.flip();
-    FragmentInstance deserializeFragmentInstance = FragmentInstance.deserializeFrom(byteBuffer);
-    assertEquals(deserializeFragmentInstance, fragmentInstance);
+    return offsetNode;
   }
 }

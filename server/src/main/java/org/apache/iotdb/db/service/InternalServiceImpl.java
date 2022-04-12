@@ -20,8 +20,16 @@
 package org.apache.iotdb.db.service;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
+import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
+import org.apache.iotdb.db.consensus.ConsensusImpl;
 import org.apache.iotdb.db.consensus.ConsensusManager;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
+import org.apache.iotdb.db.mpp.execution.FragmentInstanceInfo;
+import org.apache.iotdb.db.mpp.execution.FragmentInstanceManager;
+import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
 import org.apache.iotdb.mpp.rpc.thrift.InternalService;
 import org.apache.iotdb.mpp.rpc.thrift.SchemaFetchRequest;
@@ -53,18 +61,21 @@ public class InternalServiceImpl implements InternalService.Iface {
   }
 
   @Override
-  public TSendFragmentInstanceResp sendFragmentInstance(TSendFragmentInstanceReq req)
-      throws TException {
+  public TSendFragmentInstanceResp sendFragmentInstance(TSendFragmentInstanceReq req) {
     TSendFragmentInstanceResp response = new TSendFragmentInstanceResp();
     FragmentInstance fragmentInstance = null;
     try {
       fragmentInstance = FragmentInstance.deserializeFrom(req.fragmentInstance.body);
-    } catch (IllegalPathException | IOException e) {
+    } catch (IOException | IllegalPathException e) {
       LOGGER.error(e.getMessage());
       response.setAccepted(false);
       response.setMessage(e.getMessage());
       return response;
     }
+
+    ByteBufferConsensusRequest request = new ByteBufferConsensusRequest(req.fragmentInstance.body);
+    QueryType type = fragmentInstance.getType();
+    ConsensusGroupId groupId = fragmentInstance.getRegionReplicaSet().getConsensusGroupId();
 
     if (fragmentInstance.getRegionReplicaSet() == null
         || fragmentInstance.getRegionReplicaSet().isEmpty()) {
@@ -74,26 +85,37 @@ public class InternalServiceImpl implements InternalService.Iface {
       response.setMessage(msg);
       return response;
     }
-
     consensusManager.addConsensusGroup(fragmentInstance.getRegionReplicaSet());
-    TSStatus status =
-        consensusManager
-            .write(fragmentInstance.getRegionReplicaSet().getConsensusGroupId(), fragmentInstance)
-            .getStatus();
-    // TODO need consider more status
-    if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == status.getCode()) {
-      response.setAccepted(true);
-    } else {
-      response.setAccepted(false);
+
+    switch (type) {
+      case READ:
+        ConsensusReadResponse readResp = ConsensusImpl.getInstance().read(groupId, request);
+        FragmentInstanceInfo info = (FragmentInstanceInfo) readResp.getDataset();
+        return new TSendFragmentInstanceResp(info.getState().isFailed());
+      case WRITE:
+        TSStatus status =
+            consensusManager
+                .write(
+                    fragmentInstance.getRegionReplicaSet().getConsensusGroupId(), fragmentInstance)
+                .getStatus();
+        // TODO need consider more status
+        if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == status.getCode()) {
+          response.setAccepted(true);
+        } else {
+          response.setAccepted(false);
+        }
+        response.setMessage(status.message);
+        return response;
     }
-    response.setMessage(status.message);
-    return response;
+    return null;
   }
 
   @Override
-  public TFragmentInstanceStateResp fetchFragmentInstanceState(TFetchFragmentInstanceStateReq req)
-      throws TException {
-    return null;
+  public TFragmentInstanceStateResp fetchFragmentInstanceState(TFetchFragmentInstanceStateReq req) {
+    FragmentInstanceInfo info =
+        FragmentInstanceManager.getInstance()
+            .getInstanceInfo(FragmentInstanceId.fromThrift(req.fragmentInstanceId));
+    return new TFragmentInstanceStateResp(info.getState().toString());
   }
 
   @Override
