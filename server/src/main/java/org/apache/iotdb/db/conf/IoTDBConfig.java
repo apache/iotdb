@@ -21,8 +21,12 @@ package org.apache.iotdb.db.conf;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionPriority;
-import org.apache.iotdb.db.engine.compaction.cross.CrossCompactionStrategy;
-import org.apache.iotdb.db.engine.compaction.inner.InnerCompactionStrategy;
+import org.apache.iotdb.db.engine.compaction.constant.CrossCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.constant.CrossCompactionSelector;
+import org.apache.iotdb.db.engine.compaction.constant.InnerSeqCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.constant.InnerSequenceCompactionSelector;
+import org.apache.iotdb.db.engine.compaction.constant.InnerUnseqCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.constant.InnerUnsequenceCompactionSelector;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
@@ -362,10 +366,10 @@ public class IoTDBConfig {
   /** When average series point number reaches this, flush the memtable to disk */
   private int avgSeriesPointNumberThreshold = 10000;
 
-  /** Enable inner space copaction for sequence files */
+  /** Enable inner space compaction for sequence files */
   private boolean enableSeqSpaceCompaction = true;
 
-  /** Enable inner space copaction for unsequence files */
+  /** Enable inner space compaction for unsequence files */
   private boolean enableUnseqSpaceCompaction = true;
 
   /** Compact the unsequence files into the overlapped sequence files */
@@ -375,15 +379,25 @@ public class IoTDBConfig {
    * The strategy of inner space compaction task. There are just one inner space compaction strategy
    * SIZE_TIRED_COMPACTION:
    */
-  private InnerCompactionStrategy innerCompactionStrategy =
-      InnerCompactionStrategy.SIZE_TIERED_COMPACTION;
+  private InnerSequenceCompactionSelector innerSequenceCompactionSelector =
+      InnerSequenceCompactionSelector.SIZE_TIERED;
+
+  private InnerSeqCompactionPerformer innerSeqCompactionPerformer =
+      InnerSeqCompactionPerformer.READ_CHUNK;
+
+  private InnerUnsequenceCompactionSelector innerUnsequenceCompactionSelector =
+      InnerUnsequenceCompactionSelector.SIZE_TIERED;
+
+  private InnerUnseqCompactionPerformer innerUnseqCompactionPerformer =
+      InnerUnseqCompactionPerformer.READ_POINT;
 
   /**
    * The strategy of cross space compaction task. There are just one cross space compaction strategy
    * SIZE_TIRED_COMPACTION:
    */
-  private CrossCompactionStrategy crossCompactionStrategy =
-      CrossCompactionStrategy.REWRITE_COMPACTION;
+  private CrossCompactionSelector crossCompactionSelector = CrossCompactionSelector.REWRITE;
+
+  private CrossCompactionPerformer crossCompactionPerformer = CrossCompactionPerformer.READ_POINT;
 
   /**
    * The priority of compaction task execution. There are three priority strategy INNER_CROSS:
@@ -2466,20 +2480,56 @@ public class IoTDBConfig {
     this.enableCrossSpaceCompaction = enableCrossSpaceCompaction;
   }
 
-  public InnerCompactionStrategy getInnerCompactionStrategy() {
-    return innerCompactionStrategy;
+  public InnerSequenceCompactionSelector getInnerSequenceCompactionSelector() {
+    return innerSequenceCompactionSelector;
   }
 
-  public void setInnerCompactionStrategy(InnerCompactionStrategy innerCompactionStrategy) {
-    this.innerCompactionStrategy = innerCompactionStrategy;
+  public void setInnerSequenceCompactionSelector(
+      InnerSequenceCompactionSelector innerSequenceCompactionSelector) {
+    this.innerSequenceCompactionSelector = innerSequenceCompactionSelector;
   }
 
-  public CrossCompactionStrategy getCrossCompactionStrategy() {
-    return crossCompactionStrategy;
+  public InnerUnsequenceCompactionSelector getInnerUnsequenceCompactionSelector() {
+    return innerUnsequenceCompactionSelector;
   }
 
-  public void setCrossCompactionStrategy(CrossCompactionStrategy crossCompactionStrategy) {
-    this.crossCompactionStrategy = crossCompactionStrategy;
+  public void setInnerUnsequenceCompactionSelector(
+      InnerUnsequenceCompactionSelector innerUnsequenceCompactionSelector) {
+    this.innerUnsequenceCompactionSelector = innerUnsequenceCompactionSelector;
+  }
+
+  public InnerSeqCompactionPerformer getInnerSeqCompactionPerformer() {
+    return innerSeqCompactionPerformer;
+  }
+
+  public void setInnerSeqCompactionPerformer(
+      InnerSeqCompactionPerformer innerSeqCompactionPerformer) {
+    this.innerSeqCompactionPerformer = innerSeqCompactionPerformer;
+  }
+
+  public InnerUnseqCompactionPerformer getInnerUnseqCompactionPerformer() {
+    return innerUnseqCompactionPerformer;
+  }
+
+  public void setInnerUnseqCompactionPerformer(
+      InnerUnseqCompactionPerformer innerUnseqCompactionPerformer) {
+    this.innerUnseqCompactionPerformer = innerUnseqCompactionPerformer;
+  }
+
+  public CrossCompactionSelector getCrossCompactionSelector() {
+    return crossCompactionSelector;
+  }
+
+  public void setCrossCompactionSelector(CrossCompactionSelector crossCompactionSelector) {
+    this.crossCompactionSelector = crossCompactionSelector;
+  }
+
+  public CrossCompactionPerformer getCrossCompactionPerformer() {
+    return crossCompactionPerformer;
+  }
+
+  public void setCrossCompactionPerformer(CrossCompactionPerformer crossCompactionPerformer) {
+    this.crossCompactionPerformer = crossCompactionPerformer;
   }
 
   public CompactionPriority getCompactionPriority() {
