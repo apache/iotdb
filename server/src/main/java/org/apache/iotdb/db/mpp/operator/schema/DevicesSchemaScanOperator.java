@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.operator.meta;
+package org.apache.iotdb.db.mpp.operator.schema;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -33,7 +33,7 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import java.util.Arrays;
 import java.util.List;
 
-public class DevicesMetaScanOperator extends MetaScanOperator {
+public class DevicesSchemaScanOperator extends SchemaScanOperator {
   private final boolean hasSgCol;
 
   private static final TSDataType[] RESOURCE_TYPES_WITH_SG = {
@@ -44,7 +44,7 @@ public class DevicesMetaScanOperator extends MetaScanOperator {
     TSDataType.TEXT, TSDataType.BOOLEAN,
   };
 
-  public DevicesMetaScanOperator(
+  public DevicesSchemaScanOperator(
       OperatorContext operatorContext,
       int limit,
       int offset,

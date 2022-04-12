@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.operator.meta;
+package org.apache.iotdb.db.mpp.operator.schema;
 
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.operator.OperatorContext;
@@ -25,7 +25,7 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import java.util.List;
 
-public abstract class MetaScanOperator implements SourceOperator {
+public abstract class SchemaScanOperator implements SourceOperator {
 
   protected OperatorContext operatorContext;
   protected TsBlock tsBlock;
@@ -37,7 +37,7 @@ public abstract class MetaScanOperator implements SourceOperator {
   protected boolean isPrefixPath;
   protected List<String> columns;
 
-  protected MetaScanOperator(
+  protected SchemaScanOperator(
       OperatorContext operatorContext,
       int limit,
       int offset,

@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read;
 
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
@@ -33,11 +32,11 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_DEVICES;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_IS_ALIGNED;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_STORAGE_GROUP;
 
-public class DevicesMetaScanNode extends MetaScanNode {
+public class DevicesSchemaScanNode extends SchemaScanNode {
 
   private final boolean hasSgCol;
 
-  public DevicesMetaScanNode(
+  public DevicesSchemaScanNode(
       PlanNodeId id,
       PartialPath path,
       int limit,
@@ -62,7 +61,7 @@ public class DevicesMetaScanNode extends MetaScanNode {
 
   @Override
   public PlanNode clone() {
-    return new DevicesMetaScanNode(getPlanNodeId(), path, limit, offset, isPrefixPath, hasSgCol);
+    return new DevicesSchemaScanNode(getPlanNodeId(), path, limit, offset, isPrefixPath, hasSgCol);
   }
 
   @Override
@@ -80,24 +79,23 @@ public class DevicesMetaScanNode extends MetaScanNode {
 
   @Override
   public void serialize(ByteBuffer byteBuffer) {
-    PlanNodeType.DEVICES_META_SCAN.serialize(byteBuffer);
+    PlanNodeType.DEVICES_SCHEMA_SCAN.serialize(byteBuffer);
     ReadWriteIOUtils.write(getPlanNodeId().getId(), byteBuffer);
-    ReadWriteIOUtils.write(path.getFullPath(), byteBuffer);
+    path.serialize(byteBuffer);
     ReadWriteIOUtils.write(limit, byteBuffer);
     ReadWriteIOUtils.write(offset, byteBuffer);
     ReadWriteIOUtils.write(isPrefixPath, byteBuffer);
     ReadWriteIOUtils.write(hasSgCol, byteBuffer);
   }
 
-  public static DevicesMetaScanNode deserialize(ByteBuffer byteBuffer) throws IllegalPathException {
+  public static DevicesSchemaScanNode deserialize(ByteBuffer byteBuffer) {
     String id = ReadWriteIOUtils.readString(byteBuffer);
     PlanNodeId planNodeId = new PlanNodeId(id);
-    String fullPath = ReadWriteIOUtils.readString(byteBuffer);
-    PartialPath path = new PartialPath(fullPath);
+    PartialPath path = PartialPath.deserialize(byteBuffer);
     int limit = ReadWriteIOUtils.readInt(byteBuffer);
     int offset = ReadWriteIOUtils.readInt(byteBuffer);
     boolean isPrefixPath = ReadWriteIOUtils.readBool(byteBuffer);
     boolean hasSgCol = ReadWriteIOUtils.readBool(byteBuffer);
-    return new DevicesMetaScanNode(planNodeId, path, limit, offset, isPrefixPath, hasSgCol);
+    return new DevicesSchemaScanNode(planNodeId, path, limit, offset, isPrefixPath, hasSgCol);
   }
 }

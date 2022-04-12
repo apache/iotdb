@@ -27,18 +27,18 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-public class MetaMergeNode extends ProcessNode {
+public class SchemaMergeNode extends ProcessNode {
 
   private boolean orderByHeat;
 
   private List<PlanNode> children;
 
-  public MetaMergeNode(PlanNodeId id) {
+  public SchemaMergeNode(PlanNodeId id) {
     super(id);
     children = new ArrayList<>();
   }
 
-  public MetaMergeNode(PlanNodeId id, boolean orderByHeat) {
+  public SchemaMergeNode(PlanNodeId id, boolean orderByHeat) {
     this(id);
     this.orderByHeat = orderByHeat;
   }
@@ -55,7 +55,7 @@ public class MetaMergeNode extends ProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new MetaMergeNode(getPlanNodeId(), this.orderByHeat);
+    return new SchemaMergeNode(getPlanNodeId(), this.orderByHeat);
   }
 
   @Override
@@ -65,6 +65,9 @@ public class MetaMergeNode extends ProcessNode {
 
   @Override
   public void serialize(ByteBuffer byteBuffer) {}
+
+  @Override
+  protected void serializeAttributes(ByteBuffer byteBuffer) {}
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {

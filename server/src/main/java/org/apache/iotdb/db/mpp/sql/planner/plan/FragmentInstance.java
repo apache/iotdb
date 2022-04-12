@@ -137,7 +137,7 @@ public class FragmentInstance implements IConsensusRequest {
     }
     Endpoint endpoint = new Endpoint();
     endpoint.deserializeImpl(buffer);
-    fragmentInstance.dataRegion = regionReplicaSet;
+    fragmentInstance.regionReplicaSet = regionReplicaSet;
     fragmentInstance.hostEndpoint = endpoint;
 
     return fragmentInstance;
@@ -152,7 +152,7 @@ public class FragmentInstance implements IConsensusRequest {
       timeFilter.serialize(buffer);
     }
     ReadWriteIOUtils.write(type.ordinal(), buffer);
-    dataRegion.serializeImpl(buffer);
+    regionReplicaSet.serializeImpl(buffer);
     hostEndpoint.serializeImpl(buffer);
   }
 
@@ -164,13 +164,13 @@ public class FragmentInstance implements IConsensusRequest {
     return Objects.equals(id, instance.id)
         && type == instance.type
         && Objects.equals(fragment, instance.fragment)
-        && Objects.equals(dataRegion, instance.dataRegion)
+        && Objects.equals(regionReplicaSet, instance.regionReplicaSet)
         && Objects.equals(hostEndpoint, instance.hostEndpoint)
         && Objects.equals(timeFilter, instance.timeFilter);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(id, type, fragment, dataRegion, hostEndpoint, timeFilter);
+    return Objects.hash(id, type, fragment, regionReplicaSet, hostEndpoint, timeFilter);
   }
 }

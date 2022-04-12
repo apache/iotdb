@@ -22,9 +22,9 @@ package org.apache.iotdb.db.mpp.sql.planner;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.DevicesMetaScanNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.MetaMergeNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesMetaScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.DevicesSchemaScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.*;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregateScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
@@ -288,8 +288,8 @@ public class QueryPlanBuilder {
       boolean orderByHeat,
       boolean contains,
       boolean prefixPath) {
-    TimeSeriesMetaScanNode timeSeriesMetaScanNode =
-        new TimeSeriesMetaScanNode(
+    TimeSeriesSchemaScanNode timeSeriesMetaScanNode =
+        new TimeSeriesSchemaScanNode(
             context.getQueryId().genPlanNodeId(),
             pathPattern,
             key,
@@ -304,15 +304,15 @@ public class QueryPlanBuilder {
 
   public void planDeviceMetaSource(
       PartialPath pathPattern, int limit, int offset, boolean prefixPath, boolean hasSgCol) {
-    DevicesMetaScanNode devicesMetaScanNode =
-        new DevicesMetaScanNode(
+    DevicesSchemaScanNode devicesMetaScanNode =
+        new DevicesSchemaScanNode(
             context.getQueryId().genPlanNodeId(), pathPattern, limit, offset, prefixPath, hasSgCol);
     this.root = devicesMetaScanNode;
   }
 
   public void planMetaMerge(boolean orderByHeat) {
-    MetaMergeNode metaMergeNode =
-        new MetaMergeNode(context.getQueryId().genPlanNodeId(), orderByHeat);
+    SchemaMergeNode metaMergeNode =
+        new SchemaMergeNode(context.getQueryId().genPlanNodeId(), orderByHeat);
     metaMergeNode.addChild(this.getRoot());
     this.root = metaMergeNode;
   }

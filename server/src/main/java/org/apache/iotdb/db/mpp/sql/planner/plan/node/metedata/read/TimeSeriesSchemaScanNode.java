@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read;
 
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
@@ -39,7 +38,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_COMP
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_DATATYPE;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_ENCODING;
 
-public class TimeSeriesMetaScanNode extends MetaScanNode {
+public class TimeSeriesSchemaScanNode extends SchemaScanNode {
 
   private final String key;
   private final String value;
@@ -48,7 +47,7 @@ public class TimeSeriesMetaScanNode extends MetaScanNode {
   // if is true, the result will be sorted according to the inserting frequency of the timeseries
   private final boolean orderByHeat;
 
-  public TimeSeriesMetaScanNode(
+  public TimeSeriesSchemaScanNode(
       PlanNodeId id,
       PartialPath partialPath,
       String key,
@@ -67,9 +66,9 @@ public class TimeSeriesMetaScanNode extends MetaScanNode {
 
   @Override
   public void serialize(ByteBuffer byteBuffer) {
-    PlanNodeType.TIME_SERIES_META_SCAN.serialize(byteBuffer);
+    PlanNodeType.TIME_SERIES_SCHEMA_SCAN.serialize(byteBuffer);
     ReadWriteIOUtils.write(getPlanNodeId().getId(), byteBuffer);
-    ReadWriteIOUtils.write(path.getFullPath(), byteBuffer);
+    path.serialize(byteBuffer);
     ReadWriteIOUtils.write(key, byteBuffer);
     ReadWriteIOUtils.write(value, byteBuffer);
     ReadWriteIOUtils.write(limit, byteBuffer);
@@ -79,12 +78,10 @@ public class TimeSeriesMetaScanNode extends MetaScanNode {
     ReadWriteIOUtils.write(isPrefixPath, byteBuffer);
   }
 
-  public static TimeSeriesMetaScanNode deserialize(ByteBuffer byteBuffer)
-      throws IllegalPathException {
+  public static TimeSeriesSchemaScanNode deserialize(ByteBuffer byteBuffer) {
     String id = ReadWriteIOUtils.readString(byteBuffer);
     PlanNodeId planNodeId = new PlanNodeId(id);
-    String fullPath = ReadWriteIOUtils.readString(byteBuffer);
-    PartialPath path = new PartialPath(fullPath);
+    PartialPath path = PartialPath.deserialize(byteBuffer);
     String key = ReadWriteIOUtils.readString(byteBuffer);
     String value = ReadWriteIOUtils.readString(byteBuffer);
     int limit = ReadWriteIOUtils.readInt(byteBuffer);
@@ -92,7 +89,7 @@ public class TimeSeriesMetaScanNode extends MetaScanNode {
     boolean oderByHeat = ReadWriteIOUtils.readBool(byteBuffer);
     boolean isContains = ReadWriteIOUtils.readBool(byteBuffer);
     boolean isPrefixPath = ReadWriteIOUtils.readBool(byteBuffer);
-    return new TimeSeriesMetaScanNode(
+    return new TimeSeriesSchemaScanNode(
         planNodeId, path, key, value, limit, offset, oderByHeat, isContains, isPrefixPath);
   }
 
@@ -122,7 +119,7 @@ public class TimeSeriesMetaScanNode extends MetaScanNode {
 
   @Override
   public PlanNode clone() {
-    return new TimeSeriesMetaScanNode(
+    return new TimeSeriesSchemaScanNode(
         getPlanNodeId(), path, key, value, limit, offset, orderByHeat, isContains, isPrefixPath);
   }
 

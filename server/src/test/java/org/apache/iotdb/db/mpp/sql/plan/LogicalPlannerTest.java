@@ -29,9 +29,9 @@ import org.apache.iotdb.db.mpp.sql.parser.StatementGenerator;
 import org.apache.iotdb.db.mpp.sql.planner.LogicalPlanner;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.DevicesMetaScanNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.MetaMergeNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesMetaScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.DevicesSchemaScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AlterTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AuthorNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
@@ -378,10 +378,10 @@ public class LogicalPlannerTest {
     try {
       LimitNode limitNode = (LimitNode) parseSQLToPlanNode(sql);
       OffsetNode offsetNode = (OffsetNode) limitNode.getChild();
-      MetaMergeNode metaMergeNode = (MetaMergeNode) offsetNode.getChild();
+      SchemaMergeNode metaMergeNode = (SchemaMergeNode) offsetNode.getChild();
       metaMergeNode.getChildren().forEach(n -> System.out.println(n.toString()));
-      TimeSeriesMetaScanNode showTimeSeriesNode =
-          (TimeSeriesMetaScanNode) metaMergeNode.getChildren().get(0);
+      TimeSeriesSchemaScanNode showTimeSeriesNode =
+          (TimeSeriesSchemaScanNode) metaMergeNode.getChildren().get(0);
       Assert.assertNotNull(showTimeSeriesNode);
       Assert.assertEquals(
           new PartialPath("root.ln.wf01.wt01.status"), showTimeSeriesNode.getPath());
@@ -398,8 +398,8 @@ public class LogicalPlannerTest {
       ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
       showTimeSeriesNode.serialize(byteBuffer);
       byteBuffer.flip();
-      TimeSeriesMetaScanNode showTimeSeriesNode2 =
-          (TimeSeriesMetaScanNode) PlanNodeType.deserialize(byteBuffer);
+      TimeSeriesSchemaScanNode showTimeSeriesNode2 =
+          (TimeSeriesSchemaScanNode) PlanNodeType.deserialize(byteBuffer);
       Assert.assertNotNull(showTimeSeriesNode2);
       Assert.assertEquals(
           new PartialPath("root.ln.wf01.wt01.status"), showTimeSeriesNode2.getPath());
@@ -423,9 +423,9 @@ public class LogicalPlannerTest {
     try {
       LimitNode limitNode = (LimitNode) parseSQLToPlanNode(sql);
       OffsetNode offsetNode = (OffsetNode) limitNode.getChild();
-      MetaMergeNode metaMergeNode = (MetaMergeNode) offsetNode.getChild();
-      DevicesMetaScanNode showDevicesNode =
-          (DevicesMetaScanNode) metaMergeNode.getChildren().get(0);
+      SchemaMergeNode metaMergeNode = (SchemaMergeNode) offsetNode.getChild();
+      DevicesSchemaScanNode showDevicesNode =
+          (DevicesSchemaScanNode) metaMergeNode.getChildren().get(0);
       Assert.assertNotNull(showDevicesNode);
       Assert.assertEquals(new PartialPath("root.ln.wf01.wt01"), showDevicesNode.getPath());
       Assert.assertTrue(showDevicesNode.isHasSgCol());
@@ -437,8 +437,8 @@ public class LogicalPlannerTest {
       ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
       showDevicesNode.serialize(byteBuffer);
       byteBuffer.flip();
-      DevicesMetaScanNode showDevicesNode2 =
-          (DevicesMetaScanNode) PlanNodeType.deserialize(byteBuffer);
+      DevicesSchemaScanNode showDevicesNode2 =
+          (DevicesSchemaScanNode) PlanNodeType.deserialize(byteBuffer);
       Assert.assertNotNull(showDevicesNode2);
       Assert.assertEquals(new PartialPath("root.ln.wf01.wt01"), showDevicesNode2.getPath());
       Assert.assertEquals(20, showDevicesNode2.getLimit());

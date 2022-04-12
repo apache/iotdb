@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.operator.meta;
+package org.apache.iotdb.db.mpp.operator.schema;
 
 import org.apache.iotdb.db.mpp.operator.Operator;
 import org.apache.iotdb.db.mpp.operator.OperatorContext;
@@ -25,7 +25,7 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import java.util.List;
 
-public class MetaMergeOperator implements ProcessOperator {
+public class SchemaMergeOperator implements ProcessOperator {
 
   protected OperatorContext operatorContext;
   protected int limit;
@@ -35,7 +35,7 @@ public class MetaMergeOperator implements ProcessOperator {
 
   private List<Operator> children;
 
-  public MetaMergeOperator(OperatorContext operatorContext, List<Operator> children) {
+  public SchemaMergeOperator(OperatorContext operatorContext, List<Operator> children) {
     this.operatorContext = operatorContext;
     this.children = children;
     noMoreTsBlocks = new boolean[children.size()];

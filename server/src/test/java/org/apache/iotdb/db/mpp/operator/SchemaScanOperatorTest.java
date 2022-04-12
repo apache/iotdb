@@ -22,16 +22,16 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.LocalConfigManager;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.metadata.schemaregion.SchemaRegion;
+import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.FragmentInstanceState;
 import org.apache.iotdb.db.mpp.execution.SchemaDriverContext;
-import org.apache.iotdb.db.mpp.operator.meta.DevicesMetaScanOperator;
-import org.apache.iotdb.db.mpp.operator.meta.MetaScanOperator;
-import org.apache.iotdb.db.mpp.operator.meta.TimeSeriesMetaScanOperator;
+import org.apache.iotdb.db.mpp.operator.schema.DevicesSchemaScanOperator;
+import org.apache.iotdb.db.mpp.operator.schema.SchemaScanOperator;
+import org.apache.iotdb.db.mpp.operator.schema.TimeSeriesSchemaScanOperator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderTestUtil;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -70,7 +70,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-public class MetaScanOperatorTest {
+public class SchemaScanOperatorTest {
   private static final String META_SCAN_OPERATOR_TEST_SG = "root.MetaScanOperatorTest";
   private final List<String> deviceIds = new ArrayList<>();
   private final List<MeasurementSchema> measurementSchemas = new ArrayList<>();
@@ -100,16 +100,16 @@ public class MetaScanOperatorTest {
               new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance"), state);
       OperatorContext operatorContext =
           fragmentInstanceContext.addOperatorContext(
-              1, new PlanNodeId("1"), MetaScanOperator.class.getSimpleName());
+              1, new PlanNodeId("1"), SchemaScanOperator.class.getSimpleName());
       PartialPath partialPath = new PartialPath(META_SCAN_OPERATOR_TEST_SG + ".device0");
-      SchemaRegion schemaRegion =
+      ISchemaRegion schemaRegion =
           LocalConfigManager.getInstance().getBelongedSchemaRegion(partialPath);
       operatorContext
           .getInstanceContext()
           .setDriverContext(new SchemaDriverContext(fragmentInstanceContext, schemaRegion));
       List<String> columns = Arrays.asList(COLUMN_DEVICES, COLUMN_STORAGE_GROUP, COLUMN_IS_ALIGNED);
-      DevicesMetaScanOperator deviceMetaScanOperator =
-          new DevicesMetaScanOperator(
+      DevicesSchemaScanOperator deviceMetaScanOperator =
+          new DevicesSchemaScanOperator(
               fragmentInstanceContext.getOperatorContexts().get(0),
               10,
               0,
@@ -161,9 +161,9 @@ public class MetaScanOperatorTest {
               new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance"), state);
       OperatorContext operatorContext =
           fragmentInstanceContext.addOperatorContext(
-              1, new PlanNodeId("1"), MetaScanOperator.class.getSimpleName());
+              1, new PlanNodeId("1"), SchemaScanOperator.class.getSimpleName());
       PartialPath partialPath = new PartialPath(META_SCAN_OPERATOR_TEST_SG + ".device0.*");
-      SchemaRegion schemaRegion =
+      ISchemaRegion schemaRegion =
           LocalConfigManager.getInstance().getBelongedSchemaRegion(partialPath);
       operatorContext
           .getInstanceContext()
@@ -178,8 +178,8 @@ public class MetaScanOperatorTest {
               COLUMN_TIMESERIES_COMPRESSION,
               COLUMN_TAGS,
               COLUMN_ATTRIBUTES);
-      TimeSeriesMetaScanOperator timeSeriesMetaScanOperator =
-          new TimeSeriesMetaScanOperator(
+      TimeSeriesSchemaScanOperator timeSeriesMetaScanOperator =
+          new TimeSeriesSchemaScanOperator(
               fragmentInstanceContext.getOperatorContexts().get(0),
               10,
               0,

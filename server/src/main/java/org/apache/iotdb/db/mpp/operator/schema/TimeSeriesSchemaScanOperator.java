@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.operator.meta;
+package org.apache.iotdb.db.mpp.operator.schema;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -35,7 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class TimeSeriesMetaScanOperator extends MetaScanOperator {
+public class TimeSeriesSchemaScanOperator extends SchemaScanOperator {
   private String key;
   private String value;
   private boolean isContains;
@@ -54,7 +54,7 @@ public class TimeSeriesMetaScanOperator extends MetaScanOperator {
     TSDataType.TEXT
   };
 
-  public TimeSeriesMetaScanOperator(
+  public TimeSeriesSchemaScanOperator(
       OperatorContext operatorContext,
       int limit,
       int offset,

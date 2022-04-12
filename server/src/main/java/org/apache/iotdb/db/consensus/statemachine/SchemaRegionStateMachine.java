@@ -22,8 +22,6 @@ package org.apache.iotdb.db.consensus.statemachine;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
-import org.apache.iotdb.db.metadata.schemaregion.SchemaRegion;
-import org.apache.iotdb.db.mpp.execution.FragmentInstanceInfo;
 import org.apache.iotdb.db.mpp.execution.FragmentInstanceManager;
 import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -56,11 +54,7 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
   @Override
   protected DataSet read(FragmentInstance fragmentInstance) {
     logger.info("Execute read plan in SchemaRegionStateMachine");
-    FragmentInstanceInfo fragmentInstanceInfo =
-        FragmentInstanceManager.getInstance()
-            .execSchemaQueryFragmentInstance(fragmentInstance, region);
-    // ToDo @xinzhongtianxia get exec result and construct DataSet
-
-    return null;
+    return FragmentInstanceManager.getInstance()
+        .execSchemaQueryFragmentInstance(fragmentInstance, region);
   }
 }

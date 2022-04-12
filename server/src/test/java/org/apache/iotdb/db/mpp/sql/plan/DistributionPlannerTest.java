@@ -41,8 +41,8 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.mpp.sql.planner.plan.SubPlan;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeUtil;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.MetaMergeNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesMetaScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
@@ -100,9 +100,9 @@ public class DistributionPlannerTest {
   @Test
   public void testRewriteMetaSourceNode() throws IllegalPathException {
     QueryId queryId = new QueryId("test_query");
-    MetaMergeNode metaMergeNode = new MetaMergeNode(queryId.genPlanNodeId(), false);
+    SchemaMergeNode metaMergeNode = new SchemaMergeNode(queryId.genPlanNodeId(), false);
     metaMergeNode.addChild(
-        new TimeSeriesMetaScanNode(
+        new TimeSeriesSchemaScanNode(
             queryId.genPlanNodeId(),
             new PartialPath("root.sg.d1.s1"),
             null,
@@ -113,7 +113,7 @@ public class DistributionPlannerTest {
             false,
             false));
     metaMergeNode.addChild(
-        new TimeSeriesMetaScanNode(
+        new TimeSeriesSchemaScanNode(
             queryId.genPlanNodeId(),
             new PartialPath("root.sg.d1.s2"),
             null,
@@ -124,7 +124,7 @@ public class DistributionPlannerTest {
             false,
             false));
     metaMergeNode.addChild(
-        new TimeSeriesMetaScanNode(
+        new TimeSeriesSchemaScanNode(
             queryId.genPlanNodeId(),
             new PartialPath("root.sg.d22.s1"),
             null,

@@ -24,9 +24,10 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SourceNode;
 
+import java.nio.ByteBuffer;
 import java.util.List;
 
-public abstract class MetaScanNode extends SourceNode {
+public abstract class SchemaScanNode extends SourceNode {
   protected int limit;
   protected int offset;
   protected PartialPath path;
@@ -35,7 +36,7 @@ public abstract class MetaScanNode extends SourceNode {
 
   private RegionReplicaSet schemaRegionReplicaSet;
 
-  protected MetaScanNode(
+  protected SchemaScanNode(
       PlanNodeId id, PartialPath partialPath, int limit, int offset, boolean isPrefixPath) {
     super(id);
     this.path = partialPath;
@@ -107,6 +108,9 @@ public abstract class MetaScanNode extends SourceNode {
   }
 
   public abstract List<String> getOutputColumnNames();
+
+  @Override
+  protected void serializeAttributes(ByteBuffer byteBuffer) {}
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
