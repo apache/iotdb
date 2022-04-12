@@ -46,7 +46,10 @@ import java.util.Set;
 public abstract class Expression {
 
   private String expressionStringCache;
+
   protected Boolean isConstantOperandCache = null;
+
+  protected Integer tsBlockInputColumnIndex = null;
 
   public boolean isBuiltInAggregationFunctionExpression() {
     return false;
@@ -58,6 +61,14 @@ public abstract class Expression {
 
   public boolean isTimeSeriesGeneratingFunctionExpression() {
     return false;
+  }
+
+  public Integer getTsBlockInputColumnIndex() {
+    return tsBlockInputColumnIndex;
+  }
+
+  public void setTsBlockInputColumnIndex(Integer tsBlockInputColumnIndex) {
+    this.tsBlockInputColumnIndex = tsBlockInputColumnIndex;
   }
 
   public abstract void concat(
