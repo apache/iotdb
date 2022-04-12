@@ -31,9 +31,8 @@ import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.rescon.TimeseriesStatistics;
-import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
-import org.apache.iotdb.db.metadata.schemaregion.SchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
+import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
@@ -56,16 +55,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeSet;
+import java.util.*;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
@@ -163,7 +153,7 @@ public class LocalSchemaProcessor {
       PartialPath pathPattern, boolean isPrefixMatch) throws MetadataException {
     List<SchemaRegionId> schemaRegionIds =
         configManager.getInvolvedSchemaRegionIds(pathPattern, isPrefixMatch);
-    List<SchemaRegion> schemaRegions = new ArrayList<>();
+    List<ISchemaRegion> schemaRegions = new ArrayList<>();
     for (SchemaRegionId schemaRegionId : schemaRegionIds) {
       schemaRegions.add(schemaEngine.getSchemaRegion(schemaRegionId));
     }
@@ -174,7 +164,7 @@ public class LocalSchemaProcessor {
       throws MetadataException {
     List<SchemaRegionId> schemaRegionIds =
         configManager.getSchemaRegionIdsByStorageGroup(storageGroup);
-    List<SchemaRegion> schemaRegions = new ArrayList<>();
+    List<ISchemaRegion> schemaRegions = new ArrayList<>();
     for (SchemaRegionId schemaRegionId : schemaRegionIds) {
       schemaRegions.add(schemaEngine.getSchemaRegion(schemaRegionId));
     }

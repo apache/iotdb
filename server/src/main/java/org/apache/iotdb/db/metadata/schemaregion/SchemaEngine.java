@@ -23,10 +23,11 @@ import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.LocalSchemaPartitionTable;
+import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaRegion;
 import org.apache.iotdb.db.metadata.storagegroup.IStorageGroupSchemaManager;
 import org.apache.iotdb.db.metadata.storagegroup.StorageGroupSchemaManager;
-import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaRegion;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,7 +69,7 @@ public class SchemaEngine {
 
   public void forceMlog() {
     if (schemaRegionMap != null) {
-      for (SchemaRegion schemaRegion : schemaRegionMap.values()) {
+      for (ISchemaRegion schemaRegion : schemaRegionMap.values()) {
         schemaRegion.forceMlog();
       }
     }
@@ -76,7 +77,7 @@ public class SchemaEngine {
 
   public void clear() {
     if (schemaRegionMap != null) {
-      for (SchemaRegion schemaRegion : schemaRegionMap.values()) {
+      for (ISchemaRegion schemaRegion : schemaRegionMap.values()) {
         schemaRegion.clear();
       }
       schemaRegionMap.clear();
@@ -94,17 +95,13 @@ public class SchemaEngine {
 
   public synchronized void createSchemaRegion(
       PartialPath storageGroup, SchemaRegionId schemaRegionId) throws MetadataException {
-    SchemaRegion schemaRegion = schemaRegionMap.get(schemaRegionId);
+    ISchemaRegion schemaRegion = schemaRegionMap.get(schemaRegionId);
     if (schemaRegion != null) {
       return;
     }
     localStorageGroupSchemaManager.ensureStorageGroup(storageGroup);
-    schemaRegion =
-        new SchemaRegion(
-            storageGroup,
-            schemaRegionId,
-            localStorageGroupSchemaManager.getStorageGroupNodeByStorageGroupPath(storageGroup));
-
+    IStorageGroupMNode storageGroupMNode =
+        localStorageGroupSchemaManager.getStorageGroupNodeByStorageGroupPath(storageGroup);
     switch (schemaRegionStoredMode) {
       case Memory:
       case Schema_File:
