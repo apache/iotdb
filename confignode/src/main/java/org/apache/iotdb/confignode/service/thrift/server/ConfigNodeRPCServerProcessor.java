@@ -84,7 +84,7 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
           dataSet.getDataNodeId(),
           req.getEndPoint().toString());
     } else {
-      LOGGER.info(
+      LOGGER.warn(
           "Register DataNode {} failed. {}",
           req.getEndPoint().toString(),
           dataSet.getStatus().getMessage());

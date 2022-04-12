@@ -22,7 +22,6 @@ package org.apache.iotdb.confignode.manager;
 import org.apache.iotdb.common.rpc.thrift.EndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.Endpoint;
-import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationDataSet;
 import org.apache.iotdb.confignode.consensus.response.DataNodesInfoDataSet;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionDataSet;
@@ -39,7 +38,6 @@ import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.io.IOException;
-import java.util.Objects;
 
 /** Entry of all management, AssignPartitionManager,AssignRegionManager. */
 public class ConfigManager implements Manager {
@@ -172,20 +170,19 @@ public class ConfigManager implements Manager {
   }
 
   private TSStatus confirmLeader() {
-    Endpoint endpoint = getConsensusManager().getLeader();
-    if (endpoint == null) {
-      return new TSStatus(TSStatusCode.NEED_REDIRECTION.getStatusCode())
-          .setMessage(
-              "The current ConfigNode is not leader. And ConfigNodeGroup is in leader election. Please redirect with a random ConfigNode.");
-    }
-    if (Objects.equals(
-            endpoint.getIp(), ConfigNodeDescriptor.getInstance().getConf().getRpcAddress())
-        && endpoint.getPort() == ConfigNodeDescriptor.getInstance().getConf().getInternalPort()) {
+    if (getConsensusManager().isLeader()) {
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } else {
-      return new TSStatus(TSStatusCode.NEED_REDIRECTION.getStatusCode())
-          .setRedirectNode(new EndPoint(endpoint.getIp(), endpoint.getPort()))
-          .setMessage("The current ConfigNode is not leader. Please redirect.");
+      Endpoint endpoint = getConsensusManager().getLeader();
+      if (endpoint == null) {
+        return new TSStatus(TSStatusCode.NEED_REDIRECTION.getStatusCode())
+            .setMessage(
+                "The current ConfigNode is not leader. And ConfigNodeGroup is in leader election. Please redirect with a random ConfigNode.");
+      } else {
+        return new TSStatus(TSStatusCode.NEED_REDIRECTION.getStatusCode())
+            .setRedirectNode(new EndPoint(endpoint.getIp(), endpoint.getPort()))
+            .setMessage("The current ConfigNode is not leader. Please redirect.");
+      }
     }
   }
 

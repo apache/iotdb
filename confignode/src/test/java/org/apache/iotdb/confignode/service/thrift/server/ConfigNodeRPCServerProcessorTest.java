@@ -54,14 +54,17 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 public class ConfigNodeRPCServerProcessorTest {
 
   ConfigNodeRPCServerProcessor processor;
 
   @Before
-  public void before() throws IOException {
+  public void before() throws IOException, InterruptedException {
     processor = new ConfigNodeRPCServerProcessor();
+    // Sleep 1s to make sure the Consensus group has done leader election
+    TimeUnit.SECONDS.sleep(1);
   }
 
   @After
