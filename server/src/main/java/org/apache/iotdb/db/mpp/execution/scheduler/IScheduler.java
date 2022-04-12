@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.mpp.execution.scheduler;
 
-import org.apache.iotdb.db.mpp.common.FragmentId;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
+import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.execution.FragmentInfo;
 
 import io.airlift.units.Duration;
@@ -28,13 +28,13 @@ public interface IScheduler {
 
   void start();
 
-  void abort();
+  void stop();
 
   Duration getTotalCpuTime();
 
   FragmentInfo getFragmentInfo();
 
-  void failFragmentInstance(FragmentInstanceId instanceId, Throwable failureCause);
+  void abortFragmentInstance(FragmentInstanceId instanceId, Throwable failureCause);
 
-  void cancelFragment(FragmentId fragmentId);
+  void cancelFragment(PlanFragmentId planFragmentId);
 }

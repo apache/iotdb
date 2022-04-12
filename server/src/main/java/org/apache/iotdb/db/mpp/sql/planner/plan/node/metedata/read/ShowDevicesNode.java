@@ -20,12 +20,15 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read;
 
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
+import java.nio.ByteBuffer;
 import java.util.List;
 
 public class ShowDevicesNode extends ShowNode {
 
-  protected ShowDevicesNode(PlanNodeId id) {
+  public ShowDevicesNode(PlanNodeId id) {
     super(id);
   }
 
@@ -35,17 +38,30 @@ public class ShowDevicesNode extends ShowNode {
   }
 
   @Override
+  public void addChild(PlanNode child) {}
+
+  @Override
   public PlanNode clone() {
-    return null;
+    throw new NotImplementedException("Clone of ShowDevicesNode is not implemented");
   }
 
   @Override
-  public PlanNode cloneWithChildren(List<PlanNode> children) {
-    return null;
+  public int allowedChildCount() {
+    return NO_CHILD_ALLOWED;
   }
 
   @Override
-  public List<String> getOutputColumnNames() {
-    return null;
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    PlanNodeType.SHOW_DEVICES.serialize(byteBuffer);
+  }
+
+  public static ShowDevicesNode deserialize(ByteBuffer byteBuffer) {
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+    return new ShowDevicesNode(planNodeId);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    return super.equals(o);
   }
 }

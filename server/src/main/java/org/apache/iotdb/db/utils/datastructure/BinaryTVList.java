@@ -19,13 +19,18 @@
 package org.apache.iotdb.db.utils.datastructure;
 
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
+import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
+import org.apache.iotdb.db.wal.utils.WALWriteUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
+import java.io.DataInputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -275,5 +280,37 @@ public class BinaryTVList extends TVList {
   @Override
   public TSDataType getDataType() {
     return TSDataType.TEXT;
+  }
+
+  @Override
+  public int serializedSize() {
+    int size = Byte.BYTES + Integer.BYTES + rowCount * Long.BYTES;
+    for (int rowIdx = 0; rowIdx < rowCount; ++rowIdx) {
+      size += ReadWriteIOUtils.sizeToWrite(getBinary(rowIdx));
+    }
+    return size;
+  }
+
+  @Override
+  public void serializeToWAL(IWALByteBufferView buffer) {
+    WALWriteUtils.write(TSDataType.TEXT, buffer);
+    buffer.putInt(rowCount);
+    for (int rowIdx = 0; rowIdx < rowCount; ++rowIdx) {
+      buffer.putLong(getTime(rowIdx));
+      WALWriteUtils.write(getBinary(rowIdx), buffer);
+    }
+  }
+
+  public static BinaryTVList deserialize(DataInputStream stream) throws IOException {
+    BinaryTVList tvList = new BinaryTVList();
+    int rowCount = stream.readInt();
+    long[] times = new long[rowCount];
+    Binary[] values = new Binary[rowCount];
+    for (int rowIdx = 0; rowIdx < rowCount; ++rowIdx) {
+      times[rowIdx] = stream.readLong();
+      values[rowIdx] = ReadWriteIOUtils.readBinary(stream);
+    }
+    tvList.putBinaries(times, values, null, 0, rowCount);
+    return tvList;
   }
 }

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.sql.parser;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.filter.BasicFunctionFilter;
 import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
@@ -30,18 +31,14 @@ import org.apache.iotdb.db.mpp.sql.statement.component.FromComponent;
 import org.apache.iotdb.db.mpp.sql.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.sql.statement.component.SelectComponent;
 import org.apache.iotdb.db.mpp.sql.statement.component.WhereCondition;
-import org.apache.iotdb.db.mpp.sql.statement.crud.InsertStatement;
-import org.apache.iotdb.db.mpp.sql.statement.crud.LastQueryStatement;
-import org.apache.iotdb.db.mpp.sql.statement.crud.QueryStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.*;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
 import org.apache.iotdb.db.qp.sql.SqlLexer;
 import org.apache.iotdb.db.qp.strategy.SQLParseError;
 import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
-import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
-import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
-import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
-import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
+import org.apache.iotdb.db.utils.QueryDataSetUtils;
+import org.apache.iotdb.service.rpc.thrift.*;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -53,7 +50,9 @@ import org.antlr.v4.runtime.atn.PredictionMode;
 import org.antlr.v4.runtime.tree.ParseTree;
 
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.TIME;
@@ -145,16 +144,172 @@ public class StatementGenerator {
   }
 
   public static Statement createStatement(TSInsertRecordReq insertRecordReq)
+      throws IllegalPathException, QueryProcessException {
+    // construct insert statement
+    InsertRowStatement insertStatement = new InsertRowStatement();
+    insertStatement.setDevicePath(new PartialPath(insertRecordReq.getPrefixPath()));
+    insertStatement.setTime(insertRecordReq.getTimestamp());
+
+    insertStatement.fillValues(insertRecordReq.values);
+    insertStatement.setMeasurements(insertRecordReq.getMeasurements().toArray(new String[0]));
+    insertStatement.setAligned(insertRecordReq.isAligned);
+    return insertStatement;
+  }
+
+  public static Statement createStatement(TSInsertStringRecordReq insertRecordReq)
+      throws IllegalPathException, QueryProcessException {
+    // construct insert statement
+    InsertRowStatement insertStatement = new InsertRowStatement();
+    insertStatement.setDevicePath(new PartialPath(insertRecordReq.getPrefixPath()));
+    insertStatement.setTime(insertRecordReq.getTimestamp());
+    insertStatement.setMeasurements(insertRecordReq.getMeasurements().toArray(new String[0]));
+    insertStatement.setDataTypes(new TSDataType[insertStatement.getMeasurements().length]);
+    insertStatement.setValues(insertRecordReq.getValues().toArray(new Object[0]));
+    insertStatement.setNeedInferType(true);
+    insertStatement.setAligned(insertRecordReq.isAligned);
+
+    return insertStatement;
+  }
+
+  public static Statement createStatement(TSInsertTabletReq insertTabletReq)
       throws IllegalPathException {
     // construct insert statement
-    InsertStatement insertStatement = new InsertStatement();
-    insertStatement.setDevice(new PartialPath(insertRecordReq.getPrefixPath()));
-    insertStatement.setTimes(new long[] {insertRecordReq.getTimestamp()});
+    InsertTabletStatement insertStatement = new InsertTabletStatement();
+    insertStatement.setDevicePath(new PartialPath(insertTabletReq.getPrefixPath()));
+    insertStatement.setMeasurements(insertTabletReq.getMeasurements().toArray(new String[0]));
+    insertStatement.setTimes(
+        QueryDataSetUtils.readTimesFromBuffer(insertTabletReq.timestamps, insertTabletReq.size));
+    insertStatement.setColumns(
+        QueryDataSetUtils.readTabletValuesFromBuffer(
+            insertTabletReq.values,
+            insertTabletReq.types,
+            insertTabletReq.types.size(),
+            insertTabletReq.size));
+    insertStatement.setBitMaps(
+        QueryDataSetUtils.readBitMapsFromBuffer(
+            insertTabletReq.values, insertTabletReq.types.size(), insertTabletReq.size));
+    insertStatement.setRowCount(insertTabletReq.size);
+    TSDataType[] dataTypes = new TSDataType[insertTabletReq.types.size()];
+    for (int i = 0; i < insertTabletReq.types.size(); i++) {
+      dataTypes[i] = TSDataType.values()[insertTabletReq.types.get(i)];
+    }
+    insertStatement.setDataTypes(dataTypes);
+    insertStatement.setAligned(insertTabletReq.isAligned);
+    return insertStatement;
+  }
 
-    // TODO: set values after unifying SQL and RPC requests
-    // insertStatement.setValuesList(insertRecordReq.getValues());
-    insertStatement.setMeasurementList(insertRecordReq.getMeasurements().toArray(new String[0]));
-    insertStatement.setAligned(insertStatement.isAligned());
+  public static Statement createStatement(TSInsertTabletsReq req) throws IllegalPathException {
+    // construct insert statement
+    InsertMultiTabletsStatement insertStatement = new InsertMultiTabletsStatement();
+    List<InsertTabletStatement> insertTabletStatementList = new ArrayList<>();
+    for (int i = 0; i < req.prefixPaths.size(); i++) {
+      InsertTabletStatement insertTabletStatement = new InsertTabletStatement();
+      insertTabletStatement.setDevicePath(new PartialPath(req.prefixPaths.get(i)));
+      insertTabletStatement.setMeasurements(req.measurementsList.get(i).toArray(new String[0]));
+      insertTabletStatement.setTimes(
+          QueryDataSetUtils.readTimesFromBuffer(req.timestampsList.get(i), req.sizeList.get(i)));
+      insertTabletStatement.setColumns(
+          QueryDataSetUtils.readTabletValuesFromBuffer(
+              req.valuesList.get(i),
+              req.typesList.get(i),
+              req.measurementsList.get(i).size(),
+              req.sizeList.get(i)));
+      insertTabletStatement.setBitMaps(
+          QueryDataSetUtils.readBitMapsFromBuffer(
+              req.valuesList.get(i), req.measurementsList.get(i).size(), req.sizeList.get(i)));
+      insertTabletStatement.setRowCount(req.sizeList.get(i));
+      TSDataType[] dataTypes = new TSDataType[req.typesList.get(i).size()];
+      for (int j = 0; j < dataTypes.length; j++) {
+        dataTypes[j] = TSDataType.values()[req.typesList.get(i).get(j)];
+      }
+      insertTabletStatement.setDataTypes(dataTypes);
+      insertTabletStatement.setAligned(req.isAligned);
+
+      insertTabletStatementList.add(insertTabletStatement);
+    }
+
+    insertStatement.setInsertTabletStatementList(insertTabletStatementList);
+    return insertStatement;
+  }
+
+  public static Statement createStatement(TSInsertRecordsReq req)
+      throws IllegalPathException, QueryProcessException {
+    // construct insert statement
+    InsertRowsStatement insertStatement = new InsertRowsStatement();
+    List<InsertRowStatement> insertRowStatementList = new ArrayList<>();
+    for (int i = 0; i < req.prefixPaths.size(); i++) {
+      InsertRowStatement statement = new InsertRowStatement();
+      statement.setDevicePath(new PartialPath(req.getPrefixPaths().get(i)));
+      statement.setMeasurements(req.getMeasurementsList().get(i).toArray(new String[0]));
+      statement.setTime(req.getTimestamps().get(i));
+      statement.fillValues(req.valuesList.get(i));
+      statement.setAligned(req.isAligned);
+      insertRowStatementList.add(statement);
+    }
+    insertStatement.setInsertRowStatementList(insertRowStatementList);
+    return insertStatement;
+  }
+
+  public static Statement createStatement(TSInsertStringRecordsReq req)
+      throws IllegalPathException, QueryProcessException {
+    // construct insert statement
+    InsertRowsStatement insertStatement = new InsertRowsStatement();
+    List<InsertRowStatement> insertRowStatementList = new ArrayList<>();
+    for (int i = 0; i < req.prefixPaths.size(); i++) {
+      InsertRowStatement statement = new InsertRowStatement();
+      statement.setDevicePath(new PartialPath(req.getPrefixPaths().get(i)));
+      addMeasurementAndValue(
+          statement, req.getMeasurementsList().get(i), req.getValuesList().get(i));
+      statement.setDataTypes(new TSDataType[statement.getMeasurements().length]);
+      statement.setTime(req.getTimestamps().get(i));
+      statement.setNeedInferType(true);
+      statement.setAligned(req.isAligned);
+
+      insertRowStatementList.add(statement);
+    }
+    insertStatement.setInsertRowStatementList(insertRowStatementList);
+    return insertStatement;
+  }
+
+  public static Statement createStatement(TSInsertRecordsOfOneDeviceReq req)
+      throws IllegalPathException, QueryProcessException {
+    // construct insert statement
+    InsertRowsOfOneDeviceStatement insertStatement = new InsertRowsOfOneDeviceStatement();
+    insertStatement.setDevicePath(new PartialPath(req.prefixPath));
+    List<InsertRowStatement> insertRowStatementList = new ArrayList<>();
+    for (int i = 0; i < req.timestamps.size(); i++) {
+      InsertRowStatement statement = new InsertRowStatement();
+      statement.setDevicePath(insertStatement.getDevicePath());
+      statement.setMeasurements(req.measurementsList.get(i).toArray(new String[0]));
+      statement.setTime(req.timestamps.get(i));
+      statement.fillValues(req.valuesList.get(i));
+      statement.setAligned(req.isAligned);
+
+      insertRowStatementList.add(statement);
+    }
+    insertStatement.setInsertRowStatementList(insertRowStatementList);
+    return insertStatement;
+  }
+
+  public static Statement createStatement(TSInsertStringRecordsOfOneDeviceReq req)
+      throws IllegalPathException, QueryProcessException {
+    // construct insert statement
+    InsertRowsOfOneDeviceStatement insertStatement = new InsertRowsOfOneDeviceStatement();
+    insertStatement.setDevicePath(new PartialPath(req.prefixPath));
+    List<InsertRowStatement> insertRowStatementList = new ArrayList<>();
+    for (int i = 0; i < req.timestamps.size(); i++) {
+      InsertRowStatement statement = new InsertRowStatement();
+      statement.setDevicePath(insertStatement.getDevicePath());
+      addMeasurementAndValue(
+          statement, req.getMeasurementsList().get(i), req.getValuesList().get(i));
+      statement.setDataTypes(new TSDataType[statement.getMeasurements().length]);
+      statement.setTime(req.timestamps.get(i));
+      statement.setNeedInferType(true);
+      statement.setAligned(req.isAligned);
+
+      insertRowStatementList.add(statement);
+    }
+    insertStatement.setInsertRowStatementList(insertRowStatementList);
     return insertStatement;
   }
 
@@ -217,5 +372,23 @@ public class StatementGenerator {
       // if we get here, it's LL not SLL
     }
     return astVisitor.visit(tree);
+  }
+
+  private static void addMeasurementAndValue(
+      InsertRowStatement insertRowStatement, List<String> measurements, List<String> values) {
+    List<String> newMeasurements = new ArrayList<>(measurements.size());
+    List<Object> newValues = new ArrayList<>(values.size());
+
+    for (int i = 0; i < measurements.size(); ++i) {
+      String value = values.get(i);
+      if (value.isEmpty()) {
+        continue;
+      }
+      newMeasurements.add(measurements.get(i));
+      newValues.add(value);
+    }
+
+    insertRowStatement.setValues(newValues.toArray(new Object[0]));
+    insertRowStatement.setMeasurements(newMeasurements.toArray(new String[0]));
   }
 }

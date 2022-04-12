@@ -18,6 +18,10 @@
  */
 package org.apache.iotdb.confignode.conf;
 
+import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.commons.exception.BadNodeUrlException;
+import org.apache.iotdb.commons.utils.CommonUtils;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,7 +53,7 @@ public class ConfigNodeDescriptor {
   public URL getPropsUrl() {
     // Check if a config-directory was specified first.
     String urlString = System.getProperty(ConfigNodeConstant.CONFIGNODE_CONF, null);
-    // If it wasn't, check if a home directory was provided (This usually contains a config)
+    // If it wasn't, check if a home directory was provided
     if (urlString == null) {
       urlString = System.getProperty(ConfigNodeConstant.CONFIGNODE_HOME, null);
       if (urlString != null) {
@@ -60,17 +64,9 @@ public class ConfigNodeDescriptor {
                 + File.separatorChar
                 + ConfigNodeConstant.CONF_NAME;
       } else {
-        // If this too wasn't provided, try to find a default config in the root of the classpath.
-        URL uri = ConfigNodeConf.class.getResource("/" + ConfigNodeConstant.CONF_NAME);
-        if (uri != null) {
-          return uri;
-        }
-        LOGGER.warn(
-            "Cannot find IOTDB_HOME or IOTDB_CONF environment variable when loading "
-                + "config file {}, use default configuration",
-            ConfigNodeConstant.CONF_NAME);
-        // update all data seriesPath
-        // conf.updatePath();
+        // When start ConfigNode with the script, the environment variables CONFIGNODE_CONF
+        // and CONFIGNODE_HOME will be set. But we didn't set these two in developer mode.
+        // Thus, just return null and use default Configuration in developer mode.
         return null;
       }
     }
@@ -107,14 +103,14 @@ public class ConfigNodeDescriptor {
       Properties properties = new Properties();
       properties.load(inputStream);
 
-      conf.setDeviceGroupCount(
+      conf.setSeriesPartitionSlotNum(
           Integer.parseInt(
               properties.getProperty(
-                  "device_group_count", String.valueOf(conf.getDeviceGroupCount()))));
+                  "series_partition_slot_num", String.valueOf(conf.getSeriesPartitionSlotNum()))));
 
-      conf.setDeviceGroupHashExecutorClass(
+      conf.setSeriesPartitionExecutorClass(
           properties.getProperty(
-              "device_group_hash_executor_class", conf.getDeviceGroupHashExecutorClass()));
+              "series_partition_executor_class", conf.getSeriesPartitionExecutorClass()));
 
       conf.setRpcAddress(properties.getProperty("config_node_rpc_address", conf.getRpcAddress()));
 
@@ -127,8 +123,13 @@ public class ConfigNodeDescriptor {
               properties.getProperty(
                   "config_node_internal_port", String.valueOf(conf.getInternalPort()))));
 
-      conf.setAddressLists(
-          properties.getProperty("config_node_address_lists", conf.getAddressLists()));
+      conf.setConfigNodeConsensusProtocolClass(
+          properties.getProperty(
+              "config_node_consensus_protocol_class", conf.getConfigNodeConsensusProtocolClass()));
+
+      conf.setDataNodeConsensusProtocolClass(
+          properties.getProperty(
+              "data_node_consensus_protocol_class", conf.getDataNodeConsensusProtocolClass()));
 
       conf.setRpcAdvancedCompressionEnable(
           Boolean.parseBoolean(
@@ -162,8 +163,35 @@ public class ConfigNodeDescriptor {
 
       conf.setDataDirs(properties.getProperty("data_dirs", conf.getDataDirs()[0]).split(","));
 
-    } catch (IOException e) {
+      conf.setConsensusDir(properties.getProperty("consensus_dir", conf.getConsensusDir()));
+
+      conf.setRegionReplicaCount(
+          Integer.parseInt(
+              properties.getProperty(
+                  "region_replica_count", String.valueOf(conf.getRegionReplicaCount()))));
+
+      conf.setSchemaRegionCount(
+          Integer.parseInt(
+              properties.getProperty(
+                  "schema_region_count", String.valueOf(conf.getSchemaRegionCount()))));
+
+      conf.setDataRegionCount(
+          Integer.parseInt(
+              properties.getProperty(
+                  "data_region_count", String.valueOf(conf.getDataRegionCount()))));
+
+      String addresses = properties.getProperty("config_node_group_address_list", "0.0.0.0:22278");
+
+      String[] addressList = addresses.split(",");
+      Endpoint[] endpointList = new Endpoint[addressList.length];
+      for (int i = 0; i < addressList.length; i++) {
+        endpointList[i] = CommonUtils.parseNodeUrl(addressList[i]);
+      }
+      conf.setConfigNodeGroupAddressList(endpointList);
+    } catch (IOException | BadNodeUrlException e) {
       LOGGER.warn("Couldn't load ConfigNode conf file, use default config", e);
+    } finally {
+      conf.updatePath();
     }
   }
 

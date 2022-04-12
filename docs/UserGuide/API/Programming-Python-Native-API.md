@@ -44,8 +44,8 @@ from iotdb.Session import Session
 
 ip = "127.0.0.1"
 port_ = "6667"
-username_ = 'root'
-password_ = 'root'
+username_ = "root"
+password_ = "root"
 session = Session(ip, port_, username_, password_)
 session.open(False)
 zone = session.get_time_zone()
@@ -96,20 +96,20 @@ session.delete_storage_groups(group_name_lst)
 
 ```python
 session.create_time_series(ts_path, data_type, encoding, compressor,
-        props=None, tags=None, attributes=None, alias=None)
+    props=None, tags=None, attributes=None, alias=None)
       
 session.create_multi_time_series(
-            ts_path_lst, data_type_lst, encoding_lst, compressor_lst,
-            props_lst=None, tags_lst=None, attributes_lst=None, alias_lst=None
-    )
+    ts_path_lst, data_type_lst, encoding_lst, compressor_lst,
+    props_lst=None, tags_lst=None, attributes_lst=None, alias_lst=None
+)
 ```
 
 * Create aligned timeseries
 
 ```python
 session.create_aligned_time_series(
-            device_id, measurements_lst, data_type_lst, encoding_lst, compressor_lst
-    )
+    device_id, measurements_lst, data_type_lst, encoding_lst, compressor_lst
+)
 ```
 
 Attention: Alias of measurements are **not supported** currently.
@@ -128,7 +128,7 @@ session.check_time_series_exists(path)
 
 ### Data Manipulation Interface (DML Interface)
 
-##### Insert
+#### Insert
 
 It is recommended to use insertTablet to help improve write efficiency.
 
@@ -156,13 +156,13 @@ session.insert_tablet(tablet_)
 ```
 * Numpy Tablet
 
-Comparing with Tablet, Numpy Tablet is using [numpy ndarray](https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html) to record data.
+Comparing with Tablet, Numpy Tablet is using [numpy.ndarray](https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html) to record data.
 With less memory footprint and time cost of serialization, the insert performance will be better.
 
 **Notice**
 1. time and numerical value columns in Tablet is ndarray
-2. ndarray should be big-endian, see the example below
-3. TEXT type cannot be ndarray
+2. recommended to use the specific dtypes to each ndarray, see the example below
+   (if not, the default dtypes are also ok).
 
 ```python
 data_types_ = [
@@ -174,16 +174,16 @@ data_types_ = [
     TSDataType.TEXT,
 ]
 np_values_ = [
-    np.array([False, True, False, True], np.dtype('>?')),
-    np.array([10, 100, 100, 0], np.dtype('>i4')),
-    np.array([11, 11111, 1, 0], np.dtype('>i8')),
-    np.array([1.1, 1.25, 188.1, 0], np.dtype('>f4')),
-    np.array([10011.1, 101.0, 688.25, 6.25], np.dtype('>f8')),
-    ["test01", "test02", "test03", "test04"],
+    np.array([False, True, False, True], TSDataType.BOOLEAN.np_dtype()),
+    np.array([10, 100, 100, 0], TSDataType.INT32.np_dtype()),
+    np.array([11, 11111, 1, 0], TSDataType.INT64.np_dtype()),
+    np.array([1.1, 1.25, 188.1, 0], TSDataType.FLOAT.np_dtype()),
+    np.array([10011.1, 101.0, 688.25, 6.25], TSDataType.DOUBLE.np_dtype()),
+    np.array(["test01", "test02", "test03", "test04"], TSDataType.TEXT.np_dtype()),
 ]
-np_timestamps_ = np.array([1, 2, 3, 4], np.dtype('>i8'))
+np_timestamps_ = np.array([1, 2, 3, 4], TSDataType.INT64.np_dtype())
 np_tablet_ = NumpyTablet(
-    "root.sg_test_01.d_02", measurements_, data_types_, np_values_, np_timestamps_
+  "root.sg_test_01.d_02", measurements_, data_types_, np_values_, np_timestamps_
 )
 session.insert_tablet(np_tablet_)
 ```
@@ -205,7 +205,7 @@ session.insert_record(device_id, timestamp, measurements_, data_types_, values_)
 ```python
 session.insert_records(
     device_ids_, time_list_, measurements_list_, data_type_list_, values_list_
-    )
+)
 ```
 
 * Insert multiple Records that belong to the same device.
@@ -264,8 +264,8 @@ from iotdb.Session import Session
 
 ip = "127.0.0.1"
 port_ = "6667"
-username_ = 'root'
-password_ = 'root'
+username_ = "root"
+password_ = "root"
 session = Session(ip, port_, username_, password_)
 session.open(False)
 result = session.execute_query_statement("SELECT * FROM root.*")
@@ -290,7 +290,7 @@ class MyTestCase(unittest.TestCase):
 
     def test_something(self):
         with IoTDBContainer() as c:
-            session = Session('localhost', c.get_exposed_port(6667), 'root', 'root')
+            session = Session("localhost", c.get_exposed_port(6667), "root", "root")
             session.open(False)
             result = session.execute_query_statement("SHOW TIMESERIES")
             print(result)
@@ -349,8 +349,8 @@ from iotdb.Session import Session
 
 ip = "127.0.0.1"
 port_ = "6667"
-username_ = 'root'
-password_ = 'root'
+username_ = "root"
+password_ = "root"
 session = Session(ip, port_, username_, password_)
 session.open(False)
 zone = session.get_time_zone()

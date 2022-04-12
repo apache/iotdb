@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.mpp.operator.sink;
 
-import org.apache.iotdb.db.mpp.common.TsBlock;
 import org.apache.iotdb.db.mpp.operator.Operator;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 public interface SinkOperator extends Operator {
 

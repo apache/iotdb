@@ -27,7 +27,9 @@ import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -62,6 +64,11 @@ public class GroupByLevelController {
    * columns can't have the same alias.
    */
   private Map<String, String> aliasToColumnMap;
+
+  public GroupByLevelController(int seriesLimit, int[] levels) {
+    this.seriesLimit = seriesLimit;
+    this.levels = levels;
+  }
 
   public GroupByLevelController(QueryOperator operator) {
     this.seriesLimit = operator.getSpecialClauseComponent().getSeriesLimit();
@@ -101,7 +108,7 @@ public class GroupByLevelController {
       for (Iterator<Expression> it = rootExpression.iterator(); it.hasNext(); ) {
         Expression expression = it.next();
         if (expression instanceof FunctionExpression
-            && expression.isPlainAggregationFunctionExpression()) {
+            && expression.isBuiltInAggregationFunctionExpression()) {
           hasAggregation = true;
           List<PartialPath> paths = ((FunctionExpression) expression).getPaths();
           String functionName = ((FunctionExpression) expression).getFunctionName();
@@ -154,7 +161,7 @@ public class GroupByLevelController {
     for (Iterator<Expression> it = rawColumn.getExpression().iterator(); it.hasNext(); ) {
       Expression expression = it.next();
       if (expression instanceof FunctionExpression
-          && expression.isPlainAggregationFunctionExpression()
+          && expression.isBuiltInAggregationFunctionExpression()
           && ((FunctionExpression) expression).isCountStar()) {
         countWildcardIterIndices.add(idx);
       }
@@ -222,5 +229,88 @@ public class GroupByLevelController {
       transformedPath.append(nodes[nodes.length - 1]);
     }
     return transformedPath.toString();
+  }
+
+  public void serialize(ByteBuffer byteBuffer) {
+    ReadWriteIOUtils.write(seriesLimit, byteBuffer);
+    ReadWriteIOUtils.write(seriesOffset, byteBuffer);
+    if (limitPaths == null) {
+      ReadWriteIOUtils.write(-1, byteBuffer);
+    } else {
+      ReadWriteIOUtils.write(limitPaths.size(), byteBuffer);
+      for (String limitPath : limitPaths) {
+        ReadWriteIOUtils.write(limitPath, byteBuffer);
+      }
+    }
+
+    if (offsetPaths == null) {
+      ReadWriteIOUtils.write(-1, byteBuffer);
+    } else {
+      ReadWriteIOUtils.write(offsetPaths.size(), byteBuffer);
+      for (String offsetPath : offsetPaths) {
+        ReadWriteIOUtils.write(offsetPath, byteBuffer);
+      }
+    }
+
+    if (levels == null) {
+      ReadWriteIOUtils.write(-1, byteBuffer);
+    } else {
+      ReadWriteIOUtils.write(levels.length, byteBuffer);
+      for (int level : levels) {
+        ReadWriteIOUtils.write(level, byteBuffer);
+      }
+    }
+
+    ReadWriteIOUtils.write(prevSize, byteBuffer);
+    ReadWriteIOUtils.write(groupedPathMap, byteBuffer);
+    ReadWriteIOUtils.write(columnToAliasMap, byteBuffer);
+    ReadWriteIOUtils.write(aliasToColumnMap, byteBuffer);
+  }
+
+  public static GroupByLevelController deserialize(ByteBuffer byteBuffer) {
+    int seriesLimit = ReadWriteIOUtils.readInt(byteBuffer);
+    int seriesOffset = ReadWriteIOUtils.readInt(byteBuffer);
+    int limitPathSize = ReadWriteIOUtils.readInt(byteBuffer);
+    Set<String> limitPaths = null;
+    if (limitPathSize != -1) {
+      limitPaths = new HashSet<>();
+      for (int i = 0; i < limitPathSize; i++) {
+        limitPaths.add(ReadWriteIOUtils.readString(byteBuffer));
+      }
+    }
+
+    int offsetPathSize = ReadWriteIOUtils.readInt(byteBuffer);
+    Set<String> offsetPaths = null;
+    if (offsetPathSize != -1) {
+      offsetPaths = new HashSet<>();
+      for (int i = 0; i < offsetPathSize; i++) {
+        offsetPaths.add(ReadWriteIOUtils.readString(byteBuffer));
+      }
+    }
+
+    int levelSize = ReadWriteIOUtils.readInt(byteBuffer);
+    int[] levels = null;
+    if (levelSize != -1) {
+      levels = new int[levelSize];
+      for (int i = 0; i < levelSize; i++) {
+        levels[i] = ReadWriteIOUtils.readInt(byteBuffer);
+      }
+    }
+
+    int prevSize = ReadWriteIOUtils.readInt(byteBuffer);
+    Map<String, String> groupedPathMap = ReadWriteIOUtils.readMap(byteBuffer);
+    Map<String, String> columnToAliasMap = ReadWriteIOUtils.readMap(byteBuffer);
+    Map<String, String> aliasToColumnMap = ReadWriteIOUtils.readMap(byteBuffer);
+
+    GroupByLevelController groupByLevelController = new GroupByLevelController(seriesLimit, levels);
+    groupByLevelController.limitPaths = limitPaths;
+    groupByLevelController.aliasToColumnMap = aliasToColumnMap;
+    groupByLevelController.columnToAliasMap = columnToAliasMap;
+    groupByLevelController.groupedPathMap = groupedPathMap;
+    groupByLevelController.offsetPaths = offsetPaths;
+    groupByLevelController.prevSize = prevSize;
+    groupByLevelController.seriesOffset = seriesOffset;
+
+    return groupByLevelController;
   }
 }

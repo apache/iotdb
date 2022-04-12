@@ -28,6 +28,7 @@ import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
@@ -124,8 +125,7 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
       TsFileNameGenerator.TsFileName currentName =
           TsFileNameGenerator.getTsFileName(currentFile.getTsFile().getName());
       if (currentName.getInnerCompactionCnt() != level
-          || currentFile.isCompactionCandidate()
-          || currentFile.isCompacting()) {
+          || currentFile.getStatus() != TsFileResourceStatus.CLOSED) {
         selectedFileList.clear();
         selectedFileSize = 0L;
         continue;
@@ -172,7 +172,7 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
     AbstractCompactionTask compactionTask =
         taskFactory.createTask(
             logicalStorageGroupName,
-            virtualStorageGroupName,
+            dataRegionName,
             timePartition,
             tsFileManager,
             selectedFileList,

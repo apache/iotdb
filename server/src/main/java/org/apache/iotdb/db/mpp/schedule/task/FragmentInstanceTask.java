@@ -18,8 +18,10 @@
  */
 package org.apache.iotdb.db.mpp.schedule.task;
 
+import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
+import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
-import org.apache.iotdb.db.mpp.execution.ExecFragmentInstance;
+import org.apache.iotdb.db.mpp.execution.Driver;
 import org.apache.iotdb.db.mpp.schedule.ExecutionContext;
 import org.apache.iotdb.db.mpp.schedule.FragmentInstanceTaskExecutor;
 import org.apache.iotdb.db.mpp.schedule.queue.ID;
@@ -39,12 +41,12 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 public class FragmentInstanceTask implements IDIndexedAccessible {
 
-  private FragmentInstanceID id;
+  private FragmentInstanceTaskID id;
   private FragmentInstanceTaskStatus status;
-  private final ExecFragmentInstance fragmentInstance;
+  private final Driver fragmentInstance;
 
   // the higher this field is, the higher probability it will be scheduled.
-  private double schedulePriority;
+  private volatile double schedulePriority;
   private final long ddl;
   private final Lock lock;
 
@@ -56,25 +58,22 @@ public class FragmentInstanceTask implements IDIndexedAccessible {
     this(new StubFragmentInstance(), 0L, null);
   }
 
-  public FragmentInstanceTask(
-      ExecFragmentInstance instance, long timeoutMs, FragmentInstanceTaskStatus status) {
+  public FragmentInstanceTask(Driver instance, long timeoutMs, FragmentInstanceTaskStatus status) {
     this.fragmentInstance = instance;
-    this.id =
-        new FragmentInstanceID(
-            QueryId.valueOf(instance.getInfo()), instance.getInfo(), instance.getInfo());
+    this.id = new FragmentInstanceTaskID(instance.getInfo());
     this.setStatus(status);
-    this.schedulePriority = 0L;
+    this.schedulePriority = 0.0D;
     this.ddl = System.currentTimeMillis() + timeoutMs;
     this.lock = new ReentrantLock();
   }
 
-  public FragmentInstanceID getId() {
+  public FragmentInstanceTaskID getId() {
     return id;
   }
 
   @Override
   public void setId(ID id) {
-    this.id = (FragmentInstanceID) id;
+    this.id = (FragmentInstanceTaskID) id;
   }
 
   public FragmentInstanceTaskStatus getStatus() {
@@ -86,7 +85,7 @@ public class FragmentInstanceTask implements IDIndexedAccessible {
         || status == FragmentInstanceTaskStatus.FINISHED;
   }
 
-  public ExecFragmentInstance getFragmentInstance() {
+  public Driver getFragmentInstance() {
     return fragmentInstance;
   }
 
@@ -176,7 +175,11 @@ public class FragmentInstanceTask implements IDIndexedAccessible {
     }
   }
 
-  private static class StubFragmentInstance implements ExecFragmentInstance {
+  private static class StubFragmentInstance implements Driver {
+
+    private static final QueryId stubQueryId = new QueryId("stub_query");
+    private static final FragmentInstanceId stubInstance =
+        new FragmentInstanceId(new PlanFragmentId(stubQueryId, 0), "stub-instance");
 
     @Override
     public boolean isFinished() {
@@ -189,8 +192,8 @@ public class FragmentInstanceTask implements IDIndexedAccessible {
     }
 
     @Override
-    public String getInfo() {
-      return "stub";
+    public FragmentInstanceId getInfo() {
+      return stubInstance;
     }
 
     @Override

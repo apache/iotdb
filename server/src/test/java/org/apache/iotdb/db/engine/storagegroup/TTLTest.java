@@ -25,8 +25,8 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy.DirectFlushPolicy;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.TriggerExecutionException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -81,13 +81,13 @@ public class TTLTest {
   private String sg1 = "root.TTL_SG1";
   private String sg2 = "root.TTL_SG2";
   private long ttl = 12345;
-  private VirtualStorageGroupProcessor virtualStorageGroupProcessor;
+  private DataRegion dataRegion;
   private String s1 = "s1";
   private String g1s1 = sg1 + IoTDBConstant.PATH_SEPARATOR + s1;
   private long prevPartitionInterval;
 
   @Before
-  public void setUp() throws MetadataException, StorageGroupProcessorException {
+  public void setUp() throws MetadataException, DataRegionException {
     prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(86400);
     EnvironmentUtils.envSetUp();
@@ -96,21 +96,21 @@ public class TTLTest {
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
-    virtualStorageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
     EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(prevPartitionInterval);
   }
 
-  private void createSchemas() throws MetadataException, StorageGroupProcessorException {
-    IoTDB.schemaEngine.setStorageGroup(new PartialPath(sg1));
-    IoTDB.schemaEngine.setStorageGroup(new PartialPath(sg2));
-    virtualStorageGroupProcessor =
-        new VirtualStorageGroupProcessor(
+  private void createSchemas() throws MetadataException, DataRegionException {
+    IoTDB.schemaProcessor.setStorageGroup(new PartialPath(sg1));
+    IoTDB.schemaProcessor.setStorageGroup(new PartialPath(sg2));
+    dataRegion =
+        new DataRegion(
             IoTDBDescriptor.getInstance().getConfig().getSystemDir(),
             sg1,
             new DirectFlushPolicy(),
             sg1);
-    IoTDB.schemaEngine.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath(g1s1),
         TSDataType.INT64,
         TSEncoding.PLAIN,
@@ -124,20 +124,20 @@ public class TTLTest {
     boolean caught = false;
 
     try {
-      IoTDB.schemaEngine.setTTL(new PartialPath(sg1 + ".notExist"), ttl);
+      IoTDB.schemaProcessor.setTTL(new PartialPath(sg1 + ".notExist"), ttl);
     } catch (MetadataException e) {
       caught = true;
     }
     assertTrue(caught);
 
     // normally set ttl
-    IoTDB.schemaEngine.setTTL(new PartialPath(sg1), ttl);
+    IoTDB.schemaProcessor.setTTL(new PartialPath(sg1), ttl);
     IStorageGroupMNode mNode =
-        IoTDB.schemaEngine.getStorageGroupNodeByStorageGroupPath(new PartialPath(sg1));
+        IoTDB.schemaProcessor.getStorageGroupNodeByPath(new PartialPath(sg1));
     assertEquals(ttl, mNode.getDataTTL());
 
     // default ttl
-    mNode = IoTDB.schemaEngine.getStorageGroupNodeByStorageGroupPath(new PartialPath(sg2));
+    mNode = IoTDB.schemaProcessor.getStorageGroupNodeByPath(new PartialPath(sg2));
     assertEquals(Long.MAX_VALUE, mNode.getDataTTL());
   }
 
@@ -159,20 +159,20 @@ public class TTLTest {
     plan.transferType();
 
     // ok without ttl
-    virtualStorageGroupProcessor.insert(plan);
+    dataRegion.insert(plan);
 
-    virtualStorageGroupProcessor.setDataTTL(1000);
+    dataRegion.setDataTTL(1000);
     // with ttl
     plan.setTime(System.currentTimeMillis() - 1001);
     boolean caught = false;
     try {
-      virtualStorageGroupProcessor.insert(plan);
+      dataRegion.insert(plan);
     } catch (OutOfTTLException e) {
       caught = true;
     }
     assertTrue(caught);
     plan.setTime(System.currentTimeMillis() - 900);
-    virtualStorageGroupProcessor.insert(plan);
+    dataRegion.insert(plan);
   }
 
   private void prepareData()
@@ -195,17 +195,17 @@ public class TTLTest {
     // sequence data
     for (int i = 1000; i < 2000; i++) {
       plan.setTime(initTime - 2000 + i);
-      virtualStorageGroupProcessor.insert(plan);
+      dataRegion.insert(plan);
       if ((i + 1) % 300 == 0) {
-        virtualStorageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
+        dataRegion.syncCloseAllWorkingTsFileProcessors();
       }
     }
     // unsequence data
     for (int i = 0; i < 1000; i++) {
       plan.setTime(initTime - 2000 + i);
-      virtualStorageGroupProcessor.insert(plan);
+      dataRegion.insert(plan);
       if ((i + 1) % 300 == 0) {
-        virtualStorageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
+        dataRegion.syncCloseAllWorkingTsFileProcessors();
       }
     }
   }
@@ -218,7 +218,7 @@ public class TTLTest {
 
     // files before ttl
     QueryDataSource dataSource =
-        virtualStorageGroupProcessor.query(
+        dataRegion.query(
             Collections.singletonList(
                 SchemaTestUtils.getMeasurementPath(sg1 + TsFileConstant.PATH_SEPARATOR + s1)),
             sg1,
@@ -230,11 +230,11 @@ public class TTLTest {
     assertEquals(4, seqResource.size());
     assertEquals(4, unseqResource.size());
 
-    virtualStorageGroupProcessor.setDataTTL(500);
+    dataRegion.setDataTTL(500);
 
     // files after ttl
     dataSource =
-        virtualStorageGroupProcessor.query(
+        dataRegion.query(
             Collections.singletonList(
                 SchemaTestUtils.getMeasurementPath(sg1 + TsFileConstant.PATH_SEPARATOR + s1)),
             sg1,
@@ -272,9 +272,9 @@ public class TTLTest {
     // we cannot offer the exact number since when exactly ttl will be checked is unknown
     assertTrue(cnt <= 1000);
 
-    virtualStorageGroupProcessor.setDataTTL(0);
+    dataRegion.setDataTTL(0);
     dataSource =
-        virtualStorageGroupProcessor.query(
+        dataRegion.query(
             Collections.singletonList(
                 SchemaTestUtils.getMeasurementPath(sg1 + TsFileConstant.PATH_SEPARATOR + s1)),
             sg1,
@@ -293,7 +293,7 @@ public class TTLTest {
           IllegalPathException {
     prepareData();
 
-    virtualStorageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
 
     // files before ttl
     File seqDir = new File(DirectoryManager.getInstance().getNextFolderForSequenceFile(), sg1);
@@ -337,8 +337,8 @@ public class TTLTest {
     } catch (InterruptedException e) {
       e.printStackTrace();
     }
-    virtualStorageGroupProcessor.setDataTTL(500);
-    virtualStorageGroupProcessor.checkFilesTTL();
+    dataRegion.setDataTTL(500);
+    dataRegion.checkFilesTTL();
 
     // files after ttl
     seqFiles = new ArrayList<>();
@@ -409,7 +409,7 @@ public class TTLTest {
   public void testShowTTL()
       throws IOException, QueryProcessException, QueryFilterOptimizationException,
           StorageEngineException, MetadataException, InterruptedException {
-    IoTDB.schemaEngine.setTTL(new PartialPath(sg1), ttl);
+    IoTDB.schemaProcessor.setTTL(new PartialPath(sg1), ttl);
 
     ShowTTLPlan plan = new ShowTTLPlan(Collections.emptyList());
     PlanExecutor executor = new PlanExecutor();
@@ -433,15 +433,15 @@ public class TTLTest {
       throws WriteProcessException, QueryProcessException, IllegalPathException,
           TriggerExecutionException {
     prepareData();
-    virtualStorageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
 
-    assertEquals(4, virtualStorageGroupProcessor.getSequenceFileTreeSet().size());
-    assertEquals(4, virtualStorageGroupProcessor.getUnSequenceFileList().size());
+    assertEquals(4, dataRegion.getSequenceFileList().size());
+    assertEquals(4, dataRegion.getUnSequenceFileList().size());
 
-    virtualStorageGroupProcessor.setDataTTL(0);
-    virtualStorageGroupProcessor.checkFilesTTL();
+    dataRegion.setDataTTL(0);
+    dataRegion.checkFilesTTL();
 
-    assertEquals(0, virtualStorageGroupProcessor.getSequenceFileTreeSet().size());
-    assertEquals(0, virtualStorageGroupProcessor.getUnSequenceFileList().size());
+    assertEquals(0, dataRegion.getSequenceFileList().size());
+    assertEquals(0, dataRegion.getUnSequenceFileList().size());
   }
 }

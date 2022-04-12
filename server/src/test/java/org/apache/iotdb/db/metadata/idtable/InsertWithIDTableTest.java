@@ -28,7 +28,7 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan.PhysicalPlanType;
-import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
@@ -176,8 +176,8 @@ public class InsertWithIDTableTest {
             encodingList,
             compressionTypes);
 
-    IoTDB.schemaEngine.createSchemaTemplate(plan);
-    IoTDB.schemaEngine.setSchemaTemplate(new SetTemplatePlan("template1", "root.isp.d1"));
+    IoTDB.schemaProcessor.createSchemaTemplate(plan);
+    IoTDB.schemaProcessor.setSchemaTemplate(new SetTemplatePlan("template1", "root.isp.d1"));
 
     IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(false);
 
@@ -269,8 +269,8 @@ public class InsertWithIDTableTest {
         new CreateTemplatePlan(
             "template1", measurementList, dataTypesList, encodingList, compressionTypes);
 
-    IoTDB.schemaEngine.createSchemaTemplate(plan);
-    IoTDB.schemaEngine.setSchemaTemplate(new SetTemplatePlan("template1", "root.isp.d1.GPS"));
+    IoTDB.schemaProcessor.createSchemaTemplate(plan);
+    IoTDB.schemaProcessor.setSchemaTemplate(new SetTemplatePlan("template1", "root.isp.d1.GPS"));
 
     IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(false);
 
@@ -499,8 +499,8 @@ public class InsertWithIDTableTest {
           QueryFilterOptimizationException, StorageEngineException, IOException {
     CreateTemplatePlan plan = getCreateTemplatePlan();
 
-    IoTDB.schemaEngine.createSchemaTemplate(plan);
-    IoTDB.schemaEngine.setSchemaTemplate(new SetTemplatePlan("template1", "root.isp.d1"));
+    IoTDB.schemaProcessor.createSchemaTemplate(plan);
+    IoTDB.schemaProcessor.setSchemaTemplate(new SetTemplatePlan("template1", "root.isp.d1"));
     InsertTabletPlan tabletPlan = getAlignedInsertTabletPlan();
 
     PlanExecutor executor = new PlanExecutor();
@@ -517,7 +517,7 @@ public class InsertWithIDTableTest {
 
     // test recover
     EnvironmentUtils.stopDaemon();
-    IoTDB.schemaEngine.clear();
+    IoTDB.configManager.clear();
     // wait for close
     try {
       Thread.sleep(1000);
@@ -542,8 +542,8 @@ public class InsertWithIDTableTest {
           QueryFilterOptimizationException, StorageEngineException, IOException {
     CreateTemplatePlan plan = getCreateTemplatePlan();
 
-    IoTDB.schemaEngine.createSchemaTemplate(plan);
-    IoTDB.schemaEngine.setSchemaTemplate(new SetTemplatePlan("template1", "root.isp.d1"));
+    IoTDB.schemaProcessor.createSchemaTemplate(plan);
+    IoTDB.schemaProcessor.setSchemaTemplate(new SetTemplatePlan("template1", "root.isp.d1"));
 
     InsertTabletPlan tabletPlan = getAlignedInsertTabletPlan();
 
@@ -743,9 +743,10 @@ public class InsertWithIDTableTest {
     }
     PlanExecutor executor = new PlanExecutor();
 
-    InsertMultiTabletPlan insertMultiTabletPlan = new InsertMultiTabletPlan(insertTabletPlanList);
+    InsertMultiTabletsPlan insertMultiTabletsPlan =
+        new InsertMultiTabletsPlan(insertTabletPlanList);
 
-    executor.insertTablet(insertMultiTabletPlan);
+    executor.insertTablet(insertMultiTabletsPlan);
     QueryPlan queryPlan =
         (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.multi.**");
     QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);

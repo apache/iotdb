@@ -16,76 +16,169 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.manager;
 
-import org.apache.iotdb.commons.hash.DeviceGroupHashExecutor;
-import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.confignode.conf.ConfigNodeConf;
-import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.partition.PartitionTable;
-import org.apache.iotdb.confignode.service.balancer.LoadBalancer;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationDataSet;
+import org.apache.iotdb.confignode.consensus.response.DataNodesInfoDataSet;
+import org.apache.iotdb.confignode.consensus.response.DataPartitionDataSet;
+import org.apache.iotdb.confignode.consensus.response.SchemaPartitionDataSet;
+import org.apache.iotdb.confignode.physical.PhysicalPlan;
+import org.apache.iotdb.confignode.physical.crud.GetOrCreateDataPartitionPlan;
+import org.apache.iotdb.confignode.physical.crud.GetOrCreateSchemaPartitionPlan;
+import org.apache.iotdb.confignode.physical.sys.AuthorPlan;
+import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
+import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
+import org.apache.iotdb.confignode.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.consensus.common.DataSet;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.io.IOException;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
+/** Entry of all management, AssignPartitionManager,AssignRegionManager. */
+public class ConfigManager implements Manager {
 
-/**
- * ConfigManager maintains consistency between PartitionTables in the ConfigNodeGroup. Expose the
- * query interface for the PartitionTable
- */
-public class ConfigManager {
+  private static final TSStatus ERROR_TSSTATUS =
+      new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(ConfigManager.class);
+  /** manage consensus, write or read consensus */
+  private final ConsensusManager consensusManager;
 
-  private DeviceGroupHashExecutor hashExecutor;
+  /** manage data node */
+  private final DataNodeManager dataNodeManager;
 
-  private Lock partitionTableLock;
-  private PartitionTable partitionTable;
+  /** manage assign data partition and schema partition */
+  private final PartitionManager partitionManager;
 
-  private LoadBalancer loadBalancer;
+  /** manager assign schema region and data region */
+  private final RegionManager regionManager;
 
-  @TestOnly
-  public ConfigManager(String hashExecutorClass, int deviceGroupCount) {
-    setHashExecutor(hashExecutorClass, deviceGroupCount);
+  private final PermissionManager permissionManager;
+
+  public ConfigManager() throws IOException {
+    this.dataNodeManager = new DataNodeManager(this);
+    this.partitionManager = new PartitionManager(this);
+    this.regionManager = new RegionManager(this);
+    this.consensusManager = new ConsensusManager();
+    this.permissionManager = new PermissionManager(this);
   }
 
-  public ConfigManager() {
-    ConfigNodeConf config = ConfigNodeDescriptor.getInstance().getConf();
-
-    setHashExecutor(config.getDeviceGroupHashExecutorClass(), config.getDeviceGroupCount());
-
-    this.partitionTableLock = new ReentrantLock();
-    this.partitionTable = new PartitionTable();
-
-    this.loadBalancer = new LoadBalancer(partitionTableLock, partitionTable);
+  public void close() throws IOException {
+    consensusManager.close();
   }
 
-  private void setHashExecutor(String hashExecutorClass, int deviceGroupCount) {
-    try {
-      Class<?> executor = Class.forName(hashExecutorClass);
-      Constructor<?> executorConstructor = executor.getConstructor(int.class);
-      hashExecutor = (DeviceGroupHashExecutor) executorConstructor.newInstance(deviceGroupCount);
-    } catch (ClassNotFoundException
-        | NoSuchMethodException
-        | InstantiationException
-        | IllegalAccessException
-        | InvocationTargetException e) {
-      LOGGER.error("Couldn't Constructor DeviceGroupHashExecutor class: {}", hashExecutorClass, e);
-      hashExecutor = null;
+  @Override
+  public boolean isStopped() {
+    return false;
+  }
+
+  @Override
+  public DataSet registerDataNode(PhysicalPlan physicalPlan) {
+
+    // TODO: Only leader can register DataNode
+
+    if (physicalPlan instanceof RegisterDataNodePlan) {
+      return dataNodeManager.registerDataNode((RegisterDataNodePlan) physicalPlan);
     }
+    return new DataNodeConfigurationDataSet();
   }
 
-  public int getDeviceGroupID(String device) {
-    return hashExecutor.getDeviceGroupID(device);
+  @Override
+  public DataSet getDataNodeInfo(PhysicalPlan physicalPlan) {
+
+    // TODO: Only leader can get DataNodeInfo
+
+    if (physicalPlan instanceof QueryDataNodeInfoPlan) {
+      return dataNodeManager.getDataNodeInfo((QueryDataNodeInfoPlan) physicalPlan);
+    }
+    return new DataNodesInfoDataSet();
   }
 
-  // TODO: Interfaces for metadata operations
+  @Override
+  public DataSet getStorageGroupSchema() {
 
-  // TODO: Interfaces for data operations
+    // TODO: Only leader can get StorageGroupSchema
 
-  // TODO: Interfaces for LoadBalancer control
+    return regionManager.getStorageGroupSchema();
+  }
+
+  @Override
+  public TSStatus setStorageGroup(PhysicalPlan physicalPlan) {
+
+    // TODO: Only leader can set StorageGroup
+
+    if (physicalPlan instanceof SetStorageGroupPlan) {
+      return regionManager.setStorageGroup((SetStorageGroupPlan) physicalPlan);
+    }
+    return ERROR_TSSTATUS;
+  }
+
+  @Override
+  public DataSet getSchemaPartition(PhysicalPlan physicalPlan) {
+
+    // TODO: Only leader can query SchemaPartition
+
+    if (physicalPlan instanceof GetOrCreateSchemaPartitionPlan) {
+      return partitionManager.getSchemaPartition((GetOrCreateSchemaPartitionPlan) physicalPlan);
+    }
+    return new SchemaPartitionDataSet();
+  }
+
+  @Override
+  public DataSet getOrCreateSchemaPartition(PhysicalPlan physicalPlan) {
+
+    // TODO: Only leader can apply SchemaPartition
+
+    if (physicalPlan instanceof GetOrCreateSchemaPartitionPlan) {
+      return partitionManager.getOrCreateSchemaPartition(
+          (GetOrCreateSchemaPartitionPlan) physicalPlan);
+    }
+    return new SchemaPartitionDataSet();
+  }
+
+  @Override
+  public DataSet getDataPartition(PhysicalPlan physicalPlan) {
+
+    // TODO: Only leader can query DataPartition
+
+    if (physicalPlan instanceof GetOrCreateDataPartitionPlan) {
+      return partitionManager.getDataPartition((GetOrCreateDataPartitionPlan) physicalPlan);
+    }
+    return new DataPartitionDataSet();
+  }
+
+  @Override
+  public DataSet getOrCreateDataPartition(PhysicalPlan physicalPlan) {
+
+    // TODO: only leader can apply DataPartition
+
+    if (physicalPlan instanceof GetOrCreateDataPartitionPlan) {
+      return partitionManager.getOrCreateDataPartition((GetOrCreateDataPartitionPlan) physicalPlan);
+    }
+    return new DataPartitionDataSet();
+  }
+
+  @Override
+  public DataNodeManager getDataNodeManager() {
+    return dataNodeManager;
+  }
+
+  @Override
+  public RegionManager getRegionManager() {
+    return regionManager;
+  }
+
+  @Override
+  public ConsensusManager getConsensusManager() {
+    return consensusManager;
+  }
+
+  @Override
+  public TSStatus operatePermission(PhysicalPlan physicalPlan) {
+    if (physicalPlan instanceof AuthorPlan) {
+      return permissionManager.operatePermission((AuthorPlan) physicalPlan);
+    }
+    return ERROR_TSSTATUS;
+  }
 }

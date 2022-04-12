@@ -21,21 +21,29 @@ package org.apache.iotdb.db.mpp.execution;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.query.context.QueryContext;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-public class FragmentInstanceContext {
+public class FragmentInstanceContext extends QueryContext {
 
-  private FragmentInstanceId id;
+  private final FragmentInstanceId id;
 
   // TODO if we split one fragment instance into multiple pipelines to run, we need to replace it
   // with CopyOnWriteArrayList or some other thread safe data structure
   private final List<OperatorContext> operatorContexts = new ArrayList<>();
-
   private final long createNanos = System.nanoTime();
+
+  private DriverContext driverContext;
+
+  // TODO we may use StateMachine<FragmentInstanceState> to replace it
+  private final AtomicReference<FragmentInstanceState> state;
+
+  private long endTime = -1;
 
   //    private final GcMonitor gcMonitor;
   //    private final AtomicLong startNanos = new AtomicLong();
@@ -45,8 +53,10 @@ public class FragmentInstanceContext {
   //    private final AtomicLong endFullGcCount = new AtomicLong(-1);
   //    private final AtomicLong endFullGcTimeNanos = new AtomicLong(-1);
 
-  public FragmentInstanceContext(FragmentInstanceId id) {
+  public FragmentInstanceContext(
+      FragmentInstanceId id, AtomicReference<FragmentInstanceState> state) {
     this.id = id;
+    this.state = state;
   }
 
   public OperatorContext addOperatorContext(
@@ -60,8 +70,55 @@ public class FragmentInstanceContext {
           operatorId);
     }
 
-    OperatorContext operatorContext = new OperatorContext(operatorId, planNodeId, operatorType);
+    OperatorContext operatorContext =
+        new OperatorContext(operatorId, planNodeId, operatorType, this);
     operatorContexts.add(operatorContext);
     return operatorContext;
+  }
+
+  public List<OperatorContext> getOperatorContexts() {
+    return operatorContexts;
+  }
+
+  public FragmentInstanceId getId() {
+    return id;
+  }
+
+  public DriverContext getDriverContext() {
+    return driverContext;
+  }
+
+  public void setDriverContext(DriverContext driverContext) {
+    this.driverContext = driverContext;
+  }
+
+  public void failed(Throwable cause) {
+    state.set(FragmentInstanceState.FAILED);
+  }
+
+  public void cancel() {
+    state.set(FragmentInstanceState.CANCELED);
+    this.endTime = System.currentTimeMillis();
+  }
+
+  public void abort() {
+    state.set(FragmentInstanceState.ABORTED);
+    this.endTime = System.currentTimeMillis();
+  }
+
+  public void finish() {
+    if (state.get().isDone()) {
+      return;
+    }
+    state.set(FragmentInstanceState.FINISHED);
+    this.endTime = System.currentTimeMillis();
+  }
+
+  public long getEndTime() {
+    return endTime;
+  }
+
+  public void setEndTime(long endTime) {
+    this.endTime = endTime;
   }
 }

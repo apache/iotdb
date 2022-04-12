@@ -18,26 +18,45 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.source;
 
-import org.apache.iotdb.db.mpp.common.DataRegion;
+import org.apache.iotdb.commons.partition.RegionReplicaSet;
+import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
 import org.apache.iotdb.db.mpp.common.GroupByTimeParameter;
+import org.apache.iotdb.db.mpp.sql.planner.plan.IOutputPlanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.ColumnHeader;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
+import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
+import org.apache.iotdb.db.query.aggregation.AggregationType;
+import org.apache.iotdb.tsfile.exception.NotImplementedException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
+import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.collect.ImmutableList;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 /**
- * SeriesAggregateOperator is responsible to do the aggregation calculation for one series. It will
- * read the target series and calculate the aggregation result by the aggregation digest or raw data
- * of this series.
+ * This node is responsible to do the aggregation calculation for one series. It will read the
+ * target series and calculate the aggregation result by the aggregation digest or raw data of this
+ * series.
  *
  * <p>The aggregation result will be represented as a TsBlock
  *
- * <p>This operator will split data of the target series into many groups by time range and do the
+ * <p>This node will split data of the target series into many groups by time range and do the
  * aggregation calculation for each group. Each result will be one row of the result TsBlock. The
  * timestamp of each row is the start time of the time range group.
  *
@@ -45,26 +64,49 @@ import java.util.List;
  * represent the whole aggregation result of this series. And the timestamp will be 0, which is
  * meaningless.
  */
-public class SeriesAggregateScanNode extends SourceNode {
+public class SeriesAggregateScanNode extends SourceNode implements IOutputPlanNode {
+
+  // The series path and aggregation functions on this series.
+  // (Currently, we only support one series in the aggregation function)
+  private final PartialPath seriesPath;
+  private final List<AggregationType> aggregateFuncList;
+
+  // The order to traverse the data.
+  // Currently, we only support TIMESTAMP_ASC and TIMESTAMP_DESC here.
+  // The default order is TIMESTAMP_ASC, which means "order by timestamp asc"
+  private final OrderBy scanOrder;
+
+  private final Filter timeFilter;
 
   // The parameter of `group by time`
   // Its value will be null if there is no `group by time` clause,
-  private GroupByTimeParameter groupByTimeParameter;
+  private final GroupByTimeParameter groupByTimeParameter;
 
-  // The aggregation function, which contains the function name and related series.
-  // (Currently we only support one series in the aggregation function)
-  // TODO: need consider whether it is suitable the aggregation function using FunctionExpression
-  private FunctionExpression aggregateFunc;
-
-  private Filter filter;
-
-  private String columnName;
+  private List<ColumnHeader> columnHeaders;
 
   // The id of DataRegion where the node will run
-  private DataRegion dataRegion;
+  private RegionReplicaSet regionReplicaSet;
 
-  public SeriesAggregateScanNode(PlanNodeId id) {
+  public SeriesAggregateScanNode(
+      PlanNodeId id,
+      PartialPath seriesPath,
+      List<AggregationType> aggregateFuncList,
+      OrderBy scanOrder,
+      Filter timeFilter,
+      GroupByTimeParameter groupByTimeParameter) {
     super(id);
+    this.seriesPath = seriesPath;
+    this.aggregateFuncList = aggregateFuncList;
+    this.scanOrder = scanOrder;
+    this.timeFilter = timeFilter;
+    this.groupByTimeParameter = groupByTimeParameter;
+    this.columnHeaders =
+        aggregateFuncList.stream()
+            .map(
+                functionType ->
+                    new ColumnHeader(
+                        seriesPath.getFullPath(), functionType.name(), seriesPath.getSeriesType()))
+            .collect(Collectors.toList());
   }
 
   @Override
@@ -73,50 +115,144 @@ public class SeriesAggregateScanNode extends SourceNode {
   }
 
   @Override
+  public void addChild(PlanNode child) {}
+
+  @Override
   public PlanNode clone() {
-    return null;
+    throw new NotImplementedException("clone of SeriesAggregateScanNode is not implemented");
   }
 
   @Override
-  public PlanNode cloneWithChildren(List<PlanNode> children) {
-    return null;
+  public int allowedChildCount() {
+    return NO_CHILD_ALLOWED;
+  }
+
+  @Override
+  public List<ColumnHeader> getOutputColumnHeaders() {
+    return columnHeaders;
   }
 
   @Override
   public List<String> getOutputColumnNames() {
-    return ImmutableList.of(columnName);
+    return columnHeaders.stream().map(ColumnHeader::getColumnName).collect(Collectors.toList());
   }
 
-  public SeriesAggregateScanNode(PlanNodeId id, FunctionExpression aggregateFunc) {
-    this(id);
-    this.aggregateFunc = aggregateFunc;
-  }
-
-  public SeriesAggregateScanNode(
-      PlanNodeId id, FunctionExpression aggregateFunc, GroupByTimeParameter groupByTimeParameter) {
-    this(id, aggregateFunc);
-    this.groupByTimeParameter = groupByTimeParameter;
+  @Override
+  public List<TSDataType> getOutputColumnTypes() {
+    return columnHeaders.stream().map(ColumnHeader::getColumnType).collect(Collectors.toList());
   }
 
   @Override
   public void open() throws Exception {}
 
   @Override
-  public void close() throws Exception {}
-
-  public DataRegion getDataRegion() {
-    return dataRegion;
+  public RegionReplicaSet getDataRegionReplicaSet() {
+    return this.regionReplicaSet;
   }
+
+  @Override
+  public void setDataRegionReplicaSet(RegionReplicaSet regionReplicaSet) {
+    this.regionReplicaSet = regionReplicaSet;
+  }
+
+  @Override
+  public void close() throws Exception {}
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
     return visitor.visitSeriesAggregate(this, context);
   }
 
-  // This method is used when do the PredicatePushDown.
-  // The filter is not put in the constructor because the filter is only clear in the predicate
-  // push-down stage
-  public void setFilter(Filter filter) {
-    this.filter = filter;
+  @Override
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    PlanNodeType.SERIES_AGGREGATE_SCAN.serialize(byteBuffer);
+    seriesPath.serialize(byteBuffer);
+    ReadWriteIOUtils.write(aggregateFuncList.size(), byteBuffer);
+    for (AggregationType aggregationType : aggregateFuncList) {
+      ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+      DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+      try {
+        aggregationType.serializeTo(dataOutputStream);
+      } catch (IOException ioException) {
+        ioException.printStackTrace();
+      }
+      byteBuffer.put(byteArrayOutputStream.toByteArray());
+    }
+    ReadWriteIOUtils.write(scanOrder.ordinal(), byteBuffer);
+    timeFilter.serialize(byteBuffer);
+    // TODO serialize groupByTimeParameter
+    regionReplicaSet.serializeImpl(byteBuffer);
+  }
+
+  public static SeriesAggregateScanNode deserialize(ByteBuffer byteBuffer) {
+    PartialPath partialPath = (PartialPath) PathDeserializeUtil.deserialize(byteBuffer);
+    int aggregateFuncSize = ReadWriteIOUtils.readInt(byteBuffer);
+    List<AggregationType> aggregateFuncList = new ArrayList<>();
+    for (int i = 0; i < aggregateFuncSize; i++) {
+      aggregateFuncList.add(AggregationType.deserialize(byteBuffer));
+    }
+    OrderBy scanOrder = OrderBy.values()[ReadWriteIOUtils.readInt(byteBuffer)];
+    Filter timeFilter = FilterFactory.deserialize(byteBuffer);
+
+    // TODO serialize groupByTimeParameter
+    RegionReplicaSet regionReplicaSet = new RegionReplicaSet();
+    try {
+      regionReplicaSet.deserializeImpl(byteBuffer);
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+    SeriesAggregateScanNode seriesAggregateScanNode =
+        new SeriesAggregateScanNode(
+            planNodeId, partialPath, aggregateFuncList, scanOrder, timeFilter, null);
+    seriesAggregateScanNode.regionReplicaSet = regionReplicaSet;
+    return seriesAggregateScanNode;
+  }
+
+  public PartialPath getSeriesPath() {
+    return seriesPath;
+  }
+
+  public List<AggregationType> getAggregateFuncList() {
+    return aggregateFuncList;
+  }
+
+  @TestOnly
+  public Pair<String, List<String>> print() {
+    String title = String.format("[SeriesAggregateScanNode (%s)]", this.getPlanNodeId());
+    List<String> attributes = new ArrayList<>();
+    attributes.add("AggregateFunctions: " + this.getAggregateFuncList().toString());
+    return new Pair<>(title, attributes);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+
+    SeriesAggregateScanNode that = (SeriesAggregateScanNode) o;
+    return Objects.equals(groupByTimeParameter, that.groupByTimeParameter)
+        && Objects.equals(seriesPath, that.seriesPath)
+        && Objects.equals(
+            aggregateFuncList.stream().sorted().collect(Collectors.toList()),
+            that.aggregateFuncList.stream().sorted().collect(Collectors.toList()))
+        && scanOrder == that.scanOrder
+        && Objects.equals(timeFilter, that.timeFilter);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(
+        super.hashCode(),
+        groupByTimeParameter,
+        seriesPath,
+        aggregateFuncList.stream().sorted().collect(Collectors.toList()),
+        scanOrder,
+        timeFilter);
   }
 }

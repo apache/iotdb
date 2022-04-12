@@ -24,10 +24,14 @@ import org.apache.iotdb.db.mpp.sql.statement.StatementNode;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
 import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
+import org.apache.iotdb.tsfile.read.common.Path;
 
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /** This class maintains information of {@code SELECT} clause. */
@@ -45,6 +49,7 @@ public class SelectComponent extends StatementNode {
 
   private List<PartialPath> pathsCache;
   private List<String> aggregationFunctionsCache;
+  private Map<String, Set<PartialPath>> deviceIdToPathsCache;
 
   public SelectComponent(ZoneId zoneId) {
     this.zoneId = zoneId;
@@ -82,7 +87,7 @@ public class SelectComponent extends StatementNode {
     if (resultColumn.getExpression().isUserDefinedAggregationFunctionExpression()) {
       hasUserDefinedAggregationFunction = true;
     }
-    if (resultColumn.getExpression().isPlainAggregationFunctionExpression()) {
+    if (resultColumn.getExpression().isBuiltInAggregationFunctionExpression()) {
       hasBuiltInAggregationFunction = true;
     }
     if (resultColumn.getExpression().isTimeSeriesGeneratingFunctionExpression()) {
@@ -114,7 +119,7 @@ public class SelectComponent extends StatementNode {
         if (expression instanceof TimeSeriesOperand) {
           pathsCache.add(((TimeSeriesOperand) expression).getPath());
         } else if (expression instanceof FunctionExpression
-            && expression.isPlainAggregationFunctionExpression()) {
+            && expression.isBuiltInAggregationFunctionExpression()) {
           pathsCache.add(((TimeSeriesOperand) expression.getExpressions().get(0)).getPath());
         } else {
           pathsCache.add(null);
@@ -136,5 +141,25 @@ public class SelectComponent extends StatementNode {
       }
     }
     return aggregationFunctionsCache;
+  }
+
+  public Map<String, Set<PartialPath>> getDeviceIdToPathsMap() {
+    if (deviceIdToPathsCache == null) {
+      deviceIdToPathsCache = new HashMap<>();
+      for (ResultColumn resultColumn : resultColumns) {
+        for (PartialPath path : resultColumn.collectPaths()) {
+          deviceIdToPathsCache.computeIfAbsent(path.getDevice(), k -> new HashSet<>()).add(path);
+        }
+      }
+    }
+    return deviceIdToPathsCache;
+  }
+
+  public List<Path> getDeduplicatedPaths() {
+    Set<Path> deduplicatedPaths = new HashSet<>();
+    for (ResultColumn resultColumn : resultColumns) {
+      deduplicatedPaths.addAll(resultColumn.collectPaths());
+    }
+    return new ArrayList<>(deduplicatedPaths);
   }
 }

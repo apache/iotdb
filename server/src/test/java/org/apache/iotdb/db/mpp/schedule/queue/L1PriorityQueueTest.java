@@ -51,11 +51,11 @@ public class L1PriorityQueueTest {
               }
             });
     t1.start();
-    Thread.sleep(10);
+    Thread.sleep(100);
     Assert.assertEquals(Thread.State.WAITING, t1.getState());
     QueueElement e2 = new QueueElement(new QueueElement.QueueElementID(1), 1);
     queue.push(e2);
-    Thread.sleep(10);
+    Thread.sleep(100);
     Assert.assertEquals(Thread.State.TERMINATED, t1.getState());
     Assert.assertEquals(1, res.size());
     Assert.assertEquals(e2.getId().toString(), res.get(0).getId().toString());
@@ -130,5 +130,31 @@ public class L1PriorityQueueTest {
     } catch (IllegalStateException e) {
       Assert.assertTrue(e.getMessage().contains("has already contained"));
     }
+  }
+
+  @Test
+  public void testClear() {
+    IndexedBlockingQueue<QueueElement> queue =
+        new L1PriorityQueue<>(
+            10,
+            (o1, o2) -> {
+              if (o1.equals(o2)) {
+                return 0;
+              }
+              return Integer.compare(o1.getValue(), o2.getValue());
+            },
+            new QueueElement(new QueueElement.QueueElementID(0), 0));
+    QueueElement.QueueElementID id1 = new QueueElement.QueueElementID(1);
+    QueueElement e1 = new QueueElement(id1, 10);
+    queue.push(e1);
+    Assert.assertEquals(1, queue.size());
+    QueueElement.QueueElementID id2 = new QueueElement.QueueElementID(2);
+    QueueElement e2 = new QueueElement(id2, 5);
+    queue.push(e2);
+    Assert.assertEquals(2, queue.size());
+    queue.clear();
+    Assert.assertEquals(0, queue.size());
+    Assert.assertNull(queue.get(id1));
+    Assert.assertNull(queue.get(id2));
   }
 }

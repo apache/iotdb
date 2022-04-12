@@ -18,16 +18,65 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.write;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.partition.RegionReplicaSet;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class InsertRowsOfOneDeviceNode extends InsertNode {
 
-  protected InsertRowsOfOneDeviceNode(PlanNodeId id) {
+  /**
+   * Suppose there is an InsertRowsOfOneDeviceNode, which contains 5 InsertRowNodes,
+   * insertRowNodeList={InsertRowNode_0, InsertRowNode_1, InsertRowNode_2, InsertRowNode_3,
+   * InsertRowNode_4}, then the insertRowNodeIndexList={0, 1, 2, 3, 4} respectively. But when the
+   * InsertRowsOfOneDeviceNode is split into two InsertRowsOfOneDeviceNodes according to different
+   * storage group in cluster version, suppose that the InsertRowsOfOneDeviceNode_1's
+   * insertRowNodeList = {InsertRowNode_0, InsertRowNode_3, InsertRowNode_4}, then
+   * InsertRowsOfOneDeviceNode_1's insertRowNodeIndexList = {0, 3, 4}; InsertRowsOfOneDeviceNode_2's
+   * insertRowNodeList = {InsertRowNode_1, * InsertRowNode_2} then InsertRowsOfOneDeviceNode_2's
+   * insertRowNodeIndexList= {1, 2} respectively;
+   */
+  private List<Integer> insertRowNodeIndexList;
+
+  /** the InsertRowsNode list */
+  private List<InsertRowNode> insertRowNodeList;
+
+  /** record the result of insert rows */
+  private Map<Integer, TSStatus> results = new HashMap<>();
+
+  public InsertRowsOfOneDeviceNode(PlanNodeId id) {
     super(id);
+    insertRowNodeIndexList = new ArrayList<>();
+    insertRowNodeList = new ArrayList<>();
+  }
+
+  public Map<Integer, TSStatus> getResults() {
+    return results;
+  }
+
+  public List<Integer> getInsertRowNodeIndexList() {
+    return insertRowNodeIndexList;
+  }
+
+  public void setInsertRowNodeIndexList(List<Integer> insertRowNodeIndexList) {
+    this.insertRowNodeIndexList = insertRowNodeIndexList;
+  }
+
+  public List<InsertRowNode> getInsertRowNodeList() {
+    return insertRowNodeList;
+  }
+
+  public void setInsertRowNodeList(List<InsertRowNode> insertRowNodeList) {
+    this.insertRowNodeList = insertRowNodeList;
   }
 
   @Override
@@ -36,22 +85,48 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
   }
 
   @Override
+  public void addChild(PlanNode child) {}
+
+  @Override
   public PlanNode clone() {
+    throw new NotImplementedException("clone of Insert is not implemented");
+  }
+
+  @Override
+  public int allowedChildCount() {
+    return NO_CHILD_ALLOWED;
+  }
+
+  public static InsertRowsOfOneDeviceNode deserialize(ByteBuffer byteBuffer) {
     return null;
   }
 
   @Override
-  public PlanNode cloneWithChildren(List<PlanNode> children) {
-    return null;
-  }
-
-  @Override
-  public List<String> getOutputColumnNames() {
-    return null;
-  }
+  public void serialize(ByteBuffer byteBuffer) {}
 
   @Override
   public List<InsertNode> splitByPartition(Analysis analysis) {
-    return null;
+    Map<RegionReplicaSet, InsertRowsNode> splitMap = new HashMap<>();
+    for (int i = 0; i < insertRowNodeList.size(); i++) {
+      InsertRowNode insertRowNode = insertRowNodeList.get(i);
+      // data region for insert row node
+      RegionReplicaSet dataRegionReplicaSet =
+          analysis
+              .getDataPartitionInfo()
+              .getDataRegionReplicaSetForWriting(
+                  devicePath.getFullPath(),
+                  StorageEngine.getTimePartitionSlot(insertRowNode.getTime()));
+      if (splitMap.containsKey(dataRegionReplicaSet)) {
+        InsertRowsNode tmpNode = splitMap.get(dataRegionReplicaSet);
+        tmpNode.addOneInsertRowNode(insertRowNode, i);
+      } else {
+        InsertRowsNode tmpNode = new InsertRowsNode(this.getPlanNodeId());
+        tmpNode.setDataRegionReplicaSet(dataRegionReplicaSet);
+        tmpNode.addOneInsertRowNode(insertRowNode, i);
+        splitMap.put(dataRegionReplicaSet, tmpNode);
+      }
+    }
+
+    return new ArrayList<>(splitMap.values());
   }
 }

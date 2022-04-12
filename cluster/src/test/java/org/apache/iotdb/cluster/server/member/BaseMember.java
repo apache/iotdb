@@ -37,7 +37,7 @@ import org.apache.iotdb.cluster.log.applier.DataLogApplier;
 import org.apache.iotdb.cluster.log.manage.PartitionedSnapshotLogManager;
 import org.apache.iotdb.cluster.log.manage.RaftLogManager;
 import org.apache.iotdb.cluster.log.snapshot.FileSnapshot;
-import org.apache.iotdb.cluster.metadata.CSchemaEngine;
+import org.apache.iotdb.cluster.metadata.CSchemaProcessor;
 import org.apache.iotdb.cluster.metadata.MetaPuller;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
@@ -59,6 +59,7 @@ import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
+import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -94,7 +95,7 @@ public class BaseMember {
   private boolean prevUseAsyncServer;
   private int preLogBufferSize;
   private boolean prevUseAsyncApplier;
-  private boolean prevEnableWAL;
+  private WALMode prevWALMode;
 
   private int syncLeaderMaxWait;
   private long heartBeatInterval;
@@ -110,8 +111,8 @@ public class BaseMember {
     ClusterDescriptor.getInstance().getConfig().setRaftLogBufferSize(409600);
     testThreadPool = Executors.newFixedThreadPool(4);
     prevLeaderWait = RaftMember.getWaitLeaderTimeMs();
-    prevEnableWAL = IoTDBDescriptor.getInstance().getConfig().isEnableWal();
-    IoTDBDescriptor.getInstance().getConfig().setEnableWal(false);
+    prevWALMode = IoTDBDescriptor.getInstance().getConfig().getWalMode();
+    IoTDBDescriptor.getInstance().getConfig().setWalMode(WALMode.DISABLE);
     MetricConfigDescriptor.getInstance().getMetricConfig().setEnableMetric(false);
     RaftMember.setWaitLeaderTimeMs(10);
 
@@ -147,9 +148,9 @@ public class BaseMember {
       getDataGroupMember(node);
     }
 
-    IoTDB.setSchemaEngine(CSchemaEngine.getInstance());
-    CSchemaEngine.getInstance().setMetaGroupMember(testMetaMember);
-    CSchemaEngine.getInstance().setCoordinator(coordinator);
+    IoTDB.setSchemaProcessor(CSchemaProcessor.getInstance());
+    CSchemaProcessor.getInstance().setMetaGroupMember(testMetaMember);
+    CSchemaProcessor.getInstance().setCoordinator(coordinator);
 
     EnvironmentUtils.envSetUp();
     prevUrls = ClusterDescriptor.getInstance().getConfig().getSeedNodeUrls();
@@ -162,7 +163,7 @@ public class BaseMember {
 
     for (int i = 0; i < 10; i++) {
       try {
-        IoTDB.schemaEngine.setStorageGroup(new PartialPath(TestUtils.getTestSg(i)));
+        IoTDB.schemaProcessor.setStorageGroup(new PartialPath(TestUtils.getTestSg(i)));
         for (int j = 0; j < 20; j++) {
           SchemaUtils.registerTimeseries(TestUtils.getTestTimeSeriesSchema(i, j));
         }
@@ -200,7 +201,7 @@ public class BaseMember {
     ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(prevUseAsyncServer);
     ClusterDescriptor.getInstance().getConfig().setRaftLogBufferSize(preLogBufferSize);
     ClusterDescriptor.getInstance().getConfig().setUseAsyncApplier(prevUseAsyncApplier);
-    IoTDBDescriptor.getInstance().getConfig().setEnableWal(prevEnableWAL);
+    IoTDBDescriptor.getInstance().getConfig().setWalMode(prevWALMode);
 
     ClusterConstant.setSyncLeaderMaxWaitMs(syncLeaderMaxWait);
     ClusterConstant.setHeartbeatIntervalMs(heartBeatInterval);

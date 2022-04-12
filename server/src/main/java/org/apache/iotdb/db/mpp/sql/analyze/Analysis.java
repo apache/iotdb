@@ -19,48 +19,42 @@
 
 package org.apache.iotdb.db.mpp.sql.analyze;
 
-import org.apache.iotdb.db.metadata.SchemaRegion;
+import org.apache.iotdb.commons.partition.DataPartition;
+import org.apache.iotdb.commons.partition.RegionReplicaSet;
+import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.mpp.common.DataRegion;
-import org.apache.iotdb.db.mpp.common.DataRegionTimeSlice;
+import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
+import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
-import java.util.*;
+import java.util.List;
 
 /** Analysis used for planning a query. TODO: This class may need to store more info for a query. */
 public class Analysis {
   // Description for each series. Such as dataType, existence
 
-  // Data distribution info for each series. Series -> [VSG, VSG]
+  // Data distribution info for each series. Series -> [DataRegion, DataRegion]
 
   // Map<PartialPath, List<FullPath>> Used to remove asterisk
 
   // Statement
   private Statement statement;
 
-  // DataPartitionInfo
-  private Map<String, Map<DataRegionTimeSlice, List<DataRegion>>> dataPartitionInfo;
+  // indicate whether this statement is write or read
+  private QueryType queryType;
 
-  // SchemaPartitionInfo
-  private Map<String, List<SchemaRegion>> schemaPartitionInfo;
+  private DataPartition dataPartition;
 
-  public Set<DataRegion> getPartitionInfo(PartialPath seriesPath, Filter timefilter) {
-    if (timefilter == null) {
-      // TODO: (xingtanzjr) we need to have a method to get the deviceGroup by device
-      String deviceGroup = seriesPath.getDevice();
-      Set<DataRegion> result = new HashSet<>();
-      this.dataPartitionInfo.get(deviceGroup).values().forEach(result::addAll);
-      return result;
-    } else {
-      // TODO: (xingtanzjr) complete this branch
-      return null;
-    }
-  }
+  private SchemaPartition schemaPartition;
 
-  public void setDataPartitionInfo(
-      Map<String, Map<DataRegionTimeSlice, List<DataRegion>>> dataPartitionInfo) {
-    this.dataPartitionInfo = dataPartitionInfo;
+  private SchemaTree schemaTree;
+
+  private IExpression queryFilter;
+
+  public List<RegionReplicaSet> getPartitionInfo(PartialPath seriesPath, Filter timefilter) {
+    // TODO: (xingtanzjr) implement the calculation of timePartitionIdList
+    return dataPartition.getDataRegionReplicaSet(seriesPath.getDevice(), null);
   }
 
   public Statement getStatement() {
@@ -69,5 +63,37 @@ public class Analysis {
 
   public void setStatement(Statement statement) {
     this.statement = statement;
+  }
+
+  public DataPartition getDataPartitionInfo() {
+    return dataPartition;
+  }
+
+  public void setDataPartitionInfo(DataPartition dataPartition) {
+    this.dataPartition = dataPartition;
+  }
+
+  public SchemaPartition getSchemaPartitionInfo() {
+    return schemaPartition;
+  }
+
+  public void setSchemaPartitionInfo(SchemaPartition schemaPartition) {
+    this.schemaPartition = schemaPartition;
+  }
+
+  public SchemaTree getSchemaTree() {
+    return schemaTree;
+  }
+
+  public void setSchemaTree(SchemaTree schemaTree) {
+    this.schemaTree = schemaTree;
+  }
+
+  public IExpression getQueryFilter() {
+    return queryFilter;
+  }
+
+  public void setQueryFilter(IExpression expression) {
+    this.queryFilter = expression;
   }
 }

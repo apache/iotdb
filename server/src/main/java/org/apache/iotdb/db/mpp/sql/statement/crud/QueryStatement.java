@@ -24,16 +24,12 @@ import org.apache.iotdb.db.index.common.IndexType;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.constant.StatementType;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
-import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullComponent;
-import org.apache.iotdb.db.mpp.sql.statement.component.FromComponent;
-import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
-import org.apache.iotdb.db.mpp.sql.statement.component.ResultSetFormat;
-import org.apache.iotdb.db.mpp.sql.statement.component.SelectComponent;
-import org.apache.iotdb.db.mpp.sql.statement.component.WhereCondition;
-import org.apache.iotdb.db.mpp.sql.tree.StatementVisitor;
+import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
+import org.apache.iotdb.db.mpp.sql.statement.component.*;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Base class of SELECT statement.
@@ -235,8 +231,8 @@ public class QueryStatement extends Statement {
     return resultSetFormat == ResultSetFormat.ALIGN_BY_DEVICE;
   }
 
-  public boolean DisableAlign() {
-    return resultSetFormat != ResultSetFormat.DISABLE_ALIGN;
+  public boolean disableAlign() {
+    return resultSetFormat == ResultSetFormat.DISABLE_ALIGN;
   }
 
   public boolean hasTimeSeriesGeneratingFunction() {
@@ -245,6 +241,31 @@ public class QueryStatement extends Statement {
 
   public boolean hasUserDefinedAggregationFunction() {
     return selectComponent.isHasUserDefinedAggregationFunction();
+  }
+
+  public Map<String, Set<PartialPath>> getDeviceNameToPathsMap() {
+    Map<String, Set<PartialPath>> deviceNameToPathsMap =
+        new HashMap<>(getSelectComponent().getDeviceIdToPathsMap());
+    if (getWhereCondition() != null) {
+      for (PartialPath path :
+          getWhereCondition().getQueryFilter().getPathSet().stream()
+              .filter(SQLConstant::isNotReservedPath)
+              .collect(Collectors.toList())) {
+        deviceNameToPathsMap.computeIfAbsent(path.getDevice(), k -> new HashSet<>()).add(path);
+      }
+    }
+    return deviceNameToPathsMap;
+  }
+
+  public List<String> getSelectedPathNames() {
+    Set<String> pathSet = new HashSet<>();
+    for (ResultColumn resultColumn : getSelectComponent().getResultColumns()) {
+      pathSet.addAll(
+          resultColumn.collectPaths().stream()
+              .map(PartialPath::getFullPath)
+              .collect(Collectors.toList()));
+    }
+    return new ArrayList<>(pathSet);
   }
 
   /** semantic check */

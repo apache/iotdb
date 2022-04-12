@@ -31,14 +31,11 @@ import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.SchemaEngine;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.qp.physical.crud.*;
+import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletsPlan;
 import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
@@ -71,8 +68,8 @@ public class ClusterPlanRouter {
     this.partitionTable = partitionTable;
   }
 
-  private SchemaEngine SchemaEngine() {
-    return IoTDB.schemaEngine;
+  private LocalSchemaProcessor SchemaProcessor() {
+    return IoTDB.schemaProcessor;
   }
 
   @TestOnly
@@ -108,7 +105,7 @@ public class ClusterPlanRouter {
   private PartitionGroup routePlan(ShowChildPathsPlan plan) {
     try {
       return partitionTable.route(
-          SchemaEngine().getBelongedStorageGroup(plan.getPath()).getFullPath(), 0);
+          SchemaProcessor().getBelongedStorageGroup(plan.getPath()).getFullPath(), 0);
     } catch (MetadataException e) {
       // the path is too short to have no a storage group name, e.g., "root"
       // so we can do it locally.
@@ -122,8 +119,8 @@ public class ClusterPlanRouter {
       return splitAndRoutePlan((InsertRowsPlan) plan);
     } else if (plan instanceof InsertTabletPlan) {
       return splitAndRoutePlan((InsertTabletPlan) plan);
-    } else if (plan instanceof InsertMultiTabletPlan) {
-      return splitAndRoutePlan((InsertMultiTabletPlan) plan);
+    } else if (plan instanceof InsertMultiTabletsPlan) {
+      return splitAndRoutePlan((InsertMultiTabletsPlan) plan);
     } else if (plan instanceof CreateTimeSeriesPlan) {
       return splitAndRoutePlan((CreateTimeSeriesPlan) plan);
     } else if (plan instanceof CreateAlignedTimeSeriesPlan) {
@@ -198,18 +195,18 @@ public class ClusterPlanRouter {
   }
 
   /**
-   * @param plan InsertMultiTabletPlan
-   * @return key is InsertMultiTabletPlan, value is the partition group the plan belongs to, all
-   *     InsertTabletPlans in InsertMultiTabletPlan belongs to one same storage group.
+   * @param plan InsertMultiTabletsPlan
+   * @return key is InsertMultiTabletsPlan, value is the partition group the plan belongs to, all
+   *     InsertTabletPlans in InsertMultiTabletsPlan belongs to one same storage group.
    */
-  private Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(InsertMultiTabletPlan plan)
+  private Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(InsertMultiTabletsPlan plan)
       throws MetadataException {
     /*
      * the key of pgSgPathPlanMap is the partition group; the value is one map,
-     * the key of the map is storage group, the value is the InsertMultiTabletPlan,
-     * all InsertTabletPlans in InsertMultiTabletPlan belongs to one same storage group.
+     * the key of the map is storage group, the value is the InsertMultiTabletsPlan,
+     * all InsertTabletPlans in InsertMultiTabletsPlan belongs to one same storage group.
      */
-    Map<PartitionGroup, Map<PartialPath, InsertMultiTabletPlan>> pgSgPathPlanMap = new HashMap<>();
+    Map<PartitionGroup, Map<PartialPath, InsertMultiTabletsPlan>> pgSgPathPlanMap = new HashMap<>();
     for (int i = 0; i < plan.getInsertTabletPlanList().size(); i++) {
       InsertTabletPlan insertTabletPlan = plan.getInsertTabletPlanList().get(i);
       Map<PhysicalPlan, PartitionGroup> tmpResult = splitAndRoutePlan(insertTabletPlan);
@@ -218,50 +215,51 @@ public class ClusterPlanRouter {
         InsertTabletPlan tmpPlan = (InsertTabletPlan) entry.getKey();
         PartitionGroup tmpPg = entry.getValue();
         // 1.1 the sg that the plan(actually calculated based on device) belongs to
-        PartialPath tmpSgPath = IoTDB.schemaEngine.getBelongedStorageGroup(tmpPlan.getDevicePath());
-        Map<PartialPath, InsertMultiTabletPlan> sgPathPlanMap = pgSgPathPlanMap.get(tmpPg);
+        PartialPath tmpSgPath =
+            IoTDB.schemaProcessor.getBelongedStorageGroup(tmpPlan.getDevicePath());
+        Map<PartialPath, InsertMultiTabletsPlan> sgPathPlanMap = pgSgPathPlanMap.get(tmpPg);
         if (sgPathPlanMap == null) {
-          // 2.1 construct the InsertMultiTabletPlan
+          // 2.1 construct the InsertMultiTabletsPlan
           List<InsertTabletPlan> insertTabletPlanList = new ArrayList<>();
           List<Integer> parentInsetTablePlanIndexList = new ArrayList<>();
           insertTabletPlanList.add(tmpPlan);
           parentInsetTablePlanIndexList.add(i);
-          InsertMultiTabletPlan insertMultiTabletPlan =
-              new InsertMultiTabletPlan(insertTabletPlanList, parentInsetTablePlanIndexList);
+          InsertMultiTabletsPlan insertMultiTabletsPlan =
+              new InsertMultiTabletsPlan(insertTabletPlanList, parentInsetTablePlanIndexList);
 
           // 2.2 construct the sgPathPlanMap
           sgPathPlanMap = new HashMap<>();
-          sgPathPlanMap.put(tmpSgPath, insertMultiTabletPlan);
+          sgPathPlanMap.put(tmpSgPath, insertMultiTabletsPlan);
 
           // 2.3 put the sgPathPlanMap to the pgSgPathPlanMap
           pgSgPathPlanMap.put(tmpPg, sgPathPlanMap);
         } else {
-          InsertMultiTabletPlan insertMultiTabletPlan = sgPathPlanMap.get(tmpSgPath);
-          if (insertMultiTabletPlan == null) {
+          InsertMultiTabletsPlan insertMultiTabletsPlan = sgPathPlanMap.get(tmpSgPath);
+          if (insertMultiTabletsPlan == null) {
             List<InsertTabletPlan> insertTabletPlanList = new ArrayList<>();
             List<Integer> parentInsetTablePlanIndexList = new ArrayList<>();
             insertTabletPlanList.add(tmpPlan);
             parentInsetTablePlanIndexList.add(i);
-            insertMultiTabletPlan =
-                new InsertMultiTabletPlan(insertTabletPlanList, parentInsetTablePlanIndexList);
+            insertMultiTabletsPlan =
+                new InsertMultiTabletsPlan(insertTabletPlanList, parentInsetTablePlanIndexList);
 
-            // 2.4 put the insertMultiTabletPlan to the tmpSgPath
-            sgPathPlanMap.put(tmpSgPath, insertMultiTabletPlan);
+            // 2.4 put the insertMultiTabletsPlan to the tmpSgPath
+            sgPathPlanMap.put(tmpSgPath, insertMultiTabletsPlan);
           } else {
-            // 2.5 just add the tmpPlan to the insertMultiTabletPlan
-            insertMultiTabletPlan.addInsertTabletPlan(tmpPlan, i);
+            // 2.5 just add the tmpPlan to the insertMultiTabletsPlan
+            insertMultiTabletsPlan.addInsertTabletPlan(tmpPlan, i);
           }
         }
       }
     }
 
     Map<PhysicalPlan, PartitionGroup> result = new HashMap<>(pgSgPathPlanMap.values().size());
-    for (Map.Entry<PartitionGroup, Map<PartialPath, InsertMultiTabletPlan>> pgMapEntry :
+    for (Map.Entry<PartitionGroup, Map<PartialPath, InsertMultiTabletsPlan>> pgMapEntry :
         pgSgPathPlanMap.entrySet()) {
       PartitionGroup pg = pgMapEntry.getKey();
-      Map<PartialPath, InsertMultiTabletPlan> sgPathPlanMap = pgMapEntry.getValue();
-      // All InsertTabletPlan in InsertMultiTabletPlan belong to the same storage group
-      for (Map.Entry<PartialPath, InsertMultiTabletPlan> sgPathEntry : sgPathPlanMap.entrySet()) {
+      Map<PartialPath, InsertMultiTabletsPlan> sgPathPlanMap = pgMapEntry.getValue();
+      // All InsertTabletPlan in InsertMultiTabletsPlan belong to the same storage group
+      for (Map.Entry<PartialPath, InsertMultiTabletsPlan> sgPathEntry : sgPathPlanMap.entrySet()) {
         result.put(sgPathEntry.getValue(), pg);
       }
     }
@@ -279,7 +277,7 @@ public class ClusterPlanRouter {
     Map<PartitionGroup, InsertRowsPlan> groupPlanMap = new HashMap<>();
     for (int i = 0; i < insertRowsPlan.getInsertRowPlanList().size(); i++) {
       InsertRowPlan rowPlan = insertRowsPlan.getInsertRowPlanList().get(i);
-      PartialPath storageGroup = SchemaEngine().getBelongedStorageGroup(rowPlan.getDevicePath());
+      PartialPath storageGroup = SchemaProcessor().getBelongedStorageGroup(rowPlan.getDevicePath());
       PartitionGroup group = partitionTable.route(storageGroup.getFullPath(), rowPlan.getTime());
       if (groupPlanMap.containsKey(group)) {
         InsertRowsPlan tmpPlan = groupPlanMap.get(group);
@@ -300,7 +298,7 @@ public class ClusterPlanRouter {
   @SuppressWarnings("SuspiciousSystemArraycopy")
   private Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(InsertTabletPlan plan)
       throws MetadataException {
-    PartialPath storageGroup = SchemaEngine().getBelongedStorageGroup(plan.getDevicePath());
+    PartialPath storageGroup = SchemaProcessor().getBelongedStorageGroup(plan.getDevicePath());
     Map<PhysicalPlan, PartitionGroup> result = new HashMap<>();
     long[] times = plan.getTimes();
     if (times.length == 0) {
@@ -481,7 +479,7 @@ public class ClusterPlanRouter {
     Map<PhysicalPlan, PartitionGroup> result = new HashMap<>();
     Map<PartitionGroup, List<InsertRowPlan>> groupPlanMap = new HashMap<>();
     Map<PartitionGroup, List<Integer>> groupPlanIndexMap = new HashMap<>();
-    PartialPath storageGroup = SchemaEngine().getBelongedStorageGroup(plan.getDevicePath());
+    PartialPath storageGroup = SchemaProcessor().getBelongedStorageGroup(plan.getDevicePath());
     for (int i = 0; i < plan.getRowPlans().length; i++) {
       InsertRowPlan p = plan.getRowPlans()[i];
       PartitionGroup group = partitionTable.route(storageGroup.getFullPath(), p.getTime());

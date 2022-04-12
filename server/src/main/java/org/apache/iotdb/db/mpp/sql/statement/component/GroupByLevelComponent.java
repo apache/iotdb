@@ -19,7 +19,10 @@
 
 package org.apache.iotdb.db.mpp.sql.statement.component;
 
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.ColumnHeader;
 import org.apache.iotdb.db.mpp.sql.statement.StatementNode;
+
+import java.util.Map;
 
 /** This class maintains information of {@code GROUP BY LEVEL} clause. */
 public class GroupByLevelComponent extends StatementNode {
@@ -41,5 +44,13 @@ public class GroupByLevelComponent extends StatementNode {
 
   public GroupByLevelController getGroupByLevelController() {
     return groupByLevelController;
+  }
+
+  public Map<String, String> getGroupedPathMap() {
+    return groupByLevelController.getGroupedPathMap();
+  }
+
+  public Map<ColumnHeader, ColumnHeader> getGroupedHeaderMap() {
+    return groupByLevelController.getGroupedHeaderMap();
   }
 }

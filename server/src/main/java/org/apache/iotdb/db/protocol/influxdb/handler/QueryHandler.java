@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.protocol.influxdb.handler;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -43,6 +44,7 @@ import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
@@ -51,7 +53,6 @@ import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSQueryResultRsp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -878,7 +879,7 @@ public class QueryHandler {
     try {
       QueryPlan queryPlan =
           (QueryPlan) serviceProvider.getPlanner().parseSQLToPhysicalPlan(realQuerySql);
-      TSStatus tsStatus = serviceProvider.checkAuthority(queryPlan, sessionId);
+      TSStatus tsStatus = SessionManager.getInstance().checkAuthority(queryPlan, sessionId);
       if (tsStatus != null) {
         throw new AuthException(tsStatus.getMessage());
       }

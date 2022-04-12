@@ -48,6 +48,8 @@ import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.wal.WALManager;
+import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.rpc.TConfigurationConst;
 import org.apache.iotdb.rpc.TSocketWrapper;
@@ -135,6 +137,9 @@ public class EnvironmentUtils {
       }
     }
 
+    // clean wal manager
+    WALManager.getInstance().clear();
+
     // clean storage group manager
     if (!StorageEngine.getInstance().deleteAll()) {
       logger.error("Can't close the storage group manager in EnvironmentUtils");
@@ -153,7 +158,7 @@ public class EnvironmentUtils {
       BloomFilterCache.getInstance().clear();
     }
     // close metadata
-    IoTDB.schemaEngine.clear();
+    IoTDB.configManager.clear();
 
     QueryTimeManager.getInstance().clear();
 
@@ -239,8 +244,6 @@ public class EnvironmentUtils {
     }
     // delete system info
     cleanDir(config.getSystemDir());
-    // delete wal
-    cleanDir(config.getWalDir());
     // delete query
     cleanDir(config.getQueryDir());
     // delete tracing
@@ -249,6 +252,12 @@ public class EnvironmentUtils {
     cleanDir(config.getUdfDir());
     // delete tlog
     cleanDir(config.getTriggerDir());
+    // delete mqtt dir
+    cleanDir(config.getMqttDir());
+    // delete wal
+    for (String walDir : config.getWalDirs()) {
+      cleanDir(walDir);
+    }
     // delete data files
     for (String dataDir : config.getDataDirs()) {
       cleanDir(dataDir);
@@ -262,10 +271,13 @@ public class EnvironmentUtils {
   /** disable memory control</br> this function should be called before all code in the setup */
   public static void envSetUp() {
     logger.debug("EnvironmentUtil setup...");
-    IoTDBDescriptor.getInstance().getConfig().setThriftServerAwaitTimeForStopService(60);
+    config.setThriftServerAwaitTimeForStopService(60);
     // we do not start 9091 port in test.
     MetricConfigDescriptor.getInstance().getMetricConfig().setEnableMetric(false);
-    IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(Integer.MAX_VALUE);
+    config.setAvgSeriesPointNumberThreshold(Integer.MAX_VALUE);
+    // use async wal mode in test
+    config.setWalMode(WALMode.ASYNC);
+    config.setAvgSeriesPointNumberThreshold(Integer.MAX_VALUE);
     if (daemon == null) {
       daemon = new IoTDB();
     }
@@ -314,9 +326,10 @@ public class EnvironmentUtils {
   public static void restartDaemon() throws Exception {
     shutdownDaemon();
     stopDaemon();
-    IoTDB.schemaEngine.clear();
+    IoTDB.configManager.clear();
     IDTableManager.getInstance().clear();
     TsFileResourceManager.getInstance().clear();
+    WALManager.getInstance().clear();
     reactiveDaemon();
   }
 
@@ -334,11 +347,13 @@ public class EnvironmentUtils {
     // create sg dir
     String sgDir = FilePathUtils.regularizePath(config.getSystemDir()) + "storage_groups";
     createDir(sgDir);
-    // create wal
-    createDir(config.getWalDir());
     // create query
     createDir(config.getQueryDir());
     createDir(TestConstant.OUTPUT_DATA_DIR);
+    // create wal
+    for (String walDir : config.getWalDirs()) {
+      createDir(walDir);
+    }
     // create data
     for (String dataDir : config.getDataDirs()) {
       createDir(dataDir);

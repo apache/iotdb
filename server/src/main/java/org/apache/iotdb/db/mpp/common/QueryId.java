@@ -18,6 +18,10 @@
  */
 package org.apache.iotdb.db.mpp.common;
 
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -29,6 +33,9 @@ public class QueryId {
 
   private final String id;
 
+  private int nextPlanNodeIndex;
+  private int nextPlanFragmentIndex;
+
   public static QueryId valueOf(String queryId) {
     // ID is verified in the constructor
     return new QueryId(queryId);
@@ -36,6 +43,16 @@ public class QueryId {
 
   public QueryId(String id) {
     this.id = validateId(id);
+    this.nextPlanNodeIndex = 0;
+    this.nextPlanFragmentIndex = 0;
+  }
+
+  public PlanNodeId genPlanNodeId() {
+    return new PlanNodeId(String.format("%s_%d", id, nextPlanNodeIndex++));
+  }
+
+  public PlanFragmentId genPlanFragmentId() {
+    return new PlanFragmentId(this, nextPlanFragmentIndex++);
   }
 
   public String getId() {
@@ -109,5 +126,13 @@ public class QueryId {
     checkArgument(!id.isEmpty(), "id is empty");
     checkArgument(isValidId(id), "Invalid id %s", id);
     return id;
+  }
+
+  public static QueryId deserialize(ByteBuffer byteBuffer) {
+    return new QueryId(ReadWriteIOUtils.readString(byteBuffer));
+  }
+
+  public void serialize(ByteBuffer byteBuffer) {
+    ReadWriteIOUtils.write(id, byteBuffer);
   }
 }

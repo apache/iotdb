@@ -139,6 +139,18 @@ public class IoTDBThreadPoolFactory {
         poolName);
   }
 
+  public static ExecutorService newCachedThreadPool(String poolName, int maximumPoolSize) {
+    logger.info(NEW_CACHED_THREAD_POOL_LOGGER_FORMAT, poolName);
+    return new WrappedThreadPoolExecutor(
+        0,
+        maximumPoolSize,
+        60L,
+        TimeUnit.SECONDS,
+        new LinkedBlockingQueue<>(),
+        new IoTThreadFactory(poolName),
+        poolName);
+  }
+
   public static ExecutorService newCachedThreadPool(
       String poolName, Thread.UncaughtExceptionHandler handler) {
     logger.info(NEW_CACHED_THREAD_POOL_LOGGER_FORMAT, poolName);

@@ -18,11 +18,115 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan;
 
+import org.apache.iotdb.commons.partition.RegionReplicaSet;
+import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SourceNode;
 
-// TODO: consider whether it is necessary to make PlanFragment as a TreeNode
+import java.nio.ByteBuffer;
+import java.util.Objects;
+
 /** PlanFragment contains a sub-query of distributed query. */
 public class PlanFragment {
+  // TODO once you add field for this class you need to change the serialize and deserialize methods
   private PlanFragmentId id;
   private PlanNode root;
+
+  public PlanFragment(PlanFragmentId id, PlanNode root) {
+    this.id = id;
+    this.root = root;
+  }
+
+  public PlanFragmentId getId() {
+    return id;
+  }
+
+  public PlanNode getRoot() {
+    return root;
+  }
+
+  public void setRoot(PlanNode root) {
+    this.root = root;
+  }
+
+  public String toString() {
+    return String.format("PlanFragment-%s", getId());
+  }
+
+  // Every Fragment should only run in DataRegion.
+  // But it can select any one of the Endpoint of the target DataRegion
+  // In current version, one PlanFragment should contain at least one SourceNode,
+  // and the DataRegions of all SourceNodes should be same in one PlanFragment.
+  // So we can use the DataRegion of one SourceNode as the PlanFragment's DataRegion.
+  public RegionReplicaSet getTargetDataRegion() {
+    return getNodeDataRegion(root);
+  }
+
+  private RegionReplicaSet getNodeDataRegion(PlanNode root) {
+    if (root instanceof SourceNode) {
+      return ((SourceNode) root).getDataRegionReplicaSet();
+    }
+    for (PlanNode child : root.getChildren()) {
+      RegionReplicaSet result = getNodeDataRegion(child);
+      if (result != null) {
+        return result;
+      }
+    }
+    return null;
+  }
+
+  public PlanNode getPlanNodeById(PlanNodeId nodeId) {
+    return getPlanNodeById(root, nodeId);
+  }
+
+  private PlanNode getPlanNodeById(PlanNode root, PlanNodeId nodeId) {
+    if (root.getPlanNodeId().equals(nodeId)) {
+      return root;
+    }
+    for (PlanNode child : root.getChildren()) {
+      PlanNode node = getPlanNodeById(child, nodeId);
+      if (node != null) {
+        return node;
+      }
+    }
+    return null;
+  }
+
+  public void serialize(ByteBuffer byteBuffer) {
+    id.serialize(byteBuffer);
+    root.serialize(byteBuffer);
+  }
+
+  public static PlanFragment deserialize(ByteBuffer byteBuffer) {
+    return new PlanFragment(PlanFragmentId.deserialize(byteBuffer), deserializeHelper(byteBuffer));
+  }
+
+  // deserialize the plan node recursively
+  public static PlanNode deserializeHelper(ByteBuffer byteBuffer) {
+    PlanNode root = PlanNodeType.deserialize(byteBuffer);
+    int childrenCount = byteBuffer.getInt();
+    for (int i = 0; i < childrenCount; i++) {
+      root.addChild(deserializeHelper(byteBuffer));
+    }
+    return root;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    PlanFragment that = (PlanFragment) o;
+    return Objects.equals(id, that.id) && Objects.equals(root, that.root);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(id, root);
+  }
 }

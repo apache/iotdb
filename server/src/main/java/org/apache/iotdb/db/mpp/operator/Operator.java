@@ -18,13 +18,16 @@
  */
 package org.apache.iotdb.db.mpp.operator;
 
-import org.apache.iotdb.db.mpp.common.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import com.google.common.util.concurrent.ListenableFuture;
+
+import java.io.IOException;
 
 import static com.google.common.util.concurrent.Futures.immediateVoidFuture;
 
 public interface Operator extends AutoCloseable {
+
   ListenableFuture<Void> NOT_BLOCKED = immediateVoidFuture();
 
   OperatorContext getOperatorContext();
@@ -46,4 +49,9 @@ public interface Operator extends AutoCloseable {
   /** This method will always be called before releasing the Operator reference. */
   @Override
   default void close() throws Exception {}
+
+  /**
+   * Is this operator completely finished processing and no more output TsBlock will be produced.
+   */
+  boolean isFinished() throws IOException;
 }

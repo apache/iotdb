@@ -19,16 +19,15 @@
 package org.apache.iotdb.db.metadata.template;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.metadata.DuplicatedTemplateException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.metadata.UndefinedTemplateException;
+import org.apache.iotdb.db.exception.metadata.template.DuplicatedTemplateException;
+import org.apache.iotdb.db.exception.metadata.template.UndefinedTemplateException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
-import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
@@ -42,7 +41,10 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -54,6 +56,11 @@ public class TemplateManager {
 
   // template name -> template
   private Map<String, Template> templateMap = new ConcurrentHashMap<>();
+
+  // hash the name of template to record it as fixed length in schema file
+  private Map<Integer, String> templateHashMap = new ConcurrentHashMap<>();
+
+  private final Map<String, Set<Template>> templateUsageInStorageGroup = new ConcurrentHashMap<>();
 
   private TemplateLogWriter logWriter;
 
@@ -72,28 +79,30 @@ public class TemplateManager {
     return TemplateManagerHolder.INSTANCE;
   }
 
-  @TestOnly
-  public static TemplateManager getNewInstanceForTest() {
-    return new TemplateManager();
-  }
-
   private TemplateManager() {}
 
   public void init() throws IOException {
     isRecover = true;
+    recoverFromTemplateFile();
     logWriter =
         new TemplateLogWriter(
             IoTDBDescriptor.getInstance().getConfig().getSchemaDir(),
             MetadataConstant.TEMPLATE_FILE);
-    recoverFromTemplateFile();
     isRecover = false;
   }
 
   private void recoverFromTemplateFile() throws IOException {
+    File logFile =
+        new File(
+            IoTDBDescriptor.getInstance().getConfig().getSchemaDir(),
+            MetadataConstant.TEMPLATE_FILE);
+    if (!logFile.exists()) {
+      return;
+    }
     try (TemplateLogReader reader =
         new TemplateLogReader(
             IoTDBDescriptor.getInstance().getConfig().getSchemaDir(),
-            MetadataConstant.TEMPLATE_FILE); ) {
+            MetadataConstant.TEMPLATE_FILE)) {
       PhysicalPlan plan;
       int idx = 0;
       while (reader.hasNext()) {
@@ -161,6 +170,8 @@ public class TemplateManager {
       throw new MetadataException("Duplicated template name: " + plan.getName());
     }
 
+    addToHashMap(template);
+
     try {
       if (!isRecover) {
         logWriter.createSchemaTemplate(plan);
@@ -170,7 +181,36 @@ public class TemplateManager {
     }
   }
 
+  /**
+   * Calculate and store the unique hash code of all existed template. <br>
+   * Collision will be solved by increment now. <br>
+   * 0 is the exceptional value for null template.
+   *
+   * @param template the template to be hashed and added
+   */
+  private void addToHashMap(Template template) {
+    if (templateHashMap.size() >= Integer.MAX_VALUE - 1) {
+      logger.error("Too many templates have been registered.");
+      return;
+    }
+
+    while (templateHashMap.containsKey(template.hashCode())) {
+      if (template.hashCode() == Integer.MAX_VALUE) {
+        template.setRehash(Integer.MIN_VALUE);
+      }
+
+      if (template.hashCode() == 0) {
+        template.setRehash(1);
+      }
+
+      template.setRehash(template.hashCode() + 1);
+    }
+
+    templateHashMap.put(template.hashCode(), template.getName());
+  }
+
   public void dropSchemaTemplate(DropTemplatePlan plan) throws MetadataException {
+    templateHashMap.remove(templateMap.get(plan.getName()).hashCode());
     templateMap.remove(plan.getName());
 
     try {
@@ -249,10 +289,18 @@ public class TemplateManager {
     return template;
   }
 
+  public Template getTemplateFromHash(int hashcode) throws MetadataException {
+    if (!templateHashMap.containsKey(hashcode)) {
+      throw new MetadataException("Invalid hash code for schema template: " + hashcode);
+    }
+    return getTemplate(templateHashMap.get(hashcode));
+  }
+
   public void setTemplateMap(Map<String, Template> templateMap) {
     this.templateMap.clear();
     for (Map.Entry<String, Template> templateEntry : templateMap.entrySet()) {
       this.templateMap.put(templateEntry.getKey(), templateEntry.getValue());
+      this.addToHashMap(templateEntry.getValue());
     }
   }
 
@@ -264,24 +312,12 @@ public class TemplateManager {
     return templateMap.keySet();
   }
 
-  public void checkTemplateCompatible(Template template, IMNode node) throws MetadataException {
+  public void checkIsTemplateCompatible(Template template, IMNode node) throws MetadataException {
     if (node.getSchemaTemplate() != null) {
       if (node.getSchemaTemplate().equals(template)) {
         throw new DuplicatedTemplateException(template.getName());
       } else {
         throw new MetadataException("Specified node already has template");
-      }
-    }
-
-    // check overlap
-    for (String measurementPath : template.getSchemaMap().keySet()) {
-      String directNodeName = MetaUtils.splitPathToDetachedPath(measurementPath)[0];
-      if (node.hasChild(directNodeName)) {
-        throw new MetadataException(
-            "Node name "
-                + directNodeName
-                + " in template has conflict with node's child "
-                + (node.getFullPath() + "." + directNodeName));
       }
     }
 
@@ -299,8 +335,48 @@ public class TemplateManager {
     }
   }
 
+  public void markSchemaRegion(
+      Template template, String storageGroup, SchemaRegionId schemaRegionId) {
+    synchronized (templateUsageInStorageGroup) {
+      if (!templateUsageInStorageGroup.containsKey(storageGroup)) {
+        templateUsageInStorageGroup.putIfAbsent(
+            storageGroup, Collections.synchronizedSet(new HashSet<>()));
+      }
+    }
+    templateUsageInStorageGroup.get(storageGroup).add(template);
+    template.markSchemaRegion(storageGroup, schemaRegionId);
+  }
+
+  public void unmarkSchemaRegion(
+      Template template, String storageGroup, SchemaRegionId schemaRegionId) {
+    Set<Template> usageInStorageGroup = templateUsageInStorageGroup.get(storageGroup);
+    usageInStorageGroup.remove(template);
+    synchronized (templateUsageInStorageGroup) {
+      if (usageInStorageGroup.isEmpty()) {
+        templateUsageInStorageGroup.remove(storageGroup);
+      }
+    }
+    template.unmarkSchemaRegion(storageGroup, schemaRegionId);
+  }
+
+  public void unmarkStorageGroup(Template template, String storageGroup) {
+    synchronized (templateUsageInStorageGroup) {
+      templateUsageInStorageGroup.remove(storageGroup);
+    }
+    template.unmarkStorageGroup(storageGroup);
+  }
+
+  public void forceLog() {
+    try {
+      logWriter.force();
+    } catch (IOException e) {
+      logger.error("Cannot force template log", e);
+    }
+  }
+
   public void clear() throws IOException {
     templateMap.clear();
+    templateUsageInStorageGroup.clear();
     if (logWriter != null) {
       logWriter.close();
     }

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.sql.statement.crud;
 
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.sql.statement.component.SelectComponent;
 import org.apache.iotdb.db.query.expression.Expression;
@@ -48,7 +49,7 @@ public class UDAFQueryStatement extends QueryStatement {
   public void selfCheck() {
     super.selfCheck();
 
-    if (!DisableAlign()) {
+    if (!disableAlign()) {
       throw new SemanticException("AGGREGATION doesn't support disable align clause.");
     }
     checkSelectComponent(selectComponent);
@@ -75,7 +76,7 @@ public class UDAFQueryStatement extends QueryStatement {
           "Common queries and aggregated queries are not allowed to appear at the same time.");
     }
     // Currently, the aggregation function expression can only contain a timeseries operand.
-    if (expression.isPlainAggregationFunctionExpression()) {
+    if (expression.isBuiltInAggregationFunctionExpression()) {
       if (expression.getExpressions().size() == 1
           && expression.getExpressions().get(0) instanceof TimeSeriesOperand) {
         return;
@@ -87,5 +88,9 @@ public class UDAFQueryStatement extends QueryStatement {
     for (Expression childExp : expression.getExpressions()) {
       checkEachExpression(childExp);
     }
+  }
+
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitUDAFQuery(this, context);
   }
 }

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.compaction.inner;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
+import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
@@ -48,8 +49,9 @@ public abstract class AbstractInnerSpaceCompactionTask extends AbstractCompactio
       long timePartition,
       AtomicInteger currentTaskNum,
       boolean sequence,
-      List<TsFileResource> selectedTsFileResourceList) {
-    super(storageGroupName, timePartition, currentTaskNum);
+      List<TsFileResource> selectedTsFileResourceList,
+      TsFileManager tsFileManager) {
+    super(storageGroupName, timePartition, tsFileManager, currentTaskNum);
     this.selectedTsFileResourceList = selectedTsFileResourceList;
     this.sequence = sequence;
     collectSelectedFilesInfo();
@@ -115,6 +117,10 @@ public abstract class AbstractInnerSpaceCompactionTask extends AbstractCompactio
 
   @Override
   public boolean checkValidAndSetMerging() {
+    if (!tsFileManager.isAllowCompaction()) {
+      return false;
+    }
+
     for (TsFileResource resource : selectedTsFileResourceList) {
       if (resource.isCompacting() | !resource.isClosed() || !resource.getTsFile().exists()) {
         return false;
@@ -140,6 +146,11 @@ public abstract class AbstractInnerSpaceCompactionTask extends AbstractCompactio
         .append(", total compaction count is ")
         .append(sumOfCompactionCount)
         .toString();
+  }
+
+  @Override
+  public int hashCode() {
+    return toString().hashCode();
   }
 
   @Override

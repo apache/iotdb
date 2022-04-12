@@ -19,8 +19,9 @@
 package org.apache.iotdb.db.metadata.mtree.traverser.collector;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.SchemaEngine.StorageGroupFilter;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor.StorageGroupFilter;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 
 import java.util.HashSet;
@@ -42,8 +43,9 @@ public abstract class MNodeCollector<T> extends CollectorTraverser<T> {
 
   private Set<IMNode> processedNodes = new HashSet<>();
 
-  public MNodeCollector(IMNode startNode, PartialPath path) throws MetadataException {
-    super(startNode, path);
+  public MNodeCollector(IMNode startNode, PartialPath path, IMTreeStore store)
+      throws MetadataException {
+    super(startNode, path, store);
   }
 
   @Override

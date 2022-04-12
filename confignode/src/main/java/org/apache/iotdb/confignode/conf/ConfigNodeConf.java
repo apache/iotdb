@@ -18,10 +18,12 @@
  */
 package org.apache.iotdb.confignode.conf;
 
+import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.rpc.RpcUtils;
 
 import java.io.File;
+import java.util.Collections;
 
 public class ConfigNodeConf {
 
@@ -31,17 +33,25 @@ public class ConfigNodeConf {
   /** used for communication between data node and config node */
   private int rpcPort = 22277;
 
-  /** used for communication between data node and data node */
+  /** used for communication between config node and config node */
   private int internalPort = 22278;
 
-  /** every node should have the same config_node_address_lists */
-  private String addressLists;
+  /** ConfigNode consensus protocol */
+  private String configNodeConsensusProtocolClass =
+      "org.apache.iotdb.consensus.ratis.RatisConsensus";
 
-  /** Number of DeviceGroups per StorageGroup */
-  private int deviceGroupCount = 10000;
+  private String dataNodeConsensusProtocolClass = "org.apache.iotdb.consensus.ratis.RatisConsensus";
 
-  /** DeviceGroup hash executor class */
-  private String deviceGroupHashExecutorClass = "org.apache.iotdb.commons.hash.BKDRHashExecutor";
+  /** Used for building the ConfigNode consensus group */
+  private Endpoint[] configNodeGroupAddressList =
+      Collections.singletonList(new Endpoint("0.0.0.0", 22278)).toArray(new Endpoint[0]);
+
+  /** Number of SeriesPartitionSlots per StorageGroup */
+  private int seriesPartitionSlotNum = 10000;
+
+  /** SeriesPartitionSlot executor class */
+  private String seriesPartitionExecutorClass =
+      "org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor";
 
   /** Max concurrent client number */
   private int rpcMaxConcurrentClientNum = 65535;
@@ -70,24 +80,56 @@ public class ConfigNodeConf {
     ConfigNodeConstant.DATA_DIR + File.separator + ConfigNodeConstant.DATA_DIR
   };
 
+  /** Consensus directory, storage consensus protocol logs */
+  private String consensusDir =
+      ConfigNodeConstant.DATA_DIR + File.separator + ConfigNodeConstant.CONSENSUS_FOLDER;
+
+  private int regionReplicaCount = 3;
+  private int schemaRegionCount = 1;
+  private int dataRegionCount = 1;
+
   public ConfigNodeConf() {
     // empty constructor
   }
 
-  public int getDeviceGroupCount() {
-    return deviceGroupCount;
+  public void updatePath() {
+    formulateFolders();
   }
 
-  public void setDeviceGroupCount(int deviceGroupCount) {
-    this.deviceGroupCount = deviceGroupCount;
+  private void formulateFolders() {
+    systemDir = addHomeDir(systemDir);
+    for (int i = 0; i < dataDirs.length; i++) {
+      dataDirs[i] = addHomeDir(dataDirs[i]);
+    }
+    consensusDir = addHomeDir(consensusDir);
   }
 
-  public String getDeviceGroupHashExecutorClass() {
-    return deviceGroupHashExecutorClass;
+  private String addHomeDir(String dir) {
+    String homeDir = System.getProperty(ConfigNodeConstant.CONFIGNODE_HOME, null);
+    if (!new File(dir).isAbsolute() && homeDir != null && homeDir.length() > 0) {
+      if (!homeDir.endsWith(File.separator)) {
+        dir = homeDir + File.separatorChar + dir;
+      } else {
+        dir = homeDir + dir;
+      }
+    }
+    return dir;
   }
 
-  public void setDeviceGroupHashExecutorClass(String deviceGroupHashExecutorClass) {
-    this.deviceGroupHashExecutorClass = deviceGroupHashExecutorClass;
+  public int getSeriesPartitionSlotNum() {
+    return seriesPartitionSlotNum;
+  }
+
+  public void setSeriesPartitionSlotNum(int seriesPartitionSlotNum) {
+    this.seriesPartitionSlotNum = seriesPartitionSlotNum;
+  }
+
+  public String getSeriesPartitionExecutorClass() {
+    return seriesPartitionExecutorClass;
+  }
+
+  public void setSeriesPartitionExecutorClass(String seriesPartitionExecutorClass) {
+    this.seriesPartitionExecutorClass = seriesPartitionExecutorClass;
   }
 
   public int getRpcMaxConcurrentClientNum() {
@@ -154,12 +196,36 @@ public class ConfigNodeConf {
     this.internalPort = internalPort;
   }
 
-  public String getAddressLists() {
-    return addressLists;
+  public String getConsensusDir() {
+    return consensusDir;
   }
 
-  public void setAddressLists(String addressLists) {
-    this.addressLists = addressLists;
+  public void setConsensusDir(String consensusDir) {
+    this.consensusDir = consensusDir;
+  }
+
+  public String getConfigNodeConsensusProtocolClass() {
+    return configNodeConsensusProtocolClass;
+  }
+
+  public void setConfigNodeConsensusProtocolClass(String configNodeConsensusProtocolClass) {
+    this.configNodeConsensusProtocolClass = configNodeConsensusProtocolClass;
+  }
+
+  public String getDataNodeConsensusProtocolClass() {
+    return dataNodeConsensusProtocolClass;
+  }
+
+  public void setDataNodeConsensusProtocolClass(String dataNodeConsensusProtocolClass) {
+    this.dataNodeConsensusProtocolClass = dataNodeConsensusProtocolClass;
+  }
+
+  public Endpoint[] getConfigNodeGroupAddressList() {
+    return configNodeGroupAddressList;
+  }
+
+  public void setConfigNodeGroupAddressList(Endpoint[] configNodeGroupAddressList) {
+    this.configNodeGroupAddressList = configNodeGroupAddressList;
   }
 
   public int getThriftServerAwaitTimeForStopService() {
@@ -184,5 +250,29 @@ public class ConfigNodeConf {
 
   public void setDataDirs(String[] dataDirs) {
     this.dataDirs = dataDirs;
+  }
+
+  public int getRegionReplicaCount() {
+    return regionReplicaCount;
+  }
+
+  public void setDataRegionCount(int dataRegionCount) {
+    this.dataRegionCount = dataRegionCount;
+  }
+
+  public int getSchemaRegionCount() {
+    return schemaRegionCount;
+  }
+
+  public void setSchemaRegionCount(int schemaRegionCount) {
+    this.schemaRegionCount = schemaRegionCount;
+  }
+
+  public int getDataRegionCount() {
+    return dataRegionCount;
+  }
+
+  public void setRegionReplicaCount(int regionReplicaCount) {
+    this.regionReplicaCount = regionReplicaCount;
   }
 }

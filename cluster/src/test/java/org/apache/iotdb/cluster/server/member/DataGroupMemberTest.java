@@ -64,8 +64,8 @@ import org.apache.iotdb.cluster.utils.Constants;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.Deletion;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.TriggerExecutionException;
 import org.apache.iotdb.db.exception.WriteProcessException;
@@ -502,7 +502,7 @@ public class DataGroupMemberTest extends BaseMember {
     snapshot.addFile(tsFileResource, TestUtils.getNode(0), true);
 
     // create a local resource1
-    VirtualStorageGroupProcessor processor;
+    DataRegion processor;
     while (true) {
       try {
         processor =
@@ -530,7 +530,7 @@ public class DataGroupMemberTest extends BaseMember {
     processor.insert(insertPlan);
 
     snapshot.getDefaultInstaller(dataGroupMember).install(snapshot, 0, false);
-    assertEquals(2, processor.getSequenceFileTreeSet().size());
+    assertEquals(2, processor.getSequenceFileList().size());
     assertEquals(1, processor.getUnSequenceFileList().size());
     Deletion deletion = new Deletion(new PartialPath(TestUtils.getTestSg(0)), 0, 0);
     assertTrue(
@@ -605,7 +605,7 @@ public class DataGroupMemberTest extends BaseMember {
             Collections.emptyMap(),
             null);
     assertEquals(200, dataGroupMember.executeNonQueryPlan(createTimeSeriesPlan).code);
-    assertTrue(IoTDB.schemaEngine.isPathExist(new PartialPath(timeseriesSchema.getFullPath())));
+    assertTrue(IoTDB.schemaProcessor.isPathExist(new PartialPath(timeseriesSchema.getFullPath())));
   }
 
   @Test
@@ -634,7 +634,7 @@ public class DataGroupMemberTest extends BaseMember {
             partitionTable.getPartitionGroup(new RaftNode(TestUtils.getNode(0), 0)),
             dataGroupMember));
     assertEquals(200, dataGroupMember.executeNonQueryPlan(createTimeSeriesPlan).code);
-    assertTrue(IoTDB.schemaEngine.isPathExist(new PartialPath(timeseriesSchema.getFullPath())));
+    assertTrue(IoTDB.schemaProcessor.isPathExist(new PartialPath(timeseriesSchema.getFullPath())));
     testThreadPool.shutdownNow();
   }
 

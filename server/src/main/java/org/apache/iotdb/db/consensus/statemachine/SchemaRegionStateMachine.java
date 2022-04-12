@@ -19,10 +19,11 @@
 
 package org.apache.iotdb.db.consensus.statemachine;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.consensus.common.DataSet;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.metadata.schemaregion.SchemaRegion;
+import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,6 +32,12 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
 
   private static final Logger logger = LoggerFactory.getLogger(SchemaRegionStateMachine.class);
 
+  private final SchemaRegion region;
+
+  public SchemaRegionStateMachine(SchemaRegion region) {
+    this.region = region;
+  }
+
   @Override
   public void start() {}
 
@@ -38,14 +45,14 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
   public void stop() {}
 
   @Override
-  protected TSStatus write(PhysicalPlan plan) {
-    logger.info("Execute write plan in SchemaRegionStateMachine : {}", plan);
+  protected TSStatus write(FragmentInstance fragmentInstance) {
+    logger.info("Execute write plan in SchemaRegionStateMachine");
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   @Override
-  protected DataSet read(PhysicalPlan plan) {
-    logger.info("Execute read plan in SchemaRegionStateMachine: {}", plan);
+  protected DataSet read(FragmentInstance fragmentInstance) {
+    logger.info("Execute read plan in SchemaRegionStateMachine");
     return null;
   }
 }

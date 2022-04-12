@@ -25,10 +25,9 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.io.LocalTextModificationAccessor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -82,9 +81,9 @@ public class DeletionFileNodeTest {
   public void setup() throws MetadataException {
     EnvironmentUtils.envSetUp();
 
-    IoTDB.schemaEngine.setStorageGroup(new PartialPath(processorName));
+    IoTDB.schemaProcessor.setStorageGroup(new PartialPath(processorName));
     for (int i = 0; i < 10; i++) {
-      IoTDB.schemaEngine.createTimeseries(
+      IoTDB.schemaProcessor.createTimeseries(
           new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[i]),
           dataType,
           encoding,
@@ -124,14 +123,16 @@ public class DeletionFileNodeTest {
 
   @Test
   public void testDeleteWithTimePartitionFilter()
-      throws IllegalPathException, StorageEngineException, QueryProcessException, IOException {
+      throws StorageEngineException, QueryProcessException, IOException {
     boolean prevEnablePartition = StorageEngine.isEnablePartition();
     long prevPartitionInterval = StorageEngine.getTimePartitionInterval();
     int prevConcurrentTimePartition =
         IoTDBDescriptor.getInstance().getConfig().getConcurrentWritingTimePartition();
+    int prevWalBufferSize = IoTDBDescriptor.getInstance().getConfig().getWalBufferSize();
     try {
       StorageEngine.setEnablePartition(true);
       IoTDBDescriptor.getInstance().getConfig().setConcurrentWritingTimePartition(10);
+      IoTDBDescriptor.getInstance().getConfig().setWalBufferSize(16 * 1024);
       long newPartitionInterval = 100;
       StorageEngine.setTimePartitionInterval(newPartitionInterval);
       // generate 10 time partitions
@@ -157,6 +158,7 @@ public class DeletionFileNodeTest {
       IoTDBDescriptor.getInstance()
           .getConfig()
           .setConcurrentWritingTimePartition(prevConcurrentTimePartition);
+      IoTDBDescriptor.getInstance().getConfig().setWalBufferSize(prevWalBufferSize);
     }
   }
 
@@ -168,12 +170,11 @@ public class DeletionFileNodeTest {
                 processorName + TsFileConstant.PATH_SEPARATOR + measurements[measurementIdx]),
             null);
 
-    Pair<List<VirtualStorageGroupProcessor>, Map<VirtualStorageGroupProcessor, List<PartialPath>>>
-        lockListAndProcessorToSeriesMapPair =
-            StorageEngine.getInstance()
-                .mergeLock(Collections.singletonList((PartialPath) expression.getSeriesPath()));
-    List<VirtualStorageGroupProcessor> lockList = lockListAndProcessorToSeriesMapPair.left;
-    Map<VirtualStorageGroupProcessor, List<PartialPath>> processorToSeriesMap =
+    Pair<List<DataRegion>, Map<DataRegion, List<PartialPath>>> lockListAndProcessorToSeriesMapPair =
+        StorageEngine.getInstance()
+            .mergeLock(Collections.singletonList((PartialPath) expression.getSeriesPath()));
+    List<DataRegion> lockList = lockListAndProcessorToSeriesMapPair.left;
+    Map<DataRegion, List<PartialPath>> processorToSeriesMap =
         lockListAndProcessorToSeriesMapPair.right;
 
     try {
@@ -316,12 +317,11 @@ public class DeletionFileNodeTest {
                 processorName + TsFileConstant.PATH_SEPARATOR + measurements[5]),
             null);
 
-    Pair<List<VirtualStorageGroupProcessor>, Map<VirtualStorageGroupProcessor, List<PartialPath>>>
-        lockListAndProcessorToSeriesMapPair =
-            StorageEngine.getInstance()
-                .mergeLock(Collections.singletonList((PartialPath) expression.getSeriesPath()));
-    List<VirtualStorageGroupProcessor> lockList = lockListAndProcessorToSeriesMapPair.left;
-    Map<VirtualStorageGroupProcessor, List<PartialPath>> processorToSeriesMap =
+    Pair<List<DataRegion>, Map<DataRegion, List<PartialPath>>> lockListAndProcessorToSeriesMapPair =
+        StorageEngine.getInstance()
+            .mergeLock(Collections.singletonList((PartialPath) expression.getSeriesPath()));
+    List<DataRegion> lockList = lockListAndProcessorToSeriesMapPair.left;
+    Map<DataRegion, List<PartialPath>> processorToSeriesMap =
         lockListAndProcessorToSeriesMapPair.right;
 
     try {

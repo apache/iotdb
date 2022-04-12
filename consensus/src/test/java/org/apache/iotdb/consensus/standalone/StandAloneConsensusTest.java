@@ -19,11 +19,15 @@
 
 package org.apache.iotdb.consensus.standalone;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.consensus.PartitionRegionId;
+import org.apache.iotdb.commons.consensus.SchemaRegionId;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
-import org.apache.iotdb.consensus.common.ConsensusGroupId;
 import org.apache.iotdb.consensus.common.DataSet;
-import org.apache.iotdb.consensus.common.Endpoint;
-import org.apache.iotdb.consensus.common.GroupType;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
@@ -34,12 +38,12 @@ import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.consensus.exception.IllegalPeerNumException;
 import org.apache.iotdb.consensus.statemachine.EmptyStateMachine;
 import org.apache.iotdb.consensus.statemachine.IStateMachine;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.File;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collections;
@@ -52,13 +56,15 @@ import static org.junit.Assert.assertTrue;
 
 public class StandAloneConsensusTest {
 
+  private static final String STANDALONE_CONSENSUS_CLASS_NAME =
+      "org.apache.iotdb.consensus.standalone.StandAloneConsensus";
   private IConsensus consensusImpl;
   private final TestEntry entry1 = new TestEntry(0);
   private final ByteBufferConsensusRequest entry2 =
       new ByteBufferConsensusRequest(ByteBuffer.wrap(new byte[4]));
-  private final ConsensusGroupId dataRegionId = new ConsensusGroupId(GroupType.DataRegion, 0);
-  private final ConsensusGroupId schemaRegionId = new ConsensusGroupId(GroupType.SchemaRegion, 1);
-  private final ConsensusGroupId configId = new ConsensusGroupId(GroupType.Config, 2);
+  private final ConsensusGroupId dataRegionId = new DataRegionId(0);
+  private final ConsensusGroupId schemaRegionId = new SchemaRegionId(1);
+  private final ConsensusGroupId configId = new PartitionRegionId(2);
 
   private static class TestEntry implements IConsensusRequest {
 
@@ -108,16 +114,25 @@ public class StandAloneConsensusTest {
   @Before
   public void setUp() throws Exception {
     consensusImpl =
-        new StandAloneConsensus(
-            gid -> {
-              switch (gid.getType()) {
-                case SchemaRegion:
-                  return new TestStateMachine(true);
-                case DataRegion:
-                  return new TestStateMachine(false);
-              }
-              return new EmptyStateMachine();
-            });
+        ConsensusFactory.getConsensusImpl(
+                STANDALONE_CONSENSUS_CLASS_NAME,
+                new Endpoint("localhost", 6667),
+                new File("./"),
+                gid -> {
+                  switch (gid.getType()) {
+                    case SchemaRegion:
+                      return new TestStateMachine(true);
+                    case DataRegion:
+                      return new TestStateMachine(false);
+                  }
+                  return new EmptyStateMachine();
+                })
+            .orElseThrow(
+                () ->
+                    new IllegalArgumentException(
+                        String.format(
+                            ConsensusFactory.CONSTRUCT_FAILED_MSG,
+                            STANDALONE_CONSENSUS_CLASS_NAME)));
     consensusImpl.start();
   }
 

@@ -18,12 +18,49 @@
  */
 package org.apache.iotdb.db.mpp.common;
 
+import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
+
 /**
  * This class is used to record the context of a query including QueryId, query statement, session
  * info and so on
  */
 public class MPPQueryContext {
-  private String statement;
+  private String sql;
   private QueryId queryId;
-  private QuerySession session;
+  private SessionInfo session;
+  private QueryType queryType;
+
+  private Endpoint hostEndpoint;
+  private ResultNodeContext resultNodeContext;
+
+  public MPPQueryContext(QueryId queryId) {
+    this.queryId = queryId;
+  }
+
+  public MPPQueryContext(
+      String sql, QueryId queryId, SessionInfo session, QueryType type, Endpoint hostEndpoint) {
+    this.sql = sql;
+    this.queryId = queryId;
+    this.session = session;
+    this.queryType = type;
+    this.hostEndpoint = hostEndpoint;
+    this.resultNodeContext = new ResultNodeContext(queryId);
+  }
+
+  public QueryId getQueryId() {
+    return queryId;
+  }
+
+  public QueryType getQueryType() {
+    return queryType;
+  }
+
+  public Endpoint getHostEndpoint() {
+    return hostEndpoint;
+  }
+
+  public ResultNodeContext getResultNodeContext() {
+    return resultNodeContext;
+  }
 }

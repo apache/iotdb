@@ -18,51 +18,94 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
+import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.mpp.sql.planner.plan.IOutputPlanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.ColumnHeader;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import com.google.common.collect.ImmutableList;
+
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * OffsetNode is used to skip top n result from upstream nodes. It uses the default order of
  * upstream nodes
  */
-public class OffsetNode extends ProcessNode {
+public class OffsetNode extends ProcessNode implements IOutputPlanNode {
 
   // The limit count
-  private final PlanNode child;
+  private PlanNode child;
   private final int offset;
 
-  public OffsetNode(PlanNodeId id, PlanNode child, int offset) {
+  public OffsetNode(PlanNodeId id, int offset) {
     super(id);
-    this.child = child;
     this.offset = offset;
+  }
+
+  public OffsetNode(PlanNodeId id, PlanNode child, int offset) {
+    this(id, offset);
+    this.child = child;
   }
 
   @Override
   public List<PlanNode> getChildren() {
-    return null;
+    return ImmutableList.of(child);
+  }
+
+  @Override
+  public void addChild(PlanNode child) {
+    this.child = child;
   }
 
   @Override
   public PlanNode clone() {
-    return null;
+    return new OffsetNode(getPlanNodeId(), offset);
   }
 
   @Override
-  public PlanNode cloneWithChildren(List<PlanNode> children) {
-    return null;
+  public int allowedChildCount() {
+    return ONE_CHILD;
+  }
+
+  @Override
+  public List<ColumnHeader> getOutputColumnHeaders() {
+    return ((IOutputPlanNode) child).getOutputColumnHeaders();
   }
 
   @Override
   public List<String> getOutputColumnNames() {
-    return null;
+    return ((IOutputPlanNode) child).getOutputColumnNames();
+  }
+
+  @Override
+  public List<TSDataType> getOutputColumnTypes() {
+    return ((IOutputPlanNode) child).getOutputColumnTypes();
   }
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
     return visitor.visitOffset(this, context);
+  }
+
+  @Override
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    PlanNodeType.OFFSET.serialize(byteBuffer);
+    ReadWriteIOUtils.write(offset, byteBuffer);
+  }
+
+  public static OffsetNode deserialize(ByteBuffer byteBuffer) {
+    int offset = ReadWriteIOUtils.readInt(byteBuffer);
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+    return new OffsetNode(planNodeId, offset);
   }
 
   public PlanNode getChild() {
@@ -71,5 +114,32 @@ public class OffsetNode extends ProcessNode {
 
   public int getOffset() {
     return offset;
+  }
+
+  @TestOnly
+  public Pair<String, List<String>> print() {
+    String title = String.format("[OffsetNode (%s)]", this.getPlanNodeId());
+    List<String> attributes = new ArrayList<>();
+    attributes.add("RowOffset: " + this.getOffset());
+    return new Pair<>(title, attributes);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+
+    OffsetNode that = (OffsetNode) o;
+    return offset == that.offset && Objects.equals(child, that.child);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(child, offset);
   }
 }
