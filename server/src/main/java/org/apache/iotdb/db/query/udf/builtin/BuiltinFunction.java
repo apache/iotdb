@@ -60,7 +60,7 @@ public enum BuiltinFunction {
   NON_ZERO_DURATION("NON_ZERO_DURATION", UDTFNonZeroDuration.class),
   ZERO_COUNT("ZERO_COUNT", UDTFZeroCount.class),
   NON_ZERO_COUNT("NON_ZERO_COUNT", UDTFNonZeroCount.class),
-  ;
+  EQUAL_BUCKET_SAMPLE("EQUAL_BUCKET_SAMPLE", UDTFEqualBucketSample.class);
 
   private final String functionName;
   private final Class<?> functionClass;
