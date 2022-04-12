@@ -442,4 +442,22 @@ public class UDTFEqualBucketSample implements UDTF {
       }
     }
   }
+
+  static class Triplet implements Comparable<Triplet> {
+
+    public int left;
+    public double middle;
+    public int right;
+
+    public Triplet(int l, double m, int r) {
+      left = l;
+      middle = m;
+      right = r;
+    }
+
+    @Override
+    public int compareTo(Triplet o) {
+      return 0;
+    }
+  }
 }
