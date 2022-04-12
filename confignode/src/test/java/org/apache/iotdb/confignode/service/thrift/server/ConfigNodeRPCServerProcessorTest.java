@@ -717,6 +717,25 @@ public class ConfigNodeRPCServerProcessorTest {
             "");
     status = processor.operatePermission(authorizerReq);
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+    // list root privileges
+    authorizerReq =
+        new TAuthorizerReq(
+            PhysicalPlanType.LIST_USER_PRIVILEGE.ordinal(),
+            "root",
+            "",
+            "",
+            "",
+            new HashSet<>(),
+            "");
+    authorizerResp = processor.queryPermission(authorizerReq);
+    status = authorizerResp.getStatus();
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    for (int i = 0; i < PrivilegeType.values().length; i++) {
+      Assert.assertEquals(
+          PrivilegeType.values()[i].toString(),
+          authorizerResp.getAuthorizerInfo().get(ConfigNodeConstant.COLUMN_PRIVILEGE).get(i));
+    }
   }
 
   private void cleanUserAndRole() throws TException {
