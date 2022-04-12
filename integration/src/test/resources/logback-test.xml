@@ -40,7 +40,7 @@
     <!-- enable me if you want to monitor when files are opened and closed.
     <logger name="FileMonitor" level="info"/>
     -->
-    <logger name="org.apache.iotdb.db.newsync" level="INFO"/>
+    <logger name="org.apache.iotdb.db.sync" level="INFO"/>
     <logger name="org.apache.iotdb.db.engine.merge" level="INFO"/>
     <logger name="org.apache.iotdb.commons.service.ThriftServiceThread" level="INFO"/>
     <logger name="org.eclipse.jetty.util.thread.QueuedThreadPool" level="INFO"/>

@@ -19,12 +19,12 @@
 package org.apache.iotdb.db.integration.sync;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.newsync.pipedata.PipeData;
-import org.apache.iotdb.db.newsync.pipedata.SchemaPipeData;
-import org.apache.iotdb.db.newsync.pipedata.TsFilePipeData;
-import org.apache.iotdb.db.newsync.sender.pipe.TsFilePipe;
-import org.apache.iotdb.db.newsync.sender.service.SenderService;
-import org.apache.iotdb.db.newsync.sender.service.TransportHandler;
+import org.apache.iotdb.db.sync.pipedata.PipeData;
+import org.apache.iotdb.db.sync.pipedata.SchemaPipeData;
+import org.apache.iotdb.db.sync.pipedata.TsFilePipeData;
+import org.apache.iotdb.db.sync.sender.pipe.TsFilePipe;
+import org.apache.iotdb.db.sync.sender.service.SenderService;
+import org.apache.iotdb.db.sync.sender.service.TransportHandler;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.jdbc.Config;

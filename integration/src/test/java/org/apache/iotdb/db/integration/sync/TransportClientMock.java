@@ -19,9 +19,9 @@
 package org.apache.iotdb.db.integration.sync;
 
 import org.apache.iotdb.db.exception.SyncConnectionException;
-import org.apache.iotdb.db.newsync.pipedata.PipeData;
-import org.apache.iotdb.db.newsync.sender.pipe.Pipe;
-import org.apache.iotdb.db.newsync.transport.client.ITransportClient;
+import org.apache.iotdb.db.sync.pipedata.PipeData;
+import org.apache.iotdb.db.sync.sender.pipe.Pipe;
+import org.apache.iotdb.db.sync.transport.client.ITransportClient;
 import org.apache.iotdb.service.transport.thrift.ResponseType;
 import org.apache.iotdb.service.transport.thrift.SyncRequest;
 import org.apache.iotdb.service.transport.thrift.SyncResponse;

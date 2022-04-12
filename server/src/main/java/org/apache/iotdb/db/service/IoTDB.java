@@ -38,8 +38,6 @@ import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.LocalConfigManager;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
-import org.apache.iotdb.db.newsync.receiver.ReceiverService;
-import org.apache.iotdb.db.newsync.sender.service.SenderService;
 import org.apache.iotdb.db.protocol.influxdb.meta.InfluxDBMetaManager;
 import org.apache.iotdb.db.protocol.rest.RestService;
 import org.apache.iotdb.db.query.udf.service.TemporaryQueryDataFileService;
@@ -50,6 +48,8 @@ import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.db.service.basic.StandaloneServiceProvider;
 import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.sync.receiver.ReceiverService;
+import org.apache.iotdb.db.sync.sender.service.SenderService;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 
 import org.slf4j.Logger;

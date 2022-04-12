@@ -225,17 +225,8 @@ public class IoTDBConfig {
           + File.separator
           + IoTDBConstant.SCHEMA_FOLDER_NAME;
 
-  /** Sync directory, including the lock file, uuid file, device owner map */
-  private String syncDir =
-      DEFAULT_BASE_DIR
-          + File.separator
-          + IoTDBConstant.SYSTEM_FOLDER_NAME
-          + File.separator
-          + IoTDBConstant.SYNC_FOLDER_NAME;
-
-  /** Sync directory, including the lock file, uuid file, device owner map */
-  // TODO: delete old syncDir and rename newSyncDir to syncDir
-  private String newSyncDir = DEFAULT_BASE_DIR + File.separator + IoTDBConstant.SYNC_FOLDER_NAME;
+  /** Sync directory, including the log and hardlink tsfiles */
+  private String syncDir = DEFAULT_BASE_DIR + File.separator + IoTDBConstant.SYNC_FOLDER_NAME;
 
   /** Performance tracing directory, stores performance tracing files */
   private String tracingDir = DEFAULT_BASE_DIR + File.separator + IoTDBConstant.TRACING_FOLDER_NAME;
@@ -968,7 +959,6 @@ public class IoTDBConfig {
     systemDir = addHomeDir(systemDir);
     schemaDir = addHomeDir(schemaDir);
     syncDir = addHomeDir(syncDir);
-    newSyncDir = addHomeDir(newSyncDir);
     tracingDir = addHomeDir(tracingDir);
     walDir = addHomeDir(walDir);
     consensusDir = addHomeDir(consensusDir);
@@ -1151,14 +1141,6 @@ public class IoTDBConfig {
 
   void setSyncDir(String syncDir) {
     this.syncDir = syncDir;
-  }
-
-  public String getNewSyncDir() {
-    return newSyncDir;
-  }
-
-  void setNewSyncDir(String syncDir) {
-    this.newSyncDir = syncDir;
   }
 
   public String getTracingDir() {
