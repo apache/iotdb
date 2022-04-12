@@ -302,7 +302,7 @@ public class SenderService implements IService {
       case ERROR:
         logger.warn(String.format("%s from receiver: %s", response.type.name(), response.msg));
         try {
-          runningPipe.stop();
+          stopPipe(runningPipe.getName());
         } catch (PipeException e) {
           logger.error(
               String.format(
@@ -336,8 +336,9 @@ public class SenderService implements IService {
     if (senderLog.exists()) {
       try {
         recover();
-      } catch (IOException e) {
-        throw new StartupException(e.getMessage());
+      } catch (Exception e) {
+        logger.error("Recover from disk error.", e);
+        throw new StartupException(e);
       }
     }
   }
@@ -381,13 +382,26 @@ public class SenderService implements IService {
     return ServiceType.SENDER_SERVICE;
   }
 
-  private void recover() throws IOException {
+  private void recover() throws IOException, InterruptedException {
     SenderLogAnalyzer analyzer = new SenderLogAnalyzer();
     analyzer.recover();
     this.pipeSinks = analyzer.getRecoveryAllPipeSinks();
     this.pipes = analyzer.getRecoveryAllPipes();
     this.runningPipe = analyzer.getRecoveryRunningPipe();
     this.runningMsg = analyzer.getRecoveryRunningMsg();
+
+    if (runningPipe != null) {
+      IoTDBPipeSink pipeSink = (IoTDBPipeSink) runningPipe.getPipeSink();
+      ITransportClient transportClient =
+          new TransportClient(runningPipe, pipeSink.getIp(), pipeSink.getPort());
+      this.transportHandler =
+          new TransportHandler(transportClient, runningPipe.getName(), runningPipe.getCreateTime());
+      if (Pipe.PipeStatus.RUNNING.equals(runningPipe.getStatus())) {
+        transportHandler.start();
+      } else if (Pipe.PipeStatus.DROP.equals(runningPipe.getStatus())) {
+        transportHandler.close();
+      }
+    }
   }
 
   /** test */

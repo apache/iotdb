@@ -46,6 +46,7 @@ import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.PruneTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
 import org.apache.iotdb.db.rescon.MemTableManager;
@@ -233,6 +234,9 @@ public class LocalConfigManager {
     // invoke from cluster doesn't need local allocate for the given storageGroup
     if (shouldAllocateSchemaRegion) {
       localCreateSchemaRegion(storageGroup, partitionTable.allocateSchemaRegionId(storageGroup));
+    }
+    if (SchemaSyncManager.getInstance().isEnableSync()) {
+      SchemaSyncManager.getInstance().syncMetadataPlan(new SetStorageGroupPlan(storageGroup));
     }
 
     if (!config.isEnableMemControl()) {

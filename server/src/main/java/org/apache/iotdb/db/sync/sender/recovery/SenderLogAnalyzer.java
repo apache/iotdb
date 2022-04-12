@@ -97,7 +97,6 @@ public class SenderLogAnalyzer {
                         Long.parseLong(parseStrings[1]));
             pipes.add(runningPipe);
             runningPipeStatus = runningPipe.getStatus();
-            runningPipe.stop();
             runningMsg = "";
             break;
           case STOP_PIPE: // ignore status check
@@ -139,7 +138,7 @@ public class SenderLogAnalyzer {
                 String.format("Can not recognize running pipe status %s.", runningPipeStatus));
         }
       } catch (PipeException e) {
-        throw new IOException(e.getMessage());
+        throw new IOException(e);
       }
     }
 
