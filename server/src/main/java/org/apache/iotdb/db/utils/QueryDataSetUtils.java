@@ -195,14 +195,18 @@ public class QueryDataSetUtils {
     while (rowCount < fetchSize && queryExecution.hasNextResult()) {
       TsBlock tsBlock = queryExecution.getBatchResult();
       int currentCount = tsBlock.getPositionCount();
+      // serialize time column
       for (int i = 0; i < currentCount; i++) {
         // use columnOutput to write byte array
         dataOutputStreams[0].writeLong(tsBlock.getTimeByIndex(i));
       }
+
+      // serialize each value column and its bitmap
       for (int k = 0; k < columnNum; k++) {
+        // get DataOutputStream for current value column and its bitmap
         DataOutputStream dataOutputStream = dataOutputStreams[2 * k + 1];
         DataOutputStream dataBitmapOutputStream = dataOutputStreams[2 * (k + 1)];
-        // used to record a bitmap for every 8 row record
+        // used to record a bitmap for every 8 points
         int bitmap = 0;
         Column column = tsBlock.getColumn(k);
         TSDataType type = column.getDataType();
@@ -218,7 +222,7 @@ public class QueryDataSetUtils {
               }
               if (i % 8 == 0) {
                 dataBitmapOutputStream.writeByte(bitmap);
-                // we should clear the bitmap every 8 row record
+                // we should clear the bitmap every 8 points
                 bitmap = 0;
               }
             }
@@ -234,7 +238,7 @@ public class QueryDataSetUtils {
               }
               if (i % 8 == 0) {
                 dataBitmapOutputStream.writeByte(bitmap);
-                // we should clear the bitmap every 8 row record
+                // we should clear the bitmap every 8 points
                 bitmap = 0;
               }
             }
@@ -250,7 +254,7 @@ public class QueryDataSetUtils {
               }
               if (i % 8 == 0) {
                 dataBitmapOutputStream.writeByte(bitmap);
-                // we should clear the bitmap every 8 row record
+                // we should clear the bitmap every 8 points
                 bitmap = 0;
               }
             }
@@ -266,7 +270,7 @@ public class QueryDataSetUtils {
               }
               if (i % 8 == 0) {
                 dataBitmapOutputStream.writeByte(bitmap);
-                // we should clear the bitmap every 8 row record
+                // we should clear the bitmap every 8 points
                 bitmap = 0;
               }
             }
@@ -282,7 +286,7 @@ public class QueryDataSetUtils {
               }
               if (i % 8 == 0) {
                 dataBitmapOutputStream.writeByte(bitmap);
-                // we should clear the bitmap every 8 row record
+                // we should clear the bitmap every 8 points
                 bitmap = 0;
               }
             }
@@ -300,7 +304,7 @@ public class QueryDataSetUtils {
               }
               if (i % 8 == 0) {
                 dataBitmapOutputStream.writeByte(bitmap);
-                // we should clear the bitmap every 8 row record
+                // we should clear the bitmap every 8 points
                 bitmap = 0;
               }
             }

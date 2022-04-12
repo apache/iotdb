@@ -183,6 +183,7 @@ public class QueryExecution implements IQueryExecution {
 
   /** return the result column count without the time column */
   public int getOutputValueColumnCount() {
+    // TODO need return the actual size while there exists output columns in Analysis
     return 1;
   }
 
