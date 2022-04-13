@@ -264,10 +264,14 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     this.time = time;
   }
 
-  public static InsertRowNode deserialize(ByteBuffer byteBuffer) throws IllegalPathException {
+  public static InsertRowNode deserialize(ByteBuffer byteBuffer) {
     InsertRowNode insertNode = new InsertRowNode(PlanNodeId.deserialize(byteBuffer));
     insertNode.setTime(byteBuffer.getLong());
-    insertNode.setDevicePath(new PartialPath(ReadWriteIOUtils.readString(byteBuffer)));
+    try {
+      insertNode.setDevicePath(new PartialPath(ReadWriteIOUtils.readString(byteBuffer)));
+    } catch (IllegalPathException e) {
+      throw new IllegalArgumentException("Cannot deserialize InsertRowNode", e);
+    }
     insertNode.deserializeMeasurementsAndValues(byteBuffer);
 
     return insertNode;
