@@ -30,16 +30,6 @@ import java.util.*;
 public class FakePartitionFetcherImpl implements IPartitionFetcher {
 
   @Override
-  public DataPartition getDataPartition(List<DataPartitionQueryParam> parameterList) {
-    return null;
-  }
-
-  @Override
-  public DataPartition getOrCreateDataPartition(List<DataPartitionQueryParam> parameterList) {
-    return null;
-  }
-
-  @Override
   public SchemaPartition getSchemaPartition(PathPatternTree patternTree) {
     return null;
   }
@@ -50,12 +40,8 @@ public class FakePartitionFetcherImpl implements IPartitionFetcher {
   }
 
   @Override
-  public DataPartition fetchDataPartitionInfo(DataPartitionQueryParam parameter) {
-    return null;
-  }
-
-  @Override
-  public DataPartition fetchDataPartitionInfos(List<DataPartitionQueryParam> parameterList) {
+  public DataPartition getDataPartition(
+      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
     String device1 = "root.sg.d1";
     String device2 = "root.sg.d22";
     String device3 = "root.sg.d333";
@@ -120,22 +106,8 @@ public class FakePartitionFetcherImpl implements IPartitionFetcher {
   }
 
   @Override
-  public SchemaPartition fetchSchemaPartitionInfo(String devicePath) {
-    return null;
-  }
-
-  @Override
-  public SchemaPartition fetchSchemaPartitionInfos(List<String> devicePath) {
-    return null;
-  }
-
-  @Override
-  public PartitionInfo fetchPartitionInfo(DataPartitionQueryParam parameter) {
-    return null;
-  }
-
-  @Override
-  public PartitionInfo fetchPartitionInfos(List<DataPartitionQueryParam> parameterList) {
+  public DataPartition getOrCreateDataPartition(
+      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
     return null;
   }
 }

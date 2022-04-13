@@ -20,11 +20,11 @@ package org.apache.iotdb.db.mpp.sql.analyze;
 
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
-import org.apache.iotdb.commons.partition.PartitionInfo;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 
 import java.util.List;
+import java.util.Map;
 
 public class StandalonePartitionFetcher implements IPartitionFetcher {
 
@@ -33,16 +33,6 @@ public class StandalonePartitionFetcher implements IPartitionFetcher {
   // TODO need to use safe singleton pattern
   public static StandalonePartitionFetcher getInstance() {
     return new StandalonePartitionFetcher();
-  }
-
-  @Override
-  public DataPartition getDataPartition(List<DataPartitionQueryParam> parameterList) {
-    return null;
-  }
-
-  @Override
-  public DataPartition getOrCreateDataPartition(List<DataPartitionQueryParam> parameterList) {
-    return null;
   }
 
   @Override
@@ -56,32 +46,14 @@ public class StandalonePartitionFetcher implements IPartitionFetcher {
   }
 
   @Override
-  public DataPartition fetchDataPartitionInfo(DataPartitionQueryParam parameter) {
+  public DataPartition getDataPartition(
+      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
     return null;
   }
 
   @Override
-  public DataPartition fetchDataPartitionInfos(List<DataPartitionQueryParam> parameterList) {
-    return null;
-  }
-
-  @Override
-  public SchemaPartition fetchSchemaPartitionInfo(String devicePath) {
-    return null;
-  }
-
-  @Override
-  public SchemaPartition fetchSchemaPartitionInfos(List<String> devicePath) {
-    return null;
-  }
-
-  @Override
-  public PartitionInfo fetchPartitionInfo(DataPartitionQueryParam parameter) {
-    return null;
-  }
-
-  @Override
-  public PartitionInfo fetchPartitionInfos(List<DataPartitionQueryParam> parameterList) {
+  public DataPartition getOrCreateDataPartition(
+      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
     return null;
   }
 }
