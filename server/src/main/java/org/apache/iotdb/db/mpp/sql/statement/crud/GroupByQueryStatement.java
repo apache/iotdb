@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.sql.statement.crud;
 
+import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.component.GroupByTimeComponent;
 
 public class GroupByQueryStatement extends AggregationQueryStatement {
@@ -39,5 +40,9 @@ public class GroupByQueryStatement extends AggregationQueryStatement {
 
   public void setGroupByTimeComponent(GroupByTimeComponent groupByTimeComponent) {
     this.groupByTimeComponent = groupByTimeComponent;
+  }
+
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitGroupByQuery(this, context);
   }
 }

@@ -18,75 +18,116 @@
  */
 package org.apache.iotdb.commons.partition;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 public class SchemaPartition {
 
-  // Map<StorageGroup, Map<DeviceGroupID, SchemaRegionPlaceInfo>>
-  private Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> schemaPartition;
+  // Map<StorageGroup, Map<SeriesPartitionSlot, SchemaRegionPlaceInfo>>
+  private Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> schemaPartitionMap;
 
   public SchemaPartition() {
-    schemaPartition = new HashMap<>();
+    // Empty constructor
   }
 
-  public Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> getSchemaPartition() {
-    return schemaPartition;
+  public SchemaPartition(
+      Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> schemaPartitionMap) {
+    this.schemaPartitionMap = schemaPartitionMap;
   }
 
-  public void setSchemaPartition(
-      Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> schemaPartition) {
-    this.schemaPartition = schemaPartition;
+  public Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> getSchemaPartitionMap() {
+    return schemaPartitionMap;
   }
 
-  public Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> getSchemaPartition(
-      String storageGroup, List<Integer> deviceGroupIDs) {
-    Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> storageGroupMap = new HashMap<>();
-    Map<SeriesPartitionSlot, RegionReplicaSet> deviceGroupMap = new HashMap<>();
-    deviceGroupIDs.forEach(
-        deviceGroupID -> {
-          if (schemaPartition.get(storageGroup) != null
-              && schemaPartition
-                  .get(storageGroup)
-                  .containsKey(new SeriesPartitionSlot(deviceGroupID))) {
-            deviceGroupMap.put(
-                new SeriesPartitionSlot(deviceGroupID),
-                schemaPartition.get(storageGroup).get(new SeriesPartitionSlot(deviceGroupID)));
-          }
-        });
-    storageGroupMap.put(storageGroup, deviceGroupMap);
-    return storageGroupMap;
+  public void setSchemaPartitionMap(
+      Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> schemaPartitionMap) {
+    this.schemaPartitionMap = schemaPartitionMap;
+  }
+
+  /* Interfaces for ConfigNode */
+
+  /**
+   * Get SchemaPartition by partitionSlotsMap
+   *
+   * @param partitionSlotsMap Map<StorageGroup, List<SeriesPartitionSlot>>
+   * @return Subset of current SchemaPartition, including Map<StorageGroup, Map<SeriesPartitionSlot,
+   *     RegionReplicaSet>>
+   */
+  public SchemaPartition getSchemaPartition(
+      Map<String, List<SeriesPartitionSlot>> partitionSlotsMap) {
+    if (partitionSlotsMap.isEmpty()) {
+      // Return all SchemaPartitions when the partitionSlotsMap is empty
+      return new SchemaPartition(new HashMap<>(schemaPartitionMap));
+    } else {
+      Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> result = new HashMap<>();
+
+      partitionSlotsMap.forEach(
+          (storageGroup, seriesPartitionSlots) -> {
+            if (schemaPartitionMap.containsKey(storageGroup)) {
+              if (seriesPartitionSlots.isEmpty()) {
+                // Return all SchemaPartitions in one StorageGroup when the queried
+                // SeriesPartitionSlots is empty
+                result.put(storageGroup, new HashMap<>(schemaPartitionMap.get(storageGroup)));
+              } else {
+                // Return the specific SchemaPartition
+                seriesPartitionSlots.forEach(
+                    seriesPartitionSlot -> {
+                      if (schemaPartitionMap.get(storageGroup).containsKey(seriesPartitionSlot)) {
+                        result
+                            .computeIfAbsent(storageGroup, key -> new HashMap<>())
+                            .put(
+                                seriesPartitionSlot,
+                                schemaPartitionMap.get(storageGroup).get(seriesPartitionSlot));
+                      }
+                    });
+              }
+            }
+          });
+
+      return new SchemaPartition(result);
+    }
   }
 
   /**
-   * Filter out unassigned device groups
+   * Filter out unassigned PartitionSlots
    *
-   * @param storageGroup storage group name
-   * @param deviceGroupIDs device group id list
-   * @return deviceGroupIDs does not assigned
+   * @param partitionSlotsMap Map<StorageGroupName, List<SeriesPartitionSlot>>
+   * @return Map<String, List<SeriesPartitionSlot>>, unassigned PartitionSlots
    */
-  public List<Integer> filterNoAssignDeviceGroupId(
-      String storageGroup, List<Integer> deviceGroupIDs) {
-    if (!schemaPartition.containsKey(storageGroup)) {
-      return deviceGroupIDs;
-    }
-    return deviceGroupIDs.stream()
-        .filter(
-            id -> {
-              if (schemaPartition.get(storageGroup).containsKey(deviceGroupIDs)) {
-                return false;
-              }
-              return true;
-            })
-        .collect(Collectors.toList());
+  public Map<String, List<SeriesPartitionSlot>> filterNoAssignedSchemaPartitionSlot(
+      Map<String, List<SeriesPartitionSlot>> partitionSlotsMap) {
+    Map<String, List<SeriesPartitionSlot>> result = new HashMap<>();
+
+    partitionSlotsMap.forEach(
+        (storageGroup, seriesPartitionSlots) -> {
+          // Compare StorageGroup
+          if (!schemaPartitionMap.containsKey(storageGroup)) {
+            result.put(storageGroup, partitionSlotsMap.get(storageGroup));
+          } else {
+            seriesPartitionSlots.forEach(
+                seriesPartitionSlot -> {
+                  // Compare SeriesPartitionSlot
+                  if (!schemaPartitionMap.get(storageGroup).containsKey(seriesPartitionSlot)) {
+                    result
+                        .computeIfAbsent(storageGroup, key -> new ArrayList<>())
+                        .add(seriesPartitionSlot);
+                  }
+                });
+          }
+        });
+
+    return result;
   }
 
-  public void setSchemaRegionReplicaSet(
-      String storageGroup, int deviceGroupId, RegionReplicaSet regionReplicaSet) {
-    schemaPartition
-        .computeIfAbsent(storageGroup, value -> new HashMap<>())
-        .put(new SeriesPartitionSlot(deviceGroupId), regionReplicaSet);
+  /** Create a SchemaPartition by ConfigNode */
+  public void createSchemaPartition(
+      String storageGroup,
+      SeriesPartitionSlot seriesPartitionSlot,
+      RegionReplicaSet regionReplicaSet) {
+    schemaPartitionMap
+        .computeIfAbsent(storageGroup, key -> new HashMap<>())
+        .put(seriesPartitionSlot, regionReplicaSet);
   }
 }

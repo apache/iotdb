@@ -19,33 +19,49 @@
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
+import org.apache.iotdb.db.mpp.sql.planner.plan.IOutputPlanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.ColumnHeader;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.utils.IExpressionDeserializeUtil;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.collect.ImmutableList;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 /** The FilterNode is responsible to filter the RowRecord from TsBlock. */
-public class FilterNode extends ProcessNode {
+public class FilterNode extends ProcessNode implements IOutputPlanNode {
 
   private PlanNode child;
 
-  private final QueryFilter predicate;
+  private final IExpression predicate;
 
-  public FilterNode(PlanNodeId id, QueryFilter predicate) {
+  private List<ColumnHeader> columnHeaders;
+
+  public FilterNode(PlanNodeId id, IExpression predicate) {
     super(id);
     this.predicate = predicate;
   }
 
-  public FilterNode(PlanNodeId id, PlanNode child, QueryFilter predicate) {
+  public FilterNode(
+      PlanNodeId id, PlanNode child, IExpression predicate, List<String> outputColumnNames) {
     this(id, predicate);
     this.child = child;
+    this.columnHeaders =
+        ((IOutputPlanNode) child)
+            .getOutputColumnHeaders().stream()
+                .filter(columnHeader -> outputColumnNames.contains(columnHeader.getColumnName()))
+                .collect(Collectors.toList());
   }
 
   @Override
@@ -60,7 +76,7 @@ public class FilterNode extends ProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new FilterNode(getId(), predicate);
+    return new FilterNode(getPlanNodeId(), predicate);
   }
 
   @Override
@@ -69,8 +85,22 @@ public class FilterNode extends ProcessNode {
   }
 
   @Override
+  public List<ColumnHeader> getOutputColumnHeaders() {
+    return columnHeaders;
+  }
+
+  @Override
   public List<String> getOutputColumnNames() {
-    return child.getOutputColumnNames();
+    return columnHeaders.stream().map(ColumnHeader::getColumnName).collect(Collectors.toList());
+  }
+
+  @Override
+  public List<TSDataType> getOutputColumnTypes() {
+    return columnHeaders.stream().map(ColumnHeader::getColumnType).collect(Collectors.toList());
+  }
+
+  public void setColumnHeaders(List<ColumnHeader> columnHeaders) {
+    this.columnHeaders = columnHeaders;
   }
 
   @Override
@@ -79,13 +109,36 @@ public class FilterNode extends ProcessNode {
   }
 
   public static FilterNode deserialize(ByteBuffer byteBuffer) {
-    return null;
+    IExpression predicate = IExpressionDeserializeUtil.deserialize(byteBuffer);
+    int columnSize = ReadWriteIOUtils.readInt(byteBuffer);
+    List<ColumnHeader> columnHeaders = null;
+    if (columnSize != -1) {
+      columnHeaders = new ArrayList<>();
+      for (int i = 0; i < columnSize; i++) {
+        columnHeaders.add(ColumnHeader.deserialize(byteBuffer));
+      }
+    }
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+    FilterNode filterNode = new FilterNode(planNodeId, predicate);
+    filterNode.setColumnHeaders(columnHeaders);
+    return filterNode;
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {}
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    PlanNodeType.FILTER.serialize(byteBuffer);
+    predicate.serialize(byteBuffer);
+    if (columnHeaders == null) {
+      ReadWriteIOUtils.write(-1, byteBuffer);
+    } else {
+      ReadWriteIOUtils.write(columnHeaders.size(), byteBuffer);
+      for (ColumnHeader columnHeader : columnHeaders) {
+        columnHeader.serialize(byteBuffer);
+      }
+    }
+  }
 
-  public QueryFilter getPredicate() {
+  public IExpression getPredicate() {
     return predicate;
   }
 
@@ -95,9 +148,31 @@ public class FilterNode extends ProcessNode {
 
   @TestOnly
   public Pair<String, List<String>> print() {
-    String title = String.format("[FilterNode (%s)]", this.getId());
+    String title = String.format("[FilterNode (%s)]", this.getPlanNodeId());
     List<String> attributes = new ArrayList<>();
     attributes.add("QueryFilter: " + this.getPredicate());
+    attributes.add("outputColumnNames: " + this.getOutputColumnNames());
     return new Pair<>(title, attributes);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+
+    FilterNode that = (FilterNode) o;
+    return Objects.equals(child, that.child)
+        && Objects.equals(predicate, that.predicate)
+        && Objects.equals(columnHeaders, that.columnHeaders);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(child, predicate, columnHeaders);
   }
 }

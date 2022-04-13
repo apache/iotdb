@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.consensus.standalone;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.statemachine.IStateMachine;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 public class StandAloneServerImpl implements IStateMachine {
 

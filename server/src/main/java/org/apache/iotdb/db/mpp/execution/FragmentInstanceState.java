@@ -28,27 +28,32 @@ public enum FragmentInstanceState {
    * Instance is planned but has not been scheduled yet. An instance will be in the planned state
    * until, the dependencies of the instance have begun producing output.
    */
-  PLANNED(false),
+  PLANNED(false, false),
   /** Instance is running. */
-  RUNNING(false),
+  RUNNING(false, false),
   /**
    * Instance has finished executing and output is left to be consumed. In this state, there will be
    * no new drivers, the existing drivers have finished and the output buffer of the instance is
    * at-least in a 'no-more-tsBlocks' state.
    */
-  FLUSHING(false),
+  FLUSHING(false, false),
   /** Instance has finished executing and all output has been consumed. */
-  FINISHED(true),
+  FINISHED(true, false),
   /** Instance was canceled by a user. */
-  CANCELED(true),
+  CANCELED(true, true),
   /** Instance was aborted due to a failure in the query. The failure was not in this instance. */
-  ABORTED(true),
+  ABORTED(true, true),
   /** Instance execution failed. */
-  FAILED(true);
+  FAILED(true, true);
 
   public static final Set<FragmentInstanceState> TERMINAL_INSTANCE_STATES =
       Stream.of(FragmentInstanceState.values())
           .filter(FragmentInstanceState::isDone)
+          .collect(toImmutableSet());
+
+  public static final Set<FragmentInstanceState> FAILURE_INSTANCE_STATES =
+      Stream.of(FragmentInstanceState.values())
+          .filter(FragmentInstanceState::isFailed)
           .collect(toImmutableSet());
 
   /**
@@ -57,12 +62,19 @@ public enum FragmentInstanceState {
    */
   private final boolean doneState;
 
-  FragmentInstanceState(boolean doneState) {
+  private final boolean failureState;
+
+  FragmentInstanceState(boolean doneState, boolean failureState) {
     this.doneState = doneState;
+    this.failureState = failureState;
   }
 
   /** Is this a terminal state. */
   public boolean isDone() {
     return doneState;
+  }
+
+  public boolean isFailed() {
+    return failureState;
   }
 }

@@ -20,13 +20,15 @@ package org.apache.iotdb.db.metadata.mtree.traverser.counter;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 
 // This class implements the entity count function.
 public class EntityCounter extends CounterTraverser {
 
-  public EntityCounter(IMNode startNode, PartialPath path) throws MetadataException {
-    super(startNode, path);
+  public EntityCounter(IMNode startNode, PartialPath path, IMTreeStore store)
+      throws MetadataException {
+    super(startNode, path, store);
   }
 
   @Override

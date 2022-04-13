@@ -157,10 +157,6 @@ public class DirectoryManager {
     private static final DirectoryManager INSTANCE = new DirectoryManager();
   }
 
-  public String getWALFolder() {
-    return IoTDBDescriptor.getInstance().getConfig().getWalDir();
-  }
-
   public String getIndexRootFolder() {
     return IoTDBDescriptor.getInstance().getConfig().getIndexRootFolder();
   }

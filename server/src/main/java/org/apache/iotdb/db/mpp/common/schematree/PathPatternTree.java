@@ -23,10 +23,14 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -35,25 +39,25 @@ public class PathPatternTree {
 
   private PathPatternNode root;
 
-  private final List<PartialPath> pathList;
+  private List<PartialPath> pathList;
 
-  /**
-   * Since IoTDB v0.13, all DDL and DML use patternMatch as default. Before IoTDB v0.13, all DDL and
-   * DML use prefixMatch.
-   */
-  protected boolean isPrefixMatchPath;
+  public PathPatternTree(PathPatternNode root) {
+    this.root = root;
+  }
 
   public PathPatternTree(PartialPath deivcePath, String[] measurements) {
-    // TODO
     this.root = new PathPatternNode(SQLConstant.ROOT);
     this.pathList = new ArrayList<>();
-  };
+    appendPaths(deivcePath, Arrays.asList(measurements));
+  }
 
-  public PathPatternTree(Map<PartialPath, List<String>> devices) {
-    // TODO
+  public PathPatternTree(Map<PartialPath, List<String>> deviceToMeasurementsMap) {
     this.root = new PathPatternNode(SQLConstant.ROOT);
     this.pathList = new ArrayList<>();
-  };
+    for (Map.Entry<PartialPath, List<String>> entry : deviceToMeasurementsMap.entrySet()) {
+      appendPaths(entry.getKey(), entry.getValue());
+    }
+  }
 
   public PathPatternTree() {
     this.root = new PathPatternNode(SQLConstant.ROOT);
@@ -68,12 +72,43 @@ public class PathPatternTree {
     this.root = root;
   }
 
-  public boolean isPrefixMatchPath() {
-    return isPrefixMatchPath;
+  /** @return all device path patterns in the path pattern tree. */
+  public List<String> findAllDevicePaths() {
+    List<String> nodes = new ArrayList<>();
+    List<String> pathPatternList = new ArrayList<>();
+    findAllDevicePaths(root, nodes, pathPatternList);
+    return pathPatternList;
   }
 
-  public void setPrefixMatchPath(boolean prefixMatchPath) {
-    isPrefixMatchPath = prefixMatchPath;
+  private void findAllDevicePaths(
+      PathPatternNode curNode, List<String> nodes, List<String> pathPatternList) {
+    nodes.add(curNode.getName());
+    if (curNode.isLeaf()) {
+      if (!curNode.getName().equals("**")) {
+        pathPatternList.add(parseNodesToString(nodes.subList(0, nodes.size() - 1)));
+      } else {
+        pathPatternList.add(parseNodesToString(nodes));
+      }
+      nodes.remove(nodes.size() - 1);
+      return;
+    }
+    if (curNode.isWildcard()) {
+      pathPatternList.add(parseNodesToString(nodes));
+      nodes.remove(nodes.size() - 1);
+      return;
+    }
+    for (PathPatternNode childNode : curNode.getChildren().values()) {
+      findAllDevicePaths(childNode, nodes, pathPatternList);
+    }
+    nodes.remove(nodes.size() - 1);
+  }
+
+  private String parseNodesToString(List<String> nodes) {
+    StringBuilder fullPathBuilder = new StringBuilder(nodes.get(0));
+    for (int i = 1; i < nodes.size(); i++) {
+      fullPathBuilder.append(TsFileConstant.PATH_SEPARATOR).append(nodes.get(i));
+    }
+    return fullPathBuilder.toString();
   }
 
   // append path to pathList
@@ -129,18 +164,30 @@ public class PathPatternTree {
   private void appendTree(PathPatternNode curNode, String[] pathNodes, int pos) {
     for (int i = pos; i < pathNodes.length; i++) {
       PathPatternNode newNode = new PathPatternNode(pathNodes[i]);
-      curNode.addChild(newNode.getName(), newNode);
+      curNode.addChild(newNode);
       curNode = newNode;
     }
   }
 
-  public void serialize(ByteBuffer buffer) throws IOException {
+  public void serialize(PublicBAOS outputStream) throws IOException {
     constructTree();
-    // TODO
+    root.serialize(outputStream);
   }
 
-  public void deserialize(ByteBuffer buffer) throws IOException {
-    // TODO
+  public static PathPatternTree deserialize(ByteBuffer buffer) {
+    PathPatternNode root = deserializeNode(buffer);
+    return new PathPatternTree(root);
+  }
+
+  private static PathPatternNode deserializeNode(ByteBuffer buffer) {
+    PathPatternNode node = new PathPatternNode(ReadWriteIOUtils.readString(buffer));
+    int childrenSize = ReadWriteIOUtils.readInt(buffer);
+    while (childrenSize > 0) {
+      PathPatternNode tmpNode = deserializeNode(buffer);
+      node.addChild(tmpNode);
+      childrenSize--;
+    }
+    return node;
   }
 
   @TestOnly

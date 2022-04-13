@@ -36,7 +36,7 @@ import org.apache.iotdb.db.engine.cq.ContinuousQueryService;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.LocalConfigManager;
+import org.apache.iotdb.db.metadata.LocalConfigNode;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.protocol.influxdb.meta.InfluxDBMetaManager;
 import org.apache.iotdb.db.protocol.rest.RestService;
@@ -49,7 +49,7 @@ import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.db.service.basic.StandaloneServiceProvider;
 import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.sync.receiver.SyncServerManager;
-import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
+import org.apache.iotdb.db.wal.WALManager;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,7 +63,7 @@ public class IoTDB implements IoTDBMBean {
       String.format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, "IoTDB");
   private static final RegisterManager registerManager = new RegisterManager();
   public static LocalSchemaProcessor schemaProcessor = LocalSchemaProcessor.getInstance();
-  public static LocalConfigManager configManager = LocalConfigManager.getInstance();
+  public static LocalConfigNode configManager = LocalConfigNode.getInstance();
   public static ServiceProvider serviceProvider;
   private static boolean clusterMode = false;
 
@@ -131,10 +131,10 @@ public class IoTDB implements IoTDBMBean {
     initConfigManager();
     registerManager.register(JMXService.getInstance());
     registerManager.register(FlushManager.getInstance());
-    registerManager.register(MultiFileLogNodeManager.getInstance());
     registerManager.register(CacheHitRatioMonitor.getInstance());
     registerManager.register(CompactionTaskManager.getInstance());
     JMXService.registerMBean(getInstance(), mbeanName);
+    registerManager.register(WALManager.getInstance());
     registerManager.register(StorageEngine.getInstance());
     registerManager.register(TemporaryQueryDataFileService.getInstance());
     registerManager.register(UDFClassLoaderManager.getInstance());

@@ -121,7 +121,7 @@ def test_with_null_query():
         )
         data[ts_path_lst[5]] = np.random.choice(
             ["text1", "text2"], size=data_nums
-        ).astype(np.object)
+        ).astype(object)
 
         data_empty = {}
         for ts_path in ts_path_lst:
@@ -133,7 +133,7 @@ def test_with_null_query():
                     tmp_array = pd.Series(tmp_array).astype("Int64")
             elif data[ts_path].dtype == np.float32 or data[ts_path].dtype == np.double:
                 tmp_array = np.full(data_nums, np.nan, data[ts_path].dtype)
-            elif data[ts_path].dtype == np.bool:
+            elif data[ts_path].dtype == bool:
                 tmp_array = np.full(data_nums, np.nan, np.float32)
                 tmp_array = pd.Series(tmp_array).astype("boolean")
             else:

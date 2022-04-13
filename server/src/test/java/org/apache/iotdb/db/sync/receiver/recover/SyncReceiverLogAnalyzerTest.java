@@ -22,8 +22,8 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -154,8 +154,7 @@ public class SyncReceiverLogAnalyzerTest {
     }
 
     for (int i = 0; i < 3; i++) {
-      VirtualStorageGroupProcessor processor =
-          StorageEngine.getInstance().getProcessor(new PartialPath(SG_NAME + i));
+      DataRegion processor = StorageEngine.getInstance().getProcessor(new PartialPath(SG_NAME + i));
       assertTrue(processor.getSequenceFileList().isEmpty());
       assertTrue(processor.getUnSequenceFileList().isEmpty());
     }

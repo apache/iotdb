@@ -30,6 +30,8 @@ import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
@@ -159,6 +161,13 @@ public abstract class AggregateResult implements Cloneable {
   }
 
   protected abstract void deserializeSpecificFields(ByteBuffer buffer);
+
+  public void serialize(ByteBuffer byteBuffer) throws IOException {
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    serializeTo(dataOutputStream);
+    byteBuffer.put(byteArrayOutputStream.toByteArray());
+  }
 
   public void serializeTo(OutputStream outputStream) throws IOException {
     aggregationType.serializeTo(outputStream);

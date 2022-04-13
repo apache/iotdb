@@ -21,7 +21,7 @@ package org.apache.iotdb.db.metadata.idtable;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -95,7 +95,7 @@ public class IDTableFlushTimeTest {
 
     insertData(20);
 
-    VirtualStorageGroupProcessor storageGroupProcessor =
+    DataRegion storageGroupProcessor =
         StorageEngine.getInstance().getProcessor(new PartialPath("root.isp.d1"));
     assertEquals(2, storageGroupProcessor.getSequenceFileList().size());
     assertEquals(0, storageGroupProcessor.getUnSequenceFileList().size());
@@ -110,7 +110,7 @@ public class IDTableFlushTimeTest {
 
     insertData(20);
 
-    VirtualStorageGroupProcessor storageGroupProcessor =
+    DataRegion storageGroupProcessor =
         StorageEngine.getInstance().getProcessor(new PartialPath("root.isp.d1"));
     assertEquals(1, storageGroupProcessor.getSequenceFileList().size());
     assertEquals(1, storageGroupProcessor.getUnSequenceFileList().size());
@@ -139,7 +139,7 @@ public class IDTableFlushTimeTest {
     // unsequence
     insertData(90);
 
-    VirtualStorageGroupProcessor storageGroupProcessor =
+    DataRegion storageGroupProcessor =
         StorageEngine.getInstance().getProcessor(new PartialPath("root.isp.d1"));
     assertEquals(4, storageGroupProcessor.getSequenceFileList().size());
     assertEquals(2, storageGroupProcessor.getUnSequenceFileList().size());
@@ -156,7 +156,7 @@ public class IDTableFlushTimeTest {
     insertData(20);
     insertData(120);
 
-    VirtualStorageGroupProcessor storageGroupProcessor =
+    DataRegion storageGroupProcessor =
         StorageEngine.getInstance().getProcessor(new PartialPath("root.isp.d1"));
 
     assertEquals(
