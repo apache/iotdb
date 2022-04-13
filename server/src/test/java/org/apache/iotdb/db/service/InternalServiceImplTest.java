@@ -67,11 +67,13 @@ public class InternalServiceImplTest {
   @Before
   public void setUp() throws Exception {
     IoTDB.configManager.init();
+    configNode = LocalConfigNode.getInstance();
+    configNode.getBelongedSchemaRegionIdWithAutoCreate(new PartialPath("root.ln"));
     ConsensusImpl.getInstance().start();
     RegionReplicaSet regionReplicaSet = genRegionReplicaSet();
     ConsensusImpl.getInstance().addConsensusGroup(regionReplicaSet.getConsensusGroupId(), genPeerList(regionReplicaSet));
     internalServiceImpl = new InternalServiceImpl();
-    configNode = LocalConfigNode.getInstance();
+
   }
 
   @After
