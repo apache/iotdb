@@ -31,6 +31,7 @@ import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class FragmentInstance implements IConsensusRequest {
   private final FragmentInstanceId id;
@@ -153,5 +154,23 @@ public class FragmentInstance implements IConsensusRequest {
     ReadWriteIOUtils.write(type.ordinal(), buffer);
     regionReplicaSet.serializeImpl(buffer);
     hostEndpoint.serializeImpl(buffer);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    FragmentInstance instance = (FragmentInstance) o;
+    return Objects.equals(id, instance.id)
+        && type == instance.type
+        && Objects.equals(fragment, instance.fragment)
+        && Objects.equals(regionReplicaSet, instance.regionReplicaSet)
+        && Objects.equals(hostEndpoint, instance.hostEndpoint)
+        && Objects.equals(timeFilter, instance.timeFilter);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(id, type, fragment, regionReplicaSet, hostEndpoint, timeFilter);
   }
 }

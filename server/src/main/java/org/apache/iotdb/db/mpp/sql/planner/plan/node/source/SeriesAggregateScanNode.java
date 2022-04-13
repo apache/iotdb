@@ -195,8 +195,7 @@ public class SeriesAggregateScanNode extends SourceNode implements IOutputPlanNo
     Filter timeFilter = FilterFactory.deserialize(byteBuffer);
 
     // TODO serialize groupByTimeParameter
-    RegionReplicaSet regionReplicaSet = new RegionReplicaSet();
-    RegionReplicaSet.deserializeImpl(byteBuffer);
+    RegionReplicaSet regionReplicaSet = RegionReplicaSet.deserializeImpl(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     SeriesAggregateScanNode seriesAggregateScanNode =
         new SeriesAggregateScanNode(
