@@ -149,121 +149,124 @@ public class UDTFEqualBucketSample implements UDTF {
   }
 
   // TODO
-  public void outlierSample(RowWindow rowWindow, PointCollector collector) {
-  }
+  public void outlierSample(RowWindow rowWindow, PointCollector collector) {}
 
   public void m4Sample(RowWindow rowWindow, PointCollector collector)
       throws IOException, UDFInputSeriesDataTypeNotValidException {
     int minIndex = 0, maxIndex = 0;
     switch (outputDataType) {
-      case INT32: {
-        int maxValue = rowWindow.getRow(0).getInt(0);
-        int minValue = rowWindow.getRow(0).getInt(0);
-        for (int i = 1; i < rowWindow.windowSize(); i++) {
-          int value = rowWindow.getRow(i).getInt(0);
-          if (minValue > value) {
-            minValue = value;
-            minIndex = i;
+      case INT32:
+        {
+          int maxValue = rowWindow.getRow(0).getInt(0);
+          int minValue = rowWindow.getRow(0).getInt(0);
+          for (int i = 1; i < rowWindow.windowSize(); i++) {
+            int value = rowWindow.getRow(i).getInt(0);
+            if (minValue > value) {
+              minValue = value;
+              minIndex = i;
+            }
+            if (maxValue < value) {
+              maxValue = value;
+              maxIndex = i;
+            }
           }
-          if (maxValue < value) {
-            maxValue = value;
-            maxIndex = i;
+          int[] arr = new int[] {0, minIndex, maxIndex, rowWindow.windowSize() - 1};
+          // avoid duplicated index
+          Arrays.sort(arr);
+          Row row = rowWindow.getRow(0);
+          collector.putInt(row.getTime(), row.getInt(0));
+          for (int i = 1; i < 4; i++) {
+            if (arr[i] > arr[i - 1]) {
+              row = rowWindow.getRow(arr[i]);
+              collector.putInt(row.getTime(), row.getInt(0));
+            }
           }
+          break;
         }
-        int[] arr = new int[]{0, minIndex, maxIndex, rowWindow.windowSize() - 1};
-        // avoid duplicated index
-        Arrays.sort(arr);
-        Row row = rowWindow.getRow(0);
-        collector.putInt(row.getTime(), row.getInt(0));
-        for (int i = 1; i < 4; i++) {
-          if (arr[i] > arr[i - 1]) {
-            row = rowWindow.getRow(arr[i]);
-            collector.putInt(row.getTime(), row.getInt(0));
+      case INT64:
+        {
+          long maxValue = rowWindow.getRow(0).getLong(0);
+          long minValue = rowWindow.getRow(0).getLong(0);
+          for (int i = 1; i < rowWindow.windowSize(); i++) {
+            long value = rowWindow.getRow(i).getLong(0);
+            if (minValue > value) {
+              minValue = value;
+              minIndex = i;
+            }
+            if (maxValue < value) {
+              maxValue = value;
+              maxIndex = i;
+            }
           }
+          int[] arr = new int[] {0, minIndex, maxIndex, rowWindow.windowSize() - 1};
+          // avoid duplicated index
+          Arrays.sort(arr);
+          Row row = rowWindow.getRow(0);
+          collector.putLong(row.getTime(), row.getLong(0));
+          for (int i = 1; i < 4; i++) {
+            if (arr[i] > arr[i - 1]) {
+              row = rowWindow.getRow(arr[i]);
+              collector.putLong(row.getTime(), row.getLong(0));
+            }
+          }
+          break;
         }
-        break;
-      }
-      case INT64: {
-        long maxValue = rowWindow.getRow(0).getLong(0);
-        long minValue = rowWindow.getRow(0).getLong(0);
-        for (int i = 1; i < rowWindow.windowSize(); i++) {
-          long value = rowWindow.getRow(i).getLong(0);
-          if (minValue > value) {
-            minValue = value;
-            minIndex = i;
+      case FLOAT:
+        {
+          float maxValue = rowWindow.getRow(0).getFloat(0);
+          float minValue = rowWindow.getRow(0).getFloat(0);
+          for (int i = 1; i < rowWindow.windowSize(); i++) {
+            float value = rowWindow.getRow(i).getFloat(0);
+            if (minValue > value) {
+              minValue = value;
+              minIndex = i;
+            }
+            if (maxValue < value) {
+              maxValue = value;
+              maxIndex = i;
+            }
           }
-          if (maxValue < value) {
-            maxValue = value;
-            maxIndex = i;
+          int[] arr = new int[] {0, minIndex, maxIndex, rowWindow.windowSize() - 1};
+          // avoid duplicated index
+          Arrays.sort(arr);
+          Row row = rowWindow.getRow(0);
+          collector.putFloat(row.getTime(), row.getFloat(0));
+          for (int i = 1; i < 4; i++) {
+            if (arr[i] > arr[i - 1]) {
+              row = rowWindow.getRow(arr[i]);
+              collector.putFloat(row.getTime(), row.getFloat(0));
+            }
           }
+          break;
         }
-        int[] arr = new int[]{0, minIndex, maxIndex, rowWindow.windowSize() - 1};
-        // avoid duplicated index
-        Arrays.sort(arr);
-        Row row = rowWindow.getRow(0);
-        collector.putLong(row.getTime(), row.getLong(0));
-        for (int i = 1; i < 4; i++) {
-          if (arr[i] > arr[i - 1]) {
-            row = rowWindow.getRow(arr[i]);
-            collector.putLong(row.getTime(), row.getLong(0));
+      case DOUBLE:
+        {
+          double maxValue = rowWindow.getRow(0).getDouble(0);
+          double minValue = rowWindow.getRow(0).getDouble(0);
+          for (int i = 1; i < rowWindow.windowSize(); i++) {
+            double value = rowWindow.getRow(i).getDouble(0);
+            if (minValue > value) {
+              minValue = value;
+              minIndex = i;
+            }
+            if (maxValue < value) {
+              maxValue = value;
+              maxIndex = i;
+            }
           }
+          int[] arr = new int[] {0, minIndex, maxIndex, rowWindow.windowSize() - 1};
+          // avoid duplicated index
+          Arrays.sort(arr);
+          Row row = rowWindow.getRow(0);
+          collector.putDouble(row.getTime(), row.getDouble(0));
+          for (int i = 1; i < 4; i++) {
+            if (arr[i] > arr[i - 1]) {
+              row = rowWindow.getRow(arr[i]);
+              collector.putDouble(row.getTime(), row.getDouble(0));
+            }
+          }
+          break;
         }
-        break;
-      }
-      case FLOAT: {
-        float maxValue = rowWindow.getRow(0).getFloat(0);
-        float minValue = rowWindow.getRow(0).getFloat(0);
-        for (int i = 1; i < rowWindow.windowSize(); i++) {
-          float value = rowWindow.getRow(i).getFloat(0);
-          if (minValue > value) {
-            minValue = value;
-            minIndex = i;
-          }
-          if (maxValue < value) {
-            maxValue = value;
-            maxIndex = i;
-          }
-        }
-        int[] arr = new int[]{0, minIndex, maxIndex, rowWindow.windowSize() - 1};
-        // avoid duplicated index
-        Arrays.sort(arr);
-        Row row = rowWindow.getRow(0);
-        collector.putFloat(row.getTime(), row.getFloat(0));
-        for (int i = 1; i < 4; i++) {
-          if (arr[i] > arr[i - 1]) {
-            row = rowWindow.getRow(arr[i]);
-            collector.putFloat(row.getTime(), row.getFloat(0));
-          }
-        }
-        break;
-      }
-      case DOUBLE: {
-        double maxValue = rowWindow.getRow(0).getDouble(0);
-        double minValue = rowWindow.getRow(0).getDouble(0);
-        for (int i = 1; i < rowWindow.windowSize(); i++) {
-          double value = rowWindow.getRow(i).getDouble(0);
-          if (minValue > value) {
-            minValue = value;
-            minIndex = i;
-          }
-          if (maxValue < value) {
-            maxValue = value;
-            maxIndex = i;
-          }
-        }
-        int[] arr = new int[]{0, minIndex, maxIndex, rowWindow.windowSize() - 1};
-        // avoid duplicated index
-        Arrays.sort(arr);
-        Row row = rowWindow.getRow(0);
-        collector.putDouble(row.getTime(), row.getDouble(0));
-        for (int i = 1; i < 4; i++) {
-          if (arr[i] > arr[i - 1]) {
-            row = rowWindow.getRow(arr[i]);
-            collector.putDouble(row.getTime(), row.getDouble(0));
-          }
-        }
-        break;
-      }
       default:
         // This will not happen
         throw new UDFInputSeriesDataTypeNotValidException(
@@ -283,30 +286,34 @@ public class UDTFEqualBucketSample implements UDTF {
     if ("avg".equals(aggMethodType)) {
       double sum = 0;
       switch (inputDataType) {
-        case INT32: {
-          for (int i = 0; i < windowSize; i++) {
-            sum += rowWindow.getRow(i).getInt(0) * 1.0 / windowSize;
+        case INT32:
+          {
+            for (int i = 0; i < windowSize; i++) {
+              sum += rowWindow.getRow(i).getInt(0) * 1.0 / windowSize;
+            }
+            break;
           }
-          break;
-        }
-        case INT64: {
-          for (int i = 0; i < windowSize; i++) {
-            sum += rowWindow.getRow(i).getLong(0) * 1.0 / windowSize;
+        case INT64:
+          {
+            for (int i = 0; i < windowSize; i++) {
+              sum += rowWindow.getRow(i).getLong(0) * 1.0 / windowSize;
+            }
+            break;
           }
-          break;
-        }
-        case FLOAT: {
-          for (int i = 0; i < windowSize; i++) {
-            sum += rowWindow.getRow(i).getFloat(0) / windowSize;
+        case FLOAT:
+          {
+            for (int i = 0; i < windowSize; i++) {
+              sum += rowWindow.getRow(i).getFloat(0) / windowSize;
+            }
+            break;
           }
-          break;
-        }
-        case DOUBLE: {
-          for (int i = 0; i < windowSize; i++) {
-            sum += rowWindow.getRow(i).getDouble(0) / windowSize;
+        case DOUBLE:
+          {
+            for (int i = 0; i < windowSize; i++) {
+              sum += rowWindow.getRow(i).getDouble(0) / windowSize;
+            }
+            break;
           }
-          break;
-        }
         default:
           // This will not happen
           throw new UDFInputSeriesDataTypeNotValidException(
@@ -320,50 +327,54 @@ public class UDTFEqualBucketSample implements UDTF {
       collector.putDouble(time, sum);
     } else if ("max".equals(aggMethodType)) {
       switch (outputDataType) {
-        case INT32: {
-          int maxValue = rowWindow.getRow(0).getInt(0);
-          for (int i = 1; i < windowSize; i++) {
-            int value = rowWindow.getRow(i).getInt(0);
-            if (maxValue < value) {
-              maxValue = value;
+        case INT32:
+          {
+            int maxValue = rowWindow.getRow(0).getInt(0);
+            for (int i = 1; i < windowSize; i++) {
+              int value = rowWindow.getRow(i).getInt(0);
+              if (maxValue < value) {
+                maxValue = value;
+              }
             }
+            collector.putInt(time, maxValue);
+            break;
           }
-          collector.putInt(time, maxValue);
-          break;
-        }
-        case INT64: {
-          long maxValue = rowWindow.getRow(0).getLong(0);
-          for (int i = 1; i < windowSize; i++) {
-            long value = rowWindow.getRow(i).getLong(0);
-            if (maxValue < value) {
-              maxValue = value;
+        case INT64:
+          {
+            long maxValue = rowWindow.getRow(0).getLong(0);
+            for (int i = 1; i < windowSize; i++) {
+              long value = rowWindow.getRow(i).getLong(0);
+              if (maxValue < value) {
+                maxValue = value;
+              }
             }
+            collector.putLong(time, maxValue);
+            break;
           }
-          collector.putLong(time, maxValue);
-          break;
-        }
-        case FLOAT: {
-          float maxValue = rowWindow.getRow(0).getFloat(0);
-          for (int i = 1; i < windowSize; i++) {
-            float value = rowWindow.getRow(i).getFloat(0);
-            if (maxValue < value) {
-              maxValue = value;
+        case FLOAT:
+          {
+            float maxValue = rowWindow.getRow(0).getFloat(0);
+            for (int i = 1; i < windowSize; i++) {
+              float value = rowWindow.getRow(i).getFloat(0);
+              if (maxValue < value) {
+                maxValue = value;
+              }
             }
+            collector.putFloat(time, maxValue);
+            break;
           }
-          collector.putFloat(time, maxValue);
-          break;
-        }
-        case DOUBLE: {
-          double maxValue = rowWindow.getRow(0).getDouble(0);
-          for (int i = 1; i < windowSize; i++) {
-            double value = rowWindow.getRow(i).getDouble(0);
-            if (maxValue < value) {
-              maxValue = value;
+        case DOUBLE:
+          {
+            double maxValue = rowWindow.getRow(0).getDouble(0);
+            for (int i = 1; i < windowSize; i++) {
+              double value = rowWindow.getRow(i).getDouble(0);
+              if (maxValue < value) {
+                maxValue = value;
+              }
             }
+            collector.putDouble(time, maxValue);
+            break;
           }
-          collector.putDouble(time, maxValue);
-          break;
-        }
         default:
           // This will not happen
           throw new UDFInputSeriesDataTypeNotValidException(
@@ -376,50 +387,54 @@ public class UDTFEqualBucketSample implements UDTF {
       }
     } else if ("min".equals(aggMethodType)) {
       switch (outputDataType) {
-        case INT32: {
-          int minValue = rowWindow.getRow(0).getInt(0);
-          for (int i = 1; i < windowSize; i++) {
-            int value = rowWindow.getRow(i).getInt(0);
-            if (minValue > value) {
-              minValue = value;
+        case INT32:
+          {
+            int minValue = rowWindow.getRow(0).getInt(0);
+            for (int i = 1; i < windowSize; i++) {
+              int value = rowWindow.getRow(i).getInt(0);
+              if (minValue > value) {
+                minValue = value;
+              }
             }
+            collector.putInt(time, minValue);
+            break;
           }
-          collector.putInt(time, minValue);
-          break;
-        }
-        case INT64: {
-          long minValue = rowWindow.getRow(0).getLong(0);
-          for (int i = 1; i < windowSize; i++) {
-            long value = rowWindow.getRow(i).getLong(0);
-            if (minValue > value) {
-              minValue = value;
+        case INT64:
+          {
+            long minValue = rowWindow.getRow(0).getLong(0);
+            for (int i = 1; i < windowSize; i++) {
+              long value = rowWindow.getRow(i).getLong(0);
+              if (minValue > value) {
+                minValue = value;
+              }
             }
+            collector.putLong(time, minValue);
+            break;
           }
-          collector.putLong(time, minValue);
-          break;
-        }
-        case FLOAT: {
-          float minValue = rowWindow.getRow(0).getFloat(0);
-          for (int i = 1; i < windowSize; i++) {
-            float value = rowWindow.getRow(i).getFloat(0);
-            if (minValue > value) {
-              minValue = value;
+        case FLOAT:
+          {
+            float minValue = rowWindow.getRow(0).getFloat(0);
+            for (int i = 1; i < windowSize; i++) {
+              float value = rowWindow.getRow(i).getFloat(0);
+              if (minValue > value) {
+                minValue = value;
+              }
             }
+            collector.putFloat(time, minValue);
+            break;
           }
-          collector.putFloat(time, minValue);
-          break;
-        }
-        case DOUBLE: {
-          double minValue = rowWindow.getRow(0).getDouble(0);
-          for (int i = 1; i < windowSize; i++) {
-            double value = rowWindow.getRow(i).getDouble(0);
-            if (minValue > value) {
-              minValue = value;
+        case DOUBLE:
+          {
+            double minValue = rowWindow.getRow(0).getDouble(0);
+            for (int i = 1; i < windowSize; i++) {
+              double value = rowWindow.getRow(i).getDouble(0);
+              if (minValue > value) {
+                minValue = value;
+              }
             }
+            collector.putDouble(time, minValue);
+            break;
           }
-          collector.putDouble(time, minValue);
-          break;
-        }
         default:
           // This will not happen
           throw new UDFInputSeriesDataTypeNotValidException(
