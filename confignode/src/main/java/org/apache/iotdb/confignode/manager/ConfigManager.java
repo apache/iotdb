@@ -179,8 +179,10 @@ public class ConfigManager implements Manager {
             .setMessage(
                 "The current ConfigNode is not leader. And ConfigNodeGroup is in leader election. Please redirect with a random ConfigNode.");
       } else {
+        // TODO Get rpc port of leader
         return new TSStatus(TSStatusCode.NEED_REDIRECTION.getStatusCode())
-            .setRedirectNode(new EndPoint(peer.getEndpoint().getIp(), peer.getEndpoint().getPort()))
+            .setRedirectNode(
+                new EndPoint(peer.getEndpoint().getIp(), peer.getEndpoint().getPort() - 1))
             .setMessage("The current ConfigNode is not leader. Please redirect.");
       }
     }

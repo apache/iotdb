@@ -34,7 +34,6 @@ import org.apache.iotdb.db.conf.IoTDBConfigCheck;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.thrift.impl.DataNodeManagementServiceImpl;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
-import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -141,18 +140,18 @@ public class DataNode implements DataNodeMBean {
 
         // wait 5s to start the next try
         Thread.sleep(IoTDBDescriptor.getInstance().getConfig().getJoinClusterTimeOutMs());
-      } catch (StatementExecutionException | IoTDBConnectionException e) {
-        logger.warn("Cannot join the cluster, because:", e);
+      } catch (IoTDBConnectionException e) {
+        logger.warn("Cannot join the cluster, because: {}", e.getMessage());
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
-        logger.warn("Unexpected interruption when waiting to join a cluster", e);
+        logger.warn("Unexpected interruption when waiting to join the cluster", e);
       }
       // start the next try
       retry--;
     }
     // all tries failed
     logger.error("Cannot join the cluster after {} retries", DEFAULT_JOIN_RETRY);
-    throw new StartupException("Can not connect with the config nodes, please check the network");
+    throw new StartupException("Cannot join the cluster.");
   }
 
   public void active() throws StartupException {

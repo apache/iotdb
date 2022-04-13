@@ -27,9 +27,7 @@ import org.apache.iotdb.confignode.rpc.thrift.*;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcTransportFactory;
-import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.*;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -141,7 +139,7 @@ public class ConfigNodeClient {
     transport.close();
   }
 
-  private boolean verifyNeedRedirect(TSStatus status) throws StatementExecutionException {
+  private boolean updateConfigNodeLeader(TSStatus status) {
     if (status.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
       if (status.isSetRedirectNode()) {
         configLeader =
@@ -151,18 +149,15 @@ public class ConfigNodeClient {
       }
       return true;
     }
-    if (status.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return false;
-    }
-    throw new StatementExecutionException(status);
+    return false;
   }
 
   public TDataNodeRegisterResp registerDataNode(TDataNodeRegisterReq req)
-      throws StatementExecutionException, IoTDBConnectionException {
+      throws IoTDBConnectionException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TDataNodeRegisterResp resp = client.registerDataNode(req);
-        if (!verifyNeedRedirect(resp.status)) {
+        if (!updateConfigNodeLeader(resp.status)) {
           return resp;
         }
       } catch (TException e) {
@@ -173,12 +168,11 @@ public class ConfigNodeClient {
     throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
   }
 
-  public TDataNodeMessageResp getDataNodesMessage(int dataNodeID)
-      throws StatementExecutionException, IoTDBConnectionException {
+  public TDataNodeMessageResp getDataNodesMessage(int dataNodeID) throws IoTDBConnectionException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TDataNodeMessageResp resp = client.getDataNodesMessage(dataNodeID);
-        if (!verifyNeedRedirect(resp.status)) {
+        if (!updateConfigNodeLeader(resp.status)) {
           return resp;
         }
       } catch (TException e) {
@@ -189,12 +183,11 @@ public class ConfigNodeClient {
     throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
   }
 
-  public TSStatus setStorageGroup(TSetStorageGroupReq req)
-      throws StatementExecutionException, IoTDBConnectionException {
+  public TSStatus setStorageGroup(TSetStorageGroupReq req) throws IoTDBConnectionException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TSStatus status = client.setStorageGroup(req);
-        if (!verifyNeedRedirect(status)) {
+        if (!updateConfigNodeLeader(status)) {
           return status;
         }
       } catch (TException e) {
@@ -205,12 +198,11 @@ public class ConfigNodeClient {
     throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
   }
 
-  public TSStatus deleteStorageGroup(TDeleteStorageGroupReq req)
-      throws StatementExecutionException, IoTDBConnectionException {
+  public TSStatus deleteStorageGroup(TDeleteStorageGroupReq req) throws IoTDBConnectionException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TSStatus status = client.deleteStorageGroup(req);
-        if (!verifyNeedRedirect(status)) {
+        if (!updateConfigNodeLeader(status)) {
           return status;
         }
       } catch (TException e) {
@@ -221,12 +213,11 @@ public class ConfigNodeClient {
     throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
   }
 
-  public TStorageGroupMessageResp getStorageGroupsMessage()
-      throws StatementExecutionException, IoTDBConnectionException {
+  public TStorageGroupMessageResp getStorageGroupsMessage() throws IoTDBConnectionException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TStorageGroupMessageResp resp = client.getStorageGroupsMessage();
-        if (!verifyNeedRedirect(resp.status)) {
+        if (!updateConfigNodeLeader(resp.status)) {
           return resp;
         }
       } catch (TException e) {
@@ -238,11 +229,11 @@ public class ConfigNodeClient {
   }
 
   public TSchemaPartitionResp getSchemaPartition(TSchemaPartitionReq req)
-      throws StatementExecutionException, IoTDBConnectionException {
+      throws IoTDBConnectionException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TSchemaPartitionResp resp = client.getSchemaPartition(req);
-        if (!verifyNeedRedirect(resp.status)) {
+        if (!updateConfigNodeLeader(resp.status)) {
           return resp;
         }
       } catch (TException e) {
@@ -254,11 +245,11 @@ public class ConfigNodeClient {
   }
 
   public TSchemaPartitionResp getOrCreateSchemaPartition(TSchemaPartitionReq req)
-      throws StatementExecutionException, IoTDBConnectionException {
+      throws IoTDBConnectionException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TSchemaPartitionResp resp = client.getOrCreateSchemaPartition(req);
-        if (!verifyNeedRedirect(resp.status)) {
+        if (!updateConfigNodeLeader(resp.status)) {
           return resp;
         }
       } catch (TException e) {
@@ -270,11 +261,11 @@ public class ConfigNodeClient {
   }
 
   public TDataPartitionResp getDataPartition(TDataPartitionReq req)
-      throws StatementExecutionException, IoTDBConnectionException {
+      throws IoTDBConnectionException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TDataPartitionResp resp = client.getDataPartition(req);
-        if (!verifyNeedRedirect(resp.status)) {
+        if (!updateConfigNodeLeader(resp.status)) {
           return resp;
         }
       } catch (TException e) {
@@ -286,11 +277,11 @@ public class ConfigNodeClient {
   }
 
   public TDataPartitionResp getOrCreateDataPartition(TDataPartitionReq req)
-      throws StatementExecutionException, IoTDBConnectionException {
+      throws IoTDBConnectionException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TDataPartitionResp resp = client.getOrCreateDataPartition(req);
-        if (!verifyNeedRedirect(resp.status)) {
+        if (!updateConfigNodeLeader(resp.status)) {
           return resp;
         }
       } catch (TException e) {
@@ -301,12 +292,11 @@ public class ConfigNodeClient {
     throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
   }
 
-  public TSStatus operatePermission(TAuthorizerReq req)
-      throws StatementExecutionException, IoTDBConnectionException {
+  public TSStatus operatePermission(TAuthorizerReq req) throws IoTDBConnectionException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TSStatus status = client.operatePermission(req);
-        if (!verifyNeedRedirect(status)) {
+        if (!updateConfigNodeLeader(status)) {
           return status;
         }
       } catch (TException e) {
