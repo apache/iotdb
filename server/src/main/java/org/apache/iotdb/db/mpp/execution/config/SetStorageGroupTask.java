@@ -20,16 +20,17 @@
 package org.apache.iotdb.db.mpp.execution.config;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
+import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
+import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.SetStorageGroupStatement;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
-import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,7 +43,7 @@ public class SetStorageGroupTask implements IConfigTask {
   }
 
   @Override
-  public ListenableFuture<Void> execute() throws TException, MetadataException {
+  public ListenableFuture<Void> execute() throws IoTDBConnectionException, MetadataException {
     if (!(statement instanceof SetStorageGroupStatement)) {
       LOGGER.error("SetStorageGroup not get SetStorageGroupStatement");
       return Futures.immediateVoidFuture();
@@ -53,11 +54,15 @@ public class SetStorageGroupTask implements IConfigTask {
         new TSetStorageGroupReq(setStorageGroupStatement.getStorageGroupPath().getFullPath());
 
     // Send request to some API server
-    ConfigIService.Client client;
-    // TODO SpriCoder borrow client
+    ConfigNodeClient configNodeClient = null;
+    try {
+      configNodeClient = new ConfigNodeClient();
+    } catch (IoTDBConnectionException | BadNodeUrlException e) {
+      throw new MetadataException(e.getMessage());
+    }
 
     // Get response or throw exception
-    TSStatus tsStatus = client.setStorageGroup(req);
+    TSStatus tsStatus = configNodeClient.setStorageGroup(req);
     if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
       throw new MetadataException("Failed to set storage Group");
     }

@@ -20,10 +20,10 @@
 package org.apache.iotdb.db.mpp.execution.config;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
 
 import com.google.common.util.concurrent.ListenableFuture;
-import org.apache.thrift.TException;
 
 public interface IConfigTask {
-  ListenableFuture<Void> execute() throws TException, MetadataException;
+  ListenableFuture<Void> execute() throws IoTDBConnectionException, MetadataException;
 }
