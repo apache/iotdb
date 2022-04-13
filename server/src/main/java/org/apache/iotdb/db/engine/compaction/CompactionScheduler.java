@@ -59,7 +59,6 @@ public class CompactionScheduler {
       tryToSubmitCrossSpaceCompactionTask(
           tsFileManager.getStorageGroupName(),
           tsFileManager.getDataRegion(),
-          tsFileManager.getStorageGroupDir(),
           timePartition,
           tsFileManager);
       tryToSubmitInnerSpaceCompactionTask(
@@ -76,6 +75,7 @@ public class CompactionScheduler {
           false);
     } catch (InterruptedException e) {
       LOGGER.error("Exception occurs when selecting compaction tasks", e);
+      Thread.currentThread().interrupt();
     }
   }
 
@@ -134,7 +134,6 @@ public class CompactionScheduler {
   private static void tryToSubmitCrossSpaceCompactionTask(
       String logicalStorageGroupName,
       String dataRegionId,
-      String storageGroupDir,
       long timePartition,
       TsFileManager tsFileManager)
       throws InterruptedException {

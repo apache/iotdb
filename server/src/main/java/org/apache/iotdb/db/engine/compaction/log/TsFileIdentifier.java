@@ -170,6 +170,11 @@ public class TsFileIdentifier {
         && otherInfo.filename.equals(this.filename);
   }
 
+  @Override
+  public int hashCode() {
+    return this.toString().hashCode();
+  }
+
   /**
    * This method find the File object of current file by searching it in every data directory. If
    * the file is not found, it will return null.

@@ -199,6 +199,9 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
           fullStorageGroupName,
           throwable.getMessage());
       LOGGER.warn("{} [Compaction] Start to handle exception", fullStorageGroupName);
+      if (throwable instanceof InterruptedException) {
+        Thread.currentThread().interrupt();
+      }
       if (compactionLogger != null) {
         compactionLogger.close();
       }
@@ -316,6 +319,14 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   @Override
   public int hashCode() {
     return toString().hashCode();
+  }
+
+  @Override
+  public boolean equals(Object other) {
+    if (!(other instanceof InnerSpaceCompactionTask)) {
+      return false;
+    }
+    return equalsOtherTask((InnerSpaceCompactionTask) other);
   }
 
   @Override
