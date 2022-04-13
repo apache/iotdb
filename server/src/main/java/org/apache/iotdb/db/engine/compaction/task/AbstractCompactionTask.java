@@ -71,7 +71,7 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
     try {
       doCompaction();
     } catch (InterruptedException e) {
-      LOGGER.error("Current task is interrupted");
+      LOGGER.warn("Current task is interrupted");
     } catch (Exception e) {
       LOGGER.error(e.getMessage(), e);
     } finally {
