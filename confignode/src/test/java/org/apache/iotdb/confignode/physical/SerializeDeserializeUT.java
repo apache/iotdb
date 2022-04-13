@@ -28,7 +28,9 @@ import org.apache.iotdb.commons.partition.TimePartitionSlot;
 import org.apache.iotdb.confignode.partition.StorageGroupSchema;
 import org.apache.iotdb.confignode.physical.crud.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.physical.crud.CreateRegionsPlan;
+import org.apache.iotdb.confignode.physical.crud.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.physical.crud.GetOrCreateDataPartitionPlan;
+import org.apache.iotdb.confignode.physical.crud.GetOrCreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.physical.sys.AuthorPlan;
 import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
 import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
@@ -110,13 +112,42 @@ public class SerializeDeserializeUT {
   }
 
   @Test
-  public void CreateSchemaPartitionPlanTest() {
-    // TODO: Add serialize and deserialize test
+  public void CreateSchemaPartitionPlanTest() throws IOException {
+    String storageGroup = "root.sg0";
+    SeriesPartitionSlot seriesPartitionSlot = new SeriesPartitionSlot(10);
+    RegionReplicaSet regionReplicaSet = new RegionReplicaSet();
+    regionReplicaSet.setConsensusGroupId(new SchemaRegionId(0));
+    regionReplicaSet.setDataNodeList(
+        Collections.singletonList(new DataNodeLocation(0, new Endpoint("0.0.0.0", 6667))));
+
+    Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> assignedSchemaPartition =
+        new HashMap<>();
+    assignedSchemaPartition.put(storageGroup, new HashMap<>());
+    assignedSchemaPartition.get(storageGroup).put(seriesPartitionSlot, regionReplicaSet);
+
+    CreateSchemaPartitionPlan plan0 = new CreateSchemaPartitionPlan();
+    plan0.setAssignedSchemaPartition(assignedSchemaPartition);
+    plan0.serialize(buffer);
+    CreateSchemaPartitionPlan plan1 =
+        (CreateSchemaPartitionPlan) PhysicalPlan.Factory.create(buffer);
+    Assert.assertEquals(plan0, plan1);
   }
 
   @Test
-  public void GetOrCreateSchemaPartitionPlanTest() {
-    // TODO: Add serialize and deserialize test
+  public void GetOrCreateSchemaPartitionPlanTest() throws IOException {
+    String storageGroup = "root.sg0";
+    SeriesPartitionSlot seriesPartitionSlot = new SeriesPartitionSlot(10);
+
+    Map<String, List<SeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
+    partitionSlotsMap.put(storageGroup, Collections.singletonList(seriesPartitionSlot));
+
+    GetOrCreateSchemaPartitionPlan plan0 =
+        new GetOrCreateSchemaPartitionPlan(PhysicalPlanType.GetOrCreateSchemaPartition);
+    plan0.setPartitionSlotsMap(partitionSlotsMap);
+    plan0.serialize(buffer);
+    GetOrCreateSchemaPartitionPlan plan1 =
+        (GetOrCreateSchemaPartitionPlan) PhysicalPlan.Factory.create(buffer);
+    Assert.assertEquals(plan0, plan1);
   }
 
   @Test

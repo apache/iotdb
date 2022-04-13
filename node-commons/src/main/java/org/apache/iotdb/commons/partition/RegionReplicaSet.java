@@ -54,6 +54,7 @@ public class RegionReplicaSet {
     this.consensusGroupId = consensusGroupId;
   }
 
+  @Override
   public String toString() {
     return String.format(
         "RegionReplicaSet[%s-%d]: %s",
