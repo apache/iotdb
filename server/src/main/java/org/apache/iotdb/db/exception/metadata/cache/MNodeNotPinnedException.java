@@ -15,22 +15,7 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- *
  */
-<<<<<<<< HEAD:server/src/main/java/org/apache/iotdb/db/qp/physical/sys/ShowPipePlan.java
-package org.apache.iotdb.db.qp.physical.sys;
-
-public class ShowPipePlan extends ShowPlan {
-  private String pipeName;
-
-  public ShowPipePlan(String pipeName) {
-    super(ShowContentType.PIPE);
-    this.pipeName = pipeName;
-  }
-
-  public String getPipeName() {
-    return pipeName;
-========
 
 package org.apache.iotdb.db.exception.metadata.cache;
 
@@ -40,6 +25,5 @@ public class MNodeNotPinnedException extends MetadataException {
 
   public MNodeNotPinnedException() {
     super("MNode has not been pinned.");
->>>>>>>> master:server/src/main/java/org/apache/iotdb/db/exception/metadata/cache/MNodeNotPinnedException.java
   }
 }

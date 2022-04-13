@@ -463,15 +463,6 @@ public class StorageGroupManager {
     return historyTsFiles;
   }
 
-  /** collect all tsfiles whose memtable == null for sync */
-  public List<File> collectHistoryTsFileForSync(long dataStartTime) {
-    List<File> historyTsFiles = new ArrayList<>();
-    for (VirtualStorageGroupProcessor processor : virtualStorageGroupProcessor) {
-      historyTsFiles.addAll(processor.collectHistoryTsFileForSync(dataStartTime));
-    }
-    return historyTsFiles;
-  }
-
   /** only for test */
   public void reset() {
     Arrays.fill(dataRegion, null);

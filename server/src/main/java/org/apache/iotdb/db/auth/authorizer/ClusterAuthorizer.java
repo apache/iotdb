@@ -16,18 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-<<<<<<<< HEAD:server/src/main/java/org/apache/iotdb/db/qp/physical/sys/ShowPipeServerPlan.java
-package org.apache.iotdb.db.qp.physical.sys;
-
-public class ShowPipeServerPlan extends ShowPlan {
-
-  public ShowPipeServerPlan() {
-    super(ShowContentType.PIPESERVER);
-  }
-========
 package org.apache.iotdb.db.auth.authorizer;
 
 public class ClusterAuthorizer {
   // TODO: send rpc to confignode
->>>>>>>> master:server/src/main/java/org/apache/iotdb/db/auth/authorizer/ClusterAuthorizer.java
 }

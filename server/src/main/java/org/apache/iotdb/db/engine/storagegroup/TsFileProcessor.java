@@ -1444,16 +1444,6 @@ public class TsFileProcessor {
     }
   }
 
-  /** sync method */
-  public boolean isMemtableNotNull() {
-    flushQueryLock.writeLock().lock();
-    try {
-      return workMemTable != null;
-    } finally {
-      flushQueryLock.writeLock().unlock();
-    }
-  }
-
   /** close this tsfile */
   public void close() throws TsFileProcessorException {
     try {

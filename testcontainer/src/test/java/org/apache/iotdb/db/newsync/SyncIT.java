@@ -236,7 +236,7 @@ public class SyncIT {
   }
 
   @Test
-  public void testStopAndStart() {
+  public void testStopAndStartInsert() {
     try {
       prepareSchema();
       prepareIns1();

@@ -1,7 +1,3 @@
-<<<<<<<< HEAD:testcontainer/src/test/resources/sync/docker-compose.yaml
-#
-========
->>>>>>>> master:example/rest-client-c-example/CMakeLists.txt
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -22,45 +18,8 @@
 cmake_minimum_required(VERSION 3.16)
 project(c_rest_iotdb C)
 
-<<<<<<<< HEAD:testcontainer/src/test/resources/sync/docker-compose.yaml
-version: '3.8'
-
-services:
-  iotdb-sender:
-    image: apache/iotdb:sync-maven-development
-    networks:
-      - iotdb
-    cap_add:
-      - NET_ADMIN
-    healthcheck:
-      test: [ "CMD", "bash", "-c", "cat < /dev/null > /dev/tcp/127.0.0.1/6667" ]
-      interval: 5s
-      timeout: 60s
-      retries: 120
-    volumes:
-    - ../logback-container.xml:/iotdb/conf/logback.xml
-  iotdb-receiver:
-    image: apache/iotdb:sync-maven-development
-    networks:
-      - iotdb
-    cap_add:
-      - NET_ADMIN
-    healthcheck:
-      test: [ "CMD", "bash", "-c", "cat < /dev/null > /dev/tcp/127.0.0.1/6667" ]
-      interval: 5s
-      timeout: 60s
-      retries: 120
-    volumes:
-      - ../logback-container.xml:/iotdb/conf/logback.xml
-
-
-networks:
-  iotdb:
-    driver: bridge
-========
 set(CMAKE_C_STANDARD 99)
 find_package(CURL REQUIRED)
 
 add_executable(c_rest_iotdb main.c base64.c)
 target_link_libraries(c_rest_iotdb PRIVATE CURL::libcurl)
->>>>>>>> master:example/rest-client-c-example/CMakeLists.txt

@@ -17,29 +17,11 @@
  * under the License.
  *
  */
-package org.apache.iotdb.db.exception.sync;
+package org.apache.iotdb.db.exception;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-<<<<<<<< HEAD:server/src/main/java/org/apache/iotdb/db/exception/sync/PipeSinkException.java
-public class PipeSinkException extends IoTDBException {
-
-  private static final long serialVersionUID = -2355881952697245662L;
-
-  public PipeSinkException(String message, int errorCode) {
-    super(message, errorCode);
-  }
-
-  public PipeSinkException(String message) {
-    super(message, TSStatusCode.PIPESINK_ERROR.getStatusCode());
-  }
-
-  public PipeSinkException(String attr, String value, String attrType) {
-    super(
-        String.format("%s=%s has wrong format, require for %s.", attr, value, attrType),
-        TSStatusCode.PIPESINK_ERROR.getStatusCode());
-========
 public class DataRegionException extends IoTDBException {
 
   private static final long serialVersionUID = 7373978140952977661L;
@@ -50,6 +32,5 @@ public class DataRegionException extends IoTDBException {
 
   public DataRegionException(String message) {
     super(message, TSStatusCode.DATA_REGION_ERROR.getStatusCode());
->>>>>>>> master:server/src/main/java/org/apache/iotdb/db/exception/DataRegionException.java
   }
 }
