@@ -46,6 +46,8 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
 
+import java.io.DataInputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public enum PlanNodeType {
@@ -85,6 +87,19 @@ public enum PlanNodeType {
 
   public void serialize(ByteBuffer buffer) {
     buffer.putShort(nodeType);
+  }
+
+  public static PlanNode deserialize(DataInputStream stream)
+      throws IOException, IllegalPathException {
+    short nodeType = stream.readShort();
+    switch (nodeType) {
+      case 13:
+        return InsertTabletNode.deserialize(stream);
+      case 14:
+        return InsertRowNode.deserialize(stream);
+      default:
+        throw new IllegalArgumentException("Invalid node type: " + nodeType);
+    }
   }
 
   public static PlanNode deserialize(ByteBuffer buffer) throws IllegalPathException {

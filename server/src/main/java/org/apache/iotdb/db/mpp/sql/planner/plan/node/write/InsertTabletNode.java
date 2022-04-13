@@ -33,6 +33,7 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import java.io.DataInputStream;
 import java.nio.ByteBuffer;
 import java.util.*;
 
@@ -280,6 +281,10 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   public static InsertTabletNode deserialize(ByteBuffer byteBuffer) {
+    return null;
+  }
+
+  public static InsertTabletNode deserialize(DataInputStream stream) {
     return null;
   }
 }
