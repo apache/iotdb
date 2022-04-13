@@ -76,8 +76,10 @@ public abstract class GroupByTimeEngineDataSet extends GroupByTimeDataSet {
 
   // find the next pre-aggregation interval
   protected void updatePreAggrInterval() {
-    TimeRange retPerAggrTimeRange;
-    retPerAggrTimeRange = preAggrWindowIterator.nextTimeRange();
+    TimeRange retPerAggrTimeRange = null;
+    if (preAggrWindowIterator.hasNextTimeRange()) {
+      retPerAggrTimeRange = preAggrWindowIterator.nextTimeRange();
+    }
     if (retPerAggrTimeRange != null) {
       curPreAggrTimeRange = retPerAggrTimeRange;
     } else {
