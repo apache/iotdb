@@ -30,7 +30,7 @@ public abstract class SourceNode extends PlanNode implements AutoCloseable {
 
   public abstract void open() throws Exception;
 
-  public abstract RegionReplicaSet getDataRegionReplicaSet();
+  public abstract RegionReplicaSet getRegionReplicaSet();
 
-  public abstract void setDataRegionReplicaSet(RegionReplicaSet regionReplicaSet);
+  public abstract void setRegionReplicaSet(RegionReplicaSet regionReplicaSet);
 }

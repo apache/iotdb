@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.sql.analyze;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.PartitionInfo;
+import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -46,6 +47,8 @@ import org.apache.iotdb.db.mpp.sql.statement.crud.*;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowDevicesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.SchemaFetchStatement;
 import org.apache.iotdb.db.mpp.sql.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
@@ -258,6 +261,30 @@ public class Analyzer {
       analysis.setStatement(insertTabletStatement);
       analysis.setDataPartitionInfo(partitionInfo.getDataPartitionInfo());
       analysis.setSchemaPartitionInfo(partitionInfo.getSchemaPartitionInfo());
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitShowTimeSeries(
+        ShowTimeSeriesStatement showTimeSeriesStatement, MPPQueryContext context) {
+      SchemaPartition schemaPartitionInfo =
+          partitionFetcher.fetchSchemaPartitionInfo(
+              showTimeSeriesStatement.getPathPattern().getDevice());
+      Analysis analysis = new Analysis();
+      analysis.setStatement(showTimeSeriesStatement);
+      analysis.setSchemaPartitionInfo(schemaPartitionInfo);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitShowDevices(
+        ShowDevicesStatement showDevicesStatement, MPPQueryContext context) {
+      SchemaPartition schemaPartitionInfo =
+          partitionFetcher.fetchSchemaPartitionInfo(
+              showDevicesStatement.getPathPattern().getFullPath());
+      Analysis analysis = new Analysis();
+      analysis.setStatement(showDevicesStatement);
+      analysis.setSchemaPartitionInfo(schemaPartitionInfo);
       return analysis;
     }
 

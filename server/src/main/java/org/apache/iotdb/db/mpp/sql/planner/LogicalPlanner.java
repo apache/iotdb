@@ -38,12 +38,22 @@ import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.crud.*;
 import org.apache.iotdb.db.mpp.sql.statement.crud.AggregationQueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.FillQueryStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.GroupByFillQueryStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.GroupByQueryStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertRowStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.InsertRowsOfOneDeviceStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertTabletStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.LastQueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.QueryStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.UDAFQueryStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.UDTFQueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowDevicesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.SchemaFetchStatement;
 import org.apache.iotdb.db.mpp.sql.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
@@ -260,6 +270,43 @@ public class LogicalPlanner {
           insertRowStatement.getDataTypes(),
           insertRowStatement.getTime(),
           insertRowStatement.getValues());
+    }
+
+    @Override
+    public PlanNode visitShowTimeSeries(
+        ShowTimeSeriesStatement showTimeSeriesStatement, MPPQueryContext context) {
+      QueryPlanBuilder planBuilder = new QueryPlanBuilder(context);
+      planBuilder.planTimeSeriesMetaSource(
+          showTimeSeriesStatement.getPathPattern(),
+          showTimeSeriesStatement.getKey(),
+          showTimeSeriesStatement.getValue(),
+          showTimeSeriesStatement.getLimit(),
+          showTimeSeriesStatement.getOffset(),
+          showTimeSeriesStatement.isOrderByHeat(),
+          showTimeSeriesStatement.isContains(),
+          showTimeSeriesStatement.isPrefixPath());
+      planBuilder.planMetaMerge(showTimeSeriesStatement.isOrderByHeat());
+      if (showTimeSeriesStatement.getLimit() > 0) {
+        planBuilder.planOffset(showTimeSeriesStatement.getOffset());
+        planBuilder.planLimit(showTimeSeriesStatement.getLimit());
+      }
+      return planBuilder.getRoot();
+    }
+
+    @Override
+    public PlanNode visitShowDevices(
+        ShowDevicesStatement showDevicesStatement, MPPQueryContext context) {
+      QueryPlanBuilder planBuilder = new QueryPlanBuilder(context);
+      planBuilder.planDeviceMetaSource(
+          showDevicesStatement.getPathPattern(),
+          showDevicesStatement.getLimit(),
+          showDevicesStatement.getOffset(),
+          showDevicesStatement.isPrefixPath(),
+          showDevicesStatement.hasSgCol());
+      planBuilder.planMetaMerge(false);
+      planBuilder.planOffset(showDevicesStatement.getOffset());
+      planBuilder.planLimit(showDevicesStatement.getLimit());
+      return planBuilder.getRoot();
     }
 
     @Override
