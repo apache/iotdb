@@ -70,6 +70,8 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
     currentTaskNum.incrementAndGet();
     try {
       doCompaction();
+    } catch (InterruptedException e) {
+      LOGGER.error("Current task is interrupted");
     } catch (Exception e) {
       LOGGER.error(e.getMessage(), e);
     } finally {

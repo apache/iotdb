@@ -197,7 +197,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       LOGGER.error(
           "{} [Compaction] Throwable is caught during execution of SizeTieredCompaction, {}",
           fullStorageGroupName,
-          throwable);
+          throwable.getMessage());
       LOGGER.warn("{} [Compaction] Start to handle exception", fullStorageGroupName);
       if (compactionLogger != null) {
         compactionLogger.close();
