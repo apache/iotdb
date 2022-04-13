@@ -27,11 +27,13 @@ public interface ITimeRangeIterator {
   /** return the first time range by sorting order */
   TimeRange getFirstTimeRange();
 
+  /** @return whether current iterator has next time range */
+  boolean hasNextTimeRange();
   /**
    * return the next time range according to curStartTime (the start time of the last returned time
    * range)
    */
-  TimeRange getNextTimeRange(long curStartTime);
+  TimeRange nextTimeRange();
 
   boolean isAscending();
 }

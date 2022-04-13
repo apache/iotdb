@@ -35,13 +35,14 @@ public class AggrWindowIterator implements ITimeRangeIterator {
   // total query [startTime, endTime)
   private final long startTime;
   private final long endTime;
-
   private final long interval;
   private final long slidingStep;
 
   private final boolean isAscending;
   private final boolean isSlidingStepByMonth;
   private final boolean isIntervalByMonth;
+
+  private TimeRange curTimeRange;
 
   public AggrWindowIterator(
       long startTime,
@@ -110,8 +111,14 @@ public class AggrWindowIterator implements ITimeRangeIterator {
   }
 
   @Override
-  public TimeRange getNextTimeRange(long curStartTime) {
+  public boolean hasNextTimeRange() {
+    if (curTimeRange == null) {
+      curTimeRange = getFirstTimeRange();
+      return true;
+    }
+
     long retStartTime, retEndTime;
+    long curStartTime = curTimeRange.getMin();
     if (isAscending) {
       if (isSlidingStepByMonth) {
         retStartTime = DatetimeUtils.calcIntervalByMonth(curStartTime, (int) (slidingStep));
@@ -120,7 +127,7 @@ public class AggrWindowIterator implements ITimeRangeIterator {
       }
       // This is an open interval , [0-100)
       if (retStartTime >= endTime) {
-        return null;
+        return false;
       }
     } else {
       if (isSlidingStepByMonth) {
@@ -129,7 +136,7 @@ public class AggrWindowIterator implements ITimeRangeIterator {
         retStartTime = curStartTime - slidingStep;
       }
       if (retStartTime < startTime) {
-        return null;
+        return false;
       }
     }
 
@@ -139,7 +146,16 @@ public class AggrWindowIterator implements ITimeRangeIterator {
       retEndTime = retStartTime + interval;
     }
     retEndTime = Math.min(retEndTime, endTime);
-    return new TimeRange(retStartTime, retEndTime);
+    curTimeRange = new TimeRange(retStartTime, retEndTime);
+    return true;
+  }
+
+  @Override
+  public TimeRange nextTimeRange() {
+    if (curTimeRange != null || hasNextTimeRange()) {
+      return curTimeRange;
+    }
+    return null;
   }
 
   @Override

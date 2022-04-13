@@ -33,6 +33,7 @@ public class PreAggrWindowWithNaturalMonthIterator implements ITimeRangeIterator
   private long curStartTimeForIterator;
 
   private long lastEndTime;
+  private TimeRange curTimeRange;
 
   public PreAggrWindowWithNaturalMonthIterator(
       long startTime,
@@ -64,22 +65,36 @@ public class PreAggrWindowWithNaturalMonthIterator implements ITimeRangeIterator
   }
 
   @Override
-  public TimeRange getNextTimeRange(long curStartTime) {
+  public boolean hasNextTimeRange() {
+    if (curTimeRange == null) {
+      curTimeRange = getFirstTimeRange();
+      return true;
+    }
+
     if (lastEndTime >= curStartTimeForIterator) {
       tryToExpandHeap();
     }
     if (timeBoundaryHeap.isEmpty()) {
-      return null;
+      return false;
     }
     long retStartTime = timeBoundaryHeap.pollFirst();
     if (retStartTime >= curStartTimeForIterator) {
       tryToExpandHeap();
     }
     if (timeBoundaryHeap.isEmpty()) {
-      return null;
+      return false;
     }
     lastEndTime = timeBoundaryHeap.first();
-    return new TimeRange(retStartTime, lastEndTime);
+    curTimeRange = new TimeRange(retStartTime, lastEndTime);
+    return true;
+  }
+
+  @Override
+  public TimeRange nextTimeRange() {
+    if (curTimeRange != null || hasNextTimeRange()) {
+      return curTimeRange;
+    }
+    return null;
   }
 
   private void initHeap() {
@@ -92,13 +107,11 @@ public class PreAggrWindowWithNaturalMonthIterator implements ITimeRangeIterator
   }
 
   private void tryToExpandHeap() {
-    TimeRange curTimeRange = aggrWindowIterator.getNextTimeRange(curStartTimeForIterator);
-    while (curTimeRange != null && timeBoundaryHeap.size() < HEAP_MAX_SIZE) {
+    while (aggrWindowIterator.hasNextTimeRange() && timeBoundaryHeap.size() < HEAP_MAX_SIZE) {
+      curTimeRange = aggrWindowIterator.nextTimeRange();
       timeBoundaryHeap.add(curTimeRange.getMin());
       timeBoundaryHeap.add(curTimeRange.getMax());
       curStartTimeForIterator = curTimeRange.getMin();
-
-      curTimeRange = aggrWindowIterator.getNextTimeRange(curStartTimeForIterator);
     }
   }
 

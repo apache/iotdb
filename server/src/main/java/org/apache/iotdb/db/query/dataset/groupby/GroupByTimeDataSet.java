@@ -29,7 +29,6 @@ import org.apache.iotdb.db.utils.timerangeiterator.TimeRangeIteratorFactory;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -46,13 +45,11 @@ public abstract class GroupByTimeDataSet extends QueryDataSet {
   protected long endTime;
 
   // current interval of aggregation window [curStartTime, curEndTime)
-  protected long curStartTime;
-  protected long curEndTime;
+  protected TimeRange curAggrTimeRange;
   protected boolean hasCachedTimeInterval;
 
   // current interval of pre-aggregation window [curStartTime, curEndTime)
-  protected long curPreAggrStartTime;
-  protected long curPreAggrEndTime;
+  protected TimeRange curPreAggrTimeRange;
 
   protected boolean leftCRightO;
   protected boolean isIntervalByMonth = false;
@@ -126,16 +123,10 @@ public abstract class GroupByTimeDataSet extends QueryDataSet {
             true);
 
     // find the first aggregation interval
-    TimeRange retTimeRange = aggrWindowIterator.getFirstTimeRange();
-
-    curStartTime = retTimeRange.getMin();
-    curEndTime = retTimeRange.getMax();
+    curAggrTimeRange = aggrWindowIterator.nextTimeRange();
 
     // find the first pre-aggregation interval
-    TimeRange retPerAggrTimeRange = preAggrWindowIterator.getFirstTimeRange();
-
-    curPreAggrStartTime = retPerAggrTimeRange.getMin();
-    curPreAggrEndTime = retPerAggrTimeRange.getMax();
+    curPreAggrTimeRange = preAggrWindowIterator.nextTimeRange();
 
     this.hasCachedTimeInterval = true;
 
@@ -150,12 +141,10 @@ public abstract class GroupByTimeDataSet extends QueryDataSet {
     }
 
     // find the next aggregation interval
-    TimeRange nextTimeRange = aggrWindowIterator.getNextTimeRange(curStartTime);
-    if (nextTimeRange == null) {
+    if (!aggrWindowIterator.hasNextTimeRange()) {
       return false;
     }
-    curStartTime = nextTimeRange.getMin();
-    curEndTime = nextTimeRange.getMax();
+    curAggrTimeRange = aggrWindowIterator.nextTimeRange();
 
     hasCachedTimeInterval = true;
     return true;
@@ -169,8 +158,8 @@ public abstract class GroupByTimeDataSet extends QueryDataSet {
   }
 
   @TestOnly
-  public Pair<Long, Long> nextTimePartition() {
+  public TimeRange nextTimePartition() {
     hasCachedTimeInterval = false;
-    return new Pair<>(curStartTime, curEndTime);
+    return curAggrTimeRange;
   }
 }

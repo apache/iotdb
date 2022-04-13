@@ -51,9 +51,9 @@ public abstract class GroupByTimeEngineDataSet extends GroupByTimeDataSet {
   protected RowRecord constructRowRecord(AggregateResult[] aggregateResultList) {
     RowRecord record;
     if (leftCRightO) {
-      record = new RowRecord(curStartTime);
+      record = new RowRecord(curAggrTimeRange.getMin());
     } else {
-      record = new RowRecord(curEndTime - 1);
+      record = new RowRecord(curAggrTimeRange.getMax() - 1);
     }
     for (AggregateResult res : aggregateResultList) {
       if (res == null) {
@@ -66,22 +66,22 @@ public abstract class GroupByTimeEngineDataSet extends GroupByTimeDataSet {
   }
 
   protected boolean isEndCal() {
-    if (curPreAggrStartTime == -1) {
+    if (curPreAggrTimeRange.getMin() == -1) {
       return true;
     }
-    return ascending ? curPreAggrStartTime >= curEndTime : curPreAggrEndTime <= curStartTime;
+    return ascending
+        ? curPreAggrTimeRange.getMin() >= curAggrTimeRange.getMax()
+        : curPreAggrTimeRange.getMax() <= curAggrTimeRange.getMin();
   }
 
   // find the next pre-aggregation interval
   protected void updatePreAggrInterval() {
     TimeRange retPerAggrTimeRange;
-    retPerAggrTimeRange = preAggrWindowIterator.getNextTimeRange(curPreAggrStartTime);
+    retPerAggrTimeRange = preAggrWindowIterator.nextTimeRange();
     if (retPerAggrTimeRange != null) {
-      curPreAggrStartTime = retPerAggrTimeRange.getMin();
-      curPreAggrEndTime = retPerAggrTimeRange.getMax();
+      curPreAggrTimeRange = retPerAggrTimeRange;
     } else {
-      curPreAggrStartTime = -1;
-      curPreAggrEndTime = -1;
+      curPreAggrTimeRange = new TimeRange(-1, -1);
     }
   }
 

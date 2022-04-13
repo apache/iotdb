@@ -143,10 +143,11 @@ public class SeriesAggregateScanOperator implements SourceOperator {
       return true;
     }
     try {
-      curTimeRange = timeRangeIterator.getNextTimeRange(curTimeRange.getMin());
-      if (curTimeRange == null) {
+      if (!timeRangeIterator.hasNextTimeRange()) {
         return false;
       }
+      curTimeRange = timeRangeIterator.nextTimeRange();
+
       // 1. Clear previous aggregation result
       for (AggregateResult result : aggregateResultList) {
         result.reset();
