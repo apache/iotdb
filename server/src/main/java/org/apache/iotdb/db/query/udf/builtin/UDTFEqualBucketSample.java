@@ -282,7 +282,7 @@ public class UDTFEqualBucketSample implements UDTF {
     int windowSize = rowWindow.windowSize();
     if ("avg".equals(aggMethodType)) {
       double sum = 0;
-      switch (outputDataType) {
+      switch (inputDataType) {
         case INT32: {
           for (int i = 0; i < windowSize; i++) {
             sum += rowWindow.getRow(i).getInt(0) * 1.0 / windowSize;
