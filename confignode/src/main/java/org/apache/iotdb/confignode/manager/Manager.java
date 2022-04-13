@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.manager;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
 import org.apache.iotdb.consensus.common.DataSet;
+import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 
 /**
  * a subset of services provided by {@ConfigManager}. For use internally only, passed to Managers,
@@ -36,25 +37,32 @@ public interface Manager {
   boolean isStopped();
 
   /**
-   * get data node info manager
+   * Get DataManager
    *
-   * @return DataNodeInfoManager instance
+   * @return DataNodeManager instance
    */
   DataNodeManager getDataNodeManager();
 
   /**
-   * get consensus manager
+   * Get ConsensusManager
    *
    * @return ConsensusManager instance
    */
   ConsensusManager getConsensusManager();
 
   /**
-   * get assign region manager
+   * Get RegionManager
    *
-   * @return AssignRegionManager instance
+   * @return RegionManager instance
    */
   RegionManager getRegionManager();
+
+  /**
+   * Get PartitionManager
+   *
+   * @return PartitionManager instance
+   */
+  PartitionManager getPartitionManager();
 
   /**
    * Register DataNode
@@ -90,18 +98,16 @@ public interface Manager {
   /**
    * Get SchemaPartition
    *
-   * @param physicalPlan SchemaPartitionPlan
    * @return SchemaPartitionDataSet
    */
-  DataSet getSchemaPartition(PhysicalPlan physicalPlan);
+  DataSet getSchemaPartition(PathPatternTree patternTree);
 
   /**
    * Get or create SchemaPartition
    *
-   * @param physicalPlan SchemaPartitionPlan
    * @return SchemaPartitionDataSet
    */
-  DataSet getOrCreateSchemaPartition(PhysicalPlan physicalPlan);
+  DataSet getOrCreateSchemaPartition(PathPatternTree patternTree);
 
   /**
    * Get DataPartition

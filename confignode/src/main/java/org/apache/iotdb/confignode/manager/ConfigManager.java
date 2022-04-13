@@ -22,12 +22,14 @@ package org.apache.iotdb.confignode.manager;
 import org.apache.iotdb.common.rpc.thrift.EndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.commons.partition.SeriesPartitionSlot;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationDataSet;
 import org.apache.iotdb.confignode.consensus.response.DataNodesInfoDataSet;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionDataSet;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionDataSet;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaDataSet;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
+import org.apache.iotdb.confignode.physical.PhysicalPlanType;
 import org.apache.iotdb.confignode.physical.crud.GetOrCreateDataPartitionPlan;
 import org.apache.iotdb.confignode.physical.crud.GetOrCreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.physical.sys.AuthorPlan;
@@ -35,9 +37,16 @@ import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
 import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.consensus.common.DataSet;
+import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /** Entry of all management, AssignPartitionManager,AssignRegionManager. */
 public class ConfigManager implements Manager {
@@ -123,26 +132,94 @@ public class ConfigManager implements Manager {
   }
 
   @Override
-  public DataSet getSchemaPartition(PhysicalPlan physicalPlan) {
+  public DataSet getSchemaPartition(PathPatternTree patternTree) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      List<String> devicePaths = patternTree.findAllDevicePaths();
+      List<String> storageGroups = getRegionManager().getStorageGroupNames();
 
-    // TODO: Only leader can query SchemaPartition
+      GetOrCreateSchemaPartitionPlan getSchemaPartitionPlan =
+          new GetOrCreateSchemaPartitionPlan(PhysicalPlanType.GetSchemaPartition);
+      Map<String, List<SeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
 
-    if (physicalPlan instanceof GetOrCreateSchemaPartitionPlan) {
-      return partitionManager.getSchemaPartition((GetOrCreateSchemaPartitionPlan) physicalPlan);
+      boolean getAll = false;
+      Set<String> getAllSet = new HashSet<>();
+      for (String devicePath : devicePaths) {
+        boolean matchStorageGroup = false;
+        for (String storageGroup : storageGroups) {
+          if (devicePath.contains(storageGroup)) {
+            matchStorageGroup = true;
+            if (devicePath.contains("*")) {
+              // Get all SchemaPartitions of this StorageGroup if the devicePath contains "*"
+              getAllSet.add(storageGroup);
+            } else {
+              // Get the specific SchemaPartition
+              partitionSlotsMap
+                  .computeIfAbsent(storageGroup, key -> new ArrayList<>())
+                  .add(getPartitionManager().getSeriesPartitionSlot(devicePath));
+            }
+            break;
+          }
+        }
+        if (!matchStorageGroup && devicePath.contains("**")) {
+          // Get all SchemaPartitions if there exists one devicePath that contains "**"
+          getAll = true;
+        }
+      }
+
+      if (getAll) {
+        partitionSlotsMap = new HashMap<>();
+      } else {
+        for (String storageGroup : getAllSet) {
+          if (partitionSlotsMap.containsKey(storageGroup)) {
+            partitionSlotsMap.replace(storageGroup, new ArrayList<>());
+          } else {
+            partitionSlotsMap.put(storageGroup, new ArrayList<>());
+          }
+        }
+      }
+
+      getSchemaPartitionPlan.setPartitionSlotsMap(partitionSlotsMap);
+      return partitionManager.getSchemaPartition(getSchemaPartitionPlan);
+    } else {
+      SchemaPartitionDataSet dataSet = new SchemaPartitionDataSet();
+      dataSet.setStatus(status);
+      return dataSet;
     }
-    return new SchemaPartitionDataSet();
   }
 
   @Override
-  public DataSet getOrCreateSchemaPartition(PhysicalPlan physicalPlan) {
+  public DataSet getOrCreateSchemaPartition(PathPatternTree patternTree) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      List<String> devicePaths = patternTree.findAllDevicePaths();
+      List<String> storageGroups = getRegionManager().getStorageGroupNames();
 
-    // TODO: Only leader can apply SchemaPartition
+      GetOrCreateSchemaPartitionPlan getOrCreateSchemaPartitionPlan =
+          new GetOrCreateSchemaPartitionPlan(PhysicalPlanType.GetOrCreateSchemaPartition);
+      Map<String, List<SeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
 
-    if (physicalPlan instanceof GetOrCreateSchemaPartitionPlan) {
-      return partitionManager.getOrCreateSchemaPartition(
-          (GetOrCreateSchemaPartitionPlan) physicalPlan);
+      for (String devicePath : devicePaths) {
+        if (!devicePath.contains("*")) {
+          // Only check devicePaths that without "*"
+          for (String storageGroup : storageGroups) {
+            if (devicePath.contains(storageGroup)) {
+              partitionSlotsMap
+                  .computeIfAbsent(storageGroup, key -> new ArrayList<>())
+                  .add(getPartitionManager().getSeriesPartitionSlot(devicePath));
+              break;
+            }
+          }
+        }
+      }
+
+      getOrCreateSchemaPartitionPlan.setPartitionSlotsMap(partitionSlotsMap);
+      return partitionManager.getOrCreateSchemaPartition(getOrCreateSchemaPartitionPlan);
+    } else {
+      SchemaPartitionDataSet dataSet = new SchemaPartitionDataSet();
+      dataSet.setStatus(status);
+      return dataSet;
     }
-    return new SchemaPartitionDataSet();
   }
 
   @Override
@@ -199,6 +276,11 @@ public class ConfigManager implements Manager {
   @Override
   public ConsensusManager getConsensusManager() {
     return consensusManager;
+  }
+
+  @Override
+  public PartitionManager getPartitionManager() {
+    return partitionManager;
   }
 
   @Override

@@ -170,7 +170,6 @@ public class SchemaScanOperatorTest {
           SchemaEngine.getInstance()
               .getSchemaRegion(
                   LocalConfigNode.getInstance().getBelongedSchemaRegionId(partialPath));
-
       operatorContext
           .getInstanceContext()
           .setDriverContext(new SchemaDriverContext(fragmentInstanceContext, schemaRegion));
