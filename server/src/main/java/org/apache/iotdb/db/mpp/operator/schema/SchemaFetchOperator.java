@@ -86,7 +86,7 @@ public class SchemaFetchOperator implements SourceOperator {
 
   @Override
   public boolean hasNext() {
-    return isFinished;
+    return !isFinished;
   }
 
   @Override
