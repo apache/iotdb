@@ -62,7 +62,7 @@ public class WriteFragmentParallelPlanner implements IFragmentParallelPlaner {
               fragment.getId().genFragmentInstanceId(),
               timeFilter,
               queryContext.getQueryType());
-      instance.setDataRegionAndHost(((IWritePlanNode) node).getRegionReplicaSet());
+      instance.setDataRegionAndHost(split.getRegionReplicaSet());
       ret.add(instance);
     }
     return ret;
