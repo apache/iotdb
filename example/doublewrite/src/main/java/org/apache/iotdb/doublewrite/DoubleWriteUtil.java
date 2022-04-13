@@ -61,12 +61,12 @@ public abstract class DoubleWriteUtil {
     // Start local IoTDB-A on ip "127.0.0.1", port 6667 and set enableDoubleWrite
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-    config.setEnableDoubleWrite(true);
+    config.setEnableOperationSync(true);
     config.setSecondaryAddress(ipB);
     config.setSecondaryPort(portB);
     config.setSecondaryUser(userB);
     config.setSecondaryPassword(passwordB);
-    config.setDoubleWriteMaxLogSize(1024);
+    config.setOperationSyncMaxLogSize(1024);
 
     EnvironmentUtils.envSetUp();
   }

@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.doublewrite;
+package org.apache.iotdb.db.doublelive;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -34,22 +34,22 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-public class DoubleWriteLogService implements Runnable {
+public class OperationSyncLogService implements Runnable {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(DoubleWriteLogService.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(OperationSyncLogService.class);
 
   private static final String logFileDir =
-      IoTDBDescriptor.getInstance().getConfig().getDoubleWriteLogDir();
+      IoTDBDescriptor.getInstance().getConfig().getOperationSyncLogDir();
   private static final long logFileValidity =
-      IoTDBDescriptor.getInstance().getConfig().getDoubleWriteLogValidity() * 1000L;
+      IoTDBDescriptor.getInstance().getConfig().getOperationSyncLogValidity() * 1000L;
   private static final int maxLogFileNum =
-      IoTDBDescriptor.getInstance().getConfig().getDoubleWriteLogNum();
+      IoTDBDescriptor.getInstance().getConfig().getOperationSyncLogNum();
   private static final long maxLogFileSize =
-      IoTDBDescriptor.getInstance().getConfig().getDoubleWriteMaxLogSize();
+      IoTDBDescriptor.getInstance().getConfig().getOperationSyncMaxLogSize();
 
   private static long currentLogFileSize = 0;
 
-  private final DoubleWriteProtector protector;
+  private final OperationSyncProtector protector;
   private final Lock logWriterLock;
   private final String logFileName;
   private int logFileID;
@@ -57,7 +57,7 @@ public class DoubleWriteLogService implements Runnable {
   private File logFile;
   private LogWriter logWriter;
 
-  public DoubleWriteLogService(String logFileName, DoubleWriteProtector protector) {
+  public OperationSyncLogService(String logFileName, OperationSyncProtector protector) {
     this.logFileName = logFileName;
     this.protector = protector;
 

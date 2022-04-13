@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.doublewrite;
+package org.apache.iotdb.db.doublelive;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -38,11 +38,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-public abstract class DoubleWriteProtector implements Runnable {
+public abstract class OperationSyncProtector implements Runnable {
 
-  protected static final Logger LOGGER = LoggerFactory.getLogger(DoubleWriteProtector.class);
+  protected static final Logger LOGGER = LoggerFactory.getLogger(OperationSyncProtector.class);
   protected static final int logFileValidity =
-      IoTDBDescriptor.getInstance().getConfig().getDoubleWriteLogValidity();
+      IoTDBDescriptor.getInstance().getConfig().getOperationSyncLogValidity();
 
   // For transmit log files
   protected final Lock logFileListLock;
@@ -57,7 +57,7 @@ public abstract class DoubleWriteProtector implements Runnable {
   // Working state
   protected volatile boolean isProtectorAtWork;
 
-  protected DoubleWriteProtector() {
+  protected OperationSyncProtector() {
     logFileListLock = new ReentrantLock();
     registeredLogFiles = new ArrayList<>();
 
@@ -144,7 +144,7 @@ public abstract class DoubleWriteProtector implements Runnable {
         LOGGER.warn("DoubleWriteProtector is interrupted", e);
       }
 
-      DoubleWriteLogService.incLogFileSize(-logFile.length());
+      OperationSyncLogService.incLogFileSize(-logFile.length());
 
       boolean deleted = false;
       for (int retryCnt = 0; retryCnt < 5; retryCnt++) {
@@ -157,7 +157,7 @@ public abstract class DoubleWriteProtector implements Runnable {
         }
       }
       if (!deleted) {
-        DoubleWriteLogService.incLogFileSize(logFile.length());
+        OperationSyncLogService.incLogFileSize(logFile.length());
         LOGGER.error("Couldn't delete DoubleWriteLog: {}", logFile.getAbsolutePath());
       }
     }

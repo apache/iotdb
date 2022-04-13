@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.doublewrite;
+package org.apache.iotdb.db.doublelive;
 
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.session.pool.SessionPool;
@@ -28,19 +28,19 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 /** DoubleWriteTask is used for transmit one E-Plan sending by a client */
-public class DoubleWriteTask implements Runnable {
-  private static final Logger LOGGER = LoggerFactory.getLogger(DoubleWriteTask.class);
+public class OperationSyncWriteTask implements Runnable {
+  private static final Logger LOGGER = LoggerFactory.getLogger(OperationSyncWriteTask.class);
 
   private final ByteBuffer physicalPlanBuffer;
   private final SessionPool doubleWriteSessionPool;
-  private final DoubleWriteEProtector eProtector;
-  private final DoubleWriteLogService eLogService;
+  private final OperationSyncDDLProtector eProtector;
+  private final OperationSyncLogService eLogService;
 
-  public DoubleWriteTask(
+  public OperationSyncWriteTask(
       ByteBuffer physicalPlanBuffer,
       SessionPool doubleWriteSessionPool,
-      DoubleWriteEProtector eProtector,
-      DoubleWriteLogService eLogService) {
+      OperationSyncDDLProtector eProtector,
+      OperationSyncLogService eLogService) {
     this.physicalPlanBuffer = physicalPlanBuffer;
     this.doubleWriteSessionPool = doubleWriteSessionPool;
     this.eProtector = eProtector;

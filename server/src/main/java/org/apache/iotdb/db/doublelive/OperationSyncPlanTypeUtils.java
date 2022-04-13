@@ -16,11 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.doublewrite;
+package org.apache.iotdb.db.doublelive;
 
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
@@ -28,25 +29,26 @@ import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 
-public class DoubleWritePlanTypeUtils {
+public class OperationSyncPlanTypeUtils {
 
-  public static DoubleWritePlanType getDoubleWritePlanType(PhysicalPlan plan) {
+  public static OperationSyncPlanType getOperationSyncPlanType(PhysicalPlan plan) {
     if (plan instanceof SetStorageGroupPlan
         || plan instanceof DeleteStorageGroupPlan
         || plan instanceof CreateTimeSeriesPlan
         || plan instanceof CreateMultiTimeSeriesPlan
         || plan instanceof CreateAlignedTimeSeriesPlan
-        || plan instanceof DeleteTimeSeriesPlan) {
-      return DoubleWritePlanType.EPlan;
+        || plan instanceof DeleteTimeSeriesPlan
+        || plan instanceof AlterTimeSeriesPlan) {
+      return OperationSyncPlanType.EPlan;
     } else if (plan instanceof DeletePlan) {
-      return DoubleWritePlanType.IPlan;
+      return OperationSyncPlanType.IPlan;
     } else if (plan instanceof InsertPlan) {
-      return DoubleWritePlanType.NPlan;
+      return OperationSyncPlanType.NPlan;
     }
     return null;
   }
 
-  public enum DoubleWritePlanType {
+  public enum OperationSyncPlanType {
     EPlan,
     IPlan,
     NPlan

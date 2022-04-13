@@ -820,8 +820,8 @@ public class IoTDBConfig {
   /** Encryption provided class parameter */
   private String encryptDecryptProviderParameter;
 
-  // DoubleWrite Config
-  private boolean enableDoubleWrite = false;
+  // Operation Sync Config
+  private boolean enableOperationSync = false;
 
   // Secondary IoTDB
   private String secondaryAddress = "127.0.0.1";
@@ -829,23 +829,23 @@ public class IoTDBConfig {
   private String secondaryUser = "root";
   private String secondaryPassword = "root";
 
-  // The transmitting concurrency size of double write SessionPool
-  private int doubleWriteSessionConcurrencySize = 8;
+  // The transmitting concurrency size of operation sync SessionPool
+  private int OperationSyncSessionConcurrencySize = 8;
 
-  // DoubleWriteLog dir
-  private String doubleWriteLogDir =
-      DEFAULT_BASE_DIR + File.separator + IoTDBConstant.DOUBLEWRITE_FOLDER_NAME;
-  // The validity of each DoubleWriteLog
-  private int doubleWriteLogValidity = 30;
-  // The maximum id of DoubleWriteLog
-  private int doubleWriteLogNum = 32767;
-  // The max size of all the DoubleWriteLog. Default is 100GB
-  private long doubleWriteMaxLogSize = 107374182400L;
+  // OperationSyncLog dir
+  private String operationSyncLogDir =
+      DEFAULT_BASE_DIR + File.separator + IoTDBConstant.OPERATION_SYNC_FOLDER_NAME;
+  // The validity of each OperationSyncLog
+  private int operationSyncLogValidity = 30;
+  // The maximum id of OperationSyncLog
+  private int operationSyncLogNum = 32767;
+  // The max size of all the OperationSyncLog. Default is 100GB
+  private long operationSyncMaxLogSize = 107374182400L;
 
-  // DoubleWrite InsertPlan cache size
-  private int doubleWriteProducerCacheSize = 1024;
-  // DoubleWriteConsumer concurrency size
-  private int doubleWriteConsumerConcurrencySize = 4;
+  // OperationSyncProducer DML cache size
+  private int operationSyncProducerCacheSize = 1024;
+  // OperationSyncConsumer concurrency size
+  private int operationSyncConsumerConcurrencySize = 4;
 
   public IoTDBConfig() {
     // empty constructor
@@ -980,7 +980,7 @@ public class IoTDBConfig {
     extDir = addHomeDir(extDir);
     udfDir = addHomeDir(udfDir);
     triggerDir = addHomeDir(triggerDir);
-    doubleWriteLogDir = addHomeDir(doubleWriteLogDir);
+    operationSyncLogDir = addHomeDir(operationSyncLogDir);
 
     if (TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs().equals(FSType.HDFS)) {
       String hdfsDir = getHdfsDir();
@@ -2594,12 +2594,12 @@ public class IoTDBConfig {
     this.encryptDecryptProviderParameter = encryptDecryptProviderParameter;
   }
 
-  public boolean isEnableDoubleWrite() {
-    return enableDoubleWrite;
+  public boolean isEnableOperationSync() {
+    return enableOperationSync;
   }
 
-  public void setEnableDoubleWrite(boolean enableDoubleWrite) {
-    this.enableDoubleWrite = enableDoubleWrite;
+  public void setEnableOperationSync(boolean enableOperationSync) {
+    this.enableOperationSync = enableOperationSync;
   }
 
   public String getSecondaryAddress() {
@@ -2634,59 +2634,59 @@ public class IoTDBConfig {
     this.secondaryPassword = secondaryPassword;
   }
 
-  public int getDoubleWriteSessionConcurrencySize() {
-    return doubleWriteSessionConcurrencySize;
+  public int getOperationSyncSessionConcurrencySize() {
+    return OperationSyncSessionConcurrencySize;
   }
 
-  public void setDoubleWriteSessionConcurrencySize(int doubleWriteSessionConcurrencySize) {
-    this.doubleWriteSessionConcurrencySize = doubleWriteSessionConcurrencySize;
+  public void setOperationSyncSessionConcurrencySize(int operationSyncSessionConcurrencySize) {
+    this.OperationSyncSessionConcurrencySize = operationSyncSessionConcurrencySize;
   }
 
-  public String getDoubleWriteLogDir() {
-    return doubleWriteLogDir;
+  public String getOperationSyncLogDir() {
+    return operationSyncLogDir;
   }
 
-  public void setDoubleWriteLogDir(String doubleWriteLogDir) {
-    this.doubleWriteLogDir = doubleWriteLogDir;
+  public void setOperationSyncLogDir(String operationSyncLogDir) {
+    this.operationSyncLogDir = operationSyncLogDir;
   }
 
-  public int getDoubleWriteLogValidity() {
-    return doubleWriteLogValidity;
+  public int getOperationSyncLogValidity() {
+    return operationSyncLogValidity;
   }
 
-  public void setDoubleWriteLogValidity(int doubleWriteLogValidity) {
-    this.doubleWriteLogValidity = doubleWriteLogValidity;
+  public void setOperationSyncLogValidity(int operationSyncLogValidity) {
+    this.operationSyncLogValidity = operationSyncLogValidity;
   }
 
-  public int getDoubleWriteLogNum() {
-    return doubleWriteLogNum;
+  public int getOperationSyncLogNum() {
+    return operationSyncLogNum;
   }
 
-  public void setDoubleWriteLogNum(int doubleWriteLogNum) {
-    this.doubleWriteLogNum = doubleWriteLogNum;
+  public void setOperationSyncLogNum(int operationSyncLogNum) {
+    this.operationSyncLogNum = operationSyncLogNum;
   }
 
-  public long getDoubleWriteMaxLogSize() {
-    return doubleWriteMaxLogSize;
+  public long getOperationSyncMaxLogSize() {
+    return operationSyncMaxLogSize;
   }
 
-  public void setDoubleWriteMaxLogSize(long doubleWriteMaxLogSize) {
-    this.doubleWriteMaxLogSize = doubleWriteMaxLogSize;
+  public void setOperationSyncMaxLogSize(long operationSyncMaxLogSize) {
+    this.operationSyncMaxLogSize = operationSyncMaxLogSize;
   }
 
-  public int getDoubleWriteProducerCacheSize() {
-    return doubleWriteProducerCacheSize;
+  public int getOperationSyncProducerCacheSize() {
+    return operationSyncProducerCacheSize;
   }
 
-  public void setDoubleWriteProducerCacheSize(int doubleWriteProducerCacheSize) {
-    this.doubleWriteProducerCacheSize = doubleWriteProducerCacheSize;
+  public void setOperationSyncProducerCacheSize(int operationSyncProducerCacheSize) {
+    this.operationSyncProducerCacheSize = operationSyncProducerCacheSize;
   }
 
-  public int getDoubleWriteConsumerConcurrencySize() {
-    return doubleWriteConsumerConcurrencySize;
+  public int getOperationSyncConsumerConcurrencySize() {
+    return operationSyncConsumerConcurrencySize;
   }
 
-  public void setDoubleWriteConsumerConcurrencySize(int doubleWriteConsumerConcurrencySize) {
-    this.doubleWriteConsumerConcurrencySize = doubleWriteConsumerConcurrencySize;
+  public void setOperationSyncConsumerConcurrencySize(int operationSyncConsumerConcurrencySize) {
+    this.operationSyncConsumerConcurrencySize = operationSyncConsumerConcurrencySize;
   }
 }

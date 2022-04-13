@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.doublewrite;
+package org.apache.iotdb.db.doublelive;
 
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -28,15 +28,15 @@ import org.slf4j.LoggerFactory;
 import java.nio.ByteBuffer;
 import java.util.concurrent.TimeUnit;
 
-public class DoubleWriteEProtector extends DoubleWriteProtector {
+public class OperationSyncDDLProtector extends OperationSyncProtector {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(DoubleWriteEProtector.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(OperationSyncDDLProtector.class);
 
-  private final SessionPool doubleWriteSessionPool;
+  private final SessionPool operationSyncSessionPool;
 
-  public DoubleWriteEProtector(SessionPool doubleWriteSessionPool) {
+  public OperationSyncDDLProtector(SessionPool operationSyncSessionPool) {
     super();
-    this.doubleWriteSessionPool = doubleWriteSessionPool;
+    this.operationSyncSessionPool = operationSyncSessionPool;
   }
 
   @Override
@@ -53,7 +53,7 @@ public class DoubleWriteEProtector extends DoubleWriteProtector {
       try {
         // try double write
         planBuffer.position(0);
-        transmitStatus = doubleWriteSessionPool.doubleWriteTransmit(planBuffer);
+        transmitStatus = operationSyncSessionPool.doubleWriteTransmit(planBuffer);
       } catch (IoTDBConnectionException connectionException) {
         // warn IoTDBConnectionException and retry
         LOGGER.warn("DoubleWriteEProtector can't transmit, retrying...", connectionException);

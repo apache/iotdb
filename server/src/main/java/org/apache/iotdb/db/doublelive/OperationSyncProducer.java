@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.doublewrite;
+package org.apache.iotdb.db.doublelive;
 
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -30,20 +30,20 @@ import java.util.concurrent.BlockingQueue;
  * DoubleWriteProducer using BlockingQueue to cache PhysicalPlan. And persist some PhysicalPlan when
  * they are too many to transmit
  */
-public class DoubleWriteProducer {
+public class OperationSyncProducer {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(DoubleWriteProducer.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(OperationSyncProducer.class);
 
-  private final BlockingQueue<Pair<ByteBuffer, DoubleWritePlanTypeUtils.DoubleWritePlanType>>
+  private final BlockingQueue<Pair<ByteBuffer, OperationSyncPlanTypeUtils.OperationSyncPlanType>>
       doubleWriteQueue;
 
-  public DoubleWriteProducer(
-      BlockingQueue<Pair<ByteBuffer, DoubleWritePlanTypeUtils.DoubleWritePlanType>>
+  public OperationSyncProducer(
+      BlockingQueue<Pair<ByteBuffer, OperationSyncPlanTypeUtils.OperationSyncPlanType>>
           doubleWriteQueue) {
     this.doubleWriteQueue = doubleWriteQueue;
   }
 
-  public void put(Pair<ByteBuffer, DoubleWritePlanTypeUtils.DoubleWritePlanType> planPair) {
+  public void put(Pair<ByteBuffer, OperationSyncPlanTypeUtils.OperationSyncPlanType> planPair) {
     try {
       planPair.left.position(0);
       doubleWriteQueue.put(planPair);

@@ -790,11 +790,11 @@ public class IoTDBDescriptor {
               "iotdb_server_encrypt_decrypt_provider_parameter",
               conf.getEncryptDecryptProviderParameter()));
 
-      // set DoubleWrite config
-      conf.setEnableDoubleWrite(
+      // set OperationSync config
+      conf.setEnableOperationSync(
           Boolean.parseBoolean(
               properties.getProperty(
-                  "enable_double_write", String.valueOf(conf.isEnableDoubleWrite()))));
+                  "enable_operation_sync", String.valueOf(conf.isEnableOperationSync()))));
 
       conf.setSecondaryAddress(
           properties.getProperty("secondary_address", conf.getSecondaryAddress()));
@@ -808,42 +808,43 @@ public class IoTDBDescriptor {
       conf.setSecondaryPassword(
           properties.getProperty("secondary_password", conf.getSecondaryPassword()));
 
-      conf.setDoubleWriteSessionConcurrencySize(
+      conf.setOperationSyncSessionConcurrencySize(
           Integer.parseInt(
               properties.getProperty(
-                  "double_write_session_concurrency_size",
-                  String.valueOf(conf.getDoubleWriteSessionConcurrencySize()))));
+                  "operation_sync_session_concurrency_size",
+                  String.valueOf(conf.getOperationSyncSessionConcurrencySize()))));
 
-      conf.setDoubleWriteLogDir(
-          properties.getProperty("double_write_log_dir", conf.getDoubleWriteLogDir()));
+      conf.setOperationSyncLogDir(
+          properties.getProperty("operation_sync_log_dir", conf.getOperationSyncLogDir()));
 
-      conf.setDoubleWriteLogValidity(
+      conf.setOperationSyncLogValidity(
           Integer.parseInt(
               properties.getProperty(
-                  "double_write_log_file_validity",
-                  String.valueOf(conf.getDoubleWriteLogValidity()))));
+                  "operation_sync_log_file_validity",
+                  String.valueOf(conf.getOperationSyncLogValidity()))));
 
-      conf.setDoubleWriteLogNum(
+      conf.setOperationSyncLogNum(
           Integer.parseInt(
               properties.getProperty(
-                  "double_write_log_file_num", String.valueOf(conf.getDoubleWriteLogNum()))));
+                  "operation_sync_log_file_num", String.valueOf(conf.getOperationSyncLogNum()))));
 
-      conf.setDoubleWriteMaxLogSize(
+      conf.setOperationSyncMaxLogSize(
           Long.parseLong(
               properties.getProperty(
-                  "double_write_max_log_size", String.valueOf(conf.getDoubleWriteMaxLogSize()))));
+                  "operation_sync_max_log_size",
+                  String.valueOf(conf.getOperationSyncMaxLogSize()))));
 
-      conf.setDoubleWriteProducerCacheSize(
+      conf.setOperationSyncProducerCacheSize(
           Integer.parseInt(
               properties.getProperty(
-                  "double_write_producer_cache_size",
-                  String.valueOf(conf.getDoubleWriteProducerCacheSize()))));
+                  "operation_sync_producer_cache_size",
+                  String.valueOf(conf.getOperationSyncProducerCacheSize()))));
 
-      conf.setDoubleWriteConsumerConcurrencySize(
+      conf.setOperationSyncConsumerConcurrencySize(
           Integer.parseInt(
               properties.getProperty(
-                  "double_write_consumer_concurrency_size",
-                  String.valueOf(conf.getDoubleWriteConsumerConcurrencySize()))));
+                  "operation_sync_consumer_concurrency_size",
+                  String.valueOf(conf.getOperationSyncConsumerConcurrencySize()))));
 
       // At the same time, set TSFileConfig
       TSFileDescriptor.getInstance()

@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.doublewrite;
+package org.apache.iotdb.db.doublelive;
 
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.session.pool.SessionPool;
@@ -30,19 +30,19 @@ import java.nio.ByteBuffer;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 
-public class DoubleWriteConsumer implements Runnable {
-  private static final Logger LOGGER = LoggerFactory.getLogger(DoubleWriteConsumer.class);
+public class OperationSyncConsumer implements Runnable {
+  private static final Logger LOGGER = LoggerFactory.getLogger(OperationSyncConsumer.class);
 
-  private final BlockingQueue<Pair<ByteBuffer, DoubleWritePlanTypeUtils.DoubleWritePlanType>>
+  private final BlockingQueue<Pair<ByteBuffer, OperationSyncPlanTypeUtils.OperationSyncPlanType>>
       doubleWriteQueue;
   private final SessionPool doubleWriteSessionPool;
-  private final DoubleWriteLogService niLogService;
+  private final OperationSyncLogService niLogService;
 
-  public DoubleWriteConsumer(
-      BlockingQueue<Pair<ByteBuffer, DoubleWritePlanTypeUtils.DoubleWritePlanType>>
+  public OperationSyncConsumer(
+      BlockingQueue<Pair<ByteBuffer, OperationSyncPlanTypeUtils.OperationSyncPlanType>>
           doubleWriteQueue,
       SessionPool doubleWriteSessionPool,
-      DoubleWriteLogService niLogService) {
+      OperationSyncLogService niLogService) {
     this.doubleWriteQueue = doubleWriteQueue;
     this.doubleWriteSessionPool = doubleWriteSessionPool;
     this.niLogService = niLogService;
@@ -51,9 +51,9 @@ public class DoubleWriteConsumer implements Runnable {
   @Override
   public void run() {
     while (true) {
-      Pair<ByteBuffer, DoubleWritePlanTypeUtils.DoubleWritePlanType> head;
+      Pair<ByteBuffer, OperationSyncPlanTypeUtils.OperationSyncPlanType> head;
       ByteBuffer headBuffer;
-      DoubleWritePlanTypeUtils.DoubleWritePlanType headType;
+      OperationSyncPlanTypeUtils.OperationSyncPlanType headType;
       try {
         head = doubleWriteQueue.take();
         headBuffer = head.left;
@@ -63,7 +63,7 @@ public class DoubleWriteConsumer implements Runnable {
         continue;
       }
 
-      if (headType == DoubleWritePlanTypeUtils.DoubleWritePlanType.IPlan) {
+      if (headType == OperationSyncPlanTypeUtils.OperationSyncPlanType.IPlan) {
         try {
           // Sleep 10ms when it's I-Plan
           TimeUnit.MILLISECONDS.sleep(10);
