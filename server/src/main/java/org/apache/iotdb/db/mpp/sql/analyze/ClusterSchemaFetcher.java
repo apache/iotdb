@@ -27,6 +27,7 @@ import org.apache.iotdb.db.mpp.sql.statement.metadata.SchemaFetchStatement;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 import java.nio.ByteBuffer;
@@ -50,8 +51,9 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
 
     Binary binary;
     SchemaTree fetchedSchemaTree;
-    while (tsBlock.hasNext()) {
-      binary = tsBlock.getColumn(0).getBinary(0);
+    Column column = tsBlock.getColumn(0);
+    for (int i = 0; i < column.getPositionCount(); i++) {
+      binary = column.getBinary(i);
       fetchedSchemaTree = SchemaTree.deserialize(ByteBuffer.wrap(binary.getValues()));
       result.mergeSchemaTree(fetchedSchemaTree);
     }

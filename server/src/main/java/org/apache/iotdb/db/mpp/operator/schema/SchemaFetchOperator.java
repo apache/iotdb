@@ -36,6 +36,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -44,6 +45,7 @@ import java.util.Optional;
 public class SchemaFetchOperator implements SourceOperator {
 
   private static final Logger logger = LoggerFactory.getLogger(SchemaFetchOperator.class);
+  private static final int MAX_BINARY_SIZE = 1024 * 1024;
 
   private final PlanNodeId sourceId;
   private final OperatorContext operatorContext;
@@ -105,8 +107,14 @@ public class SchemaFetchOperator implements SourceOperator {
     for (PartialPath path : partialPathList) {
       schemaTree.appendMeasurementPaths(schemaRegion.getMeasurementPaths(path, false));
     }
-    ByteBuffer bufferWithMaxSize = ByteBuffer.allocate(1024 * 1024);
-    schemaTree.serialize(bufferWithMaxSize);
+    ByteBuffer bufferWithMaxSize = ByteBuffer.allocate(MAX_BINARY_SIZE);
+    try {
+      schemaTree.serialize(bufferWithMaxSize);
+    } catch (BufferOverflowException e) {
+      logger.error("The size of schemaTree's binary data is too large. {}", sourceId, e);
+      throw e;
+    }
+
     bufferWithMaxSize.flip();
     ByteBuffer byteBuffer = ByteBuffer.allocate(bufferWithMaxSize.limit());
     byteBuffer.put(bufferWithMaxSize);
