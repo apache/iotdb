@@ -19,8 +19,13 @@
 
 package org.apache.iotdb.db.engine.modification;
 
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.util.Objects;
 
 /** Deletion is a delete operation on a timeseries. */
@@ -70,6 +75,24 @@ public class Deletion extends Modification {
 
   public void setEndTime(long timestamp) {
     this.endTime = timestamp;
+  }
+
+  public long serializeWithoutFileOffset(DataOutputStream stream) throws IOException {
+    long serializeSize = 0;
+    stream.writeLong(startTime);
+    serializeSize += Long.BYTES;
+    stream.writeLong(endTime);
+    serializeSize += Long.BYTES;
+    serializeSize += ReadWriteIOUtils.write(getPathString(), stream);
+    return serializeSize;
+  }
+
+  public static Deletion deserializeWithoutFileOffset(DataInputStream stream)
+      throws IOException, IllegalPathException {
+    long startTime = stream.readLong();
+    long endTime = stream.readLong();
+    return new Deletion(
+        new PartialPath(ReadWriteIOUtils.readString(stream)), 0, startTime, endTime);
   }
 
   @Override
