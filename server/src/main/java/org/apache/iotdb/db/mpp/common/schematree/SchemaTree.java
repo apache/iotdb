@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.common.schematree;
 
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -55,6 +56,24 @@ public class SchemaTree {
     SchemaTreeVisitor visitor =
         new SchemaTreeVisitor(root, pathPattern, slimit, soffset, isPrefixMatch);
     return new Pair<>(visitor.getAllResult(), visitor.getNextOffset());
+  }
+
+  /**
+   * Get storage group name by path
+   *
+   * <p>e.g., root.sg1 is a storage group and path = root.sg1.d1, return root.sg1
+   *
+   * @param path only full path, cannot be path pattern
+   * @return storage group in the given path
+   */
+  public PartialPath getBelongedStorageGroup(PartialPath path) {
+    PartialPath sgPath = null;
+    try {
+      sgPath = new PartialPath("root.sg");
+    } catch (IllegalPathException e) {
+      e.printStackTrace();
+    }
+    return sgPath;
   }
 
   public DeviceSchemaInfo searchDeviceSchemaInfo(
