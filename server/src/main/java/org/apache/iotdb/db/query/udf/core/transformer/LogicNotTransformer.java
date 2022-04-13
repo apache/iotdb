@@ -42,7 +42,9 @@ public class LogicNotTransformer extends Transformer {
     if (!layerPointReader.next()) {
       return false;
     }
-    cachedTime = layerPointReader.currentTime();
+    if (!isConstantPointReader()) {
+      cachedTime = layerPointReader.currentTime();
+    }
     if (layerPointReader.isCurrentNull()) {
       currentNull = true;
     } else {
