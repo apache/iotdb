@@ -25,7 +25,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 public enum InnerUnsequenceCompactionSelector {
   SIZE_TIERED;
 
-  public static InnerUnsequenceCompactionSelector getInnerUnsequenceCompactionStrategy(
+  public static InnerUnsequenceCompactionSelector getInnerUnsequenceCompactionSelector(
       String name) {
     if (SIZE_TIERED.toString().equalsIgnoreCase(name)) {
       return SIZE_TIERED;

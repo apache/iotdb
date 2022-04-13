@@ -31,8 +31,8 @@ import java.util.List;
 public enum CrossCompactionSelector {
   REWRITE;
 
-  public static CrossCompactionSelector getCrossCompactionStrategy(String name) {
-    if ("REWRITE_COMPACTION".equalsIgnoreCase(name)) {
+  public static CrossCompactionSelector getCrossCompactionSelector(String name) {
+    if (REWRITE.toString().equalsIgnoreCase(name)) {
       return REWRITE;
     }
     throw new RuntimeException("Illegal Cross Compaction Strategy " + name);
