@@ -25,6 +25,8 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaRegion;
+import org.apache.iotdb.db.metadata.storagegroup.IStorageGroupSchemaManager;
+import org.apache.iotdb.db.metadata.storagegroup.StorageGroupSchemaManager;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,6 +37,9 @@ import java.util.concurrent.ConcurrentHashMap;
 
 // manage all the schemaRegion in this dataNode
 public class SchemaEngine {
+
+  private final IStorageGroupSchemaManager localStorageGroupSchemaManager =
+      StorageGroupSchemaManager.getInstance();
 
   private Map<SchemaRegionId, ISchemaRegion> schemaRegionMap;
   private SchemaEngineMode schemaRegionStoredMode;
@@ -59,8 +64,19 @@ public class SchemaEngine {
     logger.info("used schema engine mode: {}.", schemaRegionStoredMode);
   }
 
+  public void forceMlog() {
+    if (schemaRegionMap != null) {
+      for (ISchemaRegion schemaRegion : schemaRegionMap.values()) {
+        schemaRegion.forceMlog();
+      }
+    }
+  }
+
   public void clear() {
     if (schemaRegionMap != null) {
+      for (ISchemaRegion schemaRegion : schemaRegionMap.values()) {
+        schemaRegion.clear();
+      }
       schemaRegionMap.clear();
       schemaRegionMap = null;
     }
@@ -74,13 +90,15 @@ public class SchemaEngine {
     return schemaRegionMap.values();
   }
 
-  public synchronized ISchemaRegion createSchemaRegion(
-      PartialPath storageGroup, SchemaRegionId schemaRegionId, IStorageGroupMNode storageGroupMNode)
-      throws MetadataException {
+  public synchronized void createSchemaRegion(
+      PartialPath storageGroup, SchemaRegionId schemaRegionId) throws MetadataException {
     ISchemaRegion schemaRegion = schemaRegionMap.get(schemaRegionId);
     if (schemaRegion != null) {
-      return schemaRegion;
+      return;
     }
+    localStorageGroupSchemaManager.ensureStorageGroup(storageGroup);
+    IStorageGroupMNode storageGroupMNode =
+        localStorageGroupSchemaManager.getStorageGroupNodeByStorageGroupPath(storageGroup);
     switch (schemaRegionStoredMode) {
       case Memory:
       case Schema_File:
@@ -96,7 +114,6 @@ public class SchemaEngine {
                 schemaRegionStoredMode));
     }
     schemaRegionMap.put(schemaRegionId, schemaRegion);
-    return schemaRegion;
   }
 
   public void deleteSchemaRegion(SchemaRegionId schemaRegionId) throws MetadataException {
