@@ -113,16 +113,8 @@ public class FragmentInstance implements IConsensusRequest {
   public String toString() {
     StringBuilder ret = new StringBuilder();
     ret.append(String.format("FragmentInstance-%s:", getId()));
-    if (getHostEndpoint() == null) {
-      ret.append(String.format("host endpoint has not set."));
-    } else {
-      ret.append(String.format("host endpoint: %s.", getHostEndpoint().toString()));
-    }
-    if (getRegionReplicaSet() == null) {
-      ret.append(String.format("Region Replica set has not set.\n"));
-    } else {
-      ret.append(String.format("Region Replica set: %s.\n", getRegionReplicaSet().toString()));
-    }
+    ret.append(String.format("Host: %s", getHostEndpoint() == null ? "Not set" : getHostEndpoint()));
+    ret.append(String.format("Region: %s", getRegionReplicaSet() == null ? "Not set" : getRegionReplicaSet().getConsensusGroupId()));
     ret.append("---- Plan Node Tree ----\n");
     ret.append(PlanNodeUtil.nodeToString(getFragment().getRoot()));
     return ret.toString();
@@ -145,7 +137,6 @@ public class FragmentInstance implements IConsensusRequest {
 
   @Override
   public void serializeRequest(ByteBuffer buffer) {
-    buffer.mark();
     id.serialize(buffer);
     fragment.serialize(buffer);
     ReadWriteIOUtils.write(timeFilter != null, buffer);
@@ -154,7 +145,6 @@ public class FragmentInstance implements IConsensusRequest {
     }
     ReadWriteIOUtils.write(type.ordinal(), buffer);
     regionReplicaSet.serializeImpl(buffer);
-
     hostEndpoint.serializeImpl(buffer);
   }
 
