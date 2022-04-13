@@ -96,7 +96,7 @@ public class LogicalPlanner {
       QueryPlanBuilder planBuilder = new QueryPlanBuilder(context);
 
       planBuilder.planRawDataQuerySource(
-          queryStatement.getDeviceNameToPathsMap(),
+          queryStatement.getDeviceNameToDeduplicatedPathsMap(),
           queryStatement.getResultOrder(),
           queryStatement.isAlignByDevice(),
           analysis.getQueryFilter(),
@@ -119,7 +119,7 @@ public class LogicalPlanner {
         // with value filter
         planBuilder.planAggregationSourceWithValueFilter(
             queryStatement.getDeviceNameToAggregationsMap(),
-            queryStatement.getDeviceNameToPathsMap(),
+            queryStatement.getDeviceNameToDeduplicatedPathsMap(),
             queryStatement.getResultOrder(),
             queryStatement.isAlignByDevice(),
             analysis.getQueryFilter(),

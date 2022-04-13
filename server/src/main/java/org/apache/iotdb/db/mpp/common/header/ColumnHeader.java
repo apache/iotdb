@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.sql.planner.plan.node;
+package org.apache.iotdb.db.mpp.common.header;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -29,9 +29,17 @@ import java.util.Objects;
 
 public class ColumnHeader {
 
-  private final String pathName;
+  private String pathName;
   private String functionName;
   private final TSDataType dataType;
+  private String columnName;
+  private String alias;
+
+  public ColumnHeader(String columnName, TSDataType dataType, String alias) {
+    this.columnName = columnName;
+    this.dataType = dataType;
+    this.alias = alias;
+  }
 
   public ColumnHeader(String pathName, TSDataType dataType) {
     this.pathName = pathName;

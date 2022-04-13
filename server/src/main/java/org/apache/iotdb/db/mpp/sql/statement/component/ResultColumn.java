@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.sql.statement.component;
 
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.sql.rewriter.WildcardsRemover;
 import org.apache.iotdb.db.mpp.sql.statement.StatementNode;
@@ -169,6 +170,10 @@ public class ResultColumn extends StatementNode {
     for (Expression resultExpression : resultExpressions) {
       resultColumns.add(new ResultColumn(resultExpression, alias));
     }
+  }
+
+  public ColumnHeader constructColumnHeader() {
+    return new ColumnHeader(this.getExpressionString(), this.getDataType(), this.getAlias());
   }
 
   @Override
