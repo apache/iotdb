@@ -33,8 +33,8 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import java.nio.ByteBuffer;
 
 public class FragmentInstance implements IConsensusRequest {
-  private FragmentInstanceId id;
 
+  private FragmentInstanceId id;
   // The reference of PlanFragment which this instance is generated from
   private PlanFragment fragment;
   // The DataRegion where the FragmentInstance should run

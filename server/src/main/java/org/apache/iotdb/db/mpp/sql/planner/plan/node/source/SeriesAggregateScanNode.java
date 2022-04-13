@@ -40,6 +40,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -64,6 +65,9 @@ public class SeriesAggregateScanNode extends SourceNode implements IOutputPlanNo
   private final PartialPath seriesPath;
   private final List<AggregationType> aggregateFuncList;
 
+  // all the sensors in seriesPath's device of current query
+  private Set<String> allSensors;
+
   // The order to traverse the data.
   // Currently, we only support TIMESTAMP_ASC and TIMESTAMP_DESC here.
   // The default order is TIMESTAMP_ASC, which means "order by timestamp asc"
@@ -83,12 +87,14 @@ public class SeriesAggregateScanNode extends SourceNode implements IOutputPlanNo
   public SeriesAggregateScanNode(
       PlanNodeId id,
       PartialPath seriesPath,
+      Set<String> allSensors,
       List<AggregationType> aggregateFuncList,
       OrderBy scanOrder,
       Filter timeFilter,
       GroupByTimeParameter groupByTimeParameter) {
     super(id);
     this.seriesPath = seriesPath;
+    this.allSensors = allSensors;
     this.aggregateFuncList = aggregateFuncList;
     this.scanOrder = scanOrder;
     this.timeFilter = timeFilter;
@@ -100,6 +106,22 @@ public class SeriesAggregateScanNode extends SourceNode implements IOutputPlanNo
                     new ColumnHeader(
                         seriesPath.getFullPath(), functionType.name(), seriesPath.getSeriesType()))
             .collect(Collectors.toList());
+  }
+
+  public OrderBy getScanOrder() {
+    return scanOrder;
+  }
+
+  public Set<String> getAllSensors() {
+    return allSensors;
+  }
+
+  public Filter getTimeFilter() {
+    return timeFilter;
+  }
+
+  public GroupByTimeParameter getGroupByTimeParameter() {
+    return groupByTimeParameter;
   }
 
   @Override

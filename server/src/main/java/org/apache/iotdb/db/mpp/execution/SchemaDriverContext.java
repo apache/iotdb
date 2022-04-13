@@ -20,6 +20,7 @@ package org.apache.iotdb.db.mpp.execution;
 
 import org.apache.iotdb.db.metadata.schemaregion.SchemaRegion;
 
+/** What is this for? */
 public class SchemaDriverContext extends DriverContext {
 
   private final SchemaRegion schemaRegion;

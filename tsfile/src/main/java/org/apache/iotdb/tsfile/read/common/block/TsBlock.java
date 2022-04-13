@@ -109,6 +109,10 @@ public class TsBlock {
     return positionCount;
   }
 
+  public long getStartTime() {
+    return timeColumn.getStartTime();
+  }
+
   public long getEndTime() {
     return timeColumn.getEndTime();
   }
@@ -182,7 +186,7 @@ public class TsBlock {
     return new AlignedTsBlockIterator(0, subIndex);
   }
 
-  private class TsBlockIterator implements IPointReader, IBatchDataIterator {
+  public class TsBlockIterator implements IPointReader, IBatchDataIterator {
 
     protected int index;
 
@@ -245,6 +249,22 @@ public class TsBlock {
 
     @Override
     public void close() {}
+
+    public int getIndex() {
+      return index;
+    }
+
+    public void setIndex(int index) {
+      this.index = index;
+    }
+
+    public long getEndTime() {
+      return TsBlock.this.getEndTime();
+    }
+
+    public long getStartTime() {
+      return TsBlock.this.getStartTime();
+    }
   }
 
   private class AlignedTsBlockIterator extends TsBlockIterator {

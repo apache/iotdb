@@ -231,6 +231,7 @@ public class QueryLogicalPlanUtil {
         new SeriesAggregateScanNode(
             new PlanNodeId("test_query_0"),
             schemaMap.get("root.sg.d1.s1"),
+            Sets.newHashSet("s1"),
             aggregationTypeList1,
             OrderBy.TIMESTAMP_DESC,
             timeFilter,
@@ -239,6 +240,7 @@ public class QueryLogicalPlanUtil {
         new SeriesAggregateScanNode(
             new PlanNodeId("test_query_1"),
             schemaMap.get("root.sg.d1.s2"),
+            Sets.newHashSet("s2"),
             aggregationTypeList2,
             OrderBy.TIMESTAMP_DESC,
             timeFilter,
@@ -247,6 +249,7 @@ public class QueryLogicalPlanUtil {
         new SeriesAggregateScanNode(
             new PlanNodeId("test_query_2"),
             schemaMap.get("root.sg.d2.s1"),
+            Sets.newHashSet("s1"),
             aggregationTypeList1,
             OrderBy.TIMESTAMP_DESC,
             timeFilter,
@@ -255,6 +258,7 @@ public class QueryLogicalPlanUtil {
         new SeriesAggregateScanNode(
             new PlanNodeId("test_query_3"),
             schemaMap.get("root.sg.d2.s2"),
+            Sets.newHashSet("s2"),
             aggregationTypeList2,
             OrderBy.TIMESTAMP_DESC,
             timeFilter,
@@ -318,6 +322,7 @@ public class QueryLogicalPlanUtil {
         new SeriesAggregateScanNode(
             new PlanNodeId("test_query_0"),
             schemaMap.get("root.sg.d1.s1"),
+            Sets.newHashSet("s1"),
             aggregationTypeList1,
             OrderBy.TIMESTAMP_DESC,
             timeFilter,
@@ -326,6 +331,7 @@ public class QueryLogicalPlanUtil {
         new SeriesAggregateScanNode(
             new PlanNodeId("test_query_1"),
             schemaMap.get("root.sg.d1.s2"),
+            Sets.newHashSet("s2"),
             aggregationTypeList2,
             OrderBy.TIMESTAMP_DESC,
             timeFilter,
@@ -334,6 +340,7 @@ public class QueryLogicalPlanUtil {
         new SeriesAggregateScanNode(
             new PlanNodeId("test_query_2"),
             schemaMap.get("root.sg.d2.s1"),
+            Sets.newHashSet("s1"),
             aggregationTypeList1,
             OrderBy.TIMESTAMP_DESC,
             timeFilter,
@@ -342,6 +349,7 @@ public class QueryLogicalPlanUtil {
         new SeriesAggregateScanNode(
             new PlanNodeId("test_query_3"),
             schemaMap.get("root.sg.d2.s2"),
+            Sets.newHashSet("s2"),
             aggregationTypeList2,
             OrderBy.TIMESTAMP_DESC,
             timeFilter,

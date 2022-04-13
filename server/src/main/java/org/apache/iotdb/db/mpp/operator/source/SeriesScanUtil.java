@@ -47,7 +47,13 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.io.IOException;
 import java.io.Serializable;
-import java.util.*;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Objects;
+import java.util.PriorityQueue;
+import java.util.Set;
 import java.util.function.ToLongFunction;
 import java.util.stream.Collectors;
 
@@ -130,12 +136,11 @@ public class SeriesScanUtil {
     if (ascending) {
       this.orderUtils = new AscTimeOrderUtils();
       mergeReader = getPriorityMergeReader();
-      this.curUnseqFileIndex = 0;
     } else {
       this.orderUtils = new DescTimeOrderUtils();
       mergeReader = getDescPriorityMergeReader();
-      this.curUnseqFileIndex = 0;
     }
+    this.curUnseqFileIndex = 0;
 
     unSeqTimeSeriesMetadata =
         new PriorityQueue<>(
@@ -1075,6 +1080,10 @@ public class SeriesScanUtil {
 
   Filter getTimeFilter() {
     return timeFilter;
+  }
+
+  public TimeOrderUtils getOrderUtils() {
+    return orderUtils;
   }
 
   private class VersionPageReader {

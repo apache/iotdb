@@ -27,6 +27,7 @@ import org.apache.iotdb.db.query.executor.groupby.SlidingWindowGroupByExecutor;
 import org.apache.iotdb.db.utils.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.utils.timerangeiterator.TimeRangeIteratorFactory;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -125,18 +126,16 @@ public abstract class GroupByTimeDataSet extends QueryDataSet {
             true);
 
     // find the first aggregation interval
-    Pair<Long, Long> retTimeRange;
-    retTimeRange = aggrWindowIterator.getFirstTimeRange();
+    TimeRange retTimeRange = aggrWindowIterator.getFirstTimeRange();
 
-    curStartTime = retTimeRange.left;
-    curEndTime = retTimeRange.right;
+    curStartTime = retTimeRange.getMin();
+    curEndTime = retTimeRange.getMax();
 
     // find the first pre-aggregation interval
-    Pair<Long, Long> retPerAggrTimeRange;
-    retPerAggrTimeRange = preAggrWindowIterator.getFirstTimeRange();
+    TimeRange retPerAggrTimeRange = preAggrWindowIterator.getFirstTimeRange();
 
-    curPreAggrStartTime = retPerAggrTimeRange.left;
-    curPreAggrEndTime = retPerAggrTimeRange.right;
+    curPreAggrStartTime = retPerAggrTimeRange.getMin();
+    curPreAggrEndTime = retPerAggrTimeRange.getMax();
 
     this.hasCachedTimeInterval = true;
 
@@ -151,12 +150,12 @@ public abstract class GroupByTimeDataSet extends QueryDataSet {
     }
 
     // find the next aggregation interval
-    Pair<Long, Long> nextTimeRange = aggrWindowIterator.getNextTimeRange(curStartTime);
+    TimeRange nextTimeRange = aggrWindowIterator.getNextTimeRange(curStartTime);
     if (nextTimeRange == null) {
       return false;
     }
-    curStartTime = nextTimeRange.left;
-    curEndTime = nextTimeRange.right;
+    curStartTime = nextTimeRange.getMin();
+    curEndTime = nextTimeRange.getMax();
 
     hasCachedTimeInterval = true;
     return true;

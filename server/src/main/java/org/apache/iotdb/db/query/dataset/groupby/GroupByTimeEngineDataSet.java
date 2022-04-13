@@ -23,7 +23,7 @@ import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
-import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 
 import java.io.IOException;
 
@@ -74,11 +74,11 @@ public abstract class GroupByTimeEngineDataSet extends GroupByTimeDataSet {
 
   // find the next pre-aggregation interval
   protected void updatePreAggrInterval() {
-    Pair<Long, Long> retPerAggrTimeRange;
+    TimeRange retPerAggrTimeRange;
     retPerAggrTimeRange = preAggrWindowIterator.getNextTimeRange(curPreAggrStartTime);
     if (retPerAggrTimeRange != null) {
-      curPreAggrStartTime = retPerAggrTimeRange.left;
-      curPreAggrEndTime = retPerAggrTimeRange.right;
+      curPreAggrStartTime = retPerAggrTimeRange.getMin();
+      curPreAggrEndTime = retPerAggrTimeRange.getMax();
     } else {
       curPreAggrStartTime = -1;
       curPreAggrEndTime = -1;

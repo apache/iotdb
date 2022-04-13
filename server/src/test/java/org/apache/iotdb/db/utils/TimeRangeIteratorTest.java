@@ -21,7 +21,7 @@ package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.db.utils.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.utils.timerangeiterator.TimeRangeIteratorFactory;
-import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -203,17 +203,17 @@ public class TimeRangeIteratorTest {
     int cnt = isAscending ? 0 : res.length - 1;
 
     // test first time range
-    Pair<Long, Long> firstTimeRange = timeRangeIterator.getFirstTimeRange();
+    TimeRange firstTimeRange = timeRangeIterator.getFirstTimeRange();
     Assert.assertEquals(res[cnt], firstTimeRange.toString());
     cnt += isAscending ? 1 : -1;
-    curStartTime = firstTimeRange.left;
+    curStartTime = firstTimeRange.getMin();
 
     // test next time ranges
-    Pair<Long, Long> curTimeRange = timeRangeIterator.getNextTimeRange(curStartTime);
+    TimeRange curTimeRange = timeRangeIterator.getNextTimeRange(curStartTime);
     while (curTimeRange != null) {
       Assert.assertEquals(res[cnt], curTimeRange.toString());
       cnt += isAscending ? 1 : -1;
-      curStartTime = curTimeRange.left;
+      curStartTime = curTimeRange.getMin();
       curTimeRange = timeRangeIterator.getNextTimeRange(curStartTime);
     }
   }

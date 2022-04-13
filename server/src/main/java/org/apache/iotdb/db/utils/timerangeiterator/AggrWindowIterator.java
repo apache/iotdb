@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.utils.timerangeiterator;
 
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
-import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 
 import static org.apache.iotdb.db.qp.utils.DatetimeUtils.MS_TO_MONTH;
 
@@ -61,7 +61,7 @@ public class AggrWindowIterator implements ITimeRangeIterator {
   }
 
   @Override
-  public Pair<Long, Long> getFirstTimeRange() {
+  public TimeRange getFirstTimeRange() {
     if (isAscending) {
       return getLeftmostTimeRange();
     } else {
@@ -69,7 +69,7 @@ public class AggrWindowIterator implements ITimeRangeIterator {
     }
   }
 
-  private Pair<Long, Long> getLeftmostTimeRange() {
+  private TimeRange getLeftmostTimeRange() {
     long retEndTime;
     if (isIntervalByMonth) {
       // calculate interval length by natural month based on startTime
@@ -78,10 +78,10 @@ public class AggrWindowIterator implements ITimeRangeIterator {
     } else {
       retEndTime = Math.min(startTime + interval, endTime);
     }
-    return new Pair<>(startTime, retEndTime);
+    return new TimeRange(startTime, retEndTime);
   }
 
-  private Pair<Long, Long> getRightmostTimeRange() {
+  private TimeRange getRightmostTimeRange() {
     long retStartTime;
     long retEndTime;
     long queryRange = endTime - startTime;
@@ -106,11 +106,11 @@ public class AggrWindowIterator implements ITimeRangeIterator {
     } else {
       retEndTime = Math.min(retStartTime + interval, endTime);
     }
-    return new Pair<>(retStartTime, retEndTime);
+    return new TimeRange(retStartTime, retEndTime);
   }
 
   @Override
-  public Pair<Long, Long> getNextTimeRange(long curStartTime) {
+  public TimeRange getNextTimeRange(long curStartTime) {
     long retStartTime, retEndTime;
     if (isAscending) {
       if (isSlidingStepByMonth) {
@@ -139,7 +139,7 @@ public class AggrWindowIterator implements ITimeRangeIterator {
       retEndTime = retStartTime + interval;
     }
     retEndTime = Math.min(retEndTime, endTime);
-    return new Pair<>(retStartTime, retEndTime);
+    return new TimeRange(retStartTime, retEndTime);
   }
 
   @Override

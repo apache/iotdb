@@ -22,7 +22,14 @@ package org.apache.iotdb.db.mpp.sql.planner;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.*;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.AggregateNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.DeviceMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.FilterNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.FilterNullNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.GroupByLevelNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.LimitNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.OffsetNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregateScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullComponent;
@@ -97,6 +104,10 @@ public class QueryPlanBuilder {
     for (Map.Entry<String, Map<PartialPath, Set<AggregationType>>> entry :
         deviceNameToAggregationsMap.entrySet()) {
       String deviceName = entry.getKey();
+      Set<String> allSensors =
+          entry.getValue().keySet().stream()
+              .map(PartialPath::getMeasurement)
+              .collect(Collectors.toSet());
 
       for (PartialPath path : entry.getValue().keySet()) {
         deviceNameToSourceNodesMap
@@ -105,6 +116,7 @@ public class QueryPlanBuilder {
                 new SeriesAggregateScanNode(
                     context.getQueryId().genPlanNodeId(),
                     path,
+                    allSensors,
                     new ArrayList<>(entry.getValue().get(path)),
                     scanOrder,
                     timeFilter,

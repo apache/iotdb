@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.utils.timerangeiterator;
 
-import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 
 /**
  * This class iteratively generates pre-aggregated time windows.
@@ -54,7 +54,7 @@ public class PreAggrWindowIterator implements ITimeRangeIterator {
   }
 
   @Override
-  public Pair<Long, Long> getFirstTimeRange() {
+  public TimeRange getFirstTimeRange() {
     if (isAscending) {
       return getLeftmostTimeRange();
     } else {
@@ -62,13 +62,13 @@ public class PreAggrWindowIterator implements ITimeRangeIterator {
     }
   }
 
-  private Pair<Long, Long> getLeftmostTimeRange() {
+  private TimeRange getLeftmostTimeRange() {
     long retEndTime = Math.min(startTime + curInterval, endTime);
     updateIntervalAndStep();
-    return new Pair<>(startTime, retEndTime);
+    return new TimeRange(startTime, retEndTime);
   }
 
-  private Pair<Long, Long> getRightmostTimeRange() {
+  private TimeRange getRightmostTimeRange() {
     long retStartTime;
     long retEndTime;
     long intervalNum = (long) Math.ceil((endTime - startTime) / (double) slidingStep);
@@ -79,11 +79,11 @@ public class PreAggrWindowIterator implements ITimeRangeIterator {
     }
     retEndTime = Math.min(retStartTime + curInterval, endTime);
     updateIntervalAndStep();
-    return new Pair<>(retStartTime, retEndTime);
+    return new TimeRange(retStartTime, retEndTime);
   }
 
   @Override
-  public Pair<Long, Long> getNextTimeRange(long curStartTime) {
+  public TimeRange getNextTimeRange(long curStartTime) {
     long retStartTime, retEndTime;
     if (isAscending) {
       retStartTime = curStartTime + curSlidingStep;
@@ -99,7 +99,7 @@ public class PreAggrWindowIterator implements ITimeRangeIterator {
     }
     retEndTime = Math.min(retStartTime + curInterval, endTime);
     updateIntervalAndStep();
-    return new Pair<>(retStartTime, retEndTime);
+    return new TimeRange(retStartTime, retEndTime);
   }
 
   private void initIntervalAndStep() {
