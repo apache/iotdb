@@ -224,12 +224,12 @@ public class LastCacheManager {
         // because LastPointReader will do itself sort logic instead of depending on fillOrderIndex.
         QueryDataSource dataSource =
             QueryResourceManager.getInstance()
-                .getQueryDataSource(node.getPartialPath(), queryContext, null, false);
+                .getQueryDataSource(node.getMeasurementPath(), queryContext, null, false);
         Set<String> measurementSet = new HashSet<>();
-        measurementSet.add(node.getPartialPath().getFullPath());
+        measurementSet.add(node.getMeasurementPath().getFullPath());
         LastPointReader lastReader =
             new LastPointReader(
-                node.getPartialPath(),
+                node.getMeasurementPath(),
                 node.getSchema().getType(),
                 measurementSet,
                 queryContext,
