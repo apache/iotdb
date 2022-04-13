@@ -51,7 +51,7 @@ public class OperationSyncDDLProtector extends OperationSyncProtector {
       boolean transmitStatus = false;
 
       try {
-        // try double write
+        // try operation sync
         planBuffer.position(0);
         transmitStatus = operationSyncSessionPool.operationSyncTransmit(planBuffer);
       } catch (IoTDBConnectionException connectionException) {

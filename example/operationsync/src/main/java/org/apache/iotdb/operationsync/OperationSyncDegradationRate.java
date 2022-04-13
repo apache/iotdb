@@ -16,15 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.doublewrite;
+package org.apache.iotdb.operationsync;
 
 /**
  * This is an operation sync insertion degradation rate test java class, which shows the performance
- * impact when enable double write feature. You can run this code in the same way as
- * DoubleWriteExample.java. Since IoTDB-A enable the double write feature, the performance impact is
- * correct only when Both IoTDB-A and IoTDB-B run on the same computer. Or you can modify the
- * default configuration of IoTDB-A and IoTDB-B after becoming familiar with DoubleWriteExample,
- * DoubleWriteUtil to get A more accurate performance impact estimate from two remote computers.
+ * impact when enable operation sync feature. You can run this code in the same way as
+ * OperationSyncExample.java. Since IoTDB-A enable the operation sync feature, the performance
+ * impact is correct only when Both IoTDB-A and IoTDB-B run on the same computer. Or you can modify
+ * the default configuration of IoTDB-A and IoTDB-B after becoming familiar with
+ * OperationSyncExample, OperationSyncUtil to get A more accurate performance impact estimate from
+ * two remote computers.
  */
 public class OperationSyncDegradationRate extends OperationSyncUtil {
 
@@ -32,7 +33,7 @@ public class OperationSyncDegradationRate extends OperationSyncUtil {
   private static final String dB = "d1";
 
   /**
-   * The following three fields are insert configuration parameters. The double write feature
+   * The following three fields are insert configuration parameters. The operation sync feature
    * already applies to all write interfaces, so you are free to modify these parameters.
    */
   // Total insertion requests during test
@@ -54,7 +55,7 @@ public class OperationSyncDegradationRate extends OperationSyncUtil {
     long startTime = System.currentTimeMillis();
     threadA.start();
     threadA.join();
-    double doubleWriteCost = System.currentTimeMillis() - startTime;
+    double operationSyncost = System.currentTimeMillis() - startTime;
 
     startTime = System.currentTimeMillis();
     threadB.start();
@@ -65,11 +66,11 @@ public class OperationSyncDegradationRate extends OperationSyncUtil {
     double total = batchCnt * batchSize;
     System.out.println("Normal write cost: " + normalWriteCost / 1000.0 + "s");
     System.out.println("Average: " + normalWriteCost / total + " ms per insertion");
-    System.out.println("Double write cost: " + doubleWriteCost / 1000.0 + "s");
-    System.out.println("Average: " + doubleWriteCost / total + " ms per insertion");
+    System.out.println("Operation Sync cost: " + operationSyncost / 1000.0 + "s");
+    System.out.println("Average: " + operationSyncost / total + " ms per insertion");
     System.out.println(
         "Performance degradation rate : "
-            + (doubleWriteCost - normalWriteCost) / normalWriteCost * 100.0
+            + (operationSyncost - normalWriteCost) / normalWriteCost * 100.0
             + "%");
   }
 }

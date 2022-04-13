@@ -329,9 +329,9 @@ public class TSServiceImpl implements TSIService.Iface {
     serviceProvider = IoTDB.serviceProvider;
 
     if (isEnableOperationSync) {
-      /* Open double write */
+      /* Open OperationSync */
       IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-      // create SessionPool for double write
+      // create SessionPool for OperationSync
       operationSyncsessionPool =
           new SessionPool(
               config.getSecondaryAddress(),

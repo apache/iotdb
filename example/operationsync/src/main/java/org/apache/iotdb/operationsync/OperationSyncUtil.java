@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.doublewrite;
+package org.apache.iotdb.operationsync;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -26,7 +26,7 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.pool.SessionPool;
 
 /**
- * This java class is used to create the double write examples environment. You can set IoTDB-B
+ * This java class is used to create the operation sync examples environment. You can set IoTDB-B
  * config here
  */
 public abstract class OperationSyncUtil {
@@ -51,14 +51,14 @@ public abstract class OperationSyncUtil {
   protected static final int concurrency = 5;
 
   // Default name of StorageGroup
-  protected static final String sg = "root.DOUBLEWRITESG";
+  protected static final String sg = "root.OPERATIONSYNCSG";
 
-  // Threads for double write
+  // Threads for operation sync
   protected static Thread threadA;
   protected static Thread threadB;
 
   protected static void initEnvironment() {
-    // Start local IoTDB-A on ip "127.0.0.1", port 6667 and set enableDoubleWrite
+    // Start local IoTDB-A on ip "127.0.0.1", port 6667 and set enableOperationSync
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
     config.setEnableOperationSync(true);
@@ -92,7 +92,7 @@ public abstract class OperationSyncUtil {
     sessionPoolA.setStorageGroup(sg);
     sessionPoolB.setStorageGroup(sg);
 
-    // Create double write threads
+    // Create operation sync threads
     OperationSyncThread operationSyncThreadA =
         new OperationSyncThread(sessionPoolA, dA, batchCnt, timeseriesCnt, batchSize);
     threadA = new Thread(operationSyncThreadA);
@@ -103,8 +103,8 @@ public abstract class OperationSyncUtil {
 
   protected static void cleanEnvironment() throws Exception {
     // Clean StorageGroups, close sessionPools and shut down environment
-    sessionPoolA.deleteStorageGroup("root.DOUBLEWRITESG");
-    sessionPoolB.deleteStorageGroup("root.DOUBLEWRITESG");
+    sessionPoolA.deleteStorageGroup(sg);
+    sessionPoolB.deleteStorageGroup(sg);
 
     sessionPoolA.close();
     sessionPoolB.close();

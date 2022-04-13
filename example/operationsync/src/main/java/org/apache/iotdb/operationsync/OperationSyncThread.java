@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.doublewrite;
+package org.apache.iotdb.operationsync;
 
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -33,7 +33,7 @@ public class OperationSyncThread implements Runnable {
 
   private final SessionPool sessionPool;
 
-  private final String sg = "root.DOUBLEWRITESG";
+  private final String sg = "root.OPERATIONSYNCSG";
   private final String deviceId;
 
   private final int batchCnt;

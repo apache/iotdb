@@ -2258,7 +2258,7 @@ public class SessionPool {
     return null;
   }
 
-  /** Transmit insert record request for double write */
+  /** Transmit insert record request for OperationSync */
   public boolean operationSyncTransmit(ByteBuffer buffer)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {

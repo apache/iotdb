@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.doublewrite;
+package org.apache.iotdb.operationsync;
 
 import org.apache.iotdb.session.pool.SessionPool;
 
@@ -41,7 +41,7 @@ public class OperationSyncDurability extends OperationSyncUtil {
     }
     sessionPoolA.setStorageGroup(sg);
 
-    // Create double write threads
+    // Create operation sync threads
     OperationSyncThread operationSyncThreadA =
         new OperationSyncThread(sessionPoolA, dA, batchCnt, timeseriesCnt, batchSize);
     threadA = new Thread(operationSyncThreadA);

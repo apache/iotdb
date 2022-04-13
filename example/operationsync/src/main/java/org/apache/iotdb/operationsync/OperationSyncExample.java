@@ -16,20 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.doublewrite;
+package org.apache.iotdb.operationsync;
 
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.pool.SessionDataSetWrapper;
 
 /**
- * This is a simple double write example java class, which shows how to enable double write feature
- * and proves that the double write feature performs correctly. To run this code, you need to start
- * another IoTDB service. The easiest way to do this is to copy the
+ * This is a simple operation sync example java class, which shows how to enable operation sync
+ * feature and proves that the operation sync feature performs correctly. To run this code, you need
+ * to start another IoTDB service. The easiest way to do this is to copy the
  * ./server/target/iotdb-server-0.12.5-SNAPSHOT folder to any location. Then change the default port
  * in iotdb-engine.properties to 6668, and start the service using the start-server script. Or you
- * can start IoTDB-B on another computer and modify the configuration of IoTDB-B in DoubleWriteUtil.
- * Finally, you can run this code and see double write feature from the command line.
+ * can start IoTDB-B on another computer and modify the configuration of IoTDB-B in
+ * OperationSyncUtil. Finally, you can run this code and see operation sync feature from the command
+ * line.
  */
 public class OperationSyncExample extends OperationSyncUtil {
 
@@ -40,7 +41,7 @@ public class OperationSyncExample extends OperationSyncUtil {
   private static final int timeseriesCnt = 1;
   private static final int batchSize = 1;
 
-  private static final String sql = "select * from root.DOUBLEWRITESG.d0";
+  private static final String sql = "select * from root.OPERATIONSYNCSG.d0";
 
   public static void main(String[] args) throws Exception {
     initEnvironment();

@@ -11,7 +11,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class DoubleWriteManualTestUtils {
+public class OperationSyncManualTestUtils {
 
   private static final SessionPool sessionPool =
       new SessionPool("127.0.0.1", 6667, "root", "root", 3);

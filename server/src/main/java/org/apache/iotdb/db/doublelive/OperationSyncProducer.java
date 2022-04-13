@@ -48,7 +48,7 @@ public class OperationSyncProducer {
       planPair.left.position(0);
       operationSyncQueue.put(planPair);
     } catch (InterruptedException e) {
-      LOGGER.error("double write cache failed.", e);
+      LOGGER.error("OperationSync cache failed.", e);
     }
   }
 }
