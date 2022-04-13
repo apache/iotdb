@@ -118,7 +118,7 @@ int main() {
     printf("\n");
     nonQuery("{\"sql\":\"set storage group to root.lns\"}");
     printf("\n");
-    insertTablet("{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"s3\",\"s4\"],\"dataTypes\":[\"INT32\",\"BOOLEAN\"],\"values\":[[11,null],[false,true]],\"isAligned\":false,\"deviceId\":\"root.lns\"}");
+    insertTablet("{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"s3\",\"s4\"],\"dataTypes\":[\"INT32\",\"BOOLEAN\"],\"values\":[[11,null],[false,true]],\"isAligned\":false,\"deviceId\":\"root.lns.d1\"}");
 
     return 0;
 }
