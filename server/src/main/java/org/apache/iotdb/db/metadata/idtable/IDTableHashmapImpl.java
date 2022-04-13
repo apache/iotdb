@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.metadata.idtable;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
@@ -37,11 +38,11 @@ import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -79,6 +80,7 @@ public class IDTableHashmapImpl implements IDTable {
     }
     if (config.isEnableIDTableLogFile()) {
       IDiskSchemaManager = new AppendOnlyDiskSchemaManager(storageGroupDir);
+      IDiskSchemaManager.recover(this);
     }
   }
 
@@ -90,7 +92,7 @@ public class IDTableHashmapImpl implements IDTable {
    */
   public synchronized void createAlignedTimeseries(CreateAlignedTimeSeriesPlan plan)
       throws MetadataException {
-    DeviceEntry deviceEntry = getDeviceEntryWithAlignedCheck(plan.getPrefixPath(), true);
+    DeviceEntry deviceEntry = getDeviceEntryWithAlignedCheck(plan.getPrefixPath().toString(), true);
 
     for (int i = 0; i < plan.getMeasurements().size(); i++) {
       PartialPath fullPath =
@@ -102,6 +104,7 @@ public class IDTableHashmapImpl implements IDTable {
               plan.getCompressors().get(i),
               deviceEntry.getDeviceID(),
               fullPath,
+              true,
               IDiskSchemaManager);
       deviceEntry.putSchemaEntry(plan.getMeasurements().get(i), schemaEntry);
     }
@@ -114,7 +117,7 @@ public class IDTableHashmapImpl implements IDTable {
    * @throws MetadataException if the device is aligned, throw it
    */
   public synchronized void createTimeseries(CreateTimeSeriesPlan plan) throws MetadataException {
-    DeviceEntry deviceEntry = getDeviceEntryWithAlignedCheck(plan.getPath().getDevicePath(), false);
+    DeviceEntry deviceEntry = getDeviceEntryWithAlignedCheck(plan.getPath().getDevice(), false);
     SchemaEntry schemaEntry =
         new SchemaEntry(
             plan.getDataType(),
@@ -122,6 +125,7 @@ public class IDTableHashmapImpl implements IDTable {
             plan.getCompressor(),
             deviceEntry.getDeviceID(),
             plan.getPath(),
+            false,
             IDiskSchemaManager);
     deviceEntry.putSchemaEntry(plan.getPath().getMeasurement(), schemaEntry);
   }
@@ -139,7 +143,8 @@ public class IDTableHashmapImpl implements IDTable {
     IMeasurementMNode[] measurementMNodes = plan.getMeasurementMNodes();
 
     // 1. get device entry and check align
-    DeviceEntry deviceEntry = getDeviceEntryWithAlignedCheck(devicePath, plan.isAligned());
+    DeviceEntry deviceEntry =
+        getDeviceEntryWithAlignedCheck(devicePath.toString(), plan.isAligned());
 
     // 2. get schema of each measurement
     for (int i = 0; i < measurementList.length; i++) {
@@ -191,30 +196,6 @@ public class IDTableHashmapImpl implements IDTable {
   }
 
   /**
-   * update latest flushed time of one timeseries
-   *
-   * @param timeseriesID timeseries id
-   * @param flushTime latest flushed time
-   * @throws MetadataException throw if this timeseries is not exist
-   */
-  public synchronized void updateLatestFlushTime(TimeseriesID timeseriesID, long flushTime)
-      throws MetadataException {
-    getSchemaEntry(timeseriesID).updateLastedFlushTime(flushTime);
-  }
-
-  /**
-   * update latest flushed time of one timeseries
-   *
-   * @param timeseriesID timeseries id
-   * @return latest flushed time of one timeseries
-   * @throws MetadataException throw if this timeseries is not exist
-   */
-  public synchronized long getLatestFlushedTime(TimeseriesID timeseriesID)
-      throws MetadataException {
-    return getSchemaEntry(timeseriesID).getFlushTime();
-  }
-
-  /**
    * register trigger to the timeseries
    *
    * @param fullPath full path of the timeseries
@@ -224,7 +205,7 @@ public class IDTableHashmapImpl implements IDTable {
   public synchronized void registerTrigger(PartialPath fullPath, IMeasurementMNode measurementMNode)
       throws MetadataException {
     boolean isAligned = measurementMNode.getParent().isAligned();
-    DeviceEntry deviceEntry = getDeviceEntryWithAlignedCheck(fullPath.getDevicePath(), isAligned);
+    DeviceEntry deviceEntry = getDeviceEntryWithAlignedCheck(fullPath.getDevice(), isAligned);
 
     deviceEntry.getSchemaEntry(fullPath.getMeasurement()).setUsingTrigger();
   }
@@ -239,7 +220,7 @@ public class IDTableHashmapImpl implements IDTable {
   public synchronized void deregisterTrigger(
       PartialPath fullPath, IMeasurementMNode measurementMNode) throws MetadataException {
     boolean isAligned = measurementMNode.getParent().isAligned();
-    DeviceEntry deviceEntry = getDeviceEntryWithAlignedCheck(fullPath.getDevicePath(), isAligned);
+    DeviceEntry deviceEntry = getDeviceEntryWithAlignedCheck(fullPath.getDevice(), isAligned);
 
     deviceEntry.getSchemaEntry(fullPath.getMeasurement()).setUnUsingTrigger();
   }
@@ -295,6 +276,33 @@ public class IDTableHashmapImpl implements IDTable {
     return idTables[slot].get(deviceID);
   }
 
+  /**
+   * get schema from device and measurements
+   *
+   * @param deviceName device name of the time series
+   * @param measurementName measurement name of the time series
+   * @return schema entry of the timeseries
+   */
+  @Override
+  public IMeasurementSchema getSeriesSchema(String deviceName, String measurementName) {
+    DeviceEntry deviceEntry = getDeviceEntry(deviceName);
+    if (deviceEntry == null) {
+      return null;
+    }
+
+    SchemaEntry schemaEntry = deviceEntry.getSchemaEntry(measurementName);
+    if (schemaEntry == null) {
+      return null;
+    }
+
+    // build measurement schema
+    return new MeasurementSchema(
+        measurementName,
+        schemaEntry.getTSDataType(),
+        schemaEntry.getTSEncoding(),
+        schemaEntry.getCompressionType());
+  }
+
   @Override
   public List<DeviceEntry> getAllDeviceEntry() {
     List<DeviceEntry> res = new ArrayList<>();
@@ -305,9 +313,17 @@ public class IDTableHashmapImpl implements IDTable {
     return res;
   }
 
+  @Override
+  public void putSchemaEntry(
+      String devicePath, String measurement, SchemaEntry schemaEntry, boolean isAligned)
+      throws MetadataException {
+    DeviceEntry deviceEntry = getDeviceEntryWithAlignedCheck(devicePath, isAligned);
+    deviceEntry.putSchemaEntry(measurement, schemaEntry);
+  }
+
   /**
    * check whether a time series is exist if exist, check the type consistency if not exist, call
-   * MManager to create it
+   * SchemaProcessor to create it
    *
    * @return measurement MNode of the time series or null if type is not match
    */
@@ -326,12 +342,13 @@ public class IDTableHashmapImpl implements IDTable {
       System.arraycopy(
           plan.getMeasurementMNodes(), 0, insertPlanMNodeBackup, 0, insertPlanMNodeBackup.length);
       try {
-        IoTDB.metaManager.getSeriesSchemasAndReadLockDevice(plan);
+        IoTDB.schemaProcessor.getSeriesSchemasAndReadLockDevice(plan);
       } catch (IOException e) {
         throw new MetadataException(e);
       }
 
-      // if the timeseries is in template, mmanager will not create timeseries. so we have to put it
+      // if the timeseries is in template, SchemaProcessor will not create timeseries. so we have to
+      // put it
       // in id table here
       for (IMeasurementMNode measurementMNode : plan.getMeasurementMNodes()) {
         if (measurementMNode != null && !deviceEntry.contains(measurementMNode.getName())) {
@@ -343,6 +360,7 @@ public class IDTableHashmapImpl implements IDTable {
                   schema.getCompressor(),
                   deviceEntry.getDeviceID(),
                   seriesKey,
+                  deviceEntry.isAligned(),
                   IDiskSchemaManager);
           deviceEntry.putSchemaEntry(measurementMNode.getName(), curEntry);
         }
@@ -355,9 +373,9 @@ public class IDTableHashmapImpl implements IDTable {
       schemaEntry = deviceEntry.getSchemaEntry(measurementName);
     }
 
-    // timeseries is using trigger, we should get trigger from mmanager
+    // timeseries is using trigger, we should get trigger from SchemaProcessor
     if (schemaEntry.isUsingTrigger()) {
-      IMeasurementMNode measurementMNode = IoTDB.metaManager.getMeasurementMNode(seriesKey);
+      IMeasurementMNode measurementMNode = IoTDB.schemaProcessor.getMeasurementMNode(seriesKey);
       return new InsertMeasurementMNode(
           measurementName, schemaEntry, measurementMNode.getTriggerExecutor());
     }
@@ -372,7 +390,7 @@ public class IDTableHashmapImpl implements IDTable {
    * @param isAligned whether the insert plan is aligned
    * @return device entry of the timeseries
    */
-  private DeviceEntry getDeviceEntryWithAlignedCheck(PartialPath deviceName, boolean isAligned)
+  private DeviceEntry getDeviceEntryWithAlignedCheck(String deviceName, boolean isAligned)
       throws MetadataException {
     IDeviceID deviceID = DeviceIDFactory.getInstance().getDeviceID(deviceName);
     int slot = calculateSlot(deviceID);

@@ -19,11 +19,13 @@
 
 -->
 
-# Literal Values
+# Syntax Conventions
+
+## Literal Values
 
 This section describes how to write literal values in IoTDB. These include strings, numbers, timestamp values, boolean values, and NULL.
 
-## String Literals
+### String Literals
 
 A string is a sequence of characters, enclosed within either single quote (`'`) or double quote (`"`) characters. Examples:
 ```js
@@ -41,26 +43,24 @@ Usages of string literals:
 
 There are several ways to include quote characters within a string:
 
- - A `'` inside a string quoted with `'` may be written as `''`.
- - A `"` inside a string quoted with `"` may be written as `""`.
  - Precede the quote character by an escape character (\\).
- - `'` inside a string quoted with `"` needs no special treatment and need not be doubled or escaped. In the same way, `"` inside a string quoted with `'` needs no special treatment. (but escaping still works)
+ - `'` inside a string quoted with `"` needs no special treatment and need not be doubled or escaped. In the same way, `"` inside a string quoted with `'` needs no special treatment.
 
 The following examples demonstrate how quoting and escaping work:
 ```js
 'string'  // string
 '"string"'  // "string"
 '""string""'  // ""string""
-'str''ing'  // str'ing
+'str\'ing'  // str'ing
 '\'string'  // 'string
 "string" // string
 "'string'"  // 'string'
 "''string''"  // ''string''
-"str""ing"  // str"ing
+"str\"ing"  // str"ing
 "\"string"  // "string
 ```
 
-## Numeric Literals
+### Numeric Literals
 
 Number literals include integer (exact-value) literals and floating-point (approximate-value) literals.
 
@@ -74,22 +74,22 @@ The `FLOAT` and `DOUBLE` data types are floating-point types and calculations ar
 
 An integer may be used in floating-point context; it is interpreted as the equivalent floating-point number.
 
-## Timestamp Literals
+### Timestamp Literals
 
 The timestamp is the time point at which data is produced. It includes absolute timestamps and relative timestamps in IoTDB. For information about timestamp support in IoTDB, see [Data Type Doc](../Data-Concept/Data-Type.md).
 
 Specially, `NOW()` represents a constant timestamp that indicates the system time at which the statement began to execute.
 
-## Boolean Literals
+### Boolean Literals
 
 The constants `TRUE` and `FALSE` evaluate to 1 and 0, respectively. The constant names can be written in any lettercase.
 
-## NULL Values
+### NULL Values
 
 The `NULL` value means “no data.” `NULL` can be written in any lettercase.
 
 
-# Identifiers
+## Identifiers
 
 Certain objects within IoTDB, including `TRIGGER`, `FUNCTION`(UDF), `CONTINUOUS QUERY`, `SCHEMA TEMPLATE`, `USER`, `ROLE` and other object names are known as identifiers.
 
@@ -114,15 +114,11 @@ _id  // parsed as _id
 ab!  // invalid
 `ab!`  // parsed as ab!
 `"ab"`  // parsed as "ab"
-```
-
-Identifier quote characters can be included within an identifier if you quote the identifier. If the character to be included within the identifier is the same as that used to quote the identifier itself, then you need to double the character.
-```sql
-`a``b`  // parsed as a`b
+`a`b`  // invalid
 `a\`b`  // parsed as a`b
 ```
 
-# Node Names in Path
+## Node Names in Path
 
 We call the part of a path divided by `.` as a `node`. 
 
@@ -130,6 +126,7 @@ The constraints of node names are almost the same as the identifiers, but you sh
 
 - `root` is a reserved word, and it is only allowed to appear at the beginning layer of the time series. If `root` appears in other layers, it cannot be parsed and an error will be reported.
 - Character `.` is not permitted in unquoted or quoted node names. If you must do it (even if it is not recommended), you can enclose it within either single quote (`'`) or double quote (`"`). In this case, quotes are recognized as part of the node name to avoid ambiguity.
+- Among the node name enclosed in the reverse quota, single quotes and double quotes need to use a backslash to escape.
 - In particular, if the system is deployed on a Windows machine, the storage group layer name will be **case-insensitive**. For example, creating both `root.ln` and `root.LN` at the same time is not allowed.
 
 Examples:
@@ -158,14 +155,22 @@ CREATE TIMESERIES root.a.b."s1.s2".c WITH DATATYPE=INT32, ENCODING=RLE
 // root.a.b."s1.s2".c will be parsed as Path[root, a, b, "s1.s2", c]
 ```
 
-# Keywords and Reserved Words
+```sql
+CREATE TIMESERIES root.a.b.`s1"s2`.c WITH DATATYPE=INT32, ENCODING=RLE
+// invalid!
+
+CREATE TIMESERIES root.a.b.`s1\"s2`.c WITH DATATYPE=INT32, ENCODING=RLE
+// root.a.b.`s1\"s2`.c be parsed as Path[root, a, b, s1\"s2, c]
+```
+
+## Keywords and Reserved Words
 
 Keywords are words that have significance in SQL require special treatment for use as identifiers and node names, and need to be escaped with backticks.
 Certain keywords, such as TIME and ROOT, are reserved and cannot use as identifiers and node names (even after escaping).
 
 [Keywords and Reserved Words](Keywords.md) shows the keywords and reserved words in IoTDB 0.13.
 
-# Expressions
+## Expressions
 
 IoTDB supports the execution of arbitrary nested expressions consisting of numbers, time series, arithmetic expressions, and time series generating functions (including user-defined functions) in the `select` clause.
 
@@ -180,7 +185,35 @@ select `0` + 0 from root.sg.d -- valid expression, add number 0 to each point of
 select myudf(`'a'`, 'x') from root.sg.d -- valid expression, call function myudf with timeseries root.sg.d.'a' as the 1st parameter, and a string constant 'x' as the 2nd parameter
 ```
 
-# Learn More
+## Quote Symbol
+
+### Double quotes ("), single quotes (')
+
+Double quotes and single quotes are used in the following scenarios:
+
+1. String literals are represented by strings enclosed in single or double quotes.
+2. If you want to use the path separator (`.`) in the path node name, you need to enclose the node name in single or double quotes. In this case, to avoid ambiguity, the quotes are treated as part of the node name by the system.
+
+### Backticks (\`)
+
+Backticks are used in the following scenarios:
+
+1. When using special characters in an identifier, the identifier needs to be enclosed in backticks.
+2. When using special characters other than path separators in the path node name, the path node name needs to be enclosed in backticks. In this case, the backticks are not considered part of the node name by the system.
+
+### Backslash (\\)
+
+backslashes are used in the following scenarios:
+
+- In string literals, double or single quote should be escaped with a backslash.
+  - e.g. "str\\"ing" is parsed as str"ing, 'str\\'ing' is parsed as str'ing.
+- In an identifier, backtick should be escaped with a backslash.
+  - e.g. \`na\\\`me\` is parsed as na\`me.
+- In path node names, double or single quote should be escaped with a backslash. To avoid ambiguity, backslashes are recognized as part of the node name.
+  - e.g. root.sg1.d1."a\\"b" is parsed as Path[root, sg1, d1, "a\\"b"], root.sg1.d1.'a\\'b' is parsed as Path[ root, sg1, d1, 'a\\'b'], root.sg1.d1.\`a\\"b\` is parsed as Path[root, sg1, d1, a\\"b], root.sg1.d1.\`a\\'b\` is parsed as Path[root, sg1, d1, a\\'b].
+  
+
+## Learn More
 
 Please read the lexical and grammar description files in our code repository:
 

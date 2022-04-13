@@ -168,13 +168,13 @@ Segmentation aggregation is a typical query method for time series data. Data is
 
 Downsampling query refers to a query method that uses a lower frequency than the time frequency of data collection, and is a special case of segmented aggregation. For example, the frequency of data collection is one second. If you want to display the data in one minute, you need to use downsampling query.
 
-This section mainly introduces the related examples of downsampling aggregation query,  using the `GROUP BY` clause.  IoTDB supports partitioning result sets according to time interval and customized sliding step which should not be smaller than the time interval and defaults to equal the time interval if not set. And by default results are sorted by time in ascending order. 
+This section mainly introduces the related examples of downsampling aggregation query,  using the `GROUP BY` clause.  IoTDB supports partitioning result sets according to time interval and customized sliding step. And by default results are sorted by time in ascending order. 
 
 The GROUP BY statement provides users with three types of specified parameters:
 
 * Parameter 1: The display window on the time axis
 * Parameter 2: Time interval for dividing the time axis(should be positive)
-* Parameter 3: Time sliding step (optional and should not be smaller than the time interval and defaults to equal the time interval if not set)
+* Parameter 3: Time sliding step (optional and defaults to equal the time interval if not set)
 
 The actual meanings of the three types of parameters are shown in Figure below. 
 Among them, the parameter 3 is optional. 
@@ -256,6 +256,30 @@ Since there is data for each time period in the result range to be displayed, th
 |2017-11-07T00:00:00.000+08:00|                            180|                                   25.99|
 +-----------------------------+-------------------------------+----------------------------------------+
 Total line number = 7
+It costs 0.006s
+```
+
+The sliding step can be smaller than the interval, in which case there is overlapping time between the aggregation windows (similar to a sliding window).
+
+The SQL statement is:
+
+```sql
+select count(status), max_value(temperature) from root.ln.wf01.wt01 group by ([2017-11-01 00:00:00, 2017-11-01 10:00:00), 4h, 2h);
+```
+
+The execution result of the SQL statement is shown below:
+
+```
++-----------------------------+-------------------------------+----------------------------------------+
+|                         Time|count(root.ln.wf01.wt01.status)|max_value(root.ln.wf01.wt01.temperature)|
++-----------------------------+-------------------------------+----------------------------------------+
+|2017-11-01T00:00:00.000+08:00|                            180|                                   25.98|
+|2017-11-01T02:00:00.000+08:00|                            180|                                   25.98|
+|2017-11-01T04:00:00.000+08:00|                            180|                                   25.96|
+|2017-11-01T06:00:00.000+08:00|                            180|                                   25.96|
+|2017-11-01T08:00:00.000+08:00|                            180|                                    26.0|
++-----------------------------+-------------------------------+----------------------------------------+
+Total line number = 5
 It costs 0.006s
 ```
 

@@ -54,7 +54,7 @@ public class MemtableBenchmark {
             Collections.singletonList(
                 new MeasurementSchema(measurementId[j], tsDataType, TSEncoding.PLAIN)),
             System.nanoTime(),
-            new Object[] {String.valueOf(System.currentTimeMillis())});
+            new Object[] {System.currentTimeMillis()});
       }
     }
 

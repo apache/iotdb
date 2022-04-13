@@ -21,7 +21,7 @@ package org.apache.iotdb.db.engine.compaction.utils;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.CompactionPriority;
+import org.apache.iotdb.db.engine.compaction.constant.CompactionPriority;
 import org.apache.iotdb.db.engine.compaction.cross.CrossCompactionStrategy;
 import org.apache.iotdb.db.engine.compaction.inner.InnerCompactionStrategy;
 
@@ -31,14 +31,14 @@ public class CompactionConfigRestorer {
   private boolean enableCrossSpaceCompaction = true;
   private CrossCompactionStrategy crossStrategy = CrossCompactionStrategy.REWRITE_COMPACTION;
   private InnerCompactionStrategy innerStrategy = InnerCompactionStrategy.SIZE_TIERED_COMPACTION;
-  private CompactionPriority priority = CompactionPriority.INNER_CROSS;
+  private CompactionPriority priority = CompactionPriority.BALANCE;
   private long targetFileSize = 1073741824L;
   private long targetChunkSize = 1048576L;
   private long targetChunkPointNum = 100000L;
   private long chunkSizeLowerBoundInCompaction = 128L;
   private long chunkPointNumLowerBoundInCompaction = 100L;
-  private int maxCompactionCandidateFileNum = 30;
-  private int maxOpenFileNumInCrossSpaceCompaction = 100;
+  private int maxInnerCompactionCandidateFileNum = 30;
+  private int maxCrossCompactionCandidateFileNum = 1000;
   private int concurrentCompactionThread = 10;
   private long compactionScheduleIntervalInMs = 60000L;
   private long compactionSubmissionIntervalInMs = 60000L;
@@ -59,8 +59,8 @@ public class CompactionConfigRestorer {
     config.setTargetChunkPointNum(targetChunkPointNum);
     config.setChunkSizeLowerBoundInCompaction(chunkSizeLowerBoundInCompaction);
     config.setChunkPointNumLowerBoundInCompaction(chunkPointNumLowerBoundInCompaction);
-    config.setMaxCompactionCandidateFileNum(maxCompactionCandidateFileNum);
-    config.setMaxOpenFileNumInCrossSpaceCompaction(maxOpenFileNumInCrossSpaceCompaction);
+    config.setMaxInnerCompactionCandidateFileNum(maxInnerCompactionCandidateFileNum);
+    config.setMaxCrossCompactionCandidateFileNum(maxCrossCompactionCandidateFileNum);
     config.setConcurrentCompactionThread(concurrentCompactionThread);
     config.setCompactionScheduleIntervalInMs(compactionScheduleIntervalInMs);
     config.setCompactionSubmissionIntervalInMs(compactionSubmissionIntervalInMs);

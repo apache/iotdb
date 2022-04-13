@@ -326,12 +326,6 @@ The write throughput (points/second) is:
 ![Batch Size with Write Throughput (points/second)](https://user-images.githubusercontent.com/24886743/106251391-df1b9f80-624f-11eb-9f1f-66823839acba.png)
 <span id = "exp1"> <center>Figure 1. Batch Size with Write throughput (points/second) IoTDB v0.11.1</center></span>
 
-
-The write delay (ms) is:
-
-![Batch Size with Write Delay (ms)](https://user-images.githubusercontent.com/24886743/118790013-f1395080-b8c7-11eb-9e22-3310fa4ec804.png)
-<center>Figure 2. Batch Size with Write Delay (ms) IoTDB v0.11.1</center>
-
 * client num:
 
 The client num is distributed from 1 to 50.

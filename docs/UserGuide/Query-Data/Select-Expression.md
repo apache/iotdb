@@ -27,18 +27,21 @@ A selection expression (`selectExpr`) is a component of a SELECT clause, each `s
 
 ```sql
 selectClause
-    : SELECT resultColumn (',' resultColumn)*
-    ;
+: SELECT resultColumn (',' resultColumn)*
+;
 
 resultColumn
-    : selectExpr (AS alias)?
+: selectExpr (AS alias)?
     ;
 
 selectExpr
-    : '(' selectExpr ')'
+: '(' selectExpr ')'
     | '-' selectExpr
+    | '!' selectExpr
     | selectExpr ('*' | '/' | '%') selectExpr
     | selectExpr ('+' | '-') selectExpr
+    | selectExpr ('>' | '>=' | '<' | '<=' | '==' | '!=') selectExpr
+    | selectExpr (AND | OR) selectExpr
     | functionName '(' selectExpr (',' selectExpr)* functionAttribute* ')'
     | timeSeriesSuffixPath
     | number
@@ -60,6 +63,7 @@ From this syntax definition, `selectExpr` can contain:
 
 ## Arithmetic Query
 
+
 > Please note that Aligned Timeseries has not been supported in Arithmetic Query yet. An error message is expected if you use Arithmetic Query with Aligned Timeseries selected.
 
 ### Operators
@@ -68,7 +72,7 @@ From this syntax definition, `selectExpr` can contain:
 
 Supported operators: `+`, `-`
 
-Supported input data types: `INT32`, `INT64`, `FLOAT` and `DOUBLE`
+Supported input data types: `INT32`, `INT64` and `FLOAT`
 
 Output data type: consistent with the input data type
 
@@ -103,6 +107,77 @@ Result:
 Total line number = 5
 It costs 0.014s
 ```
+
+## Compare Expression
+#### Unary Logical Operators
+Supported operator `!`
+
+Supported input data types: `BOOLEAN`
+
+Output data type: `BOOLEAN`
+
+Hint: the priority of `!` is the same as `-`. Remember to use brackets to modify priority.
+
+#### Binary Compare Operators
+
+Supported operators `>`, `>=`, `<`, `<=`, `==`, `!=`
+
+Supported input data types: `INT32`, `INT64`, `FLOAT` and `DOUBLE` 
+
+It will transform all type to `DOUBLE` then do computation. 
+
+Output data type: `BOOLEAN`
+
+#### Binary Logical Operators
+
+Supported operators AND:`and`,`&`, `&&`; OR:`or`,`|`,`||`
+
+Supported input data types: `BOOLEAN`
+
+Output data type: `BOOLEAN`
+
+Note: Only when the left operand and the right operand under a certain timestamp are both `BOOLEAN` type, the binary logic operation will have an output value.
+
+### Example
+```sql
+select a, b, a > 10, a <= b, !(a <= b), a > 10 && a > b from root.test;
+```
+
+Output:
+```
+IoTDB> select a, b, a > 10, a <= b, !(a <= b), a > 10 && a > b from root.test;
++-----------------------------+-----------+-----------+----------------+--------------------------+---------------------------+------------------------------------------------+
+|                         Time|root.test.a|root.test.b|root.test.a > 10|root.test.a <= root.test.b|!root.test.a <= root.test.b|(root.test.a > 10) & (root.test.a > root.test.b)|
++-----------------------------+-----------+-----------+----------------+--------------------------+---------------------------+------------------------------------------------+
+|1970-01-01T08:00:00.001+08:00|         23|       10.0|            true|                     false|                       true|                                            true|
+|1970-01-01T08:00:00.002+08:00|         33|       21.0|            true|                     false|                       true|                                            true|
+|1970-01-01T08:00:00.004+08:00|         13|       15.0|            true|                      true|                      false|                                           false|
+|1970-01-01T08:00:00.005+08:00|         26|        0.0|            true|                     false|                       true|                                            true|
+|1970-01-01T08:00:00.008+08:00|          1|       22.0|           false|                      true|                      false|                                           false|
+|1970-01-01T08:00:00.010+08:00|         23|       12.0|            true|                     false|                       true|                                            true|
++-----------------------------+-----------+-----------+----------------+--------------------------+---------------------------+------------------------------------------------+
+```
+
+## Priority of Operators
+
+|priority|operator  |meaning            |
+|:---:|:------------|:------------------|
+|1    |`-`          |Unary operator negative  |
+|1    |`+`          |Unary operator positive  |
+|1    |`!`          |Unary operator negation  |
+|2    |`*`          |Binary operator multiply |
+|2    |`/`          |Binary operator division |
+|2    |`%`          |Binary operator remainder|
+|3    |`+`          |Binary operator add      |
+|3    |`-`          |Binary operator minus    |
+|4    |`>`          |Binary compare operator greater than|
+|4    |`>=`         |Binary compare operator greater or equal to|
+|4    |`<`          |Binary compare operator less than|
+|4    |`<=`         |Binary compare operator less or equal to|
+|4    |`==`         |Binary compare operator equal to|
+|4    |`!=`/`<>`    |Binary compare operator non-equal to|
+|5    |`and`/`&`/`&&`               |Binary logic operator and|
+|5    |`or`/ &#124; / &#124;&#124;  |Binary logic operator or|
 
 ## Time Series Generating Functions
 
@@ -335,6 +410,122 @@ Result:
 Total line number = 4
 It costs 0.078s
 ```
+
+### Condition Functions
+Condition functions are used to check whether timeseries data points satisfy some specific condition. 
+
+They return BOOLEANs.
+
+Currently, IoTDB supports the following condition functions:
+
+| Function Name | Allowed Input Series Data Types | Required Attributes                           | Output Series Data Type | Series Data Type  Description                 |
+|---------------|---------------------------------|-----------------------------------------------|-------------------------|-----------------------------------------------|
+| ON_OFF        | INT32 / INT64 / FLOAT / DOUBLE  | `threshold`: a double type variate            | BOOLEAN                 | Return `ts_value >= threshold`.               |
+| IN_RANGR      | INT32 / INT64 / FLOAT / DOUBLE  | `lower`: DOUBLE type<br/>`upper`: DOUBLE type | BOOLEAN                 | Return `ts_value >= lower && value <= upper`. |
+
+Example Data:
+```
+IoTDB> select ts from root.test;
++-----------------------------+------------+
+|                         Time|root.test.ts|
++-----------------------------+------------+
+|1970-01-01T08:00:00.001+08:00|           1|
+|1970-01-01T08:00:00.002+08:00|           2|
+|1970-01-01T08:00:00.003+08:00|           3|
+|1970-01-01T08:00:00.004+08:00|           4|
++-----------------------------+------------+
+```
+
+##### Test 1
+SQL:
+```sql
+select ts, on_off(ts, 'threshold'='2') from root.test;
+```
+
+Output:
+```
+IoTDB> select ts, on_off(ts, 'threshold'='2') from root.test;
++-----------------------------+------------+-------------------------------------+
+|                         Time|root.test.ts|on_off(root.test.ts, "threshold"="2")|
++-----------------------------+------------+-------------------------------------+
+|1970-01-01T08:00:00.001+08:00|           1|                                false|
+|1970-01-01T08:00:00.002+08:00|           2|                                 true|
+|1970-01-01T08:00:00.003+08:00|           3|                                 true|
+|1970-01-01T08:00:00.004+08:00|           4|                                 true|
++-----------------------------+------------+-------------------------------------+
+```
+
+##### Test 2
+Sql:
+```sql
+select ts, in_range(ts, 'lower'='2', 'upper'='3.1') from root.test;
+```
+
+Output:
+```
+IoTDB> select ts, in_range(ts,'lower'='2', 'upper'='3.1') from root.test;
++-----------------------------+------------+--------------------------------------------------+
+|                         Time|root.test.ts|in_range(root.test.ts, "lower"="2", "upper"="3.1")|
++-----------------------------+------------+--------------------------------------------------+
+|1970-01-01T08:00:00.001+08:00|           1|                                             false|
+|1970-01-01T08:00:00.002+08:00|           2|                                              true|
+|1970-01-01T08:00:00.003+08:00|           3|                                              true|
+|1970-01-01T08:00:00.004+08:00|           4|                                             false|
++-----------------------------+------------+--------------------------------------------------+
+```
+
+### Continuous Interval Functions
+The continuous interval functions are used to query all continuous intervals that meet specified conditions.
+They can be divided into two categories according to return value:
+1. Returns the start timestamp and time span of the continuous interval that meets the conditions (a time span of 0 means that only the start time point meets the conditions)
+2. Returns the start timestamp of the continuous interval that meets the condition and the number of points in the interval (a number of 1 means that only the start time point meets the conditions)
+
+| Function Name     | Input TSDatatype                     | Parameters                                                                                    | Output TSDatatype | Function Description                                                                                                                                                         |
+|-------------------|--------------------------------------|-----------------------------------------------------------------------------------------------|-------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| ZERO_DURATION     | INT32/ INT64/ FLOAT/ DOUBLE/ BOOLEAN | `min`:Optional with default value `0L`</br>`max`:Optional with default value `Long.MAX_VALUE` | Long              | Return intervals' start times and duration times in which the value is always 0(false), and the duration time `t` satisfy `t >= min && t <= max`. The unit of `t` is ms      |
+| NON_ZERO_DURATION | INT32/ INT64/ FLOAT/ DOUBLE/ BOOLEAN | `min`:Optional with default value `0L`</br>`max`:Optional with default value `Long.MAX_VALUE` | Long              | Return intervals' start times and duration times in which the value is always not 0, and the duration time `t` satisfy `t >= min && t <= max`. The unit of `t` is ms         |
+| ZERO_COUNT        | INT32/ INT64/ FLOAT/ DOUBLE/ BOOLEAN | `min`:Optional with default value `1L`</br>`max`:Optional with default value `Long.MAX_VALUE` | Long              | Return intervals' start times and the number of data points in the interval in which the value is always 0(false). Data points number `n` satisfy `n >= min && n <= max`     |
+| NON_ZERO_COUNT    | INT32/ INT64/ FLOAT/ DOUBLE/ BOOLEAN | `min`:Optional with default value `1L`</br>`max`:Optional with default value `Long.MAX_VALUE` | Long              | Return intervals' start times and the number of data points in the interval in which the value is always not 0(false). Data points number `n` satisfy `n >= min && n <= max` |
+
+##### Demonstrate
+Example data:
+```
+IoTDB> select s1,s2,s3,s4,s5 from root.sg.d2;
++-----------------------------+-------------+-------------+-------------+-------------+-------------+
+|                         Time|root.sg.d2.s1|root.sg.d2.s2|root.sg.d2.s3|root.sg.d2.s4|root.sg.d2.s5|
++-----------------------------+-------------+-------------+-------------+-------------+-------------+
+|1970-01-01T08:00:00.000+08:00|            0|            0|          0.0|          0.0|        false|
+|1970-01-01T08:00:00.001+08:00|            1|            1|          1.0|          1.0|         true|
+|1970-01-01T08:00:00.002+08:00|            1|            1|          1.0|          1.0|         true|
+|1970-01-01T08:00:00.003+08:00|            0|            0|          0.0|          0.0|        false|
+|1970-01-01T08:00:00.004+08:00|            1|            1|          1.0|          1.0|         true|
+|1970-01-01T08:00:00.005+08:00|            0|            0|          0.0|          0.0|        false|
+|1970-01-01T08:00:00.006+08:00|            0|            0|          0.0|          0.0|        false|
+|1970-01-01T08:00:00.007+08:00|            1|            1|          1.0|          1.0|         true|
++-----------------------------+-------------+-------------+-------------+-------------+-------------+
+```
+
+Sql:
+```sql
+select s1, zero_count(s1), non_zero_count(s2), zero_duration(s3), non_zero_duration(s4) from root.sg.d2;
+```
+
+Result:
+```
++-----------------------------+-------------+-------------------------+-----------------------------+----------------------------+--------------------------------+
+|                         Time|root.sg.d2.s1|zero_count(root.sg.d2.s1)|non_zero_count(root.sg.d2.s2)|zero_duration(root.sg.d2.s3)|non_zero_duration(root.sg.d2.s4)|
++-----------------------------+-------------+-------------------------+-----------------------------+----------------------------+--------------------------------+
+|1970-01-01T08:00:00.000+08:00|            0|                        1|                         null|                           0|                            null|
+|1970-01-01T08:00:00.001+08:00|            1|                     null|                            2|                        null|                               1|
+|1970-01-01T08:00:00.002+08:00|            1|                     null|                         null|                        null|                            null|
+|1970-01-01T08:00:00.003+08:00|            0|                        1|                         null|                           0|                            null|
+|1970-01-01T08:00:00.004+08:00|            1|                     null|                            1|                        null|                               0|
+|1970-01-01T08:00:00.005+08:00|            0|                        2|                         null|                           1|                            null|
+|1970-01-01T08:00:00.006+08:00|            0|                     null|                         null|                        null|                            null|
+|1970-01-01T08:00:00.007+08:00|            1|                     null|                            1|                        null|                               0|
++-----------------------------+-------------+-------------------------+-----------------------------+----------------------------+--------------------------------+
+```
+
 ### User Defined Timeseries Generating Functions
 
 Please refer to [UDF (User Defined Function)](../Process-Data/UDF-User-Defined-Function.md).

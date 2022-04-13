@@ -19,8 +19,11 @@
 
 package org.apache.iotdb.db.metadata.idtable.entry;
 
+import org.apache.iotdb.commons.utils.TestOnly;
+
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 /** device entry in id table */
 public class DeviceEntry {
@@ -146,4 +149,37 @@ public class DeviceEntry {
     flushTimeMapOfEachPartition.clear();
   }
   // endregion
+
+  @TestOnly
+  public Map<String, SchemaEntry> getMeasurementMap() {
+    return measurementMap;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (!(o instanceof DeviceEntry)) {
+      return false;
+    }
+    DeviceEntry that = (DeviceEntry) o;
+    return isAligned == that.isAligned
+        && globalFlushTime == that.globalFlushTime
+        && deviceID.equals(that.deviceID)
+        && measurementMap.equals(that.measurementMap)
+        && lastTimeMapOfEachPartition.equals(that.lastTimeMapOfEachPartition)
+        && flushTimeMapOfEachPartition.equals(that.flushTimeMapOfEachPartition);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(
+        deviceID,
+        measurementMap,
+        isAligned,
+        lastTimeMapOfEachPartition,
+        flushTimeMapOfEachPartition,
+        globalFlushTime);
+  }
 }

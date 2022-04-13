@@ -41,14 +41,10 @@ import org.apache.iotdb.db.query.executor.FillQueryExecutor;
 import org.apache.iotdb.db.query.executor.LastQueryExecutor;
 import org.apache.iotdb.db.query.executor.QueryRouter;
 import org.apache.iotdb.db.query.executor.RawDataQueryExecutor;
-import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
-import org.apache.iotdb.tsfile.read.expression.IExpression;
-import org.apache.iotdb.tsfile.read.expression.util.ExpressionOptimizer;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 import java.io.IOException;
-import java.util.ArrayList;
 
 public class ClusterQueryRouter extends QueryRouter {
 
@@ -94,21 +90,9 @@ public class ClusterQueryRouter extends QueryRouter {
   @Override
   public QueryDataSet udtfQuery(UDTFPlan udtfPlan, QueryContext context)
       throws StorageEngineException, QueryProcessException, IOException, InterruptedException {
-    IExpression expression = udtfPlan.getExpression();
-    IExpression optimizedExpression;
-    try {
-      optimizedExpression =
-          expression == null
-              ? null
-              : ExpressionOptimizer.getInstance()
-                  .optimize(expression, new ArrayList<>(udtfPlan.getDeduplicatedPaths()));
-    } catch (QueryFilterOptimizationException e) {
-      throw new StorageEngineException(e.getMessage());
-    }
-    udtfPlan.setExpression(optimizedExpression);
-
     boolean withValueFilter =
-        optimizedExpression != null && optimizedExpression.getType() != ExpressionType.GLOBAL_TIME;
+        udtfPlan.getExpression() != null
+            && udtfPlan.getExpression().getType() != ExpressionType.GLOBAL_TIME;
     ClusterUDTFQueryExecutor clusterUDTFQueryExecutor =
         new ClusterUDTFQueryExecutor(udtfPlan, metaGroupMember);
 

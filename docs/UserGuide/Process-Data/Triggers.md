@@ -41,7 +41,7 @@ You need to implement the trigger by writing a Java class, where the dependency 
 <dependency>
   <groupId>org.apache.iotdb</groupId>
   <artifactId>iotdb-server</artifactId>
-  <version>0.13.0-SNAPSHOT</version>
+  <version>0.14.0-SNAPSHOT</version>
   <scope>provided</scope>
 </dependency>
 ```
@@ -163,7 +163,7 @@ Registering a trigger can be carried out as follows:
 
 2. Pack the project into a JAR package. If you use Maven to manage the project, you can refer to the above Maven project example.
 
-3. Put the JAR package in the directory `iotdb-server-0.13.0-SNAPSHOT/ext/trigger` (or a subdirectory of `iotdb-server-0.13.0-SNAPSHOT/ext/trigger`).
+3. Put the JAR package in the directory `iotdb-server-0.14.0-SNAPSHOT/ext/trigger` (or a subdirectory of `iotdb-server-0.14.0-SNAPSHOT/ext/trigger`).
 
    > You can specify the root path to load the trigger JAR packages by modifying the `trigger_root_dir` in the configuration file.
 
@@ -821,7 +821,7 @@ You can try this trigger by following the steps below:
   CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=DOUBLE, ENCODING=PLAIN;
   ```
 
-* Place the JAR (`trigger-example-0.13.0-SNAPSHOT.jar`) of **trigger-example** in the directory `iotdb-server-0.13.0-SNAPSHOT/ext/trigger` (or in a subdirectory of `iotdb-server-0.13.0-SNAPSHOT/ext/trigger`)
+* Place the JAR (`trigger-example-0.14.0-SNAPSHOT.jar`) of **trigger-example** in the directory `iotdb-server-0.14.0-SNAPSHOT/ext/trigger` (or in a subdirectory of `iotdb-server-0.14.0-SNAPSHOT/ext/trigger`)
 
   > You can specify the root path to load the trigger JAR package by modifying the `trigger_root_dir` in the configuration file.
 

@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.metadata.mnode;
 
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
+import org.apache.iotdb.db.metadata.schemaregion.SchemaRegion;
 
 import java.io.IOException;
 
@@ -28,6 +29,8 @@ public class StorageGroupEntityMNode extends EntityMNode implements IStorageGrou
    * be eventually deleted.
    */
   private long dataTTL;
+
+  private SchemaRegion schemaRegion;
 
   public StorageGroupEntityMNode(IMNode parent, String name, long dataTTL) {
     super(parent, name);
@@ -42,6 +45,11 @@ public class StorageGroupEntityMNode extends EntityMNode implements IStorageGrou
   @Override
   public void setDataTTL(long dataTTL) {
     this.dataTTL = dataTTL;
+  }
+
+  @Override
+  public void moveDataToNewMNode(IMNode newMNode) {
+    super.moveDataToNewMNode(newMNode);
   }
 
   @Override

@@ -20,7 +20,7 @@
 package org.apache.iotdb.cluster.query.reader;
 
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
-import org.apache.iotdb.db.query.dataset.groupby.GroupByExecutor;
+import org.apache.iotdb.db.query.executor.groupby.GroupByExecutor;
 import org.apache.iotdb.db.query.reader.series.BaseManagedSeriesReader;
 import org.apache.iotdb.db.query.reader.series.IAggregateReader;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;

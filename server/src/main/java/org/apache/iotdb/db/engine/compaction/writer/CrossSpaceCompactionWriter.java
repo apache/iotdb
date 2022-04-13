@@ -38,21 +38,20 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
 
   private int seqFileIndex;
 
-  // indicate is current device exist in each source file.
-  private final boolean[] isCurrentDeviceExist;
-
   private final long[] currentDeviceEndTime;
 
   private final boolean[] isEmptyFile;
+
+  private final boolean[] hasTargetFileStartChunkGroup;
 
   private final List<TsFileResource> targetTsFileResources;
 
   public CrossSpaceCompactionWriter(
       List<TsFileResource> targetResources, List<TsFileResource> seqFileResources)
       throws IOException {
-    isCurrentDeviceExist = new boolean[seqFileResources.size()];
     currentDeviceEndTime = new long[seqFileResources.size()];
     isEmptyFile = new boolean[seqFileResources.size()];
+    hasTargetFileStartChunkGroup = new boolean[seqFileResources.size()];
     for (int i = 0; i < targetResources.size(); i++) {
       this.fileWriterList.add(new RestorableTsFileIOWriter(targetResources.get(i).getTsFile()));
       isEmptyFile[i] = true;
@@ -68,23 +67,15 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
     this.isAlign = isAlign;
     this.seqFileIndex = 0;
     checkIsDeviceExistAndGetDeviceEndTime();
-    boolean isCurrentDeviceExistInAtLeastOneFile = false;
     for (int i = 0; i < seqTsFileResources.size(); i++) {
-      if (isCurrentDeviceExist[i]) {
-        fileWriterList.get(i).startChunkGroup(deviceId);
-        isCurrentDeviceExistInAtLeastOneFile = true;
-      } else if (!isCurrentDeviceExistInAtLeastOneFile && i == seqTsFileResources.size() - 1) {
-        // Due to various factor, unseq files may have the device which is not exist in the seq
-        // file, than write the data of this device into the last target file.
-        fileWriterList.get(i).startChunkGroup(deviceId);
-      }
+      hasTargetFileStartChunkGroup[i] = false;
     }
   }
 
   @Override
   public void endChunkGroup() throws IOException {
     for (int i = 0; i < seqTsFileResources.size(); i++) {
-      if (isCurrentDeviceExist[i]) {
+      if (hasTargetFileStartChunkGroup[i]) {
         fileWriterList.get(i).endChunkGroup();
       }
     }
@@ -102,9 +93,10 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
   @Override
   public void write(long timestamp, Object value) throws IOException {
     checkTimeAndMayFlushChunkToCurrentFile(timestamp);
+    checkAndMayStartChunkGroup();
+    writeDataPoint(timestamp, value);
     updateDeviceStartAndEndTime(targetTsFileResources.get(seqFileIndex), timestamp);
     checkChunkSizeAndMayOpenANewChunk(fileWriterList.get(seqFileIndex));
-    writeDataPoint(timestamp, value);
     isEmptyFile[seqFileIndex] = false;
   }
 
@@ -137,17 +129,17 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
   private void checkTimeAndMayFlushChunkToCurrentFile(long timestamp) throws IOException {
     // if timestamp is later than the current source seq tsfile, than flush chunk writer
     while (timestamp > currentDeviceEndTime[seqFileIndex]) {
-      writeRateLimit(chunkWriter.estimateMaxSeriesMemSize());
-      chunkWriter.writeToFileWriter(fileWriterList.get(seqFileIndex));
-
-      // If the seq file is deleted for various reasons, the following two situations may occur when
-      // selecting the source files: (1) unseq files may have some devices or measurements which are
-      // not exist in seq files. (2) timestamp of one timeseries in unseq files may later than any
-      // seq files. Then write these data into the last target file.
-      if (seqFileIndex == seqTsFileResources.size() - 1) {
+      if (seqFileIndex != seqTsFileResources.size() - 1) {
+        writeRateLimit(chunkWriter.estimateMaxSeriesMemSize());
+        chunkWriter.writeToFileWriter(fileWriterList.get(seqFileIndex));
+        seqFileIndex++;
+      } else {
+        // If the seq file is deleted for various reasons, the following two situations may occur
+        // when selecting the source files: (1) unseq files may have some devices or measurements
+        // which are not exist in seq files. (2) timestamp of one timeseries in unseq files may
+        // later than any seq files. Then write these data into the last target file.
         return;
       }
-      seqFileIndex++;
     }
   }
 
@@ -157,15 +149,12 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
       if (seqTsFileResources.get(fileIndex).getTimeIndexType() == 1) {
         // the timeIndexType of resource is deviceTimeIndex
         currentDeviceEndTime[fileIndex] = seqTsFileResources.get(fileIndex).getEndTime(deviceId);
-        isCurrentDeviceExist[fileIndex] =
-            seqTsFileResources.get(fileIndex).isDeviceIdExist(deviceId);
       } else {
         long endTime = Long.MIN_VALUE;
         Map<String, TimeseriesMetadata> deviceMetadataMap =
             FileReaderManager.getInstance()
                 .get(seqTsFileResources.get(fileIndex).getTsFilePath(), true)
                 .readDeviceMetadata(deviceId);
-        isCurrentDeviceExist[fileIndex] = deviceMetadataMap.size() != 0;
         for (Map.Entry<String, TimeseriesMetadata> entry : deviceMetadataMap.entrySet()) {
           long tmpStartTime = entry.getValue().getStatistics().getStartTime();
           long tmpEndTime = entry.getValue().getStatistics().getEndTime();
@@ -177,6 +166,13 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
       }
 
       fileIndex++;
+    }
+  }
+
+  private void checkAndMayStartChunkGroup() throws IOException {
+    if (!hasTargetFileStartChunkGroup[seqFileIndex]) {
+      fileWriterList.get(seqFileIndex).startChunkGroup(deviceId);
+      hasTargetFileStartChunkGroup[seqFileIndex] = true;
     }
   }
 }

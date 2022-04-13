@@ -38,7 +38,7 @@ public class MLogReader implements AutoCloseable {
   public MLogReader(String schemaDir, String logFileName) throws IOException {
     File metadataDir = SystemFileFactory.INSTANCE.getFile(schemaDir);
     if (!metadataDir.exists()) {
-      logger.error("no mlog.bin to init MManager.");
+      logger.error("no mlog.bin to init SchemaRegion.");
       throw new IOException("mlog.bin does not exist.");
     }
 

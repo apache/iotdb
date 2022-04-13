@@ -86,6 +86,5 @@ service TransportService{
   TransportStatus handshake(IdentityInfo info);
   TransportStatus transportData(1:IdentityInfo identityInfo, 2:MetaInfo metaInfo, 3:binary buff, 4:binary digest);
   TransportStatus checkFileDigest(1:IdentityInfo identityInfo, 2:MetaInfo metaInfo, 3:binary digest);
-  // TransportStatus finishTransportFile(1:IdentityInfo identityInfo, 2:MetaInfo metaInfo)
   SyncResponse heartbeat(1:IdentityInfo identityInfo, 2:SyncRequest syncRequest)
 }

@@ -23,10 +23,10 @@
     "@types/lodash": "latest"
   },
   "engines": {
-    "node": ">=12"
+    "node": ">=14"
   },
   "dependencies": {
     "@grafana/runtime": "^8.3.2",
-    "node-sass": "^6.0.1"
+    "node-sass": "^7.0.1"
   }
 }

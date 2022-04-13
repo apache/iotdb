@@ -50,8 +50,8 @@ END
   * `<execution_boundary_time>` 可早于、等于、晚于**当前时间**。
   * 该参数可选择指定，不指定的情况下等价于输入 `BOUNDARY now()`。
   * **第一个窗口的结束时间**为  `<execution_boundary_time> + <for_interval>`。
-  * 第 ` i (1 <= i)` 个窗口的**开始时间** `<execution_boundary_time> + <for_interval> + （i - 1） * <every_interval>`。
-  * 第 ` i (1 <= i)` 个窗口的**结束时间** `<execution_boundary_time> + <for_interval> + i * <every_interval>`。
+  * 第 ` i (1 <= i)` 个窗口的**开始时间** `<execution_boundary_time> + (i - 1) * <every_interval>`。
+  * 第 ` i (1 <= i)` 个窗口的**结束时间** `<execution_boundary_time> + <for_interval> + (i - 1) * <every_interval>`。
   * 如果**当前时间**小于等于**第一个窗口的结束时间** ，那么连续查询的第一个执行时刻为**第一个窗口的结束时间**。
   * 如果**当前时间**大于**第一个窗口的结束时间**，那么连续查询的第一个执行时刻为**第一个**大于等于**当前时间**的**窗口结束时间**。
   * 每一个执行时刻执行的**查询时间范围**为`[now() - <for_interval>, now())`。

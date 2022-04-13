@@ -26,6 +26,7 @@ import org.apache.iotdb.cluster.exception.SnapshotInstallationException;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.utils.CreateTemplatePlanUtil;
+import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.db.auth.entity.Role;
@@ -48,8 +49,13 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -61,8 +67,8 @@ public class MetaSimpleSnapshotTest extends IoTDBTest {
   @Override
   @Before
   public void setUp()
-      throws org.apache.iotdb.db.exception.StartupException,
-          org.apache.iotdb.db.exception.query.QueryProcessException, IllegalPathException {
+      throws StartupException, org.apache.iotdb.db.exception.query.QueryProcessException,
+          IllegalPathException {
     super.setUp();
     subServerInitialized = false;
     metaGroupMember =
@@ -148,7 +154,7 @@ public class MetaSimpleSnapshotTest extends IoTDBTest {
   }
 
   @Test
-  public void testInstall()
+  public void testInstallSuccessfully()
       throws IllegalPathException, SnapshotInstallationException, AuthException {
     Map<PartialPath, Long> storageGroupTTLMap = new HashMap<>();
     Map<String, User> userMap = new HashMap<>();
@@ -193,7 +199,7 @@ public class MetaSimpleSnapshotTest extends IoTDBTest {
     SnapshotInstaller defaultInstaller = metaSimpleSnapshot.getDefaultInstaller(metaGroupMember);
     defaultInstaller.install(metaSimpleSnapshot, -1, false);
 
-    Map<PartialPath, Long> storageGroupsTTL = IoTDB.metaManager.getStorageGroupsTTL();
+    Map<PartialPath, Long> storageGroupsTTL = IoTDB.schemaProcessor.getStorageGroupsTTL();
     for (int i = 0; i < 10; i++) {
       PartialPath partialPath = new PartialPath("root.ln.sg" + i);
       assertEquals(i, (long) storageGroupsTTL.get(partialPath));
@@ -225,5 +231,116 @@ public class MetaSimpleSnapshotTest extends IoTDBTest {
     assertEquals(lastLogIndex, metaGroupMember.getLogManager().getLastLogIndex());
     assertEquals(lastLogTerm, metaGroupMember.getLogManager().getLastLogTerm());
     assertTrue(subServerInitialized);
+  }
+
+  @Test
+  public void testInstallOmitted()
+      throws IllegalPathException, SnapshotInstallationException, AuthException,
+          InterruptedException {
+    Map<PartialPath, Long> storageGroupTTLMap = new HashMap<>();
+    Map<String, User> userMap = new HashMap<>();
+    Map<String, Role> roleMap = new HashMap<>();
+    Map<String, Template> templateMap = new HashMap<>();
+    PartitionTable partitionTable = TestUtils.getPartitionTable(10);
+    long lastLogIndex = 10;
+    long lastLogTerm = 5;
+
+    for (int i = 0; i < 10; i++) {
+      PartialPath partialPath = new PartialPath("root.ln.sg" + i);
+      storageGroupTTLMap.put(partialPath, (long) i);
+    }
+
+    for (int i = 0; i < 5; i++) {
+      String userName = "user_" + i;
+      User user = new User(userName, "password_" + i);
+      userMap.put(userName, user);
+    }
+
+    for (int i = 0; i < 10; i++) {
+      String roleName = "role_" + i;
+      Role role = new Role(roleName);
+      roleMap.put(roleName, role);
+    }
+
+    CreateTemplatePlan createTemplatePlan = CreateTemplatePlanUtil.getCreateTemplatePlan();
+
+    for (int i = 0; i < 10; i++) {
+      String templateName = "template_" + i;
+      createTemplatePlan.setName(templateName);
+      Template template = new Template(createTemplatePlan);
+      templateMap.put(templateName, template);
+    }
+
+    MetaSimpleSnapshot metaSimpleSnapshot =
+        new MetaSimpleSnapshot(
+            storageGroupTTLMap, userMap, roleMap, templateMap, partitionTable.serialize());
+    metaSimpleSnapshot.setLastLogIndex(lastLogIndex);
+    metaSimpleSnapshot.setLastLogTerm(lastLogTerm);
+
+    AtomicBoolean isLocked = new AtomicBoolean(false);
+    Lock snapshotLock = metaGroupMember.getSnapshotApplyLock();
+    Lock signalLock = new ReentrantLock();
+    signalLock.lock();
+    try {
+      // Simulate another snapshot being installed
+      new Thread(
+              () -> {
+                boolean localLocked = snapshotLock.tryLock();
+                if (localLocked) {
+                  isLocked.set(true);
+                  // Use signalLock to make sure this thread can hold the snapshotLock as long as
+                  // possible
+                  signalLock.lock();
+                  signalLock.unlock();
+                  snapshotLock.unlock();
+                }
+              })
+          .start();
+      // Waiting another thread locking the snapshotLock
+      for (int i = 0; i < 10; i++) {
+        Thread.sleep(100);
+        if (isLocked.get()) {
+          break;
+        }
+      }
+      Assert.assertTrue(isLocked.get());
+      SnapshotInstaller defaultInstaller = metaSimpleSnapshot.getDefaultInstaller(metaGroupMember);
+      defaultInstaller.install(metaSimpleSnapshot, -1, false);
+
+      Map<PartialPath, Long> storageGroupsTTL = IoTDB.schemaProcessor.getStorageGroupsTTL();
+      for (int i = 0; i < 10; i++) {
+        PartialPath partialPath = new PartialPath("root.ln.sg" + i);
+        assertNull(storageGroupsTTL.get(partialPath));
+      }
+
+      for (int i = 0; i < 5; i++) {
+        String userName = "user_" + i;
+        User user = BasicAuthorizer.getInstance().getUser(userName);
+        assertNull(user);
+      }
+
+      for (int i = 0; i < 10; i++) {
+        String roleName = "role_" + i;
+        Role role = BasicAuthorizer.getInstance().getRole(roleName);
+        assertNull(role);
+      }
+
+      for (int i = 0; i < 10; i++) {
+        String templateName = "template_" + i;
+        try {
+          TemplateManager.getInstance().getTemplate(templateName);
+          fail();
+        } catch (UndefinedTemplateException e) {
+          // Do nothing
+        }
+      }
+
+      assertNull(metaGroupMember.getPartitionTable());
+      assertEquals(-1, metaGroupMember.getLogManager().getLastLogIndex());
+      assertEquals(-1, metaGroupMember.getLogManager().getLastLogTerm());
+      assertFalse(subServerInitialized);
+    } finally {
+      signalLock.unlock();
+    }
   }
 }

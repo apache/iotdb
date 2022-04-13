@@ -65,6 +65,7 @@ import java.util.TreeMap;
 
 import static org.apache.iotdb.db.utils.QueryUtils.modifyChunkMetaData;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
 public class CompactionCheckerUtils {
@@ -466,6 +467,10 @@ public class CompactionCheckerUtils {
         String fullPath = chunkPagePointsNumEntry.getKey();
         List<List<Long>> sourceChunkPages = chunkPagePointsNumEntry.getValue();
         List<List<Long>> mergedChunkPages = mergedChunkPagePointsNum.get(fullPath);
+        if (sourceChunkPages == null) {
+          assertNull(mergedChunkPages);
+          continue;
+        }
         for (int i = 0; i < sourceChunkPages.size(); i++) {
           for (int j = 0; j < sourceChunkPages.get(i).size(); j++) {
             assertEquals(sourceChunkPages.get(i).get(j), mergedChunkPages.get(i).get(j));

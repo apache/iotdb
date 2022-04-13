@@ -111,9 +111,10 @@ public abstract class AbstractScript {
   }
 
   protected static CSVParser readCsvFile(String path) throws IOException {
-    return CSVFormat.EXCEL
-        .withQuote('\'')
-        .withEscape('\\')
+    return CSVFormat.Builder.create(CSVFormat.EXCEL)
+        .setEscape('\\')
+        .setQuote('\'')
+        .build()
         .parse(new InputStreamReader(new FileInputStream(path)));
   }
 }

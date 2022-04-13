@@ -19,8 +19,8 @@
 
 -->
 
-## Node Management
-### Show Child Paths
+# Node Management
+## Show Child Paths
 
 ```
 SHOW CHILD PATHS pathPattern
@@ -45,7 +45,7 @@ It costs 0.002s
 
 > get all paths in form of root.xx.xx.xx：show child paths root.xx.xx
 
-### Show Child Nodes
+## Show Child Nodes
 
 ```
 SHOW CHILD NODES pathPattern
@@ -76,7 +76,7 @@ Example：
 +------------+
 ```
 
-### Count Nodes
+## Count Nodes
 
 IoTDB is able to use `COUNT NODES <PathPattern> LEVEL=<INTEGER>` to count the number of nodes at
  the given level in current Metadata Tree considering a given pattern. IoTDB will find paths that
@@ -129,7 +129,7 @@ It costs 0.002s
 
 > Note: The path of timeseries is just a filter condition, which has no relationship with the definition of level.
 
-### Show Devices
+## Show Devices
 
 * SHOW DEVICES pathPattern? (WITH STORAGE GROUP)? limitClause? #showDevices
 

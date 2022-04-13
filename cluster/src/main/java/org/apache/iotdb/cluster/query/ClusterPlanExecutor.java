@@ -26,7 +26,7 @@ import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
-import org.apache.iotdb.cluster.metadata.CMManager;
+import org.apache.iotdb.cluster.metadata.CSchemaProcessor;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.query.filter.SlotSgFilter;
@@ -34,7 +34,8 @@ import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor.TimePartitionFilter;
@@ -54,7 +55,6 @@ import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
@@ -123,7 +123,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
   @Override
   @TestOnly
   protected List<MeasurementPath> getPathsName(PartialPath path) throws MetadataException {
-    return ((CMManager) IoTDB.metaManager).getMatchedPaths(path);
+    return ((CSchemaProcessor) IoTDB.schemaProcessor).getMatchedPaths(path);
   }
 
   @Override
@@ -142,7 +142,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
     } catch (CheckConsistencyException e) {
       throw new MetadataException(e);
     }
-    Map<String, List<PartialPath>> sgPathMap = IoTDB.metaManager.groupPathByStorageGroup(path);
+    Map<String, List<PartialPath>> sgPathMap = IoTDB.schemaProcessor.groupPathByStorageGroup(path);
     if (sgPathMap.isEmpty()) {
       throw new PathNotExistException(path.getFullPath());
     }
@@ -235,7 +235,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   private int getLocalDeviceCount(PartialPath path) throws MetadataException {
-    return IoTDB.metaManager.getDevicesNum(path);
+    return IoTDB.schemaProcessor.getDevicesNum(path);
   }
 
   private int getRemoteDeviceCount(PartitionGroup partitionGroup, List<String> pathsToCount)
@@ -331,7 +331,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
       wildcardPath = wildcardPath.concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD);
     }
     Map<String, List<PartialPath>> sgPathMap =
-        IoTDB.metaManager.groupPathByStorageGroup(wildcardPath);
+        IoTDB.schemaProcessor.groupPathByStorageGroup(wildcardPath);
     if (sgPathMap.isEmpty()) {
       return 0;
     }
@@ -459,9 +459,9 @@ public class ClusterPlanExecutor extends PlanExecutor {
   private int getLocalPathCount(PartialPath path, int level) throws MetadataException {
     int localResult;
     if (level == -1) {
-      localResult = IoTDB.metaManager.getAllTimeseriesCount(path);
+      localResult = IoTDB.schemaProcessor.getAllTimeseriesCount(path);
     } else {
-      localResult = IoTDB.metaManager.getNodesCountInGivenLevel(path, level);
+      localResult = IoTDB.schemaProcessor.getNodesCountInGivenLevel(path, level);
     }
     return localResult;
   }
@@ -569,7 +569,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
     DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(group.getHeader());
     localDataMember.syncLeaderWithConsistencyCheck(false);
     try {
-      return IoTDB.metaManager.getNodesListInGivenLevel(
+      return IoTDB.schemaProcessor.getNodesListInGivenLevel(
           schemaPattern,
           level,
           new SlotSgFilter(
@@ -678,7 +678,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
         metaGroupMember.getLocalDataMember(group.getHeader(), group.getRaftId());
     localDataMember.syncLeaderWithConsistencyCheck(false);
     try {
-      return IoTDB.metaManager.getChildNodeNameInNextLevel(path);
+      return IoTDB.schemaProcessor.getChildNodeNameInNextLevel(path);
     } catch (MetadataException e) {
       logger.error("Cannot not get next children nodes of {} from {} locally", path, group);
       return Collections.emptySet();
@@ -803,7 +803,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
     DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(group.getHeader());
     localDataMember.syncLeaderWithConsistencyCheck(false);
     try {
-      return IoTDB.metaManager.getChildNodePathInNextLevel(path);
+      return IoTDB.schemaProcessor.getChildNodePathInNextLevel(path);
     } catch (MetadataException e) {
       logger.error("Cannot not get next children of {} from {} locally", path, group);
       return Collections.emptySet();
@@ -868,7 +868,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
     } catch (CheckConsistencyException e) {
       logger.warn("Failed to check consistency.", e);
     }
-    return IoTDB.metaManager.getAllStorageGroupNodes();
+    return IoTDB.schemaProcessor.getAllStorageGroupNodes();
   }
 
   @Override

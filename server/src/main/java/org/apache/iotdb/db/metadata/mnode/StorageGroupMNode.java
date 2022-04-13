@@ -49,6 +49,11 @@ public class StorageGroupMNode extends InternalMNode implements IStorageGroupMNo
   }
 
   @Override
+  public void moveDataToNewMNode(IMNode newMNode) {
+    super.moveDataToNewMNode(newMNode);
+  }
+
+  @Override
   public boolean isStorageGroup() {
     return true;
   }

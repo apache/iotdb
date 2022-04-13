@@ -40,7 +40,7 @@ In root directory:
     <dependency>
       <groupId>org.apache.iotdb</groupId>
       <artifactId>iotdb-session</artifactId>
-      <version>0.13.0-SNAPSHOT</version>
+      <version>0.14.0-SNAPSHOT</version>
     </dependency>
 </dependencies>
 ```
@@ -172,7 +172,7 @@ boolean checkTimeseriesExists(String path)
 #### Schema Template
 
 
-Create a schema template for massive identical subtree will help to improve memory performance. You can use the API above to create a template at server side, and use Template, InternalNode and MeasurementNode to depict the structure of the template, and use belowed interface to create it inside session.
+Create a schema template for massive identical devices will help to improve memory performance. You can use Template, InternalNode and MeasurementNode to depict the structure of the template, and use belowed interface to create it inside session.
 
 ```java
 public void createSchemaTemplate(Template template);
@@ -194,13 +194,6 @@ Abstract Class Node {
     public void deleteChild(Node node);
 }
 
-Class InternalNode extends Node {
-    boolean shareTime;
-    Map<String, Node> children;
-    public void setShareTime(boolean shareTime);
-    public InternalNode(String name, boolean isShareTime);
-}
-
 Class MeasurementNode extends Node {
     TSDataType dataType;
     TSEncoding encoding;
@@ -212,6 +205,8 @@ Class MeasurementNode extends Node {
 }
 ```
 
+We strongly suggest you implement templates only with flat-measurement (like object 'flatTemplate' in belowed snippet), since tree-structured template may not be a long-term supported feature in further version of IoTDB.
+
 A snippet of using above Method and Class：
 
 ```java
@@ -219,20 +214,13 @@ MeasurementNode nodeX = new MeasurementNode("x", TSDataType.FLOAT, TSEncoding.RL
 MeasurementNode nodeY = new MeasurementNode("y", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY);
 MeasurementNode nodeSpeed = new MeasurementNode("speed", TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.SNAPPY);
 
-InternalNode internalGPS = new InternalNode("GPS", true);
-InternalNode internalVehicle = new InternalNode("vehicle", false);
-
-internalGPS.addChild(nodeX);
-internalGPS.addChild(nodeY);
-internalVehicle.addChild(GPS);
-internalVehicle.addChild(nodeSpeed);
-
-Template template = new Template("treeTemplateExample");
-template.addToTemplate(internalGPS);
-template.addToTemplate(internalVehicle);
+// This is the template we suggest to implement
+Template flatTemplate = new Template("flatTemplate");
+template.addToTemplate(nodeX);
+template.addToTemplate(nodeY);
 template.addToTemplate(nodeSpeed);
 
-createSchemaTemplate(template);
+createSchemaTemplate(flatTemplate);
 ```
 
 After measurement template created, you can edit the template with belowed APIs.
@@ -275,7 +263,7 @@ public void addUnalignedMeasurementsIntemplate(String templateName,
                                 TSEncoding[] encodings,
                                 CompressionType[] compressors);
 
-// Delete a node in template and its children
+// Delete a node in template
 public void deleteNodeInTemplate(String templateName, String path);
 ```
 
@@ -298,7 +286,9 @@ public List<String> showMeasurementsInTemplate(String templateName);
 public List<String> showMeasurementsInTemplate(String templateName, String pattern);
 ```
 
-To implement schema template, you can  set the measurement template named 'templateName' at path 'prefixPath'.
+To implement schema template, you can set the measurement template named 'templateName' at path 'prefixPath'.
+
+**Please notice that, we strongly recommend not setting templates on the nodes above the storage group to accommodate future updates and collaboration between modules.**
 
 ``` java
 void setSchemaTemplate(String templateName, String prefixPath)
@@ -374,7 +364,7 @@ public class Tablet {
 void insertTablets(Map<String, Tablet> tablet)
 ```
 
-* Insert a Record, which contains multiple measurement value of a device at a timestamp
+* Insert a Record, which contains multiple measurement value of a device at a timestamp. This method is equivalent to providing a common interface for multiple data types of values. Later, the value can be cast to the original type through TSDataType.
 
 ```java
 void insertRecord(String deviceId, long time, List<String> measurements,
@@ -399,7 +389,7 @@ void insertRecordsOfOneDevice(String deviceId, List<Long> times,
 
 #### Insert with type inference
 
-Without type information, server has to do type inference, which may cost some time.
+When the data is of String type, we can use the following interface to perform type inference based on the value of the value itself. For example, if value is "true" , it can be automatically inferred to be a boolean type. If value is "3.2" , it can be automatically inferred as a flout type. Without type information, server has to do type inference, which may cost some time.
 
 * Insert a Record, which contains multiple measurement value of a device at a timestamp
 
@@ -414,6 +404,13 @@ void insertRecords(List<String> deviceIds, List<Long> times,
    List<List<String>> measurementsList, List<List<String>> valuesList)
 ```
 
+* Insert multiple Records that belong to the same device.
+
+```java
+void insertStringRecordsOfOneDevice(String deviceId, List<Long> times,
+        List<List<String>> measurementsList, List<List<String>> valuesList)
+```
+
 #### Insert of Aligned Timeseries
 
 The Insert of aligned timeseries uses interfaces like insertAlignedXXX, and others are similar to the above interfaces:
@@ -421,6 +418,7 @@ The Insert of aligned timeseries uses interfaces like insertAlignedXXX, and othe
 * insertAlignedRecord
 * insertAlignedRecords
 * insertAlignedRecordsOfOneDevice
+* insertAlignedStringRecordsOfOneDevice
 * insertAlignedTablet
 * insertAlignedTablets
 
@@ -439,6 +437,12 @@ void deleteData(List<String> paths, long time)
 
 ```java
 SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime)
+```
+
+* Query the last data, whose timestamp is greater than or equal LastTime
+
+```java
+SessionDataSet executeLastDataQuery(List<String> paths, long LastTime)
 ```
 
 ### IoTDB-SQL Interface
@@ -510,6 +514,7 @@ If you can not get a session connection in 60 seconds, there is a warning log bu
 If a session has finished an operation, it will be put back to the pool automatically.
 If a session connection is broken, the session will be removed automatically and the pool will try 
 to create a new session and redo the operation.
+You can also specify an url list of multiple reachable nodes when creating a SessionPool, just as you would when creating a Session. To ensure high availability of clients in distributed cluster.
 
 For query operations:
 
@@ -537,7 +542,7 @@ To use the APIs, add dependency in your pom file:
     <dependency>
       <groupId>org.apache.iotdb</groupId>
       <artifactId>iotdb-thrift-cluster</artifactId>
-      <version>0.13.0-SNAPSHOT</version>
+      <version>0.14.0-SNAPSHOT</version>
     </dependency>
 </dependencies>
 ```

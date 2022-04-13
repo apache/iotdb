@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.CompressionRatio;
@@ -45,15 +46,14 @@ import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.newsync.sender.pipe.TsFilePipe;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.rescon.MemTableManager;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
+import org.apache.iotdb.db.sync.sender.manager.TsFileSyncManager;
 import org.apache.iotdb.db.utils.MemUtils;
-import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.db.writelog.WALFlushListener;
@@ -160,8 +160,8 @@ public class TsFileProcessor {
   /** flush file listener */
   private List<FlushListener> flushListeners = new ArrayList<>();
 
-  /** for sync collecting data */
-  private TsFilePipe syncDataCollector;
+  /** used to collct this TsFile for sync */
+  private TsFileSyncManager tsFileSyncManager = TsFileSyncManager.getInstance();
 
   @SuppressWarnings("squid:S107")
   TsFileProcessor(
@@ -659,8 +659,8 @@ public class TsFileProcessor {
       if (!flushingMemTables.isEmpty()) {
         modsToMemtable.add(new Pair<>(deletion, flushingMemTables.getLast()));
       }
-      if (syncDataCollector != null) {
-        syncDataCollector.collectRealTimeDeletion(deletion);
+      if (tsFileSyncManager.isEnableSync()) {
+        tsFileSyncManager.collectRealTimeDeletion(deletion);
       }
     } finally {
       flushQueryLock.writeLock().unlock();
@@ -808,8 +808,8 @@ public class TsFileProcessor {
         // When invoke closing TsFile after insert data to memTable, we shouldn't flush until invoke
         // flushing memTable in System module.
         addAMemtableIntoFlushingList(tmpMemTable);
-        if (syncDataCollector != null) {
-          syncDataCollector.collectRealTimeTsFile(tsFileResource.getTsFile());
+        if (tsFileSyncManager.isEnableSync()) {
+          tsFileSyncManager.collectRealTimeTsFile(tsFileResource.getTsFile());
         }
         logger.info("Memtable {} has been added to flushing list", tmpMemTable);
         shouldClose = true;
@@ -1195,8 +1195,8 @@ public class TsFileProcessor {
     long closeStartTime = System.currentTimeMillis();
     writer.endFile();
     tsFileResource.serialize();
-    if (syncDataCollector != null) {
-      syncDataCollector.collectRealTimeTsFileResource(tsFileResource.getTsFile());
+    if (tsFileSyncManager.isEnableSync()) {
+      tsFileSyncManager.collectRealTimeResource(tsFileResource.getTsFile());
     }
     logger.info("Ended file {}", tsFileResource);
 
@@ -1248,21 +1248,14 @@ public class TsFileProcessor {
     return logNode;
   }
 
-  /** sync methods */
-
-  /**
-   * register the sync data collector into this tsfile processor.
-   *
-   * @param tsFilePipe the pipe which collecting data
-   * @return return true if and only if working memTable exists, i.e. the tsfile processor is not
-   *     flushing or closed.
-   */
-  public boolean registerSyncDataCollector(TsFilePipe tsFilePipe) {
+  /** sync method */
+  public boolean isMemtableNotNull() {
     flushQueryLock.writeLock().lock();
-    this.syncDataCollector = tsFilePipe;
-    boolean isWorkingMemTableExist = (workMemTable != null);
-    flushQueryLock.writeLock().unlock();
-    return isWorkingMemTableExist;
+    try {
+      return workMemTable != null;
+    } finally {
+      flushQueryLock.writeLock().unlock();
+    }
   }
 
   /** close this tsfile */

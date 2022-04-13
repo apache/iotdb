@@ -54,6 +54,7 @@ public class ChunkReader implements IChunkReader {
           TSDataType.INT64);
 
   protected Filter filter;
+  private long currentTimestamp;
 
   private List<IPageReader> pageReaderList = new LinkedList<>();
 
@@ -70,6 +71,25 @@ public class ChunkReader implements IChunkReader {
     this.filter = filter;
     this.chunkDataBuffer = chunk.getData();
     this.deleteIntervalList = chunk.getDeleteIntervalList();
+    this.currentTimestamp = Long.MIN_VALUE;
+    chunkHeader = chunk.getHeader();
+    this.unCompressor = IUnCompressor.getUnCompressor(chunkHeader.getCompressionType());
+    if (chunk.isFromOldFile()) {
+      initAllPageReadersV2();
+    } else {
+      initAllPageReaders(chunk.getChunkStatistic());
+    }
+  }
+
+  /**
+   * Constructor of ChunkReader by timestamp. This constructor is used to accelerate queries by
+   * filtering out pages whose endTime is less than current timestamp.
+   */
+  public ChunkReader(Chunk chunk, Filter filter, long currentTimestamp) throws IOException {
+    this.filter = filter;
+    this.chunkDataBuffer = chunk.getData();
+    this.deleteIntervalList = chunk.getDeleteIntervalList();
+    this.currentTimestamp = currentTimestamp;
     chunkHeader = chunk.getHeader();
     this.unCompressor = IUnCompressor.getUnCompressor(chunkHeader.getCompressionType());
     if (chunk.isFromOldFile()) {
@@ -123,6 +143,10 @@ public class ChunkReader implements IChunkReader {
   }
 
   protected boolean pageSatisfied(PageHeader pageHeader) {
+    if (currentTimestamp > pageHeader.getEndTime()) {
+      // used for chunk reader by timestamp
+      return false;
+    }
     if (deleteIntervalList != null) {
       for (TimeRange range : deleteIntervalList) {
         if (range.contains(pageHeader.getStartTime(), pageHeader.getEndTime())) {

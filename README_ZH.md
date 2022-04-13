@@ -28,8 +28,8 @@
 [![License](https://img.shields.io/badge/license-Apache%202-4EB1BA.svg)](https://www.apache.org/licenses/LICENSE-2.0.html)
 ![](https://github-size-badge.herokuapp.com/apache/iotdb.svg)
 ![](https://img.shields.io/github/downloads/apache/iotdb/total.svg)
-![](https://img.shields.io/badge/platform-win10%20%7C%20macox%20%7C%20linux-yellow.svg)
-![](https://img.shields.io/badge/java--language-1.8-blue.svg)
+![](https://img.shields.io/badge/platform-win%20%7C%20macox%20%7C%20linux-yellow.svg)
+![](https://img.shields.io/badge/java--language-1.8%20%7C%2011%20%7C%2017-blue.svg)
 [![Language grade: Java](https://img.shields.io/lgtm/grade/java/g/apache/iotdb.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/apache/iotdb/context:java)
 [![IoTDB Website](https://img.shields.io/website-up-down-green-red/https/shields.io.svg?label=iotdb-website)](https://iotdb.apache.org/)
 [![Maven Version](https://maven-badges.herokuapp.com/maven-central/org.apache.iotdb/iotdb-parent/badge.svg)](http://search.maven.org/#search|gav|1|g:"org.apache.iotdb")
@@ -168,7 +168,7 @@ git checkout vx.x.x
 * 系统配置模块(`iotdb-engine.properties`)
 * 日志配置模块(`logback.xml`)。
 
-有关详细信息，请参见[配置参数](https://iotdb.apache.org/zh/UserGuide/Master/Appendix/Config-Manual.html)。
+有关详细信息，请参见[配置参数](https://iotdb.apache.org/zh/UserGuide/Master/Reference/Config-Manual.html)。
 
 ## 开始
 
@@ -353,7 +353,7 @@ or
 IoTDB> exit
 ```
 
-有关IoTDB SQL支持的命令的更多信息，请参见[SQL 参考文档](https://iotdb.apache.org/zh/UserGuide/Master/Appendix/SQL-Reference.html)。
+有关IoTDB SQL支持的命令的更多信息，请参见[用户指南](https://iotdb.apache.org/zh/UserGuide/Master/QuickStart/QuickStart.html)。
 
 ### 停止 IoTDB
 
@@ -390,7 +390,7 @@ server 可以使用 "ctrl-C" 或者执行下面的脚本:
 
 # 导入导出CSV工具
 
-查看 [导入导出CSV工具](https://iotdb.apache.org/zh/UserGuide/Master/System%20Tools/CSV%20Tool.html)
+查看 [导入导出CSV工具](https://iotdb.apache.org/zh/UserGuide/Master/Write-And-Delete-Data/CSV-Tool.html)
 
 # 常见编译错误
 查看 [常见编译错误](https://iotdb.apache.org/zh/Development/ContributeGuide.html#%E5%B8%B8%E8%A7%81%E7%BC%96%E8%AF%91%E9%94%99%E8%AF%AF)

@@ -68,6 +68,8 @@ public class SchemaUtils {
     intSet.add(TSEncoding.RLE);
     intSet.add(TSEncoding.TS_2DIFF);
     intSet.add(TSEncoding.GORILLA);
+    intSet.add(TSEncoding.ZIGZAG);
+    intSet.add(TSEncoding.FREQ);
     schemaChecker.put(TSDataType.INT32, intSet);
     schemaChecker.put(TSDataType.INT64, intSet);
 
@@ -77,6 +79,7 @@ public class SchemaUtils {
     floatSet.add(TSEncoding.TS_2DIFF);
     floatSet.add(TSEncoding.GORILLA_V1);
     floatSet.add(TSEncoding.GORILLA);
+    floatSet.add(TSEncoding.FREQ);
     schemaChecker.put(TSDataType.FLOAT, floatSet);
     schemaChecker.put(TSDataType.DOUBLE, floatSet);
 
@@ -95,7 +98,7 @@ public class SchemaUtils {
       TSDataType dataType = schema.getType();
       TSEncoding encoding = schema.getEncodingType();
       CompressionType compressionType = schema.getCompressor();
-      IoTDB.metaManager.createTimeseries(
+      IoTDB.schemaProcessor.createTimeseries(
           path, dataType, encoding, compressionType, Collections.emptyMap());
     } catch (PathAlreadyExistException ignored) {
       // ignore added timeseries
@@ -123,7 +126,7 @@ public class SchemaUtils {
 
     IMeasurementMNode measurementMNode =
         MeasurementMNode.getMeasurementMNode(null, path.getMeasurement(), measurementSchema, null);
-    IoTDB.metaManager.cacheMeta(path, measurementMNode, true);
+    IoTDB.schemaProcessor.cacheMeta(path, measurementMNode, true);
   }
 
   public static List<TSDataType> getSeriesTypesByPaths(Collection<? extends PartialPath> paths) {

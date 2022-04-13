@@ -185,11 +185,15 @@ Time,Device,str(TEXT),int(INT32)
 
 * `-fd`:
   - 指定一个目录来存放保存失败的行的文件，如果你没有指定这个参数，失败的文件将会被保存到源数据的目录中，然后文件名是源文件名加上`.failed`的后缀。
-  - example: `-fd ./failed/`
+  - 例如: `-fd ./failed/`
 
 * `-aligned`:
   - 是否使用`aligned`接口？ 默认参数为`false`。
-  - example: `-aligned true`
+  - 例如: `-aligned true`
+
+* `-batch`:
+  - 用于指定每一批插入的数据的点数。如果程序报了`org.apache.thrift.transport.TTransportException: Frame size larger than protect max size`这个错的话，就可以适当的调低这个参数。
+  - 例如: `-batch 100000`，`100000`是默认值。
 
 ### 运行示例
 
@@ -210,5 +214,4 @@ Time,Device,str(TEXT),int(INT32)
 
 1. `,` :如果text类型的字段中包含`,`那么需要用`\`来进行转义。
 2. 你可以导入像`yyyy-MM-dd'T'HH:mm:ss`， `yyy-MM-dd HH:mm:ss`， 或者 `yyyy-MM-dd'T'HH:mm:ss.SSSZ`格式的时间。
-3. 单个CSV或者txt文件最好不要超过2GB。如果超过2GB可以将文件分割成小文件，然后用`-f`参数来指定存放小文件的文件夹的方式进行批量导入。
-4. `Time`这一列应该放在第一列。
+3. `Time`这一列应该放在第一列。

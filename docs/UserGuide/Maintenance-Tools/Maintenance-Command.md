@@ -64,14 +64,6 @@ IoTDB> SET SYSTEM TO READONLY
 IoTDB> SET SYSTEM TO WRITABLE
 ```
 
-## SCHEMA SNAPSHOT
-
-To speed up restarting of IoTDB, users can create snapshot of schema and avoid recovering schema from mlog file.
-
-```sql
-IoTDB> CREATE SNAPSHOT FOR SCHEMA
-```
-
 
 ## Timeout
 

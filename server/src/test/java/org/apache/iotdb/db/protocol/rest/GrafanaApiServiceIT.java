@@ -25,6 +25,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
@@ -68,6 +69,37 @@ public class GrafanaApiServiceIT {
     String authorization = getAuthorization("root", "root");
     httpPost.setHeader("Authorization", authorization);
     return httpPost;
+  }
+
+  @Test
+  public void login() {
+    CloseableHttpClient httpClient = HttpClientBuilder.create().build();
+    HttpGet httpGet = new HttpGet("http://127.0.0.1:18080/grafana/v1/login");
+    CloseableHttpResponse response = null;
+    try {
+      String authorization = getAuthorization("root", "root");
+      httpGet.setHeader("Authorization", authorization);
+      response = httpClient.execute(httpGet);
+      HttpEntity responseEntity = response.getEntity();
+      String message = EntityUtils.toString(responseEntity, "utf-8");
+      JsonObject result = JsonParser.parseString(message).getAsJsonObject();
+      assertEquals(200, Integer.parseInt(result.get("code").toString()));
+    } catch (IOException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      try {
+        if (httpClient != null) {
+          httpClient.close();
+        }
+        if (response != null) {
+          response.close();
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+    }
   }
 
   public void rightInsertTablet(CloseableHttpClient httpClient) {

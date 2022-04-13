@@ -27,7 +27,6 @@ import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
@@ -189,7 +188,6 @@ public class IoTDBDeletionIT {
   }
 
   @Test
-  @Ignore // TODO
   public void testMerge() throws SQLException {
     prepareMerge();
 
@@ -386,9 +384,9 @@ public class IoTDBDeletionIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(
-          "CREATE TIMESERIES root.ln.d1.`\"status,01\"` WITH DATATYPE=BOOLEAN, ENCODING=PLAIN");
-      statement.execute("INSERT INTO root.ln.d1(timestamp,`\"status,01\"`) VALUES(300, true)");
-      statement.execute("INSERT INTO root.ln.d1(timestamp,`\"status,01\"`) VALUES(500, false)");
+          "CREATE TIMESERIES root.ln.d1.\"status,01\" WITH DATATYPE=BOOLEAN, ENCODING=PLAIN");
+      statement.execute("INSERT INTO root.ln.d1(timestamp,\"status,01\") VALUES(300, true)");
+      statement.execute("INSERT INTO root.ln.d1(timestamp,\"status,01\") VALUES(500, false)");
 
       try (ResultSet resultSet = statement.executeQuery("select `\"status,01\"` from root.ln.d1")) {
         int cnt = 0;
@@ -398,7 +396,7 @@ public class IoTDBDeletionIT {
         Assert.assertEquals(2, cnt);
       }
 
-      statement.execute("DELETE FROM root.ln.d1.`\"status,01\"` WHERE time <= 400");
+      statement.execute("DELETE FROM root.ln.d1.\"status,01\" WHERE time <= 400");
 
       try (ResultSet resultSet = statement.executeQuery("select `\"status,01\"` from root.ln.d1")) {
         int cnt = 0;
@@ -408,7 +406,7 @@ public class IoTDBDeletionIT {
         Assert.assertEquals(1, cnt);
       }
 
-      statement.execute("DELETE FROM root.ln.d1.`\"status,01\"`");
+      statement.execute("DELETE FROM root.ln.d1.\"status,01\"");
 
       try (ResultSet resultSet = statement.executeQuery("select `\"status,01\"` from root.ln.d1")) {
         int cnt = 0;

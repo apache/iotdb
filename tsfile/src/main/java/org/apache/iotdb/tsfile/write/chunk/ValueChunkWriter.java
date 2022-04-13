@@ -207,11 +207,17 @@ public class ValueChunkWriter {
 
   public long getCurrentChunkSize() {
     /**
-     * It may happen if pageBuffer stores empty bits and subsequent write operations are all out of
-     * order, then count of statistics in this chunk will be 0 and this chunk will not be flushed.
+     * It may happen if subsequent write operations are all out of order, then count of statistics
+     * in this chunk will be 0 and this chunk will not be flushed.
      */
-    if (pageBuffer.size() == 0 || statistics.getCount() == 0) {
+    if (pageBuffer.size() == 0) {
       return 0;
+    }
+
+    // Empty chunk, it may happen if pageBuffer stores empty bits and only chunk header will be
+    // flushed.
+    if (statistics.getCount() == 0) {
+      return ChunkHeader.getSerializedSize(measurementId, pageBuffer.size());
     }
 
     // return the serialized size of the chunk header + all pages
