@@ -101,8 +101,8 @@ public class DataPartition {
    *
    * @param partitionSlotsMap Map<StorageGroupName, Map<SeriesPartitionSlot,
    *     List<TimePartitionSlot>>>
-   * @return Map<StorageGroupName, Map<SeriesPartitionSlot, Map<TimePartitionSlot,
-   *     List<RegionReplicaSet>>>>
+   * @return Subset of current DataPartition, including Map<StorageGroupName,
+   *     Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>>
    */
   public DataPartition getDataPartition(
       Map<String, Map<SeriesPartitionSlot, List<TimePartitionSlot>>> partitionSlotsMap) {

@@ -18,19 +18,19 @@
  */
 package org.apache.iotdb.db.mpp.execution;
 
-import org.apache.iotdb.db.metadata.schemaregion.SchemaRegion;
+import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 
 public class SchemaDriverContext extends DriverContext {
 
-  private final SchemaRegion schemaRegion;
+  private final ISchemaRegion schemaRegion;
 
   public SchemaDriverContext(
-      FragmentInstanceContext fragmentInstanceContext, SchemaRegion schemaRegion) {
+      FragmentInstanceContext fragmentInstanceContext, ISchemaRegion schemaRegion) {
     super(fragmentInstanceContext);
     this.schemaRegion = schemaRegion;
   }
 
-  public SchemaRegion getSchemaRegion() {
+  public ISchemaRegion getSchemaRegion() {
     return schemaRegion;
   }
 }

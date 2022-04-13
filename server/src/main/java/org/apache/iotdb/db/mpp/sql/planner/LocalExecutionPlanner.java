@@ -21,7 +21,7 @@ package org.apache.iotdb.db.mpp.sql.planner;
 import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.metadata.schemaregion.SchemaRegion;
+import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.mpp.buffer.DataBlockManager;
 import org.apache.iotdb.db.mpp.buffer.DataBlockService;
 import org.apache.iotdb.db.mpp.buffer.ISinkHandle;
@@ -36,11 +36,17 @@ import org.apache.iotdb.db.mpp.operator.Operator;
 import org.apache.iotdb.db.mpp.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.operator.process.LimitOperator;
 import org.apache.iotdb.db.mpp.operator.process.TimeJoinOperator;
+import org.apache.iotdb.db.mpp.operator.schema.DevicesSchemaScanOperator;
+import org.apache.iotdb.db.mpp.operator.schema.SchemaMergeOperator;
+import org.apache.iotdb.db.mpp.operator.schema.TimeSeriesSchemaScanOperator;
 import org.apache.iotdb.db.mpp.operator.source.DataSourceOperator;
 import org.apache.iotdb.db.mpp.operator.source.ExchangeOperator;
 import org.apache.iotdb.db.mpp.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.DevicesSchemaScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.AggregateNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.DeviceMergeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ExchangeNode;
@@ -102,7 +108,7 @@ public class LocalExecutionPlanner {
   }
 
   public SchemaDriver plan(
-      PlanNode plan, FragmentInstanceContext instanceContext, SchemaRegion schemaRegion) {
+      PlanNode plan, FragmentInstanceContext instanceContext, ISchemaRegion schemaRegion) {
 
     SchemaDriverContext schemaDriverContext =
         new SchemaDriverContext(instanceContext, schemaRegion);
@@ -148,6 +154,59 @@ public class LocalExecutionPlanner {
       context.addPath(seriesPath);
 
       return seriesScanOperator;
+    }
+
+    @Override
+    public Operator visitTimeSeriesMetaScan(
+        TimeSeriesSchemaScanNode node, LocalExecutionPlanContext context) {
+      OperatorContext operatorContext =
+          context.instanceContext.addOperatorContext(
+              context.getNextOperatorId(),
+              node.getPlanNodeId(),
+              TimeSeriesSchemaScanOperator.class.getSimpleName());
+      return new TimeSeriesSchemaScanOperator(
+          operatorContext,
+          node.getLimit(),
+          node.getOffset(),
+          node.getPath(),
+          node.getKey(),
+          node.getValue(),
+          node.isContains(),
+          node.isOrderByHeat(),
+          node.isPrefixPath(),
+          node.getOutputColumnNames());
+    }
+
+    @Override
+    public Operator visitDevicesMetaScan(
+        DevicesSchemaScanNode node, LocalExecutionPlanContext context) {
+      OperatorContext operatorContext =
+          context.instanceContext.addOperatorContext(
+              context.getNextOperatorId(),
+              node.getPlanNodeId(),
+              DevicesSchemaScanOperator.class.getSimpleName());
+      return new DevicesSchemaScanOperator(
+          operatorContext,
+          node.getLimit(),
+          node.getOffset(),
+          node.getPath(),
+          node.isPrefixPath(),
+          node.isHasSgCol(),
+          node.getOutputColumnNames());
+    }
+
+    @Override
+    public Operator visitMetaMerge(SchemaMergeNode node, LocalExecutionPlanContext context) {
+      List<Operator> children =
+          node.getChildren().stream()
+              .map(n -> n.accept(this, context))
+              .collect(Collectors.toList());
+      OperatorContext operatorContext =
+          context.instanceContext.addOperatorContext(
+              context.getNextOperatorId(),
+              node.getPlanNodeId(),
+              SchemaMergeOperator.class.getSimpleName());
+      return new SchemaMergeOperator(operatorContext, children);
     }
 
     @Override

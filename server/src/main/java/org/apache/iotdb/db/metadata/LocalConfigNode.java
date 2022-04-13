@@ -69,9 +69,9 @@ import java.util.concurrent.TimeUnit;
  * This class simulates the behaviour of configNode to manage the configs locally. The schema
  * configs include storage group, schema region and template. The data config is dataRegion.
  */
-public class LocalConfigManager {
+public class LocalConfigNode {
 
-  private static final Logger logger = LoggerFactory.getLogger(LocalConfigManager.class);
+  private static final Logger logger = LoggerFactory.getLogger(LocalConfigNode.class);
 
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
@@ -85,7 +85,7 @@ public class LocalConfigManager {
   private SchemaEngine schemaEngine = SchemaEngine.getInstance();
   private LocalSchemaPartitionTable partitionTable = LocalSchemaPartitionTable.getInstance();
 
-  private LocalConfigManager() {
+  private LocalConfigNode() {
     String schemaDir = config.getSchemaDir();
     File schemaFolder = SystemFileFactory.INSTANCE.getFile(schemaDir);
     if (!schemaFolder.exists()) {
@@ -99,12 +99,12 @@ public class LocalConfigManager {
 
   // region LocalSchemaConfigManager SingleTone
   private static class LocalSchemaConfigManagerHolder {
-    private static final LocalConfigManager INSTANCE = new LocalConfigManager();
+    private static final LocalConfigNode INSTANCE = new LocalConfigNode();
 
     private LocalSchemaConfigManagerHolder() {}
   }
 
-  public static LocalConfigManager getInstance() {
+  public static LocalConfigNode getInstance() {
     return LocalSchemaConfigManagerHolder.INSTANCE;
   }
 
@@ -162,7 +162,7 @@ public class LocalConfigManager {
       for (File schemaRegionDir : schemaRegionDirs) {
         SchemaRegionId schemaRegionId =
             new SchemaRegionId(Integer.parseInt(schemaRegionDir.getName()));
-        localCreateSchemaRegion(storageGroup, schemaRegionId);
+        schemaEngine.createSchemaRegion(storageGroup, schemaRegionId);
         partitionTable.putSchemaRegionId(storageGroup, schemaRegionId);
       }
     }
@@ -182,17 +182,12 @@ public class LocalConfigManager {
       }
 
       partitionTable.clear();
-
-      for (ISchemaRegion schemaRegion : schemaEngine.getAllSchemaRegions()) {
-        schemaRegion.clear();
-      }
       schemaEngine.clear();
-
       storageGroupSchemaManager.clear();
       templateManager.clear();
 
     } catch (IOException e) {
-      logger.error("Error occurred when clearing LocalConfigManager:", e);
+      logger.error("Error occurred when clearing LocalConfigNode:", e);
     }
 
     initialized = false;
@@ -205,10 +200,7 @@ public class LocalConfigManager {
 
     storageGroupSchemaManager.forceLog();
     templateManager.forceLog();
-
-    for (ISchemaRegion schemaRegion : schemaEngine.getAllSchemaRegions()) {
-      schemaRegion.forceMlog();
-    }
+    schemaEngine.forceMlog();
   }
 
   // endregion
@@ -222,15 +214,12 @@ public class LocalConfigManager {
    *
    * @param storageGroup root.node.(node)*
    */
-  public void setStorageGroup(PartialPath storageGroup, boolean shouldAllocateSchemaRegion)
-      throws MetadataException {
+  public void setStorageGroup(PartialPath storageGroup) throws MetadataException {
     storageGroupSchemaManager.setStorageGroup(storageGroup);
     partitionTable.setStorageGroup(storageGroup);
 
-    // invoke from cluster doesn't need local allocate for the given storageGroup
-    if (shouldAllocateSchemaRegion) {
-      localCreateSchemaRegion(storageGroup, partitionTable.allocateSchemaRegionId(storageGroup));
-    }
+    schemaEngine.createSchemaRegion(
+        storageGroup, partitionTable.allocateSchemaRegionId(storageGroup));
 
     if (!config.isEnableMemControl()) {
       MemTableManager.getInstance().addOrDeleteStorageGroup(1);
@@ -255,6 +244,24 @@ public class LocalConfigManager {
     storageGroupSchemaManager.deleteStorageGroup(storageGroup);
   }
 
+  private void deleteSchemaRegionsInStorageGroup(
+      PartialPath storageGroup, List<SchemaRegionId> schemaRegionIdSet) throws MetadataException {
+    for (SchemaRegionId schemaRegionId : schemaRegionIdSet) {
+      schemaEngine.deleteSchemaRegion(schemaRegionId);
+    }
+
+    File sgDir = new File(config.getSchemaDir() + File.separator + storageGroup.getFullPath());
+    if (sgDir.delete()) {
+      logger.info("delete storage group folder {}", sgDir.getAbsolutePath());
+    } else {
+      if (sgDir.exists()) {
+        logger.info("delete storage group folder {} failed.", sgDir.getAbsolutePath());
+        throw new MetadataException(
+            String.format("Failed to delete storage group folder %s", sgDir.getAbsolutePath()));
+      }
+    }
+  }
+
   /**
    * Delete storage groups of given paths from MTree.
    *
@@ -266,8 +273,7 @@ public class LocalConfigManager {
     }
   }
 
-  private void ensureStorageGroup(PartialPath path, boolean shouldAllocateSchemaRegion)
-      throws MetadataException {
+  private void ensureStorageGroup(PartialPath path) throws MetadataException {
     try {
       getBelongedStorageGroup(path);
     } catch (StorageGroupNotSetException e) {
@@ -277,7 +283,7 @@ public class LocalConfigManager {
       PartialPath storageGroupPath =
           MetaUtils.getStorageGroupPathByLevel(path, config.getDefaultStorageGroupLevel());
       try {
-        setStorageGroup(storageGroupPath, shouldAllocateSchemaRegion);
+        setStorageGroup(storageGroupPath);
       } catch (StorageGroupAlreadySetException storageGroupAlreadySetException) {
         // do nothing
         // concurrent timeseries creation may result concurrent ensureStorageGroup
@@ -494,7 +500,7 @@ public class LocalConfigManager {
   /** Get storage group node by path. the give path don't need to be storage group path. */
   public IStorageGroupMNode getStorageGroupNodeByPath(PartialPath path) throws MetadataException {
     // used for storage engine auto create storage group
-    ensureStorageGroup(path, true);
+    ensureStorageGroup(path);
     return storageGroupSchemaManager.getStorageGroupNodeByPath(path);
   }
 
@@ -507,104 +513,51 @@ public class LocalConfigManager {
 
   // endregion
 
-  // region Interfaces for SchemaRegion Management
-
-  public void createSchemaRegion(PartialPath storageGroup, SchemaRegionId schemaRegionId)
-      throws MetadataException {
-    ensureStorageGroup(storageGroup, false);
-    localCreateSchemaRegion(storageGroup, schemaRegionId);
-    partitionTable.putSchemaRegionId(storageGroup, schemaRegionId);
-  }
-
-  public ISchemaRegion getSchemaRegion(SchemaRegionId schemaRegionId) throws MetadataException {
-    return schemaEngine.getSchemaRegion(schemaRegionId);
-  }
-
-  public void deleteSchemaRegion(PartialPath storageGroup, SchemaRegionId schemaRegionId)
-      throws MetadataException {
-    partitionTable.removeSchemaRegionId(storageGroup, schemaRegionId);
-    schemaEngine.deleteSchemaRegion(schemaRegionId);
-  }
-
-  private void deleteSchemaRegionsInStorageGroup(
-      PartialPath storageGroup, Set<SchemaRegionId> schemaRegionIdSet) throws MetadataException {
-    for (SchemaRegionId schemaRegionId : schemaRegionIdSet) {
-      schemaEngine.deleteSchemaRegion(schemaRegionId);
-    }
-
-    File sgDir = new File(config.getSchemaDir() + File.separator + storageGroup.getFullPath());
-    if (sgDir.delete()) {
-      logger.info("delete storage group folder {}", sgDir.getAbsolutePath());
-    } else {
-      if (sgDir.exists()) {
-        logger.info("delete storage group folder {} failed.", sgDir.getAbsolutePath());
-        throw new MetadataException(
-            String.format("Failed to delete storage group folder %s", sgDir.getAbsolutePath()));
-      }
-    }
-  }
-
-  private ISchemaRegion localCreateSchemaRegion(
-      PartialPath storageGroup, SchemaRegionId schemaRegionId) throws MetadataException {
-    return schemaEngine.createSchemaRegion(
-        storageGroup,
-        schemaRegionId,
-        storageGroupSchemaManager.getStorageGroupNodeByStorageGroupPath(storageGroup));
-  }
-
+  // region Interfaces for SchemaRegionId Management
   /**
-   * Get the target SchemaRegion, which the given path belongs to. The path must be a fullPath
+   * Get the target SchemaRegionIds, which the given path belongs to. The path must be a fullPath
    * without wildcards, * or **. This method is the first step when there's a task on one certain
-   * path, e.g., root.sg1 is a storage group and path = root.sg1.d1, return SchemaRegion of
+   * path, e.g., root.sg1 is a storage group and path = root.sg1.d1, return SchemaRegionId of
    * root.sg1. If there's no storage group on the given path, StorageGroupNotSetException will be
    * thrown.
    */
-  public ISchemaRegion getBelongedSchemaRegion(PartialPath path) throws MetadataException {
+  public SchemaRegionId getBelongedSchemaRegionId(PartialPath path) throws MetadataException {
     PartialPath storageGroup = storageGroupSchemaManager.getBelongedStorageGroup(path);
     SchemaRegionId schemaRegionId = partitionTable.getSchemaRegionId(storageGroup, path);
     ISchemaRegion schemaRegion = schemaEngine.getSchemaRegion(schemaRegionId);
     if (schemaRegion == null) {
-      schemaRegion = localCreateSchemaRegion(storageGroup, schemaRegionId);
-      partitionTable.putSchemaRegionId(storageGroup, schemaRegionId);
+      schemaEngine.createSchemaRegion(storageGroup, schemaRegionId);
     }
-    return schemaRegion;
+    return partitionTable.getSchemaRegionId(storageGroup, path);
   }
 
   // This interface involves storage group auto creation
-  public ISchemaRegion getBelongedSchemaRegionWithAutoCreate(PartialPath path)
+  public SchemaRegionId getBelongedSchemaRegionIdWithAutoCreate(PartialPath path)
       throws MetadataException {
-    ensureStorageGroup(path, true);
-    return getBelongedSchemaRegion(path);
+    ensureStorageGroup(path);
+    return getBelongedSchemaRegionId(path);
   }
 
   /**
-   * Get the target SchemaRegion, which will be involved/covered by the given pathPattern. The path
-   * may contain wildcards, * or **. This method is the first step when there's a task on multiple
-   * paths represented by the given pathPattern. If isPrefixMatch, all storage groups under the
-   * prefixPath that matches the given pathPattern will be collected.
+   * Get the target SchemaRegionIds, which will be involved/covered by the given pathPattern. The
+   * path may contain wildcards, * or **. This method is the first step when there's a task on
+   * multiple paths represented by the given pathPattern. If isPrefixMatch, all storage groups under
+   * the prefixPath that matches the given pathPattern will be collected.
    */
-  public List<ISchemaRegion> getInvolvedSchemaRegions(
+  public List<SchemaRegionId> getInvolvedSchemaRegionIds(
       PartialPath pathPattern, boolean isPrefixMatch) throws MetadataException {
-    List<ISchemaRegion> result = new ArrayList<>();
+    List<SchemaRegionId> result = new ArrayList<>();
     for (PartialPath storageGroup :
         storageGroupSchemaManager.getInvolvedStorageGroups(pathPattern, isPrefixMatch)) {
-      for (SchemaRegionId schemaRegionId :
-          partitionTable.getInvolvedSchemaRegionIds(storageGroup, pathPattern, isPrefixMatch)) {
-        result.add(schemaEngine.getSchemaRegion(schemaRegionId));
-      }
+      result.addAll(
+          partitionTable.getInvolvedSchemaRegionIds(storageGroup, pathPattern, isPrefixMatch));
     }
-
     return result;
   }
 
-  public List<ISchemaRegion> getSchemaRegionsByStorageGroup(PartialPath storageGroup)
+  public List<SchemaRegionId> getSchemaRegionIdsByStorageGroup(PartialPath storageGroup)
       throws MetadataException {
-    List<ISchemaRegion> result = new ArrayList<>();
-    for (SchemaRegionId schemaRegionId :
-        partitionTable.getSchemaRegionIdsByStorageGroup(storageGroup)) {
-      result.add(schemaEngine.getSchemaRegion(schemaRegionId));
-    }
-    return result;
+    return partitionTable.getSchemaRegionIdsByStorageGroup(storageGroup);
   }
 
   // endregion
@@ -759,23 +712,29 @@ public class LocalConfigManager {
   public synchronized void setSchemaTemplate(SetTemplatePlan plan) throws MetadataException {
     PartialPath path = new PartialPath(plan.getPrefixPath());
     try {
-      getBelongedSchemaRegionWithAutoCreate(path).setSchemaTemplate(plan);
+      schemaEngine
+          .getSchemaRegion(getBelongedSchemaRegionIdWithAutoCreate(path))
+          .setSchemaTemplate(plan);
     } catch (StorageGroupAlreadySetException e) {
       throw new MetadataException("Template should not be set above storageGroup");
     }
   }
 
   public synchronized void unsetSchemaTemplate(UnsetTemplatePlan plan) throws MetadataException {
+    PartialPath path = new PartialPath(plan.getPrefixPath());
     try {
-      getBelongedSchemaRegion(new PartialPath(plan.getPrefixPath())).unsetSchemaTemplate(plan);
+      schemaEngine.getSchemaRegion(getBelongedSchemaRegionId(path)).unsetSchemaTemplate(plan);
     } catch (StorageGroupNotSetException e) {
       throw new PathNotExistException(plan.getPrefixPath());
     }
   }
 
   public void setUsingSchemaTemplate(ActivateTemplatePlan plan) throws MetadataException {
+    PartialPath path = plan.getPrefixPath();
     try {
-      getBelongedSchemaRegion(plan.getPrefixPath()).setUsingSchemaTemplate(plan);
+      schemaEngine
+          .getSchemaRegion(getBelongedSchemaRegionIdWithAutoCreate(path))
+          .setUsingSchemaTemplate(plan);
     } catch (StorageGroupNotSetException e) {
       throw new MetadataException(
           String.format(

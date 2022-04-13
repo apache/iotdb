@@ -114,7 +114,7 @@ public class SeriesScanOperator implements DataSourceOperator {
   }
 
   @Override
-  public boolean isFinished() throws IOException {
+  public boolean isFinished() {
     return finished || (finished = hasNext());
   }
 

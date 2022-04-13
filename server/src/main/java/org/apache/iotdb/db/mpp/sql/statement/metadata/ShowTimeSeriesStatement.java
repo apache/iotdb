@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.sql.statement.metadata;
 
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 
 /**
  * SHOW TIMESERIES statement.
@@ -77,5 +78,10 @@ public class ShowTimeSeriesStatement extends ShowStatement {
 
   public boolean isOrderByHeat() {
     return orderByHeat;
+  }
+
+  @Override
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitShowTimeSeries(this, context);
   }
 }

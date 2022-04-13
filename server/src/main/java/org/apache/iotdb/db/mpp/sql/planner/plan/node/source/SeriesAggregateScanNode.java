@@ -146,12 +146,12 @@ public class SeriesAggregateScanNode extends SourceNode implements IOutputPlanNo
   public void open() throws Exception {}
 
   @Override
-  public RegionReplicaSet getDataRegionReplicaSet() {
+  public RegionReplicaSet getRegionReplicaSet() {
     return this.regionReplicaSet;
   }
 
   @Override
-  public void setDataRegionReplicaSet(RegionReplicaSet regionReplicaSet) {
+  public void setRegionReplicaSet(RegionReplicaSet regionReplicaSet) {
     this.regionReplicaSet = regionReplicaSet;
   }
 
