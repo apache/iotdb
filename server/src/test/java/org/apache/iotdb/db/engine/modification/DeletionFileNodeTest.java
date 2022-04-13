@@ -28,7 +28,6 @@ import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -124,14 +123,16 @@ public class DeletionFileNodeTest {
 
   @Test
   public void testDeleteWithTimePartitionFilter()
-      throws IllegalPathException, StorageEngineException, QueryProcessException, IOException {
+      throws StorageEngineException, QueryProcessException, IOException {
     boolean prevEnablePartition = StorageEngine.isEnablePartition();
     long prevPartitionInterval = StorageEngine.getTimePartitionInterval();
     int prevConcurrentTimePartition =
         IoTDBDescriptor.getInstance().getConfig().getConcurrentWritingTimePartition();
+    int prevWalBufferSize = IoTDBDescriptor.getInstance().getConfig().getWalBufferSize();
     try {
       StorageEngine.setEnablePartition(true);
       IoTDBDescriptor.getInstance().getConfig().setConcurrentWritingTimePartition(10);
+      IoTDBDescriptor.getInstance().getConfig().setWalBufferSize(16 * 1024);
       long newPartitionInterval = 100;
       StorageEngine.setTimePartitionInterval(newPartitionInterval);
       // generate 10 time partitions
@@ -157,6 +158,7 @@ public class DeletionFileNodeTest {
       IoTDBDescriptor.getInstance()
           .getConfig()
           .setConcurrentWritingTimePartition(prevConcurrentTimePartition);
+      IoTDBDescriptor.getInstance().getConfig().setWalBufferSize(prevWalBufferSize);
     }
   }
 

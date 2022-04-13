@@ -22,6 +22,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -203,7 +204,7 @@ public class AbstractCompactionTest {
       }
     }
     resource.updatePlanIndexes(fileVersion);
-    resource.setClosed(true);
+    resource.setStatus(TsFileResourceStatus.CLOSED);
     // resource.setTimeIndexType((byte) 0);
     resource.serialize();
     if (isSeq) {

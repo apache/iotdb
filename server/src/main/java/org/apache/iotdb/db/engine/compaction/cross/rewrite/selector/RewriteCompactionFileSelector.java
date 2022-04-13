@@ -103,7 +103,7 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
   public List[] select() throws MergeException {
     long startTime = System.currentTimeMillis();
     try {
-      logger.info(
+      logger.debug(
           "Selecting merge candidates from {} seqFile, {} unseqFiles",
           resource.getSeqFiles().size(),
           resource.getUnseqFiles().size());
@@ -115,7 +115,7 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
       resource.setUnseqFiles(selectedUnseqFiles);
       resource.removeOutdatedSeqReaders();
       if (selectedUnseqFiles.isEmpty()) {
-        logger.info("No merge candidates are found");
+        logger.debug("No merge candidates are found");
         return new List[0];
       }
     } catch (IOException e) {
@@ -226,8 +226,8 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
   /**
    * To avoid redundant data in seq files, cross space compaction should select all the seq files
    * which have overlap with unseq files whether they are compacting or not. Therefore, before
-   * adding task into the queue, cross space compaction task should be check whether source seq
-   * files are being compacted or not to speed up compaction.
+   * adding task into the queue, cross space compaction task should check whether source seq files
+   * are being compacted or not to speed up compaction.
    */
   private boolean checkIsSeqFilesValid() {
     for (Integer seqIdx : tmpSelectedSeqFiles) {
