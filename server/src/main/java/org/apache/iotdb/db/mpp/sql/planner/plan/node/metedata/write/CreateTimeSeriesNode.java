@@ -176,8 +176,7 @@ public class CreateTimeSeriesNode extends PlanNode {
         getAlias());
   }
 
-  public static CreateTimeSeriesNode deserialize(ByteBuffer byteBuffer)
-      throws IllegalPathException {
+  public static CreateTimeSeriesNode deserialize(ByteBuffer byteBuffer) {
     String id;
     PartialPath path = null;
     TSDataType dataType;
@@ -193,7 +192,11 @@ public class CreateTimeSeriesNode extends PlanNode {
     int length = byteBuffer.getInt();
     byte[] bytes = new byte[length];
     byteBuffer.get(bytes);
-    path = new PartialPath(new String(bytes));
+    try {
+      path = new PartialPath(new String(bytes));
+    } catch (IllegalPathException e) {
+      throw new IllegalArgumentException("Cannot deserialize CreateTimeSeriesNode", e);
+    }
     dataType = TSDataType.values()[byteBuffer.get()];
     encoding = TSEncoding.values()[byteBuffer.get()];
     compressor = CompressionType.values()[byteBuffer.get()];
