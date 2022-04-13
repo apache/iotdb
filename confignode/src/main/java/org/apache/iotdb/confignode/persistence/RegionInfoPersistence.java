@@ -162,6 +162,22 @@ public class RegionInfoPersistence {
     return dataRegionEndPoints;
   }
 
+  /**
+   * Get all StorageGroups' name
+   *
+   * @return List<String>, all storageGroups' name
+   */
+  public List<String> getStorageGroupNames() {
+    List<String> storageGroups;
+    regionReadWriteLock.readLock().lock();
+    try {
+      storageGroups = new ArrayList<>(storageGroupsMap.keySet());
+    } finally {
+      regionReadWriteLock.readLock().unlock();
+    }
+    return storageGroups;
+  }
+
   public int generateNextRegionGroupId() {
     int result;
     regionAllocateLock.writeLock().lock();

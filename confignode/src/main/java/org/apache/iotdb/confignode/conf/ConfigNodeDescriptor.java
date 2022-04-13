@@ -165,6 +165,10 @@ public class ConfigNodeDescriptor {
 
       conf.setConsensusDir(properties.getProperty("consensus_dir", conf.getConsensusDir()));
 
+      conf.setDefaultTTL(
+          Long.parseLong(
+              properties.getProperty("default_ttl", String.valueOf(conf.getDefaultTTL()))));
+
       conf.setRegionReplicaCount(
           Integer.parseInt(
               properties.getProperty(
