@@ -176,6 +176,7 @@ public class RatisConsensusTest {
     // 6. Remove two Peers from Group (peer 0 and peer 2)
     // transfer the leader to peer1
     servers.get(0).transferLeader(gid, peer1);
+    Thread.sleep(20 * 1000);
     Assert.assertTrue(servers.get(1).isLeader(gid));
     // first use removePeer to inform the group leader of configuration change
     servers.get(1).removePeer(gid, peer0);
@@ -210,6 +211,7 @@ public class RatisConsensusTest {
 
   private void doConsensus(IConsensus consensus, ConsensusGroupId gid, int count, int target)
       throws Exception {
+    Thread.sleep(15 * 1000);
 
     latch = new CountDownLatch(count);
     // do write

@@ -38,6 +38,7 @@ import org.apache.iotdb.consensus.exception.RatisRequestFailedException;
 import org.apache.iotdb.consensus.statemachine.IStateMachine;
 
 import org.apache.ratis.client.RaftClient;
+import org.apache.ratis.client.RaftClientConfigKeys;
 import org.apache.ratis.conf.Parameters;
 import org.apache.ratis.conf.RaftProperties;
 import org.apache.ratis.grpc.GrpcConfigKeys;
@@ -54,6 +55,7 @@ import org.apache.ratis.protocol.exceptions.NotLeaderException;
 import org.apache.ratis.server.RaftServer;
 import org.apache.ratis.server.RaftServerConfigKeys;
 import org.apache.ratis.util.NetUtils;
+import org.apache.ratis.util.TimeDuration;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -65,6 +67,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
@@ -109,6 +112,16 @@ class RatisConsensus implements IConsensus {
     // set the port which server listen to in RaftProperty object
     final int port = NetUtils.createSocketAddr(address).getPort();
     GrpcConfigKeys.Server.setPort(properties, port);
+
+    RaftServerConfigKeys.setSleepDeviationThreshold(properties, 10 * 1000);
+    RaftServerConfigKeys.Rpc.setTimeoutMin(properties, TimeDuration.valueOf(5, TimeUnit.SECONDS));
+    RaftServerConfigKeys.Rpc.setTimeoutMax(properties, TimeDuration.valueOf(20, TimeUnit.SECONDS));
+    RaftServerConfigKeys.Rpc.setRequestTimeout(
+        properties, TimeDuration.valueOf(20, TimeUnit.SECONDS));
+    RaftServerConfigKeys.LeaderElection.setLeaderStepDownWaitTime(
+        properties, TimeDuration.valueOf(30, TimeUnit.SECONDS));
+    RaftClientConfigKeys.Rpc.setRequestTimeout(
+        properties, TimeDuration.valueOf(20, TimeUnit.SECONDS));
 
     server =
         RaftServer.newBuilder()
