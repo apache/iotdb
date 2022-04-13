@@ -27,6 +27,7 @@ import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.ConsensusGroup;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
+import org.apache.iotdb.consensus.common.SnapshotMeta;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
@@ -106,6 +107,20 @@ public class RatisConsensusTest {
       dataSet.setNumber(integer.get());
       return dataSet;
     }
+
+    @Override
+    public void takeSnapshot(ByteBuffer metadata, File snapshotDir) {}
+
+    @Override
+    public SnapshotMeta getLatestSnapshot(File snapshotDir) {
+      return null;
+    }
+
+    @Override
+    public void loadSnapshot(SnapshotMeta latest) {}
+
+    @Override
+    public void cleanUpOldSnapshots(File snapshotDir) {}
   }
 
   private ConsensusGroupId gid;
