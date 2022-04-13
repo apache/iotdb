@@ -91,7 +91,9 @@ public class WALNodeRecoverTask implements Runnable {
       File tsFile = new File(memTableInfo.getTsFilePath());
       UnsealedTsFileRecoverPerformer recoverPerformer =
           walRecoverManger.removeRecoverPerformer(tsFile.getAbsolutePath());
-      memTableId2RecoverPerformer.put(memTableInfo.getMemTableId(), recoverPerformer);
+      if (recoverPerformer != null) {
+        memTableId2RecoverPerformer.put(memTableInfo.getMemTableId(), recoverPerformer);
+      }
     }
   }
 
