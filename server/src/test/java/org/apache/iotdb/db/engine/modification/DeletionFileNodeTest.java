@@ -25,8 +25,8 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.io.LocalTextModificationAccessor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -170,12 +170,11 @@ public class DeletionFileNodeTest {
                 processorName + TsFileConstant.PATH_SEPARATOR + measurements[measurementIdx]),
             null);
 
-    Pair<List<VirtualStorageGroupProcessor>, Map<VirtualStorageGroupProcessor, List<PartialPath>>>
-        lockListAndProcessorToSeriesMapPair =
-            StorageEngine.getInstance()
-                .mergeLock(Collections.singletonList((PartialPath) expression.getSeriesPath()));
-    List<VirtualStorageGroupProcessor> lockList = lockListAndProcessorToSeriesMapPair.left;
-    Map<VirtualStorageGroupProcessor, List<PartialPath>> processorToSeriesMap =
+    Pair<List<DataRegion>, Map<DataRegion, List<PartialPath>>> lockListAndProcessorToSeriesMapPair =
+        StorageEngine.getInstance()
+            .mergeLock(Collections.singletonList((PartialPath) expression.getSeriesPath()));
+    List<DataRegion> lockList = lockListAndProcessorToSeriesMapPair.left;
+    Map<DataRegion, List<PartialPath>> processorToSeriesMap =
         lockListAndProcessorToSeriesMapPair.right;
 
     try {
@@ -318,12 +317,11 @@ public class DeletionFileNodeTest {
                 processorName + TsFileConstant.PATH_SEPARATOR + measurements[5]),
             null);
 
-    Pair<List<VirtualStorageGroupProcessor>, Map<VirtualStorageGroupProcessor, List<PartialPath>>>
-        lockListAndProcessorToSeriesMapPair =
-            StorageEngine.getInstance()
-                .mergeLock(Collections.singletonList((PartialPath) expression.getSeriesPath()));
-    List<VirtualStorageGroupProcessor> lockList = lockListAndProcessorToSeriesMapPair.left;
-    Map<VirtualStorageGroupProcessor, List<PartialPath>> processorToSeriesMap =
+    Pair<List<DataRegion>, Map<DataRegion, List<PartialPath>>> lockListAndProcessorToSeriesMapPair =
+        StorageEngine.getInstance()
+            .mergeLock(Collections.singletonList((PartialPath) expression.getSeriesPath()));
+    List<DataRegion> lockList = lockListAndProcessorToSeriesMapPair.left;
+    Map<DataRegion, List<PartialPath>> processorToSeriesMap =
         lockListAndProcessorToSeriesMapPair.right;
 
     try {

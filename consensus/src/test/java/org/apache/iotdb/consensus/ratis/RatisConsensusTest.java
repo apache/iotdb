@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.consensus.ratis;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
@@ -31,7 +32,6 @@ import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.consensus.statemachine.IStateMachine;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import org.apache.ratis.util.FileUtils;
 import org.junit.After;
@@ -183,6 +183,7 @@ public class RatisConsensusTest {
     // then use removeConsensusGroup to clean up removed Consensus-Peer's states
     servers.get(0).removeConsensusGroup(gid);
     servers.get(2).removeConsensusGroup(gid);
+    Assert.assertEquals(servers.get(1).getLeader(gid), peers.get(1));
 
     // 7. try consensus again with one peer
     doConsensus(servers.get(1), gid, 10, 20);

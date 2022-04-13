@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.cluster.utils;
 
+import org.apache.iotdb.common.rpc.thrift.EndPoint;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.EndPoint;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 public class StatusUtils {
 
@@ -105,7 +105,7 @@ public class StatusUtils {
       case SYNC_CONNECTION_EXCEPTION:
         status.setMessage("Meet error while sync connecting. ");
         break;
-      case STORAGE_GROUP_PROCESSOR_ERROR:
+      case DATA_REGION_ERROR:
         status.setMessage("Storage group processor related error. ");
         break;
       case STORAGE_GROUP_ERROR:

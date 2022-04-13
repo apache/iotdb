@@ -32,7 +32,6 @@ import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
-import java.io.IOException;
 import java.util.List;
 
 public class TimeJoinOperator implements ProcessOperator {
@@ -96,7 +95,7 @@ public class TimeJoinOperator implements ProcessOperator {
   }
 
   @Override
-  public TsBlock next() throws IOException {
+  public TsBlock next() {
     // end time for returned TsBlock this time, it's the min end time among all the children
     // TsBlocks
     long currentEndTime = 0;
@@ -154,7 +153,7 @@ public class TimeJoinOperator implements ProcessOperator {
   }
 
   @Override
-  public boolean hasNext() throws IOException {
+  public boolean hasNext() {
     if (finished) {
       return false;
     }

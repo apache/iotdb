@@ -22,7 +22,7 @@ package org.apache.iotdb.db.query.executor;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -91,10 +91,10 @@ public class FillQueryExecutor {
 
     Filter timeFilter = initFillExecutorsAndContructTimeFilter(context);
 
-    Pair<List<VirtualStorageGroupProcessor>, Map<VirtualStorageGroupProcessor, List<PartialPath>>>
-        lockListAndProcessorToSeriesMapPair = StorageEngine.getInstance().mergeLock(selectedSeries);
-    List<VirtualStorageGroupProcessor> lockList = lockListAndProcessorToSeriesMapPair.left;
-    Map<VirtualStorageGroupProcessor, List<PartialPath>> processorToSeriesMap =
+    Pair<List<DataRegion>, Map<DataRegion, List<PartialPath>>> lockListAndProcessorToSeriesMapPair =
+        StorageEngine.getInstance().mergeLock(selectedSeries);
+    List<DataRegion> lockList = lockListAndProcessorToSeriesMapPair.left;
+    Map<DataRegion, List<PartialPath>> processorToSeriesMap =
         lockListAndProcessorToSeriesMapPair.right;
 
     try {

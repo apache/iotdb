@@ -32,16 +32,16 @@ public class CommonUtils {
   private static final Logger logger = LoggerFactory.getLogger(CommonUtils.class);
 
   public static Endpoint parseNodeUrl(String nodeUrl) throws BadNodeUrlException {
-    Endpoint result = new Endpoint();
     String[] split = nodeUrl.split(":");
     if (split.length != 2) {
       logger.warn("Bad node url: {}", nodeUrl);
       throw new BadNodeUrlException(String.format("Bad node url: %s", nodeUrl));
     }
     String ip = split[0];
+    Endpoint result;
     try {
       int port = Integer.parseInt(split[1]);
-      result.setIp(ip).setPort(port);
+      result = new Endpoint(ip, port);
     } catch (NumberFormatException e) {
       logger.warn("Bad node url: {}", nodeUrl);
       throw new BadNodeUrlException(String.format("Bad node url: %s", nodeUrl));

@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.qp.physical;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import java.util.List;
 import java.util.Map;

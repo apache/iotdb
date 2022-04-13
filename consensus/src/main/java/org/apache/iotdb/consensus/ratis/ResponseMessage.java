@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.consensus.ratis;
 
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 
 import org.apache.ratis.protocol.Message;
 import org.apache.ratis.thirdparty.com.google.protobuf.ByteString;

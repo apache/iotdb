@@ -24,6 +24,8 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
+import org.apache.iotdb.db.wal.buffer.WALEntryValue;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -32,7 +34,7 @@ import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
 
-public class InsertRowNode extends InsertNode {
+public class InsertRowNode extends InsertNode implements WALEntryValue {
 
   private long time;
   private Object[] values;
@@ -83,16 +85,15 @@ public class InsertRowNode extends InsertNode {
   }
 
   @Override
-  public List<String> getOutputColumnNames() {
-    return null;
-  }
-
-  public static InsertRowNode deserialize(ByteBuffer byteBuffer) {
-    return null;
+  public int serializedSize() {
+    return 0;
   }
 
   @Override
   public void serialize(ByteBuffer byteBuffer) {}
+
+  @Override
+  public void serializeToWAL(IWALByteBufferView buffer) {}
 
   public Object[] getValues() {
     return values;
@@ -108,5 +109,9 @@ public class InsertRowNode extends InsertNode {
 
   public void setTime(long time) {
     this.time = time;
+  }
+
+  public static InsertRowNode deserialize(ByteBuffer byteBuffer) {
+    return null;
   }
 }

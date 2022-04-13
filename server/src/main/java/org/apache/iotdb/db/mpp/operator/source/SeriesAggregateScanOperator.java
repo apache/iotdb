@@ -25,7 +25,7 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
-public class SeriesAggregateScanOperator implements SourceOperator {
+public class SeriesAggregateScanOperator implements DataSourceOperator {
   @Override
   public OperatorContext getOperatorContext() {
     return null;
@@ -33,7 +33,7 @@ public class SeriesAggregateScanOperator implements SourceOperator {
 
   @Override
   public ListenableFuture<Void> isBlocked() {
-    return SourceOperator.super.isBlocked();
+    return DataSourceOperator.super.isBlocked();
   }
 
   @Override
@@ -48,7 +48,7 @@ public class SeriesAggregateScanOperator implements SourceOperator {
 
   @Override
   public void close() throws Exception {
-    SourceOperator.super.close();
+    DataSourceOperator.super.close();
   }
 
   @Override

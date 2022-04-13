@@ -34,12 +34,14 @@ public interface IDataBlockManager {
    *     blocks to the sink handle.
    * @param remoteHostname Hostname of the remote fragment instance where the data blocks should be
    *     sent to.
+   * @param remotePort Port of the remote fragment instance where the data blocks should be sent to.
    * @param remoteFragmentInstanceId ID of the remote fragment instance.
    * @param remotePlanNodeId The sink plan node ID of the remote fragment instance.
    */
   ISinkHandle createSinkHandle(
       TFragmentInstanceId localFragmentInstanceId,
       String remoteHostname,
+      int remotePort,
       TFragmentInstanceId remoteFragmentInstanceId,
       String remotePlanNodeId)
       throws TTransportException, IOException;
@@ -53,12 +55,15 @@ public interface IDataBlockManager {
    * @param localPlanNodeId The local sink plan node ID.
    * @param remoteHostname Hostname of the remote fragment instance where the data blocks should be
    *     received from.
+   * @param remotePort Port of the remote fragment instance where the data blocks should be received
+   *     from.
    * @param remoteFragmentInstanceId ID of the remote fragment instance.
    */
   ISourceHandle createSourceHandle(
       TFragmentInstanceId localFragmentInstanceId,
       String localPlanNodeId,
       String remoteHostname,
+      int remotePort,
       TFragmentInstanceId remoteFragmentInstanceId)
       throws IOException;
 

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.sync.sender.manager;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaRegion;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -100,6 +101,7 @@ public class SchemaSyncManager {
     this.syncPipe = null;
   }
 
+  /** only support for SchemaRegion */
   public List<PhysicalPlan> collectHistoryMetadata() {
     List<PhysicalPlan> historyMetadata = new ArrayList<>();
     List<SetStorageGroupPlan> storageGroupPlanList = getStorageGroupAsPlan();
@@ -107,10 +109,10 @@ public class SchemaSyncManager {
       historyMetadata.add(storageGroupPlan);
     }
 
-    for (SchemaRegion schemaRegion : SchemaEngine.getInstance().getAllSchemaRegions()) {
+    for (ISchemaRegion schemaRegion : SchemaEngine.getInstance().getAllSchemaRegions()) {
       try {
         for (MeasurementPath measurementPath :
-            schemaRegion.getMeasurementPaths(new PartialPath(ALL_RESULT_NODES))) {
+            ((SchemaRegion) schemaRegion).getMeasurementPaths(new PartialPath(ALL_RESULT_NODES))) {
           if (measurementPath.isUnderAlignedEntity()) {
             historyMetadata.add(
                 new CreateAlignedTimeSeriesPlan(
@@ -127,7 +129,8 @@ public class SchemaSyncManager {
         logger.warn(
             String.format(
                 "Collect history schema from schemaRegion: %s of sg %s error. Skip this schemaRegion.",
-                schemaRegion.getSchemaRegionId(), schemaRegion.getStorageGroupFullPath()));
+                ((SchemaRegion) schemaRegion).getSchemaRegionId(),
+                ((SchemaRegion) schemaRegion).getStorageGroupFullPath()));
       }
     }
 
