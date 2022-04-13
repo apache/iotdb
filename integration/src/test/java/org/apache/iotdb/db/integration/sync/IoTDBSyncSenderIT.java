@@ -246,7 +246,7 @@ public class IoTDBSyncSenderIT {
   }
 
   @Test
-  public void testStopAndStart() {
+  public void testStopAndStartInsert() {
     try {
       prepareSchema();
       prepareIns1();
@@ -274,7 +274,7 @@ public class IoTDBSyncSenderIT {
   }
 
   @Test
-  public void testRealTimeSchemaAndStop() {
+  public void testRealTimeSchemaAndStopInsert() {
     try {
       preparePipeAndSetMock();
       prepareSchema();
