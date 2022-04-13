@@ -234,13 +234,8 @@ public class IoTDBConfig {
           + File.separator
           + IoTDBConstant.SCHEMA_FOLDER_NAME;
 
-  /** Sync directory, including the lock file, uuid file, device owner map */
-  private String syncDir =
-      DEFAULT_BASE_DIR
-          + File.separator
-          + IoTDBConstant.SYSTEM_FOLDER_NAME
-          + File.separator
-          + IoTDBConstant.SYNC_FOLDER_NAME;
+  /** Sync directory, including the log and hardlink tsfiles */
+  private String syncDir = DEFAULT_BASE_DIR + File.separator + IoTDBConstant.SYNC_FOLDER_NAME;
 
   /** Performance tracing directory, stores performance tracing files */
   private String tracingDir = DEFAULT_BASE_DIR + File.separator + IoTDBConstant.TRACING_FOLDER_NAME;
@@ -488,18 +483,19 @@ public class IoTDBConfig {
    */
   private int externalSortThreshold = 1000;
 
-  /** Is this IoTDB instance a receiver of sync or not. */
-  private boolean isSyncEnable = false;
-
   /** If this IoTDB instance is a receiver of sync, set the server port. */
-  private int syncServerPort = 5555;
+  private int pipeServerPort = 6670;
+
+  /** White list for sync */
+  private String ipWhiteList = "0.0.0.0/0";
+
+  /** The maximum number of retries when the sender fails to synchronize files to the receiver. */
+  private int maxNumberOfSyncFileRetry = 5;
 
   /**
    * Set the language version when loading file including error information, default value is "EN"
    */
   private String languageVersion = "EN";
-
-  private String ipWhiteList = "0.0.0.0/0";
 
   /** Examining period of cache file reader : 100 seconds. Unit: millisecond */
   private long cacheFileReaderClearPeriod = 100000;
@@ -868,6 +864,17 @@ public class IoTDBConfig {
    * singleton is initialized
    */
   private String consensusProtocolClass = "org.apache.iotdb.consensus.ratis.RatisConsensus";
+
+  /**
+   * The series partition executor class. The Datanode should communicate with ConfigNode on startup
+   * and set this variable so that the correct class name can be obtained later when calculating the
+   * series partition
+   */
+  private String seriesPartitionExecutorClass =
+      "org.apache.iotdb.commons.partition.executor.hash.APHashExecutor";
+
+  /** The number of series partitions in a storage group */
+  private int seriesPartitionSlotNum = 10000;
 
   /** Port that data block manager thrift service listen to. */
   private int dataBlockManagerPort = 7777;
@@ -1320,20 +1327,20 @@ public class IoTDBConfig {
     this.mRemoteSchemaCacheSize = mRemoteSchemaCacheSize;
   }
 
-  public boolean isSyncEnable() {
-    return isSyncEnable;
+  public int getPipeServerPort() {
+    return pipeServerPort;
   }
 
-  public void setSyncEnable(boolean syncEnable) {
-    isSyncEnable = syncEnable;
+  public void setPipeServerPort(int pipeServerPort) {
+    this.pipeServerPort = pipeServerPort;
   }
 
-  public int getSyncServerPort() {
-    return syncServerPort;
+  public int getMaxNumberOfSyncFileRetry() {
+    return maxNumberOfSyncFileRetry;
   }
 
-  void setSyncServerPort(int syncServerPort) {
-    this.syncServerPort = syncServerPort;
+  public void setMaxNumberOfSyncFileRetry(int maxNumberOfSyncFileRetry) {
+    this.maxNumberOfSyncFileRetry = maxNumberOfSyncFileRetry;
   }
 
   String getLanguageVersion() {
@@ -2743,6 +2750,22 @@ public class IoTDBConfig {
 
   public void setConsensusProtocolClass(String consensusProtocolClass) {
     this.consensusProtocolClass = consensusProtocolClass;
+  }
+
+  public String getSeriesPartitionExecutorClass() {
+    return seriesPartitionExecutorClass;
+  }
+
+  public void setSeriesPartitionExecutorClass(String seriesPartitionExecutorClass) {
+    this.seriesPartitionExecutorClass = seriesPartitionExecutorClass;
+  }
+
+  public int getSeriesPartitionSlotNum() {
+    return seriesPartitionSlotNum;
+  }
+
+  public void setSeriesPartitionSlotNum(int seriesPartitionSlotNum) {
+    this.seriesPartitionSlotNum = seriesPartitionSlotNum;
   }
 
   public int getMppPort() {
