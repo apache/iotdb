@@ -34,6 +34,7 @@ public enum ThreadName {
   FLUSH_PARTIAL_POLICY("FlushPartialPolicy"),
   FORCE_FLUSH_ALL_POLICY("ForceFlushAllPolicy"),
   STAT_MONITOR("StatMonitor"),
+  DATA_REGION_RECOVER_SERVICE("Data-Region-Recover"),
   FLUSH_SERVICE("Flush"),
   FLUSH_SUB_TASK_SERVICE("Flush-SubTask"),
   COMPACTION_SERVICE("Compaction"),
