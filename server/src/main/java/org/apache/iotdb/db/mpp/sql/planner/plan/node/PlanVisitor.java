@@ -99,7 +99,7 @@ public abstract class PlanVisitor<R, C> {
     return visitPlan(node, context);
   }
 
-  public R visitMetaMerge(SchemaMergeNode node, C context) {
+  public R visitSchemaMerge(SchemaMergeNode node, C context) {
     return visitPlan(node, context);
   };
 
@@ -111,7 +111,7 @@ public abstract class PlanVisitor<R, C> {
     return visitMetaScan(node, context);
   }
 
-  public R visitDevicesMetaScan(DevicesSchemaScanNode node, C context) {
+  public R visitDevicesSchemaScan(DevicesSchemaScanNode node, C context) {
     return visitMetaScan(node, context);
   }
 

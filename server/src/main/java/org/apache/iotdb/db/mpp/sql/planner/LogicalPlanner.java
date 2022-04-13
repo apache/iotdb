@@ -35,7 +35,6 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
-import org.apache.iotdb.db.mpp.sql.statement.crud.*;
 import org.apache.iotdb.db.mpp.sql.statement.crud.AggregationQueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.FillQueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.GroupByFillQueryStatement;
@@ -285,7 +284,7 @@ public class LogicalPlanner {
           showTimeSeriesStatement.isOrderByHeat(),
           showTimeSeriesStatement.isContains(),
           showTimeSeriesStatement.isPrefixPath());
-      planBuilder.planMetaMerge(showTimeSeriesStatement.isOrderByHeat());
+      planBuilder.planSchemaMerge(showTimeSeriesStatement.isOrderByHeat());
       if (showTimeSeriesStatement.getLimit() > 0) {
         planBuilder.planOffset(showTimeSeriesStatement.getOffset());
         planBuilder.planLimit(showTimeSeriesStatement.getLimit());
@@ -297,13 +296,13 @@ public class LogicalPlanner {
     public PlanNode visitShowDevices(
         ShowDevicesStatement showDevicesStatement, MPPQueryContext context) {
       QueryPlanBuilder planBuilder = new QueryPlanBuilder(context);
-      planBuilder.planDeviceMetaSource(
+      planBuilder.planDeviceSchemaSource(
           showDevicesStatement.getPathPattern(),
           showDevicesStatement.getLimit(),
           showDevicesStatement.getOffset(),
           showDevicesStatement.isPrefixPath(),
           showDevicesStatement.hasSgCol());
-      planBuilder.planMetaMerge(false);
+      planBuilder.planSchemaMerge(false);
       planBuilder.planOffset(showDevicesStatement.getOffset());
       planBuilder.planLimit(showDevicesStatement.getLimit());
       return planBuilder.getRoot();
@@ -526,6 +525,7 @@ public class LogicalPlanner {
         SchemaFetchStatement schemaFetchStatement, MPPQueryContext context) {
       QueryPlanBuilder planBuilder = new QueryPlanBuilder(context);
       planBuilder.planSchemaFetchSource(schemaFetchStatement.getPatternTree());
+      planBuilder.planSchemaMerge(false);
       return planBuilder.getRoot();
     }
   }

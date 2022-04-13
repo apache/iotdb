@@ -136,7 +136,7 @@ public class DistributionPlanner {
     }
 
     @Override
-    public PlanNode visitMetaMerge(SchemaMergeNode node, DistributionPlanContext context) {
+    public PlanNode visitSchemaMerge(SchemaMergeNode node, DistributionPlanContext context) {
       SchemaMergeNode root = (SchemaMergeNode) node.clone();
       SchemaScanNode seed = (SchemaScanNode) node.getChildren().get(0);
       TreeSet<RegionReplicaSet> schemaRegions =
@@ -153,13 +153,13 @@ public class DistributionPlanner {
       int count = schemaRegions.size();
       schemaRegions.forEach(
           region -> {
-            SchemaScanNode metaScanNode = (SchemaScanNode) seed.clone();
-            metaScanNode.setRegionReplicaSet(region);
+            SchemaScanNode schemaScanNode = (SchemaScanNode) seed.clone();
+            schemaScanNode.setRegionReplicaSet(region);
             if (count > 1) {
-              metaScanNode.setLimit(metaScanNode.getOffset() + metaScanNode.getLimit());
-              metaScanNode.setOffset(0);
+              schemaScanNode.setLimit(schemaScanNode.getOffset() + schemaScanNode.getLimit());
+              schemaScanNode.setOffset(0);
             }
-            root.addChild(metaScanNode);
+            root.addChild(schemaScanNode);
           });
       return root;
     }
@@ -259,7 +259,7 @@ public class DistributionPlanner {
     }
 
     @Override
-    public PlanNode visitMetaMerge(SchemaMergeNode node, NodeGroupContext context) {
+    public PlanNode visitSchemaMerge(SchemaMergeNode node, NodeGroupContext context) {
       node.getChildren()
           .forEach(
               child -> {

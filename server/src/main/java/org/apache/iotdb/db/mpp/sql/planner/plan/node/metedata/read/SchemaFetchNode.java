@@ -26,9 +26,10 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.List;
 
-public class SchemaFetchNode extends PlanNode {
+public class SchemaFetchNode extends SchemaScanNode {
 
   private final PathPatternTree patternTree;
 
@@ -70,4 +71,15 @@ public class SchemaFetchNode extends PlanNode {
     PathPatternTree patternTree = PathPatternTree.deserialize(byteBuffer);
     return new SchemaFetchNode(new PlanNodeId(id), patternTree);
   }
+
+  @Override
+  public void open() throws Exception {}
+
+  @Override
+  public List<String> getOutputColumnNames() {
+    return Collections.singletonList("SchemaTree");
+  }
+
+  @Override
+  public void close() throws Exception {}
 }

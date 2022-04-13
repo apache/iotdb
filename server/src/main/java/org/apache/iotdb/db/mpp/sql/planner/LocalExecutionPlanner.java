@@ -180,7 +180,7 @@ public class LocalExecutionPlanner {
     }
 
     @Override
-    public Operator visitDevicesMetaScan(
+    public Operator visitDevicesSchemaScan(
         DevicesSchemaScanNode node, LocalExecutionPlanContext context) {
       OperatorContext operatorContext =
           context.instanceContext.addOperatorContext(
@@ -198,7 +198,7 @@ public class LocalExecutionPlanner {
     }
 
     @Override
-    public Operator visitMetaMerge(SchemaMergeNode node, LocalExecutionPlanContext context) {
+    public Operator visitSchemaMerge(SchemaMergeNode node, LocalExecutionPlanContext context) {
       List<Operator> children =
           node.getChildren().stream()
               .map(n -> n.accept(this, context))

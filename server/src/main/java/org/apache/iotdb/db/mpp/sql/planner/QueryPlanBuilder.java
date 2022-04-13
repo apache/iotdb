@@ -304,19 +304,19 @@ public class QueryPlanBuilder {
     this.root = timeSeriesMetaScanNode;
   }
 
-  public void planDeviceMetaSource(
+  public void planDeviceSchemaSource(
       PartialPath pathPattern, int limit, int offset, boolean prefixPath, boolean hasSgCol) {
-    DevicesSchemaScanNode devicesMetaScanNode =
+    DevicesSchemaScanNode devicesSchemaScanNode =
         new DevicesSchemaScanNode(
             context.getQueryId().genPlanNodeId(), pathPattern, limit, offset, prefixPath, hasSgCol);
-    this.root = devicesMetaScanNode;
+    this.root = devicesSchemaScanNode;
   }
 
-  public void planMetaMerge(boolean orderByHeat) {
-    SchemaMergeNode metaMergeNode =
+  public void planSchemaMerge(boolean orderByHeat) {
+    SchemaMergeNode schemaMergeNode =
         new SchemaMergeNode(context.getQueryId().genPlanNodeId(), orderByHeat);
-    metaMergeNode.addChild(this.getRoot());
-    this.root = metaMergeNode;
+    schemaMergeNode.addChild(this.getRoot());
+    this.root = schemaMergeNode;
   }
 
   public void planSchemaFetchSource(PathPatternTree patternTree) {
