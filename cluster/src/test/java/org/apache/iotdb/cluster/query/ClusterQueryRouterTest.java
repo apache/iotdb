@@ -60,6 +60,7 @@ import java.util.List;
 import java.util.Map;
 
 import static junit.framework.TestCase.assertEquals;
+import static org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan.getTimeExpression;
 import static org.junit.Assert.assertFalse;
 
 public class ClusterQueryRouterTest extends BaseQueryTest {
@@ -275,6 +276,7 @@ public class ClusterQueryRouterTest extends BaseQueryTest {
       groupByPlan.setSlidingStep(5);
       groupByPlan.setInterval(5);
 
+      groupByPlan.setExpression(getTimeExpression(groupByPlan));
       QueryDataSet dataSet = clusterQueryRouter.groupBy(groupByPlan, queryContext);
 
       Object[][] answers =

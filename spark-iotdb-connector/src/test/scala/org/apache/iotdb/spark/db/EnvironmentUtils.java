@@ -37,7 +37,7 @@ import org.apache.iotdb.db.engine.cache.BloomFilterCache;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.flush.FlushManager;
-import org.apache.iotdb.db.exception.StartupException;
+import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
@@ -122,7 +122,7 @@ public class EnvironmentUtils {
       BloomFilterCache.getInstance().clear();
     }
     // close metadata
-    IoTDB.metaManager.clear();
+    IoTDB.configManager.clear();
     MetricsService.getInstance().stop();
     // delete all directory
     cleanAllDir();
@@ -157,7 +157,7 @@ public class EnvironmentUtils {
 
   /** disable memory control</br> this function should be called before all code in the setup */
   public static void envSetUp() throws StartupException {
-    IoTDB.metaManager.init();
+    IoTDB.configManager.init();
     createAllDir();
     IAuthorizer authorizer;
     try {

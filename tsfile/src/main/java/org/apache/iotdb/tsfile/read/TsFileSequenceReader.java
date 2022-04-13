@@ -48,6 +48,7 @@ import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.controller.CachedChunkLoaderImpl;
 import org.apache.iotdb.tsfile.read.controller.MetadataQuerierByFileImpl;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
@@ -601,7 +602,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     if (metadataIndexNode.getNodeType().equals(MetadataIndexNodeType.LEAF_DEVICE)) {
       deviceList.addAll(
           metadataIndexNode.getChildren().stream()
-              .map(MetadataIndexEntry::getName)
+              .map(x -> x.getName().intern())
               .collect(Collectors.toList()));
       return deviceList;
     }
@@ -1069,6 +1070,23 @@ public class TsFileSequenceReader implements AutoCloseable {
         readChunk(
             metaData.getOffsetOfChunkHeader() + header.getSerializedSize(), header.getDataSize());
     return new Chunk(header, buffer, metaData.getDeleteIntervalList(), metaData.getStatistics());
+  }
+
+  /**
+   * read memory chunk.
+   *
+   * @param chunkCacheKey given key of chunk LRUCache
+   * @return chunk
+   */
+  public Chunk readMemChunk(CachedChunkLoaderImpl.ChunkCacheKey chunkCacheKey) throws IOException {
+    int chunkHeadSize = ChunkHeader.getSerializedSize(chunkCacheKey.getMeasurementUid());
+    ChunkHeader header = readChunkHeader(chunkCacheKey.getOffsetOfChunkHeader(), chunkHeadSize);
+    ByteBuffer buffer =
+        readChunk(
+            chunkCacheKey.getOffsetOfChunkHeader() + header.getSerializedSize(),
+            header.getDataSize());
+    return new Chunk(
+        header, buffer, chunkCacheKey.getDeleteIntervalList(), chunkCacheKey.getStatistics());
   }
 
   /**

@@ -34,9 +34,6 @@ import java.nio.ByteBuffer;
 
 public class FirstValueAggrResult extends AggregateResult {
 
-  // timestamp of current value
-  protected long timestamp = Long.MAX_VALUE;
-
   public FirstValueAggrResult(TSDataType dataType) {
     super(dataType, AggregationType.FIRST_VALUE);
     reset();
@@ -113,6 +110,7 @@ public class FirstValueAggrResult extends AggregateResult {
       return;
     }
     if (valueIterator.hasNext()) {
+      timestamp = timestamps[valueIterator.getCurPos()];
       setValue(valueIterator.next());
     }
   }

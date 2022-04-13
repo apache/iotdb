@@ -37,7 +37,6 @@ import org.apache.iotdb.db.exception.TriggerManagementException;
 import org.apache.iotdb.db.exception.UDFRegistrationException;
 import org.apache.iotdb.db.metadata.idtable.IDTableManager;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
-import org.apache.iotdb.db.newsync.pipedata.queue.PipeDataQueueFactory;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -49,6 +48,7 @@ import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.sync.pipedata.queue.PipeDataQueueFactory;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.rpc.TConfigurationConst;
 import org.apache.iotdb.rpc.TSocketWrapper;
@@ -154,7 +154,7 @@ public class EnvironmentUtils {
       BloomFilterCache.getInstance().clear();
     }
     // close metadata
-    IoTDB.metaManager.clear();
+    IoTDB.configManager.clear();
 
     QueryTimeManager.getInstance().clear();
 
@@ -253,8 +253,10 @@ public class EnvironmentUtils {
     cleanDir(config.getUdfDir());
     // delete tlog
     cleanDir(config.getTriggerDir());
+    // delete mqtt dir
+    cleanDir(config.getMqttDir());
     // delete sync dir
-    cleanDir(config.getNewSyncDir());
+    cleanDir(config.getSyncDir());
     // delete data files
     for (String dataDir : config.getDataDirs()) {
       cleanDir(dataDir);
@@ -272,6 +274,8 @@ public class EnvironmentUtils {
     // we do not start 9091 port in test.
     MetricConfigDescriptor.getInstance().getMetricConfig().setEnableMetric(false);
     IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(Integer.MAX_VALUE);
+    // the default wal buffer size may cause ci failed
+    IoTDBDescriptor.getInstance().getConfig().setWalBufferSize(4 * 1024 * 1024);
     if (daemon == null) {
       daemon = new IoTDB();
     }
@@ -320,7 +324,7 @@ public class EnvironmentUtils {
   public static void restartDaemon() throws Exception {
     shutdownDaemon();
     stopDaemon();
-    IoTDB.metaManager.clear();
+    IoTDB.configManager.clear();
     IDTableManager.getInstance().clear();
     TsFileResourceManager.getInstance().clear();
     reactiveDaemon();
@@ -342,8 +346,8 @@ public class EnvironmentUtils {
     createDir(sgDir);
     // create wal
     createDir(config.getWalDir());
-    // create new sync
-    createDir(config.getNewSyncDir());
+    // create sync
+    createDir(config.getSyncDir());
     // create query
     createDir(config.getQueryDir());
     createDir(TestConstant.OUTPUT_DATA_DIR);

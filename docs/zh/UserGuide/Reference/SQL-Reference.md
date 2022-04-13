@@ -31,7 +31,7 @@ show version
 +---------------+
 |        version|
 +---------------+
-|0.13.0-SNAPSHOT|
+|0.14.0-SNAPSHOT|
 +---------------+
 Total line number = 1
 It costs 0.417s
@@ -352,12 +352,6 @@ Eg: IoTDB > SHOW CHILD PATHS root.ln
 Eg: IoTDB > SHOW CHILD PATHS root.*.wf01
 Eg: IoTDB > SHOW CHILD PATHS root.ln.wf*
 Note: This statement can be used in IoTDB Client and JDBC.
-```
-
-* 为 schema 创建快照
-
-```
-CREATE SNAPSHOT FOR SCHEMA
 ```
 
 ## 数据管理语句

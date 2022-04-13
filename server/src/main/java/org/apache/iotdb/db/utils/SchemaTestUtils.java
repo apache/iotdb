@@ -32,7 +32,7 @@ public class SchemaTestUtils {
   public static MeasurementPath getMeasurementPath(String pathPatternString)
       throws MetadataException {
     PartialPath pathPattern = new PartialPath(pathPatternString);
-    List<MeasurementPath> measurementPaths = IoTDB.metaManager.getMeasurementPaths(pathPattern);
+    List<MeasurementPath> measurementPaths = IoTDB.schemaProcessor.getMeasurementPaths(pathPattern);
     assertFalse(measurementPaths.isEmpty());
     return measurementPaths.get(0);
   }

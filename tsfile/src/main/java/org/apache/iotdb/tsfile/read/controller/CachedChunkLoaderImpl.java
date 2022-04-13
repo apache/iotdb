@@ -21,20 +21,25 @@ package org.apache.iotdb.tsfile.read.controller;
 import org.apache.iotdb.tsfile.common.cache.LRUCache;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 
 import java.io.IOException;
+import java.io.Serializable;
+import java.util.List;
+import java.util.Objects;
 
 /** Read one Chunk and cache it into a LRUCache, only used in tsfile module. */
 public class CachedChunkLoaderImpl implements IChunkLoader {
 
   private static final int DEFAULT_CHUNK_CACHE_SIZE = 1000;
   private TsFileSequenceReader reader;
-  private LRUCache<ChunkMetadata, Chunk> chunkCache;
+  private LRUCache<ChunkCacheKey, Chunk> chunkCache;
 
   public CachedChunkLoaderImpl(TsFileSequenceReader fileSequenceReader) {
     this(fileSequenceReader, DEFAULT_CHUNK_CACHE_SIZE);
@@ -51,19 +56,18 @@ public class CachedChunkLoaderImpl implements IChunkLoader {
     this.reader = fileSequenceReader;
 
     chunkCache =
-        new LRUCache<ChunkMetadata, Chunk>(cacheSize) {
+        new LRUCache<ChunkCacheKey, Chunk>(cacheSize) {
 
           @Override
-          public Chunk loadObjectByKey(ChunkMetadata metaData) throws IOException {
-            return reader.readMemChunk(metaData);
+          protected Chunk loadObjectByKey(ChunkCacheKey chunkCacheKey) throws IOException {
+            return reader.readMemChunk(chunkCacheKey);
           }
         };
   }
 
   @Override
   public Chunk loadChunk(ChunkMetadata chunkMetaData) throws IOException {
-    chunkMetaData.setFilePath(reader.getFileName());
-    Chunk chunk = chunkCache.get(chunkMetaData);
+    Chunk chunk = chunkCache.get(new ChunkCacheKey(chunkMetaData));
     return new Chunk(
         chunk.getHeader(),
         chunk.getData().duplicate(),
@@ -79,8 +83,7 @@ public class CachedChunkLoaderImpl implements IChunkLoader {
   @Override
   public IChunkReader getChunkReader(IChunkMetadata chunkMetaData, Filter timeFilter)
       throws IOException {
-    chunkMetaData.setFilePath(reader.getFileName());
-    Chunk chunk = chunkCache.get((ChunkMetadata) chunkMetaData);
+    Chunk chunk = chunkCache.get(new ChunkCacheKey((ChunkMetadata) chunkMetaData));
     return new ChunkReader(
         new Chunk(
             chunk.getHeader(),
@@ -88,5 +91,53 @@ public class CachedChunkLoaderImpl implements IChunkLoader {
             chunkMetaData.getDeleteIntervalList(),
             chunkMetaData.getStatistics()),
         timeFilter);
+  }
+
+  public static class ChunkCacheKey {
+
+    private final Long offsetOfChunkHeader;
+    private final String measurementUid;
+    private final List<TimeRange> deleteIntervalList;
+    private final Statistics<? extends Serializable> statistics;
+
+    public ChunkCacheKey(ChunkMetadata chunkMetadata) {
+      offsetOfChunkHeader = chunkMetadata.getOffsetOfChunkHeader();
+      measurementUid = chunkMetadata.getMeasurementUid();
+      deleteIntervalList = chunkMetadata.getDeleteIntervalList();
+      statistics = chunkMetadata.getStatistics();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+      ChunkCacheKey that = (ChunkCacheKey) o;
+      return Objects.equals(offsetOfChunkHeader, that.offsetOfChunkHeader);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(offsetOfChunkHeader);
+    }
+
+    public Long getOffsetOfChunkHeader() {
+      return offsetOfChunkHeader;
+    }
+
+    public String getMeasurementUid() {
+      return measurementUid;
+    }
+
+    public List<TimeRange> getDeleteIntervalList() {
+      return deleteIntervalList;
+    }
+
+    public Statistics<? extends Serializable> getStatistics() {
+      return statistics;
+    }
   }
 }

@@ -39,6 +39,8 @@ In the actual scenario, many entities collect the same measurements, that is, th
 
 Currently you can only set one schema template on a specific path. If there's one schema template on one node, it will be forbidden to set any schema template on the ancestors or descendants of this node. An entity will use it's own schema template or ancestor's schema template.
 
+**Please notice that, we strongly recommend not setting templates on the nodes above the storage group to accommodate future updates and collaboration between modules.**
+
 In the following chapters of data definition language, data operation language and Java Native Interface, various operations related to schema template will be introduced one by one.
 
 After applying schema template, the following picture illustrates the new data model of petrol vehicle scenario. All petrol vehicles share the schemas defined in template. There are no redundancy storage of measurement schemas.

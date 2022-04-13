@@ -42,7 +42,7 @@ import org.apache.iotdb.cluster.log.snapshot.FileSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.PartitionedSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.PullSnapshotTask;
 import org.apache.iotdb.cluster.log.snapshot.PullSnapshotTaskDescriptor;
-import org.apache.iotdb.cluster.metadata.CMManager;
+import org.apache.iotdb.cluster.metadata.CSchemaProcessor;
 import org.apache.iotdb.cluster.partition.NodeAdditionResult;
 import org.apache.iotdb.cluster.partition.NodeRemovalResult;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
@@ -71,8 +71,10 @@ import org.apache.iotdb.cluster.server.monitor.Timer;
 import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
 import org.apache.iotdb.cluster.utils.IOUtils;
 import org.apache.iotdb.cluster.utils.StatusUtils;
-import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.service.JMXService;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor.TimePartitionFilter;
@@ -90,8 +92,6 @@ import org.apache.iotdb.db.qp.physical.crud.*;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.LogPlan;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.db.service.JMXService;
-import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
@@ -876,7 +876,7 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
       plan.getPlanFromFailed();
     }
 
-    return ((CMManager) IoTDB.metaManager).createTimeseries(plan);
+    return ((CSchemaProcessor) IoTDB.schemaProcessor).createTimeseries(plan);
   }
 
   /**
@@ -889,7 +889,7 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
     }
 
     Set<Integer> slotSet = new HashSet<>(slots);
-    List<PartialPath> allStorageGroupNames = IoTDB.metaManager.getAllStorageGroupPaths();
+    List<PartialPath> allStorageGroupNames = IoTDB.schemaProcessor.getAllStorageGroupPaths();
     TimePartitionFilter filter =
         (storageGroupName, timePartitionId) -> {
           int slot =

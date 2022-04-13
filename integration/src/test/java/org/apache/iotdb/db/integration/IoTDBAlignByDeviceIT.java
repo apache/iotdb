@@ -467,6 +467,102 @@ public class IoTDBAlignByDeviceIT {
   }
 
   @Test
+  public void selectDifferentSeriesWithValueFilterWithoutCacheTest() {
+    String[] retArray =
+        new String[] {
+          "100,root.vehicle.d0,99,",
+          "101,root.vehicle.d0,99,",
+          "102,root.vehicle.d0,80,",
+          "103,root.vehicle.d0,99,",
+          "104,root.vehicle.d0,90,",
+          "105,root.vehicle.d0,99,",
+        };
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CLEAR CACHE");
+      // single device
+      boolean hasResultSet =
+          statement.execute("select s0 from root.vehicle.d0 where s1 < 200 align by device");
+      Assert.assertTrue(hasResultSet);
+
+      try (ResultSet resultSet = statement.getResultSet()) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        List<Integer> actualIndexToExpectedIndexList =
+            checkHeader(
+                resultSetMetaData,
+                "Time,Device,s0",
+                new int[] {Types.TIMESTAMP, Types.VARCHAR, Types.INTEGER});
+
+        int cnt = 0;
+        while (resultSet.next()) {
+          String[] expectedStrings = retArray[cnt].split(",");
+          StringBuilder expectedBuilder = new StringBuilder();
+          StringBuilder actualBuilder = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            actualBuilder.append(resultSet.getString(i)).append(",");
+            expectedBuilder
+                .append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
+                .append(",");
+          }
+          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
+          cnt++;
+        }
+        Assert.assertEquals(retArray.length, cnt);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void selectDifferentSeriesWithBinaryValueFilterWithoutCacheTest() {
+    String[] retArray =
+        new String[] {
+          "105,root.vehicle.d0,99,",
+        };
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CLEAR CACHE");
+      // single device
+      boolean hasResultSet =
+          statement.execute(
+              "select s0 from root.vehicle.d0 where s1 < 200 and s2 > 10 align by device");
+      Assert.assertTrue(hasResultSet);
+
+      try (ResultSet resultSet = statement.getResultSet()) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        List<Integer> actualIndexToExpectedIndexList =
+            checkHeader(
+                resultSetMetaData,
+                "Time,Device,s0",
+                new int[] {Types.TIMESTAMP, Types.VARCHAR, Types.INTEGER});
+
+        int cnt = 0;
+        while (resultSet.next()) {
+          String[] expectedStrings = retArray[cnt].split(",");
+          StringBuilder expectedBuilder = new StringBuilder();
+          StringBuilder actualBuilder = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            actualBuilder.append(resultSet.getString(i)).append(",");
+            expectedBuilder
+                .append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
+                .append(",");
+          }
+          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
+          cnt++;
+        }
+        Assert.assertEquals(retArray.length, cnt);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
   public void aggregateTest() {
     String[] retArray =
         new String[] {"root.vehicle.d1,2,null,null,null,null,", "root.vehicle.d0,11,11,6,6,1,"};

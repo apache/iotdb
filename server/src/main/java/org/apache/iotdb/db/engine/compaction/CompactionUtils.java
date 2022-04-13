@@ -18,7 +18,8 @@
  */
 package org.apache.iotdb.db.engine.compaction;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.inner.utils.MultiTsFileDeviceIterator;
 import org.apache.iotdb.db.engine.compaction.writer.AbstractCompactionWriter;
 import org.apache.iotdb.db.engine.compaction.writer.CrossSpaceCompactionWriter;
@@ -31,6 +32,8 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
+import org.apache.iotdb.db.metadata.idtable.IDTableManager;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -48,20 +51,18 @@ import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
-import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * This tool can be used to perform inner space or cross space compaction of aligned and non aligned
@@ -70,7 +71,8 @@ import java.util.Set;
  * an inner space compaction.
  */
 public class CompactionUtils {
-  private static final Logger logger = LoggerFactory.getLogger("CompactionUtils");
+  private static final Logger logger =
+      LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
 
   public static void compact(
       List<TsFileResource> seqFileResources,
@@ -84,12 +86,11 @@ public class CompactionUtils {
         .getQueryFileManager()
         .addUsedFilesForQuery(queryId, queryDataSource);
 
-    List<TsFileResource> allResources = new ArrayList<>();
-    allResources.addAll(seqFileResources);
-    allResources.addAll(unseqFileResources);
     try (AbstractCompactionWriter compactionWriter =
-            getCompactionWriter(seqFileResources, unseqFileResources, targetFileResources);
-        MultiTsFileDeviceIterator deviceIterator = new MultiTsFileDeviceIterator(allResources)) {
+        getCompactionWriter(seqFileResources, unseqFileResources, targetFileResources)) {
+      // Do not close device iterator, because tsfile reader is managed by FileReaderManager.
+      MultiTsFileDeviceIterator deviceIterator =
+          new MultiTsFileDeviceIterator(seqFileResources, unseqFileResources);
       while (deviceIterator.hasNextDevice()) {
         checkThreadInterrupted(targetFileResources);
         Pair<String, Boolean> deviceInfo = deviceIterator.nextDevice();
@@ -120,22 +121,35 @@ public class CompactionUtils {
       QueryContext queryContext,
       QueryDataSource queryDataSource)
       throws IOException, MetadataException {
-    MultiTsFileDeviceIterator.AlignedMeasurmentIterator alignedMeasurmentIterator =
+    MultiTsFileDeviceIterator.AlignedMeasurementIterator alignedMeasurementIterator =
         deviceIterator.iterateAlignedSeries(device);
-    List<String> allMeasurments = alignedMeasurmentIterator.getAllMeasurements();
+    Set<String> allMeasurements = alignedMeasurementIterator.getAllMeasurements();
     List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
-    for (String measurement : allMeasurments) {
-      // TODO: use IDTable
-      measurementSchemas.add(
-          IoTDB.metaManager.getSeriesSchema(new PartialPath(device, measurement)));
+    for (String measurement : allMeasurements) {
+      try {
+        if (IoTDBDescriptor.getInstance().getConfig().isEnableIDTable()) {
+          measurementSchemas.add(IDTableManager.getInstance().getSeriesSchema(device, measurement));
+        } else {
+          measurementSchemas.add(
+              IoTDB.schemaProcessor.getSeriesSchema(new PartialPath(device, measurement)));
+        }
+      } catch (PathNotExistException e) {
+        logger.info("A deleted path is skipped: {}", e.getMessage());
+      }
     }
-
+    if (measurementSchemas.isEmpty()) {
+      return;
+    }
+    List<String> existedMeasurements =
+        measurementSchemas.stream()
+            .map(IMeasurementSchema::getMeasurementId)
+            .collect(Collectors.toList());
     IBatchReader dataBatchReader =
         constructReader(
             device,
-            allMeasurments,
+            existedMeasurements,
             measurementSchemas,
-            new HashSet<>(allMeasurments),
+            allMeasurements,
             queryContext,
             queryDataSource,
             true);
@@ -163,15 +177,24 @@ public class CompactionUtils {
     Set<String> allMeasurements = measurementIterator.getAllMeasurements();
     for (String measurement : allMeasurements) {
       List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
-      measurementSchemas.add(
-          IoTDB.metaManager.getSeriesSchema(new PartialPath(device, measurement)));
+      try {
+        if (IoTDBDescriptor.getInstance().getConfig().isEnableIDTable()) {
+          measurementSchemas.add(IDTableManager.getInstance().getSeriesSchema(device, measurement));
+        } else {
+          measurementSchemas.add(
+              IoTDB.schemaProcessor.getSeriesSchema(new PartialPath(device, measurement)));
+        }
+      } catch (PathNotExistException e) {
+        logger.info("A deleted path is skipped: {}", e.getMessage());
+        continue;
+      }
 
       IBatchReader dataBatchReader =
           constructReader(
               device,
               Collections.singletonList(measurement),
               measurementSchemas,
-              new HashSet<>(allMeasurements),
+              allMeasurements,
               queryContext,
               queryDataSource,
               false);
@@ -358,30 +381,20 @@ public class CompactionUtils {
     targetFile.getModFile().close();
   }
 
-  /**
-   * This method is called to recover modifications while an exception occurs during compaction. It
-   * appends new modifications of each selected tsfile to its corresponding old mods file and delete
-   * the compaction mods file.
-   *
-   * @param selectedTsFileResources
-   * @throws IOException
-   */
-  public static void appendNewModificationsToOldModsFile(
-      List<TsFileResource> selectedTsFileResources) throws IOException {
-    for (TsFileResource sourceFile : selectedTsFileResources) {
-      // if there are modifications to this seqFile during compaction
-      if (sourceFile.getCompactionModFile().exists()) {
-        ModificationFile compactionModificationFile =
-            ModificationFile.getCompactionMods(sourceFile);
-        Collection<Modification> newModification = compactionModificationFile.getModifications();
-        compactionModificationFile.close();
-        // write the new modifications to its old modification file
-        try (ModificationFile oldModificationFile = sourceFile.getModFile()) {
-          for (Modification modification : newModification) {
-            oldModificationFile.write(modification);
-          }
-        }
-        FileUtils.delete(new File(ModificationFile.getCompactionMods(sourceFile).getFilePath()));
+  public static void deleteCompactionModsFile(
+      List<TsFileResource> selectedSeqTsFileResourceList,
+      List<TsFileResource> selectedUnSeqTsFileResourceList)
+      throws IOException {
+    for (TsFileResource seqFile : selectedSeqTsFileResourceList) {
+      ModificationFile modificationFile = seqFile.getCompactionModFile();
+      if (modificationFile.exists()) {
+        modificationFile.remove();
+      }
+    }
+    for (TsFileResource unseqFile : selectedUnSeqTsFileResourceList) {
+      ModificationFile modificationFile = unseqFile.getCompactionModFile();
+      if (modificationFile.exists()) {
+        modificationFile.remove();
       }
     }
   }

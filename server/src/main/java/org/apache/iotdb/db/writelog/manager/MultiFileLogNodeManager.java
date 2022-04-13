@@ -18,12 +18,12 @@
  */
 package org.apache.iotdb.db.writelog.manager;
 
-import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.service.IService;
+import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.StartupException;
-import org.apache.iotdb.db.service.IService;
-import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.writelog.node.ExclusiveWriteLogNode;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
 
@@ -149,6 +149,7 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
       } catch (IOException e) {
         logger.error("failed to close {}", node, e);
       }
+      node.release();
     }
     nodeMap.clear();
     logger.info("LogNodeManager closed.");

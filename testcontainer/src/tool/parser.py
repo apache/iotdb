@@ -20,7 +20,7 @@ import os
 import sys
 import re
 
-pattern = re.compile(r'docker\-java\-stream\-+(\d+)')
+pattern = re.compile(r"docker\-java\-stream\-+(\d+)")
 
 
 def getAllLogs(filename):

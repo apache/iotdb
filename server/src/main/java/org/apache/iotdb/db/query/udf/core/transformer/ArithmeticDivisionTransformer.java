@@ -29,7 +29,7 @@ public class ArithmeticDivisionTransformer extends ArithmeticBinaryTransformer {
   }
 
   @Override
-  protected double evaluate(double leftOperand, double rightOperand) {
+  protected double evaluateDouble(double leftOperand, double rightOperand) {
     return leftOperand / rightOperand;
   }
 }

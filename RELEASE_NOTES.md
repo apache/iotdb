@@ -52,7 +52,7 @@
 * [IOTDB-1986] Support select UDF as alisa clauses 
 * [IOTDB-1989] Spark-IoTDB-connector support inserting data
 * [IOTDB-2131] Support previous, linear, constant value fill funtion New fill
-* [ISSUE-3811] Provide a data type column for the last query dataset 
+* [ISSUE-3811] Provide a data type column for the last query dataset
 * add rabbitmq example
 
 ## Improvements
@@ -84,6 +84,7 @@
 * [IOTDB-2176] Limit target chunk size when performing inner space compaction
 * [IOTDB-2193] Reduce unnecessary lock operations of RaftLogManager to improve writing performance 
 * [IOTDB-2195] Control the concurrent query execution thread
+* [IOTDB-2632] Set compaction_write_throughput_mb_per_sec to 16 by default
 * [ISSUE-3445] New compaction strategy and compaction scheduling strategy
 * [ISSUE-3856] refine exception handling logic in commitTo in RaftLogManager
 * [Cluster] No need to shake hands with itself when one node restart 

@@ -77,6 +77,8 @@ public class IOTDBInsertIT {
     sqls.add("SET STORAGE GROUP TO root.t1");
     sqls.add("CREATE TIMESERIES root.t1.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN");
     sqls.add("CREATE TIMESERIES root.t1.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE");
+    sqls.add("CREATE TIMESERIES root.t1.wf01.wt01.f1 WITH DATATYPE=FLOAT, ENCODING=PLAIN");
+    sqls.add("CREATE TIMESERIES root.t1.wf01.wt01.d1 WITH DATATYPE=DOUBLE, ENCODING=PLAIN");
   }
 
   private static void insertData() throws SQLException {
@@ -153,5 +155,40 @@ public class IOTDBInsertIT {
   public void testInsertWithException5() throws SQLException {
     Statement st1 = connection.createStatement();
     st1.execute("insert into root.t1.wf01.wt01(status, temperature) values(true, 20.1, false)");
+  }
+
+  @Test
+  public void testInsertWithDuplicatedMeasurements() {
+    try (Statement st1 = connection.createStatement()) {
+      st1.execute(
+          "insert into root.t1.wf01.wt01(time, s3, status, status) values(100, true, 20.1, 20.2)");
+      Assert.fail();
+    } catch (SQLException e) {
+      Assert.assertEquals("411: Insertion contains duplicated measurement: status", e.getMessage());
+    }
+  }
+
+  @Test
+  public void testInsertInfinityFloatValue() {
+    try (Statement st1 = connection.createStatement()) {
+      st1.execute("insert into root.t1.wf01.wt01(time, f1) values(100, 3.4028235E300)");
+      Assert.fail();
+    } catch (SQLException e) {
+      Assert.assertEquals(
+          "313: failed to insert measurements [f1] caused by The input float value is Infinity",
+          e.getMessage());
+    }
+  }
+
+  @Test
+  public void testInsertInfinityDoubleValue() {
+    try (Statement st1 = connection.createStatement()) {
+      st1.execute("insert into root.t1.wf01.wt01(time, d1) values(100, 3.4028235E6000)");
+      Assert.fail();
+    } catch (SQLException e) {
+      Assert.assertEquals(
+          "313: failed to insert measurements [d1] caused by The input double value is Infinity",
+          e.getMessage());
+    }
   }
 }

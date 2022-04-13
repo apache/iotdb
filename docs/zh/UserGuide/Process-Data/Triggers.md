@@ -39,7 +39,7 @@
 <dependency>
   <groupId>org.apache.iotdb</groupId>
   <artifactId>iotdb-server</artifactId>
-  <version>0.13.0-SNAPSHOT</version>
+  <version>0.14.0-SNAPSHOT</version>
   <scope>provided</scope>
 </dependency>
 ```
@@ -141,7 +141,7 @@ default int[] fire(long[] timestamps, int[] values) throws Exception {
 
 2. 将项目打成 JAR 包，如果您使用 Maven 管理项目，可以参考上述 Maven 项目示例的写法
 
-3. 将 JAR 包放置到目录 `iotdb-server-0.13.0-SNAPSHOT/ext/trigger` （也可以是`iotdb-server-0.13.0-SNAPSHOT/ext/trigger`的子目录）下。
+3. 将 JAR 包放置到目录 `iotdb-server-0.14.0-SNAPSHOT/ext/trigger` （也可以是`iotdb-server-0.14.0-SNAPSHOT/ext/trigger`的子目录）下。
 
    > 您可以通过修改配置文件中的`trigger_root_dir`来指定加载触发器 JAR 包的根路径。
 
@@ -754,7 +754,7 @@ public class TriggerExample implements Trigger {
   CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=DOUBLE, ENCODING=PLAIN;
   ```
 
-* 将 **trigger-example** 中打包好的 JAR（`trigger-example-0.13.0-SNAPSHOT.jar`）放置到目录 `iotdb-server-0.13.0-SNAPSHOT/ext/trigger` （也可以是`iotdb-server-0.13.0-SNAPSHOT/ext/trigger`的子目录）下
+* 将 **trigger-example** 中打包好的 JAR（`trigger-example-0.14.0-SNAPSHOT.jar`）放置到目录 `iotdb-server-0.14.0-SNAPSHOT/ext/trigger` （也可以是`iotdb-server-0.14.0-SNAPSHOT/ext/trigger`的子目录）下
 
   > 您可以通过修改配置文件中的`trigger_root_dir`来指定加载触发器 JAR 包的根路径。
 

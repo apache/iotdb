@@ -34,6 +34,7 @@ from .thrift.rpc.TSIService import (
     TSExecuteStatementReq,
     TSOpenSessionReq,
     TSCreateMultiTimeseriesReq,
+    TSCreateSchemaTemplateReq,
     TSCloseSessionReq,
     TSInsertTabletsReq,
     TSInsertRecordsReq,
@@ -109,7 +110,7 @@ class Session(object):
             username=self.__user,
             password=self.__password,
             zoneId=self.__zone_id,
-            configuration={"version": "V_0_13"}
+            configuration={"version": "V_0_13"},
         )
 
         try:
@@ -192,19 +193,41 @@ class Session(object):
 
         return Session.verify_success(status)
 
-    def create_time_series(self, ts_path, data_type, encoding, compressor):
+    def create_time_series(
+        self,
+        ts_path,
+        data_type,
+        encoding,
+        compressor,
+        props=None,
+        tags=None,
+        attributes=None,
+        alias=None,
+    ):
         """
         create single time series
         :param ts_path: String, complete time series path (starts from root)
         :param data_type: TSDataType, data type for this time series
         :param encoding: TSEncoding, encoding for this time series
         :param compressor: Compressor, compressing type for this time series
+        :param props: Dictionary, properties for time series
+        :param tags: Dictionary, tag map for time series
+        :param attributes: Dictionary, attribute map for time series
+        :param alias: String, measurement alias for time series
         """
         data_type = data_type.value
         encoding = encoding.value
         compressor = compressor.value
         request = TSCreateTimeseriesReq(
-            self.__session_id, ts_path, data_type, encoding, compressor
+            self.__session_id,
+            ts_path,
+            data_type,
+            encoding,
+            compressor,
+            props,
+            tags,
+            attributes,
+            alias,
         )
         status = self.__client.createTimeseries(request)
         logger.debug(
@@ -214,7 +237,7 @@ class Session(object):
         return Session.verify_success(status)
 
     def create_aligned_time_series(
-            self, device_id, measurements_lst, data_type_lst, encoding_lst, compressor_lst
+        self, device_id, measurements_lst, data_type_lst, encoding_lst, compressor_lst
     ):
         """
         create aligned time series
@@ -229,7 +252,12 @@ class Session(object):
         compressor_lst = [compressor.value for compressor in compressor_lst]
 
         request = TSCreateAlignedTimeseriesReq(
-            self.__session_id, device_id, measurements_lst, data_type_lst, encoding_lst, compressor_lst
+            self.__session_id,
+            device_id,
+            measurements_lst,
+            data_type_lst,
+            encoding_lst,
+            compressor_lst,
         )
         status = self.__client.createAlignedTimeseries(request)
         logger.debug(
@@ -241,7 +269,15 @@ class Session(object):
         return Session.verify_success(status)
 
     def create_multi_time_series(
-        self, ts_path_lst, data_type_lst, encoding_lst, compressor_lst
+        self,
+        ts_path_lst,
+        data_type_lst,
+        encoding_lst,
+        compressor_lst,
+        props_lst=None,
+        tags_lst=None,
+        attributes_lst=None,
+        alias_lst=None,
     ):
         """
         create multiple time series
@@ -249,13 +285,25 @@ class Session(object):
         :param data_type_lst: List of TSDataType, data types for time series
         :param encoding_lst: List of TSEncoding, encodings for time series
         :param compressor_lst: List of Compressor, compressing types for time series
+        :param props_lst: List of Props Dictionary, properties for time series
+        :param tags_lst: List of tag Dictionary, tag maps for time series
+        :param attributes_lst: List of attribute Dictionary, attribute maps for time series
+        :param alias_lst: List of alias, measurement alias for time series
         """
         data_type_lst = [data_type.value for data_type in data_type_lst]
         encoding_lst = [encoding.value for encoding in encoding_lst]
         compressor_lst = [compressor.value for compressor in compressor_lst]
 
         request = TSCreateMultiTimeseriesReq(
-            self.__session_id, ts_path_lst, data_type_lst, encoding_lst, compressor_lst
+            self.__session_id,
+            ts_path_lst,
+            data_type_lst,
+            encoding_lst,
+            compressor_lst,
+            props_lst,
+            tags_lst,
+            attributes_lst,
+            alias_lst,
         )
         status = self.__client.createMultiTimeseries(request)
         logger.debug(
@@ -307,7 +355,7 @@ class Session(object):
             logger.exception("data deletion fails because: ", e)
 
     def insert_str_record(self, device_id, timestamp, measurements, string_values):
-        """ special case for inserting one row of String (TEXT) value """
+        """special case for inserting one row of String (TEXT) value"""
         if type(string_values) == str:
             string_values = [string_values]
         if type(measurements) == str:
@@ -325,8 +373,10 @@ class Session(object):
 
         return Session.verify_success(status)
 
-    def insert_aligned_str_record(self, device_id, timestamp, measurements, string_values):
-        """ special case for inserting one row of String (TEXT) value """
+    def insert_aligned_str_record(
+        self, device_id, timestamp, measurements, string_values
+    ):
+        """special case for inserting one row of String (TEXT) value"""
         if type(string_values) == str:
             string_values = [string_values]
         if type(measurements) == str:
@@ -397,7 +447,9 @@ class Session(object):
 
         return Session.verify_success(status)
 
-    def insert_aligned_record(self, device_id, timestamp, measurements, data_types, values):
+    def insert_aligned_record(
+        self, device_id, timestamp, measurements, data_types, values
+    ):
         """
         insert one row of aligned record into database, if you want improve your performance, please use insertTablet method
             for example a record at time=10086 with three measurements is:
@@ -510,7 +562,12 @@ class Session(object):
             )
         values_in_bytes = Session.value_to_bytes(data_types, values)
         return TSInsertRecordReq(
-            self.__session_id, device_id, measurements, values_in_bytes, timestamp, is_aligned
+            self.__session_id,
+            device_id,
+            measurements,
+            values_in_bytes,
+            timestamp,
+            is_aligned,
         )
 
     def gen_insert_str_record_req(
@@ -525,7 +582,13 @@ class Session(object):
         )
 
     def gen_insert_records_req(
-        self, device_ids, times, measurements_lst, types_lst, values_lst, is_aligned=False
+        self,
+        device_ids,
+        times,
+        measurements_lst,
+        types_lst,
+        values_lst,
+        is_aligned=False,
     ):
         if (
             (len(device_ids) != len(measurements_lst))
@@ -549,7 +612,12 @@ class Session(object):
             value_lst.append(values_in_bytes)
 
         return TSInsertRecordsReq(
-            self.__session_id, device_ids, measurements_lst, value_lst, times, is_aligned
+            self.__session_id,
+            device_ids,
+            measurements_lst,
+            value_lst,
+            times,
+            is_aligned,
         )
 
     def insert_tablet(self, tablet):
@@ -609,7 +677,9 @@ class Session(object):
         insert multiple aligned tablets, tablets are independent to each other
         :param tablet_lst: List of tablets
         """
-        status = self.__client.insertTablets(self.gen_insert_tablets_req(tablet_lst, True))
+        status = self.__client.insertTablets(
+            self.gen_insert_tablets_req(tablet_lst, True)
+        )
         logger.debug("insert multiple tablets, message: {}".format(status.message))
 
         return Session.verify_success(status)
@@ -730,7 +800,13 @@ class Session(object):
         return Session.verify_success(status)
 
     def gen_insert_records_of_one_device_request(
-        self, device_id, times_list, measurements_list, values_list, types_list, is_aligned=False
+        self,
+        device_id,
+        times_list,
+        measurements_list,
+        values_list,
+        types_list,
+        is_aligned=False,
     ):
         binary_value_list = []
         for values, data_types, measurements in zip(
@@ -750,7 +826,7 @@ class Session(object):
             measurements_list,
             binary_value_list,
             times_list,
-            is_aligned
+            is_aligned,
         )
 
     def test_insert_tablet(self, tablet):

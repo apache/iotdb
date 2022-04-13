@@ -19,20 +19,14 @@
 
 package org.apache.iotdb.db.engine.compaction.task;
 
-import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.task.RewriteCrossCompactionRecoverTask;
-import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompactionRecoverTask;
-import org.apache.iotdb.db.service.metrics.Metric;
-import org.apache.iotdb.db.service.metrics.MetricsService;
-import org.apache.iotdb.db.service.metrics.Tag;
-import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.Callable;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -42,22 +36,34 @@ import java.util.concurrent.atomic.AtomicInteger;
  * CompactionScheduler when the <i>doCompaction</i> finish.
  */
 public abstract class AbstractCompactionTask implements Callable<Void> {
-  private static final Logger LOGGER = LoggerFactory.getLogger("COMPACTION");
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   protected String fullStorageGroupName;
   protected long timePartition;
   protected final AtomicInteger currentTaskNum;
+  protected final TsFileManager tsFileManager;
+  protected long timeCost = 0L;
+  protected volatile boolean ran = false;
+  protected volatile boolean finished = false;
 
   public AbstractCompactionTask(
-      String fullStorageGroupName, long timePartition, AtomicInteger currentTaskNum) {
+      String fullStorageGroupName,
+      long timePartition,
+      TsFileManager tsFileManager,
+      AtomicInteger currentTaskNum) {
     this.fullStorageGroupName = fullStorageGroupName;
     this.timePartition = timePartition;
+    this.tsFileManager = tsFileManager;
     this.currentTaskNum = currentTaskNum;
   }
+
+  public abstract void setSourceFilesToCompactionCandidate();
 
   protected abstract void doCompaction() throws Exception;
 
   @Override
   public Void call() throws Exception {
+    ran = true;
     long startTime = System.currentTimeMillis();
     currentTaskNum.incrementAndGet();
     try {
@@ -65,23 +71,10 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
     } catch (Exception e) {
       LOGGER.error(e.getMessage(), e);
     } finally {
-      if (!(this instanceof RewriteCrossCompactionRecoverTask)
-          && !(this instanceof SizeTieredCompactionRecoverTask)) {
-        CompactionScheduler.decPartitionCompaction(fullStorageGroupName, timePartition);
-        CompactionTaskManager.getInstance().removeRunningTaskFromList(this);
-      }
       this.currentTaskNum.decrementAndGet();
-    }
-
-    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
-      MetricsService.getInstance()
-          .getMetricManager()
-          .timer(
-              System.currentTimeMillis() - startTime,
-              TimeUnit.MILLISECONDS,
-              Metric.COST_TASK.toString(),
-              Tag.NAME.toString(),
-              "compaction");
+      CompactionTaskManager.getInstance().removeRunningTaskFromList(this);
+      timeCost = System.currentTimeMillis() - startTime;
+      finished = true;
     }
 
     return null;
@@ -111,5 +104,25 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
       return equalsOtherTask((AbstractCompactionTask) other);
     }
     return false;
+  }
+
+  public abstract void resetCompactionCandidateStatusForAllSourceFiles();
+
+  public long getTimeCost() {
+    return timeCost;
+  }
+
+  protected void checkInterrupted() throws InterruptedException {
+    if (Thread.currentThread().isInterrupted()) {
+      throw new InterruptedException(String.format("%s [Compaction] abort", fullStorageGroupName));
+    }
+  }
+
+  public boolean isTaskRan() {
+    return ran;
+  }
+
+  public boolean isTaskFinished() {
+    return finished;
   }
 }

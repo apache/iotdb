@@ -349,9 +349,9 @@ public class TsFileWriter implements AutoCloseable {
 
   private void checkIsTimeseriesExist(Tablet tablet, boolean isAligned)
       throws WriteProcessException {
-    IChunkGroupWriter groupWriter = tryToInitialGroupWriter(tablet.prefixPath, isAligned);
+    IChunkGroupWriter groupWriter = tryToInitialGroupWriter(tablet.deviceId, isAligned);
 
-    Path devicePath = new Path(tablet.prefixPath);
+    Path devicePath = new Path(tablet.deviceId);
     List<MeasurementSchema> schemas = tablet.getSchemas();
     if (schema.containsDevice(devicePath)) {
       checkIsAllMeasurementsInGroup(schema.getSeriesSchema(devicePath), schemas, isAligned);
@@ -509,7 +509,7 @@ public class TsFileWriter implements AutoCloseable {
     // make sure the ChunkGroupWriter for this Tablet exist
     checkIsTimeseriesExist(tablet, false);
     // get corresponding ChunkGroupWriter and write this Tablet
-    recordCount += groupWriters.get(tablet.prefixPath).write(tablet);
+    recordCount += groupWriters.get(tablet.deviceId).write(tablet);
     return checkMemorySizeAndMayFlushChunks();
   }
 
@@ -517,7 +517,7 @@ public class TsFileWriter implements AutoCloseable {
     // make sure the ChunkGroupWriter for this Tablet exist
     checkIsTimeseriesExist(tablet, true);
     // get corresponding ChunkGroupWriter and write this Tablet
-    recordCount += groupWriters.get(tablet.prefixPath).write(tablet);
+    recordCount += groupWriters.get(tablet.deviceId).write(tablet);
     return checkMemorySizeAndMayFlushChunks();
   }
 

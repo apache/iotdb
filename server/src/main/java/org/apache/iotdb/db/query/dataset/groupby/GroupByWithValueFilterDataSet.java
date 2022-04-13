@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.query.dataset.groupby;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
@@ -33,19 +34,22 @@ import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.query.executor.groupby.SlidingWindowGroupByExecutor;
+import org.apache.iotdb.db.query.executor.groupby.SlidingWindowGroupByExecutorFactory;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.ServerTimeGenerator;
 import org.apache.iotdb.db.utils.QueryUtils;
-import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.ValueIterator;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 import org.apache.iotdb.tsfile.utils.Pair;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -56,7 +60,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
+public class GroupByWithValueFilterDataSet extends GroupByTimeEngineDataSet {
+
+  private static final Logger logger = LoggerFactory.getLogger(GroupByWithValueFilterDataSet.class);
 
   private Map<IReaderByTimestamp, List<List<Integer>>> readerToAggrIndexesMap;
 
@@ -68,6 +74,9 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
   protected int timeStampFetchSize;
 
   private long lastTimestamp;
+
+  // aggregate result for current pre-aggregate window
+  private AggregateResult[] preAggregateResults;
 
   protected GroupByWithValueFilterDataSet() {}
 
@@ -122,26 +131,43 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
       // init QueryDataSource Cache
       QueryResourceManager.getInstance()
           .initQueryDataSourceCache(processorToSeriesMap, context, timeFilter);
-      // init non-aligned series reader
-      for (PartialPath path : pathToAggrIndexesMap.keySet()) {
-        IReaderByTimestamp seriesReaderByTimestamp =
-            getReaderByTime(path, groupByTimePlan, context);
-        readerToAggrIndexesMap.put(
-            seriesReaderByTimestamp, Collections.singletonList(pathToAggrIndexesMap.get(path)));
-      }
-      // init aligned series reader
-      for (PartialPath alignedPath : alignedPathToAggrIndexesMap.keySet()) {
-        IReaderByTimestamp seriesReaderByTimestamp =
-            getReaderByTime(alignedPath, groupByTimePlan, context);
-        readerToAggrIndexesMap.put(
-            seriesReaderByTimestamp, alignedPathToAggrIndexesMap.get(alignedPath));
-      }
+    } catch (Exception e) {
+      logger.error("Meet error when init QueryDataSource ", e);
+      throw new QueryProcessException("Meet error when init QueryDataSource.", e);
     } finally {
       StorageEngine.getInstance().mergeUnLock(lockList);
+    }
 
-      // assign null to be friendly for GC
-      pathToAggrIndexesMap = null;
-      alignedPathToAggrIndexesMap = null;
+    // init non-aligned series reader
+    for (PartialPath path : pathToAggrIndexesMap.keySet()) {
+      IReaderByTimestamp seriesReaderByTimestamp = getReaderByTime(path, groupByTimePlan, context);
+      readerToAggrIndexesMap.put(
+          seriesReaderByTimestamp, Collections.singletonList(pathToAggrIndexesMap.get(path)));
+    }
+    // assign null to be friendly for GC
+    pathToAggrIndexesMap = null;
+    // init aligned series reader
+    for (PartialPath alignedPath : alignedPathToAggrIndexesMap.keySet()) {
+      IReaderByTimestamp seriesReaderByTimestamp =
+          getReaderByTime(alignedPath, groupByTimePlan, context);
+      readerToAggrIndexesMap.put(
+          seriesReaderByTimestamp, alignedPathToAggrIndexesMap.get(alignedPath));
+    }
+    // assign null to be friendly for GC
+    alignedPathToAggrIndexesMap = null;
+
+    preAggregateResults = new AggregateResult[paths.size()];
+    for (int i = 0; i < paths.size(); i++) {
+      preAggregateResults[i] =
+          AggregateResultFactory.getAggrResultByName(
+              groupByTimePlan.getDeduplicatedAggregations().get(i),
+              groupByTimePlan.getDeduplicatedDataTypes().get(i),
+              ascending);
+      slidingWindowGroupByExecutors[i] =
+          SlidingWindowGroupByExecutorFactory.getSlidingWindowGroupByExecutor(
+              groupByTimePlan.getDeduplicatedAggregations().get(i),
+              groupByTimePlan.getDeduplicatedDataTypes().get(i),
+              ascending);
     }
   }
 
@@ -164,21 +190,30 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
         ascending);
   }
 
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
-  public RowRecord nextWithoutConstraint() throws IOException {
-    if (!hasCachedTimeInterval) {
-      throw new IOException(
-          "need to call hasNext() before calling next()" + " in GroupByWithValueFilterDataSet.");
-    }
-    hasCachedTimeInterval = false;
+  protected AggregateResult[] getNextAggregateResult() throws IOException {
     curAggregateResults = new AggregateResult[paths.size()];
-    for (int i = 0; i < paths.size(); i++) {
-      curAggregateResults[i] =
-          AggregateResultFactory.getAggrResultByName(
-              groupByTimePlan.getDeduplicatedAggregations().get(i),
-              groupByTimePlan.getDeduplicatedDataTypes().get(i),
-              ascending);
+    for (SlidingWindowGroupByExecutor slidingWindowGroupByExecutor :
+        slidingWindowGroupByExecutors) {
+      slidingWindowGroupByExecutor.setTimeRange(curStartTime, curEndTime);
+    }
+    while (!isEndCal()) {
+      AggregateResult[] aggregations = calcResult(curPreAggrStartTime, curPreAggrEndTime);
+      for (int i = 0; i < aggregations.length; i++) {
+        slidingWindowGroupByExecutors[i].update(aggregations[i].clone());
+      }
+      updatePreAggrInterval();
+    }
+    for (int i = 0; i < curAggregateResults.length; i++) {
+      curAggregateResults[i] = slidingWindowGroupByExecutors[i].getAggregateResult().clone();
+    }
+    return curAggregateResults;
+  }
+
+  public AggregateResult[] calcResult(long curStartTime, long curEndTime) throws IOException {
+    // clear result cache
+    for (AggregateResult result : preAggregateResults) {
+      result.reset();
     }
 
     long[] timestampArray = new long[timeStampFetchSize];
@@ -189,20 +224,21 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
       if (timestamp < curEndTime) {
         if (!groupByTimePlan.isAscending() && timestamp < curStartTime) {
           cachedTimestamps.addFirst(timestamp);
-          return constructRowRecord(curAggregateResults);
+          return preAggregateResults;
         }
         if (timestamp >= curStartTime) {
           timestampArray[timeArrayLength++] = timestamp;
         }
       } else {
         cachedTimestamps.addFirst(timestamp);
-        return constructRowRecord(curAggregateResults);
+        return preAggregateResults;
       }
     }
 
     while (!cachedTimestamps.isEmpty() || timestampGenerator.hasNext()) {
       // construct timestamp array
-      timeArrayLength = constructTimeArrayForOneCal(timestampArray, timeArrayLength);
+      timeArrayLength =
+          constructTimeArrayForOneCal(timestampArray, timeArrayLength, curStartTime, curEndTime);
 
       // cal result using timestamp array
       calcUsingTimestampArray(timestampArray, timeArrayLength);
@@ -219,7 +255,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
       // cal result using timestamp array
       calcUsingTimestampArray(timestampArray, timeArrayLength);
     }
-    return constructRowRecord(curAggregateResults);
+    return preAggregateResults;
   }
 
   private void calcUsingTimestampArray(long[] timestampArray, int timeArrayLength)
@@ -235,7 +271,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
         for (int curIndex = 0; curIndex < subSensorSize; curIndex++) {
           valueIterator.setSubMeasurementIndex(curIndex);
           for (Integer index : subIndexes.get(curIndex)) {
-            curAggregateResults[index].updateResultUsingValues(
+            preAggregateResults[index].updateResultUsingValues(
                 timestampArray, timeArrayLength, valueIterator);
             valueIterator.reset();
           }
@@ -252,7 +288,8 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
    * @return time array size
    */
   @SuppressWarnings("squid:S3776")
-  private int constructTimeArrayForOneCal(long[] timestampArray, int timeArrayLength)
+  private int constructTimeArrayForOneCal(
+      long[] timestampArray, int timeArrayLength, long curStartTime, long curEndTime)
       throws IOException {
     for (int cnt = 1;
         cnt < timeStampFetchSize - 1
@@ -278,19 +315,5 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
       }
     }
     return timeArrayLength;
-  }
-
-  private RowRecord constructRowRecord(AggregateResult[] aggregateResultList) {
-    RowRecord record;
-    if (leftCRightO) {
-      record = new RowRecord(curStartTime);
-    } else {
-      record = new RowRecord(curEndTime - 1);
-    }
-    for (int i = 0; i < paths.size(); i++) {
-      AggregateResult aggregateResult = aggregateResultList[i];
-      record.addField(aggregateResult.getResult(), aggregateResult.getResultDataType());
-    }
-    return record;
   }
 }

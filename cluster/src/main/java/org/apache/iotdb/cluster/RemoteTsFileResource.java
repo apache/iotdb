@@ -23,6 +23,7 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.utils.NodeSerializeUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.utils.SerializeUtils;
 
 import java.io.DataOutputStream;
@@ -46,14 +47,14 @@ public class RemoteTsFileResource extends TsFileResource {
   private boolean isPlanRangeUnique = false;
 
   public RemoteTsFileResource() {
-    setClosed(true);
+    setStatus(TsFileResourceStatus.CLOSED);
     this.timeIndex = IoTDBDescriptor.getInstance().getConfig().getTimeIndexLevel().getTimeIndex();
   }
 
   private RemoteTsFileResource(TsFileResource other) throws IOException {
     super(other);
     withModification = new File(getModFile().getFilePath()).exists();
-    setClosed(true);
+    setStatus(TsFileResourceStatus.CLOSED);
   }
 
   public RemoteTsFileResource(TsFileResource other, Node source) throws IOException {

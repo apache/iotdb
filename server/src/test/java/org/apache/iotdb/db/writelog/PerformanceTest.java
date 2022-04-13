@@ -149,28 +149,28 @@ public class PerformanceTest {
     tempProcessorStore.createNewFile();
 
     try {
-      IoTDB.metaManager.setStorageGroup(new PartialPath("root.logTestDevice"));
+      IoTDB.schemaProcessor.setStorageGroup(new PartialPath("root.logTestDevice"));
     } catch (MetadataException ignored) {
     }
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.logTestDevice.s1"),
         TSDataType.DOUBLE,
         TSEncoding.PLAIN,
         TSFileDescriptor.getInstance().getConfig().getCompressor(),
         Collections.emptyMap());
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.logTestDevice.s2"),
         TSDataType.INT32,
         TSEncoding.PLAIN,
         TSFileDescriptor.getInstance().getConfig().getCompressor(),
         Collections.emptyMap());
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.logTestDevice.s3"),
         TSDataType.TEXT,
         TSEncoding.PLAIN,
         TSFileDescriptor.getInstance().getConfig().getCompressor(),
         Collections.emptyMap());
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.logTestDevice.s4"),
         TSDataType.BOOLEAN,
         TSEncoding.PLAIN,

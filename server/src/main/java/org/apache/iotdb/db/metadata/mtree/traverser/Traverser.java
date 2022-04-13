@@ -23,26 +23,36 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.Template;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
 import java.util.ArrayDeque;
+import java.util.Arrays;
 import java.util.Deque;
 import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.regex.Pattern;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
-import static org.apache.iotdb.db.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 
 /**
  * This class defines the main traversal framework and declares some methods for result process
- * extension. This class could be extended to implement concrete tasks. Currently, the tasks are
- * classified into two type: 1. counter: to count the node num or measurement num that matches the
- * path pattern 2. collector: to collect customized results of the matched node or measurement
+ * extension. This class could be extended to implement concrete tasks. <br>
+ * Currently, the tasks are classified into two type:
+ *
+ * <ol>
+ *   <li>counter: to count the node num or measurement num that matches the path pattern
+ *   <li>collector: to collect customized results of the matched node or measurement
+ * </ol>
  */
 public abstract class Traverser {
 
   protected IMNode startNode;
   protected String[] nodes;
+  protected int startIndex;
+  protected int startLevel;
+  protected boolean isPrefixStart = false;
 
   // to construct full path or find mounted node on MTree when traverse into template
   protected Deque<IMNode> traverseContext;
@@ -53,15 +63,64 @@ public abstract class Traverser {
   // default false means fullPath pattern match
   protected boolean isPrefixMatch = false;
 
+  /**
+   * To traverse subtree under root.sg, e.g., init Traverser(root, "root.sg.**")
+   *
+   * @param startNode denote which tree to traverse by passing its root
+   * @param path use wildcard to specify which part to traverse
+   * @throws MetadataException
+   */
   public Traverser(IMNode startNode, PartialPath path) throws MetadataException {
     String[] nodes = path.getNodes();
-    if (nodes.length == 0 || !nodes[0].equals(startNode.getName())) {
+    if (nodes.length == 0 || !nodes[0].equals(PATH_ROOT)) {
       throw new IllegalPathException(
           path.getFullPath(), path.getFullPath() + " doesn't start with " + startNode.getName());
     }
     this.startNode = startNode;
     this.nodes = nodes;
     this.traverseContext = new ArrayDeque<>();
+    initStartIndexAndLevel(path);
+  }
+
+  /**
+   * The traverser may start traversing from a storageGroupMNode, which is an InternalMNode of the
+   * whole MTree.
+   */
+  private void initStartIndexAndLevel(PartialPath path) throws MetadataException {
+    IMNode parent = startNode.getParent();
+    Deque<IMNode> ancestors = new ArrayDeque<>();
+    ancestors.push(startNode);
+
+    startLevel = 0;
+    while (parent != null) {
+      startLevel++;
+      traverseContext.addLast(parent);
+
+      ancestors.push(parent);
+      parent = parent.getParent();
+    }
+
+    IMNode cur;
+    // given root.a.sg, accept path starting with prefix like root.a.sg, root.*.*, root.**,
+    // root.a.**, which means the prefix matches the startNode's fullPath
+    for (startIndex = 0; startIndex <= startLevel && startIndex < nodes.length; startIndex++) {
+      cur = ancestors.pop();
+      if (nodes[startIndex].equals(MULTI_LEVEL_PATH_WILDCARD)) {
+        return;
+      } else if (!nodes[startIndex].equals(cur.getName())
+          && !nodes[startIndex].contains(ONE_LEVEL_PATH_WILDCARD)) {
+        throw new IllegalPathException(
+            path.getFullPath(), path.getFullPath() + " doesn't start with " + cur.getFullPath());
+      }
+    }
+
+    if (startIndex <= startLevel) {
+      if (!nodes[startIndex - 1].equals(MULTI_LEVEL_PATH_WILDCARD)) {
+        isPrefixStart = true;
+      }
+    } else {
+      startIndex--;
+    }
   }
 
   /**
@@ -69,7 +128,10 @@ public abstract class Traverser {
    * overriding or implement concerned methods.
    */
   public void traverse() throws MetadataException {
-    traverse(startNode, 0, 0);
+    if (isPrefixStart && !isPrefixMatch) {
+      return;
+    }
+    traverse(startNode, startIndex, startLevel);
   }
 
   /**
@@ -260,22 +322,31 @@ public abstract class Traverser {
    * @param currentNode the node need to get the full path of
    * @return full path from traverse start node to the current node
    */
-  protected PartialPath getCurrentPartialPath(IMNode currentNode) throws IllegalPathException {
+  protected PartialPath getCurrentPartialPath(IMNode currentNode) {
+    return new PartialPath(getCurrentPathNodes(currentNode));
+  }
+
+  protected String[] getCurrentPathNodes(IMNode currentNode) {
     Iterator<IMNode> nodes = traverseContext.descendingIterator();
-    StringBuilder builder = new StringBuilder(nodes.next().getName());
+    List<String> nodeNames = new LinkedList<>();
+    if (nodes.hasNext()) {
+      nodeNames.addAll(Arrays.asList(nodes.next().getPartialPath().getNodes()));
+    }
+
     while (nodes.hasNext()) {
-      builder.append(TsFileConstant.PATH_SEPARATOR);
-      builder.append(nodes.next().getName());
+      nodeNames.add(nodes.next().getName());
     }
-    if (builder.length() != 0) {
-      builder.append(TsFileConstant.PATH_SEPARATOR);
-    }
-    builder.append(currentNode.getName());
-    return new PartialPath(builder.toString());
+
+    nodeNames.add(currentNode.getName());
+
+    return nodeNames.toArray(new String[0]);
   }
 
   /** @return the storage group node in the traverse path */
-  protected IMNode getStorageGroupNodeInTraversePath() {
+  protected IMNode getStorageGroupNodeInTraversePath(IMNode currentNode) {
+    if (currentNode.isStorageGroup()) {
+      return currentNode;
+    }
     Iterator<IMNode> nodes = traverseContext.iterator();
     while (nodes.hasNext()) {
       IMNode node = nodes.next();

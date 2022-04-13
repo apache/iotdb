@@ -22,18 +22,18 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.exception.sync.PipeServerException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.newsync.pipedata.DeletionPipeData;
-import org.apache.iotdb.db.newsync.pipedata.PipeData;
-import org.apache.iotdb.db.newsync.pipedata.SchemaPipeData;
-import org.apache.iotdb.db.newsync.pipedata.TsFilePipeData;
-import org.apache.iotdb.db.newsync.receiver.ReceiverService;
-import org.apache.iotdb.db.newsync.sender.pipe.Pipe;
-import org.apache.iotdb.db.newsync.sender.pipe.Pipe.PipeStatus;
-import org.apache.iotdb.db.newsync.sender.pipe.TsFilePipe;
-import org.apache.iotdb.db.newsync.transport.client.TransportClient;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.*;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
+import org.apache.iotdb.db.sync.pipedata.DeletionPipeData;
+import org.apache.iotdb.db.sync.pipedata.PipeData;
+import org.apache.iotdb.db.sync.pipedata.SchemaPipeData;
+import org.apache.iotdb.db.sync.pipedata.TsFilePipeData;
+import org.apache.iotdb.db.sync.receiver.ReceiverService;
+import org.apache.iotdb.db.sync.sender.pipe.Pipe;
+import org.apache.iotdb.db.sync.sender.pipe.Pipe.PipeStatus;
+import org.apache.iotdb.db.sync.sender.pipe.TsFilePipe;
+import org.apache.iotdb.db.sync.transport.client.TransportClient;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.service.transport.thrift.RequestType;
@@ -130,9 +130,9 @@ public class IoTDBSyncReceiverIT {
   public void testStopPipeServerCheck() {
     logger.info("testStopPipeServerCheck");
     ReceiverService.getInstance()
-        .recMsg(new SyncRequest(RequestType.CREATE, pipeName1, remoteIp1, createdTime1));
+        .receiveMsg(new SyncRequest(RequestType.CREATE, pipeName1, remoteIp1, createdTime1));
     ReceiverService.getInstance()
-        .recMsg(new SyncRequest(RequestType.START, pipeName1, remoteIp1, createdTime1));
+        .receiveMsg(new SyncRequest(RequestType.START, pipeName1, remoteIp1, createdTime1));
     try {
       ReceiverService.getInstance().stopPipeServer();
       Assert.fail("Should not stop pipe server");
@@ -140,7 +140,7 @@ public class IoTDBSyncReceiverIT {
       // nothing
     }
     ReceiverService.getInstance()
-        .recMsg(new SyncRequest(RequestType.DROP, pipeName1, remoteIp1, createdTime1));
+        .receiveMsg(new SyncRequest(RequestType.DROP, pipeName1, remoteIp1, createdTime1));
   }
 
   @Test
@@ -262,6 +262,8 @@ public class IoTDBSyncReceiverIT {
                   CompressionType.SNAPPY,
                   CompressionType.SNAPPY,
                   CompressionType.SNAPPY),
+              null,
+              null,
               null));
       planList.add(new SetStorageGroupPlan(new PartialPath("root.sg1")));
       for (PhysicalPlan plan : planList) {
@@ -323,7 +325,8 @@ public class IoTDBSyncReceiverIT {
       // check heartbeat
       SyncResponse response1 =
           ReceiverService.getInstance()
-              .recMsg(new SyncRequest(RequestType.HEARTBEAT, pipeName1, remoteIp1, createdTime1));
+              .receiveMsg(
+                  new SyncRequest(RequestType.HEARTBEAT, pipeName1, remoteIp1, createdTime1));
       Assert.assertEquals(ResponseType.WARN, response1.type);
 
       // 5. restart pipe
@@ -333,7 +336,8 @@ public class IoTDBSyncReceiverIT {
       // check heartbeat
       SyncResponse response2 =
           ReceiverService.getInstance()
-              .recMsg(new SyncRequest(RequestType.HEARTBEAT, pipeName1, remoteIp1, createdTime1));
+              .receiveMsg(
+                  new SyncRequest(RequestType.HEARTBEAT, pipeName1, remoteIp1, createdTime1));
       Assert.assertEquals(ResponseType.INFO, response2.type);
 
       // 6. drop pipe

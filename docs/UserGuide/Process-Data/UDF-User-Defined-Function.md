@@ -48,7 +48,7 @@ If you use [Maven](http://search.maven.org/), you can search for the development
 <dependency>
   <groupId>org.apache.iotdb</groupId>
   <artifactId>iotdb-server</artifactId>
-  <version>0.13.0-SNAPSHOT</version>
+  <version>0.14.0-SNAPSHOT</version>
   <scope>provided</scope>
 </dependency>
 ```
@@ -388,7 +388,7 @@ The process of registering a UDF in IoTDB is as follows:
 
 1. Implement a complete UDF class, assuming the full class name of this class is `org.apache.iotdb.udf.ExampleUDTF`.
 2. Package your project into a JAR. If you use Maven to manage your project, you can refer to the Maven project example above.
-3. Place the JAR package in the directory `iotdb-server-0.13.0-SNAPSHOT-all-bin/ext/udf` or in a subdirectory of `iotdb-server-0.13.0-SNAPSHOT-all-bin/ext/udf`.
+3. Place the JAR package in the directory `iotdb-server-0.14.0-SNAPSHOT-all-bin/ext/udf` or in a subdirectory of `iotdb-server-0.14.0-SNAPSHOT-all-bin/ext/udf`.
    **Note that when deploying a cluster, you need to ensure that there is a corresponding JAR package in the UDF JAR package path of each node. **
    
     > You can specify the root path for the UDF to load the Jar by modifying the 'udf_root_dir' in the configuration file.
@@ -578,7 +578,7 @@ When you have prepared the UDF source code, test cases, and instructions, you ar
 
 ## Known Implementation UDF Libraries
 
-+ [IoTDB-Quality](https://thulab.github.io/iotdb-quality), a UDF library about data quality, including data profiling, data quality evalution and data repairing, etc.
++ [IoTDB-Quality](https://iotdb.apache.org/UserGuide/Master/UDF-Library/Quick-Start.html ), a UDF library about data quality, including data profiling, data quality evalution and data repairing, etc.
 
 
 ## Q&A
@@ -588,7 +588,7 @@ Q1: How to modify the registered UDF?
 A1: Assume that the name of the UDF is `example` and the full class name is `org.apache.iotdb.udf.ExampleUDTF`, which is introduced by `example.jar`.
 
 1. Unload the registered function by executing `DROP FUNCTION example`.
-2. Delete `example.jar` under `iotdb-server-0.13.0-SNAPSHOT-all-bin/ext/udf`.
+2. Delete `example.jar` under `iotdb-server-0.14.0-SNAPSHOT-all-bin/ext/udf`.
 3. Modify the logic in `org.apache.iotdb.udf.ExampleUDTF` and repackage it. The name of the JAR package can still be `example.jar`.
-4. Upload the new JAR package to `iotdb-server-0.13.0-SNAPSHOT-all-bin/ext/udf`.
+4. Upload the new JAR package to `iotdb-server-0.14.0-SNAPSHOT-all-bin/ext/udf`.
 5. Load the new UDF by executing `CREATE FUNCTION example AS "org.apache.iotdb.udf.ExampleUDTF"`.

@@ -19,4 +19,4 @@
 
 -->
 
-This modules maintains all influxdb RPC interfaces among servers for the influxdb protocol module.
+This module maintains all influxdb RPC interfaces among servers for the influxdb protocol module.

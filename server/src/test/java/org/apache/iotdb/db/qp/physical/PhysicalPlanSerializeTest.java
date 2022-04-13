@@ -199,6 +199,8 @@ public class PhysicalPlanSerializeTest {
             Arrays.asList(TSDataType.DOUBLE, TSDataType.INT32),
             Arrays.asList(TSEncoding.RLE, TSEncoding.RLE),
             Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY),
+            null,
+            null,
             null);
 
     PhysicalPlan result = testTwoSerializeMethodAndDeserialize(createAlignedTimeSeriesPlan);

@@ -18,209 +18,475 @@
  */
 package org.apache.iotdb.db.query.dataset.groupby;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.Planner;
-import org.apache.iotdb.db.qp.executor.IPlanExecutor;
-import org.apache.iotdb.db.qp.executor.PlanExecutor;
-import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
-import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
+import org.apache.iotdb.db.query.aggregation.impl.CountAggrResult;
+import org.apache.iotdb.tsfile.utils.Pair;
 
-import org.junit.After;
-import org.junit.Before;
+import org.junit.Assert;
 import org.junit.Test;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import java.io.IOException;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.TimeZone;
 
 public class GroupByTimeDataSetTest {
 
-  private IPlanExecutor queryExecutor = new PlanExecutor();
-  private Planner processor = new Planner();
-  private String[] sqls = {
-    "SET STORAGE GROUP TO root.vehicle",
-    "SET STORAGE GROUP TO root.test",
-    "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
-    "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=TEXT, ENCODING=PLAIN",
-    "CREATE TIMESERIES root.test.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
-    "CREATE TIMESERIES root.test.d0.s1 WITH DATATYPE=TEXT, ENCODING=PLAIN",
-    "CREATE TIMESERIES root.test.d1.\"s3+xy\" WITH DATATYPE=TEXT, ENCODING=PLAIN",
-    "insert into root.vehicle.d0(timestamp,s0) values(10,100)",
-    "insert into root.vehicle.d0(timestamp,s0,s1) values(12,101,'102')",
-    "insert into root.vehicle.d0(timestamp,s1) values(19,'103')",
-    "insert into root.vehicle.d0(timestamp,s0) values(20,1000)",
-    "insert into root.vehicle.d0(timestamp,s0,s1) values(22,1001,'1002')",
-    "insert into root.vehicle.d0(timestamp,s1) values(29,'1003')",
-    "insert into root.test.d0(timestamp,s0) values(10,106)",
-    "insert into root.test.d0(timestamp,s0,s1) values(14,107,'108')",
-    "insert into root.test.d0(timestamp,s1) values(16,'109')",
-    "insert into root.test.d0(timestamp,s0) values(30,1006)",
-    "insert into root.test.d0(timestamp,s0,s1) values(34,1007,'1008')",
-    "insert into root.test.d0(timestamp,s1) values(36,'1090')",
-    "insert into root.vehicle.d0(timestamp,s0) values(6,120)",
-    "insert into root.vehicle.d0(timestamp,s0,s1) values(38,121,'122')",
-    "insert into root.vehicle.d0(timestamp,s1) values(9,'123')",
-    "insert into root.vehicle.d0(timestamp,s0) values(16,128)",
-    "insert into root.vehicle.d0(timestamp,s0,s1) values(18,189,'198')",
-    "insert into root.vehicle.d0(timestamp,s1) values(99,'1234')",
-    "insert into root.test.d0(timestamp,s0) values(15,126)",
-    "insert into root.test.d0(timestamp,s0,s1) values(8,127,'128')",
-    "insert into root.test.d0(timestamp,s1) values(20,'129')",
-    "insert into root.test.d0(timestamp,s0) values(150,426)",
-    "insert into root.test.d0(timestamp,s0,s1) values(80,427,'528')",
-    "insert into root.test.d0(timestamp,s1) values(2,'1209')",
-    "insert into root.vehicle.d0(timestamp,s0) values(209,130)",
-    "insert into root.vehicle.d0(timestamp,s0,s1) values(206,131,'132')",
-    "insert into root.vehicle.d0(timestamp,s1) values(70,'33')",
-    "insert into root.test.d0(timestamp,s0) values(19,136)",
-    "insert into root.test.d0(timestamp,s0,s1) values(7,137,'138')",
-    "insert into root.test.d0(timestamp,s1) values(30,'139')",
-    "insert into root.test.d0(timestamp,s0) values(1900,1316)",
-    "insert into root.test.d0(timestamp,s0,s1) values(700,1307,'1038')",
-    "insert into root.test.d0(timestamp,s1) values(3000,'1309')",
-    "insert into root.test.d1(timestamp, \"s3+xy\") values(10, 'text')"
-  };
+  /** Sliding step > unit && last time interval = unit */
+  @Test
+  public void calNextTimePartitionTest1() throws IOException {
+    long queryId = 1000L;
+    long unit = 3;
+    long slidingStep = 5;
+    long startTime = 8;
+    long endTime = 8 + 4 * 5 + 3;
 
-  static {
-    IoTDB.metaManager.init();
-  }
+    long[] startTimeArray = {8, 13, 18, 23, 28};
+    long[] endTimeArray = {11, 16, 21, 26, 31};
 
-  public GroupByTimeDataSetTest() throws QueryProcessException {}
+    GroupByTimePlan groupByTimePlan = new GroupByTimePlan();
+    groupByTimePlan.setInterval(unit);
+    groupByTimePlan.setSlidingStep(slidingStep);
+    groupByTimePlan.setStartTime(startTime);
+    groupByTimePlan.setEndTime(endTime);
 
-  @Before
-  public void setUp() throws Exception {
-    EnvironmentUtils.envSetUp();
-    for (String sql : sqls) {
-      queryExecutor.processNonQuery(processor.parseSQLToPhysicalPlan(sql));
+    GroupByTimeDataSet groupByEngine = new GroupByWithValueFilterDataSet(queryId, groupByTimePlan);
+    int cnt = 0;
+    while (groupByEngine.hasNext()) {
+      Pair pair = groupByEngine.nextTimePartition();
+      Assert.assertEquals(startTimeArray[cnt], pair.left);
+      Assert.assertEquals(endTimeArray[cnt], pair.right);
+      cnt++;
     }
+    Assert.assertEquals(startTimeArray.length, cnt);
   }
 
-  @After
-  public void tearDown() throws Exception {
-    EnvironmentUtils.cleanEnv();
+  /** Sliding step = unit && last time interval = unit */
+  @Test
+  public void calNextTimePartitionTest2() throws IOException {
+    long queryId = 1000L;
+    long unit = 3;
+    long slidingStep = 3;
+    long startTime = 8;
+    long endTime = 8 + 5 * 3;
+
+    long[] startTimeArray = {8, 11, 14, 17, 20};
+    long[] endTimeArray = {11, 14, 17, 20, 23};
+
+    GroupByTimePlan groupByTimePlan = new GroupByTimePlan();
+    groupByTimePlan.setInterval(unit);
+    groupByTimePlan.setSlidingStep(slidingStep);
+    groupByTimePlan.setStartTime(startTime);
+    groupByTimePlan.setEndTime(endTime);
+    GroupByTimeDataSet groupByEngine = new GroupByWithValueFilterDataSet(queryId, groupByTimePlan);
+    int cnt = 0;
+    while (groupByEngine.hasNext()) {
+      Pair pair = groupByEngine.nextTimePartition();
+      Assert.assertEquals(startTimeArray[cnt], pair.left);
+      Assert.assertEquals(endTimeArray[cnt], pair.right);
+      cnt++;
+    }
+    Assert.assertEquals(startTimeArray.length, cnt);
+  }
+
+  /** Sliding step = unit && last time interval < unit */
+  @Test
+  public void calNextTimePartitionTest3() throws IOException {
+    long queryId = 1000L;
+    long unit = 3;
+    long slidingStep = 3;
+    long startTime = 8;
+    long endTime = 8 + 5 * 3 + 2;
+
+    long[] startTimeArray = {8, 11, 14, 17, 20, 23};
+    long[] endTimeArray = {11, 14, 17, 20, 23, 25};
+
+    GroupByTimePlan groupByTimePlan = new GroupByTimePlan();
+    groupByTimePlan.setInterval(unit);
+    groupByTimePlan.setSlidingStep(slidingStep);
+    groupByTimePlan.setStartTime(startTime);
+    groupByTimePlan.setEndTime(endTime);
+    GroupByTimeDataSet groupByEngine = new GroupByWithValueFilterDataSet(queryId, groupByTimePlan);
+    int cnt = 0;
+    while (groupByEngine.hasNext()) {
+      Pair pair = groupByEngine.nextTimePartition();
+      Assert.assertEquals(startTimeArray[cnt], pair.left);
+      Assert.assertEquals(endTimeArray[cnt], pair.right);
+      cnt++;
+    }
+    Assert.assertEquals(startTimeArray.length, cnt);
+  }
+
+  /** Desc query && sliding step > unit && last time interval = unit */
+  @Test
+  public void calNextTimePartitionDescTest1() throws IOException {
+    long queryId = 1000L;
+    long unit = 3;
+    long slidingStep = 5;
+    long startTime = 8;
+    long endTime = 8 + 4 * 5 + 3;
+
+    long[] startTimeArray = {28, 23, 18, 13, 8};
+    long[] endTimeArray = {31, 26, 21, 16, 11};
+
+    GroupByTimePlan groupByTimePlan = new GroupByTimePlan();
+    groupByTimePlan.setAscending(false);
+    groupByTimePlan.setInterval(unit);
+    groupByTimePlan.setSlidingStep(slidingStep);
+    groupByTimePlan.setStartTime(startTime);
+    groupByTimePlan.setEndTime(endTime);
+
+    GroupByTimeDataSet groupByEngine = new GroupByWithValueFilterDataSet(queryId, groupByTimePlan);
+    int cnt = 0;
+    while (groupByEngine.hasNext()) {
+      Pair pair = groupByEngine.nextTimePartition();
+      Assert.assertEquals(startTimeArray[cnt], pair.left);
+      Assert.assertEquals(endTimeArray[cnt], pair.right);
+      cnt++;
+    }
+    Assert.assertEquals(startTimeArray.length, cnt);
+  }
+
+  /** Desc query && Sliding step = unit && last time interval = unit */
+  @Test
+  public void calNextTimePartitionDescTest2() throws IOException {
+    long queryId = 1000L;
+    long unit = 3;
+    long slidingStep = 3;
+    long startTime = 8;
+    long endTime = 8 + 5 * 3;
+
+    long[] startTimeArray = {20, 17, 14, 11, 8};
+    long[] endTimeArray = {23, 20, 17, 14, 11};
+
+    GroupByTimePlan groupByTimePlan = new GroupByTimePlan();
+    groupByTimePlan.setAscending(false);
+    groupByTimePlan.setInterval(unit);
+    groupByTimePlan.setSlidingStep(slidingStep);
+    groupByTimePlan.setStartTime(startTime);
+    groupByTimePlan.setEndTime(endTime);
+    GroupByTimeDataSet groupByEngine = new GroupByWithValueFilterDataSet(queryId, groupByTimePlan);
+    int cnt = 0;
+    while (groupByEngine.hasNext()) {
+      Pair pair = groupByEngine.nextTimePartition();
+      Assert.assertEquals(startTimeArray[cnt], pair.left);
+      Assert.assertEquals(endTimeArray[cnt], pair.right);
+      cnt++;
+    }
+    Assert.assertEquals(startTimeArray.length, cnt);
+  }
+
+  /** Desc query && Sliding step = unit && last time interval < unit */
+  @Test
+  public void calNextTimePartitionDescTest3() throws IOException {
+    long queryId = 1000L;
+    long unit = 3;
+    long slidingStep = 3;
+    long startTime = 8;
+    long endTime = 8 + 5 * 3 + 2;
+
+    long[] startTimeArray = {23, 20, 17, 14, 11, 8};
+    long[] endTimeArray = {25, 23, 20, 17, 14, 11};
+
+    GroupByTimePlan groupByTimePlan = new GroupByTimePlan();
+    groupByTimePlan.setAscending(false);
+    groupByTimePlan.setInterval(unit);
+    groupByTimePlan.setSlidingStep(slidingStep);
+    groupByTimePlan.setStartTime(startTime);
+    groupByTimePlan.setEndTime(endTime);
+
+    ArrayList<Object> aggrList = new ArrayList<>();
+    aggrList.add(new CountAggrResult());
+    GroupByTimeDataSet groupByEngine = new GroupByWithValueFilterDataSet(queryId, groupByTimePlan);
+    int cnt = 0;
+    while (groupByEngine.hasNext()) {
+      Pair pair = groupByEngine.nextTimePartition();
+      Assert.assertTrue(cnt < startTimeArray.length);
+      Assert.assertEquals(startTimeArray[cnt], pair.left);
+      Assert.assertEquals(endTimeArray[cnt], pair.right);
+      cnt++;
+    }
+    Assert.assertEquals(startTimeArray.length, cnt);
   }
 
   @Test
-  public void testGroupByTimeAndLevel() throws Exception {
-    // with time interval
-    QueryPlan queryPlan =
-        (QueryPlan)
-            processor.parseSQLToPhysicalPlan(
-                "select count(s1) from root.test.* group by ([0,20), 1ms), level=1");
-    QueryDataSet dataSet =
-        queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+  public void testGroupByMonth1() throws IOException {
+    long queryId = 1000L;
+    // interval = 1mo
+    long unit = 1 * 30 * 86400_000L;
+    // sliding step = 2mo
+    long slidingStep = 2 * 30 * 86400_000L;
+    // 11/01/2019:19:57:18
+    long startTime = 1572609438000L;
+    // 04/01/2020:19:57:18
+    long endTime = 1585742238000L;
 
-    assertTrue(dataSet.hasNext());
-    assertEquals("0\t0", dataSet.next().toString());
-    assertTrue(dataSet.hasNext());
-    assertEquals("1\t0", dataSet.next().toString());
-    assertTrue(dataSet.hasNext());
-    assertEquals("2\t1", dataSet.next().toString());
+    DateFormat df = new SimpleDateFormat("MM/dd/yyyy:HH:mm:ss");
+    df.setTimeZone(TimeZone.getTimeZone("GMT+8:00"));
+    String[] startTimeArray = {"11/01/2019:19:57:18", "01/01/2020:19:57:18", "03/01/2020:19:57:18"};
+    String[] endTimeArray = {"12/01/2019:19:57:18", "02/01/2020:19:57:18", "04/01/2020:19:57:18"};
 
-    queryPlan =
-        (QueryPlan)
-            processor.parseSQLToPhysicalPlan(
-                "select count(s1) from root.test.* group by ([0,20), 1ms), level=0");
-    dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+    GroupByTimePlan groupByTimePlan = new GroupByTimePlan();
+    groupByTimePlan.setInterval(unit);
+    groupByTimePlan.setSlidingStep(slidingStep);
+    groupByTimePlan.setStartTime(startTime);
+    groupByTimePlan.setEndTime(endTime);
+    groupByTimePlan.setIntervalByMonth(true);
+    groupByTimePlan.setSlidingStepByMonth(true);
 
-    assertTrue(dataSet.hasNext());
-    assertEquals("0\t0", dataSet.next().toString());
-    assertTrue(dataSet.hasNext());
-    assertEquals("1\t0", dataSet.next().toString());
-    assertTrue(dataSet.hasNext());
-    assertEquals("2\t1", dataSet.next().toString());
+    GroupByTimeDataSet groupByEngine = new GroupByWithValueFilterDataSet(queryId, groupByTimePlan);
+    int cnt = 0;
 
-    queryPlan =
-        (QueryPlan)
-            processor.parseSQLToPhysicalPlan(
-                "select count(s1) from root.test.* group by ([0,20), 1ms), level=6");
-    dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+    while (groupByEngine.hasNext()) {
+      Pair pair = groupByEngine.nextTimePartition();
+      Assert.assertTrue(cnt < startTimeArray.length);
+      Assert.assertEquals(startTimeArray[cnt], df.format(new Date((long) pair.left)));
+      Assert.assertEquals(endTimeArray[cnt], df.format(new Date((long) pair.right)));
+      cnt++;
+    }
 
-    assertTrue(dataSet.hasNext());
-    assertEquals("0\t0", dataSet.next().toString());
-    assertTrue(dataSet.hasNext());
-    assertEquals("1\t0", dataSet.next().toString());
-    assertTrue(dataSet.hasNext());
-    assertEquals("2\t1", dataSet.next().toString());
-
-    // multi paths
-    queryPlan =
-        (QueryPlan)
-            processor.parseSQLToPhysicalPlan(
-                "select count(s1) from root.test.*,root.vehicle.* group by ([0,20), 1ms), level=1");
-    dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-
-    assertTrue(dataSet.hasNext());
-    assertEquals("0\t0\t0", dataSet.next().toString());
-    assertTrue(dataSet.hasNext());
-    assertEquals("1\t0\t0", dataSet.next().toString());
-    assertTrue(dataSet.hasNext());
-    assertEquals("2\t1\t0", dataSet.next().toString());
-
-    // with sliding step
-    queryPlan =
-        (QueryPlan)
-            processor.parseSQLToPhysicalPlan(
-                "select count(s1) from root.test.* group by ([0,20), 3ms, 10ms), level=6");
-    dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-
-    assertTrue(dataSet.hasNext());
-    assertEquals("0\t1", dataSet.next().toString());
-
-    // with double quotation mark
-    queryPlan =
-        (QueryPlan)
-            processor.parseSQLToPhysicalPlan(
-                "select count(`\"s3+xy\"`) from root.test.* group by ([0,20), 3ms, 10ms), level=2");
-    dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-
-    assertTrue(dataSet.hasNext());
-    assertEquals("0\t0", dataSet.next().toString());
-    assertTrue(dataSet.hasNext());
-    assertEquals("10\t1", dataSet.next().toString());
+    Assert.assertEquals(startTimeArray.length, cnt);
   }
 
   @Test
-  public void groupByTimeDescTest() throws Exception {
-    QueryPlan queryPlan =
-        (QueryPlan)
-            processor.parseSQLToPhysicalPlan(
-                "select count(s1) from root.test.* group by ([0,20), 1ms) order by time desc");
-    QueryDataSet dataSet =
-        queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+  public void testGroupByMonth2() throws IOException {
+    long queryId = 1000L;
+    // interval = 1mo
+    long unit = 1 * 30 * 86400_000L;
+    // sliding step = 1mo
+    long slidingStep = 1 * 30 * 86400_000L;
+    // 10/31/2019:19:57:18
+    // test edge case 2/29
+    long startTime = 1572523038000L;
+    // 04/01/2020:19:57:18
+    long endTime = 1585742238000L;
 
-    assertTrue(dataSet.hasNext());
-    assertEquals("19\t0", dataSet.next().toString());
-    assertTrue(dataSet.hasNext());
-    assertEquals("18\t0", dataSet.next().toString());
-    for (int i = 0; i < 17; i++) {
-      dataSet.hasNext();
-      dataSet.next();
-    }
-    assertTrue(dataSet.hasNext());
-    assertEquals("0\t0", dataSet.next().toString());
+    DateFormat df = new SimpleDateFormat("MM/dd/yyyy:HH:mm:ss");
+    df.setTimeZone(TimeZone.getTimeZone("GMT+8:00"));
+    String[] startTimeArray = {
+      "10/31/2019:19:57:18",
+      "11/30/2019:19:57:18",
+      "12/31/2019:19:57:18",
+      "01/31/2020:19:57:18",
+      "02/29/2020:19:57:18",
+      "03/31/2020:19:57:18"
+    };
+    String[] endTimeArray = {
+      "11/30/2019:19:57:18",
+      "12/31/2019:19:57:18",
+      "01/31/2020:19:57:18",
+      "02/29/2020:19:57:18",
+      "03/31/2020:19:57:18",
+      "04/01/2020:19:57:18"
+    };
 
-    queryPlan =
-        (QueryPlan)
-            processor.parseSQLToPhysicalPlan(
-                "select count(s1) from root.test.* group by ([0,20), 1ms),level=6 order by time desc");
-    dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-    assertTrue(dataSet.hasNext());
-    assertEquals("19\t0", dataSet.next().toString());
-    assertTrue(dataSet.hasNext());
-    assertEquals("18\t0", dataSet.next().toString());
-    for (int i = 0; i < 14; i++) {
-      dataSet.hasNext();
-      dataSet.next();
+    GroupByTimePlan groupByTimePlan = new GroupByTimePlan();
+    groupByTimePlan.setInterval(unit);
+    groupByTimePlan.setSlidingStep(slidingStep);
+    groupByTimePlan.setStartTime(startTime);
+    groupByTimePlan.setEndTime(endTime);
+    groupByTimePlan.setIntervalByMonth(true);
+    groupByTimePlan.setSlidingStepByMonth(true);
+
+    GroupByTimeDataSet groupByEngine = new GroupByWithValueFilterDataSet(queryId, groupByTimePlan);
+    int cnt = 0;
+
+    while (groupByEngine.hasNext()) {
+      Pair pair = groupByEngine.nextTimePartition();
+      Assert.assertTrue(cnt < startTimeArray.length);
+      Assert.assertEquals(startTimeArray[cnt], df.format(new Date((long) pair.left)));
+      Assert.assertEquals(endTimeArray[cnt], df.format(new Date((long) pair.right)));
+      cnt++;
     }
-    assertTrue(dataSet.hasNext());
-    assertEquals("3\t0", dataSet.next().toString());
-    assertTrue(dataSet.hasNext());
-    assertEquals("2\t1", dataSet.next().toString());
-    assertTrue(dataSet.hasNext());
-    assertEquals("1\t0", dataSet.next().toString());
-    assertTrue(dataSet.hasNext());
-    assertEquals("0\t0", dataSet.next().toString());
+
+    Assert.assertEquals(startTimeArray.length, cnt);
+  }
+
+  @Test
+  public void testGroupByMonth3() throws IOException {
+    long queryId = 1000L;
+    // interval = 2mo
+    long unit = 2 * 30 * 86400_000L;
+    // sliding step = 3mo
+    long slidingStep = 3 * 30 * 86400_000L;
+    // 10/31/2019:19:57:18
+    // test edge case 2/29
+    long startTime = 1572523038000L;
+    // 04/01/2020:19:57:18
+    long endTime = 1585742238000L;
+
+    DateFormat df = new SimpleDateFormat("MM/dd/yyyy:HH:mm:ss");
+    df.setTimeZone(TimeZone.getTimeZone("GMT+8:00"));
+    String[] startTimeArray = {"10/31/2019:19:57:18", "01/31/2020:19:57:18"};
+    String[] endTimeArray = {"12/31/2019:19:57:18", "03/31/2020:19:57:18"};
+
+    GroupByTimePlan groupByTimePlan = new GroupByTimePlan();
+    groupByTimePlan.setInterval(unit);
+    groupByTimePlan.setSlidingStep(slidingStep);
+    groupByTimePlan.setStartTime(startTime);
+    groupByTimePlan.setEndTime(endTime);
+    groupByTimePlan.setIntervalByMonth(true);
+    groupByTimePlan.setSlidingStepByMonth(true);
+
+    GroupByTimeDataSet groupByEngine = new GroupByWithValueFilterDataSet(queryId, groupByTimePlan);
+    int cnt = 0;
+
+    while (groupByEngine.hasNext()) {
+      Pair pair = groupByEngine.nextTimePartition();
+      Assert.assertTrue(cnt < startTimeArray.length);
+      Assert.assertEquals(startTimeArray[cnt], df.format(new Date((long) pair.left)));
+      Assert.assertEquals(endTimeArray[cnt], df.format(new Date((long) pair.right)));
+      cnt++;
+    }
+    Assert.assertEquals(startTimeArray.length, cnt);
+  }
+
+  @Test
+  public void testGroupByMonth4() throws IOException {
+    long queryId = 1000L;
+    // interval = 10days
+    long unit = 10 * 86400_000L;
+    // sliding step = 1mo
+    long slidingStep = 1 * 30 * 86400_000L;
+    // 10/31/2019:19:57:18
+    // test edge case 2/29
+    long startTime = 1572523038000L;
+    // 04/01/2020:19:57:18
+    long endTime = 1585742238000L;
+
+    DateFormat df = new SimpleDateFormat("MM/dd/yyyy:HH:mm:ss");
+    df.setTimeZone(TimeZone.getTimeZone("GMT+8:00"));
+
+    String[] startTimeArray = {
+      "10/31/2019:19:57:18",
+      "11/30/2019:19:57:18",
+      "12/31/2019:19:57:18",
+      "01/31/2020:19:57:18",
+      "02/29/2020:19:57:18",
+      "03/31/2020:19:57:18"
+    };
+    String[] endTimeArray = {
+      "11/10/2019:19:57:18",
+      "12/10/2019:19:57:18",
+      "01/10/2020:19:57:18",
+      "02/10/2020:19:57:18",
+      "03/10/2020:19:57:18",
+      "04/01/2020:19:57:18"
+    };
+
+    GroupByTimePlan groupByTimePlan = new GroupByTimePlan();
+    groupByTimePlan.setInterval(unit);
+    groupByTimePlan.setSlidingStep(slidingStep);
+    groupByTimePlan.setStartTime(startTime);
+    groupByTimePlan.setEndTime(endTime);
+    groupByTimePlan.setIntervalByMonth(false);
+    groupByTimePlan.setSlidingStepByMonth(true);
+
+    GroupByTimeDataSet groupByEngine = new GroupByWithValueFilterDataSet(queryId, groupByTimePlan);
+    int cnt = 0;
+
+    while (groupByEngine.hasNext()) {
+      Pair pair = groupByEngine.nextTimePartition();
+      Assert.assertTrue(cnt < startTimeArray.length);
+      Assert.assertEquals(startTimeArray[cnt], df.format(new Date((long) pair.left)));
+      Assert.assertEquals(endTimeArray[cnt], df.format(new Date((long) pair.right)));
+      cnt++;
+    }
+    Assert.assertEquals(startTimeArray.length, cnt);
+  }
+
+  @Test
+  public void testGroupByMonthDescending1() throws IOException {
+    long queryId = 1000L;
+    // interval = 1mo
+    long unit = 1 * 30 * 86400_000L;
+    // sliding step = 1mo
+    long slidingStep = 1 * 30 * 86400_000L;
+    // 10/31/2019:19:57:18
+    // test edge case 2/29
+    long startTime = 1572523038000L;
+    // 04/01/2020:19:57:18
+    long endTime = 1585742238000L;
+
+    DateFormat df = new SimpleDateFormat("MM/dd/yyyy:HH:mm:ss");
+    df.setTimeZone(TimeZone.getTimeZone("GMT+8:00"));
+    String[] startTimeArray = {
+      "03/31/2020:19:57:18",
+      "02/29/2020:19:57:18",
+      "01/31/2020:19:57:18",
+      "12/31/2019:19:57:18",
+      "11/30/2019:19:57:18",
+      "10/31/2019:19:57:18"
+    };
+    String[] endTimeArray = {
+      "04/01/2020:19:57:18",
+      "03/31/2020:19:57:18",
+      "02/29/2020:19:57:18",
+      "01/31/2020:19:57:18",
+      "12/31/2019:19:57:18",
+      "11/30/2019:19:57:18"
+    };
+
+    GroupByTimePlan groupByTimePlan = new GroupByTimePlan();
+    groupByTimePlan.setInterval(unit);
+    groupByTimePlan.setSlidingStep(slidingStep);
+    groupByTimePlan.setStartTime(startTime);
+    groupByTimePlan.setEndTime(endTime);
+    groupByTimePlan.setIntervalByMonth(true);
+    groupByTimePlan.setSlidingStepByMonth(true);
+    groupByTimePlan.setAscending(false);
+
+    GroupByTimeDataSet groupByEngine = new GroupByWithValueFilterDataSet(queryId, groupByTimePlan);
+    int cnt = 0;
+
+    while (groupByEngine.hasNext()) {
+      Pair pair = groupByEngine.nextTimePartition();
+      Assert.assertTrue(cnt < startTimeArray.length);
+      Assert.assertEquals(startTimeArray[cnt], df.format(new Date((long) pair.left)));
+      Assert.assertEquals(endTimeArray[cnt], df.format(new Date((long) pair.right)));
+      cnt++;
+    }
+    Assert.assertEquals(startTimeArray.length, cnt);
+  }
+
+  @Test
+  public void testGroupByMonthDescending2() throws IOException {
+    long queryId = 1000L;
+    // interval = 1mo
+    long unit = 1 * 30 * 86400_000L;
+    // sliding step = 2mo
+    long slidingStep = 2 * 30 * 86400_000L;
+    // 10/31/2019:19:57:18
+    long startTime = 1572523038000L;
+    // 04/01/2020:19:57:18
+    long endTime = 1585742238000L;
+
+    DateFormat df = new SimpleDateFormat("MM/dd/yyyy:HH:mm:ss");
+    df.setTimeZone(TimeZone.getTimeZone("GMT+8:00"));
+    String[] startTimeArray = {"02/29/2020:19:57:18", "12/31/2019:19:57:18", "10/31/2019:19:57:18"};
+    String[] endTimeArray = {"03/31/2020:19:57:18", "01/31/2020:19:57:18", "11/30/2019:19:57:18"};
+
+    GroupByTimePlan groupByTimePlan = new GroupByTimePlan();
+    groupByTimePlan.setInterval(unit);
+    groupByTimePlan.setSlidingStep(slidingStep);
+    groupByTimePlan.setStartTime(startTime);
+    groupByTimePlan.setEndTime(endTime);
+    groupByTimePlan.setIntervalByMonth(true);
+    groupByTimePlan.setSlidingStepByMonth(true);
+    groupByTimePlan.setAscending(false);
+
+    GroupByTimeDataSet groupByEngine = new GroupByWithValueFilterDataSet(queryId, groupByTimePlan);
+    int cnt = 0;
+
+    while (groupByEngine.hasNext()) {
+      Pair pair = groupByEngine.nextTimePartition();
+      Assert.assertTrue(cnt < startTimeArray.length);
+      Assert.assertEquals(startTimeArray[cnt], df.format(new Date((long) pair.left)));
+      Assert.assertEquals(endTimeArray[cnt], df.format(new Date((long) pair.right)));
+      cnt++;
+    }
+    Assert.assertEquals(startTimeArray.length, cnt);
   }
 }

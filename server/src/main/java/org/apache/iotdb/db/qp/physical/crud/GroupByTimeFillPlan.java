@@ -19,12 +19,11 @@
 package org.apache.iotdb.db.qp.physical.crud;
 
 import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.query.executor.fill.IFill;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.Map;
-
-import static org.apache.iotdb.db.query.dataset.groupby.GroupByEngineDataSet.calcIntervalByMonth;
 
 public class GroupByTimeFillPlan extends GroupByTimePlan {
 
@@ -55,8 +54,16 @@ public class GroupByTimeFillPlan extends GroupByTimePlan {
     this.fillTypes = fillTypes;
   }
 
+  public void setQueryStartTime(long queryStartTime) {
+    this.queryStartTime = queryStartTime;
+  }
+
   public long getQueryStartTime() {
     return queryStartTime;
+  }
+
+  public void setQueryEndTime(long queryEndTime) {
+    this.queryEndTime = queryEndTime;
   }
 
   public long getQueryEndTime() {
@@ -87,10 +94,10 @@ public class GroupByTimeFillPlan extends GroupByTimePlan {
       long extraStartTime, intervalNum;
       if (isSlidingStepByMonth) {
         intervalNum = (long) Math.ceil(queryRange / (double) (slidingStep));
-        extraStartTime = calcIntervalByMonth(startTime, intervalNum);
+        extraStartTime = DatetimeUtils.calcIntervalByMonth(startTime, intervalNum);
         while (extraStartTime < minQueryStartTime) {
           intervalNum += 1;
-          extraStartTime = calcIntervalByMonth(startTime, intervalNum);
+          extraStartTime = DatetimeUtils.calcIntervalByMonth(startTime, intervalNum);
         }
       } else {
         intervalNum = (long) Math.ceil(queryRange / (double) slidingStep);

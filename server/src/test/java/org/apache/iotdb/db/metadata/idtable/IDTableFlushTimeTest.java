@@ -97,7 +97,7 @@ public class IDTableFlushTimeTest {
 
     VirtualStorageGroupProcessor storageGroupProcessor =
         StorageEngine.getInstance().getProcessor(new PartialPath("root.isp.d1"));
-    assertEquals(2, storageGroupProcessor.getSequenceFileTreeSet().size());
+    assertEquals(2, storageGroupProcessor.getSequenceFileList().size());
     assertEquals(0, storageGroupProcessor.getUnSequenceFileList().size());
   }
 
@@ -112,7 +112,7 @@ public class IDTableFlushTimeTest {
 
     VirtualStorageGroupProcessor storageGroupProcessor =
         StorageEngine.getInstance().getProcessor(new PartialPath("root.isp.d1"));
-    assertEquals(1, storageGroupProcessor.getSequenceFileTreeSet().size());
+    assertEquals(1, storageGroupProcessor.getSequenceFileList().size());
     assertEquals(1, storageGroupProcessor.getUnSequenceFileList().size());
   }
 
@@ -141,7 +141,7 @@ public class IDTableFlushTimeTest {
 
     VirtualStorageGroupProcessor storageGroupProcessor =
         StorageEngine.getInstance().getProcessor(new PartialPath("root.isp.d1"));
-    assertEquals(4, storageGroupProcessor.getSequenceFileTreeSet().size());
+    assertEquals(4, storageGroupProcessor.getSequenceFileList().size());
     assertEquals(2, storageGroupProcessor.getUnSequenceFileList().size());
     assertEquals(1, storageGroupProcessor.getWorkSequenceTsFileProcessors().size());
     assertEquals(1, storageGroupProcessor.getWorkUnsequenceTsFileProcessors().size());

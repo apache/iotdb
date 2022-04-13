@@ -24,7 +24,7 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-parent</artifactId>
-        <version>0.13.0-SNAPSHOT</version>
+        <version>0.14.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>iotdb-cli</artifactId>
@@ -69,6 +69,8 @@
             <groupId>org.jline</groupId>
             <artifactId>jline</artifactId>
         </dependency>
+        <!-- Not for importing class, used for windows CLI,
+        refer to https://github.com/apache/iotdb/pull/4458 -->
         <dependency>
             <groupId>net.java.dev.jna</groupId>
             <artifactId>jna</artifactId>

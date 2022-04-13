@@ -28,8 +28,10 @@ import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.util.NoSuchElementException;
 import java.util.zip.CRC32;
 
@@ -50,6 +52,8 @@ public class SingleFileLogReader implements ILogReader {
 
   // used to indicate the position of the broken log
   private int idx;
+  // used to truncate the broken logs
+  private long unbrokenLogsSize = 0;
 
   private BatchLogReader batchLogReader;
 
@@ -94,6 +98,11 @@ public class SingleFileLogReader implements ILogReader {
       }
 
       batchLogReader = new BatchLogReader(ByteBuffer.wrap(buffer));
+      if (!batchLogReader.isFileCorrupted()) {
+        unbrokenLogsSize = unbrokenLogsSize + logSize + LEAST_LOG_SIZE;
+      } else {
+        truncateBrokenLogs();
+      }
       fileCorrupted = fileCorrupted || batchLogReader.isFileCorrupted();
     } catch (Exception e) {
       logger.error(
@@ -101,6 +110,7 @@ public class SingleFileLogReader implements ILogReader {
           idx,
           filepath,
           e);
+      truncateBrokenLogs();
       fileCorrupted = true;
       return false;
     }
@@ -138,5 +148,14 @@ public class SingleFileLogReader implements ILogReader {
 
   public boolean isFileCorrupted() {
     return fileCorrupted;
+  }
+
+  private void truncateBrokenLogs() {
+    try (FileOutputStream outputStream = new FileOutputStream(filepath, true);
+        FileChannel channel = outputStream.getChannel()) {
+      channel.truncate(unbrokenLogsSize);
+    } catch (IOException e) {
+      logger.error("Fail to truncate log file to size {}", unbrokenLogsSize, e);
+    }
   }
 }

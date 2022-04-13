@@ -69,6 +69,8 @@ public class QueryWithIDTableTest {
 
   private String originalDeviceIDTransformationMethod = null;
 
+  private boolean isEnableIDTableLogFile = false;
+
   Set<String> retSet =
       new HashSet<>(
           Arrays.asList(
@@ -140,9 +142,11 @@ public class QueryWithIDTableTest {
     isEnableIDTable = IoTDBDescriptor.getInstance().getConfig().isEnableIDTable();
     originalDeviceIDTransformationMethod =
         IoTDBDescriptor.getInstance().getConfig().getDeviceIDTransformationMethod();
+    isEnableIDTableLogFile = IoTDBDescriptor.getInstance().getConfig().isEnableIDTableLogFile();
 
     IoTDBDescriptor.getInstance().getConfig().setEnableIDTable(true);
     IoTDBDescriptor.getInstance().getConfig().setDeviceIDTransformationMethod("SHA256");
+    IoTDBDescriptor.getInstance().getConfig().setEnableIDTableLogFile(true);
     EnvironmentUtils.envSetUp();
   }
 
@@ -152,6 +156,7 @@ public class QueryWithIDTableTest {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setDeviceIDTransformationMethod(originalDeviceIDTransformationMethod);
+    IoTDBDescriptor.getInstance().getConfig().setEnableIDTableLogFile(isEnableIDTableLogFile);
     EnvironmentUtils.cleanEnv();
   }
 

@@ -289,12 +289,6 @@ IoTDB 拥有许多其它时间序列数据库不支持的强大功能。
 
 <center>Figure 1. Batch Size with Write throughput (points/second) IoTDB v0.11.1</center>
 
-写入延迟（ms）如下图所示：
-
-![Batch Size with Write Delay (ms)](https://user-images.githubusercontent.com/24886743/106251391-df1b9f80-624f-11eb-9f1f-66823839acba.png)
-
-<center>Figure 2. Batch Size with Write Delay (ms) IoTDB v0.11.1</center>
-
 ###### 改变 client num
 
 client num 从 1 到 50 变化。IoTDB 使用 batch insertion API，batch size 是 100（每次调用 write API 写 100 个数据点）。

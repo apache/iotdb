@@ -39,8 +39,10 @@ import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
 import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
+import org.apache.iotdb.tsfile.read.expression.util.ExpressionOptimizer;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -65,6 +67,8 @@ public class QueryOperator extends Operator {
 
   protected boolean enableTracing;
 
+  Set<String> aliasSet;
+
   public QueryOperator() {
     super(SQLConstant.TOK_QUERY);
     operatorType = Operator.OperatorType.QUERY;
@@ -79,6 +83,14 @@ public class QueryOperator extends Operator {
     this.props = queryOperator.getProps();
     this.indexType = queryOperator.getIndexType();
     this.enableTracing = queryOperator.isEnableTracing();
+  }
+
+  public void setAliasSet(Set<String> aliasSet) {
+    this.aliasSet = aliasSet;
+  }
+
+  public Set<String> getAliasSet() {
+    return aliasSet;
   }
 
   public SelectComponent getSelectComponent() {
@@ -200,11 +212,6 @@ public class QueryOperator extends Operator {
     rawDataQueryPlan.setResultColumns(selectComponent.getResultColumns());
     rawDataQueryPlan.setEnableTracing(enableTracing);
 
-    // transform filter operator to expression
-    if (whereComponent != null) {
-      transformFilterOperatorToExpression(generator, rawDataQueryPlan);
-    }
-
     if (queryPlan instanceof QueryIndexPlan) {
       ((QueryIndexPlan) queryPlan).setIndexType(indexType);
       ((QueryIndexPlan) queryPlan).setProps(props);
@@ -217,24 +224,43 @@ public class QueryOperator extends Operator {
       throw new QueryProcessException(e);
     }
 
-    convertSpecialClauseValues(rawDataQueryPlan);
+    rawDataQueryPlan.convertSpecialClauseValues(specialClauseComponent);
+
+    // transform filter operator to expression
+    IExpression expression = transformFilterOperatorToExpression();
+    expression = optimizeExpression(expression, (RawDataQueryPlan) queryPlan);
+    if (expression != null) {
+      ((RawDataQueryPlan) queryPlan).setExpression(expression);
+    }
 
     return rawDataQueryPlan;
   }
 
-  protected void transformFilterOperatorToExpression(
-      PhysicalGenerator generator, RawDataQueryPlan rawDataQueryPlan) throws QueryProcessException {
+  protected IExpression transformFilterOperatorToExpression() throws QueryProcessException {
+    if (whereComponent == null) {
+      return null;
+    }
     FilterOperator filterOperator = whereComponent.getFilterOperator();
     List<PartialPath> filterPaths = new ArrayList<>(filterOperator.getPathSet());
     HashMap<PartialPath, TSDataType> pathTSDataTypeHashMap = new HashMap<>();
     for (PartialPath filterPath : filterPaths) {
-      rawDataQueryPlan.addFilterPathInDeviceToMeasurements(filterPath);
       pathTSDataTypeHashMap.put(
           filterPath,
           SQLConstant.isReservedPath(filterPath) ? TSDataType.INT64 : filterPath.getSeriesType());
     }
-    IExpression expression = filterOperator.transformToExpression(pathTSDataTypeHashMap);
-    rawDataQueryPlan.setExpression(expression);
+    return filterOperator.transformToExpression(pathTSDataTypeHashMap);
+  }
+
+  protected IExpression optimizeExpression(IExpression expression, RawDataQueryPlan queryPlan)
+      throws QueryProcessException {
+    try {
+      return expression == null
+          ? null
+          : ExpressionOptimizer.getInstance()
+              .optimize(expression, new ArrayList<>(queryPlan.getDeduplicatedPaths()));
+    } catch (QueryFilterOptimizationException e) {
+      throw new QueryProcessException(e.getMessage());
+    }
   }
 
   protected AlignByDevicePlan generateAlignByDevicePlan(PhysicalGenerator generator)
@@ -321,6 +347,9 @@ public class QueryOperator extends Operator {
     alignByDevicePlan.setEnableTracing(enableTracing);
 
     alignByDevicePlan.deduplicate(generator);
+    if (specialClauseComponent != null) {
+      alignByDevicePlan.calcWithoutNullColumnIndex(specialClauseComponent.withoutNullColumns);
+    }
 
     if (whereComponent != null) {
       alignByDevicePlan.setDeviceToFilterMap(
@@ -340,20 +369,10 @@ public class QueryOperator extends Operator {
     }
   }
 
-  protected void convertSpecialClauseValues(QueryPlan queryPlan) {
-    if (specialClauseComponent != null) {
-      queryPlan.setWithoutAllNull(specialClauseComponent.isWithoutAllNull());
-      queryPlan.setWithoutAnyNull(specialClauseComponent.isWithoutAnyNull());
-      queryPlan.setRowLimit(specialClauseComponent.getRowLimit());
-      queryPlan.setRowOffset(specialClauseComponent.getRowOffset());
-      queryPlan.setAscending(specialClauseComponent.isAscending());
-      queryPlan.setAlignByTime(specialClauseComponent.isAlignByTime());
-    }
-  }
-
   private List<String> convertSpecialClauseValues(QueryPlan queryPlan, List<String> measurements)
       throws QueryProcessException {
-    convertSpecialClauseValues(queryPlan);
+    queryPlan.convertSpecialClauseValues(specialClauseComponent);
+
     // sLimit trim on the measurementColumnList
     if (specialClauseComponent.hasSlimit()) {
       int seriesSLimit = specialClauseComponent.getSeriesLimit();
@@ -491,11 +510,11 @@ public class QueryOperator extends Operator {
   }
 
   protected Set<PartialPath> getMatchedDevices(PartialPath path) throws MetadataException {
-    return IoTDB.metaManager.getMatchedDevices(path, isPrefixMatchPath);
+    return IoTDB.schemaProcessor.getMatchedDevices(path, isPrefixMatchPath);
   }
 
   protected List<MeasurementPath> getMatchedTimeseries(PartialPath path) throws MetadataException {
-    return IoTDB.metaManager.getMeasurementPaths(path, isPrefixMatchPath);
+    return IoTDB.schemaProcessor.getMeasurementPaths(path, isPrefixMatchPath);
   }
 
   public boolean isEnableTracing() {

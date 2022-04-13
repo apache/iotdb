@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.storagegroup.virtualSg;
 
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -29,7 +30,7 @@ import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.newsync.sender.pipe.TsFilePipe;
+import org.apache.iotdb.db.utils.ThreadUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -47,6 +48,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /** Each storage group that set by users corresponds to a StorageGroupManager */
 public class StorageGroupManager {
@@ -65,6 +67,9 @@ public class StorageGroupManager {
    * new created
    */
   private AtomicBoolean[] isVsgReady;
+
+  /** number of ready virtual storage group processors */
+  private AtomicInteger readyVsgNum;
 
   private AtomicBoolean isSettling = new AtomicBoolean();
 
@@ -191,6 +196,7 @@ public class StorageGroupManager {
    */
   public void asyncRecover(
       IStorageGroupMNode storageGroupMNode, ExecutorService pool, List<Future<Void>> futures) {
+    readyVsgNum = new AtomicInteger(0);
     for (int i = 0; i < partitioner.getPartitionCount(); i++) {
       int cur = i;
       Callable<Void> recoverVsgTask =
@@ -206,13 +212,19 @@ public class StorageGroupManager {
                           String.valueOf(cur));
             } catch (StorageGroupProcessorException e) {
               logger.error(
-                  "failed to recover virtual storage group {}[{}]",
+                  "Failed to recover virtual storage group {}[{}]",
                   storageGroupMNode.getFullPath(),
                   cur,
                   e);
             }
+
             virtualStorageGroupProcessor[cur] = processor;
             isVsgReady[cur].set(true);
+            logger.info(
+                "Storage Group {} has been recovered {}/{}",
+                storageGroupMNode.getFullPath(),
+                readyVsgNum.incrementAndGet(),
+                partitioner.getPartitionCount());
             return null;
           };
       futures.add(pool.submit(recoverVsgTask));
@@ -406,7 +418,7 @@ public class StorageGroupManager {
     for (VirtualStorageGroupProcessor virtualStorageGroupProcessor :
         this.virtualStorageGroupProcessor) {
       if (virtualStorageGroupProcessor != null) {
-        List<TsFileResource> allResources = virtualStorageGroupProcessor.getSequenceFileTreeSet();
+        List<TsFileResource> allResources = virtualStorageGroupProcessor.getSequenceFileList();
         allResources.addAll(virtualStorageGroupProcessor.getUnSequenceFileList());
         for (TsFileResource tsfile : allResources) {
           if (!tsfile.isClosed()) {
@@ -477,24 +489,11 @@ public class StorageGroupManager {
     }
   }
 
-  /** sync methods */
-  public void registerSyncDataCollector(TsFilePipe tsFilePipe) {
+  /** collect all tsfiles whose memtable == null for sync */
+  public List<File> collectHistoryTsFileForSync(long dataStartTime) {
+    List<File> historyTsFiles = new ArrayList<>();
     for (VirtualStorageGroupProcessor processor : virtualStorageGroupProcessor) {
-      processor.registerSyncDataCollector(tsFilePipe);
-    }
-  }
-
-  /**
-   * This method is for sync. collect all history data in this storage group, and register to
-   * collect real time data.
-   *
-   * @param tsFilePipe the sync data collector
-   * @return ths list the paris of (history tsfile, the offset of its mods file)
-   */
-  public List<Pair<File, Long>> collectDataForSync(TsFilePipe tsFilePipe, long dataStartTime) {
-    List<Pair<File, Long>> historyTsFiles = new ArrayList<>();
-    for (VirtualStorageGroupProcessor processor : virtualStorageGroupProcessor) {
-      historyTsFiles.addAll(processor.collectDataForSync(tsFilePipe, dataStartTime));
+      historyTsFiles.addAll(processor.collectHistoryTsFileForSync(dataStartTime));
     }
     return historyTsFiles;
   }
@@ -504,17 +503,30 @@ public class StorageGroupManager {
     Arrays.fill(virtualStorageGroupProcessor, null);
   }
 
-  public void stopCompactionSchedulerPool() {
-    for (VirtualStorageGroupProcessor virtualStorageGroupProcessor :
-        this.virtualStorageGroupProcessor) {
-      if (virtualStorageGroupProcessor != null) {
-        virtualStorageGroupProcessor.getTimedCompactionScheduleTask().shutdown();
+  public void stopSchedulerPool() {
+    for (VirtualStorageGroupProcessor vsg : this.virtualStorageGroupProcessor) {
+      if (vsg != null) {
+        ThreadUtils.stopThreadPool(
+            vsg.getTimedCompactionScheduleTask(), ThreadName.COMPACTION_SCHEDULE);
+        ThreadUtils.stopThreadPool(vsg.getWALTrimScheduleTask(), ThreadName.WAL_TRIM);
       }
     }
   }
 
   public void setSettling(boolean settling) {
     isSettling.set(settling);
+  }
+
+  public void setAllowCompaction(boolean allowCompaction) {
+    for (VirtualStorageGroupProcessor processor : virtualStorageGroupProcessor) {
+      processor.setAllowCompaction(allowCompaction);
+    }
+  }
+
+  public void abortCompaction() {
+    for (VirtualStorageGroupProcessor processor : virtualStorageGroupProcessor) {
+      processor.abortCompaction();
+    }
   }
 
   public AtomicBoolean getIsSettling() {

@@ -20,7 +20,9 @@ package org.apache.iotdb.db.engine.compaction.cross;
 
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionSelector;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+
+import java.util.List;
 
 public abstract class AbstractCrossSpaceCompactionSelector extends AbstractCompactionSelector {
   protected String logicalStorageGroupName;
@@ -28,8 +30,8 @@ public abstract class AbstractCrossSpaceCompactionSelector extends AbstractCompa
   protected String storageGroupDir;
   protected long timePartition;
   protected TsFileManager tsFileManager;
-  protected TsFileResourceList sequenceFileList;
-  protected TsFileResourceList unsequenceFileList;
+  protected List<TsFileResource> sequenceFileList;
+  protected List<TsFileResource> unsequenceFileList;
   protected CrossSpaceCompactionTaskFactory taskFactory;
 
   public AbstractCrossSpaceCompactionSelector(
@@ -50,5 +52,5 @@ public abstract class AbstractCrossSpaceCompactionSelector extends AbstractCompa
   }
 
   @Override
-  public abstract boolean selectAndSubmit();
+  public abstract void selectAndSubmit();
 }

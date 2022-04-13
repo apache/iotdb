@@ -23,6 +23,8 @@ import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.aggregation.impl.*;
+import org.apache.iotdb.db.query.executor.groupby.*;
+import org.apache.iotdb.db.query.executor.groupby.impl.*;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 /** Easy factory pattern to build AggregateFunction. */

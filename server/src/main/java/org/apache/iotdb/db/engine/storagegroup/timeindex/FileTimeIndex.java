@@ -20,7 +20,9 @@
 package org.apache.iotdb.db.engine.storagegroup.timeindex;
 
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.PartitionViolationException;
+import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
@@ -33,12 +35,16 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.nio.file.NoSuchFileException;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
 public class FileTimeIndex implements ITimeIndex {
 
   private static final Logger logger = LoggerFactory.getLogger(FileTimeIndex.class);
+
+  private static final FileReaderManager FILE_READER_MANAGER = FileReaderManager.getInstance();
 
   /** start time */
   protected long startTime;
@@ -79,12 +85,24 @@ public class FileTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public Set<String> getDevices(String tsFilePath) {
-    try (TsFileSequenceReader fileReader = new TsFileSequenceReader(tsFilePath)) {
+  public Set<String> getDevices(String tsFilePath, TsFileResource tsFileResource) {
+    FILE_READER_MANAGER.increaseFileReaderReference(tsFileResource, tsFileResource.isClosed());
+    try {
+      TsFileSequenceReader fileReader = FileReaderManager.getInstance().get(tsFilePath, true);
       return new HashSet<>(fileReader.getAllDevices());
-    } catch (IOException e) {
-      logger.error("Can't read file {} from disk ", tsFilePath, e);
-      throw new RuntimeException("Can't read file " + tsFilePath + " from disk");
+    } catch (NoSuchFileException e) {
+      // deleted by ttl
+      if (tsFileResource.isDeleted()) {
+        return Collections.emptySet();
+      } else {
+        logger.error("Can't read file {} from disk ", tsFilePath, e);
+        throw new RuntimeException("Can't read file " + tsFilePath + " from disk");
+      }
+    } catch (Exception e) {
+      logger.error("Failed to get devices from tsfile: {}", tsFilePath, e);
+      throw new RuntimeException("Failed to get devices from tsfile:: " + tsFilePath);
+    } finally {
+      FILE_READER_MANAGER.decreaseFileReaderReference(tsFileResource, tsFileResource.isClosed());
     }
   }
 
@@ -200,5 +218,10 @@ public class FileTimeIndex implements ITimeIndex {
       logger.error("Wrong timeIndex type {}", timeIndex.getClass().getName());
       throw new RuntimeException("Wrong timeIndex type " + timeIndex.getClass().getName());
     }
+  }
+
+  @Override
+  public boolean mayContainsDevice(String device) {
+    return true;
   }
 }

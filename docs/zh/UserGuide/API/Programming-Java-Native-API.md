@@ -43,7 +43,7 @@ mvn clean install -pl session -am -Dmaven.test.skip=true
     <dependency>
       <groupId>org.apache.iotdb</groupId>
       <artifactId>iotdb-session</artifactId>
-      <version>0.13.0-SNAPSHOT</version>
+      <version>0.14.0-SNAPSHOT</version>
     </dependency>
 </dependencies>
 ```
@@ -207,19 +207,20 @@ Class MeasurementNode extends Node {
 }
 ```
 
-通过这种方式创建元数据模板的代码示例如下：
+通过上述类的实例描述模板时，Template 内应当仅能包含单层的 MeasurementNode，具体可以参见如下示例：
 
 ```java
 MeasurementNode nodeX = new MeasurementNode("x", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY);
 MeasurementNode nodeY = new MeasurementNode("y", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY);
 MeasurementNode nodeSpeed = new MeasurementNode("speed", TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.SNAPPY);
 
-Template template = new Template("templateExample");
+// This is the template we suggest to implement
+Template flatTemplate = new Template("flatTemplate");
 template.addToTemplate(nodeX);
 template.addToTemplate(nodeY);
 template.addToTemplate(nodeSpeed);
 
-createSchemaTemplate(template);
+createSchemaTemplate(flatTemplate);
 ```
 
 * 在创建概念元数据模板以后，还可以通过以下接口增加或删除模板内的物理量。请注意，已经挂载的模板不能删除内部的物理量。
@@ -254,7 +255,7 @@ public void addUnalignedMeasurementsIntemplate(String templateName,
                                 TSEncoding[] encodings,
                                 CompressionType[] compressors);
 
-// 从指定模板中删除一个节点及其子树
+// 从指定模板中删除一个节点
 public void deleteNodeInTemplate(String templateName, String path);
 ```
 
@@ -278,6 +279,7 @@ public List<String> showMeasurementsInTemplate(String templateName, String patte
 ```
 
 * 将名为'templateName'的元数据模板挂载到'prefixPath'路径下，在执行这一步之前，你需要创建名为'templateName'的元数据模板
+* **请注意，我们强烈建议您将模板设置在存储组或存储组下层的节点中，以更好地适配未来版本更新及各模块的协作**
 
 ``` java
 void setSchemaTemplate(String templateName, String prefixPath)
@@ -349,7 +351,7 @@ public class Tablet {
 void insertTablets(Map<String, Tablet> tablets)
 ```
 
-* 插入一个 Record，一个 Record 是一个设备一个时间戳下多个测点的数据
+* 插入一个 Record，一个 Record 是一个设备一个时间戳下多个测点的数据。这里的 value 是 Object 类型，相当于提供了一个公用接口，后面可以通过 TSDataType 将 value 强转为原类型
 
 ```java
 void insertRecord(String prefixPath, long time, List<String> measurements,
@@ -376,7 +378,7 @@ void insertRecordsOfOneDevice(String deviceId, List<Long> times,
 
 #### 带有类型推断的写入
 
-服务器需要做类型推断，可能会有额外耗时，速度较无需类型推断的写入慢
+当数据均是 String 类型时，我们可以使用如下接口，根据 value 的值进行类型推断。例如：value 为 "true" ，就可以自动推断为布尔类型。value 为 "3.2" ，就可以自动推断为数值类型。服务器需要做类型推断，可能会有额外耗时，速度较无需类型推断的写入慢
 
 * 插入一个 Record，一个 Record 是一个设备一个时间戳下多个测点的数据
 
@@ -391,6 +393,13 @@ void insertRecords(List<String> deviceIds, List<Long> times,
    List<List<String>> measurementsList, List<List<String>> valuesList)
 ```
 
+* 插入同属于一个 device 的多个 Record
+
+```java
+void insertStringRecordsOfOneDevice(String deviceId, List<Long> times,
+    List<List<String>> measurementsList, List<List<String>> valuesList)
+```
+
 #### 对齐时间序列的写入
 
 对齐时间序列的写入使用 insertAlignedXXX 接口，其余与上述接口类似：
@@ -398,6 +407,7 @@ void insertRecords(List<String> deviceIds, List<Long> times,
 * insertAlignedRecord
 * insertAlignedRecords
 * insertAlignedRecordsOfOneDevice
+* insertAlignedStringRecordsOfOneDevice
 * insertAlignedTablet
 * insertAlignedTablets
 
@@ -416,6 +426,12 @@ void deleteData(List<String> paths, long endTime)
 
 ```java
 SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime)
+```
+
+* 查询最后一条时间戳大于等于某个时间点的数据
+
+```java
+SessionDataSet executeLastDataQuery(List<String> paths, long LastTime)
 ```
 
 ### IoTDB-SQL 接口
@@ -482,7 +498,8 @@ void testInsertTablets(Map<String, Tablet> tablets)
 如果超过 60s 都没得到一个连接的话，那么会打印一条警告日志，但是程序仍将继续等待。
 
 当一个连接被用完后，他会自动返回池中等待下次被使用；
-当一个连接损坏后，他会从池中被删除，并重建一个连接重新执行用户的操作。
+当一个连接损坏后，他会从池中被删除，并重建一个连接重新执行用户的操作；
+你还可以像创建 Session 那样在创建 SessionPool 时指定多个可连接节点的 url，以保证分布式集群中客户端的高可用性。
 
 对于查询操作：
 
@@ -505,7 +522,7 @@ void testInsertTablets(Map<String, Tablet> tablets)
     <dependency>
       <groupId>org.apache.iotdb</groupId>
       <artifactId>iotdb-thrift-cluster</artifactId>
-      <version>0.13.0-SNAPSHOT</version>
+      <version>0.14.0-SNAPSHOT</version>
     </dependency>
 </dependencies>
 ```

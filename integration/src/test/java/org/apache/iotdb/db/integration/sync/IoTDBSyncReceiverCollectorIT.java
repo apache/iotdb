@@ -18,23 +18,23 @@
  */
 package org.apache.iotdb.db.integration.sync;
 
-import org.apache.iotdb.db.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.newsync.conf.SyncConstant;
-import org.apache.iotdb.db.newsync.conf.SyncPathUtil;
-import org.apache.iotdb.db.newsync.pipedata.DeletionPipeData;
-import org.apache.iotdb.db.newsync.pipedata.PipeData;
-import org.apache.iotdb.db.newsync.pipedata.SchemaPipeData;
-import org.apache.iotdb.db.newsync.pipedata.TsFilePipeData;
-import org.apache.iotdb.db.newsync.pipedata.queue.BufferedPipeDataQueue;
-import org.apache.iotdb.db.newsync.pipedata.queue.PipeDataQueueFactory;
-import org.apache.iotdb.db.newsync.receiver.collector.Collector;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.db.sync.conf.SyncConstant;
+import org.apache.iotdb.db.sync.conf.SyncPathUtil;
+import org.apache.iotdb.db.sync.pipedata.DeletionPipeData;
+import org.apache.iotdb.db.sync.pipedata.PipeData;
+import org.apache.iotdb.db.sync.pipedata.SchemaPipeData;
+import org.apache.iotdb.db.sync.pipedata.TsFilePipeData;
+import org.apache.iotdb.db.sync.pipedata.queue.BufferedPipeDataQueue;
+import org.apache.iotdb.db.sync.pipedata.queue.PipeDataQueueFactory;
+import org.apache.iotdb.db.sync.receiver.collector.Collector;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -51,7 +51,9 @@ import org.junit.experimental.categories.Category;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.*;
+import java.io.DataOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -172,6 +174,8 @@ public class IoTDBSyncReceiverCollectorIT {
                 CompressionType.SNAPPY,
                 CompressionType.SNAPPY,
                 CompressionType.SNAPPY),
+            null,
+            null,
             null));
     for (PhysicalPlan plan : planList) {
       PipeData pipeData = new SchemaPipeData(plan, serialNum++);
@@ -379,6 +383,8 @@ public class IoTDBSyncReceiverCollectorIT {
                     CompressionType.SNAPPY,
                     CompressionType.SNAPPY,
                     CompressionType.SNAPPY),
+                null,
+                null,
                 null),
             serialNum2++);
     pipeData.serialize(pipeLogOutput);

@@ -168,7 +168,7 @@ public class CustomizedJsonPayloadFormatter implements PayloadFormatter {
 
 
 Then, in your server:
-* put the jar into your server's lib folder
+* Create ${IOTDB_HOME}/ext/mqtt/ folder, and put the jar into this folder.
 * Update configuration to enable MQTT service. (`enable_mqtt_service=true` in `conf/iotdb-engine.properties`)
 * Set the value of `mqtt_payload_formatter` in `conf/iotdb-engine.properties` as the value of getName() in your implementation
   , in this example, the value is `CustomizedJson`

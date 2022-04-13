@@ -76,9 +76,10 @@ public class InternalMNode extends MNode {
    *
    * @param name child's name
    * @param child child's node
+   * @return the child of this node after addChild
    */
   @Override
-  public void addChild(String name, IMNode child) {
+  public IMNode addChild(String name, IMNode child) {
     /* use cpu time to exchange memory
      * measurementNode's children should be null to save memory
      * add child method will only be called when writing MTree, which is not a frequent operation
@@ -92,7 +93,8 @@ public class InternalMNode extends MNode {
       }
     }
     child.setParent(this);
-    children.putIfAbsent(name, child);
+    IMNode existingChild = children.putIfAbsent(name, child);
+    return existingChild == null ? child : existingChild;
   }
 
   /**
@@ -135,43 +137,37 @@ public class InternalMNode extends MNode {
   }
 
   /**
-   * replace a child of this mnode
+   * Replace a child of this mnode. New child's name must be the same as old child's name.
    *
    * @param oldChildName measurement name
    * @param newChildNode new child node
    */
   @Override
-  public void replaceChild(String oldChildName, IMNode newChildNode) {
+  public synchronized void replaceChild(String oldChildName, IMNode newChildNode) {
+    if (!oldChildName.equals(newChildNode.getName())) {
+      throw new RuntimeException("New child's name must be the same as old child's name!");
+    }
     IMNode oldChildNode = this.getChild(oldChildName);
     if (oldChildNode == null) {
       return;
     }
 
-    // newChildNode builds parent-child relationship
-    Map<String, IMNode> grandChildren = oldChildNode.getChildren();
-    if (!grandChildren.isEmpty()) {
-      newChildNode.setChildren(grandChildren);
-      grandChildren.forEach(
-          (grandChildName, grandChildNode) -> grandChildNode.setParent(newChildNode));
+    oldChildNode.moveDataToNewMNode(newChildNode);
+
+    children.replace(oldChildName, newChildNode);
+  }
+
+  @Override
+  public void moveDataToNewMNode(IMNode newMNode) {
+    super.moveDataToNewMNode(newMNode);
+
+    newMNode.setSchemaTemplate(schemaTemplate);
+    newMNode.setUseTemplate(useTemplate);
+
+    if (children != null) {
+      newMNode.setChildren(children);
+      children.forEach((childName, childNode) -> childNode.setParent(newMNode));
     }
-
-    if (newChildNode.isEntity() && oldChildNode.isEntity()) {
-      Map<String, IMeasurementMNode> grandAliasChildren =
-          oldChildNode.getAsEntityMNode().getAliasChildren();
-      if (!grandAliasChildren.isEmpty()) {
-        newChildNode.getAsEntityMNode().setAliasChildren(grandAliasChildren);
-        grandAliasChildren.forEach(
-            (grandAliasChildName, grandAliasChild) -> grandAliasChild.setParent(newChildNode));
-      }
-      newChildNode.getAsEntityMNode().setUseTemplate(oldChildNode.isUseTemplate());
-    }
-
-    newChildNode.setSchemaTemplate(oldChildNode.getSchemaTemplate());
-
-    newChildNode.setParent(this);
-
-    this.deleteChild(oldChildName);
-    this.addChild(newChildNode.getName(), newChildNode);
   }
 
   @Override
