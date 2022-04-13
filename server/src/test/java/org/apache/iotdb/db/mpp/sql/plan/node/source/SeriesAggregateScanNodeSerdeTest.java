@@ -58,7 +58,7 @@ public class SeriesAggregateScanNodeSerdeTest {
             OrderBy.TIMESTAMP_ASC,
             new In<String>(st, VALUE_FILTER, true),
             null);
-    seriesAggregateScanNode.setDataRegionReplicaSet(
+    seriesAggregateScanNode.setRegionReplicaSet(
         new RegionReplicaSet(new DataRegionId(1), new ArrayList<>()));
 
     ByteBuffer byteBuffer = ByteBuffer.allocate(2048);

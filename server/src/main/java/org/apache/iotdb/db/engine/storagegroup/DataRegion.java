@@ -80,6 +80,7 @@ import org.apache.iotdb.db.service.SettleService;
 import org.apache.iotdb.db.service.metrics.Metric;
 import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.service.metrics.Tag;
+import org.apache.iotdb.db.sync.sender.manager.TsFileSyncManager;
 import org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
 import org.apache.iotdb.db.utils.UpgradeUtils;
@@ -258,6 +259,9 @@ public class DataRegion {
   public static final long COMPACTION_TASK_SUBMIT_DELAY = 20L * 1000L;
 
   private IDTable idTable;
+
+  /** used to collect TsFiles in this virtual storage group */
+  private TsFileSyncManager tsFileSyncManager = TsFileSyncManager.getInstance();
 
   /**
    * constrcut a storage group processor
@@ -2140,6 +2144,8 @@ public class DataRegion {
       if (!tsFileResource.isClosed()) {
         TsFileProcessor tsfileProcessor = tsFileResource.getProcessor();
         tsfileProcessor.deleteDataInMemory(deletion, devicePaths);
+      } else if (tsFileSyncManager.isEnableSync()) {
+        tsFileSyncManager.collectRealTimeDeletion(deletion);
       }
 
       // add a record in case of rollback
@@ -2380,47 +2386,6 @@ public class DataRegion {
     writeLock("merge");
     try {
       executeCompaction();
-    } finally {
-      writeUnlock();
-    }
-  }
-
-  /**
-   * Load a new tsfile to storage group processor. The file may have overlap with other files.
-   *
-   * <p>or unsequence list.
-   *
-   * <p>Secondly, execute the loading process by the type.
-   *
-   * <p>Finally, update the latestTimeForEachDevice and partitionLatestFlushedTimeForEachDevice.
-   *
-   * @param newTsFileResource tsfile resource @UsedBy sync module.
-   */
-  public void loadNewTsFileForSync(TsFileResource newTsFileResource) throws LoadFileException {
-    File tsfileToBeInserted = newTsFileResource.getTsFile();
-    long newFilePartitionId = newTsFileResource.getTimePartitionWithCheck();
-    writeLock("loadNewTsFileForSync");
-    try {
-      if (loadTsFileByType(
-          LoadTsFileType.LOAD_SEQUENCE,
-          tsfileToBeInserted,
-          newTsFileResource,
-          newFilePartitionId,
-          tsFileManager.getSequenceListByTimePartition(newFilePartitionId).size() - 1)) {
-        updateLatestTimeMap(newTsFileResource);
-      }
-      resetLastCacheWhenLoadingTsfile(newTsFileResource);
-    } catch (DiskSpaceInsufficientException e) {
-      logger.error(
-          "Failed to append the tsfile {} to storage group processor {} because the disk space is insufficient.",
-          tsfileToBeInserted.getAbsolutePath(),
-          tsfileToBeInserted.getParentFile().getName());
-      IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
-      throw new LoadFileException(e);
-    } catch (IllegalPathException e) {
-      logger.error(
-          "Failed to reset last cache when loading file {}", newTsFileResource.getTsFilePath());
-      throw new LoadFileException(e);
     } finally {
       writeUnlock();
     }
@@ -3413,6 +3378,22 @@ public class DataRegion {
           }
         }
       }
+    }
+  }
+
+  /**
+   * Used to collect history TsFiles(i.e. the tsfile whose memtable == null).
+   *
+   * @param dataStartTime only collect history TsFiles which contains the data after the
+   *     dataStartTime
+   * @return A list, which contains TsFile path
+   */
+  public List<File> collectHistoryTsFileForSync(long dataStartTime) {
+    writeLock("Collect data for sync");
+    try {
+      return tsFileManager.collectHistoryTsFileForSync(dataStartTime);
+    } finally {
+      writeUnlock();
     }
   }
 

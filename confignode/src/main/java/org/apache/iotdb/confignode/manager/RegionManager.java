@@ -131,4 +131,8 @@ public class RegionManager {
         getConsensusManager().read(new QueryStorageGroupSchemaPlan());
     return (StorageGroupSchemaDataSet) readResponse.getDataset();
   }
+
+  public List<String> getStorageGroupNames() {
+    return regionInfoPersistence.getStorageGroupNames();
+  }
 }

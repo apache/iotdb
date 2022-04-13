@@ -116,11 +116,12 @@ public class SeriesScanNode extends SourceNode implements IOutputPlanNode {
   public void open() throws Exception {}
 
   @Override
-  public RegionReplicaSet getDataRegionReplicaSet() {
+  public RegionReplicaSet getRegionReplicaSet() {
     return regionReplicaSet;
   }
 
-  public void setDataRegionReplicaSet(RegionReplicaSet dataRegion) {
+  @Override
+  public void setRegionReplicaSet(RegionReplicaSet dataRegion) {
     this.regionReplicaSet = dataRegion;
   }
 
@@ -270,10 +271,11 @@ public class SeriesScanNode extends SourceNode implements IOutputPlanNode {
     return valueFilter;
   }
 
+  @Override
   public String toString() {
     return String.format(
         "SeriesScanNode-%s:[SeriesPath: %s, DataRegion: %s]",
-        this.getPlanNodeId(), this.getSeriesPath(), this.getDataRegionReplicaSet());
+        this.getPlanNodeId(), this.getSeriesPath(), this.getRegionReplicaSet());
   }
 
   @TestOnly

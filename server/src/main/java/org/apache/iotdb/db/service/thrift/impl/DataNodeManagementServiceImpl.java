@@ -45,6 +45,8 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -59,9 +61,12 @@ public class DataNodeManagementServiceImpl implements ManagementIService.Iface {
     try {
       PartialPath storageGroupPartitionPath = new PartialPath(req.getStorageGroup());
       TRegionReplicaSet regionReplicaSet = req.getRegionReplicaSet();
-      SchemaRegionId schemaRegionId = new SchemaRegionId(regionReplicaSet.getRegionId());
+      SchemaRegionId schemaRegionId =
+          (SchemaRegionId)
+              ConsensusGroupId.Factory.create(ByteBuffer.wrap(regionReplicaSet.getRegionId()));
       schemaEngine.createSchemaRegion(storageGroupPartitionPath, schemaRegionId);
-      ConsensusGroupId consensusGroupId = new SchemaRegionId(regionReplicaSet.getRegionId());
+      ConsensusGroupId consensusGroupId =
+          ConsensusGroupId.Factory.create(ByteBuffer.wrap(regionReplicaSet.getRegionId()));
       List<Peer> peers = new ArrayList<>();
       for (EndPoint endPoint : regionReplicaSet.getEndpoint()) {
         Endpoint endpoint = new Endpoint(endPoint.getIp(), endPoint.getPort());
@@ -86,6 +91,10 @@ public class DataNodeManagementServiceImpl implements ManagementIService.Iface {
       tsStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       tsStatus.setMessage(
           String.format("Create Schema Region failed because of %s", e2.getMessage()));
+    } catch (IOException e3) {
+      LOGGER.error("Can't deserialize regionId", e3);
+      tsStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      tsStatus.setMessage(String.format("Can't deserialize regionId %s", e3));
     }
     return tsStatus;
   }

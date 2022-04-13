@@ -284,6 +284,7 @@ public class QueryStatement extends Statement {
     }
   }
 
+  @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitQuery(this, context);
   }
