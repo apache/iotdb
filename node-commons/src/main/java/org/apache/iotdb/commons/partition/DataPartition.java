@@ -70,8 +70,12 @@ public class DataPartition {
     // TODO return the latest dataRegionReplicaSet for each time partition
     String storageGroup = getStorageGroupByDevice(deviceName);
     SeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceName);
-    // IMPORTANT TODO: (xingtanzjr) need to handle the situation for write operation that there are more than 1 Regions for one timeSlot
-    return dataPartitionMap.get(storageGroup).get(seriesPartitionSlot).entrySet().stream().filter(entry -> timePartitionSlotList.contains(entry.getKey())).flatMap(entry -> entry.getValue().stream()).collect(Collectors.toList());
+    // IMPORTANT TODO: (xingtanzjr) need to handle the situation for write operation that there are
+    // more than 1 Regions for one timeSlot
+    return dataPartitionMap.get(storageGroup).get(seriesPartitionSlot).entrySet().stream()
+        .filter(entry -> timePartitionSlotList.contains(entry.getKey()))
+        .flatMap(entry -> entry.getValue().stream())
+        .collect(Collectors.toList());
   }
 
   public RegionReplicaSet getDataRegionReplicaSetForWriting(
@@ -81,8 +85,13 @@ public class DataPartition {
     // TODO return the latest dataRegionReplicaSet for each time partition
     String storageGroup = getStorageGroupByDevice(deviceName);
     SeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceName);
-    List<RegionReplicaSet> regions = dataPartitionMap.get(storageGroup).get(seriesPartitionSlot).entrySet().stream().filter(entry -> entry.getKey().equals(timePartitionSlot)).flatMap(entry -> entry.getValue().stream()).collect(Collectors.toList());
-    // IMPORTANT TODO: (xingtanzjr) need to handle the situation for write operation that there are more than 1 Regions for one timeSlot
+    List<RegionReplicaSet> regions =
+        dataPartitionMap.get(storageGroup).get(seriesPartitionSlot).entrySet().stream()
+            .filter(entry -> entry.getKey().equals(timePartitionSlot))
+            .flatMap(entry -> entry.getValue().stream())
+            .collect(Collectors.toList());
+    // IMPORTANT TODO: (xingtanzjr) need to handle the situation for write operation that there are
+    // more than 1 Regions for one timeSlot
     return regions.get(0);
   }
 

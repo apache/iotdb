@@ -292,7 +292,7 @@ public class DistributionPlannerTest {
             new PartialPath("root.sg.d1"),
             false,
             new MeasurementSchema[] {
-                new MeasurementSchema("s1", TSDataType.INT32),
+              new MeasurementSchema("s1", TSDataType.INT32),
             },
             new TSDataType[] {TSDataType.INT32},
             1L,
@@ -304,7 +304,7 @@ public class DistributionPlannerTest {
             new PartialPath("root.sg.d1"),
             false,
             new MeasurementSchema[] {
-                new MeasurementSchema("s1", TSDataType.INT32),
+              new MeasurementSchema("s1", TSDataType.INT32),
             },
             new TSDataType[] {TSDataType.INT32},
             100000L,
