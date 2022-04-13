@@ -50,7 +50,7 @@ void query(char * sql_str) {
         fprintf(stderr, "curl_handle == NULL\n");
     }
 
-    //设置头
+    // set the header
     struct curl_slist *headers = NULL;
     headers = curl_slist_append(headers, "Content-Type:application/json");
     headers = curl_slist_append(headers, authorization1);
@@ -71,7 +71,7 @@ void nonQuery(char* sql_str) {
         fprintf(stderr, "curl_handle == NULL\n");
     }
 
-    //设置头
+    // set the header
     struct curl_slist *headers = NULL;
     headers = curl_slist_append(headers, "Content-Type:application/json");
     headers = curl_slist_append(headers, authorization2);
@@ -92,7 +92,7 @@ void insertTablet(char * sql_str) {
         fprintf(stderr, "curl_handle == NULL\n");
     }
 
-    //设置头
+    // set the header
     struct curl_slist *headers = NULL;
     headers = curl_slist_append(headers, "Content-Type:application/json");
     headers = curl_slist_append(headers, authorization3);
