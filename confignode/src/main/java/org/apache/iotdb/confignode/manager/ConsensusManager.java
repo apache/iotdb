@@ -21,7 +21,6 @@ package org.apache.iotdb.confignode.manager;
 import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
-import org.apache.iotdb.commons.hash.DeviceGroupHashExecutor;
 import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.statemachine.PartitionRegionStateMachine;
@@ -37,8 +36,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -48,43 +45,15 @@ public class ConsensusManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(ConsensusManager.class);
   private static final ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();
 
+  private ConsensusGroupId consensusGroupId;
   private IConsensus consensusImpl;
 
-  private ConsensusGroupId consensusGroupId;
-
-  private DeviceGroupHashExecutor hashExecutor;
-
   public ConsensusManager() throws IOException {
-    setHashExecutor();
     setConsensusLayer();
   }
 
   public void close() throws IOException {
     consensusImpl.stop();
-  }
-
-  /** Build DeviceGroupHashExecutor */
-  private void setHashExecutor() {
-    try {
-      Class<?> executor = Class.forName(conf.getDeviceGroupHashExecutorClass());
-      Constructor<?> executorConstructor = executor.getConstructor(int.class);
-      hashExecutor =
-          (DeviceGroupHashExecutor) executorConstructor.newInstance(conf.getDeviceGroupCount());
-    } catch (ClassNotFoundException
-        | NoSuchMethodException
-        | InstantiationException
-        | IllegalAccessException
-        | InvocationTargetException e) {
-      LOGGER.error(
-          "Couldn't Constructor DeviceGroupHashExecutor class: {}",
-          conf.getDeviceGroupHashExecutorClass(),
-          e);
-      hashExecutor = null;
-    }
-  }
-
-  public int getDeviceGroupID(String device) {
-    return hashExecutor.getDeviceGroupID(device);
   }
 
   /** Build ConfigNodeGroup ConsensusLayer */
@@ -126,6 +95,14 @@ public class ConsensusManager {
   /** Transmit PhysicalPlan to confignode.consensus.statemachine */
   public ConsensusReadResponse read(PhysicalPlan plan) {
     return consensusImpl.read(consensusGroupId, plan);
+  }
+
+  public boolean isLeader() {
+    return consensusImpl.isLeader(consensusGroupId);
+  }
+
+  public Peer getLeader() {
+    return consensusImpl.getLeader(consensusGroupId);
   }
 
   // TODO: Interfaces for LoadBalancer control

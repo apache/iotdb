@@ -24,6 +24,7 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -39,7 +40,8 @@ public abstract class InsertNode extends PlanNode {
   protected PartialPath devicePath;
 
   protected boolean isAligned;
-  protected MeasurementSchema[] measurements;
+  protected MeasurementSchema[] measurementSchemas;
+  protected String[] measurements;
   protected TSDataType[] dataTypes;
   // TODO(INSERT) need to change it to a function handle to update last time value
   //  protected IMeasurementMNode[] measurementMNodes;
@@ -61,12 +63,12 @@ public abstract class InsertNode extends PlanNode {
       PlanNodeId id,
       PartialPath devicePath,
       boolean isAligned,
-      MeasurementSchema[] measurements,
+      MeasurementSchema[] measurementSchemas,
       TSDataType[] dataTypes) {
     super(id);
     this.devicePath = devicePath;
     this.isAligned = isAligned;
-    this.measurements = measurements;
+    this.measurementSchemas = measurementSchemas;
     this.dataTypes = dataTypes;
   }
 
@@ -94,12 +96,22 @@ public abstract class InsertNode extends PlanNode {
     isAligned = aligned;
   }
 
-  public MeasurementSchema[] getMeasurements() {
-    return measurements;
+  public MeasurementSchema[] getMeasurementSchemas() {
+    return measurementSchemas;
   }
 
-  public void setMeasurements(MeasurementSchema[] measurements) {
-    this.measurements = measurements;
+  public void setMeasurementSchemas(MeasurementSchema[] measurementSchemas) {
+    this.measurementSchemas = measurementSchemas;
+  }
+
+  public String[] getMeasurements() {
+    if (measurements == null) {
+      measurements = new String[measurementSchemas.length];
+      for (int i = 0; i < measurementSchemas.length; i++) {
+        measurements[i] = measurementSchemas[i].getMeasurementId();
+      }
+    }
+    return measurements;
   }
 
   public TSDataType[] getDataTypes() {
@@ -123,5 +135,7 @@ public abstract class InsertNode extends PlanNode {
   public abstract List<InsertNode> splitByPartition(Analysis analysis);
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {}
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    throw new NotImplementedException("serializeAttributes of InsertNode is not implemented");
+  }
 }

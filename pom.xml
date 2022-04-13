@@ -83,12 +83,12 @@
         <module>antlr</module>
         <module>thrift</module>
         <module>thrift-confignode</module>
-        <module>thrift-datanode</module>
         <module>thrift-cluster</module>
         <module>thrift-sync</module>
         <module>thrift-influxdb</module>
         <module>service-rpc</module>
         <module>jdbc</module>
+        <module>influxdb-protocol</module>
         <module>session</module>
         <module>cli</module>
         <module>openapi</module>
@@ -758,7 +758,6 @@
                         <sourceDirectory>antlr/target/generated-sources/antlr4</sourceDirectory>
                         <sourceDirectory>thrift/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>thrift-confignode/target/generated-sources/thrift</sourceDirectory>
-                        <sourceDirectory>thrift-datanode/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>thrift-sync/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>thrift-cluster/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>thrift-influxdb/target/generated-sources/thrift</sourceDirectory>

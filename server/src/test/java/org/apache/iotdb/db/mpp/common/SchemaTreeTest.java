@@ -20,17 +20,24 @@ package org.apache.iotdb.db.mpp.common;
 
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaEntityNode;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaInternalNode;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaMeasurementNode;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaNode;
+import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTreeVisitor;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class SchemaTreeTest {
 
@@ -140,10 +147,11 @@ public class SchemaTreeTest {
     SchemaEntityNode d1 = new SchemaEntityNode("d1");
     sg.addChild("d1", d1);
 
-    MeasurementSchema schema = new MeasurementSchema();
-    SchemaMeasurementNode s1 = new SchemaMeasurementNode("s1", schema);
+    MeasurementSchema schema1 = new MeasurementSchema("s1", TSDataType.INT32);
+    MeasurementSchema schema2 = new MeasurementSchema("s2", TSDataType.INT64);
+    SchemaMeasurementNode s1 = new SchemaMeasurementNode("s1", schema1);
     d1.addChild("s1", s1);
-    SchemaMeasurementNode s2 = new SchemaMeasurementNode("s2", schema);
+    SchemaMeasurementNode s2 = new SchemaMeasurementNode("s2", schema2);
     s2.setAlias("status");
     d1.addChild("s2", s2);
     d1.addAliasChild("status", s2);
@@ -210,5 +218,56 @@ public class SchemaTreeTest {
       i++;
     }
     Assert.assertEquals(expectedNum, i);
+  }
+
+  @Test
+  public void testSearchDeviceInfo() throws Exception {
+    SchemaTree schemaTree = new SchemaTree(generateSchemaTree());
+
+    testSearchDeviceInfo(schemaTree);
+  }
+
+  private void testSearchDeviceInfo(SchemaTree schemaTree) throws Exception {
+    PartialPath devicePath = new PartialPath("root.sg.d1");
+    List<String> measurements = new ArrayList<>();
+    measurements.add("s1");
+    measurements.add("s2");
+
+    DeviceSchemaInfo deviceSchemaInfo = schemaTree.searchDeviceSchemaInfo(devicePath, measurements);
+    Assert.assertEquals(
+        measurements,
+        deviceSchemaInfo.getMeasurementSchemaList().stream()
+            .map(MeasurementSchema::getMeasurementId)
+            .collect(Collectors.toList()));
+
+    devicePath = new PartialPath("root.sg.d2.a");
+    measurements.remove(1);
+    measurements.add("status");
+    deviceSchemaInfo = schemaTree.searchDeviceSchemaInfo(devicePath, measurements);
+    Assert.assertTrue(deviceSchemaInfo.isAligned());
+    measurements.remove(1);
+    measurements.add("s2");
+    Assert.assertEquals(
+        measurements,
+        deviceSchemaInfo.getMeasurementSchemaList().stream()
+            .map(MeasurementSchema::getMeasurementId)
+            .collect(Collectors.toList()));
+  }
+
+  @Test
+  public void testSerialization() throws Exception {
+    SchemaNode root = generateSchemaTree();
+    ByteBuffer buffer = ByteBuffer.allocate(1024 * 1024);
+    root.serialize(buffer);
+    buffer.flip();
+
+    SchemaTree schemaTree = SchemaTree.deserialize(buffer);
+
+    Pair<List<MeasurementPath>, Integer> visitResult =
+        schemaTree.searchMeasurementPaths(new PartialPath("root.sg.**.status"), 2, 1, true);
+    Assert.assertEquals(2, visitResult.left.size());
+    Assert.assertEquals(3, (int) visitResult.right);
+
+    testSearchDeviceInfo(schemaTree);
   }
 }

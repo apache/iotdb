@@ -318,6 +318,10 @@ public class SQLConstant {
     return pathStr.equals(TIME_PATH);
   }
 
+  public static boolean isNotReservedPath(PartialPath pathStr) {
+    return !pathStr.equals(TIME_PATH);
+  }
+
   public static Set<String> getNativeFunctionNames() {
     return NATIVE_FUNCTION_NAMES;
   }

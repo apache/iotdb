@@ -120,27 +120,20 @@ public class TsFilePipe implements Pipe {
   private void collectData() {
     registerMetadata();
     List<PhysicalPlan> historyMetadata = collectHistoryMetadata();
-    List<File> historyTsFiles = collectTsFile();
+    List<File> historyTsFiles = registerAndCollectHistoryTsFile();
     isCollectingRealTimeData = true;
 
     // get all history data
     int historyMetadataSize = historyMetadata.size();
     int historyTsFilesSize = historyTsFiles.size();
-    List<PipeData> historyData = new ArrayList<>();
     for (int i = 0; i < historyMetadataSize; i++) {
       long serialNumber = 1 - historyTsFilesSize - historyMetadataSize + i;
-      historyData.add(new SchemaPipeData(historyMetadata.get(i), serialNumber));
+      historyQueue.offer(new SchemaPipeData(historyMetadata.get(i), serialNumber));
     }
     for (int i = 0; i < historyTsFilesSize; i++) {
       long serialNumber = 1 - historyTsFilesSize + i;
       File tsFile = historyTsFiles.get(i);
-      historyData.add(new TsFilePipeData(tsFile.getParent(), tsFile.getName(), serialNumber));
-    }
-
-    // add history data into blocking deque
-    int historyDataSize = historyData.size();
-    for (int i = 0; i < historyDataSize; i++) {
-      historyQueue.offer(historyData.get(i));
+      historyQueue.offer(new TsFilePipeData(tsFile.getParent(), tsFile.getName(), serialNumber));
     }
   }
 
@@ -175,7 +168,7 @@ public class TsFilePipe implements Pipe {
     tsFileSyncManager.deregisterSyncTask();
   }
 
-  private List<File> collectTsFile() {
+  private List<File> registerAndCollectHistoryTsFile() {
     return tsFileSyncManager.registerAndCollectHistoryTsFile(this, dataStartTime);
   }
 

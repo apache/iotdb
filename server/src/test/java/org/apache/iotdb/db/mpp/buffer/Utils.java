@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.buffer;
 
 import org.apache.iotdb.db.mpp.memory.MemoryPool;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
 
 import com.google.common.util.concurrent.SettableFuture;
 import org.mockito.Mockito;

@@ -101,8 +101,8 @@ public class LocalSchemaPartitionTable {
     return result;
   }
 
-  public Set<SchemaRegionId> getSchemaRegionIdsByStorageGroup(PartialPath storageGroup) {
-    return table.get(storageGroup);
+  public List<SchemaRegionId> getSchemaRegionIdsByStorageGroup(PartialPath storageGroup) {
+    return new ArrayList<>(table.get(storageGroup));
   }
 
   public synchronized void setStorageGroup(PartialPath storageGroup) {
