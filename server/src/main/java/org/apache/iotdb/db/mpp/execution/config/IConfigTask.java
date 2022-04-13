@@ -19,11 +19,8 @@
 
 package org.apache.iotdb.db.mpp.execution.config;
 
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.rpc.IoTDBConnectionException;
-
 import com.google.common.util.concurrent.ListenableFuture;
 
 public interface IConfigTask {
-  ListenableFuture<Void> execute() throws IoTDBConnectionException, MetadataException;
+  ListenableFuture<Void> execute();
 }

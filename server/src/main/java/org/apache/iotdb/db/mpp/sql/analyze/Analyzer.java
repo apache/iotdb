@@ -47,7 +47,6 @@ import org.apache.iotdb.db.mpp.sql.statement.crud.*;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
-import org.apache.iotdb.db.mpp.sql.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.sys.AuthorStatement;
@@ -228,16 +227,6 @@ public class Analyzer {
 
       String devicePath = alterTimeSeriesStatement.getPath().getDevice();
       analysis.setSchemaPartitionInfo(partitionFetcher.fetchSchemaPartitionInfo(devicePath));
-      return analysis;
-    }
-
-    @Override
-    public Analysis visitSetStorageGroup(
-        SetStorageGroupStatement setStorageGroupStatement, MPPQueryContext context) {
-      Analysis analysis = new Analysis();
-      analysis.setStatement(setStorageGroupStatement);
-
-      // TODO SpriCoder check what to do
       return analysis;
     }
 
