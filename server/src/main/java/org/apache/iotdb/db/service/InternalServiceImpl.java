@@ -42,6 +42,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceResp;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
+
 import org.apache.thrift.TException;
 
 public class InternalServiceImpl implements InternalService.Iface {
@@ -53,17 +54,24 @@ public class InternalServiceImpl implements InternalService.Iface {
   @Override
   public TSendFragmentInstanceResp sendFragmentInstance(TSendFragmentInstanceReq req) {
     QueryType type = QueryType.valueOf(req.queryType);
-    ConsensusGroupId groupId = ConsensusGroupId.Factory.create(req.consensusGroupId.id, GroupType.valueOf(req.consensusGroupId.type));
+    ConsensusGroupId groupId =
+        ConsensusGroupId.Factory.create(
+            req.consensusGroupId.id, GroupType.valueOf(req.consensusGroupId.type));
     switch (type) {
       case READ:
-        ConsensusReadResponse readResp = ConsensusImpl.getInstance().read(groupId, new ByteBufferConsensusRequest(req.fragmentInstance.body));
+        ConsensusReadResponse readResp =
+            ConsensusImpl.getInstance()
+                .read(groupId, new ByteBufferConsensusRequest(req.fragmentInstance.body));
         FragmentInstanceInfo info = (FragmentInstanceInfo) readResp.getDataset();
         return new TSendFragmentInstanceResp(info.getState().isFailed());
       case WRITE:
         TSendFragmentInstanceResp response = new TSendFragmentInstanceResp();
-        ConsensusWriteResponse resp = ConsensusImpl.getInstance().write(groupId, new ByteBufferConsensusRequest(req.fragmentInstance.body));
+        ConsensusWriteResponse resp =
+            ConsensusImpl.getInstance()
+                .write(groupId, new ByteBufferConsensusRequest(req.fragmentInstance.body));
         // TODO need consider more status
-        response.setAccepted(TSStatusCode.SUCCESS_STATUS.getStatusCode() == resp.getStatus().getCode());
+        response.setAccepted(
+            TSStatusCode.SUCCESS_STATUS.getStatusCode() == resp.getStatus().getCode());
         response.setMessage(resp.getStatus().message);
         return response;
     }

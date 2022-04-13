@@ -113,8 +113,14 @@ public class FragmentInstance implements IConsensusRequest {
   public String toString() {
     StringBuilder ret = new StringBuilder();
     ret.append(String.format("FragmentInstance-%s:", getId()));
-    ret.append(String.format("Host: %s", getHostEndpoint() == null ? "Not set" : getHostEndpoint()));
-    ret.append(String.format("Region: %s", getRegionReplicaSet() == null ? "Not set" : getRegionReplicaSet().getConsensusGroupId()));
+    ret.append(
+        String.format("Host: %s", getHostEndpoint() == null ? "Not set" : getHostEndpoint()));
+    ret.append(
+        String.format(
+            "Region: %s",
+            getRegionReplicaSet() == null
+                ? "Not set"
+                : getRegionReplicaSet().getConsensusGroupId()));
     ret.append("---- Plan Node Tree ----\n");
     ret.append(PlanNodeUtil.nodeToString(getFragment().getRoot()));
     return ret.toString();

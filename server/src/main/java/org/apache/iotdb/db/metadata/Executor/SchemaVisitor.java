@@ -32,8 +32,8 @@ import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,13 +58,15 @@ public class SchemaVisitor extends PlanVisitor<TSStatus, ISchemaRegion> {
     return null;
   }
 
-  private static class PhysicalPlanTransformer extends PlanVisitor<PhysicalPlan, TransformerContext> {
+  private static class PhysicalPlanTransformer
+      extends PlanVisitor<PhysicalPlan, TransformerContext> {
     @Override
     public PhysicalPlan visitPlan(PlanNode node, TransformerContext context) {
       throw new NotImplementedException();
     }
 
-    public PhysicalPlan visitCreateTimeSeries(CreateTimeSeriesNode node, TransformerContext context) {
+    public PhysicalPlan visitCreateTimeSeries(
+        CreateTimeSeriesNode node, TransformerContext context) {
       return new CreateTimeSeriesPlan(
           node.getPath(),
           node.getDataType(),
@@ -76,7 +78,8 @@ public class SchemaVisitor extends PlanVisitor<TSStatus, ISchemaRegion> {
           node.getAlias());
     }
 
-    public PhysicalPlan visitCreateAlignedTimeSeries(CreateAlignedTimeSeriesNode node, TransformerContext context) {
+    public PhysicalPlan visitCreateAlignedTimeSeries(
+        CreateAlignedTimeSeriesNode node, TransformerContext context) {
       return new CreateAlignedTimeSeriesPlan(
           node.getDevicePath(),
           node.getMeasurements(),

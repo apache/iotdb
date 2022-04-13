@@ -40,6 +40,7 @@ import org.apache.iotdb.service.rpc.thrift.CreateSchemaRegionReq;
 import org.apache.iotdb.service.rpc.thrift.ManagementIService;
 import org.apache.iotdb.service.rpc.thrift.MigrateDataRegionReq;
 import org.apache.iotdb.service.rpc.thrift.MigrateSchemaRegionReq;
+
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

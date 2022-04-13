@@ -21,7 +21,6 @@ package org.apache.iotdb.db.service;
 
 import org.apache.iotdb.commons.cluster.DataNodeLocation;
 import org.apache.iotdb.commons.cluster.Endpoint;
-import org.apache.iotdb.commons.consensus.GroupType;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.consensus.common.Peer;
@@ -71,9 +70,9 @@ public class InternalServiceImplTest {
     configNode.getBelongedSchemaRegionIdWithAutoCreate(new PartialPath("root.ln"));
     ConsensusImpl.getInstance().start();
     RegionReplicaSet regionReplicaSet = genRegionReplicaSet();
-    ConsensusImpl.getInstance().addConsensusGroup(regionReplicaSet.getConsensusGroupId(), genPeerList(regionReplicaSet));
+    ConsensusImpl.getInstance()
+        .addConsensusGroup(regionReplicaSet.getConsensusGroupId(), genPeerList(regionReplicaSet));
     internalServiceImpl = new InternalServiceImpl();
-
   }
 
   @After
@@ -132,7 +131,10 @@ public class InternalServiceImplTest {
     TFragmentInstance tFragmentInstance = new TFragmentInstance();
     tFragmentInstance.setBody(byteBuffer);
     request.setFragmentInstance(tFragmentInstance);
-    request.setConsensusGroupId(new TConsensusGroupId(regionReplicaSet.getConsensusGroupId().getId(), regionReplicaSet.getConsensusGroupId().getType().toString()));
+    request.setConsensusGroupId(
+        new TConsensusGroupId(
+            regionReplicaSet.getConsensusGroupId().getId(),
+            regionReplicaSet.getConsensusGroupId().getType().toString()));
     request.setQueryType(QueryType.WRITE.toString());
 
     // Use consensus layer to execute request
