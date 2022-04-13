@@ -18,28 +18,78 @@
  */
 package org.apache.iotdb.db.mpp.sql.analyze;
 
-import org.apache.iotdb.commons.partition.DataPartition;
-import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
-import org.apache.iotdb.commons.partition.PartitionInfo;
-import org.apache.iotdb.commons.partition.SchemaPartition;
+import org.apache.iotdb.common.rpc.thrift.EndPoint;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
+import org.apache.iotdb.commons.cluster.DataNodeLocation;
+import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.exception.BadNodeUrlException;
+import org.apache.iotdb.commons.partition.*;
+import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionResp;
+import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
-import java.util.List;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.*;
 
 public class ClusterPartitionFetcher implements IPartitionFetcher {
 
-  @Override
-  public DataPartition getDataPartition(List<DataPartitionQueryParam> parameterList) {
-    return null;
-  }
+  private final ConfigNodeClient client;
 
-  @Override
-  public DataPartition getOrCreateDataPartition(List<DataPartitionQueryParam> parameterList) {
-    return null;
+  public ClusterPartitionFetcher() throws IoTDBConnectionException, BadNodeUrlException {
+    client = new ConfigNodeClient();
   }
 
   @Override
   public SchemaPartition getSchemaPartition(PathPatternTree patternTree) {
+    PublicBAOS baos = new PublicBAOS();
+    try {
+      patternTree.serialize(baos);
+      ByteBuffer serializedPatternTree = ByteBuffer.allocate(baos.size());
+      serializedPatternTree.put(baos.getBuf());
+      serializedPatternTree.flip();
+      TSchemaPartitionReq schemaPartitionReq = new TSchemaPartitionReq(serializedPatternTree);
+      TSchemaPartitionResp schemaPartitionResp = client.getSchemaPartition(schemaPartitionReq);
+      Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> respSchemaPartitionMap =
+          schemaPartitionResp.getSchemaRegionMap();
+      Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> schemaPartitionMap = new HashMap<>();
+      respSchemaPartitionMap.forEach(
+          (storageGroupName, respSchemaRegionMap) -> {
+            Map<SeriesPartitionSlot, RegionReplicaSet> schemaRegionMap = new HashMap<>();
+            respSchemaRegionMap.forEach(
+                (respSeriesPartitionSlot, respRegionReplicaSet) -> {
+                  SeriesPartitionSlot seriesPartitionSlot =
+                      new SeriesPartitionSlot(respSeriesPartitionSlot.getSlotId());
+                  EndPoint respEndPoint = respRegionReplicaSet.getEndpoint().get(0);
+                  RegionReplicaSet regionReplicaSet = null;
+                  try {
+                    regionReplicaSet =
+                        new RegionReplicaSet(
+                            ConsensusGroupId.Factory.create(respRegionReplicaSet.regionId),
+                            Collections.singletonList(
+                                new DataNodeLocation(
+                                    new Endpoint(respEndPoint.getIp(), respEndPoint.getPort()))));
+                  } catch (IOException e) {
+                    e.printStackTrace();
+                  }
+                  schemaRegionMap.put(seriesPartitionSlot, regionReplicaSet);
+                });
+            schemaPartitionMap.put(storageGroupName, schemaRegionMap);
+          });
+
+      if (schemaPartitionResp.getStatus().getCode()
+          == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return new SchemaPartition(schemaPartitionMap);
+      }
+    } catch (IOException | IoTDBConnectionException e) {
+      e.printStackTrace();
+    }
     return null;
   }
 
@@ -49,32 +99,12 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   }
 
   @Override
-  public DataPartition fetchDataPartitionInfo(DataPartitionQueryParam parameter) {
+  public DataPartition getDataPartition(List<DataPartitionQueryParam> parameterList) {
     return null;
   }
 
   @Override
-  public DataPartition fetchDataPartitionInfos(List<DataPartitionQueryParam> parameterList) {
-    return null;
-  }
-
-  @Override
-  public SchemaPartition fetchSchemaPartitionInfo(String devicePath) {
-    return null;
-  }
-
-  @Override
-  public SchemaPartition fetchSchemaPartitionInfos(List<String> devicePath) {
-    return null;
-  }
-
-  @Override
-  public PartitionInfo fetchPartitionInfo(DataPartitionQueryParam parameter) {
-    return null;
-  }
-
-  @Override
-  public PartitionInfo fetchPartitionInfos(List<DataPartitionQueryParam> parameterList) {
+  public DataPartition getOrCreateDataPartition(List<DataPartitionQueryParam> parameterList) {
     return null;
   }
 }
