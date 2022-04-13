@@ -40,12 +40,10 @@ import org.apache.iotdb.service.rpc.thrift.CreateSchemaRegionReq;
 import org.apache.iotdb.service.rpc.thrift.ManagementIService;
 import org.apache.iotdb.service.rpc.thrift.MigrateDataRegionReq;
 import org.apache.iotdb.service.rpc.thrift.MigrateSchemaRegionReq;
-
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -91,10 +89,6 @@ public class DataNodeManagementServiceImpl implements ManagementIService.Iface {
       tsStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       tsStatus.setMessage(
           String.format("Create Schema Region failed because of %s", e2.getMessage()));
-    } catch (IOException e3) {
-      LOGGER.error("Can't deserialize regionId", e3);
-      tsStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
-      tsStatus.setMessage(String.format("Can't deserialize regionId %s", e3));
     }
     return tsStatus;
   }
