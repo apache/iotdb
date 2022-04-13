@@ -25,6 +25,7 @@ import org.apache.iotdb.db.metadata.lastCache.container.ILastCacheContainer;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -222,14 +223,15 @@ public class LastCacheManager {
       try {
         // for the parameter "ascending": true or false both ok here,
         // because LastPointReader will do itself sort logic instead of depending on fillOrderIndex.
+        MeasurementPath measurementPath = node.getMeasurementPath();
         QueryDataSource dataSource =
             QueryResourceManager.getInstance()
-                .getQueryDataSource(node.getMeasurementPath(), queryContext, null, false);
+                .getQueryDataSource(measurementPath, queryContext, null, false);
         Set<String> measurementSet = new HashSet<>();
-        measurementSet.add(node.getPartialPath().getFullPath());
+        measurementSet.add(node.getName());
         LastPointReader lastReader =
             new LastPointReader(
-                node.getPartialPath(),
+                measurementPath,
                 node.getSchema().getType(),
                 measurementSet,
                 queryContext,
