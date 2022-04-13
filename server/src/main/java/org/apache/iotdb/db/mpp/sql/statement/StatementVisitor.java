@@ -23,6 +23,7 @@ import org.apache.iotdb.db.mpp.sql.statement.crud.*;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.sql.statement.sys.AuthorStatement;
 
 /**
@@ -64,6 +65,11 @@ public abstract class StatementVisitor<R, C> {
   // Alter Timeseries
   public R visitAlterTimeseries(AlterTimeSeriesStatement alterTimeSeriesStatement, C context) {
     return visitStatement(alterTimeSeriesStatement, context);
+  }
+
+  // Set Storage Group
+  public R visitSetStorageGroup(SetStorageGroupStatement setStorageGroupStatement, C context) {
+    return visitStatement(setStorageGroupStatement, context);
   }
 
   /** Data Manipulation Language (DML) */

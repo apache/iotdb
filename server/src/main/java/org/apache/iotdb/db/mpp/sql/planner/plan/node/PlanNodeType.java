@@ -24,6 +24,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AlterTimeSer
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AuthorNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateTimeSeriesNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.SetStorageGroupNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.AggregateNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.DeviceMergeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ExchangeNode;
@@ -70,7 +71,8 @@ public enum PlanNodeType {
   EXCHANGE((short) 20),
   AUTHOR((short) 21),
   ALTER_TIME_SERIES((short) 22),
-  CREATE_ALIGNED_TIME_SERIES((short) 23);
+  CREATE_ALIGNED_TIME_SERIES((short) 23),
+  SET_STORAGE_GROUP((short) 24);
 
   private final short nodeType;
 
@@ -133,6 +135,8 @@ public enum PlanNodeType {
         return AlterTimeSeriesNode.deserialize(buffer);
       case 23:
         return CreateAlignedTimeSeriesNode.deserialize(buffer);
+      case 24:
+        return SetStorageGroupNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }

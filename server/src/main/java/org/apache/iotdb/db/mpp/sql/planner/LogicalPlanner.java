@@ -30,6 +30,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AlterTimeSer
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AuthorNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateTimeSeriesNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.SetStorageGroupNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowsNode;
@@ -44,6 +45,7 @@ import org.apache.iotdb.db.mpp.sql.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.sql.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
@@ -214,6 +216,13 @@ public class LogicalPlanner {
           alterTimeSeriesStatement.getAlias(),
           alterTimeSeriesStatement.getTagsMap(),
           alterTimeSeriesStatement.getAttributesMap());
+    }
+
+    @Override
+    public PlanNode visitSetStorageGroup(
+        SetStorageGroupStatement setStorageGroupStatement, MPPQueryContext context) {
+      return new SetStorageGroupNode(
+          context.getQueryId().genPlanNodeId(), setStorageGroupStatement.getStorageGroupPath());
     }
 
     @Override

@@ -17,10 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.execution;
+package org.apache.iotdb.db.mpp.execution.config;
+
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.thrift.TException;
 
 public interface IConfigTask {
-  ListenableFuture<Void> execute();
+  ListenableFuture<Void> execute() throws TException, MetadataException;
 }

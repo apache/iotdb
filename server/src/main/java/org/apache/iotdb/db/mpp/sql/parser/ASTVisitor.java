@@ -1559,6 +1559,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return privileges.toArray(new String[0]);
   }
 
+  @Override
+  public Statement visitSetStorageGroup(IoTDBSqlParser.SetStorageGroupContext ctx) {
+    return super.visitSetStorageGroup(ctx);
+  }
+
   /** function for parsing file path used by LOAD statement. */
   public String parseFilePath(String src) {
     return src.substring(1, src.length() - 1);
