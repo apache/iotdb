@@ -61,13 +61,11 @@ public class Endpoint {
     buffer.putInt(port);
   }
 
-  public void deserializeImpl(ByteBuffer buffer) {
+  public static Endpoint deserializeImpl(ByteBuffer buffer) {
     int length = buffer.getInt();
     byte[] bytes = new byte[length];
     buffer.get(bytes, 0, length);
-    ip = new String(bytes, 0, length);
-
-    port = buffer.getInt();
+    return new Endpoint(new String(bytes, 0, length), buffer.getInt());
   }
 
   @Override

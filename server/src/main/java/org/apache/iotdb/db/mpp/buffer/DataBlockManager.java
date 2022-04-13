@@ -246,6 +246,7 @@ public class DataBlockManager implements IDataBlockManager {
   public ISinkHandle createSinkHandle(
       TFragmentInstanceId localFragmentInstanceId,
       String remoteHostname,
+      int remotePort,
       TFragmentInstanceId remoteFragmentInstanceId,
       String remotePlanNodeId)
       throws IOException {
@@ -267,7 +268,7 @@ public class DataBlockManager implements IDataBlockManager {
             localFragmentInstanceId,
             localMemoryManager,
             executorService,
-            clientFactory.getDataBlockServiceClient(remoteHostname, 7777),
+            clientFactory.getDataBlockServiceClient(remoteHostname, remotePort),
             tsBlockSerdeFactory.get(),
             new SinkHandleListenerImpl());
     sinkHandles.put(localFragmentInstanceId, sinkHandle);
@@ -279,6 +280,7 @@ public class DataBlockManager implements IDataBlockManager {
       TFragmentInstanceId localFragmentInstanceId,
       String localPlanNodeId,
       String remoteHostname,
+      int remotePort,
       TFragmentInstanceId remoteFragmentInstanceId)
       throws IOException {
     if (sourceHandles.containsKey(localFragmentInstanceId)
@@ -305,8 +307,7 @@ public class DataBlockManager implements IDataBlockManager {
             localPlanNodeId,
             localMemoryManager,
             executorService,
-            // TODO: hard coded port.
-            clientFactory.getDataBlockServiceClient(remoteHostname, 7777),
+            clientFactory.getDataBlockServiceClient(remoteHostname, remotePort),
             tsBlockSerdeFactory.get(),
             new SourceHandleListenerImpl());
     sourceHandles

@@ -25,6 +25,7 @@ import org.apache.iotdb.db.auth.AuthException;
 
 import java.nio.ByteBuffer;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 
 public class AuthorPlan extends PhysicalPlan {
@@ -39,6 +40,7 @@ public class AuthorPlan extends PhysicalPlan {
 
   public AuthorPlan(PhysicalPlanType type) {
     super(type);
+    authorType = type;
   }
 
   /**
@@ -224,5 +226,23 @@ public class AuthorPlan extends PhysicalPlan {
         throw new IllegalArgumentException("Unknown operator: " + physicalPlanType);
     }
     return type;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    AuthorPlan that = (AuthorPlan) o;
+    return Objects.equals(authorType, that.authorType)
+        && Objects.equals(userName, that.userName)
+        && Objects.equals(roleName, that.roleName)
+        && Objects.equals(password, that.password)
+        && Objects.equals(newPassword, that.newPassword)
+        && Objects.equals(permissions, that.permissions)
+        && Objects.equals(nodeName, that.nodeName);
   }
 }
