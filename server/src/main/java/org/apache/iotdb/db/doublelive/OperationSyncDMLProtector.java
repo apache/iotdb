@@ -26,19 +26,19 @@ import java.util.concurrent.TimeUnit;
 
 public class OperationSyncDMLProtector extends OperationSyncProtector {
 
-  private final OperationSyncDDLProtector eProtector;
+  private final OperationSyncDDLProtector ddlProtector;
   private final OperationSyncProducer producer;
 
   public OperationSyncDMLProtector(
-      OperationSyncDDLProtector eProtector, OperationSyncProducer producer) {
+      OperationSyncDDLProtector ddlProtector, OperationSyncProducer producer) {
     super();
-    this.eProtector = eProtector;
+    this.ddlProtector = ddlProtector;
     this.producer = producer;
   }
 
   @Override
   protected void preCheck() {
-    while (eProtector.isAtWork()) {
+    while (ddlProtector.isAtWork()) {
       try {
         TimeUnit.SECONDS.sleep(5);
       } catch (InterruptedException ignore) {

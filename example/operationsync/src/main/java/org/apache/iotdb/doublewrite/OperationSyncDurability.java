@@ -20,7 +20,7 @@ package org.apache.iotdb.doublewrite;
 
 import org.apache.iotdb.session.pool.SessionPool;
 
-public class DoubleWriteDurability extends DoubleWriteUtil {
+public class OperationSyncDurability extends OperationSyncUtil {
 
   private static final String dA = "d0";
   private static final String dB = "d1";
@@ -42,12 +42,12 @@ public class DoubleWriteDurability extends DoubleWriteUtil {
     sessionPoolA.setStorageGroup(sg);
 
     // Create double write threads
-    DoubleWriteThread doubleWriteThreadA =
-        new DoubleWriteThread(sessionPoolA, dA, batchCnt, timeseriesCnt, batchSize);
-    threadA = new Thread(doubleWriteThreadA);
-    DoubleWriteThread doubleWriteThreadB =
-        new DoubleWriteThread(sessionPoolA, dB, batchCnt, timeseriesCnt, batchSize);
-    threadB = new Thread(doubleWriteThreadB);
+    OperationSyncThread operationSyncThreadA =
+        new OperationSyncThread(sessionPoolA, dA, batchCnt, timeseriesCnt, batchSize);
+    threadA = new Thread(operationSyncThreadA);
+    OperationSyncThread operationSyncThreadB =
+        new OperationSyncThread(sessionPoolA, dB, batchCnt, timeseriesCnt, batchSize);
+    threadB = new Thread(operationSyncThreadB);
 
     insertData();
   }

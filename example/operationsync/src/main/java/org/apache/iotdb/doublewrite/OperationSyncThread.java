@@ -29,7 +29,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /** Thread for insertion. Normally you don't need to modify this java class. */
-public class DoubleWriteThread implements Runnable {
+public class OperationSyncThread implements Runnable {
 
   private final SessionPool sessionPool;
 
@@ -40,7 +40,7 @@ public class DoubleWriteThread implements Runnable {
   private final int timeseriesCnt;
   private final int batchSize;
 
-  DoubleWriteThread(
+  OperationSyncThread(
       SessionPool sessionPool, String deviceId, int batchCnt, int timeseriesCnt, int batchSize)
       throws IoTDBConnectionException, StatementExecutionException {
     this.sessionPool = sessionPool;

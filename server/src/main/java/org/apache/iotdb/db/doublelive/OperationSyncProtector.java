@@ -82,7 +82,7 @@ public abstract class OperationSyncProtector implements Runnable {
   public void run() {
     while (true) {
       while (true) {
-        // Wrap and transmit all DoubleWriteLogs
+        // Wrap and transmit all OperationSyncLogs
         logFileListLock.lock();
         if (registeredLogFiles.size() > 0) {
           isProtectorAtWork = true;
@@ -102,7 +102,7 @@ public abstract class OperationSyncProtector implements Runnable {
         // Sleep a while before next check
         TimeUnit.SECONDS.sleep(logFileValidity);
       } catch (InterruptedException e) {
-        LOGGER.warn("DoubleWriteProtector been interrupted", e);
+        LOGGER.warn("OperationSyncProtector been interrupted", e);
       }
     }
   }
@@ -116,7 +116,7 @@ public abstract class OperationSyncProtector implements Runnable {
         logReader = new SingleFileLogReader(logFile);
       } catch (FileNotFoundException e) {
         LOGGER.error(
-            "DoubleWriteProtector can't open DoubleWriteLog: {}, discarded",
+            "OperationSyncProtector can't open OperationSyncLog: {}, discarded",
             logFile.getAbsolutePath(),
             e);
         continue;
@@ -128,7 +128,7 @@ public abstract class OperationSyncProtector implements Runnable {
         try {
           nextPlan.serialize(protectorDeserializeStream);
         } catch (IOException e) {
-          LOGGER.error("DoubleWriteProtector can't serialize PhysicalPlan", e);
+          LOGGER.error("OperationSyncProtector can't serialize PhysicalPlan", e);
           continue;
         }
         ByteBuffer nextBuffer = ByteBuffer.wrap(protectorByteStream.toByteArray());
@@ -138,10 +138,10 @@ public abstract class OperationSyncProtector implements Runnable {
 
       logReader.close();
       try {
-        // sleep one second then delete DoubleWriteLog
+        // sleep one second then delete OperationSyncLog
         TimeUnit.SECONDS.sleep(1);
       } catch (InterruptedException e) {
-        LOGGER.warn("DoubleWriteProtector is interrupted", e);
+        LOGGER.warn("OperationSyncProtector is interrupted", e);
       }
 
       OperationSyncLogService.incLogFileSize(-logFile.length());
@@ -150,15 +150,15 @@ public abstract class OperationSyncProtector implements Runnable {
       for (int retryCnt = 0; retryCnt < 5; retryCnt++) {
         if (logFile.delete()) {
           deleted = true;
-          LOGGER.info("DoubleWriteLog: {} is deleted.", logFile.getAbsolutePath());
+          LOGGER.info("OperationSyncLog: {} is deleted.", logFile.getAbsolutePath());
           break;
         } else {
-          LOGGER.warn("Delete DoubleWriteLog: {} failed. Retrying", logFile.getAbsolutePath());
+          LOGGER.warn("Delete OperationSyncLog: {} failed. Retrying", logFile.getAbsolutePath());
         }
       }
       if (!deleted) {
         OperationSyncLogService.incLogFileSize(logFile.length());
-        LOGGER.error("Couldn't delete DoubleWriteLog: {}", logFile.getAbsolutePath());
+        LOGGER.error("Couldn't delete OperationSyncLog: {}", logFile.getAbsolutePath());
       }
     }
   }

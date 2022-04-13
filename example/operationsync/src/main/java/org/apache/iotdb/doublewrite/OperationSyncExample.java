@@ -31,7 +31,7 @@ import org.apache.iotdb.session.pool.SessionDataSetWrapper;
  * can start IoTDB-B on another computer and modify the configuration of IoTDB-B in DoubleWriteUtil.
  * Finally, you can run this code and see double write feature from the command line.
  */
-public class DoubleWriteExample extends DoubleWriteUtil {
+public class OperationSyncExample extends OperationSyncUtil {
 
   private static final String dA = "d0";
   private static final String dB = "d0";

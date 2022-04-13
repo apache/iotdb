@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.doublewrite;
 
-public class DoubleWriteEmpty extends DoubleWriteUtil {
+public class OperationSyncEmpty extends OperationSyncUtil {
 
   public static void main(String[] args) {
     initEnvironment();

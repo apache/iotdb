@@ -19,14 +19,14 @@
 package org.apache.iotdb.doublewrite;
 
 /**
- * This is a double write insertion degradation rate test java class, which shows the performance
+ * This is an operation sync insertion degradation rate test java class, which shows the performance
  * impact when enable double write feature. You can run this code in the same way as
  * DoubleWriteExample.java. Since IoTDB-A enable the double write feature, the performance impact is
  * correct only when Both IoTDB-A and IoTDB-B run on the same computer. Or you can modify the
  * default configuration of IoTDB-A and IoTDB-B after becoming familiar with DoubleWriteExample,
  * DoubleWriteUtil to get A more accurate performance impact estimate from two remote computers.
  */
-public class DoubleWriteDegradationRate extends DoubleWriteUtil {
+public class OperationSyncDegradationRate extends OperationSyncUtil {
 
   private static final String dA = "d0";
   private static final String dB = "d1";

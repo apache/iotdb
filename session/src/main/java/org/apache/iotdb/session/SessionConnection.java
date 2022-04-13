@@ -44,10 +44,10 @@ import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsOfOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
-import org.apache.iotdb.service.rpc.thrift.TSInternalSyncWriteReq;
 import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
+import org.apache.iotdb.service.rpc.thrift.TSOperationSyncWriteReq;
 import org.apache.iotdb.service.rpc.thrift.TSPruneSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateResp;
@@ -943,16 +943,16 @@ public class SessionConnection {
     }
   }
 
-  protected void executeDoubleWrite(TSInternalSyncWriteReq request)
+  protected void executeOperationSync(TSOperationSyncWriteReq request)
       throws IoTDBConnectionException, StatementExecutionException, RedirectException {
     request.setSessionId(sessionId);
     try {
-      RpcUtils.verifySuccessWithRedirection(client.executeDoubleWrite(request));
+      RpcUtils.verifySuccessWithRedirection(client.executeOperationSync(request));
     } catch (TException e) {
       if (reconnect()) {
         try {
           request.setSessionId(sessionId);
-          RpcUtils.verifySuccess(client.executeDoubleWrite(request));
+          RpcUtils.verifySuccess(client.executeOperationSync(request));
         } catch (TException tException) {
           throw new IoTDBConnectionException(tException);
         }

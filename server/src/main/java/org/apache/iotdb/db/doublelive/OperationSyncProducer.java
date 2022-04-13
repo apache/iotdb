@@ -27,26 +27,26 @@ import java.nio.ByteBuffer;
 import java.util.concurrent.BlockingQueue;
 
 /**
- * DoubleWriteProducer using BlockingQueue to cache PhysicalPlan. And persist some PhysicalPlan when
- * they are too many to transmit
+ * OperationSyncProducer using BlockingQueue to cache PhysicalPlan. And persist some PhysicalPlan
+ * when they are too many to transmit
  */
 public class OperationSyncProducer {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(OperationSyncProducer.class);
 
   private final BlockingQueue<Pair<ByteBuffer, OperationSyncPlanTypeUtils.OperationSyncPlanType>>
-      doubleWriteQueue;
+      operationSyncQueue;
 
   public OperationSyncProducer(
       BlockingQueue<Pair<ByteBuffer, OperationSyncPlanTypeUtils.OperationSyncPlanType>>
-          doubleWriteQueue) {
-    this.doubleWriteQueue = doubleWriteQueue;
+          operationSyncQueue) {
+    this.operationSyncQueue = operationSyncQueue;
   }
 
   public void put(Pair<ByteBuffer, OperationSyncPlanTypeUtils.OperationSyncPlanType> planPair) {
     try {
       planPair.left.position(0);
-      doubleWriteQueue.put(planPair);
+      operationSyncQueue.put(planPair);
     } catch (InterruptedException e) {
       LOGGER.error("double write cache failed.", e);
     }

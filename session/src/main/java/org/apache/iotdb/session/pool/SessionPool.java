@@ -2259,13 +2259,13 @@ public class SessionPool {
   }
 
   /** Transmit insert record request for double write */
-  public boolean doubleWriteTransmit(ByteBuffer buffer)
+  public boolean operationSyncTransmit(ByteBuffer buffer)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
         buffer.position(0);
-        session.doubleWriteTransmit(buffer);
+        session.operationSyncTransmit(buffer);
         putBack(session);
         return true;
       } catch (IoTDBConnectionException e) {

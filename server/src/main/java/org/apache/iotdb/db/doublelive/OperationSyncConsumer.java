@@ -34,18 +34,18 @@ public class OperationSyncConsumer implements Runnable {
   private static final Logger LOGGER = LoggerFactory.getLogger(OperationSyncConsumer.class);
 
   private final BlockingQueue<Pair<ByteBuffer, OperationSyncPlanTypeUtils.OperationSyncPlanType>>
-      doubleWriteQueue;
-  private final SessionPool doubleWriteSessionPool;
-  private final OperationSyncLogService niLogService;
+      OperationSyncQueue;
+  private final SessionPool operationSyncSessionPool;
+  private final OperationSyncLogService dmlLogService;
 
   public OperationSyncConsumer(
       BlockingQueue<Pair<ByteBuffer, OperationSyncPlanTypeUtils.OperationSyncPlanType>>
-          doubleWriteQueue,
-      SessionPool doubleWriteSessionPool,
-      OperationSyncLogService niLogService) {
-    this.doubleWriteQueue = doubleWriteQueue;
-    this.doubleWriteSessionPool = doubleWriteSessionPool;
-    this.niLogService = niLogService;
+          OperationSyncQueue,
+      SessionPool operationSyncSessionPool,
+      OperationSyncLogService dmlLogService) {
+    this.OperationSyncQueue = OperationSyncQueue;
+    this.operationSyncSessionPool = operationSyncSessionPool;
+    this.dmlLogService = dmlLogService;
   }
 
   @Override
@@ -55,11 +55,11 @@ public class OperationSyncConsumer implements Runnable {
       ByteBuffer headBuffer;
       OperationSyncPlanTypeUtils.OperationSyncPlanType headType;
       try {
-        head = doubleWriteQueue.take();
+        head = OperationSyncQueue.take();
         headBuffer = head.left;
         headType = head.right;
       } catch (InterruptedException e) {
-        LOGGER.error("DoubleWriteConsumer been interrupted: ", e);
+        LOGGER.error("OperationSyncConsumer been interrupted: ", e);
         continue;
       }
 
@@ -76,14 +76,14 @@ public class OperationSyncConsumer implements Runnable {
       boolean transmitStatus = false;
       try {
         headBuffer.position(0);
-        transmitStatus = doubleWriteSessionPool.doubleWriteTransmit(headBuffer);
+        transmitStatus = operationSyncSessionPool.operationSyncTransmit(headBuffer);
       } catch (IoTDBConnectionException connectionException) {
         // warn IoTDBConnectionException and do serialization
         LOGGER.warn(
-            "DoubleWriteConsumer can't transmit because network failure", connectionException);
+            "OperationSyncConsumer can't transmit because network failure", connectionException);
       } catch (Exception e) {
         // The PhysicalPlan has internal error, reject transmit
-        LOGGER.error("DoubleWriteConsumer can't transmit", e);
+        LOGGER.error("OperationSyncConsumer can't transmit", e);
         continue;
       }
 
@@ -91,12 +91,12 @@ public class OperationSyncConsumer implements Runnable {
         try {
           // must set buffer position to limit() before serialization
           headBuffer.position(headBuffer.limit());
-          niLogService.acquireLogWriter();
-          niLogService.write(headBuffer);
+          dmlLogService.acquireLogWriter();
+          dmlLogService.write(headBuffer);
         } catch (IOException e) {
-          LOGGER.error("DoubleWriteConsumer can't serialize physicalPlan", e);
+          LOGGER.error("OperationSyncConsumer can't serialize physicalPlan", e);
         }
-        niLogService.releaseLogWriter();
+        dmlLogService.releaseLogWriter();
       }
     }
   }

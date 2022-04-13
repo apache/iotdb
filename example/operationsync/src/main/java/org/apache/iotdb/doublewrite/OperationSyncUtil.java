@@ -29,7 +29,7 @@ import org.apache.iotdb.session.pool.SessionPool;
  * This java class is used to create the double write examples environment. You can set IoTDB-B
  * config here
  */
-public abstract class DoubleWriteUtil {
+public abstract class OperationSyncUtil {
 
   // IoTDB-A config
   // Started by EnvironmentUtils, shouldn't be modified
@@ -93,12 +93,12 @@ public abstract class DoubleWriteUtil {
     sessionPoolB.setStorageGroup(sg);
 
     // Create double write threads
-    DoubleWriteThread doubleWriteThreadA =
-        new DoubleWriteThread(sessionPoolA, dA, batchCnt, timeseriesCnt, batchSize);
-    threadA = new Thread(doubleWriteThreadA);
-    DoubleWriteThread doubleWriteThreadB =
-        new DoubleWriteThread(sessionPoolB, dB, batchCnt, timeseriesCnt, batchSize);
-    threadB = new Thread(doubleWriteThreadB);
+    OperationSyncThread operationSyncThreadA =
+        new OperationSyncThread(sessionPoolA, dA, batchCnt, timeseriesCnt, batchSize);
+    threadA = new Thread(operationSyncThreadA);
+    OperationSyncThread operationSyncThreadB =
+        new OperationSyncThread(sessionPoolB, dB, batchCnt, timeseriesCnt, batchSize);
+    threadB = new Thread(operationSyncThreadB);
   }
 
   protected static void cleanEnvironment() throws Exception {

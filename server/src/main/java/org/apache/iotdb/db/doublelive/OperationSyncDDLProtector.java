@@ -53,13 +53,13 @@ public class OperationSyncDDLProtector extends OperationSyncProtector {
       try {
         // try double write
         planBuffer.position(0);
-        transmitStatus = operationSyncSessionPool.doubleWriteTransmit(planBuffer);
+        transmitStatus = operationSyncSessionPool.operationSyncTransmit(planBuffer);
       } catch (IoTDBConnectionException connectionException) {
         // warn IoTDBConnectionException and retry
-        LOGGER.warn("DoubleWriteEProtector can't transmit, retrying...", connectionException);
+        LOGGER.warn("OperationSyncDDLProtector can't transmit, retrying...", connectionException);
       } catch (Exception e) {
         // error exception and break
-        LOGGER.error("DoubleWriteEProtector can't transmit", e);
+        LOGGER.error("OperationSyncDDLProtector can't transmit", e);
         break;
       }
 
@@ -69,7 +69,7 @@ public class OperationSyncDDLProtector extends OperationSyncProtector {
         try {
           TimeUnit.SECONDS.sleep(1);
         } catch (InterruptedException e) {
-          LOGGER.warn("DoubleWriteEProtector is interrupted", e);
+          LOGGER.warn("OperationSyncDDLProtector is interrupted", e);
         }
       }
     }

@@ -68,7 +68,7 @@ public class OperationSyncLogService implements Runnable {
     File logDir = new File(logFileDir);
     if (!logDir.exists()) {
       if (!logDir.mkdirs()) {
-        LOGGER.error("Can't make DoubleWriteLog file dir: {}", logDir.getAbsolutePath());
+        LOGGER.error("Can't make OperationSyncLog file dir: {}", logDir.getAbsolutePath());
       }
     }
   }
@@ -126,7 +126,7 @@ public class OperationSyncLogService implements Runnable {
         // Sleep 10s before next check
         TimeUnit.SECONDS.sleep(10);
       } catch (InterruptedException e) {
-        LOGGER.error("DoubleWriteLogService been interrupted", e);
+        LOGGER.error("OperationSyncLogService been interrupted", e);
       }
     }
   }
@@ -143,7 +143,7 @@ public class OperationSyncLogService implements Runnable {
       try {
         logWriter.close();
       } catch (IOException e) {
-        LOGGER.warn("Can't close DoubleWriteLog: {}, retrying...", logFile.getAbsolutePath());
+        LOGGER.warn("Can't close OperationSyncLog: {}, retrying...", logFile.getAbsolutePath());
         try {
           // Sleep 1s and retry
           TimeUnit.SECONDS.sleep(1);
@@ -153,7 +153,7 @@ public class OperationSyncLogService implements Runnable {
         continue;
       }
 
-      LOGGER.info("DoubleWriteLog: {} is expired and closed", logFile.getAbsolutePath());
+      LOGGER.info("OperationSyncLog: {} is expired and closed", logFile.getAbsolutePath());
       break;
     }
 
@@ -175,11 +175,11 @@ public class OperationSyncLogService implements Runnable {
         if (logFile.createNewFile()) {
           logFileCreateTime = System.currentTimeMillis();
           logWriter = new LogWriter(logFile, false);
-          LOGGER.info("Create DoubleWriteLog: {}", logFile.getAbsolutePath());
+          LOGGER.info("Create OperationSyncLog: {}", logFile.getAbsolutePath());
           break;
         }
       } catch (IOException e) {
-        LOGGER.warn("Can't create DoubleWriteLog: {}, retrying...", logFile.getAbsolutePath());
+        LOGGER.warn("Can't create OperationSyncLog: {}, retrying...", logFile.getAbsolutePath());
         try {
           TimeUnit.SECONDS.sleep(1);
         } catch (InterruptedException ignored) {
