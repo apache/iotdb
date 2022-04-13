@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.schemaregion;
 
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -74,6 +75,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.sync.sender.manager.SchemaSyncManager;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -145,7 +147,7 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARA
  * </ol>
  */
 @SuppressWarnings("java:S1135") // ignore todos
-public class SchemaRegion {
+public class SchemaRegion implements ISchemaRegion {
 
   private static final Logger logger = LoggerFactory.getLogger(StorageGroupSchemaManager.class);
 
@@ -170,6 +172,7 @@ public class SchemaRegion {
   // device -> DeviceMNode
   private LoadingCache<PartialPath, IMNode> mNodeCache;
   private TagManager tagManager;
+  private SchemaSyncManager syncManager = SchemaSyncManager.getInstance();
 
   // region Interfaces and Implementation of initialization、snapshot、recover and clear
   public SchemaRegion(
@@ -323,6 +326,7 @@ public class SchemaRegion {
   }
 
   /** function for clearing metadata components of one schema region */
+  @Override
   public synchronized void clear() {
     isClearing = true;
     try {
@@ -395,6 +399,14 @@ public class SchemaRegion {
 
   // region Interfaces for schema region Info query and operation
 
+  public String getStorageGroupFullPath() {
+    return storageGroupFullPath;
+  }
+
+  public ConsensusGroupId getSchemaRegionId() {
+    return schemaRegionId;
+  }
+
   public synchronized void deleteSchemaRegion() throws MetadataException {
     // collect all the LeafMNode in this schema region
     List<IMeasurementMNode> leafMNodes = mtree.getAllMeasurementMNode();
@@ -408,31 +420,7 @@ public class SchemaRegion {
     clear();
 
     // delete all the schema region files
-    File schemaRegionDir = SystemFileFactory.INSTANCE.getFile(schemaRegionDirPath);
-    File[] sgFiles = schemaRegionDir.listFiles();
-    if (sgFiles == null) {
-      throw new MetadataException(
-          String.format("Can't get files in schema region dir %s", schemaRegionDirPath));
-    }
-    for (File file : sgFiles) {
-      if (file.delete()) {
-        logger.info("delete schema region folder {}", schemaRegionDir.getAbsolutePath());
-      } else {
-        logger.info("delete schema region folder {} failed.", schemaRegionDir.getAbsolutePath());
-        throw new MetadataException(
-            String.format(
-                "Failed to delete schema region folder %s", schemaRegionDir.getAbsolutePath()));
-      }
-    }
-
-    if (schemaRegionDir.delete()) {
-      logger.info("delete schema region folder {}", schemaRegionDir.getAbsolutePath());
-    } else {
-      logger.info("delete schema region folder {} failed.", schemaRegionDir.getAbsolutePath());
-      throw new MetadataException(
-          String.format(
-              "Failed to delete schema region folder %s", schemaRegionDir.getAbsolutePath()));
-    }
+    SchemaRegionUtils.deleteSchemaRegionFolder(schemaRegionDirPath, logger);
   }
 
   // endregion
@@ -494,6 +482,9 @@ public class SchemaRegion {
           }
           plan.setTagOffset(offset);
           logWriter.createTimeseries(plan);
+          if (syncManager.isEnableSync()) {
+            syncManager.syncMetadataPlan(plan);
+          }
         }
         if (offset != -1) {
           leafMNode.setOffset(offset);
@@ -523,7 +514,7 @@ public class SchemaRegion {
    * @param encoding the encoding function {@code Encoding} of the timeseries
    * @param compressor the compressor function {@code Compressor} of the time series
    */
-  public void createTimeseries(
+  private void createTimeseries(
       PartialPath path,
       TSDataType dataType,
       TSEncoding encoding,
@@ -633,6 +624,9 @@ public class SchemaRegion {
           }
           plan.setTagOffsets(tagOffsets);
           logWriter.createAlignedTimeseries(plan);
+          if (syncManager.isEnableSync()) {
+            syncManager.syncMetadataPlan(plan);
+          }
         }
         tagOffsets = plan.getTagOffsets();
         for (int i = 0; i < measurements.size(); i++) {
@@ -705,6 +699,9 @@ public class SchemaRegion {
         }
         deleteTimeSeriesPlan.setDeletePathList(Collections.singletonList(p));
         logWriter.deleteTimeseries(deleteTimeSeriesPlan);
+        if (syncManager.isEnableSync()) {
+          syncManager.syncMetadataPlan(deleteTimeSeriesPlan);
+        }
       }
     } catch (DeleteFailedException e) {
       failedNames.add(e.getName());
@@ -748,7 +745,6 @@ public class SchemaRegion {
    * <p>(we develop this method as we need to get the node's lock after we get the lock.writeLock())
    *
    * @param path path
-   * @param
    */
   public IMNode getDeviceNodeWithAutoCreate(PartialPath path, boolean autoCreateSchema)
       throws IOException, MetadataException {

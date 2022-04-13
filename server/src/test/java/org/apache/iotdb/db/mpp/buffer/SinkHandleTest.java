@@ -46,10 +46,9 @@ public class SinkHandleTest {
     final long mockTsBlockSize = 1024L * 1024L;
     final int numOfMockTsBlock = 10;
     final String remoteHostname = "remote";
-    final TFragmentInstanceId remoteFragmentInstanceId =
-        new TFragmentInstanceId(queryId, "f0", "0");
+    final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId, 0, "0");
     final String remotePlanNodeId = "exchange_0";
-    final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, "f1", "0");
+    final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, 1, "0");
 
     // Construct a mock LocalMemoryManager that returns unblocked futures.
     LocalMemoryManager mockLocalMemoryManager = Mockito.mock(LocalMemoryManager.class);
@@ -176,10 +175,9 @@ public class SinkHandleTest {
     final long mockTsBlockSize = 1024L * 1024L;
     final int numOfMockTsBlock = 10;
     final String remoteHostname = "remote";
-    final TFragmentInstanceId remoteFragmentInstanceId =
-        new TFragmentInstanceId(queryId, "f0", "0");
+    final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId, 0, "0");
     final String remotePlanNodeId = "exchange_0";
-    final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, "f1", "0");
+    final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, 1, "0");
 
     // Construct a mock LocalMemoryManager that returns blocked futures.
     LocalMemoryManager mockLocalMemoryManager = Mockito.mock(LocalMemoryManager.class);
@@ -359,10 +357,9 @@ public class SinkHandleTest {
     final long mockTsBlockSize = 1024L * 1024L;
     final int numOfMockTsBlock = 10;
     final String remoteHostname = "remote";
-    final TFragmentInstanceId remoteFragmentInstanceId =
-        new TFragmentInstanceId(queryId, "f0", "0");
+    final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId, 0, "0");
     final String remotePlanNodeId = "exchange_0";
-    final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, "f1", "0");
+    final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, 1, "0");
 
     // Construct a mock LocalMemoryManager that returns blocked futures.
     LocalMemoryManager mockLocalMemoryManager = Mockito.mock(LocalMemoryManager.class);

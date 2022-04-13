@@ -18,15 +18,22 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write;
 
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -157,16 +164,136 @@ public class CreateTimeSeriesNode extends PlanNode {
   }
 
   @Override
-  protected void serializeAttributes(ByteBuffer byteBuffer) {
-    throw new NotImplementedException(
-        "serializeAttributes of CreateTimeSeriesNode is not implemented");
+  public PhysicalPlan transferToPhysicalPlan() {
+    return new CreateTimeSeriesPlan(
+        getPath(),
+        getDataType(),
+        getEncoding(),
+        getCompressor(),
+        getProps(),
+        getTags(),
+        getAttributes(),
+        getAlias());
   }
 
-  public static CreateTimeSeriesNode deserialize(ByteBuffer byteBuffer) {
-    return null;
+  public static CreateTimeSeriesNode deserialize(ByteBuffer byteBuffer)
+      throws IllegalPathException {
+    String id;
+    PartialPath path = null;
+    TSDataType dataType;
+    TSEncoding encoding;
+    CompressionType compressor;
+    long tagOffset;
+    String alias = null;
+    Map<String, String> props = null;
+    Map<String, String> tags = null;
+    Map<String, String> attributes = null;
+
+    id = ReadWriteIOUtils.readString(byteBuffer);
+    int length = byteBuffer.getInt();
+    byte[] bytes = new byte[length];
+    byteBuffer.get(bytes);
+    path = new PartialPath(new String(bytes));
+    dataType = TSDataType.values()[byteBuffer.get()];
+    encoding = TSEncoding.values()[byteBuffer.get()];
+    compressor = CompressionType.values()[byteBuffer.get()];
+    tagOffset = byteBuffer.getLong();
+
+    // alias
+    if (byteBuffer.get() == 1) {
+      alias = ReadWriteIOUtils.readString(byteBuffer);
+    }
+
+    byte label = byteBuffer.get();
+    // props
+    if (label == 0) {
+      props = new HashMap<>();
+    } else if (label == 1) {
+      props = ReadWriteIOUtils.readMap(byteBuffer);
+    }
+
+    // tags
+    label = byteBuffer.get();
+    if (label == 0) {
+      tags = new HashMap<>();
+    } else if (label == 1) {
+      tags = ReadWriteIOUtils.readMap(byteBuffer);
+    }
+
+    // attributes
+    label = byteBuffer.get();
+    if (label == 0) {
+      attributes = new HashMap<>();
+    } else if (label == 1) {
+      attributes = ReadWriteIOUtils.readMap(byteBuffer);
+    }
+
+    return new CreateTimeSeriesNode(
+        new PlanNodeId(id), path, dataType, encoding, compressor, props, tags, attributes, alias);
   }
 
   @Override
+  public void serialize(ByteBuffer byteBuffer) {
+    byteBuffer.putShort((short) PlanNodeType.CREATE_TIME_SERIES.ordinal());
+    ReadWriteIOUtils.write(this.getPlanNodeId().getId(), byteBuffer);
+    byte[] bytes = path.getFullPath().getBytes();
+    byteBuffer.putInt(bytes.length);
+    byteBuffer.put(bytes);
+    byteBuffer.put((byte) dataType.ordinal());
+    byteBuffer.put((byte) encoding.ordinal());
+    byteBuffer.put((byte) compressor.ordinal());
+    byteBuffer.putLong(tagOffset);
+
+    // alias
+    if (alias != null) {
+      byteBuffer.put((byte) 1);
+      ReadWriteIOUtils.write(alias, byteBuffer);
+    } else {
+      byteBuffer.put((byte) 0);
+    }
+
+    // props
+    if (props == null) {
+      byteBuffer.put((byte) -1);
+    } else if (props.isEmpty()) {
+      byteBuffer.put((byte) 0);
+    } else {
+      byteBuffer.put((byte) 1);
+      ReadWriteIOUtils.write(props, byteBuffer);
+    }
+
+    // tags
+    if (tags == null) {
+      byteBuffer.put((byte) -1);
+    } else if (tags.isEmpty()) {
+      byteBuffer.put((byte) 0);
+    } else {
+      byteBuffer.put((byte) 1);
+      ReadWriteIOUtils.write(tags, byteBuffer);
+    }
+
+    // attributes
+    if (attributes == null) {
+      byteBuffer.put((byte) -1);
+    } else if (attributes.isEmpty()) {
+      byteBuffer.put((byte) 0);
+    } else {
+      byteBuffer.put((byte) 1);
+      ReadWriteIOUtils.write(attributes, byteBuffer);
+    }
+
+    // no children node, need to set 0
+    byteBuffer.putInt(0);
+  }
+
+  @Override
+  protected void serializeAttributes(ByteBuffer byteBuffer) {}
+
+  @Override
+  public <R, C> R accept(PlanVisitor<R, C> visitor, C schemaRegion) {
+    return visitor.visitCreateTimeSeries(this, schemaRegion);
+  }
+
   public boolean equals(Object o) {
     if (this == o) {
       return true;

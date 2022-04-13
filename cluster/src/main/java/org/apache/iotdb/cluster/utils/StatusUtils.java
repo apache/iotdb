@@ -102,9 +102,6 @@ public class StatusUtils {
       case SYSTEM_CHECK_ERROR:
         status.setMessage("Meet error while system checking. ");
         break;
-      case SYNC_DEVICE_OWNER_CONFLICT_ERROR:
-        status.setMessage("Sync device owners conflict. ");
-        break;
       case SYNC_CONNECTION_EXCEPTION:
         status.setMessage("Meet error while sync connecting. ");
         break;
@@ -200,6 +197,9 @@ public class StatusUtils {
         break;
       case PARSE_LOG_ERROR:
         status.setMessage("Parse log error.");
+        break;
+      case PIPESINK_ERROR:
+        status.setMessage("PipeSink error.");
         break;
       default:
         status.setMessage("");

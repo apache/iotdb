@@ -108,7 +108,7 @@ public abstract class PhysicalPlan implements IConsensusRequest {
           plan = new GetOrCreateSchemaPartitionPlan(PhysicalPlanType.GetSchemaPartition);
           break;
         case CreateSchemaPartition:
-          plan = new CreateSchemaPartitionPlan(PhysicalPlanType.CreateSchemaPartition);
+          plan = new CreateSchemaPartitionPlan();
           break;
         case GetOrCreateSchemaPartition:
           plan = new GetOrCreateSchemaPartitionPlan(PhysicalPlanType.GetOrCreateSchemaPartition);

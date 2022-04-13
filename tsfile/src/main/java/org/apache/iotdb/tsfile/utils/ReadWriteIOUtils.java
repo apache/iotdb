@@ -113,14 +113,13 @@ public class ReadWriteIOUtils {
     return readBool(buffer);
   }
 
-  public static int write(Map<String, String> map, DataOutputStream stream) throws IOException {
+  public static int write(Map<String, String> map, OutputStream stream) throws IOException {
     if (map == null) {
       return write(NO_BYTE_TO_READ, stream);
     }
 
     int length = 0;
-    stream.writeInt(map.size());
-    length += 4;
+    length += write(map.size(), stream);
     for (Entry<String, String> entry : map.entrySet()) {
       length += write(entry.getKey(), stream);
       length += write(entry.getValue(), stream);
@@ -128,8 +127,7 @@ public class ReadWriteIOUtils {
     return length;
   }
 
-  public static void write(List<Map<String, String>> maps, DataOutputStream stream)
-      throws IOException {
+  public static void write(List<Map<String, String>> maps, OutputStream stream) throws IOException {
     for (Map<String, String> map : maps) {
       write(map, stream);
     }

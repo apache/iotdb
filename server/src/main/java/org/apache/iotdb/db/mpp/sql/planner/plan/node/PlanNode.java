@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node;
 
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.commons.lang.Validate;
@@ -53,6 +54,7 @@ public abstract class PlanNode {
 
   public abstract void addChild(PlanNode child);
 
+  @Override
   public abstract PlanNode clone();
 
   public PlanNode cloneWithChildren(List<PlanNode> children) {
@@ -111,5 +113,10 @@ public abstract class PlanNode {
   @Override
   public int hashCode() {
     return Objects.hash(id);
+  }
+
+  // TODO (yifuzhou) will remote later
+  public PhysicalPlan transferToPhysicalPlan() {
+    return null;
   }
 }

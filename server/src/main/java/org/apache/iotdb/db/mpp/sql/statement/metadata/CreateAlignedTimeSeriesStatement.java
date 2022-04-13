@@ -166,6 +166,7 @@ public class CreateAlignedTimeSeriesStatement extends Statement {
     this.tagOffsets.add(tagsOffset);
   }
 
+  @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitCreateAlignedTimeseries(this, context);
   }

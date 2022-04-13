@@ -22,7 +22,7 @@ namespace java org.apache.iotdb.mpp.rpc.thrift
 
 struct TFragmentInstanceId {
   1: required string queryId
-  2: required string fragmentId
+  2: required i32 fragmentId
   3: required string instanceId
 }
 
@@ -61,8 +61,15 @@ struct TFragmentInstance {
   1: required binary body
 }
 
+struct TConsensusGroupId {
+  1: required i32 id
+  2: required string type
+}
+
 struct TSendFragmentInstanceReq {
   1: required TFragmentInstance fragmentInstance
+  2: required TConsensusGroupId consensusGroupId
+  3: required string queryType
 }
 
 struct TSendFragmentInstanceResp {

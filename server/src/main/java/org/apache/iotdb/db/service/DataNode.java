@@ -88,8 +88,6 @@ public class DataNode implements DataNodeMBean {
   protected void serverCheckAndInit() throws ConfigurationException, IOException {
     IoTDBConfigCheck.getInstance().checkConfig();
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-
-    config.setSyncEnable(false);
     // TODO: check configuration for data node
 
     // if client ip is the default address, set it same with internal ip

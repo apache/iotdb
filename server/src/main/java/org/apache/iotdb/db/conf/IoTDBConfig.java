@@ -21,8 +21,12 @@ package org.apache.iotdb.db.conf;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionPriority;
-import org.apache.iotdb.db.engine.compaction.cross.CrossCompactionStrategy;
-import org.apache.iotdb.db.engine.compaction.inner.InnerCompactionStrategy;
+import org.apache.iotdb.db.engine.compaction.constant.CrossCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.constant.CrossCompactionSelector;
+import org.apache.iotdb.db.engine.compaction.constant.InnerSeqCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.constant.InnerSequenceCompactionSelector;
+import org.apache.iotdb.db.engine.compaction.constant.InnerUnseqCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.constant.InnerUnsequenceCompactionSelector;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
@@ -230,13 +234,8 @@ public class IoTDBConfig {
           + File.separator
           + IoTDBConstant.SCHEMA_FOLDER_NAME;
 
-  /** Sync directory, including the lock file, uuid file, device owner map */
-  private String syncDir =
-      DEFAULT_BASE_DIR
-          + File.separator
-          + IoTDBConstant.SYSTEM_FOLDER_NAME
-          + File.separator
-          + IoTDBConstant.SYNC_FOLDER_NAME;
+  /** Sync directory, including the log and hardlink tsfiles */
+  private String syncDir = DEFAULT_BASE_DIR + File.separator + IoTDBConstant.SYNC_FOLDER_NAME;
 
   /** Performance tracing directory, stores performance tracing files */
   private String tracingDir = DEFAULT_BASE_DIR + File.separator + IoTDBConstant.TRACING_FOLDER_NAME;
@@ -362,10 +361,10 @@ public class IoTDBConfig {
   /** When average series point number reaches this, flush the memtable to disk */
   private int avgSeriesPointNumberThreshold = 10000;
 
-  /** Enable inner space copaction for sequence files */
+  /** Enable inner space compaction for sequence files */
   private boolean enableSeqSpaceCompaction = true;
 
-  /** Enable inner space copaction for unsequence files */
+  /** Enable inner space compaction for unsequence files */
   private boolean enableUnseqSpaceCompaction = true;
 
   /** Compact the unsequence files into the overlapped sequence files */
@@ -375,15 +374,25 @@ public class IoTDBConfig {
    * The strategy of inner space compaction task. There are just one inner space compaction strategy
    * SIZE_TIRED_COMPACTION:
    */
-  private InnerCompactionStrategy innerCompactionStrategy =
-      InnerCompactionStrategy.SIZE_TIERED_COMPACTION;
+  private InnerSequenceCompactionSelector innerSequenceCompactionSelector =
+      InnerSequenceCompactionSelector.SIZE_TIERED;
+
+  private InnerSeqCompactionPerformer innerSeqCompactionPerformer =
+      InnerSeqCompactionPerformer.READ_CHUNK;
+
+  private InnerUnsequenceCompactionSelector innerUnsequenceCompactionSelector =
+      InnerUnsequenceCompactionSelector.SIZE_TIERED;
+
+  private InnerUnseqCompactionPerformer innerUnseqCompactionPerformer =
+      InnerUnseqCompactionPerformer.READ_POINT;
 
   /**
    * The strategy of cross space compaction task. There are just one cross space compaction strategy
    * SIZE_TIRED_COMPACTION:
    */
-  private CrossCompactionStrategy crossCompactionStrategy =
-      CrossCompactionStrategy.REWRITE_COMPACTION;
+  private CrossCompactionSelector crossCompactionSelector = CrossCompactionSelector.REWRITE;
+
+  private CrossCompactionPerformer crossCompactionPerformer = CrossCompactionPerformer.READ_POINT;
 
   /**
    * The priority of compaction task execution. There are three priority strategy INNER_CROSS:
@@ -474,18 +483,19 @@ public class IoTDBConfig {
    */
   private int externalSortThreshold = 1000;
 
-  /** Is this IoTDB instance a receiver of sync or not. */
-  private boolean isSyncEnable = false;
-
   /** If this IoTDB instance is a receiver of sync, set the server port. */
-  private int syncServerPort = 5555;
+  private int pipeServerPort = 6670;
+
+  /** White list for sync */
+  private String ipWhiteList = "0.0.0.0/0";
+
+  /** The maximum number of retries when the sender fails to synchronize files to the receiver. */
+  private int maxNumberOfSyncFileRetry = 5;
 
   /**
    * Set the language version when loading file including error information, default value is "EN"
    */
   private String languageVersion = "EN";
-
-  private String ipWhiteList = "0.0.0.0/0";
 
   /** Examining period of cache file reader : 100 seconds. Unit: millisecond */
   private long cacheFileReaderClearPeriod = 100000;
@@ -1306,20 +1316,20 @@ public class IoTDBConfig {
     this.mRemoteSchemaCacheSize = mRemoteSchemaCacheSize;
   }
 
-  public boolean isSyncEnable() {
-    return isSyncEnable;
+  public int getPipeServerPort() {
+    return pipeServerPort;
   }
 
-  public void setSyncEnable(boolean syncEnable) {
-    isSyncEnable = syncEnable;
+  public void setPipeServerPort(int pipeServerPort) {
+    this.pipeServerPort = pipeServerPort;
   }
 
-  public int getSyncServerPort() {
-    return syncServerPort;
+  public int getMaxNumberOfSyncFileRetry() {
+    return maxNumberOfSyncFileRetry;
   }
 
-  void setSyncServerPort(int syncServerPort) {
-    this.syncServerPort = syncServerPort;
+  public void setMaxNumberOfSyncFileRetry(int maxNumberOfSyncFileRetry) {
+    this.maxNumberOfSyncFileRetry = maxNumberOfSyncFileRetry;
   }
 
   String getLanguageVersion() {
@@ -2455,20 +2465,56 @@ public class IoTDBConfig {
     this.enableCrossSpaceCompaction = enableCrossSpaceCompaction;
   }
 
-  public InnerCompactionStrategy getInnerCompactionStrategy() {
-    return innerCompactionStrategy;
+  public InnerSequenceCompactionSelector getInnerSequenceCompactionSelector() {
+    return innerSequenceCompactionSelector;
   }
 
-  public void setInnerCompactionStrategy(InnerCompactionStrategy innerCompactionStrategy) {
-    this.innerCompactionStrategy = innerCompactionStrategy;
+  public void setInnerSequenceCompactionSelector(
+      InnerSequenceCompactionSelector innerSequenceCompactionSelector) {
+    this.innerSequenceCompactionSelector = innerSequenceCompactionSelector;
   }
 
-  public CrossCompactionStrategy getCrossCompactionStrategy() {
-    return crossCompactionStrategy;
+  public InnerUnsequenceCompactionSelector getInnerUnsequenceCompactionSelector() {
+    return innerUnsequenceCompactionSelector;
   }
 
-  public void setCrossCompactionStrategy(CrossCompactionStrategy crossCompactionStrategy) {
-    this.crossCompactionStrategy = crossCompactionStrategy;
+  public void setInnerUnsequenceCompactionSelector(
+      InnerUnsequenceCompactionSelector innerUnsequenceCompactionSelector) {
+    this.innerUnsequenceCompactionSelector = innerUnsequenceCompactionSelector;
+  }
+
+  public InnerSeqCompactionPerformer getInnerSeqCompactionPerformer() {
+    return innerSeqCompactionPerformer;
+  }
+
+  public void setInnerSeqCompactionPerformer(
+      InnerSeqCompactionPerformer innerSeqCompactionPerformer) {
+    this.innerSeqCompactionPerformer = innerSeqCompactionPerformer;
+  }
+
+  public InnerUnseqCompactionPerformer getInnerUnseqCompactionPerformer() {
+    return innerUnseqCompactionPerformer;
+  }
+
+  public void setInnerUnseqCompactionPerformer(
+      InnerUnseqCompactionPerformer innerUnseqCompactionPerformer) {
+    this.innerUnseqCompactionPerformer = innerUnseqCompactionPerformer;
+  }
+
+  public CrossCompactionSelector getCrossCompactionSelector() {
+    return crossCompactionSelector;
+  }
+
+  public void setCrossCompactionSelector(CrossCompactionSelector crossCompactionSelector) {
+    this.crossCompactionSelector = crossCompactionSelector;
+  }
+
+  public CrossCompactionPerformer getCrossCompactionPerformer() {
+    return crossCompactionPerformer;
+  }
+
+  public void setCrossCompactionPerformer(CrossCompactionPerformer crossCompactionPerformer) {
+    this.crossCompactionPerformer = crossCompactionPerformer;
   }
 
   public CompactionPriority getCompactionPriority() {

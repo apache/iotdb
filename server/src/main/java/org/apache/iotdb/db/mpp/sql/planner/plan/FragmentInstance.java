@@ -21,13 +21,16 @@ package org.apache.iotdb.db.mpp.sql.planner.plan;
 import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
+import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.sink.FragmentSinkNode;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -35,11 +38,13 @@ import java.util.Objects;
 
 public class FragmentInstance implements IConsensusRequest {
   private final FragmentInstanceId id;
-
+  private final QueryType type;
   // The reference of PlanFragment which this instance is generated from
   private final PlanFragment fragment;
-  // The DataRegion where the FragmentInstance should run
-  private RegionReplicaSet dataRegion;
+
+  // The Region where the FragmentInstance should run
+  private RegionReplicaSet regionReplicaSet;
+
   private Endpoint hostEndpoint;
 
   private Filter timeFilter;
@@ -47,21 +52,23 @@ public class FragmentInstance implements IConsensusRequest {
   // We can add some more params for a specific FragmentInstance
   // So that we can make different FragmentInstance owns different data range.
 
-  public FragmentInstance(PlanFragment fragment, int index) {
+  public FragmentInstance(PlanFragment fragment, int index, Filter timeFilter, QueryType type) {
     this.fragment = fragment;
+    this.timeFilter = timeFilter;
     this.id = generateId(fragment.getId(), index);
+    this.type = type;
   }
 
   public static FragmentInstanceId generateId(PlanFragmentId id, int index) {
     return new FragmentInstanceId(id, String.valueOf(index));
   }
 
-  public RegionReplicaSet getDataRegionId() {
-    return dataRegion;
+  public RegionReplicaSet getRegionReplicaSet() {
+    return regionReplicaSet;
   }
 
-  public void setDataRegionId(RegionReplicaSet dataRegion) {
-    this.dataRegion = dataRegion;
+  public void setRegionReplicaSet(RegionReplicaSet regionReplicaSet) {
+    this.regionReplicaSet = regionReplicaSet;
   }
 
   public Endpoint getHostEndpoint() {
@@ -101,64 +108,74 @@ public class FragmentInstance implements IConsensusRequest {
     return timeFilter;
   }
 
+  public QueryType getType() {
+    return type;
+  }
+
   public String toString() {
     StringBuilder ret = new StringBuilder();
-    ret.append(
-        String.format(
-            "FragmentInstance-%s:[Host: %s/%s]\n",
-            getId(), getHostEndpoint().getIp(), getDataRegionId().getId()));
+    ret.append(String.format("FragmentInstance-%s:", getId()));
+    if (getHostEndpoint() == null) {
+      ret.append(String.format("host endpoint has not set."));
+    } else {
+      ret.append(String.format("host endpoint: %s.", getHostEndpoint().toString()));
+    }
+    if (getRegionReplicaSet() == null) {
+      ret.append(String.format("Region Replica set has not set.\n"));
+    } else {
+      ret.append(String.format("Region Replica set: %s.\n", getRegionReplicaSet().toString()));
+    }
     ret.append("---- Plan Node Tree ----\n");
     ret.append(PlanNodeUtil.nodeToString(getFragment().getRoot()));
     return ret.toString();
   }
 
-  public static FragmentInstance deserializeFrom(ByteBuffer buffer) {
+  public static FragmentInstance deserializeFrom(ByteBuffer buffer)
+      throws IllegalPathException, IOException {
     FragmentInstanceId id = FragmentInstanceId.deserialize(buffer);
+    PlanFragment planFragment = PlanFragment.deserialize(buffer);
+    boolean hasTimeFilter = ReadWriteIOUtils.readBool(buffer);
+    Filter timeFilter = hasTimeFilter ? FilterFactory.deserialize(buffer) : null;
+    QueryType queryType = QueryType.values()[ReadWriteIOUtils.readInt(buffer)];
     FragmentInstance fragmentInstance =
         new FragmentInstance(
-            PlanFragment.deserialize(buffer), Integer.parseInt(id.getInstanceId()));
-    RegionReplicaSet regionReplicaSet = new RegionReplicaSet();
-    try {
-      regionReplicaSet.deserializeImpl(buffer);
-    } catch (IOException e) {
-      e.printStackTrace();
-    }
-    Endpoint endpoint = new Endpoint();
-    endpoint.deserializeImpl(buffer);
-    fragmentInstance.dataRegion = regionReplicaSet;
-    fragmentInstance.hostEndpoint = endpoint;
-    fragmentInstance.timeFilter = FilterFactory.deserialize(buffer);
+            planFragment, Integer.parseInt(id.getInstanceId()), timeFilter, queryType);
+    fragmentInstance.regionReplicaSet = RegionReplicaSet.deserializeImpl(buffer);
+    fragmentInstance.hostEndpoint = Endpoint.deserializeImpl(buffer);
 
     return fragmentInstance;
   }
 
   @Override
   public void serializeRequest(ByteBuffer buffer) {
+    buffer.mark();
     id.serialize(buffer);
     fragment.serialize(buffer);
-    dataRegion.serializeImpl(buffer);
+    ReadWriteIOUtils.write(timeFilter != null, buffer);
+    if (timeFilter != null) {
+      timeFilter.serialize(buffer);
+    }
+    ReadWriteIOUtils.write(type.ordinal(), buffer);
+    regionReplicaSet.serializeImpl(buffer);
+
     hostEndpoint.serializeImpl(buffer);
-    timeFilter.serialize(buffer);
   }
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    FragmentInstance that = (FragmentInstance) o;
-    return Objects.equals(id, that.id)
-        && Objects.equals(fragment, that.fragment)
-        && Objects.equals(dataRegion, that.dataRegion)
-        && Objects.equals(hostEndpoint, that.hostEndpoint)
-        && Objects.equals(timeFilter, that.timeFilter);
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    FragmentInstance instance = (FragmentInstance) o;
+    return Objects.equals(id, instance.id)
+        && type == instance.type
+        && Objects.equals(fragment, instance.fragment)
+        && Objects.equals(regionReplicaSet, instance.regionReplicaSet)
+        && Objects.equals(hostEndpoint, instance.hostEndpoint)
+        && Objects.equals(timeFilter, instance.timeFilter);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(id, fragment, dataRegion, hostEndpoint, timeFilter);
+    return Objects.hash(id, type, fragment, regionReplicaSet, hostEndpoint, timeFilter);
   }
 }

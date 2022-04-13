@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.mpp.sql.planner.plan;
 
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
@@ -51,6 +52,7 @@ public class PlanFragment {
     this.root = root;
   }
 
+  @Override
   public String toString() {
     return String.format("PlanFragment-%s", getId());
   }
@@ -60,16 +62,16 @@ public class PlanFragment {
   // In current version, one PlanFragment should contain at least one SourceNode,
   // and the DataRegions of all SourceNodes should be same in one PlanFragment.
   // So we can use the DataRegion of one SourceNode as the PlanFragment's DataRegion.
-  public RegionReplicaSet getTargetDataRegion() {
-    return getNodeDataRegion(root);
+  public RegionReplicaSet getTargetRegion() {
+    return getNodeRegion(root);
   }
 
-  private RegionReplicaSet getNodeDataRegion(PlanNode root) {
+  private RegionReplicaSet getNodeRegion(PlanNode root) {
     if (root instanceof SourceNode) {
-      return ((SourceNode) root).getDataRegionReplicaSet();
+      return ((SourceNode) root).getRegionReplicaSet();
     }
     for (PlanNode child : root.getChildren()) {
-      RegionReplicaSet result = getNodeDataRegion(child);
+      RegionReplicaSet result = getNodeRegion(child);
       if (result != null) {
         return result;
       }
@@ -99,12 +101,12 @@ public class PlanFragment {
     root.serialize(byteBuffer);
   }
 
-  public static PlanFragment deserialize(ByteBuffer byteBuffer) {
+  public static PlanFragment deserialize(ByteBuffer byteBuffer) throws IllegalPathException {
     return new PlanFragment(PlanFragmentId.deserialize(byteBuffer), deserializeHelper(byteBuffer));
   }
 
   // deserialize the plan node recursively
-  public static PlanNode deserializeHelper(ByteBuffer byteBuffer) {
+  public static PlanNode deserializeHelper(ByteBuffer byteBuffer) throws IllegalPathException {
     PlanNode root = PlanNodeType.deserialize(byteBuffer);
     int childrenCount = byteBuffer.getInt();
     for (int i = 0; i < childrenCount; i++) {
