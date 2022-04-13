@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata;
 
+import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -35,6 +36,7 @@ import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.rescon.TimeseriesStatistics;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
+import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
@@ -129,7 +131,8 @@ public class LocalSchemaProcessor {
 
   protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  private LocalConfigManager configManager = LocalConfigManager.getInstance();
+  private LocalConfigNode configManager = LocalConfigNode.getInstance();
+  private SchemaEngine schemaEngine = SchemaEngine.getInstance();
 
   // region SchemaProcessor Singleton
   private static class LocalSchemaProcessorHolder {
@@ -159,13 +162,14 @@ public class LocalSchemaProcessor {
    * thrown.
    */
   private ISchemaRegion getBelongedSchemaRegion(PartialPath path) throws MetadataException {
-    return configManager.getBelongedSchemaRegion(path);
+    return schemaEngine.getSchemaRegion(configManager.getBelongedSchemaRegionId(path));
   }
 
   // This interface involves storage group auto creation
   private ISchemaRegion getBelongedSchemaRegionWithAutoCreate(PartialPath path)
       throws MetadataException {
-    return configManager.getBelongedSchemaRegionWithAutoCreate(path);
+    return schemaEngine.getSchemaRegion(
+        configManager.getBelongedSchemaRegionIdWithAutoCreate(path));
   }
 
   /**
@@ -176,12 +180,24 @@ public class LocalSchemaProcessor {
    */
   private List<ISchemaRegion> getInvolvedSchemaRegions(
       PartialPath pathPattern, boolean isPrefixMatch) throws MetadataException {
-    return configManager.getInvolvedSchemaRegions(pathPattern, isPrefixMatch);
+    List<SchemaRegionId> schemaRegionIds =
+        configManager.getInvolvedSchemaRegionIds(pathPattern, isPrefixMatch);
+    List<ISchemaRegion> schemaRegions = new ArrayList<>();
+    for (SchemaRegionId schemaRegionId : schemaRegionIds) {
+      schemaRegions.add(schemaEngine.getSchemaRegion(schemaRegionId));
+    }
+    return schemaRegions;
   }
 
   private List<ISchemaRegion> getSchemaRegionsByStorageGroup(PartialPath storageGroup)
       throws MetadataException {
-    return configManager.getSchemaRegionsByStorageGroup(storageGroup);
+    List<SchemaRegionId> schemaRegionIds =
+        configManager.getSchemaRegionIdsByStorageGroup(storageGroup);
+    List<ISchemaRegion> schemaRegions = new ArrayList<>();
+    for (SchemaRegionId schemaRegionId : schemaRegionIds) {
+      schemaRegions.add(schemaEngine.getSchemaRegion(schemaRegionId));
+    }
+    return schemaRegions;
   }
 
   // endregion
@@ -380,7 +396,7 @@ public class LocalSchemaProcessor {
    * @param storageGroup root.node.(node)*
    */
   public void setStorageGroup(PartialPath storageGroup) throws MetadataException {
-    configManager.setStorageGroup(storageGroup, true);
+    configManager.setStorageGroup(storageGroup);
   }
 
   /**

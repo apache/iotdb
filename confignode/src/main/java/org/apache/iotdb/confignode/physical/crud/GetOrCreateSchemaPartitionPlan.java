@@ -18,81 +18,79 @@
  */
 package org.apache.iotdb.confignode.physical.crud;
 
-import org.apache.iotdb.commons.partition.RegionReplicaSet;
+import org.apache.iotdb.commons.partition.SeriesPartitionSlot;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
 import org.apache.iotdb.confignode.physical.PhysicalPlanType;
 import org.apache.iotdb.confignode.util.SerializeDeserializeUtil;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
-/** Query or apply SchemaPartition by the specific storageGroup and the deviceGroupStartTimeMap. */
+/** Get or create SchemaPartition by the specific partitionSlotsMap. */
 public class GetOrCreateSchemaPartitionPlan extends PhysicalPlan {
-  private String storageGroup;
-  private List<Integer> seriesPartitionSlots;
-  private Map<Integer, RegionReplicaSet> schemaPartitionReplicaSets;
+
+  // Map<StorageGroup, List<SeriesPartitionSlot>>
+  // Get all SchemaPartitions when the partitionSlotsMap is empty
+  // Get all exists SchemaPartitions in one StorageGroup when the SeriesPartitionSlot is empty
+  private Map<String, List<SeriesPartitionSlot>> partitionSlotsMap;
 
   public GetOrCreateSchemaPartitionPlan(PhysicalPlanType physicalPlanType) {
     super(physicalPlanType);
   }
 
-  public GetOrCreateSchemaPartitionPlan(
-      PhysicalPlanType physicalPlanType, String storageGroup, List<Integer> seriesPartitionSlots) {
-    this(physicalPlanType);
-    this.storageGroup = storageGroup;
-    this.seriesPartitionSlots = seriesPartitionSlots;
+  public void setPartitionSlotsMap(Map<String, List<SeriesPartitionSlot>> partitionSlotsMap) {
+    this.partitionSlotsMap = partitionSlotsMap;
   }
 
-  public void setSchemaPartitionReplicaSet(
-      Map<Integer, RegionReplicaSet> deviceGroupIdReplicaSets) {
-    this.schemaPartitionReplicaSets = deviceGroupIdReplicaSets;
-  }
-
-  public Map<Integer, RegionReplicaSet> getSchemaPartitionReplicaSets() {
-    return schemaPartitionReplicaSets;
+  public Map<String, List<SeriesPartitionSlot>> getPartitionSlotsMap() {
+    return partitionSlotsMap;
   }
 
   @Override
   protected void serializeImpl(ByteBuffer buffer) {
-    buffer.putInt(PhysicalPlanType.GetDataPartition.ordinal());
-    SerializeDeserializeUtil.write(storageGroup, buffer);
-    buffer.putInt(seriesPartitionSlots.size());
-    seriesPartitionSlots.forEach(id -> SerializeDeserializeUtil.write(id, buffer));
+    buffer.putInt(getType().ordinal());
 
-    buffer.putInt(schemaPartitionReplicaSets.size());
-    for (Map.Entry<Integer, RegionReplicaSet> entry : schemaPartitionReplicaSets.entrySet()) {
-      buffer.putInt(entry.getKey());
-      entry.getValue().serializeImpl(buffer);
-    }
+    buffer.putInt(partitionSlotsMap.size());
+    partitionSlotsMap.forEach(
+        (storageGroup, seriesPartitionSlots) -> {
+          SerializeDeserializeUtil.write(storageGroup, buffer);
+          buffer.putInt(seriesPartitionSlots.size());
+          seriesPartitionSlots.forEach(
+              seriesPartitionSlot -> seriesPartitionSlot.serializeImpl(buffer));
+        });
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    storageGroup = SerializeDeserializeUtil.readString(buffer);
-    int idSize = SerializeDeserializeUtil.readInt(buffer);
-    for (int i = 0; i < idSize; i++) {
-      seriesPartitionSlots.add(SerializeDeserializeUtil.readInt(buffer));
-    }
-
-    if (schemaPartitionReplicaSets == null) {
-      schemaPartitionReplicaSets = new HashMap<>();
-    }
-    int size = buffer.getInt();
-    for (int i = 0; i < size; i++) {
-      RegionReplicaSet schemaRegionReplicaSet = new RegionReplicaSet();
-      schemaRegionReplicaSet.deserializeImpl(buffer);
-      schemaPartitionReplicaSets.put(buffer.getInt(), schemaRegionReplicaSet);
+    partitionSlotsMap = new HashMap<>();
+    int storageGroupNum = buffer.getInt();
+    for (int i = 0; i < storageGroupNum; i++) {
+      String storageGroup = SerializeDeserializeUtil.readString(buffer);
+      partitionSlotsMap.put(storageGroup, new ArrayList<>());
+      int seriesPartitionSlotNum = buffer.getInt();
+      for (int j = 0; j < seriesPartitionSlotNum; j++) {
+        SeriesPartitionSlot seriesPartitionSlot = new SeriesPartitionSlot();
+        seriesPartitionSlot.deserializeImpl(buffer);
+        partitionSlotsMap.get(storageGroup).add(seriesPartitionSlot);
+      }
     }
   }
 
-  public String getStorageGroup() {
-    return storageGroup;
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    GetOrCreateSchemaPartitionPlan that = (GetOrCreateSchemaPartitionPlan) o;
+    return partitionSlotsMap.equals(that.partitionSlotsMap);
   }
 
-  public List<Integer> getSeriesPartitionSlots() {
-    return seriesPartitionSlots;
+  @Override
+  public int hashCode() {
+    return Objects.hash(partitionSlotsMap);
   }
 }

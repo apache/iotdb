@@ -1,0 +1,97 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+package org.apache.iotdb.db.mpp.operator.schema;
+
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.execution.SchemaDriverContext;
+import org.apache.iotdb.db.mpp.operator.OperatorContext;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
+import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.iotdb.tsfile.utils.Binary;
+
+import java.util.Arrays;
+import java.util.List;
+
+public class DevicesSchemaScanOperator extends SchemaScanOperator {
+  private final boolean hasSgCol;
+
+  private static final TSDataType[] RESOURCE_TYPES_WITH_SG = {
+    TSDataType.TEXT, TSDataType.TEXT, TSDataType.BOOLEAN,
+  };
+
+  private static final TSDataType[] RESOURCE_TYPES = {
+    TSDataType.TEXT, TSDataType.BOOLEAN,
+  };
+
+  public DevicesSchemaScanOperator(
+      OperatorContext operatorContext,
+      int limit,
+      int offset,
+      PartialPath partialPath,
+      boolean isPrefixPath,
+      boolean hasSgCol,
+      List<String> columns) {
+    super(operatorContext, limit, offset, partialPath, isPrefixPath, columns);
+    this.hasSgCol = hasSgCol;
+  }
+
+  @Override
+  protected TsBlock createTsBlock() {
+    TsBlockBuilder builder =
+        new TsBlockBuilder(
+            hasSgCol ? Arrays.asList(RESOURCE_TYPES_WITH_SG) : Arrays.asList(RESOURCE_TYPES));
+    try {
+      ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
+          .getSchemaRegion()
+          .getMatchedDevices(convertToPhysicalPlan())
+          .left
+          .forEach(device -> setColumns(device, builder));
+    } catch (MetadataException e) {
+      throw new RuntimeException(e.getMessage(), e);
+    }
+    return builder.build();
+  }
+
+  // ToDo @xinzhongtianxia remove this temporary converter after mpp online
+  private ShowDevicesPlan convertToPhysicalPlan() {
+    return new ShowDevicesPlan(partialPath, limit, offset, hasSgCol);
+  }
+
+  private void setColumns(ShowDevicesResult device, TsBlockBuilder builder) {
+    builder.getTimeColumnBuilder().writeLong(0L);
+    builder.getColumnBuilder(0).writeBinary(new Binary(device.getName()));
+    if (hasSgCol) {
+      builder.getColumnBuilder(1).writeBinary(new Binary(device.getSgName()));
+      builder.getColumnBuilder(2).writeBoolean(device.isAligned());
+    } else {
+      builder.getColumnBuilder(1).writeBoolean(device.isAligned());
+    }
+    builder.declarePosition();
+  }
+
+  @Override
+  public PlanNodeId getSourceId() {
+    return null;
+  }
+}

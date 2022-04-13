@@ -18,6 +18,10 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node;
 
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.DevicesSchemaScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.AggregateNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.DeviceMergeNode;
@@ -92,6 +96,22 @@ public abstract class PlanVisitor<R, C> {
 
   public R visitExchange(ExchangeNode node, C context) {
     return visitPlan(node, context);
+  }
+
+  public R visitMetaMerge(SchemaMergeNode node, C context) {
+    return visitPlan(node, context);
+  };
+
+  public R visitMetaScan(SchemaScanNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitTimeSeriesMetaScan(TimeSeriesSchemaScanNode node, C context) {
+    return visitMetaScan(node, context);
+  }
+
+  public R visitDevicesMetaScan(DevicesSchemaScanNode node, C context) {
+    return visitMetaScan(node, context);
   }
 
   public R visitFragmentSink(FragmentSinkNode node, C context) {

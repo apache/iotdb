@@ -18,7 +18,8 @@
  */
 package org.apache.iotdb.confignode.manager.hash;
 
-import org.apache.iotdb.confignode.manager.ConsensusManager;
+import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.manager.PartitionManager;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -60,7 +61,7 @@ public class DeviceGroupHashExecutorManualTest {
   }
 
   public void GeneralIndexTest() throws IOException {
-    ConsensusManager manager = new ConsensusManager();
+    PartitionManager manager = new PartitionManager(new ConfigManager());
     int[] bucket = new int[deviceGroupCount];
     Arrays.fill(bucket, 0);
 

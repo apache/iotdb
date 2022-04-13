@@ -104,6 +104,7 @@ public class AlterTimeSeriesStatement extends Statement {
     this.attributesMap = attributesMap;
   }
 
+  @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitAlterTimeseries(this, context);
   }

@@ -20,7 +20,7 @@ package org.apache.iotdb.db.mpp.execution;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
-import org.apache.iotdb.db.metadata.schemaregion.SchemaRegion;
+import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.schedule.FragmentInstanceScheduler;
 import org.apache.iotdb.db.mpp.schedule.IFragmentInstanceScheduler;
@@ -111,7 +111,7 @@ public class FragmentInstanceManager {
   }
 
   public FragmentInstanceInfo execSchemaQueryFragmentInstance(
-      FragmentInstance instance, SchemaRegion schemaRegion) {
+      FragmentInstance instance, ISchemaRegion schemaRegion) {
     FragmentInstanceId instanceId = instance.getId();
 
     FragmentInstanceExecution execution =
