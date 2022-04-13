@@ -61,7 +61,7 @@ jobs:
 
       - name: Build Docker Image
         run: |
-          docker build . -f docker/src/main/Dockerfile-single -t "iotdb:$GITHUB_SHA"
+          docker build . -f docker/src/main/Dockerfile-single -t "apache/iotdb:maven-development"
           docker images
 
       - name: IT Test
