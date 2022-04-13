@@ -213,10 +213,10 @@ public class ConfigNodeClient {
     throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
   }
 
-  public TStorageGroupMessageResp getStorageGroupsMessage() throws IoTDBConnectionException {
+  public TStorageGroupSchemaResp getStorageGroupsSchema() throws IoTDBConnectionException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TStorageGroupMessageResp resp = client.getStorageGroupsMessage();
+        TStorageGroupSchemaResp resp = client.getStorageGroupsSchema();
         if (!updateConfigNodeLeader(resp.status)) {
           return resp;
         }
