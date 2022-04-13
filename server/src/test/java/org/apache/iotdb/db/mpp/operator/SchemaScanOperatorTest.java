@@ -20,9 +20,10 @@ package org.apache.iotdb.db.mpp.operator;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.LocalConfigManager;
+import org.apache.iotdb.db.metadata.LocalConfigNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
+import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
@@ -103,7 +104,9 @@ public class SchemaScanOperatorTest {
               1, new PlanNodeId("1"), SchemaScanOperator.class.getSimpleName());
       PartialPath partialPath = new PartialPath(META_SCAN_OPERATOR_TEST_SG + ".device0");
       ISchemaRegion schemaRegion =
-          LocalConfigManager.getInstance().getBelongedSchemaRegion(partialPath);
+          SchemaEngine.getInstance()
+              .getSchemaRegion(
+                  LocalConfigNode.getInstance().getBelongedSchemaRegionId(partialPath));
       operatorContext
           .getInstanceContext()
           .setDriverContext(new SchemaDriverContext(fragmentInstanceContext, schemaRegion));
@@ -164,7 +167,9 @@ public class SchemaScanOperatorTest {
               1, new PlanNodeId("1"), SchemaScanOperator.class.getSimpleName());
       PartialPath partialPath = new PartialPath(META_SCAN_OPERATOR_TEST_SG + ".device0.*");
       ISchemaRegion schemaRegion =
-          LocalConfigManager.getInstance().getBelongedSchemaRegion(partialPath);
+          SchemaEngine.getInstance()
+              .getSchemaRegion(
+                  LocalConfigNode.getInstance().getBelongedSchemaRegionId(partialPath));
       operatorContext
           .getInstanceContext()
           .setDriverContext(new SchemaDriverContext(fragmentInstanceContext, schemaRegion));
