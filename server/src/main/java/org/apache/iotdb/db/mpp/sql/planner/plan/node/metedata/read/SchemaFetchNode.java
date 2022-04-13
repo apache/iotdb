@@ -23,7 +23,6 @@ import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
 import java.util.Collections;
@@ -67,9 +66,9 @@ public class SchemaFetchNode extends SchemaScanNode {
   }
 
   public static SchemaFetchNode deserialize(ByteBuffer byteBuffer) {
-    String id = ReadWriteIOUtils.readString(byteBuffer);
     PathPatternTree patternTree = PathPatternTree.deserialize(byteBuffer);
-    return new SchemaFetchNode(new PlanNodeId(id), patternTree);
+    PlanNodeId id = PlanNodeId.deserialize(byteBuffer);
+    return new SchemaFetchNode(id, patternTree);
   }
 
   @Override
