@@ -23,8 +23,10 @@ import org.apache.iotdb.commons.cluster.DataNodeLocation;
 import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
+import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.consensus.ConsensusImpl;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.LocalConfigNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -64,6 +66,9 @@ public class InternalServiceImplTest {
   @Before
   public void setUp() throws Exception {
     IoTDB.configManager.init();
+    ConsensusImpl.getInstance().start();
+    RegionReplicaSet regionReplicaSet = genRegionReplicaSet();
+    ConsensusImpl.getInstance().addConsensusGroup(regionReplicaSet.getConsensusGroupId(), genPeerList(regionReplicaSet));
     internalServiceImpl = new InternalServiceImpl();
     configNode = LocalConfigNode.getInstance();
   }
@@ -71,8 +76,10 @@ public class InternalServiceImplTest {
   @After
   public void tearDown() throws Exception {
     IoTDB.configManager.clear();
+    RegionReplicaSet regionReplicaSet = genRegionReplicaSet();
+    ConsensusImpl.getInstance().removeConsensusGroup(regionReplicaSet.getConsensusGroupId());
+    ConsensusImpl.getInstance().stop();
     EnvironmentUtils.cleanEnv();
-    internalServiceImpl.close();
     FileUtils.deleteFully(new File("data" + File.separator + "consensus"));
   }
 
@@ -105,14 +112,7 @@ public class InternalServiceImplTest {
             },
             "meter1");
 
-    List<DataNodeLocation> dataNodeList = new ArrayList<>();
-    dataNodeList.add(
-        new DataNodeLocation(
-            conf.getConsensusPort(), new Endpoint(conf.getInternalIp(), conf.getConsensusPort())));
-
-    // construct fragmentInstance
-    SchemaRegionId schemaRegionId = new SchemaRegionId(0);
-    RegionReplicaSet regionReplicaSet = new RegionReplicaSet(schemaRegionId, dataNodeList);
+    RegionReplicaSet regionReplicaSet = genRegionReplicaSet();
     PlanFragment planFragment = new PlanFragment(new PlanFragmentId("2", 3), createTimeSeriesNode);
     FragmentInstance fragmentInstance =
         new FragmentInstance(planFragment, 4, new GroupByFilter(1, 2, 3, 4), QueryType.WRITE);
@@ -134,5 +134,24 @@ public class InternalServiceImplTest {
     TSendFragmentInstanceResp response = internalServiceImpl.sendFragmentInstance(request);
 
     Assert.assertTrue(response.accepted);
+  }
+
+  private RegionReplicaSet genRegionReplicaSet() {
+    List<DataNodeLocation> dataNodeList = new ArrayList<>();
+    dataNodeList.add(
+        new DataNodeLocation(
+            conf.getConsensusPort(), new Endpoint(conf.getInternalIp(), conf.getConsensusPort())));
+
+    // construct fragmentInstance
+    SchemaRegionId schemaRegionId = new SchemaRegionId(0);
+    return new RegionReplicaSet(schemaRegionId, dataNodeList);
+  }
+
+  private List<Peer> genPeerList(RegionReplicaSet regionReplicaSet) {
+    List<Peer> peerList = new ArrayList<>();
+    for (DataNodeLocation node : regionReplicaSet.getDataNodeList()) {
+      peerList.add(new Peer(regionReplicaSet.getConsensusGroupId(), node.getEndPoint()));
+    }
+    return peerList;
   }
 }

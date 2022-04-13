@@ -19,18 +19,16 @@
 
 package org.apache.iotdb.db.service;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.GroupType;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
+import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.db.consensus.ConsensusImpl;
-import org.apache.iotdb.db.consensus.ConsensusManager;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.execution.FragmentInstanceInfo;
 import org.apache.iotdb.db.mpp.execution.FragmentInstanceManager;
 import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
-import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
 import org.apache.iotdb.mpp.rpc.thrift.InternalService;
 import org.apache.iotdb.mpp.rpc.thrift.SchemaFetchRequest;
 import org.apache.iotdb.mpp.rpc.thrift.SchemaFetchResponse;
@@ -43,68 +41,30 @@ import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceStateResp;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceResp;
 import org.apache.iotdb.rpc.TSStatusCode;
-
+import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.thrift.TException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
 
 public class InternalServiceImpl implements InternalService.Iface {
-  private static final Logger LOGGER = LoggerFactory.getLogger(InternalServiceImpl.class);
 
-  private final ConsensusManager consensusManager;
-
-  public InternalServiceImpl() throws IOException {
+  public InternalServiceImpl() {
     super();
-    consensusManager = new ConsensusManager();
   }
 
   @Override
   public TSendFragmentInstanceResp sendFragmentInstance(TSendFragmentInstanceReq req) {
-    TSendFragmentInstanceResp response = new TSendFragmentInstanceResp();
-    FragmentInstance fragmentInstance = null;
-    try {
-      fragmentInstance = FragmentInstance.deserializeFrom(req.fragmentInstance.body);
-    } catch (IOException | IllegalPathException e) {
-      LOGGER.error(e.getMessage());
-      response.setAccepted(false);
-      response.setMessage(e.getMessage());
-      return response;
-    }
-
-    ByteBufferConsensusRequest request = new ByteBufferConsensusRequest(req.fragmentInstance.body);
-    QueryType type = fragmentInstance.getType();
-    ConsensusGroupId groupId = fragmentInstance.getRegionReplicaSet().getConsensusGroupId();
-
-    if (fragmentInstance.getRegionReplicaSet() == null
-        || fragmentInstance.getRegionReplicaSet().isEmpty()) {
-      String msg = "Unknown regions to write, since getRegionReplicaSet is empty.";
-      LOGGER.error(msg);
-      response.setAccepted(false);
-      response.setMessage(msg);
-      return response;
-    }
-    consensusManager.addConsensusGroup(fragmentInstance.getRegionReplicaSet());
-
+    QueryType type = QueryType.valueOf(req.queryType);
+    ConsensusGroupId groupId = ConsensusGroupId.Factory.create(req.consensusGroupId.id, GroupType.valueOf(req.consensusGroupId.type));
     switch (type) {
       case READ:
-        ConsensusReadResponse readResp = ConsensusImpl.getInstance().read(groupId, request);
+        ConsensusReadResponse readResp = ConsensusImpl.getInstance().read(groupId, new ByteBufferConsensusRequest(req.fragmentInstance.body));
         FragmentInstanceInfo info = (FragmentInstanceInfo) readResp.getDataset();
         return new TSendFragmentInstanceResp(info.getState().isFailed());
       case WRITE:
-        TSStatus status =
-            consensusManager
-                .write(
-                    fragmentInstance.getRegionReplicaSet().getConsensusGroupId(), fragmentInstance)
-                .getStatus();
+        TSendFragmentInstanceResp response = new TSendFragmentInstanceResp();
+        ConsensusWriteResponse resp = ConsensusImpl.getInstance().write(groupId, new ByteBufferConsensusRequest(req.fragmentInstance.body));
         // TODO need consider more status
-        if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == status.getCode()) {
-          response.setAccepted(true);
-        } else {
-          response.setAccepted(false);
-        }
-        response.setMessage(status.message);
+        response.setAccepted(TSStatusCode.SUCCESS_STATUS.getStatusCode() == resp.getStatus().getCode());
+        response.setMessage(resp.getStatus().message);
         return response;
     }
     return null;
@@ -120,25 +80,21 @@ public class InternalServiceImpl implements InternalService.Iface {
 
   @Override
   public TCancelResp cancelQuery(TCancelQueryReq req) throws TException {
-    return null;
+    throw new NotImplementedException();
   }
 
   @Override
   public TCancelResp cancelPlanFragment(TCancelPlanFragmentReq req) throws TException {
-    return null;
+    throw new NotImplementedException();
   }
 
   @Override
   public TCancelResp cancelFragmentInstance(TCancelFragmentInstanceReq req) throws TException {
-    return null;
+    throw new NotImplementedException();
   }
 
   @Override
   public SchemaFetchResponse fetchSchema(SchemaFetchRequest req) throws TException {
     throw new UnsupportedOperationException();
-  }
-
-  public void close() throws IOException {
-    consensusManager.close();
   }
 }
