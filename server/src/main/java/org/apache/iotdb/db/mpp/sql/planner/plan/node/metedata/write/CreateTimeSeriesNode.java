@@ -163,19 +163,6 @@ public class CreateTimeSeriesNode extends PlanNode {
     return NO_CHILD_ALLOWED;
   }
 
-  @Override
-  public PhysicalPlan transferToPhysicalPlan() {
-    return new CreateTimeSeriesPlan(
-        getPath(),
-        getDataType(),
-        getEncoding(),
-        getCompressor(),
-        getProps(),
-        getTags(),
-        getAttributes(),
-        getAlias());
-  }
-
   public static CreateTimeSeriesNode deserialize(ByteBuffer byteBuffer) {
     String id;
     PartialPath path = null;

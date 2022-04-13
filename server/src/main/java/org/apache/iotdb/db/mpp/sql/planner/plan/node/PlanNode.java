@@ -115,9 +115,4 @@ public abstract class PlanNode {
   public int hashCode() {
     return Objects.hash(id);
   }
-
-  // TODO (yifuzhou) will remote later
-  public PhysicalPlan transferToPhysicalPlan() {
-    return null;
-  }
 }
