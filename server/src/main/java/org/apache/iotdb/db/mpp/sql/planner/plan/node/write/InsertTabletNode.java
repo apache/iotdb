@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.partition.TimePartitionSlot;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.IWritePlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
@@ -149,9 +150,9 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   public void serializeToWAL(IWALByteBufferView buffer, int start, int end) {}
 
   @Override
-  public List<InsertNode> splitByPartition(Analysis analysis) {
+  public List<IWritePlanNode> splitByPartition(Analysis analysis) {
     // only single device in single storage group
-    List<InsertNode> result = new ArrayList<>();
+    List<IWritePlanNode> result = new ArrayList<>();
     if (times.length == 0) {
       return Collections.emptyList();
     }

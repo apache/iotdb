@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.mpp.sql.plan;
 
+import com.google.common.collect.ImmutableList;
+import org.apache.iotdb.commons.cluster.DataNodeLocation;
 import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
@@ -54,16 +56,16 @@ public class FragmentInstanceSerdeTest {
 
   @Test
   public void TestSerializeAndDeserializeForTree1() throws IllegalPathException {
+    PlanFragmentId planFragmentId = new PlanFragmentId("test", -1);
     FragmentInstance fragmentInstance =
         new FragmentInstance(
-            new PlanFragment(new PlanFragmentId("test", -1), constructPlanNodeTree()),
-            -1,
+            new PlanFragment(planFragmentId, constructPlanNodeTree()),
+            planFragmentId.genFragmentInstanceId(),
             new GroupByFilter(1, 2, 3, 4),
             QueryType.READ);
     RegionReplicaSet regionReplicaSet =
-        new RegionReplicaSet(new DataRegionId(1), new ArrayList<>());
-    fragmentInstance.setDataRegionId(regionReplicaSet);
-    fragmentInstance.setHostEndpoint(new Endpoint("127.0.0.1", 6666));
+        new RegionReplicaSet(new DataRegionId(1), ImmutableList.of(new DataNodeLocation(0, new Endpoint("127.0.0.1", 6666))));
+    fragmentInstance.setDataRegionAndHost(regionReplicaSet);
 
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
     fragmentInstance.serializeRequest(byteBuffer);
@@ -74,16 +76,16 @@ public class FragmentInstanceSerdeTest {
 
   @Test
   public void TestSerializeAndDeserializeWithNullFilter() throws IllegalPathException {
+    PlanFragmentId planFragmentId = new PlanFragmentId("test2", 1);
     FragmentInstance fragmentInstance =
         new FragmentInstance(
-            new PlanFragment(new PlanFragmentId("test2", 1), constructPlanNodeTree()),
-            -1,
+            new PlanFragment(planFragmentId, constructPlanNodeTree()),
+            planFragmentId.genFragmentInstanceId(),
             null,
             QueryType.READ);
     RegionReplicaSet regionReplicaSet =
-        new RegionReplicaSet(new DataRegionId(1), new ArrayList<>());
-    fragmentInstance.setDataRegionId(regionReplicaSet);
-    fragmentInstance.setHostEndpoint(new Endpoint("127.0.0.2", 6667));
+        new RegionReplicaSet(new DataRegionId(1), ImmutableList.of(new DataNodeLocation(0, new Endpoint("127.0.0.2", 6667))));
+    fragmentInstance.setDataRegionAndHost(regionReplicaSet);
 
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
     fragmentInstance.serializeRequest(byteBuffer);

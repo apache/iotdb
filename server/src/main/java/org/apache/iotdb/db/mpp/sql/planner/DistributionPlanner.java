@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
+import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.*;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.*;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ExchangeNode;
@@ -71,7 +72,10 @@ public class DistributionPlanner {
     PlanNode rootWithExchange = addExchangeNode(rootAfterRewrite);
     SubPlan subPlan = splitFragment(rootWithExchange);
     List<FragmentInstance> fragmentInstances = planFragmentInstances(subPlan);
-    SetSinkForRootInstance(subPlan, fragmentInstances);
+    // Only execute this step for READ operation
+    if (context.getQueryType() == QueryType.READ) {
+      SetSinkForRootInstance(subPlan, fragmentInstances);
+    }
     return new DistributedQueryPlan(
         logicalPlan.getContext(), subPlan, subPlan.getPlanFragmentList(), fragmentInstances);
   }
@@ -79,8 +83,9 @@ public class DistributionPlanner {
   // Convert fragment to detailed instance
   // And for parallel-able fragment, clone it into several instances with different params.
   public List<FragmentInstance> planFragmentInstances(SubPlan subPlan) {
-    IFragmentParallelPlaner parallelPlaner =
-        new SimpleFragmentParallelPlanner(subPlan, analysis, context);
+    IFragmentParallelPlaner parallelPlaner = context.getQueryType() == QueryType.READ ?
+        new SimpleFragmentParallelPlanner(subPlan, analysis, context) :
+        new WriteFragmentParallelPlanner(subPlan, analysis, context);
     return parallelPlaner.parallelPlan();
   }
 
@@ -196,6 +201,10 @@ public class DistributionPlanner {
   private class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
     @Override
     public PlanNode visitPlan(PlanNode node, NodeGroupContext context) {
+      // TODO: (xingtanzjr) we apply no action for IWritePlanNode currently
+      if (node instanceof IWritePlanNode) {
+        return node;
+      }
       // Visit all the children of current node
       List<PlanNode> children =
           node.getChildren().stream()
@@ -341,6 +350,10 @@ public class DistributionPlanner {
     }
 
     private void splitToSubPlan(PlanNode root, SubPlan subPlan) {
+      // TODO: (xingtanzjr) we apply no action for IWritePlanNode currently
+      if (root instanceof IWritePlanNode) {
+        return;
+      }
       if (root instanceof ExchangeNode) {
         // We add a FragmentSinkNode for newly created PlanFragment
         ExchangeNode exchangeNode = (ExchangeNode) root;

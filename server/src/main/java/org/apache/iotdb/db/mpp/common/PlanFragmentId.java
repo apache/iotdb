@@ -89,9 +89,7 @@ public class PlanFragmentId {
       return false;
     }
     PlanFragmentId that = (PlanFragmentId) o;
-    return id == that.id
-        && nextFragmentInstanceId == that.nextFragmentInstanceId
-        && Objects.equals(queryId, that.queryId);
+    return id == that.id && Objects.equals(queryId, that.queryId);
   }
 
   @Override
