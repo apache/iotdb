@@ -133,8 +133,8 @@ public class ConsensusManager {
     return consensusImpl.isLeader(consensusGroupId);
   }
 
-  public Endpoint getLeader() {
-    return consensusImpl.getLeader(consensusGroupId).getEndpoint();
+  public Peer getLeader() {
+    return consensusImpl.getLeader(consensusGroupId);
   }
 
   // TODO: Interfaces for LoadBalancer control
