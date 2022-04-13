@@ -159,7 +159,7 @@ public class LocalExecutionPlanner {
     }
 
     @Override
-    public Operator visitTimeSeriesMetaScan(
+    public Operator visitTimeSeriesSchemaScan(
         TimeSeriesSchemaScanNode node, LocalExecutionPlanContext context) {
       OperatorContext operatorContext =
           context.instanceContext.addOperatorContext(

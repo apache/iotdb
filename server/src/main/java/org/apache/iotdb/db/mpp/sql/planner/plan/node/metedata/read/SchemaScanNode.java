@@ -123,6 +123,6 @@ public abstract class SchemaScanNode extends SourceNode {
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitMetaScan(this, context);
+    return visitor.visitSchemaScan(this, context);
   }
 }

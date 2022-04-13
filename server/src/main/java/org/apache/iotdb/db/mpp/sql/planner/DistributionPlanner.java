@@ -33,6 +33,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.SimplePlanNodeRewriter;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaFetchNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaMergeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ExchangeNode;
@@ -287,11 +288,16 @@ public class DistributionPlanner {
     }
 
     @Override
-    public PlanNode visitMetaScan(SchemaScanNode node, NodeGroupContext context) {
+    public PlanNode visitSchemaScan(SchemaScanNode node, NodeGroupContext context) {
       NodeDistribution nodeDistribution = new NodeDistribution(NodeDistributionType.NO_CHILD);
       nodeDistribution.region = node.getRegionReplicaSet();
       context.putNodeDistribution(node.getPlanNodeId(), nodeDistribution);
       return node;
+    }
+
+    @Override
+    public PlanNode visitSchemaFetch(SchemaFetchNode node, NodeGroupContext context) {
+      return visitSchemaScan(node, context);
     }
 
     @Override

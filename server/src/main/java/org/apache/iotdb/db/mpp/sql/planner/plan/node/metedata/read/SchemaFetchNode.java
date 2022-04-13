@@ -23,6 +23,7 @@ import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 
 import java.nio.ByteBuffer;
 import java.util.Collections;
@@ -81,4 +82,9 @@ public class SchemaFetchNode extends SchemaScanNode {
 
   @Override
   public void close() throws Exception {}
+
+  @Override
+  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
+    return visitor.visitSchemaFetch(this, context);
+  }
 }

@@ -104,7 +104,7 @@ public abstract class PlanVisitor<R, C> {
     return visitPlan(node, context);
   };
 
-  public R visitMetaScan(SchemaScanNode node, C context) {
+  public R visitSchemaScan(SchemaScanNode node, C context) {
     return visitPlan(node, context);
   }
 
@@ -112,7 +112,7 @@ public abstract class PlanVisitor<R, C> {
     return visitPlan(node, context);
   }
 
-  public R visitTimeSeriesMetaScan(TimeSeriesSchemaScanNode node, C context) {
+  public R visitTimeSeriesSchemaScan(TimeSeriesSchemaScanNode node, C context) {
     return visitPlan(node, context);
   }
 
