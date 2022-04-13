@@ -50,10 +50,10 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.utils.ThreadUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
+import org.apache.iotdb.db.wal.recover.WALRecoverManager;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -66,9 +66,14 @@ import java.util.Arrays;
 import java.util.ConcurrentModificationException;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.concurrent.*;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class StorageEngineV2 implements IService {
@@ -227,13 +232,21 @@ public class StorageEngineV2 implements IService {
   private void getLocalDataRegion() throws MetadataException, DataRegionException {
     File system = SystemFileFactory.INSTANCE.getFile(systemDir);
     File[] sgDirs = system.listFiles();
+    int sgCount = 0;
+    for (File sgDir : sgDirs) {
+      if (!sgDir.isDirectory()) {
+        sgCount++;
+      }
+    }
+    // init wal recover manager
+    WALRecoverManager.getInstance()
+        .setAllDataRegionScannedLatch(new CountDownLatch(sgCount * config.getDataRegionNum()));
     for (File sgDir : sgDirs) {
       if (!sgDir.isDirectory()) {
         continue;
       }
       String sg = sgDir.getName();
-      // TODO: need to get TTL Info from config node
-      long ttl = Integer.MAX_VALUE;
+      long ttl = Long.MAX_VALUE;
       for (File dataRegionDir : sgDir.listFiles()) {
         if (!dataRegionDir.isDirectory()) {
           continue;
@@ -509,46 +522,13 @@ public class StorageEngineV2 implements IService {
     }
   }
 
-  public void setTTL(List<ConsensusGroupId> dataRegionIdList, long dataTTL) {
-    for (ConsensusGroupId dataRegionId : dataRegionIdList) {
+  public void setTTL(List<DataRegionId> dataRegionIdList, long dataTTL) {
+    for (DataRegionId dataRegionId : dataRegionIdList) {
       DataRegion dataRegion = dataRegionMap.get(dataRegionId);
       if (dataRegion != null) {
         dataRegion.setDataTTL(dataTTL);
       }
     }
-  }
-
-  public void setFileFlushPolicy(TsFileFlushPolicy fileFlushPolicy) {
-    this.fileFlushPolicy = fileFlushPolicy;
-  }
-
-  /**
-   * Get a map indicating which storage groups have working TsFileProcessors and its associated
-   * partitionId and whether it is sequence or not.
-   *
-   * @return storage group -> a list of partitionId-isSequence pairs
-   */
-  public Map<String, List<Pair<Long, Boolean>>> getWorkingStorageGroupPartitions() {
-    Map<String, List<Pair<Long, Boolean>>> res = new ConcurrentHashMap<>();
-    for (Entry<ConsensusGroupId, DataRegion> entry : dataRegionMap.entrySet()) {
-      DataRegion dataRegion = entry.getValue();
-      if (dataRegion != null) {
-        List<Pair<Long, Boolean>> partitionIdList = new ArrayList<>();
-        for (TsFileProcessor tsFileProcessor : dataRegion.getWorkSequenceTsFileProcessors()) {
-          Pair<Long, Boolean> tmpPair = new Pair<>(tsFileProcessor.getTimeRangeId(), true);
-          partitionIdList.add(tmpPair);
-        }
-
-        for (TsFileProcessor tsFileProcessor : dataRegion.getWorkUnsequenceTsFileProcessors()) {
-          Pair<Long, Boolean> tmpPair = new Pair<>(tsFileProcessor.getTimeRangeId(), false);
-          partitionIdList.add(tmpPair);
-        }
-
-        res.put(dataRegion.getStorageGroupPath(), partitionIdList);
-      }
-    }
-
-    return res;
   }
 
   /**
