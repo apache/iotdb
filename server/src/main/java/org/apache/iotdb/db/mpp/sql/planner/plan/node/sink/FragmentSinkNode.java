@@ -67,6 +67,7 @@ public class FragmentSinkNode extends SinkNode {
     return sinkNode;
   }
 
+  @Override
   public void addChild(PlanNode child) {
     this.child = child;
   }

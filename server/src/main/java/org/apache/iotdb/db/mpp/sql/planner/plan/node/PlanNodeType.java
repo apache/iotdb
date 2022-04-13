@@ -19,7 +19,9 @@
 package org.apache.iotdb.db.mpp.sql.planner.plan.node;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.DevicesSchemaScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.ShowDevicesNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AlterTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AuthorNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
@@ -65,12 +67,15 @@ public enum PlanNodeType {
   INSERT_ROWS((short) 15),
   INSERT_ROWS_OF_ONE_DEVICE((short) 16),
   INSERT_MULTI_TABLET((short) 17),
-  SHOW_DEVICES((short) 18),
+  DEVICES_SCHEMA_SCAN((short) 18),
   CREATE_TIME_SERIES((short) 19),
   EXCHANGE((short) 20),
   AUTHOR((short) 21),
   ALTER_TIME_SERIES((short) 22),
-  CREATE_ALIGNED_TIME_SERIES((short) 23);
+  CREATE_ALIGNED_TIME_SERIES((short) 23),
+  TIME_SERIES_SCHEMA_SCAN((short) 24),
+  // TODO @xinzhongtianxia remove this
+  SHOW_DEVICES((short) 25);
 
   private final short nodeType;
 
@@ -122,7 +127,7 @@ public enum PlanNodeType {
       case 17:
         return InsertMultiTabletsNode.deserialize(buffer);
       case 18:
-        return ShowDevicesNode.deserialize(buffer);
+        return DevicesSchemaScanNode.deserialize(buffer);
       case 19:
         return CreateTimeSeriesNode.deserialize(buffer);
       case 20:
@@ -133,6 +138,10 @@ public enum PlanNodeType {
         return AlterTimeSeriesNode.deserialize(buffer);
       case 23:
         return CreateAlignedTimeSeriesNode.deserialize(buffer);
+      case 24:
+        return TimeSeriesSchemaScanNode.deserialize(buffer);
+      case 25:
+        return ShowDevicesNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }
