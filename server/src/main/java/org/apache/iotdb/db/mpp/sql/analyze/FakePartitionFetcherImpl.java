@@ -23,10 +23,32 @@ import org.apache.iotdb.commons.cluster.DataNodeLocation;
 import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.partition.*;
+import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 
 import java.util.*;
 
 public class FakePartitionFetcherImpl implements IPartitionFetcher {
+
+  @Override
+  public DataPartition getDataPartition(List<DataPartitionQueryParam> parameterList) {
+    return null;
+  }
+
+  @Override
+  public DataPartition getOrCreateDataPartition(List<DataPartitionQueryParam> parameterList) {
+    return null;
+  }
+
+  @Override
+  public SchemaPartition getSchemaPartition(PathPatternTree patternTree) {
+    return null;
+  }
+
+  @Override
+  public SchemaPartition getOrCreateSchemaPartition(PathPatternTree patternTree) {
+    return null;
+  }
+
   @Override
   public DataPartition fetchDataPartitionInfo(DataPartitionQueryParam parameter) {
     return null;

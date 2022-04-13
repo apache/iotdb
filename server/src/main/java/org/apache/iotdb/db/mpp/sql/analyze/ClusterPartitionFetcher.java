@@ -22,10 +22,31 @@ import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.PartitionInfo;
 import org.apache.iotdb.commons.partition.SchemaPartition;
+import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 
 import java.util.List;
 
 public class ClusterPartitionFetcher implements IPartitionFetcher {
+
+  @Override
+  public DataPartition getDataPartition(List<DataPartitionQueryParam> parameterList) {
+    return null;
+  }
+
+  @Override
+  public DataPartition getOrCreateDataPartition(List<DataPartitionQueryParam> parameterList) {
+    return null;
+  }
+
+  @Override
+  public SchemaPartition getSchemaPartition(PathPatternTree patternTree) {
+    return null;
+  }
+
+  @Override
+  public SchemaPartition getOrCreateSchemaPartition(PathPatternTree patternTree) {
+    return null;
+  }
 
   @Override
   public DataPartition fetchDataPartitionInfo(DataPartitionQueryParam parameter) {
