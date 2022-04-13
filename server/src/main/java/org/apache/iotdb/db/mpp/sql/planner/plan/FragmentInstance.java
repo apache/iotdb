@@ -21,7 +21,6 @@ package org.apache.iotdb.db.mpp.sql.planner.plan;
 import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
@@ -32,7 +31,6 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
@@ -115,23 +113,20 @@ public class FragmentInstance implements IConsensusRequest {
   public String toString() {
     StringBuilder ret = new StringBuilder();
     ret.append(String.format("FragmentInstance-%s:", getId()));
-    if (getHostEndpoint() == null) {
-      ret.append(String.format("host endpoint has not set."));
-    } else {
-      ret.append(String.format("host endpoint: %s.", getHostEndpoint().toString()));
-    }
-    if (getRegionReplicaSet() == null) {
-      ret.append(String.format("Region Replica set has not set.\n"));
-    } else {
-      ret.append(String.format("Region Replica set: %s.\n", getRegionReplicaSet().toString()));
-    }
+    ret.append(
+        String.format("Host: %s", getHostEndpoint() == null ? "Not set" : getHostEndpoint()));
+    ret.append(
+        String.format(
+            "Region: %s",
+            getRegionReplicaSet() == null
+                ? "Not set"
+                : getRegionReplicaSet().getConsensusGroupId()));
     ret.append("---- Plan Node Tree ----\n");
     ret.append(PlanNodeUtil.nodeToString(getFragment().getRoot()));
     return ret.toString();
   }
 
-  public static FragmentInstance deserializeFrom(ByteBuffer buffer)
-      throws IllegalPathException, IOException {
+  public static FragmentInstance deserializeFrom(ByteBuffer buffer) {
     FragmentInstanceId id = FragmentInstanceId.deserialize(buffer);
     PlanFragment planFragment = PlanFragment.deserialize(buffer);
     boolean hasTimeFilter = ReadWriteIOUtils.readBool(buffer);
@@ -148,7 +143,6 @@ public class FragmentInstance implements IConsensusRequest {
 
   @Override
   public void serializeRequest(ByteBuffer buffer) {
-    buffer.mark();
     id.serialize(buffer);
     fragment.serialize(buffer);
     ReadWriteIOUtils.write(timeFilter != null, buffer);
@@ -157,7 +151,6 @@ public class FragmentInstance implements IConsensusRequest {
     }
     ReadWriteIOUtils.write(type.ordinal(), buffer);
     regionReplicaSet.serializeImpl(buffer);
-
     hostEndpoint.serializeImpl(buffer);
   }
 

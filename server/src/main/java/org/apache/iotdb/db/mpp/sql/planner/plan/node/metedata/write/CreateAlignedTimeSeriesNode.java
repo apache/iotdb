@@ -24,8 +24,7 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -158,6 +157,11 @@ public class CreateAlignedTimeSeriesNode extends PlanNode {
   @Override
   public int allowedChildCount() {
     return NO_CHILD_ALLOWED;
+  }
+
+  @Override
+  public <R, C> R accept(PlanVisitor<R, C> visitor, C schemaRegion) {
+    return visitor.visitCreateAlignedTimeSeries(this, schemaRegion);
   }
 
   @Override
@@ -352,19 +356,6 @@ public class CreateAlignedTimeSeriesNode extends PlanNode {
         aliasList,
         tagsList,
         attributesList);
-  }
-
-  @Override
-  public PhysicalPlan transferToPhysicalPlan() {
-    return new CreateAlignedTimeSeriesPlan(
-        getDevicePath(),
-        getMeasurements(),
-        getDataTypes(),
-        getEncodings(),
-        getCompressors(),
-        getAliasList(),
-        getTagsList(),
-        getAttributesList());
   }
 
   //  @Override

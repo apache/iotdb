@@ -45,8 +45,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -844,10 +842,10 @@ public class IoTDBConfig {
   /**
    * Ip and port of config nodes. each one is a {internalIp | domain name}:{meta port} string tuple.
    */
-  private List<String> configNodeUrls;
+  private List<String> configNodeUrls = new ArrayList<>();
 
   /** Internal ip for data node */
-  private String internalIp;
+  private String internalIp = "127.0.0.1";
 
   /** Internal port for coordinator */
   private int internalPort = 9003;
@@ -887,16 +885,6 @@ public class IoTDBConfig {
 
   /** Thread keep alive time in ms of data block manager. */
   private int dataBlockManagerKeepAliveTimeInMs = 1000;
-
-  public IoTDBConfig() {
-    try {
-      internalIp = InetAddress.getLocalHost().getHostAddress();
-    } catch (UnknownHostException e) {
-      logger.error(e.getMessage());
-      internalIp = "127.0.0.1";
-    }
-    configNodeUrls = new ArrayList<>();
-  }
 
   public float getUdfMemoryBudgetInMB() {
     return udfMemoryBudgetInMB;
