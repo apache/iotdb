@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.schemaregion;
 
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -73,6 +74,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.sync.sender.manager.SchemaSyncManager;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -169,6 +171,7 @@ public class SchemaRegion implements ISchemaRegion {
   // device -> DeviceMNode
   private LoadingCache<PartialPath, IMNode> mNodeCache;
   private TagManager tagManager;
+  private SchemaSyncManager syncManager = SchemaSyncManager.getInstance();
 
   // region Interfaces and Implementation of initialization、snapshot、recover and clear
   public SchemaRegion(
@@ -395,6 +398,14 @@ public class SchemaRegion implements ISchemaRegion {
 
   // region Interfaces for schema region Info query and operation
 
+  public String getStorageGroupFullPath() {
+    return storageGroupFullPath;
+  }
+
+  public ConsensusGroupId getSchemaRegionId() {
+    return schemaRegionId;
+  }
+
   public synchronized void deleteSchemaRegion() throws MetadataException {
     // collect all the LeafMNode in this schema region
     List<IMeasurementMNode> leafMNodes = mtree.getAllMeasurementMNode();
@@ -470,6 +481,9 @@ public class SchemaRegion implements ISchemaRegion {
           }
           plan.setTagOffset(offset);
           logWriter.createTimeseries(plan);
+          if (syncManager.isEnableSync()) {
+            syncManager.syncMetadataPlan(plan);
+          }
         }
         if (offset != -1) {
           leafMNode.setOffset(offset);
@@ -609,6 +623,9 @@ public class SchemaRegion implements ISchemaRegion {
           }
           plan.setTagOffsets(tagOffsets);
           logWriter.createAlignedTimeseries(plan);
+          if (syncManager.isEnableSync()) {
+            syncManager.syncMetadataPlan(plan);
+          }
         }
         tagOffsets = plan.getTagOffsets();
         for (int i = 0; i < measurements.size(); i++) {
@@ -681,6 +698,9 @@ public class SchemaRegion implements ISchemaRegion {
         }
         deleteTimeSeriesPlan.setDeletePathList(Collections.singletonList(p));
         logWriter.deleteTimeseries(deleteTimeSeriesPlan);
+        if (syncManager.isEnableSync()) {
+          syncManager.syncMetadataPlan(deleteTimeSeriesPlan);
+        }
       }
     } catch (DeleteFailedException e) {
       failedNames.add(e.getName());
