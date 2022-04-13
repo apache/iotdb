@@ -91,15 +91,15 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
             timeFilter,
             queryContext.getQueryType());
 
-    // Get the target DataRegion for origin PlanFragment, then its instance will be distributed one
+    // Get the target region for origin PlanFragment, then its instance will be distributed one
     // of them.
-    RegionReplicaSet dataRegion = fragment.getTargetDataRegion();
+    RegionReplicaSet regionReplicaSet = fragment.getTargetRegion();
 
     // Set DataRegion and target host for the instance
     // We need to store all the replica host in case of the scenario that the instance need to be
     // redirected
     // to another host when scheduling
-    fragmentInstance.setDataRegionAndHost(dataRegion);
+    fragmentInstance.setDataRegionAndHost(regionReplicaSet);
     instanceMap.putIfAbsent(fragment.getId(), fragmentInstance);
     fragmentInstanceList.add(fragmentInstance);
   }

@@ -29,13 +29,14 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import java.util.ArrayList;
 import java.util.List;
 
-public class WriteFragmentParallelPlanner implements IFragmentParallelPlaner{
+public class WriteFragmentParallelPlanner implements IFragmentParallelPlaner {
 
   private SubPlan subPlan;
   private Analysis analysis;
   private MPPQueryContext queryContext;
 
-  public WriteFragmentParallelPlanner(SubPlan subPlan, Analysis analysis, MPPQueryContext queryContext) {
+  public WriteFragmentParallelPlanner(
+      SubPlan subPlan, Analysis analysis, MPPQueryContext queryContext) {
     this.subPlan = subPlan;
     this.analysis = analysis;
     this.queryContext = queryContext;
@@ -44,7 +45,10 @@ public class WriteFragmentParallelPlanner implements IFragmentParallelPlaner{
   @Override
   public List<FragmentInstance> parallelPlan() {
     PlanFragment fragment = subPlan.getPlanFragment();
-    Filter timeFilter = analysis.getQueryFilter() != null ? ((GlobalTimeExpression) analysis.getQueryFilter()).getFilter() : null;
+    Filter timeFilter =
+        analysis.getQueryFilter() != null
+            ? ((GlobalTimeExpression) analysis.getQueryFilter()).getFilter()
+            : null;
     PlanNode node = fragment.getRoot();
     if (!(node instanceof IWritePlanNode)) {
       throw new IllegalArgumentException("PlanNode should be IWritePlanNode in WRITE operation");
@@ -52,7 +56,12 @@ public class WriteFragmentParallelPlanner implements IFragmentParallelPlaner{
     List<IWritePlanNode> splits = ((IWritePlanNode) node).splitByPartition(analysis);
     List<FragmentInstance> ret = new ArrayList<>();
     for (IWritePlanNode split : splits) {
-      FragmentInstance instance = new FragmentInstance(new PlanFragment(fragment.getId(), split), fragment.getId().genFragmentInstanceId(), timeFilter, queryContext.getQueryType());
+      FragmentInstance instance =
+          new FragmentInstance(
+              new PlanFragment(fragment.getId(), split),
+              fragment.getId().genFragmentInstanceId(),
+              timeFilter,
+              queryContext.getQueryType());
       instance.setDataRegionAndHost(((IWritePlanNode) node).getRegionReplicaSet());
       ret.add(instance);
     }

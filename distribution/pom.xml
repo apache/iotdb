@@ -136,5 +136,11 @@
             <type>pom</type>
             <!--            <classifier>${os.classifier}</classifier>-->
         </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>influxdb-protocol</artifactId>
+            <version>${project.version}</version>
+            <type>pom</type>
+        </dependency>
     </dependencies>
 </project>

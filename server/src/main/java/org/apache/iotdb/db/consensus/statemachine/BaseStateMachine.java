@@ -39,6 +39,7 @@ public abstract class BaseStateMachine implements IStateMachine {
     try {
       return write(getFragmentInstance(request));
     } catch (IllegalArgumentException e) {
+      logger.error(e.getMessage());
       return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
   }
@@ -50,6 +51,7 @@ public abstract class BaseStateMachine implements IStateMachine {
     try {
       return read(getFragmentInstance(request));
     } catch (IllegalArgumentException e) {
+      logger.error(e.getMessage());
       return null;
     }
   }

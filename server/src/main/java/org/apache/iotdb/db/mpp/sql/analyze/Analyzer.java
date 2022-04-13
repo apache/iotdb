@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.sql.analyze;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.PartitionInfo;
+import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -46,6 +47,8 @@ import org.apache.iotdb.db.mpp.sql.statement.crud.*;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowDevicesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -241,7 +244,8 @@ public class Analyzer {
               ? schemaFetcher.fetchSchemaWithAutoCreate(
                   insertTabletStatement.getDevicePath(),
                   insertTabletStatement.getMeasurements(),
-                  insertTabletStatement.getDataTypes())
+                  insertTabletStatement.getDataTypes(),
+                  insertTabletStatement.isAligned())
               : schemaFetcher.fetchSchema(
                   new PathPatternTree(
                       insertTabletStatement.getDevicePath(),
@@ -256,6 +260,30 @@ public class Analyzer {
       analysis.setStatement(insertTabletStatement);
       analysis.setDataPartitionInfo(partitionInfo.getDataPartitionInfo());
       analysis.setSchemaPartitionInfo(partitionInfo.getSchemaPartitionInfo());
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitShowTimeSeries(
+        ShowTimeSeriesStatement showTimeSeriesStatement, MPPQueryContext context) {
+      SchemaPartition schemaPartitionInfo =
+          partitionFetcher.fetchSchemaPartitionInfo(
+              showTimeSeriesStatement.getPathPattern().getDevice());
+      Analysis analysis = new Analysis();
+      analysis.setStatement(showTimeSeriesStatement);
+      analysis.setSchemaPartitionInfo(schemaPartitionInfo);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitShowDevices(
+        ShowDevicesStatement showDevicesStatement, MPPQueryContext context) {
+      SchemaPartition schemaPartitionInfo =
+          partitionFetcher.fetchSchemaPartitionInfo(
+              showDevicesStatement.getPathPattern().getFullPath());
+      Analysis analysis = new Analysis();
+      analysis.setStatement(showDevicesStatement);
+      analysis.setSchemaPartitionInfo(schemaPartitionInfo);
       return analysis;
     }
 
@@ -411,7 +439,8 @@ public class Analyzer {
               ? schemaFetcher.fetchSchemaWithAutoCreate(
                   insertRowStatement.getDevicePath(),
                   insertRowStatement.getMeasurements(),
-                  insertRowStatement.getDataTypes())
+                  insertRowStatement.getDataTypes(),
+                  insertRowStatement.isAligned())
               : schemaFetcher.fetchSchema(
                   new PathPatternTree(
                       insertRowStatement.getDevicePath(), insertRowStatement.getMeasurements()));
@@ -458,7 +487,8 @@ public class Analyzer {
             schemaFetcher.fetchSchemaListWithAutoCreate(
                 insertRowsStatement.getDevicePaths(),
                 insertRowsStatement.getMeasurementsList(),
-                insertRowsStatement.getDataTypesList());
+                insertRowsStatement.getDataTypesList(),
+                insertRowsStatement.getAlignedList());
       } else {
         PathPatternTree patternTree = new PathPatternTree();
         for (InsertRowStatement insertRowStatement :
@@ -511,7 +541,8 @@ public class Analyzer {
             schemaFetcher.fetchSchemaListWithAutoCreate(
                 insertMultiTabletsStatement.getDevicePaths(),
                 insertMultiTabletsStatement.getMeasurementsList(),
-                insertMultiTabletsStatement.getDataTypesList());
+                insertMultiTabletsStatement.getDataTypesList(),
+                insertMultiTabletsStatement.getAlignedList());
       } else {
         PathPatternTree patternTree = new PathPatternTree();
         for (InsertTabletStatement insertTabletStatement :
@@ -552,7 +583,8 @@ public class Analyzer {
             schemaFetcher.fetchSchemaWithAutoCreate(
                 insertRowsOfOneDeviceStatement.getDevicePath(),
                 insertRowsOfOneDeviceStatement.getMeasurements(),
-                insertRowsOfOneDeviceStatement.getDataTypes());
+                insertRowsOfOneDeviceStatement.getDataTypes(),
+                insertRowsOfOneDeviceStatement.isAligned());
       } else {
         PathPatternTree patternTree = new PathPatternTree();
         for (InsertRowStatement insertRowStatement :

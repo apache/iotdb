@@ -55,8 +55,8 @@ public class SimpleFragInstanceDispatcher implements IFragInstanceDispatcher {
               buffer.flip();
               TConsensusGroupId groupId =
                   new TConsensusGroupId(
-                      instance.getDataRegionId().getId().getId(),
-                      instance.getDataRegionId().getId().getType().toString());
+                      instance.getRegionReplicaSet().getConsensusGroupId().getId(),
+                      instance.getRegionReplicaSet().getConsensusGroupId().getType().toString());
               TSendFragmentInstanceReq req =
                   new TSendFragmentInstanceReq(
                       new TFragmentInstance(buffer), groupId, instance.getType().toString());

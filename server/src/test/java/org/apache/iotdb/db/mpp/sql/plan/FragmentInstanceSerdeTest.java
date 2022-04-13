@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.mpp.sql.plan;
 
-import com.google.common.collect.ImmutableList;
 import org.apache.iotdb.commons.cluster.DataNodeLocation;
 import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.consensus.DataRegionId;
@@ -45,6 +44,7 @@ import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 import org.apache.iotdb.tsfile.read.filter.operator.Gt;
 
+import com.google.common.collect.ImmutableList;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
@@ -64,7 +64,9 @@ public class FragmentInstanceSerdeTest {
             new GroupByFilter(1, 2, 3, 4),
             QueryType.READ);
     RegionReplicaSet regionReplicaSet =
-        new RegionReplicaSet(new DataRegionId(1), ImmutableList.of(new DataNodeLocation(0, new Endpoint("127.0.0.1", 6666))));
+        new RegionReplicaSet(
+            new DataRegionId(1),
+            ImmutableList.of(new DataNodeLocation(0, new Endpoint("127.0.0.1", 6666))));
     fragmentInstance.setDataRegionAndHost(regionReplicaSet);
 
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
@@ -84,7 +86,9 @@ public class FragmentInstanceSerdeTest {
             null,
             QueryType.READ);
     RegionReplicaSet regionReplicaSet =
-        new RegionReplicaSet(new DataRegionId(1), ImmutableList.of(new DataNodeLocation(0, new Endpoint("127.0.0.2", 6667))));
+        new RegionReplicaSet(
+            new DataRegionId(1),
+            ImmutableList.of(new DataNodeLocation(0, new Endpoint("127.0.0.2", 6667))));
     fragmentInstance.setDataRegionAndHost(regionReplicaSet);
 
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
@@ -120,17 +124,17 @@ public class FragmentInstanceSerdeTest {
     timeJoinNode.setWithoutPolicy(FilterNullPolicy.CONTAINS_NULL);
     SeriesScanNode seriesScanNode1 =
         new SeriesScanNode(new PlanNodeId("SeriesScanNode1"), new MeasurementPath("root.sg.d1.s2"));
-    seriesScanNode1.setDataRegionReplicaSet(
+    seriesScanNode1.setRegionReplicaSet(
         new RegionReplicaSet(new DataRegionId(1), new ArrayList<>()));
     seriesScanNode1.setScanOrder(OrderBy.TIMESTAMP_DESC);
     SeriesScanNode seriesScanNode2 =
         new SeriesScanNode(new PlanNodeId("SeriesScanNode2"), new MeasurementPath("root.sg.d2.s1"));
-    seriesScanNode2.setDataRegionReplicaSet(
+    seriesScanNode2.setRegionReplicaSet(
         new RegionReplicaSet(new DataRegionId(2), new ArrayList<>()));
     seriesScanNode2.setScanOrder(OrderBy.TIMESTAMP_DESC);
     SeriesScanNode seriesScanNode3 =
         new SeriesScanNode(new PlanNodeId("SeriesScanNode3"), new MeasurementPath("root.sg.d2.s2"));
-    seriesScanNode3.setDataRegionReplicaSet(
+    seriesScanNode3.setRegionReplicaSet(
         new RegionReplicaSet(new DataRegionId(3), new ArrayList<>()));
     seriesScanNode3.setScanOrder(OrderBy.TIMESTAMP_DESC);
 

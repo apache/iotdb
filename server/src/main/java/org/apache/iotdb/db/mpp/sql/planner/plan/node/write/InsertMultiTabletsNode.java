@@ -20,6 +20,7 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.write;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
+import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.IWritePlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
@@ -114,7 +115,7 @@ public class InsertMultiTabletsNode extends InsertNode {
       InsertTabletNode insertTabletNode = insertTabletNodeList.get(i);
       List<IWritePlanNode> tmpResult = insertTabletNode.splitByPartition(analysis);
       for (IWritePlanNode subNode : tmpResult) {
-        RegionReplicaSet dataRegionReplicaSet = ((InsertNode)subNode).getDataRegionReplicaSet();
+        RegionReplicaSet dataRegionReplicaSet = ((InsertNode) subNode).getDataRegionReplicaSet();
         if (splitMap.containsKey(dataRegionReplicaSet)) {
           InsertMultiTabletsNode tmpNode = splitMap.get(dataRegionReplicaSet);
           tmpNode.addInsertTabletNode((InsertTabletNode) subNode, i);
@@ -131,6 +132,10 @@ public class InsertMultiTabletsNode extends InsertNode {
 
   public Map<Integer, TSStatus> getResults() {
     return results;
+  }
+
+  public TSStatus[] getFailingStatus() {
+    return StatusUtils.getFailingStatus(results, insertTabletNodeList.size());
   }
 
   @Override

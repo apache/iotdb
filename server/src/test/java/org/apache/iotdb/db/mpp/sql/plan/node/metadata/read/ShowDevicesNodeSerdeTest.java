@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.sql.plan.node.metadata.read;
 
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.mpp.sql.plan.node.PlanNodeDeserializeHelper;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.ShowDevicesNode;
@@ -31,7 +32,7 @@ import static org.junit.Assert.assertEquals;
 public class ShowDevicesNodeSerdeTest {
 
   @Test
-  public void TestSerializeAndDeserialize() {
+  public void TestSerializeAndDeserialize() throws IllegalPathException {
     ShowDevicesNode showDevicesNode = new ShowDevicesNode(new PlanNodeId("TestShowDevicesNode"));
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
     showDevicesNode.serialize(byteBuffer);

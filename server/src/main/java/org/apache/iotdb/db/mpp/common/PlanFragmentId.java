@@ -70,14 +70,14 @@ public class PlanFragmentId {
     return String.format("%s.%d", queryId, id);
   }
 
+  public void serialize(ByteBuffer byteBuffer) {
+    queryId.serialize(byteBuffer);
+    byteBuffer.putInt(id);
+  }
+
   public static PlanFragmentId deserialize(ByteBuffer byteBuffer) {
     return new PlanFragmentId(
         QueryId.deserialize(byteBuffer), ReadWriteIOUtils.readInt(byteBuffer));
-  }
-
-  public void serialize(ByteBuffer byteBuffer) {
-    queryId.serialize(byteBuffer);
-    ReadWriteIOUtils.write(id, byteBuffer);
   }
 
   @Override

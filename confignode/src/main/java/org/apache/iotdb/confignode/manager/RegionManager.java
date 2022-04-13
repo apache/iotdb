@@ -120,7 +120,7 @@ public class RegionManager {
         case DataRegion:
           consensusGroupId = new DataRegionId(regionInfoPersistence.generateNextRegionGroupId());
       }
-      regionReplicaSet.setId(consensusGroupId);
+      regionReplicaSet.setConsensusGroupId(consensusGroupId);
       regionReplicaSet.setDataNodeList(onlineDataNodes.subList(0, regionReplicaCount));
       plan.addRegion(regionReplicaSet);
     }
@@ -130,5 +130,9 @@ public class RegionManager {
     ConsensusReadResponse readResponse =
         getConsensusManager().read(new QueryStorageGroupSchemaPlan());
     return (StorageGroupSchemaDataSet) readResponse.getDataset();
+  }
+
+  public List<String> getStorageGroupNames() {
+    return regionInfoPersistence.getStorageGroupNames();
   }
 }

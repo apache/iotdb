@@ -54,6 +54,7 @@ public abstract class PlanNode {
 
   public abstract void addChild(PlanNode child);
 
+  @Override
   public abstract PlanNode clone();
 
   public PlanNode cloneWithChildren(List<PlanNode> children) {

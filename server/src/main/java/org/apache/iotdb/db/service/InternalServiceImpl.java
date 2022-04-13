@@ -41,6 +41,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceStateResp;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceResp;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
 import org.apache.thrift.TException;
 
@@ -51,31 +52,34 @@ public class InternalServiceImpl implements InternalService.Iface {
   }
 
   @Override
-  public TSendFragmentInstanceResp sendFragmentInstance(TSendFragmentInstanceReq req)
-      throws TException {
-    ByteBufferConsensusRequest request = new ByteBufferConsensusRequest(req.fragmentInstance.body);
+  public TSendFragmentInstanceResp sendFragmentInstance(TSendFragmentInstanceReq req) {
     QueryType type = QueryType.valueOf(req.queryType);
     ConsensusGroupId groupId =
         ConsensusGroupId.Factory.create(
             req.consensusGroupId.id, GroupType.valueOf(req.consensusGroupId.type));
     switch (type) {
       case READ:
-        ConsensusReadResponse readResp = ConsensusImpl.getInstance().read(groupId, request);
+        ConsensusReadResponse readResp =
+            ConsensusImpl.getInstance()
+                .read(groupId, new ByteBufferConsensusRequest(req.fragmentInstance.body));
         FragmentInstanceInfo info = (FragmentInstanceInfo) readResp.getDataset();
         return new TSendFragmentInstanceResp(info.getState().isFailed());
       case WRITE:
-        ConsensusWriteResponse writeResp = ConsensusImpl.getInstance().write(groupId, request);
-        // TODO: (xingtanzjr) need to distinguish more conditions for response status.
-        boolean accepted =
-            writeResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode();
-        return new TSendFragmentInstanceResp(accepted);
+        TSendFragmentInstanceResp response = new TSendFragmentInstanceResp();
+        ConsensusWriteResponse resp =
+            ConsensusImpl.getInstance()
+                .write(groupId, new ByteBufferConsensusRequest(req.fragmentInstance.body));
+        // TODO need consider more status
+        response.setAccepted(
+            TSStatusCode.SUCCESS_STATUS.getStatusCode() == resp.getStatus().getCode());
+        response.setMessage(resp.getStatus().message);
+        return response;
     }
     return null;
   }
 
   @Override
-  public TFragmentInstanceStateResp fetchFragmentInstanceState(TFetchFragmentInstanceStateReq req)
-      throws TException {
+  public TFragmentInstanceStateResp fetchFragmentInstanceState(TFetchFragmentInstanceStateReq req) {
     FragmentInstanceInfo info =
         FragmentInstanceManager.getInstance()
             .getInstanceInfo(FragmentInstanceId.fromThrift(req.fragmentInstanceId));
@@ -84,17 +88,17 @@ public class InternalServiceImpl implements InternalService.Iface {
 
   @Override
   public TCancelResp cancelQuery(TCancelQueryReq req) throws TException {
-    return null;
+    throw new NotImplementedException();
   }
 
   @Override
   public TCancelResp cancelPlanFragment(TCancelPlanFragmentReq req) throws TException {
-    return null;
+    throw new NotImplementedException();
   }
 
   @Override
   public TCancelResp cancelFragmentInstance(TCancelFragmentInstanceReq req) throws TException {
-    return null;
+    throw new NotImplementedException();
   }
 
   @Override
