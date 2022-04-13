@@ -134,7 +134,7 @@ public class DataNode implements DataNodeMBean {
                 == TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode()) {
           dataNodeID = dataNodeRegisterResp.getDataNodeID();
           IoTDBDescriptor.getInstance().loadGlobalConfig(dataNodeRegisterResp.globalConfig);
-          logger.info("Joined a cluster successfully");
+          logger.info("Joined the cluster successfully");
           return;
         }
 
