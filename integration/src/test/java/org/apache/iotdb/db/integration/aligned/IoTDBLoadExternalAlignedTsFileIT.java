@@ -138,8 +138,8 @@ public class IoTDBLoadExternalAlignedTsFileIT {
 
   @Before
   public void setUp() throws Exception {
-    prevVirtualPartitionNum = IoTDBDescriptor.getInstance().getConfig().getVirtualStorageGroupNum();
-    IoTDBDescriptor.getInstance().getConfig().setVirtualStorageGroupNum(1);
+    prevVirtualPartitionNum = IoTDBDescriptor.getInstance().getConfig().getDataRegionNum();
+    IoTDBDescriptor.getInstance().getConfig().setDataRegionNum(1);
     prevCompactionThread =
         IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
     EnvironmentUtils.envSetUp();
@@ -151,7 +151,7 @@ public class IoTDBLoadExternalAlignedTsFileIT {
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(prevCompactionThread);
-    IoTDBDescriptor.getInstance().getConfig().setVirtualStorageGroupNum(prevVirtualPartitionNum);
+    IoTDBDescriptor.getInstance().getConfig().setDataRegionNum(prevVirtualPartitionNum);
   }
 
   @Test

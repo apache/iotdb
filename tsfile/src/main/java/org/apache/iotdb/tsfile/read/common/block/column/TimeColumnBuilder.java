@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.tsfile.read.common.block.column;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
 import org.openjdk.jol.info.ClassLayout;
 
 import java.util.Arrays;
@@ -77,6 +79,11 @@ public class TimeColumnBuilder implements ColumnBuilder {
   @Override
   public Column build() {
     return new TimeColumn(0, positionCount, values);
+  }
+
+  @Override
+  public TSDataType getDataType() {
+    return TSDataType.INT64;
   }
 
   @Override

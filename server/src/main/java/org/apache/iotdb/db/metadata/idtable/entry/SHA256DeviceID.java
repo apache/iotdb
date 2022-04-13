@@ -19,10 +19,12 @@
 package org.apache.iotdb.db.metadata.idtable.entry;
 
 import org.apache.iotdb.db.metadata.idtable.IDTable;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
@@ -55,6 +57,8 @@ public class SHA256DeviceID implements IDeviceID {
       logger.error("can't use sha 256 hash on this platform");
     }
   }
+
+  public SHA256DeviceID() {}
 
   public SHA256DeviceID(String deviceID) {
     // if this device id string is a sha 256 form, we just translate it without sha256
@@ -144,5 +148,22 @@ public class SHA256DeviceID implements IDeviceID {
   @Override
   public String toStringID() {
     return l1 + SEPARATOR + l2 + SEPARATOR + l3 + SEPARATOR + l4;
+  }
+
+  @Override
+  public void serialize(ByteBuffer byteBuffer) {
+    ReadWriteIOUtils.write(l1, byteBuffer);
+    ReadWriteIOUtils.write(l2, byteBuffer);
+    ReadWriteIOUtils.write(l3, byteBuffer);
+    ReadWriteIOUtils.write(l4, byteBuffer);
+  }
+
+  public static SHA256DeviceID deserialize(ByteBuffer byteBuffer) {
+    SHA256DeviceID sha256DeviceID = new SHA256DeviceID();
+    sha256DeviceID.l1 = ReadWriteIOUtils.readLong(byteBuffer);
+    sha256DeviceID.l2 = ReadWriteIOUtils.readLong(byteBuffer);
+    sha256DeviceID.l3 = ReadWriteIOUtils.readLong(byteBuffer);
+    sha256DeviceID.l4 = ReadWriteIOUtils.readLong(byteBuffer);
+    return sha256DeviceID;
   }
 }

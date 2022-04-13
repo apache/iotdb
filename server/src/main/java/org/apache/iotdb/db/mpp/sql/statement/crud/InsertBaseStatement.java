@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.mpp.sql.statement.crud;
 
-import org.apache.iotdb.commons.partition.TimePartitionSlot;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
@@ -79,8 +78,6 @@ public abstract class InsertBaseStatement extends Statement {
   public List<String> getFailedMeasurements() {
     return failedMeasurements;
   }
-
-  public abstract List<TimePartitionSlot> getTimePartitionSlots();
 
   public abstract boolean checkDataType(SchemaTree schemaTree);
 

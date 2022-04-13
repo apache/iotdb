@@ -19,11 +19,16 @@
 
 package org.apache.iotdb.db.mpp.common.schematree;
 
+import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.Map;
 
 public abstract class SchemaNode {
+
+  public static final byte SCHEMA_INTERNAL_NODE = 0;
+  public static final byte SCHEMA_ENTITY_NODE = 1;
+  public static final byte SCHEMA_MEASUREMENT_NODE = 2;
 
   protected final String name;
 
@@ -64,4 +69,8 @@ public abstract class SchemaNode {
   public SchemaMeasurementNode getAsMeasurementNode() {
     throw new UnsupportedOperationException("This not isn't instance of SchemaMeasurementNode.");
   }
+
+  public abstract byte getType();
+
+  public abstract void serialize(ByteBuffer buffer);
 }

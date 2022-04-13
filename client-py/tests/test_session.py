@@ -69,13 +69,22 @@ def test_session():
 
         # setting time series.
         session.create_time_series(
-            "root.sg_test_01.d_01.s_01", TSDataType.BOOLEAN, TSEncoding.PLAIN, Compressor.SNAPPY
+            "root.sg_test_01.d_01.s_01",
+            TSDataType.BOOLEAN,
+            TSEncoding.PLAIN,
+            Compressor.SNAPPY,
         )
         session.create_time_series(
-            "root.sg_test_01.d_01.s_02", TSDataType.INT32, TSEncoding.PLAIN, Compressor.SNAPPY
+            "root.sg_test_01.d_01.s_02",
+            TSDataType.INT32,
+            TSEncoding.PLAIN,
+            Compressor.SNAPPY,
         )
         session.create_time_series(
-            "root.sg_test_01.d_01.s_03", TSDataType.INT64, TSEncoding.PLAIN, Compressor.SNAPPY
+            "root.sg_test_01.d_01.s_03",
+            TSDataType.INT64,
+            TSEncoding.PLAIN,
+            Compressor.SNAPPY,
         )
         session.create_time_series(
             "root.sg_test_01.d_02.s_01",
@@ -85,7 +94,7 @@ def test_session():
             None,
             {"tag1": "v1"},
             {"description": "v1"},
-            "temperature"
+            "temperature",
         )
 
         # setting multiple time series once.
@@ -131,7 +140,14 @@ def test_session():
         tags_lst_ = [{"tag2": "v2"} for _ in range(len(data_type_lst_))]
         attributes_lst_ = [{"description": "v2"} for _ in range(len(data_type_lst_))]
         session.create_multi_time_series(
-            ts_path_lst_, data_type_lst_, encoding_lst_, compressor_lst_, None, tags_lst_, attributes_lst_, None
+            ts_path_lst_,
+            data_type_lst_,
+            encoding_lst_,
+            compressor_lst_,
+            None,
+            tags_lst_,
+            attributes_lst_,
+            None,
         )
 
         # delete time series
@@ -225,16 +241,20 @@ def test_session():
 
         # insert one numpy tablet into the database.
         np_values_ = [
-            np.array([False, True, False, True], np.dtype('>?')),
-            np.array([10, 100, 100, 0], np.dtype('>i4')),
-            np.array([11, 11111, 1, 0], np.dtype('>i8')),
-            np.array([1.1, 1.25, 188.1, 0], np.dtype('>f4')),
-            np.array([10011.1, 101.0, 688.25, 6.25], np.dtype('>f8')),
+            np.array([False, True, False, True], np.dtype(">?")),
+            np.array([10, 100, 100, 0], np.dtype(">i4")),
+            np.array([11, 11111, 1, 0], np.dtype(">i8")),
+            np.array([1.1, 1.25, 188.1, 0], np.dtype(">f4")),
+            np.array([10011.1, 101.0, 688.25, 6.25], np.dtype(">f8")),
             np.array(["test01", "test02", "test03", "test04"]),
         ]
-        np_timestamps_ = np.array([1, 2, 3, 4], np.dtype('>i8'))
+        np_timestamps_ = np.array([1, 2, 3, 4], np.dtype(">i8"))
         np_tablet_ = NumpyTablet(
-            "root.sg_test_01.d_02", measurements_, data_types_, np_values_, np_timestamps_
+            "root.sg_test_01.d_02",
+            measurements_,
+            data_types_,
+            np_values_,
+            np_timestamps_,
         )
         if session.insert_tablet(np_tablet_) < 0:
             test_fail()
@@ -245,7 +265,11 @@ def test_session():
             "root.sg_test_01.d_01", measurements_, data_types_, values_, [8, 9, 10, 11]
         )
         tablet_02 = Tablet(
-            "root.sg_test_01.d_01", measurements_, data_types_, values_, [12, 13, 14, 15]
+            "root.sg_test_01.d_01",
+            measurements_,
+            data_types_,
+            values_,
+            [12, 13, 14, 15],
         )
         if session.insert_tablets([tablet_01, tablet_02]) < 0:
             test_fail()
@@ -306,7 +330,9 @@ def test_session():
             )
 
         # execute sql query statement
-        session_data_set = session.execute_query_statement("select * from root.sg_test_01.d_01")
+        session_data_set = session.execute_query_statement(
+            "select * from root.sg_test_01.d_01"
+        )
         session_data_set.set_fetch_size(1024)
         expect_count = 20
         actual_count = 0
@@ -326,6 +352,7 @@ def test_session():
 
         # close session connection.
         session.close()
+
 
 if final_flag:
     print("All executions done!!")

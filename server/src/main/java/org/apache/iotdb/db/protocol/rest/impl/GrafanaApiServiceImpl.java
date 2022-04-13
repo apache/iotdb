@@ -55,7 +55,7 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
   private final long timePrecision; // the default timestamp precision is ms
 
   public GrafanaApiServiceImpl() throws QueryProcessException {
-    authorizationHandler = new AuthorizationHandler(serviceProvider);
+    authorizationHandler = new AuthorizationHandler();
 
     switch (IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision()) {
       case "ns":

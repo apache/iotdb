@@ -116,9 +116,24 @@ public class FragmentInstanceSchedulerTest {
     Assert.assertTrue(manager.getQueryMap().get(queryId2).contains(task4));
     Assert.assertEquals(FragmentInstanceTaskStatus.READY, task4.getStatus());
 
-    // Abort the query
+    // Abort one FragmentInstance
+    manager.abortFragmentInstance(instanceId1);
+    Mockito.verify(mockDataBlockManager, Mockito.times(1))
+        .forceDeregisterFragmentInstance(Mockito.any());
+    Assert.assertTrue(manager.getBlockedTasks().isEmpty());
+    Assert.assertEquals(2, manager.getQueryMap().size());
+    Assert.assertTrue(manager.getQueryMap().containsKey(queryId));
+    Assert.assertEquals(3, manager.getTimeoutQueue().size());
+    Assert.assertEquals(3, manager.getReadyQueue().size());
+    Assert.assertEquals(FragmentInstanceTaskStatus.ABORTED, task1.getStatus());
+    Assert.assertEquals(FragmentInstanceTaskStatus.READY, task2.getStatus());
+    Assert.assertEquals(FragmentInstanceTaskStatus.READY, task3.getStatus());
+    Assert.assertEquals(FragmentInstanceTaskStatus.READY, task4.getStatus());
+
+    // Abort the whole query
+    Mockito.reset(mockDataBlockManager);
     manager.abortQuery(queryId);
-    Mockito.verify(mockDataBlockManager, Mockito.times(3))
+    Mockito.verify(mockDataBlockManager, Mockito.times(2))
         .forceDeregisterFragmentInstance(Mockito.any());
     Assert.assertTrue(manager.getBlockedTasks().isEmpty());
     Assert.assertEquals(1, manager.getQueryMap().size());

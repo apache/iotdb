@@ -22,36 +22,54 @@ namespace java org.apache.iotdb.mpp.rpc.thrift
 
 struct TFragmentInstanceId {
   1: required string queryId
-  2: required string fragmentId
+  2: required i32 fragmentId
   3: required string instanceId
 }
 
 struct GetDataBlockRequest {
-  1: required TFragmentInstanceId fragmentInstanceId
-  2: required i64 blockId
+  1: required TFragmentInstanceId sourceFragmentInstanceId
+  2: required i32 startSequenceId
+  3: required i32 endSequenceId
 }
 
 struct GetDataBlockResponse {
   1: required list<binary> tsBlocks
 }
 
+struct AcknowledgeDataBlockEvent {
+  1: required TFragmentInstanceId sourceFragmentInstanceId
+  2: required i32 startSequenceId
+  3: required i32 endSequenceId
+}
+
 struct NewDataBlockEvent {
-  1: required TFragmentInstanceId fragmentInstanceId
-  2: required string operatorId
-  3: required i64 blockId
+  1: required TFragmentInstanceId targetFragmentInstanceId
+  2: required string targetPlanNodeId
+  3: required TFragmentInstanceId sourceFragmentInstanceId
+  4: required i32 startSequenceId
+  5: required list<i64> blockSizes
 }
 
 struct EndOfDataBlockEvent {
-  1: required TFragmentInstanceId fragmentInstanceId
-  2: required string operatorId
+  1: required TFragmentInstanceId targetFragmentInstanceId
+  2: required string targetPlanNodeId
+  3: required TFragmentInstanceId sourceFragmentInstanceId
+  4: required i32 lastSequenceId
 }
 
 struct TFragmentInstance {
   1: required binary body
 }
 
+struct TConsensusGroupId {
+  1: required i32 id
+  2: required string type
+}
+
 struct TSendFragmentInstanceReq {
   1: required TFragmentInstance fragmentInstance
+  2: required TConsensusGroupId consensusGroupId
+  3: required string queryType
 }
 
 struct TSendFragmentInstanceResp {
@@ -110,6 +128,8 @@ service InternalService {
 
 service DataBlockService {
   GetDataBlockResponse getDataBlock(GetDataBlockRequest req);
+
+  void onAcknowledgeDataBlockEvent(AcknowledgeDataBlockEvent e);
 
   void onNewDataBlockEvent(NewDataBlockEvent e);
 

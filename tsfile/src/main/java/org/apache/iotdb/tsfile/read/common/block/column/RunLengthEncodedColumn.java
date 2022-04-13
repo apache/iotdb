@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.read.common.block.column;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
@@ -62,6 +63,16 @@ public class RunLengthEncodedColumn implements Column {
   }
 
   @Override
+  public TSDataType getDataType() {
+    return value.getDataType();
+  }
+
+  @Override
+  public ColumnEncoding getEncoding() {
+    return value.getEncoding();
+  }
+
+  @Override
   public boolean getBoolean(int position) {
     checkReadablePosition(position);
     return value.getBoolean(position);
@@ -101,6 +112,11 @@ public class RunLengthEncodedColumn implements Column {
   public TsPrimitiveType getTsPrimitiveType(int position) {
     checkReadablePosition(position);
     return value.getTsPrimitiveType(position);
+  }
+
+  @Override
+  public boolean mayHaveNull() {
+    return value.mayHaveNull();
   }
 
   @Override

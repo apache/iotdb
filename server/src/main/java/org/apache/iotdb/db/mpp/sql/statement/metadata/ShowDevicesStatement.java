@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.sql.statement.metadata;
 
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 
 /**
  * SHOW DEVICES statement.
@@ -48,5 +49,10 @@ public class ShowDevicesStatement extends ShowStatement {
 
   public boolean hasSgCol() {
     return hasSgCol;
+  }
+
+  @Override
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitShowDevices(this, context);
   }
 }

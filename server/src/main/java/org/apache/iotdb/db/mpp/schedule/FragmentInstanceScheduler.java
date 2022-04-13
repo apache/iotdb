@@ -166,11 +166,17 @@ public class FragmentInstanceScheduler implements IFragmentInstanceScheduler, IS
 
   @Override
   public void abortFragmentInstance(FragmentInstanceId instanceId) {
-    // TODO(EricPai)
+    FragmentInstanceTask task = timeoutQueue.get(new FragmentInstanceTaskID(instanceId));
+    if (task == null) {
+      return;
+    }
+    task.lock();
+    try {
+      clearFragmentInstanceTask(task);
+    } finally {
+      task.unlock();
+    }
   }
-
-  @Override
-  public void fetchFragmentInstance(Driver instance) {}
 
   @Override
   public double getSchedulePriority(FragmentInstanceId instanceId) {
@@ -190,7 +196,7 @@ public class FragmentInstanceScheduler implements IFragmentInstanceScheduler, IS
       blockManager.forceDeregisterFragmentInstance(
           new TFragmentInstanceId(
               task.getId().getQueryId().getId(),
-              String.valueOf(task.getId().getFragmentId().getId()),
+              task.getId().getFragmentId().getId(),
               task.getId().getInstanceId()));
     }
     readyQueue.remove(task.getId());

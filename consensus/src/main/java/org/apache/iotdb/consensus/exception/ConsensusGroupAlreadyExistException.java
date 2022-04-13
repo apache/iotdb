@@ -26,7 +26,7 @@ public class ConsensusGroupAlreadyExistException extends ConsensusException {
   private final ConsensusGroupId groupId;
 
   public ConsensusGroupAlreadyExistException(ConsensusGroupId groupId) {
-    super(String.format("The consensus group %s already exists", groupId));
+    super(String.format("The consensus group %d already exists", groupId.getId()));
     this.groupId = groupId;
   }
 
