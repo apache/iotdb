@@ -45,7 +45,6 @@ public class UDTFEqualBucketSample implements UDTF {
   private String aggMethodType;
   private double proportion;
   private int bucketSize;
-  private int bucketSampleNum;
   private Random random;
 
   @Override
@@ -53,7 +52,6 @@ public class UDTFEqualBucketSample implements UDTF {
     method = validator.getParameters().getStringOrDefault("method", "random").toLowerCase();
     proportion = validator.getParameters().getDoubleOrDefault("proportion", 0.1);
     aggMethodType = validator.getParameters().getStringOrDefault("type", "avg").toLowerCase();
-    bucketSampleNum = validator.getParameters().getIntOrDefault("- bucket_sample_num", 10);
     validator
         .validateInputSeriesNumber(1)
         .validateInputSeriesDataType(
@@ -73,11 +71,7 @@ public class UDTFEqualBucketSample implements UDTF {
         .validate(
             type -> "avg".equals(type) || "max".equals(type) || "min".equals(type),
             "Illegal aggregation method.",
-            aggMethodType)
-        .validate(
-            bucketSampleNum -> (int) bucketSampleNum >= 1,
-            "Illegal aggregation method.",
-            bucketSampleNum);
+            aggMethodType);
   }
 
   @Override
@@ -94,10 +88,6 @@ public class UDTFEqualBucketSample implements UDTF {
     bucketSize = (int) (1 / proportion);
     if ("m4".equals(method)) {
       bucketSize *= 4;
-    }
-    if ("outlier".equals(method)) {
-      // TODO do not justify the upper bound of bucketSampleNum
-      bucketSize *= bucketSampleNum;
     }
     configurations
         .setAccessStrategy(new SlidingSizeWindowAccessStrategy(bucketSize))
@@ -158,8 +148,8 @@ public class UDTFEqualBucketSample implements UDTF {
     }
   }
 
+  // TODO
   public void outlierSample(RowWindow rowWindow, PointCollector collector) {
-    //    int[] arr = new int[]
   }
 
   public void m4Sample(RowWindow rowWindow, PointCollector collector)
@@ -293,25 +283,25 @@ public class UDTFEqualBucketSample implements UDTF {
     if ("avg".equals(aggMethodType)) {
       double sum = 0;
       switch (outputDataType) {
-        case INT32:{
+        case INT32: {
           for (int i = 0; i < windowSize; i++) {
             sum += rowWindow.getRow(i).getInt(0) * 1.0 / windowSize;
           }
           break;
         }
-        case INT64:{
+        case INT64: {
           for (int i = 0; i < windowSize; i++) {
             sum += rowWindow.getRow(i).getLong(0) * 1.0 / windowSize;
           }
           break;
         }
-        case FLOAT:{
+        case FLOAT: {
           for (int i = 0; i < windowSize; i++) {
             sum += rowWindow.getRow(i).getFloat(0) / windowSize;
           }
           break;
         }
-        case DOUBLE:{
+        case DOUBLE: {
           for (int i = 0; i < windowSize; i++) {
             sum += rowWindow.getRow(i).getDouble(0) / windowSize;
           }
@@ -330,7 +320,7 @@ public class UDTFEqualBucketSample implements UDTF {
       collector.putDouble(time, sum);
     } else if ("max".equals(aggMethodType)) {
       switch (outputDataType) {
-        case INT32:{
+        case INT32: {
           int maxValue = rowWindow.getRow(0).getInt(0);
           for (int i = 1; i < windowSize; i++) {
             int value = rowWindow.getRow(i).getInt(0);
@@ -341,7 +331,7 @@ public class UDTFEqualBucketSample implements UDTF {
           collector.putInt(time, maxValue);
           break;
         }
-        case INT64:{
+        case INT64: {
           long maxValue = rowWindow.getRow(0).getLong(0);
           for (int i = 1; i < windowSize; i++) {
             long value = rowWindow.getRow(i).getLong(0);
@@ -352,7 +342,7 @@ public class UDTFEqualBucketSample implements UDTF {
           collector.putLong(time, maxValue);
           break;
         }
-        case FLOAT:{
+        case FLOAT: {
           float maxValue = rowWindow.getRow(0).getFloat(0);
           for (int i = 1; i < windowSize; i++) {
             float value = rowWindow.getRow(i).getFloat(0);
@@ -363,7 +353,7 @@ public class UDTFEqualBucketSample implements UDTF {
           collector.putFloat(time, maxValue);
           break;
         }
-        case DOUBLE:{
+        case DOUBLE: {
           double maxValue = rowWindow.getRow(0).getDouble(0);
           for (int i = 1; i < windowSize; i++) {
             double value = rowWindow.getRow(i).getDouble(0);
@@ -386,7 +376,7 @@ public class UDTFEqualBucketSample implements UDTF {
       }
     } else if ("min".equals(aggMethodType)) {
       switch (outputDataType) {
-        case INT32:{
+        case INT32: {
           int minValue = rowWindow.getRow(0).getInt(0);
           for (int i = 1; i < windowSize; i++) {
             int value = rowWindow.getRow(i).getInt(0);
@@ -397,7 +387,7 @@ public class UDTFEqualBucketSample implements UDTF {
           collector.putInt(time, minValue);
           break;
         }
-        case INT64:{
+        case INT64: {
           long minValue = rowWindow.getRow(0).getLong(0);
           for (int i = 1; i < windowSize; i++) {
             long value = rowWindow.getRow(i).getLong(0);
@@ -408,7 +398,7 @@ public class UDTFEqualBucketSample implements UDTF {
           collector.putLong(time, minValue);
           break;
         }
-        case FLOAT:{
+        case FLOAT: {
           float minValue = rowWindow.getRow(0).getFloat(0);
           for (int i = 1; i < windowSize; i++) {
             float value = rowWindow.getRow(i).getFloat(0);
@@ -419,7 +409,7 @@ public class UDTFEqualBucketSample implements UDTF {
           collector.putFloat(time, minValue);
           break;
         }
-        case DOUBLE:{
+        case DOUBLE: {
           double minValue = rowWindow.getRow(0).getDouble(0);
           for (int i = 1; i < windowSize; i++) {
             double value = rowWindow.getRow(i).getDouble(0);
@@ -440,24 +430,6 @@ public class UDTFEqualBucketSample implements UDTF {
               TSDataType.FLOAT,
               TSDataType.DOUBLE);
       }
-    }
-  }
-
-  static class Triplet implements Comparable<Triplet> {
-
-    public int left;
-    public double middle;
-    public int right;
-
-    public Triplet(int l, double m, int r) {
-      left = l;
-      middle = m;
-      right = r;
-    }
-
-    @Override
-    public int compareTo(Triplet o) {
-      return 0;
     }
   }
 }
