@@ -96,14 +96,12 @@ public class CompactionScheduler {
       innerSpaceCompactionSelector =
           config
               .getInnerSequenceCompactionSelector()
-              .getCompactionSelector(
-                  logicalStorageGroupName, dataRegionId, timePartition, tsFileManager);
+              .createInstance(logicalStorageGroupName, dataRegionId, timePartition, tsFileManager);
     } else {
       innerSpaceCompactionSelector =
           config
               .getInnerUnsequenceCompactionSelector()
-              .getCompactionSelector(
-                  logicalStorageGroupName, dataRegionId, timePartition, tsFileManager);
+              .createInstance(logicalStorageGroupName, dataRegionId, timePartition, tsFileManager);
     }
     List<List<TsFileResource>> taskList =
         innerSpaceCompactionSelector.selectInnerSpaceTask(
@@ -116,11 +114,11 @@ public class CompactionScheduler {
               ? IoTDBDescriptor.getInstance()
                   .getConfig()
                   .getInnerSeqCompactionPerformer()
-                  .getCompactionPerformer()
+                  .createInstance()
               : IoTDBDescriptor.getInstance()
                   .getConfig()
                   .getInnerUnseqCompactionPerformer()
-                  .getCompactionPerformer();
+                  .createInstance();
       CompactionTaskManager.getInstance()
           .addTaskToWaitingQueue(
               new InnerSpaceCompactionTask(
@@ -146,8 +144,7 @@ public class CompactionScheduler {
     ICrossSpaceSelector crossSpaceCompactionSelector =
         config
             .getCrossCompactionSelector()
-            .getCompactionSelector(
-                logicalStorageGroupName, dataRegionId, timePartition, tsFileManager);
+            .createInstance(logicalStorageGroupName, dataRegionId, timePartition, tsFileManager);
     List<Pair<List<TsFileResource>, List<TsFileResource>>> taskList =
         crossSpaceCompactionSelector.selectCrossSpaceTask(
             tsFileManager.getSequenceListByTimePartition(timePartition),
@@ -163,7 +160,7 @@ public class CompactionScheduler {
                   IoTDBDescriptor.getInstance()
                       .getConfig()
                       .getCrossCompactionPerformer()
-                      .getCompactionPerformer(),
+                      .createInstance(),
                   CompactionTaskManager.currentTaskNum));
     }
   }

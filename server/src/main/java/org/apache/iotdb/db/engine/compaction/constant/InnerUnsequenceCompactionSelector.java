@@ -30,10 +30,10 @@ public enum InnerUnsequenceCompactionSelector {
     if (SIZE_TIERED.toString().equalsIgnoreCase(name)) {
       return SIZE_TIERED;
     }
-    throw new RuntimeException("Illegal Compaction Strategy " + name);
+    throw new RuntimeException("Illegal Compaction Selector " + name);
   }
 
-  public IInnerUnseqSpaceSelector getCompactionSelector(
+  public IInnerUnseqSpaceSelector createInstance(
       String logicalStorageGroupName,
       String virtualStorageGroupName,
       long timePartition,
