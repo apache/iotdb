@@ -48,46 +48,14 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
 
   @Override
   public SchemaPartition getSchemaPartition(PathPatternTree patternTree) {
-    PublicBAOS baos = new PublicBAOS();
     try {
-      patternTree.serialize(baos);
-      ByteBuffer serializedPatternTree = ByteBuffer.allocate(baos.size());
-      serializedPatternTree.put(baos.getBuf());
-      serializedPatternTree.flip();
-      TSchemaPartitionReq schemaPartitionReq = new TSchemaPartitionReq(serializedPatternTree);
-      TSchemaPartitionResp schemaPartitionResp = client.getSchemaPartition(schemaPartitionReq);
-      Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> respSchemaPartitionMap =
-          schemaPartitionResp.getSchemaRegionMap();
-      Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> schemaPartitionMap = new HashMap<>();
-      respSchemaPartitionMap.forEach(
-          (storageGroupName, respSchemaRegionMap) -> {
-            Map<SeriesPartitionSlot, RegionReplicaSet> schemaRegionMap = new HashMap<>();
-            respSchemaRegionMap.forEach(
-                (respSeriesPartitionSlot, respRegionReplicaSet) -> {
-                  SeriesPartitionSlot seriesPartitionSlot =
-                      new SeriesPartitionSlot(respSeriesPartitionSlot.getSlotId());
-                  EndPoint respEndPoint = respRegionReplicaSet.getEndpoint().get(0);
-                  RegionReplicaSet regionReplicaSet = null;
-                  try {
-                    regionReplicaSet =
-                        new RegionReplicaSet(
-                            ConsensusGroupId.Factory.create(respRegionReplicaSet.regionId),
-                            Collections.singletonList(
-                                new DataNodeLocation(
-                                    new Endpoint(respEndPoint.getIp(), respEndPoint.getPort()))));
-                  } catch (IOException e) {
-                    e.printStackTrace();
-                  }
-                  schemaRegionMap.put(seriesPartitionSlot, regionReplicaSet);
-                });
-            schemaPartitionMap.put(storageGroupName, schemaRegionMap);
-          });
-
+      TSchemaPartitionResp schemaPartitionResp =
+          client.getSchemaPartition(constructSchemaPartitionReq(patternTree));
       if (schemaPartitionResp.getStatus().getCode()
           == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return new SchemaPartition(schemaPartitionMap);
+        return parseSchemaPartitionResp(schemaPartitionResp);
       }
-    } catch (IOException | IoTDBConnectionException e) {
+    } catch (IoTDBConnectionException e) {
       e.printStackTrace();
     }
     return null;
@@ -95,6 +63,16 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
 
   @Override
   public SchemaPartition getOrCreateSchemaPartition(PathPatternTree patternTree) {
+    try {
+      TSchemaPartitionResp schemaPartitionResp =
+          client.getOrCreateSchemaPartition(constructSchemaPartitionReq(patternTree));
+      if (schemaPartitionResp.getStatus().getCode()
+          == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return parseSchemaPartitionResp(schemaPartitionResp);
+      }
+    } catch (IoTDBConnectionException e) {
+      e.printStackTrace();
+    }
     return null;
   }
 
@@ -106,5 +84,49 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   @Override
   public DataPartition getOrCreateDataPartition(List<DataPartitionQueryParam> parameterList) {
     return null;
+  }
+
+  private TSchemaPartitionReq constructSchemaPartitionReq(PathPatternTree patternTree) {
+    PublicBAOS baos = new PublicBAOS();
+    try {
+      patternTree.serialize(baos);
+      ByteBuffer serializedPatternTree = ByteBuffer.allocate(baos.size());
+      serializedPatternTree.put(baos.getBuf());
+      serializedPatternTree.flip();
+      return new TSchemaPartitionReq(serializedPatternTree);
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+    return null;
+  }
+
+  private SchemaPartition parseSchemaPartitionResp(TSchemaPartitionResp schemaPartitionResp) {
+    Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> respSchemaPartitionMap =
+        schemaPartitionResp.getSchemaRegionMap();
+    Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> schemaPartitionMap = new HashMap<>();
+    respSchemaPartitionMap.forEach(
+        (storageGroupName, respSchemaRegionMap) -> {
+          Map<SeriesPartitionSlot, RegionReplicaSet> schemaRegionMap = new HashMap<>();
+          respSchemaRegionMap.forEach(
+              (respSeriesPartitionSlot, respRegionReplicaSet) -> {
+                SeriesPartitionSlot seriesPartitionSlot =
+                    new SeriesPartitionSlot(respSeriesPartitionSlot.getSlotId());
+                EndPoint respEndPoint = respRegionReplicaSet.getEndpoint().get(0);
+                RegionReplicaSet regionReplicaSet = null;
+                try {
+                  regionReplicaSet =
+                      new RegionReplicaSet(
+                          ConsensusGroupId.Factory.create(respRegionReplicaSet.regionId),
+                          Collections.singletonList(
+                              new DataNodeLocation(
+                                  new Endpoint(respEndPoint.getIp(), respEndPoint.getPort()))));
+                } catch (IOException e) {
+                  e.printStackTrace();
+                }
+                schemaRegionMap.put(seriesPartitionSlot, regionReplicaSet);
+              });
+          schemaPartitionMap.put(storageGroupName, schemaRegionMap);
+        });
+    return new SchemaPartition(schemaPartitionMap);
   }
 }
