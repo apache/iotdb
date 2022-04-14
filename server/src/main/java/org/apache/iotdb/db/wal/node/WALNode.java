@@ -206,35 +206,33 @@ public class WALNode implements IWALNode {
       }
 
       // delete outdated files
-      File[] filesToDelete = deleteOutdatedFiles();
+      deleteOutdatedFiles();
 
       // calculate effective information ratio
-      if (filesToDelete != null && filesToDelete.length == 0) {
-        long costOfActiveMemTables = checkpointManager.getTotalCostOfActiveMemTables();
-        long costOfFlushedMemTables = totalCostOfFlushedMemTables.get();
-        double effectiveInfoRatio =
-            (double) costOfActiveMemTables / (costOfActiveMemTables + costOfFlushedMemTables);
+      long costOfActiveMemTables = checkpointManager.getTotalCostOfActiveMemTables();
+      long costOfFlushedMemTables = totalCostOfFlushedMemTables.get();
+      double effectiveInfoRatio =
+          (double) costOfActiveMemTables / (costOfActiveMemTables + costOfFlushedMemTables);
+      logger.debug(
+          "Effective information ratio is {}, active memTables cost is {}, flushed memTables cost is {}",
+          effectiveInfoRatio,
+          costOfActiveMemTables,
+          costOfFlushedMemTables);
+      // effective information ratio is too small
+      // update first valid version id by snapshotting or flushing memTable,
+      // then delete old .wal files again
+      if (effectiveInfoRatio < config.getWalMinEffectiveInfoRatio()) {
         logger.info(
-            "Effective information ratio is {}, active memTables cost is {}, flushed memTables cost is {}",
+            "Effective information ratio {} of wal node-{} is below wal min effective info ratio {}, some mamTables will be snapshot or flushed.",
             effectiveInfoRatio,
-            costOfActiveMemTables,
-            costOfFlushedMemTables);
-        // effective information ratio is too small
-        // update first valid version id by snapshotting or flushing memTable,
-        // then delete old .wal files again
-        if (effectiveInfoRatio < config.getWalMinEffectiveInfoRatio()) {
-          logger.info(
-              "Effective information ratio {} of wal node-{} is below wal min effective info ratio {}, some mamTables will be snapshot or flushed.",
-              effectiveInfoRatio,
-              identifier,
-              config.getWalMinEffectiveInfoRatio());
-          snapshotOrFlushMemTable();
-          run();
-        }
+            identifier,
+            config.getWalMinEffectiveInfoRatio());
+        snapshotOrFlushMemTable();
+        run();
       }
     }
 
-    private File[] deleteOutdatedFiles() {
+    private void deleteOutdatedFiles() {
       File directory = SystemFileFactory.INSTANCE.getFile(logDirectory);
       File[] filesToDelete = directory.listFiles(this::filterFilesToDelete);
       if (filesToDelete != null) {
@@ -250,7 +248,6 @@ public class WALNode implements IWALNode {
           }
         }
       }
-      return filesToDelete;
     }
 
     private boolean filterFilesToDelete(File dir, String name) {
