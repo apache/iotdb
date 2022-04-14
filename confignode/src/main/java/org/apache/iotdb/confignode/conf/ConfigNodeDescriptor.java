@@ -112,6 +112,11 @@ public class ConfigNodeDescriptor {
           properties.getProperty(
               "series_partition_executor_class", conf.getSeriesPartitionExecutorClass()));
 
+      conf.setTimePartitionInterval(
+          Long.parseLong(
+              properties.getProperty(
+                  "time_partition_interval", String.valueOf(conf.getTimePartitionInterval()))));
+
       conf.setRpcAddress(properties.getProperty("config_node_rpc_address", conf.getRpcAddress()));
 
       conf.setRpcPort(

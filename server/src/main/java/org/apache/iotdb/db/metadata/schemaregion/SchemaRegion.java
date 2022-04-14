@@ -77,7 +77,6 @@ import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.sync.sender.manager.SchemaSyncManager;
 import org.apache.iotdb.db.utils.SchemaUtils;
-import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -277,7 +276,11 @@ public class SchemaRegion implements ISchemaRegion {
     }
   }
 
-  /** @return line number of the logFile */
+  /**
+   * Init from metadata log file.
+   *
+   * @return line number of the logFile
+   */
   @SuppressWarnings("squid:S3776")
   private int initFromLog(File logFile) throws IOException {
     long time = System.currentTimeMillis();
@@ -1567,8 +1570,9 @@ public class SchemaRegion implements ISchemaRegion {
           // check type is match
           if (plan instanceof InsertRowPlan || plan instanceof InsertTabletPlan) {
             try {
-              checkDataTypeMatch(plan, i, measurementMNode.getSchema().getType());
+              SchemaRegionUtils.checkDataTypeMatch(plan, i, measurementMNode.getSchema().getType());
             } catch (DataTypeMismatchException mismatchException) {
+              logger.warn(mismatchException.getMessage());
               if (!config.isEnablePartialInsert()) {
                 throw mismatchException;
               } else {
@@ -1654,47 +1658,7 @@ public class SchemaRegion implements ISchemaRegion {
     return new Pair<>(deviceMNode, measurementMNode);
   }
 
-  private void checkDataTypeMatch(InsertPlan plan, int loc, TSDataType dataType)
-      throws MetadataException {
-    TSDataType insertDataType;
-    if (plan instanceof InsertRowPlan) {
-      if (!((InsertRowPlan) plan).isNeedInferType()) {
-        // only when InsertRowPlan's values is object[], we should check type
-        insertDataType = getTypeInLoc(plan, loc);
-      } else {
-        insertDataType = dataType;
-      }
-    } else {
-      insertDataType = getTypeInLoc(plan, loc);
-    }
-    if (dataType != insertDataType) {
-      String measurement = plan.getMeasurements()[loc];
-      logger.warn(
-          "DataType mismatch, Insert measurement {} type {}, metadata tree type {}",
-          measurement,
-          insertDataType,
-          dataType);
-      throw new DataTypeMismatchException(measurement, insertDataType, dataType);
-    }
-  }
-
   /** get dataType of plan, in loc measurements only support InsertRowPlan and InsertTabletPlan */
-  private TSDataType getTypeInLoc(InsertPlan plan, int loc) throws MetadataException {
-    TSDataType dataType;
-    if (plan instanceof InsertRowPlan) {
-      InsertRowPlan tPlan = (InsertRowPlan) plan;
-      dataType =
-          TypeInferenceUtils.getPredictedDataType(tPlan.getValues()[loc], tPlan.isNeedInferType());
-    } else if (plan instanceof InsertTabletPlan) {
-      dataType = (plan).getDataTypes()[loc];
-    } else {
-      throw new MetadataException(
-          String.format(
-              "Only support insert and insertTablet, plan is [%s]", plan.getOperatorType()));
-    }
-    return dataType;
-  }
-
   private IMeasurementMNode findMeasurementInTemplate(IMNode deviceMNode, String measurement)
       throws MetadataException {
     Template curTemplate = deviceMNode.getUpperTemplate();

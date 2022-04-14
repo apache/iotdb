@@ -20,7 +20,10 @@
 package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.jdbc.Config;
 
@@ -46,6 +49,7 @@ import static org.junit.Assert.fail;
 
 @Category({LocalStandaloneTest.class})
 public class IoTDBRecoverUnclosedIT {
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private static final String TIMESTAMP_STR = "Time";
   private static final String TEMPERATURE_STR = "root.ln.wf01.wt01.temperature";
@@ -83,8 +87,12 @@ public class IoTDBRecoverUnclosedIT {
   private String insertTemplate =
       "INSERT INTO root.vehicle.d0(timestamp,s0,s1,s2,s3,s4)" + " VALUES(%d,%d,%d,%f,%s,%s)";
 
+  private WALMode prevWALMode;
+
   @Before
   public void setUp() throws Exception {
+    prevWALMode = config.getWalMode();
+    config.setWalMode(WALMode.SYNC);
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
     prepareData();
@@ -93,6 +101,7 @@ public class IoTDBRecoverUnclosedIT {
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
+    config.setWalMode(prevWALMode);
   }
 
   @Test
@@ -170,13 +179,17 @@ public class IoTDBRecoverUnclosedIT {
       Assert.fail();
     }
 
-    // maxminValueTest
+    // test count, max, min value
     retArray = new String[] {"0,8499,500.0", "0,2499,500.0"};
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
+      boolean hasResultSet = statement.execute("select count(*) from root.vehicle.d0");
+      Assert.assertTrue(hasResultSet);
+      statement.getResultSet().next();
+      Assert.assertEquals(7500, statement.getResultSet().getInt("count(" + d0s0 + ")"));
 
-      boolean hasResultSet =
+      hasResultSet =
           statement.execute(
               "select max_value(s0),min_value(s2) "
                   + "from root.vehicle.d0 where time >= 100 and time < 9000");

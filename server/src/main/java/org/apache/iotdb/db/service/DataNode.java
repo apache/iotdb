@@ -32,6 +32,7 @@ import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConfigCheck;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.consensus.ConsensusImpl;
 import org.apache.iotdb.db.service.thrift.impl.DataNodeManagementServiceImpl;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -155,6 +156,13 @@ public class DataNode implements DataNodeMBean {
   public void active() throws StartupException {
     // start iotdb server first
     IoTDB.getInstance().active();
+
+    try {
+      // TODO: Start consensus layer in some where else
+      ConsensusImpl.getInstance().start();
+    } catch (IOException e) {
+      throw new StartupException(e);
+    }
 
     /** Register services */
     JMXService.registerMBean(getInstance(), mbeanName);

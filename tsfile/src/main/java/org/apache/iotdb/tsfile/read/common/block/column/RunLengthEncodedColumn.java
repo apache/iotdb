@@ -109,6 +109,12 @@ public class RunLengthEncodedColumn implements Column {
   }
 
   @Override
+  public Object getObject(int position) {
+    checkReadablePosition(position);
+    return value.getObject(position);
+  }
+
+  @Override
   public TsPrimitiveType getTsPrimitiveType(int position) {
     checkReadablePosition(position);
     return value.getTsPrimitiveType(position);

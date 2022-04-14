@@ -55,12 +55,6 @@ public class WildcardsRemover {
 
   private ColumnPaginationController paginationController;
 
-  /**
-   * Since IoTDB v0.13, all DDL and DML use patternMatch as default. Before IoTDB v0.13, all DDL and
-   * DML use prefixMatch.
-   */
-  private boolean isPrefixMatch;
-
   public Statement rewrite(Statement statement, SchemaTree schemaTree)
       throws StatementAnalyzeException, PathNumOverLimitException {
     QueryStatement queryStatement = (QueryStatement) statement;
@@ -73,7 +67,6 @@ public class WildcardsRemover {
                 || queryStatement instanceof LastQueryStatement
                 || queryStatement.isGroupByLevel());
     this.schemaTree = schemaTree;
-    this.isPrefixMatch = queryStatement.isPrefixMatchPath();
 
     if (queryStatement.getIndexType() == null) {
       // remove wildcards in SELECT clause
@@ -271,10 +264,7 @@ public class WildcardsRemover {
     try {
       Pair<List<MeasurementPath>, Integer> pair =
           schemaTree.searchMeasurementPaths(
-              path,
-              paginationController.getCurLimit(),
-              paginationController.getCurOffset(),
-              isPrefixMatch);
+              path, paginationController.getCurLimit(), paginationController.getCurOffset(), false);
       paginationController.consume(pair.left.size(), pair.right);
       return pair.left;
     } catch (Exception e) {
@@ -329,7 +319,7 @@ public class WildcardsRemover {
     try {
       for (PartialPath originalPath : originalPaths) {
         List<MeasurementPath> all =
-            schemaTree.searchMeasurementPaths(originalPath, 0, 0, isPrefixMatch).left;
+            schemaTree.searchMeasurementPaths(originalPath, 0, 0, false).left;
         if (all.isEmpty()) {
           throw new StatementAnalyzeException(
               String.format("Unknown time series %s in `where clause`", originalPath));
