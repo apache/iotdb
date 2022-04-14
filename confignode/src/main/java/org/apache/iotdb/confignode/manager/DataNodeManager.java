@@ -20,7 +20,6 @@ package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.DataNodeLocation;
-import org.apache.iotdb.confignode.cli.TemporaryClient;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationDataSet;
 import org.apache.iotdb.confignode.consensus.response.DataNodesInfoDataSet;
@@ -87,10 +86,6 @@ public class DataNodeManager {
       plan.getInfo().setDataNodeId(DataNodeInfoPersistence.getInstance().generateNextDataNodeId());
       ConsensusWriteResponse resp = getConsensusManager().write(plan);
       dataSet.setStatus(resp.getStatus());
-
-      // Build client
-      TemporaryClient.getInstance()
-          .buildClient(plan.getInfo().getDataNodeId(), plan.getInfo().getEndPoint());
     }
 
     dataSet.setDataNodeId(plan.getInfo().getDataNodeId());

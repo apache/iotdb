@@ -67,15 +67,13 @@ public class DataNodeManagementServiceImpl implements ManagementIService.Iface {
           (SchemaRegionId)
               ConsensusGroupId.Factory.create(ByteBuffer.wrap(regionReplicaSet.getRegionId()));
       schemaEngine.createSchemaRegion(storageGroupPartitionPath, schemaRegionId);
-      ConsensusGroupId consensusGroupId =
-          ConsensusGroupId.Factory.create(ByteBuffer.wrap(regionReplicaSet.getRegionId()));
       List<Peer> peers = new ArrayList<>();
       for (EndPoint endPoint : regionReplicaSet.getEndpoint()) {
         Endpoint endpoint = new Endpoint(endPoint.getIp(), endPoint.getPort());
-        peers.add(new Peer(consensusGroupId, endpoint));
+        peers.add(new Peer(schemaRegionId, endpoint));
       }
       ConsensusGenericResponse consensusGenericResponse =
-          consensusImpl.addConsensusGroup(consensusGroupId, peers);
+          consensusImpl.addConsensusGroup(schemaRegionId, peers);
       if (consensusGenericResponse.isSuccess()) {
         tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       } else {
@@ -106,15 +104,13 @@ public class DataNodeManagementServiceImpl implements ManagementIService.Iface {
           (DataRegionId)
               ConsensusGroupId.Factory.create(ByteBuffer.wrap(regionReplicaSet.getRegionId()));
       storageEngine.createDataRegion(dataRegionId, req.storageGroup, req.ttl);
-      ConsensusGroupId consensusGroupId =
-          ConsensusGroupId.Factory.create(ByteBuffer.wrap(regionReplicaSet.getRegionId()));
       List<Peer> peers = new ArrayList<>();
       for (EndPoint endPoint : regionReplicaSet.getEndpoint()) {
         Endpoint endpoint = new Endpoint(endPoint.getIp(), endPoint.getPort());
-        peers.add(new Peer(consensusGroupId, endpoint));
+        peers.add(new Peer(dataRegionId, endpoint));
       }
       ConsensusGenericResponse consensusGenericResponse =
-          consensusImpl.addConsensusGroup(consensusGroupId, peers);
+          consensusImpl.addConsensusGroup(dataRegionId, peers);
       if (consensusGenericResponse.isSuccess()) {
         tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       } else {

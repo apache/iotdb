@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.cli;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
+import org.apache.iotdb.confignode.persistence.DataNodeInfoPersistence;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.CreateDataRegionReq;
@@ -47,7 +48,8 @@ public class TemporaryClient {
   private static final Logger LOGGER = LoggerFactory.getLogger(TemporaryClient.class);
 
   private static final int timeOutInMS = 2000;
-  private static final int retryNum = 5;
+  private static final int retryWait = 10;
+  private static final int retryNum = 3;
 
   // Map<DataNodeId, ManagementIService.Client>
   private final Map<Integer, ManagementIService.Client> clients;
@@ -67,15 +69,16 @@ public class TemporaryClient {
         LOGGER.info("Build client to DataNode: {} success", endpoint);
         return;
       } catch (TTransportException e) {
-        LOGGER.error("Build client to DataNode failed, {}. Retrying...", e.toString());
+        LOGGER.error(
+            "Build client to DataNode: {} failed, {}. Retrying...", endpoint, e.toString());
         try {
-          TimeUnit.MILLISECONDS.sleep(100);
+          TimeUnit.MILLISECONDS.sleep(retryWait);
         } catch (InterruptedException ignore) {
           // Ignored
         }
       }
     }
-    LOGGER.error("Build client to DataNode failed.");
+    LOGGER.error("Build client to DataNode: {} failed.", endpoint);
   }
 
   private CreateSchemaRegionReq genCreateSchemaRegionReq(
@@ -88,26 +91,45 @@ public class TemporaryClient {
 
   public void createSchemaRegion(
       int dataNodeId, String storageGroup, RegionReplicaSet regionReplicaSet) {
+
+    if (clients.get(dataNodeId) == null) {
+      buildClient(
+          dataNodeId,
+          DataNodeInfoPersistence.getInstance().getOnlineDataNode(dataNodeId).getEndPoint());
+    }
+
     CreateSchemaRegionReq req = genCreateSchemaRegionReq(storageGroup, regionReplicaSet);
-    for (int i = 0; i < retryNum; i++) {
-      try {
-        TSStatus status = clients.get(dataNodeId).createSchemaRegion(req);
-        if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          LOGGER.info("Create SchemaRegion: {} success", regionReplicaSet);
-          return;
-        } else {
-          LOGGER.error("Create SchemaRegion failed, {}. Retrying...", status);
-        }
-      } catch (TException e) {
-        LOGGER.error("Create SchemaRegion failed, {}. Retrying...", e.toString());
+    if (clients.get(dataNodeId) != null) {
+      for (int i = 0; i < retryNum; i++) {
         try {
-          TimeUnit.MILLISECONDS.sleep(100);
-        } catch (InterruptedException ignore) {
-          // Ignored
+          TSStatus status = clients.get(dataNodeId).createSchemaRegion(req);
+          if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            LOGGER.info(
+                "Create SchemaRegion on DataNode: {} success",
+                DataNodeInfoPersistence.getInstance().getOnlineDataNode(dataNodeId).getEndPoint());
+            return;
+          } else {
+            LOGGER.error(
+                "Create SchemaRegion on DataNode: {} failed, {}. Retrying...",
+                DataNodeInfoPersistence.getInstance().getOnlineDataNode(dataNodeId).getEndPoint(),
+                status);
+          }
+        } catch (TException e) {
+          LOGGER.error(
+              "Create SchemaRegion on DataNode: {} failed, {}. Retrying...",
+              DataNodeInfoPersistence.getInstance().getOnlineDataNode(dataNodeId).getEndPoint(),
+              e.toString());
+          try {
+            TimeUnit.MILLISECONDS.sleep(retryWait);
+          } catch (InterruptedException ignore) {
+            // Ignored
+          }
         }
       }
     }
-    LOGGER.error("Create SchemaRegion failed.");
+    LOGGER.error(
+        "Create SchemaRegion on DataNode: {} failed.",
+        DataNodeInfoPersistence.getInstance().getOnlineDataNode(dataNodeId).getEndPoint());
   }
 
   private CreateDataRegionReq genCreateDataRegionReq(
@@ -121,26 +143,45 @@ public class TemporaryClient {
 
   public void createDataRegion(
       int dataNodeId, String storageGroup, RegionReplicaSet regionReplicaSet, long TTL) {
+
+    if (clients.get(dataNodeId) == null) {
+      buildClient(
+          dataNodeId,
+          DataNodeInfoPersistence.getInstance().getOnlineDataNode(dataNodeId).getEndPoint());
+    }
+
     CreateDataRegionReq req = genCreateDataRegionReq(storageGroup, regionReplicaSet, TTL);
-    for (int i = 0; i < retryNum; i++) {
-      try {
-        TSStatus status = clients.get(dataNodeId).createDataRegion(req);
-        if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          LOGGER.info("Create DataRegion: {} success", regionReplicaSet);
-          return;
-        } else {
-          LOGGER.error("Create DataRegion failed, {}. Retrying...", status);
-        }
-      } catch (TException e) {
-        LOGGER.error("Create DataRegion failed, {}. Retrying...", e.toString());
+    if (clients.get(dataNodeId) != null) {
+      for (int i = 0; i < retryNum; i++) {
         try {
-          TimeUnit.MILLISECONDS.sleep(100);
-        } catch (InterruptedException ignore) {
-          // Ignored
+          TSStatus status = clients.get(dataNodeId).createDataRegion(req);
+          if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            LOGGER.info(
+                "Create DataRegion on DataNode: {} success",
+                DataNodeInfoPersistence.getInstance().getOnlineDataNode(dataNodeId).getEndPoint());
+            return;
+          } else {
+            LOGGER.error(
+                "Create DataRegion on DataNode: {} failed, {}. Retrying...",
+                DataNodeInfoPersistence.getInstance().getOnlineDataNode(dataNodeId).getEndPoint(),
+                status);
+          }
+        } catch (TException e) {
+          LOGGER.error(
+              "Create DataRegion on DataNode: {} failed, {}. Retrying...",
+              DataNodeInfoPersistence.getInstance().getOnlineDataNode(dataNodeId).getEndPoint(),
+              e.toString());
+          try {
+            TimeUnit.MILLISECONDS.sleep(retryWait);
+          } catch (InterruptedException ignore) {
+            // Ignored
+          }
         }
       }
     }
-    LOGGER.error("Create DataRegion failed.");
+    LOGGER.error(
+        "Create DataRegion on DataNode: {} failed.",
+        DataNodeInfoPersistence.getInstance().getOnlineDataNode(dataNodeId).getEndPoint());
   }
 
   private static class TemporaryClientHolder {
