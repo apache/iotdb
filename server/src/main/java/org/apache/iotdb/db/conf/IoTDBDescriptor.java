@@ -364,17 +364,17 @@ public class IoTDBDescriptor {
                   Boolean.toString(conf.isEnableUnseqSpaceCompaction()))));
 
       conf.setCrossCompactionSelector(
-          CrossCompactionSelector.getCrossCompactionStrategy(
+          CrossCompactionSelector.getCrossCompactionSelector(
               properties.getProperty(
                   "cross_selector", conf.getCrossCompactionSelector().toString())));
 
       conf.setInnerSequenceCompactionSelector(
-          InnerSequenceCompactionSelector.getInnerSequenceCompactionStrategy(
+          InnerSequenceCompactionSelector.getInnerSequenceCompactionSelector(
               properties.getProperty(
                   "inner_seq_selector", conf.getInnerSequenceCompactionSelector().toString())));
 
       conf.setInnerUnsequenceCompactionSelector(
-          InnerUnsequenceCompactionSelector.getInnerUnsequenceCompactionStrategy(
+          InnerUnsequenceCompactionSelector.getInnerUnsequenceCompactionSelector(
               properties.getProperty(
                   "inner_unseq_selector", conf.getInnerUnsequenceCompactionSelector().toString())));
 
