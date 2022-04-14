@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.common.header;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.Arrays;
+import java.util.Collections;
 
 public class headerConstant {
 
@@ -44,6 +45,7 @@ public class headerConstant {
   public static final DatasetHeader showTimeSeriesHeader;
   public static final DatasetHeader showDevicesHeader;
   public static final DatasetHeader showDevicesWithSgHeader;
+  public static final DatasetHeader showStorageGroupHeader;
 
   static {
     showTimeSeriesHeader =
@@ -76,6 +78,13 @@ public class headerConstant {
                 new ColumnHeader(COLUMN_DEVICES, TSDataType.TEXT),
                 new ColumnHeader(COLUMN_STORAGE_GROUP, TSDataType.TEXT),
                 new ColumnHeader(COLUMN_IS_ALIGNED, TSDataType.TEXT)),
+            true);
+  }
+
+  static {
+    showStorageGroupHeader =
+        new DatasetHeader(
+            Collections.singletonList(new ColumnHeader(COLUMN_STORAGE_GROUP, TSDataType.TEXT)),
             true);
   }
 }
