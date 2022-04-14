@@ -62,7 +62,7 @@ import static org.apache.iotdb.db.service.basic.ServiceProvider.SLOW_SQL_LOGGER;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNPEOrUnexpectedException;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onQueryException;
 
-public class DataNodeTSIServiceImpl implements TSIService.Iface {
+public class DataNodeTSIServiceImpl implements TSIEventHandler {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeTSIServiceImpl.class);
 
@@ -719,6 +719,15 @@ public class DataNodeTSIServiceImpl implements TSIService.Iface {
       MetricsService.getInstance()
           .getMetricManager()
           .count(1, "operation_count", MetricLevel.IMPORTANT, "name", operation.getName());
+    }
+  }
+
+  @Override
+  public void handleClientExit() {
+    Long sessionId = SESSION_MANAGER.getCurrSessionId();
+    if (sessionId != null) {
+      TSCloseSessionReq req = new TSCloseSessionReq(sessionId);
+      closeSession(req);
     }
   }
 }

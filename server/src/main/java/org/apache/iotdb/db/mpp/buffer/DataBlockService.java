@@ -35,7 +35,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
-public class DataBlockService extends ThriftService {
+public class DataBlockService extends ThriftService implements DataBlockServiceMBean {
 
   private DataBlockManager dataBlockManager;
   private ExecutorService executorService;
@@ -50,6 +50,7 @@ public class DataBlockService extends ThriftService {
   @Override
   public void initTProcessor()
       throws ClassNotFoundException, IllegalAccessException, InstantiationException {
+    initSyncedServiceImpl(null);
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     executorService =
         IoTDBThreadPoolFactory.newThreadPool(
@@ -120,6 +121,11 @@ public class DataBlockService extends ThriftService {
 
   public static DataBlockService getInstance() {
     return DataBlockManagerServiceHolder.INSTANCE;
+  }
+
+  @Override
+  public int getRPCPort() {
+    return getBindPort();
   }
 
   private static class DataBlockManagerServiceHolder {
