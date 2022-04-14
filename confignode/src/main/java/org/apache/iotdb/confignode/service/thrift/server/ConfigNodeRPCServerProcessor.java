@@ -194,7 +194,7 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
     try {
       plan =
           new AuthorPlan(
-              PhysicalPlanType.values()[req.getAuthorType()],
+              AuthorPlan.convert(req.getAuthorType()),
               req.getUserName(),
               req.getRoleName(),
               req.getPassword(),
@@ -217,7 +217,7 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
     try {
       plan =
           new AuthorPlan(
-              PhysicalPlanType.values()[req.getAuthorType()],
+              AuthorPlan.convert(req.getAuthorType()),
               req.getUserName(),
               req.getRoleName(),
               req.getPassword(),
