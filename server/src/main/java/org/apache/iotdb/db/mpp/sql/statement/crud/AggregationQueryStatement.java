@@ -77,6 +77,7 @@ public class AggregationQueryStatement extends QueryStatement {
 
   public DatasetHeader constructDatasetHeader() {
     List<ColumnHeader> columnHeaders = new ArrayList<>();
+    // TODO: consider Aggregation
     return new DatasetHeader(columnHeaders, true);
   }
 

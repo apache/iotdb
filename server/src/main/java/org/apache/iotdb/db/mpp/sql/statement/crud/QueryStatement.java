@@ -270,19 +270,7 @@ public class QueryStatement extends Statement {
       columnHeaders.add(
           new ColumnHeader(SQLConstant.ALIGNBY_DEVICE_COLUMN_NAME, TSDataType.TEXT, null));
 
-      Map<String, List<ColumnHeader>> deviceNameToColumnHeaders = new HashMap<>();
-      for (ResultColumn resultColumn : this.getSelectComponent().getResultColumns()) {
-        PartialPath selectedPath = getPathFromExpression(resultColumn.getExpression());
-        String aggregationFunctionName = getAggregationFromExpression(resultColumn.getExpression());
-        String alias = resultColumn.getAlias();
-        deviceNameToColumnHeaders
-            .computeIfAbsent(selectedPath.getDevice(), key -> new ArrayList<>())
-            .add(
-                new ColumnHeader(
-                    getMeasurementName(selectedPath, aggregationFunctionName),
-                    selectedPath.getSeriesType(),
-                    alias));
-      }
+      // TODO: consider ALIGN BY DEVICE
     } else {
       columnHeaders.addAll(
           this.getSelectComponent().getResultColumns().stream()

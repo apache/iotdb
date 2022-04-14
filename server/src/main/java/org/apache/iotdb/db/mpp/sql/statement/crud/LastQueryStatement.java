@@ -42,6 +42,7 @@ public class LastQueryStatement extends QueryStatement {
 
   public DatasetHeader constructDatasetHeader() {
     List<ColumnHeader> columnHeaders = new ArrayList<>();
+    // TODO: consider LAST
     return new DatasetHeader(columnHeaders, false);
   }
 

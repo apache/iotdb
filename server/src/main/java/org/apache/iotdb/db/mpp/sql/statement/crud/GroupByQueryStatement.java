@@ -49,6 +49,7 @@ public class GroupByQueryStatement extends AggregationQueryStatement {
 
   public DatasetHeader constructDatasetHeader() {
     List<ColumnHeader> columnHeaders = new ArrayList<>();
+    // TODO: consider GROUP BY
     return new DatasetHeader(columnHeaders, false);
   }
 
