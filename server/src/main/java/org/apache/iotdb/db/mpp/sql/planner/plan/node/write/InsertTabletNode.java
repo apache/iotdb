@@ -249,10 +249,10 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   private void writeMeasurements(ByteBuffer buffer) {
-    buffer.putInt(measurements.length - countFailedMeasurements());
-    for (String m : measurements) {
-      if (m != null) {
-        ReadWriteIOUtils.write(m, buffer);
+    buffer.putInt(measurementSchemas.length - countFailedMeasurements());
+    for (MeasurementSchema measurement : measurementSchemas) {
+      if (measurement != null) {
+        measurement.serializeTo(buffer);
       }
     }
   }
@@ -366,12 +366,88 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   private void writeMeasurements(IWALByteBufferView buffer) {
-    buffer.putInt(measurements.length - countFailedMeasurements());
+    buffer.putInt(measurementSchemas.length - countFailedMeasurements());
     for (String m : measurements) {
       if (m != null) {
         WALWriteUtils.write(m, buffer);
       }
     }
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    if (!super.equals(o)) return false;
+    InsertTabletNode that = (InsertTabletNode) o;
+    return rowCount == that.rowCount
+        && Arrays.equals(times, that.times)
+        && Arrays.equals(bitMaps, that.bitMaps)
+        && equals(that.columns)
+        && Objects.equals(range, that.range);
+  }
+
+  private boolean equals(Object[] columns) {
+    if (this.columns == columns) {
+      return true;
+    }
+
+    if (columns == null || this.columns == null || columns.length != this.columns.length) {
+      return false;
+    }
+
+    for (int i = 0; i < columns.length; i++) {
+      if (dataTypes[i] != null) {
+        switch (dataTypes[i]) {
+          case INT32:
+            if (!Arrays.equals((int[]) this.columns[i], (int[]) columns[i])) {
+              return false;
+            }
+            break;
+          case INT64:
+            if (!Arrays.equals((long[]) this.columns[i], (long[]) columns[i])) {
+              return false;
+            }
+            break;
+          case FLOAT:
+            if (!Arrays.equals((float[]) this.columns[i], (float[]) columns[i])) {
+              return false;
+            }
+            break;
+          case DOUBLE:
+            if (!Arrays.equals((double[]) this.columns[i], (double[]) columns[i])) {
+              return false;
+            }
+            break;
+          case BOOLEAN:
+            if (!Arrays.equals((boolean[]) this.columns[i], (boolean[]) columns[i])) {
+              return false;
+            }
+            break;
+          case TEXT:
+            if (!Arrays.equals((Binary[]) this.columns[i], (Binary[]) columns[i])) {
+              return false;
+            }
+            break;
+          default:
+            throw new UnSupportedDataTypeException(
+                String.format(DATATYPE_UNSUPPORTED, dataTypes[i]));
+        }
+      } else if (!columns[i].equals(columns)) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  @Override
+  public int hashCode() {
+    int result = Objects.hash(super.hashCode(), rowCount, range);
+    result = 31 * result + Arrays.hashCode(times);
+    result = 31 * result + Arrays.hashCode(bitMaps);
+    result = 31 * result + Arrays.hashCode(columns);
+    return result;
   }
 
   private void writeDataTypes(IWALByteBufferView buffer) {
@@ -611,8 +687,10 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
     int measurementSize = buffer.getInt();
     this.measurements = new String[measurementSize];
+    this.measurementSchemas = new MeasurementSchema[measurementSize];
     for (int i = 0; i < measurementSize; i++) {
-      measurements[i] = ReadWriteIOUtils.readString(buffer);
+      measurementSchemas[i] = MeasurementSchema.deserializeFrom(buffer);
+      measurements[i] = measurementSchemas[i].getMeasurementId();
     }
 
     this.dataTypes = new TSDataType[measurementSize];

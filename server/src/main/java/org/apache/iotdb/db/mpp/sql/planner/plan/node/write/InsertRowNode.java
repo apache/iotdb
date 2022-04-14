@@ -43,8 +43,10 @@ import org.slf4j.LoggerFactory;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 public class InsertRowNode extends InsertNode implements WALEntryValue {
 
@@ -160,6 +162,13 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   }
 
   @Override
+  public int hashCode() {
+    int result = Objects.hash(super.hashCode(), time);
+    result = 31 * result + Arrays.hashCode(values);
+    return result;
+  }
+
+  @Override
   public void serialize(ByteBuffer byteBuffer) {
     byteBuffer.putShort((short) PlanNodeType.INSERT_ROW.ordinal());
     getPlanNodeId().serialize(byteBuffer);
@@ -173,19 +182,14 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   }
 
   void serializeMeasurementsAndValues(ByteBuffer buffer) {
-    buffer.putInt(measurements.length - countFailedMeasurements());
+    buffer.putInt(measurementSchemas.length - countFailedMeasurements());
 
-    for (String measurement : measurements) {
+    for (MeasurementSchema measurement : measurementSchemas) {
       if (measurement != null) {
-        ReadWriteIOUtils.write(measurement, buffer);
+        measurement.serializeTo(buffer);
       }
     }
 
-    for (String measurement : measurements) {
-      if (measurement != null) {
-        ReadWriteIOUtils.write(measurement, buffer);
-      }
-    }
     try {
       putValues(buffer);
     } catch (QueryProcessException e) {
@@ -243,13 +247,14 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   }
 
   void serializeMeasurementsAndValues(IWALByteBufferView buffer) {
-    buffer.putInt(measurements.length - countFailedMeasurements());
+    buffer.putInt(measurementSchemas.length - countFailedMeasurements());
 
     for (String measurement : measurements) {
       if (measurement != null) {
         WALWriteUtils.write(measurement, buffer);
       }
     }
+
     try {
       putValues(buffer);
     } catch (QueryProcessException e) {
@@ -326,8 +331,10 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     int measurementSize = buffer.getInt();
 
     this.measurements = new String[measurementSize];
+    this.measurementSchemas = new MeasurementSchema[measurementSize];
     for (int i = 0; i < measurementSize; i++) {
-      measurements[i] = ReadWriteIOUtils.readString(buffer);
+      measurementSchemas[i] = MeasurementSchema.deserializeFrom(buffer);
+      measurements[i] = measurementSchemas[i].getMeasurementId();
     }
 
     this.dataTypes = new TSDataType[measurementSize];
@@ -434,5 +441,14 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
           throw new QueryProcessException("Unsupported data type:" + dataTypes[i]);
       }
     }
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    if (!super.equals(o)) return false;
+    InsertRowNode that = (InsertRowNode) o;
+    return time == that.time && Arrays.equals(values, that.values);
   }
 }
