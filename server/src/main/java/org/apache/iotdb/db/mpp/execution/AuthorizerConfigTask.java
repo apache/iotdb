@@ -19,12 +19,27 @@
 
 package org.apache.iotdb.db.mpp.execution;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.BadNodeUrlException;
+import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
+import org.apache.iotdb.db.auth.AuthException;
+import org.apache.iotdb.db.client.ConfigNodeClient;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AuthorNode;
 import org.apache.iotdb.db.mpp.sql.statement.sys.AuthorStatement;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.SettableFuture;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Locale;
 
 public class AuthorizerConfigTask implements IConfigTask {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(AuthorizerConfigTask.class);
 
   private AuthorStatement authorStatement;
 
@@ -34,7 +49,41 @@ public class AuthorizerConfigTask implements IConfigTask {
 
   @Override
   public ListenableFuture<Void> execute() {
-    // TODO: Execute permission-related operations and return
-    return Futures.immediateVoidFuture();
+    SettableFuture<Void> future = SettableFuture.create();
+    ConfigNodeClient configNodeClient = null;
+    try {
+      // Construct request using statement
+      TAuthorizerReq req =
+          new TAuthorizerReq(
+              authorStatement.getAuthorType().ordinal(),
+              authorStatement.getUserName(),
+              authorStatement.getRoleName(),
+              authorStatement.getPassWord(),
+              authorStatement.getNewPassword(),
+              AuthorNode.strToPermissions(authorStatement.getPrivilegeList()),
+              authorStatement.getNodeName().getFullPath());
+      configNodeClient = new ConfigNodeClient();
+      // Send request to some API server
+      TSStatus tsStatus = configNodeClient.operatePermission(req);
+      // Get response or throw exception
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+        LOGGER.error(
+            "Failed to execute {} in config node, status is {}.",
+            authorStatement.getAuthorType().toString().toLowerCase(Locale.ROOT),
+            tsStatus);
+        future.setException(new StatementExecutionException(tsStatus));
+      } else {
+        future.set(null);
+      }
+    } catch (IoTDBConnectionException | BadNodeUrlException e) {
+      LOGGER.error("Failed to connect to config node.");
+      future.setException(e);
+    } catch (AuthException e) {
+      LOGGER.error("No such privilege." + authorStatement.getAuthorType());
+      future.setException(e);
+    }
+    // If the action is executed successfully, return the Future.
+    // If your operation is async, you can return the corresponding future directly.
+    return future;
   }
 }
