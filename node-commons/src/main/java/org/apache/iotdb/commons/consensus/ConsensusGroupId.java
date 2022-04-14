@@ -41,7 +41,7 @@ public interface ConsensusGroupId {
     public static ConsensusGroupId create(ByteBuffer buffer) {
       int index = buffer.get();
       if (index >= GroupType.values().length) {
-        throw new IllegalArgumentException("unrecognized id type " + index);
+        throw new IllegalArgumentException("invalid ConsensusGroup type. Ordinal is: " + index);
       }
       GroupType type = GroupType.values()[index];
       ConsensusGroupId groupId = createEmpty(type);
