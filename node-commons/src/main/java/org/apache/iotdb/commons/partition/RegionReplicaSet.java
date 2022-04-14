@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.commons.partition;
 
+import org.apache.iotdb.common.rpc.thrift.EndPoint;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.cluster.DataNodeLocation;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 
@@ -51,6 +53,29 @@ public class RegionReplicaSet {
 
   public void setConsensusGroupId(ConsensusGroupId consensusGroupId) {
     this.consensusGroupId = consensusGroupId;
+  }
+
+  /** Convert RegionReplicaSet to TRegionReplicaSet */
+  public TRegionReplicaSet convertToRPCTRegionReplicaSet() {
+    TRegionReplicaSet tRegionReplicaSet = new TRegionReplicaSet();
+
+    // Convert ConsensusGroupId
+    ByteBuffer buffer = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES);
+    consensusGroupId.serializeImpl(buffer);
+    buffer.flip();
+    tRegionReplicaSet.setRegionId(buffer);
+
+    // Convert EndPoints
+    List<EndPoint> endPointList = new ArrayList<>();
+    dataNodeList.forEach(
+        dataNodeLocation ->
+            endPointList.add(
+                new EndPoint(
+                    dataNodeLocation.getEndPoint().getIp(),
+                    dataNodeLocation.getEndPoint().getPort())));
+    tRegionReplicaSet.setEndpoint(endPointList);
+
+    return tRegionReplicaSet;
   }
 
   @Override
