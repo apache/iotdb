@@ -65,7 +65,7 @@ public class SchemaTree {
    * @param path only full path, cannot be path pattern
    * @return storage group in the given path
    */
-  public PartialPath getBelongedStorageGroup(PartialPath path) {
+  public String getBelongedStorageGroup(PartialPath path) {
     // TODO: @zyk
     throw new UnsupportedOperationException();
   }
