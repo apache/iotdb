@@ -21,9 +21,13 @@ package org.apache.iotdb.db.mpp.common.header;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
+import com.google.common.primitives.Bytes;
+
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /** The header of query result dataset. */
 public class DatasetHeader {
@@ -59,14 +63,20 @@ public class DatasetHeader {
   }
 
   public List<String> getRespColumns() {
-    return new ArrayList<>();
+    return columnHeaders.stream().map(ColumnHeader::getColumnName).collect(Collectors.toList());
   }
 
   public List<TSDataType> getRespDataTypeList() {
-    return new ArrayList<>();
+    return columnHeaders.stream().map(ColumnHeader::getColumnType).collect(Collectors.toList());
   }
 
   public List<Byte> getRespAliasColumns() {
-    return new ArrayList<>();
+    BitSet aliasMap = new BitSet();
+    for (int i = 0; i < columnHeaders.size(); ++i) {
+      if (columnHeaders.get(i).hasAlias()) {
+        aliasMap.set(i);
+      }
+    }
+    return new ArrayList<>(Bytes.asList(aliasMap.toByteArray()));
   }
 }

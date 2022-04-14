@@ -32,6 +32,7 @@ public class ColumnHeader {
   private String pathName;
   private String functionName;
   private final TSDataType dataType;
+
   private String columnName;
   private String alias;
 
@@ -74,6 +75,10 @@ public class ColumnHeader {
       return new ColumnHeader(measurement, functionName, dataType);
     }
     return new ColumnHeader(measurement, dataType);
+  }
+
+  public boolean hasAlias() {
+    return alias != null;
   }
 
   public void serialize(ByteBuffer byteBuffer) {
