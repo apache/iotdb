@@ -45,11 +45,7 @@ import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.sql.statement.component.WhereCondition;
 import org.apache.iotdb.db.mpp.sql.statement.crud.*;
-import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement;
-import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesStatement;
-import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
-import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowDevicesStatement;
-import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.*;
 import org.apache.iotdb.db.mpp.sql.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -275,6 +271,15 @@ public class Analyzer {
       analysis.setStatement(showTimeSeriesStatement);
       analysis.setSchemaPartitionInfo(schemaPartitionInfo);
       analysis.setRespDatasetHeader(headerConstant.showTimeSeriesHeader);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitShowStorageGroup(
+        ShowStorageGroupStatement showStorageGroupStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(showStorageGroupStatement);
+      analysis.setRespDatasetHeader(headerConstant.showStorageGroupHeader);
       return analysis;
     }
 

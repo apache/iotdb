@@ -53,13 +53,7 @@ import org.apache.iotdb.db.mpp.sql.statement.crud.LastQueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.UDAFQueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.UDTFQueryStatement;
-import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement;
-import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesStatement;
-import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
-import org.apache.iotdb.db.mpp.sql.statement.metadata.SetStorageGroupStatement;
-import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowDevicesStatement;
-import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowStatement;
-import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.*;
 import org.apache.iotdb.db.mpp.sql.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
@@ -387,6 +381,17 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       statement.setKey(parseIdentifier(ctx.propertyClause().identifier().getText()));
     }
     statement.setValue(parseStringLiteral(propertyValueContext.getText()));
+  }
+
+  // Show Storage Group
+
+  @Override
+  public Statement visitShowStorageGroup(IoTDBSqlParser.ShowStorageGroupContext ctx) {
+    if (ctx.prefixPath() != null) {
+      return new ShowStorageGroupStatement(parsePrefixPath(ctx.prefixPath()));
+    } else {
+      return new ShowStorageGroupStatement(new PartialPath(SQLConstant.getSingleRootArray()));
+    }
   }
 
   // Show Devices ========================================================================
