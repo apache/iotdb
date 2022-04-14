@@ -146,7 +146,9 @@ public class MLogTxtWriter implements AutoCloseable {
             plan.getMeasurements(),
             plan.getDataTypes().stream().map(TSDataType::serialize).collect(Collectors.toList()),
             plan.getEncodings().stream().map(TSEncoding::serialize).collect(Collectors.toList()),
-            plan.getCompressors().stream().map(CompressionType::serialize).collect(Collectors.toList())));
+            plan.getCompressors().stream()
+                .map(CompressionType::serialize)
+                .collect(Collectors.toList())));
 
     buf.append(",[");
     if (plan.getAliasList() != null) {
