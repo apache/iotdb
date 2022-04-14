@@ -27,6 +27,7 @@ import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.sql.rewriter.WildcardsRemover;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.expression.unary.ConstantOperand;
+import org.apache.iotdb.db.query.udf.core.executor.UDTFContext;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
 import org.apache.iotdb.db.query.udf.core.layer.IntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.layer.LayerMemoryAssigner;
@@ -48,7 +49,10 @@ import java.util.Set;
 public abstract class Expression {
 
   private String expressionStringCache;
+
   protected Boolean isConstantOperandCache = null;
+
+  protected Integer inputColumnIndex = null;
 
   public boolean isBuiltInAggregationFunctionExpression() {
     return false;
@@ -60,6 +64,10 @@ public abstract class Expression {
 
   public boolean isTimeSeriesGeneratingFunctionExpression() {
     return false;
+  }
+
+  public void bindInputColumnIndex(int inputColumnIndex) {
+    this.inputColumnIndex = inputColumnIndex;
   }
 
   public abstract void concat(
@@ -85,11 +93,13 @@ public abstract class Expression {
   public abstract void constructUdfExecutors(
       Map<String, UDTFExecutor> expressionName2Executor, ZoneId zoneId);
 
+  public abstract void bindInputLayerColumnIndexWithExpression(UDTFPlan udtfPlan);
+
   public abstract void updateStatisticsForMemoryAssigner(LayerMemoryAssigner memoryAssigner);
 
   public abstract IntermediateLayer constructIntermediateLayer(
       long queryId,
-      UDTFPlan udtfPlan,
+      UDTFContext udtfContext,
       RawQueryInputLayer rawTimeSeriesInputLayer,
       Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
       Map<Expression, TSDataType> expressionDataTypeMap,
