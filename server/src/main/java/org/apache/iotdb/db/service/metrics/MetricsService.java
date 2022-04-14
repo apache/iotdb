@@ -172,6 +172,7 @@ public class MetricsService extends MetricService implements MetricsServiceMBean
     ProcessMetricsMonitor processMetricsMonitor = ProcessMetricsMonitor.getInstance();
     processMetricsMonitor.collectProcessCPUInfo();
     processMetricsMonitor.collectProcessMemInfo();
+    processMetricsMonitor.collectThreadInfo();
   }
 
   @Override
@@ -180,6 +181,7 @@ public class MetricsService extends MetricService implements MetricsServiceMBean
     SysRunMetricsMonitor sysRunMetricsMonitor = SysRunMetricsMonitor.getInstance();
     sysRunMetricsMonitor.collectSystemCpuInfo();
     sysRunMetricsMonitor.collectSystemMEMInfo();
+    sysRunMetricsMonitor.collectSystemDiskInfo();
   }
 
   @Override

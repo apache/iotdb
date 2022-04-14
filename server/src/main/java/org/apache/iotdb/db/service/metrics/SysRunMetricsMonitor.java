@@ -24,6 +24,7 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import com.sun.management.OperatingSystemMXBean;
 
+import java.io.File;
 import java.lang.management.ManagementFactory;
 
 /**
@@ -89,6 +90,41 @@ public class SysRunMetricsMonitor {
         a -> osMXBean.getCommittedVirtualMemorySize(),
         Tag.NAME.toString(),
         "system");
+  }
+
+  public void collectSystemDiskInfo() {
+    metricManager.getOrCreateAutoGauge(
+        Metric.SYS_DICK_TOTAL_SPACE.toString(),
+        MetricLevel.IMPORTANT,
+        this,
+        a -> getSysDiskTotalSpace(),
+        Tag.NAME.toString(),
+        "system");
+    metricManager.getOrCreateAutoGauge(
+        Metric.SYS_DICK_FREE_SPACE.toString(),
+        MetricLevel.IMPORTANT,
+        this,
+        a -> getSysDickFreeSpace(),
+        Tag.NAME.toString(),
+        "system");
+  }
+
+  private long getSysDiskTotalSpace() {
+    File[] files = File.listRoots();
+    long sysTotalSpace = 0L;
+    for (File file : files) {
+      sysTotalSpace += file.getTotalSpace();
+    }
+    return sysTotalSpace;
+  }
+
+  private long getSysDickFreeSpace() {
+    File[] files = File.listRoots();
+    long sysFreeSpace = 0L;
+    for (File file : files) {
+      sysFreeSpace += file.getFreeSpace();
+    }
+    return sysFreeSpace;
   }
 
   public static SysRunMetricsMonitor getInstance() {

@@ -93,6 +93,16 @@ public class ProcessMetricsMonitor {
         "process");
   }
 
+  public void collectThreadInfo() {
+    metricManager.getOrCreateAutoGauge(
+        Metric.PROCESS_THREADS_COUNT.toString(),
+        MetricLevel.IMPORTANT,
+        this,
+        a -> getThreadsCount(),
+        Tag.NAME.toString(),
+        "process");
+  }
+
   private ProcessMetricsMonitor() {
     sunOsMXBean =
         (com.sun.management.OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
@@ -101,6 +111,15 @@ public class ProcessMetricsMonitor {
 
   private long getProcessUsedMemory() {
     return runtime.totalMemory() - runtime.freeMemory();
+  }
+
+  private int getThreadsCount() {
+    ThreadGroup parentThread;
+    for (parentThread = Thread.currentThread().getThreadGroup();
+        parentThread.getParent() != null;
+        parentThread = parentThread.getParent()) {}
+
+    return parentThread.activeCount();
   }
 
   private double getProcessMemoryRatio() {
