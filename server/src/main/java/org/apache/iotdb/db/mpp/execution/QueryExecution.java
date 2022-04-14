@@ -21,10 +21,12 @@ package org.apache.iotdb.db.mpp.execution;
 import org.apache.iotdb.db.mpp.buffer.DataBlockService;
 import org.apache.iotdb.db.mpp.buffer.ISourceHandle;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
+import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.execution.scheduler.ClusterScheduler;
 import org.apache.iotdb.db.mpp.execution.scheduler.IScheduler;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
 import org.apache.iotdb.db.mpp.sql.analyze.Analyzer;
+import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
 import org.apache.iotdb.db.mpp.sql.optimization.PlanOptimizer;
 import org.apache.iotdb.db.mpp.sql.planner.DistributionPlanner;
 import org.apache.iotdb.db.mpp.sql.planner.LogicalPlanner;
@@ -55,18 +57,18 @@ import static com.google.common.base.Throwables.throwIfUnchecked;
  * corresponding physical nodes. 3. Collect and monitor the progress/states of this query.
  */
 public class QueryExecution implements IQueryExecution {
-  private MPPQueryContext context;
+  private final MPPQueryContext context;
   private IScheduler scheduler;
-  private QueryStateMachine stateMachine;
+  private final QueryStateMachine stateMachine;
 
-  private List<PlanOptimizer> planOptimizers;
+  private final List<PlanOptimizer> planOptimizers;
 
   private final Analysis analysis;
   private LogicalQueryPlan logicalPlan;
   private DistributedQueryPlan distributedPlan;
 
-  private ExecutorService executor;
-  private ScheduledExecutorService scheduledExecutor;
+  private final ExecutorService executor;
+  private final ScheduledExecutorService scheduledExecutor;
 
   // The result of QueryExecution will be written to the DataBlockManager in current Node.
   // We use this SourceHandle to fetch the TsBlock from it.
@@ -153,6 +155,7 @@ public class QueryExecution implements IQueryExecution {
    * DataStreamManager use the virtual ResultOperator's ID (This part will be designed and
    * implemented with DataStreamManager)
    */
+  @Override
   public TsBlock getBatchResult() {
     try {
       initResultHandle();
@@ -171,6 +174,7 @@ public class QueryExecution implements IQueryExecution {
   }
 
   /** @return true if there is more tsblocks, otherwise false */
+  @Override
   public boolean hasNextResult() {
     try {
       initResultHandle();
@@ -182,9 +186,14 @@ public class QueryExecution implements IQueryExecution {
   }
 
   /** return the result column count without the time column */
+  @Override
   public int getOutputValueColumnCount() {
-    // TODO need return the actual size while there exists output columns in Analysis
-    return 1;
+    return analysis.getRespDatasetHeader().getColumnHeaders().size();
+  }
+
+  @Override
+  public DatasetHeader getDatasetHeader() {
+    return analysis.getRespDatasetHeader();
   }
 
   /**
@@ -241,5 +250,10 @@ public class QueryExecution implements IQueryExecution {
 
   public LogicalQueryPlan getLogicalPlan() {
     return logicalPlan;
+  }
+
+  @Override
+  public boolean isQuery() {
+    return context.getQueryType() == QueryType.READ;
   }
 }

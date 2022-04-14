@@ -24,9 +24,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.common.SessionInfo;
-import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import org.apache.commons.lang3.Validate;
 
@@ -50,12 +48,12 @@ public class Coordinator {
           IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),
           IoTDBDescriptor.getInstance().getConfig().getMppPort());
 
-  private ExecutorService executor;
-  private ScheduledExecutorService scheduledExecutor;
+  private final ExecutorService executor;
+  private final ScheduledExecutorService scheduledExecutor;
 
   private static final Coordinator INSTANCE = new Coordinator();
 
-  private ConcurrentHashMap<QueryId, QueryExecution> queryExecutionMap;
+  private final ConcurrentHashMap<QueryId, IQueryExecution> queryExecutionMap;
 
   private Coordinator() {
     this.queryExecutionMap = new ConcurrentHashMap<>();
@@ -68,11 +66,11 @@ public class Coordinator {
   }
 
   public ExecutionResult execute(
-      Statement statement, QueryId queryId, QueryType queryType, SessionInfo session, String sql) {
+      Statement statement, QueryId queryId, SessionInfo session, String sql) {
 
     QueryExecution execution =
         createQueryExecution(
-            statement, new MPPQueryContext(sql, queryId, session, queryType, getHostEndpoint()));
+            statement, new MPPQueryContext(sql, queryId, session, getHostEndpoint()));
     queryExecutionMap.put(queryId, execution);
 
     execution.start();
@@ -80,10 +78,10 @@ public class Coordinator {
     return execution.getStatus();
   }
 
-  public TsBlock getResultSet(QueryId queryId) {
-    QueryExecution execution = queryExecutionMap.get(queryId);
+  public IQueryExecution getQueryExecution(QueryId queryId) {
+    IQueryExecution execution = queryExecutionMap.get(queryId);
     Validate.notNull(execution, "invalid queryId %s", queryId.getId());
-    return execution.getBatchResult();
+    return execution;
   }
 
   // TODO: (xingtanzjr) need to redo once we have a concrete policy for the threadPool management

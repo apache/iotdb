@@ -167,6 +167,9 @@ public class IoTDBDescriptor {
           Integer.parseInt(
               properties.getProperty("rpc_port", Integer.toString(conf.getRpcPort()))));
 
+      conf.setRpcImplClassName(
+          properties.getProperty("rpc_class_name", conf.getRpcImplClassName()).trim());
+
       conf.setMppPort(
           Integer.parseInt(
               properties.getProperty("mpp_port", Integer.toString(conf.getRpcPort()))));

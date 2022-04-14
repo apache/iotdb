@@ -20,15 +20,19 @@
 package org.apache.iotdb.db.mpp.execution;
 
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
+import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
+import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import jersey.repackaged.com.google.common.util.concurrent.SettableFuture;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -37,12 +41,12 @@ import static com.google.common.base.Throwables.throwIfInstanceOf;
 
 public class ConfigExecution implements IQueryExecution {
 
-  private MPPQueryContext context;
-  private Statement statement;
-  private ExecutorService executor;
+  private final MPPQueryContext context;
+  private final Statement statement;
+  private final ExecutorService executor;
 
-  private QueryStateMachine stateMachine;
-  private SettableFuture<Boolean> result;
+  private final QueryStateMachine stateMachine;
+  private final SettableFuture<Boolean> result;
 
   public ConfigExecution(MPPQueryContext context, Statement statement, ExecutorService executor) {
     this.context = context;
@@ -67,7 +71,7 @@ public class ConfigExecution implements IQueryExecution {
             }
 
             @Override
-            public void onFailure(Throwable throwable) {
+            public void onFailure(@NotNull Throwable throwable) {
               fail(throwable);
             }
           },
@@ -99,6 +103,34 @@ public class ConfigExecution implements IQueryExecution {
       return new ExecutionResult(
           context.getQueryId(), RpcUtils.getStatus(TSStatusCode.QUERY_PROCESS_ERROR));
     }
+  }
+
+  @Override
+  public TsBlock getBatchResult() {
+    // TODO
+    return null;
+  }
+
+  @Override
+  public boolean hasNextResult() {
+    return false;
+  }
+
+  @Override
+  public int getOutputValueColumnCount() {
+    // TODO
+    return 0;
+  }
+
+  @Override
+  public DatasetHeader getDatasetHeader() {
+    // TODO
+    return null;
+  }
+
+  @Override
+  public boolean isQuery() {
+    return context.getQueryType() == QueryType.READ;
   }
 
   // TODO: consider a more suitable implementation for it
