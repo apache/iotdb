@@ -362,6 +362,30 @@ PATHS
     : P A T H S
     ;
 
+PIPE
+    : P I P E
+    ;
+
+PIPES
+    : P I P E S
+    ;
+
+PIPESERVER
+    : P I P E S E R V E R
+    ;
+
+PIPESINK
+    : P I P E S I N K
+    ;
+
+PIPESINKS
+    : P I P E S I N K S
+    ;
+
+PIPESINKTYPE
+    : P I P E S I N K T Y P E
+    ;
+
 PREVIOUS
     : P R E V I O U S
     ;

@@ -31,7 +31,7 @@ public enum InnerUnseqCompactionPerformer {
     throw new RuntimeException("Illegal compaction performer for unseq inner compaction " + name);
   }
 
-  public IUnseqCompactionPerformer getCompactionPerformer() {
+  public IUnseqCompactionPerformer createInstance() {
     switch (this) {
       case READ_POINT:
       default:

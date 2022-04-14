@@ -45,7 +45,6 @@ import org.apache.iotdb.tsfile.read.filter.operator.Gt;
 
 import org.junit.Test;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 
@@ -54,7 +53,7 @@ import static org.junit.Assert.assertEquals;
 public class FragmentInstanceSerdeTest {
 
   @Test
-  public void TestSerializeAndDeserializeForTree1() throws IllegalPathException, IOException {
+  public void TestSerializeAndDeserializeForTree1() throws IllegalPathException {
     FragmentInstance fragmentInstance =
         new FragmentInstance(
             new PlanFragment(new PlanFragmentId("test", -1), constructPlanNodeTree()),
@@ -74,7 +73,7 @@ public class FragmentInstanceSerdeTest {
   }
 
   @Test
-  public void TestSerializeAndDeserializeWithNullFilter() throws IllegalPathException, IOException {
+  public void TestSerializeAndDeserializeWithNullFilter() throws IllegalPathException {
     FragmentInstance fragmentInstance =
         new FragmentInstance(
             new PlanFragment(new PlanFragmentId("test2", 1), constructPlanNodeTree()),

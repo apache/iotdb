@@ -231,7 +231,7 @@ public class ReadPointCompactionPerformer
         futures.get(i).get();
       } catch (InterruptedException | ExecutionException e) {
         LOGGER.error("SubCompactionTask meet errors ", e);
-        Thread.interrupted();
+        Thread.currentThread().interrupt();
         throw new InterruptedException();
       }
     }
@@ -340,7 +340,7 @@ public class ReadPointCompactionPerformer
   }
 
   private void checkThreadInterrupted() throws InterruptedException {
-    if (Thread.currentThread().isInterrupted()) {
+    if (Thread.interrupted()) {
       throw new InterruptedException(
           String.format(
               "[Compaction] compaction for target file %s abort", targetFiles.toString()));
