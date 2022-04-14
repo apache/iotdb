@@ -144,7 +144,10 @@ public class TsFilePlanRedoer {
         tPlan.markFailedMeasurementInsertion(
             i,
             new DataTypeMismatchException(
-                mNodes[i].getName(), tPlan.getDataTypes()[i], mNodes[i].getSchema().getType()));
+                tPlan.getDevicePath().getFullPath(),
+                mNodes[i].getName(),
+                tPlan.getDataTypes()[i],
+                mNodes[i].getSchema().getType()));
       }
     }
   }
