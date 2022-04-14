@@ -28,7 +28,7 @@ RUN apt update \
   && unzip /apache-iotdb-*-bin.zip -d / \
   && rm /apache-iotdb-*-bin.zip \
   && mv /apache-iotdb-* /iotdb \
-  && sed -i '/^# enable_influxdb_rpc_service=false/a enable_influxdb_rpc_service=true' /iotdb/conf/iotdb-engine.properties \
+  && sed -i '/^# enable_influxdb_rpc_service=false/a enable_influxdb_rpc_service=true' /iotdb/sbin/../conf/iotdb-engine.properties \
   && apt remove unzip -y \
   && apt autoremove -y \
   && apt purge --auto-remove -y \
