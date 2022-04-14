@@ -71,9 +71,9 @@ public class Analyzer {
   private final MPPQueryContext context;
 
   // TODO need to use factory to decide standalone or cluster
-  private final IPartitionFetcher partitionFetcher = new FakePartitionFetcherImpl();
+  private final IPartitionFetcher partitionFetcher = ClusterPartitionFetcher.getInstance();
   // TODO need to use factory to decide standalone or cluster
-  private final ISchemaFetcher schemaFetcher = new FakeSchemaFetcherImpl();
+  private final ISchemaFetcher schemaFetcher = ClusterSchemaFetcher.getInstance();
 
   public Analyzer(MPPQueryContext context) {
     this.context = context;

@@ -403,7 +403,8 @@ public class DistributionPlannerTest {
     analysis.setDataPartitionInfo(dataPartition);
 
     // construct schema partition
-    SchemaPartition schemaPartition = new SchemaPartition();
+    SchemaPartition schemaPartition = new SchemaPartition(IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
+        IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
     Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> schemaPartitionMap = new HashMap<>();
 
     RegionReplicaSet schemaRegion1 =

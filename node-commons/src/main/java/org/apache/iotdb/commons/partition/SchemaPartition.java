@@ -18,23 +18,29 @@
  */
 package org.apache.iotdb.commons.partition;
 
+import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 public class SchemaPartition {
+
+  private String seriesSlotExecutorName;
+  private int seriesPartitionSlotNum;
 
   // Map<StorageGroup, Map<SeriesPartitionSlot, SchemaRegionPlaceInfo>>
   private Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> schemaPartitionMap;
 
-  public SchemaPartition() {
-    // Empty constructor
+  public SchemaPartition(String seriesSlotExecutorName, int seriesPartitionSlotNum) {
+    this.seriesSlotExecutorName = seriesSlotExecutorName;
+    this.seriesPartitionSlotNum = seriesPartitionSlotNum;
   }
 
   public SchemaPartition(
-      Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> schemaPartitionMap) {
+      Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> schemaPartitionMap, String seriesSlotExecutorName, int seriesPartitionSlotNum) {
+    this(seriesSlotExecutorName, seriesPartitionSlotNum);
     this.schemaPartitionMap = schemaPartitionMap;
   }
 
@@ -53,14 +59,14 @@ public class SchemaPartition {
     // TODO return the latest dataRegionReplicaSet for each time partition
     String storageGroup = getStorageGroupByDevice(deviceName);
     SeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceName);
-    List<RegionReplicaSet> regions =
-        dataPartitionMap.get(storageGroup).get(seriesPartitionSlot).entrySet().stream()
-            .filter(entry -> entry.getKey().equals(timePartitionSlot))
-            .flatMap(entry -> entry.getValue().stream())
-            .collect(Collectors.toList());
-    // IMPORTANT TODO: (xingtanzjr) need to handle the situation for write operation that there are
-    // more than 1 Regions for one timeSlot
-    return regions.get(0);
+    return schemaPartitionMap.get(storageGroup).get(seriesPartitionSlot);
+  }
+
+  private SeriesPartitionSlot calculateDeviceGroupId(String deviceName) {
+    SeriesPartitionExecutor executor =
+        SeriesPartitionExecutor.getSeriesPartitionExecutor(
+            seriesSlotExecutorName, seriesPartitionSlotNum);
+    return executor.getSeriesPartitionSlot(deviceName);
   }
 
   private String getStorageGroupByDevice(String deviceName) {
@@ -83,10 +89,10 @@ public class SchemaPartition {
    *     RegionReplicaSet>>
    */
   public SchemaPartition getSchemaPartition(
-      Map<String, List<SeriesPartitionSlot>> partitionSlotsMap) {
+      Map<String, List<SeriesPartitionSlot>> partitionSlotsMap, String seriesSlotExecutorName, int seriesPartitionSlotNum) {
     if (partitionSlotsMap.isEmpty()) {
       // Return all SchemaPartitions when the partitionSlotsMap is empty
-      return new SchemaPartition(new HashMap<>(schemaPartitionMap));
+      return new SchemaPartition(new HashMap<>(schemaPartitionMap), seriesSlotExecutorName, seriesPartitionSlotNum);
     } else {
       Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> result = new HashMap<>();
 
@@ -113,7 +119,7 @@ public class SchemaPartition {
             }
           });
 
-      return new SchemaPartition(result);
+      return new SchemaPartition(result, seriesSlotExecutorName, seriesPartitionSlotNum);
     }
   }
 

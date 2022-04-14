@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write;
 
+import com.google.common.collect.ImmutableList;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -50,6 +51,8 @@ public class CreateTimeSeriesNode extends WritePlanNode {
   private Map<String, String> tags = null;
   private Map<String, String> attributes = null;
   private long tagOffset = -1;
+
+  private RegionReplicaSet regionReplicaSet;
 
   public CreateTimeSeriesNode(
       PlanNodeId id,
@@ -310,11 +313,17 @@ public class CreateTimeSeriesNode extends WritePlanNode {
 
   @Override
   public RegionReplicaSet getRegionReplicaSet() {
-    return null;
+    return regionReplicaSet;
   }
 
   @Override
   public List<WritePlanNode> splitByPartition(Analysis analysis) {
-    analysis.getSchemaPartitionInfo().getSchemaPartitionMap()
+    RegionReplicaSet regionReplicaSet = analysis.getSchemaPartitionInfo().getSchemaRegionReplicaSet(path.getDevice());
+    setRegionReplicaSet(regionReplicaSet);
+    return ImmutableList.of(this);
+  }
+
+  public void setRegionReplicaSet(RegionReplicaSet regionReplicaSet) {
+    this.regionReplicaSet = regionReplicaSet;
   }
 }
