@@ -17,10 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.execution;
+package org.apache.iotdb.db.mpp.execution.config;
 
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
+import org.apache.iotdb.db.mpp.execution.ExecutionResult;
+import org.apache.iotdb.db.mpp.execution.IQueryExecution;
+import org.apache.iotdb.db.mpp.execution.QueryStateMachine;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
@@ -105,6 +109,15 @@ public class ConfigExecution implements IQueryExecution {
   // Generate the corresponding IConfigTask by statement.
   // Each type of statement will has a ConfigTask
   private IConfigTask getTask(Statement statement) {
-    throw new NotImplementedException();
+    try {
+      switch (statement.getType()) {
+        case SET_STORAGE_GROUP:
+          return new SetStorageGroupTask((SetStorageGroupStatement) statement);
+        default:
+          throw new NotImplementedException();
+      }
+    } catch (ClassCastException classCastException) {
+      throw new NotImplementedException();
+    }
   }
 }
