@@ -229,7 +229,6 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     // init server's configuration first, because the cluster configuration may read settings from
     // the server's configuration.
-    config.setSyncEnable(false);
     // auto create schema is took over by cluster module, so we disable it in the server module.
     config.setAutoCreateSchemaEnabled(false);
     // check cluster config
