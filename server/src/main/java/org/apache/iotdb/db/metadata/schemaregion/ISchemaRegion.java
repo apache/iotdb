@@ -28,6 +28,8 @@ import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
@@ -69,7 +71,12 @@ public interface ISchemaRegion {
   // Suppress high Cognitive Complexity warning
   void createTimeseries(CreateTimeSeriesPlan plan, long offset) throws MetadataException;
 
+  // Suppress high Cognitive Complexity warning
+  void createTimeseriesV2(CreateTimeSeriesNode node, long offset) throws MetadataException;
+
   void createAlignedTimeSeries(CreateAlignedTimeSeriesPlan plan) throws MetadataException;
+
+  void createAlignedTimeSeriesV2(CreateAlignedTimeSeriesNode plan) throws MetadataException;
 
   Pair<Integer, Set<String>> deleteTimeseries(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException;

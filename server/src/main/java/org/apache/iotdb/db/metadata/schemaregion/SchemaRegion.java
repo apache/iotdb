@@ -55,6 +55,8 @@ import org.apache.iotdb.db.metadata.storagegroup.StorageGroupSchemaManager;
 import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -432,6 +434,10 @@ public class SchemaRegion implements ISchemaRegion {
     createTimeseries(plan, -1);
   }
 
+  public void createTimeseriesV2(CreateTimeSeriesNode node) throws MetadataException {
+    createTimeseriesV2(node, -1);
+  }
+
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void createTimeseries(CreateTimeSeriesPlan plan, long offset) throws MetadataException {
     if (!memoryStatistics.isAllowToCreateNewSeries()) {
@@ -503,6 +509,80 @@ public class SchemaRegion implements ISchemaRegion {
     if (config.isEnableIDTable() && (!isRecovering || !config.isEnableIDTableLogFile())) {
       IDTable idTable = IDTableManager.getInstance().getIDTable(plan.getPath().getDevicePath());
       idTable.createTimeseries(plan);
+    }
+  }
+
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
+  public void createTimeseriesV2(CreateTimeSeriesNode node, long offset) throws MetadataException {
+    if (!memoryStatistics.isAllowToCreateNewSeries()) {
+      throw new MetadataException(
+          "IoTDB system load is too large to create timeseries, "
+              + "please increase MAX_HEAP_SIZE in iotdb-env.sh/bat and restart");
+    }
+
+    try {
+      PartialPath path = node.getPath();
+      SchemaUtils.checkDataTypeWithEncoding(node.getDataType(), node.getEncoding());
+
+      TSDataType type = node.getDataType();
+      // create time series in MTree
+      IMeasurementMNode leafMNode =
+          mtree.createTimeseriesWithPinnedReturn(
+              path,
+              type,
+              node.getEncoding(),
+              node.getCompressor(),
+              node.getProps(),
+              node.getAlias());
+
+      try {
+        // the cached mNode may be replaced by new entityMNode in mtree
+        mNodeCache.invalidate(path.getDevicePath());
+
+        // update statistics and schemaDataTypeNumMap
+        timeseriesStatistics.addTimeseries(1);
+
+        // update tag index
+        if (offset != -1 && isRecovering) {
+          // the timeseries has already been created and now system is recovering, using the tag
+          // info
+          // in tagFile to recover index directly
+          tagManager.recoverIndex(offset, leafMNode);
+        } else if (node.getTags() != null) {
+          // tag key, tag value
+          tagManager.addIndex(node.getTags(), leafMNode);
+        }
+
+        // write log
+        if (!isRecovering) {
+          // either tags or attributes is not empty
+          if ((node.getTags() != null && !node.getTags().isEmpty())
+              || (node.getAttributes() != null && !node.getAttributes().isEmpty())) {
+            offset = tagManager.writeTagFile(node.getTags(), node.getAttributes());
+          }
+          node.setTagOffset(offset);
+          logWriter.createTimeseriesV2(node);
+          if (syncManager.isEnableSync()) {
+            syncManager.syncMetadataPlanV2(node);
+          }
+        }
+        if (offset != -1) {
+          leafMNode.setOffset(offset);
+          mtree.updateMNode(leafMNode);
+        }
+
+      } finally {
+        mtree.unPinMNode(leafMNode);
+      }
+
+    } catch (IOException e) {
+      throw new MetadataException(e);
+    }
+
+    // update id table if not in recovering or disable id table log file
+    if (config.isEnableIDTable() && (!isRecovering || !config.isEnableIDTableLogFile())) {
+      IDTable idTable = IDTableManager.getInstance().getIDTable(node.getPath().getDevicePath());
+      idTable.createTimeseriesV2(node);
     }
   }
 
@@ -648,6 +728,111 @@ public class SchemaRegion implements ISchemaRegion {
     if (config.isEnableIDTable() && (!isRecovering || !config.isEnableIDTableLogFile())) {
       IDTable idTable = IDTableManager.getInstance().getIDTable(plan.getPrefixPath());
       idTable.createAlignedTimeseries(plan);
+    }
+  }
+
+  /**
+   * create aligned timeseries
+   *
+   * @param node CreateAlignedTimeSeriesNode
+   */
+  public void createAlignedTimeSeriesV2(CreateAlignedTimeSeriesNode node) throws MetadataException {
+    if (!memoryStatistics.isAllowToCreateNewSeries()) {
+      throw new MetadataException(
+          "IoTDB system load is too large to create timeseries, "
+              + "please increase MAX_HEAP_SIZE in iotdb-env.sh/bat and restart");
+    }
+
+    try {
+      PartialPath prefixPath = node.getDevicePath();
+      List<String> measurements = node.getMeasurements();
+      List<TSDataType> dataTypes = node.getDataTypes();
+      List<TSEncoding> encodings = node.getEncodings();
+      List<Map<String, String>> tagsList = node.getTagsList();
+      List<Map<String, String>> attributesList = node.getAttributesList();
+
+      for (int i = 0; i < measurements.size(); i++) {
+        SchemaUtils.checkDataTypeWithEncoding(dataTypes.get(i), encodings.get(i));
+      }
+
+      // create time series in MTree
+      List<IMeasurementMNode> measurementMNodeList =
+          mtree.createAlignedTimeseries(
+              prefixPath,
+              measurements,
+              node.getDataTypes(),
+              node.getEncodings(),
+              node.getCompressors(),
+              node.getAliasList());
+
+      try {
+        // the cached mNode may be replaced by new entityMNode in mtree
+        mNodeCache.invalidate(prefixPath);
+
+        // update statistics and schemaDataTypeNumMap
+        timeseriesStatistics.addTimeseries(node.getMeasurements().size());
+
+        List<Long> tagOffsets = node.getTagOffsets();
+        for (int i = 0; i < measurements.size(); i++) {
+          if (tagOffsets != null && !node.getTagOffsets().isEmpty() && isRecovering) {
+            if (tagOffsets.get(i) != -1) {
+              tagManager.recoverIndex(node.getTagOffsets().get(i), measurementMNodeList.get(i));
+            }
+          } else if (tagsList != null && !tagsList.isEmpty()) {
+            if (tagsList.get(i) != null) {
+              // tag key, tag value
+              tagManager.addIndex(tagsList.get(i), measurementMNodeList.get(i));
+            }
+          }
+        }
+
+        // write log
+        tagOffsets = new ArrayList<>();
+        if (!isRecovering) {
+          if ((tagsList != null && !tagsList.isEmpty())
+              || (attributesList != null && !attributesList.isEmpty())) {
+            Map<String, String> tags;
+            Map<String, String> attributes;
+            for (int i = 0; i < measurements.size(); i++) {
+              tags = tagsList == null ? null : tagsList.get(i);
+              attributes = attributesList == null ? null : attributesList.get(i);
+              if (tags == null && attributes == null) {
+                tagOffsets.add(-1L);
+              } else {
+                tagOffsets.add(tagManager.writeTagFile(tags, attributes));
+              }
+            }
+          } else {
+            for (int i = 0; i < measurements.size(); i++) {
+              tagOffsets.add(-1L);
+            }
+          }
+          node.setTagOffsets(tagOffsets);
+          logWriter.createAlignedTimeseriesV2(node);
+          if (syncManager.isEnableSync()) {
+            syncManager.syncMetadataPlanV2(node);
+          }
+        }
+        tagOffsets = node.getTagOffsets();
+        for (int i = 0; i < measurements.size(); i++) {
+          if (tagOffsets.get(i) != -1) {
+            measurementMNodeList.get(i).setOffset(tagOffsets.get(i));
+            mtree.updateMNode(measurementMNodeList.get(i));
+          }
+        }
+      } finally {
+        for (IMeasurementMNode measurementMNode : measurementMNodeList) {
+          mtree.unPinMNode(measurementMNode);
+        }
+      }
+    } catch (IOException e) {
+      throw new MetadataException(e);
+    }
+
+    // update id table if not in recovering or disable id table log file
+    if (config.isEnableIDTable() && (!isRecovering || !config.isEnableIDTableLogFile())) {
+      IDTable idTable = IDTableManager.getInstance().getIDTable(node.getDevicePath());
+      idTable.createAlignedTimeseriesV2(node);
     }
   }
 

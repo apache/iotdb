@@ -23,6 +23,7 @@ import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.sync.PipeException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.sync.conf.SyncPathUtil;
 import org.apache.iotdb.db.sync.pipedata.DeletionPipeData;
@@ -154,6 +155,17 @@ public class TsFilePipe implements Pipe {
     try {
       maxSerialNumber += 1L;
       PipeData metaData = new SchemaPipeData(plan, maxSerialNumber);
+      realTimeQueue.offer(metaData);
+    } finally {
+      collectRealTimeDataLock.unlock();
+    }
+  }
+
+  public void collectRealTimeMetaDataV2(PlanNode node) {
+    collectRealTimeDataLock.lock();
+    try {
+      maxSerialNumber += 1L;
+      PipeData metaData = new SchemaPipeData(node, maxSerialNumber);
       realTimeQueue.offer(metaData);
     } finally {
       collectRealTimeDataLock.unlock();

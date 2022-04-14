@@ -87,7 +87,6 @@ public class InternalServiceImplTest {
 
   @Test
   public void createTimeseriesTest() throws MetadataException {
-    configNode.getBelongedSchemaRegionIdWithAutoCreate(new PartialPath("root.ln"));
     CreateTimeSeriesNode createTimeSeriesNode =
         new CreateTimeSeriesNode(
             new PlanNodeId("0"),

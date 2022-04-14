@@ -32,6 +32,8 @@ import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
@@ -61,12 +63,28 @@ public interface IDTable {
   void createAlignedTimeseries(CreateAlignedTimeSeriesPlan plan) throws MetadataException;
 
   /**
+   * create aligned timeseries
+   *
+   * @param node create aligned timeseries plan
+   * @throws MetadataException if the device is not aligned, throw it
+   */
+  void createAlignedTimeseriesV2(CreateAlignedTimeSeriesNode node) throws MetadataException;
+
+  /**
    * create timeseries
    *
    * @param plan create timeseries plan
    * @throws MetadataException if the device is aligned, throw it
    */
   void createTimeseries(CreateTimeSeriesPlan plan) throws MetadataException;
+
+  /**
+   * create timeseries
+   *
+   * @param node create timeseries plannode
+   * @throws MetadataException if the device is aligned, throw it
+   */
+  void createTimeseriesV2(CreateTimeSeriesNode node) throws MetadataException;
 
   /**
    * check inserting timeseries existence and fill their measurement mnode

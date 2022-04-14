@@ -32,6 +32,8 @@ import org.apache.iotdb.db.metadata.idtable.entry.SchemaEntry;
 import org.apache.iotdb.db.metadata.idtable.entry.TimeseriesID;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
@@ -111,6 +113,32 @@ public class IDTableHashmapImpl implements IDTable {
   }
 
   /**
+   * create aligned timeseries
+   *
+   * @param node create aligned timeseries plan
+   * @throws MetadataException if the device is not aligned, throw it
+   */
+  public synchronized void createAlignedTimeseriesV2(CreateAlignedTimeSeriesNode node)
+      throws MetadataException {
+    DeviceEntry deviceEntry = getDeviceEntryWithAlignedCheck(node.getDevicePath().toString(), true);
+
+    for (int i = 0; i < node.getMeasurements().size(); i++) {
+      PartialPath fullPath =
+          new PartialPath(node.getDevicePath().toString(), node.getMeasurements().get(i));
+      SchemaEntry schemaEntry =
+          new SchemaEntry(
+              node.getDataTypes().get(i),
+              node.getEncodings().get(i),
+              node.getCompressors().get(i),
+              deviceEntry.getDeviceID(),
+              fullPath,
+              true,
+              IDiskSchemaManager);
+      deviceEntry.putSchemaEntry(node.getMeasurements().get(i), schemaEntry);
+    }
+  }
+
+  /**
    * create timeseries
    *
    * @param plan create timeseries plan
@@ -128,6 +156,26 @@ public class IDTableHashmapImpl implements IDTable {
             false,
             IDiskSchemaManager);
     deviceEntry.putSchemaEntry(plan.getPath().getMeasurement(), schemaEntry);
+  }
+
+  /**
+   * create timeseries
+   *
+   * @param node create timeseries plannode
+   * @throws MetadataException if the device is aligned, throw it
+   */
+  public synchronized void createTimeseriesV2(CreateTimeSeriesNode node) throws MetadataException {
+    DeviceEntry deviceEntry = getDeviceEntryWithAlignedCheck(node.getPath().getDevice(), false);
+    SchemaEntry schemaEntry =
+        new SchemaEntry(
+            node.getDataType(),
+            node.getEncoding(),
+            node.getCompressor(),
+            deviceEntry.getDeviceID(),
+            node.getPath(),
+            false,
+            IDiskSchemaManager);
+    deviceEntry.putSchemaEntry(node.getPath().getMeasurement(), schemaEntry);
   }
 
   /**
