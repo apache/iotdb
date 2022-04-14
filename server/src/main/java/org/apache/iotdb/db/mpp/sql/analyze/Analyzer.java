@@ -42,7 +42,13 @@ import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.sql.statement.component.WhereCondition;
 import org.apache.iotdb.db.mpp.sql.statement.crud.*;
-import org.apache.iotdb.db.mpp.sql.statement.metadata.*;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.SchemaFetchStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowDevicesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowStorageGroupStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -194,14 +200,9 @@ public class Analyzer {
       Analysis analysis = new Analysis();
       analysis.setStatement(createTimeSeriesStatement);
 
-      SchemaPartition schemaPartitionInfo;
-      try {
-        schemaPartitionInfo =
-            partitionFetcher.getSchemaPartition(
-                new PathPatternTree(createTimeSeriesStatement.getPath()));
-      } catch (StatementAnalyzeException e) {
-        throw new SemanticException("An error occurred when fetching schema partition infos");
-      }
+      SchemaPartition schemaPartitionInfo =
+          partitionFetcher.getSchemaPartition(
+              new PathPatternTree(createTimeSeriesStatement.getPath()));
       analysis.setSchemaPartitionInfo(schemaPartitionInfo);
       return analysis;
     }
@@ -221,15 +222,11 @@ public class Analyzer {
       analysis.setStatement(createAlignedTimeSeriesStatement);
 
       SchemaPartition schemaPartitionInfo;
-      try {
-        schemaPartitionInfo =
-            partitionFetcher.getSchemaPartition(
-                new PathPatternTree(
-                    createAlignedTimeSeriesStatement.getDevicePath(),
-                    createAlignedTimeSeriesStatement.getMeasurements()));
-      } catch (StatementAnalyzeException e) {
-        throw new SemanticException("An error occurred when fetching schema partition infos");
-      }
+      schemaPartitionInfo =
+          partitionFetcher.getSchemaPartition(
+              new PathPatternTree(
+                  createAlignedTimeSeriesStatement.getDevicePath(),
+                  createAlignedTimeSeriesStatement.getMeasurements()));
       analysis.setSchemaPartitionInfo(schemaPartitionInfo);
       return analysis;
     }
@@ -241,13 +238,9 @@ public class Analyzer {
       analysis.setStatement(alterTimeSeriesStatement);
 
       SchemaPartition schemaPartitionInfo;
-      try {
-        schemaPartitionInfo =
-            partitionFetcher.getSchemaPartition(
-                new PathPatternTree(alterTimeSeriesStatement.getPath()));
-      } catch (StatementAnalyzeException e) {
-        throw new SemanticException("An error occurred when fetching schema partition infos");
-      }
+      schemaPartitionInfo =
+          partitionFetcher.getSchemaPartition(
+              new PathPatternTree(alterTimeSeriesStatement.getPath()));
       analysis.setSchemaPartitionInfo(schemaPartitionInfo);
       return analysis;
     }
@@ -275,11 +268,7 @@ public class Analyzer {
           schemaTree.getBelongedStorageGroup(insertTabletStatement.getDevicePath()),
           Collections.singletonList(dataPartitionQueryParam));
       DataPartition dataPartition;
-      try {
-        dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
-      } catch (StatementAnalyzeException e) {
-        throw new SemanticException("An error occurred when fetching data partition infos");
-      }
+      dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
 
       Analysis analysis = new Analysis();
       analysis.setSchemaTree(schemaTree);
@@ -294,14 +283,9 @@ public class Analyzer {
       Analysis analysis = new Analysis();
       analysis.setStatement(showTimeSeriesStatement);
 
-      SchemaPartition schemaPartitionInfo;
-      try {
-        schemaPartitionInfo =
-            partitionFetcher.getSchemaPartition(
-                new PathPatternTree(showTimeSeriesStatement.getPathPattern()));
-      } catch (StatementAnalyzeException e) {
-        throw new SemanticException("An error occurred when fetching schema partition infos");
-      }
+      SchemaPartition schemaPartitionInfo =
+          partitionFetcher.getSchemaPartition(
+              new PathPatternTree(showTimeSeriesStatement.getPathPattern()));
       analysis.setSchemaPartitionInfo(schemaPartitionInfo);
       analysis.setRespDatasetHeader(HeaderConstant.showTimeSeriesHeader);
       return analysis;
@@ -322,14 +306,10 @@ public class Analyzer {
       Analysis analysis = new Analysis();
       analysis.setStatement(showDevicesStatement);
 
-      SchemaPartition schemaPartitionInfo;
-      try {
-        schemaPartitionInfo =
-            partitionFetcher.getSchemaPartition(
-                new PathPatternTree(showDevicesStatement.getPathPattern().concatNode("*")));
-      } catch (StatementAnalyzeException e) {
-        throw new SemanticException("An error occurred when fetching schema partition infos");
-      }
+      SchemaPartition schemaPartitionInfo =
+          partitionFetcher.getSchemaPartition(
+              new PathPatternTree(showDevicesStatement.getPathPattern().concatNode("*")));
+
       analysis.setSchemaPartitionInfo(schemaPartitionInfo);
       analysis.setRespDatasetHeader(
           showDevicesStatement.hasSgCol()
@@ -505,12 +485,7 @@ public class Analyzer {
       sgNameToQueryParamsMap.put(
           schemaTree.getBelongedStorageGroup(insertRowStatement.getDevicePath()),
           Collections.singletonList(dataPartitionQueryParam));
-      DataPartition dataPartition;
-      try {
-        dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
-      } catch (StatementAnalyzeException e) {
-        throw new SemanticException("An error occurred when fetching data partition infos");
-      }
+      DataPartition dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
 
       Analysis analysis = new Analysis();
       analysis.setSchemaTree(schemaTree);
@@ -554,12 +529,7 @@ public class Analyzer {
                 key -> new ArrayList<>())
             .add(dataPartitionQueryParam);
       }
-      DataPartition dataPartition;
-      try {
-        dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
-      } catch (StatementAnalyzeException e) {
-        throw new SemanticException("An error occurred when fetching data partition infos");
-      }
+      DataPartition dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
 
       Analysis analysis = new Analysis();
       analysis.setSchemaTree(schemaTree);
@@ -597,12 +567,7 @@ public class Analyzer {
                 key -> new ArrayList<>())
             .add(dataPartitionQueryParam);
       }
-      DataPartition dataPartition;
-      try {
-        dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
-      } catch (StatementAnalyzeException e) {
-        throw new SemanticException("An error occurred when fetching data partition infos");
-      }
+      DataPartition dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
 
       Analysis analysis = new Analysis();
       analysis.setSchemaTree(schemaTree);
@@ -642,18 +607,22 @@ public class Analyzer {
       sgNameToQueryParamsMap.put(
           schemaTree.getBelongedStorageGroup(insertRowsOfOneDeviceStatement.getDevicePath()),
           Collections.singletonList(dataPartitionQueryParam));
-      DataPartition dataPartition;
-      try {
-        dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
-      } catch (StatementAnalyzeException e) {
-        throw new SemanticException("An error occurred when fetching data partition infos");
-      }
+      DataPartition dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
 
       Analysis analysis = new Analysis();
       analysis.setSchemaTree(schemaTree);
       analysis.setStatement(insertRowsOfOneDeviceStatement);
       analysis.setDataPartitionInfo(dataPartition);
 
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitSchemaFetch(
+        SchemaFetchStatement schemaFetchStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(schemaFetchStatement);
+      analysis.setSchemaPartitionInfo(schemaFetchStatement.getSchemaPartition());
       return analysis;
     }
   }
