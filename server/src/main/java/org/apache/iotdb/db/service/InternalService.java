@@ -26,16 +26,13 @@ import org.apache.iotdb.commons.service.ThriftService;
 import org.apache.iotdb.commons.service.ThriftServiceThread;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.mpp.buffer.DataBlockService;
 import org.apache.iotdb.mpp.rpc.thrift.InternalService.Processor;
 
 public class InternalService extends ThriftService implements InternalServiceMBean {
 
   private InternalServiceImpl impl;
 
-  private InternalService() {
-
-  }
+  private InternalService() {}
 
   @Override
   public ServiceType getID() {

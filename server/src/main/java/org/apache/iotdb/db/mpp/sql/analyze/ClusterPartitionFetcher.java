@@ -209,7 +209,10 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       }
       schemaPartitionMap.put(storageGroupName, deviceToSchemaRegionMap);
     }
-    return new SchemaPartition(schemaPartitionMap, IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(), IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
+    return new SchemaPartition(
+        schemaPartitionMap,
+        IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
+        IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
   }
 
   private DataPartition parseDataPartitionResp(TDataPartitionResp dataPartitionResp) {

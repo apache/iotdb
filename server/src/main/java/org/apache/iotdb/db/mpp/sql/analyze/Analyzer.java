@@ -190,7 +190,9 @@ public class Analyzer {
         insertRowStatement.setMeasurements(measurements);
         insertRowStatement.setDataTypes(
             new TSDataType[insertStatement.getMeasurementList().length]);
-        insertRowStatement.setValues(insertStatement.getValuesList().get(0));
+        Object[] values = new Object[insertStatement.getMeasurementList().length];
+        System.arraycopy(insertStatement.getValuesList().get(0), 0, values, 0, values.length);
+        insertRowStatement.setValues(values);
         insertRowStatement.setNeedInferType(true);
         insertRowStatement.setAligned(insertStatement.isAligned());
         return insertRowStatement.accept(this, context);
@@ -205,7 +207,9 @@ public class Analyzer {
           statement.setMeasurements(measurements);
           statement.setTime(timeArray[i]);
           statement.setDataTypes(new TSDataType[insertStatement.getMeasurementList().length]);
-          statement.setValues(insertStatement.getValuesList().get(i));
+          Object[] values = new Object[insertStatement.getMeasurementList().length];
+          System.arraycopy(insertStatement.getValuesList().get(i), 0, values, 0, values.length);
+          statement.setValues(values);
           statement.setAligned(insertStatement.isAligned());
           statement.setNeedInferType(true);
           insertRowStatementList.add(statement);
@@ -494,6 +498,7 @@ public class Analyzer {
 
     @Override
     public Analysis visitInsertRow(InsertRowStatement insertRowStatement, MPPQueryContext context) {
+      context.setQueryType(QueryType.WRITE);
       // TODO remove duplicate
       SchemaTree schemaTree =
           schemaFetcher.fetchSchemaWithAutoCreate(
@@ -519,7 +524,8 @@ public class Analyzer {
       sgNameToQueryParamsMap.put(
           schemaTree.getBelongedStorageGroup(insertRowStatement.getDevicePath()),
           Collections.singletonList(dataPartitionQueryParam));
-      DataPartition dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
+      DataPartition dataPartition =
+          partitionFetcher.getOrCreateDataPartition(sgNameToQueryParamsMap);
 
       Analysis analysis = new Analysis();
       analysis.setSchemaTree(schemaTree);

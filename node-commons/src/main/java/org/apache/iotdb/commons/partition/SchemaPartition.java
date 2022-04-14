@@ -39,7 +39,9 @@ public class SchemaPartition {
   }
 
   public SchemaPartition(
-      Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> schemaPartitionMap, String seriesSlotExecutorName, int seriesPartitionSlotNum) {
+      Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> schemaPartitionMap,
+      String seriesSlotExecutorName,
+      int seriesPartitionSlotNum) {
     this(seriesSlotExecutorName, seriesPartitionSlotNum);
     this.schemaPartitionMap = schemaPartitionMap;
   }
@@ -89,10 +91,13 @@ public class SchemaPartition {
    *     RegionReplicaSet>>
    */
   public SchemaPartition getSchemaPartition(
-      Map<String, List<SeriesPartitionSlot>> partitionSlotsMap, String seriesSlotExecutorName, int seriesPartitionSlotNum) {
+      Map<String, List<SeriesPartitionSlot>> partitionSlotsMap,
+      String seriesSlotExecutorName,
+      int seriesPartitionSlotNum) {
     if (partitionSlotsMap.isEmpty()) {
       // Return all SchemaPartitions when the partitionSlotsMap is empty
-      return new SchemaPartition(new HashMap<>(schemaPartitionMap), seriesSlotExecutorName, seriesPartitionSlotNum);
+      return new SchemaPartition(
+          new HashMap<>(schemaPartitionMap), seriesSlotExecutorName, seriesPartitionSlotNum);
     } else {
       Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> result = new HashMap<>();
 

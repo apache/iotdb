@@ -52,7 +52,7 @@ public class TimeJoinNode extends ProcessNode implements IOutputPlanNode {
   // The without policy is able to be push down to the TimeJoinOperator because we can know whether
   // a row contains
   // null or not.
-  private FilterNullPolicy filterNullPolicy;
+  private FilterNullPolicy filterNullPolicy = FilterNullPolicy.NO_FILTER;
 
   private List<PlanNode> children;
 
