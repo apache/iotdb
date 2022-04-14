@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.commons.partition;
 
+import org.apache.iotdb.common.rpc.thrift.EndPoint;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.cluster.DataNodeLocation;
 import org.apache.iotdb.commons.cluster.Endpoint;
@@ -67,11 +69,32 @@ public class RegionReplicaSet {
     this.consensusGroupId = consensusGroupId;
   }
 
+  /** Convert RegionReplicaSet to TRegionReplicaSet */
+  public TRegionReplicaSet convertToRPCTRegionReplicaSet() {
+    TRegionReplicaSet tRegionReplicaSet = new TRegionReplicaSet();
+
+    // Convert ConsensusGroupId
+    ByteBuffer buffer = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES);
+    consensusGroupId.serializeImpl(buffer);
+    buffer.flip();
+    tRegionReplicaSet.setRegionId(buffer);
+
+    // Convert EndPoints
+    List<EndPoint> endPointList = new ArrayList<>();
+    dataNodeList.forEach(
+        dataNodeLocation ->
+            endPointList.add(
+                new EndPoint(
+                    dataNodeLocation.getEndPoint().getIp(),
+                    dataNodeLocation.getEndPoint().getPort())));
+    tRegionReplicaSet.setEndpoint(endPointList);
+
+    return tRegionReplicaSet;
+  }
+
   @Override
   public String toString() {
-    return String.format(
-        "RegionReplicaSet[%s-%d]: %s",
-        consensusGroupId.getType(), consensusGroupId.getId(), dataNodeList);
+    return String.format("RegionReplicaSet[%s]: %s", consensusGroupId, dataNodeList);
   }
 
   public void serializeImpl(ByteBuffer buffer) {

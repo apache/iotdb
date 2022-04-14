@@ -56,6 +56,7 @@ import org.apache.iotdb.db.mpp.sql.statement.crud.UDTFQueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowTimeSeriesStatement;
@@ -1562,6 +1563,14 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       privileges.add(privilegeValue.getText());
     }
     return privileges.toArray(new String[0]);
+  }
+
+  @Override
+  public Statement visitSetStorageGroup(IoTDBSqlParser.SetStorageGroupContext ctx) {
+    SetStorageGroupStatement setStorageGroupStatement = new SetStorageGroupStatement();
+    PartialPath path = parsePrefixPath(ctx.prefixPath());
+    setStorageGroupStatement.setStorageGroupPath(path);
+    return setStorageGroupStatement;
   }
 
   /** function for parsing file path used by LOAD statement. */

@@ -30,9 +30,10 @@ struct TDataNodeRegisterReq {
 }
 
 struct TGlobalConfig {
-  1: optional string dataNodeConsensusProtocolClass
-  2: optional i32 seriesPartitionSlotNum
-  3: optional string seriesPartitionExecutorClass
+  1: required string dataNodeConsensusProtocolClass
+  2: required i32 seriesPartitionSlotNum
+  3: required string seriesPartitionExecutorClass
+  4: required i64 timePartitionInterval
 }
 
 struct TDataNodeRegisterResp {

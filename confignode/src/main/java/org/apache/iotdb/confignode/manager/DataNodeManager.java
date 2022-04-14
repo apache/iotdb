@@ -63,6 +63,8 @@ public class DataNodeManager {
         ConfigNodeDescriptor.getInstance().getConf().getSeriesPartitionSlotNum());
     globalConfig.setSeriesPartitionExecutorClass(
         ConfigNodeDescriptor.getInstance().getConf().getSeriesPartitionExecutorClass());
+    globalConfig.setTimePartitionInterval(
+        ConfigNodeDescriptor.getInstance().getConf().getTimePartitionInterval());
     dataSet.setGlobalConfig(globalConfig);
   }
 
@@ -81,6 +83,7 @@ public class DataNodeManager {
       status.setMessage("DataNode already registered.");
       dataSet.setStatus(status);
     } else {
+      // Persist DataNodeInfo
       plan.getInfo().setDataNodeId(DataNodeInfoPersistence.getInstance().generateNextDataNodeId());
       ConsensusWriteResponse resp = getConsensusManager().write(plan);
       dataSet.setStatus(resp.getStatus());
