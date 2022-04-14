@@ -22,13 +22,13 @@ import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
-import org.apache.iotdb.db.mpp.common.GroupByTimeParameter;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.sql.planner.plan.IOutputPlanNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.ColumnHeader;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.mpp.sql.statement.component.GroupByTimeComponent;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
@@ -80,7 +80,7 @@ public class SeriesAggregateScanNode extends SourceNode implements IOutputPlanNo
 
   // The parameter of `group by time`
   // Its value will be null if there is no `group by time` clause,
-  private final GroupByTimeParameter groupByTimeParameter;
+  private final GroupByTimeComponent groupByTimeParameter;
 
   private List<ColumnHeader> columnHeaders;
 
@@ -93,7 +93,7 @@ public class SeriesAggregateScanNode extends SourceNode implements IOutputPlanNo
       List<AggregationType> aggregateFuncList,
       OrderBy scanOrder,
       Filter timeFilter,
-      GroupByTimeParameter groupByTimeParameter) {
+      GroupByTimeComponent groupByTimeParameter) {
     super(id);
     this.seriesPath = seriesPath;
     this.aggregateFuncList = aggregateFuncList;
@@ -195,8 +195,7 @@ public class SeriesAggregateScanNode extends SourceNode implements IOutputPlanNo
     Filter timeFilter = FilterFactory.deserialize(byteBuffer);
 
     // TODO serialize groupByTimeParameter
-    RegionReplicaSet regionReplicaSet = new RegionReplicaSet();
-    RegionReplicaSet.deserializeImpl(byteBuffer);
+    RegionReplicaSet regionReplicaSet = RegionReplicaSet.deserializeImpl(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     SeriesAggregateScanNode seriesAggregateScanNode =
         new SeriesAggregateScanNode(

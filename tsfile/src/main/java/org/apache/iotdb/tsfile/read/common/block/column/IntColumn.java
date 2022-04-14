@@ -84,6 +84,11 @@ public class IntColumn implements Column {
   }
 
   @Override
+  public Object getObject(int position) {
+    return getInt(position);
+  }
+
+  @Override
   public TsPrimitiveType getTsPrimitiveType(int position) {
     checkReadablePosition(position);
     return new TsPrimitiveType.TsInt(getInt(position));
