@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.commons.partition;
 
+import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -28,17 +30,24 @@ import java.util.stream.Collectors;
 
 public class DataPartition {
 
+  private String seriesSlotExecutorName;
+  private int seriesPartitionSlotNum;
+
   // Map<StorageGroup, Map<DeviceGroupID, Map<TimePartitionId, List<DataRegionPlaceInfo>>>>
   private Map<String, Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>>
       dataPartitionMap;
 
-  public DataPartition() {
-    // Empty constructor
+  public DataPartition(String seriesSlotExecutorName, int seriesPartitionSlotNum) {
+    this.seriesSlotExecutorName = seriesSlotExecutorName;
+    this.seriesPartitionSlotNum = seriesPartitionSlotNum;
   }
 
   public DataPartition(
       Map<String, Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>>
-          dataPartitionMap) {
+          dataPartitionMap,
+      String seriesSlotExecutorName,
+      int seriesPartitionSlotNum) {
+    this(seriesSlotExecutorName, seriesPartitionSlotNum);
     this.dataPartitionMap = dataPartitionMap;
   }
 
@@ -96,8 +105,10 @@ public class DataPartition {
   }
 
   private SeriesPartitionSlot calculateDeviceGroupId(String deviceName) {
-    // TODO: (xingtanzjr) implement the real algorithm for calculation of DeviceGroupId
-    return new SeriesPartitionSlot(deviceName.length());
+    SeriesPartitionExecutor executor =
+        SeriesPartitionExecutor.getSeriesPartitionExecutor(
+            seriesSlotExecutorName, seriesPartitionSlotNum);
+    return executor.getSeriesPartitionSlot(deviceName);
   }
 
   private String getStorageGroupByDevice(String deviceName) {
@@ -121,7 +132,9 @@ public class DataPartition {
    *     Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>>
    */
   public DataPartition getDataPartition(
-      Map<String, Map<SeriesPartitionSlot, List<TimePartitionSlot>>> partitionSlotsMap) {
+      Map<String, Map<SeriesPartitionSlot, List<TimePartitionSlot>>> partitionSlotsMap,
+      String seriesSlotExecutorName,
+      int seriesPartitionSlotNum) {
     Map<String, Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>> result =
         new HashMap<>();
 
@@ -153,7 +166,7 @@ public class DataPartition {
       }
     }
 
-    return new DataPartition(result);
+    return new DataPartition(result, seriesSlotExecutorName, seriesPartitionSlotNum);
   }
 
   /**
@@ -161,8 +174,8 @@ public class DataPartition {
    *
    * @param partitionSlotsMap Map<StorageGroupName, Map<SeriesPartitionSlot,
    *     List<TimePartitionSlot>>>
-   * @return Map<StorageGroupName, Map<SeriesPartitionSlot, List<TimePartitionSlot>>>, unassigned
-   *     PartitionSlots
+   * @return Map<StorageGroupName, Map < SeriesPartitionSlot, List < TimePartitionSlot>>>,
+   *     unassigned PartitionSlots
    */
   public Map<String, Map<SeriesPartitionSlot, List<TimePartitionSlot>>>
       filterNoAssignedDataPartitionSlots(
