@@ -33,6 +33,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class InsertRowsNode extends InsertNode {
 
@@ -96,6 +97,21 @@ public class InsertRowsNode extends InsertNode {
 
   @Override
   public void addChild(PlanNode child) {}
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    if (!super.equals(o)) return false;
+    InsertRowsNode that = (InsertRowsNode) o;
+    return Objects.equals(insertRowNodeIndexList, that.insertRowNodeIndexList)
+        && Objects.equals(insertRowNodeList, that.insertRowNodeList);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), insertRowNodeIndexList, insertRowNodeList);
+  }
 
   @Override
   public PlanNode clone() {

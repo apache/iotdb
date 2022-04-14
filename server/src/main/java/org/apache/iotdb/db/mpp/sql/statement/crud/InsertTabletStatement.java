@@ -78,8 +78,8 @@ public class InsertTabletStatement extends InsertBaseStatement {
     }
     super.markFailedMeasurementInsertion(index, e);
     dataTypes[index] = null;
-    times[index] = Long.MAX_VALUE;
     columns[index] = null;
+    bitMaps[index] = null;
   }
 
   public List<TimePartitionSlot> getTimePartitionSlots() {
