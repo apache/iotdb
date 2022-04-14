@@ -117,7 +117,10 @@ public class InsertTabletStatement extends InsertBaseStatement {
           markFailedMeasurementInsertion(
               i,
               new DataTypeMismatchException(
-                  measurements[i], measurementSchemas.get(i).getType(), dataTypes[i]));
+                  devicePath.getFullPath(),
+                  measurements[i],
+                  measurementSchemas.get(i).getType(),
+                  dataTypes[i]));
         }
       }
     }
