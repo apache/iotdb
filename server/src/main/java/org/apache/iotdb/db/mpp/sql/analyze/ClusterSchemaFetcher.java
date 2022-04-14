@@ -43,11 +43,23 @@ import java.util.Map;
 public class ClusterSchemaFetcher implements ISchemaFetcher {
 
   private final Coordinator coordinator = Coordinator.getInstance();
-  private final IPartitionFetcher partitionFetcher = new ClusterPartitionFetcher();
+  private final IPartitionFetcher partitionFetcher = ClusterPartitionFetcher.getInstance();
+
+  private static final class ClusterSchemaFetcherHolder {
+    private static final ClusterSchemaFetcher INSTANCE = new ClusterSchemaFetcher();
+
+    private ClusterSchemaFetcherHolder() {}
+  }
+
+  public static ClusterSchemaFetcher getInstance() {
+    return ClusterSchemaFetcherHolder.INSTANCE;
+  }
+
+  private ClusterSchemaFetcher() {}
 
   @Override
   public SchemaTree fetchSchema(PathPatternTree patternTree) {
-    SchemaPartition schemaPartition = partitionFetcher.fetchSchemaPartitionInfos(patternTree);
+    SchemaPartition schemaPartition = partitionFetcher.getSchemaPartition(patternTree);
     Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> schemaPartitionMap =
         schemaPartition.getSchemaPartitionMap();
     List<String> storageGroups = new ArrayList<>(schemaPartitionMap.keySet());
