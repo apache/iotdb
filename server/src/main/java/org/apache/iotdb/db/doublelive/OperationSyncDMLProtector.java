@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.doublewrite;
+package org.apache.iotdb.db.doublelive;
 
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -24,20 +24,21 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import java.nio.ByteBuffer;
 import java.util.concurrent.TimeUnit;
 
-public class DoubleWriteNIProtector extends DoubleWriteProtector {
+public class OperationSyncDMLProtector extends OperationSyncProtector {
 
-  private final DoubleWriteEProtector eProtector;
-  private final DoubleWriteProducer producer;
+  private final OperationSyncDDLProtector ddlProtector;
+  private final OperationSyncProducer producer;
 
-  public DoubleWriteNIProtector(DoubleWriteEProtector eProtector, DoubleWriteProducer producer) {
+  public OperationSyncDMLProtector(
+      OperationSyncDDLProtector ddlProtector, OperationSyncProducer producer) {
     super();
-    this.eProtector = eProtector;
+    this.ddlProtector = ddlProtector;
     this.producer = producer;
   }
 
   @Override
   protected void preCheck() {
-    while (eProtector.isAtWork()) {
+    while (ddlProtector.isAtWork()) {
       try {
         TimeUnit.SECONDS.sleep(5);
       } catch (InterruptedException ignore) {
@@ -49,6 +50,6 @@ public class DoubleWriteNIProtector extends DoubleWriteProtector {
   @Override
   protected void transmitPhysicalPlan(ByteBuffer planBuffer, PhysicalPlan physicalPlan) {
     producer.put(
-        new Pair<>(planBuffer, DoubleWritePlanTypeUtils.getDoubleWritePlanType(physicalPlan)));
+        new Pair<>(planBuffer, OperationSyncPlanTypeUtils.getOperationSyncPlanType(physicalPlan)));
   }
 }

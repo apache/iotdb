@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.doublewrite;
+package org.apache.iotdb.db.doublelive;
 
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.session.pool.SessionPool;
@@ -30,40 +30,40 @@ import java.nio.ByteBuffer;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 
-public class DoubleWriteConsumer implements Runnable {
-  private static final Logger LOGGER = LoggerFactory.getLogger(DoubleWriteConsumer.class);
+public class OperationSyncConsumer implements Runnable {
+  private static final Logger LOGGER = LoggerFactory.getLogger(OperationSyncConsumer.class);
 
-  private final BlockingQueue<Pair<ByteBuffer, DoubleWritePlanTypeUtils.DoubleWritePlanType>>
-      doubleWriteQueue;
-  private final SessionPool doubleWriteSessionPool;
-  private final DoubleWriteLogService niLogService;
+  private final BlockingQueue<Pair<ByteBuffer, OperationSyncPlanTypeUtils.OperationSyncPlanType>>
+      OperationSyncQueue;
+  private final SessionPool operationSyncSessionPool;
+  private final OperationSyncLogService dmlLogService;
 
-  public DoubleWriteConsumer(
-      BlockingQueue<Pair<ByteBuffer, DoubleWritePlanTypeUtils.DoubleWritePlanType>>
-          doubleWriteQueue,
-      SessionPool doubleWriteSessionPool,
-      DoubleWriteLogService niLogService) {
-    this.doubleWriteQueue = doubleWriteQueue;
-    this.doubleWriteSessionPool = doubleWriteSessionPool;
-    this.niLogService = niLogService;
+  public OperationSyncConsumer(
+      BlockingQueue<Pair<ByteBuffer, OperationSyncPlanTypeUtils.OperationSyncPlanType>>
+          OperationSyncQueue,
+      SessionPool operationSyncSessionPool,
+      OperationSyncLogService dmlLogService) {
+    this.OperationSyncQueue = OperationSyncQueue;
+    this.operationSyncSessionPool = operationSyncSessionPool;
+    this.dmlLogService = dmlLogService;
   }
 
   @Override
   public void run() {
     while (true) {
-      Pair<ByteBuffer, DoubleWritePlanTypeUtils.DoubleWritePlanType> head;
+      Pair<ByteBuffer, OperationSyncPlanTypeUtils.OperationSyncPlanType> head;
       ByteBuffer headBuffer;
-      DoubleWritePlanTypeUtils.DoubleWritePlanType headType;
+      OperationSyncPlanTypeUtils.OperationSyncPlanType headType;
       try {
-        head = doubleWriteQueue.take();
+        head = OperationSyncQueue.take();
         headBuffer = head.left;
         headType = head.right;
       } catch (InterruptedException e) {
-        LOGGER.error("DoubleWriteConsumer been interrupted: ", e);
+        LOGGER.error("OperationSyncConsumer been interrupted: ", e);
         continue;
       }
 
-      if (headType == DoubleWritePlanTypeUtils.DoubleWritePlanType.IPlan) {
+      if (headType == OperationSyncPlanTypeUtils.OperationSyncPlanType.IPlan) {
         try {
           // Sleep 10ms when it's I-Plan
           TimeUnit.MILLISECONDS.sleep(10);
@@ -76,14 +76,14 @@ public class DoubleWriteConsumer implements Runnable {
       boolean transmitStatus = false;
       try {
         headBuffer.position(0);
-        transmitStatus = doubleWriteSessionPool.doubleWriteTransmit(headBuffer);
+        transmitStatus = operationSyncSessionPool.operationSyncTransmit(headBuffer);
       } catch (IoTDBConnectionException connectionException) {
         // warn IoTDBConnectionException and do serialization
         LOGGER.warn(
-            "DoubleWriteConsumer can't transmit because network failure", connectionException);
+            "OperationSyncConsumer can't transmit because network failure", connectionException);
       } catch (Exception e) {
         // The PhysicalPlan has internal error, reject transmit
-        LOGGER.error("DoubleWriteConsumer can't transmit", e);
+        LOGGER.error("OperationSyncConsumer can't transmit", e);
         continue;
       }
 
@@ -91,12 +91,12 @@ public class DoubleWriteConsumer implements Runnable {
         try {
           // must set buffer position to limit() before serialization
           headBuffer.position(headBuffer.limit());
-          niLogService.acquireLogWriter();
-          niLogService.write(headBuffer);
+          dmlLogService.acquireLogWriter();
+          dmlLogService.write(headBuffer);
         } catch (IOException e) {
-          LOGGER.error("DoubleWriteConsumer can't serialize physicalPlan", e);
+          LOGGER.error("OperationSyncConsumer can't serialize physicalPlan", e);
         }
-        niLogService.releaseLogWriter();
+        dmlLogService.releaseLogWriter();
       }
     }
   }

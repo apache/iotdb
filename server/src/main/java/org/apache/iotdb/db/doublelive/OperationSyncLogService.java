@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.doublewrite;
+package org.apache.iotdb.db.doublelive;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -34,22 +34,22 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-public class DoubleWriteLogService implements Runnable {
+public class OperationSyncLogService implements Runnable {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(DoubleWriteLogService.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(OperationSyncLogService.class);
 
   private static final String logFileDir =
-      IoTDBDescriptor.getInstance().getConfig().getDoubleWriteLogDir();
+      IoTDBDescriptor.getInstance().getConfig().getOperationSyncLogDir();
   private static final long logFileValidity =
-      IoTDBDescriptor.getInstance().getConfig().getDoubleWriteLogValidity() * 1000L;
+      IoTDBDescriptor.getInstance().getConfig().getOperationSyncLogValidity() * 1000L;
   private static final int maxLogFileNum =
-      IoTDBDescriptor.getInstance().getConfig().getDoubleWriteLogNum();
+      IoTDBDescriptor.getInstance().getConfig().getOperationSyncLogNum();
   private static final long maxLogFileSize =
-      IoTDBDescriptor.getInstance().getConfig().getDoubleWriteMaxLogSize();
+      IoTDBDescriptor.getInstance().getConfig().getOperationSyncMaxLogSize();
 
   private static long currentLogFileSize = 0;
 
-  private final DoubleWriteProtector protector;
+  private final OperationSyncProtector protector;
   private final Lock logWriterLock;
   private final String logFileName;
   private int logFileID;
@@ -57,7 +57,7 @@ public class DoubleWriteLogService implements Runnable {
   private File logFile;
   private LogWriter logWriter;
 
-  public DoubleWriteLogService(String logFileName, DoubleWriteProtector protector) {
+  public OperationSyncLogService(String logFileName, OperationSyncProtector protector) {
     this.logFileName = logFileName;
     this.protector = protector;
 
@@ -68,7 +68,7 @@ public class DoubleWriteLogService implements Runnable {
     File logDir = new File(logFileDir);
     if (!logDir.exists()) {
       if (!logDir.mkdirs()) {
-        LOGGER.error("Can't make DoubleWriteLog file dir: {}", logDir.getAbsolutePath());
+        LOGGER.error("Can't make OperationSyncLog file dir: {}", logDir.getAbsolutePath());
       }
     }
   }
@@ -126,7 +126,7 @@ public class DoubleWriteLogService implements Runnable {
         // Sleep 10s before next check
         TimeUnit.SECONDS.sleep(10);
       } catch (InterruptedException e) {
-        LOGGER.error("DoubleWriteLogService been interrupted", e);
+        LOGGER.error("OperationSyncLogService been interrupted", e);
       }
     }
   }
@@ -143,7 +143,7 @@ public class DoubleWriteLogService implements Runnable {
       try {
         logWriter.close();
       } catch (IOException e) {
-        LOGGER.warn("Can't close DoubleWriteLog: {}, retrying...", logFile.getAbsolutePath());
+        LOGGER.warn("Can't close OperationSyncLog: {}, retrying...", logFile.getAbsolutePath());
         try {
           // Sleep 1s and retry
           TimeUnit.SECONDS.sleep(1);
@@ -153,7 +153,7 @@ public class DoubleWriteLogService implements Runnable {
         continue;
       }
 
-      LOGGER.info("DoubleWriteLog: {} is expired and closed", logFile.getAbsolutePath());
+      LOGGER.info("OperationSyncLog: {} is expired and closed", logFile.getAbsolutePath());
       break;
     }
 
@@ -175,11 +175,11 @@ public class DoubleWriteLogService implements Runnable {
         if (logFile.createNewFile()) {
           logFileCreateTime = System.currentTimeMillis();
           logWriter = new LogWriter(logFile, false);
-          LOGGER.info("Create DoubleWriteLog: {}", logFile.getAbsolutePath());
+          LOGGER.info("Create OperationSyncLog: {}", logFile.getAbsolutePath());
           break;
         }
       } catch (IOException e) {
-        LOGGER.warn("Can't create DoubleWriteLog: {}, retrying...", logFile.getAbsolutePath());
+        LOGGER.warn("Can't create OperationSyncLog: {}, retrying...", logFile.getAbsolutePath());
         try {
           TimeUnit.SECONDS.sleep(1);
         } catch (InterruptedException ignored) {

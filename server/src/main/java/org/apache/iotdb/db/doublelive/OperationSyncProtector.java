@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.doublewrite;
+package org.apache.iotdb.db.doublelive;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -38,11 +38,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-public abstract class DoubleWriteProtector implements Runnable {
+public abstract class OperationSyncProtector implements Runnable {
 
-  protected static final Logger LOGGER = LoggerFactory.getLogger(DoubleWriteProtector.class);
+  protected static final Logger LOGGER = LoggerFactory.getLogger(OperationSyncProtector.class);
   protected static final int logFileValidity =
-      IoTDBDescriptor.getInstance().getConfig().getDoubleWriteLogValidity();
+      IoTDBDescriptor.getInstance().getConfig().getOperationSyncLogValidity();
 
   // For transmit log files
   protected final Lock logFileListLock;
@@ -57,7 +57,7 @@ public abstract class DoubleWriteProtector implements Runnable {
   // Working state
   protected volatile boolean isProtectorAtWork;
 
-  protected DoubleWriteProtector() {
+  protected OperationSyncProtector() {
     logFileListLock = new ReentrantLock();
     registeredLogFiles = new ArrayList<>();
 
@@ -82,7 +82,7 @@ public abstract class DoubleWriteProtector implements Runnable {
   public void run() {
     while (true) {
       while (true) {
-        // Wrap and transmit all DoubleWriteLogs
+        // Wrap and transmit all OperationSyncLogs
         logFileListLock.lock();
         if (registeredLogFiles.size() > 0) {
           isProtectorAtWork = true;
@@ -102,7 +102,7 @@ public abstract class DoubleWriteProtector implements Runnable {
         // Sleep a while before next check
         TimeUnit.SECONDS.sleep(logFileValidity);
       } catch (InterruptedException e) {
-        LOGGER.warn("DoubleWriteProtector been interrupted", e);
+        LOGGER.warn("OperationSyncProtector been interrupted", e);
       }
     }
   }
@@ -116,7 +116,7 @@ public abstract class DoubleWriteProtector implements Runnable {
         logReader = new SingleFileLogReader(logFile);
       } catch (FileNotFoundException e) {
         LOGGER.error(
-            "DoubleWriteProtector can't open DoubleWriteLog: {}, discarded",
+            "OperationSyncProtector can't open OperationSyncLog: {}, discarded",
             logFile.getAbsolutePath(),
             e);
         continue;
@@ -128,7 +128,7 @@ public abstract class DoubleWriteProtector implements Runnable {
         try {
           nextPlan.serialize(protectorDeserializeStream);
         } catch (IOException e) {
-          LOGGER.error("DoubleWriteProtector can't serialize PhysicalPlan", e);
+          LOGGER.error("OperationSyncProtector can't serialize PhysicalPlan", e);
           continue;
         }
         ByteBuffer nextBuffer = ByteBuffer.wrap(protectorByteStream.toByteArray());
@@ -138,27 +138,27 @@ public abstract class DoubleWriteProtector implements Runnable {
 
       logReader.close();
       try {
-        // sleep one second then delete DoubleWriteLog
+        // sleep one second then delete OperationSyncLog
         TimeUnit.SECONDS.sleep(1);
       } catch (InterruptedException e) {
-        LOGGER.warn("DoubleWriteProtector is interrupted", e);
+        LOGGER.warn("OperationSyncProtector is interrupted", e);
       }
 
-      DoubleWriteLogService.incLogFileSize(-logFile.length());
+      OperationSyncLogService.incLogFileSize(-logFile.length());
 
       boolean deleted = false;
       for (int retryCnt = 0; retryCnt < 5; retryCnt++) {
         if (logFile.delete()) {
           deleted = true;
-          LOGGER.info("DoubleWriteLog: {} is deleted.", logFile.getAbsolutePath());
+          LOGGER.info("OperationSyncLog: {} is deleted.", logFile.getAbsolutePath());
           break;
         } else {
-          LOGGER.warn("Delete DoubleWriteLog: {} failed. Retrying", logFile.getAbsolutePath());
+          LOGGER.warn("Delete OperationSyncLog: {} failed. Retrying", logFile.getAbsolutePath());
         }
       }
       if (!deleted) {
-        DoubleWriteLogService.incLogFileSize(logFile.length());
-        LOGGER.error("Couldn't delete DoubleWriteLog: {}", logFile.getAbsolutePath());
+        OperationSyncLogService.incLogFileSize(logFile.length());
+        LOGGER.error("Couldn't delete OperationSyncLog: {}", logFile.getAbsolutePath());
       }
     }
   }

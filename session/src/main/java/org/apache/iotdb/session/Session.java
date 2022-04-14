@@ -38,7 +38,7 @@ import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsOfOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
-import org.apache.iotdb.service.rpc.thrift.TSInternalSyncWriteReq;
+import org.apache.iotdb.service.rpc.thrift.TSOperationSyncWriteReq;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 import org.apache.iotdb.service.rpc.thrift.TSPruneSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateReq;
@@ -2461,20 +2461,20 @@ public class Session {
     }
   }
 
-  /** Transmit insert record request for double write */
-  public void doubleWriteTransmit(ByteBuffer buffer)
+  /** Transmit insert record request for operation sync */
+  public void operationSyncTransmit(ByteBuffer buffer)
       throws IoTDBConnectionException, StatementExecutionException {
     try {
-      TSInternalSyncWriteReq request = genTSExecuteDoubleWriteReq(buffer);
-      defaultSessionConnection.executeDoubleWrite(request);
+      TSOperationSyncWriteReq request = genTSExecuteOperationSyncReq(buffer);
+      defaultSessionConnection.executeOperationSync(request);
     } catch (RedirectException e) {
       // ignored
     }
   }
 
-  private TSInternalSyncWriteReq genTSExecuteDoubleWriteReq(ByteBuffer buffer) {
-    TSInternalSyncWriteReq request = new TSInternalSyncWriteReq();
-    request.setDoubleWriteType((byte) 0);
+  private TSOperationSyncWriteReq genTSExecuteOperationSyncReq(ByteBuffer buffer) {
+    TSOperationSyncWriteReq request = new TSOperationSyncWriteReq();
+    request.setOperationSyncType((byte) 0);
     request.setPhysicalPlan(buffer);
     return request;
   }

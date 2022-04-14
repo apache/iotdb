@@ -25,13 +25,13 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.OperationType;
-import org.apache.iotdb.db.doublewrite.DoubleWriteConsumer;
-import org.apache.iotdb.db.doublewrite.DoubleWriteEProtector;
-import org.apache.iotdb.db.doublewrite.DoubleWriteLogService;
-import org.apache.iotdb.db.doublewrite.DoubleWriteNIProtector;
-import org.apache.iotdb.db.doublewrite.DoubleWritePlanTypeUtils;
-import org.apache.iotdb.db.doublewrite.DoubleWriteProducer;
-import org.apache.iotdb.db.doublewrite.DoubleWriteTask;
+import org.apache.iotdb.db.doublelive.OperationSyncConsumer;
+import org.apache.iotdb.db.doublelive.OperationSyncDDLProtector;
+import org.apache.iotdb.db.doublelive.OperationSyncDMLProtector;
+import org.apache.iotdb.db.doublelive.OperationSyncLogService;
+import org.apache.iotdb.db.doublelive.OperationSyncPlanTypeUtils;
+import org.apache.iotdb.db.doublelive.OperationSyncProducer;
+import org.apache.iotdb.db.doublelive.OperationSyncWriteTask;
 import org.apache.iotdb.db.engine.selectinto.InsertTabletPlansIterator;
 import org.apache.iotdb.db.exception.IoTDBException;
 import org.apache.iotdb.db.exception.QueryInBatchStatementException;
@@ -113,10 +113,10 @@ import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsOfOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
-import org.apache.iotdb.service.rpc.thrift.TSInternalSyncWriteReq;
 import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
+import org.apache.iotdb.service.rpc.thrift.TSOperationSyncWriteReq;
 import org.apache.iotdb.service.rpc.thrift.TSPruneSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.service.rpc.thrift.TSQueryNonAlignDataSet;
@@ -316,23 +316,23 @@ public class TSServiceImpl implements TSIService.Iface {
 
   protected final ServiceProvider serviceProvider;
 
-  /* Double write module */
-  private static final boolean isEnableDoubleWrite =
-      IoTDBDescriptor.getInstance().getConfig().isEnableDoubleWrite();
-  private final SessionPool doubleWriteSessionPool;
-  private final DoubleWriteProducer doubleWriteProducer;
-  private final DoubleWriteEProtector doubleWriteEProtector;
-  private final DoubleWriteLogService doubleWriteELogService;
+  /* OperationSync module */
+  private static final boolean isEnableOperationSync =
+      IoTDBDescriptor.getInstance().getConfig().isEnableOperationSync();
+  private final SessionPool operationSyncsessionPool;
+  private final OperationSyncProducer operationSyncProducer;
+  private final OperationSyncDDLProtector operationSyncDDLProtector;
+  private final OperationSyncLogService operationSyncDDLLogService;
 
   public TSServiceImpl() {
     super();
     serviceProvider = IoTDB.serviceProvider;
 
-    if (isEnableDoubleWrite) {
-      /* Open double write */
+    if (isEnableOperationSync) {
+      /* Open OperationSync */
       IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-      // create SessionPool for double write
-      doubleWriteSessionPool =
+      // create SessionPool for OperationSync
+      operationSyncsessionPool =
           new SessionPool(
               config.getSecondaryAddress(),
               config.getSecondaryPort(),
@@ -340,36 +340,38 @@ public class TSServiceImpl implements TSIService.Iface {
               config.getSecondaryPassword(),
               5);
 
-      // create DoubleWriteEProtector and DoubleWriteELogService
-      doubleWriteEProtector = new DoubleWriteEProtector(doubleWriteSessionPool);
-      new Thread(doubleWriteEProtector).start();
-      doubleWriteELogService = new DoubleWriteLogService("ELog", doubleWriteEProtector);
-      new Thread(doubleWriteELogService).start();
+      // create operationSyncDDLProtector and operationSyncDDLLogService
+      operationSyncDDLProtector = new OperationSyncDDLProtector(operationSyncsessionPool);
+      new Thread(operationSyncDDLProtector).start();
+      operationSyncDDLLogService =
+          new OperationSyncLogService("OperationSyncDDLLog", operationSyncDDLProtector);
+      new Thread(operationSyncDDLLogService).start();
 
-      // create DoubleWriteProducer
-      BlockingQueue<Pair<ByteBuffer, DoubleWritePlanTypeUtils.DoubleWritePlanType>> blockingQueue =
-          new ArrayBlockingQueue<>(config.getDoubleWriteProducerCacheSize());
-      doubleWriteProducer = new DoubleWriteProducer(blockingQueue);
+      // create OperationSyncProducer
+      BlockingQueue<Pair<ByteBuffer, OperationSyncPlanTypeUtils.OperationSyncPlanType>>
+          blockingQueue = new ArrayBlockingQueue<>(config.getOperationSyncProducerCacheSize());
+      operationSyncProducer = new OperationSyncProducer(blockingQueue);
 
-      // create DoubleWriteNIProtector and DoubleWriteNILogService
-      DoubleWriteNIProtector doubleWriteNIProtector =
-          new DoubleWriteNIProtector(doubleWriteEProtector, doubleWriteProducer);
-      new Thread(doubleWriteNIProtector).start();
-      DoubleWriteLogService doubleWriteNILogService =
-          new DoubleWriteLogService("NILog", doubleWriteNIProtector);
-      new Thread(doubleWriteNILogService).start();
+      // create OperationSyncDMLProtector and OperationSyncDMLLogService
+      OperationSyncDMLProtector operationSyncDMLProtector =
+          new OperationSyncDMLProtector(operationSyncDDLProtector, operationSyncProducer);
+      new Thread(operationSyncDMLProtector).start();
+      OperationSyncLogService operationSyncDMLLogService =
+          new OperationSyncLogService("OperationSyncDMLLog", operationSyncDMLProtector);
+      new Thread(operationSyncDMLLogService).start();
 
-      // create DoubleWriteConsumer
-      for (int i = 0; i < config.getDoubleWriteConsumerConcurrencySize(); i++) {
-        DoubleWriteConsumer consumer =
-            new DoubleWriteConsumer(blockingQueue, doubleWriteSessionPool, doubleWriteNILogService);
+      // create OperationSyncConsumer
+      for (int i = 0; i < config.getOperationSyncConsumerConcurrencySize(); i++) {
+        OperationSyncConsumer consumer =
+            new OperationSyncConsumer(
+                blockingQueue, operationSyncsessionPool, operationSyncDMLLogService);
         new Thread(consumer).start();
       }
     } else {
-      doubleWriteSessionPool = null;
-      doubleWriteProducer = null;
-      doubleWriteEProtector = null;
-      doubleWriteELogService = null;
+      operationSyncsessionPool = null;
+      operationSyncProducer = null;
+      operationSyncDDLProtector = null;
+      operationSyncDDLLogService = null;
     }
   }
 
@@ -2138,24 +2140,26 @@ public class TSServiceImpl implements TSIService.Iface {
   }
 
   @Override
-  public TSStatus executeDoubleWrite(TSInternalSyncWriteReq req) {
-    PhysicalPlan physicalPlan = null;
+  public TSStatus executeOperationSync(TSOperationSyncWriteReq req) {
+    PhysicalPlan physicalPlan;
     try {
       ByteBuffer planBuffer = req.physicalPlan;
       planBuffer.position(0);
       physicalPlan = PhysicalPlan.Factory.create(req.physicalPlan);
     } catch (IllegalPathException | IOException e) {
-      LOGGER.error("double write deserialization failed.", e);
+      LOGGER.error("OperationSync deserialization failed.", e);
+      return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
+          .setMessage(e.getMessage());
     }
 
-    DoubleWritePlanTypeUtils.DoubleWritePlanType planType =
-        DoubleWritePlanTypeUtils.getDoubleWritePlanType(physicalPlan);
+    OperationSyncPlanTypeUtils.OperationSyncPlanType planType =
+        OperationSyncPlanTypeUtils.getOperationSyncPlanType(physicalPlan);
     if (planType == null) {
       LOGGER.error(
-          "DoubleWrite receive unsupported PhysicalPlan type: {}", physicalPlan.getOperatorName());
+          "OperationSync receive unsupported PhysicalPlan type: {}",
+          physicalPlan.getOperatorName());
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
     }
-    // LOGGER.info("DoubleWrite receive:{}", physicalPlan.getPaths().toString());
 
     try {
       return serviceProvider.executeNonQuery(physicalPlan)
@@ -2166,55 +2170,54 @@ public class TSServiceImpl implements TSIService.Iface {
     }
   }
 
-  private void transmitDoubleWrite(PhysicalPlan physicalPlan) {
+  private void transmitOperationSync(PhysicalPlan physicalPlan) {
 
-    DoubleWritePlanTypeUtils.DoubleWritePlanType planType =
-        DoubleWritePlanTypeUtils.getDoubleWritePlanType(physicalPlan);
+    OperationSyncPlanTypeUtils.OperationSyncPlanType planType =
+        OperationSyncPlanTypeUtils.getOperationSyncPlanType(physicalPlan);
     if (planType == null) {
-      // Don't need DoubleWrite
+      // Don't need OperationSync
       return;
     }
-
-    // LOGGER.info("DoubleWrite transmit: {}", physicalPlan.getPaths().toString());
 
     // serialize physical plan
     ByteBuffer buffer;
     try {
       int size = physicalPlan.getSerializedSize();
-      ByteArrayOutputStream doubleWriteByteStream = new ByteArrayOutputStream(size);
-      DataOutputStream doubleWriteSerializeStream = new DataOutputStream(doubleWriteByteStream);
-      physicalPlan.serialize(doubleWriteSerializeStream);
-      buffer = ByteBuffer.wrap(doubleWriteByteStream.toByteArray());
+      ByteArrayOutputStream operationSyncByteStream = new ByteArrayOutputStream(size);
+      DataOutputStream operationSyncSerializeStream = new DataOutputStream(operationSyncByteStream);
+      physicalPlan.serialize(operationSyncSerializeStream);
+      buffer = ByteBuffer.wrap(operationSyncByteStream.toByteArray());
     } catch (IOException e) {
-      LOGGER.error("DoubleWrite can't serialize PhysicalPlan", e);
+      LOGGER.error("OperationSync can't serialize PhysicalPlan", e);
       return;
     }
 
     switch (planType) {
       case EPlan:
-        // Create DoubleWriteTask and wait
+        // Create OperationSyncWriteTask and wait
         Thread taskThread =
             new Thread(
-                new DoubleWriteTask(
-                    buffer, doubleWriteSessionPool, doubleWriteEProtector, doubleWriteELogService));
+                new OperationSyncWriteTask(
+                    buffer, operationSyncsessionPool,
+                    operationSyncDDLProtector, operationSyncDDLLogService));
         taskThread.start();
         try {
           taskThread.join();
         } catch (InterruptedException e) {
-          LOGGER.error("DoubleWriteTask been interrupted", e);
+          LOGGER.error("OperationSyncWriteTask been interrupted", e);
         }
         break;
       case IPlan:
       case NPlan:
-        // Put into DoubleWriteProducer
-        doubleWriteProducer.put(new Pair<>(buffer, planType));
+        // Put into OperationSyncProducer
+        operationSyncProducer.put(new Pair<>(buffer, planType));
     }
   }
 
   protected TSStatus executeNonQueryPlan(PhysicalPlan plan) {
-    if (isEnableDoubleWrite) {
-      // DoubleWrite should transmit before execute
-      transmitDoubleWrite(plan);
+    if (isEnableOperationSync) {
+      // OperationSync should transmit before execute
+      transmitOperationSync(plan);
     }
 
     try {

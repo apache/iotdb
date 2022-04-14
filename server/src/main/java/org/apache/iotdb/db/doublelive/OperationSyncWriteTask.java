@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.doublewrite;
+package org.apache.iotdb.db.doublelive;
 
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.session.pool.SessionPool;
@@ -27,22 +27,22 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-/** DoubleWriteTask is used for transmit one E-Plan sending by a client */
-public class DoubleWriteTask implements Runnable {
-  private static final Logger LOGGER = LoggerFactory.getLogger(DoubleWriteTask.class);
+/** OperationSyncWriteTask is used for transmit one E-Plan sending by a client */
+public class OperationSyncWriteTask implements Runnable {
+  private static final Logger LOGGER = LoggerFactory.getLogger(OperationSyncWriteTask.class);
 
   private final ByteBuffer physicalPlanBuffer;
-  private final SessionPool doubleWriteSessionPool;
-  private final DoubleWriteEProtector eProtector;
-  private final DoubleWriteLogService eLogService;
+  private final SessionPool operationSyncSessionPool;
+  private final OperationSyncDDLProtector eProtector;
+  private final OperationSyncLogService eLogService;
 
-  public DoubleWriteTask(
+  public OperationSyncWriteTask(
       ByteBuffer physicalPlanBuffer,
-      SessionPool doubleWriteSessionPool,
-      DoubleWriteEProtector eProtector,
-      DoubleWriteLogService eLogService) {
+      SessionPool operationSyncSessionPool,
+      OperationSyncDDLProtector eProtector,
+      OperationSyncLogService eLogService) {
     this.physicalPlanBuffer = physicalPlanBuffer;
-    this.doubleWriteSessionPool = doubleWriteSessionPool;
+    this.operationSyncSessionPool = operationSyncSessionPool;
     this.eProtector = eProtector;
     this.eLogService = eLogService;
   }
@@ -55,13 +55,14 @@ public class DoubleWriteTask implements Runnable {
       boolean transmitStatus = false;
       try {
         physicalPlanBuffer.position(0);
-        transmitStatus = doubleWriteSessionPool.doubleWriteTransmit(physicalPlanBuffer);
+        transmitStatus = operationSyncSessionPool.operationSyncTransmit(physicalPlanBuffer);
       } catch (IoTDBConnectionException connectionException) {
         // warn IoTDBConnectionException and do serialization
-        LOGGER.warn("DoubleWriteTask can't transmit because network failure", connectionException);
+        LOGGER.warn(
+            "OperationSyncWriteTask can't transmit because network failure", connectionException);
       } catch (Exception e) {
         // The PhysicalPlan has internal error, reject transmit
-        LOGGER.error("DoubleWriteTask can't transmit", e);
+        LOGGER.error("OperationSyncWriteTask can't transmit", e);
         return;
       }
       if (!transmitStatus) {

@@ -27,8 +27,8 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
-    <artifactId>doublewrite-example</artifactId>
-    <name>double-write-example</name>
+    <artifactId>operationsync-example</artifactId>
+    <name>operation-sync-example</name>
     <dependencies>
         <dependency>
             <groupId>org.apache.iotdb</groupId>

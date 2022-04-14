@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.doublewrite;
+package org.apache.iotdb.operationsync;
 
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -29,18 +29,18 @@ import java.util.ArrayList;
 import java.util.List;
 
 /** Thread for insertion. Normally you don't need to modify this java class. */
-public class DoubleWriteThread implements Runnable {
+public class OperationSyncThread implements Runnable {
 
   private final SessionPool sessionPool;
 
-  private final String sg = "root.DOUBLEWRITESG";
+  private final String sg = "root.OPERATIONSYNCSG";
   private final String deviceId;
 
   private final int batchCnt;
   private final int timeseriesCnt;
   private final int batchSize;
 
-  DoubleWriteThread(
+  OperationSyncThread(
       SessionPool sessionPool, String deviceId, int batchCnt, int timeseriesCnt, int batchSize)
       throws IoTDBConnectionException, StatementExecutionException {
     this.sessionPool = sessionPool;

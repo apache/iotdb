@@ -16,9 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.doublewrite;
+package org.apache.iotdb.operationsync;
 
-public class DoubleWriteEmpty extends DoubleWriteUtil {
+public class OperationSyncEmpty extends OperationSyncUtil {
 
   public static void main(String[] args) {
     initEnvironment();

@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.doublewrite;
+package org.apache.iotdb.operationsync;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -26,10 +26,10 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.pool.SessionPool;
 
 /**
- * This java class is used to create the double write examples environment. You can set IoTDB-B
+ * This java class is used to create the operation sync examples environment. You can set IoTDB-B
  * config here
  */
-public abstract class DoubleWriteUtil {
+public abstract class OperationSyncUtil {
 
   // IoTDB-A config
   // Started by EnvironmentUtils, shouldn't be modified
@@ -51,22 +51,22 @@ public abstract class DoubleWriteUtil {
   protected static final int concurrency = 5;
 
   // Default name of StorageGroup
-  protected static final String sg = "root.DOUBLEWRITESG";
+  protected static final String sg = "root.OPERATIONSYNCSG";
 
-  // Threads for double write
+  // Threads for operation sync
   protected static Thread threadA;
   protected static Thread threadB;
 
   protected static void initEnvironment() {
-    // Start local IoTDB-A on ip "127.0.0.1", port 6667 and set enableDoubleWrite
+    // Start local IoTDB-A on ip "127.0.0.1", port 6667 and set enableOperationSync
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-    config.setEnableDoubleWrite(true);
+    config.setEnableOperationSync(true);
     config.setSecondaryAddress(ipB);
     config.setSecondaryPort(portB);
     config.setSecondaryUser(userB);
     config.setSecondaryPassword(passwordB);
-    config.setDoubleWriteMaxLogSize(1024);
+    config.setOperationSyncMaxLogSize(1024);
 
     EnvironmentUtils.envSetUp();
   }
@@ -92,19 +92,19 @@ public abstract class DoubleWriteUtil {
     sessionPoolA.setStorageGroup(sg);
     sessionPoolB.setStorageGroup(sg);
 
-    // Create double write threads
-    DoubleWriteThread doubleWriteThreadA =
-        new DoubleWriteThread(sessionPoolA, dA, batchCnt, timeseriesCnt, batchSize);
-    threadA = new Thread(doubleWriteThreadA);
-    DoubleWriteThread doubleWriteThreadB =
-        new DoubleWriteThread(sessionPoolB, dB, batchCnt, timeseriesCnt, batchSize);
-    threadB = new Thread(doubleWriteThreadB);
+    // Create operation sync threads
+    OperationSyncThread operationSyncThreadA =
+        new OperationSyncThread(sessionPoolA, dA, batchCnt, timeseriesCnt, batchSize);
+    threadA = new Thread(operationSyncThreadA);
+    OperationSyncThread operationSyncThreadB =
+        new OperationSyncThread(sessionPoolB, dB, batchCnt, timeseriesCnt, batchSize);
+    threadB = new Thread(operationSyncThreadB);
   }
 
   protected static void cleanEnvironment() throws Exception {
     // Clean StorageGroups, close sessionPools and shut down environment
-    sessionPoolA.deleteStorageGroup("root.DOUBLEWRITESG");
-    sessionPoolB.deleteStorageGroup("root.DOUBLEWRITESG");
+    sessionPoolA.deleteStorageGroup(sg);
+    sessionPoolB.deleteStorageGroup(sg);
 
     sessionPoolA.close();
     sessionPoolB.close();

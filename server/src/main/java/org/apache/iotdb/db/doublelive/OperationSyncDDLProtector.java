@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.doublewrite;
+package org.apache.iotdb.db.doublelive;
 
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -28,15 +28,15 @@ import org.slf4j.LoggerFactory;
 import java.nio.ByteBuffer;
 import java.util.concurrent.TimeUnit;
 
-public class DoubleWriteEProtector extends DoubleWriteProtector {
+public class OperationSyncDDLProtector extends OperationSyncProtector {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(DoubleWriteEProtector.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(OperationSyncDDLProtector.class);
 
-  private final SessionPool doubleWriteSessionPool;
+  private final SessionPool operationSyncSessionPool;
 
-  public DoubleWriteEProtector(SessionPool doubleWriteSessionPool) {
+  public OperationSyncDDLProtector(SessionPool operationSyncSessionPool) {
     super();
-    this.doubleWriteSessionPool = doubleWriteSessionPool;
+    this.operationSyncSessionPool = operationSyncSessionPool;
   }
 
   @Override
@@ -51,15 +51,15 @@ public class DoubleWriteEProtector extends DoubleWriteProtector {
       boolean transmitStatus = false;
 
       try {
-        // try double write
+        // try operation sync
         planBuffer.position(0);
-        transmitStatus = doubleWriteSessionPool.doubleWriteTransmit(planBuffer);
+        transmitStatus = operationSyncSessionPool.operationSyncTransmit(planBuffer);
       } catch (IoTDBConnectionException connectionException) {
         // warn IoTDBConnectionException and retry
-        LOGGER.warn("DoubleWriteEProtector can't transmit, retrying...", connectionException);
+        LOGGER.warn("OperationSyncDDLProtector can't transmit, retrying...", connectionException);
       } catch (Exception e) {
         // error exception and break
-        LOGGER.error("DoubleWriteEProtector can't transmit", e);
+        LOGGER.error("OperationSyncDDLProtector can't transmit", e);
         break;
       }
 
@@ -69,7 +69,7 @@ public class DoubleWriteEProtector extends DoubleWriteProtector {
         try {
           TimeUnit.SECONDS.sleep(1);
         } catch (InterruptedException e) {
-          LOGGER.warn("DoubleWriteEProtector is interrupted", e);
+          LOGGER.warn("OperationSyncDDLProtector is interrupted", e);
         }
       }
     }
