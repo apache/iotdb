@@ -381,7 +381,7 @@ public class IoTDBDescriptor {
       conf.setInnerSeqCompactionPerformer(
           InnerSeqCompactionPerformer.getInnerSeqCompactionPerformer(
               properties.getProperty(
-                  "inner_seq_performer", conf.getInnerUnseqCompactionPerformer().toString())));
+                  "inner_seq_performer", conf.getInnerSeqCompactionPerformer().toString())));
 
       conf.setInnerUnseqCompactionPerformer(
           InnerUnseqCompactionPerformer.getInnerUnseqCompactionPerformer(

@@ -57,6 +57,19 @@ public class SchemaTree {
     return new Pair<>(visitor.getAllResult(), visitor.getNextOffset());
   }
 
+  /**
+   * Get storage group name by path
+   *
+   * <p>e.g., root.sg1 is a storage group and path = root.sg1.d1, return root.sg1
+   *
+   * @param path only full path, cannot be path pattern
+   * @return storage group in the given path
+   */
+  public String getBelongedStorageGroup(PartialPath path) {
+    // TODO: @zyk
+    throw new UnsupportedOperationException();
+  }
+
   public DeviceSchemaInfo searchDeviceSchemaInfo(
       PartialPath devicePath, List<String> measurements) {
 

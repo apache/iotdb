@@ -20,22 +20,24 @@ package org.apache.iotdb.db.mpp.sql.analyze;
 
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
-import org.apache.iotdb.commons.partition.PartitionInfo;
 import org.apache.iotdb.commons.partition.SchemaPartition;
+import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
+import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 
 import java.util.List;
+import java.util.Map;
 
 public interface IPartitionFetcher {
 
-  DataPartition fetchDataPartitionInfo(DataPartitionQueryParam parameter);
+  SchemaPartition getSchemaPartition(PathPatternTree patternTree) throws StatementAnalyzeException;
 
-  DataPartition fetchDataPartitionInfos(List<DataPartitionQueryParam> parameterList);
+  SchemaPartition getOrCreateSchemaPartition(PathPatternTree patternTree)
+      throws StatementAnalyzeException;
 
-  SchemaPartition fetchSchemaPartitionInfo(String devicePath);
+  DataPartition getDataPartition(Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap)
+      throws StatementAnalyzeException;
 
-  SchemaPartition fetchSchemaPartitionInfos(List<String> devicePath);
-
-  PartitionInfo fetchPartitionInfo(DataPartitionQueryParam parameter);
-
-  PartitionInfo fetchPartitionInfos(List<DataPartitionQueryParam> parameterList);
+  DataPartition getOrCreateDataPartition(
+      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap)
+      throws StatementAnalyzeException;
 }
