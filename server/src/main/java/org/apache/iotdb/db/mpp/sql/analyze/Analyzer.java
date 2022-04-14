@@ -180,6 +180,7 @@ public class Analyzer {
     @Override
     public Analysis visitInsertRow(InsertRowStatement insertRowStatement, MPPQueryContext context) {
       // TODO remove duplicate
+      context.setQueryType(QueryType.WRITE);
       SchemaTree schemaTree =
           schemaFetcher.fetchSchemaWithAutoCreate(
               insertRowStatement.getDevicePath(),
@@ -223,6 +224,7 @@ public class Analyzer {
     public Analysis visitInsertRows(
         InsertRowsStatement insertRowsStatement, MPPQueryContext context) {
       // TODO remove duplicate
+      context.setQueryType(QueryType.WRITE);
       SchemaTree schemaTree =
           schemaFetcher.fetchSchemaListWithAutoCreate(
               insertRowsStatement.getDevicePaths(),
@@ -316,6 +318,7 @@ public class Analyzer {
     public Analysis visitInsertRowsOfOneDevice(
         InsertRowsOfOneDeviceStatement insertRowsOfOneDeviceStatement, MPPQueryContext context) {
       // TODO remove duplicate
+      context.setQueryType(QueryType.WRITE);
       SchemaTree schemaTree =
           schemaFetcher.fetchSchemaWithAutoCreate(
               insertRowsOfOneDeviceStatement.getDevicePath(),
