@@ -172,9 +172,41 @@ public class Analyzer {
     public Analysis visitInsert(InsertStatement insertStatement, MPPQueryContext context) {
       // TODO: do analyze for insert statement
       context.setQueryType(QueryType.WRITE);
-      Analysis analysis = new Analysis();
-      analysis.setStatement(insertStatement);
-      return analysis;
+
+      long[] timeArray = insertStatement.getTimes();
+      PartialPath devicePath = insertStatement.getDevice();
+      String[] measurements = insertStatement.getMeasurementList();
+      if (timeArray.length == 1) {
+        // construct insert row statement
+        InsertRowStatement insertRowStatement = new InsertRowStatement();
+        insertRowStatement.setDevicePath(devicePath);
+        insertRowStatement.setTime(timeArray[0]);
+        insertRowStatement.setMeasurements(measurements);
+        insertRowStatement.setDataTypes(
+            new TSDataType[insertStatement.getMeasurementList().length]);
+        insertRowStatement.setValues(insertStatement.getValuesList().get(0));
+        insertRowStatement.setNeedInferType(true);
+        insertRowStatement.setAligned(insertStatement.isAligned());
+        return insertRowStatement.accept(this, context);
+      } else {
+        // construct insert rows statement
+        // construct insert statement
+        InsertRowsStatement insertRowsStatement = new InsertRowsStatement();
+        List<InsertRowStatement> insertRowStatementList = new ArrayList<>();
+        for (int i = 0; i < timeArray.length; i++) {
+          InsertRowStatement statement = new InsertRowStatement();
+          statement.setDevicePath(devicePath);
+          statement.setMeasurements(measurements);
+          statement.setTime(timeArray[i]);
+          statement.setDataTypes(new TSDataType[insertStatement.getMeasurementList().length]);
+          statement.setValues(insertStatement.getValuesList().get(i));
+          statement.setAligned(insertStatement.isAligned());
+          statement.setNeedInferType(true);
+          insertRowStatementList.add(statement);
+        }
+        insertRowsStatement.setInsertRowStatementList(insertRowStatementList);
+        return insertRowsStatement.accept(this, context);
+      }
     }
 
     @Override
