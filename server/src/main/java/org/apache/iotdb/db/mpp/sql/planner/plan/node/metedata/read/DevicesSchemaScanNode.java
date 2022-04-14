@@ -89,12 +89,16 @@ public class DevicesSchemaScanNode extends SchemaScanNode {
     ReadWriteIOUtils.write(hasSgCol, byteBuffer);
   }
 
-  public static DevicesSchemaScanNode deserialize(ByteBuffer byteBuffer)
-      throws IllegalPathException {
+  public static DevicesSchemaScanNode deserialize(ByteBuffer byteBuffer) {
     String id = ReadWriteIOUtils.readString(byteBuffer);
     PlanNodeId planNodeId = new PlanNodeId(id);
     String fullPath = ReadWriteIOUtils.readString(byteBuffer);
-    PartialPath path = new PartialPath(fullPath);
+    PartialPath path = null;
+    try {
+      path = new PartialPath(fullPath);
+    } catch (IllegalPathException e) {
+      throw new IllegalArgumentException("Cannot deserialize DevicesSchemaScanNode", e);
+    }
     int limit = ReadWriteIOUtils.readInt(byteBuffer);
     int offset = ReadWriteIOUtils.readInt(byteBuffer);
     boolean isPrefixPath = ReadWriteIOUtils.readBool(byteBuffer);

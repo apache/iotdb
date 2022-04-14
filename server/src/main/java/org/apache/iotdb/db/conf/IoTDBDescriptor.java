@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionPriority;
@@ -363,17 +364,17 @@ public class IoTDBDescriptor {
                   Boolean.toString(conf.isEnableUnseqSpaceCompaction()))));
 
       conf.setCrossCompactionSelector(
-          CrossCompactionSelector.getCrossCompactionStrategy(
+          CrossCompactionSelector.getCrossCompactionSelector(
               properties.getProperty(
                   "cross_selector", conf.getCrossCompactionSelector().toString())));
 
       conf.setInnerSequenceCompactionSelector(
-          InnerSequenceCompactionSelector.getInnerSequenceCompactionStrategy(
+          InnerSequenceCompactionSelector.getInnerSequenceCompactionSelector(
               properties.getProperty(
                   "inner_seq_selector", conf.getInnerSequenceCompactionSelector().toString())));
 
       conf.setInnerUnsequenceCompactionSelector(
-          InnerUnsequenceCompactionSelector.getInnerUnsequenceCompactionStrategy(
+          InnerUnsequenceCompactionSelector.getInnerUnsequenceCompactionSelector(
               properties.getProperty(
                   "inner_unseq_selector", conf.getInnerUnsequenceCompactionSelector().toString())));
 
@@ -1616,6 +1617,13 @@ public class IoTDBDescriptor {
       urlList.add(nodeUrl);
     }
     return urlList;
+  }
+
+  // These configurations are received from config node when registering
+  public void loadGlobalConfig(TGlobalConfig globalConfig) {
+    conf.setSeriesPartitionExecutorClass(globalConfig.getSeriesPartitionExecutorClass());
+    conf.setConsensusProtocolClass(globalConfig.getDataNodeConsensusProtocolClass());
+    conf.setSeriesPartitionSlotNum(globalConfig.getSeriesPartitionSlotNum());
   }
 
   private static class IoTDBDescriptorHolder {

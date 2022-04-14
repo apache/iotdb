@@ -156,7 +156,7 @@ public class DeviceMergeNode extends ProcessNode implements IOutputPlanNode {
     }
   }
 
-  public static DeviceMergeNode deserialize(ByteBuffer byteBuffer) throws IllegalPathException {
+  public static DeviceMergeNode deserialize(ByteBuffer byteBuffer) {
     int orderByIndex = ReadWriteIOUtils.readInt(byteBuffer);
     OrderBy orderBy = OrderBy.values()[orderByIndex];
     FilterNullComponent filterNullComponent = FilterNullComponent.deserialize(byteBuffer);

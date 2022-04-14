@@ -37,7 +37,6 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.collect.ImmutableList;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -211,11 +210,7 @@ public class SeriesScanNode extends SourceNode implements IOutputPlanNode {
     int limit = ReadWriteIOUtils.readInt(byteBuffer);
     int offset = ReadWriteIOUtils.readInt(byteBuffer);
     RegionReplicaSet dataRegionReplicaSet = new RegionReplicaSet();
-    try {
-      dataRegionReplicaSet.deserializeImpl(byteBuffer);
-    } catch (IOException e) {
-      e.printStackTrace();
-    }
+    RegionReplicaSet.deserializeImpl(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     SeriesScanNode seriesScanNode = new SeriesScanNode(planNodeId, partialPath);
     seriesScanNode.allSensors = allSensors;
