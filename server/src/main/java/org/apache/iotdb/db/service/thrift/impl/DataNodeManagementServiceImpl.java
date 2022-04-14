@@ -121,16 +121,11 @@ public class DataNodeManagementServiceImpl implements ManagementIService.Iface {
         tsStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
         tsStatus.setMessage(consensusGenericResponse.getException().getMessage());
       }
-    } catch (DataRegionException e1) {
+    } catch (DataRegionException e) {
       LOGGER.error(
-          "Create Data Region {} failed because {}", req.getStorageGroup(), e1.getMessage());
+          "Create Data Region {} failed because {}", req.getStorageGroup(), e.getMessage());
       tsStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
-      tsStatus.setMessage(
-          String.format("Create Data Region failed because of %s", e1.getMessage()));
-    } catch (IOException e2) {
-      LOGGER.error("Can't deserialize regionId", e2);
-      tsStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
-      tsStatus.setMessage(String.format("Can't deserialize regionId %s", e2));
+      tsStatus.setMessage(String.format("Create Data Region failed because of %s", e.getMessage()));
     }
     return tsStatus;
   }
