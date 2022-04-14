@@ -252,7 +252,7 @@ public class StorageEngineV2 implements IService {
           continue;
         }
         ConsensusGroupId dataRegionId = new DataRegionId(Integer.parseInt(dataRegionDir.getName()));
-        DataRegion dataRegion = buildNewStorageGroupProcessor(sg, dataRegionDir.getName(), ttl);
+        DataRegion dataRegion = buildNewDataRegion(sg, dataRegionDir.getName(), ttl);
         dataRegionMap.putIfAbsent(dataRegionId, dataRegion);
       }
     }
@@ -430,23 +430,22 @@ public class StorageEngineV2 implements IService {
   }
 
   /**
-   * build a new storage group processor
+   * build a new data region
    *
-   * @param virtualStorageGroupId virtual storage group id e.g. 1
+   * @param dataRegionId virtual storage group id e.g. 1
    * @param logicalStorageGroupName logical storage group name e.g. root.sg1
    */
-  public DataRegion buildNewStorageGroupProcessor(
-      String logicalStorageGroupName, String virtualStorageGroupId, long ttl)
-      throws DataRegionException {
+  public DataRegion buildNewDataRegion(
+      String logicalStorageGroupName, String dataRegionId, long ttl) throws DataRegionException {
     DataRegion processor;
     logger.info(
-        "construct a processor instance, the storage group is {}, Thread is {}",
+        "construct a data region instance, the storage group is {}, Thread is {}",
         logicalStorageGroupName,
         Thread.currentThread().getId());
     processor =
         new DataRegion(
             systemDir + File.separator + logicalStorageGroupName,
-            virtualStorageGroupId,
+            dataRegionId,
             fileFlushPolicy,
             logicalStorageGroupName);
     processor.setDataTTL(ttl);
@@ -555,7 +554,7 @@ public class StorageEngineV2 implements IService {
   // the local engine before adding the corresponding consensusGroup to the consensus layer
   public DataRegion createDataRegion(DataRegionId regionId, String sg, long ttl)
       throws DataRegionException {
-    DataRegion dataRegion = buildNewStorageGroupProcessor(sg, regionId.toString(), ttl);
+    DataRegion dataRegion = buildNewDataRegion(sg, String.valueOf(regionId.getId()), ttl);
     dataRegionMap.put(regionId, dataRegion);
     return dataRegion;
   }
