@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+/** Create regions for specific StorageGroup */
 public class CreateRegionsPlan extends PhysicalPlan {
 
   private String storageGroup;
@@ -74,9 +75,7 @@ public class CreateRegionsPlan extends PhysicalPlan {
 
     int length = buffer.getInt();
     for (int i = 0; i < length; i++) {
-      RegionReplicaSet regionReplicaSet = new RegionReplicaSet();
-      regionReplicaSet.deserializeImpl(buffer);
-      regionReplicaSets.add(regionReplicaSet);
+      regionReplicaSets.add(RegionReplicaSet.deserializeImpl(buffer));
     }
   }
 

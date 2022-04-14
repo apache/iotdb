@@ -19,10 +19,26 @@
 
 package org.apache.iotdb.db.mpp.sql.statement;
 
-import org.apache.iotdb.db.mpp.sql.statement.crud.*;
+import org.apache.iotdb.db.mpp.sql.statement.crud.AggregationQueryStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.FillQueryStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.GroupByFillQueryStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.GroupByQueryStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.InsertMultiTabletsStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.InsertRowStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.InsertRowsOfOneDeviceStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.InsertRowsStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.InsertStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.InsertTabletStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.LastQueryStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.QueryStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.UDAFQueryStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.UDTFQueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowDevicesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowStorageGroupStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.sys.AuthorStatement;
 
 /**
@@ -205,6 +221,18 @@ public abstract class StatementVisitor<R, C> {
   // List Users of Role
   public R visitListAllUserOfRole(AuthorStatement authorStatement, C context) {
     return visitStatement(authorStatement, context);
+  }
+
+  public R visitShowStorageGroup(ShowStorageGroupStatement showStorageGroupStatement, C context) {
+    return visitStatement(showStorageGroupStatement, context);
+  }
+
+  public R visitShowTimeSeries(ShowTimeSeriesStatement showTimeSeriesStatement, C context) {
+    return visitStatement(showTimeSeriesStatement, context);
+  }
+
+  public R visitShowDevices(ShowDevicesStatement showDevicesStatement, C context) {
+    return visitStatement(showDevicesStatement, context);
   }
 
   public R visitInsertRow(InsertRowStatement insertRowStatement, C context) {

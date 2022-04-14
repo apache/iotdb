@@ -31,7 +31,7 @@ public enum InnerSeqCompactionPerformer {
     throw new RuntimeException("Illegal compaction performer for seq inner compaction " + name);
   }
 
-  public ISeqCompactionPerformer getCompactionPerformer() {
+  public ISeqCompactionPerformer createInstance() {
     switch (this) {
       case READ_CHUNK:
       default:

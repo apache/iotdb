@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionPriority;
@@ -240,15 +241,14 @@ public class IoTDBDescriptor {
       conf.setSchemaDir(
           FilePathUtils.regularizePath(conf.getSystemDir()) + IoTDBConstant.SCHEMA_FOLDER_NAME);
 
-      conf.setSyncDir(
-          FilePathUtils.regularizePath(conf.getSystemDir()) + IoTDBConstant.SYNC_FOLDER_NAME);
-
       conf.setQueryDir(
           FilePathUtils.regularizePath(conf.getSystemDir() + IoTDBConstant.QUERY_FOLDER_NAME));
 
       conf.setTracingDir(properties.getProperty("tracing_dir", conf.getTracingDir()));
 
       conf.setDataDirs(properties.getProperty("data_dirs", conf.getDataDirs()[0]).split(","));
+
+      conf.setSyncDir(properties.getProperty("sync_dir", conf.getSyncDir()));
 
       conf.setConsensusDir(properties.getProperty("consensus_dir", conf.getConsensusDir()));
 
@@ -364,17 +364,17 @@ public class IoTDBDescriptor {
                   Boolean.toString(conf.isEnableUnseqSpaceCompaction()))));
 
       conf.setCrossCompactionSelector(
-          CrossCompactionSelector.getCrossCompactionStrategy(
+          CrossCompactionSelector.getCrossCompactionSelector(
               properties.getProperty(
                   "cross_selector", conf.getCrossCompactionSelector().toString())));
 
       conf.setInnerSequenceCompactionSelector(
-          InnerSequenceCompactionSelector.getInnerSequenceCompactionStrategy(
+          InnerSequenceCompactionSelector.getInnerSequenceCompactionSelector(
               properties.getProperty(
                   "inner_seq_selector", conf.getInnerSequenceCompactionSelector().toString())));
 
       conf.setInnerUnsequenceCompactionSelector(
-          InnerUnsequenceCompactionSelector.getInnerUnsequenceCompactionStrategy(
+          InnerUnsequenceCompactionSelector.getInnerUnsequenceCompactionSelector(
               properties.getProperty(
                   "inner_unseq_selector", conf.getInnerUnsequenceCompactionSelector().toString())));
 
@@ -415,15 +415,17 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "session_timeout_threshold",
                   Integer.toString(conf.getSessionTimeoutThreshold()))));
-
-      conf.setSyncEnable(
-          Boolean.parseBoolean(
-              properties.getProperty("is_sync_enable", Boolean.toString(conf.isSyncEnable()))));
-
-      conf.setSyncServerPort(
+      conf.setPipeServerPort(
           Integer.parseInt(
               properties
-                  .getProperty("sync_server_port", Integer.toString(conf.getSyncServerPort()))
+                  .getProperty("pipe_server_port", Integer.toString(conf.getPipeServerPort()))
+                  .trim()));
+      conf.setMaxNumberOfSyncFileRetry(
+          Integer.parseInt(
+              properties
+                  .getProperty(
+                      "max_number_of_sync_file_retry",
+                      Integer.toString(conf.getMaxNumberOfSyncFileRetry()))
                   .trim()));
 
       conf.setIpWhiteList(properties.getProperty("ip_white_list", conf.getIpWhiteList()));
@@ -1345,6 +1347,20 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "select_into_insert_tablet_plan_row_limit",
                   String.valueOf(conf.getSelectIntoInsertTabletPlanRowLimit()))));
+
+      // update sync config
+      conf.setPipeServerPort(
+          Integer.parseInt(
+              properties.getProperty(
+                  "pipe_server_port", String.valueOf(conf.getPipeServerPort()))));
+      conf.setMaxNumberOfSyncFileRetry(
+          Integer.parseInt(
+              properties
+                  .getProperty(
+                      "max_number_of_sync_file_retry",
+                      Integer.toString(conf.getMaxNumberOfSyncFileRetry()))
+                  .trim()));
+      conf.setIpWhiteList(properties.getProperty("ip_white_list", conf.getIpWhiteList()));
     } catch (Exception e) {
       throw new QueryProcessException(String.format("Fail to reload configuration because %s", e));
     }
@@ -1601,6 +1617,14 @@ public class IoTDBDescriptor {
       urlList.add(nodeUrl);
     }
     return urlList;
+  }
+
+  // These configurations are received from config node when registering
+  public void loadGlobalConfig(TGlobalConfig globalConfig) {
+    conf.setSeriesPartitionExecutorClass(globalConfig.getSeriesPartitionExecutorClass());
+    conf.setConsensusProtocolClass(globalConfig.getDataNodeConsensusProtocolClass());
+    conf.setSeriesPartitionSlotNum(globalConfig.getSeriesPartitionSlotNum());
+    conf.setPartitionInterval(globalConfig.timePartitionInterval);
   }
 
   private static class IoTDBDescriptorHolder {

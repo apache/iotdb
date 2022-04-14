@@ -22,11 +22,19 @@ package org.apache.iotdb.db.mpp.sql.statement.crud;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.index.common.IndexType;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
+import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
+import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
 import org.apache.iotdb.db.mpp.sql.constant.StatementType;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.component.*;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.db.qp.physical.crud.MeasurementInfo;
+import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
+import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -79,12 +87,6 @@ public class QueryStatement extends Statement {
 
   // TODO: add comments
   protected IndexType indexType;
-
-  /**
-   * Since IoTDB v0.13, all DDL and DML use patternMatch as default. Before IoTDB v0.13, all DDL and
-   * DML use prefixMatch.
-   */
-  protected boolean isPrefixMatchPath = false;
 
   public QueryStatement() {
     this.statementType = StatementType.QUERY;
@@ -215,14 +217,6 @@ public class QueryStatement extends Statement {
     this.indexType = indexType;
   }
 
-  public boolean isPrefixMatchPath() {
-    return isPrefixMatchPath;
-  }
-
-  public void setPrefixMatchPath(boolean prefixMatchPath) {
-    isPrefixMatchPath = prefixMatchPath;
-  }
-
   public boolean isGroupByLevel() {
     return false;
   };
@@ -243,18 +237,20 @@ public class QueryStatement extends Statement {
     return selectComponent.isHasUserDefinedAggregationFunction();
   }
 
-  public Map<String, Set<PartialPath>> getDeviceNameToPathsMap() {
-    Map<String, Set<PartialPath>> deviceNameToPathsMap =
-        new HashMap<>(getSelectComponent().getDeviceIdToPathsMap());
+  public Map<String, Set<PartialPath>> getDeviceNameToDeduplicatedPathsMap() {
+    Map<String, Set<PartialPath>> deviceNameToDeduplicatedPathsMap =
+        new HashMap<>(getSelectComponent().getDeviceNameToDeduplicatedPathsMap());
     if (getWhereCondition() != null) {
       for (PartialPath path :
           getWhereCondition().getQueryFilter().getPathSet().stream()
               .filter(SQLConstant::isNotReservedPath)
               .collect(Collectors.toList())) {
-        deviceNameToPathsMap.computeIfAbsent(path.getDevice(), k -> new HashSet<>()).add(path);
+        deviceNameToDeduplicatedPathsMap
+            .computeIfAbsent(path.getDevice(), k -> new HashSet<>())
+            .add(path);
       }
     }
-    return deviceNameToPathsMap;
+    return deviceNameToDeduplicatedPathsMap;
   }
 
   public List<String> getSelectedPathNames() {
@@ -266,6 +262,46 @@ public class QueryStatement extends Statement {
               .collect(Collectors.toList()));
     }
     return new ArrayList<>(pathSet);
+  }
+
+  public DatasetHeader constructDatasetHeader() {
+    List<ColumnHeader> columnHeaders = new ArrayList<>();
+    if (this.isAlignByDevice()) {
+      // add DEVICE column
+      columnHeaders.add(new ColumnHeader(HeaderConstant.COLUMN_DEVICE, TSDataType.TEXT, null));
+
+      // TODO: consider ALIGN BY DEVICE
+    } else {
+      columnHeaders.addAll(
+          this.getSelectComponent().getResultColumns().stream()
+              .map(ResultColumn::constructColumnHeader)
+              .collect(Collectors.toList()));
+    }
+    return new DatasetHeader(columnHeaders, false);
+  }
+
+  /**
+   * If path is a vectorPartialPath, we return its measurementId + subMeasurement as the final
+   * measurement. e.g. path: root.sg.d1.vector1[s1], return "vector1.s1".
+   */
+  private String getMeasurementName(PartialPath path, String aggregation) {
+    String initialMeasurement = path.getMeasurement();
+    if (aggregation != null) {
+      initialMeasurement = aggregation + "(" + initialMeasurement + ")";
+    }
+    return initialMeasurement;
+  }
+
+  private PartialPath getPathFromExpression(Expression expression) {
+    return expression instanceof TimeSeriesOperand
+        ? ((TimeSeriesOperand) expression).getPath()
+        : (((FunctionExpression) expression).getPaths().get(0));
+  }
+
+  private String getAggregationFromExpression(Expression expression) {
+    return expression.isBuiltInAggregationFunctionExpression()
+        ? ((FunctionExpression) expression).getFunctionName()
+        : null;
   }
 
   /** semantic check */
@@ -284,6 +320,18 @@ public class QueryStatement extends Statement {
     }
   }
 
+  /**
+   * Check datatype consistency in ALIGN BY DEVICE.
+   *
+   * <p>an inconsistent example: select s0 from root.sg1.d1, root.sg1.d2 align by device, return
+   * false while root.sg1.d1.s0 is INT32 and root.sg1.d2.s0 is FLOAT.
+   */
+  private boolean checkDataTypeConsistency(
+      TSDataType checkedDataType, MeasurementInfo measurementInfo) {
+    return measurementInfo == null || checkedDataType.equals(measurementInfo.getColumnDataType());
+  }
+
+  @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitQuery(this, context);
   }

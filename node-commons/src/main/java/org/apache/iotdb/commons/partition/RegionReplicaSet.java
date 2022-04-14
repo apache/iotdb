@@ -18,14 +18,17 @@
  */
 package org.apache.iotdb.commons.partition;
 
+import org.apache.iotdb.common.rpc.thrift.EndPoint;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.cluster.DataNodeLocation;
+import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 public class RegionReplicaSet {
   private ConsensusGroupId consensusGroupId;
@@ -36,6 +39,17 @@ public class RegionReplicaSet {
   public RegionReplicaSet(ConsensusGroupId consensusGroupId, List<DataNodeLocation> dataNodeList) {
     this.consensusGroupId = consensusGroupId;
     this.dataNodeList = dataNodeList;
+  }
+
+  public RegionReplicaSet(TRegionReplicaSet respRegionReplicaSet) {
+    this.consensusGroupId = ConsensusGroupId.Factory.create(respRegionReplicaSet.regionId);
+    this.dataNodeList =
+        respRegionReplicaSet.getEndpoint().stream()
+            .map(
+                respEndpoint ->
+                    new DataNodeLocation(
+                        new Endpoint(respEndpoint.getIp(), respEndpoint.getPort())))
+            .collect(Collectors.toList());
   }
 
   public List<DataNodeLocation> getDataNodeList() {
@@ -54,10 +68,32 @@ public class RegionReplicaSet {
     this.consensusGroupId = consensusGroupId;
   }
 
+  /** Convert RegionReplicaSet to TRegionReplicaSet */
+  public TRegionReplicaSet convertToRPCTRegionReplicaSet() {
+    TRegionReplicaSet tRegionReplicaSet = new TRegionReplicaSet();
+
+    // Convert ConsensusGroupId
+    ByteBuffer buffer = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES);
+    consensusGroupId.serializeImpl(buffer);
+    buffer.flip();
+    tRegionReplicaSet.setRegionId(buffer);
+
+    // Convert EndPoints
+    List<EndPoint> endPointList = new ArrayList<>();
+    dataNodeList.forEach(
+        dataNodeLocation ->
+            endPointList.add(
+                new EndPoint(
+                    dataNodeLocation.getEndPoint().getIp(),
+                    dataNodeLocation.getEndPoint().getPort())));
+    tRegionReplicaSet.setEndpoint(endPointList);
+
+    return tRegionReplicaSet;
+  }
+
+  @Override
   public String toString() {
-    return String.format(
-        "RegionReplicaSet[%s-%d]: %s",
-        consensusGroupId.getType(), consensusGroupId.getId(), dataNodeList);
+    return String.format("RegionReplicaSet[%s]: %s", consensusGroupId, dataNodeList);
   }
 
   public void serializeImpl(ByteBuffer buffer) {
@@ -69,7 +105,7 @@ public class RegionReplicaSet {
         });
   }
 
-  public static RegionReplicaSet deserializeImpl(ByteBuffer buffer) throws IOException {
+  public static RegionReplicaSet deserializeImpl(ByteBuffer buffer) {
     ConsensusGroupId consensusGroupId = ConsensusGroupId.Factory.create(buffer);
 
     int size = buffer.getInt();

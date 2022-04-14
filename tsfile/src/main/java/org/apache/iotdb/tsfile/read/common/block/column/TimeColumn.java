@@ -75,6 +75,10 @@ public class TimeColumn implements Column {
   }
 
   @Override
+  public Object getObject(int position) {
+    return getLong(position);
+  }
+
   public boolean mayHaveNull() {
     return false;
   }

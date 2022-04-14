@@ -27,6 +27,7 @@ import org.apache.iotdb.confignode.persistence.RegionInfoPersistence;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
 import org.apache.iotdb.confignode.physical.crud.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.physical.crud.CreateRegionsPlan;
+import org.apache.iotdb.confignode.physical.crud.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.physical.crud.GetOrCreateDataPartitionPlan;
 import org.apache.iotdb.confignode.physical.crud.GetOrCreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.physical.sys.AuthorPlan;
@@ -93,8 +94,7 @@ public class PlanExecutor {
       case CreateRegions:
         return regionInfoPersistence.createRegions((CreateRegionsPlan) plan);
       case CreateSchemaPartition:
-        return partitionInfoPersistence.createSchemaPartition(
-            (GetOrCreateSchemaPartitionPlan) plan);
+        return partitionInfoPersistence.createSchemaPartition((CreateSchemaPartitionPlan) plan);
       case CreateDataPartition:
         return partitionInfoPersistence.createDataPartition((CreateDataPartitionPlan) plan);
       case CREATE_USER:

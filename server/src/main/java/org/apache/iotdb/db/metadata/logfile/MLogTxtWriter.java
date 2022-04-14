@@ -58,6 +58,7 @@ import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 public class MLogTxtWriter implements AutoCloseable {
 
@@ -140,12 +141,14 @@ public class MLogTxtWriter implements AutoCloseable {
     buf.append(
         String.format(
             "%s,%s,%s,%s,%s,%s",
-            MetadataOperationType.CREATE_TIMESERIES,
+            MetadataOperationType.CREATE_ALIGNED_TIMESERIES,
             plan.getPrefixPath().getFullPath(),
             plan.getMeasurements(),
-            plan.getDataTypes().stream().map(TSDataType::serialize),
-            plan.getEncodings().stream().map(TSEncoding::serialize),
-            plan.getCompressors().stream().map(CompressionType::serialize)));
+            plan.getDataTypes().stream().map(TSDataType::serialize).collect(Collectors.toList()),
+            plan.getEncodings().stream().map(TSEncoding::serialize).collect(Collectors.toList()),
+            plan.getCompressors().stream()
+                .map(CompressionType::serialize)
+                .collect(Collectors.toList())));
 
     buf.append(",[");
     if (plan.getAliasList() != null) {

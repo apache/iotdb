@@ -31,7 +31,7 @@ public enum CrossCompactionPerformer {
     throw new RuntimeException("Illegal compaction performer for cross compaction " + name);
   }
 
-  public ICrossCompactionPerformer getCompactionPerformer() {
+  public ICrossCompactionPerformer createInstance() {
     switch (this) {
       case READ_POINT:
       default:

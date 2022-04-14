@@ -26,29 +26,21 @@ import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
-import org.apache.iotdb.commons.utils.CommonUtils;
-import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
+import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConfigCheck;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.consensus.ConsensusImpl;
 import org.apache.iotdb.db.service.thrift.impl.DataNodeManagementServiceImpl;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
-import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.thrift.TException;
-import org.apache.thrift.protocol.TBinaryProtocol;
-import org.apache.thrift.protocol.TCompactProtocol;
-import org.apache.thrift.transport.TTransport;
-import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.List;
-import java.util.Random;
 
 public class DataNode implements DataNodeMBean {
   private static final Logger logger = LoggerFactory.getLogger(DataNode.class);
@@ -88,8 +80,6 @@ public class DataNode implements DataNodeMBean {
   protected void serverCheckAndInit() throws ConfigurationException, IOException {
     IoTDBConfigCheck.getInstance().checkConfig();
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-
-    config.setSyncEnable(false);
     // TODO: check configuration for data node
 
     // if client ip is the default address, set it same with internal ip
@@ -123,50 +113,56 @@ public class DataNode implements DataNodeMBean {
   }
 
   public void joinCluster() throws StartupException {
-    List<Endpoint> configNodes;
+    int retry = DEFAULT_JOIN_RETRY;
+    ConfigNodeClient configNodeClient = null;
     try {
-      configNodes =
-          CommonUtils.parseNodeUrls(IoTDBDescriptor.getInstance().getConfig().getConfigNodeUrls());
-    } catch (BadNodeUrlException e) {
+      configNodeClient = new ConfigNodeClient();
+    } catch (IoTDBConnectionException | BadNodeUrlException e) {
       throw new StartupException(e.getMessage());
     }
 
-    int retry = DEFAULT_JOIN_RETRY;
     while (retry > 0) {
-      // randomly pick up a config node to try
-      Random random = new Random();
-      Endpoint configNode = configNodes.get(random.nextInt(configNodes.size()));
-      logger.info("start joining the cluster with the help of {}", configNode);
+      logger.info("start joining the cluster.");
       try {
-        ConfigIService.Client client = createClient(configNode);
         TDataNodeRegisterResp dataNodeRegisterResp =
-            client.registerDataNode(
+            configNodeClient.registerDataNode(
                 new TDataNodeRegisterReq(new EndPoint(thisNode.getIp(), thisNode.getPort())));
         if (dataNodeRegisterResp.getStatus().getCode()
-            == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+            || dataNodeRegisterResp.getStatus().getCode()
+                == TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode()) {
           dataNodeID = dataNodeRegisterResp.getDataNodeID();
-          logger.info("Joined a cluster successfully");
+          IoTDBDescriptor.getInstance().loadGlobalConfig(dataNodeRegisterResp.globalConfig);
+          logger.info("Joined the cluster successfully");
           return;
         }
+
         // wait 5s to start the next try
         Thread.sleep(IoTDBDescriptor.getInstance().getConfig().getJoinClusterTimeOutMs());
-      } catch (TException | IoTDBConnectionException e) {
-        logger.warn("Cannot join the cluster from {}, because:", configNode, e);
+      } catch (IoTDBConnectionException e) {
+        logger.warn("Cannot join the cluster, because: {}", e.getMessage());
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
-        logger.warn("Unexpected interruption when waiting to join a cluster", e);
+        logger.warn("Unexpected interruption when waiting to join the cluster", e);
       }
       // start the next try
       retry--;
     }
     // all tries failed
     logger.error("Cannot join the cluster after {} retries", DEFAULT_JOIN_RETRY);
-    throw new StartupException("Can not connect with the config nodes, please check the network");
+    throw new StartupException("Cannot join the cluster.");
   }
 
   public void active() throws StartupException {
     // start iotdb server first
     IoTDB.getInstance().active();
+
+    try {
+      // TODO: Start consensus layer in some where else
+      ConsensusImpl.getInstance().start();
+    } catch (IOException e) {
+      throw new StartupException(e);
+    }
 
     /** Register services */
     JMXService.registerMBean(getInstance(), mbeanName);
@@ -199,26 +195,5 @@ public class DataNode implements DataNodeMBean {
     private static final DataNode INSTANCE = new DataNode();
 
     private DataNodeHolder() {}
-  }
-
-  private ConfigIService.Client createClient(Endpoint endpoint) throws IoTDBConnectionException {
-    TTransport transport;
-    try {
-      transport =
-          RpcTransportFactory.INSTANCE.getTransport(
-              // as there is a try-catch already, we do not need to use TSocket.wrap
-              endpoint.getIp(), endpoint.getPort(), 2000);
-      transport.open();
-    } catch (TTransportException e) {
-      throw new IoTDBConnectionException(e);
-    }
-
-    ConfigIService.Client client;
-    if (IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable()) {
-      client = new ConfigIService.Client(new TCompactProtocol(transport));
-    } else {
-      client = new ConfigIService.Client(new TBinaryProtocol(transport));
-    }
-    return client;
   }
 }

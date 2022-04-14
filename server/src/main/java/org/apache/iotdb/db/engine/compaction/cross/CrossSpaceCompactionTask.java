@@ -226,6 +226,15 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
   }
 
   @Override
+  public boolean equals(Object other) {
+    if (!(other instanceof CrossSpaceCompactionTask)) {
+      return false;
+    }
+
+    return equalsOtherTask((CrossSpaceCompactionTask) other);
+  }
+
+  @Override
   public void resetCompactionCandidateStatusForAllSourceFiles() {
     selectedSequenceFiles.forEach(x -> x.setStatus(TsFileResourceStatus.CLOSED));
     selectedUnsequenceFiles.forEach(x -> x.setStatus(TsFileResourceStatus.CLOSED));

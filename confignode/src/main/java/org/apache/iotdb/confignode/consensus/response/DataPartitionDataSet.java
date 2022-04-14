@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.confignode.consensus.response;
 
-import org.apache.iotdb.common.rpc.thrift.EndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
@@ -40,16 +39,16 @@ public class DataPartitionDataSet implements DataSet {
 
   private DataPartition dataPartition;
 
+  public DataPartitionDataSet() {
+    // Empty constructor
+  }
+
   public TSStatus getStatus() {
     return status;
   }
 
   public void setStatus(TSStatus status) {
     this.status = status;
-  }
-
-  public DataPartition getDataPartition() {
-    return dataPartition;
   }
 
   public void setDataPartition(DataPartition dataPartition) {
@@ -65,6 +64,7 @@ public class DataPartitionDataSet implements DataSet {
     Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
         dataPartitionMap = new HashMap<>();
     resp.setStatus(status);
+
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       dataPartition
           .getDataPartitionMap()
@@ -82,7 +82,6 @@ public class DataPartitionDataSet implements DataSet {
                           .get(storageGroup)
                           .putIfAbsent(tSeriesPartitionSlot, new HashMap<>());
 
-                      // Extract Map<TimePartitionSlot, List<RegionReplicaSet>>
                       timePartitionSlotReplicaSetListMap.forEach(
                           ((timePartitionSlot, regionReplicaSets) -> {
                             // Extract TTimePartitionSlot
@@ -96,27 +95,8 @@ public class DataPartitionDataSet implements DataSet {
                             // Extract TRegionReplicaSets
                             regionReplicaSets.forEach(
                                 regionReplicaSet -> {
-                                  TRegionReplicaSet tRegionReplicaSet = new TRegionReplicaSet();
-
-                                  // Set TRegionReplicaSet's RegionId
-                                  tRegionReplicaSet.setRegionId(
-                                      regionReplicaSet.getConsensusGroupId().getId());
-
-                                  // Set TRegionReplicaSet's GroupType
-                                  tRegionReplicaSet.setGroupType("DataRegion");
-
-                                  // Set TRegionReplicaSet's EndPoints
-                                  List<EndPoint> endPointList = new ArrayList<>();
-                                  regionReplicaSet
-                                      .getDataNodeList()
-                                      .forEach(
-                                          dataNodeLocation ->
-                                              endPointList.add(
-                                                  new EndPoint(
-                                                      dataNodeLocation.getEndPoint().getIp(),
-                                                      dataNodeLocation.getEndPoint().getPort())));
-                                  tRegionReplicaSet.setEndpoint(endPointList);
-
+                                  TRegionReplicaSet tRegionReplicaSet =
+                                      regionReplicaSet.convertToRPCTRegionReplicaSet();
                                   dataPartitionMap
                                       .get(storageGroup)
                                       .get(tSeriesPartitionSlot)

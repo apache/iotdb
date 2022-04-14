@@ -112,6 +112,11 @@ public class ConfigNodeDescriptor {
           properties.getProperty(
               "series_partition_executor_class", conf.getSeriesPartitionExecutorClass()));
 
+      conf.setTimePartitionInterval(
+          Long.parseLong(
+              properties.getProperty(
+                  "time_partition_interval", String.valueOf(conf.getTimePartitionInterval()))));
+
       conf.setRpcAddress(properties.getProperty("config_node_rpc_address", conf.getRpcAddress()));
 
       conf.setRpcPort(
@@ -164,6 +169,10 @@ public class ConfigNodeDescriptor {
       conf.setDataDirs(properties.getProperty("data_dirs", conf.getDataDirs()[0]).split(","));
 
       conf.setConsensusDir(properties.getProperty("consensus_dir", conf.getConsensusDir()));
+
+      conf.setDefaultTTL(
+          Long.parseLong(
+              properties.getProperty("default_ttl", String.valueOf(conf.getDefaultTTL()))));
 
       conf.setRegionReplicaCount(
           Integer.parseInt(
