@@ -25,9 +25,10 @@ import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
-import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompactionTask;
+import org.apache.iotdb.db.engine.compaction.inner.InnerSpaceCompactionTask;
+import org.apache.iotdb.db.engine.compaction.log.CompactionLogger;
+import org.apache.iotdb.db.engine.compaction.performer.impl.ReadChunkCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
-import org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
@@ -721,14 +722,13 @@ public class StorageGroupProcessorTest {
         processor.asyncCloseAllWorkingTsFileProcessors();
       }
       processor.syncCloseAllWorkingTsFileProcessors();
-      SizeTieredCompactionTask task =
-          new SizeTieredCompactionTask(
-              storageGroup,
-              "0",
+      InnerSpaceCompactionTask task =
+          new InnerSpaceCompactionTask(
               0,
               processor.getTsFileManager(),
               processor.getSequenceFileList(),
               true,
+              new ReadChunkCompactionPerformer(processor.getSequenceFileList()),
               new AtomicInteger(0));
       CompactionTaskManager.getInstance().submitTask(task);
       Thread.sleep(20);

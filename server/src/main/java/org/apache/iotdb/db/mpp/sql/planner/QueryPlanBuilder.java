@@ -22,6 +22,9 @@ package org.apache.iotdb.db.mpp.sql.planner;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.DevicesSchemaScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.*;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregateScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
@@ -273,5 +276,44 @@ public class QueryPlanBuilder {
     }
 
     this.root = new OffsetNode(context.getQueryId().genPlanNodeId(), this.getRoot(), rowOffset);
+  }
+
+  /** Meta Query* */
+  public void planTimeSeriesMetaSource(
+      PartialPath pathPattern,
+      String key,
+      String value,
+      int limit,
+      int offset,
+      boolean orderByHeat,
+      boolean contains,
+      boolean prefixPath) {
+    TimeSeriesSchemaScanNode timeSeriesMetaScanNode =
+        new TimeSeriesSchemaScanNode(
+            context.getQueryId().genPlanNodeId(),
+            pathPattern,
+            key,
+            value,
+            limit,
+            offset,
+            orderByHeat,
+            contains,
+            prefixPath);
+    this.root = timeSeriesMetaScanNode;
+  }
+
+  public void planDeviceMetaSource(
+      PartialPath pathPattern, int limit, int offset, boolean prefixPath, boolean hasSgCol) {
+    DevicesSchemaScanNode devicesMetaScanNode =
+        new DevicesSchemaScanNode(
+            context.getQueryId().genPlanNodeId(), pathPattern, limit, offset, prefixPath, hasSgCol);
+    this.root = devicesMetaScanNode;
+  }
+
+  public void planMetaMerge(boolean orderByHeat) {
+    SchemaMergeNode metaMergeNode =
+        new SchemaMergeNode(context.getQueryId().genPlanNodeId(), orderByHeat);
+    metaMergeNode.addChild(this.getRoot());
+    this.root = metaMergeNode;
   }
 }

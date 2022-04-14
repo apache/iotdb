@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
@@ -51,6 +52,11 @@ public class Analysis {
   private SchemaTree schemaTree;
 
   private IExpression queryFilter;
+
+  // header of result dataset
+  private DatasetHeader respDatasetHeader;
+
+  public Analysis() {}
 
   public List<RegionReplicaSet> getPartitionInfo(PartialPath seriesPath, Filter timefilter) {
     // TODO: (xingtanzjr) implement the calculation of timePartitionIdList
@@ -95,5 +101,13 @@ public class Analysis {
 
   public void setQueryFilter(IExpression expression) {
     this.queryFilter = expression;
+  }
+
+  public DatasetHeader getRespDatasetHeader() {
+    return respDatasetHeader;
+  }
+
+  public void setRespDatasetHeader(DatasetHeader respDatasetHeader) {
+    this.respDatasetHeader = respDatasetHeader;
   }
 }

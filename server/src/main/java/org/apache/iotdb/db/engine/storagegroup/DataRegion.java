@@ -27,12 +27,10 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.cache.ChunkCache;
-import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
+import org.apache.iotdb.db.engine.compaction.CompactionRecoverManager;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
-import org.apache.iotdb.db.engine.compaction.task.CompactionRecoverManager;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.CloseFileListener;
 import org.apache.iotdb.db.engine.flush.FlushListener;
@@ -62,7 +60,10 @@ import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.IDTableManager;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowsNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
@@ -77,6 +78,7 @@ import org.apache.iotdb.db.service.SettleService;
 import org.apache.iotdb.db.service.metrics.Metric;
 import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.service.metrics.Tag;
+import org.apache.iotdb.db.sync.sender.manager.TsFileSyncManager;
 import org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
 import org.apache.iotdb.db.utils.UpgradeUtils;
@@ -126,6 +128,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.TEMP_SUFFIX;
+import static org.apache.iotdb.db.qp.executor.PlanExecutor.operateClearCache;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 /**
@@ -255,6 +258,9 @@ public class DataRegion {
   public static final long COMPACTION_TASK_SUBMIT_DELAY = 20L * 1000L;
 
   private IDTable idTable;
+
+  /** used to collect TsFiles in this virtual storage group */
+  private TsFileSyncManager tsFileSyncManager = TsFileSyncManager.getInstance();
 
   /**
    * constrcut a storage group processor
@@ -817,6 +823,11 @@ public class DataRegion {
   }
 
   // TODO: (New Insert)
+  /**
+   * insert one row of data
+   *
+   * @param insertRowNode one row of data
+   */
   public void insert(InsertRowNode insertRowNode)
       throws WriteProcessException, TriggerExecutionException {
     // reject insertions that are out of ttl
@@ -2132,6 +2143,8 @@ public class DataRegion {
       if (!tsFileResource.isClosed()) {
         TsFileProcessor tsfileProcessor = tsFileResource.getProcessor();
         tsfileProcessor.deleteDataInMemory(deletion, devicePaths);
+      } else if (tsFileSyncManager.isEnableSync()) {
+        tsFileSyncManager.collectRealTimeDeletion(deletion);
       }
 
       // add a record in case of rollback
@@ -2309,9 +2322,8 @@ public class DataRegion {
             .recoverSettleFileMap
             .remove(oldTsFileResource.getTsFile().getAbsolutePath());
       }
-      // clear Cache , including chunk cache and timeseriesMetadata cache
-      ChunkCache.getInstance().clear();
-      TimeSeriesMetadataCache.getInstance().clear();
+      // clear Cache , including chunk cache, timeseriesMetadata cache and bloom filter cache
+      operateClearCache();
 
       // if old tsfile is being deleted in the process due to its all data's being deleted.
       if (!oldTsFileResource.getTsFile().exists()) {
@@ -2372,47 +2384,6 @@ public class DataRegion {
     writeLock("merge");
     try {
       executeCompaction();
-    } finally {
-      writeUnlock();
-    }
-  }
-
-  /**
-   * Load a new tsfile to storage group processor. The file may have overlap with other files.
-   *
-   * <p>or unsequence list.
-   *
-   * <p>Secondly, execute the loading process by the type.
-   *
-   * <p>Finally, update the latestTimeForEachDevice and partitionLatestFlushedTimeForEachDevice.
-   *
-   * @param newTsFileResource tsfile resource @UsedBy sync module.
-   */
-  public void loadNewTsFileForSync(TsFileResource newTsFileResource) throws LoadFileException {
-    File tsfileToBeInserted = newTsFileResource.getTsFile();
-    long newFilePartitionId = newTsFileResource.getTimePartitionWithCheck();
-    writeLock("loadNewTsFileForSync");
-    try {
-      if (loadTsFileByType(
-          LoadTsFileType.LOAD_SEQUENCE,
-          tsfileToBeInserted,
-          newTsFileResource,
-          newFilePartitionId,
-          tsFileManager.getSequenceListByTimePartition(newFilePartitionId).size() - 1)) {
-        updateLatestTimeMap(newTsFileResource);
-      }
-      resetLastCacheWhenLoadingTsfile(newTsFileResource);
-    } catch (DiskSpaceInsufficientException e) {
-      logger.error(
-          "Failed to append the tsfile {} to storage group processor {} because the disk space is insufficient.",
-          tsfileToBeInserted.getAbsolutePath(),
-          tsfileToBeInserted.getParentFile().getName());
-      IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
-      throw new LoadFileException(e);
-    } catch (IllegalPathException e) {
-      logger.error(
-          "Failed to reset last cache when loading file {}", newTsFileResource.getTsFilePath());
-      throw new LoadFileException(e);
     } finally {
       writeUnlock();
     }
@@ -3242,6 +3213,118 @@ public class DataRegion {
     }
   }
 
+  /**
+   * insert batch of rows belongs to one device
+   *
+   * @param insertRowsOfOneDeviceNode batch of rows belongs to one device
+   */
+  public void insert(InsertRowsOfOneDeviceNode insertRowsOfOneDeviceNode)
+      throws WriteProcessException, TriggerExecutionException, BatchProcessException {
+    writeLock("InsertRowsOfOneDevice");
+    try {
+      boolean isSequence = false;
+      for (int i = 0; i < insertRowsOfOneDeviceNode.getInsertRowNodeList().size(); i++) {
+        InsertRowNode insertRowNode = insertRowsOfOneDeviceNode.getInsertRowNodeList().get(i);
+        if (!isAlive(insertRowNode.getTime())) {
+          // we do not need to write these part of data, as they can not be queried
+          // or the sub-plan has already been executed, we are retrying other sub-plans
+          insertRowsOfOneDeviceNode
+              .getResults()
+              .put(
+                  i,
+                  RpcUtils.getStatus(
+                      TSStatusCode.OUT_OF_TTL_ERROR.getStatusCode(),
+                      String.format(
+                          "Insertion time [%s] is less than ttl time bound [%s]",
+                          new Date(insertRowNode.getTime()),
+                          new Date(System.currentTimeMillis() - dataTTL))));
+          continue;
+        }
+        // init map
+        long timePartitionId = StorageEngine.getTimePartition(insertRowNode.getTime());
+
+        lastFlushTimeManager.ensureFlushedTimePartition(timePartitionId);
+        // as the plans have been ordered, and we have get the write lock,
+        // So, if a plan is sequenced, then all the rest plans are sequenced.
+        //
+        if (!isSequence) {
+          isSequence =
+              insertRowNode.getTime()
+                  > lastFlushTimeManager.getFlushedTime(
+                      timePartitionId, insertRowNode.getDevicePath().getFullPath());
+        }
+        // is unsequence and user set config to discard out of order data
+        if (!isSequence
+            && IoTDBDescriptor.getInstance().getConfig().isEnableDiscardOutOfOrderData()) {
+          return;
+        }
+
+        lastFlushTimeManager.ensureLastTimePartition(timePartitionId);
+
+        // fire trigger before insertion
+        // TriggerEngine.fire(TriggerEvent.BEFORE_INSERT, plan);
+        // insert to sequence or unSequence file
+        try {
+          insertToTsFileProcessor(insertRowNode, isSequence, timePartitionId);
+        } catch (WriteProcessException e) {
+          insertRowsOfOneDeviceNode
+              .getResults()
+              .put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+        }
+        // fire trigger before insertion
+        // TriggerEngine.fire(TriggerEvent.AFTER_INSERT, plan);
+      }
+    } finally {
+      writeUnlock();
+    }
+    if (!insertRowsOfOneDeviceNode.getResults().isEmpty()) {
+      throw new BatchProcessException(insertRowsOfOneDeviceNode.getFailingStatus());
+    }
+  }
+
+  /**
+   * insert batch of rows belongs to multiple devices
+   *
+   * @param insertRowsNode batch of rows belongs to multiple devices
+   */
+  public void insert(InsertRowsNode insertRowsNode) throws BatchProcessException {
+    for (int i = 0; i < insertRowsNode.getInsertRowNodeList().size(); i++) {
+      InsertRowNode insertRowNode = insertRowsNode.getInsertRowNodeList().get(i);
+      try {
+        insert(insertRowNode);
+      } catch (WriteProcessException | TriggerExecutionException e) {
+        insertRowsNode.getResults().put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+      }
+    }
+
+    if (!insertRowsNode.getResults().isEmpty()) {
+      throw new BatchProcessException(insertRowsNode.getFailingStatus());
+    }
+  }
+
+  /**
+   * insert batch of tablets belongs to multiple devices
+   *
+   * @param insertMultiTabletsNode batch of tablets belongs to multiple devices
+   */
+  public void insertTablets(InsertMultiTabletsNode insertMultiTabletsNode)
+      throws BatchProcessException {
+    for (int i = 0; i < insertMultiTabletsNode.getInsertTabletNodeList().size(); i++) {
+      InsertTabletNode insertTabletNode = insertMultiTabletsNode.getInsertTabletNodeList().get(i);
+      try {
+        insertTablet(insertTabletNode);
+      } catch (TriggerExecutionException | BatchProcessException e) {
+        insertMultiTabletsNode
+            .getResults()
+            .put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+      }
+    }
+
+    if (!insertMultiTabletsNode.getResults().isEmpty()) {
+      throw new BatchProcessException(insertMultiTabletsNode.getFailingStatus());
+    }
+  }
+
   @TestOnly
   public long getPartitionMaxFileVersions(long partitionId) {
     return partitionMaxFileVersions.getOrDefault(partitionId, -1L);
@@ -3293,6 +3376,22 @@ public class DataRegion {
           }
         }
       }
+    }
+  }
+
+  /**
+   * Used to collect history TsFiles(i.e. the tsfile whose memtable == null).
+   *
+   * @param dataStartTime only collect history TsFiles which contains the data after the
+   *     dataStartTime
+   * @return A list, which contains TsFile path
+   */
+  public List<File> collectHistoryTsFileForSync(long dataStartTime) {
+    writeLock("Collect data for sync");
+    try {
+      return tsFileManager.collectHistoryTsFileForSync(dataStartTime);
+    } finally {
+      writeUnlock();
     }
   }
 

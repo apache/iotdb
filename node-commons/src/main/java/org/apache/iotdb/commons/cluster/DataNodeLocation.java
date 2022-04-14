@@ -50,10 +50,8 @@ public class DataNodeLocation {
     endPoint.serializeImpl(buffer);
   }
 
-  public void deserializeImpl(ByteBuffer buffer) {
-    dataNodeId = buffer.getInt();
-    endPoint = new Endpoint();
-    endPoint.deserializeImpl(buffer);
+  public static DataNodeLocation deserializeImpl(ByteBuffer buffer) {
+    return new DataNodeLocation(buffer.getInt(), Endpoint.deserializeImpl(buffer));
   }
 
   @Override

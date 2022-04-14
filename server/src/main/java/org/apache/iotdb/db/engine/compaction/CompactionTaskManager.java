@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.compaction.comparator.DefaultCompactionTaskComparatorImpl;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionTaskStatus;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.utils.datastructure.FixedPriorityBlockingQueue;
@@ -62,7 +63,7 @@ public class CompactionTaskManager implements IService {
 
   public static volatile AtomicInteger currentTaskNum = new AtomicInteger(0);
   private FixedPriorityBlockingQueue<AbstractCompactionTask> candidateCompactionTaskQueue =
-      new FixedPriorityBlockingQueue<>(1024, new CompactionTaskComparator());
+      new FixedPriorityBlockingQueue<>(1024, new DefaultCompactionTaskComparatorImpl());
   // <fullStorageGroupName,futureSet>, it is used to store all compaction tasks under each
   // virtualStorageGroup
   private Map<String, Map<AbstractCompactionTask, Future<Void>>> storageGroupTasks =
@@ -289,7 +290,7 @@ public class CompactionTaskManager implements IService {
     }
   }
 
-  public synchronized void removeRunningTaskFromList(AbstractCompactionTask task) {
+  public synchronized void removeRunningTaskFuture(AbstractCompactionTask task) {
     String storageGroupName = task.getFullStorageGroupName();
     if (storageGroupTasks.containsKey(storageGroupName)) {
       storageGroupTasks.get(storageGroupName).remove(task);

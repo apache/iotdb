@@ -119,6 +119,7 @@ public class ExchangeNode extends PlanNode {
     this.child = child;
   }
 
+  @Override
   public String toString() {
     return String.format(
         "ExchangeNode-%s: [SourceAddress:%s]", getPlanNodeId(), getSourceAddress());

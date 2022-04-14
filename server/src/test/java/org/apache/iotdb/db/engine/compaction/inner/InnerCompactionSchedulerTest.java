@@ -22,7 +22,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.AbstractCompactionTest;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
-import org.apache.iotdb.db.engine.compaction.task.FakedInnerSpaceCompactionTaskFactory;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
@@ -78,7 +77,8 @@ public class InnerCompactionSchedulerTest extends AbstractCompactionTest {
   }
 
   @Test
-  public void testFileSelector1() throws IOException, MetadataException, WriteProcessException {
+  public void testFileSelector1()
+      throws IOException, MetadataException, WriteProcessException, InterruptedException {
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
     IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(true);
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(50);
@@ -93,8 +93,7 @@ public class InnerCompactionSchedulerTest extends AbstractCompactionTest {
     TsFileManager tsFileManager = new TsFileManager("testSG", "0", "tmp");
     tsFileManager.addAll(seqResources, true);
 
-    CompactionScheduler.tryToSubmitInnerSpaceCompactionTask(
-        "testSG", "0", 0L, tsFileManager, true, new FakedInnerSpaceCompactionTaskFactory());
+    CompactionScheduler.tryToSubmitInnerSpaceCompactionTask("testSG", "0", 0L, tsFileManager, true);
     CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
     try {
       Thread.sleep(5000);
@@ -105,7 +104,8 @@ public class InnerCompactionSchedulerTest extends AbstractCompactionTest {
   }
 
   @Test
-  public void testFileSelector2() throws IOException, MetadataException, WriteProcessException {
+  public void testFileSelector2()
+      throws IOException, MetadataException, WriteProcessException, InterruptedException {
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(50);
     IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(50);
     TsFileResourceList tsFileResources = new TsFileResourceList();
@@ -115,8 +115,7 @@ public class InnerCompactionSchedulerTest extends AbstractCompactionTest {
     seqResources.get(0).setStatus(TsFileResourceStatus.COMPACTING);
     TsFileManager tsFileManager = new TsFileManager("testSG", "0", "tmp");
     tsFileManager.addAll(seqResources, true);
-    CompactionScheduler.tryToSubmitInnerSpaceCompactionTask(
-        "testSG", "0", 0L, tsFileManager, true, new FakedInnerSpaceCompactionTaskFactory());
+    CompactionScheduler.tryToSubmitInnerSpaceCompactionTask("testSG", "0", 0L, tsFileManager, true);
     CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
 
     long waitingTime = 0;
@@ -137,7 +136,7 @@ public class InnerCompactionSchedulerTest extends AbstractCompactionTest {
 
   @Test
   public void testFileSelectorWithUnclosedFile()
-      throws IOException, MetadataException, WriteProcessException {
+      throws IOException, MetadataException, WriteProcessException, InterruptedException {
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(50);
     IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(50);
     TsFileResourceList tsFileResources = new TsFileResourceList();
@@ -146,8 +145,7 @@ public class InnerCompactionSchedulerTest extends AbstractCompactionTest {
     seqResources.get(3).setStatus(TsFileResourceStatus.UNCLOSED);
     TsFileManager tsFileManager = new TsFileManager("testSG", "0", "tmp");
     tsFileManager.addAll(seqResources, true);
-    CompactionScheduler.tryToSubmitInnerSpaceCompactionTask(
-        "testSG", "0", 0L, tsFileManager, true, new FakedInnerSpaceCompactionTaskFactory());
+    CompactionScheduler.tryToSubmitInnerSpaceCompactionTask("testSG", "0", 0L, tsFileManager, true);
     CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
 
     long waitingTime = 0;

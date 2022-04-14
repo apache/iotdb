@@ -57,6 +57,14 @@ public class InsertRowsStatement extends InsertBaseStatement {
     return dataTypesList;
   }
 
+  public List<Boolean> getAlignedList() {
+    List<Boolean> alignedList = new ArrayList<>();
+    for (InsertRowStatement insertRowStatement : insertRowStatementList) {
+      alignedList.add(insertRowStatement.isAligned);
+    }
+    return alignedList;
+  }
+
   public List<InsertRowStatement> getInsertRowStatementList() {
     return insertRowStatementList;
   }

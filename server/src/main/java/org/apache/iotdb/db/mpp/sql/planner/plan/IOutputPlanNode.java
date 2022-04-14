@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.mpp.sql.planner.plan;
 
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.ColumnHeader;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.List;
