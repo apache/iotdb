@@ -35,6 +35,8 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
   private static final Logger logger = LoggerFactory.getLogger(SchemaRegionStateMachine.class);
 
   private final ISchemaRegion schemaRegion;
+  private static final FragmentInstanceManager QUERY_INSTANCE_MANAGER =
+      FragmentInstanceManager.getInstance();
 
   public SchemaRegionStateMachine(ISchemaRegion schemaRegion) {
     this.schemaRegion = schemaRegion;
@@ -57,7 +59,6 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
   @Override
   protected DataSet read(FragmentInstance fragmentInstance) {
     logger.info("Execute read plan in SchemaRegionStateMachine");
-    return FragmentInstanceManager.getInstance()
-        .execSchemaQueryFragmentInstance(fragmentInstance, schemaRegion);
+    return QUERY_INSTANCE_MANAGER.execSchemaQueryFragmentInstance(fragmentInstance, schemaRegion);
   }
 }

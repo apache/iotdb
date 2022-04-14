@@ -47,6 +47,23 @@ public class SchemaInternalNode extends SchemaNode {
   }
 
   @Override
+  public void replaceChild(String name, SchemaNode newChild) {
+    SchemaNode oldChild = children.get(name);
+    oldChild.copyDataTo(newChild);
+    children.replace(name, newChild);
+  }
+
+  @Override
+  public void copyDataTo(SchemaNode schemaNode) {
+    if (schemaNode.isMeasurement()) {
+      return;
+    }
+    for (SchemaNode child : children.values()) {
+      schemaNode.addChild(child.getName(), child);
+    }
+  }
+
+  @Override
   public Map<String, SchemaNode> getChildren() {
     return children;
   }
