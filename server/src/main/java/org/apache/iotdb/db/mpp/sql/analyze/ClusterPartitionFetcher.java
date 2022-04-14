@@ -64,6 +64,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   }
 
   private void initPartitionExecutor() throws StatementAnalyzeException {
+      // TODO: @crz move to node-commons
     IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
     try {
       Class<?> executor = Class.forName(conf.getSeriesPartitionExecutorClass());
@@ -149,7 +150,8 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     return null;
   }
 
-  private TSchemaPartitionReq constructSchemaPartitionReq(PathPatternTree patternTree) {
+  private TSchemaPartitionReq constructSchemaPartitionReq(PathPatternTree patternTree)
+      throws StatementAnalyzeException {
     PublicBAOS baos = new PublicBAOS();
     try {
       patternTree.serialize(baos);
@@ -158,9 +160,8 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       serializedPatternTree.flip();
       return new TSchemaPartitionReq(serializedPatternTree);
     } catch (IOException e) {
-      e.printStackTrace();
+      throw new StatementAnalyzeException("An error occurred when serializing pattern tree");
     }
-    return null;
   }
 
   private TDataPartitionReq constructDataPartitionReq(
@@ -205,17 +206,12 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
                 SeriesPartitionSlot seriesPartitionSlot =
                     new SeriesPartitionSlot(respSeriesPartitionSlot.getSlotId());
                 EndPoint respEndPoint = respRegionReplicaSet.getEndpoint().get(0);
-                RegionReplicaSet regionReplicaSet = null;
-                try {
-                  regionReplicaSet =
-                      new RegionReplicaSet(
-                          ConsensusGroupId.Factory.create(respRegionReplicaSet.regionId),
-                          Collections.singletonList(
-                              new DataNodeLocation(
-                                  new Endpoint(respEndPoint.getIp(), respEndPoint.getPort()))));
-                } catch (IOException e) {
-                  e.printStackTrace();
-                }
+                RegionReplicaSet regionReplicaSet =
+                    new RegionReplicaSet(
+                        ConsensusGroupId.Factory.create(respRegionReplicaSet.regionId),
+                        Collections.singletonList(
+                            new DataNodeLocation(
+                                new Endpoint(respEndPoint.getIp(), respEndPoint.getPort()))));
                 schemaRegionMap.put(seriesPartitionSlot, regionReplicaSet);
               });
           schemaPartitionMap.put(storageGroupName, schemaRegionMap);
@@ -246,12 +242,8 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
                       respRegionReplicaSetList.forEach(
                           respRegionReplicaSet -> {
                             RegionReplicaSet regionReplicaSet = new RegionReplicaSet();
-                            try {
-                              regionReplicaSet.setConsensusGroupId(
-                                  ConsensusGroupId.Factory.create(respRegionReplicaSet.regionId));
-                            } catch (IOException e) {
-                              e.printStackTrace();
-                            }
+                            regionReplicaSet.setConsensusGroupId(
+                                ConsensusGroupId.Factory.create(respRegionReplicaSet.regionId));
                             List<DataNodeLocation> dataNodeList = new ArrayList<>();
                             respRegionReplicaSet
                                 .getEndpoint()
