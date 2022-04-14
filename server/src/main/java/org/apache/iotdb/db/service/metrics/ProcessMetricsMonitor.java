@@ -103,6 +103,16 @@ public class ProcessMetricsMonitor {
         "process");
   }
 
+  public void collectProcessStatusInfo() {
+    metricManager.getOrCreateAutoGauge(
+        Metric.PROCESS_STATUS.toString(),
+        MetricLevel.IMPORTANT,
+        this,
+        a -> (getProcessStatus()),
+        Tag.NAME.toString(),
+        "process");
+  }
+
   private ProcessMetricsMonitor() {
     sunOsMXBean =
         (com.sun.management.OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
@@ -111,6 +121,10 @@ public class ProcessMetricsMonitor {
 
   private long getProcessUsedMemory() {
     return runtime.totalMemory() - runtime.freeMemory();
+  }
+
+  private long getProcessStatus() {
+    return Thread.currentThread().isAlive() ? 1 : 0;
   }
 
   private int getThreadsCount() {

@@ -173,6 +173,7 @@ public class MetricsService extends MetricService implements MetricsServiceMBean
     processMetricsMonitor.collectProcessCPUInfo();
     processMetricsMonitor.collectProcessMemInfo();
     processMetricsMonitor.collectThreadInfo();
+    processMetricsMonitor.collectProcessStatusInfo();
   }
 
   @Override
