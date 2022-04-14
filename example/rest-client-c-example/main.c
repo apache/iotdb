@@ -50,7 +50,6 @@ void query(char * sql_str) {
         fprintf(stderr, "curl_handle == NULL\n");
     }
 
-    strcat(authorization1, author);
     // set the header
     struct curl_slist *headers = NULL;
     headers = curl_slist_append(headers, "Content-Type:application/json");
@@ -71,7 +70,7 @@ void nonQuery(char* sql_str) {
     if (curl_handle == NULL) {
         fprintf(stderr, "curl_handle == NULL\n");
     }
-    strcat(authorization2, author);
+
     // set the header
     struct curl_slist *headers = NULL;
     headers = curl_slist_append(headers, "Content-Type:application/json");
@@ -92,7 +91,6 @@ void insertTablet(char * sql_str) {
     if (curl_handle == NULL) {
         fprintf(stderr, "curl_handle == NULL\n");
     }
-    strcat(authorization3, author);
 
     // set the header
     struct curl_slist *headers = NULL;
@@ -111,6 +109,10 @@ void insertTablet(char * sql_str) {
 int main() {
     author = base64_encode("root:root");    // username:password
     printf("%s\n", author);
+    strcat(authorization1, author);
+    strcat(authorization2, author);
+    strcat(authorization3, author);
+
     curl_global_init(CURL_GLOBAL_ALL);
     ping();
     printf("\n");
@@ -118,7 +120,9 @@ int main() {
     printf("\n");
     nonQuery("{\"sql\":\"set storage group to root.lns\"}");
     printf("\n");
-    insertTablet("{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"s3\",\"s4\"],\"dataTypes\":[\"INT32\",\"BOOLEAN\"],\"values\":[[11,null],[false,true]],\"isAligned\":false,\"deviceId\":\"root.lns\"}");
-
+    insertTablet("{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"s3\",\"s4\"],\"dataTypes\":[\"INT32\",\"BOOLEAN\"],\"values\":[[11,null],[false,true]],\"isAligned\":false,\"deviceId\":\"root.lns.d1\"}");
+    printf("\n");
+    query("{\"sql\":\"select s3, s4 from root.lns.d1\"}");
+    printf("\n");
     return 0;
 }

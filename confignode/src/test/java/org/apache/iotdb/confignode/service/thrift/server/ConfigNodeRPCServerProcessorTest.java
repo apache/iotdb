@@ -275,13 +275,10 @@ public class ConfigNodeRPCServerProcessorTest {
               (tSeriesPartitionSlot, tRegionReplicaSet) -> {
                 Assert.assertEquals(3, tRegionReplicaSet.getEndpointSize());
                 ConsensusGroupId regionId = null;
-                try {
-                  regionId =
-                      ConsensusGroupId.Factory.create(
-                          ByteBuffer.wrap(tRegionReplicaSet.getRegionId()));
-                } catch (IOException ignore) {
-                  // Ignore
-                }
+                regionId =
+                    ConsensusGroupId.Factory.create(
+                        ByteBuffer.wrap(tRegionReplicaSet.getRegionId()));
+
                 Assert.assertTrue(regionId instanceof SchemaRegionId);
               });
     }
@@ -305,13 +302,11 @@ public class ConfigNodeRPCServerProcessorTest {
               (tSeriesPartitionSlot, tRegionReplicaSet) -> {
                 Assert.assertEquals(3, tRegionReplicaSet.getEndpointSize());
                 ConsensusGroupId regionId = null;
-                try {
-                  regionId =
-                      ConsensusGroupId.Factory.create(
-                          ByteBuffer.wrap(tRegionReplicaSet.getRegionId()));
-                } catch (IOException ignore) {
-                  // Ignore
-                }
+
+                regionId =
+                    ConsensusGroupId.Factory.create(
+                        ByteBuffer.wrap(tRegionReplicaSet.getRegionId()));
+
                 Assert.assertTrue(regionId instanceof SchemaRegionId);
               });
     }
@@ -334,13 +329,8 @@ public class ConfigNodeRPCServerProcessorTest {
             (tSeriesPartitionSlot, tRegionReplicaSet) -> {
               Assert.assertEquals(3, tRegionReplicaSet.getEndpointSize());
               ConsensusGroupId regionId = null;
-              try {
-                regionId =
-                    ConsensusGroupId.Factory.create(
-                        ByteBuffer.wrap(tRegionReplicaSet.getRegionId()));
-              } catch (IOException ignore) {
-                // Ignore
-              }
+              regionId =
+                  ConsensusGroupId.Factory.create(ByteBuffer.wrap(tRegionReplicaSet.getRegionId()));
               Assert.assertTrue(regionId instanceof SchemaRegionId);
             });
     // Check "root.sg1"
@@ -352,13 +342,8 @@ public class ConfigNodeRPCServerProcessorTest {
             (tSeriesPartitionSlot, tRegionReplicaSet) -> {
               Assert.assertEquals(3, tRegionReplicaSet.getEndpointSize());
               ConsensusGroupId regionId = null;
-              try {
-                regionId =
-                    ConsensusGroupId.Factory.create(
-                        ByteBuffer.wrap(tRegionReplicaSet.getRegionId()));
-              } catch (IOException ignore) {
-                // Ignore
-              }
+              regionId =
+                  ConsensusGroupId.Factory.create(ByteBuffer.wrap(tRegionReplicaSet.getRegionId()));
               Assert.assertTrue(regionId instanceof SchemaRegionId);
             });
   }
@@ -420,19 +405,15 @@ public class ConfigNodeRPCServerProcessorTest {
                   .size());
           // Is DataRegion
           ConsensusGroupId regionId = null;
-          try {
-            regionId =
-                ConsensusGroupId.Factory.create(
-                    ByteBuffer.wrap(
-                        dataPartitionMap
-                            .get(storageGroup)
-                            .get(seriesPartitionSlot)
-                            .get(timePartitionSlot)
-                            .get(0)
-                            .getRegionId()));
-          } catch (IOException ignore) {
-            // Ignore
-          }
+          regionId =
+              ConsensusGroupId.Factory.create(
+                  ByteBuffer.wrap(
+                      dataPartitionMap
+                          .get(storageGroup)
+                          .get(seriesPartitionSlot)
+                          .get(timePartitionSlot)
+                          .get(0)
+                          .getRegionId()));
           Assert.assertTrue(regionId instanceof DataRegionId);
           // Including three RegionReplica
           Assert.assertEquals(

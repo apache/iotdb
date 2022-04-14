@@ -118,9 +118,6 @@ public class StatusUtils {
       case SYSTEM_CHECK_ERROR:
         status.setMessage("Meet error while system checking. ");
         break;
-      case SYNC_DEVICE_OWNER_CONFLICT_ERROR:
-        status.setMessage("Sync device owners conflict. ");
-        break;
       case SYNC_CONNECTION_EXCEPTION:
         status.setMessage("Meet error while sync connecting. ");
         break;

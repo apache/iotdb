@@ -48,6 +48,7 @@ import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.sync.pipedata.queue.PipeDataQueueFactory;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
@@ -180,6 +181,9 @@ public class EnvironmentUtils {
     // clear last query executor
     LastQueryExecutor.clear();
 
+    // clear pipe data queue
+    PipeDataQueueFactory.clear();
+
     // delete all directory
     cleanAllDir();
     config.setSeqTsFileSize(oldSeqTsFileSize);
@@ -258,6 +262,8 @@ public class EnvironmentUtils {
     for (String walDir : config.getWalDirs()) {
       cleanDir(walDir);
     }
+    // delete sync dir
+    cleanDir(config.getSyncDir());
     // delete data files
     for (String dataDir : config.getDataDirs()) {
       cleanDir(dataDir);
@@ -347,6 +353,8 @@ public class EnvironmentUtils {
     // create sg dir
     String sgDir = FilePathUtils.regularizePath(config.getSystemDir()) + "storage_groups";
     createDir(sgDir);
+    // create sync
+    createDir(config.getSyncDir());
     // create query
     createDir(config.getQueryDir());
     createDir(TestConstant.OUTPUT_DATA_DIR);

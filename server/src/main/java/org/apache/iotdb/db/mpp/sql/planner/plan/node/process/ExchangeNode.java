@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
 import org.apache.iotdb.commons.cluster.Endpoint;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.PlanFragment;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
@@ -87,7 +86,7 @@ public class ExchangeNode extends PlanNode {
     this.upstreamPlanNodeId = nodeId;
   }
 
-  public static ExchangeNode deserialize(ByteBuffer byteBuffer) throws IllegalPathException {
+  public static ExchangeNode deserialize(ByteBuffer byteBuffer) {
     FragmentSinkNode fragmentSinkNode =
         (FragmentSinkNode) PlanFragment.deserializeHelper(byteBuffer);
     Endpoint endPoint =

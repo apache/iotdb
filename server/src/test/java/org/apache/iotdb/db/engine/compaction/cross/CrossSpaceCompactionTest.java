@@ -62,6 +62,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.fail;
 
@@ -429,17 +430,19 @@ public class CrossSpaceCompactionTest {
           index++;
           if (mergeFiles.length > 0) {
             AbstractCompactionTask compactionTask =
-                IoTDBDescriptor.getInstance()
-                    .getConfig()
-                    .getCrossCompactionSelector()
-                    .getCompactionTask(
-                        0,
-                        new TsFileManager(
-                            "root.compactionTest",
-                            "0",
-                            "target\\data\\sequence\\test\\root.compactionTest\\0\\0\\"),
-                        mergeResource.getSeqFiles(),
-                        mergeResource.getUnseqFiles());
+                new CrossSpaceCompactionTask(
+                    0,
+                    new TsFileManager(
+                        "root.compactionTest",
+                        "0",
+                        "target\\data\\sequence\\test\\root.compactionTest\\0\\0\\"),
+                    mergeResource.getSeqFiles(),
+                    mergeResource.getUnseqFiles(),
+                    IoTDBDescriptor.getInstance()
+                        .getConfig()
+                        .getCrossCompactionPerformer()
+                        .createInstance(),
+                    new AtomicInteger(0));
             compactionTask.call();
             List<TsFileResource> targetTsfileResourceList = new ArrayList<>();
             for (TsFileResource seqResource : seqResources) {
@@ -732,17 +735,19 @@ public class CrossSpaceCompactionTest {
           mergeResource.clear();
           if (mergeFiles.length > 0) {
             AbstractCompactionTask compactionTask =
-                IoTDBDescriptor.getInstance()
-                    .getConfig()
-                    .getCrossCompactionSelector()
-                    .getCompactionTask(
-                        0,
-                        new TsFileManager(
-                            "root.compactionTest",
-                            "0",
-                            "target\\data\\sequence\\test\\root.compactionTest\\0\\0\\"),
-                        mergeResource.getSeqFiles(),
-                        mergeResource.getUnseqFiles());
+                new CrossSpaceCompactionTask(
+                    0,
+                    new TsFileManager(
+                        "root.compactionTest",
+                        "0",
+                        "target\\data\\sequence\\test\\root.compactionTest\\0\\0\\"),
+                    mergeResource.getSeqFiles(),
+                    mergeResource.getUnseqFiles(),
+                    IoTDBDescriptor.getInstance()
+                        .getConfig()
+                        .getCrossCompactionPerformer()
+                        .createInstance(),
+                    new AtomicInteger(0));
             compactionTask.call();
             List<TsFileResource> targetTsfileResourceList = new ArrayList<>();
             for (TsFileResource seqResource : seqResources.subList(1, 4)) {
@@ -1034,17 +1039,19 @@ public class CrossSpaceCompactionTest {
           mergeResource.clear();
           if (mergeFiles.length > 0) {
             AbstractCompactionTask compactionTask =
-                IoTDBDescriptor.getInstance()
-                    .getConfig()
-                    .getCrossCompactionSelector()
-                    .getCompactionTask(
-                        0,
-                        new TsFileManager(
-                            "root.compactionTest",
-                            "0",
-                            "target\\data\\sequence\\test\\root.compactionTest\\0\\0\\"),
-                        mergeResource.getSeqFiles(),
-                        mergeResource.getUnseqFiles());
+                new CrossSpaceCompactionTask(
+                    0,
+                    new TsFileManager(
+                        "root.compactionTest",
+                        "0",
+                        "target\\data\\sequence\\test\\root.compactionTest\\0\\0\\"),
+                    mergeResource.getSeqFiles(),
+                    mergeResource.getUnseqFiles(),
+                    IoTDBDescriptor.getInstance()
+                        .getConfig()
+                        .getCrossCompactionPerformer()
+                        .createInstance(),
+                    new AtomicInteger(0));
             compactionTask.call();
             List<TsFileResource> targetTsfileResourceList = new ArrayList<>();
             for (TsFileResource seqResource : seqResources.subList(1, 4)) {
