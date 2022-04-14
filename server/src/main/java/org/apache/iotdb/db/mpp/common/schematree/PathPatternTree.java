@@ -54,12 +54,24 @@ public class PathPatternTree {
     appendPaths(devicePath, Arrays.asList(measurements));
   }
 
+  public PathPatternTree(PartialPath deivcePath, List<String> measurements) {
+    this.root = new PathPatternNode(SQLConstant.ROOT);
+    this.pathList = new ArrayList<>();
+    appendPaths(deivcePath, measurements);
+  }
+
   public PathPatternTree(Map<PartialPath, List<String>> deviceToMeasurementsMap) {
     this.root = new PathPatternNode(SQLConstant.ROOT);
     this.pathList = new ArrayList<>();
     for (Map.Entry<PartialPath, List<String>> entry : deviceToMeasurementsMap.entrySet()) {
       appendPaths(entry.getKey(), entry.getValue());
     }
+  }
+
+  public PathPatternTree(PartialPath fullPath) {
+    this.root = new PathPatternNode(SQLConstant.ROOT);
+    this.pathList = new ArrayList<>();
+    appendPath(fullPath);
   }
 
   public PathPatternTree() {
