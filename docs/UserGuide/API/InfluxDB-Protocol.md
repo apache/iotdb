@@ -262,6 +262,9 @@ However, this will not affect the correctness of the query, because once the tag
 
 Currently, supports InfluxDB 1.x version, which does not support InfluxDB 2.x version.
 
+The Maven dependency of `influxdb-java` supports 2.21 +, and the lower version is not tested.
+
+
 ### 3.2 Function Interface Support
 
 Currently, supports interface functions are as follows:

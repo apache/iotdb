@@ -266,6 +266,8 @@ time                address name phone sex socre
 
 目前支持InfluxDB 1.x 版本，暂不支持InfluxDB 2.x 版本。
 
+`influxdb-java`的maven依赖支持2.21+，低版本未进行测试。
+
 ### 3.2 函数接口支持情况
 
 目前支持的接口函数如下：
