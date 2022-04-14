@@ -42,7 +42,8 @@ public class LogicNotTransformer extends Transformer {
     if (!layerPointReader.next()) {
       return false;
     }
-    // Constant doesn't have currentTime(), it will be determined by the other part in BinaryTransformer
+    // Constant doesn't have currentTime(), it will be determined by the other part in
+    // BinaryTransformer
     if (!isConstantPointReader()) {
       cachedTime = layerPointReader.currentTime();
     }
