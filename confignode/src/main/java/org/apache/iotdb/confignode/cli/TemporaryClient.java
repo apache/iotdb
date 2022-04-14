@@ -47,7 +47,8 @@ public class TemporaryClient {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TemporaryClient.class);
 
-  private static final int timeOutInMS = 2000;
+  // TODO: Add timeout parameter
+  private static final int timeOutInMS = 10000;
   private static final int retryWait = 10;
   private static final int retryNum = 3;
 
@@ -115,6 +116,7 @@ public class TemporaryClient {
                 status);
           }
         } catch (TException e) {
+          // TODO: Handler SocketTimeOutException
           LOGGER.error(
               "Create SchemaRegion on DataNode: {} failed, {}. Retrying...",
               DataNodeInfoPersistence.getInstance().getOnlineDataNode(dataNodeId).getEndPoint(),
@@ -167,6 +169,7 @@ public class TemporaryClient {
                 status);
           }
         } catch (TException e) {
+          // TODO: Handler SocketTimeOutException
           LOGGER.error(
               "Create DataRegion on DataNode: {} failed, {}. Retrying...",
               DataNodeInfoPersistence.getInstance().getOnlineDataNode(dataNodeId).getEndPoint(),
