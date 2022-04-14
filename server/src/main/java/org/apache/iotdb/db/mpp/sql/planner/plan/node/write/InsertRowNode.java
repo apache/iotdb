@@ -101,11 +101,61 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
 
   @Override
   public int serializedSize() {
-    //    int size = 0;
-    //    size += Short.BYTES;
-    //    size += this.getPlanNodeId().
-    //    return size + subSerializeSize();
-    return 0;
+    int size = 0;
+    size += Short.BYTES;
+    size += this.getPlanNodeId().serializedSize();
+    return size + subSerializeSize();
+  }
+
+  int subSerializeSize() {
+    int size = 0;
+    size += Long.BYTES;
+    size += ReadWriteIOUtils.sizeToWrite(devicePath.getFullPath());
+    return size + serializeMeasurementsAndValuesSize();
+  }
+
+  int serializeMeasurementsAndValuesSize() {
+    int size = 0;
+    size += Integer.BYTES;
+    for (String m : measurements) {
+      if (m != null) {
+        size += ReadWriteIOUtils.sizeToWrite(m);
+      }
+    }
+
+    // putValues
+    for (int i = 0; i < values.length; i++) {
+      if (dataTypes[i] != null) {
+        if (values[i] == null) {
+          size += Byte.BYTES;
+          continue;
+        }
+        size += Byte.BYTES;
+        switch (dataTypes[i]) {
+          case BOOLEAN:
+            size += Byte.BYTES;
+            break;
+          case INT32:
+            size += Integer.BYTES;
+            break;
+          case INT64:
+            size += Long.BYTES;
+            break;
+          case FLOAT:
+            size += Float.BYTES;
+            break;
+          case DOUBLE:
+            size += Double.BYTES;
+            break;
+          case TEXT:
+            size += ReadWriteIOUtils.sizeToWrite((Binary) values[i]);
+            break;
+        }
+      }
+    }
+
+    size += Byte.BYTES;
+    return size;
   }
 
   @Override
