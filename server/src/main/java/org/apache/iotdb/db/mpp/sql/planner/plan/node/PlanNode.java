@@ -20,7 +20,6 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node;
 
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import com.google.common.collect.ImmutableList;
 import org.apache.commons.lang.Validate;
 
 import java.nio.ByteBuffer;
