@@ -42,6 +42,7 @@ import org.junit.Test;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -52,7 +53,11 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class WALNodeTest {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
@@ -83,7 +88,7 @@ public class WALNodeTest {
     int threadsNum = 3;
     ExecutorService executorService = Executors.newFixedThreadPool(threadsNum);
     List<Future<Void>> futures = new ArrayList<>();
-    List<WALFlushListener> walFlushListeners = new ArrayList<>();
+    List<WALFlushListener> walFlushListeners = Collections.synchronizedList(new ArrayList<>());
     Set<InsertTabletPlan> expectedInsertTabletPlans = ConcurrentHashMap.newKeySet();
     for (int i = 0; i < threadsNum; ++i) {
       int memTableId = i;
