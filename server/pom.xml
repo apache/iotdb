@@ -49,12 +49,6 @@
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-consensus</artifactId>
             <version>${project.version}</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>io.dropwizard.metrics</groupId>
-                    <artifactId>metrics-jvm</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
@@ -151,6 +145,10 @@
                     <groupId>com.zaxxer</groupId>
                     <artifactId>HikariCP</artifactId>
                 </exclusion>
+                <exclusion>
+                    <groupId>io.dropwizard.metrics</groupId>
+                    <artifactId>metrics-jvm</artifactId>
+                </exclusion>
             </exclusions>
         </dependency>
         <!-- for mocked test-->
@@ -244,11 +242,6 @@
             <groupId>org.apache.iotdb</groupId>
             <artifactId>micrometer-metrics</artifactId>
             <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>io.dropwizard.metrics</groupId>
-            <artifactId>metrics-jvm</artifactId>
-            <version>${metrics.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
