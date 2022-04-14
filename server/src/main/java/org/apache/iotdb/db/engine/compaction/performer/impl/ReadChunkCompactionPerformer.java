@@ -116,7 +116,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
   }
 
   private void checkThreadInterrupted() throws InterruptedException {
-    if (Thread.currentThread().isInterrupted()) {
+    if (Thread.interrupted()) {
       throw new InterruptedException(
           String.format(
               "[Compaction] compaction for target file %s abort", targetResource.toString()));

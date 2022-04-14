@@ -59,7 +59,6 @@ public class CompactionScheduler {
       tryToSubmitCrossSpaceCompactionTask(
           tsFileManager.getStorageGroupName(),
           tsFileManager.getDataRegion(),
-          tsFileManager.getStorageGroupDir(),
           timePartition,
           tsFileManager);
       tryToSubmitInnerSpaceCompactionTask(
@@ -76,6 +75,7 @@ public class CompactionScheduler {
           false);
     } catch (InterruptedException e) {
       LOGGER.error("Exception occurs when selecting compaction tasks", e);
+      Thread.currentThread().interrupt();
     }
   }
 
@@ -96,14 +96,12 @@ public class CompactionScheduler {
       innerSpaceCompactionSelector =
           config
               .getInnerSequenceCompactionSelector()
-              .getCompactionSelector(
-                  logicalStorageGroupName, dataRegionId, timePartition, tsFileManager);
+              .createInstance(logicalStorageGroupName, dataRegionId, timePartition, tsFileManager);
     } else {
       innerSpaceCompactionSelector =
           config
               .getInnerUnsequenceCompactionSelector()
-              .getCompactionSelector(
-                  logicalStorageGroupName, dataRegionId, timePartition, tsFileManager);
+              .createInstance(logicalStorageGroupName, dataRegionId, timePartition, tsFileManager);
     }
     List<List<TsFileResource>> taskList =
         innerSpaceCompactionSelector.selectInnerSpaceTask(
@@ -116,11 +114,11 @@ public class CompactionScheduler {
               ? IoTDBDescriptor.getInstance()
                   .getConfig()
                   .getInnerSeqCompactionPerformer()
-                  .getCompactionPerformer()
+                  .createInstance()
               : IoTDBDescriptor.getInstance()
                   .getConfig()
                   .getInnerUnseqCompactionPerformer()
-                  .getCompactionPerformer();
+                  .createInstance();
       CompactionTaskManager.getInstance()
           .addTaskToWaitingQueue(
               new InnerSpaceCompactionTask(
@@ -136,7 +134,6 @@ public class CompactionScheduler {
   private static void tryToSubmitCrossSpaceCompactionTask(
       String logicalStorageGroupName,
       String dataRegionId,
-      String storageGroupDir,
       long timePartition,
       TsFileManager tsFileManager)
       throws InterruptedException {
@@ -146,8 +143,7 @@ public class CompactionScheduler {
     ICrossSpaceSelector crossSpaceCompactionSelector =
         config
             .getCrossCompactionSelector()
-            .getCompactionSelector(
-                logicalStorageGroupName, dataRegionId, timePartition, tsFileManager);
+            .createInstance(logicalStorageGroupName, dataRegionId, timePartition, tsFileManager);
     List<Pair<List<TsFileResource>, List<TsFileResource>>> taskList =
         crossSpaceCompactionSelector.selectCrossSpaceTask(
             tsFileManager.getSequenceListByTimePartition(timePartition),
@@ -163,7 +159,7 @@ public class CompactionScheduler {
                   IoTDBDescriptor.getInstance()
                       .getConfig()
                       .getCrossCompactionPerformer()
-                      .getCompactionPerformer(),
+                      .createInstance(),
                   CompactionTaskManager.currentTaskNum));
     }
   }
