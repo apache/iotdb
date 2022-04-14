@@ -29,6 +29,7 @@ import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
+import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.sql.rewriter.ConcatPathRewriter;
@@ -41,11 +42,7 @@ import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.sql.statement.component.WhereCondition;
 import org.apache.iotdb.db.mpp.sql.statement.crud.*;
-import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement;
-import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesStatement;
-import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
-import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowDevicesStatement;
-import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.*;
 import org.apache.iotdb.db.mpp.sql.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -306,6 +303,16 @@ public class Analyzer {
         throw new SemanticException("An error occurred when fetching schema partition infos");
       }
       analysis.setSchemaPartitionInfo(schemaPartitionInfo);
+      analysis.setRespDatasetHeader(HeaderConstant.showTimeSeriesHeader);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitShowStorageGroup(
+        ShowStorageGroupStatement showStorageGroupStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(showStorageGroupStatement);
+      analysis.setRespDatasetHeader(HeaderConstant.showStorageGroupHeader);
       return analysis;
     }
 
@@ -324,6 +331,10 @@ public class Analyzer {
         throw new SemanticException("An error occurred when fetching schema partition infos");
       }
       analysis.setSchemaPartitionInfo(schemaPartitionInfo);
+      analysis.setRespDatasetHeader(
+          showDevicesStatement.hasSgCol()
+              ? HeaderConstant.showDevicesWithSgHeader
+              : HeaderConstant.showDevicesHeader);
       return analysis;
     }
 
