@@ -44,12 +44,12 @@ import java.util.List;
 
 public class IoTDBWriter extends Writer {
     public static class Task extends com.alibaba.datax.common.spi.Writer.Task {
-        private static final Logger LOG = LoggerFactory.getLogger(IotDBWriter.Task.class);
+        private static final Logger LOG = LoggerFactory.getLogger(IoTDBWriter.Task.class);
 
         private Configuration conf;
 
         private List<TSDataType> typeList;
-        private List<IotDBColumn> columnList;
+        private List<IoTDBColumn> columnList;
         Session session = null;
         private int batchSize;
         private String username;
@@ -67,11 +67,11 @@ public class IoTDBWriter extends Writer {
         @Override
         public void init() {
             this.conf = super.getPluginJobConf();
-            columnList = JSON.parseObject(this.conf.getString(Key.COLUMN), new TypeReference<List<IotDBColumn>>() {
+            columnList = JSON.parseObject(this.conf.getString(Key.COLUMN), new TypeReference<List<IoTDBColumn>>() {
             });
             typeList = new ArrayList<TSDataType>();
 
-            for (IotDBColumn col : columnList) {
+            for (IoTDBColumn col : columnList) {
                 if (!col.getName().toLowerCase().equals(Key.TIME_SERIES)) {
                     typeList.add(TSDataType.valueOf(col.getType().toUpperCase()));
                 }else {
@@ -127,7 +127,7 @@ public class IoTDBWriter extends Writer {
             for (int i = 0; i < columnList.size(); i++) {
                 //  if column name timeseries pass
                 if (i != TimeSeriesColumnIndex) {
-                    final IotDBColumn column = columnList.get(i);
+                    final IoTDBColumn column = columnList.get(i);
                     schemaList.add(new MeasurementSchema(column.getName(), TSDataType.valueOf(column.getType().toUpperCase())));
                 }
             }
@@ -223,7 +223,7 @@ public class IoTDBWriter extends Writer {
     }
 
     public static class Job extends com.alibaba.datax.common.spi.Writer.Job {
-        private static final Logger LOG = LoggerFactory.getLogger(IotDBWriter.Job.class);
+        private static final Logger LOG = LoggerFactory.getLogger(IoTDBWriter.Job.class);
         private Configuration originalConfig = null;
 
         public Job() {

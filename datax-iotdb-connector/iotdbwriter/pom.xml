@@ -25,7 +25,7 @@
 
     <modelVersion>4.0.0</modelVersion>
     <version>0.0.1-SNAPSHOT</version>
-    <groupId>com.alibaba.datax</groupId>
+    <groupId>org.apache.iotdb.datax</groupId>
     <artifactId>iotdbwriter</artifactId>
 
     <properties>
@@ -61,12 +61,6 @@
             <artifactId>logback-classic</artifactId>
             <version>${logback-classic-version}</version>
 
-        </dependency>
-
-        <dependency>
-            <groupId>com.alibaba.datax</groupId>
-            <artifactId>plugin-rdbms-util</artifactId>
-            <version>${datax-project-version}</version>
         </dependency>
 
         <dependency>

@@ -63,7 +63,7 @@ iotdbwriter 插件依赖的 DataX 代码中的一些模块。而这些模块并�
 
 2. 按需修改 `DataX/iotdbwriter` 中的代码。
 
-3. 编译 iotdbwriter：
+3. 进入`DataX`目录内编译：
 
    ` mvn -U clean package assembly:assembly -Dmaven.test.skip=true`        
 
