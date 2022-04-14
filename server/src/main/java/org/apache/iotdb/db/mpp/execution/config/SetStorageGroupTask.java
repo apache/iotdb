@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.db.client.ConfigNodeClient;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -30,6 +31,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.SettableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,6 +45,7 @@ public class SetStorageGroupTask implements IConfigTask {
 
   @Override
   public ListenableFuture<Void> execute() {
+    SettableFuture<Void> future = SettableFuture.create();
     if (!(statement instanceof SetStorageGroupStatement)) {
       LOGGER.error("SetStorageGroup not get SetStorageGroupStatement");
       return Futures.immediateVoidFuture();
@@ -60,13 +63,15 @@ public class SetStorageGroupTask implements IConfigTask {
       // Get response or throw exception
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.error("Failed to connect to config node.");
+        future.setException(new MetadataException("Failed to connect to config node."));
       }
     } catch (IoTDBConnectionException | BadNodeUrlException e) {
       LOGGER.error("Failed to connect to config node.");
+      future.setException(e);
     }
 
     // If the action is executed successfully, return the Future.
     // If your operation is async, you can return the corresponding future directly.
-    return Futures.immediateVoidFuture();
+    return future;
   }
 }
