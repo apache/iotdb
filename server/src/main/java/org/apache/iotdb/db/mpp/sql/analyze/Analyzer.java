@@ -215,7 +215,6 @@ public class Analyzer {
       }
     }
 
-
     @Override
     public Analysis visitCreateTimeseries(
         CreateTimeSeriesStatement createTimeSeriesStatement, MPPQueryContext context) {
@@ -491,7 +490,6 @@ public class Analyzer {
       analysis.setStatement(authorStatement);
       return analysis;
     }
-
 
     @Override
     public Analysis visitInsertRow(InsertRowStatement insertRowStatement, MPPQueryContext context) {

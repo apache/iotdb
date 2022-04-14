@@ -69,8 +69,8 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
 
     QueryId queryId =
         new QueryId(String.valueOf(SessionManager.getInstance().requestQueryId(false)));
-    coordinator.execute(schemaFetchStatement, queryId, QueryType.READ, null, "");
-    TsBlock tsBlock = coordinator.getResultSet(queryId);
+    coordinator.execute(schemaFetchStatement, queryId, null, "");
+    TsBlock tsBlock = coordinator.getQueryExecution(queryId).getBatchResult();
     SchemaTree result = new SchemaTree();
     result.setStorageGroups(storageGroups);
 
