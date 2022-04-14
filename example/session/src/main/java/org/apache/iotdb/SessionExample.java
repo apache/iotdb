@@ -78,7 +78,7 @@ public class SessionExample {
     createTimeseries();
     createMultiTimeseries();
     // insertRecord();
-    insertRecord2();
+    insertRecordWithoutDataType();
     // insertTablet();
     //    insertTabletWithNullValues();
     //    insertTablets();
@@ -261,27 +261,20 @@ public class SessionExample {
     }
   }
 
-  private static void insertRecord2() throws IoTDBConnectionException, StatementExecutionException {
+  private static void insertRecordWithoutDataType()
+      throws IoTDBConnectionException, StatementExecutionException {
     String deviceId = ROOT_SG1_D1;
     List<String> measurements = new ArrayList<>();
     measurements.add("s1");
     measurements.add("s2");
+
     measurements.add("s3");
 
     List<Object> values = new ArrayList<>();
     values.add(1L);
     values.add(2L);
     values.add(3L);
-    session.insertRecord2(deviceId, new Date().getTime(), measurements, values);
-
-    /*
-    for (long time = 0; time < 100; time++) {
-      List<Object> values = new ArrayList<>();
-      values.add(1L);
-      values.add(2L);
-      values.add(3L);
-      session.insertRecord2(deviceId, time, measurements, values);
-    }*/
+    session.insertRecordWithoutDataType(deviceId, new Date().getTime(), measurements, values);
   }
 
   private static void insertRecord4Redirect()
@@ -304,27 +297,6 @@ public class SessionExample {
           values.add(2L + time);
           values.add(3L + time);
           session.insertRecord(deviceId, time, measurements, types, values);
-        }
-      }
-    }
-  }
-
-  private static void insertRecord4Redirect2()
-      throws IoTDBConnectionException, StatementExecutionException {
-    for (int i = 0; i < 6; i++) {
-      for (int j = 0; j < 2; j++) {
-        String deviceId = "root.redirect" + i + ".d" + j;
-        List<String> measurements = new ArrayList<>();
-        measurements.add("s1");
-        measurements.add("s2");
-        measurements.add("s3");
-
-        for (long time = 0; time < 5; time++) {
-          List<Object> values = new ArrayList<>();
-          values.add(1L + time);
-          values.add(2L + time);
-          values.add(3L + time);
-          session.insertRecord2(deviceId, time, measurements, values);
         }
       }
     }
@@ -373,7 +345,7 @@ public class SessionExample {
     measurements.add("s3");
 
     for (long time = 0; time < 100; time++) {
-      session.insertRecord2(deviceId, time, measurements, 1L, 1L, 1L);
+      session.insertRecordWithoutDataType(deviceId, time, measurements, 1L, 1L, 1L);
     }
   }
 

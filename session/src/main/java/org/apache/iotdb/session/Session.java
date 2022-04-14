@@ -800,12 +800,13 @@ public class Session {
 
   /**
    * insert data in one row, if you want to improve your performance, please use insertRecords
-   * method or insertTablet method
+   * method or insertTablet method data type will be inferred by data class
    *
    * @see Session#insertRecords(List, List, List, List, List)
    * @see Session#insertTablet(Tablet)
    */
-  public void insertRecord2(String deviceId, long time, List<String> measurements, Object... values)
+  public void insertRecordWithoutDataType(
+      String deviceId, long time, List<String> measurements, Object... values)
       throws IoTDBConnectionException, StatementExecutionException {
     TSInsertRecordReq request =
         genTSInsertRecordReq(deviceId, time, measurements, Arrays.asList(values), false);
@@ -963,15 +964,15 @@ public class Session {
 
   /**
    * insert data in one row, if you want improve your performance, please use insertRecords method
-   * or insertTablet method
+   * or insertTablet method data type will be inferred by data class
    *
    * @see Session#insertRecords2(List, List, List, List)
    * @see Session#insertTablet(Tablet)
    */
-  public void insertRecord2(
+  public void insertRecordWithoutDataType(
       String deviceId, long time, List<String> measurements, List<Object> values)
       throws IoTDBConnectionException, StatementExecutionException {
-    // not vector by default
+    // not aligned by default
     TSInsertRecordReq request = genTSInsertRecordReq(deviceId, time, measurements, values, false);
     insertRecord(deviceId, request);
   }
@@ -1059,7 +1060,7 @@ public class Session {
    * @see Session#insertAlignedRecords(List, List, List, List)
    * @see Session#insertTablet(Tablet)
    */
-  public void insertAlignedRecord2(
+  public void insertAlignedObjectRecord(
       String deviceId, long time, List<String> measurements, List<Object> values)
       throws IoTDBConnectionException, StatementExecutionException {
     TSInsertRecordReq request = genTSInsertRecordReq(deviceId, time, measurements, values, true);
@@ -2107,7 +2108,7 @@ public class Session {
    * This method NOT insert data into database and the server just return after accept the request,
    * this method should be used to test other time cost in client
    */
-  public void testInsertRecord2(
+  public void testInsertRecordWithoutDataType(
       String deviceId, long time, List<String> measurements, List<Object> values)
       throws IoTDBConnectionException, StatementExecutionException {
     TSInsertRecordReq request = genTSInsertRecordReq(deviceId, time, measurements, values, false);

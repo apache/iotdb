@@ -1693,7 +1693,7 @@ public class IoTDBSessionSimpleIT {
       values.add(1L);
       values.add("String");
       values.add(3.0d);
-      session.insertRecord2(deviceId, time, measurements, values);
+      session.insertRecordWithoutDataType(deviceId, time, measurements, values);
     }
 
     Set<String> expected = new HashSet<>();
