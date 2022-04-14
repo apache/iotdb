@@ -34,6 +34,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertMultiTabletsNod
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.mpp.sql.statement.StatementNode;
 import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.crud.AggregationQueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.FillQueryStatement;
@@ -100,6 +101,12 @@ public class LogicalPlanner {
 
     public LogicalPlanVisitor(Analysis analysis) {
       this.analysis = analysis;
+    }
+
+    @Override
+    public PlanNode visitNode(StatementNode node, MPPQueryContext context) {
+      throw new UnsupportedOperationException(
+          "Unsupported statement type: " + node.getClass().getName());
     }
 
     @Override

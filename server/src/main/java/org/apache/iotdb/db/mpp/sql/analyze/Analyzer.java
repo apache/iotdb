@@ -38,6 +38,7 @@ import org.apache.iotdb.db.mpp.sql.rewriter.MergeSingleFilterOptimizer;
 import org.apache.iotdb.db.mpp.sql.rewriter.RemoveNotOptimizer;
 import org.apache.iotdb.db.mpp.sql.rewriter.WildcardsRemover;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
+import org.apache.iotdb.db.mpp.sql.statement.StatementNode;
 import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.sql.statement.component.WhereCondition;
@@ -94,10 +95,9 @@ public class Analyzer {
   private final class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> {
 
     @Override
-    public Analysis visitStatement(Statement statement, MPPQueryContext context) {
-      Analysis analysis = new Analysis();
-      analysis.setStatement(statement);
-      return analysis;
+    public Analysis visitNode(StatementNode node, MPPQueryContext context) {
+      throw new UnsupportedOperationException(
+          "Unsupported statement type: " + node.getClass().getName());
     }
 
     @Override
