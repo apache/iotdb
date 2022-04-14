@@ -27,6 +27,7 @@ import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.ConsensusImpl;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.LocalConfigNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -49,11 +50,14 @@ import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 
 import org.apache.ratis.util.FileUtils;
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -63,14 +67,18 @@ import java.util.Map;
 public class InternalServiceImplTest {
   private static final IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
   InternalServiceImpl internalServiceImpl;
-  LocalConfigNode configNode;
+  static LocalConfigNode configNode;
 
-  @Before
-  public void setUp() throws Exception {
+  @BeforeClass
+  public static void setUpBeforeClass() throws IOException, MetadataException {
     IoTDB.configManager.init();
     configNode = LocalConfigNode.getInstance();
     configNode.getBelongedSchemaRegionIdWithAutoCreate(new PartialPath("root.ln"));
     ConsensusImpl.getInstance().start();
+  }
+
+  @Before
+  public void setUp() throws Exception {
     RegionReplicaSet regionReplicaSet = genRegionReplicaSet();
     ConsensusImpl.getInstance()
         .addConsensusGroup(regionReplicaSet.getConsensusGroupId(), genPeerList(regionReplicaSet));
@@ -79,12 +87,16 @@ public class InternalServiceImplTest {
 
   @After
   public void tearDown() throws Exception {
-    IoTDB.configManager.clear();
     RegionReplicaSet regionReplicaSet = genRegionReplicaSet();
     ConsensusImpl.getInstance().removeConsensusGroup(regionReplicaSet.getConsensusGroupId());
+    FileUtils.deleteFully(new File(conf.getConsensusDir()));
+  }
+
+  @AfterClass
+  public static void tearDownAfterClass() throws IOException, StorageEngineException {
     ConsensusImpl.getInstance().stop();
+    IoTDB.configManager.clear();
     EnvironmentUtils.cleanEnv();
-    FileUtils.deleteFully(new File("data" + File.separator + "consensus"));
   }
 
   @Test
