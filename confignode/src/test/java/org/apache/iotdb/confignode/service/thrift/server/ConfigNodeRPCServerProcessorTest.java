@@ -31,7 +31,6 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.persistence.DataNodeInfoPersistence;
 import org.apache.iotdb.confignode.persistence.PartitionInfoPersistence;
 import org.apache.iotdb.confignode.persistence.RegionInfoPersistence;
-import org.apache.iotdb.confignode.physical.PhysicalPlanType;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeMessage;
@@ -50,6 +49,7 @@ import org.apache.iotdb.db.auth.entity.PrivilegeType;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
+import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
@@ -525,7 +525,7 @@ public class ConfigNodeRPCServerProcessorTest {
     // create user
     authorizerReq =
         new TAuthorizerReq(
-            PhysicalPlanType.CREATE_USER.ordinal(),
+            AuthorOperator.AuthorType.CREATE_USER.ordinal(),
             "tempuser0",
             "",
             "passwd",
@@ -541,14 +541,20 @@ public class ConfigNodeRPCServerProcessorTest {
     // drop user
     authorizerReq =
         new TAuthorizerReq(
-            PhysicalPlanType.DROP_USER.ordinal(), "tempuser1", "", "", "", new HashSet<>(), "");
+            AuthorOperator.AuthorType.DROP_USER.ordinal(),
+            "tempuser1",
+            "",
+            "",
+            "",
+            new HashSet<>(),
+            "");
     status = processor.operatePermission(authorizerReq);
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
     // list user
     authorizerReq =
         new TAuthorizerReq(
-            PhysicalPlanType.LIST_USER.ordinal(), "", "", "", "", new HashSet<>(), "");
+            AuthorOperator.AuthorType.LIST_USER.ordinal(), "", "", "", "", new HashSet<>(), "");
     authorizerResp = processor.queryPermission(authorizerReq);
     status = authorizerResp.getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -559,7 +565,13 @@ public class ConfigNodeRPCServerProcessorTest {
     // create role
     authorizerReq =
         new TAuthorizerReq(
-            PhysicalPlanType.CREATE_ROLE.ordinal(), "", "temprole0", "", "", new HashSet<>(), "");
+            AuthorOperator.AuthorType.CREATE_ROLE.ordinal(),
+            "",
+            "temprole0",
+            "",
+            "",
+            new HashSet<>(),
+            "");
     status = processor.operatePermission(authorizerReq);
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     authorizerReq.setRoleName("temprole1");
@@ -569,14 +581,20 @@ public class ConfigNodeRPCServerProcessorTest {
     // drop role
     authorizerReq =
         new TAuthorizerReq(
-            PhysicalPlanType.DROP_ROLE.ordinal(), "", "temprole1", "", "", new HashSet<>(), "");
+            AuthorOperator.AuthorType.DROP_ROLE.ordinal(),
+            "",
+            "temprole1",
+            "",
+            "",
+            new HashSet<>(),
+            "");
     status = processor.operatePermission(authorizerReq);
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
     // list role
     authorizerReq =
         new TAuthorizerReq(
-            PhysicalPlanType.LIST_ROLE.ordinal(), "", "", "", "", new HashSet<>(), "");
+            AuthorOperator.AuthorType.LIST_ROLE.ordinal(), "", "", "", "", new HashSet<>(), "");
     authorizerResp = processor.queryPermission(authorizerReq);
     status = authorizerResp.getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -587,7 +605,7 @@ public class ConfigNodeRPCServerProcessorTest {
     // alter user
     authorizerReq =
         new TAuthorizerReq(
-            PhysicalPlanType.UPDATE_USER.ordinal(),
+            AuthorOperator.AuthorType.UPDATE_USER.ordinal(),
             "tempuser0",
             "",
             "",
@@ -600,7 +618,7 @@ public class ConfigNodeRPCServerProcessorTest {
     // grant user
     authorizerReq =
         new TAuthorizerReq(
-            PhysicalPlanType.GRANT_USER.ordinal(),
+            AuthorOperator.AuthorType.GRANT_USER.ordinal(),
             "tempuser0",
             "",
             "",
@@ -613,7 +631,7 @@ public class ConfigNodeRPCServerProcessorTest {
     // grant role
     authorizerReq =
         new TAuthorizerReq(
-            PhysicalPlanType.GRANT_ROLE.ordinal(),
+            AuthorOperator.AuthorType.GRANT_ROLE.ordinal(),
             "",
             "temprole0",
             "",
@@ -626,7 +644,7 @@ public class ConfigNodeRPCServerProcessorTest {
     // grant role to user
     authorizerReq =
         new TAuthorizerReq(
-            PhysicalPlanType.GRANT_ROLE_TO_USER.ordinal(),
+            AuthorOperator.AuthorType.GRANT_ROLE_TO_USER.ordinal(),
             "tempuser0",
             "temprole0",
             "",
@@ -639,7 +657,7 @@ public class ConfigNodeRPCServerProcessorTest {
     // revoke user
     authorizerReq =
         new TAuthorizerReq(
-            PhysicalPlanType.REVOKE_USER.ordinal(),
+            AuthorOperator.AuthorType.REVOKE_USER.ordinal(),
             "tempuser0",
             "",
             "",
@@ -652,7 +670,7 @@ public class ConfigNodeRPCServerProcessorTest {
     // revoke role
     authorizerReq =
         new TAuthorizerReq(
-            PhysicalPlanType.REVOKE_ROLE.ordinal(),
+            AuthorOperator.AuthorType.REVOKE_ROLE.ordinal(),
             "",
             "temprole0",
             "",
@@ -665,7 +683,7 @@ public class ConfigNodeRPCServerProcessorTest {
     // list privileges user
     authorizerReq =
         new TAuthorizerReq(
-            PhysicalPlanType.LIST_USER_PRIVILEGE.ordinal(),
+            AuthorOperator.AuthorType.LIST_USER_PRIVILEGE.ordinal(),
             "tempuser0",
             "",
             "",
@@ -681,7 +699,7 @@ public class ConfigNodeRPCServerProcessorTest {
     // list user privileges
     authorizerReq =
         new TAuthorizerReq(
-            PhysicalPlanType.LIST_USER_PRIVILEGE.ordinal(),
+            AuthorOperator.AuthorType.LIST_USER_PRIVILEGE.ordinal(),
             "tempuser0",
             "",
             "",
@@ -697,7 +715,7 @@ public class ConfigNodeRPCServerProcessorTest {
     // list privileges role
     authorizerReq =
         new TAuthorizerReq(
-            PhysicalPlanType.LIST_ROLE_PRIVILEGE.ordinal(),
+            AuthorOperator.AuthorType.LIST_ROLE_PRIVILEGE.ordinal(),
             "",
             "temprole0",
             "",
@@ -714,7 +732,7 @@ public class ConfigNodeRPCServerProcessorTest {
     // list role privileges
     authorizerReq =
         new TAuthorizerReq(
-            PhysicalPlanType.LIST_ROLE_PRIVILEGE.ordinal(),
+            AuthorOperator.AuthorType.LIST_ROLE_PRIVILEGE.ordinal(),
             "",
             "temprole0",
             "",
@@ -730,7 +748,7 @@ public class ConfigNodeRPCServerProcessorTest {
     // list all role of user
     authorizerReq =
         new TAuthorizerReq(
-            PhysicalPlanType.LIST_USER_ROLES.ordinal(),
+            AuthorOperator.AuthorType.LIST_USER_ROLES.ordinal(),
             "tempuser0",
             "",
             "",
@@ -747,7 +765,7 @@ public class ConfigNodeRPCServerProcessorTest {
     // list all user of role
     authorizerReq =
         new TAuthorizerReq(
-            PhysicalPlanType.LIST_ROLE_USERS.ordinal(),
+            AuthorOperator.AuthorType.LIST_ROLE_USERS.ordinal(),
             "",
             "temprole0",
             "",
@@ -765,7 +783,7 @@ public class ConfigNodeRPCServerProcessorTest {
     // revoke role from user
     authorizerReq =
         new TAuthorizerReq(
-            PhysicalPlanType.REVOKE_ROLE_FROM_USER.ordinal(),
+            AuthorOperator.AuthorType.REVOKE_ROLE_FROM_USER.ordinal(),
             "tempuser0",
             "temprole0",
             "",
@@ -778,7 +796,7 @@ public class ConfigNodeRPCServerProcessorTest {
     // list root privileges
     authorizerReq =
         new TAuthorizerReq(
-            PhysicalPlanType.LIST_USER_PRIVILEGE.ordinal(),
+            AuthorOperator.AuthorType.LIST_USER_PRIVILEGE.ordinal(),
             "root",
             "",
             "",
@@ -801,7 +819,7 @@ public class ConfigNodeRPCServerProcessorTest {
     // clean user
     TAuthorizerReq authorizerReq =
         new TAuthorizerReq(
-            PhysicalPlanType.LIST_USER.ordinal(), "", "", "", "", new HashSet<>(), "");
+            AuthorOperator.AuthorType.LIST_USER.ordinal(), "", "", "", "", new HashSet<>(), "");
     TAuthorizerResp authorizerResp = processor.queryPermission(authorizerReq);
     status = authorizerResp.getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -811,7 +829,13 @@ public class ConfigNodeRPCServerProcessorTest {
       if (!user.equals("root")) {
         authorizerReq =
             new TAuthorizerReq(
-                PhysicalPlanType.DROP_USER.ordinal(), user, "", "", "", new HashSet<>(), "");
+                AuthorOperator.AuthorType.DROP_USER.ordinal(),
+                user,
+                "",
+                "",
+                "",
+                new HashSet<>(),
+                "");
         status = processor.operatePermission(authorizerReq);
         Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       }
@@ -820,7 +844,7 @@ public class ConfigNodeRPCServerProcessorTest {
     // clean role
     authorizerReq =
         new TAuthorizerReq(
-            PhysicalPlanType.LIST_ROLE.ordinal(), "", "", "", "", new HashSet<>(), "");
+            AuthorOperator.AuthorType.LIST_ROLE.ordinal(), "", "", "", "", new HashSet<>(), "");
     authorizerResp = processor.queryPermission(authorizerReq);
     status = authorizerResp.getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -829,7 +853,13 @@ public class ConfigNodeRPCServerProcessorTest {
     for (String roleN : roleList) {
       authorizerReq =
           new TAuthorizerReq(
-              PhysicalPlanType.DROP_ROLE.ordinal(), "", roleN, "", "", new HashSet<>(), "");
+              AuthorOperator.AuthorType.DROP_ROLE.ordinal(),
+              "",
+              roleN,
+              "",
+              "",
+              new HashSet<>(),
+              "");
       status = processor.operatePermission(authorizerReq);
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     }
