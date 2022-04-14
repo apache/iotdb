@@ -81,7 +81,7 @@ public class AuthorizerConfigTask implements IConfigTask {
       LOGGER.error("Failed to connect to config node.");
       future.setException(e);
     } catch (AuthException e) {
-      LOGGER.error("No such privilege." + authorStatement.getAuthorType());
+      LOGGER.error("No such privilege {}.", authorStatement.getAuthorType());
       future.setException(e);
     }
     // If the action is executed successfully, return the Future.

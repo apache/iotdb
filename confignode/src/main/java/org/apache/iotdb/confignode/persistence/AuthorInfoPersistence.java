@@ -19,8 +19,7 @@
 package org.apache.iotdb.confignode.persistence;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
-import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.confignode.consensus.response.PermissionInfoDataSet;
 import org.apache.iotdb.confignode.physical.PhysicalPlanType;
 import org.apache.iotdb.confignode.physical.sys.AuthorPlan;
@@ -121,7 +120,7 @@ public class AuthorInfoPersistence {
     PermissionInfoDataSet result = new PermissionInfoDataSet();
     List<String> roleList = authorizer.listAllRoles();
     Map<String, List<String>> permissionInfo = new HashMap<>();
-    permissionInfo.put(ConfigNodeConstant.COLUMN_ROLE, roleList);
+    permissionInfo.put(IoTDBConstant.COLUMN_ROLE, roleList);
     result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
     result.setPermissionInfo(permissionInfo);
     return result;
@@ -131,7 +130,7 @@ public class AuthorInfoPersistence {
     PermissionInfoDataSet result = new PermissionInfoDataSet();
     List<String> userList = authorizer.listAllUsers();
     Map<String, List<String>> permissionInfo = new HashMap<>();
-    permissionInfo.put(ConfigNodeConstant.COLUMN_USER, userList);
+    permissionInfo.put(IoTDBConstant.COLUMN_USER, userList);
     result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
     result.setPermissionInfo(permissionInfo);
     return result;
@@ -152,7 +151,7 @@ public class AuthorInfoPersistence {
       }
     }
     Map<String, List<String>> permissionInfo = new HashMap<>();
-    permissionInfo.put(ConfigNodeConstant.COLUMN_USER, roleUsersList);
+    permissionInfo.put(IoTDBConstant.COLUMN_USER, roleUsersList);
     result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
     result.setPermissionInfo(permissionInfo);
     return result;
@@ -169,7 +168,7 @@ public class AuthorInfoPersistence {
       userRoleList.add(roleN);
     }
     Map<String, List<String>> permissionInfo = new HashMap<>();
-    permissionInfo.put(ConfigNodeConstant.COLUMN_ROLE, userRoleList);
+    permissionInfo.put(IoTDBConstant.COLUMN_ROLE, userRoleList);
     result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
     result.setPermissionInfo(permissionInfo);
     return result;
@@ -189,7 +188,7 @@ public class AuthorInfoPersistence {
       }
     }
     Map<String, List<String>> permissionInfo = new HashMap<>();
-    permissionInfo.put(ConfigNodeConstant.COLUMN_PRIVILEGE, rolePrivilegesList);
+    permissionInfo.put(IoTDBConstant.COLUMN_PRIVILEGE, rolePrivilegesList);
     result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
     result.setPermissionInfo(permissionInfo);
     return result;
@@ -203,11 +202,11 @@ public class AuthorInfoPersistence {
     }
     List<String> userPrivilegesList = new ArrayList<>();
     Map<String, List<String>> permissionInfo = new HashMap<>();
-    if (ConfigNodeDescriptor.getInstance().getConf().getAdminName().equals(plan.getUserName())) {
+    if (IoTDBConstant.PATH_ROOT.equals(plan.getUserName())) {
       for (PrivilegeType privilegeType : PrivilegeType.values()) {
         userPrivilegesList.add(privilegeType.toString());
       }
-      permissionInfo.put(ConfigNodeConstant.COLUMN_PRIVILEGE, userPrivilegesList);
+      permissionInfo.put(IoTDBConstant.COLUMN_PRIVILEGE, userPrivilegesList);
       result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
       result.setPermissionInfo(permissionInfo);
       return result;
@@ -233,8 +232,8 @@ public class AuthorInfoPersistence {
           }
         }
       }
-      permissionInfo.put(ConfigNodeConstant.COLUMN_ROLE, rolePrivileges);
-      permissionInfo.put(ConfigNodeConstant.COLUMN_PRIVILEGE, userPrivilegesList);
+      permissionInfo.put(IoTDBConstant.COLUMN_ROLE, rolePrivileges);
+      permissionInfo.put(IoTDBConstant.COLUMN_PRIVILEGE, userPrivilegesList);
       result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
       result.setPermissionInfo(permissionInfo);
       return result;

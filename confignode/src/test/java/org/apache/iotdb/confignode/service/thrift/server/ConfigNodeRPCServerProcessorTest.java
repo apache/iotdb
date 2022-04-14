@@ -23,10 +23,10 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
-import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.persistence.DataNodeInfoPersistence;
 import org.apache.iotdb.confignode.persistence.PartitionInfoPersistence;
@@ -501,17 +501,6 @@ public class ConfigNodeRPCServerProcessorTest {
   public void permissionTest() throws TException {
     TSStatus status;
 
-    // register DataNodes
-    TDataNodeRegisterReq registerReq0 = new TDataNodeRegisterReq(new EndPoint("0.0.0.0", 6667));
-    TDataNodeRegisterReq registerReq1 = new TDataNodeRegisterReq(new EndPoint("0.0.0.0", 6668));
-    TDataNodeRegisterReq registerReq2 = new TDataNodeRegisterReq(new EndPoint("0.0.0.0", 6669));
-    status = processor.registerDataNode(registerReq0).getStatus();
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-    status = processor.registerDataNode(registerReq1).getStatus();
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-    status = processor.registerDataNode(registerReq2).getStatus();
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-
     List<String> userList = new ArrayList<>();
     userList.add("root");
     userList.add("tempuser0");
@@ -565,7 +554,7 @@ public class ConfigNodeRPCServerProcessorTest {
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     userList.remove("tempuser1");
     Assert.assertEquals(
-        userList, authorizerResp.getAuthorizerInfo().get(ConfigNodeConstant.COLUMN_USER));
+        userList, authorizerResp.getAuthorizerInfo().get(IoTDBConstant.COLUMN_USER));
 
     // create role
     authorizerReq =
@@ -593,7 +582,7 @@ public class ConfigNodeRPCServerProcessorTest {
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     roleList.remove("temprole1");
     Assert.assertEquals(
-        roleList, authorizerResp.getAuthorizerInfo().get(ConfigNodeConstant.COLUMN_ROLE));
+        roleList, authorizerResp.getAuthorizerInfo().get(IoTDBConstant.COLUMN_ROLE));
 
     // alter user
     authorizerReq =
@@ -687,7 +676,7 @@ public class ConfigNodeRPCServerProcessorTest {
     status = authorizerResp.getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     Assert.assertEquals(
-        privilege, authorizerResp.getAuthorizerInfo().get(ConfigNodeConstant.COLUMN_PRIVILEGE));
+        privilege, authorizerResp.getAuthorizerInfo().get(IoTDBConstant.COLUMN_PRIVILEGE));
 
     // list user privileges
     authorizerReq =
@@ -703,7 +692,7 @@ public class ConfigNodeRPCServerProcessorTest {
     status = authorizerResp.getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     Assert.assertEquals(
-        privilege, authorizerResp.getAuthorizerInfo().get(ConfigNodeConstant.COLUMN_PRIVILEGE));
+        privilege, authorizerResp.getAuthorizerInfo().get(IoTDBConstant.COLUMN_PRIVILEGE));
 
     // list privileges role
     authorizerReq =
@@ -720,7 +709,7 @@ public class ConfigNodeRPCServerProcessorTest {
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     privilege.remove(0);
     Assert.assertEquals(
-        privilege, authorizerResp.getAuthorizerInfo().get(ConfigNodeConstant.COLUMN_PRIVILEGE));
+        privilege, authorizerResp.getAuthorizerInfo().get(IoTDBConstant.COLUMN_PRIVILEGE));
 
     // list role privileges
     authorizerReq =
@@ -736,7 +725,7 @@ public class ConfigNodeRPCServerProcessorTest {
     status = authorizerResp.getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     Assert.assertEquals(
-        privilege, authorizerResp.getAuthorizerInfo().get(ConfigNodeConstant.COLUMN_PRIVILEGE));
+        privilege, authorizerResp.getAuthorizerInfo().get(IoTDBConstant.COLUMN_PRIVILEGE));
 
     // list all role of user
     authorizerReq =
@@ -753,7 +742,7 @@ public class ConfigNodeRPCServerProcessorTest {
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     roleList.remove("temprole1");
     Assert.assertEquals(
-        roleList, authorizerResp.getAuthorizerInfo().get(ConfigNodeConstant.COLUMN_ROLE));
+        roleList, authorizerResp.getAuthorizerInfo().get(IoTDBConstant.COLUMN_ROLE));
 
     // list all user of role
     authorizerReq =
@@ -771,7 +760,7 @@ public class ConfigNodeRPCServerProcessorTest {
     userList.remove("tempuser1");
     userList.remove("root");
     Assert.assertEquals(
-        userList, authorizerResp.getAuthorizerInfo().get(ConfigNodeConstant.COLUMN_USER));
+        userList, authorizerResp.getAuthorizerInfo().get(IoTDBConstant.COLUMN_USER));
 
     // revoke role from user
     authorizerReq =
@@ -802,7 +791,7 @@ public class ConfigNodeRPCServerProcessorTest {
     for (int i = 0; i < PrivilegeType.values().length; i++) {
       Assert.assertEquals(
           PrivilegeType.values()[i].toString(),
-          authorizerResp.getAuthorizerInfo().get(ConfigNodeConstant.COLUMN_PRIVILEGE).get(i));
+          authorizerResp.getAuthorizerInfo().get(IoTDBConstant.COLUMN_PRIVILEGE).get(i));
     }
   }
 
@@ -817,7 +806,7 @@ public class ConfigNodeRPCServerProcessorTest {
     status = authorizerResp.getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
-    List<String> allUsers = authorizerResp.getAuthorizerInfo().get(ConfigNodeConstant.COLUMN_USER);
+    List<String> allUsers = authorizerResp.getAuthorizerInfo().get(IoTDBConstant.COLUMN_USER);
     for (String user : allUsers) {
       if (!user.equals("root")) {
         authorizerReq =
@@ -836,7 +825,7 @@ public class ConfigNodeRPCServerProcessorTest {
     status = authorizerResp.getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
-    List<String> roleList = authorizerResp.getAuthorizerInfo().get(ConfigNodeConstant.COLUMN_ROLE);
+    List<String> roleList = authorizerResp.getAuthorizerInfo().get(IoTDBConstant.COLUMN_ROLE);
     for (String roleN : roleList) {
       authorizerReq =
           new TAuthorizerReq(

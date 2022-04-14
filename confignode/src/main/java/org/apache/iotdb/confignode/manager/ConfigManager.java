@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.partition.SeriesPartitionSlot;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationDataSet;
 import org.apache.iotdb.confignode.consensus.response.DataNodesInfoDataSet;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionDataSet;
+import org.apache.iotdb.confignode.consensus.response.PermissionInfoDataSet;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionDataSet;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaDataSet;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
@@ -298,6 +299,6 @@ public class ConfigManager implements Manager {
     if (physicalPlan instanceof AuthorPlan) {
       return permissionManager.queryPermission((AuthorPlan) physicalPlan);
     }
-    return new DataPartitionDataSet();
+    return new PermissionInfoDataSet();
   }
 }
