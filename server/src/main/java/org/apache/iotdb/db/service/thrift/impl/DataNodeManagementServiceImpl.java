@@ -71,6 +71,8 @@ public class DataNodeManagementServiceImpl implements ManagementIService.Iface {
       List<Peer> peers = new ArrayList<>();
       for (EndPoint endPoint : regionReplicaSet.getEndpoint()) {
         Endpoint endpoint = new Endpoint(endPoint.getIp(), endPoint.getPort());
+        // TODO: Expend Peer and RegisterDataNodeReq
+        endpoint.setPort(endpoint.getPort() + 31007);
         peers.add(new Peer(schemaRegionId, endpoint));
       }
       ConsensusGenericResponse consensusGenericResponse =
@@ -109,6 +111,8 @@ public class DataNodeManagementServiceImpl implements ManagementIService.Iface {
       List<Peer> peers = new ArrayList<>();
       for (EndPoint endPoint : regionReplicaSet.getEndpoint()) {
         Endpoint endpoint = new Endpoint(endPoint.getIp(), endPoint.getPort());
+        // TODO: Expend Peer and RegisterDataNodeReq
+        endpoint.setPort(endpoint.getPort() + 31007);
         peers.add(new Peer(dataRegionId, endpoint));
       }
       ConsensusGenericResponse consensusGenericResponse =
