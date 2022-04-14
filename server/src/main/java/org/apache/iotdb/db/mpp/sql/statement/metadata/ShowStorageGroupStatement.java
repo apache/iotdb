@@ -16,26 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.service;
 
-import org.apache.iotdb.db.utils.MemUtils;
+package org.apache.iotdb.db.mpp.sql.statement.metadata;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 
-public class IoTDBShutdownHook extends Thread {
+public class ShowStorageGroupStatement extends ShowStatement {
 
-  private static final Logger logger = LoggerFactory.getLogger(IoTDBShutdownHook.class);
+  private final PartialPath pathPattern;
+
+  public ShowStorageGroupStatement(PartialPath pathPattern) {
+    super();
+    this.pathPattern = pathPattern;
+  }
+
+  public PartialPath getPathPattern() {
+    return pathPattern;
+  }
 
   @Override
-  public void run() {
-    // close rocksdb if possible to avoid lose data
-    IoTDB.configManager.clear();
-    if (logger.isInfoEnabled()) {
-      logger.info(
-          "IoTDB exits. Jvm memory usage: {}",
-          MemUtils.bytesCntToStr(
-              Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()));
-    }
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitShowStorageGroup(this, context);
   }
 }
