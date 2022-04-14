@@ -24,7 +24,10 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.common.SessionInfo;
+import org.apache.iotdb.db.mpp.execution.config.ConfigExecution;
+import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.SetStorageGroupStatement;
 
 import org.apache.commons.lang3.Validate;
 
@@ -61,14 +64,18 @@ public class Coordinator {
     this.scheduledExecutor = getScheduledExecutor();
   }
 
-  private QueryExecution createQueryExecution(Statement statement, MPPQueryContext queryContext) {
+  private IQueryExecution createQueryExecution(Statement statement, MPPQueryContext queryContext) {
+    if (statement instanceof SetStorageGroupStatement) {
+      queryContext.setQueryType(QueryType.WRITE);
+      return new ConfigExecution(queryContext, statement, executor);
+    }
     return new QueryExecution(statement, queryContext, executor, scheduledExecutor);
   }
 
   public ExecutionResult execute(
       Statement statement, QueryId queryId, SessionInfo session, String sql) {
 
-    QueryExecution execution =
+    IQueryExecution execution =
         createQueryExecution(
             statement, new MPPQueryContext(sql, queryId, session, getHostEndpoint()));
     queryExecutionMap.put(queryId, execution);

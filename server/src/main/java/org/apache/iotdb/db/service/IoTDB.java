@@ -188,7 +188,7 @@ public class IoTDB implements IoTDBMBean {
 
     registerManager.register(SenderService.getInstance());
     registerManager.register(UpgradeSevice.getINSTANCE());
-    registerManager.register(SettleService.getINSTANCE());
+    //    registerManager.register(SettleService.getINSTANCE());
     registerManager.register(TriggerRegistrationService.getInstance());
     registerManager.register(ContinuousQueryService.getInstance());
 
