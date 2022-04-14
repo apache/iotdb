@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.execution;
+package org.apache.iotdb.db.mpp.execution.config;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
@@ -56,12 +56,14 @@ public class AuthorizerConfigTask implements IConfigTask {
       TAuthorizerReq req =
           new TAuthorizerReq(
               authorStatement.getAuthorType().ordinal(),
-              authorStatement.getUserName(),
-              authorStatement.getRoleName(),
-              authorStatement.getPassWord(),
-              authorStatement.getNewPassword(),
+              authorStatement.getUserName() == null ? "" : authorStatement.getUserName(),
+              authorStatement.getRoleName() == null ? "" : authorStatement.getRoleName(),
+              authorStatement.getPassWord() == null ? "" : authorStatement.getPassWord(),
+              authorStatement.getNewPassword() == null ? "" : authorStatement.getNewPassword(),
               AuthorNode.strToPermissions(authorStatement.getPrivilegeList()),
-              authorStatement.getNodeName().getFullPath());
+              authorStatement.getNodeName() == null
+                  ? ""
+                  : authorStatement.getNodeName().getFullPath());
       configNodeClient = new ConfigNodeClient();
       // Send request to some API server
       TSStatus tsStatus = configNodeClient.operatePermission(req);
