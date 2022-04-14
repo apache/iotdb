@@ -68,7 +68,14 @@ public class DataPartition {
     // A list of data region replica sets will store data in a same time partition.
     // We will insert data to the last set in the list.
     // TODO return the latest dataRegionReplicaSet for each time partition
-    return Collections.emptyList();
+    String storageGroup = getStorageGroupByDevice(deviceName);
+    SeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceName);
+    // IMPORTANT TODO: (xingtanzjr) need to handle the situation for write operation that there are
+    // more than 1 Regions for one timeSlot
+    return dataPartitionMap.get(storageGroup).get(seriesPartitionSlot).entrySet().stream()
+        .filter(entry -> timePartitionSlotList.contains(entry.getKey()))
+        .flatMap(entry -> entry.getValue().stream())
+        .collect(Collectors.toList());
   }
 
   public RegionReplicaSet getDataRegionReplicaSetForWriting(
@@ -76,7 +83,16 @@ public class DataPartition {
     // A list of data region replica sets will store data in a same time partition.
     // We will insert data to the last set in the list.
     // TODO return the latest dataRegionReplicaSet for each time partition
-    return null;
+    String storageGroup = getStorageGroupByDevice(deviceName);
+    SeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceName);
+    List<RegionReplicaSet> regions =
+        dataPartitionMap.get(storageGroup).get(seriesPartitionSlot).entrySet().stream()
+            .filter(entry -> entry.getKey().equals(timePartitionSlot))
+            .flatMap(entry -> entry.getValue().stream())
+            .collect(Collectors.toList());
+    // IMPORTANT TODO: (xingtanzjr) need to handle the situation for write operation that there are
+    // more than 1 Regions for one timeSlot
+    return regions.get(0);
   }
 
   private SeriesPartitionSlot calculateDeviceGroupId(String deviceName) {

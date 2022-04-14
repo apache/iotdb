@@ -29,10 +29,12 @@ struct TDataNodeRegisterReq {
   2: optional map<string, TStorageGroupSchema> statusMap
 }
 
+//TODO Return timePartitionInterval to data node
 struct TGlobalConfig {
   1: optional string dataNodeConsensusProtocolClass
   2: optional i32 seriesPartitionSlotNum
   3: optional string seriesPartitionExecutorClass
+  4: optional i64 timePartitionInterval
 }
 
 struct TDataNodeRegisterResp {

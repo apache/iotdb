@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.execution;
+package org.apache.iotdb.db.mpp.execution.config;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
