@@ -18,13 +18,8 @@
  */
 package org.apache.iotdb.db.mpp.sql.analyze;
 
-import org.apache.iotdb.common.rpc.thrift.EndPoint;
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
-import org.apache.iotdb.commons.cluster.DataNodeLocation;
-import org.apache.iotdb.commons.cluster.Endpoint;
-import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.partition.*;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
@@ -166,103 +161,78 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
 
   private TDataPartitionReq constructDataPartitionReq(
       Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
-    Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> partitionSlotsMap =
-        new HashMap<>();
-    for (Map.Entry<String, List<DataPartitionQueryParam>> entry :
-        sgNameToQueryParamsMap.entrySet()) {
-      String sgName = entry.getKey();
-      List<DataPartitionQueryParam> queryParams = entry.getValue();
-      Map<TSeriesPartitionSlot, List<TTimePartitionSlot>> tmpMap = new HashMap<>();
-      queryParams.forEach(
-          queryParam -> {
-            List<TimePartitionSlot> timePartitionSlotList = queryParam.getTimePartitionSlotList();
-            List<TTimePartitionSlot> tTimePartitionSlots =
-                timePartitionSlotList.stream()
-                    .map(
-                        timePartitionSlot ->
-                            new TTimePartitionSlot(timePartitionSlot.getStartTime()))
-                    .collect(Collectors.toList());
-            tmpMap.put(
-                new TSeriesPartitionSlot(
-                    partitionExecutor
-                        .getSeriesPartitionSlot(queryParam.getDevicePath())
-                        .getSlotId()),
-                tTimePartitionSlots);
-          });
-      partitionSlotsMap.computeIfAbsent(sgName, key -> new HashMap<>()).putAll(tmpMap);
-    }
-    return new TDataPartitionReq(partitionSlotsMap);
+    return new TDataPartitionReq(
+        sgNameToQueryParamsMap.entrySet().stream()
+            .collect(
+                Collectors.toMap(
+                    // for each sg
+                    Map.Entry::getKey,
+                    entry ->
+                        entry.getValue().stream()
+                            .collect(
+                                Collectors.toMap(
+                                    // for each device
+                                    queryParam ->
+                                        new TSeriesPartitionSlot(
+                                            partitionExecutor
+                                                .getSeriesPartitionSlot(queryParam.getDevicePath())
+                                                .getSlotId()),
+                                    queryParam ->
+                                        queryParam.getTimePartitionSlotList().stream()
+                                            .map(
+                                                timePartitionSlot ->
+                                                    new TTimePartitionSlot(
+                                                        timePartitionSlot.getStartTime()))
+                                            .collect(Collectors.toList()))))));
   }
 
   private SchemaPartition parseSchemaPartitionResp(TSchemaPartitionResp schemaPartitionResp) {
-    Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> respSchemaPartitionMap =
-        schemaPartitionResp.getSchemaRegionMap();
-    Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> schemaPartitionMap = new HashMap<>();
-    respSchemaPartitionMap.forEach(
-        (storageGroupName, respSchemaRegionMap) -> {
-          Map<SeriesPartitionSlot, RegionReplicaSet> schemaRegionMap = new HashMap<>();
-          respSchemaRegionMap.forEach(
-              (respSeriesPartitionSlot, respRegionReplicaSet) -> {
-                SeriesPartitionSlot seriesPartitionSlot =
-                    new SeriesPartitionSlot(respSeriesPartitionSlot.getSlotId());
-                EndPoint respEndPoint = respRegionReplicaSet.getEndpoint().get(0);
-                RegionReplicaSet regionReplicaSet =
-                    new RegionReplicaSet(
-                        ConsensusGroupId.Factory.create(respRegionReplicaSet.regionId),
-                        Collections.singletonList(
-                            new DataNodeLocation(
-                                new Endpoint(respEndPoint.getIp(), respEndPoint.getPort()))));
-                schemaRegionMap.put(seriesPartitionSlot, regionReplicaSet);
-              });
-          schemaPartitionMap.put(storageGroupName, schemaRegionMap);
-        });
-    return new SchemaPartition(schemaPartitionMap);
+    return new SchemaPartition(
+        schemaPartitionResp.getSchemaRegionMap().entrySet().stream()
+            .collect(
+                Collectors.toMap(
+                    // for each sg
+                    Map.Entry::getKey,
+                    sgEntry ->
+                        sgEntry.getValue().entrySet().stream()
+                            .collect(
+                                Collectors.toMap(
+                                    // for each device group
+                                    deviceGroupEntry ->
+                                        new SeriesPartitionSlot(
+                                            deviceGroupEntry.getKey().getSlotId()),
+                                    deviceGroupEntry ->
+                                        new RegionReplicaSet(deviceGroupEntry.getValue()))))));
   }
 
   private DataPartition parseDataPartitionResp(TDataPartitionResp dataPartitionResp) {
-    Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
-        respDataPartitionMap = dataPartitionResp.getDataPartitionMap();
-    Map<String, Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>>
-        dataPartitionMap = new HashMap<>();
-    respDataPartitionMap.forEach(
-        (storageGroupName, respDataRegionMap) -> {
-          Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>> dataRegionMap =
-              new HashMap<>();
-          respDataRegionMap.forEach(
-              ((respSeriesPartitionSlot, respTimePartitionSlotListMap) -> {
-                SeriesPartitionSlot seriesPartitionSlot =
-                    new SeriesPartitionSlot(respSeriesPartitionSlot.getSlotId());
-                Map<TimePartitionSlot, List<RegionReplicaSet>> timePartitionSlotListMap =
-                    new HashMap<>();
-                respTimePartitionSlotListMap.forEach(
-                    (respTimePartitionSlot, respRegionReplicaSetList) -> {
-                      TimePartitionSlot timePartitionSlot =
-                          new TimePartitionSlot(respTimePartitionSlot.getStartTime());
-                      List<RegionReplicaSet> regionReplicaSetList = new ArrayList<>();
-                      respRegionReplicaSetList.forEach(
-                          respRegionReplicaSet -> {
-                            RegionReplicaSet regionReplicaSet = new RegionReplicaSet();
-                            regionReplicaSet.setConsensusGroupId(
-                                ConsensusGroupId.Factory.create(respRegionReplicaSet.regionId));
-                            List<DataNodeLocation> dataNodeList = new ArrayList<>();
-                            respRegionReplicaSet
-                                .getEndpoint()
-                                .forEach(
-                                    respEndpoint -> {
-                                      dataNodeList.add(
-                                          new DataNodeLocation(
-                                              new Endpoint(
-                                                  respEndpoint.getIp(), respEndpoint.getPort())));
-                                    });
-                            regionReplicaSet.setDataNodeList(dataNodeList);
-                            regionReplicaSetList.add(regionReplicaSet);
-                          });
-                      timePartitionSlotListMap.put(timePartitionSlot, regionReplicaSetList);
-                    });
-                dataRegionMap.put(seriesPartitionSlot, timePartitionSlotListMap);
-              }));
-          dataPartitionMap.put(storageGroupName, dataRegionMap);
-        });
-    return new DataPartition(dataPartitionMap);
+    return new DataPartition(
+        dataPartitionResp.getDataPartitionMap().entrySet().stream()
+            .collect(
+                Collectors.toMap(
+                    // for each sg
+                    Map.Entry::getKey,
+                    sgEntry ->
+                        sgEntry.getValue().entrySet().stream()
+                            .collect(
+                                Collectors.toMap(
+                                    // for each device group
+                                    deviceGroupEntry ->
+                                        new SeriesPartitionSlot(
+                                            deviceGroupEntry.getKey().getSlotId()),
+                                    deviceGroupEntry ->
+                                        deviceGroupEntry.getValue().entrySet().stream()
+                                            .collect(
+                                                Collectors.toMap(
+                                                    // for each TimePartitionSlot
+                                                    timePartitionEntry ->
+                                                        new TimePartitionSlot(
+                                                            timePartitionEntry
+                                                                .getKey()
+                                                                .getStartTime()),
+                                                    timePartitionEntry ->
+                                                        timePartitionEntry.getValue().stream()
+                                                            .map(RegionReplicaSet::new)
+                                                            .collect(Collectors.toList()))))))));
   }
 }
