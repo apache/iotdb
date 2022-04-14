@@ -210,8 +210,7 @@ public class DistributionPlannerTest {
 
     Analysis analysis = constructAnalysis();
 
-    MPPQueryContext context =
-        new MPPQueryContext("", queryId, null, QueryType.READ, new Endpoint());
+    MPPQueryContext context = new MPPQueryContext("", queryId, null, new Endpoint());
     DistributionPlanner planner =
         new DistributionPlanner(analysis, new LogicalQueryPlan(context, root));
     PlanNode rootAfterRewrite = planner.rewriteSource();
@@ -248,8 +247,7 @@ public class DistributionPlannerTest {
 
     Analysis analysis = constructAnalysis();
 
-    MPPQueryContext context =
-        new MPPQueryContext("", queryId, null, QueryType.READ, new Endpoint());
+    MPPQueryContext context = new MPPQueryContext("", queryId, null, new Endpoint());
     DistributionPlanner planner =
         new DistributionPlanner(analysis, new LogicalQueryPlan(context, root));
     DistributedQueryPlan plan = planner.planFragments();
@@ -274,8 +272,8 @@ public class DistributionPlannerTest {
 
     Analysis analysis = constructAnalysis();
 
-    MPPQueryContext context =
-        new MPPQueryContext("", queryId, null, QueryType.WRITE, new Endpoint());
+    MPPQueryContext context = new MPPQueryContext("", queryId, null, new Endpoint());
+    context.setQueryType(QueryType.WRITE);
     DistributionPlanner planner =
         new DistributionPlanner(analysis, new LogicalQueryPlan(context, insertRowNode));
     DistributedQueryPlan plan = planner.planFragments();
@@ -316,8 +314,8 @@ public class DistributionPlannerTest {
 
     Analysis analysis = constructAnalysis();
 
-    MPPQueryContext context =
-        new MPPQueryContext("", queryId, null, QueryType.WRITE, new Endpoint());
+    MPPQueryContext context = new MPPQueryContext("", queryId, null, new Endpoint());
+    context.setQueryType(QueryType.WRITE);
     DistributionPlanner planner =
         new DistributionPlanner(analysis, new LogicalQueryPlan(context, node));
     DistributedQueryPlan plan = planner.planFragments();
