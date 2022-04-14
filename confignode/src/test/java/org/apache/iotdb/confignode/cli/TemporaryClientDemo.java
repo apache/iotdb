@@ -37,7 +37,6 @@ public class TemporaryClientDemo {
 
   private static final int timeOutInMS = 10000;
 
-  @Test
   public void setStorageGroupAndCreateRegionsDemo() throws TException, InterruptedException {
     TTransport transport = RpcTransportFactory.INSTANCE.getTransport("0.0.0.0", 22277, timeOutInMS);
     transport.open();
