@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.cluster.DataNodeLocation;
 import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.partition.*;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 
 import java.util.*;
@@ -46,7 +47,10 @@ public class FakePartitionFetcherImpl implements IPartitionFetcher {
     String device2 = "root.sg.d22";
     String device3 = "root.sg.d333";
 
-    DataPartition dataPartition = new DataPartition();
+    DataPartition dataPartition =
+        new DataPartition(
+            IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
+            IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
     Map<String, Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>>
         dataPartitionMap = new HashMap<>();
     Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>> sgPartitionMap =
