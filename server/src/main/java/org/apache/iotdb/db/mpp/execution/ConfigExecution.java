@@ -17,25 +17,17 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.execution.config;
-
-import org.apache.iotdb.db.mpp.common.MPPQueryContext;
-import org.apache.iotdb.db.mpp.execution.AuthorizerConfigTask;
-import org.apache.iotdb.db.mpp.execution.ExecutionResult;
-import org.apache.iotdb.db.mpp.execution.IConfigTask;
-import org.apache.iotdb.db.mpp.execution.IQueryExecution;
-import org.apache.iotdb.db.mpp.execution.QueryStateMachine;
-import org.apache.iotdb.db.mpp.sql.statement.Statement;
-import org.apache.iotdb.db.mpp.sql.statement.metadata.SetStorageGroupStatement;
-import org.apache.iotdb.db.mpp.sql.statement.sys.AuthorStatement;
-import org.apache.iotdb.rpc.RpcUtils;
-import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.exception.NotImplementedException;
+package org.apache.iotdb.db.mpp.execution;
 
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import jersey.repackaged.com.google.common.util.concurrent.SettableFuture;
+import org.apache.iotdb.db.mpp.common.MPPQueryContext;
+import org.apache.iotdb.db.mpp.sql.statement.Statement;
+import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -112,17 +104,6 @@ public class ConfigExecution implements IQueryExecution {
   // Generate the corresponding IConfigTask by statement.
   // Each type of statement will has a ConfigTask
   private IConfigTask getTask(Statement statement) {
-    try {
-      switch (statement.getType()) {
-        case SET_STORAGE_GROUP:
-          return new SetStorageGroupTask((SetStorageGroupStatement) statement);
-        case AUTHOR:
-          return new AuthorizerConfigTask((AuthorStatement) statement);
-        default:
-          throw new NotImplementedException();
-      }
-    } catch (ClassCastException classCastException) {
-      throw new NotImplementedException();
-    }
+    throw new NotImplementedException();
   }
 }
