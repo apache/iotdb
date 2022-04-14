@@ -19,30 +19,18 @@
 
 package org.apache.iotdb.db.mpp.sql.planner.plan.node;
 
+import org.apache.iotdb.commons.partition.RegionReplicaSet;
+import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
+
 import java.util.List;
 
-import static com.google.common.collect.ImmutableList.toImmutableList;
+public abstract class WritePlanNode extends PlanNode {
 
-public class SimplePlanNodeRewriter<C> extends PlanVisitor<PlanNode, C> {
-  @Override
-  public PlanNode visitPlan(PlanNode node, C context) {
-    // TODO: (xingtanzjr) we apply no action for IWritePlanNode currently
-    if (node instanceof WritePlanNode) {
-      return node;
-    }
-    return defaultRewrite(node, context);
+  protected WritePlanNode(PlanNodeId id) {
+    super(id);
   }
 
-  public PlanNode defaultRewrite(PlanNode node, C context) {
-    List<PlanNode> children =
-        node.getChildren().stream()
-            .map(child -> rewrite(child, context))
-            .collect(toImmutableList());
+  public abstract RegionReplicaSet getRegionReplicaSet();
 
-    return node.cloneWithChildren(children);
-  }
-
-  public PlanNode rewrite(PlanNode node, C userContext) {
-    return node.accept(this, userContext);
-  }
+  public abstract List<WritePlanNode> splitByPartition(Analysis analysis);
 }

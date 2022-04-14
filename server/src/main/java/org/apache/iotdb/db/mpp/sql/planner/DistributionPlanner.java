@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
+import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.mpp.sql.planner.plan.IFragmentParallelPlaner;
@@ -29,10 +30,12 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.mpp.sql.planner.plan.PlanFragment;
 import org.apache.iotdb.db.mpp.sql.planner.plan.SimpleFragmentParallelPlanner;
 import org.apache.iotdb.db.mpp.sql.planner.plan.SubPlan;
+import org.apache.iotdb.db.mpp.sql.planner.plan.WriteFragmentParallelPlanner;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.SimplePlanNodeRewriter;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaMergeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ExchangeNode;
@@ -84,7 +87,10 @@ public class DistributionPlanner {
     PlanNode rootWithExchange = addExchangeNode(rootAfterRewrite);
     SubPlan subPlan = splitFragment(rootWithExchange);
     List<FragmentInstance> fragmentInstances = planFragmentInstances(subPlan);
-    SetSinkForRootInstance(subPlan, fragmentInstances);
+    // Only execute this step for READ operation
+    if (context.getQueryType() == QueryType.READ) {
+      SetSinkForRootInstance(subPlan, fragmentInstances);
+    }
     return new DistributedQueryPlan(
         logicalPlan.getContext(), subPlan, subPlan.getPlanFragmentList(), fragmentInstances);
   }
@@ -93,7 +99,9 @@ public class DistributionPlanner {
   // And for parallel-able fragment, clone it into several instances with different params.
   public List<FragmentInstance> planFragmentInstances(SubPlan subPlan) {
     IFragmentParallelPlaner parallelPlaner =
-        new SimpleFragmentParallelPlanner(subPlan, analysis, context);
+        context.getQueryType() == QueryType.READ
+            ? new SimpleFragmentParallelPlanner(subPlan, analysis, context)
+            : new WriteFragmentParallelPlanner(subPlan, analysis, context);
     return parallelPlaner.parallelPlan();
   }
 
@@ -239,6 +247,10 @@ public class DistributionPlanner {
   private class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
     @Override
     public PlanNode visitPlan(PlanNode node, NodeGroupContext context) {
+      // TODO: (xingtanzjr) we apply no action for IWritePlanNode currently
+      if (node instanceof WritePlanNode) {
+        return node;
+      }
       // Visit all the children of current node
       List<PlanNode> children =
           node.getChildren().stream()
@@ -433,6 +445,10 @@ public class DistributionPlanner {
     }
 
     private void splitToSubPlan(PlanNode root, SubPlan subPlan) {
+      // TODO: (xingtanzjr) we apply no action for IWritePlanNode currently
+      if (root instanceof WritePlanNode) {
+        return;
+      }
       if (root instanceof ExchangeNode) {
         // We add a FragmentSinkNode for newly created PlanFragment
         ExchangeNode exchangeNode = (ExchangeNode) root;
