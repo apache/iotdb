@@ -25,7 +25,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class Int64ArrayColumnEncoder implements ColumnEncoder {
+public class ByteArrayColumnEncoder implements ColumnEncoder {
 
   @Override
   public void readColumn(ColumnBuilder columnBuilder, ByteBuffer input, int positionCount) {
@@ -34,24 +34,16 @@ public class Int64ArrayColumnEncoder implements ColumnEncoder {
     //    +---------------+-----------------+-------------+
     //    | may have null | null indicators |   values    |
     //    +---------------+-----------------+-------------+
-    //    | byte          | list[byte]      | list[int64] |
+    //    | byte          | list[byte]      | list[byte]  |
     //    +---------------+-----------------+-------------+
 
     boolean[] nullIndicators = ColumnEncoder.deserializeNullIndicators(input, positionCount);
-
     TSDataType dataType = columnBuilder.getDataType();
-    if (TSDataType.INT64.equals(dataType)) {
+    if (TSDataType.BOOLEAN.equals(dataType)) {
+      boolean[] values = ColumnEncoder.deserializeBooleanArray(input, positionCount);
       for (int i = 0; i < positionCount; i++) {
         if (nullIndicators == null || !nullIndicators[i]) {
-          columnBuilder.writeLong(input.getLong());
-        } else {
-          columnBuilder.appendNull();
-        }
-      }
-    } else if (TSDataType.DOUBLE.equals(dataType)) {
-      for (int i = 0; i < positionCount; i++) {
-        if (nullIndicators == null || !nullIndicators[i]) {
-          columnBuilder.writeDouble(Double.longBitsToDouble(input.getLong()));
+          columnBuilder.writeBoolean(values[i]);
         } else {
           columnBuilder.appendNull();
         }
@@ -67,19 +59,8 @@ public class Int64ArrayColumnEncoder implements ColumnEncoder {
     ColumnEncoder.serializeNullIndicators(output, column);
 
     TSDataType dataType = column.getDataType();
-    int positionCount = column.getPositionCount();
-    if (TSDataType.INT64.equals(dataType)) {
-      for (int i = 0; i < positionCount; i++) {
-        if (!column.isNull(i)) {
-          output.writeLong(column.getLong(i));
-        }
-      }
-    } else if (TSDataType.DOUBLE.equals(dataType)) {
-      for (int i = 0; i < positionCount; i++) {
-        if (!column.isNull(i)) {
-          output.writeLong(Double.doubleToLongBits(column.getDouble(i)));
-        }
-      }
+    if (TSDataType.BOOLEAN.equals(dataType)) {
+      ColumnEncoder.serializeBooleanArray(output, column, Column::getBoolean);
     } else {
       throw new IllegalArgumentException("Invalid data type: " + dataType);
     }
