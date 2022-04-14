@@ -19,24 +19,14 @@
 
 package org.apache.iotdb.db.mpp.execution;
 
-import com.google.common.util.concurrent.ListenableFuture;
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
-import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
-import org.apache.iotdb.db.auth.AuthException;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AuthorNode;
 import org.apache.iotdb.db.mpp.sql.statement.sys.AuthorStatement;
-import org.apache.iotdb.rpc.RpcTransportFactory;
-import org.apache.thrift.TException;
-import org.apache.thrift.protocol.TBinaryProtocol;
-import org.apache.thrift.transport.TTransport;
-import org.apache.thrift.transport.TTransportException;
+
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
 
 public class AuthorizerConfigTask implements IConfigTask {
 
   private AuthorStatement authorStatement;
-
-  public AuthorizerConfigTask() {}
 
   public AuthorizerConfigTask(AuthorStatement authorStatement) {
     this.authorStatement = authorStatement;
@@ -44,29 +34,7 @@ public class AuthorizerConfigTask implements IConfigTask {
 
   @Override
   public ListenableFuture<Void> execute() {
-    ConfigIService.Client clients;
-    try {
-      TTransport transport = RpcTransportFactory.INSTANCE.getTransport("0.0.0.0", 22277, 2000);
-      transport.open();
-      clients = new ConfigIService.Client(new TBinaryProtocol(transport));
-      TAuthorizerReq tAuthorizerReq =
-          new TAuthorizerReq(
-              authorStatement.getAuthorType().ordinal(),
-              authorStatement.getUserName(),
-              authorStatement.getRoleName(),
-              authorStatement.getPassWord(),
-              authorStatement.getNewPassword(),
-              AuthorNode.strToPermissions(authorStatement.getPrivilegeList()),
-              authorStatement.getNodeName().getFullPath());
-      TSStatus tsStatus = clients.operatePermission(tAuthorizerReq);
-      if (tsStatus.getCode() == 200) {
-
-      }
-    } catch (TTransportException | AuthException e) {
-      e.printStackTrace();
-    } catch (TException e) {
-      e.printStackTrace();
-    }
-    return null;
+    // TODO: Execute permission-related operations and return
+    return Futures.immediateVoidFuture();
   }
 }

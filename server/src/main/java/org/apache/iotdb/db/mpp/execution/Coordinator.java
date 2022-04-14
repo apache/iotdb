@@ -67,6 +67,10 @@ public class Coordinator {
     return new QueryExecution(statement, queryContext, executor, scheduledExecutor);
   }
 
+  private ConfigExecution createConfigExecution(Statement statement, MPPQueryContext queryContext) {
+    return new ConfigExecution(queryContext, statement, executor);
+  }
+
   public ExecutionResult execute(
       Statement statement, QueryId queryId, QueryType queryType, SessionInfo session, String sql) {
 
@@ -77,6 +81,15 @@ public class Coordinator {
 
     execution.start();
 
+    return execution.getStatus();
+  }
+
+  public ExecutionResult executeUpdate(
+      Statement statement, QueryId queryId, QueryType queryType, SessionInfo session, String sql) {
+    ConfigExecution execution =
+        createConfigExecution(
+            statement, new MPPQueryContext(sql, queryId, session, queryType, getHostEndpoint()));
+    execution.start();
     return execution.getStatus();
   }
 
