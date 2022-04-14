@@ -38,8 +38,6 @@ import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -219,23 +217,9 @@ public class PartitionManager {
   /** Construct SeriesPartitionExecutor by iotdb-confignode.propertis */
   private void setSeriesPartitionExecutor() {
     ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();
-    try {
-      Class<?> executor = Class.forName(conf.getSeriesPartitionExecutorClass());
-      Constructor<?> executorConstructor = executor.getConstructor(int.class);
-      this.executor =
-          (SeriesPartitionExecutor)
-              executorConstructor.newInstance(conf.getSeriesPartitionSlotNum());
-    } catch (ClassNotFoundException
-        | NoSuchMethodException
-        | InstantiationException
-        | IllegalAccessException
-        | InvocationTargetException e) {
-      LOGGER.error(
-          "Couldn't Constructor SeriesPartitionExecutor class: {}",
-          conf.getSeriesPartitionExecutorClass(),
-          e);
-      executor = null;
-    }
+    this.executor =
+        SeriesPartitionExecutor.getSeriesPartitionExecutor(
+            conf.getSeriesPartitionExecutorClass(), conf.getSeriesPartitionSlotNum());
   }
 
   /**
