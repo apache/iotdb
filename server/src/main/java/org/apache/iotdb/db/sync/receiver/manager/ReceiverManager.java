@@ -28,10 +28,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class ReceiverManager {
 
@@ -97,7 +94,7 @@ public class ReceiverManager {
     if (pipeInfoMap.containsKey(pipeName)) {
       res = new ArrayList<>(pipeInfoMap.get(pipeName).values());
     } else {
-      res = new ArrayList<>();
+      res = Collections.emptyList();
     }
     return res;
   }
