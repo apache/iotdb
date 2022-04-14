@@ -31,6 +31,7 @@ import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.cache.BloomFilterCache;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.cq.ContinuousQueryService;
@@ -509,9 +510,10 @@ public class PlanExecutor implements IPlanExecutor {
     StorageEngine.getInstance().mergeAll();
   }
 
-  private void operateClearCache() {
+  public static void operateClearCache() {
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
+    BloomFilterCache.getInstance().clear();
   }
 
   private void operateCreateSnapshot() {
