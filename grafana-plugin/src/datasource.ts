@@ -32,17 +32,66 @@ export class DataSource extends DataSourceWithBackend<IoTDBQuery, IoTDBOptions> 
     this.username = instanceSettings.jsonData.username;
   }
   applyTemplateVariables(query: IoTDBQuery, scopedVars: ScopedVars) {
-    query.expression.map(
-      (_, index) => (query.expression[index] = getTemplateSrv().replace(query.expression[index], scopedVars))
-    );
-    query.prefixPath.map(
-      (_, index) => (query.prefixPath[index] = getTemplateSrv().replace(query.prefixPath[index], scopedVars))
-    );
-    if (query.condition) {
-      query.condition = getTemplateSrv().replace(query.condition, scopedVars);
-    }
-    if (query.control) {
-      query.control = getTemplateSrv().replace(query.control, scopedVars);
+    if (query.aggregated === 'Raw') {
+      query.expression.map(
+        (_, index) => (query.expression[index] = getTemplateSrv().replace(query.expression[index], scopedVars))
+      );
+      query.prefixPath.map(
+        (_, index) => (query.prefixPath[index] = getTemplateSrv().replace(query.prefixPath[index], scopedVars))
+      );
+      if (query.condition) {
+        query.condition = getTemplateSrv().replace(query.condition, scopedVars);
+      }
+      if (query.control) {
+        query.control = getTemplateSrv().replace(query.control, scopedVars);
+      }
+    } else {
+      let prefixPathArr = new Array(query.paths.length - 1);
+      query.paths.map((_, index) => {
+        if (index === query.paths.length - 1) {
+          query.expression = new Array(1);
+          if (query.aggregateFun != null) {
+            query.expression[0] =
+              query.aggregateFun + '(' + getTemplateSrv().replace(query.paths[index], scopedVars) + ')';
+          } else {
+            query.expression[0] = getTemplateSrv().replace(query.paths[index], scopedVars);
+          }
+        } else {
+          prefixPathArr[index] = getTemplateSrv().replace(query.paths[index], scopedVars);
+        }
+      });
+      let from = getTemplateSrv().replace('$__from', scopedVars);
+      let to = getTemplateSrv().replace('$__to', scopedVars);
+      query.prefixPath = new Array(1);
+      query.prefixPath[0] = 'root.' + prefixPathArr.join('.');
+      if (!!query.groupBy?.samplingInterval) {
+        query.control =
+          ' group by ([' +
+          from +
+          ',' +
+          to +
+          '),' +
+          getTemplateSrv().replace(query.groupBy.samplingInterval, scopedVars) +
+          ')';
+        if (!!query.groupBy?.step) {
+          query.control =
+            ' group by ([' +
+            from +
+            ',' +
+            to +
+            '),' +
+            getTemplateSrv().replace(query.groupBy.samplingInterval, scopedVars) +
+            ',' +
+            getTemplateSrv().replace(query.groupBy.step, scopedVars) +
+            ')';
+        }
+      }
+      if (!!query.fillClauses) {
+        query.control += ' fill(' + getTemplateSrv().replace(query.fillClauses, scopedVars) + ')';
+      }
+      if (!!query.groupBy?.groupByLevel) {
+        query.control += ' group by level =' + getTemplateSrv().replace(query.groupBy?.groupByLevel, scopedVars);
+      }
     }
     return query;
   }
@@ -51,6 +100,34 @@ export class DataSource extends DataSourceWithBackend<IoTDBQuery, IoTDBOptions> 
     query = getTemplateSrv().replace(query, options.scopedVars);
     const sql = { sql: query };
     return this.getVariablesResult(sql);
+  }
+
+  nodeQuery(query: any, options?: any): Promise<MetricFindValue[]> {
+    return this.getChildPaths(query);
+  }
+
+  async getChildPaths(detachedPath: string[]) {
+    const myHeader = new Headers();
+    myHeader.append('Content-Type', 'application/json');
+    const Authorization = 'Basic ' + Buffer.from(this.username + ':' + this.password).toString('base64');
+    myHeader.append('Authorization', Authorization);
+    const prefixPath: string = detachedPath.reduce((a, b) => a + '.' + b);
+    console.log(prefixPath);
+    return await getBackendSrv()
+      .datasourceRequest({
+        method: 'POST',
+        url: this.url + '/grafana/v1/node',
+        data: detachedPath,
+        headers: myHeader,
+      })
+      .then((response) => {
+        if (response.data instanceof Array) {
+          return response.data;
+        } else {
+          throw 'the result is not array';
+        }
+      })
+      .then((data) => data.map(toMetricFindValue));
   }
 
   async getVariablesResult(sql: object) {

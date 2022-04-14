@@ -21,6 +21,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"time"
@@ -112,6 +113,8 @@ type QueryDataResponse struct {
 	Timestamps  []int64     `json:"timestamps"`
 	Values      [][]float32 `json:"values"`
 	ColumnNames interface{} `json:"columnNames"`
+	Code        int32       `json:"code"`
+	Message     string      `json:"message"`
 }
 
 type loginStatus struct {
@@ -136,7 +139,7 @@ func (d *IoTDBDataSource) query(cxt context.Context, pCtx backend.PluginContext,
 	qpJson, _ := json.Marshal(qp)
 	reader := bytes.NewReader(qpJson)
 
-  var dataSourceUrl = DataSourceUrlHandler(d.Ulr);
+	var dataSourceUrl = DataSourceUrlHandler(d.Ulr)
 
 	request, _ := http.NewRequest(http.MethodPost, dataSourceUrl+"/grafana/v1/query/expression", reader)
 	request.Header.Set("Content-Type", "application/json")
@@ -155,7 +158,11 @@ func (d *IoTDBDataSource) query(cxt context.Context, pCtx backend.PluginContext,
 	}
 
 	defer rsp.Body.Close()
+	if queryDataResp.Code > 0 {
+		response.Error = errors.New(queryDataResp.Message)
+		log.DefaultLogger.Error(queryDataResp.Message)
 
+	}
 	// create data frame response.
 	frame := data.NewFrame("response")
 	for i := 0; i < len(queryDataResp.Expressions); i++ {
@@ -176,12 +183,12 @@ func (d *IoTDBDataSource) query(cxt context.Context, pCtx backend.PluginContext,
 }
 
 // Whether the last character of the URL for processing datasource configuration is "/"
-func DataSourceUrlHandler(url string) string{
-  var lastCharacter  = url[len(url)-1:len(url)]
-  if lastCharacter == "/"{
-    url = url[0:len(url)-1]
-  }
-  return url;
+func DataSourceUrlHandler(url string) string {
+	var lastCharacter = url[len(url)-1 : len(url)]
+	if lastCharacter == "/" {
+		url = url[0 : len(url)-1]
+	}
+	return url
 }
 
 // CheckHealth handles health checks sent from Grafana to the plugin.
@@ -194,7 +201,7 @@ func (d *IoTDBDataSource) CheckHealth(_ context.Context, req *backend.CheckHealt
 	var status = backend.HealthStatusError
 	var message = "Data source is not working properly"
 
-  var dataSourceUrl = DataSourceUrlHandler(d.Ulr);
+	var dataSourceUrl = DataSourceUrlHandler(d.Ulr)
 
 	client := &http.Client{}
 	request, err := http.NewRequest(http.MethodGet, dataSourceUrl+"/grafana/v1/login", nil)

@@ -22,9 +22,31 @@ export interface IoTDBQuery extends DataQuery {
   expression: string[];
   prefixPath: string[];
   condition: string;
-  queryText?: string;
-  constant: number;
   control: string;
+
+  paths: string[];
+  aggregateFun?: string;
+  aggregated: string;
+  fillClauses: string;
+  groupBy?: GroupBy;
+  limitAll?: LimitAll;
+}
+
+export interface GroupBy {
+  step: string;
+  samplingInterval: string;
+  groupByLevel: string;
+}
+
+export interface Fill {
+  dataType: string;
+  previous: string;
+  duration: string;
+}
+
+export interface LimitAll {
+  slimit: string;
+  limit: string;
 }
 
 /**
