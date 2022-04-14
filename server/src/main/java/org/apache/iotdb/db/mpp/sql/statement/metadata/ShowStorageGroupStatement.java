@@ -17,10 +17,26 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.execution;
+package org.apache.iotdb.db.mpp.sql.statement.metadata;
 
-import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 
-public interface IConfigTask {
-  ListenableFuture<Void> execute();
+public class ShowStorageGroupStatement extends ShowStatement {
+
+  private final PartialPath pathPattern;
+
+  public ShowStorageGroupStatement(PartialPath pathPattern) {
+    super();
+    this.pathPattern = pathPattern;
+  }
+
+  public PartialPath getPathPattern() {
+    return pathPattern;
+  }
+
+  @Override
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitShowStorageGroup(this, context);
+  }
 }

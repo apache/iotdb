@@ -16,26 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.service;
 
-import org.apache.iotdb.db.utils.MemUtils;
+package org.apache.iotdb.db.mpp.sql.planner.plan.node;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.iotdb.commons.partition.RegionReplicaSet;
+import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
 
-public class IoTDBShutdownHook extends Thread {
+import java.util.List;
 
-  private static final Logger logger = LoggerFactory.getLogger(IoTDBShutdownHook.class);
+public abstract class WritePlanNode extends PlanNode {
 
-  @Override
-  public void run() {
-    // close rocksdb if possible to avoid lose data
-    IoTDB.configManager.clear();
-    if (logger.isInfoEnabled()) {
-      logger.info(
-          "IoTDB exits. Jvm memory usage: {}",
-          MemUtils.bytesCntToStr(
-              Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()));
-    }
+  protected WritePlanNode(PlanNodeId id) {
+    super(id);
   }
+
+  public abstract RegionReplicaSet getRegionReplicaSet();
+
+  public abstract List<WritePlanNode> splitByPartition(Analysis analysis);
 }

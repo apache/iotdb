@@ -146,6 +146,17 @@ public class DataNodeInfoPersistence {
     return result;
   }
 
+  public DataNodeLocation getOnlineDataNode(int dataNodeId) {
+    DataNodeLocation result;
+    dataNodeInfoReadWriteLock.readLock().lock();
+    try {
+      result = onlineDataNodes.get(dataNodeId);
+    } finally {
+      dataNodeInfoReadWriteLock.readLock().unlock();
+    }
+    return result;
+  }
+
   public int generateNextDataNodeId() {
     int result;
 
