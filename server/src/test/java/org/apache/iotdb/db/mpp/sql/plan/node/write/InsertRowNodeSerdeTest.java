@@ -23,8 +23,6 @@ import org.junit.Test;
 
 public class InsertRowNodeSerdeTest {
 
-    @Test
-    public void TestSerializeAndDeserialize(){
-
-    }
+  @Test
+  public void TestSerializeAndDeserialize() {}
 }

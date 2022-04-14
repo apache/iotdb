@@ -23,8 +23,6 @@ import org.junit.Test;
 
 public class InsertTabletNodeSerdeTest {
 
-    @Test
-    public void TestSerializeAndDeserialize(){
-
-    }
+  @Test
+  public void TestSerializeAndDeserialize() {}
 }
