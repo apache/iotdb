@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class SchemaPartition {
 
@@ -44,6 +45,32 @@ public class SchemaPartition {
   public void setSchemaPartitionMap(
       Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> schemaPartitionMap) {
     this.schemaPartitionMap = schemaPartitionMap;
+  }
+
+  public RegionReplicaSet getSchemaRegionReplicaSet(String deviceName) {
+    // A list of data region replica sets will store data in a same time partition.
+    // We will insert data to the last set in the list.
+    // TODO return the latest dataRegionReplicaSet for each time partition
+    String storageGroup = getStorageGroupByDevice(deviceName);
+    SeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceName);
+    List<RegionReplicaSet> regions =
+        dataPartitionMap.get(storageGroup).get(seriesPartitionSlot).entrySet().stream()
+            .filter(entry -> entry.getKey().equals(timePartitionSlot))
+            .flatMap(entry -> entry.getValue().stream())
+            .collect(Collectors.toList());
+    // IMPORTANT TODO: (xingtanzjr) need to handle the situation for write operation that there are
+    // more than 1 Regions for one timeSlot
+    return regions.get(0);
+  }
+
+  private String getStorageGroupByDevice(String deviceName) {
+    for (String storageGroup : schemaPartitionMap.keySet()) {
+      if (deviceName.startsWith(storageGroup)) {
+        return storageGroup;
+      }
+    }
+    // TODO: (xingtanzjr) how to handle this exception in IoTDB
+    return null;
   }
 
   /* Interfaces for ConfigNode */
