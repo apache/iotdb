@@ -151,7 +151,7 @@ class RatisConsensus implements IConsensus {
     // 1. first try the local server
     RaftClientRequest clientRequest =
         buildRawRequest(groupId, message, RaftClientRequest.writeRequestType());
-    RaftClientReply localServerReply = null;
+    RaftClientReply localServerReply;
     RaftPeer suggestedLeader = null;
     try {
       localServerReply = server.submitClientRequest(clientRequest);
@@ -171,7 +171,7 @@ class RatisConsensus implements IConsensus {
 
     // 2. try raft client
     RaftClient client = clientMap.get(Utils.toRatisGroupId(groupId));
-    TSStatus writeResult = null;
+    TSStatus writeResult;
     try {
       RaftClientReply reply = client.io().send(message);
       writeResult = Utils.deserializeFrom(reply.getMessage().getContent().asReadOnlyByteBuffer());
@@ -196,7 +196,7 @@ class RatisConsensus implements IConsensus {
       return failedRead(new ConsensusGroupNotExistException(groupId));
     }
 
-    RaftClientReply reply = null;
+    RaftClientReply reply;
     try {
       RequestMessage message = new RequestMessage(IConsensusRequest);
 
@@ -235,7 +235,7 @@ class RatisConsensus implements IConsensus {
     RaftClient client = buildClientAndCache(group);
 
     // add RaftPeer myself to this RaftGroup
-    RaftClientReply reply = null;
+    RaftClientReply reply;
     try {
       reply = client.getGroupManagementApi(myself.getId()).add(group);
     } catch (IOException e) {
@@ -264,7 +264,7 @@ class RatisConsensus implements IConsensus {
 
     RaftClient client = clientMap.get(raftGroupId);
     // send remove group to myself
-    RaftClientReply reply = null;
+    RaftClientReply reply;
     try {
       reply = client.getGroupManagementApi(myself.getId()).remove(raftGroupId, false, false);
     } catch (IOException e) {
@@ -381,7 +381,7 @@ class RatisConsensus implements IConsensus {
     buildClientAndCache(raftGroup);
 
     // add RaftPeer myself to this RaftGroup
-    RaftClientReply reply = null;
+    RaftClientReply reply;
     try {
       reply = sendReconfiguration(raftGroup.getGroupId(), new ArrayList<>(raftGroup.getPeers()));
       // sync again
