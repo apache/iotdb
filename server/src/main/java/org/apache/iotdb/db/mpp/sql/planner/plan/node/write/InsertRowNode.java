@@ -249,12 +249,6 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
         WALWriteUtils.write(measurement, buffer);
       }
     }
-
-    for (String measurement : measurements) {
-      if (measurement != null) {
-        WALWriteUtils.write(measurement, buffer);
-      }
-    }
     try {
       putValues(buffer);
     } catch (QueryProcessException e) {
@@ -439,15 +433,5 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
           throw new QueryProcessException("Unsupported data type:" + dataTypes[i]);
       }
     }
-  }
-
-  private int countFailedMeasurements() {
-    int result = 0;
-    for (String measurement : measurements) {
-      if (measurement == null) {
-        result++;
-      }
-    }
-    return result;
   }
 }

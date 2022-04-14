@@ -138,4 +138,14 @@ public abstract class InsertNode extends PlanNode {
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     throw new NotImplementedException("serializeAttributes of InsertNode is not implemented");
   }
+
+  protected int countFailedMeasurements() {
+    int result = 0;
+    for (String measurement : measurements) {
+      if (measurement == null) {
+        result++;
+      }
+    }
+    return result;
+  }
 }

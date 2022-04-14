@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.mpp.sql.planner.plan.node;
 
 import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
-import org.apache.iotdb.db.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.wal.utils.WALWriteUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -27,7 +26,7 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class PlanNodeId implements WALEntryValue {
+public class PlanNodeId {
   private String id;
 
   public PlanNodeId(String id) {
@@ -64,12 +63,10 @@ public class PlanNodeId implements WALEntryValue {
     ReadWriteIOUtils.write(id, byteBuffer);
   }
 
-  @Override
   public int serializedSize() {
     return ReadWriteIOUtils.sizeToWrite(id);
   }
 
-  @Override
   public void serializeToWAL(IWALByteBufferView buffer) {
     WALWriteUtils.write(id, buffer);
   }
