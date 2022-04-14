@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.metadata.Executor;
+package org.apache.iotdb.db.metadata.visitor;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -45,7 +45,6 @@ public class SchemaVisitor extends PlanVisitor<TSStatus, ISchemaRegion> {
   @Override
   public TSStatus visitCreateTimeSeries(CreateTimeSeriesNode node, ISchemaRegion schemaRegion) {
     try {
-      // PhysicalPlan plan = node.accept(new PhysicalPlanTransformer(), new TransformerContext());
       schemaRegion.createTimeseriesV2(node, -1);
     } catch (MetadataException e) {
       logger.error("{}: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
