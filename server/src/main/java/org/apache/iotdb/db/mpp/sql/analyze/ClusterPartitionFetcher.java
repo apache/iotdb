@@ -57,7 +57,17 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
 
   private SeriesPartitionExecutor partitionExecutor;
 
-  public ClusterPartitionFetcher() throws StatementAnalyzeException {
+  private static final class ClusterPartitionFetcherHolder {
+    private static final ClusterPartitionFetcher INSTANCE = new ClusterPartitionFetcher();
+
+    private ClusterPartitionFetcherHolder() {}
+  }
+
+  public static ClusterPartitionFetcher getInstance() {
+    return ClusterPartitionFetcherHolder.INSTANCE;
+  }
+
+  private ClusterPartitionFetcher() {
     try {
       client = new ConfigNodeClient();
     } catch (IoTDBConnectionException | BadNodeUrlException e) {
@@ -66,7 +76,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     initPartitionExecutor();
   }
 
-  private void initPartitionExecutor() throws StatementAnalyzeException {
+  private void initPartitionExecutor() {
     // TODO: @crz move to node-commons
     IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
     try {
@@ -88,8 +98,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   }
 
   @Override
-  public SchemaPartition getSchemaPartition(PathPatternTree patternTree)
-      throws StatementAnalyzeException {
+  public SchemaPartition getSchemaPartition(PathPatternTree patternTree) {
     try {
       TSchemaPartitionResp schemaPartitionResp =
           client.getSchemaPartition(constructSchemaPartitionReq(patternTree));
@@ -104,8 +113,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   }
 
   @Override
-  public SchemaPartition getOrCreateSchemaPartition(PathPatternTree patternTree)
-      throws StatementAnalyzeException {
+  public SchemaPartition getOrCreateSchemaPartition(PathPatternTree patternTree) {
     try {
       TSchemaPartitionResp schemaPartitionResp =
           client.getOrCreateSchemaPartition(constructSchemaPartitionReq(patternTree));
@@ -122,8 +130,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
 
   @Override
   public DataPartition getDataPartition(
-      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap)
-      throws StatementAnalyzeException {
+      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
     try {
       TDataPartitionResp dataPartitionResp =
           client.getDataPartition(constructDataPartitionReq(sgNameToQueryParamsMap));
@@ -138,8 +145,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
 
   @Override
   public DataPartition getOrCreateDataPartition(
-      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap)
-      throws StatementAnalyzeException {
+      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
     try {
       TDataPartitionResp dataPartitionResp =
           client.getOrCreateDataPartition(constructDataPartitionReq(sgNameToQueryParamsMap));
@@ -153,8 +159,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     return null;
   }
 
-  private TSchemaPartitionReq constructSchemaPartitionReq(PathPatternTree patternTree)
-      throws StatementAnalyzeException {
+  private TSchemaPartitionReq constructSchemaPartitionReq(PathPatternTree patternTree) {
     PublicBAOS baos = new PublicBAOS();
     try {
       patternTree.serialize(baos);

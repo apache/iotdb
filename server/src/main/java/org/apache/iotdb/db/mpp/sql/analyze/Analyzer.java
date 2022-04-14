@@ -42,7 +42,13 @@ import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.sql.statement.component.WhereCondition;
 import org.apache.iotdb.db.mpp.sql.statement.crud.*;
-import org.apache.iotdb.db.mpp.sql.statement.metadata.*;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.SchemaFetchStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowDevicesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowStorageGroupStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -209,193 +215,73 @@ public class Analyzer {
       }
     }
 
+
     @Override
-    public Analysis visitInsertRow(InsertRowStatement insertRowStatement, MPPQueryContext context) {
-      // TODO remove duplicate
-      context.setQueryType(QueryType.WRITE);
-      SchemaTree schemaTree =
-          schemaFetcher.fetchSchemaWithAutoCreate(
-              insertRowStatement.getDevicePath(),
-              insertRowStatement.getMeasurements(),
-              insertRowStatement.getDataTypes(),
-              insertRowStatement.isAligned());
-
-      try {
-        insertRowStatement.transferType(schemaTree);
-      } catch (QueryProcessException e) {
-        throw new SemanticException(e.getMessage());
+    public Analysis visitCreateTimeseries(
+        CreateTimeSeriesStatement createTimeSeriesStatement, MPPQueryContext context) {
+      if (createTimeSeriesStatement.getTags() != null
+          && !createTimeSeriesStatement.getTags().isEmpty()
+          && createTimeSeriesStatement.getAttributes() != null
+          && !createTimeSeriesStatement.getAttributes().isEmpty()) {
+        for (String tagKey : createTimeSeriesStatement.getTags().keySet()) {
+          if (createTimeSeriesStatement.getAttributes().containsKey(tagKey)) {
+            throw new SemanticException(
+                String.format(
+                    "Tag and attribute shouldn't have the same property key [%s]", tagKey));
+          }
+        }
       }
-
-      if (!insertRowStatement.checkDataType(schemaTree)) {
-        throw new SemanticException("Data type mismatch");
-      }
-
-      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
-      DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
-      dataPartitionQueryParam.setDevicePath(insertRowStatement.getDevicePath().getFullPath());
-      dataPartitionQueryParam.setTimePartitionSlotList(insertRowStatement.getTimePartitionSlots());
-      sgNameToQueryParamsMap.put(
-          schemaTree.getBelongedStorageGroup(insertRowStatement.getDevicePath()),
-          Collections.singletonList(dataPartitionQueryParam));
-      DataPartition dataPartition;
-      try {
-        dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
-      } catch (StatementAnalyzeException e) {
-        throw new SemanticException("An error occurred when fetching data partition infos");
-      }
-
       Analysis analysis = new Analysis();
-      analysis.setSchemaTree(schemaTree);
-      analysis.setStatement(insertRowStatement);
-      analysis.setDataPartitionInfo(dataPartition);
+      analysis.setStatement(createTimeSeriesStatement);
 
+      SchemaPartition schemaPartitionInfo =
+          partitionFetcher.getSchemaPartition(
+              new PathPatternTree(createTimeSeriesStatement.getPath()));
+      analysis.setSchemaPartitionInfo(schemaPartitionInfo);
       return analysis;
     }
 
     @Override
-    public Analysis visitInsertRows(
-        InsertRowsStatement insertRowsStatement, MPPQueryContext context) {
-      // TODO remove duplicate
-      context.setQueryType(QueryType.WRITE);
-      SchemaTree schemaTree =
-          schemaFetcher.fetchSchemaListWithAutoCreate(
-              insertRowsStatement.getDevicePaths(),
-              insertRowsStatement.getMeasurementsList(),
-              insertRowsStatement.getDataTypesList(),
-              insertRowsStatement.getAlignedList());
-
-      try {
-        insertRowsStatement.transferType(schemaTree);
-      } catch (QueryProcessException e) {
-        throw new SemanticException(e.getMessage());
-      }
-
-      if (!insertRowsStatement.checkDataType(schemaTree)) {
-        throw new SemanticException("Data type mismatch");
-      }
-
-      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
-      for (InsertRowStatement insertRowStatement :
-          insertRowsStatement.getInsertRowStatementList()) {
-        DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
-        dataPartitionQueryParam.setDevicePath(insertRowStatement.getDevicePath().getFullPath());
-        dataPartitionQueryParam.setTimePartitionSlotList(
-            insertRowStatement.getTimePartitionSlots());
-        sgNameToQueryParamsMap
-            .computeIfAbsent(
-                schemaTree.getBelongedStorageGroup(insertRowStatement.getDevicePath()),
-                key -> new ArrayList<>())
-            .add(dataPartitionQueryParam);
-      }
-      DataPartition dataPartition;
-      try {
-        dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
-      } catch (StatementAnalyzeException e) {
-        throw new SemanticException("An error occurred when fetching data partition infos");
+    public Analysis visitCreateAlignedTimeseries(
+        CreateAlignedTimeSeriesStatement createAlignedTimeSeriesStatement,
+        MPPQueryContext context) {
+      List<String> measurements = createAlignedTimeSeriesStatement.getMeasurements();
+      Set<String> measurementsSet = new HashSet<>(measurements);
+      if (measurementsSet.size() < measurements.size()) {
+        throw new SemanticException(
+            "Measurement under an aligned device is not allowed to have the same measurement name");
       }
 
       Analysis analysis = new Analysis();
-      analysis.setSchemaTree(schemaTree);
-      analysis.setStatement(insertRowsStatement);
-      analysis.setDataPartitionInfo(dataPartition);
+      analysis.setStatement(createAlignedTimeSeriesStatement);
 
+      SchemaPartition schemaPartitionInfo;
+      schemaPartitionInfo =
+          partitionFetcher.getSchemaPartition(
+              new PathPatternTree(
+                  createAlignedTimeSeriesStatement.getDevicePath(),
+                  createAlignedTimeSeriesStatement.getMeasurements()));
+      analysis.setSchemaPartitionInfo(schemaPartitionInfo);
       return analysis;
     }
 
     @Override
-    public Analysis visitInsertMultiTablets(
-        InsertMultiTabletsStatement insertMultiTabletsStatement, MPPQueryContext context) {
-      context.setQueryType(QueryType.WRITE);
-      // TODO remove duplicate
-      SchemaTree schemaTree =
-          schemaFetcher.fetchSchemaListWithAutoCreate(
-              insertMultiTabletsStatement.getDevicePaths(),
-              insertMultiTabletsStatement.getMeasurementsList(),
-              insertMultiTabletsStatement.getDataTypesList(),
-              insertMultiTabletsStatement.getAlignedList());
-
-      if (!insertMultiTabletsStatement.checkDataType(schemaTree)) {
-        throw new SemanticException("Data type mismatch");
-      }
-
-      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
-      for (InsertTabletStatement insertTabletStatement :
-          insertMultiTabletsStatement.getInsertTabletStatementList()) {
-        DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
-        dataPartitionQueryParam.setDevicePath(insertTabletStatement.getDevicePath().getFullPath());
-        dataPartitionQueryParam.setTimePartitionSlotList(
-            insertTabletStatement.getTimePartitionSlots());
-        sgNameToQueryParamsMap
-            .computeIfAbsent(
-                schemaTree.getBelongedStorageGroup(insertTabletStatement.getDevicePath()),
-                key -> new ArrayList<>())
-            .add(dataPartitionQueryParam);
-      }
-      DataPartition dataPartition;
-      try {
-        dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
-      } catch (StatementAnalyzeException e) {
-        throw new SemanticException("An error occurred when fetching data partition infos");
-      }
-
+    public Analysis visitAlterTimeseries(
+        AlterTimeSeriesStatement alterTimeSeriesStatement, MPPQueryContext context) {
       Analysis analysis = new Analysis();
-      analysis.setSchemaTree(schemaTree);
-      analysis.setStatement(insertMultiTabletsStatement);
-      analysis.setDataPartitionInfo(dataPartition);
+      analysis.setStatement(alterTimeSeriesStatement);
 
-      return analysis;
-    }
-
-    @Override
-    public Analysis visitInsertRowsOfOneDevice(
-        InsertRowsOfOneDeviceStatement insertRowsOfOneDeviceStatement, MPPQueryContext context) {
-      // TODO remove duplicate
-      context.setQueryType(QueryType.WRITE);
-      SchemaTree schemaTree =
-          schemaFetcher.fetchSchemaWithAutoCreate(
-              insertRowsOfOneDeviceStatement.getDevicePath(),
-              insertRowsOfOneDeviceStatement.getMeasurements(),
-              insertRowsOfOneDeviceStatement.getDataTypes(),
-              insertRowsOfOneDeviceStatement.isAligned());
-
-      try {
-        insertRowsOfOneDeviceStatement.transferType(schemaTree);
-      } catch (QueryProcessException e) {
-        throw new SemanticException(e.getMessage());
-      }
-
-      if (!insertRowsOfOneDeviceStatement.checkDataType(schemaTree)) {
-        throw new SemanticException("Data type mismatch");
-      }
-
-      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
-      DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
-      dataPartitionQueryParam.setDevicePath(
-          insertRowsOfOneDeviceStatement.getDevicePath().getFullPath());
-      dataPartitionQueryParam.setTimePartitionSlotList(
-          insertRowsOfOneDeviceStatement.getTimePartitionSlots());
-      sgNameToQueryParamsMap.put(
-          schemaTree.getBelongedStorageGroup(insertRowsOfOneDeviceStatement.getDevicePath()),
-          Collections.singletonList(dataPartitionQueryParam));
-      DataPartition dataPartition;
-      try {
-        dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
-      } catch (StatementAnalyzeException e) {
-        throw new SemanticException("An error occurred when fetching data partition infos");
-      }
-
-      Analysis analysis = new Analysis();
-      analysis.setSchemaTree(schemaTree);
-      analysis.setStatement(insertRowsOfOneDeviceStatement);
-      analysis.setDataPartitionInfo(dataPartition);
-
+      SchemaPartition schemaPartitionInfo;
+      schemaPartitionInfo =
+          partitionFetcher.getSchemaPartition(
+              new PathPatternTree(alterTimeSeriesStatement.getPath()));
+      analysis.setSchemaPartitionInfo(schemaPartitionInfo);
       return analysis;
     }
 
     @Override
     public Analysis visitInsertTablet(
         InsertTabletStatement insertTabletStatement, MPPQueryContext context) {
-      context.setQueryType(QueryType.WRITE);
       SchemaTree schemaTree =
           schemaFetcher.fetchSchemaWithAutoCreate(
               insertTabletStatement.getDevicePath(),
@@ -416,11 +302,7 @@ public class Analyzer {
           schemaTree.getBelongedStorageGroup(insertTabletStatement.getDevicePath()),
           Collections.singletonList(dataPartitionQueryParam));
       DataPartition dataPartition;
-      try {
-        dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
-      } catch (StatementAnalyzeException e) {
-        throw new SemanticException("An error occurred when fetching data partition infos");
-      }
+      dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
 
       Analysis analysis = new Analysis();
       analysis.setSchemaTree(schemaTree);
@@ -430,95 +312,14 @@ public class Analyzer {
     }
 
     @Override
-    public Analysis visitCreateTimeseries(
-        CreateTimeSeriesStatement createTimeSeriesStatement, MPPQueryContext context) {
-      if (createTimeSeriesStatement.getTags() != null
-          && !createTimeSeriesStatement.getTags().isEmpty()
-          && createTimeSeriesStatement.getAttributes() != null
-          && !createTimeSeriesStatement.getAttributes().isEmpty()) {
-        for (String tagKey : createTimeSeriesStatement.getTags().keySet()) {
-          if (createTimeSeriesStatement.getAttributes().containsKey(tagKey)) {
-            throw new SemanticException(
-                String.format(
-                    "Tag and attribute shouldn't have the same property key [%s]", tagKey));
-          }
-        }
-      }
-      Analysis analysis = new Analysis();
-      analysis.setStatement(createTimeSeriesStatement);
-
-      SchemaPartition schemaPartitionInfo;
-      try {
-        schemaPartitionInfo =
-            partitionFetcher.getSchemaPartition(
-                new PathPatternTree(createTimeSeriesStatement.getPath()));
-      } catch (StatementAnalyzeException e) {
-        throw new SemanticException("An error occurred when fetching schema partition infos");
-      }
-      analysis.setSchemaPartitionInfo(schemaPartitionInfo);
-      return analysis;
-    }
-
-    @Override
-    public Analysis visitCreateAlignedTimeseries(
-        CreateAlignedTimeSeriesStatement createAlignedTimeSeriesStatement,
-        MPPQueryContext context) {
-      List<String> measurements = createAlignedTimeSeriesStatement.getMeasurements();
-      Set<String> measurementsSet = new HashSet<>(measurements);
-      if (measurementsSet.size() < measurements.size()) {
-        throw new SemanticException(
-            "Measurement under an aligned device is not allowed to have the same measurement name");
-      }
-
-      Analysis analysis = new Analysis();
-      analysis.setStatement(createAlignedTimeSeriesStatement);
-
-      SchemaPartition schemaPartitionInfo;
-      try {
-        schemaPartitionInfo =
-            partitionFetcher.getSchemaPartition(
-                new PathPatternTree(
-                    createAlignedTimeSeriesStatement.getDevicePath(),
-                    createAlignedTimeSeriesStatement.getMeasurements()));
-      } catch (StatementAnalyzeException e) {
-        throw new SemanticException("An error occurred when fetching schema partition infos");
-      }
-      analysis.setSchemaPartitionInfo(schemaPartitionInfo);
-      return analysis;
-    }
-
-    @Override
-    public Analysis visitAlterTimeseries(
-        AlterTimeSeriesStatement alterTimeSeriesStatement, MPPQueryContext context) {
-      Analysis analysis = new Analysis();
-      analysis.setStatement(alterTimeSeriesStatement);
-
-      SchemaPartition schemaPartitionInfo;
-      try {
-        schemaPartitionInfo =
-            partitionFetcher.getSchemaPartition(
-                new PathPatternTree(alterTimeSeriesStatement.getPath()));
-      } catch (StatementAnalyzeException e) {
-        throw new SemanticException("An error occurred when fetching schema partition infos");
-      }
-      analysis.setSchemaPartitionInfo(schemaPartitionInfo);
-      return analysis;
-    }
-
-    @Override
     public Analysis visitShowTimeSeries(
         ShowTimeSeriesStatement showTimeSeriesStatement, MPPQueryContext context) {
       Analysis analysis = new Analysis();
       analysis.setStatement(showTimeSeriesStatement);
 
-      SchemaPartition schemaPartitionInfo;
-      try {
-        schemaPartitionInfo =
-            partitionFetcher.getSchemaPartition(
-                new PathPatternTree(showTimeSeriesStatement.getPathPattern()));
-      } catch (StatementAnalyzeException e) {
-        throw new SemanticException("An error occurred when fetching schema partition infos");
-      }
+      SchemaPartition schemaPartitionInfo =
+          partitionFetcher.getSchemaPartition(
+              new PathPatternTree(showTimeSeriesStatement.getPathPattern()));
       analysis.setSchemaPartitionInfo(schemaPartitionInfo);
       analysis.setRespDatasetHeader(HeaderConstant.showTimeSeriesHeader);
       return analysis;
@@ -539,14 +340,10 @@ public class Analyzer {
       Analysis analysis = new Analysis();
       analysis.setStatement(showDevicesStatement);
 
-      SchemaPartition schemaPartitionInfo;
-      try {
-        schemaPartitionInfo =
-            partitionFetcher.getSchemaPartition(
-                new PathPatternTree(showDevicesStatement.getPathPattern().concatNode("*")));
-      } catch (StatementAnalyzeException e) {
-        throw new SemanticException("An error occurred when fetching schema partition infos");
-      }
+      SchemaPartition schemaPartitionInfo =
+          partitionFetcher.getSchemaPartition(
+              new PathPatternTree(showDevicesStatement.getPathPattern().concatNode("*")));
+
       analysis.setSchemaPartitionInfo(schemaPartitionInfo);
       analysis.setRespDatasetHeader(
           showDevicesStatement.hasSgCol()
@@ -692,6 +489,175 @@ public class Analyzer {
         AuthorStatement authorStatement, MPPQueryContext context) {
       Analysis analysis = new Analysis();
       analysis.setStatement(authorStatement);
+      return analysis;
+    }
+
+
+    @Override
+    public Analysis visitInsertRow(InsertRowStatement insertRowStatement, MPPQueryContext context) {
+      // TODO remove duplicate
+      SchemaTree schemaTree =
+          schemaFetcher.fetchSchemaWithAutoCreate(
+              insertRowStatement.getDevicePath(),
+              insertRowStatement.getMeasurements(),
+              insertRowStatement.getDataTypes(),
+              insertRowStatement.isAligned());
+
+      try {
+        insertRowStatement.transferType(schemaTree);
+      } catch (QueryProcessException e) {
+        throw new SemanticException(e.getMessage());
+      }
+
+      if (!insertRowStatement.checkDataType(schemaTree)) {
+        throw new SemanticException("Data type mismatch");
+      }
+
+      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
+      DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
+      dataPartitionQueryParam.setDevicePath(insertRowStatement.getDevicePath().getFullPath());
+      dataPartitionQueryParam.setTimePartitionSlotList(insertRowStatement.getTimePartitionSlots());
+      sgNameToQueryParamsMap.put(
+          schemaTree.getBelongedStorageGroup(insertRowStatement.getDevicePath()),
+          Collections.singletonList(dataPartitionQueryParam));
+      DataPartition dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
+
+      Analysis analysis = new Analysis();
+      analysis.setSchemaTree(schemaTree);
+      analysis.setStatement(insertRowStatement);
+      analysis.setDataPartitionInfo(dataPartition);
+
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitInsertRows(
+        InsertRowsStatement insertRowsStatement, MPPQueryContext context) {
+      // TODO remove duplicate
+      SchemaTree schemaTree =
+          schemaFetcher.fetchSchemaListWithAutoCreate(
+              insertRowsStatement.getDevicePaths(),
+              insertRowsStatement.getMeasurementsList(),
+              insertRowsStatement.getDataTypesList(),
+              insertRowsStatement.getAlignedList());
+
+      try {
+        insertRowsStatement.transferType(schemaTree);
+      } catch (QueryProcessException e) {
+        throw new SemanticException(e.getMessage());
+      }
+
+      if (!insertRowsStatement.checkDataType(schemaTree)) {
+        throw new SemanticException("Data type mismatch");
+      }
+
+      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
+      for (InsertRowStatement insertRowStatement :
+          insertRowsStatement.getInsertRowStatementList()) {
+        DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
+        dataPartitionQueryParam.setDevicePath(insertRowStatement.getDevicePath().getFullPath());
+        dataPartitionQueryParam.setTimePartitionSlotList(
+            insertRowStatement.getTimePartitionSlots());
+        sgNameToQueryParamsMap
+            .computeIfAbsent(
+                schemaTree.getBelongedStorageGroup(insertRowStatement.getDevicePath()),
+                key -> new ArrayList<>())
+            .add(dataPartitionQueryParam);
+      }
+      DataPartition dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
+
+      Analysis analysis = new Analysis();
+      analysis.setSchemaTree(schemaTree);
+      analysis.setStatement(insertRowsStatement);
+      analysis.setDataPartitionInfo(dataPartition);
+
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitInsertMultiTablets(
+        InsertMultiTabletsStatement insertMultiTabletsStatement, MPPQueryContext context) {
+      // TODO remove duplicate
+      SchemaTree schemaTree =
+          schemaFetcher.fetchSchemaListWithAutoCreate(
+              insertMultiTabletsStatement.getDevicePaths(),
+              insertMultiTabletsStatement.getMeasurementsList(),
+              insertMultiTabletsStatement.getDataTypesList(),
+              insertMultiTabletsStatement.getAlignedList());
+
+      if (!insertMultiTabletsStatement.checkDataType(schemaTree)) {
+        throw new SemanticException("Data type mismatch");
+      }
+
+      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
+      for (InsertTabletStatement insertTabletStatement :
+          insertMultiTabletsStatement.getInsertTabletStatementList()) {
+        DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
+        dataPartitionQueryParam.setDevicePath(insertTabletStatement.getDevicePath().getFullPath());
+        dataPartitionQueryParam.setTimePartitionSlotList(
+            insertTabletStatement.getTimePartitionSlots());
+        sgNameToQueryParamsMap
+            .computeIfAbsent(
+                schemaTree.getBelongedStorageGroup(insertTabletStatement.getDevicePath()),
+                key -> new ArrayList<>())
+            .add(dataPartitionQueryParam);
+      }
+      DataPartition dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
+
+      Analysis analysis = new Analysis();
+      analysis.setSchemaTree(schemaTree);
+      analysis.setStatement(insertMultiTabletsStatement);
+      analysis.setDataPartitionInfo(dataPartition);
+
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitInsertRowsOfOneDevice(
+        InsertRowsOfOneDeviceStatement insertRowsOfOneDeviceStatement, MPPQueryContext context) {
+      // TODO remove duplicate
+      SchemaTree schemaTree =
+          schemaFetcher.fetchSchemaWithAutoCreate(
+              insertRowsOfOneDeviceStatement.getDevicePath(),
+              insertRowsOfOneDeviceStatement.getMeasurements(),
+              insertRowsOfOneDeviceStatement.getDataTypes(),
+              insertRowsOfOneDeviceStatement.isAligned());
+
+      try {
+        insertRowsOfOneDeviceStatement.transferType(schemaTree);
+      } catch (QueryProcessException e) {
+        throw new SemanticException(e.getMessage());
+      }
+
+      if (!insertRowsOfOneDeviceStatement.checkDataType(schemaTree)) {
+        throw new SemanticException("Data type mismatch");
+      }
+
+      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
+      DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
+      dataPartitionQueryParam.setDevicePath(
+          insertRowsOfOneDeviceStatement.getDevicePath().getFullPath());
+      dataPartitionQueryParam.setTimePartitionSlotList(
+          insertRowsOfOneDeviceStatement.getTimePartitionSlots());
+      sgNameToQueryParamsMap.put(
+          schemaTree.getBelongedStorageGroup(insertRowsOfOneDeviceStatement.getDevicePath()),
+          Collections.singletonList(dataPartitionQueryParam));
+      DataPartition dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
+
+      Analysis analysis = new Analysis();
+      analysis.setSchemaTree(schemaTree);
+      analysis.setStatement(insertRowsOfOneDeviceStatement);
+      analysis.setDataPartitionInfo(dataPartition);
+
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitSchemaFetch(
+        SchemaFetchStatement schemaFetchStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(schemaFetchStatement);
+      analysis.setSchemaPartitionInfo(schemaFetchStatement.getSchemaPartition());
       return analysis;
     }
   }

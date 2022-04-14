@@ -36,6 +36,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.SimplePlanNodeRewriter;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.WritePlanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaFetchNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaMergeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ExchangeNode;
@@ -144,7 +145,7 @@ public class DistributionPlanner {
     }
 
     @Override
-    public PlanNode visitMetaMerge(SchemaMergeNode node, DistributionPlanContext context) {
+    public PlanNode visitSchemaMerge(SchemaMergeNode node, DistributionPlanContext context) {
       SchemaMergeNode root = (SchemaMergeNode) node.clone();
       SchemaScanNode seed = (SchemaScanNode) node.getChildren().get(0);
       TreeSet<RegionReplicaSet> schemaRegions =
@@ -161,13 +162,13 @@ public class DistributionPlanner {
       int count = schemaRegions.size();
       schemaRegions.forEach(
           region -> {
-            SchemaScanNode metaScanNode = (SchemaScanNode) seed.clone();
-            metaScanNode.setRegionReplicaSet(region);
+            SchemaScanNode schemaScanNode = (SchemaScanNode) seed.clone();
+            schemaScanNode.setRegionReplicaSet(region);
             if (count > 1) {
-              metaScanNode.setLimit(metaScanNode.getOffset() + metaScanNode.getLimit());
-              metaScanNode.setOffset(0);
+              schemaScanNode.setLimit(schemaScanNode.getOffset() + schemaScanNode.getLimit());
+              schemaScanNode.setOffset(0);
             }
-            root.addChild(metaScanNode);
+            root.addChild(schemaScanNode);
           });
       return root;
     }
@@ -271,7 +272,7 @@ public class DistributionPlanner {
     }
 
     @Override
-    public PlanNode visitMetaMerge(SchemaMergeNode node, NodeGroupContext context) {
+    public PlanNode visitSchemaMerge(SchemaMergeNode node, NodeGroupContext context) {
       node.getChildren()
           .forEach(
               child -> {
@@ -299,11 +300,16 @@ public class DistributionPlanner {
     }
 
     @Override
-    public PlanNode visitMetaScan(SchemaScanNode node, NodeGroupContext context) {
+    public PlanNode visitSchemaScan(SchemaScanNode node, NodeGroupContext context) {
       NodeDistribution nodeDistribution = new NodeDistribution(NodeDistributionType.NO_CHILD);
       nodeDistribution.region = node.getRegionReplicaSet();
       context.putNodeDistribution(node.getPlanNodeId(), nodeDistribution);
       return node;
+    }
+
+    @Override
+    public PlanNode visitSchemaFetch(SchemaFetchNode node, NodeGroupContext context) {
+      return visitSchemaScan(node, context);
     }
 
     @Override
