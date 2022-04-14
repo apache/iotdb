@@ -32,6 +32,7 @@ import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
+import org.apache.iotdb.db.mpp.common.header.headerConstant;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.sql.rewriter.ConcatPathRewriter;
@@ -273,6 +274,7 @@ public class Analyzer {
       Analysis analysis = new Analysis();
       analysis.setStatement(showTimeSeriesStatement);
       analysis.setSchemaPartitionInfo(schemaPartitionInfo);
+      analysis.setRespDatasetHeader(headerConstant.showTimeSeriesHeader);
       return analysis;
     }
 
@@ -285,6 +287,10 @@ public class Analyzer {
       Analysis analysis = new Analysis();
       analysis.setStatement(showDevicesStatement);
       analysis.setSchemaPartitionInfo(schemaPartitionInfo);
+      analysis.setRespDatasetHeader(
+          showDevicesStatement.hasSgCol()
+              ? headerConstant.showDevicesWithSgHeader
+              : headerConstant.showDevicesHeader);
       return analysis;
     }
 
