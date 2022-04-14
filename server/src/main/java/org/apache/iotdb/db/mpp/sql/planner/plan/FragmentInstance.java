@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.sql.planner.plan;
 import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
@@ -65,7 +66,9 @@ public class FragmentInstance implements IConsensusRequest {
     this.regionReplicaSet = regionReplicaSet;
     // TODO: (xingtanzjr) We select the first Endpoint as the default target host for current
     // instance
-    this.hostEndpoint = regionReplicaSet.getDataNodeList().get(0).getEndPoint();
+    this.hostEndpoint =
+        new Endpoint("0.0.0.0", IoTDBDescriptor.getInstance().getConfig().getMppPort());
+    //    this.hostEndpoint = regionReplicaSet.getDataNodeList().get(0).getEndPoint();
   }
 
   public RegionReplicaSet getRegionReplicaSet() {
