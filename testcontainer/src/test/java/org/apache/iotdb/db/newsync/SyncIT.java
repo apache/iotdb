@@ -215,7 +215,7 @@ public class SyncIT {
       checkResult();
     } catch (Exception e) {
       e.printStackTrace();
-      Assert.fail();
+      Assert.fail(e.getMessage());
     }
   }
 
@@ -231,7 +231,7 @@ public class SyncIT {
       checkResult();
     } catch (Exception e) {
       e.printStackTrace();
-      Assert.fail();
+      Assert.fail(e.getMessage());
     }
   }
 
@@ -249,7 +249,7 @@ public class SyncIT {
       checkResult();
     } catch (Exception e) {
       e.printStackTrace();
-      Assert.fail();
+      Assert.fail(e.getMessage());
     }
   }
 
@@ -274,39 +274,45 @@ public class SyncIT {
       throws Exception {
     loop:
     for (int loop = 0; loop < RETRY_TIME; loop++) {
-      Thread.sleep(1000);
-      boolean hasResultSet = statement.execute(sql);
-      if (!assertOrCompareEqual(true, hasResultSet, loop)) {
-        continue;
-      }
-      ResultSet resultSet = statement.getResultSet();
-      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-      Map<String, Integer> map = new HashMap<>();
-      for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-        map.put(resultSetMetaData.getColumnName(i), i);
-      }
-      int cnt = 0;
-      while (resultSet.next()) {
-        StringBuilder builder = new StringBuilder();
-        if (hasTimeColumn) {
-          builder.append(resultSet.getString(1)).append(",");
+      try {
+        Thread.sleep(1000);
+        boolean hasResultSet = statement.execute(sql);
+        if (!assertOrCompareEqual(true, hasResultSet, loop)) {
+          continue;
         }
-        for (String columnName : columnNames) {
-          int index = map.get(columnName);
-          builder.append(resultSet.getString(index)).append(",");
+        ResultSet resultSet = statement.getResultSet();
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        Map<String, Integer> map = new HashMap<>();
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          map.put(resultSetMetaData.getColumnName(i), i);
         }
-        if (builder.length() > 0) {
-          builder.deleteCharAt(builder.length() - 1);
+        int cnt = 0;
+        while (resultSet.next()) {
+          StringBuilder builder = new StringBuilder();
+          if (hasTimeColumn) {
+            builder.append(resultSet.getString(1)).append(",");
+          }
+          for (String columnName : columnNames) {
+            int index = map.get(columnName);
+            builder.append(resultSet.getString(index)).append(",");
+          }
+          if (builder.length() > 0) {
+            builder.deleteCharAt(builder.length() - 1);
+          }
+          if (!assertOrCompareEqual(retArray[cnt], builder.toString(), loop)) {
+            continue loop;
+          }
+          cnt++;
         }
-        if (!assertOrCompareEqual(retArray[cnt], builder.toString(), loop)) {
-          continue loop;
+        if (!assertOrCompareEqual(retArray.length, cnt, loop)) {
+          continue;
         }
-        cnt++;
+        return;
+      } catch (Exception e) {
+        if (loop == RETRY_TIME - 1) {
+          throw e;
+        }
       }
-      if (!assertOrCompareEqual(retArray.length, cnt, loop)) {
-        continue;
-      }
-      return;
     }
     Assert.fail();
   }
