@@ -23,13 +23,11 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.db.client.ConfigNodeClient;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 import org.slf4j.Logger;
@@ -37,21 +35,16 @@ import org.slf4j.LoggerFactory;
 
 public class SetStorageGroupTask implements IConfigTask {
   private static final Logger LOGGER = LoggerFactory.getLogger(SetStorageGroupTask.class);
-  private Statement statement;
+  private final SetStorageGroupStatement setStorageGroupStatement;
 
-  public SetStorageGroupTask(Statement statement) {
-    this.statement = statement;
+  public SetStorageGroupTask(SetStorageGroupStatement setStorageGroupStatement) {
+    this.setStorageGroupStatement = setStorageGroupStatement;
   }
 
   @Override
   public ListenableFuture<Void> execute() {
     SettableFuture<Void> future = SettableFuture.create();
-    if (!(statement instanceof SetStorageGroupStatement)) {
-      LOGGER.error("SetStorageGroup not get SetStorageGroupStatement");
-      return Futures.immediateVoidFuture();
-    }
     // Construct request using statement
-    SetStorageGroupStatement setStorageGroupStatement = (SetStorageGroupStatement) statement;
     TSetStorageGroupReq req =
         new TSetStorageGroupReq(setStorageGroupStatement.getStorageGroupPath().getFullPath());
 
@@ -62,8 +55,13 @@ public class SetStorageGroupTask implements IConfigTask {
       TSStatus tsStatus = configNodeClient.setStorageGroup(req);
       // Get response or throw exception
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
-        LOGGER.error("Failed to connect to config node.");
-        future.setException(new MetadataException("Failed to connect to config node."));
+        LOGGER.error(
+            "Failed to execute set storage group {} in config node, status is {}.",
+            setStorageGroupStatement.getStorageGroupPath(),
+            tsStatus);
+        future.setException(new StatementExecutionException(tsStatus));
+      } else {
+        future.set(null);
       }
     } catch (IoTDBConnectionException | BadNodeUrlException e) {
       LOGGER.error("Failed to connect to config node.");
