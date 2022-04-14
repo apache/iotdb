@@ -139,6 +139,10 @@ public class WALManager implements IService {
   }
 
   public void deleteOutdatedWALFiles() {
+    if (config.getWalMode() == WALMode.DISABLE) {
+      return;
+    }
+
     Future<?> future = walDeleteThread.submit(this::deleteOutdatedFiles);
     try {
       future.get();
@@ -176,6 +180,7 @@ public class WALManager implements IService {
     if (config.getWalMode() == WALMode.DISABLE) {
       return;
     }
+
     if (walDeleteThread != null) {
       shutdownThread(walDeleteThread, ThreadName.WAL_DELETE);
     }

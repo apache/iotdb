@@ -34,7 +34,6 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.db.utils.FileUtils;
 import org.apache.iotdb.db.wal.buffer.IWALBuffer;
 import org.apache.iotdb.db.wal.buffer.SignalWALEntry;
 import org.apache.iotdb.db.wal.buffer.WALBuffer;
@@ -51,11 +50,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -79,6 +76,13 @@ public class WALNode implements IWALNode {
    * snapshot
    */
   private final Map<Integer, Integer> memTableSnapshotCount = new ConcurrentHashMap<>();
+  /**
+   * total cost of flushedMemTables. when memControl enabled, cost is memTable ram cost, otherwise
+   * cost is memTable count
+   */
+  private final AtomicLong totalCostOfFlushedMemTables = new AtomicLong();
+  /** version id -> cost sum of memTables flushed at this file version */
+  private final Map<Integer, Long> walFileVersionId2MemTableCostSum = new ConcurrentHashMap<>();
 
   public WALNode(String identifier, String logDirectory) throws FileNotFoundException {
     this.identifier = identifier;
@@ -143,8 +147,15 @@ public class WALNode implements IWALNode {
     if (memTable.isSignalMemTable()) {
       return;
     }
-    memTableSnapshotCount.remove(memTable.getMemTableId());
     checkpointManager.makeFlushMemTableCP(memTable.getMemTableId());
+    // remove snapshot info
+    memTableSnapshotCount.remove(memTable.getMemTableId());
+    // update cost info
+    long cost = config.isEnableMemControl() ? memTable.getTVListsRamCost() : 1;
+    int currentWALFileVersion = buffer.getCurrentWALFileVersion();
+    walFileVersionId2MemTableCostSum.compute(
+        currentWALFileVersion, (k, v) -> v == null ? cost : v + cost);
+    totalCostOfFlushedMemTables.addAndGet(cost);
   }
 
   @Override
@@ -197,31 +208,28 @@ public class WALNode implements IWALNode {
       // delete outdated files
       File[] filesToDelete = deleteOutdatedFiles();
 
-      // get first file created time
+      // calculate effective information ratio
       if (filesToDelete != null && filesToDelete.length == 0) {
-        File firstWALFile =
-            SystemFileFactory.INSTANCE.getFile(
-                logDirectory, WALWriter.getLogFileName(firstValidVersionId));
-        if (firstWALFile.exists()) {
-          long fileCreatedTime = Long.MAX_VALUE;
-          try {
-            fileCreatedTime =
-                Files.readAttributes(firstWALFile.toPath(), BasicFileAttributes.class)
-                    .creationTime()
-                    .toMillis();
-          } catch (IOException e) {
-            logger.warn("Fail to get creation time of wal file {}", firstWALFile, e);
-          }
-          // exceed time limit or disk space limit
-          // update first valid version id by snapshotting or flushing memTable,
-          // then delete old .wal files again
-          long currentTime = System.currentTimeMillis();
-          if (fileCreatedTime + config.getWalFileTTLInMs() < currentTime
-              || FileUtils.getDirSize(logDirectory)
-                  >= config.getWalNodeMaxStorageSpaceInMb() * 1024 * 1024) {
-            snapshotOrFlushMemTable();
-            run();
-          }
+        long costOfActiveMemTables = checkpointManager.getTotalCostOfActiveMemTables();
+        long costOfFlushedMemTables = totalCostOfFlushedMemTables.get();
+        double effectiveInfoRatio =
+            (double) costOfActiveMemTables / (costOfActiveMemTables + costOfFlushedMemTables);
+        logger.info(
+            "Effective information ratio is {}, active memTables cost is {}, flushed memTables cost is {}",
+            effectiveInfoRatio,
+            costOfActiveMemTables,
+            costOfFlushedMemTables);
+        // effective information ratio is too small
+        // update first valid version id by snapshotting or flushing memTable,
+        // then delete old .wal files again
+        if (effectiveInfoRatio < config.getWalMinEffectiveInfoRatio()) {
+          logger.info(
+              "Effective information ratio {} of wal node-{} is below wal min effective info ratio {}, some mamTables will be snapshot or flushed.",
+              effectiveInfoRatio,
+              identifier,
+              config.getWalMinEffectiveInfoRatio());
+          snapshotOrFlushMemTable();
+          run();
         }
       }
     }
@@ -233,6 +241,12 @@ public class WALNode implements IWALNode {
         for (File file : filesToDelete) {
           if (!file.delete()) {
             logger.info("Fail to delete outdated wal file {} of wal node-{}.", file, identifier);
+          }
+          // update totalRamCostOfFlushedMemTables
+          int versionId = WALWriter.parseVersionId(file.getName());
+          Long memTableRamCostSum = walFileVersionId2MemTableCostSum.remove(versionId);
+          if (memTableRamCostSum != null) {
+            totalCostOfFlushedMemTables.addAndGet(-memTableRamCostSum);
           }
         }
       }
@@ -332,11 +346,10 @@ public class WALNode implements IWALNode {
         logger.error("Fail to roll wal log writer.", fileRolledListener.getCause());
         return;
       }
-      logger.info("Version id is {}", memTableInfo.getFirstFileVersionId());
+
       // update first version id first to make sure snapshot is in the files ≥ current log
       // version
       memTableInfo.setFirstFileVersionId(buffer.getCurrentWALFileVersion());
-      logger.info("Version id is {}", memTableInfo.getFirstFileVersionId());
 
       // get dataRegion write lock to make sure no more writes to the memTable
       dataRegion.writeLock(
