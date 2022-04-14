@@ -48,8 +48,10 @@ public class TemporaryClientDemo {
     System.out.println(registerResp);
     TimeUnit.MILLISECONDS.sleep(200);
 
-    TSetStorageGroupReq setReq = new TSetStorageGroupReq("root.sg");
-    TSStatus status = client.setStorageGroup(setReq);
-    System.out.println(status.toString());
+    for (int i = 0; i < 5; i++) {
+      TSetStorageGroupReq setReq = new TSetStorageGroupReq("root.sg" + i);
+      TSStatus status = client.setStorageGroup(setReq);
+      System.out.println(status.toString());
+    }
   }
 }
