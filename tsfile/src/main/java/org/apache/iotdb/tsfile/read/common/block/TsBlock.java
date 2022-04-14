@@ -174,12 +174,12 @@ public class TsBlock {
     return valueColumns[columnIndex];
   }
 
-  public TsBlockColumnIterator getTsBlockColumnIterator() {
-    return new TsBlockColumnIterator(0);
+  public TsBlockSingleColumnIterator getTsBlockSingleColumnIterator() {
+    return new TsBlockSingleColumnIterator(0);
   }
 
-  public TsBlockColumnIterator getTsBlockColumnIterator(int columnIndex) {
-    return new TsBlockColumnIterator(0, columnIndex);
+  public TsBlockSingleColumnIterator getTsBlockSingleColumnIterator(int columnIndex) {
+    return new TsBlockSingleColumnIterator(0, columnIndex);
   }
 
   public TsBlockRowIterator getTsBlockRowIterator() {
@@ -191,17 +191,17 @@ public class TsBlock {
     return new AlignedTsBlockIterator(0, subIndex);
   }
 
-  private class TsBlockColumnIterator implements IPointReader, IBatchDataIterator {
+  private class TsBlockSingleColumnIterator implements IPointReader, IBatchDataIterator {
 
     protected int rowIndex;
     protected int columnIndex;
 
-    public TsBlockColumnIterator(int rowIndex) {
+    public TsBlockSingleColumnIterator(int rowIndex) {
       this.rowIndex = rowIndex;
       this.columnIndex = 0;
     }
 
-    public TsBlockColumnIterator(int rowIndex, int columnIndex) {
+    public TsBlockSingleColumnIterator(int rowIndex, int columnIndex) {
       this.rowIndex = rowIndex;
       this.columnIndex = columnIndex;
     }
@@ -263,6 +263,7 @@ public class TsBlock {
     public void close() {}
   }
 
+  /** Mainly used for UDF framework. Note that the timestamps are at the last column. */
   public class TsBlockRowIterator implements Iterator<Object[]> {
 
     protected int rowIndex;
@@ -278,6 +279,7 @@ public class TsBlock {
       return rowIndex < positionCount;
     }
 
+    /** @return A row in the TsBlock. The timestamp is at the last column. */
     @Override
     public Object[] next() {
       int columnCount = getValueColumnCount();
@@ -293,7 +295,7 @@ public class TsBlock {
     }
   }
 
-  private class AlignedTsBlockIterator extends TsBlockColumnIterator {
+  private class AlignedTsBlockIterator extends TsBlockSingleColumnIterator {
 
     private final int subIndex;
 
