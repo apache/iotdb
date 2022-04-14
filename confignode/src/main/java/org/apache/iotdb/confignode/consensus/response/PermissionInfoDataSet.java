@@ -28,6 +28,7 @@ import java.util.Map;
 public class PermissionInfoDataSet implements DataSet {
 
   private TSStatus status;
+
   private Map<String, List<String>> permissionInfo;
 
   public PermissionInfoDataSet() {}

@@ -288,17 +288,23 @@ public class ConfigManager implements Manager {
 
   @Override
   public TSStatus operatePermission(PhysicalPlan physicalPlan) {
-    if (physicalPlan instanceof AuthorPlan) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return permissionManager.operatePermission((AuthorPlan) physicalPlan);
+    } else {
+      return status;
     }
-    return ERROR_TSSTATUS;
   }
 
   @Override
   public DataSet queryPermission(PhysicalPlan physicalPlan) {
-    if (physicalPlan instanceof AuthorPlan) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return permissionManager.queryPermission((AuthorPlan) physicalPlan);
+    } else {
+      PermissionInfoDataSet dataSet = new PermissionInfoDataSet();
+      dataSet.setStatus(status);
+      return dataSet;
     }
-    return new PermissionInfoDataSet();
   }
 }
