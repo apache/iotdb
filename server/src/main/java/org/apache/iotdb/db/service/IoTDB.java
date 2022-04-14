@@ -30,6 +30,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceCheck;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.cache.CacheHitRatioMonitor;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.cq.ContinuousQueryService;
@@ -138,22 +139,25 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(CacheHitRatioMonitor.getInstance());
     registerManager.register(CompactionTaskManager.getInstance());
     JMXService.registerMBean(getInstance(), mbeanName);
-    registerManager.register(WALManager.getInstance());
-    registerManager.register(StorageEngine.getInstance());
-    registerManager.register(TemporaryQueryDataFileService.getInstance());
-    registerManager.register(UDFClassLoaderManager.getInstance());
-    registerManager.register(UDFRegistrationService.getInstance());
-    registerManager.register(ReceiverService.getInstance());
-    registerManager.register(MetricsService.getInstance());
 
     // in mpp mode we need to start some other services
     if (IoTDBDescriptor.getInstance().getConfig().isMppMode()) {
+      registerManager.register(StorageEngineV2.getInstance());
       registerManager.register(DataBlockService.getInstance());
       registerManager.register(FragmentInstanceScheduler.getInstance());
       IoTDBDescriptor.getInstance()
           .getConfig()
           .setRpcImplClassName(DataNodeTSIServiceImpl.class.getName());
+    } else {
+      registerManager.register(StorageEngine.getInstance());
     }
+
+    registerManager.register(WALManager.getInstance());
+    registerManager.register(TemporaryQueryDataFileService.getInstance());
+    registerManager.register(UDFClassLoaderManager.getInstance());
+    registerManager.register(UDFRegistrationService.getInstance());
+    registerManager.register(ReceiverService.getInstance());
+    registerManager.register(MetricsService.getInstance());
 
     // in cluster mode, RPC service is not enabled.
     if (IoTDBDescriptor.getInstance().getConfig().isEnableRpcService()) {
@@ -170,7 +174,9 @@ public class IoTDB implements IoTDBMBean {
 
     logger.info("IoTDB is set up, now may some sgs are not ready, please wait several seconds...");
 
-    while (!StorageEngine.getInstance().isAllSgReady()) {
+    while (IoTDBDescriptor.getInstance().getConfig().isMppMode()
+        ? !StorageEngineV2.getInstance().isAllSgReady()
+        : !StorageEngine.getInstance().isAllSgReady()) {
       try {
         Thread.sleep(1000);
       } catch (InterruptedException e) {
