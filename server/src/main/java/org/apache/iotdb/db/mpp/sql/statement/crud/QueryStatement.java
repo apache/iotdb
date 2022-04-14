@@ -24,7 +24,7 @@ import org.apache.iotdb.db.index.common.IndexType;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
-import org.apache.iotdb.db.mpp.common.header.headerConstant;
+import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
 import org.apache.iotdb.db.mpp.sql.constant.StatementType;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
@@ -268,7 +268,7 @@ public class QueryStatement extends Statement {
     List<ColumnHeader> columnHeaders = new ArrayList<>();
     if (this.isAlignByDevice()) {
       // add DEVICE column
-      columnHeaders.add(new ColumnHeader(headerConstant.COLUMN_DEVICE, TSDataType.TEXT, null));
+      columnHeaders.add(new ColumnHeader(HeaderConstant.COLUMN_DEVICE, TSDataType.TEXT, null));
 
       // TODO: consider ALIGN BY DEVICE
     } else {

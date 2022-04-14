@@ -24,7 +24,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import java.util.Arrays;
 import java.util.Collections;
 
-public class headerConstant {
+public class HeaderConstant {
 
   // column names for query statement
   public static final String COLUMN_DEVICE = "Device";
