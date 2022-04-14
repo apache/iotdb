@@ -66,6 +66,7 @@ public class DataNodeManagementServiceImpl implements ManagementIService.Iface {
       SchemaRegionId schemaRegionId =
           (SchemaRegionId)
               ConsensusGroupId.Factory.create(ByteBuffer.wrap(regionReplicaSet.getRegionId()));
+      LOGGER.info("SchemaRegionId: " + schemaRegionId.getId());
       schemaEngine.createSchemaRegion(storageGroupPartitionPath, schemaRegionId);
       List<Peer> peers = new ArrayList<>();
       for (EndPoint endPoint : regionReplicaSet.getEndpoint()) {
@@ -103,6 +104,7 @@ public class DataNodeManagementServiceImpl implements ManagementIService.Iface {
       DataRegionId dataRegionId =
           (DataRegionId)
               ConsensusGroupId.Factory.create(ByteBuffer.wrap(regionReplicaSet.getRegionId()));
+      LOGGER.info("DataRegionId: " + dataRegionId.getId());
       storageEngine.createDataRegion(dataRegionId, req.storageGroup, req.ttl);
       List<Peer> peers = new ArrayList<>();
       for (EndPoint endPoint : regionReplicaSet.getEndpoint()) {

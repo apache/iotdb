@@ -63,7 +63,8 @@ public class DataNodeManager {
         ConfigNodeDescriptor.getInstance().getConf().getSeriesPartitionSlotNum());
     globalConfig.setSeriesPartitionExecutorClass(
         ConfigNodeDescriptor.getInstance().getConf().getSeriesPartitionExecutorClass());
-    // TODO: set time partition interval
+    globalConfig.setTimePartitionInterval(
+        ConfigNodeDescriptor.getInstance().getConf().getTimePartitionInterval());
     dataSet.setGlobalConfig(globalConfig);
   }
 
