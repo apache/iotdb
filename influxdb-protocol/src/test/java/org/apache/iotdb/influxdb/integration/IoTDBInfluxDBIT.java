@@ -28,6 +28,7 @@ import org.influxdb.dto.Query;
 import org.influxdb.dto.QueryResult;
 import org.junit.After;
 import org.junit.BeforeClass;
+import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 import org.testcontainers.containers.GenericContainer;
@@ -47,7 +48,7 @@ public class IoTDBInfluxDBIT {
   private static String password;
   private static InfluxDB influxDB;
 
-  @Rule
+  @ClassRule
   public static GenericContainer<?> iotdb =
       new GenericContainer(DockerImageName.parse("apache/iotdb:influxdb-protocol-on"))
           .withExposedPorts(8086);
