@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.commons.consensus;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public interface ConsensusGroupId {
@@ -39,10 +38,10 @@ public interface ConsensusGroupId {
   GroupType getType();
 
   class Factory {
-    public static ConsensusGroupId create(ByteBuffer buffer) throws IOException {
+    public static ConsensusGroupId create(ByteBuffer buffer) {
       int index = buffer.get();
       if (index >= GroupType.values().length) {
-        throw new IOException("unrecognized id type " + index);
+        throw new IllegalArgumentException("invalid ConsensusGroup type. Ordinal is: " + index);
       }
       GroupType type = GroupType.values()[index];
       ConsensusGroupId groupId = createEmpty(type);

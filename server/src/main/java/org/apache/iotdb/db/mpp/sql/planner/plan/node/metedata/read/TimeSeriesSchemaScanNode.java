@@ -79,12 +79,16 @@ public class TimeSeriesSchemaScanNode extends SchemaScanNode {
     ReadWriteIOUtils.write(isPrefixPath, byteBuffer);
   }
 
-  public static TimeSeriesSchemaScanNode deserialize(ByteBuffer byteBuffer)
-      throws IllegalPathException {
+  public static TimeSeriesSchemaScanNode deserialize(ByteBuffer byteBuffer) {
     String id = ReadWriteIOUtils.readString(byteBuffer);
     PlanNodeId planNodeId = new PlanNodeId(id);
     String fullPath = ReadWriteIOUtils.readString(byteBuffer);
-    PartialPath path = new PartialPath(fullPath);
+    PartialPath path = null;
+    try {
+      path = new PartialPath(fullPath);
+    } catch (IllegalPathException e) {
+      throw new IllegalArgumentException("Cannot deserialize TimeSeriesSchemaScanNode", e);
+    }
     String key = ReadWriteIOUtils.readString(byteBuffer);
     String value = ReadWriteIOUtils.readString(byteBuffer);
     int limit = ReadWriteIOUtils.readInt(byteBuffer);
