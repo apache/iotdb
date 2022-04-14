@@ -2422,8 +2422,10 @@ public class DataRegion {
    * <p>Finally, update the latestTimeForEachDevice and partitionLatestFlushedTimeForEachDevice.
    *
    * @param newTsFileResource tsfile resource @UsedBy load external tsfile module
+   * @param deleteOriginFile whether to delete origin tsfile
    */
-  public void loadNewTsFile(TsFileResource newTsFileResource) throws LoadFileException {
+  public void loadNewTsFile(TsFileResource newTsFileResource, boolean deleteOriginFile)
+      throws LoadFileException {
     File tsfileToBeInserted = newTsFileResource.getTsFile();
     long newFilePartitionId = newTsFileResource.getTimePartitionWithCheck();
     writeLock("loadNewTsFile");
@@ -2450,7 +2452,12 @@ public class DataRegion {
             fsFactory.getFile(tsfileToBeInserted.getParentFile(), newFileName));
       }
       loadTsFileByType(
-          tsFileType, tsfileToBeInserted, newTsFileResource, newFilePartitionId, insertPos);
+          tsFileType,
+          tsfileToBeInserted,
+          newTsFileResource,
+          newFilePartitionId,
+          insertPos,
+          deleteOriginFile);
       resetLastCacheWhenLoadingTsfile(newTsFileResource);
 
       // update latest time map
@@ -2737,6 +2744,7 @@ public class DataRegion {
    * @param type load type
    * @param tsFileResource tsfile resource to be loaded
    * @param filePartitionId the partition id of the new file
+   * @param deleteOriginFile whether to delete the original file
    * @return load the file successfully @UsedBy sync module, load external tsfile module.
    */
   private boolean loadTsFileByType(
@@ -2744,7 +2752,8 @@ public class DataRegion {
       File tsFileToLoad,
       TsFileResource tsFileResource,
       long filePartitionId,
-      int insertPos)
+      int insertPos,
+      boolean deleteOriginFile)
       throws LoadFileException, DiskSpaceInsufficientException {
     File targetFile;
     switch (type) {
@@ -2805,7 +2814,11 @@ public class DataRegion {
       targetFile.getParentFile().mkdirs();
     }
     try {
-      FileUtils.moveFile(tsFileToLoad, targetFile);
+      if (deleteOriginFile) {
+        FileUtils.moveFile(tsFileToLoad, targetFile);
+      } else {
+        Files.createLink(targetFile.toPath(), tsFileToLoad.toPath());
+      }
     } catch (IOException e) {
       logger.error(
           "File renaming failed when loading tsfile. Origin: {}, Target: {}",
@@ -2823,7 +2836,11 @@ public class DataRegion {
     File targetResourceFile =
         fsFactory.getFile(targetFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX);
     try {
-      FileUtils.moveFile(resourceFileToLoad, targetResourceFile);
+      if (deleteOriginFile) {
+        FileUtils.moveFile(resourceFileToLoad, targetResourceFile);
+      } else {
+        Files.createLink(targetResourceFile.toPath(), resourceFileToLoad.toPath());
+      }
     } catch (IOException e) {
       logger.error(
           "File renaming failed when loading .resource file. Origin: {}, Target: {}",
@@ -2851,7 +2868,11 @@ public class DataRegion {
         logger.warn("Cannot delete localModFile {}", targetModFile, e);
       }
       try {
-        FileUtils.moveFile(modFileToLoad, targetModFile);
+        if (deleteOriginFile) {
+          FileUtils.moveFile(modFileToLoad, targetModFile);
+        } else {
+          Files.createLink(targetModFile.toPath(), modFileToLoad.toPath());
+        }
       } catch (IOException e) {
         logger.error(
             "File renaming failed when loading .mod file. Origin: {}, Target: {}",
