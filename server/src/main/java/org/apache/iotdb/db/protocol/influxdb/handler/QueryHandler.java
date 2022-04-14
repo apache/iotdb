@@ -285,8 +285,7 @@ public class QueryHandler {
           serviceProvider.createQueryDataSet(
               queryContext, physicalPlan, InfluxConstant.DEFAULT_FETCH_SIZE);
       int fieldNums = 0;
-      Map<String, Integer> tagOrders =
-          InfluxDBMetaManager.getDatabase2Measurement2TagOrders().get(database).get(measurement);
+      Map<String, Integer> tagOrders = InfluxDBMetaManager.getTagOrders(database, measurement);
       int tagOrderNums = tagOrders.size();
       while (queryDataSet.hasNext()) {
         List<Field> fields = queryDataSet.next().getFields();
@@ -820,8 +819,7 @@ public class QueryHandler {
     List<SingleSeriesExpression> fieldExpressions = new ArrayList<>();
     // maximum number of tags in the current query criteria
     int currentQueryMaxTagNum = 0;
-    Map<String, Integer> tagOrders =
-        InfluxDBMetaManager.getDatabase2Measurement2TagOrders().get(database).get(measurement);
+    Map<String, Integer> tagOrders = InfluxDBMetaManager.getTagOrders(database, measurement);
     for (IExpression expression : expressions) {
       SingleSeriesExpression singleSeriesExpression = ((SingleSeriesExpression) expression);
       // the current condition is in tag
