@@ -56,7 +56,7 @@ public class TimeJoinNode extends ProcessNode implements IOutputPlanNode {
 
   private List<PlanNode> children;
 
-  private final List<ColumnHeader> columnHeaders = new ArrayList<>();
+  private List<ColumnHeader> columnHeaders = new ArrayList<>();
 
   public TimeJoinNode(PlanNodeId id, OrderBy mergeOrder) {
     super(id);
@@ -77,7 +77,10 @@ public class TimeJoinNode extends ProcessNode implements IOutputPlanNode {
 
   @Override
   public PlanNode clone() {
-    return new TimeJoinNode(getPlanNodeId(), this.mergeOrder);
+    // TODO: (xingtanzjr)
+    TimeJoinNode cloneNode = new TimeJoinNode(getPlanNodeId(), this.mergeOrder);
+    cloneNode.columnHeaders = this.columnHeaders;
+    return cloneNode;
   }
 
   @Override

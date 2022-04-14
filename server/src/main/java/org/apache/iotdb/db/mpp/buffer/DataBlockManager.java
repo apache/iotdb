@@ -283,6 +283,7 @@ public class DataBlockManager implements IDataBlockManager {
       int remotePort,
       TFragmentInstanceId remoteFragmentInstanceId)
       throws IOException {
+    System.out.println(String.format("Create SourceHandle: FID: %s, NodeId: %s", localFragmentInstanceId, localPlanNodeId));
     if (sourceHandles.containsKey(localFragmentInstanceId)
         && sourceHandles.get(localFragmentInstanceId).containsKey(localPlanNodeId)) {
       throw new IllegalStateException(

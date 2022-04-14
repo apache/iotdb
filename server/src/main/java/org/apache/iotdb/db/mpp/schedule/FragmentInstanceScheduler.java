@@ -22,6 +22,8 @@ import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.mpp.buffer.DataBlockManager;
+import org.apache.iotdb.db.mpp.buffer.DataBlockService;
 import org.apache.iotdb.db.mpp.buffer.IDataBlockManager;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.QueryId;
@@ -89,6 +91,7 @@ public class FragmentInstanceScheduler implements IFragmentInstanceScheduler, IS
     this.scheduler = new Scheduler();
     this.workerGroups = new ThreadGroup("ScheduleThreads");
     this.threads = new ArrayList<>();
+    this.blockManager = DataBlockService.getInstance().getDataBlockManager();
   }
 
   @Override

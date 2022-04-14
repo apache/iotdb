@@ -103,6 +103,9 @@ public class QueryExecution implements IQueryExecution {
   public void start() {
     doLogicalPlan();
     doDistributedPlan();
+    if (context.getQueryType() == QueryType.READ) {
+      initResultHandle();
+    }
     schedule();
   }
 
@@ -159,9 +162,11 @@ public class QueryExecution implements IQueryExecution {
   @Override
   public TsBlock getBatchResult() {
     try {
-      initResultHandle();
       ListenableFuture<Void> blocked = resultHandle.isBlocked();
       blocked.get();
+      if (resultHandle.isFinished()) {
+        return null;
+      }
       return resultHandle.receive();
 
     } catch (ExecutionException | IOException e) {
@@ -177,13 +182,7 @@ public class QueryExecution implements IQueryExecution {
   /** @return true if there is more tsblocks, otherwise false */
   @Override
   public boolean hasNextResult() {
-    try {
-      initResultHandle();
-      return resultHandle.isFinished();
-    } catch (IOException e) {
-      throwIfUnchecked(e.getCause());
-      throw new RuntimeException(e.getCause());
-    }
+      return !resultHandle.isFinished();
   }
 
   /** return the result column count without the time column */
@@ -231,17 +230,21 @@ public class QueryExecution implements IQueryExecution {
     }
   }
 
-  private void initResultHandle() throws IOException {
+  private void initResultHandle() {
     if (this.resultHandle == null) {
-      this.resultHandle =
-          DataBlockService.getInstance()
-              .getDataBlockManager()
-              .createSourceHandle(
-                  context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift(),
-                  context.getResultNodeContext().getVirtualResultNodeId().getId(),
-                  context.getResultNodeContext().getUpStreamEndpoint().getIp(),
-                  IoTDBDescriptor.getInstance().getConfig().getDataBlockManagerPort(),
-                  context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift());
+      try {
+        this.resultHandle =
+            DataBlockService.getInstance()
+                .getDataBlockManager()
+                .createSourceHandle(
+                    context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift(),
+                    context.getResultNodeContext().getVirtualResultNodeId().getId(),
+                    context.getResultNodeContext().getUpStreamEndpoint().getIp(),
+                    IoTDBDescriptor.getInstance().getConfig().getDataBlockManagerPort(),
+                    context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift());
+      } catch (IOException e) {
+        stateMachine.transitionToFailed();
+      }
     }
   }
 
