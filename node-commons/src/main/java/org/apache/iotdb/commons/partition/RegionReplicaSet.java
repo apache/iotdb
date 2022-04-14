@@ -21,12 +21,14 @@ package org.apache.iotdb.commons.partition;
 import org.apache.iotdb.common.rpc.thrift.EndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.cluster.DataNodeLocation;
+import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 public class RegionReplicaSet {
   private ConsensusGroupId consensusGroupId;
@@ -37,6 +39,17 @@ public class RegionReplicaSet {
   public RegionReplicaSet(ConsensusGroupId consensusGroupId, List<DataNodeLocation> dataNodeList) {
     this.consensusGroupId = consensusGroupId;
     this.dataNodeList = dataNodeList;
+  }
+
+  public RegionReplicaSet(TRegionReplicaSet respRegionReplicaSet) {
+    this.consensusGroupId = ConsensusGroupId.Factory.create(respRegionReplicaSet.regionId);
+    this.dataNodeList =
+        respRegionReplicaSet.getEndpoint().stream()
+            .map(
+                respEndpoint ->
+                    new DataNodeLocation(
+                        new Endpoint(respEndpoint.getIp(), respEndpoint.getPort())))
+            .collect(Collectors.toList());
   }
 
   public List<DataNodeLocation> getDataNodeList() {

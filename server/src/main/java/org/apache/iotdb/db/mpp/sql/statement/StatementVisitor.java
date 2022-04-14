@@ -37,6 +37,7 @@ import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowDevicesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.sys.AuthorStatement;
 
@@ -220,6 +221,10 @@ public abstract class StatementVisitor<R, C> {
   // List Users of Role
   public R visitListAllUserOfRole(AuthorStatement authorStatement, C context) {
     return visitStatement(authorStatement, context);
+  }
+
+  public R visitShowStorageGroup(ShowStorageGroupStatement showStorageGroupStatement, C context) {
+    return visitStatement(showStorageGroupStatement, context);
   }
 
   public R visitShowTimeSeries(ShowTimeSeriesStatement showTimeSeriesStatement, C context) {
