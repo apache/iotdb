@@ -18,45 +18,21 @@
  */
 package org.apache.iotdb.db.engine.compaction.constant;
 
-import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
-import org.apache.iotdb.db.engine.compaction.cross.CrossSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.cross.ICrossSpaceSelector;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.RewriteCrossSpaceCompactionSelector;
-import org.apache.iotdb.db.engine.compaction.performer.impl.ReadPointCompactionPerformer;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-
-import java.util.List;
 
 public enum CrossCompactionSelector {
   REWRITE;
 
-  public static CrossCompactionSelector getCrossCompactionStrategy(String name) {
-    if ("REWRITE_COMPACTION".equalsIgnoreCase(name)) {
+  public static CrossCompactionSelector getCrossCompactionSelector(String name) {
+    if (REWRITE.toString().equalsIgnoreCase(name)) {
       return REWRITE;
     }
-    throw new RuntimeException("Illegal Cross Compaction Strategy " + name);
+    throw new RuntimeException("Illegal Cross Compaction Selector " + name);
   }
 
-  public CrossSpaceCompactionTask getCompactionTask(
-      long timePartitionId,
-      TsFileManager tsFileManager,
-      List<TsFileResource> selectedSeqTsFileResourceList,
-      List<TsFileResource> selectedUnSeqTsFileResourceList) {
-    switch (this) {
-      case REWRITE:
-      default:
-        return new CrossSpaceCompactionTask(
-            timePartitionId,
-            tsFileManager,
-            selectedSeqTsFileResourceList,
-            selectedUnSeqTsFileResourceList,
-            new ReadPointCompactionPerformer(),
-            CompactionTaskManager.currentTaskNum);
-    }
-  }
-
-  public ICrossSpaceSelector getCompactionSelector(
+  public ICrossSpaceSelector createInstance(
       String logicalStorageGroupName,
       String virtualGroupId,
       long timePartition,

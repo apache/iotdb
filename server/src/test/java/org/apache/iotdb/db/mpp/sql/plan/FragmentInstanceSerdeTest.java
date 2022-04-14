@@ -45,7 +45,6 @@ import org.apache.iotdb.tsfile.read.filter.operator.Gt;
 
 import org.junit.Test;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 
@@ -54,7 +53,7 @@ import static org.junit.Assert.assertEquals;
 public class FragmentInstanceSerdeTest {
 
   @Test
-  public void TestSerializeAndDeserializeForTree1() throws IllegalPathException, IOException {
+  public void TestSerializeAndDeserializeForTree1() throws IllegalPathException {
     FragmentInstance fragmentInstance =
         new FragmentInstance(
             new PlanFragment(new PlanFragmentId("test", -1), constructPlanNodeTree()),
@@ -74,7 +73,7 @@ public class FragmentInstanceSerdeTest {
   }
 
   @Test
-  public void TestSerializeAndDeserializeWithNullFilter() throws IllegalPathException, IOException {
+  public void TestSerializeAndDeserializeWithNullFilter() throws IllegalPathException {
     FragmentInstance fragmentInstance =
         new FragmentInstance(
             new PlanFragment(new PlanFragmentId("test2", 1), constructPlanNodeTree()),
@@ -119,17 +118,17 @@ public class FragmentInstanceSerdeTest {
     timeJoinNode.setWithoutPolicy(FilterNullPolicy.CONTAINS_NULL);
     SeriesScanNode seriesScanNode1 =
         new SeriesScanNode(new PlanNodeId("SeriesScanNode1"), new MeasurementPath("root.sg.d1.s2"));
-    seriesScanNode1.setDataRegionReplicaSet(
+    seriesScanNode1.setRegionReplicaSet(
         new RegionReplicaSet(new DataRegionId(1), new ArrayList<>()));
     seriesScanNode1.setScanOrder(OrderBy.TIMESTAMP_DESC);
     SeriesScanNode seriesScanNode2 =
         new SeriesScanNode(new PlanNodeId("SeriesScanNode2"), new MeasurementPath("root.sg.d2.s1"));
-    seriesScanNode2.setDataRegionReplicaSet(
+    seriesScanNode2.setRegionReplicaSet(
         new RegionReplicaSet(new DataRegionId(2), new ArrayList<>()));
     seriesScanNode2.setScanOrder(OrderBy.TIMESTAMP_DESC);
     SeriesScanNode seriesScanNode3 =
         new SeriesScanNode(new PlanNodeId("SeriesScanNode3"), new MeasurementPath("root.sg.d2.s2"));
-    seriesScanNode3.setDataRegionReplicaSet(
+    seriesScanNode3.setRegionReplicaSet(
         new RegionReplicaSet(new DataRegionId(3), new ArrayList<>()));
     seriesScanNode3.setScanOrder(OrderBy.TIMESTAMP_DESC);
 

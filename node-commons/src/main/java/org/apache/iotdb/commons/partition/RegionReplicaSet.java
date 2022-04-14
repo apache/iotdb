@@ -21,7 +21,6 @@ package org.apache.iotdb.commons.partition;
 import org.apache.iotdb.commons.cluster.DataNodeLocation;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -54,6 +53,7 @@ public class RegionReplicaSet {
     this.consensusGroupId = consensusGroupId;
   }
 
+  @Override
   public String toString() {
     return String.format(
         "RegionReplicaSet[%s-%d]: %s",
@@ -69,7 +69,7 @@ public class RegionReplicaSet {
         });
   }
 
-  public static RegionReplicaSet deserializeImpl(ByteBuffer buffer) throws IOException {
+  public static RegionReplicaSet deserializeImpl(ByteBuffer buffer) {
     ConsensusGroupId consensusGroupId = ConsensusGroupId.Factory.create(buffer);
 
     int size = buffer.getInt();

@@ -24,8 +24,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataNodeMessageResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupMessage;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupMessageResp;
+import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -129,11 +129,11 @@ public class RatisConsensusDemo {
     TimeUnit.SECONDS.sleep(1);
 
     for (int i = 0; i < 3; i++) {
-      TStorageGroupMessageResp msgMap = clients[i].getStorageGroupsMessage();
+      TStorageGroupSchemaResp msgMap = clients[i].getStorageGroupsSchema();
       System.out.printf(
           "\nQuery StorageGroup message from ConfigNode 0.0.0.0:%d. Result: {\n", 22277 + i * 2);
-      for (Map.Entry<String, TStorageGroupMessage> entry :
-          msgMap.getStorageGroupMessageMap().entrySet()) {
+      for (Map.Entry<String, TStorageGroupSchema> entry :
+          msgMap.getStorageGroupSchemaMap().entrySet()) {
         System.out.printf("  Key(%s)=%s\n", entry.getKey(), entry.getValue().toString());
       }
       System.out.println("}");
