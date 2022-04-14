@@ -54,6 +54,12 @@ public class ColumnHeader {
   }
 
   public String getColumnName() {
+    if (alias != null) {
+      return alias;
+    }
+    if (columnName != null) {
+      return columnName;
+    }
     if (functionName != null) {
       return String.format("%s(%s)", functionName, pathName);
     }

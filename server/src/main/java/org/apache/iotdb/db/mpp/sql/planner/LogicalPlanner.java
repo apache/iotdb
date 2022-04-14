@@ -24,6 +24,7 @@ import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
 import org.apache.iotdb.db.mpp.sql.optimization.PlanOptimizer;
+import org.apache.iotdb.db.mpp.sql.planner.plan.IOutputPlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AlterTimeSeriesNode;
@@ -84,6 +85,10 @@ public class LogicalPlanner {
       for (PlanOptimizer optimizer : optimizers) {
         rootNode = optimizer.optimize(rootNode, context);
       }
+
+      analysis
+          .getRespDatasetHeader()
+          .setColumnToTsBlockIndexMap(((IOutputPlanNode) rootNode).getOutputColumnNames());
     }
 
     return new LogicalQueryPlan(context, rootNode);

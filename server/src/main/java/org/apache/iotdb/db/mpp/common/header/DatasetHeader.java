@@ -23,10 +23,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import com.google.common.primitives.Bytes;
 
-import java.util.ArrayList;
-import java.util.BitSet;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /** The header of query result dataset. */
@@ -39,7 +36,7 @@ public class DatasetHeader {
   private final boolean isIgnoreTimestamp;
 
   // map from
-  private Map<ColumnHeader, Integer> columnToTsBlockIndexMap;
+  private Map<String, Integer> columnToTsBlockIndexMap;
 
   public DatasetHeader(List<ColumnHeader> columnHeaders, boolean isIgnoreTimestamp) {
     this.columnHeaders = columnHeaders;
@@ -54,12 +51,15 @@ public class DatasetHeader {
     return isIgnoreTimestamp;
   }
 
-  public Map<ColumnHeader, Integer> getColumnToTsBlockIndexMap() {
+  public Map<String, Integer> getColumnToTsBlockIndexMap() {
     return columnToTsBlockIndexMap;
   }
 
-  public void setColumnToTsBlockIndexMap(Map<ColumnHeader, Integer> columnToTsBlockIndexMap) {
-    this.columnToTsBlockIndexMap = columnToTsBlockIndexMap;
+  public void setColumnToTsBlockIndexMap(List<String> outputColumnNames) {
+    this.columnToTsBlockIndexMap = new HashMap<>();
+    for (int i = 0; i < outputColumnNames.size(); i++) {
+      columnToTsBlockIndexMap.put(outputColumnNames.get(i), i);
+    }
   }
 
   public List<String> getRespColumns() {
@@ -78,5 +78,9 @@ public class DatasetHeader {
       }
     }
     return new ArrayList<>(Bytes.asList(aliasMap.toByteArray()));
+  }
+
+  public Map<String, Integer> getColumnNameIndexMap() {
+    return columnToTsBlockIndexMap;
   }
 }

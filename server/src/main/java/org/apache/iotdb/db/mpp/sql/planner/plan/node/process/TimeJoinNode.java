@@ -101,6 +101,7 @@ public class TimeJoinNode extends ProcessNode implements IOutputPlanNode {
     return columnHeaders.stream().map(ColumnHeader::getColumnName).collect(Collectors.toList());
   }
 
+  @Override
   public List<TSDataType> getOutputColumnTypes() {
     return columnHeaders.stream().map(ColumnHeader::getColumnType).collect(Collectors.toList());
   }
