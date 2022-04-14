@@ -49,7 +49,7 @@ public class IoTDBInfluxDBIT {
 
   @Rule
   public GenericContainer<?> iotdb =
-      new GenericContainer(DockerImageName.parse("apache/iotdb:maven-development"))
+      new GenericContainer(DockerImageName.parse("apache/iotdb:influxdb-protocol-on"))
           .withExposedPorts(8086);
 
   @Before
