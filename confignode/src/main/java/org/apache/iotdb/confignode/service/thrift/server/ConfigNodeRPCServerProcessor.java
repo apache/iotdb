@@ -84,7 +84,7 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
 
     TDataNodeRegisterResp resp = new TDataNodeRegisterResp();
     dataSet.convertToRpcDataNodeRegisterResp(resp);
-    LOGGER.error("{}", resp);
+    LOGGER.info("Execute RegisterDatanodeRequest {} with result {}", resp, req);
     return resp;
   }
 
