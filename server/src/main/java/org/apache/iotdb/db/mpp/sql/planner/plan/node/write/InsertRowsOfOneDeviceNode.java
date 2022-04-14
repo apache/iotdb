@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.IWritePlanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
@@ -111,7 +111,7 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
   public void serialize(ByteBuffer byteBuffer) {}
 
   @Override
-  public List<IWritePlanNode> splitByPartition(Analysis analysis) {
+  public List<WritePlanNode> splitByPartition(Analysis analysis) {
     Map<RegionReplicaSet, InsertRowsNode> splitMap = new HashMap<>();
     for (int i = 0; i < insertRowNodeList.size(); i++) {
       InsertRowNode insertRowNode = insertRowNodeList.get(i);

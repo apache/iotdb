@@ -31,7 +31,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.PlanFragment;
 import org.apache.iotdb.db.mpp.sql.planner.plan.SimpleFragmentParallelPlanner;
 import org.apache.iotdb.db.mpp.sql.planner.plan.SubPlan;
 import org.apache.iotdb.db.mpp.sql.planner.plan.WriteFragmentParallelPlanner;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.IWritePlanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
@@ -248,7 +248,7 @@ public class DistributionPlanner {
     @Override
     public PlanNode visitPlan(PlanNode node, NodeGroupContext context) {
       // TODO: (xingtanzjr) we apply no action for IWritePlanNode currently
-      if (node instanceof IWritePlanNode) {
+      if (node instanceof WritePlanNode) {
         return node;
       }
       // Visit all the children of current node
@@ -446,7 +446,7 @@ public class DistributionPlanner {
 
     private void splitToSubPlan(PlanNode root, SubPlan subPlan) {
       // TODO: (xingtanzjr) we apply no action for IWritePlanNode currently
-      if (root instanceof IWritePlanNode) {
+      if (root instanceof WritePlanNode) {
         return;
       }
       if (root instanceof ExchangeNode) {

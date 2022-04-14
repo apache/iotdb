@@ -22,7 +22,7 @@ import org.apache.iotdb.commons.partition.TimePartitionSlot;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.IWritePlanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
@@ -58,7 +58,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   }
 
   @Override
-  public List<IWritePlanNode> splitByPartition(Analysis analysis) {
+  public List<WritePlanNode> splitByPartition(Analysis analysis) {
     TimePartitionSlot timePartitionSlot = StorageEngine.getTimePartitionSlot(time);
     this.dataRegionReplicaSet =
         analysis

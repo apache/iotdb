@@ -24,13 +24,13 @@ import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
 
 import java.util.List;
 
-public abstract class IWritePlanNode extends PlanNode {
+public abstract class WritePlanNode extends PlanNode {
 
-  protected IWritePlanNode(PlanNodeId id) {
+  protected WritePlanNode(PlanNodeId id) {
     super(id);
   }
 
   public abstract RegionReplicaSet getRegionReplicaSet();
 
-  public abstract List<IWritePlanNode> splitByPartition(Analysis analysis);
+  public abstract List<WritePlanNode> splitByPartition(Analysis analysis);
 }
