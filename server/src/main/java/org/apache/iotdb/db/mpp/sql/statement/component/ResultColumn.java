@@ -174,7 +174,10 @@ public class ResultColumn extends StatementNode {
   }
 
   public ColumnHeader constructColumnHeader() {
-    return new ColumnHeader(this.getExpressionString(), ((TimeSeriesOperand) this.getExpression()).getPath().getSeriesType(), this.getAlias());
+    return new ColumnHeader(
+        this.getExpressionString(),
+        ((TimeSeriesOperand) this.getExpression()).getPath().getSeriesType(),
+        this.getAlias());
   }
 
   @Override
