@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.db.mpp.sql.analyze;
 
+import org.apache.iotdb.commons.partition.RegionReplicaSet;
+import org.apache.iotdb.commons.partition.SchemaPartition;
+import org.apache.iotdb.commons.partition.SeriesPartitionSlot;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
@@ -31,6 +34,7 @@ import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -39,15 +43,24 @@ import java.util.Map;
 public class ClusterSchemaFetcher implements ISchemaFetcher {
 
   private final Coordinator coordinator = Coordinator.getInstance();
+  private final IPartitionFetcher partitionFetcher = new ClusterPartitionFetcher();
 
   @Override
   public SchemaTree fetchSchema(PathPatternTree patternTree) {
+    SchemaPartition schemaPartition = partitionFetcher.fetchSchemaPartitionInfos(patternTree);
+    Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> schemaPartitionMap =
+        schemaPartition.getSchemaPartitionMap();
+    List<String> storageGroups = new ArrayList<>(schemaPartitionMap.keySet());
+
     SchemaFetchStatement schemaFetchStatement = new SchemaFetchStatement(patternTree);
+    schemaFetchStatement.setSchemaPartition(schemaPartition);
+
     QueryId queryId =
         new QueryId(String.valueOf(SessionManager.getInstance().requestQueryId(false)));
     coordinator.execute(schemaFetchStatement, queryId, QueryType.READ, null, "");
     TsBlock tsBlock = coordinator.getResultSet(queryId);
     SchemaTree result = new SchemaTree();
+    result.setStorageGroups(storageGroups);
 
     Binary binary;
     SchemaTree fetchedSchemaTree;

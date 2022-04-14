@@ -38,6 +38,8 @@ import static org.apache.iotdb.db.mpp.common.schematree.SchemaNode.SCHEMA_MEASUR
 
 public class SchemaTree {
 
+  private List<String> storageGroups;
+
   private final SchemaNode root;
 
   public SchemaTree() {
@@ -196,6 +198,24 @@ public class SchemaTree {
       }
     }
     return new SchemaTree(stack.poll());
+  }
+
+  public String getBelongedStorageGroup(PartialPath path) {
+    for (String storageGroup : storageGroups) {
+      if (path.getFullPath().startsWith(storageGroup)) {
+        return storageGroup;
+      }
+    }
+    throw new RuntimeException(
+        "No matched storage group. Please check the path " + path.getFullPath());
+  }
+
+  public List<String> getStorageGroups() {
+    return storageGroups;
+  }
+
+  public void setStorageGroups(List<String> storageGroups) {
+    this.storageGroups = storageGroups;
   }
 
   @TestOnly

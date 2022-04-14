@@ -622,8 +622,7 @@ public class Analyzer {
         SchemaFetchStatement schemaFetchStatement, MPPQueryContext context) {
       Analysis analysis = new Analysis();
       analysis.setStatement(schemaFetchStatement);
-      analysis.setSchemaPartitionInfo(
-          partitionFetcher.fetchSchemaPartitionInfos(schemaFetchStatement.getPatternTree()));
+      analysis.setSchemaPartitionInfo(schemaFetchStatement.getSchemaPartition());
       return analysis;
     }
   }
