@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.newsync;
+package org.apache.iotdb.db.sync;
 
 import org.junit.Assert;
 import org.testcontainers.containers.Container;

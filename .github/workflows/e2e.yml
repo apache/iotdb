@@ -59,4 +59,5 @@ jobs:
 
       - name: TestContainer
         run: |
-          mvn -B -T 4 integration-test -pl testcontainer
+#          TODO: add cluster test
+          mvn -B -T 4 integration-test -pl testcontainer -P sync
