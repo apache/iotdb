@@ -42,6 +42,7 @@ import org.junit.Test;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -83,7 +84,7 @@ public class WALNodeTest {
     int threadsNum = 3;
     ExecutorService executorService = Executors.newFixedThreadPool(threadsNum);
     List<Future<Void>> futures = new ArrayList<>();
-    List<WALFlushListener> walFlushListeners = new ArrayList<>();
+    List<WALFlushListener> walFlushListeners = Collections.synchronizedList(new ArrayList<>());
     Set<InsertTabletPlan> expectedInsertTabletPlans = ConcurrentHashMap.newKeySet();
     for (int i = 0; i < threadsNum; ++i) {
       int memTableId = i;
