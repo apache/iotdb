@@ -42,7 +42,7 @@ import static org.apache.iotdb.db.mpp.operator.Operator.NOT_BLOCKED;
 @NotThreadSafe
 public class SchemaDriver implements Driver {
 
-  private static final Logger logger = LoggerFactory.getLogger(DataDriver.class);
+  private static final Logger logger = LoggerFactory.getLogger(SchemaDriver.class);
 
   private final Operator root;
   private final ISinkHandle sinkHandle;

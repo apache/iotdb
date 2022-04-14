@@ -144,6 +144,7 @@ public class IoTDB implements IoTDBMBean {
     if (IoTDBDescriptor.getInstance().getConfig().isMppMode()) {
       registerManager.register(StorageEngineV2.getInstance());
       registerManager.register(DataBlockService.getInstance());
+      registerManager.register(InternalService.getInstance());
       registerManager.register(FragmentInstanceScheduler.getInstance());
       IoTDBDescriptor.getInstance()
           .getConfig()

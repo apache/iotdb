@@ -17,27 +17,28 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.execution.scheduler;
+package org.apache.iotdb.db.service;
 
-import org.apache.iotdb.mpp.rpc.thrift.InternalService;
-import org.apache.iotdb.rpc.RpcTransportFactory;
-import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
+import org.apache.thrift.server.ServerContext;
+import org.apache.thrift.server.TServerEventHandler;
 import org.apache.thrift.transport.TTransport;
-import org.apache.thrift.transport.TTransportException;
 
-public class InternalServiceClientFactory {
-  private static final int TIMEOUT_MS = 10000;
+public class InternalServiceThriftHandler implements TServerEventHandler {
 
-  // TODO: (xingtanzjr) consider the best practice to maintain the clients
-  public static InternalService.Client getInternalServiceClient(String endpoint, int port)
-      throws TTransportException {
-    TTransport transport =
-        RpcTransportFactory.INSTANCE.getTransport(
-            // as there is a try-catch already, we do not need to use TSocket.wrap
-            endpoint, port, TIMEOUT_MS);
-    transport.open();
-    TProtocol protocol = new TBinaryProtocol(transport);
-    return new InternalService.Client(protocol);
+  @Override
+  public void preServe() {}
+
+  @Override
+  public ServerContext createContext(TProtocol tProtocol, TProtocol tProtocol1) {
+    return null;
   }
+
+  @Override
+  public void deleteContext(
+      ServerContext serverContext, TProtocol tProtocol, TProtocol tProtocol1) {}
+
+  @Override
+  public void processContext(
+      ServerContext serverContext, TTransport tTransport, TTransport tTransport1) {}
 }

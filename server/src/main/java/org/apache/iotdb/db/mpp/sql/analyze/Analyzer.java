@@ -218,6 +218,7 @@ public class Analyzer {
     @Override
     public Analysis visitCreateTimeseries(
         CreateTimeSeriesStatement createTimeSeriesStatement, MPPQueryContext context) {
+      context.setQueryType(QueryType.WRITE);
       if (createTimeSeriesStatement.getTags() != null
           && !createTimeSeriesStatement.getTags().isEmpty()
           && createTimeSeriesStatement.getAttributes() != null
@@ -234,7 +235,7 @@ public class Analyzer {
       analysis.setStatement(createTimeSeriesStatement);
 
       SchemaPartition schemaPartitionInfo =
-          partitionFetcher.getSchemaPartition(
+          partitionFetcher.getOrCreateSchemaPartition(
               new PathPatternTree(createTimeSeriesStatement.getPath()));
       analysis.setSchemaPartitionInfo(schemaPartitionInfo);
       return analysis;

@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.mpp.sql.planner;
 
 import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
@@ -306,7 +307,7 @@ public class LocalExecutionPlanner {
                 localInstanceId.toThrift(),
                 node.getPlanNodeId().getId(),
                 source.getIp(),
-                source.getPort(),
+                IoTDBDescriptor.getInstance().getConfig().getDataBlockManagerPort(),
                 remoteInstanceId.toThrift());
         return new ExchangeOperator(operatorContext, sourceHandle, node.getUpstreamPlanNodeId());
       } catch (IOException e) {
@@ -325,7 +326,7 @@ public class LocalExecutionPlanner {
             DATA_BLOCK_MANAGER.createSinkHandle(
                 localInstanceId.toThrift(),
                 target.getIp(),
-                target.getPort(),
+                IoTDBDescriptor.getInstance().getConfig().getDataBlockManagerPort(),
                 targetInstanceId.toThrift(),
                 node.getDownStreamPlanNodeId().getId());
         context.setSinkHandle(sinkHandle);

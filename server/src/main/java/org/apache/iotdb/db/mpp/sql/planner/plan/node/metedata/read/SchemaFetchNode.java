@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read;
 
+import com.google.common.collect.ImmutableList;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
@@ -44,7 +45,7 @@ public class SchemaFetchNode extends SchemaScanNode {
 
   @Override
   public List<PlanNode> getChildren() {
-    return null;
+    return ImmutableList.of();
   }
 
   @Override

@@ -91,7 +91,7 @@ public class DataBlockService extends ThriftService implements DataBlockServiceM
               config.getThriftServerAwaitTimeForStopService(),
               new DataBlockServiceThriftHandler(),
               // TODO: hard coded compress strategy
-              true);
+              false);
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
     }

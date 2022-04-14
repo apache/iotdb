@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.execution;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.buffer.DataBlockService;
 import org.apache.iotdb.db.mpp.buffer.ISourceHandle;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
@@ -239,7 +240,7 @@ public class QueryExecution implements IQueryExecution {
                   context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift(),
                   context.getResultNodeContext().getVirtualResultNodeId().getId(),
                   context.getResultNodeContext().getUpStreamEndpoint().getIp(),
-                  context.getResultNodeContext().getUpStreamEndpoint().getPort(),
+                  IoTDBDescriptor.getInstance().getConfig().getDataBlockManagerPort(),
                   context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift());
     }
   }

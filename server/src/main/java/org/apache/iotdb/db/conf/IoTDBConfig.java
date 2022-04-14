@@ -110,7 +110,7 @@ public class IoTDBConfig {
   private int rpcPort = 6667;
 
   /** Port which is used for node communication in MPP. */
-  private int mppPort = 7777;
+  private int mppPort = 7778;
 
   /** Port which the influxdb protocol server listens to. */
   private int influxDBRpcPort = 8086;

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.execution.scheduler;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
 import org.apache.iotdb.mpp.rpc.thrift.InternalService;
 import org.apache.iotdb.mpp.rpc.thrift.TConsensusGroupId;
@@ -48,7 +49,7 @@ public class SimpleFragInstanceDispatcher implements IFragInstanceDispatcher {
             for (FragmentInstance instance : instances) {
               InternalService.Client client =
                   InternalServiceClientFactory.getInternalServiceClient(
-                      instance.getHostEndpoint().getIp(), instance.getHostEndpoint().getPort());
+                      instance.getHostEndpoint().getIp(), IoTDBDescriptor.getInstance().getConfig().getMppPort());
               // TODO: (xingtanzjr) consider how to handle the buffer here
               ByteBuffer buffer = ByteBuffer.allocate(1024 * 1024);
               instance.serializeRequest(buffer);
