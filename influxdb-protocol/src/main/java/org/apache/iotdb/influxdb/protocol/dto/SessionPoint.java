@@ -19,10 +19,7 @@
 package org.apache.iotdb.influxdb.protocol.dto;
 
 import org.apache.iotdb.common.rpc.thrift.EndPoint;
-import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxEndPoint;
 import org.apache.iotdb.session.Session;
-
-import org.influxdb.InfluxDBException;
 
 public class SessionPoint {
   private String host;
