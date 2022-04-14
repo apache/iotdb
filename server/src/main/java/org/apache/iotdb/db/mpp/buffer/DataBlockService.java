@@ -31,19 +31,14 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.memory.LocalMemoryManager;
 import org.apache.iotdb.mpp.rpc.thrift.DataBlockService.Processor;
 
-import org.apache.commons.lang3.Validate;
-
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 public class DataBlockService extends ThriftService {
 
-  private LocalMemoryManager localMemoryManager;
-  private TsBlockSerdeFactory tsBlockSerdeFactory;
   private DataBlockManager dataBlockManager;
   private ExecutorService executorService;
-  private DataBlockServiceClientFactory clientFactory;
 
   private DataBlockService() {}
 
@@ -66,19 +61,13 @@ public class DataBlockService extends ThriftService {
             new LinkedBlockingQueue<>(),
             new IoTThreadFactory("data-block-manager-task-executors"),
             "data-block-manager-task-executors");
-    clientFactory = new DataBlockServiceClientFactory();
     this.dataBlockManager =
         new DataBlockManager(
-            localMemoryManager, tsBlockSerdeFactory, executorService, clientFactory);
+            new LocalMemoryManager(),
+            new TsBlockSerdeFactory(),
+            executorService,
+            new DataBlockServiceClientFactory());
     processor = new Processor<>(dataBlockManager.getOrCreateDataBlockServiceImpl());
-  }
-
-  public void setLocalMemoryManager(LocalMemoryManager localMemoryManager) {
-    this.localMemoryManager = Validate.notNull(localMemoryManager);
-  }
-
-  public void setTsBlockSerdeFactory(TsBlockSerdeFactory tsBlockSerdeFactory) {
-    this.tsBlockSerdeFactory = Validate.notNull(tsBlockSerdeFactory);
   }
 
   public DataBlockManager getDataBlockManager() {
