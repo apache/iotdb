@@ -52,6 +52,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
+import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -185,8 +186,9 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
 
   @Override
   public TSStatus operatePermission(TAuthorizerReq req) throws TException {
-    if (req.getAuthorType() < 0 || req.getAuthorType() >= PhysicalPlanType.values().length) {
-      throw new IndexOutOfBoundsException("Invalid ordinal");
+    if (req.getAuthorType() < 0
+        || req.getAuthorType() >= AuthorOperator.AuthorType.values().length) {
+      throw new IndexOutOfBoundsException("Invalid Author Type ordinal");
     }
     AuthorPlan plan = null;
     try {
