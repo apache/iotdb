@@ -432,7 +432,7 @@ public class StorageEngineV2 implements IService {
   /**
    * build a new data region
    *
-   * @param dataRegionId virtual storage group id e.g. 1
+   * @param dataRegionId data region id e.g. 1
    * @param logicalStorageGroupName logical storage group name e.g. root.sg1
    */
   public DataRegion buildNewDataRegion(
