@@ -64,7 +64,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   }
 
   private void initPartitionExecutor() throws StatementAnalyzeException {
-      // TODO: @crz move to node-commons
+    // TODO: @crz move to node-commons
     IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
     try {
       Class<?> executor = Class.forName(conf.getSeriesPartitionExecutorClass());
