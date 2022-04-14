@@ -37,11 +37,12 @@ import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
 import org.apache.iotdb.consensus.exception.RatisRequestFailedException;
 import org.apache.iotdb.consensus.statemachine.IStateMachine;
 
+import org.apache.ratis.RaftConfigKeys;
 import org.apache.ratis.client.RaftClient;
 import org.apache.ratis.conf.Parameters;
 import org.apache.ratis.conf.RaftProperties;
-import org.apache.ratis.grpc.GrpcConfigKeys;
-import org.apache.ratis.grpc.GrpcFactory;
+import org.apache.ratis.netty.NettyConfigKeys;
+import org.apache.ratis.netty.NettyFactory;
 import org.apache.ratis.protocol.ClientId;
 import org.apache.ratis.protocol.GroupInfoReply;
 import org.apache.ratis.protocol.Message;
@@ -51,6 +52,7 @@ import org.apache.ratis.protocol.RaftGroup;
 import org.apache.ratis.protocol.RaftGroupId;
 import org.apache.ratis.protocol.RaftPeer;
 import org.apache.ratis.protocol.exceptions.NotLeaderException;
+import org.apache.ratis.rpc.SupportedRpcType;
 import org.apache.ratis.server.RaftServer;
 import org.apache.ratis.server.RaftServerConfigKeys;
 import org.apache.ratis.util.NetUtils;
@@ -105,10 +107,11 @@ class RatisConsensus implements IConsensus {
     RaftProperties properties = new RaftProperties();
 
     RaftServerConfigKeys.setStorageDir(properties, Collections.singletonList(ratisStorageDir));
+    RaftConfigKeys.Rpc.setType(properties, SupportedRpcType.NETTY);
 
     // set the port which server listen to in RaftProperty object
     final int port = NetUtils.createSocketAddr(address).getPort();
-    GrpcConfigKeys.Server.setPort(properties, port);
+    NettyConfigKeys.Server.setPort(properties, port);
 
     server =
         RaftServer.newBuilder()
@@ -508,7 +511,7 @@ class RatisConsensus implements IConsensus {
             .setProperties(raftProperties)
             .setRaftGroup(group)
             .setClientRpc(
-                new GrpcFactory(new Parameters())
+                new NettyFactory(new Parameters())
                     .newRaftClientRpc(ClientId.randomId(), raftProperties));
     RaftClient client = builder.build();
     closeRaftClient(group.getGroupId());

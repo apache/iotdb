@@ -157,6 +157,7 @@ public class ConfigNodeClient {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TDataNodeRegisterResp resp = client.registerDataNode(req);
+        logger.error("{}", resp);
         if (!updateConfigNodeLeader(resp.status)) {
           return resp;
         }

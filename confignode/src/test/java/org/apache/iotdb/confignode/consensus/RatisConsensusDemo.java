@@ -34,6 +34,7 @@ import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.junit.Assert;
+import org.junit.Test;
 
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -55,6 +56,7 @@ public class RatisConsensusDemo {
    * ConfigNode by yourself 5. Add @Test 6. run ratisConsensusRegisterDemo 7. run
    * ratisConsensusQueryDemo
    */
+  @Test
   public void ratisConsensusSetStorageGroupsDemo() throws TException, InterruptedException {
     createClients();
     setStorageGroups();
@@ -65,6 +67,7 @@ public class RatisConsensusDemo {
     queryDataNodes();
   }
 
+  @Test
   public void ratisConsensusQueryStorageGroupsDemo() throws TException, InterruptedException {
     createClients();
     queryStorageGroups();
@@ -78,8 +81,8 @@ public class RatisConsensusDemo {
   private void createClients() throws TTransportException {
     // Create clients for these three ConfigNodes
     // to simulate DataNodes to send RPC requests
-    clients = new ConfigIService.Client[3];
-    for (int i = 0; i < 3; i++) {
+    clients = new ConfigIService.Client[1];
+    for (int i = 0; i < 1; i++) {
       TTransport transport =
           RpcTransportFactory.INSTANCE.getTransport(localhost, 22277 + i * 2, timeOutInMS);
       transport.open();
@@ -107,7 +110,7 @@ public class RatisConsensusDemo {
     TimeUnit.SECONDS.sleep(1);
 
     // DataNodes can connect to any ConfigNode and send read requests
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < 1; i++) {
       TDataNodeMessageResp msgMap = clients[i].getDataNodesMessage(-1);
       System.out.printf(
           "\nQuery DataNode message from ConfigNode 0.0.0.0:%d. Result: %s\n",
@@ -128,7 +131,7 @@ public class RatisConsensusDemo {
     // sleep 1s to make sure all ConfigNode in ConfigNodeGroup hold the same PartitionTable
     TimeUnit.SECONDS.sleep(1);
 
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < 1; i++) {
       TStorageGroupSchemaResp msgMap = clients[i].getStorageGroupsSchema();
       System.out.printf(
           "\nQuery StorageGroup message from ConfigNode 0.0.0.0:%d. Result: {\n", 22277 + i * 2);

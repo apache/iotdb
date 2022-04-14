@@ -856,7 +856,7 @@ public class IoTDBConfig {
   private int consensusPort = 40010;
 
   /** The max time of data node waiting to join into the cluster */
-  private long joinClusterTimeOutMs = TimeUnit.SECONDS.toMillis(60);
+  private long joinClusterTimeOutMs = TimeUnit.SECONDS.toMillis(5);
 
   /**
    * The consensus protocol class. The Datanode should communicate with ConfigNode on startup and
@@ -896,6 +896,7 @@ public class IoTDBConfig {
       internalIp = "127.0.0.1";
     }
     configNodeUrls = new ArrayList<>();
+    configNodeUrls.add("127.0.0.1:22277");
   }
 
   public float getUdfMemoryBudgetInMB() {
