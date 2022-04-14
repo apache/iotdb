@@ -28,6 +28,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
+import java.util.Objects;
 
 public abstract class InsertNode extends WritePlanNode {
 
@@ -68,6 +70,13 @@ public abstract class InsertNode extends WritePlanNode {
     this.isAligned = isAligned;
     this.measurementSchemas = measurementSchemas;
     this.dataTypes = dataTypes;
+
+    this.measurements = new String[measurementSchemas.length];
+    for (int i = 0; i < measurementSchemas.length; i++) {
+      if (measurementSchemas[i] != null) {
+        measurements[i] = measurementSchemas[i].getMeasurementId();
+      }
+    }
   }
 
   public RegionReplicaSet getDataRegionReplicaSet() {
@@ -103,12 +112,6 @@ public abstract class InsertNode extends WritePlanNode {
   }
 
   public String[] getMeasurements() {
-    if (measurements == null) {
-      measurements = new String[measurementSchemas.length];
-      for (int i = 0; i < measurementSchemas.length; i++) {
-        measurements[i] = measurementSchemas[i].getMeasurementId();
-      }
-    }
     return measurements;
   }
 
@@ -135,5 +138,40 @@ public abstract class InsertNode extends WritePlanNode {
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     throw new NotImplementedException("serializeAttributes of InsertNode is not implemented");
+  }
+
+  protected int countFailedMeasurements() {
+    int result = 0;
+    for (MeasurementSchema measurement : measurementSchemas) {
+      if (measurement == null) {
+        result++;
+      }
+    }
+    return result;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    if (!super.equals(o)) return false;
+    InsertNode that = (InsertNode) o;
+    return isAligned == that.isAligned
+        && Objects.equals(devicePath, that.devicePath)
+        && Arrays.equals(measurementSchemas, that.measurementSchemas)
+        && Arrays.equals(measurements, that.measurements)
+        && Arrays.equals(dataTypes, that.dataTypes)
+        && Objects.equals(deviceID, that.deviceID)
+        && Objects.equals(dataRegionReplicaSet, that.dataRegionReplicaSet);
+  }
+
+  @Override
+  public int hashCode() {
+    int result =
+        Objects.hash(super.hashCode(), devicePath, isAligned, deviceID, dataRegionReplicaSet);
+    result = 31 * result + Arrays.hashCode(measurementSchemas);
+    result = 31 * result + Arrays.hashCode(measurements);
+    result = 31 * result + Arrays.hashCode(dataTypes);
+    return result;
   }
 }

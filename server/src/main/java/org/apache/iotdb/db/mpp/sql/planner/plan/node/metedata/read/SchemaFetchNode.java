@@ -16,61 +16,75 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read;
 
+import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ProcessNode;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
-public class SchemaMergeNode extends ProcessNode {
+public class SchemaFetchNode extends SchemaScanNode {
 
-  private boolean orderByHeat;
+  private final PathPatternTree patternTree;
 
-  private List<PlanNode> children;
-
-  public SchemaMergeNode(PlanNodeId id) {
+  public SchemaFetchNode(PlanNodeId id, PathPatternTree patternTree) {
     super(id);
-    children = new ArrayList<>();
+    this.patternTree = patternTree;
   }
 
-  public SchemaMergeNode(PlanNodeId id, boolean orderByHeat) {
-    this(id);
-    this.orderByHeat = orderByHeat;
+  public PathPatternTree getPatternTree() {
+    return patternTree;
   }
 
   @Override
   public List<PlanNode> getChildren() {
-    return children;
+    return null;
   }
 
   @Override
-  public void addChild(PlanNode child) {
-    this.children.add(child);
-  }
+  public void addChild(PlanNode child) {}
 
   @Override
   public PlanNode clone() {
-    return new SchemaMergeNode(getPlanNodeId(), this.orderByHeat);
+    return new SchemaFetchNode(getPlanNodeId(), patternTree);
   }
 
   @Override
   public int allowedChildCount() {
-    return CHILD_COUNT_NO_LIMIT;
+    return 0;
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {}
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    PlanNodeType.SCHEMA_FETCH.serialize(byteBuffer);
+    patternTree.serialize(byteBuffer);
+  }
+
+  public static SchemaFetchNode deserialize(ByteBuffer byteBuffer) {
+    PathPatternTree patternTree = PathPatternTree.deserialize(byteBuffer);
+    PlanNodeId id = PlanNodeId.deserialize(byteBuffer);
+    return new SchemaFetchNode(id, patternTree);
+  }
 
   @Override
-  protected void serializeAttributes(ByteBuffer byteBuffer) {}
+  public void open() throws Exception {}
+
+  @Override
+  public List<String> getOutputColumnNames() {
+    return Collections.singletonList("SchemaTree");
+  }
+
+  @Override
+  public void close() throws Exception {}
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitSchemaMerge(this, context);
+    return visitor.visitSchemaFetch(this, context);
   }
 }
