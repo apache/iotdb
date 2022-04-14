@@ -21,17 +21,15 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.write;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.nio.ByteBuffer;
-import java.util.List;
 
-public abstract class InsertNode extends PlanNode {
+public abstract class InsertNode extends WritePlanNode {
 
   /**
    * if use id table, this filed is id form of device path <br>
@@ -130,9 +128,9 @@ public abstract class InsertNode extends PlanNode {
     this.deviceID = deviceID;
   }
 
-  // TODO(INSERT) split this insert node into multiple InsertNode according to the data partition
-  // info
-  public abstract List<InsertNode> splitByPartition(Analysis analysis);
+  public RegionReplicaSet getRegionReplicaSet() {
+    return dataRegionReplicaSet;
+  }
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
