@@ -19,15 +19,17 @@
     under the License.
 
 -->
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <groupId>org.apache.iotdb</groupId>
+        <artifactId>iotdb-parent</artifactId>
+        <version>0.14.0-SNAPSHOT</version>
+        <relativePath>../../pom.xml</relativePath>
+    </parent>
     <modelVersion>4.0.0</modelVersion>
     <version>0.0.1-SNAPSHOT</version>
     <groupId>org.apache.iotdb.datax</groupId>
     <artifactId>iotdbwriter</artifactId>
-
     <properties>
         <datax-project-version>0.0.1-SNAPSHOT</datax-project-version>
         <logback-classic-version>1.0.13</logback-classic-version>
@@ -37,7 +39,6 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <jdk-version>1.8</jdk-version>
     </properties>
-
     <dependencies>
         <dependency>
             <groupId>com.alibaba.datax</groupId>
@@ -54,21 +55,17 @@
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
             <version>${slf4j-api-version}</version>
-
         </dependency>
         <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
             <version>${logback-classic-version}</version>
-
         </dependency>
-
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-session</artifactId>
             <version>0.13.0</version>
         </dependency>
-
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
@@ -87,7 +84,6 @@
                     <encoding>${project-sourceEncoding}</encoding>
                 </configuration>
             </plugin>
-
             <!-- assembly plugin -->
             <plugin>
                 <artifactId>maven-assembly-plugin</artifactId>
@@ -106,8 +102,9 @@
                         </goals>
                     </execution>
                 </executions>
+                <!-->修改为制定版本<-->
+                <version>2.2-beta-5</version>
             </plugin>
         </plugins>
     </build>
-
 </project>

@@ -20,15 +20,14 @@
 package org.apache.iotdb.datax.writer.iotdbwriter;
 
 public class Key {
-    public static final String COLUMN = "column";
-    public static final String STORAGE_GROUP  = "storageGroup";
-    public static final String DEVICE_ID  = "deviceId";
-    public static final String BATCH_SIZE  = "batchSize";
-    public static final String TIME_SERIES = "timeseries";
+  public static final String COLUMN = "column";
+  public static final String STORAGE_GROUP = "storageGroup";
+  public static final String DEVICE_ID = "deviceId";
+  public static final String BATCH_SIZE = "batchSize";
+  public static final String TIME_SERIES = "timeseries";
 
-    public static final String HOST = "host";
-    public static final String PORT = "port";
-    public static final String USERNAME = "username";
-    public static final String PASSWORD = "password";
-
+  public static final String HOST = "host";
+  public static final String PORT = "port";
+  public static final String USERNAME = "username";
+  public static final String PASSWORD = "password";
 }

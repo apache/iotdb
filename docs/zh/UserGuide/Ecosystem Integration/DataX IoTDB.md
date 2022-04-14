@@ -48,34 +48,44 @@ iotdbwriter 插件依赖的 DataX 代码中的一些模块。而这些模块并�
 
 2. `init-env.sh`
 
-   这个脚本主要用于构建 DataX 开发环境，他主要进行了以下操作：
+   这个脚本主要用于构建 DataX 环境，他主要进行了以下操作：
 
-   1. 将 DataX 代码库 clone 到本地。
-   2. 将 `iotdbwriter/` 目录软链到 `DataX/iotdbwriter` 目录。
-   3. 在 `DataX/pom.xml` 文件中添加 `<module>iotdbwriter</module>` 模块。
-   4. 在 `DataX/package.xml` 文件中添加 iotdbwriter 相关打包配置。
+   1. 将 DataX 的二进制部署压缩包下载到本地。
+   2. 将 DataX 的压缩包解压。
 
-   这个脚本执行后，开发者就可以进入 `DataX/` 目录开始开发或编译了。因为做了软链，所以任何对 `DataX/iotdbwriter` 目录中文件的修改，都会反映到 `iotdbwriter/` 目录中，方便开发者提交代码。
+   这个脚本执行后，开发者就可以进入 `iotdbwriter/` 目录开始开发或编译了。
 
 ### 编译部署
 
 1. 运行 `init-env.sh`
 
-2. 按需修改 `DataX/iotdbwriter` 中的代码。
+2. 按需修改 `iotdbwriter/src` 中的代码。
 
-3. 进入`DataX`目录内编译：
+3. 单独编译iotdbwriter：
 
-   ` mvn -U clean package assembly:assembly -Dmaven.test.skip=true`        
+   进入`iotdbwriter`目录内编译：
+   ```shell script
+    mvn -U clean package assembly:single -Dmaven.test.skip=true 
+   ```
+   
+   如果编译时出现错误`Could not find artifact com.alibaba.datax:datax-common:pom:0.0.1-SNAPSHOT ...`，可尝试以下方式解决：
+   
+   - 解压 alibaba-datax-maven-m2-20210928.tar.gz
+   - 解压后，将得到的 alibaba/datax/ 目录，拷贝到所使用的 maven 对应的 .m2/repository/com/alibaba/ 下。
+   - 再次尝试编译。
+   
+4. 将编译后的`iotdbwriter`插件，复制到Datax的安装目录里：
 
-   产出在 `target/datax/datax/`.
+   进入`datax-iotdb-connector`目录，执行命令。
+   ```shell script
+   cp -R iotdbwriter/target/datax/plugin/writer/iotdbwriter datax/plugin/writer/ 
+   ```
 
-   如果编译出现插件依赖下载错误，如： hdfsreader, hdfswriter, tsdbwriter and oscarwriter 这几个插件，是因为需要额外的jar包。如果你并不需要这些插件，可以在 `DataX/pom.xml` 中删除这些插件的模块。
 
 
 ### 使用datax传输数据
 
-进入目录`target/datax/datax/`后，执行`python bin/datax.py ${USER_DEFINE}.json
-`即可启动一个datax传输作业。
+进入Datax的安装目录`datax/`后，执行`python bin/datax.py ${USER_DEFINE}.json` ，即可启动一个datax传输作业。
 
 其中 ${USER_DEFINE}.json 为datax的作业配置文件。
 
