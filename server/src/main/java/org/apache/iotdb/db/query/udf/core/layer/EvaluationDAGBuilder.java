@@ -20,9 +20,8 @@
 package org.apache.iotdb.db.query.udf.core.layer;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.db.query.expression.ResultColumn;
+import org.apache.iotdb.db.query.udf.core.executor.UDTFContext;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -30,16 +29,16 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
-public class DAGBuilder {
+public class EvaluationDAGBuilder {
 
   private final long queryId;
-  private final UDTFPlan udtfPlan;
-  private final RawQueryInputLayer rawTimeSeriesInputLayer;
 
-  // input
-  private final Expression[] resultColumnExpressions;
-  // output
-  private final LayerPointReader[] resultColumnPointReaders;
+  private final RawQueryInputLayer inputLayer;
+
+  private final Expression[] outputExpressions;
+  private final LayerPointReader[] outputPointReaders;
+
+  private final UDTFContext udtfContext;
 
   private final LayerMemoryAssigner memoryAssigner;
 
@@ -50,18 +49,19 @@ public class DAGBuilder {
   private final Map<Expression, IntermediateLayer> expressionIntermediateLayerMap;
   private final Map<Expression, TSDataType> expressionDataTypeMap;
 
-  public DAGBuilder(
-      long queryId, UDTFPlan udtfPlan, RawQueryInputLayer inputLayer, float memoryBudgetInMB) {
+  public EvaluationDAGBuilder(
+      long queryId,
+      RawQueryInputLayer inputLayer,
+      Expression[] outputExpressions,
+      UDTFContext udtfContext,
+      float memoryBudgetInMB) {
     this.queryId = queryId;
-    this.udtfPlan = udtfPlan;
-    this.rawTimeSeriesInputLayer = inputLayer;
+    this.inputLayer = inputLayer;
+    this.outputExpressions = outputExpressions;
+    this.udtfContext = udtfContext;
 
-    int size = udtfPlan.getPathToIndex().size();
-    resultColumnExpressions = new Expression[size];
-    for (int i = 0; i < size; ++i) {
-      resultColumnExpressions[i] = udtfPlan.getResultColumnByDatasetOutputIndex(i).getExpression();
-    }
-    resultColumnPointReaders = new LayerPointReader[size];
+    int size = inputLayer.getInputColumnCount();
+    outputPointReaders = new LayerPointReader[size];
 
     memoryAssigner = new LayerMemoryAssigner(memoryBudgetInMB);
 
@@ -69,29 +69,23 @@ public class DAGBuilder {
     expressionDataTypeMap = new HashMap<>();
   }
 
-  public DAGBuilder bindInputLayerColumnIndexWithExpression() {
-    for (Expression expression : resultColumnExpressions) {
-      expression.bindInputLayerColumnIndexWithExpression(udtfPlan);
-    }
-    return this;
-  }
-
-  public DAGBuilder buildLayerMemoryAssigner() {
-    for (Expression expression : resultColumnExpressions) {
+  public EvaluationDAGBuilder buildLayerMemoryAssigner() {
+    for (Expression expression : outputExpressions) {
       expression.updateStatisticsForMemoryAssigner(memoryAssigner);
     }
     memoryAssigner.build();
     return this;
   }
 
-  public DAGBuilder buildResultColumnPointReaders() throws QueryProcessException, IOException {
-    for (int i = 0; i < resultColumnExpressions.length; ++i) {
-      resultColumnPointReaders[i] =
-          resultColumnExpressions[i]
+  public EvaluationDAGBuilder buildResultColumnPointReaders()
+      throws QueryProcessException, IOException {
+    for (int i = 0; i < outputExpressions.length; ++i) {
+      outputPointReaders[i] =
+          outputExpressions[i]
               .constructIntermediateLayer(
                   queryId,
-                  udtfPlan.getUdtfContext(),
-                  rawTimeSeriesInputLayer,
+                  udtfContext,
+                  inputLayer,
                   expressionIntermediateLayerMap,
                   expressionDataTypeMap,
                   memoryAssigner)
@@ -100,14 +94,7 @@ public class DAGBuilder {
     return this;
   }
 
-  public DAGBuilder setDataSetResultColumnDataTypes() {
-    for (ResultColumn resultColumn : udtfPlan.getResultColumns()) {
-      resultColumn.setDataType(expressionDataTypeMap.get(resultColumn.getExpression()));
-    }
-    return this;
-  }
-
-  public LayerPointReader[] getResultColumnPointReaders() {
-    return resultColumnPointReaders;
+  public LayerPointReader[] getOutputPointReaders() {
+    return outputPointReaders;
   }
 }
