@@ -19,14 +19,14 @@
 package org.apache.iotdb.db.mpp.sql.planner;
 
 import org.apache.iotdb.commons.cluster.Endpoint;
-import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.metadata.schemaregion.SchemaRegion;
+import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.mpp.buffer.DataBlockManager;
 import org.apache.iotdb.db.mpp.buffer.DataBlockService;
 import org.apache.iotdb.db.mpp.buffer.ISinkHandle;
+import org.apache.iotdb.db.mpp.buffer.ISourceHandle;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
-import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
 import org.apache.iotdb.db.mpp.execution.DataDriver;
 import org.apache.iotdb.db.mpp.execution.DataDriverContext;
 import org.apache.iotdb.db.mpp.execution.FragmentInstanceContext;
@@ -36,10 +36,17 @@ import org.apache.iotdb.db.mpp.operator.Operator;
 import org.apache.iotdb.db.mpp.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.operator.process.LimitOperator;
 import org.apache.iotdb.db.mpp.operator.process.TimeJoinOperator;
+import org.apache.iotdb.db.mpp.operator.schema.DevicesSchemaScanOperator;
+import org.apache.iotdb.db.mpp.operator.schema.SchemaMergeOperator;
+import org.apache.iotdb.db.mpp.operator.schema.TimeSeriesSchemaScanOperator;
+import org.apache.iotdb.db.mpp.operator.source.DataSourceOperator;
+import org.apache.iotdb.db.mpp.operator.source.ExchangeOperator;
 import org.apache.iotdb.db.mpp.operator.source.SeriesScanOperator;
-import org.apache.iotdb.db.mpp.operator.source.SourceOperator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.DevicesSchemaScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.AggregateNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.DeviceMergeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ExchangeNode;
@@ -55,7 +62,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.sink.FragmentSinkNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregateScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
-import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
+import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.io.IOException;
@@ -84,7 +91,7 @@ public class LocalExecutionPlanner {
       PlanNode plan,
       FragmentInstanceContext instanceContext,
       Filter timeFilter,
-      VirtualStorageGroupProcessor dataRegion) {
+      DataRegion dataRegion) {
     LocalExecutionPlanContext context = new LocalExecutionPlanContext(instanceContext);
 
     Operator root = plan.accept(new Visitor(), context);
@@ -101,7 +108,7 @@ public class LocalExecutionPlanner {
   }
 
   public SchemaDriver plan(
-      PlanNode plan, FragmentInstanceContext instanceContext, SchemaRegion schemaRegion) {
+      PlanNode plan, FragmentInstanceContext instanceContext, ISchemaRegion schemaRegion) {
 
     SchemaDriverContext schemaDriverContext =
         new SchemaDriverContext(instanceContext, schemaRegion);
@@ -134,6 +141,7 @@ public class LocalExecutionPlanner {
 
       SeriesScanOperator seriesScanOperator =
           new SeriesScanOperator(
+              node.getPlanNodeId(),
               seriesPath,
               node.getAllSensors(),
               seriesPath.getSeriesType(),
@@ -146,6 +154,59 @@ public class LocalExecutionPlanner {
       context.addPath(seriesPath);
 
       return seriesScanOperator;
+    }
+
+    @Override
+    public Operator visitTimeSeriesMetaScan(
+        TimeSeriesSchemaScanNode node, LocalExecutionPlanContext context) {
+      OperatorContext operatorContext =
+          context.instanceContext.addOperatorContext(
+              context.getNextOperatorId(),
+              node.getPlanNodeId(),
+              TimeSeriesSchemaScanOperator.class.getSimpleName());
+      return new TimeSeriesSchemaScanOperator(
+          operatorContext,
+          node.getLimit(),
+          node.getOffset(),
+          node.getPath(),
+          node.getKey(),
+          node.getValue(),
+          node.isContains(),
+          node.isOrderByHeat(),
+          node.isPrefixPath(),
+          node.getOutputColumnNames());
+    }
+
+    @Override
+    public Operator visitDevicesMetaScan(
+        DevicesSchemaScanNode node, LocalExecutionPlanContext context) {
+      OperatorContext operatorContext =
+          context.instanceContext.addOperatorContext(
+              context.getNextOperatorId(),
+              node.getPlanNodeId(),
+              DevicesSchemaScanOperator.class.getSimpleName());
+      return new DevicesSchemaScanOperator(
+          operatorContext,
+          node.getLimit(),
+          node.getOffset(),
+          node.getPath(),
+          node.isPrefixPath(),
+          node.isHasSgCol(),
+          node.getOutputColumnNames());
+    }
+
+    @Override
+    public Operator visitMetaMerge(SchemaMergeNode node, LocalExecutionPlanContext context) {
+      List<Operator> children =
+          node.getChildren().stream()
+              .map(n -> n.accept(this, context))
+              .collect(Collectors.toList());
+      OperatorContext operatorContext =
+          context.instanceContext.addOperatorContext(
+              context.getNextOperatorId(),
+              node.getPlanNodeId(),
+              SchemaMergeOperator.class.getSimpleName());
+      return new SchemaMergeOperator(operatorContext, children);
     }
 
     @Override
@@ -168,7 +229,7 @@ public class LocalExecutionPlanner {
     public Operator visitFilter(FilterNode node, LocalExecutionPlanContext context) {
       PlanNode child = node.getChild();
 
-      QueryFilter filterExpression = node.getPredicate();
+      IExpression filterExpression = node.getPredicate();
       List<String> outputSymbols = node.getOutputColumnNames();
       return super.visitFilter(node, context);
     }
@@ -222,14 +283,33 @@ public class LocalExecutionPlanner {
               context.getNextOperatorId(),
               node.getPlanNodeId(),
               TimeJoinOperator.class.getSimpleName());
-      return new TimeJoinOperator(operatorContext, children, node.getMergeOrder(), node.getTypes());
+      return new TimeJoinOperator(
+          operatorContext, children, node.getMergeOrder(), node.getOutputColumnTypes());
     }
 
     @Override
     public Operator visitExchange(ExchangeNode node, LocalExecutionPlanContext context) {
+      OperatorContext operatorContext =
+          context.instanceContext.addOperatorContext(
+              context.getNextOperatorId(),
+              node.getPlanNodeId(),
+              SeriesScanOperator.class.getSimpleName());
+      FragmentInstanceId localInstanceId = context.instanceContext.getId();
+      FragmentInstanceId remoteInstanceId = node.getUpstreamInstanceId();
+      Endpoint source = node.getUpstreamEndpoint();
 
-      // TODO(jackie tien) create SourceHandle here
-      return super.visitExchange(node, context);
+      try {
+        ISourceHandle sourceHandle =
+            DATA_BLOCK_MANAGER.createSourceHandle(
+                localInstanceId.toThrift(),
+                node.getPlanNodeId().getId(),
+                source.getIp(),
+                source.getPort(),
+                remoteInstanceId.toThrift());
+        return new ExchangeOperator(operatorContext, sourceHandle, node.getUpstreamPlanNodeId());
+      } catch (IOException e) {
+        throw new RuntimeException("Error happened while creating source handle", e);
+      }
     }
 
     @Override
@@ -241,15 +321,10 @@ public class LocalExecutionPlanner {
       try {
         ISinkHandle sinkHandle =
             DATA_BLOCK_MANAGER.createSinkHandle(
-                new TFragmentInstanceId(
-                    localInstanceId.getQueryId().getId(),
-                    String.valueOf(localInstanceId.getFragmentId().getId()),
-                    localInstanceId.getInstanceId()),
+                localInstanceId.toThrift(),
                 target.getIp(),
-                new TFragmentInstanceId(
-                    targetInstanceId.getQueryId().getId(),
-                    String.valueOf(targetInstanceId.getFragmentId().getId()),
-                    targetInstanceId.getInstanceId()),
+                target.getPort(),
+                targetInstanceId.toThrift(),
                 node.getDownStreamPlanNodeId().getId());
         context.setSinkHandle(sinkHandle);
         return child;
@@ -269,7 +344,7 @@ public class LocalExecutionPlanner {
   private static class LocalExecutionPlanContext {
     private final FragmentInstanceContext instanceContext;
     private final List<PartialPath> paths;
-    private final List<SourceOperator> sourceOperators;
+    private final List<DataSourceOperator> sourceOperators;
     private ISinkHandle sinkHandle;
 
     private int nextOperatorId = 0;
@@ -288,7 +363,7 @@ public class LocalExecutionPlanner {
       return paths;
     }
 
-    public List<SourceOperator> getSourceOperators() {
+    public List<DataSourceOperator> getSourceOperators() {
       return sourceOperators;
     }
 
@@ -296,7 +371,7 @@ public class LocalExecutionPlanner {
       paths.add(path);
     }
 
-    public void addSourceOperator(SourceOperator sourceOperator) {
+    public void addSourceOperator(DataSourceOperator sourceOperator) {
       sourceOperators.add(sourceOperator);
     }
 

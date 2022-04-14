@@ -26,6 +26,7 @@ import org.apache.iotdb.mpp.rpc.thrift.EndOfDataBlockEvent;
 import org.apache.iotdb.mpp.rpc.thrift.NewDataBlockEvent;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.commons.lang3.Validate;
@@ -251,13 +252,13 @@ public class SinkHandle implements ISinkHandle {
     throw new UnsupportedOperationException();
   }
 
-  ByteBuffer getSerializedTsBlock(int sequenceId) {
+  ByteBuffer getSerializedTsBlock(int sequenceId) throws IOException {
     TsBlock tsBlock;
     tsBlock = sequenceIdToTsBlock.get(sequenceId);
     if (tsBlock == null) {
       throw new IllegalStateException("The data block doesn't exist. Sequence ID: " + sequenceId);
     }
-    return serde.serialized(tsBlock);
+    return serde.serialize(tsBlock);
   }
 
   void acknowledgeTsBlock(int startSequenceId, int endSequenceId) {

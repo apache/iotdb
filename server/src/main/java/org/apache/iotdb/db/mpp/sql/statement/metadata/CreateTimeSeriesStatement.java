@@ -118,6 +118,7 @@ public class CreateTimeSeriesStatement extends Statement {
     this.tags = tags;
   }
 
+  @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitCreateTimeseries(this, context);
   }

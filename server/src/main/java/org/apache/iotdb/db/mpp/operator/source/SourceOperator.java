@@ -18,13 +18,10 @@
  */
 package org.apache.iotdb.db.mpp.operator.source;
 
-import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.mpp.operator.Operator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 
 public interface SourceOperator extends Operator {
 
   PlanNodeId getSourceId();
-
-  void initQueryDataSource(QueryDataSource dataSource);
 }

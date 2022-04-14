@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.consensus.ratis;
 
+import org.apache.iotdb.common.rpc.thrift.EndPoint;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.consensus.IConsensus;
@@ -34,8 +36,6 @@ import org.apache.iotdb.consensus.exception.PeerAlreadyInConsensusGroupException
 import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
 import org.apache.iotdb.consensus.exception.RatisRequestFailedException;
 import org.apache.iotdb.consensus.statemachine.IStateMachine;
-import org.apache.iotdb.service.rpc.thrift.EndPoint;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import org.apache.ratis.client.RaftClient;
 import org.apache.ratis.conf.Parameters;
@@ -447,6 +447,21 @@ class RatisConsensus implements IConsensus {
       isLeader = false;
     }
     return isLeader;
+  }
+
+  @Override
+  public Peer getLeader(ConsensusGroupId groupId) {
+    if (isLeader(groupId)) {
+      return new Peer(groupId, Utils.parseFromRatisId(myself.getId().toString()));
+    }
+
+    RaftGroupId raftGroupId = Utils.toRatisGroupId(groupId);
+    RaftClient client = clientMap.getOrDefault(raftGroupId, null);
+    if (client == null) {
+      return null;
+    }
+    Endpoint leaderEndpoint = Utils.parseFromRatisId(client.getLeaderId().toString());
+    return new Peer(groupId, leaderEndpoint);
   }
 
   @Override

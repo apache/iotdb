@@ -25,8 +25,6 @@
 
 时间分区按照时间分割数据，一个时间分区用于保存某个时间范围内的所有数据。时间分区编号使用自然数表示，0 表示 1970 年 1 月 1 日，每隔 partition_interval 秒后加一。数据通过计算 timestamp / partition_interval 得到自己所在的时间分区编号，主要配置项如下所示：
 
-注意：当前不建议开启此功能。 如果打开，请计算合适的 concurrent_writing_time_partition 和 wal_buffer_size, 计算公式如 wal_buffer_size = MaxDirectMemorySizeInBytes * 0.3 / (storage_group_num * virtual_storage_group_num) / concurrent_writing_time_partition
-
 * enable\_partition
 
 |名字| enable\_partition |

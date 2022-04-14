@@ -49,7 +49,7 @@ jobs:
         # we do not compile client-cpp for saving time, it is tested in client.yml
         run: mvn -B clean compile post-integration-test -Dtest.port.closed=true -Pcode-coverage -P '!testcontainer,!influxdb-protocol'
       - name: Code Coverage (Coveralls)
-        if: ${{ success() && (github.event_name == 'pull_request_target' || github.event_name == 'push')}}
+        if: ${{ success() && (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == 'apache/iotdb' || github.event_name == 'push')}}
         run: |
           mvn -B post-integration-test -Pcode-coverage -pl code-coverage
           mvn -B coveralls:report \

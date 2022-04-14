@@ -20,15 +20,18 @@
 package org.apache.iotdb.db.mpp.common.schematree;
 
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
 public class PathPatternNode {
 
-  private String name;
-  private Map<String, PathPatternNode> children;
+  private final String name;
+  private final Map<String, PathPatternNode> children;
 
   public PathPatternNode(String name) {
     this.name = name;
@@ -39,10 +42,6 @@ public class PathPatternNode {
     return name;
   }
 
-  public void setName(String name) {
-    this.name = name;
-  }
-
   public PathPatternNode getChildren(String nodeName) {
     return children.getOrDefault(nodeName, null);
   }
@@ -51,16 +50,16 @@ public class PathPatternNode {
     return children;
   }
 
-  public void setChildren(Map<String, PathPatternNode> children) {
-    this.children = children;
-  }
-
-  public void addChild(String nodeName, PathPatternNode newNode) {
-    this.children.put(nodeName, newNode);
+  public void addChild(PathPatternNode tmpNode) {
+    children.put(tmpNode.getName(), tmpNode);
   }
 
   public boolean isLeaf() {
     return children.isEmpty();
+  }
+
+  public boolean isWildcard() {
+    return name.equals("*") || name.equals("**");
   }
 
   @TestOnly
@@ -88,5 +87,17 @@ public class PathPatternNode {
       }
     }
     return true;
+  }
+
+  public void serialize(PublicBAOS outputStream) throws IOException {
+    ReadWriteIOUtils.write(name, outputStream);
+    ReadWriteIOUtils.write(children.size(), outputStream);
+    serializeChildren(outputStream);
+  }
+
+  void serializeChildren(PublicBAOS outputStream) throws IOException {
+    for (PathPatternNode childNode : children.values()) {
+      childNode.serialize(outputStream);
+    }
   }
 }

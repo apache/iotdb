@@ -23,6 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
+import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -81,7 +82,6 @@ public class InsertTabletStatement extends InsertBaseStatement {
     columns[index] = null;
   }
 
-  @Override
   public List<TimePartitionSlot> getTimePartitionSlots() {
     List<TimePartitionSlot> result = new ArrayList<>();
     long startTime =
@@ -106,7 +106,9 @@ public class InsertTabletStatement extends InsertBaseStatement {
   @Override
   public boolean checkDataType(SchemaTree schemaTree) {
     List<MeasurementSchema> measurementSchemas =
-        schemaTree.searchMeasurementSchema(devicePath, Arrays.asList(measurements));
+        schemaTree
+            .searchDeviceSchemaInfo(devicePath, Arrays.asList(measurements))
+            .getMeasurementSchemaList();
     for (int i = 0; i < measurementSchemas.size(); i++) {
       if (dataTypes[i] != measurementSchemas.get(i).getType()) {
         if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
@@ -120,5 +122,9 @@ public class InsertTabletStatement extends InsertBaseStatement {
       }
     }
     return true;
+  }
+
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitInsertTablet(this, context);
   }
 }

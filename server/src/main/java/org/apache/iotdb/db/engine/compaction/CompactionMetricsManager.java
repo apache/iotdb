@@ -21,8 +21,8 @@ package org.apache.iotdb.db.engine.compaction;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionTaskStatus;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionType;
 import org.apache.iotdb.db.engine.compaction.constant.ProcessChunkType;
-import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionTask;
-import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionTask;
+import org.apache.iotdb.db.engine.compaction.cross.CrossSpaceCompactionTask;
+import org.apache.iotdb.db.engine.compaction.inner.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.service.metrics.Metric;
 import org.apache.iotdb.db.service.metrics.MetricsService;
@@ -89,10 +89,10 @@ public class CompactionMetricsManager {
     }
     String taskType = "unknown";
     boolean isInnerTask = false;
-    if (task instanceof AbstractInnerSpaceCompactionTask) {
+    if (task instanceof InnerSpaceCompactionTask) {
       isInnerTask = true;
       taskType = "inner";
-    } else if (task instanceof AbstractCrossSpaceCompactionTask) {
+    } else if (task instanceof CrossSpaceCompactionTask) {
       taskType = "cross";
     }
 
@@ -154,9 +154,7 @@ public class CompactionMetricsManager {
                   Tag.NAME.toString(),
                   "inner_compaction_count",
                   Tag.TYPE.toString(),
-                  ((AbstractInnerSpaceCompactionTask) task).isSequence()
-                      ? "sequence"
-                      : "unsequence");
+                  ((InnerSpaceCompactionTask) task).isSequence() ? "sequence" : "unsequence");
         } else {
           MetricsService.getInstance()
               .getMetricManager()

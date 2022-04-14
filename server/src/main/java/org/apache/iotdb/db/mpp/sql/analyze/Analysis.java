@@ -25,11 +25,10 @@ import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
+import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 /** Analysis used for planning a query. TODO: This class may need to store more info for a query. */
 public class Analysis {
@@ -51,7 +50,7 @@ public class Analysis {
 
   private SchemaTree schemaTree;
 
-  private Map<String, Set<PartialPath>> deviceIdToPathsMap;
+  private IExpression queryFilter;
 
   public List<RegionReplicaSet> getPartitionInfo(PartialPath seriesPath, Filter timefilter) {
     // TODO: (xingtanzjr) implement the calculation of timePartitionIdList
@@ -82,19 +81,19 @@ public class Analysis {
     this.schemaPartition = schemaPartition;
   }
 
-  public Map<String, Set<PartialPath>> getDeviceIdToPathsMap() {
-    return deviceIdToPathsMap;
-  }
-
-  public void setDeviceIdToPathsMap(Map<String, Set<PartialPath>> deviceIdToPathsMap) {
-    this.deviceIdToPathsMap = deviceIdToPathsMap;
-  }
-
   public SchemaTree getSchemaTree() {
     return schemaTree;
   }
 
   public void setSchemaTree(SchemaTree schemaTree) {
     this.schemaTree = schemaTree;
+  }
+
+  public IExpression getQueryFilter() {
+    return queryFilter;
+  }
+
+  public void setQueryFilter(IExpression expression) {
+    this.queryFilter = expression;
   }
 }

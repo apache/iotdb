@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.read.common.block.column;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
@@ -66,6 +67,9 @@ public interface ColumnBuilder {
 
   /** Builds the block. This method can be called multiple times. */
   Column build();
+
+  /** Get the data type. */
+  TSDataType getDataType();
 
   /**
    * Returns the retained size of this column in memory, including over-allocations. This method is

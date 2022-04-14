@@ -18,20 +18,18 @@
  */
 package org.apache.iotdb.confignode.persistence;
 
-import org.apache.iotdb.commons.partition.DataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.cluster.DataNodeLocation;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.response.DataNodesInfoDataSet;
 import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
 import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentNavigableMap;
@@ -39,65 +37,61 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class DataNodeInfoPersistence {
-  private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeInfoPersistence.class);
+
+  private final ReentrantReadWriteLock dataNodeInfoReadWriteLock;
+
+  // TODO: serialize and deserialize
+  private int nextDataNodeId = 0;
 
   /** online data nodes */
+  // TODO: serialize and deserialize
   private final ConcurrentNavigableMap<Integer, DataNodeLocation> onlineDataNodes =
       new ConcurrentSkipListMap();
 
   /** For remove node or draining node */
-  private Set<DataNodeLocation> drainingDataNodes = new HashSet<>();
-
-  private final ReentrantReadWriteLock dataNodeInfoReadWriteLock;
+  private final Set<DataNodeLocation> drainingDataNodes = new HashSet<>();
 
   private DataNodeInfoPersistence() {
     this.dataNodeInfoReadWriteLock = new ReentrantReadWriteLock();
   }
 
-  public ConcurrentNavigableMap<Integer, DataNodeLocation> getOnlineDataNodes() {
-    return onlineDataNodes;
-  }
-
   public boolean containsValue(DataNodeLocation info) {
-    return onlineDataNodes.containsValue(info);
+    boolean result = false;
+    dataNodeInfoReadWriteLock.readLock().lock();
+
+    try {
+      for (Map.Entry<Integer, DataNodeLocation> entry : onlineDataNodes.entrySet()) {
+        if (entry.getValue().getEndPoint().equals(info.getEndPoint())) {
+          result = true;
+          info.setDataNodeId(entry.getKey());
+          break;
+        }
+      }
+    } finally {
+      dataNodeInfoReadWriteLock.readLock().unlock();
+    }
+
+    return result;
   }
 
   public void put(int dataNodeID, DataNodeLocation info) {
     onlineDataNodes.put(dataNodeID, info);
   }
 
-  public int getDataNodeInfo(DataNodeLocation info) {
-    // TODO: optimize
-    for (Map.Entry<Integer, DataNodeLocation> entry : onlineDataNodes.entrySet()) {
-      if (entry.getValue().equals(info)) {
-        return info.getDataNodeID();
-      }
-    }
-    return -1;
-  }
-
   /**
-   * register dta node info when data node start
+   * Persist DataNode info
    *
    * @param plan RegisterDataNodePlan
-   * @return success if data node regist first
+   * @return SUCCESS_STATUS
    */
   public TSStatus registerDataNode(RegisterDataNodePlan plan) {
     TSStatus result;
     DataNodeLocation info = plan.getInfo();
     dataNodeInfoReadWriteLock.writeLock().lock();
     try {
-      if (onlineDataNodes.containsValue(info)) {
-        result = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
-        result.setMessage(
-            String.format(
-                "DataNode %s is already registered.", plan.getInfo().getEndPoint().toString()));
-      } else {
-        onlineDataNodes.put(info.getDataNodeID(), info);
-        result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-        result.setMessage(String.valueOf(info.getDataNodeID()));
-        LOGGER.info("Register data node success, data node is {}", plan);
-      }
+      nextDataNodeId = Math.max(nextDataNodeId, info.getDataNodeId());
+      onlineDataNodes.put(info.getDataNodeId(), info);
+      result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } finally {
       dataNodeInfoReadWriteLock.writeLock().unlock();
     }
@@ -105,13 +99,16 @@ public class DataNodeInfoPersistence {
   }
 
   /**
-   * get dta node info
+   * Get DataNode info
    *
    * @param plan QueryDataNodeInfoPlan
-   * @return all data node info if dataNodeId of plan is -1
+   * @return The specific DataNode's info or all DataNode info if dataNodeId in
+   *     QueryDataNodeInfoPlan is -1
    */
   public DataNodesInfoDataSet getDataNodeInfo(QueryDataNodeInfoPlan plan) {
     DataNodesInfoDataSet result = new DataNodesInfoDataSet();
+    result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+
     int dataNodeId = plan.getDataNodeID();
     dataNodeInfoReadWriteLock.readLock().lock();
     try {
@@ -127,46 +124,45 @@ public class DataNodeInfoPersistence {
     return result;
   }
 
-  public Set<Integer> getDataNodeIds() {
-    return onlineDataNodes.keySet();
+  public int getOnlineDataNodeCount() {
+    int result;
+    dataNodeInfoReadWriteLock.readLock().lock();
+    try {
+      result = onlineDataNodes.size();
+    } finally {
+      dataNodeInfoReadWriteLock.readLock().unlock();
+    }
+    return result;
   }
 
-  /**
-   * Add schema region group
-   *
-   * @param dataNodeId data node id
-   * @param schemaRegionGroup schema region group
-   */
-  public void addSchemaRegionGroup(int dataNodeId, int schemaRegionGroup) {
-    dataNodeInfoReadWriteLock.writeLock().lock();
+  public List<DataNodeLocation> getOnlineDataNodes() {
+    List<DataNodeLocation> result;
+    dataNodeInfoReadWriteLock.readLock().lock();
     try {
-      if (onlineDataNodes.containsKey(dataNodeId)) {
-        onlineDataNodes.get(dataNodeId).addSchemaRegionGroup(schemaRegionGroup);
-      }
+      result = new ArrayList<>(onlineDataNodes.values());
+    } finally {
+      dataNodeInfoReadWriteLock.readLock().unlock();
+    }
+    return result;
+  }
+
+  public int generateNextDataNodeId() {
+    int result;
+
+    try {
+      dataNodeInfoReadWriteLock.writeLock().lock();
+      result = nextDataNodeId;
+      nextDataNodeId += 1;
     } finally {
       dataNodeInfoReadWriteLock.writeLock().unlock();
     }
-  }
 
-  /**
-   * Add data region group
-   *
-   * @param dataNodeId data node id
-   * @param dataRegionGroup data region group
-   */
-  public void addDataRegionGroup(int dataNodeId, int dataRegionGroup) {
-    dataNodeInfoReadWriteLock.writeLock().lock();
-    try {
-      if (onlineDataNodes.containsKey(dataNodeId)) {
-        onlineDataNodes.get(dataNodeId).addSchemaRegionGroup(dataRegionGroup);
-      }
-    } finally {
-      dataNodeInfoReadWriteLock.writeLock().unlock();
-    }
+    return result;
   }
 
   @TestOnly
   public void clear() {
+    nextDataNodeId = 0;
     onlineDataNodes.clear();
     drainingDataNodes.clear();
   }

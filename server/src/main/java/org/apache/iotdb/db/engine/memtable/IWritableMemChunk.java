@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.engine.memtable;
 
 import org.apache.iotdb.db.utils.datastructure.TVList;
+import org.apache.iotdb.db.wal.buffer.WALEntryValue;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
@@ -27,7 +28,7 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.List;
 
-public interface IWritableMemChunk {
+public interface IWritableMemChunk extends WALEntryValue {
 
   void putLong(long t, long v);
 
