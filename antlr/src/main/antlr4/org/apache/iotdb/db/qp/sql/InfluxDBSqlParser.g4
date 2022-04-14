@@ -76,6 +76,7 @@ nodeName
     | QUTOED_ID_IN_NODE_NAME
     | LAST
     | COUNT
+    | DEVICE
     ;
 
 // Identifier

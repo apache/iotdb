@@ -71,6 +71,6 @@ public class SchemaMergeNode extends ProcessNode {
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitMetaMerge(this, context);
+    return visitor.visitSchemaMerge(this, context);
   }
 }
