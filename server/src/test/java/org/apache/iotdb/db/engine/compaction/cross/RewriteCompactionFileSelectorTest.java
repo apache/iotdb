@@ -83,12 +83,12 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
   }
 
   @Test
-  public void testNonSelection() throws MergeException, IOException {
+  public void testWithFewMemoryBudgeSelection() throws MergeException, IOException {
     RewriteCrossSpaceCompactionResource resource =
         new RewriteCrossSpaceCompactionResource(seqResources, unseqResources);
     ICrossSpaceMergeFileSelector mergeFileSelector = new RewriteCompactionFileSelector(resource, 1);
     List[] result = mergeFileSelector.select();
-    assertEquals(0, result.length);
+    assertEquals(2, result.length);
     resource.clear();
   }
 
@@ -318,10 +318,10 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
       resource =
           new RewriteCrossSpaceCompactionResource(
               seqList.subList(1, seqList.size()), unseqList.subList(1, unseqList.size()));
-      // the second selection should be empty
+      // Although memory is out of memoryBudget, at least one unseq file should be selected
       mergeFileSelector = new RewriteCompactionFileSelector(resource, 29000);
       result = mergeFileSelector.select();
-      assertEquals(0, result.length);
+      assertEquals(2, result.length);
       resource.clear();
     } finally {
       removeFiles(seqList, unseqList);
