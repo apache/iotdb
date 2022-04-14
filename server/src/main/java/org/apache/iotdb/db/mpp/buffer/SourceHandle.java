@@ -100,7 +100,10 @@ public class SourceHandle implements ISourceHandle {
 
   @Override
   public TsBlock receive() throws IOException {
-    System.out.println(String.format("SourceHandle receive: %s, %s, %s", this.localFragmentInstanceId, this.localPlanNodeId, this.remoteFragmentInstanceId));
+    System.out.println(
+        String.format(
+            "SourceHandle receive: %s, %s, %s",
+            this.localFragmentInstanceId, this.localPlanNodeId, this.remoteFragmentInstanceId));
     if (throwable != null) {
       throw new IOException(throwable);
     }

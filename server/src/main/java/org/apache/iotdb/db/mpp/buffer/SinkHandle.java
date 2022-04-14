@@ -105,9 +105,9 @@ public class SinkHandle implements ISinkHandle {
   }
 
   private void submitSendNewDataBlockEventTask(int startSequenceId, List<Long> blockSizes) {
-    // TODO: (xingtanzjr) 
+    // TODO: (xingtanzjr)
     new SendNewDataBlockEventTask(startSequenceId, blockSizes).run();
-//    executorService.submit(new SendNewDataBlockEventTask(startSequenceId, blockSizes));
+    //    executorService.submit(new SendNewDataBlockEventTask(startSequenceId, blockSizes));
   }
 
   @Override
@@ -115,7 +115,8 @@ public class SinkHandle implements ISinkHandle {
     logger.info(
         "Send data block event to plan node {} of {}. {}",
         remotePlanNodeId,
-        remoteFragmentInstanceId, Thread.currentThread().getName());
+        remoteFragmentInstanceId,
+        Thread.currentThread().getName());
     Validate.notNull(tsBlocks, "tsBlocks is null");
     if (throwable != null) {
       throw new IOException(throwable);
@@ -165,7 +166,8 @@ public class SinkHandle implements ISinkHandle {
     logger.info(
         "Send end of data block event to plan node {} of {}. {}",
         remotePlanNodeId,
-        remoteFragmentInstanceId, Thread.currentThread().getName());
+        remoteFragmentInstanceId,
+        Thread.currentThread().getName());
     int attempt = 0;
     EndOfDataBlockEvent endOfDataBlockEvent =
         new EndOfDataBlockEvent(
@@ -184,7 +186,8 @@ public class SinkHandle implements ISinkHandle {
             remotePlanNodeId,
             remoteFragmentInstanceId,
             e.getMessage(),
-            attempt, e);
+            attempt,
+            e);
         if (attempt == MAX_ATTEMPT_TIMES) {
           throw e;
         }
