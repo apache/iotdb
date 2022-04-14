@@ -50,7 +50,6 @@ import java.util.Set;
 
 public abstract class BinaryExpression extends Expression {
 
-  protected static Map<String, Integer> priority;
   protected final Expression leftExpression;
   protected final Expression rightExpression;
 
