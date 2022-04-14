@@ -29,7 +29,7 @@
     </dependency>
 ```
 
-Here are some examples of connecting IoTDB using the InfluxDB-Protocol adapter : https://github.com/apache/iotdb/tree/master/influxdb-protocol/src/main/java/org/apache/iotdb/influxdb/example
+Here are some [examples](https://github.com/apache/iotdb/tree/master/influxdb-protocol/src/main/java/org/apache/iotdb/influxdb/example) of connecting IoTDB using the InfluxDB-Protocol adapter.
 
 ## 1. Switching Scheme
 
