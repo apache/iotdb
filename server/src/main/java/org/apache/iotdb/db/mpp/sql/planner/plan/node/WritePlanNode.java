@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,12 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.common;
 
-import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
+package org.apache.iotdb.db.mpp.sql.planner.plan.node;
 
-/**
- * In single-node IoTDB, the GroupByTimePlan is used to represent the parameter of `group by time`.
- * To avoid ambiguity, we use another name `GroupByTimeParameter` here
- */
-public class GroupByTimeParameter extends GroupByTimePlan {}
+import org.apache.iotdb.commons.partition.RegionReplicaSet;
+import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
+
+import java.util.List;
+
+public abstract class WritePlanNode extends PlanNode {
+
+  protected WritePlanNode(PlanNodeId id) {
+    super(id);
+  }
+
+  public abstract RegionReplicaSet getRegionReplicaSet();
+
+  public abstract List<WritePlanNode> splitByPartition(Analysis analysis);
+}

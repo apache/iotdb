@@ -80,9 +80,7 @@ public class RegionReplicaSet {
 
   @Override
   public String toString() {
-    return String.format(
-        "RegionReplicaSet[%s-%d]: %s",
-        consensusGroupId.getType(), consensusGroupId.getId(), dataNodeList);
+    return String.format("RegionReplicaSet[%s]: %s", consensusGroupId, dataNodeList);
   }
 
   public void serializeImpl(ByteBuffer buffer) {

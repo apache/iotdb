@@ -20,13 +20,13 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
-import org.apache.iotdb.db.mpp.common.GroupByTimeParameter;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.sql.planner.plan.IOutputPlanNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.ColumnHeader;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.mpp.sql.statement.component.GroupByTimeComponent;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -62,7 +62,7 @@ public class AggregateNode extends ProcessNode implements IOutputPlanNode {
 
   // The parameter of `group by time`.
   // Its value will be null if there is no `group by time` clause.
-  private final GroupByTimeParameter groupByTimeParameter;
+  private final GroupByTimeComponent groupByTimeParameter;
 
   private final List<ColumnHeader> columnHeaders = new ArrayList<>();
 
@@ -72,7 +72,7 @@ public class AggregateNode extends ProcessNode implements IOutputPlanNode {
       PlanNodeId id,
       PlanNode child,
       Map<PartialPath, Set<AggregationType>> aggregateFuncMap,
-      GroupByTimeParameter groupByTimeParameter) {
+      GroupByTimeComponent groupByTimeParameter) {
     super(id);
     this.child = child;
     this.aggregateFuncMap = aggregateFuncMap;
