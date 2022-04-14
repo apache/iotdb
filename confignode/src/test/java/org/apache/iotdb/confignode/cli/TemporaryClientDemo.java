@@ -29,7 +29,6 @@ import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.transport.TTransport;
-import org.junit.Test;
 
 import java.util.concurrent.TimeUnit;
 
