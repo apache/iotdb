@@ -167,6 +167,10 @@ public class IoTDBDescriptor {
           Integer.parseInt(
               properties.getProperty("rpc_port", Integer.toString(conf.getRpcPort()))));
 
+      conf.setMppMode(
+          Boolean.parseBoolean(
+              properties.getProperty("mpp_mode", Boolean.toString(conf.isMppMode()))));
+
       conf.setMppPort(
           Integer.parseInt(
               properties.getProperty("mpp_port", Integer.toString(conf.getRpcPort()))));
@@ -381,7 +385,7 @@ public class IoTDBDescriptor {
       conf.setInnerSeqCompactionPerformer(
           InnerSeqCompactionPerformer.getInnerSeqCompactionPerformer(
               properties.getProperty(
-                  "inner_seq_performer", conf.getInnerUnseqCompactionPerformer().toString())));
+                  "inner_seq_performer", conf.getInnerSeqCompactionPerformer().toString())));
 
       conf.setInnerUnseqCompactionPerformer(
           InnerUnseqCompactionPerformer.getInnerUnseqCompactionPerformer(
@@ -1624,6 +1628,7 @@ public class IoTDBDescriptor {
     conf.setSeriesPartitionExecutorClass(globalConfig.getSeriesPartitionExecutorClass());
     conf.setConsensusProtocolClass(globalConfig.getDataNodeConsensusProtocolClass());
     conf.setSeriesPartitionSlotNum(globalConfig.getSeriesPartitionSlotNum());
+    conf.setPartitionInterval(globalConfig.timePartitionInterval);
   }
 
   private static class IoTDBDescriptorHolder {

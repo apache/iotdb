@@ -28,6 +28,8 @@ import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.partition.SeriesPartitionSlot;
 import org.apache.iotdb.commons.partition.TimePartitionSlot;
+import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -46,8 +48,11 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesSch
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import com.google.common.collect.Sets;
 import org.junit.Test;
@@ -207,8 +212,7 @@ public class DistributionPlannerTest {
 
     Analysis analysis = constructAnalysis();
 
-    MPPQueryContext context =
-        new MPPQueryContext("", queryId, null, QueryType.READ, new Endpoint());
+    MPPQueryContext context = new MPPQueryContext("", queryId, null, new Endpoint());
     DistributionPlanner planner =
         new DistributionPlanner(analysis, new LogicalQueryPlan(context, root));
     PlanNode rootAfterRewrite = planner.rewriteSource();
@@ -245,8 +249,7 @@ public class DistributionPlannerTest {
 
     Analysis analysis = constructAnalysis();
 
-    MPPQueryContext context =
-        new MPPQueryContext("", queryId, null, QueryType.READ, new Endpoint());
+    MPPQueryContext context = new MPPQueryContext("", queryId, null, new Endpoint());
     DistributionPlanner planner =
         new DistributionPlanner(analysis, new LogicalQueryPlan(context, root));
     DistributedQueryPlan plan = planner.planFragments();
@@ -254,34 +257,114 @@ public class DistributionPlannerTest {
     assertEquals(3, plan.getInstances().size());
   }
 
+  @Test
+  public void TestInsertRowNodeParallelPlan() throws IllegalPathException {
+    QueryId queryId = new QueryId("test_write");
+    InsertRowNode insertRowNode =
+        new InsertRowNode(
+            queryId.genPlanNodeId(),
+            new PartialPath("root.sg.d1"),
+            false,
+            new MeasurementSchema[] {
+              new MeasurementSchema("s1", TSDataType.INT32),
+            },
+            new TSDataType[] {TSDataType.INT32},
+            1L,
+            new Object[] {10});
+
+    Analysis analysis = constructAnalysis();
+
+    MPPQueryContext context = new MPPQueryContext("", queryId, null, new Endpoint());
+    context.setQueryType(QueryType.WRITE);
+    DistributionPlanner planner =
+        new DistributionPlanner(analysis, new LogicalQueryPlan(context, insertRowNode));
+    DistributedQueryPlan plan = planner.planFragments();
+    plan.getInstances().forEach(System.out::println);
+    assertEquals(1, plan.getInstances().size());
+  }
+
+  @Test
+  public void TestInsertRowsNodeParallelPlan() throws IllegalPathException {
+    QueryId queryId = new QueryId("test_write");
+    InsertRowNode insertRowNode1 =
+        new InsertRowNode(
+            queryId.genPlanNodeId(),
+            new PartialPath("root.sg.d1"),
+            false,
+            new MeasurementSchema[] {
+              new MeasurementSchema("s1", TSDataType.INT32),
+            },
+            new TSDataType[] {TSDataType.INT32},
+            1L,
+            new Object[] {10});
+
+    InsertRowNode insertRowNode2 =
+        new InsertRowNode(
+            queryId.genPlanNodeId(),
+            new PartialPath("root.sg.d1"),
+            false,
+            new MeasurementSchema[] {
+              new MeasurementSchema("s1", TSDataType.INT32),
+            },
+            new TSDataType[] {TSDataType.INT32},
+            100000L,
+            new Object[] {10});
+
+    InsertRowsNode node = new InsertRowsNode(queryId.genPlanNodeId());
+    node.setInsertRowNodeList(Arrays.asList(insertRowNode1, insertRowNode2));
+    node.setInsertRowNodeIndexList(Arrays.asList(0, 1));
+
+    Analysis analysis = constructAnalysis();
+
+    MPPQueryContext context = new MPPQueryContext("", queryId, null, new Endpoint());
+    context.setQueryType(QueryType.WRITE);
+    DistributionPlanner planner =
+        new DistributionPlanner(analysis, new LogicalQueryPlan(context, node));
+    DistributedQueryPlan plan = planner.planFragments();
+    plan.getInstances().forEach(System.out::println);
+    assertEquals(1, plan.getInstances().size());
+  }
+
   private Analysis constructAnalysis() {
+
+    SeriesPartitionExecutor executor =
+        SeriesPartitionExecutor.getSeriesPartitionExecutor(
+            IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
+            IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
     Analysis analysis = new Analysis();
 
     String device1 = "root.sg.d1";
     String device2 = "root.sg.d22";
     String device3 = "root.sg.d333";
 
-    DataPartition dataPartition = new DataPartition();
+    DataPartition dataPartition =
+        new DataPartition(
+            IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
+            IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
     Map<String, Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>>
         dataPartitionMap = new HashMap<>();
     Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>> sgPartitionMap =
         new HashMap<>();
 
-    List<RegionReplicaSet> d1DataRegions = new ArrayList<>();
-    d1DataRegions.add(
+    List<RegionReplicaSet> d1DataRegion1 = new ArrayList<>();
+    d1DataRegion1.add(
         new RegionReplicaSet(
             new DataRegionId(1),
             Arrays.asList(
                 new DataNodeLocation(11, new Endpoint("192.0.1.1", 9000)),
                 new DataNodeLocation(12, new Endpoint("192.0.1.2", 9000)))));
-    d1DataRegions.add(
+
+    List<RegionReplicaSet> d1DataRegion2 = new ArrayList<>();
+    d1DataRegion2.add(
         new RegionReplicaSet(
             new DataRegionId(2),
             Arrays.asList(
                 new DataNodeLocation(21, new Endpoint("192.0.2.1", 9000)),
                 new DataNodeLocation(22, new Endpoint("192.0.2.2", 9000)))));
+
     Map<TimePartitionSlot, List<RegionReplicaSet>> d1DataRegionMap = new HashMap<>();
-    d1DataRegionMap.put(new TimePartitionSlot(), d1DataRegions);
+    d1DataRegionMap.put(new TimePartitionSlot(0), d1DataRegion1);
+    d1DataRegionMap.put(new TimePartitionSlot(1), d1DataRegion2);
 
     List<RegionReplicaSet> d2DataRegions = new ArrayList<>();
     d2DataRegions.add(
@@ -291,7 +374,7 @@ public class DistributionPlannerTest {
                 new DataNodeLocation(31, new Endpoint("192.0.3.1", 9000)),
                 new DataNodeLocation(32, new Endpoint("192.0.3.2", 9000)))));
     Map<TimePartitionSlot, List<RegionReplicaSet>> d2DataRegionMap = new HashMap<>();
-    d2DataRegionMap.put(new TimePartitionSlot(), d2DataRegions);
+    d2DataRegionMap.put(new TimePartitionSlot(0), d2DataRegions);
 
     List<RegionReplicaSet> d3DataRegions = new ArrayList<>();
     d3DataRegions.add(
@@ -307,11 +390,11 @@ public class DistributionPlannerTest {
                 new DataNodeLocation(41, new Endpoint("192.0.4.1", 9000)),
                 new DataNodeLocation(42, new Endpoint("192.0.4.2", 9000)))));
     Map<TimePartitionSlot, List<RegionReplicaSet>> d3DataRegionMap = new HashMap<>();
-    d3DataRegionMap.put(new TimePartitionSlot(), d3DataRegions);
+    d3DataRegionMap.put(new TimePartitionSlot(0), d3DataRegions);
 
-    sgPartitionMap.put(new SeriesPartitionSlot(device1.length()), d1DataRegionMap);
-    sgPartitionMap.put(new SeriesPartitionSlot(device2.length()), d2DataRegionMap);
-    sgPartitionMap.put(new SeriesPartitionSlot(device3.length()), d3DataRegionMap);
+    sgPartitionMap.put(executor.getSeriesPartitionSlot(device1), d1DataRegionMap);
+    sgPartitionMap.put(executor.getSeriesPartitionSlot(device2), d2DataRegionMap);
+    sgPartitionMap.put(executor.getSeriesPartitionSlot(device3), d3DataRegionMap);
 
     dataPartitionMap.put("root.sg", sgPartitionMap);
 
@@ -320,7 +403,10 @@ public class DistributionPlannerTest {
     analysis.setDataPartitionInfo(dataPartition);
 
     // construct schema partition
-    SchemaPartition schemaPartition = new SchemaPartition();
+    SchemaPartition schemaPartition =
+        new SchemaPartition(
+            IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
+            IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
     Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> schemaPartitionMap = new HashMap<>();
 
     RegionReplicaSet schemaRegion1 =
@@ -338,9 +424,9 @@ public class DistributionPlannerTest {
                 new DataNodeLocation(21, new Endpoint("192.0.1.1", 9000)),
                 new DataNodeLocation(22, new Endpoint("192.0.1.2", 9000))));
 
-    schemaRegionMap.put(new SeriesPartitionSlot(device1.length()), schemaRegion1);
-    schemaRegionMap.put(new SeriesPartitionSlot(device2.length()), schemaRegion2);
-    schemaRegionMap.put(new SeriesPartitionSlot(device3.length()), schemaRegion2);
+    schemaRegionMap.put(executor.getSeriesPartitionSlot(device1), schemaRegion1);
+    schemaRegionMap.put(executor.getSeriesPartitionSlot(device2), schemaRegion2);
+    schemaRegionMap.put(executor.getSeriesPartitionSlot(device3), schemaRegion2);
     schemaPartitionMap.put("root.sg", schemaRegionMap);
     schemaPartition.setSchemaPartitionMap(schemaPartitionMap);
 

@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.confignode.consensus.response;
 
-import org.apache.iotdb.common.rpc.thrift.EndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
@@ -28,10 +27,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionResp;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 public class SchemaPartitionDataSet implements DataSet {
@@ -76,23 +72,8 @@ public class SchemaPartitionDataSet implements DataSet {
                           new TSeriesPartitionSlot(seriesPartitionSlot.getSlotId());
 
                       // Extract TRegionReplicaSet
-                      TRegionReplicaSet tRegionReplicaSet = new TRegionReplicaSet();
-                      // Set TRegionReplicaSet's RegionId
-                      ByteBuffer buffer = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES);
-                      regionReplicaSet.getConsensusGroupId().serializeImpl(buffer);
-                      buffer.flip();
-                      tRegionReplicaSet.setRegionId(buffer);
-                      // Set TRegionReplicaSet's EndPoints
-                      List<EndPoint> endPointList = new ArrayList<>();
-                      regionReplicaSet
-                          .getDataNodeList()
-                          .forEach(
-                              dataNodeLocation ->
-                                  endPointList.add(
-                                      new EndPoint(
-                                          dataNodeLocation.getEndPoint().getIp(),
-                                          dataNodeLocation.getEndPoint().getPort())));
-                      tRegionReplicaSet.setEndpoint(endPointList);
+                      TRegionReplicaSet tRegionReplicaSet =
+                          regionReplicaSet.convertToRPCTRegionReplicaSet();
                       schemaPartitionMap
                           .get(storageGroup)
                           .put(tSeriesPartitionSlot, tRegionReplicaSet);

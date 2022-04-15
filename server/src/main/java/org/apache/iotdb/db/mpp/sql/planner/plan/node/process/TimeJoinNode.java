@@ -19,8 +19,8 @@
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.sql.planner.plan.IOutputPlanNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.ColumnHeader;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
@@ -52,11 +52,11 @@ public class TimeJoinNode extends ProcessNode implements IOutputPlanNode {
   // The without policy is able to be push down to the TimeJoinOperator because we can know whether
   // a row contains
   // null or not.
-  private FilterNullPolicy filterNullPolicy;
+  private FilterNullPolicy filterNullPolicy = FilterNullPolicy.NO_FILTER;
 
   private List<PlanNode> children;
 
-  private final List<ColumnHeader> columnHeaders = new ArrayList<>();
+  private List<ColumnHeader> columnHeaders = new ArrayList<>();
 
   public TimeJoinNode(PlanNodeId id, OrderBy mergeOrder) {
     super(id);
@@ -77,7 +77,10 @@ public class TimeJoinNode extends ProcessNode implements IOutputPlanNode {
 
   @Override
   public PlanNode clone() {
-    return new TimeJoinNode(getPlanNodeId(), this.mergeOrder);
+    // TODO: (xingtanzjr)
+    TimeJoinNode cloneNode = new TimeJoinNode(getPlanNodeId(), this.mergeOrder);
+    cloneNode.columnHeaders = this.columnHeaders;
+    return cloneNode;
   }
 
   @Override
@@ -101,6 +104,7 @@ public class TimeJoinNode extends ProcessNode implements IOutputPlanNode {
     return columnHeaders.stream().map(ColumnHeader::getColumnName).collect(Collectors.toList());
   }
 
+  @Override
   public List<TSDataType> getOutputColumnTypes() {
     return columnHeaders.stream().map(ColumnHeader::getColumnType).collect(Collectors.toList());
   }

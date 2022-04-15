@@ -63,7 +63,7 @@ public class InternalServiceImpl implements InternalService.Iface {
             ConsensusImpl.getInstance()
                 .read(groupId, new ByteBufferConsensusRequest(req.fragmentInstance.body));
         FragmentInstanceInfo info = (FragmentInstanceInfo) readResp.getDataset();
-        return new TSendFragmentInstanceResp(info.getState().isFailed());
+        return new TSendFragmentInstanceResp(!info.getState().isFailed());
       case WRITE:
         TSendFragmentInstanceResp response = new TSendFragmentInstanceResp();
         ConsensusWriteResponse resp =

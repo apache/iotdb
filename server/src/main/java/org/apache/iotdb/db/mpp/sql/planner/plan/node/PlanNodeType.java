@@ -18,7 +18,10 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node;
 
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.DevicesSchemaScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaFetchNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaMergeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.ShowDevicesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AlterTimeSeriesNode;
@@ -45,6 +48,8 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
 
+import java.io.DataInputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public enum PlanNodeType {
@@ -74,7 +79,9 @@ public enum PlanNodeType {
   CREATE_ALIGNED_TIME_SERIES((short) 23),
   TIME_SERIES_SCHEMA_SCAN((short) 24),
   // TODO @xinzhongtianxia remove this
-  SHOW_DEVICES((short) 25);
+  SHOW_DEVICES((short) 25),
+  SCHEMA_FETCH((short) 26),
+  SCHEMA_MERGE((short) 27);
 
   private final short nodeType;
 
@@ -84,6 +91,19 @@ public enum PlanNodeType {
 
   public void serialize(ByteBuffer buffer) {
     buffer.putShort(nodeType);
+  }
+
+  public static PlanNode deserialize(DataInputStream stream)
+      throws IOException, IllegalPathException {
+    short nodeType = stream.readShort();
+    switch (nodeType) {
+      case 13:
+        return InsertTabletNode.deserialize(stream);
+      case 14:
+        return InsertRowNode.deserialize(stream);
+      default:
+        throw new IllegalArgumentException("Invalid node type: " + nodeType);
+    }
   }
 
   public static PlanNode deserialize(ByteBuffer buffer) {
@@ -141,6 +161,10 @@ public enum PlanNodeType {
         return TimeSeriesSchemaScanNode.deserialize(buffer);
       case 25:
         return ShowDevicesNode.deserialize(buffer);
+      case 26:
+        return SchemaFetchNode.deserialize(buffer);
+      case 27:
+        return SchemaMergeNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }

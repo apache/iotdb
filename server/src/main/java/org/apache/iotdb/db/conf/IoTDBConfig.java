@@ -45,7 +45,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
@@ -507,6 +507,9 @@ public class IoTDBConfig {
   /** Replace implementation class of JDBC service */
   private String rpcImplClassName = TSServiceImpl.class.getName();
 
+  /** indicate whether current mode is mpp */
+  private boolean mppMode = false;
+
   /** Replace implementation class of influxdb protocol service */
   private String influxdbImplClassName = InfluxDBServiceImpl.class.getName();
 
@@ -842,7 +845,7 @@ public class IoTDBConfig {
   /**
    * Ip and port of config nodes. each one is a {internalIp | domain name}:{meta port} string tuple.
    */
-  private List<String> configNodeUrls = new ArrayList<>();
+  private List<String> configNodeUrls = Collections.singletonList("127.0.0.1:22277");
 
   /** Internal ip for data node */
   private String internalIp = "127.0.0.1";
@@ -854,7 +857,7 @@ public class IoTDBConfig {
   private int consensusPort = 40010;
 
   /** The max time of data node waiting to join into the cluster */
-  private long joinClusterTimeOutMs = TimeUnit.SECONDS.toMillis(60);
+  private long joinClusterTimeOutMs = TimeUnit.SECONDS.toMillis(5);
 
   /**
    * The consensus protocol class. The Datanode should communicate with ConfigNode on startup and
@@ -875,7 +878,7 @@ public class IoTDBConfig {
   private int seriesPartitionSlotNum = 10000;
 
   /** Port that data block manager thrift service listen to. */
-  private int dataBlockManagerPort = 7777;
+  private int dataBlockManagerPort = 8777;
 
   /** Core pool size of data block manager. */
   private int dataBlockManagerCorePoolSize = 1;
@@ -2794,5 +2797,13 @@ public class IoTDBConfig {
 
   public void setDataBlockManagerKeepAliveTimeInMs(int dataBlockManagerKeepAliveTimeInMs) {
     this.dataBlockManagerKeepAliveTimeInMs = dataBlockManagerKeepAliveTimeInMs;
+  }
+
+  public boolean isMppMode() {
+    return mppMode;
+  }
+
+  public void setMppMode(boolean mppMode) {
+    this.mppMode = mppMode;
   }
 }

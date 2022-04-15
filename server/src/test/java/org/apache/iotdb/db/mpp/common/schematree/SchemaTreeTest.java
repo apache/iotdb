@@ -16,17 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.common;
+package org.apache.iotdb.db.mpp.common.schematree;
 
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
-import org.apache.iotdb.db.mpp.common.schematree.SchemaEntityNode;
-import org.apache.iotdb.db.mpp.common.schematree.SchemaInternalNode;
-import org.apache.iotdb.db.mpp.common.schematree.SchemaMeasurementNode;
-import org.apache.iotdb.db.mpp.common.schematree.SchemaNode;
-import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
-import org.apache.iotdb.db.mpp.common.schematree.SchemaTreeVisitor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -45,6 +38,11 @@ public class SchemaTreeTest {
   public void testSchemaTreeVisitor() throws Exception {
 
     SchemaNode root = generateSchemaTree();
+
+    testSchemaTree(root);
+  }
+
+  private void testSchemaTree(SchemaNode root) throws Exception {
 
     SchemaTreeVisitor visitor =
         new SchemaTreeVisitor(root, new PartialPath("root.sg.d2.a.s1"), 0, 0, false);
@@ -269,5 +267,84 @@ public class SchemaTreeTest {
     Assert.assertEquals(3, (int) visitResult.right);
 
     testSearchDeviceInfo(schemaTree);
+  }
+
+  @Test
+  public void testAppendMeasurementPath() throws Exception {
+    SchemaTree schemaTree = new SchemaTree();
+    List<MeasurementPath> measurementPathList = generateMeasurementPathList();
+
+    schemaTree.appendMeasurementPaths(measurementPathList);
+
+    testSchemaTree(schemaTree.getRoot());
+  }
+
+  /**
+   * Generate the following tree: root.sg.d1.s1, root.sg.d1.s2(status) root.sg.d2.s1,
+   * root.sg.d2.s2(status) root.sg.d2.a.s1, root.sg.d2.a.s2(status)
+   */
+  private List<MeasurementPath> generateMeasurementPathList() throws Exception {
+    List<MeasurementPath> measurementPathList = new ArrayList<>();
+
+    MeasurementSchema schema1 = new MeasurementSchema("s1", TSDataType.INT32);
+    MeasurementSchema schema2 = new MeasurementSchema("s2", TSDataType.INT64);
+
+    MeasurementPath measurementPath = new MeasurementPath("root.sg.d1.s1");
+    measurementPath.setMeasurementSchema(schema1);
+    measurementPathList.add(measurementPath);
+
+    measurementPath = new MeasurementPath("root.sg.d1.s2");
+    measurementPath.setMeasurementSchema(schema2);
+    measurementPath.setMeasurementAlias("status");
+    measurementPathList.add(measurementPath);
+
+    measurementPath = new MeasurementPath("root.sg.d2.a.s1");
+    measurementPath.setMeasurementSchema(schema1);
+    measurementPath.setUnderAlignedEntity(true);
+    measurementPathList.add(measurementPath);
+
+    measurementPath = new MeasurementPath("root.sg.d2.a.s2");
+    measurementPath.setMeasurementSchema(schema2);
+    measurementPath.setMeasurementAlias("status");
+    measurementPath.setUnderAlignedEntity(true);
+    measurementPathList.add(measurementPath);
+
+    measurementPath = new MeasurementPath("root.sg.d2.s1");
+    measurementPath.setMeasurementSchema(schema1);
+    measurementPathList.add(measurementPath);
+
+    measurementPath = new MeasurementPath("root.sg.d2.s2");
+    measurementPath.setMeasurementSchema(schema2);
+    measurementPath.setMeasurementAlias("status");
+    measurementPathList.add(measurementPath);
+
+    return measurementPathList;
+  }
+
+  @Test
+  public void testMergeSchemaTree() throws Exception {
+    SchemaTree schemaTree = new SchemaTree();
+    for (SchemaTree tree : generateSchemaTrees()) {
+      schemaTree.mergeSchemaTree(tree);
+    }
+
+    testSchemaTree(schemaTree.getRoot());
+  }
+
+  private List<SchemaTree> generateSchemaTrees() throws Exception {
+    List<SchemaTree> schemaTreeList = new ArrayList<>();
+    SchemaTree schemaTree;
+    List<MeasurementPath> measurementPathList = generateMeasurementPathList();
+    List<MeasurementPath> list;
+    for (int i = 0; i < 6; i += 2) {
+      list = new ArrayList<>();
+      list.add(measurementPathList.get(i));
+      list.add(measurementPathList.get(i + 1));
+
+      schemaTree = new SchemaTree();
+      schemaTree.appendMeasurementPaths(list);
+      schemaTreeList.add(schemaTree);
+    }
+    return schemaTreeList;
   }
 }

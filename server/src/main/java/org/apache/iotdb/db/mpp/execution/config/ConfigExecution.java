@@ -17,18 +17,26 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.execution;
+package org.apache.iotdb.db.mpp.execution.config;
 
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
+import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
+import org.apache.iotdb.db.mpp.execution.ExecutionResult;
+import org.apache.iotdb.db.mpp.execution.IQueryExecution;
+import org.apache.iotdb.db.mpp.execution.QueryStateMachine;
+import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import jersey.repackaged.com.google.common.util.concurrent.SettableFuture;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -37,12 +45,12 @@ import static com.google.common.base.Throwables.throwIfInstanceOf;
 
 public class ConfigExecution implements IQueryExecution {
 
-  private MPPQueryContext context;
-  private Statement statement;
-  private ExecutorService executor;
+  private final MPPQueryContext context;
+  private final Statement statement;
+  private final ExecutorService executor;
 
-  private QueryStateMachine stateMachine;
-  private SettableFuture<Boolean> result;
+  private final QueryStateMachine stateMachine;
+  private final SettableFuture<Boolean> result;
 
   public ConfigExecution(MPPQueryContext context, Statement statement, ExecutorService executor) {
     this.context = context;
@@ -67,7 +75,7 @@ public class ConfigExecution implements IQueryExecution {
             }
 
             @Override
-            public void onFailure(Throwable throwable) {
+            public void onFailure(@NotNull Throwable throwable) {
               fail(throwable);
             }
           },
@@ -89,6 +97,10 @@ public class ConfigExecution implements IQueryExecution {
   @Override
   public ExecutionResult getStatus() {
     try {
+      if (result.isCancelled()) {
+        return new ExecutionResult(
+            context.getQueryId(), RpcUtils.getStatus(TSStatusCode.QUERY_PROCESS_ERROR));
+      }
       Boolean success = result.get();
       TSStatusCode statusCode =
           success ? TSStatusCode.SUCCESS_STATUS : TSStatusCode.QUERY_PROCESS_ERROR;
@@ -101,10 +113,47 @@ public class ConfigExecution implements IQueryExecution {
     }
   }
 
+  @Override
+  public TsBlock getBatchResult() {
+    // TODO
+    return null;
+  }
+
+  @Override
+  public boolean hasNextResult() {
+    return false;
+  }
+
+  @Override
+  public int getOutputValueColumnCount() {
+    // TODO
+    return 0;
+  }
+
+  @Override
+  public DatasetHeader getDatasetHeader() {
+    // TODO
+    return null;
+  }
+
+  @Override
+  public boolean isQuery() {
+    return context.getQueryType() == QueryType.READ;
+  }
+
   // TODO: consider a more suitable implementation for it
   // Generate the corresponding IConfigTask by statement.
   // Each type of statement will has a ConfigTask
   private IConfigTask getTask(Statement statement) {
-    throw new NotImplementedException();
+    try {
+      switch (statement.getType()) {
+        case SET_STORAGE_GROUP:
+          return new SetStorageGroupTask((SetStorageGroupStatement) statement);
+        default:
+          throw new NotImplementedException();
+      }
+    } catch (ClassCastException classCastException) {
+      throw new NotImplementedException();
+    }
   }
 }
