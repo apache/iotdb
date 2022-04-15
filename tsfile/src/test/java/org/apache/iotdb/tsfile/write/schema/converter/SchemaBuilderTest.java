@@ -33,10 +33,10 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-
-import static org.junit.Assert.assertTrue;
+import java.util.Set;
 
 public class SchemaBuilderTest {
 
@@ -66,15 +66,13 @@ public class SchemaBuilderTest {
     String[] tsDesStrings = {
       "[s4,DOUBLE,RLE,{max_point_number=3},SNAPPY]", "[s5,INT32,TS_2DIFF,,UNCOMPRESSED]"
     };
-    List<String> expected = Arrays.asList(tsDesStrings);
+    Set<String> expected = new HashSet<String>(Arrays.asList(tsDesStrings));
     List<String> actual = new ArrayList<String>();
     for (IMeasurementSchema desc : timeseries) {
       actual.add(desc.toString());
     }
-    assertTrue(
-        actual.size() == expected.size()
-            && actual.containsAll(expected)
-            && expected.containsAll(actual));
+    assertEquals(expected.size(), actual.size());
+    assertEquals(expected, new HashSet<String>(actual));
   }
 
   @Test
@@ -107,15 +105,13 @@ public class SchemaBuilderTest {
     String[] tsDesStrings = {
       "[s4,DOUBLE,RLE,{max_point_number=3},SNAPPY]", "[s5,INT32,TS_2DIFF,,UNCOMPRESSED]"
     };
-    List<String> expected = Arrays.asList(tsDesStrings);
+    Set<String> expected = new HashSet<String>(Arrays.asList(tsDesStrings));
     List<String> actual = new ArrayList<String>();
     for (IMeasurementSchema desc : timeseries) {
       actual.add(desc.toString());
     }
-    assertTrue(
-        actual.size() == expected.size()
-            && actual.containsAll(expected)
-            && expected.containsAll(actual));
+    assertEquals(expected.size(), actual.size());
+    assertEquals(expected, new HashSet<String>(actual));
   }
 
   @Test
@@ -156,14 +152,12 @@ public class SchemaBuilderTest {
       "[s5,INT32,TS_2DIFF,,UNCOMPRESSED]",
       "[s6,INT64,RLE,{max_point_number=3},SNAPPY]"
     };
-    List<String> expected = Arrays.asList(tsDesStrings);
+    Set<String> expected = new HashSet<String>(Arrays.asList(tsDesStrings));
     List<String> actual = new ArrayList<String>();
     for (IMeasurementSchema desc : timeseries) {
       actual.add(desc.toString());
     }
-    assertTrue(
-        actual.size() == expected.size()
-            && actual.containsAll(expected)
-            && expected.containsAll(actual));
+    assertEquals(expected.size(), actual.size());
+    assertEquals(expected, new HashSet<String>(actual));
   }
 }
