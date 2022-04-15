@@ -60,9 +60,13 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPESERVER_STAT
 public class ReceiverService implements IService {
   private static final Logger logger = LoggerFactory.getLogger(ReceiverService.class);
   private static final ReceiverManager receiverManager = ReceiverManager.getInstance();
-  private Collector collector;
+  private final Collector collector;
 
-  /** start receiver service */
+  /**
+   * start receiver service
+   *
+   * @param isRecovery if isRecovery, it will ignore check and force a start
+   */
   public synchronized void startPipeServer(boolean isRecovery) throws PipeServerException {
     if (receiverManager.isPipeServerEnable() && !isRecovery) {
       return;
@@ -108,7 +112,6 @@ public class ReceiverService implements IService {
   /** heartbeat RPC handle */
   public synchronized SyncResponse receiveMsg(SyncRequest request) {
     SyncResponse response = new SyncResponse(ResponseType.INFO, "");
-    ;
     try {
       switch (request.getType()) {
         case HEARTBEAT:
