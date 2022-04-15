@@ -137,17 +137,6 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
       // dead-loop.
       LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList =
           seriesIterator.getMetadataListForCurrentSeries();
-      //      try {
-      //        if (IoTDBDescriptor.getInstance().getConfig().isEnableIDTable()) {
-      //          measurementSchema =
-      //              IDTableManager.getInstance().getSeriesSchema(device, p.getMeasurement());
-      //        } else {
-      //          measurementSchema = IoTDB.schemaProcessor.getSeriesSchema(p);
-      //        }
-      //      } catch (PathNotExistException e) {
-      //        LOGGER.info("A deleted path is skipped: {}", e.getMessage());
-      //        continue;
-      //      }
       SingleSeriesCompactionExecutor compactionExecutorOfCurrentTimeSeries =
           new SingleSeriesCompactionExecutor(p, readerAndChunkMetadataList, writer, targetResource);
       compactionExecutorOfCurrentTimeSeries.execute();
