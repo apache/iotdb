@@ -22,8 +22,8 @@ import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.sql.planner.plan.IOutputPlanNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.ColumnHeader;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
@@ -37,7 +37,6 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.collect.ImmutableList;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -116,11 +115,12 @@ public class SeriesScanNode extends SourceNode implements IOutputPlanNode {
   public void open() throws Exception {}
 
   @Override
-  public RegionReplicaSet getDataRegionReplicaSet() {
+  public RegionReplicaSet getRegionReplicaSet() {
     return regionReplicaSet;
   }
 
-  public void setDataRegionReplicaSet(RegionReplicaSet dataRegion) {
+  @Override
+  public void setRegionReplicaSet(RegionReplicaSet dataRegion) {
     this.regionReplicaSet = dataRegion;
   }
 
@@ -209,12 +209,7 @@ public class SeriesScanNode extends SourceNode implements IOutputPlanNode {
     if (isNull == 1) valueFilter = FilterFactory.deserialize(byteBuffer);
     int limit = ReadWriteIOUtils.readInt(byteBuffer);
     int offset = ReadWriteIOUtils.readInt(byteBuffer);
-    RegionReplicaSet dataRegionReplicaSet = new RegionReplicaSet();
-    try {
-      dataRegionReplicaSet.deserializeImpl(byteBuffer);
-    } catch (IOException e) {
-      e.printStackTrace();
-    }
+    RegionReplicaSet dataRegionReplicaSet = RegionReplicaSet.deserializeImpl(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     SeriesScanNode seriesScanNode = new SeriesScanNode(planNodeId, partialPath);
     seriesScanNode.allSensors = allSensors;
@@ -270,10 +265,11 @@ public class SeriesScanNode extends SourceNode implements IOutputPlanNode {
     return valueFilter;
   }
 
+  @Override
   public String toString() {
     return String.format(
         "SeriesScanNode-%s:[SeriesPath: %s, DataRegion: %s]",
-        this.getPlanNodeId(), this.getSeriesPath(), this.getDataRegionReplicaSet());
+        this.getPlanNodeId(), this.getSeriesPath(), this.getRegionReplicaSet());
   }
 
   @TestOnly

@@ -23,10 +23,12 @@ import org.apache.iotdb.commons.cluster.DataNodeLocation;
 import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
+import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.consensus.ConsensusImpl;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.LocalConfigManager;
+import org.apache.iotdb.db.metadata.LocalConfigNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
@@ -35,6 +37,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.PlanFragment;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.mpp.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstance;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceResp;
@@ -44,7 +47,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 
 import org.apache.ratis.util.FileUtils;
-import org.apache.thrift.TException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -59,26 +61,33 @@ import java.util.List;
 public class InternalServiceImplTest {
   private static final IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
   InternalServiceImpl internalServiceImpl;
-  LocalConfigManager configManager;
+  LocalConfigNode configNode;
 
   @Before
   public void setUp() throws Exception {
     IoTDB.configManager.init();
+    configNode = LocalConfigNode.getInstance();
+    configNode.getBelongedSchemaRegionIdWithAutoCreate(new PartialPath("root.ln"));
+    ConsensusImpl.getInstance().start();
+    RegionReplicaSet regionReplicaSet = genRegionReplicaSet();
+    ConsensusImpl.getInstance()
+        .addConsensusGroup(regionReplicaSet.getConsensusGroupId(), genPeerList(regionReplicaSet));
     internalServiceImpl = new InternalServiceImpl();
-    configManager = LocalConfigManager.getInstance();
   }
 
   @After
   public void tearDown() throws Exception {
     IoTDB.configManager.clear();
+    RegionReplicaSet regionReplicaSet = genRegionReplicaSet();
+    ConsensusImpl.getInstance().removeConsensusGroup(regionReplicaSet.getConsensusGroupId());
+    ConsensusImpl.getInstance().stop();
     EnvironmentUtils.cleanEnv();
-    internalServiceImpl.close();
     FileUtils.deleteFully(new File("data" + File.separator + "consensus"));
   }
 
   @Test
-  public void createTimeseriesTest() throws MetadataException, TException {
-    configManager.getBelongedSchemaRegionWithAutoCreate(new PartialPath("root.ln"));
+  public void createTimeseriesTest() throws MetadataException {
+    configNode.getBelongedSchemaRegionIdWithAutoCreate(new PartialPath("root.ln"));
     CreateTimeSeriesNode createTimeSeriesNode =
         new CreateTimeSeriesNode(
             new PlanNodeId("0"),
@@ -105,19 +114,15 @@ public class InternalServiceImplTest {
             },
             "meter1");
 
-    List<DataNodeLocation> dataNodeList = new ArrayList<>();
-    dataNodeList.add(
-        new DataNodeLocation(
-            conf.getConsensusPort(), new Endpoint(conf.getInternalIp(), conf.getConsensusPort())));
-
-    // construct fragmentInstance
-    SchemaRegionId schemaRegionId = new SchemaRegionId(0);
-    RegionReplicaSet regionReplicaSet = new RegionReplicaSet(schemaRegionId, dataNodeList);
+    RegionReplicaSet regionReplicaSet = genRegionReplicaSet();
     PlanFragment planFragment = new PlanFragment(new PlanFragmentId("2", 3), createTimeSeriesNode);
     FragmentInstance fragmentInstance =
-        new FragmentInstance(planFragment, 4, new GroupByFilter(1, 2, 3, 4), QueryType.WRITE);
-    fragmentInstance.setRegionReplicaSet(regionReplicaSet);
-    fragmentInstance.setHostEndpoint(new Endpoint("127.0.0.1", 6666));
+        new FragmentInstance(
+            planFragment,
+            planFragment.getId().genFragmentInstanceId(),
+            new GroupByFilter(1, 2, 3, 4),
+            QueryType.WRITE);
+    fragmentInstance.setDataRegionAndHost(regionReplicaSet);
 
     // serialize fragmentInstance
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
@@ -129,10 +134,34 @@ public class InternalServiceImplTest {
     TFragmentInstance tFragmentInstance = new TFragmentInstance();
     tFragmentInstance.setBody(byteBuffer);
     request.setFragmentInstance(tFragmentInstance);
+    request.setConsensusGroupId(
+        new TConsensusGroupId(
+            regionReplicaSet.getConsensusGroupId().getId(),
+            regionReplicaSet.getConsensusGroupId().getType().toString()));
+    request.setQueryType(QueryType.WRITE.toString());
 
     // Use consensus layer to execute request
     TSendFragmentInstanceResp response = internalServiceImpl.sendFragmentInstance(request);
 
     Assert.assertTrue(response.accepted);
+  }
+
+  private RegionReplicaSet genRegionReplicaSet() {
+    List<DataNodeLocation> dataNodeList = new ArrayList<>();
+    dataNodeList.add(
+        new DataNodeLocation(
+            conf.getConsensusPort(), new Endpoint(conf.getInternalIp(), conf.getConsensusPort())));
+
+    // construct fragmentInstance
+    SchemaRegionId schemaRegionId = new SchemaRegionId(0);
+    return new RegionReplicaSet(schemaRegionId, dataNodeList);
+  }
+
+  private List<Peer> genPeerList(RegionReplicaSet regionReplicaSet) {
+    List<Peer> peerList = new ArrayList<>();
+    for (DataNodeLocation node : regionReplicaSet.getDataNodeList()) {
+      peerList.add(new Peer(regionReplicaSet.getConsensusGroupId(), node.getEndPoint()));
+    }
+    return peerList;
   }
 }

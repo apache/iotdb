@@ -285,7 +285,7 @@ public class FileSnapshotTest extends DataSnapshotTest {
       resource.getTsFile().renameTo(fileWithoutHardlinkSuffix);
       resource.setFile(fileWithoutHardlinkSuffix);
       resource.serialize();
-      processor.loadNewTsFile(resource);
+      processor.loadNewTsFile(resource, true);
     }
     snapshot.setTimeseriesSchemas(timeseriesSchemas);
 

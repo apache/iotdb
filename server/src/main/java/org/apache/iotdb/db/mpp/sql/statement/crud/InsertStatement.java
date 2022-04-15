@@ -83,6 +83,7 @@ public class InsertStatement extends Statement {
     isAligned = aligned;
   }
 
+  @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitInsert(this, context);
   }

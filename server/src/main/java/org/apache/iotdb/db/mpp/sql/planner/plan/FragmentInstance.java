@@ -21,9 +21,7 @@ package org.apache.iotdb.db.mpp.sql.planner.plan;
 import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
-import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeUtil;
@@ -32,7 +30,6 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
@@ -52,15 +49,23 @@ public class FragmentInstance implements IConsensusRequest {
   // We can add some more params for a specific FragmentInstance
   // So that we can make different FragmentInstance owns different data range.
 
-  public FragmentInstance(PlanFragment fragment, int index, Filter timeFilter, QueryType type) {
+  public FragmentInstance(
+      PlanFragment fragment, FragmentInstanceId id, Filter timeFilter, QueryType type) {
     this.fragment = fragment;
     this.timeFilter = timeFilter;
-    this.id = generateId(fragment.getId(), index);
+    this.id = id;
     this.type = type;
   }
 
-  public static FragmentInstanceId generateId(PlanFragmentId id, int index) {
-    return new FragmentInstanceId(id, String.valueOf(index));
+  public RegionReplicaSet getDataRegionId() {
+    return regionReplicaSet;
+  }
+
+  public void setDataRegionAndHost(RegionReplicaSet regionReplicaSet) {
+    this.regionReplicaSet = regionReplicaSet;
+    // TODO: (xingtanzjr) We select the first Endpoint as the default target host for current
+    // instance
+    this.hostEndpoint = regionReplicaSet.getDataNodeList().get(0).getEndPoint();
   }
 
   public RegionReplicaSet getRegionReplicaSet() {
@@ -73,10 +78,6 @@ public class FragmentInstance implements IConsensusRequest {
 
   public Endpoint getHostEndpoint() {
     return hostEndpoint;
-  }
-
-  public void setHostEndpoint(Endpoint hostEndpoint) {
-    this.hostEndpoint = hostEndpoint;
   }
 
   public PlanFragment getFragment() {
@@ -115,31 +116,27 @@ public class FragmentInstance implements IConsensusRequest {
   public String toString() {
     StringBuilder ret = new StringBuilder();
     ret.append(String.format("FragmentInstance-%s:", getId()));
-    if (getHostEndpoint() == null) {
-      ret.append(String.format("host endpoint has not set."));
-    } else {
-      ret.append(String.format("host endpoint: %s.", getHostEndpoint().toString()));
-    }
-    if (getRegionReplicaSet() == null) {
-      ret.append(String.format("Region Replica set has not set.\n"));
-    } else {
-      ret.append(String.format("Region Replica set: %s.\n", getRegionReplicaSet().toString()));
-    }
+    ret.append(
+        String.format("Host: %s", getHostEndpoint() == null ? "Not set" : getHostEndpoint()));
+    ret.append(
+        String.format(
+            "Region: %s",
+            getRegionReplicaSet() == null
+                ? "Not set"
+                : getRegionReplicaSet().getConsensusGroupId()));
     ret.append("---- Plan Node Tree ----\n");
     ret.append(PlanNodeUtil.nodeToString(getFragment().getRoot()));
     return ret.toString();
   }
 
-  public static FragmentInstance deserializeFrom(ByteBuffer buffer)
-      throws IllegalPathException, IOException {
+  public static FragmentInstance deserializeFrom(ByteBuffer buffer) {
     FragmentInstanceId id = FragmentInstanceId.deserialize(buffer);
     PlanFragment planFragment = PlanFragment.deserialize(buffer);
     boolean hasTimeFilter = ReadWriteIOUtils.readBool(buffer);
     Filter timeFilter = hasTimeFilter ? FilterFactory.deserialize(buffer) : null;
     QueryType queryType = QueryType.values()[ReadWriteIOUtils.readInt(buffer)];
     FragmentInstance fragmentInstance =
-        new FragmentInstance(
-            planFragment, Integer.parseInt(id.getInstanceId()), timeFilter, queryType);
+        new FragmentInstance(planFragment, id, timeFilter, queryType);
     fragmentInstance.regionReplicaSet = RegionReplicaSet.deserializeImpl(buffer);
     fragmentInstance.hostEndpoint = Endpoint.deserializeImpl(buffer);
 
@@ -148,7 +145,6 @@ public class FragmentInstance implements IConsensusRequest {
 
   @Override
   public void serializeRequest(ByteBuffer buffer) {
-    buffer.mark();
     id.serialize(buffer);
     fragment.serialize(buffer);
     ReadWriteIOUtils.write(timeFilter != null, buffer);
@@ -157,7 +153,6 @@ public class FragmentInstance implements IConsensusRequest {
     }
     ReadWriteIOUtils.write(type.ordinal(), buffer);
     regionReplicaSet.serializeImpl(buffer);
-
     hostEndpoint.serializeImpl(buffer);
   }
 

@@ -27,8 +27,8 @@ import org.influxdb.dto.Point;
 import org.influxdb.dto.Query;
 import org.influxdb.dto.QueryResult;
 import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
+import org.junit.BeforeClass;
+import org.junit.ClassRule;
 import org.junit.Test;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.utility.DockerImageName;
@@ -41,31 +41,31 @@ import static org.junit.Assert.*;
 
 public class IoTDBInfluxDBIT {
 
-  private String host;
-  private Integer port;
-  private String username;
-  private String password;
-  private InfluxDB influxDB;
+  private static String host;
+  private static Integer port;
+  private static String username;
+  private static String password;
+  private static InfluxDB influxDB;
 
-  @Rule
-  public GenericContainer<?> iotdb =
-      new GenericContainer(DockerImageName.parse("apache/iotdb:maven-development"))
+  @ClassRule
+  public static GenericContainer<?> iotdb =
+      new GenericContainer(DockerImageName.parse("apache/iotdb:influxdb-protocol-on"))
           .withExposedPorts(8086);
 
-  @Before
-  public void setUp() {
+  @BeforeClass
+  public static void setUp() {
     host = iotdb.getContainerIpAddress();
     port = iotdb.getMappedPort(8086);
     username = "root";
     password = "root";
     influxDB = IoTDBInfluxDBFactory.connect(host, port, username, password);
-    influxDB.createDatabase("monitor");
-    influxDB.setDatabase("monitor");
+    influxDB.createDatabase("database");
+    influxDB.setDatabase("database");
 
     insertData();
   }
 
-  private void insertData() {
+  private static void insertData() {
     // insert the build parameter to construct the influxdb
     Point.Builder builder = Point.measurement("student");
     Map<String, String> tags = new HashMap<>();
@@ -178,7 +178,7 @@ public class IoTDBInfluxDBIT {
     QueryResult result = influxDB.query(query);
     QueryResult.Series series = result.getResults().get(0).getSeries().get(0);
 
-    Object[] retArray = new Object[] {0, 99.0, 87.0, 186, 2, 12.0, 93, 87, 99};
+    Object[] retArray = new Object[] {0.0, 99.0, 87.0, 186.0, 2.0, 12.0, 93.0, 87.0, 99.0};
     for (int i = 0; i < series.getColumns().size(); i++) {
       assertEquals(retArray[i], series.getValues().get(0).get(i));
     }
@@ -194,7 +194,7 @@ public class IoTDBInfluxDBIT {
     QueryResult.Series series = result.getResults().get(0).getSeries().get(0);
 
     Object[] retArray =
-        new Object[] {0, 2, 87, "china", 99.0, 93.0, 93.0, 87.0, 87, 12.0, 6.0, 186.0};
+        new Object[] {0.0, 2.0, 87.0, "china", 99.0, 93.0, 93.0, 87.0, 87.0, 12.0, 6.0, 186.0};
     for (int i = 0; i < series.getColumns().size(); i++) {
       assertEquals(retArray[i], series.getValues().get(0).get(i));
     }

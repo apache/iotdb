@@ -619,4 +619,42 @@ public class IoTDBMetadataFetchIT {
       Assert.assertEquals(2, num);
     }
   }
+
+  @Test
+  @Category({LocalStandaloneTest.class, ClusterTest.class, RemoteTest.class})
+  public void showLatestTimeseriesTest() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      statement.execute("insert into root.ln.wf01.wt01(time, status) values(1, 1)");
+      statement.execute("insert into root.ln.wf01.wt01(time, temperature) values(2, 1)");
+      String sql = "show latest timeseries root.ln.wf01.wt01.*";
+      Set<String> standard =
+          new HashSet<>(
+              Arrays.asList(
+                  "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,",
+                  "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,"));
+      try {
+        boolean hasResultSet = statement.execute(sql);
+        if (hasResultSet) {
+          try (ResultSet resultSet = statement.getResultSet()) {
+            ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+            while (resultSet.next()) {
+              StringBuilder builder = new StringBuilder();
+              for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+                builder.append(resultSet.getString(i)).append(",");
+              }
+              String string = builder.toString();
+              Assert.assertTrue(standard.contains(string));
+              standard.remove(string);
+            }
+            assertEquals(0, standard.size());
+          }
+        }
+      } catch (SQLException e) {
+        logger.error("showTimeseriesTest() failed", e);
+        fail(e.getMessage());
+      }
+    }
+  }
 }

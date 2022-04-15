@@ -79,7 +79,6 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
   private void produceFragmentInstance(PlanFragment fragment) {
     // If one PlanFragment will produce several FragmentInstance, the instanceIdx will be increased
     // one by one
-    int instanceIdx = 0;
     PlanNode rootCopy = PlanNodeUtil.deepCopy(fragment.getRoot());
     Filter timeFilter =
         analysis.getQueryFilter() == null
@@ -88,23 +87,19 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
     FragmentInstance fragmentInstance =
         new FragmentInstance(
             new PlanFragment(fragment.getId(), rootCopy),
-            instanceIdx,
+            fragment.getId().genFragmentInstanceId(),
             timeFilter,
             queryContext.getQueryType());
 
-    // Get the target DataRegion for origin PlanFragment, then its instance will be distributed one
+    // Get the target region for origin PlanFragment, then its instance will be distributed one
     // of them.
-    RegionReplicaSet dataRegion = fragment.getTargetDataRegion();
+    RegionReplicaSet regionReplicaSet = fragment.getTargetRegion();
 
     // Set DataRegion and target host for the instance
     // We need to store all the replica host in case of the scenario that the instance need to be
     // redirected
     // to another host when scheduling
-    fragmentInstance.setRegionReplicaSet(dataRegion);
-
-    // TODO: (xingtanzjr) We select the first Endpoint as the default target host for current
-    // instance
-    fragmentInstance.setHostEndpoint(dataRegion.getDataNodeList().get(0).getEndPoint());
+    fragmentInstance.setDataRegionAndHost(regionReplicaSet);
     instanceMap.putIfAbsent(fragment.getId(), fragmentInstance);
     fragmentInstanceList.add(fragmentInstance);
   }

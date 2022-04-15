@@ -53,6 +53,9 @@ public class ConfigNodeConf {
   private String seriesPartitionExecutorClass =
       "org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor";
 
+  /** Time partition interval in seconds */
+  private long timePartitionInterval = 604800;
+
   /** Max concurrent client number */
   private int rpcMaxConcurrentClientNum = 65535;
 
@@ -84,8 +87,14 @@ public class ConfigNodeConf {
   private String consensusDir =
       ConfigNodeConstant.DATA_DIR + File.separator + ConfigNodeConstant.CONSENSUS_FOLDER;
 
+  /** Default TTL for storage groups that are not set TTL by statements, in ms. */
+  private long defaultTTL = 36000000;
+
+  /** The number of replicas of each region */
   private int regionReplicaCount = 3;
+  /** The number of SchemaRegions of each StorageGroup */
   private int schemaRegionCount = 1;
+  /** The number of DataRegions of each StorageGroup */
   private int dataRegionCount = 1;
 
   public ConfigNodeConf() {
@@ -130,6 +139,14 @@ public class ConfigNodeConf {
 
   public void setSeriesPartitionExecutorClass(String seriesPartitionExecutorClass) {
     this.seriesPartitionExecutorClass = seriesPartitionExecutorClass;
+  }
+
+  public long getTimePartitionInterval() {
+    return timePartitionInterval;
+  }
+
+  public void setTimePartitionInterval(long timePartitionInterval) {
+    this.timePartitionInterval = timePartitionInterval;
   }
 
   public int getRpcMaxConcurrentClientNum() {
@@ -250,6 +267,14 @@ public class ConfigNodeConf {
 
   public void setDataDirs(String[] dataDirs) {
     this.dataDirs = dataDirs;
+  }
+
+  public long getDefaultTTL() {
+    return defaultTTL;
+  }
+
+  public void setDefaultTTL(long defaultTTL) {
+    this.defaultTTL = defaultTTL;
   }
 
   public int getRegionReplicaCount() {

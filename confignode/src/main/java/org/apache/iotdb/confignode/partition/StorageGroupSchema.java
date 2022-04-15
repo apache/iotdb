@@ -30,6 +30,7 @@ import java.util.Objects;
 public class StorageGroupSchema {
 
   private String name;
+  private long TTL;
 
   private final List<ConsensusGroupId> schemaRegionGroupIds;
   private final List<ConsensusGroupId> dataRegionGroupIds;
@@ -46,6 +47,14 @@ public class StorageGroupSchema {
 
   public String getName() {
     return name;
+  }
+
+  public long getTTL() {
+    return TTL;
+  }
+
+  public void setTTL(long TTL) {
+    this.TTL = TTL;
   }
 
   public List<ConsensusGroupId> getSchemaRegionGroupIds() {
