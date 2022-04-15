@@ -882,7 +882,7 @@ public class StorageEngine implements IService {
     manager.abortCompaction();
   }
 
-  public void loadNewTsFile(TsFileResource newTsFileResource)
+  public void loadNewTsFile(TsFileResource newTsFileResource, boolean deleteOriginFile)
       throws LoadFileException, StorageEngineException, MetadataException {
     Set<String> deviceSet = newTsFileResource.getDevices();
     if (deviceSet == null || deviceSet.isEmpty()) {
@@ -891,7 +891,7 @@ public class StorageEngine implements IService {
     String device = deviceSet.iterator().next();
     PartialPath devicePath = new PartialPath(device);
     PartialPath storageGroupPath = IoTDB.schemaProcessor.getBelongedStorageGroup(devicePath);
-    getProcessorDirectly(storageGroupPath).loadNewTsFile(newTsFileResource);
+    getProcessorDirectly(storageGroupPath).loadNewTsFile(newTsFileResource, deleteOriginFile);
   }
 
   public boolean deleteTsfile(File deletedTsfile)
