@@ -18,34 +18,35 @@
  */
 package org.apache.iotdb.confignode.physical.sys;
 
-import org.apache.iotdb.confignode.partition.DataNodeInfo;
+import org.apache.iotdb.commons.cluster.DataNodeLocation;
+import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
 import org.apache.iotdb.confignode.physical.PhysicalPlanType;
-import org.apache.iotdb.consensus.common.Endpoint;
 
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class RegisterDataNodePlan extends PhysicalPlan {
 
-  private DataNodeInfo info;
+  private DataNodeLocation info;
 
   public RegisterDataNodePlan() {
     super(PhysicalPlanType.RegisterDataNode);
   }
 
-  public RegisterDataNodePlan(int dataNodeID, Endpoint endpoint) {
+  public RegisterDataNodePlan(DataNodeLocation info) {
     this();
-    this.info = new DataNodeInfo(dataNodeID, endpoint);
+    this.info = info;
   }
 
-  public DataNodeInfo getInfo() {
+  public DataNodeLocation getInfo() {
     return info;
   }
 
   @Override
   protected void serializeImpl(ByteBuffer buffer) {
     buffer.putInt(PhysicalPlanType.RegisterDataNode.ordinal());
-    buffer.putInt(info.getDataNodeID());
+    buffer.putInt(info.getDataNodeId());
     buffer.putInt(info.getEndPoint().getIp().length());
     buffer.put(info.getEndPoint().getIp().getBytes());
     buffer.putInt(info.getEndPoint().getPort());
@@ -60,6 +61,19 @@ public class RegisterDataNodePlan extends PhysicalPlan {
     String ip = new String(byteIp, 0, ipLength);
     int port = buffer.getInt();
 
-    this.info = new DataNodeInfo(dataNodeID, new Endpoint(ip, port));
+    this.info = new DataNodeLocation(dataNodeID, new Endpoint(ip, port));
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    RegisterDataNodePlan plan = (RegisterDataNodePlan) o;
+    return info.equals(plan.info);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(info);
   }
 }

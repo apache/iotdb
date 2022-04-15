@@ -21,6 +21,7 @@ package org.apache.iotdb.db.metadata.mtree.traverser.collector;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
+import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 
 // This class implements storage group path collection function.
@@ -28,8 +29,9 @@ public abstract class StorageGroupCollector<T> extends CollectorTraverser<T> {
 
   protected boolean collectInternal = false;
 
-  public StorageGroupCollector(IMNode startNode, PartialPath path) throws MetadataException {
-    super(startNode, path);
+  public StorageGroupCollector(IMNode startNode, PartialPath path, IMTreeStore store)
+      throws MetadataException {
+    super(startNode, path, store);
   }
 
   @Override

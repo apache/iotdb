@@ -20,9 +20,13 @@
 package org.apache.iotdb.db.query.expression.binary;
 
 import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.query.expression.ExpressionType;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.db.query.udf.core.transformer.ArithmeticBinaryTransformer;
 import org.apache.iotdb.db.query.udf.core.transformer.ArithmeticDivisionTransformer;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import java.nio.ByteBuffer;
 
 public class DivisionExpression extends BinaryExpression {
 
@@ -40,5 +44,20 @@ public class DivisionExpression extends BinaryExpression {
   @Override
   protected String operator() {
     return "/";
+  }
+
+  public static DivisionExpression deserialize(ByteBuffer buffer) {
+    boolean isConstantOperandCache = ReadWriteIOUtils.readBool(buffer);
+    DivisionExpression divisionExpression =
+        new DivisionExpression(
+            ExpressionType.deserialize(buffer), ExpressionType.deserialize(buffer));
+    divisionExpression.isConstantOperandCache = isConstantOperandCache;
+    return divisionExpression;
+  }
+
+  @Override
+  public void serialize(ByteBuffer byteBuffer) {
+    ExpressionType.Division.serialize(byteBuffer);
+    super.serialize(byteBuffer);
   }
 }

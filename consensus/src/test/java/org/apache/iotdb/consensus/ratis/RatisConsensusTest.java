@@ -18,19 +18,20 @@
  */
 package org.apache.iotdb.consensus.ratis;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.ConsensusGroup;
-import org.apache.iotdb.consensus.common.ConsensusGroupId;
 import org.apache.iotdb.consensus.common.DataSet;
-import org.apache.iotdb.consensus.common.Endpoint;
-import org.apache.iotdb.consensus.common.GroupType;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.consensus.statemachine.IStateMachine;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import org.apache.ratis.util.FileUtils;
 import org.junit.After;
@@ -52,6 +53,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class RatisConsensusTest {
 
+  private static final String RATIS_CLASS_NAME = "org.apache.iotdb.consensus.ratis.RatisConsensus";
+
   private static class TestDataSet implements DataSet {
     private int number;
 
@@ -65,7 +68,7 @@ public class RatisConsensusTest {
   }
 
   private static class TestRequest {
-    private int cmd;
+    private final int cmd;
 
     public TestRequest(ByteBuffer buffer) {
       cmd = buffer.getInt();
@@ -117,7 +120,7 @@ public class RatisConsensusTest {
 
   @Before
   public void setUp() throws IOException {
-    gid = new ConsensusGroupId(GroupType.DataRegion, 1L);
+    gid = new DataRegionId(1);
     peers = new ArrayList<>();
     peer0 = new Peer(gid, new Endpoint("127.0.0.1", 6000));
     peer1 = new Peer(gid, new Endpoint("127.0.0.1", 6001));
@@ -136,11 +139,15 @@ public class RatisConsensusTest {
     servers = new ArrayList<>();
     for (int i = 0; i < 3; i++) {
       servers.add(
-          RatisConsensus.newBuilder()
-              .setEndpoint(peers.get(i).getEndpoint())
-              .setStateMachineRegistry(groupId -> new IntegerCounter())
-              .setStorageDir(peersStorage.get(i))
-              .build());
+          ConsensusFactory.getConsensusImpl(
+                  RATIS_CLASS_NAME,
+                  peers.get(i).getEndpoint(),
+                  peersStorage.get(i),
+                  groupId -> new IntegerCounter())
+              .orElseThrow(
+                  () ->
+                      new IllegalArgumentException(
+                          String.format(ConsensusFactory.CONSTRUCT_FAILED_MSG, RATIS_CLASS_NAME))));
       servers.get(i).start();
     }
   }
@@ -168,14 +175,15 @@ public class RatisConsensusTest {
 
     // 6. Remove two Peers from Group (peer 0 and peer 2)
     // transfer the leader to peer1
-    servers.get(0).transferLeader(gid, peer1);
-    Assert.assertTrue(servers.get(1).isLeader(gid));
+    // servers.get(0).transferLeader(gid, peer1);
+    // Assert.assertTrue(servers.get(1).isLeader(gid));
     // first use removePeer to inform the group leader of configuration change
     servers.get(1).removePeer(gid, peer0);
     servers.get(1).removePeer(gid, peer2);
     // then use removeConsensusGroup to clean up removed Consensus-Peer's states
     servers.get(0).removeConsensusGroup(gid);
     servers.get(2).removeConsensusGroup(gid);
+    Assert.assertEquals(servers.get(1).getLeader(gid), peers.get(1));
 
     // 7. try consensus again with one peer
     doConsensus(servers.get(1), gid, 10, 20);

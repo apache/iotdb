@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.template;
 
-import org.apache.iotdb.commons.partition.SchemaRegionId;
+import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
@@ -69,6 +69,10 @@ public class Template {
   // accelerate template query and check
   private Map<String, Set<SchemaRegionId>> relatedSchemaRegion;
 
+  // transient variable to be recorded in schema file
+  // since order of CreateTemplatePlan is fixed, this code shall be fixed as well
+  private int rehashCode;
+
   public Template() {}
 
   /**
@@ -83,6 +87,7 @@ public class Template {
     isDirectAligned = false;
     directNodes = new HashMap<>();
     relatedSchemaRegion = new ConcurrentHashMap<>();
+    rehashCode = 0;
 
     for (int i = 0; i < plan.getMeasurements().size(); i++) {
       IMeasurementSchema curSchema;
@@ -348,8 +353,15 @@ public class Template {
     return measurementsCount;
   }
 
+  public IMNode getPathNodeInTemplate(PartialPath path) {
+    return getPathNodeInTemplate(path.getNodes());
+  }
+
   public IMNode getPathNodeInTemplate(String path) throws IllegalPathException {
-    String[] pathNodes = MetaUtils.splitPathToDetachedPath(path);
+    return getPathNodeInTemplate(MetaUtils.splitPathToDetachedPath(path));
+  }
+
+  private IMNode getPathNodeInTemplate(String[] pathNodes) {
     if (pathNodes.length == 0) {
       return null;
     }
@@ -438,6 +450,10 @@ public class Template {
     }
   }
 
+  public void unmarkStorageGroup(String storageGroup) {
+    relatedSchemaRegion.remove(storageGroup);
+  }
+
   // endregion
 
   // region inner utils
@@ -498,29 +514,6 @@ public class Template {
       builder.append(pathNodes[i]);
     }
     return builder.toString();
-  }
-
-  private static Collection<PartialPath> getSGPaths(IMNode cur) {
-    // get all sg paths above or below to the cur
-    IMNode oriNode = cur;
-    while (cur != null && !cur.isStorageGroup()) {
-      cur = cur.getParent();
-    }
-    if (cur == null) {
-      Deque<IMNode> nodeQueue = new ArrayDeque<>();
-      Set<PartialPath> childSGPath = new HashSet<>();
-      nodeQueue.add(oriNode);
-      while (nodeQueue.size() != 0) {
-        IMNode node = nodeQueue.pop();
-        if (node.isStorageGroup()) {
-          childSGPath.add(node.getPartialPath());
-        } else {
-          nodeQueue.addAll(node.getChildren().values());
-        }
-      }
-      return childSGPath;
-    }
-    return Collections.singleton(cur.getPartialPath());
   }
   // endregion
 
@@ -706,6 +699,18 @@ public class Template {
 
   @Override
   public int hashCode() {
-    return new HashCodeBuilder(17, 37).append(name).append(schemaMap).toHashCode();
+    return rehashCode != 0
+        ? rehashCode
+        : new HashCodeBuilder(17, 37).append(name).append(schemaMap).toHashCode();
+  }
+
+  /**
+   * If the original hash code above clashes with existed template inside TemplateManager, needs to
+   * be rehashed
+   *
+   * @param code solve the hash collision by increment, and 0 to be exceptional value
+   */
+  public void setRehash(int code) {
+    rehashCode = code;
   }
 }

@@ -18,22 +18,24 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.sink;
 
+import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ExchangeNode;
-import org.apache.iotdb.service.rpc.thrift.EndPoint;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.commons.lang.Validate;
 
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.Objects;
 
 public class FragmentSinkNode extends SinkNode {
   private PlanNode child;
-  private ExchangeNode downStreamNode;
 
-  private EndPoint downStreamEndpoint;
+  private Endpoint downStreamEndpoint;
   private FragmentInstanceId downStreamInstanceId;
   private PlanNodeId downStreamPlanNodeId;
 
@@ -47,16 +49,27 @@ public class FragmentSinkNode extends SinkNode {
   }
 
   @Override
-  public void addChild(PlanNode child) {
-    this.child = child;
+  public PlanNode clone() {
+    FragmentSinkNode sinkNode = new FragmentSinkNode(getPlanNodeId());
+    sinkNode.setDownStream(downStreamEndpoint, downStreamInstanceId, downStreamPlanNodeId);
+    return sinkNode;
   }
 
   @Override
-  public PlanNode clone() {
-    FragmentSinkNode sinkNode = new FragmentSinkNode(getId());
-    sinkNode.setDownStream(downStreamEndpoint, downStreamInstanceId, downStreamPlanNodeId);
-    sinkNode.setDownStreamNode(downStreamNode);
+  public PlanNode cloneWithChildren(List<PlanNode> children) {
+    Validate.isTrue(
+        children == null || children.size() == 1,
+        "Children size of FragmentSinkNode should be 0 or 1");
+    FragmentSinkNode sinkNode = (FragmentSinkNode) clone();
+    if (children != null) {
+      sinkNode.setChild(children.get(0));
+    }
     return sinkNode;
+  }
+
+  @Override
+  public void addChild(PlanNode child) {
+    this.child = child;
   }
 
   @Override
@@ -64,17 +77,28 @@ public class FragmentSinkNode extends SinkNode {
     return ONE_CHILD;
   }
 
-  @Override
-  public List<String> getOutputColumnNames() {
-    return null;
-  }
-
   public static FragmentSinkNode deserialize(ByteBuffer byteBuffer) {
-    return null;
+    Endpoint downStreamEndpoint =
+        new Endpoint(ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readInt(byteBuffer));
+    FragmentInstanceId downStreamInstanceId = FragmentInstanceId.deserialize(byteBuffer);
+    PlanNodeId downStreamPlanNodeId = PlanNodeId.deserialize(byteBuffer);
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+
+    FragmentSinkNode fragmentSinkNode = new FragmentSinkNode(planNodeId);
+    fragmentSinkNode.downStreamEndpoint = downStreamEndpoint;
+    fragmentSinkNode.downStreamInstanceId = downStreamInstanceId;
+    fragmentSinkNode.downStreamPlanNodeId = downStreamPlanNodeId;
+    return fragmentSinkNode;
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {}
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    PlanNodeType.FRAGMENT_SINK.serialize(byteBuffer);
+    ReadWriteIOUtils.write(downStreamEndpoint.getIp(), byteBuffer);
+    ReadWriteIOUtils.write(downStreamEndpoint.getPort(), byteBuffer);
+    downStreamInstanceId.serialize(byteBuffer);
+    downStreamPlanNodeId.serialize(byteBuffer);
+  }
 
   @Override
   public void send() {}
@@ -91,7 +115,8 @@ public class FragmentSinkNode extends SinkNode {
   }
 
   public String toString() {
-    return String.format("FragmentSinkNode-%s:[SendTo: (%s)]", getId(), getDownStreamAddress());
+    return String.format(
+        "FragmentSinkNode-%s:[SendTo: (%s)]", getPlanNodeId(), getDownStreamAddress());
   }
 
   public String getDownStreamAddress() {
@@ -103,21 +128,17 @@ public class FragmentSinkNode extends SinkNode {
         getDownStreamEndpoint().getIp(), getDownStreamInstanceId(), getDownStreamPlanNodeId());
   }
 
-  public ExchangeNode getDownStreamNode() {
-    return downStreamNode;
-  }
-
-  public void setDownStreamNode(ExchangeNode downStreamNode) {
-    this.downStreamNode = downStreamNode;
-  }
-
-  public void setDownStream(EndPoint endPoint, FragmentInstanceId instanceId, PlanNodeId nodeId) {
+  public void setDownStream(Endpoint endPoint, FragmentInstanceId instanceId, PlanNodeId nodeId) {
     this.downStreamEndpoint = endPoint;
     this.downStreamInstanceId = instanceId;
     this.downStreamPlanNodeId = nodeId;
   }
 
-  public EndPoint getDownStreamEndpoint() {
+  public void setDownStreamPlanNodeId(PlanNodeId downStreamPlanNodeId) {
+    this.downStreamPlanNodeId = downStreamPlanNodeId;
+  }
+
+  public Endpoint getDownStreamEndpoint() {
     return downStreamEndpoint;
   }
 
@@ -127,5 +148,29 @@ public class FragmentSinkNode extends SinkNode {
 
   public PlanNodeId getDownStreamPlanNodeId() {
     return downStreamPlanNodeId;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
+    FragmentSinkNode that = (FragmentSinkNode) o;
+    return Objects.equals(child, that.child)
+        && Objects.equals(downStreamEndpoint, that.downStreamEndpoint)
+        && Objects.equals(downStreamInstanceId, that.downStreamInstanceId)
+        && Objects.equals(downStreamPlanNodeId, that.downStreamPlanNodeId);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(
+        super.hashCode(), child, downStreamEndpoint, downStreamInstanceId, downStreamPlanNodeId);
   }
 }
