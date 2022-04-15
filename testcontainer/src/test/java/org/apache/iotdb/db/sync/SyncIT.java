@@ -106,7 +106,8 @@ public class SyncIT {
         "create timeseries root.sg2.d2.s1 with datatype=boolean, encoding=PLAIN");
   }
 
-  private void prepareIns1() throws Exception { // add one seq tsfile in sg1
+  /* add one seq tsfile in sg1 */
+  private void prepareIns1() throws Exception {
     senderStatement.execute(
         "insert into root.sg1.d1(timestamp, s1, s2, s3) values(1, 1, 16.0, 'a')");
     senderStatement.execute(
@@ -119,7 +120,8 @@ public class SyncIT {
     senderStatement.execute("flush");
   }
 
-  private void prepareIns2() throws Exception { // add one seq tsfile in sg1
+  /* add one seq tsfile in sg1 */
+  private void prepareIns2() throws Exception {
     senderStatement.execute(
         "insert into root.sg1.d1(timestamp, s1, s2, s3) values(100, 65, 16.25, 'e')");
     senderStatement.execute(
@@ -128,9 +130,8 @@ public class SyncIT {
     senderStatement.execute("flush");
   }
 
-  private void prepareIns3()
-      throws
-          Exception { // add one seq tsfile in sg1, one unseq tsfile in sg1, one seq tsfile in sg2
+  /* add one seq tsfile in sg1, one unseq tsfile in sg1, one seq tsfile in sg2 */
+  private void prepareIns3() throws Exception {
     senderStatement.execute("insert into root.sg2.d1(timestamp, s0) values(100, 100)");
     senderStatement.execute("insert into root.sg2.d1(timestamp, s0) values(65, 65)");
     senderStatement.execute("insert into root.sg2.d2(timestamp, s1) values(1, true)");
@@ -160,7 +161,6 @@ public class SyncIT {
     senderStatement.execute("drop pipe p");
   }
 
-  // check result in 1min
   private void checkResult() throws Exception {
     String[] columnNames =
         new String[] {
