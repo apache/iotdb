@@ -29,6 +29,8 @@ import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.timerangeiterator.ITimeRangeIterator;
+import org.apache.iotdb.db.utils.timerangeiterator.SingleTimeWindowIterator;
+import org.apache.iotdb.db.utils.timerangeiterator.TimeRangeIteratorFactory;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -111,10 +113,25 @@ public class SeriesAggregateScanOperator implements DataSourceOperator {
     this.timeRangeIterator = initTimeRangeIterator(groupByTimeParameter);
   }
 
-  // TODO implement this method: If groupByTimeParameter is null, TimeRangeIterator will only
-  // contain one global time range. Otherwise, it will return one pre-aggregate time range once.
+  /**
+   * If groupByTimeParameter is null, which means it's an aggregation query without down sampling.
+   * Aggregation query has only one time window and the result set of it does not contain a
+   * timestamp, so it doesn't matter what the time range returns.
+   */
   public ITimeRangeIterator initTimeRangeIterator(GroupByTimeComponent groupByTimeParameter) {
-    return null;
+    if (groupByTimeParameter == null) {
+      return new SingleTimeWindowIterator(0, Long.MAX_VALUE);
+    } else {
+      return TimeRangeIteratorFactory.getTimeRangeIterator(
+          groupByTimeParameter.getStartTime(),
+          groupByTimeParameter.getEndTime(),
+          groupByTimeParameter.getInterval(),
+          groupByTimeParameter.getSlidingStep(),
+          ascending,
+          groupByTimeParameter.isIntervalByMonth(),
+          groupByTimeParameter.isSlidingStepByMonth(),
+          groupByTimeParameter.getInterval() > groupByTimeParameter.getSlidingStep());
+    }
   }
 
   @Override
