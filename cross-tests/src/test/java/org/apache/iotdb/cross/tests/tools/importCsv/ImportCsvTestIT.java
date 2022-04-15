@@ -209,7 +209,7 @@ public class ImportCsvTestIT extends AbstractScript {
       if (statement.execute("show devices")) {
         ResultSet resultSet = statement.getResultSet();
         while (resultSet.next()) {
-          assertTrue(resultSet.getString(2) == "true");
+          assertTrue("true".equals(resultSet.getString(2)));
         }
         resultSet.close();
       }
