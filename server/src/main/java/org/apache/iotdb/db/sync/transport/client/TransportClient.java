@@ -299,7 +299,7 @@ public class TransportClient implements ITransportClient {
             try {
               status =
                   serviceClient.transportData(
-                      identityInfo, metaInfo, buffToSend, ByteBuffer.wrap(messageDigest.digest()));
+                      metaInfo, buffToSend, ByteBuffer.wrap(messageDigest.digest()));
             } catch (TException e) {
               // retry
               logger.error("TException happened! ", e);
@@ -377,9 +377,7 @@ public class TransportClient implements ITransportClient {
                 file.getAbsoluteFile(), config.getMaxNumberOfSyncFileRetry()));
       }
       try {
-        status =
-            serviceClient.checkFileDigest(
-                identityInfo, metaInfo, ByteBuffer.wrap(messageDigest.digest()));
+        status = serviceClient.checkFileDigest(metaInfo, ByteBuffer.wrap(messageDigest.digest()));
       } catch (TException e) {
         // retry
         logger.error("TException happens! ", e);
@@ -420,7 +418,7 @@ public class TransportClient implements ITransportClient {
             new MetaInfo(Type.findByValue(pipeData.getType().ordinal()), "fileName", 0);
         TransportStatus status =
             serviceClient.transportData(
-                identityInfo, metaInfo, buffToSend, ByteBuffer.wrap(messageDigest.digest()));
+                metaInfo, buffToSend, ByteBuffer.wrap(messageDigest.digest()));
 
         if (status.code == SUCCESS_CODE) {
           break;
@@ -509,7 +507,7 @@ public class TransportClient implements ITransportClient {
           heartbeatTransport.open();
         }
 
-        return heartbeatClient.heartbeat(identityInfo, syncRequest);
+        return heartbeatClient.heartbeat(syncRequest);
       } catch (TException e) {
         logger.info(
             String.format(

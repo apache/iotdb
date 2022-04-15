@@ -63,6 +63,7 @@ public class TransportServiceImpl implements TransportService.Iface {
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final String RECORD_SUFFIX = ".record";
   private static final String PATCH_SUFFIX = ".patch";
+  private ThreadLocal<IdentityInfo> identityInfoThreadLocal;
 
   private class CheckResult {
     boolean result;
@@ -128,6 +129,7 @@ public class TransportServiceImpl implements TransportService.Iface {
   @Override
   public TransportStatus handshake(IdentityInfo identityInfo) throws TException {
     logger.debug("Invoke handshake method from client ip = {}", identityInfo.address);
+    identityInfoThreadLocal.set(identityInfo);
     // check ip address
     if (!verifyIPSegment(config.getIpWhiteList(), identityInfo.address)) {
       return new TransportStatus(
@@ -143,8 +145,8 @@ public class TransportServiceImpl implements TransportService.Iface {
               identityInfo.version, config.getIoTDBVersion()));
     }
 
-    if (!new File(getFileDataDirPath(identityInfo)).exists()) {
-      new File(getFileDataDirPath(identityInfo)).mkdirs();
+    if (!new File(SyncPathUtil.getFileDataDirPath(identityInfo)).exists()) {
+      new File(SyncPathUtil.getFileDataDirPath(identityInfo)).mkdirs();
     }
     return new TransportStatus(SUCCESS_CODE, "");
   }
@@ -190,11 +192,11 @@ public class TransportServiceImpl implements TransportService.Iface {
   }
 
   @Override
-  public TransportStatus transportData(
-      IdentityInfo identityInfo, MetaInfo metaInfo, ByteBuffer buff, ByteBuffer digest) {
+  public TransportStatus transportData(MetaInfo metaInfo, ByteBuffer buff, ByteBuffer digest) {
+    IdentityInfo identityInfo = identityInfoThreadLocal.get();
     logger.debug("Invoke transportData method from client ip = {}", identityInfo.address);
 
-    String fileDir = getFileDataDirPath(identityInfo);
+    String fileDir = SyncPathUtil.getFileDataDirPath(identityInfo);
     Type type = metaInfo.type;
     String fileName = metaInfo.fileName;
     long startIndex = metaInfo.startIndex;
@@ -239,7 +241,7 @@ public class TransportServiceImpl implements TransportService.Iface {
           // Do with file
           handleTsFilePipeData((TsFilePipeData) pipeData, fileDir);
         }
-        PipeDataQueueFactory.getBufferedPipeDataQueue(getPipeLogDirPath(identityInfo))
+        PipeDataQueueFactory.getBufferedPipeDataQueue(SyncPathUtil.getPipeLogDirPath(identityInfo))
             .offer(pipeData);
       } catch (IOException | IllegalPathException e) {
         logger.error("Pipe data transport error, {}", e.getMessage());
@@ -273,11 +275,10 @@ public class TransportServiceImpl implements TransportService.Iface {
   }
 
   @Override
-  public TransportStatus checkFileDigest(
-      IdentityInfo identityInfo, MetaInfo metaInfo, ByteBuffer digest) throws TException {
+  public TransportStatus checkFileDigest(MetaInfo metaInfo, ByteBuffer digest) throws TException {
+    IdentityInfo identityInfo = identityInfoThreadLocal.get();
     logger.debug("Invoke checkFileDigest method from client ip = {}", identityInfo.address);
-
-    String fileDir = getFileDataDirPath(identityInfo);
+    String fileDir = SyncPathUtil.getFileDataDirPath(identityInfo);
     synchronized (fileDir.intern()) {
       String fileName = metaInfo.fileName;
       MessageDigest messageDigest = null;
@@ -319,8 +320,7 @@ public class TransportServiceImpl implements TransportService.Iface {
   }
 
   @Override
-  public SyncResponse heartbeat(IdentityInfo identityInfo, SyncRequest syncRequest)
-      throws TException {
+  public SyncResponse heartbeat(SyncRequest syncRequest) throws TException {
     return ReceiverService.getInstance().receiveMsg(syncRequest);
   }
 
@@ -336,8 +336,9 @@ public class TransportServiceImpl implements TransportService.Iface {
    * release resources or cleanup when a client (a sender) is disconnected (normally or abnormally).
    */
   public void handleClientExit() {
-    // TODO: Handle client exit here.
-    // do nothing now
+    // Handle client exit here.
+    identityInfoThreadLocal.remove();
+    // TODO: stop pipe
   }
 
   /**
@@ -371,15 +372,5 @@ public class TransportServiceImpl implements TransportService.Iface {
       logger.warn(
           String.format("Delete record file %s error, because %s.", recordFile.getPath(), e));
     }
-  }
-
-  private String getFileDataDirPath(IdentityInfo identityInfo) {
-    return SyncPathUtil.getReceiverFileDataDir(
-        identityInfo.getPipeName(), identityInfo.getAddress(), identityInfo.getCreateTime());
-  }
-
-  private String getPipeLogDirPath(IdentityInfo identityInfo) {
-    return SyncPathUtil.getReceiverPipeLogDir(
-        identityInfo.getPipeName(), identityInfo.getAddress(), identityInfo.getCreateTime());
   }
 }
