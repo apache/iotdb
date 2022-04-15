@@ -28,13 +28,7 @@ import org.apache.iotdb.db.sync.pipedata.PipeData;
 import org.apache.iotdb.db.sync.pipedata.TsFilePipeData;
 import org.apache.iotdb.db.sync.pipedata.queue.PipeDataQueueFactory;
 import org.apache.iotdb.db.sync.receiver.ReceiverService;
-import org.apache.iotdb.service.transport.thrift.IdentityInfo;
-import org.apache.iotdb.service.transport.thrift.MetaInfo;
-import org.apache.iotdb.service.transport.thrift.SyncRequest;
-import org.apache.iotdb.service.transport.thrift.SyncResponse;
-import org.apache.iotdb.service.transport.thrift.TransportService;
-import org.apache.iotdb.service.transport.thrift.TransportStatus;
-import org.apache.iotdb.service.transport.thrift.Type;
+import org.apache.iotdb.service.transport.thrift.*;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -64,6 +58,10 @@ public class TransportServiceImpl implements TransportService.Iface {
   private static final String RECORD_SUFFIX = ".record";
   private static final String PATCH_SUFFIX = ".patch";
   private ThreadLocal<IdentityInfo> identityInfoThreadLocal;
+
+  public TransportServiceImpl() {
+    identityInfoThreadLocal = new ThreadLocal<>();
+  }
 
   private class CheckResult {
     boolean result;
@@ -337,8 +335,18 @@ public class TransportServiceImpl implements TransportService.Iface {
    */
   public void handleClientExit() {
     // Handle client exit here.
-    identityInfoThreadLocal.remove();
-    // TODO: stop pipe
+    IdentityInfo identityInfo = identityInfoThreadLocal.get();
+    if (identityInfo != null) {
+      // stop pipe
+      identityInfoThreadLocal.remove();
+      ReceiverService.getInstance()
+          .receiveMsg(
+              new SyncRequest(
+                  RequestType.STOP,
+                  identityInfo.getPipeName(),
+                  identityInfo.getAddress(),
+                  identityInfo.getCreateTime()));
+    }
   }
 
   /**

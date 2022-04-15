@@ -96,6 +96,14 @@ public class ReceiverManager {
     return new ArrayList<>(pipeInfoMap.get(pipeName).values());
   }
 
+  public PipeInfo getPipeInfo(String pipeName, String remoteIp) {
+    if (pipeInfoMap.containsKey(pipeName) && pipeInfoMap.get(pipeName).containsKey(remoteIp)) {
+      return pipeInfoMap.get(pipeName).get(remoteIp);
+    } else {
+      return null;
+    }
+  }
+
   public List<PipeInfo> getAllPipeInfos() {
     List<PipeInfo> res = new ArrayList<>();
     for (String pipeName : pipeInfoMap.keySet()) {

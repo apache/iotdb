@@ -30,14 +30,7 @@ import org.apache.iotdb.db.sync.sender.pipe.Pipe;
 import org.apache.iotdb.db.sync.sender.service.SenderService;
 import org.apache.iotdb.db.sync.transport.conf.TransportConstant;
 import org.apache.iotdb.rpc.RpcTransportFactory;
-import org.apache.iotdb.service.transport.thrift.IdentityInfo;
-import org.apache.iotdb.service.transport.thrift.MetaInfo;
-import org.apache.iotdb.service.transport.thrift.ResponseType;
-import org.apache.iotdb.service.transport.thrift.SyncRequest;
-import org.apache.iotdb.service.transport.thrift.SyncResponse;
-import org.apache.iotdb.service.transport.thrift.TransportService;
-import org.apache.iotdb.service.transport.thrift.TransportStatus;
-import org.apache.iotdb.service.transport.thrift.Type;
+import org.apache.iotdb.service.transport.thrift.*;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -449,6 +442,14 @@ public class TransportClient implements ITransportClient {
         throw new SyncConnectionException(
             String.format("Handshake with receiver %s:%d error.", ipAddress, port));
       }
+      SenderService.getInstance()
+          .receiveMsg(
+              heartbeat(
+                  new SyncRequest(
+                      RequestType.CREATE,
+                      pipe.getName(),
+                      InetAddress.getLocalHost().getHostAddress(),
+                      pipe.getCreateTime())));
       while (!Thread.currentThread().isInterrupted()) {
         PipeData pipeData = pipe.take();
         if (!senderTransport(pipeData)) {
@@ -466,7 +467,7 @@ public class TransportClient implements ITransportClient {
       }
     } catch (InterruptedException e) {
       logger.info("Interrupted by pipe, exit transport.");
-    } catch (SyncConnectionException e) {
+    } catch (SyncConnectionException | UnknownHostException e) {
       logger.error(
           String.format("Connect to receiver %s:%d error, because %s.", ipAddress, port, e));
       SenderService.getInstance()

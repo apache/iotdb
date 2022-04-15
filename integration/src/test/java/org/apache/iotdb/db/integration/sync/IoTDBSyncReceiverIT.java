@@ -100,7 +100,7 @@ public class IoTDBSyncReceiverIT {
     EnvironmentUtils.cleanEnv();
     EnvironmentUtils.envSetUp();
     try {
-      ReceiverService.getInstance().startPipeServer();
+      ReceiverService.getInstance().startPipeServer(true);
       new Socket("localhost", 6670).close();
     } catch (Exception e) {
       Assert.fail("Failed to start pipe server because " + e.getMessage());
