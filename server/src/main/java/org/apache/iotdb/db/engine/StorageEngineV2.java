@@ -107,7 +107,7 @@ public class StorageEngineV2 implements IService {
   private final ConcurrentHashMap<ConsensusGroupId, DataRegion> dataRegionMap =
       new ConcurrentHashMap<>();
 
-  /** number of ready virtual storage group processors */
+  /** number of ready data region */
   private AtomicInteger readyDataRegionNum;
 
   private AtomicBoolean isAllSgReady = new AtomicBoolean(false);
