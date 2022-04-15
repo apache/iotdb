@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
+import org.apache.iotdb.db.engine.trigger.executor.TriggerExecutor;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheEntry;
@@ -86,6 +87,10 @@ public interface IMNode extends Serializable {
   IEntityMNode getAsEntityMNode();
 
   IMeasurementMNode getAsMeasurementMNode();
+
+  TriggerExecutor getTriggerExecutor();
+
+  void setTriggerExecutor(TriggerExecutor triggerExecutor);
 
   void serializeTo(MLogWriter logWriter) throws IOException;
 
