@@ -61,10 +61,10 @@ jobs:
 
       - name: Build Docker Image
         run: |
-          docker build . -f docker/src/main/Dockerfile-single -t "apache/iotdb:maven-development"
+          docker build . -f docker/src/main/Dockerfile-single-influxdb -t "apache/iotdb:influxdb-protocol-on"
           docker images
 
       - name: IT Test
         shell: bash
         run: |
-          cd influxdb-protocol && mvn -B clean compile post-integration-test -Dtest.port.closed=true
+          cd influxdb-protocol && mvn -B clean compile post-integration-test -Dtest.port.closed=true -Dinfluxdb.test.skip=false

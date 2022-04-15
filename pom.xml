@@ -308,21 +308,6 @@
                 <version>${jetty.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.dropwizard.metrics</groupId>
-                <artifactId>metrics-core</artifactId>
-                <version>${metrics.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.dropwizard.metrics</groupId>
-                <artifactId>metrics-jvm</artifactId>
-                <version>${metrics.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.dropwizard.metrics</groupId>
-                <artifactId>metrics-json</artifactId>
-                <version>${metrics.version}</version>
-            </dependency>
-            <dependency>
                 <groupId>me.tongfei</groupId>
                 <artifactId>progressbar</artifactId>
                 <version>0.9.2</version>

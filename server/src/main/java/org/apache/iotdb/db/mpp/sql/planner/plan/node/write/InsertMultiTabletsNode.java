@@ -162,4 +162,19 @@ public class InsertMultiTabletsNode extends InsertNode {
 
   @Override
   public void serialize(ByteBuffer byteBuffer) {}
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    if (!super.equals(o)) return false;
+    InsertMultiTabletsNode that = (InsertMultiTabletsNode) o;
+    return Objects.equals(parentInsertTabletNodeIndexList, that.parentInsertTabletNodeIndexList)
+        && Objects.equals(insertTabletNodeList, that.insertTabletNodeList);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), parentInsertTabletNodeIndexList, insertTabletNodeList);
+  }
 }
