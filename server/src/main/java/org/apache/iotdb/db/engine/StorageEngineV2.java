@@ -121,6 +121,7 @@ public class StorageEngineV2 implements IService {
   // add customized listeners here for flush and close events
   private List<CloseFileListener> customCloseFileListeners = new ArrayList<>();
   private List<FlushListener> customFlushListeners = new ArrayList<>();
+  private int recoverDataRegionNum = 0;
 
   private StorageEngineV2() {}
 
@@ -245,8 +246,7 @@ public class StorageEngineV2 implements IService {
     readyDataRegionNum = new AtomicInteger(0);
     // init wal recover manager
     WALRecoverManager.getInstance()
-        .setAllDataRegionScannedLatch(
-            new CountDownLatch(localDataRegionInfo.size() * config.getDataRegionNum()));
+        .setAllDataRegionScannedLatch(new CountDownLatch(recoverDataRegionNum));
     for (Map.Entry<String, List<String>> entry : localDataRegionInfo.entrySet()) {
       String sgName = entry.getKey();
       for (String dataRegionId : entry.getValue()) {
@@ -260,7 +260,9 @@ public class StorageEngineV2 implements IService {
               }
               dataRegionMap.put(new DataRegionId(Integer.parseInt(dataRegionId)), dataRegion);
               logger.info(
-                  "Data regions have been recovered {}", readyDataRegionNum.incrementAndGet());
+                  "Data regions have been recovered {}/{}",
+                  readyDataRegionNum.incrementAndGet(),
+                  recoverDataRegionNum);
               return null;
             };
         futures.add(pool.submit(recoverDataRegionTask));
@@ -283,6 +285,7 @@ public class StorageEngineV2 implements IService {
           continue;
         }
         dataRegionIdList.add(dataRegionDir.getName());
+        recoverDataRegionNum++;
       }
       localDataRegionInfo.put(sgName, dataRegionIdList);
     }
