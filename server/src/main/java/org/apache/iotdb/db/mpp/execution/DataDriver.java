@@ -90,6 +90,7 @@ public class DataDriver implements Driver {
       boolean isFinished =
           closed || (driverBlockedFuture.get().isDone() && root != null && root.isFinished());
       if (isFinished) {
+        close();
         driverContext.finish();
       }
       return isFinished;

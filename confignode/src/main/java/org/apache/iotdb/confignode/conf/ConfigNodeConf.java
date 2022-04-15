@@ -88,7 +88,7 @@ public class ConfigNodeConf {
       ConfigNodeConstant.DATA_DIR + File.separator + ConfigNodeConstant.CONSENSUS_FOLDER;
 
   /** Default TTL for storage groups that are not set TTL by statements, in ms. */
-  private long defaultTTL = 36000000;
+  private long defaultTTL = Long.MAX_VALUE;
 
   /** The number of replicas of each region */
   private int regionReplicaCount = 3;

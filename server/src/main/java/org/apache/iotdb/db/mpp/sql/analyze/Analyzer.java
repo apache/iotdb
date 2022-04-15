@@ -71,9 +71,9 @@ public class Analyzer {
   private final MPPQueryContext context;
 
   // TODO need to use factory to decide standalone or cluster
-  private final IPartitionFetcher partitionFetcher = new FakePartitionFetcherImpl();
+  private final IPartitionFetcher partitionFetcher = ClusterPartitionFetcher.getInstance();
   // TODO need to use factory to decide standalone or cluster
-  private final ISchemaFetcher schemaFetcher = new FakeSchemaFetcherImpl();
+  private final ISchemaFetcher schemaFetcher = ClusterSchemaFetcher.getInstance();
 
   public Analyzer(MPPQueryContext context) {
     this.context = context;
@@ -177,14 +177,52 @@ public class Analyzer {
     @Override
     public Analysis visitInsert(InsertStatement insertStatement, MPPQueryContext context) {
       // TODO: do analyze for insert statement
-      Analysis analysis = new Analysis();
-      analysis.setStatement(insertStatement);
-      return analysis;
+      context.setQueryType(QueryType.WRITE);
+
+      long[] timeArray = insertStatement.getTimes();
+      PartialPath devicePath = insertStatement.getDevice();
+      String[] measurements = insertStatement.getMeasurementList();
+      if (timeArray.length == 1) {
+        // construct insert row statement
+        InsertRowStatement insertRowStatement = new InsertRowStatement();
+        insertRowStatement.setDevicePath(devicePath);
+        insertRowStatement.setTime(timeArray[0]);
+        insertRowStatement.setMeasurements(measurements);
+        insertRowStatement.setDataTypes(
+            new TSDataType[insertStatement.getMeasurementList().length]);
+        Object[] values = new Object[insertStatement.getMeasurementList().length];
+        System.arraycopy(insertStatement.getValuesList().get(0), 0, values, 0, values.length);
+        insertRowStatement.setValues(values);
+        insertRowStatement.setNeedInferType(true);
+        insertRowStatement.setAligned(insertStatement.isAligned());
+        return insertRowStatement.accept(this, context);
+      } else {
+        // construct insert rows statement
+        // construct insert statement
+        InsertRowsStatement insertRowsStatement = new InsertRowsStatement();
+        List<InsertRowStatement> insertRowStatementList = new ArrayList<>();
+        for (int i = 0; i < timeArray.length; i++) {
+          InsertRowStatement statement = new InsertRowStatement();
+          statement.setDevicePath(devicePath);
+          statement.setMeasurements(measurements);
+          statement.setTime(timeArray[i]);
+          statement.setDataTypes(new TSDataType[insertStatement.getMeasurementList().length]);
+          Object[] values = new Object[insertStatement.getMeasurementList().length];
+          System.arraycopy(insertStatement.getValuesList().get(i), 0, values, 0, values.length);
+          statement.setValues(values);
+          statement.setAligned(insertStatement.isAligned());
+          statement.setNeedInferType(true);
+          insertRowStatementList.add(statement);
+        }
+        insertRowsStatement.setInsertRowStatementList(insertRowStatementList);
+        return insertRowsStatement.accept(this, context);
+      }
     }
 
     @Override
     public Analysis visitCreateTimeseries(
         CreateTimeSeriesStatement createTimeSeriesStatement, MPPQueryContext context) {
+      context.setQueryType(QueryType.WRITE);
       if (createTimeSeriesStatement.getTags() != null
           && !createTimeSeriesStatement.getTags().isEmpty()
           && createTimeSeriesStatement.getAttributes() != null
@@ -201,7 +239,7 @@ public class Analyzer {
       analysis.setStatement(createTimeSeriesStatement);
 
       SchemaPartition schemaPartitionInfo =
-          partitionFetcher.getSchemaPartition(
+          partitionFetcher.getOrCreateSchemaPartition(
               new PathPatternTree(createTimeSeriesStatement.getPath()));
       analysis.setSchemaPartitionInfo(schemaPartitionInfo);
       return analysis;
@@ -211,6 +249,7 @@ public class Analyzer {
     public Analysis visitCreateAlignedTimeseries(
         CreateAlignedTimeSeriesStatement createAlignedTimeSeriesStatement,
         MPPQueryContext context) {
+      context.setQueryType(QueryType.WRITE);
       List<String> measurements = createAlignedTimeSeriesStatement.getMeasurements();
       Set<String> measurementsSet = new HashSet<>(measurements);
       if (measurementsSet.size() < measurements.size()) {
@@ -234,6 +273,7 @@ public class Analyzer {
     @Override
     public Analysis visitAlterTimeseries(
         AlterTimeSeriesStatement alterTimeSeriesStatement, MPPQueryContext context) {
+      context.setQueryType(QueryType.WRITE);
       Analysis analysis = new Analysis();
       analysis.setStatement(alterTimeSeriesStatement);
 
@@ -248,6 +288,7 @@ public class Analyzer {
     @Override
     public Analysis visitInsertTablet(
         InsertTabletStatement insertTabletStatement, MPPQueryContext context) {
+      context.setQueryType(QueryType.WRITE);
       SchemaTree schemaTree =
           schemaFetcher.fetchSchemaWithAutoCreate(
               insertTabletStatement.getDevicePath(),
@@ -320,6 +361,7 @@ public class Analyzer {
 
     @Override
     public Analysis visitCreateUser(AuthorStatement authorStatement, MPPQueryContext context) {
+      context.setQueryType(QueryType.WRITE);
       Analysis analysis = new Analysis();
       analysis.setStatement(authorStatement);
       return analysis;
@@ -327,6 +369,7 @@ public class Analyzer {
 
     @Override
     public Analysis visitCreateRole(AuthorStatement authorStatement, MPPQueryContext context) {
+      context.setQueryType(QueryType.WRITE);
       Analysis analysis = new Analysis();
       analysis.setStatement(authorStatement);
       return analysis;
@@ -334,6 +377,7 @@ public class Analyzer {
 
     @Override
     public Analysis visitAlterUser(AuthorStatement authorStatement, MPPQueryContext context) {
+      context.setQueryType(QueryType.WRITE);
       Analysis analysis = new Analysis();
       analysis.setStatement(authorStatement);
       return analysis;
@@ -341,6 +385,7 @@ public class Analyzer {
 
     @Override
     public Analysis visitGrantUser(AuthorStatement authorStatement, MPPQueryContext context) {
+      context.setQueryType(QueryType.WRITE);
       Analysis analysis = new Analysis();
       analysis.setStatement(authorStatement);
       return analysis;
@@ -348,6 +393,7 @@ public class Analyzer {
 
     @Override
     public Analysis visitGrantRole(AuthorStatement authorStatement, MPPQueryContext context) {
+      context.setQueryType(QueryType.WRITE);
       Analysis analysis = new Analysis();
       analysis.setStatement(authorStatement);
       return analysis;
@@ -355,6 +401,7 @@ public class Analyzer {
 
     @Override
     public Analysis visitGrantRoleToUser(AuthorStatement authorStatement, MPPQueryContext context) {
+      context.setQueryType(QueryType.WRITE);
       Analysis analysis = new Analysis();
       analysis.setStatement(authorStatement);
       return analysis;
@@ -362,6 +409,7 @@ public class Analyzer {
 
     @Override
     public Analysis visitRevokeUser(AuthorStatement authorStatement, MPPQueryContext context) {
+      context.setQueryType(QueryType.WRITE);
       Analysis analysis = new Analysis();
       analysis.setStatement(authorStatement);
       return analysis;
@@ -369,6 +417,7 @@ public class Analyzer {
 
     @Override
     public Analysis visitRevokeRole(AuthorStatement authorStatement, MPPQueryContext context) {
+      context.setQueryType(QueryType.WRITE);
       Analysis analysis = new Analysis();
       analysis.setStatement(authorStatement);
       return analysis;
@@ -377,6 +426,7 @@ public class Analyzer {
     @Override
     public Analysis visitRevokeRoleFromUser(
         AuthorStatement authorStatement, MPPQueryContext context) {
+      context.setQueryType(QueryType.WRITE);
       Analysis analysis = new Analysis();
       analysis.setStatement(authorStatement);
       return analysis;
@@ -384,6 +434,7 @@ public class Analyzer {
 
     @Override
     public Analysis visitDropUser(AuthorStatement authorStatement, MPPQueryContext context) {
+      context.setQueryType(QueryType.WRITE);
       Analysis analysis = new Analysis();
       analysis.setStatement(authorStatement);
       return analysis;
@@ -391,6 +442,7 @@ public class Analyzer {
 
     @Override
     public Analysis visitDropRole(AuthorStatement authorStatement, MPPQueryContext context) {
+      context.setQueryType(QueryType.WRITE);
       Analysis analysis = new Analysis();
       analysis.setStatement(authorStatement);
       return analysis;
@@ -460,6 +512,7 @@ public class Analyzer {
 
     @Override
     public Analysis visitInsertRow(InsertRowStatement insertRowStatement, MPPQueryContext context) {
+      context.setQueryType(QueryType.WRITE);
       // TODO remove duplicate
       SchemaTree schemaTree =
           schemaFetcher.fetchSchemaWithAutoCreate(
@@ -485,7 +538,8 @@ public class Analyzer {
       sgNameToQueryParamsMap.put(
           schemaTree.getBelongedStorageGroup(insertRowStatement.getDevicePath()),
           Collections.singletonList(dataPartitionQueryParam));
-      DataPartition dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
+      DataPartition dataPartition =
+          partitionFetcher.getOrCreateDataPartition(sgNameToQueryParamsMap);
 
       Analysis analysis = new Analysis();
       analysis.setSchemaTree(schemaTree);
@@ -498,6 +552,7 @@ public class Analyzer {
     @Override
     public Analysis visitInsertRows(
         InsertRowsStatement insertRowsStatement, MPPQueryContext context) {
+      context.setQueryType(QueryType.WRITE);
       // TODO remove duplicate
       SchemaTree schemaTree =
           schemaFetcher.fetchSchemaListWithAutoCreate(
@@ -542,6 +597,7 @@ public class Analyzer {
     @Override
     public Analysis visitInsertMultiTablets(
         InsertMultiTabletsStatement insertMultiTabletsStatement, MPPQueryContext context) {
+      context.setQueryType(QueryType.WRITE);
       // TODO remove duplicate
       SchemaTree schemaTree =
           schemaFetcher.fetchSchemaListWithAutoCreate(
@@ -580,6 +636,7 @@ public class Analyzer {
     @Override
     public Analysis visitInsertRowsOfOneDevice(
         InsertRowsOfOneDeviceStatement insertRowsOfOneDeviceStatement, MPPQueryContext context) {
+      context.setQueryType(QueryType.WRITE);
       // TODO remove duplicate
       SchemaTree schemaTree =
           schemaFetcher.fetchSchemaWithAutoCreate(
