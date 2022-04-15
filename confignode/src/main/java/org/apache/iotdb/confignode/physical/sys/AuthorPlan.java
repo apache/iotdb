@@ -228,53 +228,6 @@ public class AuthorPlan extends PhysicalPlan {
     return type;
   }
 
-  /**
-   * A mapping between AuthorType and PhysicalPlanType
-   *
-   * @param i
-   * @return
-   */
-  public static PhysicalPlanType convert(int i) {
-    switch (i) {
-      case 0:
-        return PhysicalPlanType.CREATE_USER;
-      case 1:
-        return PhysicalPlanType.CREATE_ROLE;
-      case 2:
-        return PhysicalPlanType.DROP_USER;
-      case 3:
-        return PhysicalPlanType.DROP_ROLE;
-      case 4:
-        return PhysicalPlanType.GRANT_ROLE;
-      case 5:
-        return PhysicalPlanType.GRANT_USER;
-      case 6:
-        return PhysicalPlanType.GRANT_ROLE_TO_USER;
-      case 7:
-        return PhysicalPlanType.REVOKE_USER;
-      case 8:
-        return PhysicalPlanType.REVOKE_ROLE;
-      case 9:
-        return PhysicalPlanType.REVOKE_ROLE_FROM_USER;
-      case 10:
-        return PhysicalPlanType.UPDATE_USER;
-      case 11:
-        return PhysicalPlanType.LIST_USER;
-      case 12:
-        return PhysicalPlanType.LIST_ROLE;
-      case 13:
-        return PhysicalPlanType.LIST_USER_PRIVILEGE;
-      case 14:
-        return PhysicalPlanType.LIST_ROLE_PRIVILEGE;
-      case 15:
-        return PhysicalPlanType.LIST_USER_ROLES;
-      case 16:
-        return PhysicalPlanType.LIST_ROLE_USERS;
-      default:
-        return null;
-    }
-  }
-
   @Override
   public boolean equals(Object o) {
     if (this == o) {
