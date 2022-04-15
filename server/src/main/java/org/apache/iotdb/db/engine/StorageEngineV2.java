@@ -50,6 +50,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.utils.ThreadUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
+import org.apache.iotdb.db.wal.exception.WALException;
 import org.apache.iotdb.db.wal.recover.WALRecoverManager;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -214,7 +215,7 @@ public class StorageEngineV2 implements IService {
     // wait until wal is recovered
     try {
       WALRecoverManager.getInstance().recover();
-    } catch (org.apache.iotdb.db.wal.exception.WALException e) {
+    } catch (WALException e) {
       logger.error("Fail to recover wal.", e);
     }
 
@@ -253,14 +254,11 @@ public class StorageEngineV2 implements IService {
             () -> {
               DataRegion dataRegion = null;
               try {
-                dataRegion =
-                    StorageEngineV2.getInstance()
-                        .buildNewDataRegion(sgName, dataRegionId, Long.MAX_VALUE);
+                dataRegion = buildNewDataRegion(sgName, dataRegionId, Long.MAX_VALUE);
               } catch (DataRegionException e) {
                 logger.error("Failed to recover data region {}[{}]", sgName, dataRegionId, e);
               }
               dataRegionMap.put(new DataRegionId(Integer.parseInt(dataRegionId)), dataRegion);
-              dataRegion.setReady(true);
               logger.info(
                   "Data regions have been recovered {}", readyDataRegionNum.incrementAndGet());
               return null;
