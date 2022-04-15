@@ -18,38 +18,57 @@
  */
 package org.apache.iotdb.confignode.cli;
 
-import org.apache.iotdb.common.rpc.thrift.EndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
-import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
-import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.rpc.RpcTransportFactory;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.transport.TTransport;
+import org.apache.thrift.transport.TTransportException;
 
-import java.util.concurrent.TimeUnit;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Random;
 
 public class TemporaryClientDemo {
 
   private static final int timeOutInMS = 10000;
 
-  public void setStorageGroupAndCreateRegionsDemo() throws TException, InterruptedException {
-    TTransport transport = RpcTransportFactory.INSTANCE.getTransport("0.0.0.0", 22277, timeOutInMS);
-    transport.open();
-    ConfigIService.Client client = new ConfigIService.Client(new TBinaryProtocol(transport));
+  private final Random random = new Random();
+  private Map<Integer, ConfigIService.Client> clients;
+  private ConfigIService.Client defaultClient;
 
-    TDataNodeRegisterReq registerReq = new TDataNodeRegisterReq(new EndPoint("0.0.0.0", 6667));
-    TDataNodeRegisterResp registerResp = client.registerDataNode(registerReq);
-    System.out.println(registerResp);
-    TimeUnit.MILLISECONDS.sleep(200);
+  public void setStorageGroupsDemo() throws TException {
+    createClients();
+    defaultClient = clients.get(22277);
 
     for (int i = 0; i < 5; i++) {
       TSetStorageGroupReq setReq = new TSetStorageGroupReq("root.sg" + i);
-      TSStatus status = client.setStorageGroup(setReq);
-      System.out.println(status.toString());
+      while (true) {
+        TSStatus status = defaultClient.setStorageGroup(setReq);
+        System.out.println(status.toString());
+        if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          break;
+        } else if (status.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
+          int port = random.nextInt(3) * 2 + 22277;
+          if (status.getRedirectNode() != null) {
+            port = status.getRedirectNode().getPort();
+          }
+          defaultClient = clients.get(port);
+        }
+      }
+    }
+  }
+
+  private void createClients() throws TTransportException {
+    clients = new HashMap<>();
+    for (int i = 22277; i <= 22281; i += 2) {
+      TTransport transport = RpcTransportFactory.INSTANCE.getTransport("0.0.0.0", i, timeOutInMS);
+      transport.open();
+      clients.put(i, new ConfigIService.Client(new TBinaryProtocol(transport)));
     }
   }
 }

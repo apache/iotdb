@@ -25,9 +25,6 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.FLOAT;
-import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.INT32;
-
 public class Int32ArrayColumnEncoder implements ColumnEncoder {
 
   @Override
@@ -43,7 +40,7 @@ public class Int32ArrayColumnEncoder implements ColumnEncoder {
     boolean[] nullIndicators = ColumnEncoder.deserializeNullIndicators(input, positionCount);
 
     TSDataType dataType = columnBuilder.getDataType();
-    if (INT32.equals(dataType)) {
+    if (TSDataType.INT32.equals(dataType)) {
       for (int i = 0; i < positionCount; i++) {
         if (nullIndicators == null || !nullIndicators[i]) {
           columnBuilder.writeInt(input.getInt());
@@ -51,7 +48,7 @@ public class Int32ArrayColumnEncoder implements ColumnEncoder {
           columnBuilder.appendNull();
         }
       }
-    } else if (FLOAT.equals(dataType)) {
+    } else if (TSDataType.FLOAT.equals(dataType)) {
       for (int i = 0; i < positionCount; i++) {
         if (nullIndicators == null || !nullIndicators[i]) {
           columnBuilder.writeFloat(Float.intBitsToFloat(input.getInt()));
@@ -71,13 +68,13 @@ public class Int32ArrayColumnEncoder implements ColumnEncoder {
 
     TSDataType dataType = column.getDataType();
     int positionCount = column.getPositionCount();
-    if (INT32.equals(dataType)) {
+    if (TSDataType.INT32.equals(dataType)) {
       for (int i = 0; i < positionCount; i++) {
         if (!column.isNull(i)) {
           output.writeInt(column.getInt(i));
         }
       }
-    } else if (FLOAT.equals(dataType)) {
+    } else if (TSDataType.FLOAT.equals(dataType)) {
       for (int i = 0; i < positionCount; i++) {
         if (!column.isNull(i)) {
           output.writeInt(Float.floatToIntBits(column.getFloat(i)));
