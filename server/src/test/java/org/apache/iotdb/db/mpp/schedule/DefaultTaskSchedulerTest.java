@@ -22,7 +22,7 @@ import org.apache.iotdb.db.mpp.buffer.IDataBlockManager;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
-import org.apache.iotdb.db.mpp.execution.ExecFragmentInstance;
+import org.apache.iotdb.db.mpp.execution.Driver;
 import org.apache.iotdb.db.mpp.schedule.task.FragmentInstanceTask;
 import org.apache.iotdb.db.mpp.schedule.task.FragmentInstanceTaskStatus;
 import org.apache.iotdb.db.utils.stats.CpuTimer;
@@ -41,7 +41,7 @@ import java.util.concurrent.TimeUnit;
 
 public class DefaultTaskSchedulerTest {
 
-  private final FragmentInstanceManager manager = FragmentInstanceManager.getInstance();
+  private final FragmentInstanceScheduler manager = FragmentInstanceScheduler.getInstance();
 
   @After
   public void tearDown() {
@@ -53,11 +53,11 @@ public class DefaultTaskSchedulerTest {
     IDataBlockManager mockDataBlockManager = Mockito.mock(IDataBlockManager.class);
     manager.setBlockManager(mockDataBlockManager);
     ITaskScheduler defaultScheduler = manager.getScheduler();
-    ExecFragmentInstance mockExecFragmentInstance = Mockito.mock(ExecFragmentInstance.class);
+    Driver mockDriver = Mockito.mock(Driver.class);
     QueryId queryId = new QueryId("test");
     FragmentInstanceId instanceId =
         new FragmentInstanceId(new PlanFragmentId(queryId, 0), "inst-0");
-    Mockito.when(mockExecFragmentInstance.getInfo()).thenReturn(instanceId);
+    Mockito.when(mockDriver.getInfo()).thenReturn(instanceId);
     FragmentInstanceTaskStatus[] invalidStates =
         new FragmentInstanceTaskStatus[] {
           FragmentInstanceTaskStatus.FINISHED,
@@ -66,8 +66,7 @@ public class DefaultTaskSchedulerTest {
           FragmentInstanceTaskStatus.RUNNING,
         };
     for (FragmentInstanceTaskStatus status : invalidStates) {
-      FragmentInstanceTask testTask =
-          new FragmentInstanceTask(mockExecFragmentInstance, 100L, status);
+      FragmentInstanceTask testTask = new FragmentInstanceTask(mockDriver, 100L, status);
       manager.getBlockedTasks().add(testTask);
       Set<FragmentInstanceTask> taskSet = new HashSet<>();
       taskSet.add(testTask);
@@ -83,8 +82,7 @@ public class DefaultTaskSchedulerTest {
       clear();
     }
     FragmentInstanceTask testTask =
-        new FragmentInstanceTask(
-            mockExecFragmentInstance, 100L, FragmentInstanceTaskStatus.BLOCKED);
+        new FragmentInstanceTask(mockDriver, 100L, FragmentInstanceTaskStatus.BLOCKED);
     manager.getBlockedTasks().add(testTask);
     Set<FragmentInstanceTask> taskSet = new HashSet<>();
     taskSet.add(testTask);
@@ -105,12 +103,12 @@ public class DefaultTaskSchedulerTest {
     IDataBlockManager mockDataBlockManager = Mockito.mock(IDataBlockManager.class);
     manager.setBlockManager(mockDataBlockManager);
     ITaskScheduler defaultScheduler = manager.getScheduler();
-    ExecFragmentInstance mockExecFragmentInstance = Mockito.mock(ExecFragmentInstance.class);
+    Driver mockDriver = Mockito.mock(Driver.class);
 
     QueryId queryId = new QueryId("test");
     FragmentInstanceId instanceId =
         new FragmentInstanceId(new PlanFragmentId(queryId, 0), "inst-0");
-    Mockito.when(mockExecFragmentInstance.getInfo()).thenReturn(instanceId);
+    Mockito.when(mockDriver.getInfo()).thenReturn(instanceId);
     FragmentInstanceTaskStatus[] invalidStates =
         new FragmentInstanceTaskStatus[] {
           FragmentInstanceTaskStatus.FINISHED,
@@ -119,8 +117,7 @@ public class DefaultTaskSchedulerTest {
           FragmentInstanceTaskStatus.RUNNING,
         };
     for (FragmentInstanceTaskStatus status : invalidStates) {
-      FragmentInstanceTask testTask =
-          new FragmentInstanceTask(mockExecFragmentInstance, 100L, status);
+      FragmentInstanceTask testTask = new FragmentInstanceTask(mockDriver, 100L, status);
       Set<FragmentInstanceTask> taskSet = new HashSet<>();
       taskSet.add(testTask);
       manager.getQueryMap().put(queryId, taskSet);
@@ -134,7 +131,7 @@ public class DefaultTaskSchedulerTest {
       clear();
     }
     FragmentInstanceTask testTask =
-        new FragmentInstanceTask(mockExecFragmentInstance, 100L, FragmentInstanceTaskStatus.READY);
+        new FragmentInstanceTask(mockDriver, 100L, FragmentInstanceTaskStatus.READY);
     Set<FragmentInstanceTask> taskSet = new HashSet<>();
     taskSet.add(testTask);
     manager.getQueryMap().put(queryId, taskSet);
@@ -153,11 +150,11 @@ public class DefaultTaskSchedulerTest {
     IDataBlockManager mockDataBlockManager = Mockito.mock(IDataBlockManager.class);
     manager.setBlockManager(mockDataBlockManager);
     ITaskScheduler defaultScheduler = manager.getScheduler();
-    ExecFragmentInstance mockExecFragmentInstance = Mockito.mock(ExecFragmentInstance.class);
+    Driver mockDriver = Mockito.mock(Driver.class);
     QueryId queryId = new QueryId("test");
     FragmentInstanceId instanceId =
         new FragmentInstanceId(new PlanFragmentId(queryId, 0), "inst-0");
-    Mockito.when(mockExecFragmentInstance.getInfo()).thenReturn(instanceId);
+    Mockito.when(mockDriver.getInfo()).thenReturn(instanceId);
     FragmentInstanceTaskStatus[] invalidStates =
         new FragmentInstanceTaskStatus[] {
           FragmentInstanceTaskStatus.FINISHED,
@@ -166,8 +163,7 @@ public class DefaultTaskSchedulerTest {
           FragmentInstanceTaskStatus.READY,
         };
     for (FragmentInstanceTaskStatus status : invalidStates) {
-      FragmentInstanceTask testTask =
-          new FragmentInstanceTask(mockExecFragmentInstance, 100L, status);
+      FragmentInstanceTask testTask = new FragmentInstanceTask(mockDriver, 100L, status);
       Set<FragmentInstanceTask> taskSet = new HashSet<>();
       taskSet.add(testTask);
       manager.getQueryMap().put(queryId, taskSet);
@@ -182,8 +178,7 @@ public class DefaultTaskSchedulerTest {
       clear();
     }
     FragmentInstanceTask testTask =
-        new FragmentInstanceTask(
-            mockExecFragmentInstance, 100L, FragmentInstanceTaskStatus.RUNNING);
+        new FragmentInstanceTask(mockDriver, 100L, FragmentInstanceTaskStatus.RUNNING);
     Set<FragmentInstanceTask> taskSet = new HashSet<>();
     taskSet.add(testTask);
     manager.getQueryMap().put(queryId, taskSet);
@@ -207,11 +202,11 @@ public class DefaultTaskSchedulerTest {
     IDataBlockManager mockDataBlockManager = Mockito.mock(IDataBlockManager.class);
     manager.setBlockManager(mockDataBlockManager);
     ITaskScheduler defaultScheduler = manager.getScheduler();
-    ExecFragmentInstance mockExecFragmentInstance = Mockito.mock(ExecFragmentInstance.class);
+    Driver mockDriver = Mockito.mock(Driver.class);
     QueryId queryId = new QueryId("test");
     FragmentInstanceId instanceId =
         new FragmentInstanceId(new PlanFragmentId(queryId, 0), "inst-0");
-    Mockito.when(mockExecFragmentInstance.getInfo()).thenReturn(instanceId);
+    Mockito.when(mockDriver.getInfo()).thenReturn(instanceId);
     FragmentInstanceTaskStatus[] invalidStates =
         new FragmentInstanceTaskStatus[] {
           FragmentInstanceTaskStatus.FINISHED,
@@ -220,8 +215,7 @@ public class DefaultTaskSchedulerTest {
           FragmentInstanceTaskStatus.READY,
         };
     for (FragmentInstanceTaskStatus status : invalidStates) {
-      FragmentInstanceTask testTask =
-          new FragmentInstanceTask(mockExecFragmentInstance, 100L, status);
+      FragmentInstanceTask testTask = new FragmentInstanceTask(mockDriver, 100L, status);
       Set<FragmentInstanceTask> taskSet = new HashSet<>();
       taskSet.add(testTask);
       manager.getQueryMap().put(queryId, taskSet);
@@ -236,8 +230,7 @@ public class DefaultTaskSchedulerTest {
       clear();
     }
     FragmentInstanceTask testTask =
-        new FragmentInstanceTask(
-            mockExecFragmentInstance, 100L, FragmentInstanceTaskStatus.RUNNING);
+        new FragmentInstanceTask(mockDriver, 100L, FragmentInstanceTaskStatus.RUNNING);
     Set<FragmentInstanceTask> taskSet = new HashSet<>();
     taskSet.add(testTask);
     manager.getQueryMap().put(queryId, taskSet);
@@ -261,11 +254,11 @@ public class DefaultTaskSchedulerTest {
     IDataBlockManager mockDataBlockManager = Mockito.mock(IDataBlockManager.class);
     manager.setBlockManager(mockDataBlockManager);
     ITaskScheduler defaultScheduler = manager.getScheduler();
-    ExecFragmentInstance mockExecFragmentInstance = Mockito.mock(ExecFragmentInstance.class);
+    Driver mockDriver = Mockito.mock(Driver.class);
     QueryId queryId = new QueryId("test");
     FragmentInstanceId instanceId =
         new FragmentInstanceId(new PlanFragmentId(queryId, 0), "inst-0");
-    Mockito.when(mockExecFragmentInstance.getInfo()).thenReturn(instanceId);
+    Mockito.when(mockDriver.getInfo()).thenReturn(instanceId);
     FragmentInstanceTaskStatus[] invalidStates =
         new FragmentInstanceTaskStatus[] {
           FragmentInstanceTaskStatus.FINISHED,
@@ -274,8 +267,7 @@ public class DefaultTaskSchedulerTest {
           FragmentInstanceTaskStatus.READY,
         };
     for (FragmentInstanceTaskStatus status : invalidStates) {
-      FragmentInstanceTask testTask =
-          new FragmentInstanceTask(mockExecFragmentInstance, 100L, status);
+      FragmentInstanceTask testTask = new FragmentInstanceTask(mockDriver, 100L, status);
       Set<FragmentInstanceTask> taskSet = new HashSet<>();
       taskSet.add(testTask);
       manager.getQueryMap().put(queryId, taskSet);
@@ -290,8 +282,7 @@ public class DefaultTaskSchedulerTest {
       clear();
     }
     FragmentInstanceTask testTask =
-        new FragmentInstanceTask(
-            mockExecFragmentInstance, 100L, FragmentInstanceTaskStatus.RUNNING);
+        new FragmentInstanceTask(mockDriver, 100L, FragmentInstanceTaskStatus.RUNNING);
     Set<FragmentInstanceTask> taskSet = new HashSet<>();
     taskSet.add(testTask);
     manager.getQueryMap().put(queryId, taskSet);
@@ -319,22 +310,20 @@ public class DefaultTaskSchedulerTest {
     QueryId queryId = new QueryId("test");
     FragmentInstanceId instanceId1 =
         new FragmentInstanceId(new PlanFragmentId(queryId, 0), "inst-0");
-    ExecFragmentInstance mockExecFragmentInstance1 = Mockito.mock(ExecFragmentInstance.class);
-    Mockito.when(mockExecFragmentInstance1.getInfo()).thenReturn(instanceId1);
-    ExecFragmentInstance mockExecFragmentInstance2 = Mockito.mock(ExecFragmentInstance.class);
+    Driver mockDriver1 = Mockito.mock(Driver.class);
+    Mockito.when(mockDriver1.getInfo()).thenReturn(instanceId1);
+    Driver mockDriver2 = Mockito.mock(Driver.class);
     FragmentInstanceId instanceId2 =
         new FragmentInstanceId(new PlanFragmentId(queryId, 0), "inst-1");
-    Mockito.when(mockExecFragmentInstance2.getInfo()).thenReturn(instanceId2);
+    Mockito.when(mockDriver2.getInfo()).thenReturn(instanceId2);
     FragmentInstanceTaskStatus[] invalidStates =
         new FragmentInstanceTaskStatus[] {
           FragmentInstanceTaskStatus.FINISHED, FragmentInstanceTaskStatus.ABORTED,
         };
     for (FragmentInstanceTaskStatus status : invalidStates) {
-      FragmentInstanceTask testTask1 =
-          new FragmentInstanceTask(mockExecFragmentInstance1, 100L, status);
+      FragmentInstanceTask testTask1 = new FragmentInstanceTask(mockDriver1, 100L, status);
       FragmentInstanceTask testTask2 =
-          new FragmentInstanceTask(
-              mockExecFragmentInstance2, 100L, FragmentInstanceTaskStatus.BLOCKED);
+          new FragmentInstanceTask(mockDriver2, 100L, FragmentInstanceTaskStatus.BLOCKED);
       Set<FragmentInstanceTask> taskSet = new HashSet<>();
       taskSet.add(testTask1);
       taskSet.add(testTask2);
@@ -364,12 +353,10 @@ public class DefaultTaskSchedulerTest {
           FragmentInstanceTaskStatus.BLOCKED,
         };
     for (FragmentInstanceTaskStatus status : validStates) {
-      FragmentInstanceTask testTask1 =
-          new FragmentInstanceTask(mockExecFragmentInstance1, 100L, status);
+      FragmentInstanceTask testTask1 = new FragmentInstanceTask(mockDriver1, 100L, status);
 
       FragmentInstanceTask testTask2 =
-          new FragmentInstanceTask(
-              mockExecFragmentInstance2, 100L, FragmentInstanceTaskStatus.BLOCKED);
+          new FragmentInstanceTask(mockDriver2, 100L, FragmentInstanceTaskStatus.BLOCKED);
       Set<FragmentInstanceTask> taskSet = new HashSet<>();
       taskSet.add(testTask1);
       taskSet.add(testTask2);

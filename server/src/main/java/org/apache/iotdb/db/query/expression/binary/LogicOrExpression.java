@@ -20,9 +20,13 @@
 package org.apache.iotdb.db.query.expression.binary;
 
 import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.query.expression.ExpressionType;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.db.query.udf.core.transformer.LogicBinaryTransformer;
 import org.apache.iotdb.db.query.udf.core.transformer.LogicOrTransformer;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import java.nio.ByteBuffer;
 
 public class LogicOrExpression extends BinaryExpression {
   public LogicOrExpression(Expression leftExpression, Expression rightExpression) {
@@ -38,5 +42,20 @@ public class LogicOrExpression extends BinaryExpression {
   @Override
   protected String operator() {
     return "|";
+  }
+
+  public static LogicOrExpression deserialize(ByteBuffer buffer) {
+    boolean isConstantOperandCache = ReadWriteIOUtils.readBool(buffer);
+    LogicOrExpression logicOrExpression =
+        new LogicOrExpression(
+            ExpressionType.deserialize(buffer), ExpressionType.deserialize(buffer));
+    logicOrExpression.isConstantOperandCache = isConstantOperandCache;
+    return logicOrExpression;
+  }
+
+  @Override
+  public void serialize(ByteBuffer byteBuffer) {
+    ExpressionType.Logic_Or.serialize(byteBuffer);
+    super.serialize(byteBuffer);
   }
 }

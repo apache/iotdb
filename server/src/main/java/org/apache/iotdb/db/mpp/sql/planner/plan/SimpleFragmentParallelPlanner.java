@@ -18,13 +18,17 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan;
 
-import org.apache.iotdb.commons.partition.DataRegionReplicaSet;
+import org.apache.iotdb.commons.partition.RegionReplicaSet;
+import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
+import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.sink.FragmentSinkNode;
+import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -38,6 +42,8 @@ import java.util.Map;
 public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
 
   private SubPlan subPlan;
+  private Analysis analysis;
+  private MPPQueryContext queryContext;
 
   // Record all the FragmentInstances belonged to same PlanFragment
   Map<PlanFragmentId, FragmentInstance> instanceMap;
@@ -45,8 +51,11 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
   Map<PlanNodeId, PlanFragmentId> planNodeMap;
   List<FragmentInstance> fragmentInstanceList;
 
-  public SimpleFragmentParallelPlanner(SubPlan subPlan) {
+  public SimpleFragmentParallelPlanner(
+      SubPlan subPlan, Analysis analysis, MPPQueryContext context) {
     this.subPlan = subPlan;
+    this.analysis = analysis;
+    this.queryContext = context;
     this.instanceMap = new HashMap<>();
     this.planNodeMap = new HashMap<>();
     this.fragmentInstanceList = new ArrayList<>();
@@ -70,23 +79,27 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
   private void produceFragmentInstance(PlanFragment fragment) {
     // If one PlanFragment will produce several FragmentInstance, the instanceIdx will be increased
     // one by one
-    int instanceIdx = 0;
     PlanNode rootCopy = PlanNodeUtil.deepCopy(fragment.getRoot());
-    FragmentInstance fragmentInstance = new FragmentInstance(fragment, instanceIdx);
+    Filter timeFilter =
+        analysis.getQueryFilter() == null
+            ? null
+            : ((GlobalTimeExpression) analysis.getQueryFilter()).getFilter();
+    FragmentInstance fragmentInstance =
+        new FragmentInstance(
+            new PlanFragment(fragment.getId(), rootCopy),
+            fragment.getId().genFragmentInstanceId(),
+            timeFilter,
+            queryContext.getQueryType());
 
-    // Get the target DataRegion for origin PlanFragment, then its instance will be distributed one
+    // Get the target region for origin PlanFragment, then its instance will be distributed one
     // of them.
-    DataRegionReplicaSet dataRegion = fragment.getTargetDataRegion();
+    RegionReplicaSet regionReplicaSet = fragment.getTargetRegion();
 
     // Set DataRegion and target host for the instance
     // We need to store all the replica host in case of the scenario that the instance need to be
     // redirected
     // to another host when scheduling
-    fragmentInstance.setDataRegionId(dataRegion);
-
-    // TODO: (xingtanzjr) We select the first Endpoint as the default target host for current
-    // instance
-    fragmentInstance.setHostEndpoint(dataRegion.getEndPointList().get(0));
+    fragmentInstance.setDataRegionAndHost(regionReplicaSet);
     instanceMap.putIfAbsent(fragment.getId(), fragmentInstance);
     fragmentInstanceList.add(fragmentInstance);
   }
@@ -97,7 +110,7 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
       if (rootNode instanceof FragmentSinkNode) {
         // Set target Endpoint for FragmentSinkNode
         FragmentSinkNode sinkNode = (FragmentSinkNode) rootNode;
-        PlanNodeId downStreamNodeId = sinkNode.getDownStreamNode().getId();
+        PlanNodeId downStreamNodeId = sinkNode.getDownStreamPlanNodeId();
         FragmentInstance downStreamInstance = findDownStreamInstance(downStreamNodeId);
         sinkNode.setDownStream(
             downStreamInstance.getHostEndpoint(), downStreamInstance.getId(), downStreamNodeId);
@@ -106,7 +119,7 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
         PlanNode downStreamExchangeNode =
             downStreamInstance.getFragment().getPlanNodeById(downStreamNodeId);
         ((ExchangeNode) downStreamExchangeNode)
-            .setUpstream(instance.getHostEndpoint(), instance.getId(), sinkNode.getId());
+            .setUpstream(instance.getHostEndpoint(), instance.getId(), sinkNode.getPlanNodeId());
       }
     }
   }
@@ -116,7 +129,7 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
   }
 
   private void recordPlanNodeRelation(PlanNode root, PlanFragmentId planFragmentId) {
-    planNodeMap.put(root.getId(), planFragmentId);
+    planNodeMap.put(root.getPlanNodeId(), planFragmentId);
     for (PlanNode child : root.getChildren()) {
       recordPlanNodeRelation(child, planFragmentId);
     }

@@ -82,7 +82,7 @@ public class IoTDBFilePathUtilsIT {
     }
     Assert.assertNotNull(sgPath);
     List<TsFileResource> tsFileResources =
-        StorageEngine.getInstance().getProcessor(sgPath).getSequenceFileTreeSet();
+        StorageEngine.getInstance().getProcessor(sgPath).getSequenceFileList();
     Assert.assertNotNull(tsFileResources);
 
     for (TsFileResource tsFileResource : tsFileResources) {

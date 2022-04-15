@@ -18,6 +18,12 @@
  */
 package org.apache.iotdb.confignode.physical;
 
+import org.apache.iotdb.confignode.physical.crud.CreateDataPartitionPlan;
+import org.apache.iotdb.confignode.physical.crud.CreateRegionsPlan;
+import org.apache.iotdb.confignode.physical.crud.CreateSchemaPartitionPlan;
+import org.apache.iotdb.confignode.physical.crud.GetOrCreateDataPartitionPlan;
+import org.apache.iotdb.confignode.physical.crud.GetOrCreateSchemaPartitionPlan;
+import org.apache.iotdb.confignode.physical.sys.AuthorPlan;
 import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
 import org.apache.iotdb.confignode.physical.sys.QueryStorageGroupSchemaPlan;
 import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
@@ -66,17 +72,19 @@ public abstract class PhysicalPlan implements IConsensusRequest {
       buffer.reset();
       throw e;
     }
-    buffer.flip();
   }
 
   protected abstract void serializeImpl(ByteBuffer buffer);
 
-  protected abstract void deserializeImpl(ByteBuffer buffer);
+  protected abstract void deserializeImpl(ByteBuffer buffer) throws IOException;
 
   public static class Factory {
 
     public static PhysicalPlan create(ByteBuffer buffer) throws IOException {
       int typeNum = buffer.getInt();
+      if (typeNum >= PhysicalPlanType.values().length) {
+        throw new IOException("unrecognized log type " + typeNum);
+      }
       PhysicalPlanType type = PhysicalPlanType.values()[typeNum];
       PhysicalPlan plan;
       switch (type) {
@@ -91,6 +99,46 @@ public abstract class PhysicalPlan implements IConsensusRequest {
           break;
         case QueryStorageGroupSchema:
           plan = new QueryStorageGroupSchemaPlan();
+          break;
+        case CreateRegions:
+          plan = new CreateRegionsPlan();
+          break;
+        case GetSchemaPartition:
+          plan = new GetOrCreateSchemaPartitionPlan(PhysicalPlanType.GetSchemaPartition);
+          break;
+        case CreateSchemaPartition:
+          plan = new CreateSchemaPartitionPlan();
+          break;
+        case GetOrCreateSchemaPartition:
+          plan = new GetOrCreateSchemaPartitionPlan(PhysicalPlanType.GetOrCreateSchemaPartition);
+          break;
+        case GetDataPartition:
+          plan = new GetOrCreateDataPartitionPlan(PhysicalPlanType.GetDataPartition);
+          break;
+        case CreateDataPartition:
+          plan = new CreateDataPartitionPlan();
+          break;
+        case GetOrCreateDataPartition:
+          plan = new GetOrCreateDataPartitionPlan(PhysicalPlanType.GetOrCreateDataPartition);
+          break;
+        case LIST_USER:
+        case LIST_ROLE:
+        case LIST_USER_PRIVILEGE:
+        case LIST_ROLE_PRIVILEGE:
+        case LIST_USER_ROLES:
+        case LIST_ROLE_USERS:
+        case CREATE_USER:
+        case CREATE_ROLE:
+        case DROP_USER:
+        case DROP_ROLE:
+        case GRANT_ROLE:
+        case GRANT_USER:
+        case GRANT_ROLE_TO_USER:
+        case REVOKE_USER:
+        case REVOKE_ROLE:
+        case REVOKE_ROLE_FROM_USER:
+        case UPDATE_USER:
+          plan = new AuthorPlan(type);
           break;
         default:
           throw new IOException("unknown PhysicalPlan type: " + typeNum);

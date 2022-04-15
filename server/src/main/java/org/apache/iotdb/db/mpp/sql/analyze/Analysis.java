@@ -19,17 +19,17 @@
 
 package org.apache.iotdb.db.mpp.sql.analyze;
 
-import org.apache.iotdb.commons.partition.DataPartitionInfo;
-import org.apache.iotdb.commons.partition.DataRegionReplicaSet;
-import org.apache.iotdb.commons.partition.SchemaPartitionInfo;
+import org.apache.iotdb.commons.partition.DataPartition;
+import org.apache.iotdb.commons.partition.RegionReplicaSet;
+import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
+import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 /** Analysis used for planning a query. TODO: This class may need to store more info for a query. */
 public class Analysis {
@@ -45,17 +45,22 @@ public class Analysis {
   // indicate whether this statement is write or read
   private QueryType queryType;
 
-  private DataPartitionInfo dataPartitionInfo;
+  private DataPartition dataPartition;
 
-  private SchemaPartitionInfo schemaPartitionInfo;
+  private SchemaPartition schemaPartition;
 
   private SchemaTree schemaTree;
 
-  private Map<String, Set<PartialPath>> deviceIdToPathsMap;
+  private IExpression queryFilter;
 
-  public List<DataRegionReplicaSet> getPartitionInfo(PartialPath seriesPath, Filter timefilter) {
+  // header of result dataset
+  private DatasetHeader respDatasetHeader;
+
+  public Analysis() {}
+
+  public List<RegionReplicaSet> getPartitionInfo(PartialPath seriesPath, Filter timefilter) {
     // TODO: (xingtanzjr) implement the calculation of timePartitionIdList
-    return dataPartitionInfo.getDataRegionReplicaSet(seriesPath.getDevice(), null);
+    return dataPartition.getDataRegionReplicaSet(seriesPath.getDevice(), null);
   }
 
   public Statement getStatement() {
@@ -66,20 +71,20 @@ public class Analysis {
     this.statement = statement;
   }
 
-  public DataPartitionInfo getDataPartitionInfo() {
-    return dataPartitionInfo;
+  public DataPartition getDataPartitionInfo() {
+    return dataPartition;
   }
 
-  public void setDataPartitionInfo(DataPartitionInfo dataPartitionInfo) {
-    this.dataPartitionInfo = dataPartitionInfo;
+  public void setDataPartitionInfo(DataPartition dataPartition) {
+    this.dataPartition = dataPartition;
   }
 
-  public SchemaPartitionInfo getSchemaPartitionInfo() {
-    return schemaPartitionInfo;
+  public SchemaPartition getSchemaPartitionInfo() {
+    return schemaPartition;
   }
 
-  public void setSchemaPartitionInfo(SchemaPartitionInfo schemaPartitionInfo) {
-    this.schemaPartitionInfo = schemaPartitionInfo;
+  public void setSchemaPartitionInfo(SchemaPartition schemaPartition) {
+    this.schemaPartition = schemaPartition;
   }
 
   public SchemaTree getSchemaTree() {
@@ -90,11 +95,19 @@ public class Analysis {
     this.schemaTree = schemaTree;
   }
 
-  public Map<String, Set<PartialPath>> getDeviceIdToPathsMap() {
-    return deviceIdToPathsMap;
+  public IExpression getQueryFilter() {
+    return queryFilter;
   }
 
-  public void setDeviceIdToPathsMap(Map<String, Set<PartialPath>> deviceIdToPathsMap) {
-    this.deviceIdToPathsMap = deviceIdToPathsMap;
+  public void setQueryFilter(IExpression expression) {
+    this.queryFilter = expression;
+  }
+
+  public DatasetHeader getRespDatasetHeader() {
+    return respDatasetHeader;
+  }
+
+  public void setRespDatasetHeader(DatasetHeader respDatasetHeader) {
+    this.respDatasetHeader = respDatasetHeader;
   }
 }

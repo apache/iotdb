@@ -275,7 +275,7 @@ public class IoTDBDDLVersionAdaptionIT {
           "COUNT NODES root.ln.wf01 level=1",
           "COUNT NODES root.ln.wf01 level=2",
           "COUNT NODES root.ln.wf01 level=3",
-          "COUNT NODES root.ln.wf01 level=4"
+          "COUNT NODES root.ln.wf01.wt01 level=4"
         };
     Set<String>[] standards =
         new Set[] {
@@ -285,7 +285,7 @@ public class IoTDBDDLVersionAdaptionIT {
           new HashSet<>(Collections.singletonList("1,")),
           new HashSet<>(Collections.singletonList("1,")),
           new HashSet<>(Collections.singletonList("2,")),
-          new HashSet<>(Collections.singletonList("4,"))
+          new HashSet<>(Collections.singletonList("2,"))
         };
     executeAndCheckResult(sqls, standards);
   }

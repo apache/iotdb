@@ -115,8 +115,6 @@ public class SerializeUtilTest {
     tabletPlan.setTimes(times);
     tabletPlan.setColumns(columns);
     tabletPlan.setRowCount(times.length);
-    tabletPlan.setStart(0);
-    tabletPlan.setEnd(4);
 
     Log log = new PhysicalPlanLog(tabletPlan);
     log.setCurrLogTerm(1);

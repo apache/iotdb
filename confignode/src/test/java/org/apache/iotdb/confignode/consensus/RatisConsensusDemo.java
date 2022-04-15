@@ -18,16 +18,16 @@
  */
 package org.apache.iotdb.confignode.consensus;
 
+import org.apache.iotdb.common.rpc.thrift.EndPoint;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
-import org.apache.iotdb.confignode.rpc.thrift.DataNodeMessage;
-import org.apache.iotdb.confignode.rpc.thrift.DataNodeRegisterReq;
-import org.apache.iotdb.confignode.rpc.thrift.DataNodeRegisterResp;
-import org.apache.iotdb.confignode.rpc.thrift.SetStorageGroupReq;
-import org.apache.iotdb.confignode.rpc.thrift.StorageGroupMessage;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeMessageResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
+import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.EndPoint;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -52,16 +52,27 @@ public class RatisConsensusDemo {
    * 0.0.0.0), config_node_rpc_port(22277, 22279, 22281), config_node_internal_port(22278, 22280,
    * 22282), consensus_type(all ratis) and config_node_group_address_list(all 0.0.0.0:22278,
    * 0.0.0.0:22280, 0.0.0.0:22282) in each iotdb-confignode.properties file are set 4. Start these
-   * ConfigNode by yourself 5. Add @Test and run
+   * ConfigNode by yourself 5. Add @Test 6. run ratisConsensusRegisterDemo 7. run
+   * ratisConsensusQueryDemo
    */
-  public void ratisConsensusDemo() throws TException, InterruptedException {
+  public void ratisConsensusSetStorageGroupsDemo() throws TException, InterruptedException {
     createClients();
-
-    registerDataNodes();
-    queryDataNodes();
-
     setStorageGroups();
+  }
+
+  public void ratisConsensusQueryDataNodesDemo() throws TException, InterruptedException {
+    createClients();
+    queryDataNodes();
+  }
+
+  public void ratisConsensusQueryStorageGroupsDemo() throws TException, InterruptedException {
+    createClients();
     queryStorageGroups();
+  }
+
+  public void ratisConsensusLeaderRedirectDemo() throws TException {
+    createClients();
+    registerDataNodeOnLeader();
   }
 
   private void createClients() throws TTransportException {
@@ -76,14 +87,18 @@ public class RatisConsensusDemo {
     }
   }
 
-  private void registerDataNodes() throws TException {
+  private void registerDataNodes() throws TException, InterruptedException {
     // DataNodes can connect to any ConfigNode and send write requests
-    for (int i = 0; i < 3; i++) {
-      DataNodeRegisterReq req = new DataNodeRegisterReq(new EndPoint("0.0.0.0", 6667 + i));
-      DataNodeRegisterResp resp = clients[i].registerDataNode(req);
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), resp.registerResult.getCode());
+    for (int i = 0; i < 10; i++) {
+      EndPoint endPoint = new EndPoint("0.0.0.0", 6667 + i);
+      TDataNodeRegisterReq req = new TDataNodeRegisterReq(endPoint);
+      TDataNodeRegisterResp resp = clients[0].registerDataNode(req);
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), resp.getStatus().getCode());
       Assert.assertEquals(i, resp.getDataNodeID());
+      System.out.printf(
+          "\nRegister DataNode successful. DataNodeID: %d, %s\n", resp.getDataNodeID(), endPoint);
+
+      TimeUnit.SECONDS.sleep(1);
     }
   }
 
@@ -93,22 +108,19 @@ public class RatisConsensusDemo {
 
     // DataNodes can connect to any ConfigNode and send read requests
     for (int i = 0; i < 3; i++) {
-      Map<Integer, DataNodeMessage> msgMap = clients[i].getDataNodesMessage(-1);
-      Assert.assertEquals(3, msgMap.size());
-      for (int j = 0; j < 3; j++) {
-        Assert.assertNotNull(msgMap.get(j));
-        Assert.assertEquals(j, msgMap.get(j).getDataNodeID());
-        Assert.assertEquals(localhost, msgMap.get(j).getEndPoint().getIp());
-        Assert.assertEquals(6667 + j, msgMap.get(j).getEndPoint().getPort());
-      }
+      TDataNodeMessageResp msgMap = clients[i].getDataNodesMessage(-1);
+      System.out.printf(
+          "\nQuery DataNode message from ConfigNode 0.0.0.0:%d. Result: %s\n",
+          22277 + i * 2, msgMap);
     }
   }
 
-  private void setStorageGroups() throws TException {
+  private void setStorageGroups() throws TException, InterruptedException {
     for (int i = 0; i < 10; i++) {
-      SetStorageGroupReq req = new SetStorageGroupReq("root.sg" + i);
-      TSStatus status = clients[0].setStorageGroup(req);
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      TSetStorageGroupReq req = new TSetStorageGroupReq("root.sg" + i);
+      clients[0].setStorageGroup(req);
+      System.out.printf("\nSet StorageGroup successful. StorageGroup: %s\n", "root.sg" + i);
+      TimeUnit.SECONDS.sleep(1);
     }
   }
 
@@ -116,13 +128,24 @@ public class RatisConsensusDemo {
     // sleep 1s to make sure all ConfigNode in ConfigNodeGroup hold the same PartitionTable
     TimeUnit.SECONDS.sleep(1);
 
-    for (int i = 0; i < 2; i++) {
-      Map<String, StorageGroupMessage> msgMap = clients[i].getStorageGroupsMessage();
-      Assert.assertEquals(10, msgMap.size());
-      for (int j = 0; j < 10; j++) {
-        Assert.assertNotNull(msgMap.get("root.sg" + j));
-        Assert.assertEquals("root.sg" + j, msgMap.get("root.sg" + j).getStorageGroup());
+    for (int i = 0; i < 3; i++) {
+      TStorageGroupSchemaResp msgMap = clients[i].getStorageGroupsSchema();
+      System.out.printf(
+          "\nQuery StorageGroup message from ConfigNode 0.0.0.0:%d. Result: {\n", 22277 + i * 2);
+      for (Map.Entry<String, TStorageGroupSchema> entry :
+          msgMap.getStorageGroupSchemaMap().entrySet()) {
+        System.out.printf("  Key(%s)=%s\n", entry.getKey(), entry.getValue().toString());
       }
+      System.out.println("}");
+    }
+  }
+
+  private void registerDataNodeOnLeader() throws TException {
+    for (int i = 0; i < 3; i++) {
+      EndPoint endPoint = new EndPoint("0.0.0.0", 6667);
+      TDataNodeRegisterReq req = new TDataNodeRegisterReq(endPoint);
+      TDataNodeRegisterResp resp = clients[i].registerDataNode(req);
+      System.out.println(resp);
     }
   }
 }

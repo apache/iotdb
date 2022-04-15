@@ -22,7 +22,9 @@ import org.apache.iotdb.confignode.partition.StorageGroupSchema;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
 import org.apache.iotdb.confignode.physical.PhysicalPlanType;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class SetStorageGroupPlan extends PhysicalPlan {
 
@@ -42,6 +44,10 @@ public class SetStorageGroupPlan extends PhysicalPlan {
     return schema;
   }
 
+  public void setSchema(StorageGroupSchema schema) {
+    this.schema = schema;
+  }
+
   @Override
   protected void serializeImpl(ByteBuffer buffer) {
     buffer.putInt(PhysicalPlanType.SetStorageGroup.ordinal());
@@ -49,7 +55,20 @@ public class SetStorageGroupPlan extends PhysicalPlan {
   }
 
   @Override
-  protected void deserializeImpl(ByteBuffer buffer) {
+  protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     schema.deserialize(buffer);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    SetStorageGroupPlan that = (SetStorageGroupPlan) o;
+    return schema.equals(that.schema);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(schema);
   }
 }

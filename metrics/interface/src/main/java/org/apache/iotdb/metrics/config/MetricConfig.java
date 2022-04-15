@@ -59,6 +59,8 @@ public class MetricConfig {
     private String username = "root";
     /** The password of iotdb */
     private String password = "root";
+    /** The max number of connection */
+    private Integer maxConnectionNumber = 3;
     /** The monitor database of iotdb */
     private String database = "_metric";
     /** The period of data pushed by the reporter to the remote monitoring system. */
@@ -94,6 +96,14 @@ public class MetricConfig {
 
     public void setPassword(String password) {
       this.password = password;
+    }
+
+    public Integer getMaxConnectionNumber() {
+      return maxConnectionNumber;
+    }
+
+    public void setMaxConnectionNumber(Integer maxConnectionNumber) {
+      this.maxConnectionNumber = maxConnectionNumber;
     }
 
     public String getDatabase() {

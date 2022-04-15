@@ -16,154 +16,269 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.manager;
 
-import org.apache.iotdb.commons.hash.DeviceGroupHashExecutor;
-import org.apache.iotdb.confignode.conf.ConfigNodeConf;
-import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.consensus.statemachine.PartitionRegionStateMachine;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.partition.SeriesPartitionSlot;
+import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationDataSet;
+import org.apache.iotdb.confignode.consensus.response.DataNodesInfoDataSet;
+import org.apache.iotdb.confignode.consensus.response.DataPartitionDataSet;
+import org.apache.iotdb.confignode.consensus.response.SchemaPartitionDataSet;
+import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaDataSet;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
-import org.apache.iotdb.consensus.IConsensus;
-import org.apache.iotdb.consensus.common.ConsensusGroupId;
-import org.apache.iotdb.consensus.common.Endpoint;
-import org.apache.iotdb.consensus.common.GroupType;
-import org.apache.iotdb.consensus.common.Peer;
-import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
-import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
-import org.apache.iotdb.consensus.ratis.RatisConsensus;
-import org.apache.iotdb.consensus.standalone.StandAloneConsensus;
+import org.apache.iotdb.confignode.physical.PhysicalPlanType;
+import org.apache.iotdb.confignode.physical.crud.GetOrCreateDataPartitionPlan;
+import org.apache.iotdb.confignode.physical.crud.GetOrCreateSchemaPartitionPlan;
+import org.apache.iotdb.confignode.physical.sys.AuthorPlan;
+import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
+import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
+import org.apache.iotdb.confignode.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.consensus.common.DataSet;
+import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.io.File;
 import java.io.IOException;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
-/**
- * ConfigManager maintains consistency between PartitionTables in the ConfigNodeGroup. Expose the
- * query interface for the PartitionTable
- */
-public class ConfigManager {
+/** Entry of all management, AssignPartitionManager,AssignRegionManager. */
+public class ConfigManager implements Manager {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(ConfigManager.class);
-  private static final ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();
+  private static final TSStatus ERROR_TSSTATUS =
+      new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
 
-  private IConsensus consensusImpl;
-  private ConsensusGroupId consensusGroupId;
+  /** manage consensus, write or read consensus */
+  private final ConsensusManager consensusManager;
 
-  private DeviceGroupHashExecutor hashExecutor;
+  /** manage data node */
+  private final DataNodeManager dataNodeManager;
+
+  /** manage assign data partition and schema partition */
+  private final PartitionManager partitionManager;
+
+  /** manager assign schema region and data region */
+  private final RegionManager regionManager;
+
+  private final PermissionManager permissionManager;
 
   public ConfigManager() throws IOException {
-    setHashExecutor();
-    setConsensusLayer();
+    this.dataNodeManager = new DataNodeManager(this);
+    this.partitionManager = new PartitionManager(this);
+    this.regionManager = new RegionManager(this);
+    this.consensusManager = new ConsensusManager();
+    this.permissionManager = new PermissionManager(this);
   }
 
-  /** Build DeviceGroupHashExecutor */
-  private void setHashExecutor() {
-    try {
-      Class<?> executor = Class.forName(conf.getDeviceGroupHashExecutorClass());
-      Constructor<?> executorConstructor = executor.getConstructor(int.class);
-      hashExecutor =
-          (DeviceGroupHashExecutor) executorConstructor.newInstance(conf.getDeviceGroupCount());
-    } catch (ClassNotFoundException
-        | NoSuchMethodException
-        | InstantiationException
-        | IllegalAccessException
-        | InvocationTargetException e) {
-      LOGGER.error(
-          "Couldn't Constructor DeviceGroupHashExecutor class: {}",
-          conf.getDeviceGroupHashExecutorClass(),
-          e);
-      hashExecutor = null;
+  public void close() throws IOException {
+    consensusManager.close();
+  }
+
+  @Override
+  public boolean isStopped() {
+    return false;
+  }
+
+  @Override
+  public DataSet registerDataNode(PhysicalPlan physicalPlan) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return dataNodeManager.registerDataNode((RegisterDataNodePlan) physicalPlan);
+    } else {
+      DataNodeConfigurationDataSet dataSet = new DataNodeConfigurationDataSet();
+      dataSet.setStatus(status);
+      return dataSet;
     }
   }
 
-  public int getDeviceGroupID(String device) {
-    return hashExecutor.getDeviceGroupID(device);
+  @Override
+  public DataSet getDataNodeInfo(PhysicalPlan physicalPlan) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return dataNodeManager.getDataNodeInfo((QueryDataNodeInfoPlan) physicalPlan);
+    } else {
+      DataNodesInfoDataSet dataSet = new DataNodesInfoDataSet();
+      dataSet.setStatus(status);
+      return dataSet;
+    }
   }
 
-  /** Build ConfigNodeGroup ConsensusLayer */
-  private void setConsensusLayer() throws IOException {
-    // There is only one ConfigNodeGroup
-    consensusGroupId = new ConsensusGroupId(GroupType.PartitionRegion, 0);
+  @Override
+  public DataSet getStorageGroupSchema() {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return regionManager.getStorageGroupSchema();
+    } else {
+      StorageGroupSchemaDataSet dataSet = new StorageGroupSchemaDataSet();
+      dataSet.setStatus(status);
+      return dataSet;
+    }
+  }
 
-    // If consensusDir does not exist, create consensusDir
-    File consensusDir = new File(conf.getConsensusDir());
-    if (!consensusDir.exists()) {
-      if (consensusDir.mkdirs()) {
-        LOGGER.info("Make consensus dirs: {}", consensusDir);
-      } else {
-        throw new IOException(
-            String.format(
-                "Start ConfigNode failed, because couldn't make system dirs: %s.",
-                consensusDir.getAbsolutePath()));
+  @Override
+  public TSStatus setStorageGroup(PhysicalPlan physicalPlan) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return regionManager.setStorageGroup((SetStorageGroupPlan) physicalPlan);
+    } else {
+      return status;
+    }
+  }
+
+  @Override
+  public DataSet getSchemaPartition(PathPatternTree patternTree) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      List<String> devicePaths = patternTree.findAllDevicePaths();
+      List<String> storageGroups = getRegionManager().getStorageGroupNames();
+
+      GetOrCreateSchemaPartitionPlan getSchemaPartitionPlan =
+          new GetOrCreateSchemaPartitionPlan(PhysicalPlanType.GetSchemaPartition);
+      Map<String, List<SeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
+
+      boolean getAll = false;
+      Set<String> getAllSet = new HashSet<>();
+      for (String devicePath : devicePaths) {
+        boolean matchStorageGroup = false;
+        for (String storageGroup : storageGroups) {
+          if (devicePath.contains(storageGroup)) {
+            matchStorageGroup = true;
+            if (devicePath.contains("*")) {
+              // Get all SchemaPartitions of this StorageGroup if the devicePath contains "*"
+              getAllSet.add(storageGroup);
+            } else {
+              // Get the specific SchemaPartition
+              partitionSlotsMap
+                  .computeIfAbsent(storageGroup, key -> new ArrayList<>())
+                  .add(getPartitionManager().getSeriesPartitionSlot(devicePath));
+            }
+            break;
+          }
+        }
+        if (!matchStorageGroup && devicePath.contains("**")) {
+          // Get all SchemaPartitions if there exists one devicePath that contains "**"
+          getAll = true;
+        }
       }
+
+      if (getAll) {
+        partitionSlotsMap = new HashMap<>();
+      } else {
+        for (String storageGroup : getAllSet) {
+          if (partitionSlotsMap.containsKey(storageGroup)) {
+            partitionSlotsMap.replace(storageGroup, new ArrayList<>());
+          } else {
+            partitionSlotsMap.put(storageGroup, new ArrayList<>());
+          }
+        }
+      }
+
+      getSchemaPartitionPlan.setPartitionSlotsMap(partitionSlotsMap);
+      return partitionManager.getSchemaPartition(getSchemaPartitionPlan);
+    } else {
+      SchemaPartitionDataSet dataSet = new SchemaPartitionDataSet();
+      dataSet.setStatus(status);
+      return dataSet;
     }
+  }
 
-    // Implement specific consensus
-    switch (conf.getConsensusType()) {
-      case STANDALONE:
-        constructStandAloneConsensus();
-        break;
-      case RATIS:
-        constructRatisConsensus();
-        break;
-      default:
-        throw new IllegalArgumentException(
-            "Start ConfigNode failed, unrecognized ConsensusType: "
-                + conf.getConsensusType().getTypeName());
+  @Override
+  public DataSet getOrCreateSchemaPartition(PathPatternTree patternTree) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      List<String> devicePaths = patternTree.findAllDevicePaths();
+      List<String> storageGroups = getRegionManager().getStorageGroupNames();
+
+      GetOrCreateSchemaPartitionPlan getOrCreateSchemaPartitionPlan =
+          new GetOrCreateSchemaPartitionPlan(PhysicalPlanType.GetOrCreateSchemaPartition);
+      Map<String, List<SeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
+
+      for (String devicePath : devicePaths) {
+        if (!devicePath.contains("*")) {
+          // Only check devicePaths that without "*"
+          for (String storageGroup : storageGroups) {
+            if (devicePath.contains(storageGroup)) {
+              partitionSlotsMap
+                  .computeIfAbsent(storageGroup, key -> new ArrayList<>())
+                  .add(getPartitionManager().getSeriesPartitionSlot(devicePath));
+              break;
+            }
+          }
+        }
+      }
+
+      getOrCreateSchemaPartitionPlan.setPartitionSlotsMap(partitionSlotsMap);
+      return partitionManager.getOrCreateSchemaPartition(getOrCreateSchemaPartitionPlan);
+    } else {
+      SchemaPartitionDataSet dataSet = new SchemaPartitionDataSet();
+      dataSet.setStatus(status);
+      return dataSet;
     }
   }
 
-  private void constructStandAloneConsensus() throws IOException {
-    // Standalone consensus
-    consensusImpl = new StandAloneConsensus(id -> new PartitionRegionStateMachine());
-    consensusImpl.start();
-
-    // Standalone ConsensusGroup
-    consensusImpl.addConsensusGroup(
-        consensusGroupId,
-        Collections.singletonList(
-            new Peer(
-                consensusGroupId, new Endpoint(conf.getRpcAddress(), conf.getInternalPort()))));
-  }
-
-  private void constructRatisConsensus() throws IOException {
-    // Ratis consensus local implement
-    consensusImpl =
-        RatisConsensus.newBuilder()
-            .setEndpoint(new Endpoint(conf.getRpcAddress(), conf.getInternalPort()))
-            .setStateMachineRegistry(id -> new PartitionRegionStateMachine())
-            .setStorageDir(new File(conf.getConsensusDir()))
-            .build();
-    consensusImpl.start();
-
-    // Build ratis group from user properties
-    LOGGER.info(
-        "Set ConfigNode consensus group {}...",
-        Arrays.toString(conf.getConfigNodeGroupAddressList()));
-    List<Peer> peerList = new ArrayList<>();
-    for (Endpoint endpoint : conf.getConfigNodeGroupAddressList()) {
-      peerList.add(new Peer(consensusGroupId, endpoint));
+  @Override
+  public DataSet getDataPartition(PhysicalPlan physicalPlan) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return partitionManager.getDataPartition((GetOrCreateDataPartitionPlan) physicalPlan);
+    } else {
+      DataPartitionDataSet dataSet = new DataPartitionDataSet();
+      dataSet.setStatus(status);
+      return dataSet;
     }
-    consensusImpl.addConsensusGroup(consensusGroupId, peerList);
   }
 
-  /** Transmit PhysicalPlan to confignode.consensus.statemachine */
-  public ConsensusWriteResponse write(PhysicalPlan plan) {
-    return consensusImpl.write(consensusGroupId, plan);
+  @Override
+  public DataSet getOrCreateDataPartition(PhysicalPlan physicalPlan) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return partitionManager.getOrCreateDataPartition((GetOrCreateDataPartitionPlan) physicalPlan);
+    } else {
+      DataPartitionDataSet dataSet = new DataPartitionDataSet();
+      dataSet.setStatus(status);
+      return dataSet;
+    }
   }
 
-  /** Transmit PhysicalPlan to confignode.consensus.statemachine */
-  public ConsensusReadResponse read(PhysicalPlan plan) {
-    return consensusImpl.read(consensusGroupId, plan);
+  private TSStatus confirmLeader() {
+    if (getConsensusManager().isLeader()) {
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } else {
+      return new TSStatus(TSStatusCode.NEED_REDIRECTION.getStatusCode())
+          .setMessage(
+              "The current ConfigNode is not leader. And ConfigNodeGroup is in leader election. Please redirect with a random ConfigNode.");
+    }
   }
 
-  // TODO: Interfaces for LoadBalancer control
+  @Override
+  public DataNodeManager getDataNodeManager() {
+    return dataNodeManager;
+  }
+
+  @Override
+  public RegionManager getRegionManager() {
+    return regionManager;
+  }
+
+  @Override
+  public ConsensusManager getConsensusManager() {
+    return consensusManager;
+  }
+
+  @Override
+  public PartitionManager getPartitionManager() {
+    return partitionManager;
+  }
+
+  @Override
+  public TSStatus operatePermission(PhysicalPlan physicalPlan) {
+    if (physicalPlan instanceof AuthorPlan) {
+      return permissionManager.operatePermission((AuthorPlan) physicalPlan);
+    }
+    return ERROR_TSSTATUS;
+  }
 }

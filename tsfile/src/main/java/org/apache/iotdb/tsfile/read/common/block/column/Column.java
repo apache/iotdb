@@ -18,10 +18,17 @@
  */
 package org.apache.iotdb.tsfile.read.common.block.column;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 public interface Column {
+
+  /** Get the data type. */
+  TSDataType getDataType();
+
+  /** Get the encoding for this column. */
+  ColumnEncoding getEncoding();
 
   /** Gets a boolean at {@code position}. */
   default boolean getBoolean(int position) {
@@ -53,10 +60,21 @@ public interface Column {
     throw new UnsupportedOperationException(getClass().getName());
   }
 
+  /** Gets an Object at {@code position}. */
+  default Object getObject(int position) {
+    throw new UnsupportedOperationException(getClass().getName());
+  }
+
   /** Gets a TsPrimitiveType at {@code position}. */
   default TsPrimitiveType getTsPrimitiveType(int position) {
     throw new UnsupportedOperationException(getClass().getName());
   }
+
+  /**
+   * Is it possible the column may have a null value? If false, the column cannot contain a null,
+   * but if true, the column may or may not have a null.
+   */
+  boolean mayHaveNull();
 
   /**
    * Is the specified position null?

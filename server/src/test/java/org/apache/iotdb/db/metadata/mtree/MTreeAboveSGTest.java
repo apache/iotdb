@@ -43,10 +43,10 @@ import static org.junit.Assert.fail;
 
 public class MTreeAboveSGTest {
 
-  private MTreeAboveSG root = new MTreeAboveSG();
+  private MTreeAboveSG root;
 
   @Before
-  public void setUp() {
+  public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
     root = new MTreeAboveSG();
   }
@@ -269,23 +269,23 @@ public class MTreeAboveSGTest {
         storageGroup -> storageGroup.equals("root.sg1");
 
     Pair<List<PartialPath>, Set<PartialPath>> result =
-        root.getNodesListInGivenLevel(new PartialPath("root.**"), 3, null);
+        root.getNodesListInGivenLevel(new PartialPath("root.**"), 3, false, null);
     Assert.assertEquals(0, result.left.size());
     Assert.assertEquals(2, result.right.size());
 
-    result = root.getNodesListInGivenLevel(new PartialPath("root.*.*"), 2, null);
+    result = root.getNodesListInGivenLevel(new PartialPath("root.*.*"), 2, false, null);
     Assert.assertEquals(0, result.left.size());
     Assert.assertEquals(2, result.right.size());
 
-    result = root.getNodesListInGivenLevel(new PartialPath("root.*.*"), 1, null);
+    result = root.getNodesListInGivenLevel(new PartialPath("root.*.*"), 1, false, null);
     Assert.assertEquals(0, result.left.size());
     Assert.assertEquals(2, result.right.size());
 
-    result = root.getNodesListInGivenLevel(new PartialPath("root.**"), 3, filter);
+    result = root.getNodesListInGivenLevel(new PartialPath("root.**"), 3, false, filter);
     Assert.assertEquals(0, result.left.size());
     Assert.assertEquals(1, result.right.size());
 
-    result = root.getNodesListInGivenLevel(new PartialPath("root.*.**"), 2, filter);
+    result = root.getNodesListInGivenLevel(new PartialPath("root.*.**"), 2, false, filter);
     Assert.assertEquals(0, result.left.size());
     Assert.assertEquals(1, result.right.size());
   }

@@ -29,6 +29,8 @@ public class IoTDBShutdownHook extends Thread {
 
   @Override
   public void run() {
+    // close rocksdb if possible to avoid lose data
+    IoTDB.configManager.clear();
     if (logger.isInfoEnabled()) {
       logger.info(
           "IoTDB exits. Jvm memory usage: {}",

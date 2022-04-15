@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.metadata;
 
-import org.apache.iotdb.commons.partition.SchemaRegionId;
+import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 
@@ -78,8 +78,8 @@ public class LocalSchemaPartitionTable {
       PartialPath storageGroup, SchemaRegionId schemaRegionId) {
     table.get(storageGroup).add(schemaRegionId);
 
-    if (schemaRegionId.getSchemaRegionId() >= schemaRegionIdGenerator.get()) {
-      schemaRegionIdGenerator.set(schemaRegionId.getSchemaRegionId() + 1);
+    if (schemaRegionId.getId() >= schemaRegionIdGenerator.get()) {
+      schemaRegionIdGenerator.set(schemaRegionId.getId() + 1);
     }
   }
 
@@ -101,8 +101,8 @@ public class LocalSchemaPartitionTable {
     return result;
   }
 
-  public Set<SchemaRegionId> getSchemaRegionIdsByStorageGroup(PartialPath storageGroup) {
-    return table.get(storageGroup);
+  public List<SchemaRegionId> getSchemaRegionIdsByStorageGroup(PartialPath storageGroup) {
+    return new ArrayList<>(table.get(storageGroup));
   }
 
   public synchronized void setStorageGroup(PartialPath storageGroup) {

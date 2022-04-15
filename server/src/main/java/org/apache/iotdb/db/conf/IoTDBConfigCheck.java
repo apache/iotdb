@@ -54,7 +54,7 @@ public class IoTDBConfigCheck {
   // If user delete folder "data", system.properties can reset.
   private static final String PROPERTIES_FILE_NAME = "system.properties";
   private static final String SCHEMA_DIR = config.getSchemaDir();
-  private static final String WAL_DIR = config.getWalDir();
+  private static final String[] WAL_DIRS = config.getWalDirs();
 
   private File propertiesFile;
   private File tmpPropertiesFile;
@@ -88,8 +88,10 @@ public class IoTDBConfigCheck {
   private static String maxDegreeOfIndexNode =
       String.valueOf(TSFileDescriptor.getInstance().getConfig().getMaxDegreeOfIndexNode());
 
+  private static final String DATA_REGION_NUM = "data_region_num";
+  // for upgrading from old file
   private static final String VIRTUAL_STORAGE_GROUP_NUM = "virtual_storage_group_num";
-  private static String virtualStorageGroupNum = String.valueOf(config.getVirtualStorageGroupNum());
+  private static String dataRegionNum = String.valueOf(config.getDataRegionNum());
 
   private static final String ENABLE_ID_TABLE = "enable_id_table";
   private static String enableIDTable = String.valueOf(config.isEnableIDTable());
@@ -155,7 +157,7 @@ public class IoTDBConfigCheck {
     systemProperties.put(TAG_ATTRIBUTE_SIZE_STRING, tagAttributeTotalSize);
     systemProperties.put(TAG_ATTRIBUTE_FLUSH_INTERVAL, tagAttributeFlushInterval);
     systemProperties.put(MAX_DEGREE_OF_INDEX_STRING, maxDegreeOfIndexNode);
-    systemProperties.put(VIRTUAL_STORAGE_GROUP_NUM, virtualStorageGroupNum);
+    systemProperties.put(DATA_REGION_NUM, dataRegionNum);
     systemProperties.put(TIME_ENCODER_KEY, timeEncoderValue);
     systemProperties.put(ENABLE_ID_TABLE, enableIDTable);
     systemProperties.put(ENABLE_ID_TABLE_LOG_FILE, enableIdTableLogFile);
@@ -233,24 +235,26 @@ public class IoTDBConfigCheck {
   }
 
   private void checkWALNotExists() {
-    if (SystemFileFactory.INSTANCE.getFile(WAL_DIR).isDirectory()) {
-      File[] sgWALs = SystemFileFactory.INSTANCE.getFile(WAL_DIR).listFiles();
-      if (sgWALs != null) {
-        for (File sgWAL : sgWALs) {
-          // make sure wal directory of each sg is empty
-          if (sgWAL.isDirectory() && sgWAL.list().length != 0) {
-            logger.error(
-                "WAL detected, please stop insertion and run 'SET SYSTEM TO READONLY', then run 'flush' on IoTDB {} before upgrading to {}.",
-                properties.getProperty(IOTDB_VERSION_STRING),
-                IoTDBConstant.VERSION);
-            System.exit(-1);
+    for (String walDir : WAL_DIRS) {
+      if (SystemFileFactory.INSTANCE.getFile(walDir).isDirectory()) {
+        File[] sgWALs = SystemFileFactory.INSTANCE.getFile(walDir).listFiles();
+        if (sgWALs != null) {
+          for (File sgWAL : sgWALs) {
+            // make sure wal directory of each sg is empty
+            if (sgWAL.isDirectory() && sgWAL.list().length != 0) {
+              logger.error(
+                  "WAL detected, please stop insertion and run 'SET SYSTEM TO READONLY', then run 'flush' on IoTDB {} before upgrading to {}.",
+                  properties.getProperty(IOTDB_VERSION_STRING),
+                  IoTDBConstant.VERSION);
+              System.exit(-1);
+            }
           }
         }
       }
     }
   }
 
-  /** upgrade 0.12 properties to 0.13 properties */
+  /** upgrade 0.12 or 0.13 properties to 0.14 properties */
   private void upgradePropertiesFile() throws IOException {
     // create an empty tmpPropertiesFile
     if (tmpPropertiesFile.createNewFile()) {
@@ -267,6 +271,10 @@ public class IoTDBConfigCheck {
               properties.setProperty(k, v);
             }
           });
+      properties.setProperty(IOTDB_VERSION_STRING, IoTDBConstant.VERSION);
+      // rename virtual_storage_group_num to data_region_num
+      properties.setProperty(DATA_REGION_NUM, properties.getProperty(VIRTUAL_STORAGE_GROUP_NUM));
+      properties.remove(VIRTUAL_STORAGE_GROUP_NUM);
       properties.store(tmpFOS, SYSTEM_PROPERTIES_STRING);
 
       // upgrade finished, delete old system.properties file
@@ -295,7 +303,7 @@ public class IoTDBConfigCheck {
               properties.setProperty(k, v);
             }
           });
-
+      properties.setProperty(IOTDB_VERSION_STRING, IoTDBConstant.VERSION);
       properties.store(tmpFOS, SYSTEM_PROPERTIES_STRING);
       // upgrade finished, delete old system.properties file
       if (propertiesFile.exists()) {
@@ -343,8 +351,8 @@ public class IoTDBConfigCheck {
       throwException(MAX_DEGREE_OF_INDEX_STRING, maxDegreeOfIndexNode);
     }
 
-    if (!(properties.getProperty(VIRTUAL_STORAGE_GROUP_NUM).equals(virtualStorageGroupNum))) {
-      throwException(VIRTUAL_STORAGE_GROUP_NUM, virtualStorageGroupNum);
+    if (!(properties.getProperty(DATA_REGION_NUM).equals(dataRegionNum))) {
+      throwException(DATA_REGION_NUM, dataRegionNum);
     }
 
     if (!(properties.getProperty(TIME_ENCODER_KEY).equals(timeEncoderValue))) {
