@@ -59,7 +59,10 @@ public class PartitionInfoPersistence {
   public PartitionInfoPersistence() {
     this.schemaPartitionReadWriteLock = new ReentrantReadWriteLock();
     this.dataPartitionReadWriteLock = new ReentrantReadWriteLock();
-    this.schemaPartition = new SchemaPartition();
+    this.schemaPartition =
+        new SchemaPartition(
+            ConfigNodeDescriptor.getInstance().getConf().getSeriesPartitionExecutorClass(),
+            ConfigNodeDescriptor.getInstance().getConf().getSeriesPartitionSlotNum());
     this.schemaPartition.setSchemaPartitionMap(new HashMap<>());
     this.dataPartition =
         new DataPartition(
@@ -79,8 +82,7 @@ public class PartitionInfoPersistence {
     schemaPartitionReadWriteLock.readLock().lock();
 
     try {
-      schemaPartitionDataSet.setSchemaPartition(
-          schemaPartition.getSchemaPartition(physicalPlan.getPartitionSlotsMap()));
+      schemaPartitionDataSet.setSchemaPartition(schemaPartition.getSchemaPartition(physicalPlan.getPartitionSlotsMap()));
     } finally {
       schemaPartitionReadWriteLock.readLock().unlock();
       schemaPartitionDataSet.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));

@@ -215,17 +215,23 @@ public class DistributionPlanner {
       // and make the
       // new TimeJoinNode as the child of current TimeJoinNode
       // TODO: (xingtanzjr) optimize the procedure here to remove duplicated TimeJoinNode
+      final boolean[] addParent = {false};
       sourceGroup.forEach(
           (dataRegion, seriesScanNodes) -> {
             if (seriesScanNodes.size() == 1) {
               root.addChild(seriesScanNodes.get(0));
             } else {
-              // We clone a TimeJoinNode from root to make the params to be consistent.
-              // But we need to assign a new ID to it
-              TimeJoinNode parentOfGroup = (TimeJoinNode) root.clone();
-              root.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
-              seriesScanNodes.forEach(parentOfGroup::addChild);
-              root.addChild(parentOfGroup);
+              if (!addParent[0]) {
+                seriesScanNodes.forEach(root::addChild);
+                addParent[0] = true;
+              } else {
+                // We clone a TimeJoinNode from root to make the params to be consistent.
+                // But we need to assign a new ID to it
+                TimeJoinNode parentOfGroup = (TimeJoinNode) root.clone();
+                root.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
+                seriesScanNodes.forEach(parentOfGroup::addChild);
+                root.addChild(parentOfGroup);
+              }
             }
           });
 

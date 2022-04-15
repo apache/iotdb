@@ -79,6 +79,7 @@ public enum ThreadName {
   Cluster_Monitor("ClusterMonitor"),
   DATA_BLOCK_MANAGER_SERVICE("DataBlockManagerService"),
   DATA_BLOCK_MANAGER_CLIENT("DataBlockManagerService-Client"),
+  INTERNAL_SERVICE_CLIENT("InternalService-Client"),
   ;
 
   private final String name;
