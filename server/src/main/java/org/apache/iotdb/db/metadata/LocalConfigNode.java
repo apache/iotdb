@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
@@ -179,7 +178,6 @@ public class LocalConfigNode {
     }
 
     try {
-      CompactionTaskManager.getInstance().stop();
       SchemaResourceManager.clearSchemaResource();
 
       if (timedForceMLogThread != null) {
