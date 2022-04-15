@@ -195,7 +195,7 @@ public class IoTDBConfig {
   private volatile int maxWalMemTableSnapshotNum = 1;
 
   /** The period when outdated wal files are periodically deleted. Unit: millisecond */
-  private long deleteWalFilesPeriodInMs = 5 * 60 * 1000;
+  private volatile long deleteWalFilesPeriodInMs = 5 * 60 * 1000;
   // endregion
 
   /**
