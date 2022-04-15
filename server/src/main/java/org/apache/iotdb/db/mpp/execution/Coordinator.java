@@ -18,18 +18,16 @@
  */
 package org.apache.iotdb.db.mpp.execution;
 
+import org.apache.commons.lang3.Validate;
 import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.common.SessionInfo;
-import org.apache.iotdb.db.mpp.execution.config.ConfigExecution;
 import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-
-import org.apache.commons.lang3.Validate;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -68,10 +66,6 @@ public class Coordinator {
     return new QueryExecution(statement, queryContext, executor, scheduledExecutor);
   }
 
-  private ConfigExecution createConfigExecution(Statement statement, MPPQueryContext queryContext) {
-    return new ConfigExecution(queryContext, statement, executor);
-  }
-
   public ExecutionResult execute(
       Statement statement, QueryId queryId, QueryType queryType, SessionInfo session, String sql) {
 
@@ -82,15 +76,6 @@ public class Coordinator {
 
     execution.start();
 
-    return execution.getStatus();
-  }
-
-  public ExecutionResult executeUpdate(
-      Statement statement, QueryId queryId, QueryType queryType, SessionInfo session, String sql) {
-    ConfigExecution execution =
-        createConfigExecution(
-            statement, new MPPQueryContext(sql, queryId, session, queryType, getHostEndpoint()));
-    execution.start();
     return execution.getStatus();
   }
 
