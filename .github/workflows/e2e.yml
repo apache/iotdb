@@ -58,5 +58,6 @@ jobs:
         run: bash test/e2e/cases/${{ matrix.case }}/cleanup.sh
 
       - name: TestContainer
+        # TODO: add cluster test
         run: |
           mvn -B -T 4 integration-test -pl testcontainer -P test-sync
