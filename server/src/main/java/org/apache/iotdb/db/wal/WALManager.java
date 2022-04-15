@@ -128,7 +128,7 @@ public class WALManager implements IService {
               Arrays.asList(config.getWalDirs()), DirectoryStrategyType.SEQUENCE_STRATEGY);
       walDeleteThread =
           IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(ThreadName.WAL_DELETE.getName());
-      walDeleteThread.scheduleAtFixedRate(
+      walDeleteThread.scheduleWithFixedDelay(
           this::deleteOutdatedFiles,
           DELETE_WAL_FILES_PERIOD_IN_MS,
           DELETE_WAL_FILES_PERIOD_IN_MS,
@@ -138,6 +138,25 @@ public class WALManager implements IService {
     }
   }
 
+  /** reboot wal delete thread to hot modify delete wal period */
+  public void rebootWALDeleteThread() {
+    if (config.getWalMode() == WALMode.DISABLE) {
+      return;
+    }
+
+    logger.info("Start rebooting wal delete thread.");
+    if (walDeleteThread != null) {
+      shutdownThread(walDeleteThread, ThreadName.WAL_DELETE);
+    }
+    logger.info("Stop wal delete thread successfully, and now restart it.");
+    walDeleteThread =
+        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(ThreadName.WAL_DELETE.getName());
+    walDeleteThread.scheduleWithFixedDelay(
+        this::deleteOutdatedFiles, 0, DELETE_WAL_FILES_PERIOD_IN_MS, TimeUnit.MILLISECONDS);
+    logger.info("Reboot wal delete thread successfully ");
+  }
+
+  /** submit delete outdated wal files task and wait for result */
   public void deleteOutdatedWALFiles() {
     if (config.getWalMode() == WALMode.DISABLE) {
       return;

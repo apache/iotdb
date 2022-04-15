@@ -33,6 +33,7 @@ import org.apache.iotdb.db.exception.BadNodeUrlFormatException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.config.ReloadLevel;
@@ -987,15 +988,6 @@ public class IoTDBDescriptor {
       conf.setWalBufferQueueCapacity(walBufferQueueCapacity);
     }
 
-    long deleteWalFilesPeriod =
-        Long.parseLong(
-            properties.getProperty(
-                "delete_wal_files_period_in_ms",
-                Long.toString(conf.getDeleteWalFilesPeriodInMs())));
-    if (deleteWalFilesPeriod > 0) {
-      conf.setDeleteWalFilesPeriodInMs(deleteWalFilesPeriod);
-    }
-
     loadWALHotModifiedProps(properties);
   }
 
@@ -1042,6 +1034,15 @@ public class IoTDBDescriptor {
                 Integer.toString(conf.getMaxWalMemTableSnapshotNum())));
     if (maxWalMemTableSnapshotNum > 0) {
       conf.setMaxWalMemTableSnapshotNum(maxWalMemTableSnapshotNum);
+    }
+
+    long deleteWalFilesPeriod =
+        Long.parseLong(
+            properties.getProperty(
+                "delete_wal_files_period_in_ms",
+                Long.toString(conf.getDeleteWalFilesPeriodInMs())));
+    if (deleteWalFilesPeriod > 0) {
+      conf.setDeleteWalFilesPeriodInMs(deleteWalFilesPeriod);
     }
   }
 
@@ -1367,6 +1368,13 @@ public class IoTDBDescriptor {
                       Integer.toString(conf.getMaxNumberOfSyncFileRetry()))
                   .trim()));
       conf.setIpWhiteList(properties.getProperty("ip_white_list", conf.getIpWhiteList()));
+
+      // update wal config
+      long prevDeleteWalFilesPeriodInMs = conf.getDeleteWalFilesPeriodInMs();
+      loadWALHotModifiedProps(properties);
+      if (prevDeleteWalFilesPeriodInMs != conf.getDeleteWalFilesPeriodInMs()) {
+        WALManager.getInstance().rebootWALDeleteThread();
+      }
     } catch (Exception e) {
       throw new QueryProcessException(String.format("Fail to reload configuration because %s", e));
     }
