@@ -38,7 +38,7 @@ import static org.junit.Assert.assertEquals;
 public class SyncIT {
   private static Logger receiverLogger = LoggerFactory.getLogger("iotdb-receiver_1");
   private static Logger senderLogger = LoggerFactory.getLogger("iotdb-sender_1");
-  private static int RETRY_TIME = 10;
+  private static int RETRY_TIME = 30;
 
   protected Statement senderStatement;
   protected Connection senderConnection;
