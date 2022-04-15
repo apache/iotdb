@@ -91,9 +91,7 @@ public class SchemaPartition {
    *     RegionReplicaSet>>
    */
   public SchemaPartition getSchemaPartition(
-      Map<String, List<SeriesPartitionSlot>> partitionSlotsMap,
-      String seriesSlotExecutorName,
-      int seriesPartitionSlotNum) {
+      Map<String, List<SeriesPartitionSlot>> partitionSlotsMap) {
     if (partitionSlotsMap.isEmpty()) {
       // Return all SchemaPartitions when the partitionSlotsMap is empty
       return new SchemaPartition(

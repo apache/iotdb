@@ -66,9 +66,7 @@ public class FragmentInstance implements IConsensusRequest {
     this.regionReplicaSet = regionReplicaSet;
     // TODO: (xingtanzjr) We select the first Endpoint as the default target host for current
     // instance
-    this.hostEndpoint =
-        new Endpoint("0.0.0.0", IoTDBDescriptor.getInstance().getConfig().getMppPort());
-    //    this.hostEndpoint = regionReplicaSet.getDataNodeList().get(0).getEndPoint();
+    this.hostEndpoint = regionReplicaSet.getDataNodeList().get(0).getEndPoint();
   }
 
   public RegionReplicaSet getRegionReplicaSet() {

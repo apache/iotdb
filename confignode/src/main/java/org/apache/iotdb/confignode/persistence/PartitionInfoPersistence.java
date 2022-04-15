@@ -82,11 +82,7 @@ public class PartitionInfoPersistence {
     schemaPartitionReadWriteLock.readLock().lock();
 
     try {
-      schemaPartitionDataSet.setSchemaPartition(
-          schemaPartition.getSchemaPartition(
-              physicalPlan.getPartitionSlotsMap(),
-              ConfigNodeDescriptor.getInstance().getConf().getSeriesPartitionExecutorClass(),
-              ConfigNodeDescriptor.getInstance().getConf().getSeriesPartitionSlotNum()));
+      schemaPartitionDataSet.setSchemaPartition(schemaPartition.getSchemaPartition(physicalPlan.getPartitionSlotsMap()));
     } finally {
       schemaPartitionReadWriteLock.readLock().unlock();
       schemaPartitionDataSet.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
